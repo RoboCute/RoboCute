@@ -1,0 +1,7 @@
+[project]
+name = "robocute"
+version = "0.1.0"
+description = "Make Robotics Cute!"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
