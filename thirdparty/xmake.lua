@@ -1,0 +1,39 @@
+-- includes("meshoptimizer")
+-- includes("stb")
+-- includes("tinyexr")
+-- includes("nativefiledialog-extended")
+-- includes("tinytiff")
+includes("nanobind")
+includes("LuisaCompute")
+-- includes("cpp-ipc")
+
+-- libtorch
+-- if has_config("use_libtorch") then
+--     target("libtorch")
+--     set_kind("headeronly")
+--     on_load(function(target)
+--         local lib_path = path.join(os.scriptdir(), "libtorch/lib")
+--         target:add("includedirs", path.join(os.scriptdir(), "libtorch/include"),
+--             path.join(os.scriptdir(), "libtorch/include/torch/csrc/api/include"), {
+--                 public = true
+--             })
+--         target:add("linkdirs", lib_path, {
+--             public = true
+--         })
+--         for _, filepath in ipairs(os.files(path.join(lib_path, "*.lib"))) do
+--             target:add("links", path.basename(filepath), {
+--                 public = true
+--             })
+--         end
+--     end)
+--     after_build(function(target)
+--         os.mkdir(target:targetdir())
+--         local lib_path = path.join(os.scriptdir(), "libtorch/lib")
+--         for _, filepath in ipairs(os.files(path.join(lib_path, "lib/*.dll"))) do
+--             os.cp(filepath, path.join(target:targetdir(), path.filename(filepath)), {
+--                 copy_if_different = true
+--             })
+--         end
+--     end)
+--     target_end()
+-- end

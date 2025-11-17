@@ -1,29 +1,90 @@
-__pycache__/
-*.py[cod]
-/output/
-/input/
-!/input/example.png
-/models/
-/temp/
-/custom_nodes/
-!custom_nodes/example_node.py.example
-extra_model_paths.yaml
-/.vs
-.vscode/
-.idea/
-venv/
-.venv/
-/web/extensions/*
-!/web/extensions/logging.js.example
-!/web/extensions/core/
-/tests-ui/data/object_info.json
-/user/
-*.log
-web_custom_versions/
-.DS_Store
-openapi.yaml
-filtered-openapi.yaml
-uv.lock
+# xmake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Makefile
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+Testing
+/out
 
-/data
-.env
+# xmake
+/.xmake
+
+# idea
+/.idea
+
+# macos
+.DS_Store
+stressTest
+
+# compile commands
+compile_commands.json
+.cache
+
+# python
+*.pyc
+*.msi
+
+# build dirs
+/.sb
+/.build
+/.pkgs
+
+# build dirs
+/build
+/build-vs
+/build-wasm
+/build-wasi
+
+# visual studio
+/.vs
+
+# vscode plugins
+/.VSCodeCounter
+
+# xcode
+/xcode
+
+# shell files
+*.cmd
+*.bat
+*.ps1
+*.sh
+
+# engine
+
+# render
+/modules/render/runtime/shader/host
+/xmake/config.lua
+
+# SDKs
+# TODO. remove it
+/SDKs/x64
+/SDKs/grpc
+/SDKs/reflector-win
+/SDKs/tools
+/SDKs/libs
+/SDKs/python
+/SDKs/*.zip
+/SDKs/*.ttf
+/SDKs/manifest.json
+
+# TODO. remove it
+/thirdparty/*.zip
+scenes
+/vcpkg_installed
+/vsxmake
+/vsxmake*
+.history
+xmake.log
+-.json
+.vscode/launch.json
+.vscode/tasks.json
+thirdparty/nanobind
+thirdparty/libtorch
+thirdparty/LuisaCompute
+xmake/options_win.lua
+modules/tools/nanogen/builtin/builtin.cpp
