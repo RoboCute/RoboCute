@@ -4,7 +4,7 @@ add_rules('lc_basic_settings', {
 })
 add_deps('nanobind', 'lc-core')
 set_extension('.pyd')
-add_files('builtin/*.cpp', 'generated/*.cpp')
+add_files('builtin/*.cpp', 'generated/*.cpp', 'main.cpp')
 add_includedirs('builtin')
 set_pcxxheader('builtin/zz_pch.h')
 -- add_rules('py_codegen', {
@@ -12,7 +12,7 @@ set_pcxxheader('builtin/zz_pch.h')
 -- })
 target_end()
 
-target('test_py_codegen_impl')
+target('py_backend_impl')
 add_rules('lc_basic_settings', {
     project_kind = 'shared'
 })

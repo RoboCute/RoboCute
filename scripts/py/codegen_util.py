@@ -2,6 +2,8 @@ import type_register as tr
 import sys
 from pathlib import Path
 import os
+import codegen
+
 
 def _write_string_to(s: str, path: str):
     bytes = s.encode('ascii')
@@ -19,20 +21,6 @@ def _write_string_to(s: str, path: str):
     return True
 
 
-def codegen(
-    callback,
-    *args
-):
-    s = callback(*args)
-    if type(s) != str:
-        tr.log_err(f'codegen require callback return string.')
-    if len(sys.argv) < 2:
-        tr.log_err(f'Should pass out_path from arguments.')
-    out_path = Path(sys.argv[1])
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    _write_string_to(s, out_path)
-
-
 def codegen_to(
     out_path: str,
     callback,
@@ -41,5 +29,18 @@ def codegen_to(
     s = callback(*args)
     if type(s) != str:
         tr.log_err(f'codegen require callback return string.')
-    Path(out_path).parent.mkdir(parents = True, exist_ok=True)
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     _write_string_to(s, out_path)
+
+
+def codegen_pyd_module(
+    pyd_name: str,
+    file_name: str,
+    backend_module_name: str,
+    root_path: Path
+):
+    codegen_to(root_path / f"{file_name}.h", codegen.cpp_interface_gen)
+    codegen_to(root_path / f"{file_name}.cpp", codegen.nanobind_codegen,
+               file_name, f'{backend_module_name}', f'#include "{file_name}.h"')
+    codegen_to(root_path / f"{file_name}.py",
+               codegen.py_interface_gen, pyd_name)
