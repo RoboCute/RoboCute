@@ -55,8 +55,7 @@ local function git_clone_or_pull(git_address, subdir, branch)
     os.exit(1)
 end
 
-function main(llvm_path)
-
+function main()
     local lc_path = path.absolute("thirdparty/LuisaCompute")
     ------------------------------ git ------------------------------
     print("Clone submod? (y/n)")
@@ -122,42 +121,6 @@ function main(llvm_path)
     local lib = import("lib", {
         rootdir = "thirdparty/LuisaCompute/scripts"
     })
-    if llvm_path then
-        if not llvm_path or type(llvm_path) ~= "string" then
-            utils.error("Bad argument, should be 'xmake l setup.lua #LLVM_PATH#'")
-            os.exit(1)
-        elseif not os.isdir(llvm_path) then
-            utils.error("LLVM path illegal")
-            os.exit(1)
-        end
-
-        print("copying llvm...")
-
-        local llvm_code_path = path.absolute("src/clangcxx/llvm", lc_path)
-        os.tryrm(path.join(llvm_code_path, "include"))
-        os.tryrm(path.join(llvm_code_path, "lib"))
-        os.cp(path.join(llvm_path, "include"), path.join(llvm_code_path, "include"), {
-            copy_if_different = true
-        })
-        os.cp(path.join(llvm_path, "lib"), path.join(llvm_code_path, "lib"), {
-            copy_if_different = true
-        })
-        if builddir then
-            lib.mkdirs(builddir)
-            if os.is_host("windows") then
-                os.cp(path.join(llvm_path, "bin", "clang.exe"), builddir, {
-                    copy_if_different = true
-                })
-            elseif os.is_host("macosx") then
-                os.cp(path.join(llvm_path, "bin", "clang"), builddir, {
-                    copy_if_different = true
-                })
-            end
-        else
-            utils.error("build dir not set.")
-            os.exit(1)
-        end
-    end
     -- python
     local sb = lib.StringBuilder()
     print("Write options.lua? (y/n)")
@@ -189,35 +152,6 @@ function main(llvm_path)
             end
         end
         sb:write_to(path.join(os.scriptdir(), "scripts/xmake/options_win.lua"))
-    end
-    -- shader command
-    do
-        sb:clear()
-        print("preparing shader command...")
-        local shader_out_dir = path.translate(path.join(path.directory(builddir), "shader_build"))
-        local compiler_path = "clangcxx_compiler"
-        if os.is_host("windows") then
-            compiler_path = compiler_path .. ".exe"
-        end
-        compiler_path = path.join(os.projectdir(), "build/tool/clangcxx_compiler", compiler_path)
-        local shader_dir = path.translate(path.absolute("rbc/runtime/render/shader/"))
-        local compile_cmd_path = path.translate(path.join(shader_dir, 'compile.cmd'))
-        local gen_json_cmd_path = path.translate(path.join(shader_dir, 'gen_json.cmd'))
-        sb:add('@echo off\n"'):add(compiler_path):add('" --in="'):add(shader_dir):add('\\src" --out="'):add(
-            shader_out_dir):add('" -hostgen="'):add(shader_dir):add('\\host'):add('" --include="'):add(shader_dir):add(
-            '\\include"')
-        sb:write_to(compile_cmd_path)
-        compile_cmd_path = path.translate(path.join(shader_dir, 'clean_compile.cmd'))
-        sb:add(' --rebuild')
-        sb:write_to(compile_cmd_path)
-        compile_cmd_path = path.translate(path.join(shader_dir, 'clean_compile_pack.cmd'))
-        local lmdb_shader_out_dir = path.translate(path.join(path.directory(builddir), "shader_build_lmdb"))
-        sb:add(' --pack_path="'):add(lmdb_shader_out_dir):add('"')
-        sb:write_to(compile_cmd_path)
-        sb:clear()
-        sb:add('@echo off\n"'):add(compiler_path):add('" --in="'):add(shader_dir):add('\\src" --out="'):add(shader_dir)
-            :add('\\.vscode\\compile_commands.json" --include="'):add(shader_dir):add('\\include"'):add(' --lsp')
-        sb:write_to(gen_json_cmd_path)
     end
     sb:dispose()
 end
