@@ -1,6 +1,9 @@
 rule('py_codegen')
 set_extensions('.py')
-on_build_files(function(target, jobgraph, sourcebatch, opt)
+on_build_files(function(target, compile_jobs, sourcebatch, opt)
+    import("async.jobgraph")
+    import("async.runjobs")
+
     local compile_path = target:extraconf('rules', 'py_codegen', 'compile_path')
     if not compile_path then
         utils.error('compile_path not set')
@@ -16,7 +19,7 @@ on_build_files(function(target, jobgraph, sourcebatch, opt)
     local job_prepare_name = target:name() .. '_pycodegen_prepare'
     local job_compile_name = target:name() .. '_pycodegen_compile'
     -- PYTHONPATH for import
-    jobgraph:add(job_prepare_name, function()
+    compile_jobs:add(job_prepare_name, function()
         if python_path then
             if type(python_path) == 'string' then
                 os.addenv('PYTHONPATH', python_path)
@@ -29,10 +32,20 @@ on_build_files(function(target, jobgraph, sourcebatch, opt)
 
     end)
     -- Run python codegen
+    local py_jobs = jobgraph.new()
     for i, sourcefile in ipairs(sourcebatch.sourcefiles) do
         local job_key = target:name() .. 'pycodegen' .. tostring(i)
-        os.runv('python', {sourcefile})
+        py_jobs:add(tostring(i), function()
+            os.runv('python', {sourcefile})
+        end)
     end
+    runjobs(target:name() .. '_runpyjob', py_jobs, {
+        comax = 1000,
+        timeout = -1,
+        timer = function(running_jobs_indices)
+            utils.error("timeout.")
+        end
+    })
     -- Compile files
     local batchcxx = {
         rulename = 'c++.build',
@@ -51,11 +64,11 @@ on_build_files(function(target, jobgraph, sourcebatch, opt)
             table.insert(batchcxx.sourcefiles, file)
         end
     end
-    jobgraph:group(job_compile_name, function()
-        import('private.action.build.object')(target, jobgraph, batchcxx, opt)
+    compile_jobs:group(job_compile_name, function()
+        import('private.action.build.object')(target, compile_jobs, batchcxx, opt)
     end)
     if #batchcxx.sourcefiles > 0 then
-        jobgraph:add_orders(job_prepare_name, job_compile_name)
+        compile_jobs:add_orders(job_prepare_name, job_compile_name)
     end
 end, {
     jobgraph = true
