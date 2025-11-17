@@ -3,6 +3,10 @@ from pathlib import Path
 # basic types
 
 
+class ClassPtr:
+    pass
+
+
 class void:
     pass
 
@@ -37,8 +41,6 @@ class uint:
 
 class ulong:
     pass
-
-
 
 
 class float:
@@ -155,7 +157,7 @@ class vector:
         self._elements = [element]
 
 
-_basic_types = {byte, short, int, long, ubyte, ushort, uint, ulong, float, double, string, int2, int3, int4, uint2, uint3, uint4, long2, long3,
+_basic_types = {byte, short, int, long, ubyte, ushort, uint, ulong, float, double, string, int2, int3, int4, uint2, uint3, uint4, long2, long3, ClassPtr,
                 long4, ulong2, ulong3, ulong4, float2, float3, float4, double2, double3, double4, float2x2, float3x3, float4x4, double2x2, double3x3, double4x4}
 _template_types = {vector}
 
@@ -188,34 +190,34 @@ class _function_t:
 
 
 class struct_t:
-    def __init__(self, name: str):
-        if _registed_struct_types.get(name):
-            log_err(f"Struct {name} already exists.")
-        _registed_struct_types[name] = self
-        self._name = name
-        self._doc = name
+    def __init__(self, _func_name: str):
+        if _registed_struct_types.get(_func_name):
+            log_err(f"Struct {_func_name} already exists.")
+        _registed_struct_types[_func_name] = self
+        self._name = _func_name
+        self._doc = _func_name
         self._member = dict()
 
     def doc(self, doc: str):
         self._doc = doc
         return self
 
-    def member(self, name: str, **args):
-        tb = self._member.get(name)
+    def member(self, _func_name: str, **args):
+        tb = self._member.get(_func_name)
         if not tb:
             tb = {}
-            self._member[name] = tb
+            self._member[_func_name] = tb
         f = _function_t(**args)
         key = _gen_args_key(**args)
         if tb.get(key):
             log_err(
-                f"member {name} already exists with same arguments overload.")
+                f"member {_func_name} already exists with same arguments overload.")
         tb[key] = f
         return f
 
 
-def struct(name: str):
-    return struct_t(name)
+def struct(_func_name: str):
+    return struct_t(_func_name)
 
 
 def _check_args(**args):
@@ -237,15 +239,15 @@ def _check_ret_type(ret_type):
 # }
 
 
-def register_global_function(name: str, **args):
+def register_global_function(_func_name: str, **args):
     func = _function_t(**args)
-    tb = _registed_global_funcs.get(name)
+    tb = _registed_global_funcs.get(_func_name)
     if not tb:
         tb = {}
-        _registed_global_funcs[name] = tb
+        _registed_global_funcs[_func_name] = tb
     key = _gen_args_key(**args)
     if tb.get(key):
         log_err(
-            f"Function {name} already exists with same arguments overload.")
+            f"Function {_func_name} already exists with same arguments overload.")
     tb[key] = func
     return func

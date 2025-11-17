@@ -26,6 +26,7 @@ type_names = {
     tr.float: 'float',
     tr.double: 'double',
     tr.void: 'void',
+    tr.ClassPtr: 'void*'
 }
 
 py_names = {
@@ -40,7 +41,8 @@ py_names = {
     tr.float: 'float',
     tr.double: 'float',
     tr.string: 'str',
-    tr.vector: 'list'
+    tr.vector: 'list',
+    tr.ClassPtr: ''
 }
 
 
@@ -115,8 +117,10 @@ def print_arg_vars(args: dict, is_first: bool, py_interface: bool):
 
 def print_py_type(t):
     f = py_names.get(t)
-    if f:
-        return f
+    if f != None:
+        if len(f) > 0:
+            return f
+        return None
     if t in tr._basic_types:
         return t.__name__
     if type(t) in tr._template_types:
@@ -149,6 +153,8 @@ def print_py_args(args: dict, is_first : bool):
             r += ", "
         is_first = False
         r += arg_name
+        if arg_type == tr.ClassPtr:
+            r += '._handle'
     return r
 
 
@@ -257,30 +263,26 @@ void {export_func_name}(nanobind::module_& m)
 
     # print classes
     _add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
-    _add_line(f'static auto dynamic_module = luisa::DynamicModule::load(env ? env : ".", "{dll_path}");')
+    _add_line(f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct_t = tr._registed_struct_types[struct_name]
 
         # create
         create_name = f'create_{struct_name}'
-        _add_line(
-            f'auto create_{struct_name} = dynamic_module.function<void*()>("{create_name}");')
-        _add_line(f'''if (!create_MyStruct) [[unlikely]] {{
-\t\tLUISA_ERROR("{create_name} is null.");
-\t}}''')
-        _add_line(f'm.def("create_{struct_name}", [{create_name}]() -> void* ')
+        _add_line(f'm.def("create_{struct_name}", [dynamic_module]() -> void* ')
         _result += '{'
         _line_indent += 1
-        _add_line(
-            f'return {create_name}();')
+        _add_line('ModuleRegister::module_addref(env ? env : luisa::current_executable_path(),*dynamic_module);')
+        _add_line(f'return dynamic_module->dll.invoke<void *()>("{create_name}");')
         _line_indent -= 1
         _add_line('});')
         ptr_name = f'ptr_484111b5e8ed4230b5ef5f5fdc33ca81'  # magic name
         # dispose
         _add_line(
-            f'm.def("dispose_{struct_name}", [](void* {ptr_name})' + '{')
+            f'm.def("dispose_{struct_name}", [dynamic_module](void* {ptr_name})' + '{')
         _line_indent += 1
         _add_line(f'static_cast<{struct_name}*>({ptr_name})->dispose();')
+        _add_line('ModuleRegister::module_deref(*dynamic_module);')
         _line_indent -= 1
         _add_line('});')
 
