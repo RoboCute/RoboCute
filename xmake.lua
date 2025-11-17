@@ -13,9 +13,8 @@ lc_options = {
     lc_cuda_backend = false,
     lc_dx_backend = is_host("windows"),
     lc_vk_backend = true,
-    lc_enable_mimalloc = false,
+    lc_enable_mimalloc = true,
     lc_enable_cuda = false,
-    lc_enable_custom_malloc = true,
     lc_enable_api = false,
     lc_enable_dsl = true,
     lc_enable_gui = true,
@@ -36,7 +35,7 @@ lc_options = {
 }
 
 includes("scripts/xmake/nanobind_gen.lua", 'scripts/xmake/py_codegen.lua')
-includes("thirdparty")
+includes("thirdparty", "rbc")
 
 target("lc-runtime")
 add_defines("LUISA_ENABLE_SAFE_MODE", {

@@ -88,3 +88,5 @@ thirdparty/libtorch
 thirdparty/LuisaCompute
 xmake/options_win.lua
 modules/tools/nanogen/builtin/builtin.cpp
+rbc/tests/test_py_codegen/generated/*
+!rbc/tests/test_py_codegen/generated/.keep

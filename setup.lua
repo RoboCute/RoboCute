@@ -85,8 +85,11 @@ function main(llvm_path)
             add_git_job("spdlog", "thirdparty/LuisaCompute/src/ext/spdlog", "https://github.com/LuisaGroup/spdlog.git")
             add_git_job("EABase", "thirdparty/LuisaCompute/src/ext/EASTL/packages/EABase",
                 "https://github.com/LuisaGroup/EABase.git")
+            add_git_job("mimalloc", "thirdparty/LuisaCompute/src/ext/EASTL/packages/mimalloc",
+                "https://github.com/LuisaGroup/mimalloc.git")
             add_git_job("EASTL", "thirdparty/LuisaCompute/src/ext/EASTL", "https://github.com/LuisaGroup/EASTL.git", nil)
             jobs:add_orders("EASTL", "EABase")
+            jobs:add_orders("EASTL", "mimalloc")
 
             add_git_job("glfw", "thirdparty/LuisaCompute/src/ext/glfw", "https://github.com/glfw/glfw.git")
             add_git_job("magic_enum", "thirdparty/LuisaCompute/src/ext/magic_enum",
