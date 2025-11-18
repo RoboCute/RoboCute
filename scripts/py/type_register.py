@@ -157,8 +157,44 @@ class vector:
         self._elements = [element]
 
 
-_basic_types = {byte, short, int, long, ubyte, ushort, uint, ulong, float, double, string, int2, int3, int4, uint2, uint3, uint4, long2, long3, ClassPtr,
-                long4, ulong2, ulong3, ulong4, float2, float3, float4, double2, double3, double4, float2x2, float3x3, float4x4, double2x2, double3x3, double4x4}
+_basic_types = {
+    byte,
+    short,
+    int,
+    long,
+    ubyte,
+    ushort,
+    uint,
+    ulong,
+    float,
+    double,
+    string,
+    int2,
+    int3,
+    int4,
+    uint2,
+    uint3,
+    uint4,
+    long2,
+    long3,
+    ClassPtr,
+    long4,
+    ulong2,
+    ulong3,
+    ulong4,
+    float2,
+    float3,
+    float4,
+    double2,
+    double3,
+    double4,
+    float2x2,
+    float3x3,
+    float4x4,
+    double2x2,
+    double3x3,
+    double4x4,
+}
 _template_types = {vector}
 
 _registed_struct_types = {}
@@ -173,7 +209,7 @@ def log_err(s: str):
 def _gen_args_key(**args):
     key = ""
     for i in args:
-        key += str(args[i]) + '|'
+        key += str(args[i]) + "|"
     return key
 
 
@@ -210,8 +246,7 @@ class struct_t:
         f = _function_t(**args)
         key = _gen_args_key(**args)
         if tb.get(key):
-            log_err(
-                f"member {_func_name} already exists with same arguments overload.")
+            log_err(f"member {_func_name} already exists with same arguments overload.")
         tb[key] = f
         return f
 
@@ -223,15 +258,25 @@ def struct(_func_name: str):
 def _check_args(**args):
     for k in args:
         tp = args[k]
-        if (tp in _basic_types) or (type(tp) == struct_t) or (type(tp) in _template_types):
+        if (
+            (tp in _basic_types)
+            or (type(tp) == struct_t)
+            or (type(tp) in _template_types)
+        ):
             continue
-        log_err(f"argument \"{k}\" use invalid type {str(tp)}")
+        log_err(f'argument "{k}" use invalid type {str(tp)}')
 
 
 def _check_ret_type(ret_type):
-    if (ret_type in _basic_types) or (type(ret_type) == struct_t) or (ret_type == void) or (type(ret_type) in _template_types):
+    if (
+        (ret_type in _basic_types)
+        or (type(ret_type) == struct_t)
+        or (ret_type == void)
+        or (type(ret_type) in _template_types)
+    ):
         return
-    log_err(f"return type \"{str(ret_type)}\" with invalid")
+    log_err(f'return type "{str(ret_type)}" with invalid')
+
 
 # {
 #     name: str,
@@ -247,7 +292,6 @@ def register_global_function(_func_name: str, **args):
         _registed_global_funcs[_func_name] = tb
     key = _gen_args_key(**args)
     if tb.get(key):
-        log_err(
-            f"Function {_func_name} already exists with same arguments overload.")
+        log_err(f"Function {_func_name} already exists with same arguments overload.")
     tb[key] = func
     return func
