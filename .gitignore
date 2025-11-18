@@ -49,6 +49,7 @@ compile_commands.json
 /xcode
 
 # shell files
+*.pyi
 *.cmd
 *.bat
 *.ps1
@@ -86,8 +87,7 @@ xmake.log
 thirdparty/nanobind
 thirdparty/libtorch
 thirdparty/LuisaCompute
-xmake/options_win.lua
+scripts/options.json
 modules/tools/nanogen/builtin/builtin.cpp
-rbc/tests/test_py_codegen/generated/*
-!rbc/tests/test_py_codegen/generated/.keep
+generated/
 __pycache__

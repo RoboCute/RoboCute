@@ -15,7 +15,7 @@ void ModuleRegister::init(nanobind::module_ &m) {
     }
 }
 static std::mutex module_ref_mtx;
-static luisa::unordered_map<luisa::string, ModuleRegister::RefCountModule*> modules;
+static luisa::unordered_map<luisa::string, ModuleRegister::RefCountModule *> modules;
 
 auto ModuleRegister::load_module(
     std::string_view name) -> RefCountModule * {
@@ -30,12 +30,12 @@ auto ModuleRegister::load_module(
     return v;
 }
 void ModuleRegister::module_addref(
-    const luisa::filesystem::path &folder,
+    char const *folder,
     RefCountModule &module) {
     if (module.rc++ == 0) {
         std::lock_guard lck{module.load_mtx};
         if (!module.dll) {
-            module.dll = luisa::DynamicModule::load(folder, module.name);
+            module.dll = folder ? luisa::DynamicModule::load(folder, module.name) : luisa::DynamicModule::load(module.name);
         }
     }
 }

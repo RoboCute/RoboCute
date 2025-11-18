@@ -1,0 +1,8 @@
+#pragma once
+#include <luisa/core/dll_export.h>
+
+#ifdef RBC_CORE_EXPORT_DLL
+#define RBC_CORE_API LUISA_DECLSPEC_DLL_EXPORT
+#else
+#define RBC_CORE_API LUISA_DECLSPEC_DLL_IMPORT
+#endif

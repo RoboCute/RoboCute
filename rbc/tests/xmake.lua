@@ -1,1 +1,1 @@
-includes('test_py_codegen')
+includes('test_py_codegen', 'test_serde')

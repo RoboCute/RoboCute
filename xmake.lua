@@ -2,11 +2,6 @@ set_xmakever("3.0.4")
 add_rules("mode.release", "mode.debug", "mode.releasedbg")
 set_policy("build.ccache", not is_plat("windows"))
 set_policy("check.auto_ignore_flags", false)
-if is_host("windows") then
-    includes("scripts/xmake/options_win.lua")
-elseif is_host("macosx") then
-    includes("scripts/xmake/options_mac.lua")
-end
 
 lc_options = {
     lc_cpu_backend = false,
@@ -34,7 +29,7 @@ lc_options = {
     -- lc_toy_c_backend = true
 }
 
-includes("scripts/xmake/nanobind_gen.lua", 'scripts/xmake/py_codegen.lua')
+includes("scripts/xmake/nanobind_gen.lua", 'scripts/xmake/py_codegen.lua', 'scripts/xmake/option_meta.lua')
 includes("thirdparty", "rbc")
 
 target("lc-runtime")

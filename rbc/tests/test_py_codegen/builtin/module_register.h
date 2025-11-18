@@ -15,7 +15,7 @@ public:
     };
     static RefCountModule *load_module(std::string_view name);
     static void module_addref(
-        const luisa::filesystem::path &folder,
+        char const *folder,
         RefCountModule &module);
     static void module_deref(RefCountModule &module);
 

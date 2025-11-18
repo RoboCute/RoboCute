@@ -29,14 +29,15 @@ def codegen_to(out_path: str, callback, *args):
 
 
 def codegen_pyd_module(
-    pyd_name: str, file_name: str, backend_module_name: str, root_path: Path
+    pyd_name: str, file_name: str, backend_module_name: str, cpp_root_path: Path,
+    py_root_path: Path
 ):
-    codegen_to(root_path / f"{file_name}.h", codegen.cpp_interface_gen)
+    codegen_to(cpp_root_path / f"{file_name}.h", codegen.cpp_interface_gen)
     codegen_to(
-        root_path / f"{file_name}.cpp",
+        cpp_root_path / f"{file_name}.cpp",
         codegen.nanobind_codegen,
         file_name,
         f"{backend_module_name}",
         f'#include "{file_name}.h"',
     )
-    codegen_to(root_path / f"{file_name}.py", codegen.py_interface_gen, pyd_name)
+    codegen_to(py_root_path / f"{file_name}.py", codegen.py_interface_gen, pyd_name)

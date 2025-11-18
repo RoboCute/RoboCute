@@ -2,12 +2,11 @@ import sys
 from pathlib import Path
 import os
 import ctypes
+dll_path = 'build/windows/x64/debug'
 # rbc dll path
-os.environ['RBC_RUNTIME_DIR'] = 'build/windows/x64/debug'
+os.environ['RBC_RUNTIME_DIR'] = dll_path
 # pyd path
-sys.path.append('build/windows/x64/debug')
-# py header path
-sys.path.append(str(Path(__file__).parent / 'generated'))
+sys.path.append(dll_path)
 
 from example_module import *
 

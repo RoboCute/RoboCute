@@ -122,20 +122,31 @@ function main()
         rootdir = "thirdparty/LuisaCompute/scripts"
     })
     -- python
+    print("pip install? (y/n)")
+    local pip_install = io.read()
+    if pip_install == 'Y' or pip_install == 'y' then
+        os.runv('pip', {
+            'install',
+            'nanobind-stubgen'
+        })
+    end
     local sb = lib.StringBuilder()
+    -- options
     print("Write options.lua? (y/n)")
     local write_opt = io.read()
     if write_opt == 'Y' or write_opt == 'y' then
         local py_path = find_process_path("python.exe")
         sb:clear()
-        sb:add('set_config("lc_toolchain", "clang-cl")\n')
+        sb:add('{\n')
+        sb:add('"lc_toolchain": "clang-cl"\n')
         if py_path then
-            sb:add('set_config("lc_py_include", "'):add(lib.string_replace(path.join(py_path, "include"), "\\", "/"))
-                :add('")\nset_config("lc_py_linkdir", "')
+            sb:add(', "lc_py_include": "'):add(lib.string_replace(path.join(py_path, "include"), "\\", "/")):add('"\n')
+            sb:add(', "rbc_py_bin": "'):add(lib.string_replace(py_path, "\\", "/")):add('"\n')
+            sb:add(', "lc_py_linkdir": "')
             local lc_py_linkdir = path.join(py_path, "libs")
             sb:add(lib.string_replace(lc_py_linkdir, "\\", "/"))
             local py = "python"
-            sb:add('")\n')
+            sb:add('"\n')
             local files = {}
             for _, filepath in ipairs(os.files(path.join(lc_py_linkdir, "*.lib"))) do
                 local lib_name = path.basename(filepath)
@@ -144,14 +155,15 @@ function main()
                 end
             end
             if #files > 0 then
-                sb:add('set_config("lc_py_libs", "')
+                sb:add(', "lc_py_libs": "')
                 for i, v in ipairs(files) do
                     sb:add(v .. ";")
                 end
-                sb:add('")\n')
+                sb:add('"\n')
             end
         end
-        sb:write_to(path.join(os.scriptdir(), "scripts/xmake/options_win.lua"))
+        sb:add('}')
+        sb:write_to(path.join(os.scriptdir(), "scripts/options.json"))
     end
     sb:dispose()
 end

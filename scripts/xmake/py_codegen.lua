@@ -3,7 +3,11 @@ set_extensions('.py')
 on_build_files(function(target, compile_jobs, sourcebatch, opt)
     import("async.jobgraph")
     import("async.runjobs")
-
+    local py_bin = get_config('rbc_py_bin')
+    if not py_bin then
+        utils.error('Python binary path not setted.')
+        return
+    end
     local compile_path = target:extraconf('rules', 'py_codegen', 'compile_path')
     if not compile_path then
         utils.error('compile_path not set')
@@ -36,7 +40,7 @@ on_build_files(function(target, compile_jobs, sourcebatch, opt)
     for i, sourcefile in ipairs(sourcebatch.sourcefiles) do
         local job_key = target:name() .. 'pycodegen' .. tostring(i)
         py_jobs:add(tostring(i), function()
-            os.runv('python', {sourcefile})
+            os.runv(path.join(py_bin, 'python'), {sourcefile})
         end)
     end
     runjobs(target:name() .. '_runpyjob', py_jobs, {
@@ -73,4 +77,17 @@ on_build_files(function(target, compile_jobs, sourcebatch, opt)
 end, {
     jobgraph = true
 })
+rule_end()
+
+rule('py_stubgen')
+after_build(function(target)
+    local stubgen_path = target:extraconf('rules', 'py_stubgen', 'stubgen_path')
+    if not stubgen_path then
+        utils.error('stubgen_path not set.')
+        return
+    end
+    os.mkdir(stubgen_path)
+    os.setenv('PYTHONPATH', target:targetdir())
+    os.execv('nanobind-stubgen', {target:name(), '--out', stubgen_path})
+end)
 rule_end()

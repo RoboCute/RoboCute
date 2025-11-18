@@ -3,7 +3,7 @@ if __name__ == '__main__':
     from pathlib import Path
     from multiprocessing import Process
     sys.path.append(str(Path(__file__).parent / 'scripts/py'))
-    modules = ['test_codegen']
+    modules = ['test_codegen', 'test_serde']
     processes = []
     for i in modules:
         exec(f'import {i}')
