@@ -1,0 +1,22 @@
+version = 1
+revision = 3
+requires-python = ">=3.12"
+
+[[package]]
+name = "nanobind-stubgen"
+version = "0.1.5"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d1/b6/1b7cd5e2cfcc1cb49f62d29fe06ad8c19582c4965f7767d88405f3b70812/nanobind_stubgen-0.1.5-py3-none-any.whl", hash = "sha256:3f4e3c852dfb6ce2bd51fa5e710f3019180176669280fd00e7293e08dee76709", size = 7918, upload-time = "2024-02-07T08:19:42.184Z" },
+]
+
+[[package]]
+name = "robocute"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "nanobind-stubgen" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "nanobind-stubgen", specifier = ">=0.1.5" }]

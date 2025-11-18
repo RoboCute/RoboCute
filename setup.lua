@@ -121,15 +121,6 @@ function main()
     local lib = import("lib", {
         rootdir = "thirdparty/LuisaCompute/scripts"
     })
-    -- python
-    print("pip install? (y/n)")
-    local pip_install = io.read()
-    if pip_install == 'Y' or pip_install == 'y' then
-        os.runv('pip', {
-            'install',
-            'nanobind-stubgen'
-        })
-    end
     local sb = lib.StringBuilder()
     -- options
     print("Write options.lua? (y/n)")

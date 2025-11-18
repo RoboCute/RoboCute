@@ -7,8 +7,15 @@
 
 ## 配置项目
 
+### Python环境配置
+
+- 安装uv
+- `uv sync`同步所有包
+
+### RBS环境启动
+
 1. 安装环境 `xmake l setup.lua`
-2. 生成代码 `python generate.py`
+2. 生成代码 `uv run generate.py`
 3. 配置 `xmake f -m release -c`
 4. 编译 `xmake`
 

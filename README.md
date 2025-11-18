@@ -6,8 +6,4 @@
 
 ## How to Get Started
 
-- 配好梯子
-- `xmake l setup.lua`
-- `xmake f -m debug`
-- `python generate.py`: generate files 
-- `xmake`
+- see [[BUILD.md]]
