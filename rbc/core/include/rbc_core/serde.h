@@ -39,7 +39,7 @@ struct Serializer : public Base {
             Base::add_last_scope_to_object(args...);
         } else if constexpr (requires { t.rbc_arrser(*this); }) {
             Base::start_array();
-            t.rbc_objser(*this);
+            t.rbc_arrser(*this);
             Base::add_last_scope_to_object(args...);
         }
         // bool
@@ -93,6 +93,8 @@ struct Serializer : public Base {
                     elems[i] = t[i];
                 }
                 Base::add_arr(luisa::span<bool const>{elems, dim}, args...);
+            } else {
+                static_assert(luisa::always_false_v<T>, "Invalid vector type.");
             }
         } else if constexpr (luisa::is_matrix_v<T>) {
             constexpr size_t dim = luisa::matrix_dimension_v<T>;
@@ -149,6 +151,151 @@ struct Serializer : public Base {
     luisa::BinaryBlob serialize(char const *name, T const &t) {
         _store(t, name);
         return Base::write_to();
+    }
+};
+
+template<typename Base>
+struct DeSerializer : public Base {
+    template<typename... Args>
+        requires(luisa::is_constructible_v<Base, Args && ...>)
+    DeSerializer(Args &&...args)
+        : Base(std::forward<Args>(args)...) {
+    }
+    template<typename T, typename... Args>
+    bool _load(T const &t, Args... args) {
+        // custom type
+        if constexpr (requires { t.rbc_objdeser(*this); }) {
+            Base::start_object();
+            t.rbc_objdeser(*this);
+            Base::add_last_scope_to_object(args...);
+        } else if constexpr (requires { t.rbc_arrdeser(*this); }) {
+            Base::start_array();
+            t.rbc_arrdeser(*this);
+            Base::add_last_scope_to_object(args...);
+        }
+        // bool
+        else if constexpr (std::is_same_v<T, bool>) {
+            return Base::read(t, args...);
+        }
+        // integer
+        else if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_unsigned_v<T>) {
+                auto v = (uint64_t)t;
+                bool result = Base::read(v, args...);
+                if (result)
+                    t = (T)v;
+                return result;
+            } else {
+                auto v = (uint64_t)t;
+                Base::read(v, args...);
+                if (result)
+                    t = (T)v;
+                return result;
+            }
+        }
+        // float
+        else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+            auto v = (double)t;
+            bool result = Base::read(v, args...);
+            if (result)
+                t = (T)v;
+            return result;
+        }
+        // vector
+        else if constexpr (luisa::is_vector_v<T>) {
+            constexpr size_t dim = luisa::vector_dimension_v<T>;
+            using EleType = luisa::vector_element_t<T>;
+            // float vector
+            if constexpr (std::is_floating_point_v<EleType> || std::is_same_v<EleType, luisa::half>) {
+                if (!Base::start_array(args...)) return false;
+                auto end_scope = vstd::scope_exit([&] {
+                    Base::end_scope();
+                });
+                for (size_t i = 0; i < dim; ++i) {
+                    auto ele = (double)t[i];
+                    bool result = Base::read(ele);
+                    if (result) {
+                        t[i] = (EleType)ele;
+                    } else {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            // int vector
+            else if constexpr (std::is_integral_v<EleType>) {
+                if (!Base::start_array(args...)) return false;
+                auto end_scope = vstd::scope_exit([&] {
+                    Base::end_scope();
+                });
+                for (size_t i = 0; i < dim; ++i) {
+                    if constexpr (std::is_unsigned_v<EleType>) {
+                        auto ele = (uint64_t)t[i];
+                        bool result = Base::read(ele);
+                        if (result) {
+                            t[i] = (EleType)ele;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        auto ele = (int64_t)t[i];
+                        bool result = Base::read(ele);
+                        if (result) {
+                            t[i] = (EleType)ele;
+                        } else {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+            // bool vector
+            else if constexpr (std::is_same_v<bool, EleType>) {
+                if (!Base::start_array(args...)) return false;
+                auto end_scope = vstd::scope_exit([&] {
+                    Base::end_scope();
+                });
+                for (size_t i = 0; i < dim; ++i) {
+                    if (!Base::read(t[i])) {
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                static_assert(luisa::always_false_v<T>, "Invalid vector type.");
+            }
+        } else if constexpr (luisa::is_matrix_v<T>) {
+            constexpr size_t dim = luisa::matrix_dimension_v<T>;
+            for (size_t x = 0; x < dim; ++x)
+                for (size_t y = 0; y < dim; ++y) {
+                    auto ele = (double)t[i];
+                    bool result = Base::read(ele);
+                    if (result) {
+                        t[x + y * dim] = ele;
+                    } else {
+                        return false;
+                    }
+                }
+            return true;
+        }
+        // string
+        else if constexpr (std::is_same_v<std::decay_t<T>, luisa::string>) {
+            return Base::read(t, args...);
+        }
+        // kv map
+        else if constexpr (detail::is_unordered_map<T>::value) {
+            Base::start_object(args...);
+            // TODO
+            Base::add_last_scope_to_object(args...);
+        }
+        // duck type
+        else if constexpr (requires {t.data(); t. size(); }) {
+            // TODO
+        } else if constexpr (requires { t.begin() ; t.end(); }) {
+            // TODO
+        } else {
+            static_assert(luisa::always_false_v<T>, "Invalid deserialize type.");
+        }
     }
 };
 

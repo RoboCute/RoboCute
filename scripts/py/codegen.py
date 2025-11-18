@@ -182,7 +182,10 @@ def cpp_interface_gen(*extra_includes):
         add_result(i + "\n")
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct_t = tr._registed_struct_types[struct_name]
-        add_line(f"struct {struct_name} {{")
+        namespace = struct_type.namespace_name()
+        if (len(namespace) > 0):
+            add_line(f'namespace {namespace} {{')
+        add_line(f"struct {struct_type.class_name()} {{")
         add_result(f"""
     virtual void dispose() = 0;
     virtual ~{struct_name}() = default;""")
@@ -204,6 +207,8 @@ def cpp_interface_gen(*extra_includes):
                 )
         remove_indent()
         add_line("};")
+        if (len(namespace) > 0):
+            add_line('}')
     return get_result()
 
 

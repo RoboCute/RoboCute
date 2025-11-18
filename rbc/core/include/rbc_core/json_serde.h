@@ -1,6 +1,7 @@
 #pragma once
 #include <luisa/core/stl/string.h>
 #include <luisa/core/stl/vector.h>
+#include <luisa/vstl/meta_lib.h>
 #include <luisa/core/binary_io.h>
 #include <rbc_config.h>
 #include <yyjson.h>
@@ -44,13 +45,41 @@ struct RBC_CORE_API JsonWriter {
     void add(char const *str, char const *name);
     luisa::BinaryBlob write_to() const;
 };
-// struct RBC_CORE_API JsonReader {
-//     luisa::vector<std::pair<void *, bool>> _json_scope;
-//     void *json_doc;
-//     JsonReader();
-//     ~JsonReader();
-// private:
-//     void start_object(char const *name);
-//     void end_scope();
-// };
+struct ReadArray {
+    yyjson_val *arr_iter;
+    size_t size;
+};
+struct ReadObj {
+    yyjson_obj_iter iter;
+};
+struct RBC_CORE_API JsonReader {
+    yyjson_alc alc;
+    yyjson_doc *json_doc;
+    luisa::vector<std::pair<yyjson_val *, vstd::variant<ReadArray, ReadObj>>> _json_scope;
+    JsonReader(luisa::string_view str);
+    ~JsonReader();
+    bool start_array();
+    bool start_object();
+    bool start_array(char const *name);
+    bool start_object(char const *name);
+    void end_scope();
+    // obj iterate
+    bool read_kv(luisa::string &str, bool &value);
+    bool read_kv(luisa::string &str, int64_t &value);
+    bool read_kv(luisa::string &str, uint64_t &value);
+    bool read_kv(luisa::string &str, double &value);
+    bool read_kv(luisa::string &str, luisa::string &value);
+    // array
+    bool read(bool &value);
+    bool read(int64_t &value);
+    bool read(uint64_t &value);
+    bool read(double &value);
+    bool read(luisa::string &value);
+    // obj
+    bool read(bool &value, char const *name);
+    bool read(int64_t &value, char const *name);
+    bool read(uint64_t &value, char const *name);
+    bool read(double &value, char const *name);
+    bool read(luisa::string &value, char const *name);
+};
 }// namespace rbc

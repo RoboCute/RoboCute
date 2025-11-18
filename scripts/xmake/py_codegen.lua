@@ -87,6 +87,7 @@ after_build(function(target)
         return
     end
     os.mkdir(stubgen_path)
+    os.addenv('PATH', target:targetdir())
     os.setenv('PYTHONPATH', target:targetdir())
     os.execv('nanobind-stubgen', {target:name(), '--out', stubgen_path})
 end)

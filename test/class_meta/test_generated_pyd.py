@@ -7,6 +7,8 @@ dll_path = 'build/windows/x64/debug'
 os.environ['RBC_RUNTIME_DIR'] = dll_path
 # pyd path
 sys.path.append(dll_path)
+sys.path.append("scripts/py")
+sys.path.append("scripts/py/generated")
 
 from example_module import *
 

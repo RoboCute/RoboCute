@@ -13,6 +13,9 @@ set_pcxxheader('builtin/zz_pch.h')
 add_rules('py_stubgen', {
     stubgen_path = 'scripts/generated'
 })
+add_deps('py_backend_impl', {
+    inherit = false
+})
 target_end()
 
 target('py_backend_impl')

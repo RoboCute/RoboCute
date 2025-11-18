@@ -212,7 +212,6 @@ _basic_types = {
     double4x4,
 }
 _template_types = {vector, ClassPtr, unordered_map}
-
 _registed_struct_types = {}
 
 
@@ -242,13 +241,29 @@ class _function_t:
 
 class struct_t:
     def __init__(self, _func_name: str):
-        if _registed_struct_types.get(_func_name):
-            log_err(f"Struct {_func_name} already exists.")
-        _registed_struct_types[_func_name] = self
-        self._name = _func_name
-        self._doc = _func_name
+        namespace_cut = _func_name.rfind('::')
+        if namespace_cut >= 0:
+            self._namespace_name = _func_name[0:namespace_cut]
+            self._class_name = _func_name[namespace_cut+2:len(_func_name)]
+        else:
+            self._namespace_name = ''
+            self._class_name = _func_name
+        full_name = self.full_name()
+        if _registed_struct_types.get(full_name):
+            log_err(f"Struct {full_name} already exists.")
+        _registed_struct_types[full_name] = self
+        self._doc = full_name
         self._members = dict()
         self._methods = dict()
+
+    def namespace_name(self):
+        return self._namespace_name
+
+    def class_name(self):
+        return self._class_name
+
+    def full_name(self):
+        return self._namespace_name + self._class_name
 
     def doc(self, doc: str):
         self._doc = doc

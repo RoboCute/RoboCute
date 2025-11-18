@@ -1,6 +1,6 @@
 import type_register as tr
+import hashlib
 from codegen_basis import *
-
 _type_names = {
     tr.string: "luisa::string",
     tr.byte: "int8_t",
@@ -32,10 +32,20 @@ def _print_arg_type(t):
     if f:
         return f(t)
     if type(t) is tr.struct_t:
-        return t._name
+        return t.full_name()
     if t in tr._basic_types:
         return 'luisa::' + t.__name__
     tr.log_err(f'Bad type {str(t)}')
+
+
+def print_cpp_rtti(t: tr.struct_t):
+    name = t.full_name()
+    add_line(
+        f'static constexpr luisa::string_view _zz_typename_ {{"{name}"}};')
+    m = hashlib.md5(name.encode('ascii'))
+    hex = m.hexdigest()
+    add_line(
+        f'static constexpr uint64_t _zz_md5_[2] {{{int(hex[0:16], 16)}, {int(hex[16:32], 16)} }};')
 
 
 def codegen_serde():
@@ -45,8 +55,15 @@ def codegen_serde():
 #include <luisa/core/basic_types.h>''')
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct_t = tr._registed_struct_types[struct_name]
-        add_line(f'struct {struct_name} {{')
+        namespace = struct_type.namespace_name()
+        if (len(namespace) > 0):
+            add_line(f'namespace {namespace} {{')
+        add_line(f'struct {struct_type.class_name()} {{')
         add_indent()
+
+        # RTTI
+        print_cpp_rtti(struct_type)
+
         # members
         if len(struct_type._methods) > 0:
             tr.log_err('Serde struct can not have method')
@@ -74,4 +91,6 @@ def codegen_serde():
 
         remove_indent()
         add_line('};')
+        if (len(namespace) > 0):
+            add_line('}')
     return get_result()

@@ -3,6 +3,42 @@
 #include <luisa/core/logging.h>
 using namespace luisa;
 namespace rbc {
+#define JSON_DESER_INIT_ARR                           \
+    LUISA_DEBUG_ASSERT(!_json_scope.empty());         \
+    auto &v = _json_scope.back();                     \
+    yyjson_val *val;                                  \
+    if (v.second.is_type_of<ReadArray>()) {           \
+        auto &iter = v.second.force_get<ReadArray>(); \
+        if (iter.size == 0) return false;             \
+        val = iter.arr_iter;                          \
+        iter.arr_iter = unsafe_yyjson_get_next(val);  \
+        iter.size -= 1;                               \
+    } else {                                          \
+        auto &iter = v.second.force_get<ReadObj>();   \
+        auto key = yyjson_obj_iter_next(&iter.iter);  \
+        if (!key) return false;                       \
+        val = yyjson_obj_iter_get_val(key);           \
+    }                                                 \
+    auto type = yyjson_get_type(val);
+
+#define JSON_DESER_INIT_KV                             \
+    LUISA_DEBUG_ASSERT(!_json_scope.empty());          \
+    auto &v = _json_scope.back();                      \
+    yyjson_val *val;                                   \
+    if (!v.second.is_type_of<ReadObj>()) return false; \
+    auto &iter = v.second.force_get<ReadObj>();        \
+    auto key = yyjson_obj_iter_next(&iter.iter);       \
+    if (!key) return false;                            \
+    val = yyjson_obj_iter_get_val(key);                \
+    auto type = yyjson_get_type(val);
+
+#define JSON_DESER_INIT_OBJ                            \
+    LUISA_DEBUG_ASSERT(!_json_scope.empty());          \
+    auto &v = _json_scope.back();                      \
+    if (!v.second.is_type_of<ReadObj>()) return false; \
+    auto val = yyjson_obj_get(v.first, name);          \
+    if (!val) return false;                            \
+    auto type = yyjson_get_type(val);
 JsonWriter::JsonWriter() {
     alc = yyjson_alc{
         .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
@@ -55,7 +91,7 @@ void JsonWriter::add(int64_t int_value) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(v.second);
-    LUISA_ASSERT(yyjson_mut_arr_add_int(json_doc, v.first, int_value));
+    LUISA_ASSERT(yyjson_mut_arr_add_sint(json_doc, v.first, int_value));
 }
 void JsonWriter::add(uint64_t uint_value) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
@@ -119,7 +155,7 @@ void JsonWriter::add(int64_t int_value, char const *name) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_int(json_doc, v.first, name, int_value));
+    LUISA_ASSERT(yyjson_mut_obj_add_sint(json_doc, v.first, name, int_value));
 }
 void JsonWriter::add(uint64_t uint_value, char const *name) {
     if (!name) {
@@ -196,4 +232,181 @@ JsonWriter::~JsonWriter() {
     LUISA_ASSERT(_json_scope.size() == 1);
     yyjson_mut_doc_free(json_doc);
 }
+JsonReader::JsonReader(luisa::string_view str) {
+    alc = yyjson_alc{
+        .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
+    json_doc = yyjson_read_opts(const_cast<char *>(str.data()), str.size(), 0, &alc, nullptr);
+    if (!json_doc) [[unlikely]] {
+        LUISA_ERROR("Bad json doc.");
+    }
+    auto root_val = json_doc->root;
+    auto root_type = yyjson_get_type(root_val);
+    if (root_type != YYJSON_TYPE_OBJ && root_type != YYJSON_TYPE_ARR) [[unlikely]] {
+        LUISA_ERROR("Bad json format.");
+    }
+    if (root_type == YYJSON_TYPE_ARR) {
+        _json_scope.emplace_back(root_val, ReadArray{unsafe_yyjson_get_first(root_val), unsafe_yyjson_get_len(root_val)});
+    } else {
+        ReadObj obj;
+        yyjson_obj_iter_init(root_val, &obj.iter);
+        _json_scope.emplace_back(root_val, obj);
+    }
+}
+bool JsonReader::start_array(char const *name) {
+    if (!name) {
+        return start_array();
+    }
+    JSON_DESER_INIT_OBJ
+    if (type != YYJSON_TYPE_ARR) return false;
+    _json_scope.emplace_back(val, ReadArray(unsafe_yyjson_get_first(val), unsafe_yyjson_get_len(val)));
+    return true;
+}
+bool JsonReader::start_object(char const *name) {
+    if (!name) {
+        return start_object();
+    }
+    JSON_DESER_INIT_OBJ
+    if (type != YYJSON_TYPE_OBJ) return false;
+    ReadObj obj;
+    yyjson_obj_iter_init(val, &obj.iter);
+    _json_scope.emplace_back(val, obj);
+    return true;
+}
+
+bool JsonReader::start_array() {
+    JSON_DESER_INIT_ARR
+    if (type != YYJSON_TYPE_ARR) return false;
+    _json_scope.emplace_back(val, ReadArray(unsafe_yyjson_get_first(val), unsafe_yyjson_get_len(val)));
+    return true;
+}
+bool JsonReader::start_object() {
+    JSON_DESER_INIT_ARR
+    if (type != YYJSON_TYPE_OBJ) return false;
+    ReadObj obj;
+    yyjson_obj_iter_init(val, &obj.iter);
+    _json_scope.emplace_back(val, obj);
+    return true;
+}
+void JsonReader::end_scope() {
+    LUISA_ASSERT(!_json_scope.empty());
+    _json_scope.pop_back();
+}
+JsonReader::~JsonReader() {
+    LUISA_ASSERT(_json_scope.size() == 1);
+    yyjson_doc_free(json_doc);
+}
+bool JsonReader::read(bool &value, char const *name) {
+    if (!name) {
+        return read(value);
+    }
+    JSON_DESER_INIT_OBJ
+    if (type != YYJSON_TYPE_BOOL) return false;
+    value = unsafe_yyjson_get_bool(val);
+    return true;
+}
+bool JsonReader::read(int64_t &value, char const *name) {
+    if (!name) {
+        return read(value);
+    }
+    JSON_DESER_INIT_OBJ
+    if (type != YYJSON_TYPE_NUM) return false;
+    value = unsafe_yyjson_get_sint(val);
+    return true;
+}
+bool JsonReader::read(uint64_t &value, char const *name) {
+    if (!name) {
+        return read(value);
+    }
+    JSON_DESER_INIT_OBJ
+    if (type != YYJSON_TYPE_NUM) return false;
+    value = unsafe_yyjson_get_uint(val);
+    return true;
+}
+bool JsonReader::read(double &value, char const *name) {
+    if (!name) {
+        return read(value);
+    }
+    JSON_DESER_INIT_OBJ
+    if (type != YYJSON_TYPE_NUM) return false;
+    value = unsafe_yyjson_get_num(val);
+    return true;
+}
+bool JsonReader::read(luisa::string &value, char const *name) {
+    if (!name) {
+        return read(value);
+    }
+    JSON_DESER_INIT_OBJ
+    if (type != YYJSON_TYPE_STR) return false;
+    value = unsafe_yyjson_get_str(val);
+    return true;
+}
+bool JsonReader::read(bool &value) {
+    JSON_DESER_INIT_ARR
+    if (type != YYJSON_TYPE_BOOL) return false;
+    value = unsafe_yyjson_get_bool(val);
+    return true;
+}
+bool JsonReader::read(int64_t &value) {
+    JSON_DESER_INIT_ARR
+    if (type != YYJSON_TYPE_NUM) return false;
+    value = unsafe_yyjson_get_sint(val);
+    return true;
+}
+bool JsonReader::read(uint64_t &value) {
+    JSON_DESER_INIT_ARR
+    if (type != YYJSON_TYPE_NUM) return false;
+    value = unsafe_yyjson_get_uint(val);
+    return true;
+}
+bool JsonReader::read(double &value) {
+    JSON_DESER_INIT_ARR
+    if (type != YYJSON_TYPE_NUM) return false;
+    value = unsafe_yyjson_get_num(val);
+    return true;
+}
+
+bool JsonReader::read(luisa::string &value) {
+    JSON_DESER_INIT_ARR
+    if (type != YYJSON_TYPE_STR) return false;
+    value = unsafe_yyjson_get_str(val);
+    return true;
+}
+bool JsonReader::read_kv(luisa::string &str, bool &value) {
+    JSON_DESER_INIT_KV
+    if (type != YYJSON_TYPE_BOOL) return false;
+    str = unsafe_yyjson_get_str(key);
+    value = unsafe_yyjson_get_bool(val);
+    return true;
+}
+bool JsonReader::read_kv(luisa::string &str, int64_t &value) {
+    JSON_DESER_INIT_KV
+    if (type != YYJSON_TYPE_NUM) return false;
+    str = unsafe_yyjson_get_str(key);
+    value = unsafe_yyjson_get_sint(val);
+    return true;
+}
+bool JsonReader::read_kv(luisa::string &str, uint64_t &value) {
+    JSON_DESER_INIT_KV
+    if (type != YYJSON_TYPE_NUM) return false;
+    str = unsafe_yyjson_get_str(key);
+    value = unsafe_yyjson_get_uint(val);
+    return true;
+}
+bool JsonReader::read_kv(luisa::string &str, double &value) {
+    JSON_DESER_INIT_KV
+    if (type != YYJSON_TYPE_NUM) return false;
+    str = unsafe_yyjson_get_str(key);
+    value = unsafe_yyjson_get_num(val);
+    return true;
+}
+bool JsonReader::read_kv(luisa::string &str, luisa::string &value) {
+    JSON_DESER_INIT_KV
+    if (type != YYJSON_TYPE_STR) return false;
+    str = unsafe_yyjson_get_str(key);
+    value = unsafe_yyjson_get_str(val);
+    return true;
+}
 }// namespace rbc
+#undef JSON_DESER_INIT_ARR
+#undef JSON_DESER_INIT_OBJ
+#undef JSON_DESER_INIT_KV

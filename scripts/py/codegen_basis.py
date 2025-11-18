@@ -13,7 +13,8 @@ def add_line(line: str):
 def set_result(s: str):
     global _result
     _result = s
-    
+
+
 def add_result(s: str):
     global _result
     _result += s
