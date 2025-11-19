@@ -2,8 +2,10 @@
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/stl/type_traits.h>
 #include <luisa/core/stl/unordered_map.h>
+#include <luisa/vstl/stack_allocator.h>
 #include <luisa/core/binary_io.h>
 #include <luisa/vstl/hash_map.h>
+#include <luisa/vstl/v_guid.h>
 #include <luisa/core/stl/memory.h>
 #include <luisa/core/stl/vector.h>
 namespace rbc {
@@ -27,10 +29,13 @@ struct is_unordered_map<vstd::HashMap<K, V>> {
 }// namespace detail
 template<typename Base>
 struct Serializer : public Base {
+    vstd::VEngineMallocVisitor _alloc_callback;
+    vstd::StackAllocator _alloc;
     template<typename... Args>
         requires(luisa::is_constructible_v<Base, Args && ...>)
     Serializer(Args &&...args)
-        : Base(std::forward<Args>(args)...) {
+        : Base(std::forward<Args>(args)...),
+          _alloc(4096, &_alloc_callback, 2) {
     }
 
     template<typename T, typename... Args>
@@ -147,12 +152,20 @@ struct Serializer : public Base {
                 ++i;
             }
             Base::add_last_scope_to_object(args...);
+        } else if constexpr (std::is_same_v<T, vstd::Guid>) {
+            auto chunk = _alloc.allocate(23);
+            auto ptr = (char*)(chunk.handle + chunk.offset);
+            t.to_base64(ptr);
+            ptr[22] = 0;
+            // TODO
+            Base::add(ptr, args...);
         } else {
             static_assert(luisa::always_false_v<T>, "Invalid serialize type.");
         }
     }
     template<typename T>
     luisa::BinaryBlob serialize(char const *name, T const &t) {
+        _alloc.clear();
         _store(t, name);
         return Base::write_to();
     }
@@ -324,13 +337,21 @@ struct DeSerializer : public Base {
             auto end_scope = vstd::scope_exit([&] {
                 Base::end_scope();
             });
-            if (requires { t.reserve(size); }) {
+            if constexpr (requires { t.reserve(size); }) {
                 t.reserve(size);
             }
             for (uint64_t i = 0; i < size; ++i) {
                 auto &v = t.emplace_back();
                 if (!this->_load(v)) return false;
             }
+            return true;
+        } else if constexpr (std::is_same_v<T, vstd::Guid>) {
+            luisa::string guid_str;
+            if (!Base::read(guid_str, args...)) return false;
+            if (guid_str.size() != 22 && guid_str.size() != 32) return false;
+            auto g = vstd::Guid::TryParseGuid(guid_str);
+            if (!g) return false;
+            t = *g;
             return true;
         } else {
             static_assert(luisa::always_false_v<T>, "Invalid deserialize type.");

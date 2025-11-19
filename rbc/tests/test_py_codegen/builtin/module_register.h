@@ -1,6 +1,7 @@
 #pragma once
 #include <nanobind/nanobind.h>
 #include <luisa/core/dynamic_module.h>
+#include "guid.h"
 struct ModuleRegister {
 private:
     static ModuleRegister *header;

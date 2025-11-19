@@ -16,6 +16,31 @@ _type_names = {
     tr.double: "double",
     tr.void: "void",
     tr.VoidPtr: "void*",
+    tr.GUID: "GuidData"
+}
+
+
+def _print_str(t, py_interface: bool = False, is_view: bool = False):
+    if py_interface:
+        return "nb::str"
+    elif is_view:
+        return "luisa::string_view"
+    else:
+        return "luisa::string"
+
+
+def _print_guid(t, py_interface: bool = False, is_view: bool = False):
+    if py_interface:
+        return "GuidData"
+    elif is_view:
+        return "vstd::Guid const&"
+    else:
+        return "vstd::Guid"
+
+
+_type_name_functions = {
+    tr.string: _print_str,
+    tr.GUID: _print_guid,
 }
 
 
@@ -41,13 +66,28 @@ _py_names = {
     tr.VoidPtr: "",
 }
 
+_serde_blacklist = {
+    tr.VoidPtr: lambda x: True,
+    tr.ClassPtr: lambda x: True,
+    tr.unordered_map: lambda x:  _is_non_serializable(
+        x._key) or _is_non_serializable(x._value),
+    tr.vector: lambda x: _is_non_serializable(x._element)
+}
+
+
+def _is_non_serializable(x):
+    v = _serde_blacklist.get(x)
+    if v:
+        return v(x)
+    v = _serde_blacklist.get(type(x))
+    if v:
+        return v(x)
+
 
 def _print_arg_type(t, py_interface: bool = False, is_view: bool = False):
-    if t == tr.string:
-        if py_interface:
-            return "nb::str"
-        elif is_view:
-            return "luisa::string_view"
+    f = _type_name_functions.get(t)
+    if f:
+        return f(t, py_interface, is_view)
     f = _type_names.get(t)
     if f:
         return f
@@ -58,8 +98,8 @@ def _print_arg_type(t, py_interface: bool = False, is_view: bool = False):
         if f:
             return f(t)
         tr.log_err(f"invalid type {str(t)}")
-    if type(t) is tr.struct_t:
-        return t._name
+    if type(t) is tr.struct or type(t) is tr.enum:
+        return t.full_name()
     tr.log_err(f"invalid type {str(t)}")
 
 
@@ -100,8 +140,8 @@ def _print_py_type(t):
         return None
     if t in tr._basic_types:
         return t.__name__
-    if type(t) is tr.struct_t:
-        return t._name
+    if type(t) is tr.struct or type(t) is tr.enum:
+        return t.class_name()
     return None
 
 
@@ -132,7 +172,7 @@ def _print_py_args(args: dict, is_first: bool):
     return r
 
 
-def _print_cpp_rtti(t: tr.struct_t):
+def _print_cpp_rtti(t: tr.struct):
     name = t.full_name()
     add_line(
         f'static constexpr luisa::string_view _zz_typename_ {{"{name}"}};')
@@ -145,8 +185,8 @@ def _print_cpp_rtti(t: tr.struct_t):
 def py_interface_gen(module_name: str):
     set_result(f"from {module_name} import *")
     for struct_name in tr._registed_struct_types:
-        struct_type: tr.struct_t = tr._registed_struct_types[struct_name]
-        add_line(f"class {struct_name}:")
+        struct_type: tr.struct = tr._registed_struct_types[struct_name]
+        add_line(f"class {struct_type.class_name()}:")
 
         # init
         add_indent()
@@ -188,11 +228,31 @@ def cpp_interface_gen(*extra_includes):
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/stl.h>
 #include <luisa/vstl/meta_lib.h>
+#include <luisa/vstl/v_guid.h>
 """)
     for i in extra_includes:
         add_result(i + "\n")
+    # print enums
+    for enum_name in tr._registed_enum_types:
+        enum_type: tr.enum = tr._registed_enum_types[enum_name]
+        namespace = enum_type.namespace_name()
+        if len(namespace) > 0:
+            add_line(f'namespace {namespace} {{')
+        add_line(f'enum struct {enum_type.class_name()} : uint32_t {{')
+        add_indent()
+        for param_name_and_value in enum_type._params:
+            add_line(f'{param_name_and_value[0]}')
+            if param_name_and_value[1] != None:
+                add_result(f' = {param_name_and_value[1]}')
+            add_result(',')
+        remove_indent()
+        add_line('};')
+        if len(namespace) > 0:
+            add_line('}')
+
+    # print classes
     for struct_name in tr._registed_struct_types:
-        struct_type: tr.struct_t = tr._registed_struct_types[struct_name]
+        struct_type: tr.struct = tr._registed_struct_types[struct_name]
         namespace = struct_type.namespace_name()
         if (len(namespace) > 0):
             add_line(f'namespace {namespace} {{')
@@ -261,17 +321,26 @@ def nanobind_codegen(module_name: str, dll_path: str, *extra_includes):
         add_result(i + "\n")
     add_result(f"""namespace nb = nanobind;
 using namespace nb::literals;
-void {export_func_name}(nanobind::module_& m)
-""")
+void {export_func_name}(nanobind::module_& m) """)
     add_result("{")
     add_indent()
+    
+    # print enums
+    for enum_name in tr._registed_enum_types:
+        enum_type: tr.enum = tr._registed_enum_types[enum_name]
+        add_line(f'nb::enum_<{enum_name}>(m, "{enum_name}")')
+        add_indent()
+        for params_name_and_type in enum_type._params:
+            add_line(f'.value("{params_name_and_type[0]}", {enum_name}::{params_name_and_type[0]})')
+        remove_indent()
+        add_result(';')
 
     # print classes
     add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
     add_line(
         f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
     for struct_name in tr._registed_struct_types:
-        struct_type: tr.struct_t = tr._registed_struct_types[struct_name]
+        struct_type: tr.struct = tr._registed_struct_types[struct_name]
 
         # create
         create_name = f"create__{struct_name}__"
@@ -283,7 +352,7 @@ void {export_func_name}(nanobind::module_& m)
             "ModuleRegister::module_addref(env,*dynamic_module);"
         )
         add_line(
-            f'return dynamic_module->dll.invoke<void *()>("{create_name}");')
+            f'return dynamic_module->dll.invoke<void *()>("create_{struct_name}");')
         remove_indent()
         add_line("});")
         ptr_name = f"ptr_484111b5e8ed4230b5ef5f5fdc33ca81"  # magic name

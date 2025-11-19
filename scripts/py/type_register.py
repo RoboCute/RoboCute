@@ -23,6 +23,10 @@ class unordered_map:
         self._value = value
 
 
+class GUID:
+    pass
+
+
 class void:
     pass
 
@@ -210,9 +214,39 @@ _basic_types = {
     double2x2,
     double3x3,
     double4x4,
+    GUID
 }
 _template_types = {vector, ClassPtr, unordered_map}
 _registed_struct_types = {}
+_registed_enum_types = {}
+
+
+class enum:
+    def __init__(self, _func_name: str, **params):
+        namespace_cut = _func_name.rfind('::')
+        if namespace_cut >= 0:
+            self._namespace_name = _func_name[0:namespace_cut]
+            self._class_name = _func_name[namespace_cut+2:len(_func_name)]
+        else:
+            self._namespace_name = ''
+            self._class_name = _func_name
+        full_name = self.full_name()
+        if _registed_enum_types.get(full_name):
+            log_err(f"enum {full_name} already exists.")
+        _registed_enum_types[full_name] = self
+        self._params = []
+        for i in params:
+            self._params.append((i, params[i]))
+    def add(self, key:str, value=None):
+        self._params[key] = value
+    def namespace_name(self):
+        return self._namespace_name
+
+    def class_name(self):
+        return self._class_name
+
+    def full_name(self):
+        return self._namespace_name + self._class_name
 
 
 def log_err(s: str):
@@ -239,7 +273,7 @@ class _function_t:
         return self
 
 
-class struct_t:
+class struct:
     def __init__(self, _func_name: str):
         namespace_cut = _func_name.rfind('::')
         if namespace_cut >= 0:
@@ -265,10 +299,6 @@ class struct_t:
     def full_name(self):
         return self._namespace_name + self._class_name
 
-    def doc(self, doc: str):
-        self._doc = doc
-        return self
-
     def method(self, _func_name: str, **args):
         tb = self._methods.get(_func_name)
         if not tb:
@@ -288,15 +318,11 @@ class struct_t:
             _check_arg(i, v)
             self._members[i] = v
 
-
-def struct(_func_name: str):
-    return struct_t(_func_name)
-
-
 def _check_arg(key, arg):
     if (
         (arg in _basic_types)
-        or (type(arg) == struct_t)
+        or (type(arg) == struct)
+        or (type(arg) == enum)
         or (type(arg) in _template_types)
     ):
         return
@@ -311,8 +337,9 @@ def _check_args(**args):
 def _check_ret_type(ret_type):
     if (
         (ret_type in _basic_types)
-        or (type(ret_type) == struct_t)
+        or (type(ret_type) == struct)
         or (ret_type == void)
+        or (ret_type == enum)
         or (type(ret_type) in _template_types)
     ):
         return

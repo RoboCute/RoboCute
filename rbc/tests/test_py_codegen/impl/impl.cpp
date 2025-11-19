@@ -1,6 +1,7 @@
 #include "example_module.h"
 #include <luisa/core/dll_export.h>
 #include <luisa/core/logging.h>
+#include <luisa/core/magic_enum.h>
 struct MyStructImpl : MyStruct {
     luisa::string name{};
     MyStructImpl() {
@@ -19,6 +20,12 @@ struct MyStructImpl : MyStruct {
     }
     void set_pointer(void *ptr, luisa::string_view name) override {
         static_cast<MyStructImpl*>(ptr)->name = name;
+    }
+    void set_guid(vstd::Guid const& guid) override {
+        LUISA_INFO("GUID setted {}", guid.to_string());
+    }
+    void set_enum(MyEnum enum_var)  override {
+        LUISA_INFO("Enum setted {}", luisa::to_string(enum_var));
     }
 };
 LUISA_EXPORT_API MyStructImpl *create_MyStruct() {
