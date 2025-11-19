@@ -1,0 +1,3 @@
+# Development
+
+RBC的开发流程采用python-first思想，首先在python中定义需要cpp和python端实现的接口类，在执行构建的过程中会根据接口类和python自带的反射功能实现cpp和python端的代码生成。然后会根据生成的接口代码构建editor可执行文件和python库，最终实现完整的链路联调。
