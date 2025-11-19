@@ -1,6 +1,12 @@
 version = 1
 revision = 3
-requires-python = ">=3.12"
+requires-python = ">=3.13"
+
+[manifest]
+members = [
+    "rbc-meta",
+    "robocute",
+]
 
 [[package]]
 name = "nanobind-stubgen"
@@ -11,12 +17,21 @@ wheels = [
 ]
 
 [[package]]
+name = "rbc-meta"
+version = "0.1.0"
+source = { editable = "packages/rbc_meta" }
+
+[[package]]
 name = "robocute"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "nanobind-stubgen" },
+    { name = "rbc-meta" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "nanobind-stubgen", specifier = ">=0.1.5" }]
+requires-dist = [
+    { name = "nanobind-stubgen", specifier = ">=0.1.5" },
+    { name = "rbc-meta", editable = "packages/rbc_meta" },
+]

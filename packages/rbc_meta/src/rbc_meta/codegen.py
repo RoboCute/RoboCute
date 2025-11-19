@@ -1,5 +1,5 @@
-import type_register as tr
-from codegen_basis import get_codegen_basis
+import rbc_meta.type_register as tr
+from rbc_meta.codegen_basis import get_codegen_basis
 import hashlib
 
 cb = get_codegen_basis()

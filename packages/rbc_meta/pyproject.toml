@@ -1,0 +1,6 @@
+[project]
+name = "rbc_meta"
+version = "0.1.0"
+description = "The Meta Toolkit for RBC"
+readme = "README.md"
+requires-python = ">=3.13"

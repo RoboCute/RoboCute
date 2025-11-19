@@ -1,5 +1,5 @@
-import type_register as tr
-from codegen_util import codegen_pyd_module
+import rbc_meta.type_register as tr
+from rbc_meta.codegen_util import codegen_pyd_module
 from pathlib import Path
 
 

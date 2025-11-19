@@ -1,7 +1,9 @@
-import type_register as tr
+import rbc_meta.type_register as tr
+import rbc_meta.codegen as codegen
+
 from pathlib import Path
 import os
-import codegen
+
 import hashlib
 
 

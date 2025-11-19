@@ -18,30 +18,16 @@ from multiprocessing import Process
 # Configuration: List of modules and their entry point functions to run.
 # These modules are expected to be located in the paths configured in setup_python_path().
 GENERATION_TASKS = [
-    ("test_codegen", "test_codegen"),
-    ("test_serde", "test_serde"),
-    ("pipeline_settings", "pipeline_settings"),
+    ("meta.test_codegen", "test_codegen"),
+    ("meta.test_serde", "test_serde"),
+    ("meta.pipeline_settings", "pipeline_settings"),
 ]
 
-def setup_python_path():
-    """
-    Configures sys.path to include necessary script directories.
-    This allows modules to import utilities from 'scripts/py' and its subdirectories.
-    """
-    root_dir = Path(__file__).parent.resolve()
-    scripts_py_dir = root_dir / "scripts" / "py"
-    render_codegen_dir = scripts_py_dir / "render_codegen"
-
-    # Add paths to sys.path if they aren't already there
-    paths_to_add = [str(scripts_py_dir), str(render_codegen_dir)]
-    for path_str in paths_to_add:
-        if path_str not in sys.path:
-            sys.path.append(path_str)
 
 def run_generation_task(module_name, function_name):
     """
     Imports a module and executes its specified entry point function.
-    
+
     Args:
         module_name (str): The name of the module to import.
         function_name (str): The name of the function to call within the module.
@@ -49,7 +35,7 @@ def run_generation_task(module_name, function_name):
     try:
         # Dynamic import replaces the unsafe exec()
         module = importlib.import_module(module_name)
-        
+
         if hasattr(module, function_name):
             func = getattr(module, function_name)
             print(f"[{module_name}] Starting generation...")
@@ -58,7 +44,7 @@ def run_generation_task(module_name, function_name):
         else:
             print(f"[{module_name}] Error: Function '{function_name}' not found.")
             sys.exit(1)
-            
+
     except ImportError as e:
         print(f"[{module_name}] Error: Failed to import module. {e}")
         sys.exit(1)
@@ -66,21 +52,19 @@ def run_generation_task(module_name, function_name):
         print(f"[{module_name}] Error: An unexpected error occurred. {e}")
         sys.exit(1)
 
+
 def main():
     """
     Main execution function. Sets up paths and spawns parallel processes for generation.
     """
     start_time = time.time()
-    setup_python_path()
-    
     print(f"Starting code generation for {len(GENERATION_TASKS)} modules...")
-    
     processes = []
     for module_name, function_name in GENERATION_TASKS:
         p = Process(target=run_generation_task, args=(module_name, function_name))
         p.start()
         processes.append(p)
-    
+
     # Wait for all processes to complete
     exit_code = 0
     for p in processes:
@@ -88,10 +72,11 @@ def main():
         if p.exitcode != 0:
             exit_code = 1
             print(f"Process for task {p.name} failed with exit code {p.exitcode}")
-            
+
     duration = time.time() - start_time
     print(f"Code generation finished in {duration:.2f} seconds.")
     sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     main()

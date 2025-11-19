@@ -1,6 +1,6 @@
-import type_register as tr
-import codegen
-import codegen_util as ut
+import rbc_meta.type_register as tr
+import rbc_meta.codegen as codegen
+import rbc_meta.codegen_util as ut
 from pathlib import Path
 
 

@@ -1,3 +1,4 @@
+# The Singleton Code Generator
 class CodeGenerator:
     _instance = None
 

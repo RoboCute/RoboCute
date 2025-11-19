@@ -91,5 +91,5 @@ scripts/options.json
 modules/tools/nanogen/builtin/builtin.cpp
 generated/
 __pycache__
-
+*.egg-info
 .env

@@ -7,12 +7,11 @@ set_extension('.pyd')
 add_files('builtin/*.cpp', 'generated/*.cpp', 'main.cpp')
 add_includedirs('builtin')
 set_pcxxheader('builtin/zz_pch.h')
--- add_rules('py_codegen', {
---     compile_path = path.join(os.scriptdir(), 'generated/*.cpp')
--- })
+
 add_rules('py_stubgen', {
-    stubgen_path = 'scripts/generated'
+    ext_path = "rbc_ext"
 })
+
 target_end()
 
 target('py_backend_impl')

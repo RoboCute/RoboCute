@@ -81,14 +81,15 @@ rule_end()
 
 rule('py_stubgen')
 after_build(function(target)
-    local stubgen_path = target:extraconf('rules', 'py_stubgen', 'stubgen_path')
-    if not stubgen_path then
+    local ext_path = target:extraconf('rules', 'py_stubgen', 'ext_path')
+    if not ext_path then
         utils.error('stubgen_path not set.')
         return
     end
-    os.mkdir(stubgen_path)
-    os.addenv('PATH', target:targetdir())
-    os.setenv('PYTHONPATH', target:targetdir())
-    os.execv('nanobind-stubgen', {target:name(), '--out', stubgen_path})
+    os.mkdir(ext_path)
+    -- copy targetdir to 
+    os.cp(target:targetdir(), ext_path)
+    os.execv('uvx', {"--with-editable .", "nanobind-stubgen", target:name(), '--out', ext_path})
+
 end)
 rule_end()
