@@ -6,6 +6,6 @@ add_includedirs('include', {
     public = true
 })
 add_files('src/**.cpp')
-add_deps('lc-core', 'lc-yyjson', 'lc-vstl')
+add_deps('lc-core', 'lc-yyjson', 'lc-vstl', 'rtm')
 add_defines('RBC_CORE_EXPORT_DLL')
 target_end()
