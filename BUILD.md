@@ -14,7 +14,7 @@
 
 ### RBS环境启动
 
-1. 安装环境 `xmake l setup.lua`
+1. 安装环境 `uv run scripts/setup.py`
 2. 生成代码 `uv run generate.py`
 3. 配置 `xmake f -m release -c`
 4. 编译 `xmake`
