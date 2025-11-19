@@ -89,7 +89,7 @@ after_build(function(target)
     os.mkdir(ext_path)
     -- copy targetdir to 
     os.cp(target:targetdir(), ext_path)
-    -- os.execv('uvx', {"nanobind-stubgen", target:name(), '--out', ext_path})
+    os.execv("uv run generate_stub.py")
 end)
 
 rule_end()
