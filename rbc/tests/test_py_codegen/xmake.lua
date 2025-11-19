@@ -13,10 +13,6 @@ target('test_py_codegen')
     add_includedirs('builtin')
     set_pcxxheader('builtin/zz_pch.h')
 
-    add_rules('rbc_pyext', {
-        ext_path = path.join(os.projectdir(), "src/rbc_ext")
-    })
-
 target_end()
 
 target('py_backend_impl')

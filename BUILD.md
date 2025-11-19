@@ -13,12 +13,15 @@
 - `uv sync`同步所有包
 - (Optional) Pylance Select Interpreter `.venv/Scripts/python.exe`
 
-### RBS环境启动
+### RBC环境启动
 
 1. 安装环境 `uv run scripts/setup.py`
 2. 生成代码 `uv run generate.py`
 3. 配置 `xmake f -m release -c`
 4. 编译 `xmake`
-5. 尝试运行`uv run main.py`
 
- 运行`xmake f -p windows -m release -c`时如果xmake没有使用最新版本的msvc，可以通过`--vs_toolset=`指定
+### 发布运行
+1. 运行安装脚本 `xmake l scripts/xmake/install.lua`
+2. 尝试运行`uv run main.py`
+
+运行`xmake f -p windows -m release -c`时如果xmake没有使用最新版本的msvc，可以通过`--vs_toolset=`指定

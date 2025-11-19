@@ -140,7 +140,7 @@ def run_git_tasks():
         },
         "marl": {
             "subdir": "thirdparty/LuisaCompute/src/ext/marl",
-            "url": "= https://github.com/LuisaGroup/marl.git",
+            "url": "https://github.com/LuisaGroup/marl.git",
             "branch": None,
             "deps": ["lc"],
         },

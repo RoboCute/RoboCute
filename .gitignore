@@ -95,5 +95,5 @@ __pycache__
 .env
 
 
-release 
+src/rbc_ext/bin 
 debug

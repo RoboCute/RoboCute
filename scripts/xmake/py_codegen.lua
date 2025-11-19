@@ -78,18 +78,3 @@ end, {
     jobgraph = true
 })
 rule_end()
-
-rule('rbc_pyext')
-after_build(function(target)
-    local ext_path = target:extraconf('rules', 'rbc_pyext', 'ext_path')
-    if not ext_path then
-        utils.error('ext_path not set.')
-        return
-    end
-    os.mkdir(ext_path)
-    -- copy targetdir to 
-    os.cp(target:targetdir(), ext_path)
-    os.execv("uv run generate_stub.py")
-end)
-
-rule_end()
