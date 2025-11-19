@@ -16,7 +16,6 @@ lc_options = {
     lc_enable_osl = false,
     lc_enable_ir = false,
     lc_enable_tests = false,
-    lc_external_marl = true,
     lc_backend_lto = false,
     lc_sdk_dir = "thirdparty/LuisaCompute/SDKs",
     lc_xrepo_dir = "",
@@ -29,7 +28,7 @@ lc_options = {
     -- lc_toy_c_backend = true
 }
 
-includes("scripts/xmake/nanobind_gen.lua", 'scripts/xmake/py_codegen.lua', 'scripts/xmake/option_meta.lua')
+includes('scripts/xmake/py_codegen.lua', 'scripts/xmake/option_meta.lua')
 includes("thirdparty", "rbc")
 
 target("lc-runtime")

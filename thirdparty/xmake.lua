@@ -5,6 +5,7 @@
 -- includes("tinytiff")
 includes("nanobind")
 includes("LuisaCompute")
+includes("rtm")
 -- includes("cpp-ipc")
 
 -- libtorch

@@ -1,0 +1,50 @@
+#include <rbc_graphics/skinning.h>
+#include <rbc_graphics/shader_manager.h>
+#include <luisa/core/logging.h>
+#include <luisa/runtime/buffer.h>
+#include <luisa/runtime/byte_buffer.h>
+namespace rbc
+{
+void Skinning::init(Device& device)
+{
+    ShaderManager::instance()->load("geometry/skinning.bin", _skinning);
+}
+
+Skinning::~Skinning() {}
+
+void Skinning::update_mesh(
+CommandList& cmdlist,
+MeshManager::MeshData* out_mesh,
+MeshManager::MeshData* in_mesh,
+BufferView<DualQuaternion> dual_quat_skeleton,
+BufferView<float> skin_weights,
+BufferView<uint> skin_indices,
+BufferView<float3> last_poses,
+bool reset_frame)
+{
+    uint vert_count = out_mesh->meta.vertex_count;
+    /// Assert
+    LUISA_ASSERT(
+    vert_count == in_mesh->meta.vertex_count &&
+    ((out_mesh->meta.ele_mask & MeshManager::MeshMeta::normal_mask) == (in_mesh->meta.ele_mask & MeshManager::MeshMeta::normal_mask)),
+    "Skinning mesh must have same vertex count and layout than origin mesh.");
+    LUISA_ASSERT(skin_weights.size() == skin_indices.size() && skin_weights.size() % vert_count == 0, "Illegal skin weights and indices size.");
+    /// Assert
+
+    uint per_vert_weight = skin_weights.size() / vert_count;
+    cmdlist << (*_skinning)(
+               ByteBufferView{ in_mesh->pack.data },
+               ByteBufferView{ out_mesh->pack.data },
+               last_poses,
+               dual_quat_skeleton,
+               skin_indices,
+               skin_weights,
+               per_vert_weight,
+               vert_count,
+               (out_mesh->meta.ele_mask & MeshManager::MeshMeta::normal_mask) != 0,
+               (out_mesh->meta.ele_mask & MeshManager::MeshMeta::tangent_mask) != 0,
+               reset_frame)
+               .dispatch(vert_count);
+}
+
+} // namespace rbc

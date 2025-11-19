@@ -32,7 +32,7 @@ int main() {
     v1.emplace_back(4);
     // Ser
     auto text = writer.serialize("my_struct", my_struct);
-    auto type = Type::get<MyStruct>();
+    auto type = TypeInfo::get<MyStruct>();
     LUISA_INFO("Type {} md5 {} json-write {}",
                type.name(),
                type.md5_to_string(),
