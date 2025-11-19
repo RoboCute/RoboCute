@@ -138,6 +138,12 @@ def run_git_tasks():
             "branch": None,
             "deps": ["lc"],
         },
+        "marl": {
+            "subdir": "thirdparty/LuisaCompute/src/ext/marl",
+            "url": "= https://github.com/LuisaGroup/marl.git",
+            "branch": None,
+            "deps": ["lc"],
+        },
         "imgui": {
             "subdir": "thirdparty/LuisaCompute/src/ext/imgui",
             "url": "https://github.com/ocornut/imgui.git",
