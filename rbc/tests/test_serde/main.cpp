@@ -3,6 +3,7 @@
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/basic_types.h>
 #include <luisa/core/logging.h>
+#include <luisa/core/magic_enum.h>
 #include <rbc_core/serde.h>
 #include <rbc_core/type.h>
 #include <rbc_core/json_serde.h>
@@ -21,6 +22,7 @@ int main() {
     my_struct.ff.try_emplace("key", make_float4(4, 3, 2, 1));
     my_struct.vec_str.emplace_back("str0");
     my_struct.vec_str.emplace_back("str1");
+    my_struct.test_enum = MyEnum::Off;
     my_struct.guid.remake();
     auto &v0 = my_struct.multi_dim_vec.emplace_back();
     v0.emplace_back(1);
@@ -59,5 +61,6 @@ int main() {
             LUISA_INFO("multi_dim_vec {}", j);
         }
     }
+    LUISA_INFO("test_enum {}", luisa::to_string(new_struct.test_enum));
     LUISA_INFO("guid {}", new_struct.guid.to_base64());
 }

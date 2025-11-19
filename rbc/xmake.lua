@@ -1,1 +1,1 @@
-includes('core','tests')
+includes('core', 'runtime','tests')

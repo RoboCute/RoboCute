@@ -2,7 +2,7 @@ target('test_py_codegen')
 add_rules('lc_basic_settings', {
     project_kind = 'shared'
 })
-add_deps('nanobind', 'lc-core', 'lc-vstl')
+add_deps('nanobind', 'rbc_core')
 set_extension('.pyd')
 add_files('builtin/*.cpp', 'generated/*.cpp', 'main.cpp')
 add_includedirs('builtin')
@@ -20,7 +20,7 @@ add_rules('lc_basic_settings', {
     project_kind = 'shared'
 })
 
-add_deps('lc-core', 'lc-vstl')
+add_deps('rbc_core')
 add_files('impl/*.cpp')
 add_includedirs('.', 'builtin', 'generated')
 target_end()

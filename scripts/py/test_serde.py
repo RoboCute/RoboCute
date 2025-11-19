@@ -6,7 +6,12 @@ from pathlib import Path
 
 def test_serde():
     MyStruct = tr.struct("MyStruct")
-    MyStruct.members(
+    MyEnum = tr.enum("MyEnum",
+                     On=1,
+                     Off=None)
+    MyStruct.serde_members(
+        guid=tr.GUID,
+        multi_dim_vec=tr.vector(tr.vector(tr.int)),
         a=tr.int,
         b=tr.double2,
         c=tr.float,
@@ -14,8 +19,7 @@ def test_serde():
         ee=tr.vector(tr.int),
         ff=tr.unordered_map(tr.string, tr.float4),
         vec_str=tr.vector(tr.string),
-        guid=tr.GUID,
-        multi_dim_vec=tr.vector(tr.vector(tr.int))
+        test_enum=MyEnum
     )
     path = Path(__file__).parent.parent.parent / \
         "rbc/tests/test_serde/generated/generated.hpp"

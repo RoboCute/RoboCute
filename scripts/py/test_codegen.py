@@ -17,9 +17,7 @@ def test_codegen():
     MyStruct.method("set_enum", enum_var = my_enum)
     pyd_name = "test_py_codegen"
     file_name = "example_module"
-    cpp_root_path = Path(__file__).parent.parent.parent / Path(
-        "rbc/tests/test_py_codegen/generated"
-    )
+    cpp_root_path = Path("rbc/tests/test_py_codegen/generated")
     py_root_path = Path(__file__).parent / 'generated'
 
     # codegen

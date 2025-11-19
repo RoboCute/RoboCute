@@ -26,6 +26,9 @@ class unordered_map:
 class GUID:
     pass
 
+class bool:
+    pass
+
 
 class void:
     pass
@@ -178,6 +181,7 @@ class vector:
 
 
 _basic_types = {
+    bool,
     byte,
     short,
     int,
@@ -222,8 +226,9 @@ _registed_enum_types = {}
 
 
 class enum:
-    def __init__(self, _func_name: str, **params):
+    def __init__(self, _func_name: str, _enable_serde: bool = True, **params):
         namespace_cut = _func_name.rfind('::')
+        self._serde = _enable_serde
         if namespace_cut >= 0:
             self._namespace_name = _func_name[0:namespace_cut]
             self._class_name = _func_name[namespace_cut+2:len(_func_name)]
@@ -237,8 +242,10 @@ class enum:
         self._params = []
         for i in params:
             self._params.append((i, params[i]))
-    def add(self, key:str, value=None):
+
+    def add(self, key: str, value=None):
         self._params[key] = value
+
     def namespace_name(self):
         return self._namespace_name
 
@@ -246,7 +253,10 @@ class enum:
         return self._class_name
 
     def full_name(self):
-        return self._namespace_name + self._class_name
+        s = self._namespace_name
+        if s:
+            s += '::'
+        return s + self._class_name
 
 
 def log_err(s: str):
@@ -288,6 +298,8 @@ class struct:
         _registed_struct_types[full_name] = self
         self._doc = full_name
         self._members = dict()
+        self._default_value = dict()
+        self._serde_members = dict()
         self._methods = dict()
 
     def namespace_name(self):
@@ -317,6 +329,18 @@ class struct:
             v = argv[i]
             _check_arg(i, v)
             self._members[i] = v
+
+    def serde_members(self, **argv):
+        for i in argv:
+            v = argv[i]
+            _check_arg(i, v)
+            self._members[i] = v
+            self._serde_members[i] = v
+    def default_val(self, **argv):
+        for i in argv:
+            v = argv[i]
+            self._default_value[i] = v
+
 
 def _check_arg(key, arg):
     if (

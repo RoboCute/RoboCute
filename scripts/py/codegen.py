@@ -3,6 +3,7 @@ from codegen_basis import *
 import hashlib
 
 _type_names = {
+    tr.bool: "bool",
     tr.string: "luisa::string",
     tr.byte: "int8_t",
     tr.ubyte: "uint8_t",
@@ -229,6 +230,7 @@ def cpp_interface_gen(*extra_includes):
 #include <luisa/core/stl.h>
 #include <luisa/vstl/meta_lib.h>
 #include <luisa/vstl/v_guid.h>
+#include <rbc_core/enum_serializer.h>
 """)
     for i in extra_includes:
         add_result(i + "\n")
@@ -247,8 +249,44 @@ def cpp_interface_gen(*extra_includes):
             add_result(',')
         remove_indent()
         add_line('};')
+
         if len(namespace) > 0:
             add_line('}')
+        # enum serialize
+        if enum_type._serde:
+            add_line(f'''template<typename SerType, typename... Args>
+void rbc_objser(SerType &obj, {enum_name} const &var, Args... args) {{
+    switch (var) {{''')
+            add_indent()
+            add_indent()
+            enum_names = ""
+            enum_values = ""
+            is_first = True
+            for param_name_and_value in enum_type._params:
+                enun_name = param_name_and_value[0]
+                add_line(
+                    f'case {enum_name}::{enun_name}: obj._store("{enun_name}", args...); break;')
+                if not is_first:
+                    enum_names += ', '
+                    enum_values += ', '
+                is_first = False
+                enum_names += f'"{enun_name}"'
+                enum_values += f'luisa::to_underlying({enum_name}::{enun_name})'
+            remove_indent()
+            add_line('}')
+            remove_indent()
+            add_line('}')
+            add_line(f'''template<typename DeserType, typename... Args>
+bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
+    luisa::string value;
+    obj._load(value, args...);
+    static ::rbc::EnumSerializer _ser{{std::initializer_list<char const*>{{{enum_names}}}, std::initializer_list<uint32_t>{{{enum_values}}}}};
+    auto v = _ser.get_value(value.c_str());
+    if (v) {{
+        var = static_cast<{enum_name}>(*v);
+    }}
+    return v.has_value();
+}}''')
 
     # print classes
     for struct_name in tr._registed_struct_types:
@@ -264,25 +302,30 @@ def cpp_interface_gen(*extra_includes):
         if len(struct_type._members) > 0:
             for mem_name in struct_type._members:
                 mem = struct_type._members[mem_name]
-                add_line(f'{_print_arg_type(mem)} {mem_name};')
+                default_val = struct_type._default_value.get(mem_name)
+                # TODO: default value
+                # if (default_val)
+                add_line(f'{_print_arg_type(mem)} {mem_name}{{}};')
 
             # serialize function
-            add_line('template <typename SerType>')
-            add_line('void rbc_objser(SerType& obj) const {')
-            add_indent()
-            for mem_name in struct_type._members:
-                add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
-            remove_indent()
-            add_line('}')
+            if len(struct_type._serde_members) > 0:
+                add_line('template <typename SerType>')
+                add_line('void rbc_objser(SerType& obj) const {')
+                add_indent()
+                for mem_name in struct_type._serde_members:
+                    add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
+                remove_indent()
+                add_line('}')
 
             # de-serialize function
-            add_line('template <typename DeSerType>')
-            add_line('void rbc_objdeser(DeSerType& obj){')
-            add_indent()
-            for mem_name in struct_type._members:
-                add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
-            remove_indent()
-            add_line('}')
+            if len(struct_type._serde_members) > 0:
+                add_line('template <typename DeSerType>')
+                add_line('void rbc_objdeser(DeSerType& obj){')
+                add_indent()
+                for mem_name in struct_type._serde_members:
+                    add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
+                remove_indent()
+                add_line('}')
         if len(struct_type._methods) > 0:
             add_result(f"""
     virtual void dispose() = 0;
@@ -324,14 +367,15 @@ using namespace nb::literals;
 void {export_func_name}(nanobind::module_& m) """)
     add_result("{")
     add_indent()
-    
+
     # print enums
     for enum_name in tr._registed_enum_types:
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
         add_line(f'nb::enum_<{enum_name}>(m, "{enum_name}")')
         add_indent()
         for params_name_and_type in enum_type._params:
-            add_line(f'.value("{params_name_and_type[0]}", {enum_name}::{params_name_and_type[0]})')
+            add_line(
+                f'.value("{params_name_and_type[0]}", {enum_name}::{params_name_and_type[0]})')
         remove_indent()
         add_result(';')
 

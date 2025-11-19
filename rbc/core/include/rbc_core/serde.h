@@ -42,7 +42,9 @@ struct Serializer : public Base {
     void _store(T const &t, Args... args) {
 
         // custom type
-        if constexpr (requires { t.rbc_objser(*this); }) {
+        if constexpr (std::is_enum_v<T>) {
+            rbc_objser(*this, t, args...);
+        } else if constexpr (requires { t.rbc_objser(*this); }) {
             Base::start_object();
             t.rbc_objser(*this);
             Base::add_last_scope_to_object(args...);
@@ -154,7 +156,7 @@ struct Serializer : public Base {
             Base::add_last_scope_to_object(args...);
         } else if constexpr (std::is_same_v<T, vstd::Guid>) {
             auto chunk = _alloc.allocate(23);
-            auto ptr = (char*)(chunk.handle + chunk.offset);
+            auto ptr = (char *)(chunk.handle + chunk.offset);
             t.to_base64(ptr);
             ptr[22] = 0;
             // TODO
@@ -181,7 +183,9 @@ struct DeSerializer : public Base {
     template<typename T, typename... Args>
     bool _load(T &t, Args... args) {
         // custom type
-        if constexpr (requires { t.rbc_objdeser(*this); }) {
+        if constexpr (std::is_enum_v<T>) {
+            return rbc_objdeser(*this, t, args...);
+        } else if constexpr (requires { t.rbc_objdeser(*this); }) {
             if (!Base::start_object(args...)) return false;
             t.rbc_objdeser(*this);
             Base::end_scope();
