@@ -15,10 +15,14 @@ struct is_unordered_map {
 template<typename K, typename V>
 struct is_unordered_map<luisa::unordered_map<K, V>> {
     static constexpr bool value = true;
+    using KeyType = K;
+    using ValueType = V;
 };
 template<typename K, typename V>
 struct is_unordered_map<vstd::HashMap<K, V>> {
     static constexpr bool value = true;
+    using KeyType = K;
+    using ValueType = V;
 };
 }// namespace detail
 template<typename Base>
@@ -118,7 +122,7 @@ struct Serializer : public Base {
                 if constexpr (requires { i.first.c_str(); }) {
                     this->_store(i.second, i.first.c_str());
                 } else {
-                    static_assert(luisa::always_false_v<T>, "HashMap's key can only be string.");
+                    static_assert(luisa::always_false_v<T>, "Invalid HashMap key-value type.");
                 }
             }
             Base::add_last_scope_to_object(args...);
@@ -162,16 +166,19 @@ struct DeSerializer : public Base {
         : Base(std::forward<Args>(args)...) {
     }
     template<typename T, typename... Args>
-    bool _load(T const &t, Args... args) {
+    bool _load(T &t, Args... args) {
         // custom type
         if constexpr (requires { t.rbc_objdeser(*this); }) {
-            Base::start_object();
+            if (!Base::start_object(args...)) return false;
             t.rbc_objdeser(*this);
-            Base::add_last_scope_to_object(args...);
+            Base::end_scope();
+            return true;
         } else if constexpr (requires { t.rbc_arrdeser(*this); }) {
-            Base::start_array();
+            uint64_t size;
+            if (!Base::start_array(size, args...)) return false;
             t.rbc_arrdeser(*this);
-            Base::add_last_scope_to_object(args...);
+            Base::end_scope();
+            return true;
         }
         // bool
         else if constexpr (std::is_same_v<T, bool>) {
@@ -187,7 +194,7 @@ struct DeSerializer : public Base {
                 return result;
             } else {
                 auto v = (uint64_t)t;
-                Base::read(v, args...);
+                bool result = Base::read(v, args...);
                 if (result)
                     t = (T)v;
                 return result;
@@ -207,10 +214,12 @@ struct DeSerializer : public Base {
             using EleType = luisa::vector_element_t<T>;
             // float vector
             if constexpr (std::is_floating_point_v<EleType> || std::is_same_v<EleType, luisa::half>) {
-                if (!Base::start_array(args...)) return false;
+                uint64_t size{};
+                if (!Base::start_array(size, args...)) return false;
                 auto end_scope = vstd::scope_exit([&] {
                     Base::end_scope();
                 });
+                if (size != dim) return false;
                 for (size_t i = 0; i < dim; ++i) {
                     auto ele = (double)t[i];
                     bool result = Base::read(ele);
@@ -224,10 +233,12 @@ struct DeSerializer : public Base {
             }
             // int vector
             else if constexpr (std::is_integral_v<EleType>) {
-                if (!Base::start_array(args...)) return false;
+                uint64_t size{};
+                if (!Base::start_array(size, args...)) return false;
                 auto end_scope = vstd::scope_exit([&] {
                     Base::end_scope();
                 });
+                if (size != dim) return false;
                 for (size_t i = 0; i < dim; ++i) {
                     if constexpr (std::is_unsigned_v<EleType>) {
                         auto ele = (uint64_t)t[i];
@@ -251,10 +262,12 @@ struct DeSerializer : public Base {
             }
             // bool vector
             else if constexpr (std::is_same_v<bool, EleType>) {
-                if (!Base::start_array(args...)) return false;
+                uint64_t size{};
+                if (!Base::start_array(size, args...)) return false;
                 auto end_scope = vstd::scope_exit([&] {
                     Base::end_scope();
                 });
+                if (size != dim) return false;
                 for (size_t i = 0; i < dim; ++i) {
                     if (!Base::read(t[i])) {
                         return false;
@@ -284,15 +297,41 @@ struct DeSerializer : public Base {
         }
         // kv map
         else if constexpr (detail::is_unordered_map<T>::value) {
-            Base::start_object(args...);
-            // TODO
-            Base::add_last_scope_to_object(args...);
+            if (!Base::start_object(args...)) return false;
+            auto end_scope = vstd::scope_exit([&] {
+                Base::end_scope();
+            });
+
+            if constexpr (requires {
+                              t.try_emplace(std::declval<luisa::string>(), std::declval<typename detail::is_unordered_map<T>::ValueType>());
+                          })
+
+            {
+                typename detail::is_unordered_map<T>::ValueType value;
+                if (!this->_load(value)) return false;
+                t.try_emplace(
+                    luisa::string{std::move(Base::last_key())},
+                    std::move(value));
+            } else {
+                static_assert(luisa::always_false_v<T>, "Invalid HashMap key-value type.");
+            }
+            return true;
         }
         // duck type
-        else if constexpr (requires {t.data(); t. size(); }) {
-            // TODO
-        } else if constexpr (requires { t.begin() ; t.end(); }) {
-            // TODO
+        else if constexpr (requires { t.emplace_back(); }) {
+            uint64_t size{};
+            if (!Base::start_array(size, args...)) return false;
+            auto end_scope = vstd::scope_exit([&] {
+                Base::end_scope();
+            });
+            if (requires { t.reserve(size); }) {
+                t.reserve(size);
+            }
+            for (uint64_t i = 0; i < size; ++i) {
+                auto &v = t.emplace_back();
+                if (!this->_load(v)) return false;
+            }
+            return true;
         } else {
             static_assert(luisa::always_false_v<T>, "Invalid deserialize type.");
         }

@@ -1,5 +1,6 @@
 import type_register as tr
 from codegen_basis import *
+import hashlib
 
 _type_names = {
     tr.string: "luisa::string",
@@ -19,7 +20,8 @@ _type_names = {
 
 
 _template_names = {
-    tr.vector: lambda ele: f'std::vector<{_print_arg_type(ele._element, False, False)}>',
+    tr.vector: lambda ele: f'luisa::vector<{_print_arg_type(ele._element)}>',
+    tr.unordered_map: lambda ele: f'luisa::unordered_map<{_print_arg_type(ele._key)}, {_print_arg_type(ele._value)}>',
     tr.ClassPtr: lambda ele: 'void*'
 }
 
@@ -40,7 +42,7 @@ _py_names = {
 }
 
 
-def _print_arg_type(t, py_interface: bool, is_view: bool):
+def _print_arg_type(t, py_interface: bool = False, is_view: bool = False):
     if t == tr.string:
         if py_interface:
             return "nb::str"
@@ -130,6 +132,16 @@ def _print_py_args(args: dict, is_first: bool):
     return r
 
 
+def _print_cpp_rtti(t: tr.struct_t):
+    name = t.full_name()
+    add_line(
+        f'static constexpr luisa::string_view _zz_typename_ {{"{name}"}};')
+    m = hashlib.md5(name.encode('ascii'))
+    hex = m.hexdigest()
+    add_line(
+        f'static constexpr uint64_t _zz_md5_[2] {{{int(hex[0:16], 16)}, {int(hex[16:32], 16)} }};')
+
+
 def py_interface_gen(module_name: str):
     set_result(f"from {module_name} import *")
     for struct_name in tr._registed_struct_types:
@@ -140,18 +152,16 @@ def py_interface_gen(module_name: str):
         add_indent()
         add_line("def __init__(self):")
         add_indent()
-        add_line(f"self._handle = create_{struct_name}()")
+        add_line(f"self._handle = create__{struct_name}__()")
         remove_indent()
 
         # dispose
         add_line("def __del__(self):")
         add_indent()
-        add_line(f"dispose_{struct_name}(self._handle)")
+        add_line(f"dispose__{struct_name}__(self._handle)")
         remove_indent()
 
         # member
-        if len(struct_type._members) > 0:
-            tr.log_err('Interface class can not have members')
         for mem_name in struct_type._methods:
             mems_dict: dict = struct_type._methods[mem_name]
             for key in mems_dict:
@@ -176,7 +186,8 @@ def cpp_interface_gen(*extra_includes):
     set_result("""#pragma once
 #include <luisa/core/basic_types.h>
 #include <luisa/core/basic_traits.h>
-#include <luisa/core/stl/string.h>
+#include <luisa/core/stl.h>
+#include <luisa/vstl/meta_lib.h>
 """)
     for i in extra_includes:
         add_result(i + "\n")
@@ -185,15 +196,39 @@ def cpp_interface_gen(*extra_includes):
         namespace = struct_type.namespace_name()
         if (len(namespace) > 0):
             add_line(f'namespace {namespace} {{')
-        add_line(f"struct {struct_type.class_name()} {{")
-        add_result(f"""
+        add_line(
+            f"struct {struct_type.class_name()} : public vstd::IOperatorNewBase {{")
+        # RTTI
+        add_indent()
+        _print_cpp_rtti(struct_type)
+        if len(struct_type._members) > 0:
+            for mem_name in struct_type._members:
+                mem = struct_type._members[mem_name]
+                add_line(f'{_print_arg_type(mem)} {mem_name};')
+
+            # serialize function
+            add_line('template <typename SerType>')
+            add_line('void rbc_objser(SerType& obj) const {')
+            add_indent()
+            for mem_name in struct_type._members:
+                add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
+            remove_indent()
+            add_line('}')
+
+            # de-serialize function
+            add_line('template <typename DeSerType>')
+            add_line('void rbc_objdeser(DeSerType& obj){')
+            add_indent()
+            for mem_name in struct_type._members:
+                add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
+            remove_indent()
+            add_line('}')
+        if len(struct_type._methods) > 0:
+            add_result(f"""
     virtual void dispose() = 0;
     virtual ~{struct_name}() = default;""")
-        add_indent()
 
-        # print members
-        if len(struct_type._members) > 0:
-            tr.log_err('Interface class can not have members')
+        # print methods
         for mem_name in struct_type._methods:
             mems_dict: dict = struct_type._methods[mem_name]
             for key in mems_dict:
@@ -239,9 +274,9 @@ void {export_func_name}(nanobind::module_& m)
         struct_type: tr.struct_t = tr._registed_struct_types[struct_name]
 
         # create
-        create_name = f"create_{struct_name}"
+        create_name = f"create__{struct_name}__"
         add_line(
-            f'm.def("create_{struct_name}", [dynamic_module]() -> void* ')
+            f'm.def("{create_name}", [dynamic_module]() -> void* ')
         add_result("{")
         add_indent()
         add_line(
@@ -251,10 +286,10 @@ void {export_func_name}(nanobind::module_& m)
             f'return dynamic_module->dll.invoke<void *()>("{create_name}");')
         remove_indent()
         add_line("});")
-        ptr_name=f"ptr_484111b5e8ed4230b5ef5f5fdc33ca81"  # magic name
+        ptr_name = f"ptr_484111b5e8ed4230b5ef5f5fdc33ca81"  # magic name
         # dispose
         add_line(
-            f'm.def("dispose_{struct_name}", [dynamic_module](void* {ptr_name})' + "{"
+            f'm.def("dispose__{struct_name}__", [dynamic_module](void* {ptr_name})' + "{"
         )
         add_indent()
         add_line(f"static_cast<{struct_name}*>({ptr_name})->dispose();")
@@ -264,21 +299,21 @@ void {export_func_name}(nanobind::module_& m)
 
         # print members
         for mem_name in struct_type._methods:
-            mems_dict: dict=struct_type._methods[mem_name]
+            mems_dict: dict = struct_type._methods[mem_name]
             for key in mems_dict:
-                ret_type=""
-                return_decl=""
-                func: tr._function_t=mems_dict[key]
-                end=""
+                ret_type = ""
+                return_decl = ""
+                func: tr._function_t = mems_dict[key]
+                end = ""
                 if func._ret_type:
-                    ret_type=(
+                    ret_type = (
                         " -> " +
                         _print_arg_type(func._ret_type, True, False) + " "
                     )
-                    return_decl="return "
+                    return_decl = "return "
                     if func._ret_type == tr.string:
                         return_decl += "to_nb_str("
-                        end=")"
+                        end = ")"
 
                 add_line(
                     f'm.def("{struct_name}__{mem_name}__", [](void* {ptr_name}{__print_arg_vars_decl(func._args, False, True, False)}){ret_type}{{'

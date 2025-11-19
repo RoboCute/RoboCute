@@ -47,9 +47,11 @@ struct RBC_CORE_API JsonWriter {
 };
 struct ReadArray {
     yyjson_val *arr_iter;
-    size_t size;
+    uint64_t size;
+    uint64_t idx;
 };
 struct ReadObj {
+    luisa::string last_key;
     yyjson_obj_iter iter;
 };
 struct RBC_CORE_API JsonReader {
@@ -58,17 +60,14 @@ struct RBC_CORE_API JsonReader {
     luisa::vector<std::pair<yyjson_val *, vstd::variant<ReadArray, ReadObj>>> _json_scope;
     JsonReader(luisa::string_view str);
     ~JsonReader();
-    bool start_array();
+
+    uint64_t last_array_size() const;
+    luisa::string_view last_key() const;
+    bool start_array(uint64_t &size);
     bool start_object();
-    bool start_array(char const *name);
+    bool start_array(uint64_t &size, char const *name);
     bool start_object(char const *name);
     void end_scope();
-    // obj iterate
-    bool read_kv(luisa::string &str, bool &value);
-    bool read_kv(luisa::string &str, int64_t &value);
-    bool read_kv(luisa::string &str, uint64_t &value);
-    bool read_kv(luisa::string &str, double &value);
-    bool read_kv(luisa::string &str, luisa::string &value);
     // array
     bool read(bool &value);
     bool read(int64_t &value);

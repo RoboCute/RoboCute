@@ -18,3 +18,6 @@ def test_codegen():
     # codegen
     codegen_pyd_module(pyd_name, file_name, "py_backend_impl", cpp_root_path, py_root_path)
     print(file_name + " generated.")
+
+if __name__ == '__main__':
+    test_codegen()

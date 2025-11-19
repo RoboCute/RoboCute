@@ -9,27 +9,19 @@ namespace rbc {
     yyjson_val *val;                                  \
     if (v.second.is_type_of<ReadArray>()) {           \
         auto &iter = v.second.force_get<ReadArray>(); \
-        if (iter.size == 0) return false;             \
+        if (iter.idx >= iter.size) return false;      \
         val = iter.arr_iter;                          \
+        if (!val) { return false; }                   \
         iter.arr_iter = unsafe_yyjson_get_next(val);  \
-        iter.size -= 1;                               \
+        iter.idx += 1;                                \
     } else {                                          \
         auto &iter = v.second.force_get<ReadObj>();   \
         auto key = yyjson_obj_iter_next(&iter.iter);  \
         if (!key) return false;                       \
         val = yyjson_obj_iter_get_val(key);           \
+        if (!val) { return false; }                   \
+        iter.last_key = unsafe_yyjson_get_str(key);   \
     }                                                 \
-    auto type = yyjson_get_type(val);
-
-#define JSON_DESER_INIT_KV                             \
-    LUISA_DEBUG_ASSERT(!_json_scope.empty());          \
-    auto &v = _json_scope.back();                      \
-    yyjson_val *val;                                   \
-    if (!v.second.is_type_of<ReadObj>()) return false; \
-    auto &iter = v.second.force_get<ReadObj>();        \
-    auto key = yyjson_obj_iter_next(&iter.iter);       \
-    if (!key) return false;                            \
-    val = yyjson_obj_iter_get_val(key);                \
     auto type = yyjson_get_type(val);
 
 #define JSON_DESER_INIT_OBJ                            \
@@ -245,20 +237,21 @@ JsonReader::JsonReader(luisa::string_view str) {
         LUISA_ERROR("Bad json format.");
     }
     if (root_type == YYJSON_TYPE_ARR) {
-        _json_scope.emplace_back(root_val, ReadArray{unsafe_yyjson_get_first(root_val), unsafe_yyjson_get_len(root_val)});
+        _json_scope.emplace_back(root_val, ReadArray{unsafe_yyjson_get_first(root_val), unsafe_yyjson_get_len(root_val), 0});
     } else {
         ReadObj obj;
         yyjson_obj_iter_init(root_val, &obj.iter);
         _json_scope.emplace_back(root_val, obj);
     }
 }
-bool JsonReader::start_array(char const *name) {
+bool JsonReader::start_array(uint64_t &size, char const *name) {
     if (!name) {
-        return start_array();
+        return start_array(size);
     }
     JSON_DESER_INIT_OBJ
     if (type != YYJSON_TYPE_ARR) return false;
-    _json_scope.emplace_back(val, ReadArray(unsafe_yyjson_get_first(val), unsafe_yyjson_get_len(val)));
+    size = unsafe_yyjson_get_len(val);
+    _json_scope.emplace_back(val, ReadArray(unsafe_yyjson_get_first(val), size, 0));
     return true;
 }
 bool JsonReader::start_object(char const *name) {
@@ -273,10 +266,11 @@ bool JsonReader::start_object(char const *name) {
     return true;
 }
 
-bool JsonReader::start_array() {
+bool JsonReader::start_array(uint64_t &size) {
     JSON_DESER_INIT_ARR
     if (type != YYJSON_TYPE_ARR) return false;
-    _json_scope.emplace_back(val, ReadArray(unsafe_yyjson_get_first(val), unsafe_yyjson_get_len(val)));
+    size = unsafe_yyjson_get_len(val);
+    _json_scope.emplace_back(val, ReadArray(unsafe_yyjson_get_first(val), size, 0));
     return true;
 }
 bool JsonReader::start_object() {
@@ -371,42 +365,21 @@ bool JsonReader::read(luisa::string &value) {
     value = unsafe_yyjson_get_str(val);
     return true;
 }
-bool JsonReader::read_kv(luisa::string &str, bool &value) {
-    JSON_DESER_INIT_KV
-    if (type != YYJSON_TYPE_BOOL) return false;
-    str = unsafe_yyjson_get_str(key);
-    value = unsafe_yyjson_get_bool(val);
-    return true;
+
+luisa::string_view JsonReader::last_key() const {
+    LUISA_DEBUG_ASSERT(!_json_scope.empty());
+    auto &v = _json_scope.back();
+    if (!v.second.is_type_of<ReadObj>()) return "";
+    return v.second.force_get<ReadObj>().last_key;
 }
-bool JsonReader::read_kv(luisa::string &str, int64_t &value) {
-    JSON_DESER_INIT_KV
-    if (type != YYJSON_TYPE_NUM) return false;
-    str = unsafe_yyjson_get_str(key);
-    value = unsafe_yyjson_get_sint(val);
-    return true;
+
+uint64_t JsonReader::last_array_size() const {
+    LUISA_DEBUG_ASSERT(!_json_scope.empty());
+    auto &v = _json_scope.back();
+    if (!v.second.is_type_of<ReadArray>()) return 0;
+    return v.second.force_get<ReadArray>().size;
 }
-bool JsonReader::read_kv(luisa::string &str, uint64_t &value) {
-    JSON_DESER_INIT_KV
-    if (type != YYJSON_TYPE_NUM) return false;
-    str = unsafe_yyjson_get_str(key);
-    value = unsafe_yyjson_get_uint(val);
-    return true;
-}
-bool JsonReader::read_kv(luisa::string &str, double &value) {
-    JSON_DESER_INIT_KV
-    if (type != YYJSON_TYPE_NUM) return false;
-    str = unsafe_yyjson_get_str(key);
-    value = unsafe_yyjson_get_num(val);
-    return true;
-}
-bool JsonReader::read_kv(luisa::string &str, luisa::string &value) {
-    JSON_DESER_INIT_KV
-    if (type != YYJSON_TYPE_STR) return false;
-    str = unsafe_yyjson_get_str(key);
-    value = unsafe_yyjson_get_str(val);
-    return true;
-}
+
 }// namespace rbc
 #undef JSON_DESER_INIT_ARR
 #undef JSON_DESER_INIT_OBJ
-#undef JSON_DESER_INIT_KV

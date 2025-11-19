@@ -11,8 +11,9 @@ def add_line(line: str):
 
 
 def set_result(s: str):
-    global _result
+    global _result, _line_indent
     _result = s
+    _line_indent = 0
 
 
 def add_result(s: str):
