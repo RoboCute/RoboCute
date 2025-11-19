@@ -19,6 +19,6 @@
 2. 生成代码 `uv run generate.py`
 3. 配置 `xmake f -m release -c`
 4. 编译 `xmake`
-5. 尝试运行`xmake run main.py`
+5. 尝试运行`uv run main.py`
 
  运行`xmake f -p windows -m release -c`时如果xmake没有使用最新版本的msvc，可以通过`--vs_toolset=`指定
