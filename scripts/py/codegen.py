@@ -1,6 +1,8 @@
 import type_register as tr
-from codegen_basis import *
+from codegen_basis import get_codegen_basis
 import hashlib
+
+cb = get_codegen_basis()
 
 _type_names = {
     tr.bool: "bool",
@@ -177,56 +179,56 @@ def _print_py_args(args: dict, is_first: bool):
 
 def _print_cpp_rtti(t: tr.struct):
     name = t.full_name()
-    add_line(f'static constexpr luisa::string_view _zz_typename_ {{"{name}"}};')
+    cb.add_line(f'static constexpr luisa::string_view _zz_typename_ {{"{name}"}};')
     m = hashlib.md5(name.encode("ascii"))
     hex = m.hexdigest()
-    add_line(
+    cb.add_line(
         f"static constexpr uint64_t _zz_md5_[2] {{{int(hex[0:16], 16)}, {int(hex[16:32], 16)} }};"
     )
 
 
 def py_interface_gen(module_name: str):
-    set_result(f"from {module_name} import *")
+    cb.set_result(f"from {module_name} import *")
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
-        add_line(f"class {struct_type.class_name()}:")
+        cb.add_line(f"class {struct_type.class_name()}:")
 
         # init
-        add_indent()
-        add_line("def __init__(self):")
-        add_indent()
-        add_line(f"self._handle = create__{struct_name}__()")
-        remove_indent()
+        cb.add_indent()
+        cb.add_line("def __init__(self):")
+        cb.add_indent()
+        cb.add_line(f"self._handle = create__{struct_name}__()")
+        cb.remove_indent()
 
         # dispose
-        add_line("def __del__(self):")
-        add_indent()
-        add_line(f"dispose__{struct_name}__(self._handle)")
-        remove_indent()
+        cb.add_line("def __del__(self):")
+        cb.add_indent()
+        cb.add_line(f"dispose__{struct_name}__(self._handle)")
+        cb.remove_indent()
 
         # member
         for mem_name in struct_type._methods:
             mems_dict: dict = struct_type._methods[mem_name]
             for key in mems_dict:
                 func: tr._function_t = mems_dict[key]
-                add_line(
+                cb.add_line(
                     f"def {mem_name}(self{_print_py_args_decl(func._args, False)}):"
                 )
-                add_indent()
+                cb.add_indent()
                 if func._ret_type:
                     func_call = "return "
                 else:
                     func_call = ""
                 func_call += f"{struct_name}__{mem_name}__(self._handle{_print_py_args(func._args, False)})"
-                add_line(func_call)
-                remove_indent()
+                cb.add_line(func_call)
+                cb.remove_indent()
         # nenbers
-        remove_indent()
-    return get_result()
+        cb.remove_indent()
+    return cb.get_result()
 
 
 def cpp_interface_gen(*extra_includes):
-    set_result("""#pragma once
+    cb.set_result("""#pragma once
 #include <luisa/core/basic_types.h>
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/stl.h>
@@ -235,38 +237,38 @@ def cpp_interface_gen(*extra_includes):
 #include <rbc_core/enum_serializer.h>
 """)
     for i in extra_includes:
-        add_result(i + "\n")
+        cb.add_result(i + "\n")
     # print enums
     for enum_name in tr._registed_enum_types:
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
         namespace = enum_type.namespace_name()
         if len(namespace) > 0:
-            add_line(f"namespace {namespace} {{")
-        add_line(f"enum struct {enum_type.class_name()} : uint32_t {{")
-        add_indent()
+            cb.add_line(f"namespace {namespace} {{")
+        cb.add_line(f"enum struct {enum_type.class_name()} : uint32_t {{")
+        cb.add_indent()
         for param_name_and_value in enum_type._params:
-            add_line(f"{param_name_and_value[0]}")
+            cb.add_line(f"{param_name_and_value[0]}")
             if param_name_and_value[1] != None:
-                add_result(f" = {param_name_and_value[1]}")
-            add_result(",")
-        remove_indent()
-        add_line("};")
+                cb.add_result(f" = {param_name_and_value[1]}")
+            cb.add_result(",")
+        cb.remove_indent()
+        cb.add_line("};")
 
         if len(namespace) > 0:
-            add_line("}")
+            cb.add_line("}")
         # enum serialize
         if enum_type._serde:
-            add_line(f"""template<typename SerType, typename... Args>
+            cb.add_line(f"""template<typename SerType, typename... Args>
 void rbc_objser(SerType &obj, {enum_name} const &var, Args... args) {{
     switch (var) {{""")
-            add_indent()
-            add_indent()
+            cb.add_indent()
+            cb.add_indent()
             enum_names = ""
             enum_values = ""
             is_first = True
             for param_name_and_value in enum_type._params:
                 enun_name = param_name_and_value[0]
-                add_line(
+                cb.add_line(
                     f'case {enum_name}::{enun_name}: obj._store("{enun_name}", args...); break;'
                 )
                 if not is_first:
@@ -275,11 +277,11 @@ void rbc_objser(SerType &obj, {enum_name} const &var, Args... args) {{
                 is_first = False
                 enum_names += f'"{enun_name}"'
                 enum_values += f"luisa::to_underlying({enum_name}::{enun_name})"
-            remove_indent()
-            add_line("}")
-            remove_indent()
-            add_line("}")
-            add_line(f"""template<typename DeserType, typename... Args>
+            cb.remove_indent()
+            cb.add_line("}")
+            cb.remove_indent()
+            cb.add_line("}")
+            cb.add_line(f"""template<typename DeserType, typename... Args>
 bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
     luisa::string value;
     obj._load(value, args...);
@@ -296,12 +298,12 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
         namespace = struct_type.namespace_name()
         if len(namespace) > 0:
-            add_line(f"namespace {namespace} {{")
-        add_line(
+            cb.add_line(f"namespace {namespace} {{")
+        cb.add_line(
             f"struct {struct_type.class_name()} : public vstd::IOperatorNewBase {{"
         )
         # RTTI
-        add_indent()
+        cb.add_indent()
         _print_cpp_rtti(struct_type)
         if len(struct_type._members) > 0:
             for mem_name in struct_type._members:
@@ -309,29 +311,29 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
                 default_val = struct_type._default_value.get(mem_name)
                 # TODO: default value
                 # if (default_val)
-                add_line(f"{_print_arg_type(mem)} {mem_name}{{}};")
+                cb.add_line(f"{_print_arg_type(mem)} {mem_name}{{}};")
 
             # serialize function
             if len(struct_type._serde_members) > 0:
-                add_line("template <typename SerType>")
-                add_line("void rbc_objser(SerType& obj) const {")
-                add_indent()
+                cb.add_line("template <typename SerType>")
+                cb.add_line("void rbc_objser(SerType& obj) const {")
+                cb.add_indent()
                 for mem_name in struct_type._serde_members:
-                    add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
-                remove_indent()
-                add_line("}")
+                    cb.add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
+                cb.remove_indent()
+                cb.add_line("}")
 
             # de-serialize function
             if len(struct_type._serde_members) > 0:
-                add_line("template <typename DeSerType>")
-                add_line("void rbc_objdeser(DeSerType& obj){")
-                add_indent()
+                cb.add_line("template <typename DeSerType>")
+                cb.add_line("void rbc_objdeser(DeSerType& obj){")
+                cb.add_indent()
                 for mem_name in struct_type._serde_members:
-                    add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
-                remove_indent()
-                add_line("}")
+                    cb.add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
+                cb.remove_indent()
+                cb.add_line("}")
         if len(struct_type._methods) > 0:
-            add_result(f"""
+            cb.add_result(f"""
     virtual void dispose() = 0;
     virtual ~{struct_name}() = default;""")
 
@@ -344,18 +346,18 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
                     ret_type = _print_arg_type(func._ret_type, False, False)
                 else:
                     ret_type = "void"
-                add_line(
+                cb.add_line(
                     f"virtual {ret_type} {mem_name}({__print_arg_vars_decl(func._args, True, False, True)}) = 0;"
                 )
-        remove_indent()
-        add_line("};")
+        cb.remove_indent()
+        cb.add_line("};")
         if len(namespace) > 0:
-            add_line("}")
-    return get_result()
+            cb.add_line("}")
+    return cb.get_result()
 
 
 def nanobind_codegen(module_name: str, dll_path: str, *extra_includes):
-    set_result("""#include <nanobind/nanobind.h>
+    cb.set_result("""#include <nanobind/nanobind.h>
 #include <luisa/core/dynamic_module.h>
 #include <luisa/core/basic_types.h>
 #include <luisa/core/basic_traits.h>
@@ -364,53 +366,53 @@ def nanobind_codegen(module_name: str, dll_path: str, *extra_includes):
 """)
     export_func_name = f"export_{module_name}"
     for i in extra_includes:
-        add_result(i + "\n")
-    add_result(f"""namespace nb = nanobind;
+        cb.add_result(i + "\n")
+    cb.add_result(f"""namespace nb = nanobind;
 using namespace nb::literals;
 void {export_func_name}(nanobind::module_& m) """)
-    add_result("{")
-    add_indent()
+    cb.add_result("{")
+    cb.add_indent()
 
     # print enums
     for enum_name in tr._registed_enum_types:
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
-        add_line(f'nb::enum_<{enum_name}>(m, "{enum_name}")')
-        add_indent()
+        cb.add_line(f'nb::enum_<{enum_name}>(m, "{enum_name}")')
+        cb.add_indent()
         for params_name_and_type in enum_type._params:
-            add_line(
+            cb.add_line(
                 f'.value("{params_name_and_type[0]}", {enum_name}::{params_name_and_type[0]})'
             )
-        remove_indent()
-        add_result(";")
+        cb.remove_indent()
+        cb.add_result(";")
 
     # print classes
-    add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
-    add_line(f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
+    cb.add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
+    cb.add_line(f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
 
         # create
         create_name = f"create__{struct_name}__"
-        add_line(f'm.def("{create_name}", [dynamic_module]() -> void* ')
-        add_result("{")
-        add_indent()
-        add_line("ModuleRegister::module_addref(env,*dynamic_module);")
-        add_line(
+        cb.add_line(f'm.def("{create_name}", [dynamic_module]() -> void* ')
+        cb.add_result("{")
+        cb.add_indent()
+        cb.add_line("ModuleRegister::module_addref(env,*dynamic_module);")
+        cb.add_line(
             f'return dynamic_module->dll.invoke<void *()>("create_{struct_name}");'
         )
-        remove_indent()
-        add_line("});")
+        cb.remove_indent()
+        cb.add_line("});")
         ptr_name = f"ptr_484111b5e8ed4230b5ef5f5fdc33ca81"  # magic name
         # dispose
-        add_line(
+        cb.add_line(
             f'm.def("dispose__{struct_name}__", [dynamic_module](void* {ptr_name})'
             + "{"
         )
-        add_indent()
-        add_line(f"static_cast<{struct_name}*>({ptr_name})->dispose();")
-        add_line("ModuleRegister::module_deref(*dynamic_module);")
-        remove_indent()
-        add_line("});")
+        cb.add_indent()
+        cb.add_line(f"static_cast<{struct_name}*>({ptr_name})->dispose();")
+        cb.add_line("ModuleRegister::module_deref(*dynamic_module);")
+        cb.remove_indent()
+        cb.add_line("});")
 
         # print members
         for mem_name in struct_type._methods:
@@ -429,17 +431,17 @@ void {export_func_name}(nanobind::module_& m) """)
                         return_decl += "to_nb_str("
                         end = ")"
 
-                add_line(
+                cb.add_line(
                     f'm.def("{struct_name}__{mem_name}__", [](void* {ptr_name}{__print_arg_vars_decl(func._args, False, True, False)}){ret_type}{{'
                 )
-                add_indent()
-                add_line(
+                cb.add_indent()
+                cb.add_line(
                     f"{return_decl}static_cast<{struct_name}*>({ptr_name})->{mem_name}({_print_arg_vars(func._args, True, True)}){end};"
                 )
-                remove_indent()
-                add_line("});")
+                cb.remove_indent()
+                cb.add_line("});")
     # end
-    remove_indent()
-    add_line("}")
-    add_line(f"static ModuleRegister _{export_func_name}({export_func_name});")
-    return get_result()
+    cb.remove_indent()
+    cb.add_line("}")
+    cb.add_line(f"static ModuleRegister _{export_func_name}({export_func_name});")
+    return cb.get_result()

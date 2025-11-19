@@ -1,35 +1,35 @@
-_line_indent = 0
-_result = ""
+class CodeGenerator:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(CodeGenerator, cls).__new__(cls)
+            cls._instance._line_indent = 0
+            cls._instance._result = ""
+        return cls._instance
+
+    def add_line(self, line: str):
+        self._result += "\n"
+        for _ in range(self._line_indent):
+            self._result += "\t"
+        self._result += line
+
+    def set_result(self, s: str):
+        self._result = s
+        self._line_indent = 0
+
+    def add_result(self, s: str):
+        self._result += s
+
+    def get_result(self):
+        return self._result
+
+    def add_indent(self):
+        self._line_indent += 1
+
+    def remove_indent(self):
+        self._line_indent -= 1
 
 
-def add_line(line: str):
-    global _result, _line_indent
-    _result += "\n"
-    for _ in range(_line_indent):
-        _result += "\t"
-    _result += line
-
-
-def set_result(s: str):
-    global _result, _line_indent
-    _result = s
-    _line_indent = 0
-
-
-def add_result(s: str):
-    global _result
-    _result += s
-
-
-def get_result():
-    return _result
-
-
-def add_indent():
-    global _line_indent
-    _line_indent += 1
-
-
-def remove_indent():
-    global _line_indent
-    _line_indent -= 1
+def get_codegen_basis():
+    return CodeGenerator()
