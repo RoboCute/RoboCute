@@ -17,7 +17,7 @@ _type_names = {
     tr.double: "double",
     tr.void: "void",
     tr.VoidPtr: "void*",
-    tr.GUID: "GuidData"
+    tr.GUID: "GuidData",
 }
 
 
@@ -46,9 +46,9 @@ _type_name_functions = {
 
 
 _template_names = {
-    tr.vector: lambda ele: f'luisa::vector<{_print_arg_type(ele._element)}>',
-    tr.unordered_map: lambda ele: f'luisa::unordered_map<{_print_arg_type(ele._key)}, {_print_arg_type(ele._value)}>',
-    tr.ClassPtr: lambda ele: 'void*'
+    tr.vector: lambda ele: f"luisa::vector<{_print_arg_type(ele._element)}>",
+    tr.unordered_map: lambda ele: f"luisa::unordered_map<{_print_arg_type(ele._key)}, {_print_arg_type(ele._value)}>",
+    tr.ClassPtr: lambda ele: "void*",
 }
 
 _py_names = {
@@ -70,9 +70,9 @@ _py_names = {
 _serde_blacklist = {
     tr.VoidPtr: lambda x: True,
     tr.ClassPtr: lambda x: True,
-    tr.unordered_map: lambda x:  _is_non_serializable(
-        x._key) or _is_non_serializable(x._value),
-    tr.vector: lambda x: _is_non_serializable(x._element)
+    tr.unordered_map: lambda x: _is_non_serializable(x._key)
+    or _is_non_serializable(x._value),
+    tr.vector: lambda x: _is_non_serializable(x._element),
 }
 
 
@@ -104,7 +104,9 @@ def _print_arg_type(t, py_interface: bool = False, is_view: bool = False):
     tr.log_err(f"invalid type {str(t)}")
 
 
-def __print_arg_vars_decl(args: dict, is_first: bool, py_interface: bool, is_view: bool):
+def __print_arg_vars_decl(
+    args: dict, is_first: bool, py_interface: bool, is_view: bool
+):
     r = ""
     for arg_name in args:
         arg_type = args[arg_name]
@@ -175,12 +177,12 @@ def _print_py_args(args: dict, is_first: bool):
 
 def _print_cpp_rtti(t: tr.struct):
     name = t.full_name()
-    add_line(
-        f'static constexpr luisa::string_view _zz_typename_ {{"{name}"}};')
-    m = hashlib.md5(name.encode('ascii'))
+    add_line(f'static constexpr luisa::string_view _zz_typename_ {{"{name}"}};')
+    m = hashlib.md5(name.encode("ascii"))
     hex = m.hexdigest()
     add_line(
-        f'static constexpr uint64_t _zz_md5_[2] {{{int(hex[0:16], 16)}, {int(hex[16:32], 16)} }};')
+        f"static constexpr uint64_t _zz_md5_[2] {{{int(hex[0:16], 16)}, {int(hex[16:32], 16)} }};"
+    )
 
 
 def py_interface_gen(module_name: str):
@@ -239,24 +241,24 @@ def cpp_interface_gen(*extra_includes):
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
         namespace = enum_type.namespace_name()
         if len(namespace) > 0:
-            add_line(f'namespace {namespace} {{')
-        add_line(f'enum struct {enum_type.class_name()} : uint32_t {{')
+            add_line(f"namespace {namespace} {{")
+        add_line(f"enum struct {enum_type.class_name()} : uint32_t {{")
         add_indent()
         for param_name_and_value in enum_type._params:
-            add_line(f'{param_name_and_value[0]}')
+            add_line(f"{param_name_and_value[0]}")
             if param_name_and_value[1] != None:
-                add_result(f' = {param_name_and_value[1]}')
-            add_result(',')
+                add_result(f" = {param_name_and_value[1]}")
+            add_result(",")
         remove_indent()
-        add_line('};')
+        add_line("};")
 
         if len(namespace) > 0:
-            add_line('}')
+            add_line("}")
         # enum serialize
         if enum_type._serde:
-            add_line(f'''template<typename SerType, typename... Args>
+            add_line(f"""template<typename SerType, typename... Args>
 void rbc_objser(SerType &obj, {enum_name} const &var, Args... args) {{
-    switch (var) {{''')
+    switch (var) {{""")
             add_indent()
             add_indent()
             enum_names = ""
@@ -265,18 +267,19 @@ void rbc_objser(SerType &obj, {enum_name} const &var, Args... args) {{
             for param_name_and_value in enum_type._params:
                 enun_name = param_name_and_value[0]
                 add_line(
-                    f'case {enum_name}::{enun_name}: obj._store("{enun_name}", args...); break;')
+                    f'case {enum_name}::{enun_name}: obj._store("{enun_name}", args...); break;'
+                )
                 if not is_first:
-                    enum_names += ', '
-                    enum_values += ', '
+                    enum_names += ", "
+                    enum_values += ", "
                 is_first = False
                 enum_names += f'"{enun_name}"'
-                enum_values += f'luisa::to_underlying({enum_name}::{enun_name})'
+                enum_values += f"luisa::to_underlying({enum_name}::{enun_name})"
             remove_indent()
-            add_line('}')
+            add_line("}")
             remove_indent()
-            add_line('}')
-            add_line(f'''template<typename DeserType, typename... Args>
+            add_line("}")
+            add_line(f"""template<typename DeserType, typename... Args>
 bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
     luisa::string value;
     obj._load(value, args...);
@@ -286,16 +289,17 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
         var = static_cast<{enum_name}>(*v);
     }}
     return v.has_value();
-}}''')
+}}""")
 
     # print classes
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
         namespace = struct_type.namespace_name()
-        if (len(namespace) > 0):
-            add_line(f'namespace {namespace} {{')
+        if len(namespace) > 0:
+            add_line(f"namespace {namespace} {{")
         add_line(
-            f"struct {struct_type.class_name()} : public vstd::IOperatorNewBase {{")
+            f"struct {struct_type.class_name()} : public vstd::IOperatorNewBase {{"
+        )
         # RTTI
         add_indent()
         _print_cpp_rtti(struct_type)
@@ -305,27 +309,27 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
                 default_val = struct_type._default_value.get(mem_name)
                 # TODO: default value
                 # if (default_val)
-                add_line(f'{_print_arg_type(mem)} {mem_name}{{}};')
+                add_line(f"{_print_arg_type(mem)} {mem_name}{{}};")
 
             # serialize function
             if len(struct_type._serde_members) > 0:
-                add_line('template <typename SerType>')
-                add_line('void rbc_objser(SerType& obj) const {')
+                add_line("template <typename SerType>")
+                add_line("void rbc_objser(SerType& obj) const {")
                 add_indent()
                 for mem_name in struct_type._serde_members:
                     add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
                 remove_indent()
-                add_line('}')
+                add_line("}")
 
             # de-serialize function
             if len(struct_type._serde_members) > 0:
-                add_line('template <typename DeSerType>')
-                add_line('void rbc_objdeser(DeSerType& obj){')
+                add_line("template <typename DeSerType>")
+                add_line("void rbc_objdeser(DeSerType& obj){")
                 add_indent()
                 for mem_name in struct_type._serde_members:
                     add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
                 remove_indent()
-                add_line('}')
+                add_line("}")
         if len(struct_type._methods) > 0:
             add_result(f"""
     virtual void dispose() = 0;
@@ -345,13 +349,12 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
                 )
         remove_indent()
         add_line("};")
-        if (len(namespace) > 0):
-            add_line('}')
+        if len(namespace) > 0:
+            add_line("}")
     return get_result()
 
 
 def nanobind_codegen(module_name: str, dll_path: str, *extra_includes):
-
     set_result("""#include <nanobind/nanobind.h>
 #include <luisa/core/dynamic_module.h>
 #include <luisa/core/basic_types.h>
@@ -375,34 +378,33 @@ void {export_func_name}(nanobind::module_& m) """)
         add_indent()
         for params_name_and_type in enum_type._params:
             add_line(
-                f'.value("{params_name_and_type[0]}", {enum_name}::{params_name_and_type[0]})')
+                f'.value("{params_name_and_type[0]}", {enum_name}::{params_name_and_type[0]})'
+            )
         remove_indent()
-        add_result(';')
+        add_result(";")
 
     # print classes
     add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
-    add_line(
-        f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
+    add_line(f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
 
         # create
         create_name = f"create__{struct_name}__"
-        add_line(
-            f'm.def("{create_name}", [dynamic_module]() -> void* ')
+        add_line(f'm.def("{create_name}", [dynamic_module]() -> void* ')
         add_result("{")
         add_indent()
+        add_line("ModuleRegister::module_addref(env,*dynamic_module);")
         add_line(
-            "ModuleRegister::module_addref(env,*dynamic_module);"
+            f'return dynamic_module->dll.invoke<void *()>("create_{struct_name}");'
         )
-        add_line(
-            f'return dynamic_module->dll.invoke<void *()>("create_{struct_name}");')
         remove_indent()
         add_line("});")
         ptr_name = f"ptr_484111b5e8ed4230b5ef5f5fdc33ca81"  # magic name
         # dispose
         add_line(
-            f'm.def("dispose__{struct_name}__", [dynamic_module](void* {ptr_name})' + "{"
+            f'm.def("dispose__{struct_name}__", [dynamic_module](void* {ptr_name})'
+            + "{"
         )
         add_indent()
         add_line(f"static_cast<{struct_name}*>({ptr_name})->dispose();")
@@ -420,8 +422,7 @@ void {export_func_name}(nanobind::module_& m) """)
                 end = ""
                 if func._ret_type:
                     ret_type = (
-                        " -> " +
-                        _print_arg_type(func._ret_type, True, False) + " "
+                        " -> " + _print_arg_type(func._ret_type, True, False) + " "
                     )
                     return_decl = "return "
                     if func._ret_type == tr.string:
@@ -440,6 +441,5 @@ void {export_func_name}(nanobind::module_& m) """)
     # end
     remove_indent()
     add_line("}")
-    add_line(
-        f"static ModuleRegister _{export_func_name}({export_func_name});")
+    add_line(f"static ModuleRegister _{export_func_name}({export_func_name});")
     return get_result()

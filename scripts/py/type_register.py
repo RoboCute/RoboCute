@@ -1,8 +1,3 @@
-import os
-from pathlib import Path
-# basic types
-
-
 class VoidPtr:
     pass
 
@@ -25,6 +20,7 @@ class unordered_map:
 
 class GUID:
     pass
+
 
 class bool:
     pass
@@ -218,7 +214,7 @@ _basic_types = {
     double2x2,
     double3x3,
     double4x4,
-    GUID
+    GUID,
 }
 _template_types = {vector, ClassPtr, unordered_map}
 _registed_struct_types = {}
@@ -227,13 +223,13 @@ _registed_enum_types = {}
 
 class enum:
     def __init__(self, _func_name: str, _enable_serde: bool = True, **params):
-        namespace_cut = _func_name.rfind('::')
+        namespace_cut = _func_name.rfind("::")
         self._serde = _enable_serde
         if namespace_cut >= 0:
             self._namespace_name = _func_name[0:namespace_cut]
-            self._class_name = _func_name[namespace_cut+2:len(_func_name)]
+            self._class_name = _func_name[namespace_cut + 2 : len(_func_name)]
         else:
-            self._namespace_name = ''
+            self._namespace_name = ""
             self._class_name = _func_name
         full_name = self.full_name()
         if _registed_enum_types.get(full_name):
@@ -255,7 +251,7 @@ class enum:
     def full_name(self):
         s = self._namespace_name
         if s:
-            s += '::'
+            s += "::"
         return s + self._class_name
 
 
@@ -285,12 +281,12 @@ class _function_t:
 
 class struct:
     def __init__(self, _func_name: str):
-        namespace_cut = _func_name.rfind('::')
+        namespace_cut = _func_name.rfind("::")
         if namespace_cut >= 0:
             self._namespace_name = _func_name[0:namespace_cut]
-            self._class_name = _func_name[namespace_cut+2:len(_func_name)]
+            self._class_name = _func_name[namespace_cut + 2 : len(_func_name)]
         else:
-            self._namespace_name = ''
+            self._namespace_name = ""
             self._class_name = _func_name
         full_name = self.full_name()
         if _registed_struct_types.get(full_name):
@@ -319,8 +315,7 @@ class struct:
         f = _function_t(**args)
         key = _gen_args_key(**args)
         if tb.get(key):
-            log_err(
-                f"member {_func_name} already exists with same arguments overload.")
+            log_err(f"member {_func_name} already exists with same arguments overload.")
         tb[key] = f
         return f
 
@@ -336,6 +331,7 @@ class struct:
             _check_arg(i, v)
             self._members[i] = v
             self._serde_members[i] = v
+
     def default_val(self, **argv):
         for i in argv:
             v = argv[i]

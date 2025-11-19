@@ -1,21 +1,19 @@
 import type_register as tr
-from codegen_util import codegen_pyd_module
 import codegen_util as ut
-from codegen import *
+from codegen import cpp_interface_gen
 from pathlib import Path
 
 
 def pipeline_settings():
-
     LpmColorSpace = tr.enum(
-        'rbc::LpmColorSpace',
+        "rbc::LpmColorSpace",
         REC709=0,
         P3=1,
         REC2020=2,
         Display=3,
     )
     ResourceColorSpace = tr.enum(
-        'rbc::ResourceColorSpace',
+        "rbc::ResourceColorSpace",
         Rec709=0,
         AdobeRGB=1,
         P3_D60=2,
@@ -23,42 +21,32 @@ def pipeline_settings():
         Rec2020=4,
     )
     LpmDisplayMode = tr.enum(
-        'rbc::LpmDisplayMode',
+        "rbc::LpmDisplayMode",
         LDR=0,
         HDR10_2084=1,
         HDR10_SCRGB=2,
         FSHDR_2084=3,
-        FSHDR_SCRGB=4
+        FSHDR_SCRGB=4,
     )
     EToneMappingMode = tr.enum(
-        'rbc::EToneMappingMode',
-        UnrealAces=0,
-        UnityAces=None,
-        FilmicAces=None
+        "rbc::EToneMappingMode", UnrealAces=0, UnityAces=None, FilmicAces=None
     )
     NRD_CheckerboardMode = tr.enum(
-        'rbc::NRD_CheckerboardMode',
-        OFF=None,
-        BLACK=None,
-        WHITE=None,
-        MAX_NUM=None
+        "rbc::NRD_CheckerboardMode", OFF=None, BLACK=None, WHITE=None, MAX_NUM=None
     )
     NRD_HitDistanceReconstructionMode = tr.enum(
-        'rbc::NRD_HitDistanceReconstructionMode',
+        "rbc::NRD_HitDistanceReconstructionMode",
         # Probabilistic split at primary hit is not used, hence hit distance is always valid (reconstruction is not needed)
         OFF=None,
-
         # If hit distance is invalid due to probabilistic sampling, reconstruct using 3x3 neighbors.
         # Probability at primary hit must be clamped to [1/4; 3/4] range to guarantee a sample in this area
         AREA_3X3=None,
-
         # If hit distance is invalid due to probabilistic sampling, reconstruct using 5x5 neighbors.
         # Probability at primary hit must be clamped to [1/16; 15/16] range to guarantee a sample in this area
         AREA_5X5=None,
-
-        MAX_NUM=None
+        MAX_NUM=None,
     )
-    DistortionSettings = tr.struct('rbc::DistortionSettings')
+    DistortionSettings = tr.struct("rbc::DistortionSettings")
     DistortionSettings.serde_members(
         scale=tr.float,
         intensity=tr.float,
@@ -82,7 +70,7 @@ def pipeline_settings():
         displayBluePrimary=tr.float2,
         displayWhitePoint=tr.float2,
         displayMinLuminance=tr.float2,
-        displayMaxLuminance=tr.float2
+        displayMaxLuminance=tr.float2,
     )
     ToneMappingParameters = tr.struct("ToneMappingParameters")
     ToneMappingParameters.serde_members(
@@ -103,8 +91,8 @@ def pipeline_settings():
     )
 
     path = Path("rbc/runtime/include/rbc_render/generated/pipeline_settings.hpp")
-    ut.codegen_to(path, cpp_interface_gen)
+    ut.codegen_to(path)(cpp_interface_gen)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pipeline_settings()
