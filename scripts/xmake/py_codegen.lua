@@ -79,17 +79,17 @@ end, {
 })
 rule_end()
 
-rule('py_stubgen')
+rule('rbc_pyext')
 after_build(function(target)
-    local ext_path = target:extraconf('rules', 'py_stubgen', 'ext_path')
+    local ext_path = target:extraconf('rules', 'rbc_pyext', 'ext_path')
     if not ext_path then
-        utils.error('stubgen_path not set.')
+        utils.error('ext_path not set.')
         return
     end
     os.mkdir(ext_path)
     -- copy targetdir to 
     os.cp(target:targetdir(), ext_path)
-    os.execv('uvx', {"--with-editable .", "nanobind-stubgen", target:name(), '--out', ext_path})
-
+    -- os.execv('uvx', {"nanobind-stubgen", target:name(), '--out', ext_path})
 end)
+
 rule_end()

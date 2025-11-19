@@ -29,8 +29,13 @@ lc_options = {
     -- lc_toy_c_backend = true
 }
 
-includes("scripts/xmake/nanobind_gen.lua", 'scripts/xmake/py_codegen.lua', 'scripts/xmake/option_meta.lua')
-includes("thirdparty", "rbc")
+includes(
+    "scripts/xmake/nanobind_gen.lua", 
+    "scripts/xmake/py_codegen.lua", 
+    "scripts/xmake/option_meta.lua")
+
+includes("thirdparty")
+includes("rbc")
 
 target("lc-runtime")
 add_defines("LUISA_ENABLE_SAFE_MODE", {

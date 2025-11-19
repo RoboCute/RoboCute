@@ -93,3 +93,7 @@ generated/
 __pycache__
 *.egg-info
 .env
+
+
+release 
+debug

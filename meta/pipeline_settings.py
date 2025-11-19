@@ -4,7 +4,7 @@ from rbc_meta.codegen import cpp_interface_gen
 from pathlib import Path
 
 
-def pipeline_settings():
+def codegen_header(header_path: Path):
     LpmColorSpace = tr.enum(
         "rbc::LpmColorSpace",
         REC709=0,
@@ -90,9 +90,4 @@ def pipeline_settings():
         hdr_paper_white=tr.float,
     )
 
-    path = Path("rbc/runtime/include/rbc_render/generated/pipeline_settings.hpp")
-    ut.codegen_to(path)(cpp_interface_gen)
-
-
-if __name__ == "__main__":
-    pipeline_settings()
+    ut.codegen_to(header_path)(cpp_interface_gen)

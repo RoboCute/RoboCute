@@ -17,14 +17,31 @@ from multiprocessing import Process
 
 # Configuration: List of modules and their entry point functions to run.
 # These modules are expected to be located in the paths configured in setup_python_path().
+
+# module, entry, args
 GENERATION_TASKS = [
-    ("meta.test_codegen", "test_codegen"),
-    ("meta.test_serde", "test_serde"),
-    ("meta.pipeline_settings", "pipeline_settings"),
+    (
+        "meta.test_codegen",
+        "codegen_module",
+        Path("rbc/tests/test_py_codegen/generated").resolve(),
+        Path("src/rbc_ext/generated").resolve(),
+    ),
+    (
+        "meta.test_serde",
+        "codegen_header",
+        Path("rbc/tests/test_serde/generated/generated.hpp").resolve(),
+    ),
+    (
+        "meta.pipeline_settings",
+        "codegen_header",
+        Path(
+            "rbc/runtime/include/rbc_render/generated/pipeline_settings.hpp"
+        ).resolve(),
+    ),
 ]
 
 
-def run_generation_task(module_name, function_name):
+def run_generation_task(module_name, function_name, *args):
     """
     Imports a module and executes its specified entry point function.
 
@@ -39,7 +56,7 @@ def run_generation_task(module_name, function_name):
         if hasattr(module, function_name):
             func = getattr(module, function_name)
             print(f"[{module_name}] Starting generation...")
-            func()
+            func(*args)
             print(f"[{module_name}] Completed successfully.")
         else:
             print(f"[{module_name}] Error: Function '{function_name}' not found.")
@@ -60,8 +77,10 @@ def main():
     start_time = time.time()
     print(f"Starting code generation for {len(GENERATION_TASKS)} modules...")
     processes = []
-    for module_name, function_name in GENERATION_TASKS:
-        p = Process(target=run_generation_task, args=(module_name, function_name))
+    for module_name, function_name, *args in GENERATION_TASKS:
+        p = Process(
+            target=run_generation_task, args=(module_name, function_name, *args)
+        )
         p.start()
         processes.append(p)
 

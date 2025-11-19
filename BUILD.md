@@ -11,7 +11,7 @@
 
 - 安装uv
 - `uv sync`同步所有包
-- (Optional) Pylance Select Interpreter `.venv/python.py`
+- (Optional) Pylance Select Interpreter `.venv/Scripts/python.exe`
 
 ### RBS环境启动
 
