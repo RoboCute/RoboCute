@@ -250,7 +250,7 @@ class enum:
 
     def full_name(self):
         s = self._namespace_name
-        if s:
+        if len(s) > 0:
             s += "::"
         return s + self._class_name
 
@@ -305,7 +305,10 @@ class struct:
         return self._class_name
 
     def full_name(self):
-        return self._namespace_name + self._class_name
+        s = self._namespace_name
+        if len(s) > 0:
+            s += "::"
+        return s + self._class_name
 
     def method(self, _func_name: str, **args):
         tb = self._methods.get(_func_name)

@@ -165,6 +165,9 @@ struct Serializer : public Base {
             static_assert(luisa::always_false_v<T>, "Invalid serialize type.");
         }
     }
+    void clear() {
+        _alloc.clear();
+    }
     template<typename T>
     luisa::BinaryBlob serialize(char const *name, T const &t) {
         _alloc.clear();

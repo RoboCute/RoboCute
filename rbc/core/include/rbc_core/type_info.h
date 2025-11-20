@@ -6,13 +6,11 @@
 #include <luisa/vstl/compare.h>
 #include <type_traits>
 #include <cstdint>
+#include <rbc_core/rtti.h>
 namespace rbc {
 namespace concepts {
 template<typename T>
-concept RTTIType = requires() {
-    std::is_same_v<decltype(T::_zz_typename_), luisa::string_view>;
-    std::is_same_v<decltype(T::_zz_md5_), uint64_t[2]>;
-};
+concept RTTIType = is_rtti_type_v<T>;
 }// namespace concepts
 struct TypeInfo {
 private:
@@ -26,13 +24,15 @@ private:
 public:
     [[nodiscard]] std::array<uint64_t, 2> md5() const { return {_md5[0], _md5[1]}; }
     [[nodiscard]] RBC_CORE_API luisa::string md5_to_string(bool upper = false) const;
+    [[nodiscard]] RBC_CORE_API luisa::string md5_to_base64() const;
 
     [[nodiscard]] auto hash() const { return _md5[0]; }
     [[nodiscard]] auto name() const { return _name; }
 
     template<concepts::RTTIType T>
     static TypeInfo get() {
-        return TypeInfo{T::_zz_typename_, T::_zz_md5_};
+        using TypeMeta = is_rtti_type<T>;
+        return TypeInfo{TypeMeta::name, TypeMeta::md5};
     }
     bool operator==(TypeInfo const &t) const {
         return _md5[0] == t._md5[0] && _md5[1] == t._md5[1];

@@ -220,7 +220,7 @@ def main():
     # ------------------------------ llvm/options ------------------------------
     # We skip the builddir variable as it's dead code in the Lua source provided.
 
-    print("Write options.lua? (y/n)")
+    print("Write options.json? (y/n)")
     try:
         write_opt = input().strip()
     except EOFError:

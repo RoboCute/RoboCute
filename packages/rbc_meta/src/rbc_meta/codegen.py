@@ -179,12 +179,16 @@ def _print_py_args(args: dict, is_first: bool):
 
 def _print_cpp_rtti(t: tr.struct):
     name = t.full_name()
-    cb.add_line(f'static constexpr luisa::string_view _zz_typename_ {{"{name}"}};')
     m = hashlib.md5(name.encode("ascii"))
     hex = m.hexdigest()
-    cb.add_line(
-        f"static constexpr uint64_t _zz_md5_[2] {{{int(hex[0:16], 16)}, {int(hex[16:32], 16)} }};"
-    )
+    cb.add_result(f'''namespace rbc {{
+template<>
+struct is_rtti_type<{name}> {{
+    static constexpr bool value = true;
+    static constexpr luisa::string_view name{{"{name}"}};
+    static constexpr uint64_t md5[2]{{{int(hex[0:16], 16)}, {int(hex[16:32], 16)} }};
+}};
+}}''')
 
 
 def py_interface_gen(module_name: str):
@@ -235,6 +239,7 @@ def cpp_interface_gen(*extra_includes):
 #include <luisa/vstl/meta_lib.h>
 #include <luisa/vstl/v_guid.h>
 #include <rbc_core/enum_serializer.h>
+#include <rbc_core/rtti.h>
 """)
     for i in extra_includes:
         cb.add_result(i + "\n")
@@ -302,9 +307,7 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
         cb.add_line(
             f"struct {struct_type.class_name()} : public vstd::IOperatorNewBase {{"
         )
-        # RTTI
         cb.add_indent()
-        _print_cpp_rtti(struct_type)
         if len(struct_type._members) > 0:
             for mem_name in struct_type._members:
                 mem = struct_type._members[mem_name]
@@ -353,6 +356,8 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
         cb.add_line("};")
         if len(namespace) > 0:
             cb.add_line("}")
+        # RTTI
+        _print_cpp_rtti(struct_type)
     return cb.get_result()
 
 

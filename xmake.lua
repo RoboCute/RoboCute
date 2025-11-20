@@ -23,8 +23,7 @@ lc_options = {
     lc_metal_backend = is_host("macosx"),
     lc_dx_cuda_interop = true,
     lc_vk_cuda_interop = true,
-    lc_enable_py = false,
-    spdlog_only_fmt = true,
+    lc_enable_py = false
     -- lc_toy_c_backend = true
 }
 

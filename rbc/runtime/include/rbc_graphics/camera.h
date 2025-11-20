@@ -3,7 +3,7 @@
 #include <luisa/core/stl/optional.h>
 #include <luisa/core/stl/memory.h>
 #include <rbc_config.h>
-#include <rbc_core/quaternion.hpp>
+#include <rbc_core/quaternion.h>
 #include <rbc_graphics/matrix.h>
 namespace rbc {
 using namespace luisa;

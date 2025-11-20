@@ -1,6 +1,5 @@
 #include <rbc_graphics/scene_manager.h>
 #include <luisa/core/logging.h>
-#include <rbc_graphics/pipeline_context.h>
 #include <luisa/runtime/context.h>
 #include <luisa/core/dynamic_module.h>
 #include <rbc_graphics/managed_device.h>
@@ -8,8 +7,7 @@ namespace rbc
 {
 SceneManager::SceneManager(
     Context& ctx,
-    Device& device, luisa::filesystem::path const& shader_path,
-    bool use_lmdb
+    Device& device, luisa::filesystem::path const& shader_path
 )
     : _ctx(ctx)
     , _device(device)
@@ -22,8 +20,7 @@ SceneManager::SceneManager(
     , _mat_mng(device, true)
     , _light_accel(device)
 {
-    ShaderManager::create_instance(device, shader_path, use_lmdb);
-    bindless_allocator().set_reserved_buffer(heap_indices::buffer_allocator_heap_index, _bf_alloc.buffer());
+    ShaderManager::create_instance(device, shader_path);
 }
 
 void SceneManager::refresh_pipeline(

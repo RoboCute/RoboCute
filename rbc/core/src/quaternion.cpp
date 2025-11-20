@@ -1,4 +1,4 @@
-#include <rbc_core/quaternion.hpp>
+#include <rbc_core/quaternion.h>
 #include <luisa/core/logging.h>
 #include <rtm/qvvf.h>
 namespace rbc

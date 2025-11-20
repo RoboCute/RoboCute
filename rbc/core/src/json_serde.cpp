@@ -45,7 +45,7 @@ BinaryBlob JsonWriter::write_to() const {
     return {
         reinterpret_cast<std::byte *>(json),
         len,
-        [](void *ptr) { vengine_free(ptr); }};
+        [](void *ptr) { if(ptr) vengine_free(ptr); }};
 }
 void JsonWriter::start_array() {
     _json_scope.emplace_back(yyjson_mut_arr(json_doc), true);

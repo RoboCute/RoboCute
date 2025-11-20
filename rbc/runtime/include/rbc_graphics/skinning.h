@@ -1,6 +1,6 @@
 #pragma once
 #include <rbc_config.h>
-#include <rbc_core/quaternion.hpp>
+#include <rbc_core/quaternion.h>
 #include <luisa/runtime/device.h>
 #include <luisa/runtime/command_list.h>
 #include <luisa/runtime/shader.h>
