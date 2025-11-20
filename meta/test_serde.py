@@ -5,8 +5,8 @@ from pathlib import Path
 
 
 def codegen_header(header_path: Path):
-    MyStruct = tr.struct("MyStruct")
-    MyEnum = tr.enum("MyEnum", On=1, Off=None)
+    MyStruct = tr.struct("rbc::MyStruct")
+    MyEnum = tr.enum("rbc::MyEnum", On=1, Off=None)
     MyStruct.serde_members(
         guid=tr.GUID,
         multi_dim_vec=tr.vector(tr.vector(tr.int)),

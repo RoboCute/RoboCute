@@ -8,9 +8,9 @@
 #include <rbc_core/type_info.h>
 #include <rbc_core/json_serde.h>
 #include <rbc_core/state_map.h>
+#include <luisa/vstl/md5.h>
 using namespace rbc;
 using namespace luisa;
-
 int main() {
     rbc::Serializer<rbc::JsonWriter> writer;
     StateMap state_map;

@@ -16,10 +16,14 @@ struct TypeInfo {
 private:
     luisa::string_view _name;
     uint64_t _md5[2];
-    TypeInfo(luisa::string_view name, uint64_t const md5[2])
+    TypeInfo(luisa::string_view name, uint64_t d0, uint64_t d1)
         : _name(name) {
-        _md5[0] = md5[0];
-        _md5[1] = md5[1];
+        _md5[0] = d0;
+        _md5[1] = d1;
+    }
+    TypeInfo(luisa::string_view name, uint8_t const *ptr)
+        : _name(name) {
+        std::memcpy(_md5, ptr, 16);
     }
 public:
     [[nodiscard]] std::array<uint64_t, 2> md5() const { return {_md5[0], _md5[1]}; }
@@ -31,8 +35,15 @@ public:
 
     template<concepts::RTTIType T>
     static TypeInfo get() {
-        using TypeMeta = is_rtti_type<T>;
-        return TypeInfo{TypeMeta::name, TypeMeta::md5};
+        using TypeMeta = rbc_rtti_detail::is_rtti_type<T>;
+        if constexpr (requires { TypeMeta::md5; }) {
+            return TypeInfo{TypeMeta::name, TypeMeta::md5};
+        } else if constexpr (requires { TypeMeta::get_md5(); }) {
+            auto bin = TypeMeta::get_md5();
+            return TypeInfo{TypeMeta::name, bin[0], bin[1]};
+        } else {
+            static_assert(luisa::always_false_v<T>, "Type MD5 is missing, must define is_rtti_type<T>::md5 or is_rtti_type<T>::get_md5()");
+        }
     }
     bool operator==(TypeInfo const &t) const {
         return _md5[0] == t._md5[0] && _md5[1] == t._md5[1];

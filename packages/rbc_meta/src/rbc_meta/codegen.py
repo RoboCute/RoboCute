@@ -180,14 +180,20 @@ def _print_py_args(args: dict, is_first: bool):
 def _print_cpp_rtti(t: tr.struct):
     name = t.full_name()
     m = hashlib.md5(name.encode("ascii"))
-    hex = m.hexdigest()
+    is_first = True
+    digest = ''
+    for i in m.digest():
+        if not is_first:
+            digest +=', '
+        is_first = False
+        digest += str(int(i))
     cb.add_result(f'''
-namespace rbc {{
+namespace rbc_rtti_detail {{
 template<>
 struct is_rtti_type<{name}> {{
     static constexpr bool value = true;
     static constexpr luisa::string_view name{{"{name}"}};
-    static constexpr uint64_t md5[2]{{{int(hex[0:16], 16)}, {int(hex[16:32], 16)} }};
+    static constexpr uint8_t md5[16]{{{digest}}};
 }};
 }}''')
 
@@ -393,7 +399,8 @@ void {export_func_name}(nanobind::module_& m) """)
 
     # print classes
     cb.add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
-    cb.add_line(f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
+    cb.add_line(
+        f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
 
@@ -430,7 +437,8 @@ void {export_func_name}(nanobind::module_& m) """)
                 end = ""
                 if func._ret_type:
                     ret_type = (
-                        " -> " + _print_arg_type(func._ret_type, True, False) + " "
+                        " -> " +
+                        _print_arg_type(func._ret_type, True, False) + " "
                     )
                     return_decl = "return "
                     if func._ret_type == tr.string:
@@ -449,5 +457,6 @@ void {export_func_name}(nanobind::module_& m) """)
     # end
     cb.remove_indent()
     cb.add_line("}")
-    cb.add_line(f"static ModuleRegister _{export_func_name}({export_func_name});")
+    cb.add_line(
+        f"static ModuleRegister _{export_func_name}({export_func_name});")
     return cb.get_result()

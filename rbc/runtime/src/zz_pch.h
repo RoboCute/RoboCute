@@ -122,3 +122,10 @@
 #include <luisa/vstl/v_guid.h>
 #include <luisa/vstl/vector.h>
 #include <luisa/vstl/vstring.h>
+
+#include <rbc_core/json_serde.h>
+#include <rbc_core/state_map.h>
+#include <rbc_core/serde.h>
+#include <rbc_core/rc.h>
+#include <rbc_core/type_info.h>
+#include <rbc_core/enum_serializer.h>
