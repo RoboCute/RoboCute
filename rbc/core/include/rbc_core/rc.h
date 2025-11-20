@@ -2,6 +2,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <atomic>
+#include <rbc_core/shared_atomic_mutex.h>
 #include <luisa/vstl/meta_lib.h>
 #include <luisa/core/spin_mutex.h>
 #include <luisa/core/logging.h>
@@ -21,18 +22,18 @@ inline static bool rc_is_unique(RCCounterType counter) {
 }
 inline static RCCounterType rc_add_ref(std::atomic<RCCounterType> &counter) {
     RCCounterType old = counter.load(std::memory_order_relaxed);
-    LUISA_ASSERT(!rc_is_unique(old) && "try to add ref on a unique object");
+    LUISA_DEBUG_ASSERT(!rc_is_unique(old) && "try to add ref on a unique object");
     while (!counter.compare_exchange_weak(
         old,
         old + 1,
         std::memory_order_relaxed)) {
-        LUISA_ASSERT(!rc_is_unique(old) && "try to add ref on a unique object");
+        LUISA_DEBUG_ASSERT(!rc_is_unique(old) && "try to add ref on a unique object");
     }
     return old + 1;
 }
 inline static RCCounterType rc_weak_lock(std::atomic<RCCounterType> &counter) {
     for (RCCounterType old = counter.load(std::memory_order_relaxed); old != 0;) {
-        LUISA_ASSERT(!rc_is_unique(old));
+        LUISA_DEBUG_ASSERT(!rc_is_unique(old));
         if (counter.compare_exchange_weak(
                 old,
                 old + 1,
@@ -44,23 +45,23 @@ inline static RCCounterType rc_weak_lock(std::atomic<RCCounterType> &counter) {
 }
 inline static RCCounterType rc_add_ref_unique(std::atomic<RCCounterType> &counter) {
     RCCounterType old = counter.load(std::memory_order_relaxed);
-    LUISA_ASSERT(old == 0 && "try to add ref on a non-unique object");
+    LUISA_DEBUG_ASSERT(old == 0 && "try to add ref on a non-unique object");
     while (!counter.compare_exchange_weak(
         old,
         kRCCounterUniqueFlag | 1,
         std::memory_order_relaxed)) {
-        LUISA_ASSERT(old == 0 && "try to add ref on a non-unique object");
+        LUISA_DEBUG_ASSERT(old == 0 && "try to add ref on a non-unique object");
     }
     return kRCCounterUniqueFlag;
 }
 inline static RCCounterType rc_release_unique(std::atomic<RCCounterType> &counter) {
     RCCounterType old = counter.load(std::memory_order_relaxed);
-    LUISA_ASSERT(rc_is_unique(old) && "try to release a non-unique object");
+    LUISA_DEBUG_ASSERT(rc_is_unique(old) && "try to release a non-unique object");
     while (!counter.compare_exchange_weak(
         old,
         0,
         std::memory_order_relaxed)) {
-        LUISA_ASSERT(rc_is_unique(old) && "try to release a non-unique object");
+        LUISA_DEBUG_ASSERT(rc_is_unique(old) && "try to release a non-unique object");
     }
     return 0;
 }
@@ -82,14 +83,14 @@ struct RCWeakRefCounter {
         _ref_count.fetch_add(1, std::memory_order_relaxed);
     }
     inline void release() {
-        LUISA_ASSERT(_ref_count.load(std::memory_order_relaxed) > 0);
+        LUISA_DEBUG_ASSERT(_ref_count.load(std::memory_order_relaxed) > 0);
         if (_ref_count.fetch_sub(1, std::memory_order_release) == 1) {
             std::atomic_thread_fence(std::memory_order_acquire);
             luisa::deallocate_with_allocator(this);
         }
     }
     inline void notify_dead() {
-        LUISA_ASSERT(_is_alive.load(std::memory_order_relaxed) == true);
+        LUISA_DEBUG_ASSERT(_is_alive.load(std::memory_order_relaxed) == true);
         _is_alive.store(false, std::memory_order_relaxed);
     }
     inline bool is_alive() const {
@@ -110,7 +111,7 @@ struct RCWeakRefCounter {
 
 private:
     std::atomic<RCCounterType> _ref_count = 0;
-    std::shared_mutex _delete_mutex = {};
+    rbc::shared_atomic_mutex _delete_mutex = {};
     std::atomic<bool> _is_alive = true;
 };
 inline static RCWeakRefCounter *rc_get_weak_ref_released() {
@@ -172,7 +173,7 @@ inline static void rc_notify_weak_ref_counter_dead(
             vstd::unreachable();
         } else {
             // another thread created a weak counter
-            LUISA_ASSERT(weak_counter != nullptr);
+            LUISA_DEBUG_ASSERT(weak_counter != nullptr);
         }
     }
 
@@ -231,7 +232,7 @@ struct RCDeleterTraits<T> {
 // release helper
 template<typename T>
 inline void rc_release_with_delete(T *p) {
-    LUISA_ASSERT(p != nullptr);
+    LUISA_DEBUG_ASSERT(p != nullptr);
     if (p->rbc_rc_release() == 0) {
         p->rbc_rc_weak_ref_counter_notify_dead();
         RCDeleterTraits<T>::do_delete(p);
@@ -1095,14 +1096,14 @@ namespace rbc {
 // helper
 template<typename T>
 inline void RCWeak<T>::_release() {
-    LUISA_ASSERT(_ptr != nullptr);
+    LUISA_DEBUG_ASSERT(_ptr != nullptr);
     _counter->release();
 }
 template<typename T>
 inline void RCWeak<T>::_take_weak_ref_counter() {
-    LUISA_ASSERT(_ptr != nullptr);
+    LUISA_DEBUG_ASSERT(_ptr != nullptr);
     _counter = _ptr->rbc_rc_weak_ref_counter();
-    LUISA_ASSERT(_counter != nullptr);
+    LUISA_DEBUG_ASSERT(_counter != nullptr);
     _counter->add_ref();
 }
 
