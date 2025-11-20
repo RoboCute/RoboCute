@@ -53,6 +53,12 @@ def codegen_header(header_path: Path):
         intensity_multiplier=tr.float2,
         center=tr.float2,
     )
+    DistortionSettings.init_member(
+        scale=1.0,
+        intensity=0.0,
+        intensity_multiplier='1, 1',
+        center='0.0f, 0.0f'
+    )
     LpmDispatchParameters = tr.struct("rbc::LpmDispatchParameters")
     LpmDispatchParameters.serde_members(
         shoulder=tr.bool,
@@ -61,8 +67,8 @@ def codegen_header(header_path: Path):
         lpmExposure=tr.float,
         contrast=tr.float,
         shoulderContrast=tr.float,
-        saturation=tr.float,
-        crosstalk=tr.float,
+        saturation=tr.float3,
+        crosstalk=tr.float3,
         colorSpace=LpmColorSpace,
         displayMode=LpmDisplayMode,
         displayRedPrimary=tr.float2,
@@ -72,7 +78,20 @@ def codegen_header(header_path: Path):
         displayMinLuminance=tr.float2,
         displayMaxLuminance=tr.float2,
     )
-    ToneMappingParameters = tr.struct("ToneMappingParameters")
+    LpmDispatchParameters.init_member(
+        shoulder=True,
+        softGap=0.,
+        hdrMax=1847,
+        lpmExposure=10,
+        contrast=0.3,
+        shoulderContrast=1.0,
+        saturation='0.f, 0.f, 0.f',
+        crosstalk='1.f, 1.f, 1.f',
+        colorSpace='rbc::LpmColorSpace::REC2020',
+        displayMinLuminance=0.001,
+        displayMaxLuminance=1000
+    )
+    ToneMappingParameters = tr.struct("rbc::ToneMappingParameters")
     ToneMappingParameters.serde_members(
         tone_mode=EToneMappingMode,
         unreal_tone_slope=tr.float,
@@ -88,6 +107,23 @@ def codegen_header(header_path: Path):
         filmic_tone_toe_denominator=tr.float,
         hdr_display_multiplier=tr.float,
         hdr_paper_white=tr.float,
+    )
+    ToneMappingParameters.init_member(
+        tone_mode='rbc::EToneMappingMode::UnrealAces',
+        unreal_tone_slope='0.8f',
+        unreal_tone_toe='0.5f',
+        unreal_tone_black_clip='0.0f',
+        unreal_tone_shoulder='0.3f',
+        unreal_tone_white_clip='0.04f',
+
+        filmic_tone_shoulder_strength='0.22f',
+        filmic_tone_linear_strength='0.30f',
+        filmic_tone_linear_angle='0.10f',
+        filmic_tone_toe_strength='0.20f',
+        filmic_tone_toe_numerator='0.01f',
+        filmic_tone_toe_denominator='0.30f',
+        hdr_display_multiplier='5.0f',
+        hdr_paper_white='80.0f',
     )
 
     ut.codegen_to(header_path)(cpp_interface_gen)

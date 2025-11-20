@@ -8,6 +8,11 @@
 
 ## 配置项目
 
+### 一键初始化：
+
+- `setup.cmd`
+- `setup.sh`
+
 ### Python环境配置
 
 - 安装uv

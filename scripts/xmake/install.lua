@@ -1,7 +1,7 @@
 function main()
     import("async.jobgraph")
     import("async.runjobs")
-    local ext_path = path.join(os.projectdir(), "src/rbc_ext/bin")
+    local ext_path = path.join(os.projectdir(), "src/rbc_ext/release")
     os.mkdir(ext_path)
     local jobs = jobgraph.new()
     local target_dir = path.join(os.projectdir(), 'build', os.host(), os.arch(), 'release')

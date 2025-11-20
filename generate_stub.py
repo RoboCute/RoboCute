@@ -72,8 +72,8 @@ def main():
     parser.add_argument(
         "--pyd-dir",
         type=Path,
-        default=Path("src/rbc_ext/bin"),
-        help="Directory containing .pyd file (default: src/rbc_ext/bin)",
+        default=Path("src/rbc_ext/release"),
+        help="Directory containing .pyd file (default: src/rbc_ext/release)",
     )
     parser.add_argument(
         "--output",

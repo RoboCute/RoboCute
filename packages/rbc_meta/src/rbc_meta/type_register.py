@@ -1,3 +1,4 @@
+import rbc_meta.type_register_base as base
 class VoidPtr:
     pass
 
@@ -294,7 +295,7 @@ class struct:
         _registed_struct_types[full_name] = self
         self._doc = full_name
         self._members = dict()
-        self._default_value = dict()
+        self._cpp_initer = dict()
         self._serde_members = dict()
         self._methods = dict()
 
@@ -335,10 +336,17 @@ class struct:
             self._members[i] = v
             self._serde_members[i] = v
 
-    def default_val(self, **argv):
+    def init_member(self, **argv):
         for i in argv:
             v = argv[i]
-            self._default_value[i] = v
+            if base.is_type_bool(type(v)):
+                if v:
+                    v = 'true'
+                else:
+                    v = 'false'
+            else:
+                v = str(v)
+            self._cpp_initer[i] = str(v)
 
 
 def _check_arg(key, arg):

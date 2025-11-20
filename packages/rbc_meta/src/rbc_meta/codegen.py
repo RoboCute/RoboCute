@@ -181,7 +181,8 @@ def _print_cpp_rtti(t: tr.struct):
     name = t.full_name()
     m = hashlib.md5(name.encode("ascii"))
     hex = m.hexdigest()
-    cb.add_result(f'''namespace rbc {{
+    cb.add_result(f'''
+namespace rbc {{
 template<>
 struct is_rtti_type<{name}> {{
     static constexpr bool value = true;
@@ -311,10 +312,10 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
         if len(struct_type._members) > 0:
             for mem_name in struct_type._members:
                 mem = struct_type._members[mem_name]
-                default_val = struct_type._default_value.get(mem_name)
-                # TODO: default value
-                # if (default_val)
-                cb.add_line(f"{_print_arg_type(mem)} {mem_name}{{}};")
+                initer = struct_type._cpp_initer.get(mem_name)
+                if not initer:
+                    initer = ''
+                cb.add_line(f"{_print_arg_type(mem)} {mem_name}{{{initer}}};")
 
             # serialize function
             if len(struct_type._serde_members) > 0:
