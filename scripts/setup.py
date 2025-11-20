@@ -168,6 +168,12 @@ def run_git_tasks():
             "branch": None,
             "deps": ["lc"],
         },
+        "qt_node_editor": {
+            "subdir": "thirdparty/qt_node_editor",
+            "url": "https://github.com/RoboCute/nodeeditor.git",
+            "branch": None,
+            "deps": [],
+        },
     }
 
     # Group by stages based on dependencies

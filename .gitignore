@@ -87,6 +87,7 @@ xmake.log
 thirdparty/nanobind
 thirdparty/libtorch
 thirdparty/LuisaCompute
+thirdparty/qt_node_editor
 scripts/options.json
 modules/tools/nanogen/builtin/builtin.cpp
 generated/
