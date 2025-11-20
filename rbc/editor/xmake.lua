@@ -1,0 +1,13 @@
+target("calculator")
+    set_kind("binary")
+    add_rules("qt.widgetapp")
+    add_files(
+        "main.cpp",
+        "MathOperationDataModel.cpp",
+        "NumberDisplayDataModel.cpp",
+        "NumberSourceDataModel.cpp"
+    )
+    add_files("*.hpp")
+    add_headerfiles("*.hpp")
+    add_deps("qt_node_editor")
+target_end()
