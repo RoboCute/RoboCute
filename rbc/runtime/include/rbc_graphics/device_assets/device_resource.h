@@ -7,8 +7,7 @@
 #include <luisa/core/binary_io.h>
 #include <luisa/runtime/buffer.h>
 namespace rbc {
-struct DeviceResource {
-    RBC_RC_IMPL(noexcept);
+struct DeviceResource : RCBase {
 protected:
     std::atomic_uint64_t _gpu_load_frame{0};
 

@@ -5,9 +5,9 @@
 #include <rbc_config.h>
 #include <rbc_core/rc.h>
 namespace rbc {
-struct RBC_RUNTIME_API PluginModule : public vstd::IOperatorNewBase {
-    RBC_RC_IMPL(noexcept)
-
+struct PluginManager;
+struct RBC_RUNTIME_API PluginModule : RCBase {
+    friend struct PluginManager;
     struct Node {
         Node *left{};
         Node *right{};
