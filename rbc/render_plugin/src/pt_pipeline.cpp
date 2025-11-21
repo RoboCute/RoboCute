@@ -1,0 +1,120 @@
+#include <rbc_render/renderer_data.h>
+#include <rbc_render/pt_pipeline.h>
+#include <rbc_render/post_pass.h>
+#include <rbc_render/prepare_pass.h>
+#include <rbc_render/offline_pt_pass.h>
+#include <rbc_render/accum_pass.h>
+#include <rbc_render/raster_pass.h>
+
+namespace rbc {
+PTPipeline::PTPipeline() = default;
+
+void PTPipeline::initialize() {
+
+    // load settings
+    auto &device = RenderDevice::instance();
+    prepare_pass = this->emplace_instance<PreparePass>();
+    // create passes
+    pt_pass = this->emplace_instance<OfflinePTPass>();
+    accum_pass = this->emplace_instance<AccumPass>();
+    raster_pass = this->emplace_instance<RasterPass>();
+    post_pass = this->emplace_instance<PostPass>(device.lc_device_ext());
+    // enable passes
+    {
+        this->enable(
+            device.lc_device(),
+            device.lc_main_cmd_list(),
+            SceneManager::instance());
+    }
+}
+
+void PTPipeline::update(rbc::PipelineContext &ctx) {
+    this->rbc::Pipeline::update(ctx);
+}
+
+void PTPipeline::early_update(rbc::PipelineContext &ctx) {
+    // HDR
+    // sync monitor
+    //     tms.lpm.displayRedPrimary = monitor_info->red_primary;
+    // tms.lpm.displayGreenPrimary = monitor_info->green_primary;
+    // tms.lpm.displayBluePrimary = monitor_info->blue_primary;
+    // tms.lpm.displayWhitePoint = monitor_info->white_point;
+    // tms.lpm.displayMinLuminance = monitor_info->min_luminance;
+    // tms.lpm.displayMaxLuminance = monitor_info->max_luminance;
+    // tms.aces.tone_mapping.hdr_display_multiplier = monitor_info->max_luminance / 80.0f;
+
+    // get settings
+    auto sky_settings = ctx.pipeline_settings->read<SkySettings>();
+    auto frameSettings = ctx.mut.states.read<FrameSettings>();
+    auto write_settings = vstd::scope_exit([&] {
+        ctx.pipeline_settings->write(std::move(sky_settings));
+        ctx.mut.states.write(std::move(frameSettings));
+    });
+
+    // update atom
+    if (sky_settings.sky_atom) {
+        auto &sky_atom = *sky_settings.sky_atom;
+
+        // update sky matrix
+        {
+            auto camera_settings = ctx.mut.states.read<CameraData>();
+            luisa::float3x3 &sky_matrix = camera_settings.world_to_sky;
+            auto sky_radians = radians(sky_settings.sky_angle);
+            sky_matrix.cols[0] = float3(cos(sky_radians), 0.0f, sin(sky_radians));
+            sky_matrix.cols[1] = float3(0, 1, 0);
+            sky_matrix.cols[2] = normalize(cross(sky_matrix.cols[0], sky_matrix.cols[1]));
+            sky_matrix = transpose(sky_matrix);
+            ctx.mut.states.write(std::move(camera_settings));
+        }
+
+        // update sky atom
+        if (sky_settings.dirty) {
+            if (sky_settings.sky_max_lum < 65530)
+                sky_atom.clamp_light(*ctx.cmdlist, sky_settings.sky_max_lum, 32);
+            else
+                sky_atom.copy_img(*ctx.cmdlist);
+            sky_atom.colored(*ctx.cmdlist, sky_settings.sky_color);
+            sky_atom.mark_dirty();
+            double sample_pdf = 1.0 / (2.0 * (double)pi * (1.0 - cos(radians(sky_settings.sun_angle))));
+            sample_pdf /= 65536.0f;
+
+            float3 sun_radiance = sky_settings.sun_color * sky_settings.sun_intensity * (float)sample_pdf;
+            float len = sun_radiance.x + sun_radiance.y + sun_radiance.z;
+            if (length(sky_settings.sun_dir) < 1e-5f) {
+                sky_settings.sun_dir = float3(0, -1, 0);
+            }
+            if (len > 1e-4f) {
+                sky_atom.make_sun(
+                    *ctx.cmdlist,
+                    sky_settings.sun_angle,
+                    sun_radiance,
+                    normalize(sky_settings.sun_dir));
+            }
+
+            sky_settings.dirty = false;
+        }
+        if (sky_atom.update(*ctx.cmdlist, ctx.scene->bindless_allocator(), sky_settings.force_sync)) {
+            // frameSettings.sky_confidence = 1.0f;
+        }
+        if (sky_settings.force_sync) {
+            RenderDevice::instance().lc_main_stream() << ctx.cmdlist->commit() << synchronize();
+            if (sky_atom.update(*ctx.cmdlist, ctx.scene->bindless_allocator(), sky_settings.force_sync)) {
+                // frameSettings.sky_confidence = 1.0f;
+            }
+        }
+        pt_pass->sky_heap_idx = sky_atom.sky_id();
+        pt_pass->alias_heap_idx = sky_atom.sky_alias_id();
+        pt_pass->pdf_heap_idx = sky_atom.sky_pdf_id();
+    }
+
+    // update camera settings
+    ctx.cam.set_aspect_ratio_from_resolution(frameSettings.render_resolution.x, frameSettings.render_resolution.y);
+    // realtime
+    raster_pass->set_actived(frameSettings.realtime_rendering);
+    // path-tracing
+    pt_pass->set_actived(!frameSettings.realtime_rendering);
+    accum_pass->set_actived(!frameSettings.realtime_rendering);
+    this->rbc::Pipeline::early_update(ctx);
+}
+
+}// namespace rbc

@@ -128,7 +128,7 @@ void OfflinePTPass::update(Pipeline const& pipeline, PipelineContext const& ctx)
     Buffer<pt::GBuffer> geo_buffer = render_device.create_transient_buffer<pt::GBuffer>("offline_geo_buffer", frameSettings.display_resolution.x * frameSettings.display_resolution.y);
     if (all(frameSettings.display_resolution == frameSettings.render_resolution) && accum_pass_ctx->frame_index < 8)
     {
-        ctx.tex_stream_mng->force_sync();
+        scene.tex_streamer().force_sync();
     }
 
     if (!pass_ctx)
@@ -165,7 +165,7 @@ void OfflinePTPass::update(Pipeline const& pipeline, PipelineContext const& ctx)
         .inv_view = cam_data.inv_view,
         .view = cam_data.view,
         .inv_vp = cam_data.inv_vp,
-        .frame_countdown = ctx.tex_stream_mng->countdown(),
+        .frame_countdown = scene.tex_streamer().countdown(),
         .light_count = static_cast<uint>(scene.light_accel().light_count()),
         .tex_grad_scale = float2(1),
         .enable_physical_camera = ctx.cam.enable_physical_camera,
@@ -199,7 +199,7 @@ void OfflinePTPass::update(Pipeline const& pipeline, PipelineContext const& ctx)
         {
             (*ctx.cmdlist) << offline_pt_shader_denoise::dispatch_shader(
                 pt_shader_denoise, ((frameSettings.render_resolution + 1u) / 2u) * 2u,
-                ctx.tex_stream_mng->level_buffer(),
+                scene.tex_streamer().level_buffer(),
                 scene.buffer_heap(),
                 scene.image_heap(),
                 scene.volume_heap(),
@@ -228,7 +228,7 @@ void OfflinePTPass::update(Pipeline const& pipeline, PipelineContext const& ctx)
 
             (*ctx.cmdlist) << offline_pt_shader::dispatch_shader(
                 pt_shader, ((frameSettings.render_resolution + 1u) / 2u) * 2u,
-                ctx.tex_stream_mng->level_buffer(),
+                scene.tex_streamer().level_buffer(),
                 scene.buffer_heap(),
                 scene.image_heap(),
                 scene.volume_heap(),
@@ -254,7 +254,7 @@ void OfflinePTPass::update(Pipeline const& pipeline, PipelineContext const& ctx)
             scene.buffer_heap(),
             scene.image_heap(),
             scene.volume_heap(),
-            ctx.tex_stream_mng->level_buffer(),
+            scene.tex_streamer().level_buffer(),
             ctx.scene->accel_manager().triangle_vis_buffer(),
             accel,
             multibounce_buffer.view(),

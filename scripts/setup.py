@@ -45,13 +45,17 @@ def write_shader_compile_cmd():
     # TODO: different platform
     host_dir = shader_dir / 'host'
     include_dir = shader_dir / 'include'
+    cache_dir = ''
 
-    def base_cmd(
-    ): return f'"{clangcxx_dir}" -in="{in_dir}" -out="{out_dir}" -include="{include_dir}"'
-    def build_cmd(): return base_cmd() + f' -hostgen="{host_dir}"'
+    def base_cmd():
+        return f'"{clangcxx_dir}" -in="{in_dir}" -out="{out_dir}" -include="{include_dir}"'
+
+    def build_cmd():
+        return base_cmd() + f' -hostgen="{host_dir}"' + f' -cache_dir="{cache_dir}"'
     backends = ['dx', 'vk']
     # write files
     for backend in backends:
+        cache_dir = shader_dir / '.cache' / backend
         out_dir = Path(PROJECT_ROOT) / \
             f'build/windows/x64/shader_build_{backend}'
         f = open(shader_dir / f'{backend}_compile.cmd', 'w')
@@ -117,26 +121,40 @@ def download_packages():
     plat_name = f'{platform}-{arch}'
     download_path = Path(PROJECT_ROOT) / 'build/download'
     download_path.mkdir(parents=True, exist_ok=True)
-    downloads = [
-        f'clangcxx_compiler-v2.0.0-{plat_name}.7z',
-        f'clangd-v19.1.7-{plat_name}.7z'
-    ]
     address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/'
+    lc_address = 'https://github.com/LuisaGroup/SDKs/releases/download/sdk/'
+    lc_path = Path(PROJECT_ROOT) / "thirdparty/LuisaCompute/SDKs"
+    downloads = {
+        f'clangcxx_compiler-v2.0.1-{plat_name}.7z': {
+            "address": address,
+            "path": download_path,
+        },
+        f'clangd-v19.1.7-{plat_name}.7z': {
+            "address": address,
+            "path": download_path,
+        },
+        'dx_sdk_20250816.zip': {
+            "address": lc_path,
+            "path": lc_path
+        }
+    }
 
-    def download_file(file: str):
-        dst_path = str(download_path / file)
+    def download_file(file: str, map):
+        dst_path = str(map["path"] / file)
         if os.path.exists(dst_path):
             print(f"'{dst_path}' exists, skip download.")
             return
         print(f"Downloading '{dst_path}'...")
-        response = requests.get(address + file)
+        response = requests.get(map["address"] + file)
         response.raise_for_status()
         with open(dst_path, 'wb') as f:
             f.write(response.content)
         print(f"Download '{dst_path}' successfully!")
     executor = ThreadPoolExecutor(max_workers=8)
-    futures1 = [executor.submit(download_file, name) for name in downloads]
+    futures1 = [executor.submit(
+        download_file, name, downloads[name]) for name in downloads]
     return executor, futures1
+
 
 def run_git_tasks():
     # Define tasks

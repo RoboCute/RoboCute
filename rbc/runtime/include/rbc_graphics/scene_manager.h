@@ -61,7 +61,7 @@ private:
 
 public:
     ///////////// properties
-    [[nodiscard]] auto &tex_streamer() const { return *_tex_streamer; }
+    [[nodiscard]] auto &tex_streamer() { return *_tex_streamer; }
     [[nodiscard]] auto &ctx() const { return _ctx; }
     [[nodiscard]] auto &device() const { return _device; }
     [[nodiscard]] auto &dispose_queue() { return _dsp_queue; }

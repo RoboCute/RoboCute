@@ -6,10 +6,7 @@
 #include <luisa/vstl/v_guid.h>
 
 namespace rbc {
-Pipeline::Pipeline(
-    vstd::string name)
-    : _name(std::move(name)) {
-}
+Pipeline::Pipeline() = default;
 
 Pipeline::~Pipeline() = default;
 
@@ -54,10 +51,6 @@ void Pipeline::wait_enable() {
     for (auto &i : _passes) {
         i->wait_enable();
     }
-}
-
-PipelineContext Pipeline::create_context() {
-    return PipelineContext{};
 }
 
 void Pipeline::update(PipelineContext &ctx) {

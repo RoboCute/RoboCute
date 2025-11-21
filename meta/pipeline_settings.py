@@ -127,14 +127,16 @@ def codegen_header(header_path: Path, cpp_path: Path):
     )
     FrameSettings = tr.struct('rbc::FrameSettings')
     FrameSettings.members(
+        to_rec2020_matrix=tr.float3x3,
         render_resolution=tr.uint2,
         display_resolution=tr.uint2,
         display_offset=tr.uint2,
         frame_index=tr.long,
         time=tr.double,
         delta_time=tr.float,
-        to_rec2020_matrix=tr.float3x3,
         resource_color_space=ResourceColorSpace,
+        realtime_rendering=tr.bool,
+        
         dst_img=tr.external_type('luisa::compute::Image<float> const*')
     )
     FrameSettings.init_member(
@@ -248,10 +250,32 @@ def codegen_header(header_path: Path, cpp_path: Path):
         gamma=2.2,
         chromatic_aberration=0.001
     )
+    SkySettings = tr.struct('rbc::SkySettings')
+    SkySettings.members(
+        sky_atom=tr.external_type('SkyAtmosphere*'),
+    )
+    SkySettings.serde_members(
+        sky_angle=tr.float,
+        sky_max_lum=tr.float,
+        sky_color=tr.float3,
+        sun_color=tr.float3,
+        sun_dir=tr.float3,
+        sun_intensity=tr.float,
+        sun_angle=tr.float,
+        dirty=tr.bool,
+        force_sync=tr.bool
+    )
+    SkySettings.init_member(
+        sky_max_lum=65535,
+        sky_color='1, 1, 1',
+        sun_color='1, 1, 1',
+        sun_dir='0, -1, 0',
+        sun_angle=0.5
+    )
 
     include = '''#include <luisa/runtime/image.h>
 #include <rbc_core/utils/curve.h>
-'''
+#include <rbc_render/procedural/sky_atmosphere.h>'''
     ut.codegen_to(header_path)(cpp_interface_gen, include)
     include = '#include <rbc_render/generated/pipeline_settings.hpp>'
     ut.codegen_to(cpp_path)(cpp_enum_gen, include)

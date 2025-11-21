@@ -110,18 +110,16 @@ public:
     void delay_dispose(DisposeQueue &queue);
 };
 
-struct PipelineContext {
+struct PipelineContext : vstd::IOperatorNewBase {
     // settings
     rbc::StateMap *pipeline_settings;
 
     // config
     Camera cam;
-    float4x4 projection;
 
     // resource
     Device *device{nullptr};
     SceneManager *scene{nullptr};
-    TexStreamManager *tex_stream_mng{nullptr};
     CommandList *cmdlist{nullptr};
 
     mutable PipelineCtxMutable mut;

@@ -427,7 +427,7 @@ void PreparePass::early_update(Pipeline const& pipeline, PipelineContext const& 
     cam_data.inv_view = ctx.cam.local_to_world_matrix();
     cam_data.inv_sky_view = ctx.cam.rotation_matrix();
     cam_data.view = preparepass_detail::inverse_double(cam_data.inv_view);
-    cam_data.proj = ctx.projection;
+    cam_data.proj = ctx.cam.projection_matrix();
     cam_data.vp = cam_data.proj * cam_data.view;
     cam_data.inv_proj = preparepass_detail::inverse_double(cam_data.proj);
     cam_data.inv_vp = preparepass_detail::inverse_double(cam_data.vp);

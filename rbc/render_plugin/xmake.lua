@@ -4,6 +4,9 @@ add_rules('lc_basic_settings', {
 })
 set_pcxxheader('src/zz_pch.h')
 add_deps('rbc_runtime')
+add_deps("compile_shaders", {
+    inherit = false
+})
 add_includedirs('include', '../shader/host', {
     public = true
 })
