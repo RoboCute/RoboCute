@@ -2,9 +2,6 @@
 struct Args {
 	float4 distortion_Amount;
 	float4 distortion_CenterScale;
-	float4 bloom_settings;
-	float4 bloom_color;
-	float4 bloom_dirt_tile_offset;
 	uint2 pixel_offset;
 	float chromatic_aberration;
 	float gamma;

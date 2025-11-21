@@ -8,6 +8,7 @@
 #include <luisa/vstl/v_guid.h>
 #include <luisa/core/stl/memory.h>
 #include <luisa/core/stl/vector.h>
+#include <rbc_core/enum_serializer.h>
 namespace rbc {
 namespace detail {
 template<typename T>
@@ -40,10 +41,15 @@ struct Serializer : public Base {
 
     template<typename T, typename... Args>
     void _store(T const &t, Args... args) {
-
         // custom type
         if constexpr (std::is_enum_v<T>) {
-            rbc_objser(*this, t, args...);
+            static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
+            auto strv = EnumSerializer::template get_enum_value_name<T>(luisa::to_underlying(t));
+            auto chunk = _alloc.allocate(strv.size() + 1);
+            auto ptr = (char *)(chunk.handle + chunk.offset);
+            std::memcpy(ptr, strv.data(), strv.size());
+            ptr[strv.size()] = 0;
+            Base::add(ptr, args...);
         } else if constexpr (requires { t.rbc_objser(*this); }) {
             Base::start_object();
             t.rbc_objser(*this);
@@ -187,7 +193,15 @@ struct DeSerializer : public Base {
     bool _load(T &t, Args... args) {
         // custom type
         if constexpr (std::is_enum_v<T>) {
-            return rbc_objdeser(*this, t, args...);
+            static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
+            luisa::string str;
+            Base::read(str, args...);
+            auto value = EnumSerializer::template get_enum_value<T>(str);
+            if (!value) {
+                return false;
+            }
+            t = (T)*value;
+            return true;
         } else if constexpr (requires { t.rbc_objdeser(*this); }) {
             if (!Base::start_object(args...)) return false;
             t.rbc_objdeser(*this);

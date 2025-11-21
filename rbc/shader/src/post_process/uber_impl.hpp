@@ -39,7 +39,6 @@ static float2 distort(float2 uv, float4 distortion_Amount, float4 distortion_Cen
 #define MAX_CHROMATIC_SAMPLES 16
 [[kernel_2d(16, 8)]] int kernel(
 	SampleImage& src_img,
-	SampleImage& bloom_img,
 	SampleVolume& tonemap_volume,
 	Args args,
 #ifdef ENABLE_LPM

@@ -37,6 +37,9 @@ GENERATION_TASKS = [
         Path(
             "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.hpp"
         ).resolve(),
+        Path(
+            "rbc/render_plugin/src/generated/pipeline_settings.cpp"
+        ).resolve(),
     ),
 ]
 

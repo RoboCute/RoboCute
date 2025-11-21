@@ -1,10 +1,10 @@
 import rbc_meta.type_register as tr
 import rbc_meta.codegen_util as ut
-from rbc_meta.codegen import cpp_interface_gen
+from rbc_meta.codegen import cpp_interface_gen, cpp_enum_gen
 from pathlib import Path
 
 
-def codegen_header(header_path: Path):
+def codegen_header(header_path: Path, cpp_path: Path):
     LpmColorSpace = tr.enum(
         "rbc::LpmColorSpace",
         REC709=0,
@@ -211,8 +211,47 @@ def codegen_header(header_path: Path):
         speedUp=16,
         speedDown=16
     )
+    PathTracerSettings = tr.struct('rbc::PathTracerSettings')
+    PathTracerSettings.serde_members(
+        offline_spp=tr.uint,
+        realtime_spp=tr.uint,
+        offline_origin_bounce=tr.uint,
+        offline_indirect_bounce=tr.uint,
+        resource_color_space=ResourceColorSpace,
+    )
+    PathTracerSettings.init_member(
+        offline_spp=2,
+        offline_origin_bounce=2,
+        offline_indirect_bounce=4
+    )
+    ToneMappingSettings = tr.struct('rbc::ToneMappingSettings')
+    ToneMappingSettings.serde_members(
+        use_lpm=tr.bool,
+        lpm=LpmDispatchParameters,
+        aces=ACESParameters
+    )
+    ToneMappingSettings.init_member(
+        use_lpm=True
+    )
+    DisplaySettings = tr.struct('rbc::DisplaySettings')
+    DisplaySettings.serde_members(
+        use_linear_sdr=tr.bool,
+        use_hdr_display=tr.bool,
+        use_hdr_10=tr.bool,
+        gamma=tr.float,
+        chromatic_aberration=tr.float
+    )
+    DisplaySettings.init_member(
+        use_linear_sdr=True,
+        use_hdr_display=True,
+        use_hdr_10=True,
+        gamma=2.2,
+        chromatic_aberration=0.001
+    )
 
     include = '''#include <luisa/runtime/image.h>
 #include <rbc_core/utils/curve.h>
 '''
     ut.codegen_to(header_path)(cpp_interface_gen, include)
+    include = '#include <rbc_render/generated/pipeline_settings.hpp>'
+    ut.codegen_to(cpp_path)(cpp_enum_gen, include)

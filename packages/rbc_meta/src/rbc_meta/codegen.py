@@ -180,23 +180,35 @@ def _print_py_args(args: dict, is_first: bool):
     return r
 
 
-def _print_cpp_rtti(t: tr.struct):
-    name = t.full_name()
-    m = hashlib.md5(name.encode("ascii"))
-    is_first = True
-    digest = ''
-    for i in m.digest():
-        if not is_first:
-            digest += ', '
-        is_first = False
-        digest += str(int(i))
-    cb.add_result(f'''
+def _print_cpp_rtti(t):
+    if type(t) == tr.struct:
+        name = t.full_name()
+        m = hashlib.md5(name.encode("ascii"))
+        is_first = True
+        digest = ''
+        for i in m.digest():
+            if not is_first:
+                digest += ', '
+            is_first = False
+            digest += str(int(i))
+        cb.add_result(f'''
 namespace rbc_rtti_detail {{
 template<>
 struct is_rtti_type<{name}> {{
     static constexpr bool value = true;
     static constexpr luisa::string_view name{{"{name}"}};
     static constexpr uint8_t md5[16]{{{digest}}};
+}};
+}} // rbc_rtti_detail
+''')
+    else:
+        name = t.full_name()
+        cb.add_result(f'''
+namespace rbc_rtti_detail {{
+template<>
+struct is_rtti_type<{name}> {{
+    static constexpr bool value = true;
+    static constexpr luisa::string_view name{{"{name}"}};
 }};
 }} // rbc_rtti_detail
 ''')
@@ -241,6 +253,32 @@ def py_interface_gen(module_name: str):
         cb.remove_indent()
     return cb.get_result()
 
+def cpp_enum_gen(*extra_includes):
+    global cb
+    cb.set_result('')
+    for i in extra_includes:
+        cb.add_result(i + "\n")
+    # print enums
+    for enum_name in tr._registed_enum_types:
+        enum_type: tr.enum = tr._registed_enum_types[enum_name]
+        full_name = enum_type.full_name()
+        m = hashlib.md5(full_name.encode('ascii'))
+        digest = m.hexdigest()
+        enum_names = ""
+        enum_values = ""
+        is_first = True
+        for param_name_and_value in enum_type._params:
+            enum_value = param_name_and_value[0]
+            if not is_first:
+                enum_names += ", "
+                enum_values += ", "
+            is_first = False
+            enum_names += f'"{enum_value}"'
+            enum_values += f"(uint64_t)luisa::to_underlying({enum_name}::{enum_value})"
+        initer = f'"{full_name}", std::initializer_list<char const*>{{{enum_names}}}, std::initializer_list<uint64_t>{{{enum_values}}}'
+        cb.add_line(f'static rbc::EnumSerIniter emm_{digest}{{{initer}}};')
+    return cb.get_result()
+        
 
 def cpp_interface_gen(*extra_includes):
     cb.set_result("""#pragma once
@@ -272,44 +310,11 @@ def cpp_interface_gen(*extra_includes):
 
         if len(namespace) > 0:
             cb.add_line(f"}} // namespace {namespace}")
+            
         cb.add_result('\n')
-        # enum serialize
-        if enum_type._serde:
-            cb.add_line(f"""template<typename SerType, typename... Args>
-void rbc_objser(SerType &obj, {enum_name} const &var, Args... args) {{
-    switch (var) {{""")
-            cb.add_indent()
-            cb.add_indent()
-            enum_names = ""
-            enum_values = ""
-            is_first = True
-            for param_name_and_value in enum_type._params:
-                enun_name = param_name_and_value[0]
-                cb.add_line(
-                    f'case {enum_name}::{enun_name}: obj._store("{enun_name}", args...); break;'
-                )
-                if not is_first:
-                    enum_names += ", "
-                    enum_values += ", "
-                is_first = False
-                enum_names += f'"{enun_name}"'
-                enum_values += f"luisa::to_underlying({enum_name}::{enun_name})"
-            cb.remove_indent()
-            cb.add_line("}")
-            cb.remove_indent()
-            cb.add_line("}")
-            cb.add_line(f"""template<typename DeserType, typename... Args>
-bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
-    luisa::string value;
-    obj._load(value, args...);
-    static ::rbc::EnumSerializer _ser{{std::initializer_list<char const*>{{{enum_names}}}, std::initializer_list<uint32_t>{{{enum_values}}}}};
-    auto v = _ser.get_value(value.c_str());
-    if (v) {{
-        var = static_cast<{enum_name}>(*v);
-    }}
-    return v.has_value();
-}}
-""")
+        # RTTI
+        _print_cpp_rtti(enum_type)
+    
 
     # print classes
     for struct_name in tr._registed_struct_types:

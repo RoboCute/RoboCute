@@ -1,5 +1,6 @@
 import rbc_meta.type_register as tr
-from rbc_meta.codegen_util import codegen_pyd_module
+import rbc_meta.codegen_util as ut
+import rbc_meta.codegen as codegen
 from pathlib import Path
 
 
@@ -19,8 +20,6 @@ def codegen_module(
     file_name = "example_module"
 
     # codegen
-    codegen_pyd_module(
+    ut.codegen_pyd_module(
         pyd_name, file_name, "py_backend_impl", cpp_root_path, py_root_path
     )
-
-    print(file_name + " generated.")
