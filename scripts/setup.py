@@ -3,6 +3,7 @@ import sys
 import subprocess
 import json
 import shutil
+import requests
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait
 
@@ -34,34 +35,38 @@ def find_process_path(process_name):
         return os.path.dirname(path)
     return None
 
+
 def write_shader_compile_cmd():
     global PROJECT_ROOT
-    clangcxx_dir = Path(PROJECT_ROOT) / 'build/tool/clangcxx_compiler/clangcxx_compiler.exe'
+    clangcxx_dir = Path(PROJECT_ROOT) / \
+        'build/tool/clangcxx_compiler/clangcxx_compiler.exe'
     shader_dir = Path(PROJECT_ROOT) / 'rbc/shader'
     in_dir = shader_dir / 'src'
     # TODO: different platform
     host_dir = shader_dir / 'host'
     include_dir = shader_dir / 'include'
-    
-    base_cmd = lambda: f'"{clangcxx_dir}" -in="{in_dir}" -out="{out_dir}" -include="{include_dir}"'
-    build_cmd = lambda : base_cmd() + f' -hostgen="{host_dir}"'
+
+    def base_cmd(
+    ): return f'"{clangcxx_dir}" -in="{in_dir}" -out="{out_dir}" -include="{include_dir}"'
+    def build_cmd(): return base_cmd() + f' -hostgen="{host_dir}"'
     backends = ['dx', 'vk']
     # write files
     for backend in backends:
-        out_dir = Path(PROJECT_ROOT) / f'build/windows/x64/shader_build_{backend}'
+        out_dir = Path(PROJECT_ROOT) / \
+            f'build/windows/x64/shader_build_{backend}'
         f = open(shader_dir / f'{backend}_compile.cmd', 'w')
         f.write('@echo off\n' + build_cmd() + f' -backend={backend}')
         f.close()
-        
+
         f = open(shader_dir / f'{backend}_clean_compile.cmd', 'w')
-        f.write('@echo off\n' + build_cmd() + f' -backend={backend}' + ' -rebuild')
+        f.write('@echo off\n' + build_cmd() +
+                f' -backend={backend}' + ' -rebuild')
         f.close()
-        
+
     out_dir = shader_dir / '.vscode/compile_commands.json'
     f = open(shader_dir / 'gen_json.cmd', 'w')
     f.write('@echo off\n' + base_cmd() + ' -lsp')
     f.close()
-    
 
 
 def git_clone_or_pull(git_address, subdir, branch=None):
@@ -104,6 +109,34 @@ def git_clone_or_pull(git_address, subdir, branch=None):
         print(f"git clone {git_address} error.")
         sys.exit(1)
 
+
+def download_packages():
+    # TODO: different platform
+    platform = 'windows'
+    arch = 'x64'
+    plat_name = f'{platform}-{arch}'
+    download_path = Path(PROJECT_ROOT) / 'build/download'
+    download_path.mkdir(parents=True, exist_ok=True)
+    downloads = [
+        f'clangcxx_compiler-v2.0.0-{plat_name}.7z',
+        f'clangd-v19.1.7-{plat_name}.7z'
+    ]
+    address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/'
+
+    def download_file(file: str):
+        dst_path = str(download_path / file)
+        if os.path.exists(dst_path):
+            print(f"'{dst_path}' exists, skip download.")
+            return
+        print(f"Downloading '{dst_path}'...")
+        response = requests.get(address + file)
+        response.raise_for_status()
+        with open(dst_path, 'wb') as f:
+            f.write(response.content)
+        print(f"Download '{dst_path}' successfully!")
+    executor = ThreadPoolExecutor(max_workers=8)
+    futures1 = [executor.submit(download_file, name) for name in downloads]
+    return executor, futures1
 
 def run_git_tasks():
     # Define tasks
@@ -208,8 +241,10 @@ def run_git_tasks():
 
     # Group by stages based on dependencies
     stage1 = [k for k, v in tasks.items() if not v["deps"]]
-    stage2 = [k for k, v in tasks.items() if any(d in stage1 for d in v["deps"])]
-    stage3 = [k for k, v in tasks.items() if any(d in stage2 for d in v["deps"])]
+    stage2 = [k for k, v in tasks.items() if any(
+        d in stage1 for d in v["deps"])]
+    stage3 = [k for k, v in tasks.items() if any(
+        d in stage2 for d in v["deps"])]
 
     def run_task(name):
         t = tasks[name]
@@ -239,14 +274,19 @@ def run_git_tasks():
 
 def main():
     # ------------------------------ git ------------------------------
-    print("Clone submod? (y/n)")
+    print("Download, git-clone and git-pull? (y/n)")
     try:
         clone_lc = input().strip()
     except EOFError:
         clone_lc = "n"
 
     if clone_lc.lower() == "y":
+        download_executor, download_future = download_packages()
         run_git_tasks()
+        wait(download_future)
+        for f in download_future:
+            f.result()  # Raise exceptions if any
+        del download_executor
 
     lc_path = os.path.join(PROJECT_ROOT, "thirdparty/LuisaCompute")
     if is_empty_folder(lc_path):
@@ -283,7 +323,8 @@ def main():
             def to_slash(p):
                 return p.replace("\\", "/")
 
-            options["lc_py_include"] = to_slash(os.path.join(py_path, "include"))
+            options["lc_py_include"] = to_slash(
+                os.path.join(py_path, "include"))
             options["rbc_py_bin"] = to_slash(py_path)
 
             lc_py_linkdir = os.path.join(py_path, "libs")
@@ -304,6 +345,7 @@ def main():
         with open(opt_json_path, "w") as f:
             json.dump(options, f, indent=4)
         write_shader_compile_cmd()
+
 
 if __name__ == "__main__":
     main()

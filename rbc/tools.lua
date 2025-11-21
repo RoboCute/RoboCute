@@ -5,7 +5,8 @@ add_rules('lc_install_sdk', {
     libnames = {
         name = 'clangcxx_compiler-v2.0.0.7z',
         plat_spec = true,
-        address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/',
+        -- download in python
+        -- address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/',
         copy_dir = '',
         extract_dir = 'build/tool/clangcxx_compiler'
 
@@ -20,7 +21,8 @@ add_rules('lc_install_sdk', {
     libnames = {{
         name = 'clangd-v19.1.7.7z',
         plat_spec = true,
-        address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/',
+        -- download in python
+        -- address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/',
         copy_dir = '',
         extract_dir = 'build/tool/clangd'
     }

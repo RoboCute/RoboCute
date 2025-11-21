@@ -94,6 +94,7 @@ generated/
 __pycache__
 *.egg-info
 .env
+uv.lock
 
 
 src/rbc_ext/bin
