@@ -6,9 +6,22 @@
 namespace rbc {
 SceneManager::SceneManager(
     Context &ctx,
-    Device &device, luisa::filesystem::path const &shader_path)
-    : _ctx(ctx), _device(device), _mesh_mng(device), _temp_buffer(vstd::make_unique<HostBufferManager>(device)), _bdls_mng(device), _uploader(), _bf_alloc(device), _mat_mng(device, true), _light_accel(device) {
+    Device &device, Stream &copy_stream,
+    IOService &io_service,
+    CommandList &cmdlist,
+    luisa::filesystem::path const &shader_path)
+    : _ctx(ctx),
+      _device(device),
+      _mesh_mng(device),
+      _temp_buffer(vstd::make_unique<HostBufferManager>(device)),
+      _bdls_mng(device),
+      _uploader(),
+      _bf_alloc(device),
+      _mat_mng(device, true),
+      _light_accel(device) {
     ShaderManager::create_instance(device, shader_path);
+    _tex_streamer.create(
+        device, copy_stream, io_service, cmdlist, _bdls_mng);
     set_instance(this);
 }
 
@@ -36,6 +49,10 @@ void SceneManager::before_rendering(
             i.second->scene_manager_tick();
         }
     }
+    _tex_streamer->before_rendering(
+        stream,
+        host_upload_buffer(),
+        cmdlist);
     for (auto &i : _accel_mngs) {
         i->build_accel(cmdlist);
     }
@@ -147,6 +164,7 @@ void SceneManager::set_instance(SceneManager *scene_manager) {
     scene_mng_detail::_inst = scene_manager;
 }
 SceneManager::~SceneManager() {
+    _tex_streamer.destroy();
     ShaderManager::destroy_instance();
     if (scene_mng_detail::_inst == this) {
         scene_mng_detail::_inst = nullptr;

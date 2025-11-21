@@ -303,9 +303,9 @@ void AccelManager::_update_mesh_instance(
         }
         else
         {
-            auto temp_upload_buffer = temp_buffer.allocate_upload_buffer<uint>(mat_codes.size());
-            memcpy(temp_upload_buffer.mapped_ptr(), mat_codes.data(), mat_codes.size_bytes());
-            cmdlist << bf_view.subview(0, mat_codes.size()).copy_from(temp_upload_buffer.view);
+            auto host_upload_buffer = temp_buffer.allocate_upload_buffer<uint>(mat_codes.size());
+            memcpy(host_upload_buffer.mapped_ptr(), mat_codes.data(), mat_codes.size_bytes());
+            cmdlist << bf_view.subview(0, mat_codes.size()).copy_from(host_upload_buffer.view);
         }
     }
     else

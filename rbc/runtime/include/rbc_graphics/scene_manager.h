@@ -8,6 +8,7 @@
 #include <rbc_graphics/buffer_uploader.h>
 #include "shader_manager.h"
 #include "texture_uploader.h"
+#include "texture/tex_stream_manager.h"
 #include "accel_manager.h"
 #include "mat_manager.h"
 #include "light_accel.h"
@@ -51,12 +52,15 @@ private:
     MatManager _mat_mng;
     LightAccel _light_accel;
     TextureUploader _tex_uploader;
+    vstd::optional<TexStreamManager> _tex_streamer;
+
     luisa::spin_mutex _evt_mtx;
     vstd::HashMap<vstd::string, SceneManagerEvent *> _before_render_evts;
     vstd::HashMap<vstd::string, SceneManagerEvent *> _on_frame_end_evts;
 
 public:
     ///////////// properties
+    [[nodiscard]] auto &tex_streamer() const { return *_tex_streamer; }
     [[nodiscard]] auto &ctx() const { return _ctx; }
     [[nodiscard]] auto &device() const { return _device; }
     [[nodiscard]] auto &dispose_queue() { return _dsp_queue; }
@@ -68,7 +72,7 @@ public:
     [[nodiscard]] auto &buffer_allocator() { return _bf_alloc; }
     [[nodiscard]] AccelManager &accel_manager();
     [[nodiscard]] auto &mat_manager() { return _mat_mng; }
-    [[nodiscard]] auto &temp_upload_buffer() { return *_temp_buffer; }
+    [[nodiscard]] auto &host_upload_buffer() { return *_temp_buffer; }
     [[nodiscard]] auto &buffer_uploader() { return _uploader; }
     [[nodiscard]] auto const &buffer_heap() const { return _bdls_mng.buffer_heap(); }
     [[nodiscard]] auto &buffer_heap() { return _bdls_mng.buffer_heap(); }
@@ -76,7 +80,7 @@ public:
     [[nodiscard]] auto &image_heap() { return _bdls_mng.image_heap(); }
     [[nodiscard]] auto const &volume_heap() const { return _bdls_mng.volume_heap(); }
     [[nodiscard]] auto &volume_heap() { return _bdls_mng.volume_heap(); }
-    [[nodiscard]] Accel& accel();
+    [[nodiscard]] Accel &accel();
     [[nodiscard]] auto &mesh_manager() { return _mesh_mng; }
     [[nodiscard]] auto &light_accel() { return _light_accel; }
     [[nodiscard]] auto &tex_uploader() { return _tex_uploader; }
@@ -85,7 +89,12 @@ public:
     static void set_instance(SceneManager *scene_manager);
 
     ///////////// properties
-    SceneManager(Context &ctx, Device &device, luisa::filesystem::path const &shader_path);
+    SceneManager(Context &ctx,
+                 Device &device,
+                 Stream &copy_stream,
+                 IOService &io_service,
+                 CommandList &cmdlist,
+                 luisa::filesystem::path const &shader_path);
     void add_before_render_event(vstd::string_view name, SceneManagerEvent *func);
     void add_on_frame_end_event(vstd::string_view name, SceneManagerEvent *func);
     void remove_before_render_event(vstd::string_view name);

@@ -1,7 +1,6 @@
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/shader_manager.h>
 #include <rbc_graphics/render_device.h>
-#include <rbc_graphics/texture/tex_stream_manager.h>
 #include <luisa/gui/window.h>
 #include <luisa/runtime/swapchain.h>
 #include <luisa/dsl/sugar.h>
@@ -28,6 +27,9 @@ int main(int argc, char *argv[]) {
     sm.create(
         render_device.lc_ctx(),
         render_device.lc_device(),
+        render_device.lc_async_copy_stream(),
+        *render_device.io_service(),
+        cmdlist,
         shader_path);
 
     {
@@ -53,14 +55,6 @@ int main(int argc, char *argv[]) {
             << [accel = std::move(accel), mesh = std::move(mesh), buffer = std::move(buffer)]() {};
     }
     sm->load_shader();
-    // render loop
-    vstd::optional<TexStreamManager> tex_streamer;
-    tex_streamer.create(
-        render_device.lc_device(),
-        render_device.lc_async_copy_stream(),
-        *render_device.io_service(),
-        render_device.lc_main_cmd_list(),
-        sm->bindless_manager());
     // init window
     Window window("test graphics", resolution);
     auto swapchain = render_device.lc_device().create_swapchain(
@@ -105,7 +99,6 @@ int main(int argc, char *argv[]) {
         ++frame_index;
         // before render
         // TODO: pipeline early-update
-        tex_streamer->before_rendering(main_stream, sm->temp_upload_buffer(), cmdlist);
         sm->before_rendering(
             cmdlist,
             main_stream);
@@ -131,7 +124,6 @@ int main(int argc, char *argv[]) {
         main_stream << cmdlist.commit();
     }
     main_stream.synchronize();
-    tex_streamer.destroy();
     sm.destroy();
     render_device.shutdown();
 }
