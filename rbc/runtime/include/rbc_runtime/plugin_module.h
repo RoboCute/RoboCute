@@ -17,6 +17,7 @@ struct RBC_RUNTIME_API PluginModule : RCBase {
     luisa::shared_ptr<luisa::DynamicModule> dll_module;
 
 private:
+    luisa::string _name;
     vstd::Pool<Node, true> _node_pool;
     Node *_before_nodes{nullptr};// before -> self
     Node *_after_nodes{nullptr}; // self -> after
@@ -29,7 +30,9 @@ public:
     static void add_depend(PluginModule &before, PluginModule &after) {
         add_depend(&before, &after);
     }
-    PluginModule();
+    PluginModule(
+        luisa::string_view name
+    );
     ~PluginModule();
     void deref();
     PluginModule(PluginModule const &) = delete;

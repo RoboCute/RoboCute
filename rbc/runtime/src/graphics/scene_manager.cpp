@@ -18,7 +18,8 @@ SceneManager::SceneManager(
       _uploader(),
       _bf_alloc(device),
       _mat_mng(device, true),
-      _light_accel(device) {
+      _light_accel(device),
+      light_accel_event(luisa::fiber::event::Mode::Auto, false) {
     ShaderManager::create_instance(device, shader_path);
     _tex_streamer.create(
         device, copy_stream, io_service, cmdlist, _bdls_mng);
@@ -43,6 +44,15 @@ void SceneManager::refresh_pipeline(
 void SceneManager::before_rendering(
     CommandList &cmdlist,
     Stream &stream) {
+    {
+        light_accel().reserve_tlas();
+        light_accel().update_tlas(cmdlist, dispose_queue());
+        luisa::fiber::schedule([this]() {
+            light_accel().build_tlas();
+            light_accel_event.signal();
+        });
+    }
+
     {
         std::lock_guard lck{_evt_mtx};
         for (auto &i : _before_render_evts) {
@@ -85,6 +95,7 @@ bool SceneManager::on_frame_end(
     CommandList &cmdlist,
     Stream &stream,
     ManagedDevice *managed_device) {
+    light_accel_event.wait();
     {
         std::lock_guard lck{_evt_mtx};
         for (auto &i : _on_frame_end_evts) {

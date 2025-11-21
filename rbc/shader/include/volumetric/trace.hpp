@@ -51,7 +51,7 @@ CommittedHit trace_volumetric(auto const& volume_stack,
 		trace = any(volume.albedo != float3(0.0f));
 	}
 	if (!trace) {
-		auto result = rbq_trace_closest(ray, idxs, rng, procedural_geometry, mask);
+		auto result = rbc_trace_closest(ray, idxs, rng, procedural_geometry, mask);
 		throughput *= exp(-volume.extinction * (result.hit_triangle() ? result.ray_t : SKY_DISTANCE));
 		return result;
 	}
@@ -62,7 +62,7 @@ CommittedHit trace_volumetric(auto const& volume_stack,
 		float3 channel_probs;
 		int channel = sample_channel(volume.albedo, throughput, rng.next(g_buffer_heap), channel_probs);
 		ray.t_max = -log(rng.next(g_buffer_heap)) * mfp[channel];
-		CommittedHit surface_hit = rbq_trace_closest(ray, idxs, rng, procedural_geometry, mask);
+		CommittedHit surface_hit = rbc_trace_closest(ray, idxs, rng, procedural_geometry, mask);
 		if (surface_hit.hit_triangle()) {
 			if (n > 0)
 				detail = max(detail, ShadingDetail::IndirectDiffuse);

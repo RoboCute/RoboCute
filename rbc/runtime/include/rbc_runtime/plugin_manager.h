@@ -27,9 +27,12 @@ struct RBC_RUNTIME_API CompiledGraph {
 };
 struct RBC_RUNTIME_API PluginManager {
 private:
-    luisa::vector<RC<PluginModule>> loaded_modules;
+    vstd::HashMap<
+        luisa::string,
+        RC<PluginModule>>
+        loaded_modules;
 public:
-    PluginModule *load_module();
+    PluginModule *load_module(luisa::string_view name);
 
     CompiledGraph compile() const;
 };

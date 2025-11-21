@@ -1,8 +1,8 @@
 #ifndef OFFLINE_MODE
 #define PT_CONFIDENCE_ACCUM
 #endif
-#define RBQ_USE_RAYQUERY
-#define RBQ_USE_RAYQUERY_SHADOW
+#define RBC_USE_RAYQUERY
+#define RBC_USE_RAYQUERY_SHADOW
 
 #include <path_tracer/integrator.hpp>
 #include <path_tracer/pt_args.hpp>
@@ -107,7 +107,7 @@ void accum_sky(SpectrumArg& spectrum_arg,
 	ProceduralGeometry procedural_geometry;
 	bool reject = false;
 	while (depth < MAX_DEPTH) {
-		auto hit = rbq_trace_closest(ray, args, pcg_sampler, procedural_geometry, ONLY_OPAQUE_MASK);
+		auto hit = rbc_trace_closest(ray, args, pcg_sampler, procedural_geometry, ONLY_OPAQUE_MASK);
 		if (hit.miss()) {
 			accum_sky(
 				spectrum_arg,
@@ -179,7 +179,7 @@ void accum_sky(SpectrumArg& spectrum_arg,
 
 		input_pos = ray.origin();
 		if (depth == (MAX_DEPTH - 1)) {
-			if (!rbq_trace_any(ray, args, pcg_sampler, ONLY_OPAQUE_MASK)) {
+			if (!rbc_trace_any(ray, args, pcg_sampler, ONLY_OPAQUE_MASK)) {
 				accum_sky(
 					spectrum_arg,
 					args.world_2_sky_mat,

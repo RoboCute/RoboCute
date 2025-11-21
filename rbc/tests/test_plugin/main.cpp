@@ -14,10 +14,10 @@ int main() {
     luisa::fiber::scheduler scheduler;
     PluginManager plugin_manager;
     vstd::HashMap<PluginModule *, vstd::string> modules;
-    auto a = modules.try_emplace(plugin_manager.load_module(), "A").first.key();
-    auto b = modules.try_emplace(plugin_manager.load_module(), "B").first.key();
-    auto c = modules.try_emplace(plugin_manager.load_module(), "C").first.key();
-    auto d = modules.try_emplace(plugin_manager.load_module(), "D").first.key();
+    auto a = modules.try_emplace(plugin_manager.load_module("A"), "A").first.key();
+    auto b = modules.try_emplace(plugin_manager.load_module("B"), "B").first.key();
+    auto c = modules.try_emplace(plugin_manager.load_module("C"), "C").first.key();
+    auto d = modules.try_emplace(plugin_manager.load_module("D"), "D").first.key();
     PluginModule::add_depend(a, b);
     PluginModule::add_depend(a, c);
     PluginModule::add_depend(b, d);

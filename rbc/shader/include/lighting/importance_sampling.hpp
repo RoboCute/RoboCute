@@ -469,7 +469,7 @@ inline LightISResult bsdf_light_importance_sampling(
 	if (split_di_sample) {
 		if (hdri_sample.pdf > epsilon) {
 			auto eval_result = bsdf_eval_func(hdri_sample.wi);
-			if (eval_result.w > epsilon && !rbq_trace_any(Ray(world_pos, hdri_sample.wi, sampling::offset_ray_t_min, 1e8f), bdls_indices, sampler, ONLY_OPAQUE_MASK)) {
+			if (eval_result.w > epsilon && !rbc_trace_any(Ray(world_pos, hdri_sample.wi, sampling::offset_ray_t_min, 1e8f), bdls_indices, sampler, ONLY_OPAQUE_MASK)) {
 				float hdri_mis = sampling::balanced_heuristic(hdri_sample.pdf, eval_result.w);
 				result.radiance.xyz = hdri_sample.L * hdri_mis * eval_result.xyz / max(epsilon, hdri_sample.pdf);
 			}
@@ -504,7 +504,7 @@ inline LightISResult bsdf_light_importance_sampling(
 		return result;
 	}
 	auto eval_result = bsdf_eval_func(di_sample.wi);
-	if (eval_result.w < epsilon || rbq_trace_any(Ray(world_pos, di_sample.wi, sampling::offset_ray_t_min, max(sampling::offset_ray_t_min, di_sample.wi_length - sampling::offset_ray_t_min)), bdls_indices, sampler, ONLY_OPAQUE_MASK)) {
+	if (eval_result.w < epsilon || rbc_trace_any(Ray(world_pos, di_sample.wi, sampling::offset_ray_t_min, max(sampling::offset_ray_t_min, di_sample.wi_length - sampling::offset_ray_t_min)), bdls_indices, sampler, ONLY_OPAQUE_MASK)) {
 		result.light_type = max_uint32;
 		result.light_index = max_uint32;
 		return result;

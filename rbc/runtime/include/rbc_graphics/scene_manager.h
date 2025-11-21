@@ -57,6 +57,7 @@ private:
     luisa::spin_mutex _evt_mtx;
     vstd::HashMap<vstd::string, SceneManagerEvent *> _before_render_evts;
     vstd::HashMap<vstd::string, SceneManagerEvent *> _on_frame_end_evts;
+    luisa::fiber::event light_accel_event;
 
 public:
     ///////////// properties

@@ -5,17 +5,17 @@
 #include <bsdfs/openpbr.hpp>
 
 #include <std/utility>
-#define RBQ_LITE_PBR_MATERIAL
+#define RBC_LITE_PBR_MATERIAL
 namespace mtl {
 
 enum class PolymorphicBSDFType {
-#ifndef RBQ_LITE_PBR_MATERIAL
+#ifndef RBC_LITE_PBR_MATERIAL
 	Openpbr,
 #endif
 	BasicMetallic,
 // Basic,
 // Metal,
-#ifndef RBQ_LITE_PBR_MATERIAL
+#ifndef RBC_LITE_PBR_MATERIAL
 	Subsurface,
 #endif
 	Glass,
@@ -48,13 +48,13 @@ struct GlassExtraParameter {
 };
 
 using PolymorphicBSDF = stdex::type_list<
-#ifndef RBQ_LITE_PBR_MATERIAL
+#ifndef RBC_LITE_PBR_MATERIAL
 	std::pair<OpenpbrBSDF, OpenpbrExtraParameter>,
 #endif
 	std::pair<MixingBSDF<WeightedLayeringBSDF<SmoothLambertianBRDF, DielectricSpecularBRDF, SpecularWeight>, ConductorBRDF, MetalnessWeight>, BasicMetallicExtraParameter>
 // std::pair<WeightedLayeringBSDF<SmoothLambertianBRDF, DielectricSpecularBRDF, SpecularWeight>, BasicExtraParameter>,
 // std::pair<ConductorBRDF, MetalExtraParameter>
-#ifndef RBQ_LITE_PBR_MATERIAL
+#ifndef RBC_LITE_PBR_MATERIAL
 	,
 	std::pair<WeightedLayeringBSDF<SubsurfaceBSDF, DielectricSpecularBRDF, SpecularWeight>, SubsurfaceExtraParameter>
 #endif
@@ -64,7 +64,7 @@ using PolymorphicBSDF = stdex::type_list<
 inline PolymorphicBSDFType detect_polymorphic_bsdf_type(
 	auto const& weight) noexcept {
 	mtl::PolymorphicBSDFType bsdf_type =
-#ifndef RBQ_LITE_PBR_MATERIAL
+#ifndef RBC_LITE_PBR_MATERIAL
 		mtl::PolymorphicBSDFType::Openpbr;
 #else
 		mtl::PolymorphicBSDFType::BasicMetallic;
@@ -83,7 +83,7 @@ inline PolymorphicBSDFType detect_polymorphic_bsdf_type(
 			flatten();
 			if (weight.transmission == 0.0f) {
 				flatten();
-#ifndef RBQ_LITE_PBR_MATERIAL
+#ifndef RBC_LITE_PBR_MATERIAL
 				if (weight.subsurface == 1.0f) {
 					bsdf_type = mtl::PolymorphicBSDFType::Subsurface;
 				}
@@ -102,7 +102,7 @@ inline PolymorphicBSDFType detect_polymorphic_bsdf_type(
 				}
 			}
 		}
-#ifndef RBQ_LITE_PBR_MATERIAL
+#ifndef RBC_LITE_PBR_MATERIAL
 		else {
 			flatten();
 			if (weight.subsurface == 0.0f && weight.transmission == 0.0f) {

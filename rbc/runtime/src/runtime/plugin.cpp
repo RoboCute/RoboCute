@@ -3,7 +3,7 @@
 #include <rbc_runtime/plugin_manager.h>
 #include <rbc_runtime/plugin_module.h>
 namespace rbc {
-PluginModule::PluginModule() : _node_pool(256, false) {}
+PluginModule::PluginModule(luisa::string_view name) : _name(name), _node_pool(256, false) {}
 void PluginModule::deref() {
     for (size_t idx = 0; idx < _allocated_nodes.size();) {
         auto node = _allocated_nodes[idx];
@@ -83,7 +83,7 @@ auto PluginManager::compile() const -> CompiledGraph {
     };
     // init nodes
     for (auto &i : loaded_modules) {
-        auto n = create_node(i.get());
+        auto n = create_node(i.second.get());
         auto after = n->ptr->_after_nodes;
         while (after) {
             auto depended_node = create_node(after->self.visit_or((PluginModule *)nullptr, []<typename T>(T const &t) {
@@ -162,7 +162,7 @@ void CompiledGraph::execute(
         }
     }
 }
-PluginModule *PluginManager::load_module() {
-    return loaded_modules.emplace_back(RC<PluginModule>::New()).get();
+PluginModule *PluginManager::load_module(luisa::string_view name) {
+    return loaded_modules.try_emplace(name, RC<PluginModule>::New(name)).first.value().get();
 }
 }// namespace rbc

@@ -224,7 +224,7 @@ _basic_types = {
     double4x4,
     GUID,
 }
-_template_types = {vector, ClassPtr, unordered_map}
+_template_types = {vector, ClassPtr, unordered_map, external_type}
 _registed_struct_types = {}
 _registed_enum_types = {}
 

@@ -1,7 +1,7 @@
 // #define USE_DLSS
 #define DEBUG
-#define RBQ_USE_RAYQUERY
-#define RBQ_USE_RAYQUERY_SHADOW
+#define RBC_USE_RAYQUERY
+#define RBC_USE_RAYQUERY_SHADOW
 
 #include <luisa/printer.hpp>
 #define PT_CONFIDENCE_ACCUM
@@ -280,7 +280,7 @@ CommittedHit unpack_triangle_hit(uint4 v) {
 	bool inject_gbuffer = sample == 0;
 	CommittedHit hit;
 	if (inject_gbuffer) {
-		hit = rbq_trace_closest(ray, args, parimary_ray_sampler, procedural_geometry);
+		hit = rbc_trace_closest(ray, args, parimary_ray_sampler, procedural_geometry);
 		if (spp > 1)
 			vbuffer.write(coord, pack_triangle_hit(hit));
 	} else {
@@ -290,7 +290,7 @@ CommittedHit unpack_triangle_hit(uint4 v) {
 		}
 	}
 #else
-	auto hit = rbq_trace_closest(ray, args, parimary_ray_sampler, procedural_geometry);
+	auto hit = rbc_trace_closest(ray, args, parimary_ray_sampler, procedural_geometry);
 #endif
 	float3 addition_color{0};
 	float3 albedo{1};

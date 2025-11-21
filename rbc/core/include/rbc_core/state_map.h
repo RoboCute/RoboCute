@@ -106,7 +106,7 @@ public:
         requires(std::is_default_constructible_v<T> && std::is_copy_constructible_v<T>)
     T read_safe() {
         vstd::Storage<T> storage;
-        auto ptr = static_cast<T *>(storage.c);
+        auto ptr = reinterpret_cast<T *>(storage.c);
         _map_mtx.lock();
         auto iter = _map.try_emplace(rbc::TypeInfo::get<T>());
         _map_mtx.unlock();

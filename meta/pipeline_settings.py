@@ -75,8 +75,8 @@ def codegen_header(header_path: Path):
         displayGreenPrimary=tr.float2,
         displayBluePrimary=tr.float2,
         displayWhitePoint=tr.float2,
-        displayMinLuminance=tr.float2,
-        displayMaxLuminance=tr.float2,
+        displayMinLuminance=tr.float,
+        displayMaxLuminance=tr.float,
     )
     LpmDispatchParameters.init_member(
         shoulder=True,
@@ -125,5 +125,94 @@ def codegen_header(header_path: Path):
         hdr_display_multiplier='5.0f',
         hdr_paper_white='80.0f',
     )
+    FrameSettings = tr.struct('rbc::FrameSettings')
+    FrameSettings.members(
+        render_resolution=tr.uint2,
+        display_resolution=tr.uint2,
+        display_offset=tr.uint2,
+        frame_index=tr.long,
+        time=tr.double,
+        delta_time=tr.float,
+        to_rec2020_matrix=tr.float3x3,
+        resource_color_space=ResourceColorSpace,
+        dst_img=tr.external_type('luisa::compute::Image<float> const*')
+    )
+    FrameSettings.init_member(
+        resource_color_space='ResourceColorSpace::Rec709'
+    )
+    curve = tr.external_type('Curve')
+    ACESParameters = tr.struct('rbc::ACESParameters')
+    ACESParameters.members(
+        hueVsHueCurve=curve,
+        hueVsSatCurve=curve,
+        satVsSatCurve=curve,
+        lumVsSatCurve=curve,
+        redCurve=curve,
+        greenCurve=curve,
+        blueCurve=curve,
+        masterCurve=curve,
+        dirty=tr.bool
+    )
+    ACESParameters.serde_members(
+        temperature=tr.float,
+        tint=tr.float,
+        use_white_balance_mode=tr.bool,
+        hueShift=tr.float,
+        saturation=tr.float,
+        contrast=tr.float,
+        mixerRedOutRedIn=tr.float,
+        mixerRedOutGreenIn=tr.float,
+        mixerRedOutBlueIn=tr.float,
+        mixerGreenOutRedIn=tr.float,
+        mixerGreenOutGreenIn=tr.float,
+        mixerGreenOutBlueIn=tr.float,
+        mixerBlueOutRedIn=tr.float,
+        mixerBlueOutGreenIn=tr.float,
+        mixerBlueOutBlueIn=tr.float,
 
-    ut.codegen_to(header_path)(cpp_interface_gen)
+        lift=tr.float4,
+        gamma=tr.float4,
+        gain=tr.float4,
+        colorFilter=tr.float4,
+        tone_mapping=tr.external_type('ToneMappingParameters')
+    )
+
+    ACESParameters.init_member(
+        hueVsHueCurve='{ float2(0, 0.5f) }',
+        hueVsSatCurve='{ float2(0, 0.5f) }',
+        satVsSatCurve='{ float2(0, 0.5f) }',
+        lumVsSatCurve='{ float2(0, 0.5f) }',
+        temperature=6500,
+        mixerRedOutRedIn=100,
+        mixerGreenOutGreenIn=100,
+        mixerBlueOutBlueIn=100,
+        lift='1, 1, 1, 0',
+        gamma='1, 1, 1, 0',
+        gain='1, 1, 1, 0',
+        colorFilter='1, 1, 1, 0',
+        dirty=True
+    )
+    ExposureSettings = tr.struct('ExposureSettings')
+    ExposureSettings.serde_members(
+        use_auto_exposure=tr.bool,
+        filtering=tr.float2,
+        minLuminance=tr.float,
+        maxLuminance=tr.float,
+        globalExposure=tr.float,
+        speedUp=tr.float,
+        speedDown=tr.float
+    )
+    ExposureSettings.init_member(
+        use_auto_exposure=True,
+        filtering='1.0f, 95.0f',
+        minLuminance=-9,
+        maxLuminance=9,
+        globalExposure=0.5,
+        speedUp=16,
+        speedDown=16
+    )
+
+    include = '''#include <luisa/runtime/image.h>
+#include <rbc_core/utils/curve.h>
+'''
+    ut.codegen_to(header_path)(cpp_interface_gen, include)

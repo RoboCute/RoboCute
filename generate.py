@@ -35,7 +35,7 @@ GENERATION_TASKS = [
         "meta.pipeline_settings",
         "codegen_header",
         Path(
-            "rbc/runtime/include/rbc_render/generated/pipeline_settings.hpp"
+            "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.hpp"
         ).resolve(),
     ),
 ]

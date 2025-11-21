@@ -15,7 +15,7 @@ enum struct TwoPointPerspectiveType : int {
 };
 
 // clang-format off
-struct Camera {
+struct RBC_RUNTIME_API Camera {
     // clang-format on
     // help setter
     void set_rotation_towards(float3 target_pos);

@@ -2,8 +2,8 @@
 #include <luisa/printer.hpp>
 
 #define OFFLINE_MODE
-#define RBQ_USE_RAYQUERY
-#define RBQ_USE_RAYQUERY_SHADOW
+#define RBC_USE_RAYQUERY
+#define RBC_USE_RAYQUERY_SHADOW
 #include <luisa/std.hpp>
 #include <luisa/resources.hpp>
 #include <path_tracer/read_pixel.hpp>
@@ -89,7 +89,7 @@ using namespace luisa::shader;
 		ray = Ray(near_world_pos.xyz, dir, sampling::offset_ray_t_min, dir_len);
 	}
 	ProceduralGeometry procedural_geometry;
-	auto hit = rbq_trace_closest(ray, args, sampler, procedural_geometry);
+	auto hit = rbc_trace_closest(ray, args, sampler, procedural_geometry);
 	float3 addition_color;
 	float addition_alpha = 0;
 	float3 albedo_sum;

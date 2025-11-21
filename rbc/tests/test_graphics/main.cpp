@@ -118,6 +118,9 @@ int main(int argc, char *argv[]) {
             main_stream, managed_device);
 
         main_stream << swapchain.present(dst_img) << timeline_event.signal(frame_index);
+        float3x3 a;
+        float3 b;
+        a * b;
     }
     // Destroy
     if (!cmdlist.empty()) {

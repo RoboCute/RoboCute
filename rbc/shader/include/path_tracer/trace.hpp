@@ -8,10 +8,10 @@
 #include <std/concepts>
 
 namespace luisa::shader {
-#define RBQ_USE_RAYQUERY
-#define RBQ_USE_RAYQUERY_SHADOW
+#define RBC_USE_RAYQUERY
+#define RBC_USE_RAYQUERY_SHADOW
 
-#if defined(RBQ_USE_RAYQUERY) || defined(RBQ_USE_RAYQUERY_SHADOW)
+#if defined(RBC_USE_RAYQUERY) || defined(RBC_USE_RAYQUERY_SHADOW)
 extern Buffer<uint>& g_triangle_vis_buffer;
 #endif
 extern Accel& g_accel;
@@ -27,7 +27,7 @@ concept TraceIndices = requires(T t) {
 	{ auto(t.frame_countdown) } -> std::same_as<uint>;
 };
 
-#if defined(RBQ_USE_RAYQUERY) || defined(RBQ_USE_RAYQUERY_SHADOW)
+#if defined(RBC_USE_RAYQUERY) || defined(RBC_USE_RAYQUERY_SHADOW)
 static bool commit_triangle(TriangleHit hit, TraceIndices auto const& idxs, auto& rng) {
 	auto user_id = g_accel.instance_user_id(hit.inst);
 	auto heap_idx = g_triangle_vis_buffer.read(user_id);
@@ -51,8 +51,8 @@ static bool commit_procedural(Ray ray, auto hit, auto& rng, float& hit_dist, Pro
 	return sampling::sample_procedural(ray, hit, rng, hit_dist, geometry);
 }
 #endif
-static CommittedHit rbq_trace_closest(Ray ray, TraceIndices auto const& idxs, auto& rng, ProceduralGeometry& procedural_geometry, uint mask = max_uint32) {
-#ifdef RBQ_USE_RAYQUERY
+static CommittedHit rbc_trace_closest(Ray ray, TraceIndices auto const& idxs, auto& rng, ProceduralGeometry& procedural_geometry, uint mask = max_uint32) {
+#ifdef RBC_USE_RAYQUERY
 	auto query = g_accel.query_all(ray, mask);
 	TriangleHit hit;
 	ProceduralHit proc_hit;
@@ -76,8 +76,8 @@ static CommittedHit rbq_trace_closest(Ray ray, TraceIndices auto const& idxs, au
 #endif
 }
 
-static bool rbq_trace_any(Ray ray, TraceIndices auto const& idxs, auto& rng, uint mask = max_uint32) {
-#ifdef RBQ_USE_RAYQUERY_SHADOW
+static bool rbc_trace_any(Ray ray, TraceIndices auto const& idxs, auto& rng, uint mask = max_uint32) {
+#ifdef RBC_USE_RAYQUERY_SHADOW
 	auto query = g_accel.query_any(ray, mask);
 	TriangleHit hit;
 	ProceduralHit proc_hit;

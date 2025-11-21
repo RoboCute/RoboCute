@@ -51,6 +51,7 @@ _template_names = {
     tr.vector: lambda ele: f"luisa::vector<{_print_arg_type(ele._element)}>",
     tr.unordered_map: lambda ele: f"luisa::unordered_map<{_print_arg_type(ele._key)}, {_print_arg_type(ele._value)}>",
     tr.ClassPtr: lambda ele: "void*",
+    tr.external_type: lambda x:  x._name
 }
 
 _py_names = {
@@ -103,8 +104,6 @@ def _print_arg_type(t, py_interface: bool = False, is_view: bool = False):
         tr.log_err(f"invalid type {str(t)}")
     if type(t) is tr.struct or type(t) is tr.enum:
         return t.full_name()
-    if type(t) == tr.external_type:
-        return t._name
     tr.log_err(f"invalid type {str(t)}")
 
 
@@ -188,7 +187,7 @@ def _print_cpp_rtti(t: tr.struct):
     digest = ''
     for i in m.digest():
         if not is_first:
-            digest +=', '
+            digest += ', '
         is_first = False
         digest += str(int(i))
     cb.add_result(f'''
@@ -199,7 +198,8 @@ struct is_rtti_type<{name}> {{
     static constexpr luisa::string_view name{{"{name}"}};
     static constexpr uint8_t md5[16]{{{digest}}};
 }};
-}}''')
+}} // rbc_rtti_detail
+''')
 
 
 def py_interface_gen(module_name: str):
@@ -271,7 +271,8 @@ def cpp_interface_gen(*extra_includes):
         cb.add_line("};")
 
         if len(namespace) > 0:
-            cb.add_line("}")
+            cb.add_line(f"}} // namespace {namespace}")
+        cb.add_result('\n')
         # enum serialize
         if enum_type._serde:
             cb.add_line(f"""template<typename SerType, typename... Args>
@@ -307,7 +308,8 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
         var = static_cast<{enum_name}>(*v);
     }}
     return v.has_value();
-}}""")
+}}
+""")
 
     # print classes
     for struct_name in tr._registed_struct_types:
@@ -366,7 +368,8 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
         cb.remove_indent()
         cb.add_line("};")
         if len(namespace) > 0:
-            cb.add_line("}")
+            cb.add_line(f"}} // namespace {namespace}")
+        cb.add_result('\n')
         # RTTI
         _print_cpp_rtti(struct_type)
     return cb.get_result()
