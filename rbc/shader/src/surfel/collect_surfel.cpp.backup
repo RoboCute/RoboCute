@@ -1,0 +1,29 @@
+#include <surfel/surfel_grid.hpp>
+
+[[kernel_1d(128)]] int kernel(
+	Buffer<uint>& key_buffer,
+	Buffer<uint>& value_buffer,
+	Buffer<uint>& index_buffer,
+	Buffer<uint>& counter_buffer) {
+	auto id = dispatch_id().x;
+	auto ori_value = key_buffer.read(id);
+	SharedArray<uint, 258> arr;
+	auto thd_id = thread_id().x;
+	if (thd_id == 0) {
+		arr[256] = 0;
+	}
+	sync_block();
+	if (ori_value != HASH_EMPTY) {
+		auto idx = arr.atomic_fetch_add(256, 1);
+		arr[idx] = id;
+	}
+	sync_block();
+	if (thd_id == 0 && arr[256] > 0) {
+		arr[257] = counter_buffer.atomic_fetch_add(0, arr[256]);
+	}
+	sync_block();
+	if (thd_id < arr[256]) {
+		index_buffer.write(thd_id + arr[257], arr[thd_id]);
+	}
+	return 0;
+}

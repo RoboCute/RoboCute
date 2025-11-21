@@ -96,7 +96,7 @@ struct IOBufferSubView {
 	}
 };
 struct IOCommand {
-	friend class IOService;
+	friend struct IOService;
 	using SrcType = luisa::variant<
 		IOFile::Handle,
 		void const*>;

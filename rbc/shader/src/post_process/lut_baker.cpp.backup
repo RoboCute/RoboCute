@@ -1,0 +1,16 @@
+#include <luisa/std.hpp>
+using namespace luisa::shader;
+
+float3 LogGrade(float3 colorLog)
+{
+    // Contrast feels a lot more natural when done in log rather than doing it in linear
+    colorLog = Contrast(colorLog, ACEScc_MIDGRAY, _HueSatCon.z);
+
+    return colorLog;
+}
+
+[[kernel_3d(8,8,8)]] int kernel(
+){
+
+    return 0;
+}

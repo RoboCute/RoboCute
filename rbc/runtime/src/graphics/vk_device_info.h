@@ -20,10 +20,6 @@ struct RBC_RUNTIME_API VkDeviceInfo : public VulkanDeviceConfigExt {
     IDxcUtils* dxc_utils{};
     VkDeviceInfo();
     ~VkDeviceInfo();
-    bool load_dxc() const noexcept override
-    {
-        return true;
-    }
     void init_volk(PFN_vkGetInstanceProcAddr handler) noexcept override;
     void readback_vulkan_device(
         VkInstance instance,

@@ -14,8 +14,9 @@ struct RBC_RUNTIME_API PluginModule : RCBase {
         vstd::variant<RC<PluginModule>, RCWeak<PluginModule>> self{};
         uint64_t allocated_idx{~0ull};
     };
+    luisa::shared_ptr<luisa::DynamicModule> dll_module;
+
 private:
-    luisa::DynamicModule _dll_module;
     vstd::Pool<Node, true> _node_pool;
     Node *_before_nodes{nullptr};// before -> self
     Node *_after_nodes{nullptr}; // self -> after
@@ -25,6 +26,9 @@ private:
 
 public:
     static void add_depend(PluginModule *before, PluginModule *after);
+    static void add_depend(PluginModule &before, PluginModule &after) {
+        add_depend(&before, &after);
+    }
     PluginModule();
     ~PluginModule();
     void deref();

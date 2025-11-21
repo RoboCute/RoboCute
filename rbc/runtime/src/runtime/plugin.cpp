@@ -61,9 +61,11 @@ void PluginModule::add_depend(PluginModule *before, PluginModule *after) {
     after->_before_nodes = before_node;
 }
 
-PluginManager::CompiledGraph::CompiledGraph() : pool(256, false) {}
-PluginManager::CompiledGraph::~CompiledGraph() {
-    std::destroy(allocated_nodes.begin(), allocated_nodes.end());
+CompiledGraph::CompiledGraph() : pool(256, false) {}
+CompiledGraph::~CompiledGraph() {
+    for (auto &i : allocated_nodes) {
+        std::destroy_at(i);
+    }
 }
 
 auto PluginManager::compile() const -> CompiledGraph {
@@ -81,23 +83,21 @@ auto PluginManager::compile() const -> CompiledGraph {
     };
     // init nodes
     for (auto &i : loaded_modules) {
-        if (i->_before_nodes == nullptr) {
-            auto n = create_node(i.get());
-            auto after = n->ptr->_after_nodes;
-            while (after) {
-                auto depended_node = create_node(after->self.visit_or((PluginModule *)nullptr, []<typename T>(T const &t) {
-                    if constexpr (std::is_same_v<T, RC<PluginModule>>) {
-                        return t.get();
-                    } else {
-                        return t.lock().get();
-                    }
-                }));
-                if (depended_node) {
-                    n->after_self.emplace_back(depended_node);
-                    depended_node->depended_count += 1;
+        auto n = create_node(i.get());
+        auto after = n->ptr->_after_nodes;
+        while (after) {
+            auto depended_node = create_node(after->self.visit_or((PluginModule *)nullptr, []<typename T>(T const &t) {
+                if constexpr (std::is_same_v<T, RC<PluginModule>>) {
+                    return t.get();
+                } else {
+                    return t.lock().get();
                 }
-                after = after->right;
+            }));
+            if (depended_node) {
+                n->after_self.emplace_back(depended_node);
+                depended_node->depended_count += 1;
             }
+            after = after->right;
         }
     }
     // get root
@@ -108,17 +108,18 @@ auto PluginManager::compile() const -> CompiledGraph {
     }
     return graph;
 }
-void PluginManager::execute_parallel(
-    CompiledGraph &graph,
+void CompiledGraph::execute_parallel(
     vstd::function<void(PluginModule *)> &&callback) const {
+    if (allocated_nodes.empty()) return;
     luisa::vector<CompiledNode *> stack;
-    luisa::fiber::counter all_counter(graph.allocated_nodes.size());
+    luisa::fiber::counter all_counter(allocated_nodes.size());
     // init
-    for (auto &i : graph.allocated_nodes) {
+    for (auto &i : allocated_nodes) {
         i->lefted_count = i->depended_count;
-        i->depended_counter.add(i->depended_count);
+        if (i->depended_count > 0)
+            i->depended_counter.add(i->depended_count);
     }
-    vstd::push_back_all(stack, luisa::span{graph.root_nodes});
+    vstd::push_back_all(stack, luisa::span{root_nodes});
     // execute
     luisa::SharedFunction<void(PluginModule *)> shared_func{std::move(callback)};
     while (!stack.empty()) {
@@ -140,15 +141,15 @@ void PluginManager::execute_parallel(
     }
     all_counter.wait();
 }
-void PluginManager::execute(
-    CompiledGraph &graph,
+void CompiledGraph::execute(
     vstd::function<void(PluginModule *)> const &callback) const {
     luisa::vector<CompiledNode *> stack;
+    if (allocated_nodes.empty()) return;
     // init
-    for (auto &i : graph.allocated_nodes) {
+    for (auto &i : allocated_nodes) {
         i->lefted_count = i->depended_count;
     }
-    vstd::push_back_all(stack, luisa::span{graph.root_nodes});
+    vstd::push_back_all(stack, luisa::span{root_nodes});
     // execute
     while (!stack.empty()) {
         auto v = stack.back();
@@ -160,5 +161,8 @@ void PluginManager::execute(
             }
         }
     }
+}
+PluginModule *PluginManager::load_module() {
+    return loaded_modules.emplace_back(RC<PluginModule>::New()).get();
 }
 }// namespace rbc

@@ -28,7 +28,6 @@ public:
     }
     RBC_RUNTIME_API luisa::optional<ExternalDevice> CreateExternalDevice() noexcept override;
     RBC_RUNTIME_API luisa::optional<GPUAllocatorSettings> GetGPUAllocatorSettings() noexcept override;
-    bool LoadDXC() const noexcept override { return true; }
     RBC_RUNTIME_API void ReadbackDX12Device(
         ID3D12Device* device,
         IDXGIAdapter1* adapter,

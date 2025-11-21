@@ -1,0 +1,141 @@
+#define CONFIDENCE
+#include <surfel/surfel_grid.hpp>
+#include <surfel/trace_args.hpp>
+#include <path_tracer/integrator.hpp>
+#include <sampling/sample_funcs.hpp>
+
+[[kernel_1d(128)]] int kernel(
+	Buffer<uint>& value_buffer,
+	Buffer<uint>& index_buffer,
+	Buffer<uint>& counter_buffer,
+	Image<uint>& light_dirty_map,
+	Accel& accel,
+	BindlessArray& heap,
+	TraceSurfelArgs args) {
+	auto id = dispatch_id().x;
+	auto count = counter_buffer.read(0);
+	if (id >= count) {
+		return 0;
+	}
+	id = index_buffer.read(id);
+	sampling::LCGSampler sampler(uint2(id, args.frame_index));
+	uint value_id = id * SURFEL_INT_SIZE;
+	float surfel_confidence = float(value_buffer.read(value_id + 3)) / float(max_uint32);
+
+	uint surfel_frame_index = value_buffer.read(value_id + 4);
+	float3 surfel_pos(
+		bit_cast<float>(value_buffer.read(value_id + 5)),
+		bit_cast<float>(value_buffer.read(value_id + 6)),
+		bit_cast<float>(value_buffer.read(value_id + 7)));
+	uint encoded_normal = value_buffer.read(value_id + 8);
+	float3 surfel_normal = sampling::decode_unit_vector(float2((encoded_normal & 0xffff) / float(0xffff), (encoded_normal >> 16) / float(0xffff)));
+	mtl::Onb onb(surfel_normal);
+	float3 eject_dir = sampling::cosine_sample_hemisphere(sampler.next2f());
+	float origin_pdf_bsdf = eject_dir.z * inv_pi;
+	eject_dir = normalize(onb.to_world(eject_dir));
+	Ray ray(surfel_pos, eject_dir, 0.5f / args.grid_size);
+	auto origin_hit = accel.trace_closest(ray);
+	float3 radiance(0.f);
+	if (origin_hit.miss()) {
+		if (args.sky_heap_idx != max_uint32)
+			radiance = heap.image_sample(args.sky_heap_idx, sampling::sphere_direction_to_uv(args.world_2_sky_mat, eject_dir)).xyz; // TODO: color space
+	} else {
+		const uint MAX_DEPTH = 5;
+		float pdf_bsdf = origin_pdf_bsdf;
+		float3 beta(1.0f);
+		uint filter = Filter::POINT;
+		float2 ddx = float2(1e2f);
+		float2 ddy = float2(1e2f);
+		float3 input_pos;
+		input_pos = surfel_pos;
+		float max_roughness = 0.0f;
+		float3 new_dir;
+		auto hit = origin_hit;
+		bool continue_loop = true;
+		for (int depth = 0; depth < MAX_DEPTH; ++depth) {
+			float3 di_result;
+			IntegratorResult result = sample_material(
+				accel,
+				heap,
+				sampler,
+				hit,
+				args.world_2_sky_mat,
+				args.inst_buffer_heap_idx,
+				args.mat_idx_buffer_heap_idx,
+				input_pos,
+				beta,
+				continue_loop,
+				filter,
+				max_roughness,
+				float2(0),
+				ddx,
+				ddy,
+				float3(0),
+				float3(0),
+				light_dirty_map,
+				true,
+				args.bvh_heap_idx,
+				args.point_lights_heap_idx,
+				args.spot_lights_heap_idx,
+				args.area_lights_heap_idx,
+				args.mesh_lights_heap_idx,
+				args.light_count,
+				args.alias_table_idx,
+				args.pdf_table_idx,
+				args.sky_heap_idx,
+				surfel_confidence,
+				args.sky_confidence,
+				true,
+				radiance,
+				di_result,
+				pdf_bsdf,
+				new_dir);
+			radiance += di_result * beta;
+			if (!continue_loop) break;
+			///////////// Prepare next ray
+			auto ray = Ray(sampling::offset_ray_origin(result.world_pos, dot(result.plane_normal, new_dir) < 0 ? -result.plane_normal : result.plane_normal), new_dir, 1e-3f, 1e5f);
+			auto accum_sky = [&]() {
+				if (args.sky_heap_idx == max_uint32) return;
+				float2 uv = sampling::sphere_direction_to_uv(args.world_2_sky_mat, new_dir);
+				float theta;
+				float phi;
+				float3 wi;
+				sampling::sphere_uv_to_direction_theta(args.world_2_sky_mat, uv, theta, phi, wi);
+				float mis = 1.f;
+				if (pdf_bsdf > 0.f) {
+					auto tex_size = heap.image_size(args.sky_heap_idx);
+					auto sky_coord = int2(uv * float2(tex_size));
+					sky_coord = clamp(sky_coord, int2(0), int2(tex_size) - 1);
+					auto sky_pdf = heap.buffer_read<float>(args.pdf_table_idx, sky_coord.y * tex_size.x + sky_coord.x);
+					sky_pdf = _directional_pdf(sky_pdf, theta);
+					mis = sampling::balanced_heuristic(pdf_bsdf, sky_pdf);
+					surfel_confidence *= lerp(1.0f, args.sky_confidence, mis);
+				}
+				radiance += beta * mis * sampling::to_rendering_colorspace(heap.image_sample(args.sky_heap_idx, uv).xyz);
+			};
+			if (depth < (MAX_DEPTH - 1)) {
+				hit = accel.trace_closest(ray);
+				if (hit.miss()) {
+					accum_sky();
+					break;
+				}
+				input_pos = result.world_pos;
+			}
+		}
+	}
+	float3 old_radiance(
+		bit_cast<float>(value_buffer.read(value_id + 0)),
+		bit_cast<float>(value_buffer.read(value_id + 1)),
+		bit_cast<float>(value_buffer.read(value_id + 2)));
+	float temporal_weight = 0.0f;
+	if (surfel_frame_index != max_uint32) {
+		temporal_weight = 0.95f;
+	}
+	temporal_weight *= surfel_confidence;
+	radiance = lerp(radiance, old_radiance, temporal_weight);
+	value_buffer.write(value_id, bit_cast<uint>(radiance.x));
+	value_buffer.write(value_id + 1, bit_cast<uint>(radiance.y));
+	value_buffer.write(value_id + 2, bit_cast<uint>(radiance.z));
+	value_buffer.write(value_id + 3, uint(surfel_confidence * float(max_uint32)));
+	return 0;
+}

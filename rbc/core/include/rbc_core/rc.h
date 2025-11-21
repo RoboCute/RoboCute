@@ -313,7 +313,7 @@ template<typename T>
 struct RCUnique;
 template<typename T>
 struct RCWeakLocker;
-struct RCBase : public vstd::IOperatorNewBase {
+struct RCBase : vstd::IOperatorNewBase {
     template<typename T>
     friend struct RC;
     template<typename T>

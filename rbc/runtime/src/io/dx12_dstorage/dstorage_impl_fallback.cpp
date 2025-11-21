@@ -16,7 +16,7 @@
 #endif
 namespace rbc
 {
-class DStorageStreamFallbackImpl : public DStorageStream
+struct DStorageStreamFallbackImpl : DStorageStream
 {
 public:
     inline static uint64_t staging_size{};
@@ -132,7 +132,7 @@ struct FrameBuffer {
         return view;
     }
 };
-struct IOQueue : public vstd::IOperatorNewBase {
+struct IOQueue : vstd::IOperatorNewBase {
     Device* _device;
     PinnedMemoryExt* _pinnedmem_ext;
     uint64_t _staging_size;

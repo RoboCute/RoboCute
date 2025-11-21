@@ -1,7 +1,7 @@
 #pragma once
 #include <luisa/vstl/v_guid.h>
 #include <nanobind/nanobind.h>
-struct GuidData : public vstd::IOperatorNewBase {
+struct GuidData : vstd::IOperatorNewBase {
     uint64_t data0;
     uint64_t data1;
     GuidData() : data0(0), data1(0) {}

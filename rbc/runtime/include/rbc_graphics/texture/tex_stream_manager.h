@@ -83,7 +83,7 @@ public:
             return luisa::hash64(&c, sizeof(Coord), luisa::hash64_default_seed);
         }
     };
-    struct TexIndex : public luisa::enable_shared_from_this<TexIndex>, public vstd::IOperatorNewBase {
+    struct TexIndex : public luisa::enable_shared_from_this<TexIndex>, vstd::IOperatorNewBase {
         BufferAllocator::Node node;
         SparseImage<float> img;
         TexPath path;

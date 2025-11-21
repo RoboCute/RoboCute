@@ -26,7 +26,7 @@ struct LoadTaskArgs {
     CommandList& cmdlist;
     uint64_t load_frame;
 };
-struct RBC_RUNTIME_API AssetsManager : public vstd::IOperatorNewBase {
+struct RBC_RUNTIME_API AssetsManager : vstd::IOperatorNewBase {
 public:
     static constexpr uint FRAME_COUNT = 4;
     template <typename T>

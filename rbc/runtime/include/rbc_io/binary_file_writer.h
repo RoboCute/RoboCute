@@ -2,7 +2,7 @@
 #include <rbc_config.h>
 #include <luisa/core/stl/string.h>
 #include <luisa/core/stl/memory.h>
-class RBC_RUNTIME_API BinaryFileWriter {
+struct RBC_RUNTIME_API BinaryFileWriter {
 	FILE* _file;
 
 public:

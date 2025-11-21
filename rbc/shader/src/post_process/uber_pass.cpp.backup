@@ -1,0 +1,60 @@
+#include <luisa/std.hpp>
+#include <luisa/resources.hpp>
+
+using namespace luisa::shader;
+
+//
+// Generic log lin transforms
+//
+float3 LogToLin1(float3 LogColor)
+{
+	const float LinearRange = 14.0f;
+	const float LinearGrey = 0.18f;
+	const float ExposureGrey = 444.0f;
+
+	float3 LinearColor = exp2((LogColor - ExposureGrey / 1023.0f) * LinearRange) * LinearGrey;
+	return LinearColor;
+}
+
+float3 LinToLog1(float3 LinearColor)
+{
+	const float LinearRange = 14.0f;
+	const float LinearGrey = 0.18f;
+	const float ExposureGrey = 444.0f;
+
+	float3 LogColor = log2(LinearColor) / LinearRange - log2(LinearGrey) / LinearRange + ExposureGrey / 1023.0f;
+	LogColor = saturate(LogColor);
+
+	return LogColor;
+}
+
+static const float LUTSize = 32.0f;
+float3 ColorLookupTable(float3 LinearColor, Volume<float>& ColorGradeTexture)
+{
+	float3 LUTEncodedColor;
+
+	LUTEncodedColor = LinToLog1(LinearColor + LogToLin1(float3(0.0f)));
+	
+	float3 UVW = LUTEncodedColor * ((LUTSize - 1.0f) / LUTSize) + (0.5f / LUTSize);
+
+	float3 OutDeviceColor = ColorGradeTexture.read(int3(UVW * LUTSize)).xyz;
+	return OutDeviceColor * 1.05f;
+}
+
+[[kernel_2d(16, 16)]] 
+int kernel(Volume<float>& ColorGradeTexture, Image<float>& SrcTexture, Image<float>& DstTexture, uint2 ScreenSize) 
+{
+	int2 DispatchID = dispatch_id().xy;
+	int2 DispatchSize = dispatch_size().xy;
+	float2 UV = (float2(DispatchID) + 0.5f) / float2(DispatchSize);
+
+	float3 HDRColor = SrcTexture.read(DispatchID).rgb;
+	float3 TonemapColor = ColorLookupTable(HDRColor, ColorGradeTexture);
+
+	DstTexture.write(DispatchID, float4(TonemapColor, 1.0f));
+	//DstTexture.write(DispatchID, float4(pow(HDRColor, 1.0f / 2.2f), 1.0f));
+	//DstTexture.write(DispatchID, float4(ColorGradeTexture.read(int3(float2(UV.x, 1.0f - UV.y) * LUTSize, 0)).xyz, 1.0f));
+	//DstTexture.write(DispatchID, float4(pow(ColorGradeTexture.read(int3(float2(UV.x, 1.0f - UV.y) * LUTSize, 0)).xyz, 1.0f / 2.2f), 1.0f));
+
+    return 0;
+}

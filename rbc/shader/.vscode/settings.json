@@ -1,0 +1,15 @@
+{
+    "git.rebaseWhenSync": false,
+    "C_Cpp.errorSquiggles": "disabled",
+    "clangd.arguments": [
+        "--compile-commands-dir=.vscode",
+        "--log=error",
+        "--completion-style=bundled",
+        "--background-index",
+        "--background-index-priority=normal",
+        "--header-insertion=never",
+        "--pch-storage=memory"
+    ],
+    "files.eol": "\n",
+    "clangd.path": "..\\..\\build\\tool\\clangd\\clangd.exe"
+}

@@ -1,0 +1,23 @@
+#include <luisa/std.hpp>
+#include <geometry/dual_quaternion.hpp>
+#include <geometry/vertices.hpp>
+using namespace luisa::shader;
+using namespace geometry;
+[[kernel_2d(128, 1)]] int kernel(
+	Buffer<DualQuaternion>& bind_dual_quaternions,
+	Buffer<DualQuaternion>& skinned_dual_quaternions,
+	Buffer<float4x4>& pose_matrices,
+	float4x4 self_matrix) {
+	auto id = dispatch_id().x;
+	DualQuaternion dq_bind;
+	dq_bind = bind_dual_quaternions.read(id);
+	dq_bind.translation_quaternion = QuaternionMultiply(dq_bind.translation_quaternion, dq_bind.rotation_quaternion) * 0.5f;
+
+	float4x4 pose_matrix = transpose(pose_matrices.read(id));
+	pose_matrix = pose_matrix * self_matrix;// TODO :may need transpose
+
+	DualQuaternion dq_pose = DualQuaternionFromMatrix4x4(pose_matrix);
+	DualQuaternion dq_skinned = DualQuaternionMultiply(dq_pose, dq_bind);
+    skinned_dual_quaternions.write(id, dq_skinned);
+	return 0;
+}

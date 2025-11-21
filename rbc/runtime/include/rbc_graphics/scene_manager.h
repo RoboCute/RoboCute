@@ -47,7 +47,7 @@ private:
     BufferUploader _uploader;// 命令打包器
 
     // [SINGLETON]
-    AccelManager _accel_mng;
+    luisa::vector<luisa::unique_ptr<AccelManager>> _accel_mngs;
     MatManager _mat_mng;
     LightAccel _light_accel;
     TextureUploader _tex_uploader;
@@ -66,7 +66,7 @@ public:
     [[nodiscard]] auto const &buffer_allocator() const { return _bf_alloc; }
     [[nodiscard]] auto &bindless_manager() { return _bdls_mng; }
     [[nodiscard]] auto &buffer_allocator() { return _bf_alloc; }
-    [[nodiscard]] auto &accel_manager() { return _accel_mng; }
+    [[nodiscard]] AccelManager &accel_manager();
     [[nodiscard]] auto &mat_manager() { return _mat_mng; }
     [[nodiscard]] auto &temp_upload_buffer() { return *_temp_buffer; }
     [[nodiscard]] auto &buffer_uploader() { return _uploader; }
@@ -76,8 +76,7 @@ public:
     [[nodiscard]] auto &image_heap() { return _bdls_mng.image_heap(); }
     [[nodiscard]] auto const &volume_heap() const { return _bdls_mng.volume_heap(); }
     [[nodiscard]] auto &volume_heap() { return _bdls_mng.volume_heap(); }
-    [[nodiscard]] auto const &accel() const { return _accel_mng.accel(); }
-    [[nodiscard]] auto &accel() { return _accel_mng.accel(); }
+    [[nodiscard]] Accel& accel();
     [[nodiscard]] auto &mesh_manager() { return _mesh_mng; }
     [[nodiscard]] auto &light_accel() { return _light_accel; }
     [[nodiscard]] auto &tex_uploader() { return _tex_uploader; }

@@ -3,6 +3,7 @@ import sys
 import subprocess
 import json
 import shutil
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait
 
 
@@ -32,6 +33,35 @@ def find_process_path(process_name):
     if path:
         return os.path.dirname(path)
     return None
+
+def write_shader_compile_cmd():
+    global PROJECT_ROOT
+    clangcxx_dir = Path(PROJECT_ROOT) / 'build/tool/clangcxx_compiler/clangcxx_compiler.exe'
+    shader_dir = Path(PROJECT_ROOT) / 'rbc/shader'
+    in_dir = shader_dir / 'src'
+    # TODO: different platform
+    host_dir = shader_dir / 'host'
+    include_dir = shader_dir / 'include'
+    
+    base_cmd = lambda: f'"{clangcxx_dir}" -in="{in_dir}" -out="{out_dir}" -include="{include_dir}"'
+    build_cmd = lambda : base_cmd() + f' -hostgen="{host_dir}"'
+    backends = ['dx', 'vk']
+    # write files
+    for backend in backends:
+        out_dir = Path(PROJECT_ROOT) / f'build/windows/x64/shader_build_{backend}'
+        f = open(shader_dir / f'{backend}_compile.cmd', 'w')
+        f.write('@echo off\n' + build_cmd() + f' -backend={backend}')
+        f.close()
+        
+        f = open(shader_dir / f'{backend}_clean_compile.cmd', 'w')
+        f.write('@echo off\n' + build_cmd() + f' -backend={backend}' + ' -rebuild')
+        f.close()
+        
+    out_dir = shader_dir / '.vscode/compile_commands.json'
+    f = open(shader_dir / 'gen_json.cmd', 'w')
+    f.write('@echo off\n' + base_cmd() + ' -lsp')
+    f.close()
+    
 
 
 def git_clone_or_pull(git_address, subdir, branch=None):
@@ -226,7 +256,7 @@ def main():
     # ------------------------------ llvm/options ------------------------------
     # We skip the builddir variable as it's dead code in the Lua source provided.
 
-    print("Write options.json? (y/n)")
+    print("Write options? (y/n)")
     try:
         write_opt = input().strip()
     except EOFError:
@@ -273,7 +303,7 @@ def main():
         opt_json_path = os.path.join(PROJECT_ROOT, "scripts/options.json")
         with open(opt_json_path, "w") as f:
             json.dump(options, f, indent=4)
-
+        write_shader_compile_cmd()
 
 if __name__ == "__main__":
     main()

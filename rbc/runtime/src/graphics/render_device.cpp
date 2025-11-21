@@ -26,6 +26,7 @@ void RenderDevice::init(
     bool require_async_stream, bool require_io_service, bool gpu_dump, void* external_device
 )
 {
+    set_instance(this);
     _backend = backend;
     _headless = headless;
     // create context

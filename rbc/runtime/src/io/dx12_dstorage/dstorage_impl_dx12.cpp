@@ -148,7 +148,7 @@ namespace dstorage_detail
 static vstd::optional<DStorageModule> module;
 static std::mutex module_mtx;
 } // namespace dstorage_detail
-class DStorageStreamDX12Impl : public DStorageStream
+struct DStorageStreamDX12Impl : DStorageStream
 {
 public:
     ~DStorageStreamDX12Impl();

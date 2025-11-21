@@ -1,0 +1,115 @@
+#include <luisa/std.hpp>
+#include <luisa/resources.hpp>
+#include <sampling/sample_funcs.hpp>
+#include <geometry/vertices.hpp>
+#include <material/mats.hpp>
+using namespace luisa::shader;
+[[kernel_2d(16, 16)]] int kernel(
+	Image<uint>& hit_img,
+	Image<uint>& mat_img,
+	Image<float>& mv_img,
+	Image<float>& normal_img,
+	Image<float>& depth_img,
+	Image<float>& out_img,
+	Accel& accel,
+	BindlessArray& heap,
+	Buffer<float4x4>& last_transform_buffer,
+	uint inst_buffer_heap_idx,
+	uint mat_idx_buffer_heap_idx,
+	uint sky_heap_idx,
+	float3 cam_pos,
+	float2 jitter_offset,
+	float4x4 vp,
+	float4x4 inv_vp,
+	float4x4 last_vp) {
+	auto coord = dispatch_id().xy;
+	auto size = dispatch_size().xy;
+	auto uv = (float2(coord) + jitter_offset + float2(0.5)) / float2(size);
+	auto proj = float4(uv * 2.f - 1.0f, 0.f, 1);
+	auto world_pos = inv_vp * proj;
+	world_pos /= world_pos.w;
+	auto dir = normalize(world_pos.xyz - cam_pos);
+	auto ray = Ray(cam_pos, dir, 1e-4f, 1e4f);
+	auto hit = accel.trace_closest(ray);
+	// auto q = accel.query_all(ray);
+	// while (q.proceed()) {
+	// 	if (q.is_triangle_candidate()) {
+	// 		auto candidate_hit = q.triangle_candidate();
+	// 		auto user_id = accel.instance_user_id(candidate_hit.inst);
+	// 		auto inst_info = heap.buffer_read<geometry::InstanceInfo>(inst_buffer_heap_idx, user_id);
+	// 		auto vertices = geometry::read_vert_pos_uv(heap, candidate_hit.prim, inst_info.mesh);
+	// 		auto uv = candidate_hit.interpolate(vertices[0].uv, vertices[1].uv, vertices[2].uv);
+	// 		if (material::cutout(heap, mat_idx_buffer_heap_idx, inst_info, candidate_hit.prim, uv)) {
+	// 			q.commit_triangle();
+	// 		}
+	// 	} else {
+	// 		// TODO: procedural
+	// 	}
+	// }
+	// auto hit = q.committed_hit();
+	float3 normal(0);
+	auto depth = 0.f;
+#ifdef WORLD_SPACE_MV
+	float3 mv;
+#else
+	float2 mv;
+#endif
+	uint mat_idx = 255;
+	if (hit.miss()) {
+#ifdef WORLD_SPACE_MV
+		mv = float3(0.f);
+#else
+		auto last_proj_pos = last_vp * world_pos;
+		last_proj_pos /= last_proj_pos.w;
+		mv = (proj.xy - last_proj_pos.xy) * 0.5f;
+#endif
+		hit.inst = max_uint32;
+		hit.prim = max_uint32;
+		hit.bary = float2(0);
+		out_img.write(coord, heap.image_sample(sky_heap_idx, sampling::sphere_direction_to_uv(dir)));
+	} else {
+		auto inst_transform = accel.instance_transform(hit.inst);
+		auto user_id = accel.instance_user_id(hit.inst);
+		auto inst_info = heap.buffer_read<geometry::InstanceInfo>(inst_buffer_heap_idx, user_id);
+		bool contain_normal;
+		auto vertices = geometry::read_vert_pos_normal(heap, hit.prim, inst_info.mesh, contain_normal);
+		auto local_pos = hit.interpolate(vertices[0].pos, vertices[1].pos, vertices[2].pos);
+		float3 normal;
+		if (contain_normal) {
+			normal = hit.interpolate(vertices[0].normal, vertices[1].normal, vertices[2].normal);
+		} else {
+			normal = cross(vertices[0].pos - vertices[1].pos, vertices[0].pos - vertices[2].pos);
+		}
+		// normal = cross(vertices[0].pos - vertices[1].pos, vertices[0].pos - vertices[2].pos);
+
+		normal = normalize(normal);
+		normal = (inst_transform * float4(normal, 0.f)).xyz;
+
+		normal = normal * 0.5f + 0.5f;
+		world_pos = (inst_transform * float4(local_pos, 1));
+		auto proj_pos = vp * world_pos;
+		proj_pos /= proj_pos.w;
+		depth = saturate(proj_pos.z);
+		auto last_world_pos = (last_transform_buffer.read(user_id) * float4(local_pos, 1));
+#ifdef WORLD_SPACE_MV
+		mv = world_pos.xyz - last_world_pos.xyz;
+#else
+		auto last_proj_pos = last_vp * last_world_pos;
+		last_proj_pos /= last_proj_pos.w;
+		mv = (proj_pos.xy - last_proj_pos.xy) * 0.5f;
+#endif
+		auto mat = material::mat_meta(heap, mat_idx_buffer_heap_idx, inst_info.mesh.submesh_heap_idx, inst_info.mat_index, hit.prim);
+		mat_idx = mat.mat_type;
+	}
+#ifdef WORLD_SPACE_MV
+	mv_img.write(coord, float4(mv, 0.f));
+#else
+	mv_img.write(coord, float4(mv, 0.f, 0.f));
+#endif
+	depth_img.write(coord, float4(depth));
+	hit_img.write(coord, uint4(hit.inst, hit.prim, bit_cast<uint>(hit.bary.x), bit_cast<uint>(hit.bary.y)));
+	normal_img.write(coord, float4(normal, 1.0f));
+	mat_img.write(coord, uint4(mat_idx));
+
+	return 0;
+}

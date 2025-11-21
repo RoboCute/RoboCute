@@ -103,6 +103,8 @@ def _print_arg_type(t, py_interface: bool = False, is_view: bool = False):
         tr.log_err(f"invalid type {str(t)}")
     if type(t) is tr.struct or type(t) is tr.enum:
         return t.full_name()
+    if type(t) == tr.external_type:
+        return t._name
     tr.log_err(f"invalid type {str(t)}")
 
 
@@ -147,6 +149,8 @@ def _print_py_type(t):
         return t.__name__
     if type(t) is tr.struct or type(t) is tr.enum:
         return t.class_name()
+    if type(t) == tr.external_type:
+        tr.log_err('external type not allowed in python')
     return None
 
 
@@ -312,7 +316,7 @@ bool rbc_objdeser(DeserType &obj, {enum_name} &var, Args... args) {{
         if len(namespace) > 0:
             cb.add_line(f"namespace {namespace} {{")
         cb.add_line(
-            f"struct {struct_type.class_name()} : public vstd::IOperatorNewBase {{"
+            f"struct {struct_type.class_name()} : vstd::IOperatorNewBase {{"
         )
         cb.add_indent()
         if len(struct_type._members) > 0:

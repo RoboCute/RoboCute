@@ -1,2 +1,2 @@
-includes('core', 'runtime','tests')
+includes('core', 'runtime','tests', 'tools.lua')
 includes("editor")

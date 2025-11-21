@@ -50,7 +50,7 @@ private:
 		size_t index;
 		float weight;
 	};
-	struct Node : public vstd::IOperatorNewBase {
+	struct Node : vstd::IOperatorNewBase {
 		Bounding bounding;
 		float3 bary_center;
 		float weight;
