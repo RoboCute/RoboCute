@@ -29,7 +29,8 @@
 ### 发布运行
 
 1. 运行安装脚本 `xmake l scripts/xmake/install.lua`
-2. 尝试运行`uv run main.py`
-3. 尝试QtNode连连看`xmake run calculator`
+2. 尝试看绑定是否正确`uv run samples/bind_struct.py`
+3. 运行测试用例 `uv run pytest`
+4. 尝试QtNode连连看`xmake run calculator`
 
 运行`xmake f -p windows -m release -c`时如果xmake没有使用最新版本的msvc，可以通过`--vs_toolset=`指定

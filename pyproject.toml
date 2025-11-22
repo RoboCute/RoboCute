@@ -5,9 +5,9 @@ description = "Make Robotics Cute!"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "rbc_meta",
     "nanobind-stubgen>=0.1.5",
-    "requests"
+    "requests",
+    "pytest>=9.0.1",
 ]
 
 [project.scripts]
@@ -15,12 +15,11 @@ prepare = "scripts.main:prepare"
 gen = "scripts.main:generate"
 stubgen = "scripts.main:generate_stub"
 
-[tool.uv.sources]
-rbc_meta = { workspace = true }
-
-[tool.uv.workspace]
-members = ["packages/*"]
-
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "test",
+]

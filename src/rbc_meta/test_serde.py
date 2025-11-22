@@ -1,6 +1,6 @@
-import rbc_meta.type_register as tr
-import rbc_meta.codegen as codegen
-import rbc_meta.codegen_util as ut
+import rbc_meta.utils.type_register as tr
+import rbc_meta.utils.codegen as codegen
+import rbc_meta.utils.codegen_util as ut
 from pathlib import Path
 
 
@@ -20,6 +20,6 @@ def codegen_header(header_path: Path):
         test_enum=MyEnum,
     )
     ut.codegen_to(header_path)(codegen.cpp_interface_gen)
-    
+
     include = f'#include "generated.hpp"'
-    ut.codegen_to(header_path.parent / 'enum_ser.cpp')(codegen.cpp_enum_gen, include)
+    ut.codegen_to(header_path.parent / "enum_ser.cpp")(codegen.cpp_enum_gen, include)

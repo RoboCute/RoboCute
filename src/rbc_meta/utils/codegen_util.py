@@ -1,5 +1,5 @@
-import rbc_meta.type_register as tr
-import rbc_meta.codegen as codegen
+import rbc_meta.utils.type_register as tr
+import rbc_meta.utils.codegen as codegen
 
 from pathlib import Path
 import os

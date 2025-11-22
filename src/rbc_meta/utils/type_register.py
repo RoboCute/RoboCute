@@ -1,4 +1,4 @@
-import rbc_meta.type_register_base as base
+import rbc_meta.utils.type_register_base as base
 
 
 class VoidPtr:
@@ -235,7 +235,7 @@ class enum:
         self._serde = _enable_serde
         if namespace_cut >= 0:
             self._namespace_name = _func_name[0:namespace_cut]
-            self._class_name = _func_name[namespace_cut + 2: len(_func_name)]
+            self._class_name = _func_name[namespace_cut + 2 : len(_func_name)]
         else:
             self._namespace_name = ""
             self._class_name = _func_name
@@ -292,7 +292,7 @@ class struct:
         namespace_cut = _func_name.rfind("::")
         if namespace_cut >= 0:
             self._namespace_name = _func_name[0:namespace_cut]
-            self._class_name = _func_name[namespace_cut + 2: len(_func_name)]
+            self._class_name = _func_name[namespace_cut + 2 : len(_func_name)]
         else:
             self._namespace_name = ""
             self._class_name = _func_name
@@ -326,8 +326,7 @@ class struct:
         f = _function_t(**args)
         key = _gen_args_key(**args)
         if tb.get(key):
-            log_err(
-                f"member {_func_name} already exists with same arguments overload.")
+            log_err(f"member {_func_name} already exists with same arguments overload.")
         tb[key] = f
         return f
 
@@ -349,9 +348,9 @@ class struct:
             v = argv[i]
             if base.is_type_bool(type(v)):
                 if v:
-                    v = 'true'
+                    v = "true"
                 else:
-                    v = 'false'
+                    v = "false"
             else:
                 v = str(v)
             self._cpp_initer[i] = str(v)

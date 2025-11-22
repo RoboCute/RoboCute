@@ -1,6 +1,6 @@
-import rbc_meta.type_register as tr
-import rbc_meta.codegen_util as ut
-from rbc_meta.codegen import cpp_interface_gen, cpp_enum_gen
+import rbc_meta.utils.type_register as tr
+import rbc_meta.utils.codegen_util as ut
+from rbc_meta.utils.codegen import cpp_interface_gen, cpp_enum_gen
 from pathlib import Path
 
 

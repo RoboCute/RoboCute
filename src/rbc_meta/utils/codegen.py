@@ -1,5 +1,5 @@
-import rbc_meta.type_register as tr
-from rbc_meta.codegen_basis import get_codegen_basis
+import rbc_meta.utils.type_register as tr
+from rbc_meta.utils.codegen_basis import get_codegen_basis
 import hashlib
 
 cb = get_codegen_basis()
@@ -51,7 +51,7 @@ _template_names = {
     tr.vector: lambda ele: f"luisa::vector<{_print_arg_type(ele._element)}>",
     tr.unordered_map: lambda ele: f"luisa::unordered_map<{_print_arg_type(ele._key)}, {_print_arg_type(ele._value)}>",
     tr.ClassPtr: lambda ele: "void*",
-    tr.external_type: lambda x:  x._name
+    tr.external_type: lambda x: x._name,
 }
 
 _py_names = {
@@ -149,7 +149,7 @@ def _print_py_type(t):
     if type(t) is tr.struct or type(t) is tr.enum:
         return t.class_name()
     if type(t) == tr.external_type:
-        tr.log_err('external type not allowed in python')
+        tr.log_err("external type not allowed in python")
     return None
 
 
@@ -185,10 +185,10 @@ def _print_cpp_rtti(t):
         name = t.full_name()
         m = hashlib.md5(name.encode("ascii"))
         is_first = True
-        digest = ''
+        digest = ""
         for i in m.digest():
             if not is_first:
-                digest += ', '
+                digest += ", "
             is_first = False
             digest += str(int(i))
         cb.add_result(f'''
@@ -253,16 +253,17 @@ def py_interface_gen(module_name: str):
         cb.remove_indent()
     return cb.get_result()
 
+
 def cpp_enum_gen(*extra_includes):
     global cb
-    cb.set_result('')
+    cb.set_result("")
     for i in extra_includes:
         cb.add_result(i + "\n")
     # print enums
     for enum_name in tr._registed_enum_types:
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
         full_name = enum_type.full_name()
-        m = hashlib.md5(full_name.encode('ascii'))
+        m = hashlib.md5(full_name.encode("ascii"))
         digest = m.hexdigest()
         enum_names = ""
         enum_values = ""
@@ -276,9 +277,9 @@ def cpp_enum_gen(*extra_includes):
             enum_names += f'"{enum_value}"'
             enum_values += f"(uint64_t)luisa::to_underlying({enum_name}::{enum_value})"
         initer = f'"{full_name}", std::initializer_list<char const*>{{{enum_names}}}, std::initializer_list<uint64_t>{{{enum_values}}}'
-        cb.add_line(f'static rbc::EnumSerIniter emm_{digest}{{{initer}}};')
+        cb.add_line(f"static rbc::EnumSerIniter emm_{digest}{{{initer}}};")
     return cb.get_result()
-        
+
 
 def cpp_interface_gen(*extra_includes):
     cb.set_result("""#pragma once
@@ -310,11 +311,10 @@ def cpp_interface_gen(*extra_includes):
 
         if len(namespace) > 0:
             cb.add_line(f"}} // namespace {namespace}")
-            
-        cb.add_result('\n')
+
+        cb.add_result("\n")
         # RTTI
         _print_cpp_rtti(enum_type)
-    
 
     # print classes
     for struct_name in tr._registed_struct_types:
@@ -322,16 +322,14 @@ def cpp_interface_gen(*extra_includes):
         namespace = struct_type.namespace_name()
         if len(namespace) > 0:
             cb.add_line(f"namespace {namespace} {{")
-        cb.add_line(
-            f"struct {struct_type.class_name()} : vstd::IOperatorNewBase {{"
-        )
+        cb.add_line(f"struct {struct_type.class_name()} : vstd::IOperatorNewBase {{")
         cb.add_indent()
         if len(struct_type._members) > 0:
             for mem_name in struct_type._members:
                 mem = struct_type._members[mem_name]
                 initer = struct_type._cpp_initer.get(mem_name)
                 if not initer:
-                    initer = ''
+                    initer = ""
                 cb.add_line(f"{_print_arg_type(mem)} {mem_name}{{{initer}}};")
 
             # serialize function
@@ -374,7 +372,7 @@ def cpp_interface_gen(*extra_includes):
         cb.add_line("};")
         if len(namespace) > 0:
             cb.add_line(f"}} // namespace {namespace}")
-        cb.add_result('\n')
+        cb.add_result("\n")
         # RTTI
         _print_cpp_rtti(struct_type)
     return cb.get_result()
@@ -411,8 +409,7 @@ void {export_func_name}(nanobind::module_& m) """)
 
     # print classes
     cb.add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
-    cb.add_line(
-        f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
+    cb.add_line(f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
 
@@ -449,8 +446,7 @@ void {export_func_name}(nanobind::module_& m) """)
                 end = ""
                 if func._ret_type:
                     ret_type = (
-                        " -> " +
-                        _print_arg_type(func._ret_type, True, False) + " "
+                        " -> " + _print_arg_type(func._ret_type, True, False) + " "
                     )
                     return_decl = "return "
                     if func._ret_type == tr.string:
@@ -469,6 +465,5 @@ void {export_func_name}(nanobind::module_& m) """)
     # end
     cb.remove_indent()
     cb.add_line("}")
-    cb.add_line(
-        f"static ModuleRegister _{export_func_name}({export_func_name});")
+    cb.add_line(f"static ModuleRegister _{export_func_name}({export_func_name});")
     return cb.get_result()
