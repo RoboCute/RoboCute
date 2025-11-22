@@ -19,5 +19,5 @@ function main()
     runjobs("copy", jobs, {
         comax = 1000
     })
-    os.execv("uv run generate_stub.py")
+    os.execv("uv run stubgen")
 end

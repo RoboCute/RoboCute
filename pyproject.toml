@@ -13,7 +13,7 @@ dependencies = [
 [project.scripts]
 prepare = "scripts.main:prepare"
 gen = "scripts.main:generate"
-
+stubgen = "scripts.main:generate_stub"
 
 [tool.uv.sources]
 rbc_meta = { workspace = true }
