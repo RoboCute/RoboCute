@@ -54,10 +54,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         center=tr.float2,
     )
     DistortionSettings.init_member(
-        scale=1.0,
-        intensity=0.0,
-        intensity_multiplier='1, 1',
-        center='0.0f, 0.0f'
+        scale=1.0, intensity=0.0, intensity_multiplier="1, 1", center="0.0f, 0.0f"
     )
     LpmDispatchParameters = tr.struct("rbc::LpmDispatchParameters")
     LpmDispatchParameters.serde_members(
@@ -80,16 +77,16 @@ def codegen_header(header_path: Path, cpp_path: Path):
     )
     LpmDispatchParameters.init_member(
         shoulder=True,
-        softGap=0.,
+        softGap=0.0,
         hdrMax=1847,
         lpmExposure=10,
         contrast=0.3,
         shoulderContrast=1.0,
-        saturation='0.f, 0.f, 0.f',
-        crosstalk='1.f, 1.f, 1.f',
-        colorSpace='rbc::LpmColorSpace::REC2020',
+        saturation="0.f, 0.f, 0.f",
+        crosstalk="1.f, 1.f, 1.f",
+        colorSpace="rbc::LpmColorSpace::REC2020",
         displayMinLuminance=0.001,
-        displayMaxLuminance=1000
+        displayMaxLuminance=1000,
     )
     ToneMappingParameters = tr.struct("rbc::ToneMappingParameters")
     ToneMappingParameters.serde_members(
@@ -109,23 +106,22 @@ def codegen_header(header_path: Path, cpp_path: Path):
         hdr_paper_white=tr.float,
     )
     ToneMappingParameters.init_member(
-        tone_mode='rbc::EToneMappingMode::UnrealAces',
-        unreal_tone_slope='0.8f',
-        unreal_tone_toe='0.5f',
-        unreal_tone_black_clip='0.0f',
-        unreal_tone_shoulder='0.3f',
-        unreal_tone_white_clip='0.04f',
-
-        filmic_tone_shoulder_strength='0.22f',
-        filmic_tone_linear_strength='0.30f',
-        filmic_tone_linear_angle='0.10f',
-        filmic_tone_toe_strength='0.20f',
-        filmic_tone_toe_numerator='0.01f',
-        filmic_tone_toe_denominator='0.30f',
-        hdr_display_multiplier='5.0f',
-        hdr_paper_white='80.0f',
+        tone_mode="rbc::EToneMappingMode::UnrealAces",
+        unreal_tone_slope="0.8f",
+        unreal_tone_toe="0.5f",
+        unreal_tone_black_clip="0.0f",
+        unreal_tone_shoulder="0.3f",
+        unreal_tone_white_clip="0.04f",
+        filmic_tone_shoulder_strength="0.22f",
+        filmic_tone_linear_strength="0.30f",
+        filmic_tone_linear_angle="0.10f",
+        filmic_tone_toe_strength="0.20f",
+        filmic_tone_toe_numerator="0.01f",
+        filmic_tone_toe_denominator="0.30f",
+        hdr_display_multiplier="5.0f",
+        hdr_paper_white="80.0f",
     )
-    FrameSettings = tr.struct('rbc::FrameSettings')
+    FrameSettings = tr.struct("rbc::FrameSettings")
     FrameSettings.members(
         to_rec2020_matrix=tr.float3x3,
         render_resolution=tr.uint2,
@@ -136,14 +132,11 @@ def codegen_header(header_path: Path, cpp_path: Path):
         delta_time=tr.float,
         resource_color_space=ResourceColorSpace,
         realtime_rendering=tr.bool,
-        
-        dst_img=tr.external_type('luisa::compute::Image<float> const*')
+        dst_img=tr.external_type("luisa::compute::Image<float> const*"),
     )
-    FrameSettings.init_member(
-        resource_color_space='ResourceColorSpace::Rec709'
-    )
-    curve = tr.external_type('Curve')
-    ACESParameters = tr.struct('rbc::ACESParameters')
+    FrameSettings.init_member(resource_color_space="ResourceColorSpace::Rec709")
+    curve = tr.external_type("Curve")
+    ACESParameters = tr.struct("rbc::ACESParameters")
     ACESParameters.members(
         hueVsHueCurve=curve,
         hueVsSatCurve=curve,
@@ -153,7 +146,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         greenCurve=curve,
         blueCurve=curve,
         masterCurve=curve,
-        dirty=tr.bool
+        dirty=tr.bool,
     )
     ACESParameters.serde_members(
         temperature=tr.float,
@@ -171,30 +164,29 @@ def codegen_header(header_path: Path, cpp_path: Path):
         mixerBlueOutRedIn=tr.float,
         mixerBlueOutGreenIn=tr.float,
         mixerBlueOutBlueIn=tr.float,
-
         lift=tr.float4,
         gamma=tr.float4,
         gain=tr.float4,
         colorFilter=tr.float4,
-        tone_mapping=tr.external_type('ToneMappingParameters')
+        tone_mapping=tr.external_type("ToneMappingParameters"),
     )
 
     ACESParameters.init_member(
-        hueVsHueCurve='{ float2(0, 0.5f) }',
-        hueVsSatCurve='{ float2(0, 0.5f) }',
-        satVsSatCurve='{ float2(0, 0.5f) }',
-        lumVsSatCurve='{ float2(0, 0.5f) }',
+        hueVsHueCurve="{ float2(0, 0.5f) }",
+        hueVsSatCurve="{ float2(0, 0.5f) }",
+        satVsSatCurve="{ float2(0, 0.5f) }",
+        lumVsSatCurve="{ float2(0, 0.5f) }",
         temperature=6500,
         mixerRedOutRedIn=100,
         mixerGreenOutGreenIn=100,
         mixerBlueOutBlueIn=100,
-        lift='1, 1, 1, 0',
-        gamma='1, 1, 1, 0',
-        gain='1, 1, 1, 0',
-        colorFilter='1, 1, 1, 0',
-        dirty=True
+        lift="1, 1, 1, 0",
+        gamma="1, 1, 1, 0",
+        gain="1, 1, 1, 0",
+        colorFilter="1, 1, 1, 0",
+        dirty=True,
     )
-    ExposureSettings = tr.struct('ExposureSettings')
+    ExposureSettings = tr.struct("ExposureSettings")
     ExposureSettings.serde_members(
         use_auto_exposure=tr.bool,
         filtering=tr.float2,
@@ -202,18 +194,18 @@ def codegen_header(header_path: Path, cpp_path: Path):
         maxLuminance=tr.float,
         globalExposure=tr.float,
         speedUp=tr.float,
-        speedDown=tr.float
+        speedDown=tr.float,
     )
     ExposureSettings.init_member(
         use_auto_exposure=True,
-        filtering='1.0f, 95.0f',
+        filtering="1.0f, 95.0f",
         minLuminance=-9,
         maxLuminance=9,
         globalExposure=0.5,
         speedUp=16,
-        speedDown=16
+        speedDown=16,
     )
-    PathTracerSettings = tr.struct('rbc::PathTracerSettings')
+    PathTracerSettings = tr.struct("rbc::PathTracerSettings")
     PathTracerSettings.serde_members(
         offline_spp=tr.uint,
         realtime_spp=tr.uint,
@@ -222,37 +214,31 @@ def codegen_header(header_path: Path, cpp_path: Path):
         resource_color_space=ResourceColorSpace,
     )
     PathTracerSettings.init_member(
-        offline_spp=2,
-        offline_origin_bounce=2,
-        offline_indirect_bounce=4
+        offline_spp=2, offline_origin_bounce=2, offline_indirect_bounce=4
     )
-    ToneMappingSettings = tr.struct('rbc::ToneMappingSettings')
+    ToneMappingSettings = tr.struct("rbc::ToneMappingSettings")
     ToneMappingSettings.serde_members(
-        use_lpm=tr.bool,
-        lpm=LpmDispatchParameters,
-        aces=ACESParameters
+        use_lpm=tr.bool, lpm=LpmDispatchParameters, aces=ACESParameters
     )
-    ToneMappingSettings.init_member(
-        use_lpm=True
-    )
-    DisplaySettings = tr.struct('rbc::DisplaySettings')
+    ToneMappingSettings.init_member(use_lpm=True)
+    DisplaySettings = tr.struct("rbc::DisplaySettings")
     DisplaySettings.serde_members(
         use_linear_sdr=tr.bool,
         use_hdr_display=tr.bool,
         use_hdr_10=tr.bool,
         gamma=tr.float,
-        chromatic_aberration=tr.float
+        chromatic_aberration=tr.float,
     )
     DisplaySettings.init_member(
         use_linear_sdr=True,
         use_hdr_display=True,
         use_hdr_10=True,
         gamma=2.2,
-        chromatic_aberration=0.001
+        chromatic_aberration=0.001,
     )
-    SkySettings = tr.struct('rbc::SkySettings')
+    SkySettings = tr.struct("rbc::SkySettings")
     SkySettings.members(
-        sky_atom=tr.external_type('SkyAtmosphere*'),
+        sky_atom=tr.external_type("SkyAtmosphere*"),
     )
     SkySettings.serde_members(
         sky_angle=tr.float,
@@ -263,19 +249,19 @@ def codegen_header(header_path: Path, cpp_path: Path):
         sun_intensity=tr.float,
         sun_angle=tr.float,
         dirty=tr.bool,
-        force_sync=tr.bool
+        force_sync=tr.bool,
     )
     SkySettings.init_member(
         sky_max_lum=65535,
-        sky_color='1, 1, 1',
-        sun_color='1, 1, 1',
-        sun_dir='0, -1, 0',
-        sun_angle=0.5
+        sky_color="1, 1, 1",
+        sun_color="1, 1, 1",
+        sun_dir="0, -1, 0",
+        sun_angle=0.5,
     )
 
-    include = '''#include <luisa/runtime/image.h>
+    include = """#include <luisa/runtime/image.h>
 #include <rbc_core/utils/curve.h>
-#include <rbc_render/procedural/sky_atmosphere.h>'''
+#include <rbc_render/procedural/sky_atmosphere.h>"""
     ut.codegen_to(header_path)(cpp_interface_gen, include)
-    include = '#include <rbc_render/generated/pipeline_settings.hpp>'
+    include = "#include <rbc_render/generated/pipeline_settings.hpp>"
     ut.codegen_to(cpp_path)(cpp_enum_gen, include)

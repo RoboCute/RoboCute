@@ -10,6 +10,11 @@ dependencies = [
     "requests"
 ]
 
+[project.scripts]
+prepare = "scripts.main:prepare"
+gen = "scripts.main:generate"
+
+
 [tool.uv.sources]
 rbc_meta = { workspace = true }
 

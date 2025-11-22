@@ -21,8 +21,8 @@
 
 ### RBC环境启动
 
-1. 安装环境 `uv run scripts/setup.py`
-2. 生成代码 `uv run generate.py`
+1. 安装环境 `uv run prepare`
+2. 从src/meta中生成接口代码：`uv run gen`
 3. 配置 `xmake f -m release -c`
 4. 编译 `xmake`
 
