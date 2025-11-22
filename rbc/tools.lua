@@ -26,11 +26,10 @@ add_rules('lc_install_sdk', {
         -- address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/',
         copy_dir = '',
         extract_dir = 'build/tool/clangd'
-    } -- , {
-    --     name = 'render_resources.7z',
-    --     address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/'
-    -- }
-    }
+    }, {
+        name = 'render_resources.7z',
+        address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/'
+    }}
 })
 set_policy('build.fence', true)
 target_end()

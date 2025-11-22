@@ -4,7 +4,8 @@
 #include <luisa/gui/window.h>
 #include <luisa/runtime/swapchain.h>
 #include <luisa/dsl/sugar.h>
-
+#include <rbc_runtime/render_plugin.h>
+#include <luisa/core/dynamic_module.h>
 int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
@@ -55,6 +56,20 @@ int main(int argc, char *argv[]) {
             << [accel = std::move(accel), mesh = std::move(mesh), buffer = std::move(buffer)]() {};
     }
     sm->load_shader();
+    auto render_module = DynamicModule::load("rbc_render_plugin");
+    auto render_plugin = RBC_LOAD_PLUGIN(render_module, RenderPlugin);
+    StateMap pipeline_state_map;
+    auto pipe_ctx = render_plugin->create_pipeline_context(pipeline_state_map);
+    LUISA_ASSERT(render_plugin->initialize_pipeline({}));
+    sm->before_rendering(
+        cmdlist,
+        main_stream);
+    sm->on_frame_end(
+        cmdlist,
+        main_stream);
+    main_stream.synchronize();
+    render_plugin->destroy_pipeline_context(pipe_ctx);
+    render_plugin->dispose();
     // init window
     Window window("test graphics", resolution);
     auto swapchain = render_device.lc_device().create_swapchain(
@@ -120,7 +135,7 @@ int main(int argc, char *argv[]) {
         main_stream << swapchain.present(dst_img) << timeline_event.signal(frame_index);
         float3x3 a;
         float3 b;
-        a * b;
+        a *b;
     }
     // Destroy
     if (!cmdlist.empty()) {

@@ -10,21 +10,17 @@
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <luisa/core/platform.h>
 #include <luisa/core/stl/filesystem.h>
-namespace rbc
-{
+namespace rbc {
 struct PreparePassContext : PassContext {
     Camera last_cam;
-    PreparePassContext(Camera const& cam)
-        : last_cam(cam)
-    {
+    PreparePassContext(Camera const &cam)
+        : last_cam(cam) {
     }
 };
-} // namespace rbc
+}// namespace rbc
 RBC_RTTI(rbc::PreparePassContext);
-namespace rbc
-{
-namespace preparepass_detail
-{
+namespace rbc {
+namespace preparepass_detail {
 
 /**
  * Compute inverse CDF (quantiles) from unnormalized PDF.
@@ -36,35 +32,31 @@ namespace preparepass_detail
  * @param tol Convergence tolerance for Newton-Raphson.
  * @return Vector of quantiles corresponding to probabilities ps.
  */
-template <class T, class G>
+template<class T, class G>
 luisa::vector<T> generate_quantiles(
     luisa::span<T const> xs,
     luisa::span<T const> ys,
-    G&& ps,
+    G &&ps,
     int iterations,
-    T tol
-)
-{
+    T tol) {
     size_t m = xs.size();
 
     // Compute integration step sizes (left differences)
     luisa::vector<T> dx(m);
     dx[0] = 0.0;
-    for (size_t i = 1; i < m; ++i)
-    {
+    for (size_t i = 1; i < m; ++i) {
         dx[i] = xs[i] - xs[i - 1];
     }
 
     // Compute unnormalized CDF
     luisa::vector<T> cdf(m);
     cdf[0] = ys[0] * dx[0];
-    for (size_t i = 1; i < m; ++i)
-    {
+    for (size_t i = 1; i < m; ++i) {
         cdf[i] = cdf[i - 1] + ys[i] * dx[i];
     }
-    auto& total = cdf.back();
-    for (auto& v : cdf)
-        v /= total; // Normalize to [0,1]
+    auto &total = cdf.back();
+    for (auto &v : cdf)
+        v /= total;// Normalize to [0,1]
 
     // Determine valid support where PDF > 0
     size_t start = 0;
@@ -73,38 +65,31 @@ luisa::vector<T> generate_quantiles(
     size_t end = m - 1;
     while (end > 0 && ys[end] <= 0)
         --end;
-    auto& xmin = xs[start];
-    auto& xmax = xs[end];
+    auto &xmin = xs[start];
+    auto &xmax = xs[end];
 
     // Prepare output
     luisa::vector<T> quantiles;
 
     // Inverse CDF for each probability in ps
-    for (auto&& p : std::forward<G>(ps))
-    {
+    for (auto &&p : std::forward<G>(ps)) {
         // Initial guess via linear interpolation on CDF
         auto it = std::lower_bound(cdf.begin(), cdf.end(), p);
         T x0;
-        if (it == cdf.begin())
-        {
+        if (it == cdf.begin()) {
             x0 = xs[0];
-        }
-        else if (it == cdf.end())
-        {
+        } else if (it == cdf.end()) {
             x0 = xs[m - 1];
-        }
-        else
-        {
+        } else {
             size_t j = it - cdf.begin();
-            auto& c1 = cdf[j - 1];
-            auto& c2 = cdf[j];
+            auto &c1 = cdf[j - 1];
+            auto &c2 = cdf[j];
             auto t = (p - c1) / (c2 - c1);
             x0 = xs[j - 1] + t * (xs[j] - xs[j - 1]);
         }
 
         // Newton-Raphson refinement
-        for (int iters = 0; iters < iterations; ++iters)
-        {
+        for (int iters = 0; iters < iterations; ++iters) {
             // Locate interval for x0
             auto up = std::upper_bound(xs.begin(), xs.begin() + m, x0);
             size_t j = (up == xs.begin()) ? 0 : (up - xs.begin() - 1);
@@ -119,8 +104,7 @@ luisa::vector<T> generate_quantiles(
 
             if (pdf <= 0) break;
             auto xnew = x0 - (cval - p) / pdf;
-            if (luisa::abs(xnew - x0) < tol)
-            {
+            if (luisa::abs(xnew - x0) < tol) {
                 x0 = xnew;
                 break;
             }
@@ -134,18 +118,15 @@ luisa::vector<T> generate_quantiles(
     return quantiles;
 }
 
-float4x4 inverse_double(float4x4 const& m_flt) noexcept
-{ // from GLM
+float4x4 inverse_double(float4x4 const &m_flt) noexcept {// from GLM
     struct Double4x4 {
         double4 c[4];
-        double4& operator[](size_t i)
-        {
+        double4 &operator[](size_t i) {
             return c[i];
         }
     };
     Double4x4 m;
-    for (auto i : vstd::range(4))
-    {
+    for (auto i : vstd::range(4)) {
         m.c[i] = make_double4(m_flt.cols[i]);
     }
     const auto coef00 = m[2].z * m[3].w - m[3].z * m[2].w;
@@ -166,42 +147,40 @@ float4x4 inverse_double(float4x4 const& m_flt) noexcept
     const auto coef20 = m[2].x * m[3].y - m[3].x * m[2].y;
     const auto coef22 = m[1].x * m[3].y - m[3].x * m[1].y;
     const auto coef23 = m[1].x * m[2].y - m[2].x * m[1].y;
-    const auto fac0 = double4{ coef00, coef00, coef02, coef03 };
-    const auto fac1 = double4{ coef04, coef04, coef06, coef07 };
-    const auto fac2 = double4{ coef08, coef08, coef10, coef11 };
-    const auto fac3 = double4{ coef12, coef12, coef14, coef15 };
-    const auto fac4 = double4{ coef16, coef16, coef18, coef19 };
-    const auto fac5 = double4{ coef20, coef20, coef22, coef23 };
-    const auto Vec0 = double4{ m[1].x, m[0].x, m[0].x, m[0].x };
-    const auto Vec1 = double4{ m[1].y, m[0].y, m[0].y, m[0].y };
-    const auto Vec2 = double4{ m[1].z, m[0].z, m[0].z, m[0].z };
-    const auto Vec3 = double4{ m[1].w, m[0].w, m[0].w, m[0].w };
+    const auto fac0 = double4{coef00, coef00, coef02, coef03};
+    const auto fac1 = double4{coef04, coef04, coef06, coef07};
+    const auto fac2 = double4{coef08, coef08, coef10, coef11};
+    const auto fac3 = double4{coef12, coef12, coef14, coef15};
+    const auto fac4 = double4{coef16, coef16, coef18, coef19};
+    const auto fac5 = double4{coef20, coef20, coef22, coef23};
+    const auto Vec0 = double4{m[1].x, m[0].x, m[0].x, m[0].x};
+    const auto Vec1 = double4{m[1].y, m[0].y, m[0].y, m[0].y};
+    const auto Vec2 = double4{m[1].z, m[0].z, m[0].z, m[0].z};
+    const auto Vec3 = double4{m[1].w, m[0].w, m[0].w, m[0].w};
     const auto inv0 = Vec1 * fac0 - Vec2 * fac1 + Vec3 * fac2;
     const auto inv1 = Vec0 * fac0 - Vec2 * fac3 + Vec3 * fac4;
     const auto inv2 = Vec0 * fac1 - Vec1 * fac3 + Vec3 * fac5;
     const auto inv3 = Vec0 * fac2 - Vec1 * fac4 + Vec2 * fac5;
-    constexpr auto sign_a = double4{ +1.0, -1.0, +1.0, -1.0 };
-    constexpr auto sign_b = double4{ -1.0, +1.0, -1.0, +1.0 };
+    constexpr auto sign_a = double4{+1.0, -1.0, +1.0, -1.0};
+    constexpr auto sign_b = double4{-1.0, +1.0, -1.0, +1.0};
     const auto inv_0 = inv0 * sign_a;
     const auto inv_1 = inv1 * sign_b;
     const auto inv_2 = inv2 * sign_a;
     const auto inv_3 = inv3 * sign_b;
-    const auto dot0 = m[0] * double4{ inv_0.x, inv_1.x, inv_2.x, inv_3.x };
+    const auto dot0 = m[0] * double4{inv_0.x, inv_1.x, inv_2.x, inv_3.x};
     const auto dot1 = dot0.x + dot0.y + dot0.z + dot0.w;
     const auto one_over_determinant = 1.0 / dot1;
-    return float4x4{ make_float4(inv_0 * one_over_determinant),
-                     make_float4(inv_1 * one_over_determinant),
-                     make_float4(inv_2 * one_over_determinant),
-                     make_float4(inv_3 * one_over_determinant) };
+    return float4x4{make_float4(inv_0 * one_over_determinant),
+                    make_float4(inv_1 * one_over_determinant),
+                    make_float4(inv_2 * one_over_determinant),
+                    make_float4(inv_3 * one_over_determinant)};
 }
-} // namespace preparepass_detail
+}// namespace preparepass_detail
 void PreparePass::on_enable(
-    Pipeline const& pipeline,
-    Device& device,
-    CommandList& cmdlist,
-    SceneManager& scene
-)
-{
+    Pipeline const &pipeline,
+    Device &device,
+    CommandList &cmdlist,
+    SceneManager &scene) {
     constexpr const float wavelength_min = 360;
     constexpr const float wavelength_max = 830;
     sobol_256d = heitz_sobol_256d(device, cmdlist);
@@ -212,7 +191,7 @@ void PreparePass::on_enable(
         ShaderManager::instance()->load("path_tracer/host_raytracer.bin", _host_raytracer);
     });
     static constexpr auto lut3d_size = spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * 3ull * sizeof(float4);
-    static const uint3 transmission_ggx_energy_size{ 32u };
+    static const uint3 transmission_ggx_energy_size{32u};
     static const size_t transmission_ggx_energy_size_bytes = transmission_ggx_energy_size.x * transmission_ggx_energy_size.y * transmission_ggx_energy_size.z * sizeof(float4);
     {
 
@@ -220,28 +199,26 @@ void PreparePass::on_enable(
         vec.resize_uninitialized(lut3d_size);
         _lut_load_cmds.emplace_back(
             luisa::fiber::async([&device, this, ptr = vec.data()]() {
-                BinaryFileStream file_stream{ luisa::to_string(luisa::filesystem::path{luisa::current_executable_path()} / "rec2020.coeff") };
+                BinaryFileStream file_stream{luisa::to_string(luisa::filesystem::path{luisa::current_executable_path()}.parent_path() / "rec2020.coeff")};
                 LUISA_ASSERT(file_stream.length() == lut3d_size);
-                file_stream.read({ ptr, lut3d_size });
+                file_stream.read({ptr, lut3d_size});
                 spectrum_lut_3d = device.create_volume<float>(PixelStorage::FLOAT4, uint3(spectrum::spectrum_lut3d_res * 3, spectrum::spectrum_lut3d_res, spectrum::spectrum_lut3d_res));
             }),
             std::move(vec),
-            &spectrum_lut_3d
-        );
+            &spectrum_lut_3d);
     }
     {
         luisa::vector<std::byte> vec;
         vec.resize_uninitialized(transmission_ggx_energy_size_bytes);
         _lut_load_cmds.emplace_back(
             luisa::fiber::async([&device, this, ptr = vec.data()]() {
-                BinaryFileStream file_stream{ luisa::to_string(luisa::filesystem::path{luisa::current_executable_path()} / "trans_ggx.bytes") };
+                BinaryFileStream file_stream{luisa::to_string(luisa::filesystem::path{luisa::current_executable_path()}.parent_path() / "trans_ggx.bytes")};
                 LUISA_ASSERT(file_stream.length() == transmission_ggx_energy_size_bytes);
-                file_stream.read({ ptr, transmission_ggx_energy_size_bytes });
+                file_stream.read({ptr, transmission_ggx_energy_size_bytes});
                 transmission_ggx_energy = device.create_volume<float>(PixelStorage::FLOAT4, transmission_ggx_energy_size);
             }),
             std::move(vec),
-            &transmission_ggx_energy
-        );
+            &transmission_ggx_energy);
     }
 
     // {
@@ -265,26 +242,22 @@ void PreparePass::on_enable(
     auto lut_counter = luisa::fiber::async([&]() {
         luisa::vector<float> ps;
         ps.reserve(spectrum::cie_xyz_cdfinv_size);
-        for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++)
-        {
+        for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++) {
             ps.emplace_back(float(i) / (spectrum::cie_xyz_cdfinv_size - 1));
         }
         cie_xyz_lut_data.push_back_uninitialized(spectrum::cie_xyz_cdfinv_size);
         luisa::vector<float> xs, ys;
-        for (size_t c = 0; c < 3; c++)
-        {
+        for (size_t c = 0; c < 3; c++) {
             xs.clear();
             ys.clear();
             xs.reserve(size_t(wavelength_max - wavelength_min));
             ys.reserve(size_t(wavelength_max - wavelength_min));
-            for (size_t i = 0; i <= size_t(wavelength_max - wavelength_min); i++)
-            {
+            for (size_t i = 0; i <= size_t(wavelength_max - wavelength_min); i++) {
                 xs.push_back(test::spectrum::CIE_xyz_1931_2deg[i].first);
                 ys.push_back(test::spectrum::CIE_xyz_1931_2deg[i].second[c]);
             }
             auto result = preparepass_detail::generate_quantiles<float>(xs, ys, ps, 50, 10e-12f);
-            for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++)
-            {
+            for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++) {
                 cie_xyz_lut_data[i][c] = result[i];
             }
         }
@@ -293,9 +266,8 @@ void PreparePass::on_enable(
         uint step = 10;
         uint lut_resolution = uint(wavelength_max - wavelength_min) / step + 1;
         illum_d65_lut_data.push_back_uninitialized(lut_resolution);
-        auto& start = test::spectrum::CIE_std_illum_D65[0];
-        for (size_t i = 0; i < lut_resolution; i++)
-        {
+        auto &start = test::spectrum::CIE_std_illum_D65[0];
+        for (size_t i = 0; i < lut_resolution; i++) {
             illum_d65_lut_data[i] = (1.0f / 98.8900106203f) * test::spectrum::CIE_std_illum_D65[size_t(wavelength_min) - start.first + i * step].second;
         }
         LUISA_ASSERT(spectrum::illum_d65_size == lut_resolution);
@@ -322,16 +294,13 @@ void PreparePass::on_enable(
     // }
 }
 
-void PreparePass::wait_enable()
-{
+void PreparePass::wait_enable() {
     init_evt.wait();
 }
 
-void PreparePass::early_update(Pipeline const& pipeline, PipelineContext const& ctx)
-{
+void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
     init_evt.wait();
-    for (auto& i : _lut_load_cmds)
-    {
+    for (auto &i : _lut_load_cmds) {
         i.evt.wait();
         (*ctx.cmdlist) << i.tex->copy_from(i.data.data());
         ctx.scene->dispose_after_commit(std::move(i.data));
@@ -341,7 +310,7 @@ void PreparePass::early_update(Pipeline const& pipeline, PipelineContext const& 
     auto frane_settings = ctx.mut.states.read_safe<FrameSettings>();
     // pass_ctx->last_cam.position += make_double3(frane_settings.global_offset);
 
-    auto& mut = ctx.mut;
+    auto &mut = ctx.mut;
     auto jitter_data = mut.states.read<JitterData>();
     auto cam_data = mut.states.read<CameraData>();
     auto save_cam_data = vstd::scope_exit([&]() mutable {
@@ -356,55 +325,45 @@ void PreparePass::early_update(Pipeline const& pipeline, PipelineContext const& 
     cam_data.last_vp = cam_data.last_proj * cam_data.last_view;
     cam_data.last_sky_vp = cam_data.last_proj * cam_data.last_sky_view;
     cam_data.last_inv_vp = preparepass_detail::inverse_double(cam_data.last_vp);
-    switch (frane_settings.resource_color_space)
-    {
-    case ResourceColorSpace::Rec709:
-        frane_settings.to_rec2020_matrix = make_float3x3(0.627404, 0.329283, 0.043313, 0.069097, 0.919540, 0.011362, 0.016391, 0.088013, 0.895595);
-        break;
-    case ResourceColorSpace::AdobeRGB:
-        frane_settings.to_rec2020_matrix = make_float3x3(0.877334, 0.077494, 0.045172, 0.096623, 0.891527, 0.011850, 0.022921, 0.043037, 0.934042);
-        break;
-    case ResourceColorSpace::P3_D60:
-        frane_settings.to_rec2020_matrix = make_float3x3(0.763906, 0.193206, 0.042888, 0.046355, 0.916212, 0.011251, -0.001227, 0.017124, 0.886810);
-        break;
-    case ResourceColorSpace::P3_D65:
-        frane_settings.to_rec2020_matrix = make_float3x3(0.753833, 0.198597, 0.047570, 0.045744, 0.941777, 0.012479, -0.001210, 0.017602, 0.983609);
-        break;
-    case ResourceColorSpace::Rec2020:
-        frane_settings.to_rec2020_matrix = float3x3::eye(1);
-        break;
+    switch (frane_settings.resource_color_space) {
+        case ResourceColorSpace::Rec709:
+            frane_settings.to_rec2020_matrix = make_float3x3(0.627404, 0.329283, 0.043313, 0.069097, 0.919540, 0.011362, 0.016391, 0.088013, 0.895595);
+            break;
+        case ResourceColorSpace::AdobeRGB:
+            frane_settings.to_rec2020_matrix = make_float3x3(0.877334, 0.077494, 0.045172, 0.096623, 0.891527, 0.011850, 0.022921, 0.043037, 0.934042);
+            break;
+        case ResourceColorSpace::P3_D60:
+            frane_settings.to_rec2020_matrix = make_float3x3(0.763906, 0.193206, 0.042888, 0.046355, 0.916212, 0.011251, -0.001227, 0.017124, 0.886810);
+            break;
+        case ResourceColorSpace::P3_D65:
+            frane_settings.to_rec2020_matrix = make_float3x3(0.753833, 0.198597, 0.047570, 0.045744, 0.941777, 0.012479, -0.001210, 0.017602, 0.983609);
+            break;
+        case ResourceColorSpace::Rec2020:
+            frane_settings.to_rec2020_matrix = float3x3::eye(1);
+            break;
     }
     frane_settings.to_rec2020_matrix = transpose(frane_settings.to_rec2020_matrix);
 
-    auto& scene = *ctx.scene;
-    auto&& alloc = scene.bindless_allocator();
-    auto emplace_buffer = [&](uint idx, auto&& buffer) {
-        if (buffer)
-        {
+    auto &scene = *ctx.scene;
+    auto &&alloc = scene.bindless_allocator();
+    auto emplace_buffer = [&](uint idx, auto &&buffer) {
+        if (buffer) {
             scene.bindless_allocator().set_reserved_buffer(idx, buffer);
-        }
-        else
-        {
+        } else {
             scene.bindless_allocator().remove_reserved_buffer(idx);
         }
     };
-    auto emplace_tex2d = [&](uint idx, auto&& image, Sampler sampler) {
-        if (image)
-        {
+    auto emplace_tex2d = [&](uint idx, auto &&image, Sampler sampler) {
+        if (image) {
             scene.bindless_allocator().set_reserved_tex2d(idx, image, sampler);
-        }
-        else
-        {
+        } else {
             scene.bindless_allocator().remove_reserved_tex2d(idx);
         }
     };
-    auto emplace_tex3d = [&](uint idx, auto&& volume, Sampler sampler) {
-        if (volume)
-        {
+    auto emplace_tex3d = [&](uint idx, auto &&volume, Sampler sampler) {
+        if (volume) {
             scene.bindless_allocator().set_reserved_tex3d(idx, volume, sampler);
-        }
-        else
-        {
+        } else {
             scene.bindless_allocator().remove_reserved_tex3d(idx);
         }
     };
@@ -431,53 +390,41 @@ void PreparePass::early_update(Pipeline const& pipeline, PipelineContext const& 
     cam_data.vp = cam_data.proj * cam_data.view;
     cam_data.inv_proj = preparepass_detail::inverse_double(cam_data.proj);
     cam_data.inv_vp = preparepass_detail::inverse_double(cam_data.vp);
-    if (frane_settings.frame_index != 0)
-    {
+    if (frane_settings.frame_index != 0) {
         pass_ctx->last_cam = ctx.cam;
-    }
-    else
-    {
+    } else {
         cam_data.last_proj = cam_data.proj;
         jitter_data.last_jitter = jitter_data.jitter;
     }
 }
-void PreparePass::update(Pipeline const& pipeline, PipelineContext const& ctx)
-{
-    auto& reqs = ctx.mut.click_manager._requires;
-    if (!reqs.empty())
-    {
+void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
+    auto &reqs = ctx.mut.click_manager._requires;
+    if (!reqs.empty()) {
         size_t size = 16384;
-        while (size < reqs.size())
-        {
+        while (size < reqs.size()) {
             size *= 2;
         }
-        auto& render_device = RenderDevice::instance();
+        auto &render_device = RenderDevice::instance();
         Buffer<RayInput> ray_input_buffer = render_device.create_transient_buffer<RayInput>("ray_input", size);
         Buffer<RayOutput> ray_output_buffer = render_device.create_transient_buffer<RayOutput>("ray_output", size);
-        if (ctx.scene->accel() && ctx.scene->accel().size() > 0 && reqs.size() > 0)
-        {
+        if (ctx.scene->accel() && ctx.scene->accel().size() > 0 && reqs.size() > 0) {
             luisa::vector<RayInput> ray_inputs;
             luisa::vector<RayOutput> ray_outputs;
             ray_inputs.push_back_uninitialized(reqs.size());
             ray_outputs.push_back_uninitialized(reqs.size());
-            auto const& cam_data = ctx.mut.states.read<CameraData>();
-            for (auto i : vstd::range(ray_inputs.size()))
-            {
-                auto& inp = reqs[i].second;
+            auto const &cam_data = ctx.mut.states.read<CameraData>();
+            for (auto i : vstd::range(ray_inputs.size())) {
+                auto &inp = reqs[i].second;
                 luisa::visit(
-                    [&]<typename T>(T const& t) {
-                        if constexpr (std::is_same_v<T, RayCastRequire>)
-                        {
+                    [&]<typename T>(T const &t) {
+                        if constexpr (std::is_same_v<T, RayCastRequire>) {
                             ray_inputs[i] = RayInput{
-                                .ray_origin = { t.ray_origin.x, t.ray_origin.y, t.ray_origin.z },
-                                .ray_dir = { t.ray_dir.x, t.ray_dir.y, t.ray_dir.z },
+                                .ray_origin = {t.ray_origin.x, t.ray_origin.y, t.ray_origin.z},
+                                .ray_dir = {t.ray_dir.x, t.ray_dir.y, t.ray_dir.z},
                                 .t_min = t.t_min,
                                 .t_max = t.t_max,
-                                .mask = static_cast<uint>(t.mask)
-                            };
-                        }
-                        else
-                        {
+                                .mask = static_cast<uint>(t.mask)};
+                        } else {
                             auto ray_origin = cam_data.inv_vp * make_float4(t.screen_uv * 2.0f - 1.0f, 1.0f, 1.0f);
                             auto ray_dst = cam_data.inv_vp * make_float4(t.screen_uv * 2.0f - 1.0f, 0.0f, 1.0f);
                             ray_origin /= ray_origin.w;
@@ -485,16 +432,14 @@ void PreparePass::update(Pipeline const& pipeline, PipelineContext const& ctx)
                             auto ray_t = distance(ray_dst.xyz(), ray_origin.xyz());
                             auto ray_dir = (ray_dst.xyz() - ray_origin.xyz()) / max(1e-4f, ray_t);
                             ray_inputs[i] = RayInput{
-                                .ray_origin = { ray_origin.x, ray_origin.y, ray_origin.z },
-                                .ray_dir = { ray_dir.x, ray_dir.y, ray_dir.z },
+                                .ray_origin = {ray_origin.x, ray_origin.y, ray_origin.z},
+                                .ray_dir = {ray_dir.x, ray_dir.y, ray_dir.z},
                                 .t_min = 0.f,
                                 .t_max = ray_t,
-                                .mask = static_cast<uint>(t.mask)
-                            };
+                                .mask = static_cast<uint>(t.mask)};
                         }
                     },
-                    inp
-                );
+                    inp);
             }
             auto input_buffer_view = ray_input_buffer.view(0, reqs.size());
             auto output_buffer_view = ray_output_buffer.view(0, reqs.size());
@@ -506,60 +451,49 @@ void PreparePass::update(Pipeline const& pipeline, PipelineContext const& ctx)
                        input_buffer_view,
                        output_buffer_view,
                        heap_indices::inst_buffer_heap_idx,
-                       heap_indices::mat_idx_buffer_heap_idx
-                   )
+                       heap_indices::mat_idx_buffer_heap_idx)
                        .dispatch(reqs.size())
                 << output_buffer_view.copy_to(ray_outputs.data());
             ctx.cmdlist->add_callback(
                 [click_mng = &ctx.mut.click_manager,
                  _requires = std::move(reqs),
                  ray_outputs = std::move(ray_outputs)]() {
-                    for (auto i : vstd::range(ray_outputs.size()))
-                    {
-                        auto& outputs = ray_outputs[i];
+                    for (auto i : vstd::range(ray_outputs.size())) {
+                        auto &outputs = ray_outputs[i];
                         RayCastResult result{
-                            .mat_code = MatCode{ outputs.mat_code },
+                            .mat_code = MatCode{outputs.mat_code},
                             .inst_id = outputs.tlas_inst_id,
                             .prim_id = outputs.blas_prim_id,
                             .submesh_id = outputs.blas_submesh_id,
                             .ray_length = outputs.ray_t,
-                            .triangle_bary = float2(outputs.triangle_bary[0], outputs.triangle_bary[1])
-                        };
-                        std::lock_guard lck{ click_mng->_mtx };
+                            .triangle_bary = float2(outputs.triangle_bary[0], outputs.triangle_bary[1])};
+                        std::lock_guard lck{click_mng->_mtx};
                         click_mng->_results.try_emplace(
                             _requires[i].first,
-                            result
-                        );
+                            result);
                     }
-                }
-            );
+                });
             ctx.scene->dispose_after_commit(std::move(ray_inputs));
         }
     }
 }
 void PreparePass::on_frame_end(
-    Pipeline const& pipeline,
-    Device& device,
-    SceneManager& scene
-)
-{
-    auto&& alloc = scene.bindless_allocator();
+    Pipeline const &pipeline,
+    Device &device,
+    SceneManager &scene) {
+    auto &&alloc = scene.bindless_allocator();
 }
 void PreparePass::on_disable(
-    Pipeline const& pipeline,
-    Device& device,
-    CommandList& cmdlist,
-    SceneManager& scene
-)
-{
-    auto&& alloc = scene.bindless_allocator();
+    Pipeline const &pipeline,
+    Device &device,
+    CommandList &cmdlist,
+    SceneManager &scene) {
+    auto &&alloc = scene.bindless_allocator();
 }
-PreparePass::~PreparePass()
-{
-    for (auto& i : _lut_load_cmds)
-    {
+PreparePass::~PreparePass() {
+    for (auto &i : _lut_load_cmds) {
         i.evt.wait();
     }
     _lut_load_cmds.clear();
 }
-} // namespace rbc
+}// namespace rbc

@@ -4,9 +4,9 @@
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
 namespace rbc {
-struct RenderPluginImpl : RenderPlugin {
+struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
     luisa::unordered_map<luisa::string, luisa::unique_ptr<Pipeline>> pipelines;
-
+    virtual void dispose() override { delete this; }
     RenderPluginImpl() {
         pipelines.try_emplace("default", luisa::make_unique<PTPipeline>());
     }
@@ -53,7 +53,7 @@ struct RenderPluginImpl : RenderPlugin {
         return true;
     }
 };
-RBC_LOAD_PLUGIN_ENTRY(RenderPlugin) {
+RBC_PLUGIN_ENTRY(RenderPlugin) {
     return new RenderPluginImpl();
 }
 }// namespace rbc

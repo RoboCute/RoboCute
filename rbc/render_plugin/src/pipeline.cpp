@@ -8,7 +8,9 @@
 namespace rbc {
 Pipeline::Pipeline() = default;
 
-Pipeline::~Pipeline() = default;
+Pipeline::~Pipeline() {
+    wait_enable();
+}
 
 Pass *Pipeline::_emplace_instance(vstd::unique_ptr<Pass> &&component, TypeInfo const &name, bool init_enabled) {
     auto ptr = component.get();
