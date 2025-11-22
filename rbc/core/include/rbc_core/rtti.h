@@ -18,9 +18,9 @@ static constexpr bool is_rtti_type_v = rbc_rtti_detail::is_rtti_type<T>::value;
     template<>                                                       \
     struct is_rtti_type<ClassName> {                                 \
         static constexpr bool value = true;                          \
-        static constexpr luisa::string_view name{#ClassName};        \
+        static constexpr const char *name{#ClassName};               \
         static std::array<uint64_t, 2> get_md5() {                   \
-            static vstd::MD5 _md5{name};                             \
+            static vstd::MD5 _md5{luisa::string_view{name}};         \
             return {_md5.to_binary().data0, _md5.to_binary().data1}; \
         }                                                            \
     };                                                               \

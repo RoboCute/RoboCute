@@ -196,7 +196,7 @@ namespace rbc_rtti_detail {{
 template<>
 struct is_rtti_type<{name}> {{
     static constexpr bool value = true;
-    static constexpr luisa::string_view name{{"{name}"}};
+    static constexpr const char* name{{"{name}"}};
     static constexpr uint8_t md5[16]{{{digest}}};
 }};
 }} // rbc_rtti_detail
@@ -208,7 +208,7 @@ namespace rbc_rtti_detail {{
 template<>
 struct is_rtti_type<{name}> {{
     static constexpr bool value = true;
-    static constexpr luisa::string_view name{{"{name}"}};
+    static constexpr const char* name{{"{name}"}};
 }};
 }} // rbc_rtti_detail
 ''')

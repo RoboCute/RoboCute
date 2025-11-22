@@ -32,6 +32,8 @@ public:
 
     [[nodiscard]] auto hash() const { return _md5[0]; }
     [[nodiscard]] auto name() const { return _name; }
+    // This is OK, because address must come from const char*
+    [[nodiscard]] auto name_c_str() const { return _name.data(); }
 
     template<concepts::RTTIType T>
     static TypeInfo get() {
