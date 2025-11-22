@@ -1,15 +1,18 @@
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/shader_manager.h>
 #include <rbc_graphics/render_device.h>
+#include <luisa/core/clock.h>
 #include <luisa/gui/window.h>
 #include <luisa/runtime/swapchain.h>
 #include <luisa/dsl/sugar.h>
 #include <rbc_runtime/render_plugin.h>
 #include <luisa/core/dynamic_module.h>
+#include <rbc_render/generated/pipeline_settings.hpp>
 int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;
+    log_level_info();
     luisa::fiber::scheduler scheduler;
     RenderDevice render_device;
     luisa::string backend = "dx";
@@ -61,15 +64,6 @@ int main(int argc, char *argv[]) {
     StateMap pipeline_state_map;
     auto pipe_ctx = render_plugin->create_pipeline_context(pipeline_state_map);
     LUISA_ASSERT(render_plugin->initialize_pipeline({}));
-    sm->before_rendering(
-        cmdlist,
-        main_stream);
-    sm->on_frame_end(
-        cmdlist,
-        main_stream);
-    main_stream.synchronize();
-    render_plugin->destroy_pipeline_context(pipe_ctx);
-    render_plugin->dispose();
     // init window
     Window window("test graphics", resolution);
     auto swapchain = render_device.lc_device().create_swapchain(
@@ -106,14 +100,28 @@ int main(int argc, char *argv[]) {
         value = filmic_aces(value);
         dst_img.write(dispatch_id().xy(), make_float4(value, 1.f));
     });
+    Clock clk;
+    double last_frame_time = 0;
+    // Test FOV
+    render_plugin->get_camera(pipe_ctx).fov = radians(80.f);
     while (!window.should_close()) {
         window.poll_events();
         if (frame_index > 1) {
             timeline_event.synchronize(frame_index - 1);
         }
-        ++frame_index;
+        auto &frame_settings = pipeline_state_map.read_mut<rbc::FrameSettings>();
+        frame_settings.render_resolution = dst_img.size();
+        frame_settings.display_resolution = dst_img.size();
+        frame_settings.dst_img = &dst_img;
+        auto time = clk.toc();
+        auto delta_time = time - last_frame_time;
+        last_frame_time = time;
+        frame_settings.delta_time = delta_time;
+        frame_settings.time = time;
+        frame_settings.frame_index = frame_index;
         // before render
         // TODO: pipeline early-update
+        render_plugin->before_rendering({}, pipe_ctx);
         sm->before_rendering(
             cmdlist,
             main_stream);
@@ -121,27 +129,31 @@ int main(int argc, char *argv[]) {
         auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
         managed_device->begin_managing(cmdlist);
         // frame render logic
+        render_plugin->on_rendering({}, pipe_ctx);
         // TODO: pipeline update
-
         //////////////// Test
-        auto transient_img = render_device.create_transient_image<float>("my_transient_image", PixelStorage::FLOAT4, resolution);
-        cmdlist << draw_shader(transient_img).dispatch(resolution)
-                << blit_shader(transient_img, dst_img).dispatch(resolution);
         managed_device->end_managing(cmdlist);
         sm->on_frame_end(
             cmdlist,
             main_stream, managed_device);
 
-        main_stream << swapchain.present(dst_img) << timeline_event.signal(frame_index);
-        float3x3 a;
-        float3 b;
-        a *b;
+        main_stream << swapchain.present(dst_img) << timeline_event.signal(++frame_index);
     }
     // Destroy
     if (!cmdlist.empty()) {
         main_stream << cmdlist.commit();
     }
+    auto pipe_settings_json = pipeline_state_map.serialize_to_json();
+    if (pipe_settings_json.data()) {
+        LUISA_INFO("{}", luisa::string_view{
+                             (char const *)pipe_settings_json.data(),
+                             pipe_settings_json.size()});
+    }
     main_stream.synchronize();
+    // destroy render-pipeline
+    render_plugin->destroy_pipeline_context(pipe_ctx);
+    render_plugin->dispose();
+    // destroy graphics
     sm.destroy();
     render_device.shutdown();
 }

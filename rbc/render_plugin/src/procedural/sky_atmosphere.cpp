@@ -4,20 +4,26 @@
 #include <luisa/runtime/buffer.h>
 namespace rbc {
 SkyAtmosphere::SkyAtmosphere(Device &device, HDRI &hdri, Image<float> &&src_img)
-    : _device(device), _hdri(hdri), _src_img(std::move(src_img)), _img(device.create_image<float>(PixelStorage::FLOAT4, _src_img.size())),
+    : _device(device), _hdri(hdri), _src_img(std::move(src_img)),
       //   _lum_img(device.create_image<float>(PixelStorage::FLOAT1, _src_img.size())),
-      _temp_img(device.create_image<float>(PixelStorage::FLOAT4, _src_img.size())), _weight_buffer(device.create_buffer<float>(_src_img.size().x * _src_img.size().y)), _size(_src_img.size()), _event() {
-    ShaderManager::instance()->load("hdri/clamp_lum.bin", _blur_radius);
-    ShaderManager::instance()->load("hdri/color_sky.bin", _color_sky);
-    ShaderManager::instance()->load("hdri/make_sun.bin", _make_sun);
+      _weight_buffer(device.create_buffer<float>(_src_img.size().x * _src_img.size().y)), _size(_src_img.size()), _event() {
+    luisa::fiber::counter shader_init_counter;
+    ShaderManager::instance()->async_load(shader_init_counter, "hdri/clamp_lum.bin", _blur_radius);
+    ShaderManager::instance()->async_load(shader_init_counter, "hdri/color_sky.bin", _color_sky);
+    ShaderManager::instance()->async_load(shader_init_counter, "hdri/make_sun.bin", _make_sun);
+    shader_init_counter.wait();
     // sm->load("hdri/calc_lum.bin", _calc_lum);
 }
 
 void SkyAtmosphere::copy_img(CommandList &cmdlist) {
+    if (!_img)
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img.size());
     cmdlist << _img.copy_from(_src_img);
 }
 
 void SkyAtmosphere::colored(CommandList &cmdlist, float3 color) {
+    if (!_img)
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img.size());
     cmdlist << (*_color_sky)(
                    _img,
                    color)
@@ -25,6 +31,8 @@ void SkyAtmosphere::colored(CommandList &cmdlist, float3 color) {
 }
 
 void SkyAtmosphere::make_sun(CommandList &cmdlist, float angle_degree, float3 sun_color, float3 sun_dir) {
+    if (!_img)
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img.size());
     cmdlist << (*_make_sun)(
                    _img,
                    sun_color,
@@ -34,6 +42,8 @@ void SkyAtmosphere::make_sun(CommandList &cmdlist, float angle_degree, float3 su
 }
 
 void SkyAtmosphere::clamp_light(CommandList &cmdlist, float max_lum, uint blur_pixel) {
+    if (!_temp_img)
+        _temp_img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img.size());
     cmdlist << (*_blur_radius)(
                    _src_img,
                    _temp_img,
@@ -70,6 +80,11 @@ void SkyAtmosphere::deallocate(BindlessAllocator &bdls_alloc) {
 }
 
 bool SkyAtmosphere::update(CommandList &cmdlist, BindlessAllocator &bdls_alloc, bool force_sync) {
+    auto &img_view = [&]() -> Image<float> & {
+        if (!_img)
+            return _src_img;
+        return _img;
+    }();
     while (auto data = _datas.pop()) {
         _event.add();
         luisa::fiber::schedule([this, data = std::move(*data)]() mutable {
@@ -115,11 +130,15 @@ bool SkyAtmosphere::update(CommandList &cmdlist, BindlessAllocator &bdls_alloc, 
     // }
     if (!_atmosphere_dirty.load()) return update;
     _atmosphere_dirty = false;
+
     if (_sky_id == ~0u) {
-        _sky_id = bdls_alloc.allocate_tex2d(_img, Sampler::point_edge());
+        _sky_id = bdls_alloc.allocate_tex2d(img_view, Sampler::point_edge());
+    } else if (sky_id_dirty) {
+        bdls_alloc.image_heap().emplace_on_update(_sky_id, img_view, Sampler::point_edge());
     }
+    sky_id_dirty = false;
     bdls_alloc.commit(cmdlist);
-    _hdri.compute_scalemap(_device, cmdlist, _img, _size, _weight_buffer, [this](luisa::vector<float> &&data) {
+    _hdri.compute_scalemap(_device, cmdlist, img_view, _size, _weight_buffer, [this](luisa::vector<float> &&data) {
         _datas.push(std::move(data));
     });
     return update;

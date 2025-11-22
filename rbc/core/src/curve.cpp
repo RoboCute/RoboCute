@@ -36,8 +36,18 @@ float Curve::sample_node(float time) const {
 }
 Curve::Curve() {}
 Curve::~Curve() {}
-Curve::Curve(std::initializer_list<float2> key_nodes) : _key_nodes(key_nodes) {}
-Curve::Curve(vstd::vector<float2> &&key_nodes) : _key_nodes(std::move(key_nodes)) {}
+void Curve::_sync_range() {
+    for (auto &i : _key_nodes) {
+        _range.x = std::min<double>(i.x, _range.x);
+        _range.y = std::max<double>(i.x, _range.y);
+    }
+}
+Curve::Curve(std::initializer_list<float2> key_nodes) : _key_nodes(key_nodes) {
+    _sync_range();
+}
+Curve::Curve(vstd::vector<float2> &&key_nodes) : _key_nodes(std::move(key_nodes)) {
+    _sync_range();
+}
 void CubicBezier2D::offset(float2 offset) {
     p0 += offset;
     p1 += offset;

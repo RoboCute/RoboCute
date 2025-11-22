@@ -1,5 +1,6 @@
 #pragma once
 #include <luisa/core/mathematics.h>
+#include <luisa/core/fiber.h>
 #include <luisa/runtime/device.h>
 #include <luisa/runtime/buffer.h>
 #include <luisa/runtime/shader.h>
@@ -38,7 +39,7 @@ public:
     Buffer<float> exposure_buffer;
     // Volume<float> local_exp_volume;
 
-    Exposure(Device& device, uint2 res);
+    Exposure(Device& device, luisa::fiber::counter& counter, uint2 res);
     void generate(
         ExposureSettings const& desc,
         CommandList& cmdlist,

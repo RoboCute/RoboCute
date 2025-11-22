@@ -127,6 +127,10 @@ def download_packages():
             "address": address,
             "path": download_path,
         },
+        "render_resources.7z": {
+            "address": address,
+            "path": download_path,
+        },
         "dx_sdk_20250816.zip": {
             "address": lc_address,
             "path": lc_path,

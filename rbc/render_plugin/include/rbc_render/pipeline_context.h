@@ -85,18 +85,21 @@ public:
     template<typename T, typename... Args>
         requires(std::is_base_of_v<PassContext, T> && luisa::is_constructible_v<T, Args && ...>)
     T *get_pass_context(Args &&...args) {
-        return static_cast<T *>(_pass_contexts.emplace(TypeInfo::get<T>(), vstd::lazy_eval([&]() -> vstd::unique_ptr<PassContext> {
-                                                           return vstd::make_unique<T>(std::forward<Args>(args)...);
-                                                       }))
-                                    .value()
-                                    .get());
+        auto lambda = [&]() -> vstd::unique_ptr<PassContext> {
+            return vstd::make_unique<T>(std::forward<Args>(args)...);
+        };
+        return static_cast<T *>(
+            _pass_contexts.emplace(
+                              TypeInfo::get<T>(),
+                              vstd::lazy_eval(std::move(lambda)))
+                .value()
+                .get());
     }
     template<typename T>
         requires(std::is_base_of_v<PassContext, T>)
     vstd::unique_ptr<T> &get_pass_context_mut() {
         return reinterpret_cast<vstd::unique_ptr<T> &>(_pass_contexts.emplace(TypeInfo::get<T>()).value());
     }
-    StateMap states;
     Image<float> const *resolved_img;
     luisa::fiber::counter before_frame_task;
     luisa::fiber::counter after_frame_task;
@@ -128,7 +131,8 @@ struct PipelineContext : vstd::IOperatorNewBase {
     PipelineContext(
         Device &device,
         SceneManager &scene,
-        CommandList &cmdlist);
+        CommandList &cmdlist,
+        rbc::StateMap *pipeline_settings);
 
     ~PipelineContext();
 

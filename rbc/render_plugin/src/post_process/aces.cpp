@@ -121,9 +121,11 @@ void ACES::get_curve_texture(
     std::memcpy(buffer.mapped_ptr(), host_data.data(), host_data.size_bytes());
     cmdlist << curve_img.copy_from(buffer.view);
 }
-ACES::ACES(bool is_hdr)
+ACES::ACES(
+    luisa::fiber::counter &counter,
+    bool is_hdr)
     : is_hdr(is_hdr) {
-    ShaderManager::instance()->load("post_process/unity_aces_lut.bin", lut3d_shader);
+    ShaderManager::instance()->async_load(counter, "post_process/unity_aces_lut.bin", lut3d_shader);
 }
 ACES::~ACES() {}
 void ACES::early_render(

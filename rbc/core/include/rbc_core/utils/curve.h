@@ -7,9 +7,9 @@ using namespace luisa;
 class RBC_CORE_API Curve {
     vstd::vector<float2> _key_nodes;
     float2 _range{
-        std::numeric_limits<float>::max(),
-        std::numeric_limits<float>::min()};
-
+        1e8f,
+        -1e8f};
+    void _sync_range();
 public:
     [[nodiscard]] auto min_time() const { return _range.x; }
     [[nodiscard]] auto max_time() const { return _range.y; }
@@ -31,8 +31,8 @@ public:
 };
 
 struct Rect {
-    float2 min = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-    float2 max = {std::numeric_limits<float>::min(), std::numeric_limits<float>::min()};
+    float2 min = {1e8f, 1e8f};
+    float2 max = {-1e8f, -1e8f};
 
     inline void extend(float2 point) {
         min = luisa::min(point, min);

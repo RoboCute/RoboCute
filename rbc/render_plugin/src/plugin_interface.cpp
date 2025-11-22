@@ -11,11 +11,11 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
         pipelines.try_emplace("default", luisa::make_unique<PTPipeline>());
     }
     PipeCtxStub *create_pipeline_context(StateMap &render_settings_map) override {
-        auto ctx = new PipelineContext{};
-        ctx->pipeline_settings = &render_settings_map;
-        ctx->device = &RenderDevice::instance().lc_device();
-        ctx->scene = &SceneManager::instance();
-        ctx->cmdlist = &RenderDevice::instance().lc_main_cmd_list();
+        auto ctx = new PipelineContext{
+            RenderDevice::instance().lc_device(),
+            SceneManager::instance(),
+            RenderDevice::instance().lc_main_cmd_list(),
+            &render_settings_map};
         return reinterpret_cast<PipeCtxStub *>(ctx);
     }
     void destroy_pipeline_context(PipeCtxStub *ctx) override {
@@ -43,6 +43,7 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
     bool before_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) override {
         auto ptr = get_pipe(pipeline_name);
         if (!ptr) return false;
+        ptr->wait_enable();
         ptr->early_update(*reinterpret_cast<PipelineContext *>(pipe_ctx));
         return true;
     }

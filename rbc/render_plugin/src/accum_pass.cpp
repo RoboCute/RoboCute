@@ -29,10 +29,9 @@ void AccumPass::wait_enable() {
     init_counter.wait();
 }
 void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    init_counter.wait();
-    auto jitter_data = ctx.mut.states.read<JitterData>();
+    auto jitter_data = ctx.pipeline_settings->read<JitterData>();
 
-    const auto &frameSettings = ctx.mut.states.read<FrameSettings>();
+    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
     pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
     pass_ctx->frame_index = std::min<size_t>(pass_ctx->frame_index, frameSettings.frame_index);
     if (any(frameSettings.render_resolution != frameSettings.display_resolution)) {
@@ -59,14 +58,14 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     };
     jitter_data.jitter_phase_count = ~0u;
     jitter_data.jitter = float2(halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 2), halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 3)) - 0.5f;
-    ctx.mut.states.write(std::move(jitter_data));
+    ctx.pipeline_settings->write(std::move(jitter_data));
 }
 Image<float> const *AccumPass::copy_hdr_img_to_buffer(
     Pipeline const &pipeline,
     PipelineContext const &ctx,
     CommandList &cmdlist,
     Buffer<float> &buffer) {
-    const auto &frameSettings = ctx.mut.states.read<FrameSettings>();
+    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
     auto pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
     cmdlist << (*tex_to_buffer)(
                    pass_ctx->hdr,
@@ -81,7 +80,7 @@ Image<float> const *AccumPass::copy_buffer_to_hdr_img(
     Buffer<float> &noisy_buffer,
     Buffer<float> &denoise_buffer,
     float denoise_weight) {
-    const auto &frameSettings = ctx.mut.states.read<FrameSettings>();
+    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
     auto pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
     cmdlist << (*buffer_to_tex_blend)(noisy_buffer, denoise_buffer, pass_ctx->hdr, denoise_weight).dispatch(frameSettings.display_resolution);
     return &pass_ctx->hdr;
@@ -92,7 +91,7 @@ void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         ctx.mut.resolved_img = &pass_ctx->hdr;
     } else {
         auto &render_device = RenderDevice::instance();
-        const auto &frameSettings = ctx.mut.states.read<FrameSettings>();
+        const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
         auto &scene = *ctx.scene;
         auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frameSettings.render_resolution);
         temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frameSettings.display_resolution);

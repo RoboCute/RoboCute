@@ -2,18 +2,18 @@ from pathlib import Path
 
 GENERATION_TASKS = [
     (
-        "meta.test_codegen",
+        "rbc_meta.test_codegen",
         "codegen_module",
         Path("rbc/tests/test_py_codegen/generated").resolve(),
         Path("src/rbc_ext/generated").resolve(),
     ),
     (
-        "meta.test_serde",
+        "rbc_meta.test_serde",
         "codegen_header",
         Path("rbc/tests/test_serde/generated/generated.hpp").resolve(),
     ),
     (
-        "meta.pipeline_settings",
+        "rbc_meta.pipeline_settings",
         "codegen_header",
         Path(
             "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.hpp"

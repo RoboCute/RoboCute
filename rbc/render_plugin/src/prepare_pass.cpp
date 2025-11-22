@@ -299,7 +299,6 @@ void PreparePass::wait_enable() {
 }
 
 void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    init_evt.wait();
     for (auto &i : _lut_load_cmds) {
         i.evt.wait();
         (*ctx.cmdlist) << i.tex->copy_from(i.data.data());
@@ -307,17 +306,12 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     }
     _lut_load_cmds.clear();
     auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(ctx.cam);
-    auto frane_settings = ctx.mut.states.read_safe<FrameSettings>();
+    auto &frane_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
     // pass_ctx->last_cam.position += make_double3(frane_settings.global_offset);
 
     auto &mut = ctx.mut;
-    auto jitter_data = mut.states.read<JitterData>();
-    auto cam_data = mut.states.read<CameraData>();
-    auto save_cam_data = vstd::scope_exit([&]() mutable {
-        mut.states.write(std::move(cam_data));
-        mut.states.write(std::move(jitter_data));
-        mut.states.write(std::move(frane_settings));
-    });
+    auto &jitter_data = ctx.pipeline_settings->read_mut<JitterData>();
+    auto &cam_data = ctx.pipeline_settings->read_mut<CameraData>();
     jitter_data.last_jitter = jitter_data.jitter;
     cam_data.last_proj = cam_data.proj;
     cam_data.last_view = preparepass_detail::inverse_double(pass_ctx->last_cam.local_to_world_matrix());
@@ -412,7 +406,7 @@ void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             luisa::vector<RayOutput> ray_outputs;
             ray_inputs.push_back_uninitialized(reqs.size());
             ray_outputs.push_back_uninitialized(reqs.size());
-            auto const &cam_data = ctx.mut.states.read<CameraData>();
+            auto const &cam_data = ctx.pipeline_settings->read<CameraData>();
             for (auto i : vstd::range(ray_inputs.size())) {
                 auto &inp = reqs[i].second;
                 luisa::visit(

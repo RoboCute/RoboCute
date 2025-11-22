@@ -135,8 +135,8 @@ public:
         if (!heap_obj.data) {
             heap_obj.template init<T>();
             heap_obj.data = luisa::detail::allocator_allocate(heap_obj.size, heap_obj.alignment);
-            std::construct_at(static_cast<T *>(heap_obj.data), std::forward<T>(t));
         }
+        std::construct_at(static_cast<T *>(heap_obj.data), std::forward<T>(t));
     }
     luisa::BinaryBlob serialize_to_json();
 };

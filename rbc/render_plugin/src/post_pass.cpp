@@ -13,6 +13,7 @@ struct PostPassContext : public PassContext {
     bool reset{true};
     PostPassContext(
         Device &device,
+        luisa::fiber::counter &init_counter,
         filesystem::path const &path,
         Pipeline const &pipeline,
         BufferUploader &uploader,
@@ -20,7 +21,7 @@ struct PostPassContext : public PassContext {
         uint2 res,
         float minLuminance, float maxLuminance, bool use_hdr)
         // : frame_gen(path, device, res, minLuminance, maxLuminance, use_hdr)
-        : aces(true), exposure(device, res) {
+        : aces(init_counter, true), exposure(device, init_counter, res) {
         float data[]{
             globalExposure,
             0.f,
@@ -74,9 +75,12 @@ void PostPass::on_enable(Pipeline const &pipeline, Device &device, CommandList &
     // scene.shader_manager().load("post_process/combineLUT_Pass.bin", combineLUTShader);
 
     // uber_shader
-    ShaderManager::instance()->load("post_process/uber.bin", uber_shader);
-    ShaderManager::instance()->load("post_process/uber_lpm.bin", uber_lpm_shader);
+    ShaderManager::instance()->async_load(init_counter, "post_process/uber.bin", uber_shader);
     aces_lut_dirty = true;
+}
+
+void PostPass::wait_enable() {
+    init_counter.wait();
 }
 
 BufferView<float> PostPass::exposure_buffer() const {
@@ -84,14 +88,14 @@ BufferView<float> PostPass::exposure_buffer() const {
 }
 
 void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
-
     const auto &toneMappingSettings = ctx.pipeline_settings->read<ToneMappingSettings>();
     const auto &displaySettings = ctx.pipeline_settings->read<DisplaySettings>();
-    const auto &frameSettings = ctx.mut.states.read<FrameSettings>();
+    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
     const auto &exposureSettings = ctx.pipeline_settings->read<ExposureSettings>();
 
     post_ctx = ctx.mut.get_pass_context<PostPassContext>(
         (*ctx.device),
+        init_counter,
         ctx.scene->ctx().runtime_directory(),
         pipeline, ctx.scene->buffer_uploader(),
         exposureSettings.globalExposure,
@@ -99,18 +103,13 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
         toneMappingSettings.lpm.displayMinLuminance,
         toneMappingSettings.lpm.displayMaxLuminance,
         displaySettings.use_hdr_display);
-
+    init_counter.wait();
     post_ctx->reset |= frameSettings.frame_index == 0;
     auto &scene = ctx.scene;
     if (post_ctx->reset) {
         aces_lut_dirty = true;
     }
     aces_lut_dirty |= toneMappingSettings.aces.dirty;
-    bool use_lpm = toneMappingSettings.use_lpm;
-    if (_use_lpm != use_lpm) {
-        aces_lut_dirty = true;
-        _use_lpm = use_lpm;
-    }
     if (aces_lut_dirty) {
         post_ctx->aces.early_render(toneMappingSettings.aces, (*ctx.device), (*ctx.cmdlist), ctx.scene->host_upload_buffer());
     }
@@ -118,14 +117,11 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
 
 void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     const auto &distortionSettings = ctx.pipeline_settings->read<DistortionSettings>();
-    auto toneMappingSettings = ctx.pipeline_settings->read_safe<ToneMappingSettings>();
+    auto &toneMappingSettings = ctx.pipeline_settings->read_mut<ToneMappingSettings>();
     const auto &displaySettings = ctx.pipeline_settings->read<DisplaySettings>();
     const auto &exposureSettings = ctx.pipeline_settings->read<ExposureSettings>();
-    const auto &frameSettings = ctx.mut.states.read<FrameSettings>();
+    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
     auto &render_device = RenderDevice::instance();
-    auto dsp = vstd::scope_exit([&] {
-        ctx.pipeline_settings->write(std::move(toneMappingSettings));
-    });
 
     ///////////// recycle unused gbuffer
     ///////////// recycle unused gbuffer
@@ -168,7 +164,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         post_ctx->reset, frameSettings.delta_time);
 
     if (aces_lut_dirty) {
-        post_ctx->aces.dispatch(toneMappingSettings.aces, (*ctx.cmdlist), /* disable aces-tonemappiong if lpm used */ _use_lpm);
+        post_ctx->aces.dispatch(toneMappingSettings.aces, (*ctx.cmdlist), /* disable aces-tonemappiong if lpm used */ true);
         aces_lut_dirty = false;
     }
     args.saturate_result = !displaySettings.use_hdr_display;
@@ -181,31 +177,19 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     }
     args.hdr_input_multiplier = hdr_input_multiplier;
     // args.localExposure_detail_strength = pipeline.settings.exposure.localExposureDetail;
-    Image<float> const *uber_out_img = nullptr;
-    uber_out_img = frameSettings.dst_img;
+    Image<float> const *uber_out_img = frameSettings.dst_img;
     LUISA_ASSERT(read_tex(), "Bad read");
     LUISA_ASSERT(post_ctx->aces.lut3d_volume, "Bad lut3d");
-    if (_use_lpm) {
-        auto lpm_args = LPM::compute(toneMappingSettings.lpm);
-        (*ctx.cmdlist) << (*uber_lpm_shader)(
-                              read_tex(),
-                              post_ctx->aces.lut3d_volume,
-                              //    post_ctx->exposure.local_exp_volume,
-                              args,
-                              lpm_args,
-                              post_ctx->exposure.exposure_buffer,
-                              *uber_out_img)
-                              .dispatch(frameSettings.display_resolution);
-    } else {
-        (*ctx.cmdlist) << (*uber_shader)(
-                              read_tex(),
-                              post_ctx->aces.lut3d_volume,
-                              //    post_ctx->exposure.local_exp_volume,
-                              args,
-                              post_ctx->exposure.exposure_buffer,
-                              *uber_out_img)
-                              .dispatch(frameSettings.display_resolution);
-    }
+    auto lpm_args = LPM::compute(toneMappingSettings.lpm);
+    (*ctx.cmdlist) << (*uber_shader)(
+                          read_tex(),
+                          post_ctx->aces.lut3d_volume,
+                          //    post_ctx->exposure.local_exp_volume,
+                          args,
+                          lpm_args,
+                          post_ctx->exposure.exposure_buffer,
+                          *uber_out_img)
+                          .dispatch(frameSettings.display_resolution);
     ctx.mut.resolved_img = nullptr;
 }
 

@@ -84,7 +84,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         shoulderContrast=1.0,
         saturation="0.f, 0.f, 0.f",
         crosstalk="1.f, 1.f, 1.f",
-        colorSpace="rbc::LpmColorSpace::REC2020",
+        colorSpace="rbc::LpmColorSpace::REC709",
         displayMinLuminance=0.001,
         displayMaxLuminance=1000,
     )
@@ -134,7 +134,8 @@ def codegen_header(header_path: Path, cpp_path: Path):
         realtime_rendering=tr.bool,
         dst_img=tr.external_type("luisa::compute::Image<float> const*"),
     )
-    FrameSettings.init_member(resource_color_space="ResourceColorSpace::Rec709")
+    FrameSettings.init_member(resource_color_space="ResourceColorSpace::Rec709",
+                              realtime_rendering=True)
     curve = tr.external_type("Curve")
     ACESParameters = tr.struct("rbc::ACESParameters")
     ACESParameters.members(
@@ -183,7 +184,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         lift="1, 1, 1, 0",
         gamma="1, 1, 1, 0",
         gain="1, 1, 1, 0",
-        colorFilter="1, 1, 1, 0",
+        colorFilter="1, 1, 1, 1",
         dirty=True,
     )
     ExposureSettings = tr.struct("ExposureSettings")
@@ -218,7 +219,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
     )
     ToneMappingSettings = tr.struct("rbc::ToneMappingSettings")
     ToneMappingSettings.serde_members(
-        use_lpm=tr.bool, lpm=LpmDispatchParameters, aces=ACESParameters
+        lpm=LpmDispatchParameters, aces=ACESParameters
     )
     ToneMappingSettings.init_member(use_lpm=True)
     DisplaySettings = tr.struct("rbc::DisplaySettings")
@@ -231,14 +232,16 @@ def codegen_header(header_path: Path, cpp_path: Path):
     )
     DisplaySettings.init_member(
         use_linear_sdr=True,
-        use_hdr_display=True,
-        use_hdr_10=True,
+        use_hdr_display=False,
+        use_hdr_10=False,
         gamma=2.2,
         chromatic_aberration=0.001,
     )
     SkySettings = tr.struct("rbc::SkySettings")
     SkySettings.members(
         sky_atom=tr.external_type("SkyAtmosphere*"),
+        dirty=tr.bool,
+        force_sync=tr.bool,
     )
     SkySettings.serde_members(
         sky_angle=tr.float,
@@ -248,8 +251,6 @@ def codegen_header(header_path: Path, cpp_path: Path):
         sun_dir=tr.float3,
         sun_intensity=tr.float,
         sun_angle=tr.float,
-        dirty=tr.bool,
-        force_sync=tr.bool,
     )
     SkySettings.init_member(
         sky_max_lum=65535,

@@ -1,3 +1,8 @@
+target('rbc_render_interface')
+set_kind('headeronly')
+add_includedirs('include', { public = true})
+target_end()
+
 target('rbc_render_plugin')
 add_rules('lc_basic_settings', {
     project_kind = 'shared'
@@ -7,7 +12,8 @@ add_deps('rbc_runtime')
 add_deps("compile_shaders", {
     inherit = false
 })
-add_includedirs('include', '../shader/host', {
+add_deps('rbc_render_interface')
+add_includedirs('../shader/host', {
     public = true
 })
 add_files('src/**.cpp')

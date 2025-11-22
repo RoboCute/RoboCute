@@ -1,6 +1,7 @@
 #pragma once
 #include <rbc_core/utils/curve.h>
 #include <luisa/core/stl/vector.h>
+#include <luisa/core/fiber.h>
 #include <luisa/runtime/image.h>
 #include <luisa/runtime/volume.h>
 #include <luisa/runtime/stream.h>
@@ -36,7 +37,8 @@ public:
     Image<float> curve_img;
     Volume<float> lut3d_volume;
 
-    ACES(bool is_hdr);
+    ACES(luisa::fiber::counter& counter,
+        bool is_hdr);
     ~ACES();
     void early_render(
         ACESParameters const& desc,

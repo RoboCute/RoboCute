@@ -28,21 +28,12 @@ private:
 		Image<float>, // src_img,
 		Volume<float>,// tonemap_volume,
 		post_uber_pass::Args,
-		Buffer<float>,// exposure buffer
-		Image<float>  // out texture
-		>;
-
-	using UberLpmShader = Shader2D<
-		Image<float>, // src_img,
-		Volume<float>,// tonemap_volume,
-		post_uber_pass::Args,
 		post_uber_pass::LpmArgs,
 		Buffer<float>,// exposure buffer
 		Image<float>  // out texture
 		>;
 	UberShader const* uber_shader{};
-	UberLpmShader const* uber_lpm_shader{};
-	bool _use_lpm = false;
+	luisa::fiber::counter init_counter;
 
 public:
 	BufferView<float> exposure_buffer() const;
@@ -60,6 +51,8 @@ public:
 	void on_frame_end(Pipeline const& pipeline, Device& device, SceneManager& scene) override;
 
 	void on_disable(Pipeline const& pipeline, Device& device, CommandList& cmdlist, SceneManager& scene) override;
+
+	void wait_enable() override;
 };
 }// namespace rbc
 RBC_RTTI(rbc::PostPass)
