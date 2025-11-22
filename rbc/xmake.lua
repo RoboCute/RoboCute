@@ -2,5 +2,6 @@ includes('core', 'runtime')
 includes('render_plugin')
 includes('tests')
 includes('tools.lua')
-includes("calculator")
 includes("editor")
+
+includes("samples")
