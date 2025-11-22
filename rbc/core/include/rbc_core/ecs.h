@@ -113,7 +113,7 @@ private:
 };
 
 // Component Registry
-class ComponentRegistry {
+class RBC_CORE_API ComponentRegistry {
 public:
     template<typename T>
     static ComponentTypeID register_type(const char *name) {
@@ -131,10 +131,16 @@ private:
 };
 
 // Entity Manager
-class EntityManager {
+class RBC_CORE_API EntityManager {
 public:
     EntityManager();
     ~EntityManager() = default;
+    
+    // Delete copy and move to prevent issues with unique_ptr members
+    EntityManager(const EntityManager &) = delete;
+    EntityManager(EntityManager &&) = delete;
+    EntityManager &operator=(const EntityManager &) = delete;
+    EntityManager &operator=(EntityManager &&) = delete;
 
     // Entity operations
     EntityID create_entity();
