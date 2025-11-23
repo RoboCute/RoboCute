@@ -17,7 +17,7 @@ public:
     [[nodiscard]] virtual luisa::vector<SystemTypeID> get_dependencies() const { return {}; }
 };
 
-class RBC_RUNTIME_API SystemScheduler {
+class RBC_WORLD_API SystemScheduler {
 public:
     SystemScheduler() = default;
     ~SystemScheduler() = default;

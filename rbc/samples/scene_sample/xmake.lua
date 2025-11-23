@@ -3,6 +3,6 @@ target('scene_sample')
         project_kind = 'binary'
     })
     add_files('*.cpp')
-    add_deps('rbc_runtime')
+    add_deps('rbc_world')
 target_end()
 

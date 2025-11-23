@@ -1,11 +1,11 @@
 #pragma once
 
 #include "rbc_core/ecs.h"
-#include "rbc_runtime/system.h"
+#include "rbc_world/system.h"
 
 namespace rbc {
 
-struct RBC_RUNTIME_API TransformComponent : public IComponent {
+struct RBC_WORLD_API TransformComponent : public IComponent {
     DECLARE_COMPONENT(TransformComponent);
 
     // Local transform
@@ -32,7 +32,7 @@ public:
     // void deserialize(DeSerializer<IComponent> &deserializer) override;
 };
 
-class RBC_RUNTIME_API TransformSystem : public ISystem {
+class RBC_WORLD_API TransformSystem : public ISystem {
 public:
     explicit TransformSystem(EntityManager *entity_manager)
         : entity_manager_(entity_manager) {}
