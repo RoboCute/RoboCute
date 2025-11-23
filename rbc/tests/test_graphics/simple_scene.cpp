@@ -6,7 +6,9 @@ namespace rbc {
 #include <rbc_graphics/materials.h>
 #include <material/mats.inl>
 }// namespace rbc
+static const luisa::float3 light_emission{luisa::float3(7, 6, 3) * 1000.f};
 void SimpleScene::_init_mesh() {
+
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;
@@ -85,7 +87,8 @@ void SimpleScene::_init_tlas() {
     auto &cmdlist = render_device.lc_main_cmd_list();
     auto &cube_mesh = device_meshes[0];
     cube_mesh->sync_wait();
-    float4x4 cube_transform = translation(float3(-1, -1, 3)) * scaling(float3(1, 1, 1));
+    cube_pos = float3(-1, -1, 3);
+    float4x4 cube_transform = translation(cube_pos);
     // add object
     tlas_indices.emplace_back(
         sm.accel_manager().emplace_mesh_instance(
@@ -97,10 +100,11 @@ void SimpleScene::_init_tlas() {
             {&default_mat_code, 1},
             cube_transform));
     // add light
+    light_pos = float3(0.5, 0.5f, 1);
     float4x4 area_light_transform =
-        translation(float3(0.5, 0.5f, 1)) *
+        translation(light_pos) *
         rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f) * scaling(0.1f);
-    lights.add_area_light(cmdlist, area_light_transform, float3(7, 6, 3) * 1000.f);
+    light_id.emplace_back(lights.add_area_light(cmdlist, area_light_transform, light_emission));
 }
 void SimpleScene::_init_material() {
     using namespace rbc;
@@ -142,4 +146,31 @@ SimpleScene::~SimpleScene() {
         sm.accel_manager().remove_mesh_instance(sm.buffer_allocator(), sm.buffer_uploader(), i);
     }
     sm.mat_manager().discard_mat_instance(default_mat_code);
+}
+void SimpleScene::move_cube(luisa::float3 pos) {
+    using namespace rbc;
+    using namespace luisa;
+    using namespace luisa::compute;
+    auto &sm = SceneManager::instance();
+    auto &render_device = RenderDevice::instance();
+    cube_pos += pos;
+    sm.accel_manager().set_mesh_instance(
+        render_device.lc_main_cmd_list(),
+        sm.buffer_uploader(),
+        tlas_indices[0],
+        translation(cube_pos), ~0ull, true);
+}
+void SimpleScene::move_light(luisa::float3 pos) {
+    using namespace rbc;
+    using namespace luisa;
+    using namespace luisa::compute;
+    auto &sm = SceneManager::instance();
+    auto &render_device = RenderDevice::instance();
+    light_pos += pos;
+    lights.update_area_light(
+        render_device.lc_main_cmd_list(),
+        light_id[0],
+        translation(light_pos) *
+            rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f) * scaling(0.1f),
+        light_emission);
 }

@@ -9,10 +9,14 @@ struct SimpleScene {
     luisa::vector<rbc::RC<rbc::DeviceMesh>> device_meshes;
     luisa::vector<uint32_t> tlas_indices;
     luisa::vector<uint32_t> light_id;
+    luisa::float3 cube_pos;
+    luisa::float3 light_pos;
     bool tlas_loaded{};
 
     SimpleScene();
     ~SimpleScene();
+    void move_cube(luisa::float3 pos);
+    void move_light(luisa::float3 pos);
 
 private:
 

@@ -71,10 +71,54 @@ int main(int argc, char *argv[]) {
     vstd::optional<SimpleScene> simple_scene;
     simple_scene.create();
     // Test FOV
+    vstd::optional<float3> cube_move, light_move;
     window.set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
-        if (key == Key::KEY_SPACE && action == Action::ACTION_PRESSED) {
-            LUISA_INFO("Reset frame");
-            render_frame_index = 0;
+        if (action != Action::ACTION_PRESSED) return;
+        render_frame_index = 0;
+        switch (key) {
+            case Key::KEY_SPACE: {
+                LUISA_INFO("Reset frame");
+            } break;
+            case Key::KEY_W: {
+                light_move.create();
+                *light_move += float3(0, 0.1, 0);
+            } break;
+            case Key::KEY_S: {
+                light_move.create();
+                *light_move += float3(0, -0.1, 0);
+            } break;
+            case Key::KEY_A: {
+                light_move.create();
+                *light_move += float3(-0.1, 0, 0);
+            } break;
+            case Key::KEY_D: {
+                light_move.create();
+                *light_move += float3(0.1, 0, 0);
+            } break;
+            case Key::KEY_Q: {
+                light_move.create();
+                *light_move += float3(0, 0, -0.1);
+            } break;
+            case Key::KEY_E: {
+                light_move.create();
+                *light_move += float3(0, 0, 0.1);
+            } break;
+            case Key::KEY_UP: {
+                cube_move.create();
+                *cube_move += float3(0, 0.1, 0);
+            } break;
+            case Key::KEY_DOWN: {
+                cube_move.create();
+                *cube_move += float3(0, -0.1, 0);
+            } break;
+            case Key::KEY_LEFT: {
+                cube_move.create();
+                *cube_move += float3(-0.1, 0, 0);
+            } break;
+            case Key::KEY_RIGHT: {
+                cube_move.create();
+                *cube_move += float3(0.1, 0, 0);
+            } break;
         }
     });
     render_plugin->get_camera(pipe_ctx).fov = radians(80.f);
@@ -95,6 +139,15 @@ int main(int argc, char *argv[]) {
         frame_settings.time = time;
         frame_settings.frame_index = render_frame_index;
         ++render_frame_index;
+        // scene logic
+        if (cube_move) {
+            simple_scene->move_cube(*cube_move);
+            cube_move.destroy();
+        }
+        if (light_move) {
+            simple_scene->move_light(*light_move);
+            light_move.destroy();
+        }
         // before render
         render_plugin->before_rendering({}, pipe_ctx);
         sm->before_rendering(

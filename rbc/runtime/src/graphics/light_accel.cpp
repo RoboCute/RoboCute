@@ -71,6 +71,22 @@ uint LightAccel::Light<T>::emplace(
     uploader.emplace_copy_cmd(device_data.view(index, 1), &data);
     return index;
 }
+template <typename T>
+void LightAccel::Light<T>::update(
+    LightAccel& self,
+    BufferUploader& uploader,
+    uint index,
+    T const& t
+)
+{
+    auto& host = host_data[index];
+    host.data = t;
+    uploader.emplace_copy_cmd(device_data.view(index, 1), &t);
+    auto& node = self._input_nodes[host.accel_id];
+    auto leaf_node = t.leaf_node();
+    leaf_node.index = node.index;
+    node = leaf_node;
+}
 
 uint* LightAccel::get_accel_id(uint light_type, uint index)
 {
@@ -119,7 +135,8 @@ auto LightAccel::Light<T>::remove(
         cmd.new_light_index = index;
         curr_data = host_data.back();
         self._inst_ids[curr_data.accel_id].light_index = index;
-        self._input_nodes[curr_data.accel_id].write_index(light_type, index);
+        auto& node = self._input_nodes[curr_data.accel_id];
+        node.write_index(light_type, index);
         uploader.emplace_copy_cmd(device_data.view(index, 1), &curr_data.data);
     }
     host_data.pop_back();
@@ -127,17 +144,7 @@ auto LightAccel::Light<T>::remove(
     self._erase_accel_inst(accel_id);
     return cmd;
 }
-template <typename T>
-void LightAccel::Light<T>::update(
-    LightAccel& self,
-    BufferUploader& uploader,
-    uint index,
-    T const& t
-)
-{
-    host_data[index].data = t;
-    uploader.emplace_copy_cmd(device_data.view(index, 1), &t);
-}
+
 
 void LightAccel::_erase_accel_inst(uint accel_id)
 {
@@ -162,9 +169,10 @@ void LightAccel::reserve_tlas()
 }
 void LightAccel::build_tlas()
 {
-    if (!_dirty) return;
+    if (!_dirty || capacity == 0) return;
     BVH::build(_tlas_data, _input_nodes);
     capacity = _tlas_data.size();
+    _dirty = false;
 }
 void LightAccel::update_tlas(CommandList& cmdlist, DisposeQueue& disp_queue)
 {
@@ -188,6 +196,7 @@ void LightAccel::mark_light_dirty(
     uint light_index
 )
 {
+    _dirty = true;
     // reserved
 }
 LightAccel::~LightAccel() {}
