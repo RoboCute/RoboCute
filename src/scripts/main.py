@@ -265,6 +265,27 @@ def prepare():
             json.dump(options, f, indent=4)
         write_shader_compile_cmd()
 
+    # ------------------------------ Clean Up ------------------------------
+    # Cleanup previous generated code to prevent disturbation
+    # iterate all "generated" directories in the rbc/
+    print("Clean up previous generated code? (y/n)")
+    try:
+        clean_up = input().strip()
+    except EOFError:
+        clean_up = "n"
+    if clean_up.lower() == "y":
+        clean_up_generated_code()
+
+
+def clean_up_generated_code():
+    for generated_dir in Path("rbc").glob("**/generated"):
+        if generated_dir.is_dir():
+            shutil.rmtree(generated_dir)
+            print(f"Cleaned up {generated_dir}")
+        else:
+            print(f"{generated_dir} is not a directory")
+            sys.exit(1)
+
 
 def run_generation_task(module_name, function_name, *args):
     """
