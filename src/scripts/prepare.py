@@ -96,3 +96,13 @@ GIT_TASKS = {
         "deps": [],
     },
 }
+CLANGCXX_NAME = 'clangcxx_compiler-v2.0.1'
+CLANGCXX_PATH = "build/tool/clangcxx_compiler/clangcxx_compiler.exe"
+SHADER_PATH = "rbc/shader"
+CLANGD_NAME = 'clangd-v19.1.7'
+LC_SDK_ADDRESS = "https://github.com/LuisaGroup/SDKs/releases/download/sdk/"
+RBC_SDK_ADDRESS = "https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/"
+LC_DX_SDK = "dx_sdk_20250816.zip"
+RENDER_RESOURCE_NAME = "render_resources.7z"
+PLATFORM = 'windows'
+ARCH = 'x64'

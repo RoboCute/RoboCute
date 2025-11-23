@@ -10,9 +10,10 @@ import time
 import importlib
 from multiprocessing import Process
 from scripts.generate import GENERATION_TASKS
-from scripts.prepare import GIT_TASKS
+from scripts.prepare import *
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder
+import rbc_meta.utils.codegen_util as codegen_util
 
 
 def get_project_root():
@@ -40,8 +41,8 @@ def find_process_path(process_name):
 
 
 def write_shader_compile_cmd():
-    clangcxx_dir = rel("build/tool/clangcxx_compiler/clangcxx_compiler.exe")
-    shader_dir = rel("rbc/shader")
+    clangcxx_dir = rel(CLANGCXX_PATH)
+    shader_dir = rel(SHADER_PATH)
     in_dir = shader_dir / "src"
     # TODO: different platform
     host_dir = shader_dir / "host"
@@ -60,7 +61,7 @@ def write_shader_compile_cmd():
     # write files
     for backend in backends:
         cache_dir = shader_dir / ".cache" / backend
-        out_dir = Path(PROJECT_ROOT) / f"build/windows/x64/shader_build_{backend}"
+        out_dir = Path(PROJECT_ROOT) / f"build/{PLATFORM}/{ARCH}/shader_build_{backend}"
         f = open(shader_dir / f"{backend}_compile.cmd", "w")
         f.write("@echo off\n" + build_cmd() + f" -backend={backend}")
         f.close()
@@ -110,33 +111,37 @@ def git_clone_or_pull(git_address, subdir, branch=None):
 
 
 def download_packages():
-    platform = "windows"
-    arch = "x64"
+    platform = PLATFORM
+    arch = ARCH
     plat_name = f"{platform}-{arch}"
     download_path = Path(PROJECT_ROOT) / "build/download"
     download_path.mkdir(parents=True, exist_ok=True)
-    address = "https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/"
-    lc_address = "https://github.com/LuisaGroup/SDKs/releases/download/sdk/"
+    address = LC_SDK_ADDRESS
+    lc_address = RBC_SDK_ADDRESS
     lc_path = rel("thirdparty/LuisaCompute/SDKs")
+    clangcxx = f"{CLANGCXX_NAME}-{plat_name}.7z"
+    clangd = f"{CLANGD_NAME}-{plat_name}.7z"
     downloads = {
-        f"clangcxx_compiler-v2.0.1-{plat_name}.7z": {
+        clangcxx: {
             "address": address,
             "path": download_path,
         },
-        f"clangd-v19.1.7-{plat_name}.7z": {
+        clangd: {
             "address": address,
             "path": download_path,
         },
-        "render_resources.7z": {
+        RENDER_RESOURCE_NAME: {
             "address": address,
             "path": download_path,
         },
-        "dx_sdk_20250816.zip": {
+        LC_DX_SDK: {
             "address": lc_address,
             "path": lc_path,
         },
     }
-
+    lua_file = f'''clangd_filename = "{clangd}"
+clangcxx_filename = "{clangcxx}"'''
+    codegen_util._write_string_to(lua_file, PROJECT_ROOT / 'rbc/generate.lua')
     def download_file(file: str, map):
         dst_path = str(map["path"] / file)
         if os.path.exists(dst_path):
