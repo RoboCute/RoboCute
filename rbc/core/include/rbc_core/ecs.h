@@ -18,8 +18,8 @@ public:
     virtual ~IComponent() = default;
     [[nodiscard]] virtual ComponentTypeID get_type_id() const = 0;
     [[nodiscard]] virtual luisa::unique_ptr<IComponent> clone() const = 0;
-    virtual void serialize(Serializer<IComponent> &serializer) const = 0;
-    virtual void deserialize(DeSerializer<IComponent> &deserializer) = 0;
+    // virtual void serialize(Serializer<IComponent> &serializer) const = 0;
+    // virtual void deserialize(DeSerializer<IComponent> &deserializer) = 0;
 };
 
 // Component Array Interface for type erasure

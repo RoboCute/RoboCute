@@ -62,16 +62,16 @@ luisa::unique_ptr<IComponent> TransformComponent::clone() const {
     return cloned;
 }
 
-void TransformComponent::serialize(Serializer<IComponent> &serializer) const {
+// void TransformComponent::serialize(Serializer<IComponent> &serializer) const {
     // Serialize using _store method which handles different types automatically
     // serializer._store(position, "position");
     // serializer._store(rotation, "rotation");
     // serializer._store(scaling, "scaling");
     // serializer._store(parent, "parent");
     // serializer._store(children, "children");
-}
+// }
 
-void TransformComponent::deserialize(DeSerializer<IComponent> &deserializer) {
+// void TransformComponent::deserialize(DeSerializer<IComponent> &deserializer) {
     // Deserialize using _load method
     // deserializer._load(position, "position");
     // deserializer._load(rotation, "rotation");
@@ -80,8 +80,8 @@ void TransformComponent::deserialize(DeSerializer<IComponent> &deserializer) {
     // deserializer._load(children, "children");
 
     // Mark as dirty after deserialization
-    global_dirty = true;
-}
+//     global_dirty = true;
+// }
 
 // TransformSystem implementation
 

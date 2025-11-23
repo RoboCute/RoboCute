@@ -22,4 +22,4 @@ def codegen_header(header_path: Path):
     ut.codegen_to(header_path)(codegen.cpp_interface_gen)
 
     include = f'#include "generated.hpp"'
-    ut.codegen_to(header_path.parent / "enum_ser.cpp")(codegen.cpp_enum_gen, include)
+    ut.codegen_to(header_path.parent / "enum_ser.cpp")(codegen.cpp_impl_gen, include)

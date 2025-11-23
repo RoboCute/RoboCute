@@ -19,10 +19,6 @@ public:
     ~StateMap();
 
 protected:
-    _EXPORT_STD template<class _Ty>
-    static _Ty& lvalue_declval() noexcept {
-        static_assert(false, "Calling declval is ill-formed, see N4950 [declval]/2.");
-    }
 
     struct RBC_CORE_API HeapObject {
         luisa::spin_mutex _obj_mtx;
@@ -31,8 +27,8 @@ protected:
         void *data{};
         vstd::func_ptr_t<void(void *dst, void *src)> copy_ctor{};
         vstd::func_ptr_t<void(void *src)> deleter{};
-        vstd::func_ptr_t<void(void *src, Serializer<rbc::JsonWriter> *)> json_writer{};
-        vstd::func_ptr_t<void(void *src, DeSerializer<rbc::JsonReader> *)> json_reader{};
+        vstd::func_ptr_t<void(void *src, JsonSerializer *)> json_writer{};
+        vstd::func_ptr_t<void(void *src, JsonDeSerializer *)> json_reader{};
         HeapObject() = default;
         template<typename T>
         void init() {
@@ -48,13 +44,13 @@ protected:
                     std::destroy_at(static_cast<T *>(ptr));
                 };
             }
-            if constexpr (requires { lvalue_declval<T>().rbc_objser(lvalue_declval<Serializer<rbc::JsonWriter>>()); }) {
-                json_writer = +[](void *src, Serializer<rbc::JsonWriter> *json_writer) {
+            if constexpr (requires { lvalue_declval<T>().rbc_objser(lvalue_declval<JsonSerializer>()); }) {
+                json_writer = +[](void *src, JsonSerializer *json_writer) {
                     static_cast<T *>(src)->rbc_objser(*json_writer);
                 };
             }
-            if constexpr (requires { lvalue_declval<T>().rbc_objdeser(lvalue_declval<DeSerializer<rbc::JsonReader>>()); }) {
-                json_reader = +[](void *src, DeSerializer<rbc::JsonReader> *json_writer) {
+            if constexpr (requires { lvalue_declval<T>().rbc_objdeser(lvalue_declval<JsonDeSerializer>()); }) {
+                json_reader = +[](void *src, JsonDeSerializer *json_writer) {
                     static_cast<T *>(src)->rbc_objdeser(*json_writer);
                 };
             }
@@ -76,7 +72,7 @@ protected:
     };
     vstd::HashMap<rbc::TypeInfo, HeapObject> _map;
     mutable luisa::spin_mutex _map_mtx;
-    vstd::optional<DeSerializer<rbc::JsonReader>> _json_reader;
+    vstd::optional<JsonDeSerializer> _json_reader;
     void _deser(TypeInfo const &type_info, HeapObject &heap_obj);
     static void _log_err_no_copy(luisa::string_view name);
 public:

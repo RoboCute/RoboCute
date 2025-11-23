@@ -12,7 +12,7 @@
 using namespace rbc;
 using namespace luisa;
 int main() {
-    rbc::Serializer<rbc::JsonWriter> writer;
+    rbc::JsonSerializer writer;
     StateMap state_map;
     {
         MyStruct my_struct;

@@ -288,7 +288,7 @@ class _function_t:
 
 
 class struct:
-    def __init__(self, _func_name: str):
+    def __init__(self, _func_name: str, suffix: str = ''):
         namespace_cut = _func_name.rfind("::")
         if namespace_cut >= 0:
             self._namespace_name = _func_name[0:namespace_cut]
@@ -301,6 +301,7 @@ class struct:
             log_err(f"Struct {full_name} already exists.")
         _registed_struct_types[full_name] = self
         self._doc = full_name
+        self._suffix = suffix
         self._members = dict()
         self._cpp_initer = dict()
         self._serde_members = dict()

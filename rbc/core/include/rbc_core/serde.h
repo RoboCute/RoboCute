@@ -9,7 +9,59 @@
 #include <luisa/core/stl/memory.h>
 #include <luisa/core/stl/vector.h>
 #include <rbc_core/enum_serializer.h>
+#include <rbc_core/json_serde.h>
+#include <rbc_core/type_traits.h>
 namespace rbc {
+namespace concepts {
+template<typename T>
+concept SerWriter = requires(T t) {
+    t.start_array();
+    t.start_object();
+    t.add_last_scope_to_object();
+    t.add_last_scope_to_object(std::declval<char const *>());
+    // array
+    t.add(std::declval<bool>());
+    t.add(std::declval<int64_t>());
+    t.add(std::declval<uint64_t>());
+    t.add(std::declval<double>());
+    t.add_arr(std::declval<luisa::span<int64_t const>>());
+    t.add_arr(std::declval<luisa::span<uint64_t const>>());
+    t.add_arr(std::declval<luisa::span<double const>>());
+    t.add_arr(std::declval<luisa::span<bool const>>());
+    t.add(std::declval<char const *>());
+    // object
+    t.add(std::declval<bool>(), std::declval<char const *>());
+    t.add(std::declval<int64_t>(), std::declval<char const *>());
+    t.add(std::declval<uint64_t>(), std::declval<char const *>());
+    t.add(std::declval<double>(), std::declval<char const *>());
+    t.add_arr(std::declval<luisa::span<int64_t const>>(), std::declval<char const *>());
+    t.add_arr(std::declval<luisa::span<uint64_t const>>(), std::declval<char const *>());
+    t.add_arr(std::declval<luisa::span<double const>>(), std::declval<char const *>());
+    t.add_arr(std::declval<luisa::span<bool const>>(), std::declval<char const *>());
+    t.add(std::declval<char const *>(), std::declval<char const *>());
+
+    std::same_as<decltype(t.write_to()), luisa::BinaryBlob>;
+};
+template<typename T>
+concept SerReader = requires(T t) {
+    std::same_as<decltype(t.last_key()), luisa::string_view>;
+    std::same_as<bool, decltype(t.start_array(lvalue_declval<uint64_t>()))>;
+    std::same_as<bool, decltype(t.start_object())>;
+    t.end_scope();
+    // array
+    std::same_as<bool, decltype(t.read(lvalue_declval<bool>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<int64_t>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<uint64_t>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<double>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<luisa::string>()))>;
+    // object
+    std::same_as<bool, decltype(t.read(lvalue_declval<bool>(), std::declval<char const *>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<int64_t>(), std::declval<char const *>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<uint64_t>(), std::declval<char const *>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<double>(), std::declval<char const *>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<luisa::string>(), std::declval<char const *>()))>;
+};
+}// namespace concepts
 namespace detail {
 template<typename T>
 struct is_unordered_map {
@@ -28,7 +80,7 @@ struct is_unordered_map<vstd::HashMap<K, V>> {
     using ValueType = V;
 };
 }// namespace detail
-template<typename Base>
+template<concepts::SerWriter Base>
 struct Serializer : public Base {
     vstd::VEngineMallocVisitor _alloc_callback;
     vstd::StackAllocator _alloc;
@@ -182,7 +234,7 @@ struct Serializer : public Base {
     }
 };
 
-template<typename Base>
+template<concepts::SerReader Base>
 struct DeSerializer : public Base {
     template<typename... Args>
         requires(luisa::is_constructible_v<Base, Args && ...>)
@@ -379,5 +431,6 @@ struct DeSerializer : public Base {
         }
     }
 };
-
+using JsonSerializer = Serializer<JsonWriter>;
+using JsonDeSerializer = DeSerializer<JsonReader>;
 }// namespace rbc

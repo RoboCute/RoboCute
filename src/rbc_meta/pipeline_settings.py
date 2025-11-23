@@ -1,6 +1,6 @@
 import rbc_meta.utils.type_register as tr
 import rbc_meta.utils.codegen_util as ut
-from rbc_meta.utils.codegen import cpp_interface_gen, cpp_enum_gen
+from rbc_meta.utils.codegen import cpp_interface_gen, cpp_impl_gen
 from pathlib import Path
 
 
@@ -237,4 +237,4 @@ def codegen_header(header_path: Path, cpp_path: Path):
 #include <rbc_render/procedural/sky_atmosphere.h>"""
     ut.codegen_to(header_path)(cpp_interface_gen, include)
     include = "#include <rbc_render/generated/pipeline_settings.hpp>"
-    ut.codegen_to(cpp_path)(cpp_enum_gen, include)
+    ut.codegen_to(cpp_path)(cpp_impl_gen, include)

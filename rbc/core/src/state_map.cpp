@@ -20,7 +20,7 @@ void StateMap::_deser(TypeInfo const &type_info, HeapObject &heap_obj) {
 }
 
 luisa::BinaryBlob StateMap::serialize_to_json() {
-    Serializer<JsonWriter> ser;
+    JsonSerializer ser;
     luisa::vector<luisa::string> strs;
     {
         std::lock_guard lck{_map_mtx};

@@ -28,8 +28,8 @@ struct RBC_RUNTIME_API TransformComponent : public IComponent {
     // interface
 public:
     [[nodiscard]] luisa::unique_ptr<IComponent> clone() const override;
-    void serialize(Serializer<IComponent> &serializer) const override;
-    void deserialize(DeSerializer<IComponent> &deserializer) override;
+    // void serialize(Serializer<IComponent> &serializer) const override;
+    // void deserialize(DeSerializer<IComponent> &deserializer) override;
 };
 
 class RBC_RUNTIME_API TransformSystem : public ISystem {

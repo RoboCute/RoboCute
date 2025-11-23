@@ -253,12 +253,8 @@ def py_interface_gen(module_name: str):
         cb.remove_indent()
     return cb.get_result()
 
-
-def cpp_enum_gen(*extra_includes):
+def _cpp_impl_gen():
     global cb
-    cb.set_result("")
-    for i in extra_includes:
-        cb.add_result(i + "\n")
     # print enums
     for enum_name in tr._registed_enum_types:
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
@@ -278,6 +274,43 @@ def cpp_enum_gen(*extra_includes):
             enum_values += f"(uint64_t)luisa::to_underlying({enum_name}::{enum_value})"
         initer = f'"{full_name}", std::initializer_list<char const*>{{{enum_names}}}, std::initializer_list<uint64_t>{{{enum_values}}}'
         cb.add_line(f"static rbc::EnumSerIniter emm_{digest}{{{initer}}};")
+     # print classes
+    for struct_name in tr._registed_struct_types:
+        struct_type: tr.struct = tr._registed_struct_types[struct_name]
+        if len(struct_type._serde_members) == 0:
+            continue
+        namespace = struct_type.namespace_name()
+        if len(namespace) > 0:
+            cb.add_line(f"namespace {namespace} {{")
+        # serialize function
+        if len(struct_type._serde_members) > 0:
+            cb.add_line(f"void {struct_type.class_name()}::rbc_objser(rbc::JsonSerializer& obj) const {{")
+            cb.add_indent()
+            for mem_name in struct_type._serde_members:
+                cb.add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
+            cb.remove_indent()
+            cb.add_line("}")
+
+        # de-serialize function
+        if len(struct_type._serde_members) > 0:
+            cb.add_line(f"void {struct_type.class_name()}::rbc_objdeser(rbc::JsonDeSerializer& obj){{")
+            cb.add_indent()
+            for mem_name in struct_type._serde_members:
+                cb.add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
+            cb.remove_indent()
+            cb.add_line("}")
+        if len(namespace) > 0:
+            cb.add_line(f"}} // namespace {namespace}")
+        cb.add_result("\n")
+ 
+    
+
+def cpp_impl_gen(*extra_includes):
+    global cb
+    cb.set_result("#include <rbc_core/serde.h>\n")
+    for i in extra_includes:
+        cb.add_result(i + "\n")
+    _cpp_impl_gen()
     return cb.get_result()
 
 
@@ -289,6 +322,7 @@ def cpp_interface_gen(*extra_includes):
 #include <luisa/vstl/meta_lib.h>
 #include <luisa/vstl/v_guid.h>
 #include <rbc_core/enum_serializer.h>
+#include <rbc_core/serde.h>
 #include <rbc_core/rtti.h>
 """)
     for i in extra_includes:
@@ -322,7 +356,7 @@ def cpp_interface_gen(*extra_includes):
         namespace = struct_type.namespace_name()
         if len(namespace) > 0:
             cb.add_line(f"namespace {namespace} {{")
-        cb.add_line(f"struct {struct_type.class_name()} : vstd::IOperatorNewBase {{")
+        cb.add_line(f"struct {struct_type._suffix} {struct_type.class_name()} : vstd::IOperatorNewBase {{")
         cb.add_indent()
         if len(struct_type._members) > 0:
             for mem_name in struct_type._members:
@@ -334,23 +368,11 @@ def cpp_interface_gen(*extra_includes):
 
             # serialize function
             if len(struct_type._serde_members) > 0:
-                cb.add_line("template <typename SerType>")
-                cb.add_line("void rbc_objser(SerType& obj) const {")
-                cb.add_indent()
-                for mem_name in struct_type._serde_members:
-                    cb.add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
-                cb.remove_indent()
-                cb.add_line("}")
+                cb.add_line("void rbc_objser(rbc::JsonSerializer& obj) const;")
 
             # de-serialize function
             if len(struct_type._serde_members) > 0:
-                cb.add_line("template <typename DeSerType>")
-                cb.add_line("void rbc_objdeser(DeSerType& obj){")
-                cb.add_indent()
-                for mem_name in struct_type._serde_members:
-                    cb.add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
-                cb.remove_indent()
-                cb.add_line("}")
+                cb.add_line("void rbc_objdeser(rbc::JsonDeSerializer& obj);")
         if len(struct_type._methods) > 0:
             cb.add_result(f"""
     virtual void dispose() = 0;
@@ -384,6 +406,7 @@ def nanobind_codegen(module_name: str, dll_path: str, *extra_includes):
 #include <luisa/core/basic_types.h>
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/logging.h>
+#include <rbc_core/serde.h>
 #include "module_register.h"
 """)
     export_func_name = f"export_{module_name}"
@@ -466,4 +489,5 @@ void {export_func_name}(nanobind::module_& m) """)
     cb.remove_indent()
     cb.add_line("}")
     cb.add_line(f"static ModuleRegister _{export_func_name}({export_func_name});")
+    _cpp_impl_gen()
     return cb.get_result()
