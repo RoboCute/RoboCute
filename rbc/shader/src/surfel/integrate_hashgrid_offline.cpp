@@ -2,7 +2,6 @@
 #include <spectrum/spectrum.hpp>
 #include <utils/onb.hpp>
 #include <sampling/sample_funcs.hpp>
-#include <sampling/denoise_training_data.hpp>
 #include <path_tracer/gbuffer.hpp>
 using namespace luisa::shader;
 

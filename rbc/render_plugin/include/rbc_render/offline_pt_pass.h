@@ -6,7 +6,6 @@
 namespace rbc {
 #define OFFLINE_MODE
 #include <path_tracer/pt_args.hpp>
-#include <sampling/denoise_training_data.hpp>
 #undef OFFLINE_MODE
 namespace pt {
 struct GBuffer {
@@ -41,9 +40,6 @@ private:
             uint                // max_accum
             >;
     using IntegrateHashGrid = Shader2D<
-#ifdef OUTPUT_DENOISE_TRAINING_DATA
-        Buffer<DenoiseTrainingData>,
-#endif
         Buffer<pt::GBuffer>,//& gbuffers,
         Image<float>,       //& emission_img,
         Buffer<uint>,       //& value_buffer,
@@ -102,10 +98,6 @@ public:
 };
 struct PTPassContext : public PassContext {
 public:
-#ifdef OUTPUT_DENOISE_TRAINING_DATA
-    Buffer<OfflinePTPass::DenoiseTrainingData> denoise_buffer;
-    luisa::vector<OfflinePTPass::DenoiseTrainingData> train_data;
-#endif
     Buffer<float> albedo_buffer;
     Buffer<float> normal_buffer;
     uint gbuffer_accumed_frame{};

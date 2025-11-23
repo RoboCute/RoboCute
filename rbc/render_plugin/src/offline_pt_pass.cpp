@@ -18,9 +18,6 @@ namespace offline_multibounce {
 #include <path_tracer/pt_multi_bounce_offline.inl>
 }// namespace offline_multibounce
 PTPassContext::PTPassContext() {
-#ifdef OUTPUT_DENOISE_TRAINING_DATA
-    denoise_buffer = device.create_buffer<DenoiseTrainingData>(res.x * res.y);
-#endif
 }
 PTPassContext::~PTPassContext() = default;
 void OfflinePTPass::on_enable(
@@ -172,8 +169,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         // .srgb_to_fourier_even_idx = prepare_pass->srgb_to_fourier_even_idx,
         // .bmese_phase_idx = prepare_pass->bmese_phase_idx,
         .time = 0.0f,
-        .require_reject = frameSettings.offline_capturing
-    };
+        .require_reject = frameSettings.offline_capturing};
 
     if (ctx.cam.enable_physical_camera) {
         auto lens_radius = static_cast<float>(0.05 / ctx.cam.aperture);
@@ -202,10 +198,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 scene.volume_heap(),
                 ctx.scene->accel_manager().triangle_vis_buffer(),
                 accel,
-#ifdef OUTPUT_DENOISE_TRAINING_DATA
-                pass_ctx->denoise_buffer,
-                cam_data.last_vp,
-#endif
                 emission,
                 geo_buffer.view(),
                 pass_ctx->albedo_buffer,
@@ -228,10 +220,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 scene.volume_heap(),
                 ctx.scene->accel_manager().triangle_vis_buffer(),
                 accel,
-#ifdef OUTPUT_DENOISE_TRAINING_DATA
-                pass_ctx->denoise_buffer,
-                cam_data.last_vp,
-#endif
                 emission,
                 geo_buffer.view(),
                 scene.accel_manager().last_trans_buffer(),
@@ -268,9 +256,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                        max_accum)
                        .dispatch(frameSettings.render_resolution);
         cmdlist << (*integrate_hashgrid)(
-#ifdef OUTPUT_DENOISE_TRAINING_DATA
-                       pass_ctx->denoise_buffer,
-#endif
                        geo_buffer,
                        emission,
                        value_buffer,
@@ -280,11 +265,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                        .dispatch(frameSettings.render_resolution);
         cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, max_accum).dispatch(key_buffer.size());
     }
-    // TODO: spp collection
-#ifdef OUTPUT_DENOISE_TRAINING_DATA
-    pass_ctx->train_data.resize_uninitialized(pass_ctx->denoise_buffer.size());
-    cmdlist << pass_ctx->denoise_buffer.copy_to(pass_ctx->train_data.data());
-#endif
 }
 void OfflinePTPass::on_frame_end(
     Pipeline const &pipeline,

@@ -63,6 +63,7 @@ int main(int argc, char *argv[]) {
             .back_buffer_count = 1});
     // render loop
     auto timeline_event = render_device.lc_device().create_timeline_event();
+    uint64_t render_frame_index = 0;
     uint64_t frame_index = 0;
     auto dst_img = render_device.lc_device().create_image<float>(swapchain.backend_storage(), resolution);
     Clock clk;
@@ -70,6 +71,12 @@ int main(int argc, char *argv[]) {
     vstd::optional<SimpleScene> simple_scene;
     simple_scene.create();
     // Test FOV
+    window.set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
+        if (key == Key::KEY_SPACE && action == Action::ACTION_PRESSED) {
+            LUISA_INFO("Reset frame");
+            render_frame_index = 0;
+        }
+    });
     render_plugin->get_camera(pipe_ctx).fov = radians(80.f);
     while (!window.should_close()) {
         AssetsManager::instance()->wake_load_thread();
@@ -84,9 +91,10 @@ int main(int argc, char *argv[]) {
         auto time = clk.toc();
         auto delta_time = time - last_frame_time;
         last_frame_time = time;
-        frame_settings.delta_time = delta_time;
+        frame_settings.delta_time = (float)delta_time;
         frame_settings.time = time;
-        frame_settings.frame_index = frame_index;
+        frame_settings.frame_index = render_frame_index;
+        ++render_frame_index;
         // before render
         render_plugin->before_rendering({}, pipe_ctx);
         sm->before_rendering(

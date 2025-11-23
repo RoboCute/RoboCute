@@ -17,7 +17,6 @@
 #include <path_tracer/pt_args.hpp>
 
 #include <path_tracer/integrator.hpp>
-#include <sampling/denoise_training_data.hpp>
 #include <path_tracer/gbuffer.hpp>
 
 #include <std/inplace_vector>
@@ -27,10 +26,6 @@
 using namespace luisa::shader;
 
 [[kernel_2d(16, 8)]] int kernel(
-#ifdef OUTPUT_DENOISE_TRAINING_DATA
-	Buffer<ai::DenoiseTrainingData> ai_train_data,
-	float4x4 last_vp,
-#endif
 	Image<float>& emission_img,
 	Buffer<GBuffer> gbuffers,
 #if defined(OFFLINE_DENOISER)
@@ -159,10 +154,6 @@ using namespace luisa::shader;
 			addition_color = spectrum::emission_to_spectrum(g_image_heap, g_volume_heap, spectrum_arg, addition_color);
 		}
 		write_tex();
-#ifdef OUTPUT_DENOISE_TRAINING_DATA
-		ai::DenoiseTrainingData data;
-		ai_train_data.write(coord.x + coord.y * size.x, data);
-#endif
 		return 0;
 	}
 
