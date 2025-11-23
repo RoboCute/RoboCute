@@ -3,35 +3,30 @@
 #include <luisa/core/basic_types.h>
 #include <luisa/core/mathematics.h>
 #include <rbc_config.h>
-namespace rbc
-{
+namespace rbc {
 using namespace luisa;
 struct Quaternion {
     float4 v;
-    constexpr Quaternion() noexcept = default;
+    constexpr Quaternion() noexcept : v{0.0f, 0.0f, 0.0f, 1.0f} {};
     constexpr Quaternion(float4 v) noexcept
-        : v{ v }
-    {
+        : v{v} {
     }
     constexpr Quaternion(float3 v, float w) noexcept
-        : v{ v.x, v.y, v.z, w }
-    {
+        : v{v.x, v.y, v.z, w} {
     }
-    constexpr auto operator+(Quaternion rhs) const noexcept
-    {
-        return Quaternion{ v + rhs.v };
+    static Quaternion Identity() { return {}; }
+
+    constexpr auto operator+(Quaternion rhs) const noexcept {
+        return Quaternion{v + rhs.v};
     }
-    constexpr auto operator-(Quaternion rhs) const noexcept
-    {
-        return Quaternion{ v - rhs.v };
+    constexpr auto operator-(Quaternion rhs) const noexcept {
+        return Quaternion{v - rhs.v};
     }
-    constexpr auto operator*(float s) const noexcept
-    {
-        return Quaternion{ v * s };
+    constexpr auto operator*(float s) const noexcept {
+        return Quaternion{v * s};
     }
-    constexpr auto operator/(float s) const noexcept
-    {
-        return Quaternion{ v / s };
+    constexpr auto operator/(float s) const noexcept {
+        return Quaternion{v / s};
     }
 };
 struct DecomposedTransform {
@@ -42,7 +37,7 @@ struct DecomposedTransform {
 
 struct DualQuaternion {
     float4 rotation_quaternion;
-	float4 translation_quaternion;
+    float4 translation_quaternion;
 };
 
 [[nodiscard]] RBC_CORE_API DecomposedTransform decompose(float4x4 m) noexcept;
@@ -56,10 +51,10 @@ struct DualQuaternion {
 
 // Dual Quaternion
 [[nodiscard]] RBC_CORE_API DualQuaternion encode_dual_quaternion(
-float3 position,
-Quaternion rotation) noexcept;
+    float3 position,
+    Quaternion rotation) noexcept;
 
 [[nodiscard]] RBC_CORE_API std::pair<float3, Quaternion> decode_dual_quaternion(
-DualQuaternion dual_quaternion) noexcept;
+    DualQuaternion dual_quaternion) noexcept;
 
-} // namespace rbc
+}// namespace rbc

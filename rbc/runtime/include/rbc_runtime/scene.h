@@ -54,4 +54,11 @@ private:
     void update_single_transform(EntityID entity);
 };
 
+struct RenderComponent : public IComponent {
+    DECLARE_COMPONENT(RenderComponent)
+
+    ResourceID mesh_id = INVALID_RESOURCE;
+    std::vector<ResourceID> material_ids;
+};
+
 }// namespace rbc
