@@ -59,7 +59,7 @@ const float3x3 BlueCorrectInv =
         -0.0106337, 1.20632, -0.19569,
         -0.000590887, 0.00105248, 0.999538};
 
-float3 ColorGrade(float3 colorLutSpace, SampleImage &curve_img, Args a, bool disable_aces) {
+float3 ColorGrade(float3 colorLutSpace, SampleImage &curve_img, Args a) {
     float3 colorLinear = LUT_SPACE_DECODE(colorLutSpace);
 #ifdef LUT3D_USE_REC_2020
     float3 aces = rec2020_to_ACES_AP0(colorLinear);
@@ -76,64 +76,16 @@ float3 ColorGrade(float3 colorLutSpace, SampleImage &curve_img, Args a, bool dis
 
     acescg = WhiteBalance(acescg, a.ColorBalance.xyz);
 
-    if (!disable_aces && a.tone_mode == 0) {
-        float LumaAP1 = aces_mul(AP1_2_XYZ_MAT, acescg).y;
-        float3 ChromaAP1 = acescg / LumaAP1;
-
-        float ChromaDistSqr = dot(ChromaAP1 - float3(1.0f), ChromaAP1 - float3(1.0f));
-        float ExpandAmount = (1 - exp2(-4.0f * ChromaDistSqr)) * (1.0f - exp2(-4.0f * ExpandGamut * LumaAP1 * LumaAP1));
-
-        const float3x3 Wide_2_AP1 = mul(transpose(XYZ_2_AP1_MAT), transpose(Wide_2_XYZ_MAT));
-        const float3x3 ExpandMat = mul(Wide_2_AP1, transpose(AP1_2_REC709));
-
-        float3 ColorExpand = mul((ExpandMat), acescg);
-
-        acescg = lerp(acescg, ColorExpand, float3(ExpandAmount));
-    }
-
     acescg = LinearGrade(acescg, a, curve_img);
+    // Tonemap ODT(RRT(aces))
+    aces = ACEScg_to_ACES(acescg);
 
-    if (disable_aces) {
-        // Tonemap ODT(RRT(aces))
-        aces = ACEScg_to_ACES(acescg);
-
-        // keep rec2020 color space for later tonemapper
+    // keep rec2020 color space for later tonemapper
 #ifdef LUT3D_USE_REC_2020
-        colorLinear = ACES_AP0_to_rec2020(aces);
+    colorLinear = ACES_AP0_to_rec2020(aces);
 #else
-        colorLinear = ACES_AP0_to_srgb(aces);
+    colorLinear = ACES_AP0_to_srgb(aces);
 #endif
-    } else {
-        if (a.tone_mode == 0) {
-            const float3x3 BlueCorrectAP1 = mul(transpose(AP0_2_AP1_MAT), mul(transpose(BlueCorrect), transpose(AP1_2_AP0_MAT)));
-            acescg = lerp(acescg, mul(BlueCorrectAP1, acescg), float3(BlueCorrection));
-        }
-
-        // Tonemap ODT(RRT(aces))
-        aces = ACEScg_to_ACES(acescg);
-
-        colorLinear = AcesTonemap(aces,
-                                  a.tone_mode,
-                                  a.unreal_tone_slope,
-                                  a.unreal_tone_toe,
-                                  a.unreal_tone_black_clip,
-                                  a.unreal_tone_shoulder,
-                                  a.unreal_tone_white_clip,
-                                  a.filmic_tone_shoulder_strength,
-                                  a.filmic_tone_linear_strength,
-                                  a.filmic_tone_linear_angle,
-                                  a.filmic_tone_toe_strength,
-                                  a.filmic_tone_toe_numerator,
-                                  a.filmic_tone_toe_denominator);
-
-        if (a.tone_mode == 0) {
-            const float3x3 BlueCorrectInvAP1 = mul(transpose(AP0_2_AP1_MAT), mul(transpose(BlueCorrectInv), transpose(AP1_2_AP0_MAT)));
-            colorLinear = lerp(colorLinear, mul(BlueCorrectInvAP1, colorLinear), float3(BlueCorrection));
-        }
-
-        // transform to rec709, no more tonemapper supported
-        colorLinear = aces_mul(AP1_2_REC709, colorLinear);
-    }
 
     return colorLinear;
 }
@@ -141,9 +93,8 @@ float3 ColorGrade(float3 colorLutSpace, SampleImage &curve_img, Args a, bool dis
 [[kernel_3d(8, 8, 8)]] int kernel(
     Volume<float> &dst_volume,
     SampleImage &curve_img,
-    Args args,
-    bool disable_aces) {
-    float3 graded = ColorGrade(float3(dispatch_id()) / float3(dispatch_size() - 1u), curve_img, args, disable_aces);
+    Args args) {
+    float3 graded = ColorGrade(float3(dispatch_id()) / float3(dispatch_size() - 1u), curve_img, args);
     dst_volume.write(dispatch_id(), float4(max(graded, float3(0.f)), 1));
     return 0;
 }

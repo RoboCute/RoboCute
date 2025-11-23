@@ -14,9 +14,9 @@ struct SimpleScene {
     SimpleScene();
     ~SimpleScene();
 
-    void tick();
 private:
 
     void _init_mesh();
     void _init_material();
+    void _init_tlas();
 };

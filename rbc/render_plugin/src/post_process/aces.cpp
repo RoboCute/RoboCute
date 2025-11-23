@@ -84,24 +84,6 @@ void post_process_aces_get_arg(
     args.Gain = make_float4(ColorToGain(desc.gain), 0.f);
     args.ColorFilter = desc.colorFilter;
     args.ColorFilter *= args.ColorFilter.w;
-
-    // tone mode
-    args.tone_mode = luisa::to_underlying(desc.tone_mapping.tone_mode);
-
-    // unreal aces
-    args.unreal_tone_slope = desc.tone_mapping.unreal_tone_slope;
-    args.unreal_tone_toe = desc.tone_mapping.unreal_tone_toe;
-    args.unreal_tone_black_clip = desc.tone_mapping.unreal_tone_black_clip;
-    args.unreal_tone_shoulder = desc.tone_mapping.unreal_tone_shoulder;
-    args.unreal_tone_white_clip = desc.tone_mapping.unreal_tone_white_clip;
-
-    // filmic aces
-    args.filmic_tone_shoulder_strength = desc.tone_mapping.filmic_tone_shoulder_strength;
-    args.filmic_tone_linear_strength = desc.tone_mapping.filmic_tone_linear_strength;
-    args.filmic_tone_linear_angle = desc.tone_mapping.filmic_tone_linear_angle;
-    args.filmic_tone_toe_strength = desc.tone_mapping.filmic_tone_toe_strength;
-    args.filmic_tone_toe_numerator = desc.tone_mapping.filmic_tone_toe_numerator;
-    args.filmic_tone_toe_denominator = desc.tone_mapping.filmic_tone_toe_denominator;
 }
 
 }// namespace aces_detail
@@ -142,11 +124,11 @@ void ACES::early_render(
 
 void ACES::dispatch(
     ACESParameters const &desc,
-    CommandList &cmdlist, bool disable_aces) {
+    CommandList &cmdlist) {
     using namespace aces_detail;
     Args args;
     post_process_aces_get_arg(desc, args);
-    cmdlist << (*lut3d_shader)(lut3d_volume, curve_img, args, disable_aces).dispatch(lut3d_volume.size());
+    cmdlist << (*lut3d_shader)(lut3d_volume, curve_img, args).dispatch(lut3d_volume.size());
 }
 
 }// namespace rbc

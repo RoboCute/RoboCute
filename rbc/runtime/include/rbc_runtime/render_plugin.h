@@ -15,5 +15,11 @@ struct RenderPlugin : Plugin {
     virtual bool initialize_pipeline(luisa::string_view pipeline_name) = 0;
     virtual bool before_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) = 0;
     virtual bool on_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) = 0;
+
+    virtual bool update_skybox(
+        luisa::filesystem::path const &path,
+        uint2 resolution,
+        uint64_t file_offset_bytes = 0) = 0;
+    virtual void dispose_skybox() = 0;
 };
 }// namespace rbc

@@ -14,8 +14,6 @@ struct PTPipeline : public rbc::Pipeline {
     void initialize() override;
     void update(rbc::PipelineContext &ctx) override;
     void early_update(rbc::PipelineContext &ctx) override;
-    HDRI hdri;
-    vstd::optional<SkyAtmosphere> sky_atom;
     // passes
     rbc::PreparePass *prepare_pass = nullptr;
     rbc::RasterPass *raster_pass = nullptr;

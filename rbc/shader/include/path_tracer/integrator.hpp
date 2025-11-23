@@ -190,7 +190,6 @@ static IntegratorResult sample_material(
             bdls_indices.time);
         if (basic_param.geometry.thin_walled && dot(input_dir, vertices_normal) >= 0.0f) {
             basic_param.geometry.onb.normal = -basic_param.geometry.onb.normal;
-            vertices_onb.normal = -vertices_onb.normal;
         }
     } else {
         plane_normal = procedural_geometry.normal;
@@ -466,9 +465,12 @@ static IntegratorResult sample_material(
 
             float3 offset_normal = plane_normal;
             float3 di_normal = r.normal;
-            if (dot(new_dir, vertices_normal) < 0.f) {
+            if (dot(new_dir, offset_normal) < 0.f) {
                 offset_normal = -offset_normal;
                 need_flip = true;
+            }
+            if (dot(new_dir, di_normal) < 0.f) {
+                di_normal = -di_normal;
             }
             float3 di_world_pos = world_pos;
             if (contained_normal) {

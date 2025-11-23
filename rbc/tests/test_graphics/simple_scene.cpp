@@ -76,6 +76,32 @@ void SimpleScene::_init_mesh() {
     device_meshes.emplace_back(std::move(cube_mesh));
     LUISA_INFO("Cube mesh loaded");
 }
+void SimpleScene::_init_tlas() {
+    using namespace rbc;
+    using namespace luisa;
+    using namespace luisa::compute;
+    auto &sm = SceneManager::instance();
+    auto &render_device = RenderDevice::instance();
+    auto &cmdlist = render_device.lc_main_cmd_list();
+    auto &cube_mesh = device_meshes[0];
+    cube_mesh->sync_wait();
+    float4x4 cube_transform = translation(float3(-1, -1, 3)) * scaling(float3(1, 1, 1));
+    // add object
+    tlas_indices.emplace_back(
+        sm.accel_manager().emplace_mesh_instance(
+            cmdlist, sm.host_upload_buffer(),
+            sm.buffer_allocator(),
+            sm.buffer_uploader(),
+            sm.dispose_queue(),
+            cube_mesh->mesh_data(),
+            {&default_mat_code, 1},
+            cube_transform));
+    // add light
+    float4x4 area_light_transform =
+        translation(float3(0.5, 0.5f, 1)) *
+        rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f) * scaling(0.1f);
+    lights.add_area_light(cmdlist, area_light_transform, float3(7, 6, 3) * 1000.f);
+}
 void SimpleScene::_init_material() {
     using namespace rbc;
     using namespace luisa;
@@ -96,34 +122,6 @@ void SimpleScene::_init_material() {
         sm.buffer_uploader(),
         sm.dispose_queue(), material::PolymorphicMaterial::index<material::OpenPBR>);
 }
-void SimpleScene::tick() {
-    using namespace rbc;
-    using namespace luisa;
-    using namespace luisa::compute;
-    auto &sm = SceneManager::instance();
-    auto &render_device = RenderDevice::instance();
-    auto &cmdlist = render_device.lc_main_cmd_list();
-    auto &cube_mesh = device_meshes[0];
-    if (!tlas_loaded && cube_mesh->load_finished()) {
-        tlas_loaded = true;
-        float4x4 cube_transform = translation(float3(-1, -1, 3)) * scaling(float3(1, 1, 1));
-        // add object
-        tlas_indices.emplace_back(
-            sm.accel_manager().emplace_mesh_instance(
-                cmdlist, sm.host_upload_buffer(),
-                sm.buffer_allocator(),
-                sm.buffer_uploader(),
-                sm.dispose_queue(),
-                cube_mesh->mesh_data(),
-                {&default_mat_code, 1},
-                cube_transform));
-        // add light
-        float4x4 area_light_transform =
-            translation(float3(1, 0.5f, 3)) *
-            rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f);
-        lights.add_area_light(cmdlist, area_light_transform, float3(7, 6, 3) * 10.f);
-    }
-}
 SimpleScene::SimpleScene() {
     using namespace rbc;
     using namespace luisa;
@@ -133,6 +131,8 @@ SimpleScene::SimpleScene() {
     sm.mat_manager().emplace_mat_type<material::Unlit>(sm.bindless_allocator(), 65536, material::PolymorphicMaterial::index<material::Unlit>);
     _init_mesh();
     _init_material();
+    _init_mesh();
+    _init_tlas();
 }
 SimpleScene::~SimpleScene() {
     using namespace rbc;

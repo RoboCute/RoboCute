@@ -12,28 +12,8 @@ namespace rbc {
 PTPipeline::PTPipeline() = default;
 
 void PTPipeline::initialize() {
-    // TODO: test hdri
-    auto path = luisa::filesystem::path{luisa::current_executable_path()}.parent_path().parent_path() / "sky.bytes";
     auto &device = RenderDevice::instance();
-    if (luisa::filesystem::exists(path)) {
-        IOFile file_stream(luisa::to_string(path));
-        if (file_stream.length() == 4096ull * 2048ull * sizeof(float4)) {
-            Image<float> img = device.lc_device().create_image<float>(PixelStorage::FLOAT4, 4096, 2048);
-            IOCommandList io_cmdlist;
-            io_cmdlist << IOCommand{
-                file_stream,
-                0,
-                img.view()};
-            io_cmdlist.dispose_file(std::move(file_stream));
-            device.io_service()->synchronize(device.io_service()->execute(std::move(io_cmdlist)));
-            sky_atom.create(
-                device.lc_device(),
-                hdri,
-                std::move(img));
-        }
-    }
 
-    // load settings
     prepare_pass = this->emplace_instance<PreparePass>();
     // create passes
     pt_pass = this->emplace_instance<OfflinePTPass>();
@@ -54,10 +34,6 @@ void PTPipeline::update(rbc::PipelineContext &ctx) {
 }
 
 PTPipeline::~PTPipeline() {
-    if (sky_atom) {
-        sky_atom->deallocate(SceneManager::instance().bindless_allocator());
-        sky_atom.destroy();
-    }
 }
 
 void PTPipeline::early_update(rbc::PipelineContext &ctx) {
@@ -73,7 +49,6 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
 
     // get settings
     auto &sky_settings = ctx.pipeline_settings->read_mut<SkySettings>();
-    sky_settings.sky_atom = sky_atom.has_value() ? sky_atom.ptr() : nullptr;
     auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
     // update atom
     if (sky_settings.sky_atom) {
@@ -116,20 +91,17 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
 
             sky_settings.dirty = false;
         }
-        if (sky_atom.update(*ctx.cmdlist, ctx.scene->bindless_allocator(), sky_settings.force_sync)) {
+        if (sky_atom.update(*ctx.cmdlist, *ctx.stream, ctx.scene->bindless_allocator(), sky_settings.force_sync)) {
             // frameSettings.sky_confidence = 1.0f;
             frameSettings.frame_index = 0;
-        }
-        if (sky_settings.force_sync) {
-            RenderDevice::instance().lc_main_stream() << ctx.cmdlist->commit() << synchronize();
-            if (sky_atom.update(*ctx.cmdlist, ctx.scene->bindless_allocator(), sky_settings.force_sync)) {
-                // frameSettings.sky_confidence = 1.0f;
-                frameSettings.frame_index = 0;
-            }
         }
         pt_pass->sky_heap_idx = sky_atom.sky_id();
         pt_pass->alias_heap_idx = sky_atom.sky_alias_id();
         pt_pass->pdf_heap_idx = sky_atom.sky_pdf_id();
+    } else {
+        pt_pass->sky_heap_idx = ~0u;
+        pt_pass->alias_heap_idx = ~0u;
+        pt_pass->pdf_heap_idx = ~0u;
     }
 
     // update camera settings

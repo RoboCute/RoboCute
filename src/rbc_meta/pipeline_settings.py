@@ -28,9 +28,6 @@ def codegen_header(header_path: Path, cpp_path: Path):
         FSHDR_2084=3,
         FSHDR_SCRGB=4,
     )
-    EToneMappingMode = tr.enum(
-        "rbc::EToneMappingMode", UnrealAces=0, UnityAces=None, FilmicAces=None
-    )
     NRD_CheckerboardMode = tr.enum(
         "rbc::NRD_CheckerboardMode", OFF=None, BLACK=None, WHITE=None, MAX_NUM=None
     )
@@ -77,47 +74,21 @@ def codegen_header(header_path: Path, cpp_path: Path):
     )
     LpmDispatchParameters.init_member(
         shoulder=True,
-        softGap=0.0,
         hdrMax=1847,
         lpmExposure=10,
-        contrast=0.3,
         shoulderContrast=1.0,
         saturation="0.f, 0.f, 0.f",
         crosstalk="1.f, 1.f, 1.f",
-        colorSpace="rbc::LpmColorSpace::REC709",
+        colorSpace="rbc::LpmColorSpace::REC2020",
         displayMinLuminance=0.001,
         displayMaxLuminance=1000,
     )
     ToneMappingParameters = tr.struct("rbc::ToneMappingParameters")
     ToneMappingParameters.serde_members(
-        tone_mode=EToneMappingMode,
-        unreal_tone_slope=tr.float,
-        unreal_tone_toe=tr.float,
-        unreal_tone_black_clip=tr.float,
-        unreal_tone_shoulder=tr.float,
-        unreal_tone_white_clip=tr.float,
-        filmic_tone_shoulder_strength=tr.float,
-        filmic_tone_linear_strength=tr.float,
-        filmic_tone_linear_angle=tr.float,
-        filmic_tone_toe_strength=tr.float,
-        filmic_tone_toe_numerator=tr.float,
-        filmic_tone_toe_denominator=tr.float,
         hdr_display_multiplier=tr.float,
         hdr_paper_white=tr.float,
     )
     ToneMappingParameters.init_member(
-        tone_mode="rbc::EToneMappingMode::UnrealAces",
-        unreal_tone_slope="0.8f",
-        unreal_tone_toe="0.5f",
-        unreal_tone_black_clip="0.0f",
-        unreal_tone_shoulder="0.3f",
-        unreal_tone_white_clip="0.04f",
-        filmic_tone_shoulder_strength="0.22f",
-        filmic_tone_linear_strength="0.30f",
-        filmic_tone_linear_angle="0.10f",
-        filmic_tone_toe_strength="0.20f",
-        filmic_tone_toe_numerator="0.01f",
-        filmic_tone_toe_denominator="0.30f",
         hdr_display_multiplier="5.0f",
         hdr_paper_white="80.0f",
     )
@@ -210,7 +181,6 @@ def codegen_header(header_path: Path, cpp_path: Path):
     PathTracerSettings = tr.struct("rbc::PathTracerSettings")
     PathTracerSettings.serde_members(
         offline_spp=tr.uint,
-        realtime_spp=tr.uint,
         offline_origin_bounce=tr.uint,
         offline_indirect_bounce=tr.uint,
         resource_color_space=ResourceColorSpace,
@@ -254,6 +224,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         sun_angle=tr.float,
     )
     SkySettings.init_member(
+        force_sync=True,
         sky_max_lum=65535,
         sky_color="1, 1, 1",
         sun_color="1, 1, 1",

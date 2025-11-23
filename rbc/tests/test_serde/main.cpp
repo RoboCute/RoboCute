@@ -33,7 +33,7 @@ int main() {
         auto &v1 = my_struct.multi_dim_vec.emplace_back();
         v1.emplace_back(3);
         v1.emplace_back(4);
-        state_map.write(std::move(my_struct));
+        state_map.write_atomic(std::move(my_struct));
     }
     // Ser
     auto text = state_map.serialize_to_json();

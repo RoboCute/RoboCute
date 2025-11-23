@@ -93,6 +93,7 @@ public:
     );
 
     template <class U>
+        requires (std::is_trivially_copyable_v<U> && std::is_trivially_destructible_v<U>)
     [[nodiscard]] uint emplace_mat_type(
         BindlessAllocator& alloc,
         uint init_capacity,
@@ -109,6 +110,7 @@ public:
     }
 
     template <class U>
+        requires (std::is_trivially_copyable_v<U> && std::is_trivially_destructible_v<U>)
     [[nodiscard]] MatCode emplace_mat_instance(
         U& mat,
         CommandList& cmdlist,

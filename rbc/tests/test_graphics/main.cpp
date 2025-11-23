@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
     auto render_plugin = RBC_LOAD_PLUGIN(render_module, RenderPlugin);
     StateMap pipeline_state_map;
     auto pipe_ctx = render_plugin->create_pipeline_context(pipeline_state_map);
+    render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
     LUISA_ASSERT(render_plugin->initialize_pipeline({}));
     // init window
     Window window("test graphics", resolution);
@@ -87,7 +88,6 @@ int main(int argc, char *argv[]) {
         frame_settings.time = time;
         frame_settings.frame_index = frame_index;
         // before render
-        simple_scene->tick();
         render_plugin->before_rendering({}, pipe_ctx);
         sm->before_rendering(
             cmdlist,

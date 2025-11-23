@@ -104,7 +104,7 @@ public:
     }
     template<concepts::RTTIType T>
         requires(std::is_default_constructible_v<T> && std::is_copy_constructible_v<T>)
-    T read_safe() {
+    T read_atomic() {
         vstd::Storage<T> storage;
         auto ptr = reinterpret_cast<T *>(storage.c);
         _map_mtx.lock();
@@ -126,7 +126,7 @@ public:
     }
     template<concepts::RTTIType T>
         requires(!std::is_reference_v<T>)
-    void write(T &&t) {
+    void write_atomic(T &&t) {
         _map_mtx.lock();
         auto iter = _map.try_emplace(rbc::TypeInfo::get<T>());
         _map_mtx.unlock();

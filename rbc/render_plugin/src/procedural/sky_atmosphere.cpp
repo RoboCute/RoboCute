@@ -79,12 +79,20 @@ void SkyAtmosphere::deallocate(BindlessAllocator &bdls_alloc) {
     collect(_sky_pdf_id);
 }
 
-bool SkyAtmosphere::update(CommandList &cmdlist, BindlessAllocator &bdls_alloc, bool force_sync) {
+bool SkyAtmosphere::update(CommandList &cmdlist, Stream &stream, BindlessAllocator &bdls_alloc, bool force_sync) {
+    if (!_atmosphere_dirty.load())
+        return false;
     auto &img_view = [&]() -> Image<float> & {
         if (!_img)
             return _src_img;
         return _img;
     }();
+    _hdri.compute_scalemap(_device, cmdlist, img_view, _size, _weight_buffer, [this](luisa::vector<float> &&data) {
+        _datas.push(std::move(data));
+    });
+    if (force_sync) {
+        stream << cmdlist.commit() << synchronize();
+    }
     while (auto data = _datas.pop()) {
         _event.add();
         luisa::fiber::schedule([this, data = std::move(*data)]() mutable {
@@ -105,6 +113,7 @@ bool SkyAtmosphere::update(CommandList &cmdlist, BindlessAllocator &bdls_alloc, 
     } else {
         _event.wait();
     }
+    _atmosphere_dirty = false;
     bool update = false;
     if (!_table.table.empty()) {
         cmdlist << _alias_table.view().copy_from(_table.table.data());
@@ -128,8 +137,6 @@ bool SkyAtmosphere::update(CommandList &cmdlist, BindlessAllocator &bdls_alloc, 
     // 	_sky_lum_id = bdls_alloc.allocate_tex2d(_lum_img, Sampler::point_edge());
     // 	calc_lum(cmdlist);
     // }
-    if (!_atmosphere_dirty.load()) return update;
-    _atmosphere_dirty = false;
 
     if (_sky_id == ~0u) {
         _sky_id = bdls_alloc.allocate_tex2d(img_view, Sampler::point_edge());
@@ -137,10 +144,6 @@ bool SkyAtmosphere::update(CommandList &cmdlist, BindlessAllocator &bdls_alloc, 
         bdls_alloc.image_heap().emplace_on_update(_sky_id, img_view, Sampler::point_edge());
     }
     sky_id_dirty = false;
-    bdls_alloc.commit(cmdlist);
-    _hdri.compute_scalemap(_device, cmdlist, img_view, _size, _weight_buffer, [this](luisa::vector<float> &&data) {
-        _datas.push(std::move(data));
-    });
     return update;
 }
 void SkyAtmosphere::sync() {

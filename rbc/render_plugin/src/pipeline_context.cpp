@@ -18,10 +18,11 @@ PipelineContext::PipelineContext() {
 
 PipelineContext::PipelineContext(
     Device &device,
+    Stream &stream,
     SceneManager &scene,
     CommandList &cmdlist,
     rbc::StateMap *pipeline_settings)
-    : device{&device}, scene{&scene}, cmdlist{&cmdlist}, pipeline_settings(pipeline_settings) {
+    : device{&device}, stream(&stream), scene{&scene}, cmdlist{&cmdlist}, pipeline_settings(pipeline_settings) {
     auto &cam_data = pipeline_settings->read_mut<CameraData>();
     cam_data.world_to_sky = make_float3x3(
         1, 0, 0,

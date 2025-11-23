@@ -164,7 +164,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         post_ctx->reset, frameSettings.delta_time);
 
     if (aces_lut_dirty) {
-        post_ctx->aces.dispatch(toneMappingSettings.aces, (*ctx.cmdlist), /* disable aces-tonemappiong if lpm used */ true);
+        post_ctx->aces.dispatch(toneMappingSettings.aces, (*ctx.cmdlist));
         aces_lut_dirty = false;
     }
     args.saturate_result = !displaySettings.use_hdr_display;

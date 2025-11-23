@@ -29,7 +29,7 @@ void AccumPass::wait_enable() {
     init_counter.wait();
 }
 void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    auto jitter_data = ctx.pipeline_settings->read<JitterData>();
+    auto &jitter_data = ctx.pipeline_settings->read_mut<JitterData>();
 
     const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
     pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
@@ -58,7 +58,6 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     };
     jitter_data.jitter_phase_count = ~0u;
     jitter_data.jitter = float2(halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 2), halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 3)) - 0.5f;
-    ctx.pipeline_settings->write(std::move(jitter_data));
 }
 Image<float> const *AccumPass::copy_hdr_img_to_buffer(
     Pipeline const &pipeline,

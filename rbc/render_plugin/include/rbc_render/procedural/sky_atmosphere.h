@@ -65,7 +65,7 @@ public:
     // void calc_lum(CommandList& cmdlist);
     void clamp_light(CommandList &cmdlist, float max_lum, uint blur_pixel);
     void colored(CommandList &cmdlist, float3 color);
-    bool update(CommandList &cmdlist, BindlessAllocator &bdls_alloc, bool force_sync);
+    bool update(CommandList &cmdlist, Stream& stream, BindlessAllocator &bdls_alloc, bool force_sync);
     void sync();
     void deallocate(BindlessAllocator &bdls_alloc);
 };

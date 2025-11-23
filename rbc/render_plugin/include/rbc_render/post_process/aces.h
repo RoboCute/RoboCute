@@ -22,8 +22,7 @@ private:
     Shader3D<
         Volume<float>, //& dst_volume,
         Image<float>,
-        Args, // args
-        bool  // disable aces
+        Args // args
         > const* lut3d_shader;
     bool is_hdr;
     void get_curve_texture(
@@ -48,7 +47,7 @@ public:
     );
     void dispatch(
         ACESParameters const& desc,
-        CommandList& cmdlist, bool disable_aces
+        CommandList& cmdlist
     );
     ACES(ACES const&) = delete;
     ACES(ACES&&) = delete;

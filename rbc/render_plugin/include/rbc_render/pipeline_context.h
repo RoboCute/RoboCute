@@ -112,7 +112,8 @@ public:
     void clear();
     void delay_dispose(DisposeQueue &queue);
 };
-
+struct HDRI;
+struct SkyAtmosphere;
 struct PipelineContext : vstd::IOperatorNewBase {
     // settings
     rbc::StateMap *pipeline_settings;
@@ -122,6 +123,7 @@ struct PipelineContext : vstd::IOperatorNewBase {
 
     // resource
     Device *device{nullptr};
+    Stream *stream{nullptr};
     SceneManager *scene{nullptr};
     CommandList *cmdlist{nullptr};
 
@@ -130,6 +132,7 @@ struct PipelineContext : vstd::IOperatorNewBase {
 
     PipelineContext(
         Device &device,
+        Stream &stream,
         SceneManager &scene,
         CommandList &cmdlist,
         rbc::StateMap *pipeline_settings);
