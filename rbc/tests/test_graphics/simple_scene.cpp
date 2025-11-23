@@ -145,6 +145,9 @@ SimpleScene::~SimpleScene() {
     for (auto &i : tlas_indices) {
         sm.accel_manager().remove_mesh_instance(sm.buffer_allocator(), sm.buffer_uploader(), i);
     }
+    for (auto &i : light_id) {
+        lights.remove_area_light(i);
+    }
     sm.mat_manager().discard_mat_instance(default_mat_code);
 }
 void SimpleScene::move_cube(luisa::float3 pos) {
