@@ -1,4 +1,4 @@
-#include <rbc_render/lights.h>
+#include <rbc_graphics/lights.h>
 #include <rbc_graphics/materials.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
@@ -11,6 +11,7 @@ namespace light_detail {
 static Lights *_inst = nullptr;
 }// namespace light_detail
 Lights::~Lights() {
+    dispose();
     if (SceneManager::instance_ptr() != nullptr)
         SceneManager::instance_ptr()->remove_before_render_event("_lights_tick");
     if (light_detail::_inst == this) {

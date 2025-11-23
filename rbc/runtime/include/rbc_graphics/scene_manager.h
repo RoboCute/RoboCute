@@ -100,7 +100,7 @@ public:
     void add_on_frame_end_event(vstd::string_view name, SceneManagerEvent *func);
     void remove_before_render_event(vstd::string_view name);
     void remove_on_frame_end_event(vstd::string_view name);
-    void load_shader();
+    void load_shader(luisa::fiber::counter& counter);
     void before_rendering(CommandList &cmdlist, Stream &stream);
     bool on_frame_end(
         CommandList &cmdlist,

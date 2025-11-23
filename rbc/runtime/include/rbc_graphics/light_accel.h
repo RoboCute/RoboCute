@@ -122,11 +122,7 @@ private:
         uint light_type : 3;
         uint light_index : 29;
     };
-    // #ifdef ENABLE_TEMPORAL_DI
-    vstd::HashMap<InstIndex, uint8_t> _dirty_map;
-    vector<uint> _dirty_vec;
-    Buffer<uint> _dirty_buffer;
-    // #endif
+    
 
     uint* get_accel_id(uint light_type, uint index);
     vector<BVH::InputNode> _input_nodes;
@@ -135,18 +131,11 @@ private:
     ///////////// Accel
     vector<BVH::PackedNode> _tlas_data;
     Buffer<BVH::PackedNode> _tlas_buffer;
-    // #ifdef ENABLE_TEMPORAL_DI
-    Image<uint> _light_dirty_tex;
-    // #endif
     Light<PointLight> point_lights;
     Light<SpotLight> spot_lights;
     Light<AreaLight> area_lights;
     Light<MeshLight> mesh_lights;
     Light<DiskLight> disk_lights;
-    // #ifdef ENABLE_TEMPORAL_DI
-    Shader2D<Image<uint>, std::array<uint, t_LightCount>> const* _clear_light_accel_dirty;
-    Shader1D<Image<uint>, Buffer<uint>> const* _set_light_accel_dirty;
-    // #endif
     void _erase_accel_inst(uint accel_id);
     size_t capacity{ 0 };
     bool _dirty = false;
@@ -157,8 +146,6 @@ public:
     [[nodiscard]] uint _get_next_disklight_index() const { return disk_lights._get_next_id(); }
     [[nodiscard]] uint _get_next_spotlight_index() const { return spot_lights._get_next_id(); }
     [[nodiscard]] uint _get_next_meshlight_index() const { return mesh_lights._get_next_id(); }
-    // #ifdef ENABLE_TEMPORAL_DI
-    [[nodiscard]] auto const& light_dirty_tex() const { return _light_dirty_tex; }
     // #endif
     [[nodiscard]] auto light_count() const
     {

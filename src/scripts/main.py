@@ -56,7 +56,7 @@ def write_shader_compile_cmd():
     def build_cmd():
         return base_cmd() + f' -hostgen="{host_dir}"' + f' -cache_dir="{cache_dir}"'
 
-    backends = ["dx", "vk"]
+    backends = ["dx"] # , "vk"
     # write files
     for backend in backends:
         cache_dir = shader_dir / ".cache" / backend

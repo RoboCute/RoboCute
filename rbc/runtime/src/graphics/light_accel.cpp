@@ -33,7 +33,6 @@ LightAccel::LightAccel(Device& device)
     , disk_lights(luisa::to_underlying(LightType::Disk))
 {
     // #ifdef ENABLE_TEMPORAL_DI
-    _light_dirty_tex = device.create_image<uint>(PixelStorage::BYTE1, uint2(t_MaxLightCount / 8u, t_LightCount));
     // #endif
 }
 
@@ -181,44 +180,7 @@ void LightAccel::update_tlas(CommandList& cmdlist, DisposeQueue& disp_queue)
                 std::max(capacity, 65536 / sizeof(BVH::PackedNode))
             );
     }
-    // #ifdef ENABLE_TEMPORAL_DI
-    _dirty_vec.clear();
-    std::array<uint, t_LightCount> arr;
-    arr[t_PointLight] = point_lights.host_data.size();
-    arr[t_SpotLight] = spot_lights.host_data.size();
-    arr[t_AreaLight] = area_lights.host_data.size();
-    arr[t_DiskLight] = disk_lights.host_data.size();
-    arr[t_MeshLight] = mesh_lights.host_data.size();
-    cmdlist << (*_clear_light_accel_dirty)(_light_dirty_tex, arr).dispatch(_light_dirty_tex.size());
-    if (!_dirty_map.empty())
-    {
-        _dirty_vec.reserve(_dirty_map.size());
-        for (auto& i : _dirty_map)
-        {
-            uint r = i.first.light_type;
-            r <<= 8;
-            r |= i.second;
-            r <<= 21;
-            r |= i.first.light_index;
-            _dirty_vec.emplace_back(r);
-        }
-        _dirty_map.clear();
-    }
-    if (!_dirty_vec.empty())
-    {
-        if (_dirty_buffer && _dirty_buffer.size() < _dirty_vec.size())
-        {
-            disp_queue.dispose_after_queue(std::move(_dirty_buffer));
-        }
-        if (!_dirty_buffer)
-        {
-            _dirty_buffer = _device.create_buffer<uint>(std::max(_dirty_vec.size(), 1024ull));
-        }
-        auto bf_view = _dirty_buffer.view(0, _dirty_vec.size());
-        cmdlist << bf_view.copy_from(_dirty_vec.data())
-                << (*_set_light_accel_dirty)(_light_dirty_tex, bf_view).dispatch(bf_view.size());
-    }
-    // #endif
+
     cmdlist << _tlas_buffer.view(0, capacity).copy_from(_tlas_data.data());
 }
 void LightAccel::mark_light_dirty(
@@ -226,16 +188,7 @@ void LightAccel::mark_light_dirty(
     uint light_index
 )
 {
-    // #ifdef ENABLE_TEMPORAL_DI
-    auto tex_idx = light_index / 8u;
-    auto bit_offset = 1u << (light_index & 7u);
-    InstIndex idx{
-        light_type,
-        tex_idx
-    };
-    auto iter = _dirty_map.emplace(idx, 0u);
-    iter.value() |= bit_offset;
-    // #endif
+    // reserved
 }
 LightAccel::~LightAccel() {}
 BVH::InputNode LightAccel::PointLight::leaf_node() const
@@ -711,13 +664,6 @@ void LightAccel::generate_sphere_mesh(
 }
 void LightAccel::load_shader(luisa::fiber::counter& counter)
 {
-    counter.add();
-    // #ifdef ENABLE_TEMPORAL_DI
-    luisa::fiber::schedule([this, counter]() {
-        ShaderManager::instance()->load("lighting/clear_light_accel_dirty.bin", _clear_light_accel_dirty);
-        ShaderManager::instance()->load("lighting/set_light_accel_dirty.bin", _set_light_accel_dirty);
-        counter.done();
-    });
 }
 
 } // namespace rbc

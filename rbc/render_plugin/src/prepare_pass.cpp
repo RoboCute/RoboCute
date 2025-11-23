@@ -13,6 +13,7 @@
 namespace rbc {
 struct PreparePassContext : PassContext {
     Camera last_cam;
+    float2 last_jitter;
     PreparePassContext(Camera const &cam)
         : last_cam(cam) {
     }
@@ -306,14 +307,18 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     }
     _lut_load_cmds.clear();
     auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(ctx.cam);
-    auto &frane_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
-    // pass_ctx->last_cam.position += make_double3(frane_settings.global_offset);
 
+    auto &frane_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
     auto &mut = ctx.mut;
     auto &jitter_data = ctx.pipeline_settings->read_mut<JitterData>();
     auto &cam_data = ctx.pipeline_settings->read_mut<CameraData>();
-    jitter_data.last_jitter = jitter_data.jitter;
-    cam_data.last_proj = cam_data.proj;
+    if (frane_settings.frame_index == 0) {
+        pass_ctx->last_cam = ctx.cam;
+    }
+    // pass_ctx->last_cam.position += make_double3(frane_settings.global_offset);
+
+    jitter_data.last_jitter = pass_ctx->last_jitter;
+    cam_data.last_proj = pass_ctx->last_cam.projection_matrix();
     cam_data.last_view = preparepass_detail::inverse_double(pass_ctx->last_cam.local_to_world_matrix());
     cam_data.last_sky_view = preparepass_detail::inverse_double(pass_ctx->last_cam.rotation_matrix());
     cam_data.last_vp = cam_data.last_proj * cam_data.last_view;
@@ -388,7 +393,6 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
         pass_ctx->last_cam = ctx.cam;
     } else {
         cam_data.last_proj = cam_data.proj;
-        jitter_data.last_jitter = jitter_data.jitter;
     }
 }
 void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
@@ -470,12 +474,14 @@ void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             ctx.scene->dispose_after_commit(std::move(ray_inputs));
         }
     }
+    auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(ctx.cam);
+    auto &jitter_data = ctx.pipeline_settings->read_mut<JitterData>();
+    pass_ctx->last_jitter = jitter_data.jitter;
 }
 void PreparePass::on_frame_end(
     Pipeline const &pipeline,
     Device &device,
     SceneManager &scene) {
-    auto &&alloc = scene.bindless_allocator();
 }
 void PreparePass::on_disable(
     Pipeline const &pipeline,

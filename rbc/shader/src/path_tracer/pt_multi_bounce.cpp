@@ -125,6 +125,7 @@ void accum_sky(SpectrumArg &spectrum_arg,
             pdf_bsdf,
             new_dir,
             reject);
+        reject &= args.require_reject;
         radiance += di_result * last_beta;
         continue_loop &= (!reject);
         // see integrate_hashgrid_offline.cpp

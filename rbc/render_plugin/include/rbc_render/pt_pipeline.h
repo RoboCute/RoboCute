@@ -10,6 +10,7 @@ struct AccumPass;
 struct PostPass;
 struct PTPipeline : public rbc::Pipeline {
     PTPipeline();
+    ~PTPipeline();
     void initialize() override;
     void update(rbc::PipelineContext &ctx) override;
     void early_update(rbc::PipelineContext &ctx) override;

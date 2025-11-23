@@ -3,14 +3,14 @@
 #include <luisa/runtime/buffer.h>
 #include <luisa/runtime/shader.h>
 #include <luisa/core/fiber.h>
-namespace rbc
-{
-struct  PreparePass : public Pass {
+#include <rbc_render/renderer_data.h>
+namespace rbc {
+struct PreparePass : public Pass {
     luisa::fiber::event init_evt;
     struct LutLoadCmd {
         luisa::fiber::event evt;
         luisa::vector<std::byte> data;
-        Volume<float> const* tex;
+        Volume<float> const *tex;
     };
     luisa::vector<LutLoadCmd> _lut_load_cmds;
 
@@ -43,34 +43,31 @@ public:
         std::array<float, 2> triangle_bary;
     };
     Shader1D<
-        Accel,             // accel,
-        BindlessArray,     // heap,
-        Buffer<RayInput>,  // ray_input_buffer,
-        Buffer<RayOutput>, // ray_output_buffer,
-        uint,              // inst_buffer_heap_idx,
-        uint               // mat_idx_buffer_heap_idx
-        > const* _host_raytracer;
+        Accel,            // accel,
+        BindlessArray,    // heap,
+        Buffer<RayInput>, // ray_input_buffer,
+        Buffer<RayOutput>,// ray_output_buffer,
+        uint,             // inst_buffer_heap_idx,
+        uint              // mat_idx_buffer_heap_idx
+        > const *_host_raytracer;
     void on_enable(
-        Pipeline const& pipeline,
-        Device& device,
-        CommandList& cmdlist,
-        SceneManager& scene
-    ) override;
-    void early_update(Pipeline const& pipeline, PipelineContext const& ctx) override;
-    void update(Pipeline const& pipeline, PipelineContext const& ctx) override;
+        Pipeline const &pipeline,
+        Device &device,
+        CommandList &cmdlist,
+        SceneManager &scene) override;
+    void early_update(Pipeline const &pipeline, PipelineContext const &ctx) override;
+    void update(Pipeline const &pipeline, PipelineContext const &ctx) override;
     void on_frame_end(
-        Pipeline const& pipeline,
-        Device& device,
-        SceneManager& scene
-    ) override;
+        Pipeline const &pipeline,
+        Device &device,
+        SceneManager &scene) override;
     void on_disable(
-        Pipeline const& pipeline,
-        Device& device,
-        CommandList& cmdlist,
-        SceneManager& scene
-    ) override;
+        Pipeline const &pipeline,
+        Device &device,
+        CommandList &cmdlist,
+        SceneManager &scene) override;
     ~PreparePass();
     void wait_enable() override;
 };
-} // namespace rbc
+}// namespace rbc
 RBC_RTTI(rbc::PreparePass)

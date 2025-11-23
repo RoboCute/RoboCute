@@ -4,10 +4,12 @@
 #include <luisa/core/clock.h>
 #include <luisa/gui/window.h>
 #include <luisa/runtime/swapchain.h>
-#include <luisa/dsl/sugar.h>
 #include <rbc_runtime/render_plugin.h>
+#include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
+#include "simple_scene.h"
+void warm_up_accel();
 int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
@@ -35,30 +37,13 @@ int main(int argc, char *argv[]) {
         *render_device.io_service(),
         cmdlist,
         shader_path);
-
+    AssetsManager::init_instance(render_device, sm);
     {
-        // Build a simple accel to preload driver builtin shaders
-        auto buffer = render_device.lc_device().create_buffer<uint>(4 * 3 + 3);
-        auto vb = buffer.view(0, 4 * 3).as<float3>();
-        auto ib = buffer.view(4 * 3, 3).as<Triangle>();
-        uint tri[] = {0, 1, 2};
-        float data[] = {
-            0, 0, 0, 0,
-            0, 1, 0, 0,
-            1, 1, 0, 0,
-            reinterpret_cast<float &>(tri[0]),
-            reinterpret_cast<float &>(tri[1]),
-            reinterpret_cast<float &>(tri[2])};
-        auto mesh = render_device.lc_device().create_mesh(vb, ib, AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
-        auto accel = render_device.lc_device().create_accel(AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
-        accel.emplace_back(mesh);
-        main_stream
-            << buffer.view().copy_from(data)
-            << mesh.build()
-            << accel.build()
-            << [accel = std::move(accel), mesh = std::move(mesh), buffer = std::move(buffer)]() {};
+        luisa::fiber::counter counter;
+        sm->load_shader(counter);
+        warm_up_accel();
+        counter.wait();
     }
-    sm->load_shader();
     auto render_module = DynamicModule::load("rbc_render_plugin");
     auto render_plugin = RBC_LOAD_PLUGIN(render_module, RenderPlugin);
     StateMap pipeline_state_map;
@@ -79,32 +64,14 @@ int main(int argc, char *argv[]) {
     auto timeline_event = render_device.lc_device().create_timeline_event();
     uint64_t frame_index = 0;
     auto dst_img = render_device.lc_device().create_image<float>(swapchain.backend_storage(), resolution);
-    // shader
-    auto draw_shader = render_device.lc_device().compile<2>([](ImageVar<float> img) {
-        set_block_size(16, 8, 1);
-        auto uv = (make_float2(dispatch_id().xy()) + 0.5f) / make_float2(dispatch_size().xy());
-        img.write(dispatch_id().xy(), make_float4(uv * 2.5f, 0.5f, 1.f));
-    });
-    Callable filmic_aces = [](Float3 x) noexcept {
-        constexpr float A = 0.22;
-        constexpr float B = 0.30;
-        constexpr float C = 0.10;
-        constexpr float D = 0.20;
-        constexpr float E = 0.01;
-        constexpr float F = 0.30;
-        x = max(x, make_float3(0.f));
-        return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
-    };
-    auto blit_shader = render_device.lc_device().compile<2>([&](ImageVar<float> img, ImageVar<float> dst_img) {
-        auto value = img.read(dispatch_id().xy()).xyz();
-        value = filmic_aces(value);
-        dst_img.write(dispatch_id().xy(), make_float4(value, 1.f));
-    });
     Clock clk;
     double last_frame_time = 0;
+    vstd::optional<SimpleScene> simple_scene;
+    simple_scene.create();
     // Test FOV
     render_plugin->get_camera(pipe_ctx).fov = radians(80.f);
     while (!window.should_close()) {
+        AssetsManager::instance()->wake_load_thread();
         window.poll_events();
         if (frame_index > 1) {
             timeline_event.synchronize(frame_index - 1);
@@ -120,7 +87,7 @@ int main(int argc, char *argv[]) {
         frame_settings.time = time;
         frame_settings.frame_index = frame_index;
         // before render
-        // TODO: pipeline early-update
+        simple_scene->tick();
         render_plugin->before_rendering({}, pipe_ctx);
         sm->before_rendering(
             cmdlist,
@@ -151,9 +118,19 @@ int main(int argc, char *argv[]) {
     }
     main_stream.synchronize();
     // destroy render-pipeline
+    simple_scene.destroy();
     render_plugin->destroy_pipeline_context(pipe_ctx);
     render_plugin->dispose();
+    // run last time cycle to eliminate warnings
     // destroy graphics
+    AssetsManager::destroy_instance();
+    sm->before_rendering(
+        cmdlist,
+        main_stream);
+    sm->on_frame_end(
+        cmdlist,
+        main_stream);
+    main_stream.synchronize();
     sm.destroy();
     render_device.shutdown();
 }

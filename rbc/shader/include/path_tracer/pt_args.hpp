@@ -33,6 +33,7 @@ struct PTArgs {
     uint bounce;
     float gbuffer_temporal_weight;
     bool reset_emission;
+    bool require_reject;
 };
 struct MultiBouncePixel {
     std::array<float, 3> beta;

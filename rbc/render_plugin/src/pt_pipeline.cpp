@@ -53,6 +53,13 @@ void PTPipeline::update(rbc::PipelineContext &ctx) {
     this->rbc::Pipeline::update(ctx);
 }
 
+PTPipeline::~PTPipeline() {
+    if (sky_atom) {
+        sky_atom->deallocate(SceneManager::instance().bindless_allocator());
+        sky_atom.destroy();
+    }
+}
+
 void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // HDR
     // sync monitor
@@ -74,14 +81,13 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
 
         // update sky matrix
         {
-            auto camera_settings = ctx.pipeline_settings->read<CameraData>();
+            auto &camera_settings = ctx.pipeline_settings->read_mut<CameraData>();
             luisa::float3x3 &sky_matrix = camera_settings.world_to_sky;
             auto sky_radians = radians(sky_settings.sky_angle);
             sky_matrix.cols[0] = float3(cos(sky_radians), 0.0f, sin(sky_radians));
             sky_matrix.cols[1] = float3(0, 1, 0);
             sky_matrix.cols[2] = normalize(cross(sky_matrix.cols[0], sky_matrix.cols[1]));
             sky_matrix = transpose(sky_matrix);
-            ctx.pipeline_settings->write(std::move(camera_settings));
         }
 
         // update sky atom

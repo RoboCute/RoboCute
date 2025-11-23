@@ -145,8 +145,7 @@ bool SceneManager::on_frame_end(
     }
     return true;
 }
-void SceneManager::load_shader() {
-    luisa::fiber::counter counter;
+void SceneManager::load_shader(luisa::fiber::counter &counter) {
     _mesh_mng.load_shader(counter);
     // default scene
     _accel_mngs.emplace_back(luisa::make_unique<AccelManager>(_device));
@@ -155,7 +154,6 @@ void SceneManager::load_shader() {
     _uploader.load_shader(counter);
     _tex_uploader.load_shader(counter);
     _light_accel.load_shader(counter);
-    counter.wait();
 }
 
 void SceneManager::add_after_commit_callback(vstd::function<void()> &&callback) {

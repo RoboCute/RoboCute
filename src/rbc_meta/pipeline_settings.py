@@ -127,11 +127,12 @@ def codegen_header(header_path: Path, cpp_path: Path):
         render_resolution=tr.uint2,
         display_resolution=tr.uint2,
         display_offset=tr.uint2,
-        frame_index=tr.long,
+        frame_index=tr.ulong,
         time=tr.double,
         delta_time=tr.float,
         resource_color_space=ResourceColorSpace,
         realtime_rendering=tr.bool,
+        offline_capturing=tr.bool,
         dst_img=tr.external_type("luisa::compute::Image<float> const*"),
     )
     FrameSettings.init_member(resource_color_space="ResourceColorSpace::Rec709",

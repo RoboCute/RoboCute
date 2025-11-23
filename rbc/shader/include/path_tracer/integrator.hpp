@@ -65,7 +65,7 @@ static IntegratorResult sample_material(
 
     mtl::ShadingDetail &detail,
     lighting::BindlessIndices auto const &bdls_indices,
-//////////// out
+    //////////// out
     bool importance_sampling,
     float3x3 resource_to_rec2020_mat,
     float3 &di_result,
@@ -432,6 +432,7 @@ static IntegratorResult sample_material(
                     auto pdf_light = (ray_t * ray_t) / max(area * max(dot(-input_dir, vertices_normal), 0.f), 1e-5f);
                     auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
                     r.emission *= mis;
+                    continue_loop = false;
                 } break;
                 case lighting::LightTypes::TriangleLight: {
                     float a = distance(vert_poses[0], vert_poses[1]);
@@ -448,12 +449,12 @@ static IntegratorResult sample_material(
                     auto pdf_light = (ray_t * ray_t) / max(disk_light.area * max(dot(-input_dir, vertices_normal), 0.f), 1e-5f);
                     auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
                     r.emission *= mis;
+                    continue_loop = false;
                 } break;
             }
             // radiance += beta * emission;
             //////////////// Done sample light and balance
         }
-
         if (!continue_loop) {
             return r;
         }
@@ -462,10 +463,10 @@ static IntegratorResult sample_material(
         ///////////// IS
         if (importance_sampling && pdf_bsdf > 1e-4f) {
             bool need_flip = false;
+
             float3 offset_normal = plane_normal;
             float3 di_normal = r.normal;
             if (dot(new_dir, vertices_normal) < 0.f) {
-                di_normal = -di_normal;
                 offset_normal = -offset_normal;
                 need_flip = true;
             }

@@ -224,6 +224,7 @@ using namespace luisa::shader;
 			pdf_bsdf,
 			new_dir,
 			reject);
+		reject &= args.require_reject;
 		continue_loop &= (!reject);
 		if (length_sum >= 0.0f) {
 			length_sum += hit.ray_t;
