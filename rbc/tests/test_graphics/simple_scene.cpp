@@ -131,7 +131,6 @@ SimpleScene::SimpleScene() {
     sm.mat_manager().emplace_mat_type<material::Unlit>(sm.bindless_allocator(), 65536, material::PolymorphicMaterial::index<material::Unlit>);
     _init_mesh();
     _init_material();
-    _init_mesh();
     _init_tlas();
 }
 SimpleScene::~SimpleScene() {
