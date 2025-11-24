@@ -63,23 +63,23 @@ luisa::unique_ptr<IComponent> TransformComponent::clone() const {
 }
 
 // void TransformComponent::serialize(Serializer<IComponent> &serializer) const {
-    // Serialize using _store method which handles different types automatically
-    // serializer._store(position, "position");
-    // serializer._store(rotation, "rotation");
-    // serializer._store(scaling, "scaling");
-    // serializer._store(parent, "parent");
-    // serializer._store(children, "children");
+// Serialize using _store method which handles different types automatically
+// serializer._store(position, "position");
+// serializer._store(rotation, "rotation");
+// serializer._store(scaling, "scaling");
+// serializer._store(parent, "parent");
+// serializer._store(children, "children");
 // }
 
 // void TransformComponent::deserialize(DeSerializer<IComponent> &deserializer) {
-    // Deserialize using _load method
-    // deserializer._load(position, "position");
-    // deserializer._load(rotation, "rotation");
-    // deserializer._load(scaling, "scaling");
-    // deserializer._load(parent, "parent");
-    // deserializer._load(children, "children");
+// Deserialize using _load method
+// deserializer._load(position, "position");
+// deserializer._load(rotation, "rotation");
+// deserializer._load(scaling, "scaling");
+// deserializer._load(parent, "parent");
+// deserializer._load(children, "children");
 
-    // Mark as dirty after deserialization
+// Mark as dirty after deserialization
 //     global_dirty = true;
 // }
 

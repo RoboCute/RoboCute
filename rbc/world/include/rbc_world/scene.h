@@ -1,7 +1,7 @@
 #pragma once
-
-#include "rbc_core/ecs.h"
+#include "rbc_world/ecs.h"
 #include "rbc_world/system.h"
+#include "rbc_world/resource.h"
 
 namespace rbc {
 

@@ -1,16 +1,14 @@
 #pragma once
 
+#include "rbc_config.h"
 #include <luisa/core/stl.h>
 #include <utility>
-#include "rbc_core/serde.h"
 
 namespace rbc {
 
 using EntityID = uint32_t;
 constexpr EntityID INVALID_ENTITY = 0;
 using ComponentTypeID = uint32_t;
-using ResourceID = uint32_t;
-constexpr ResourceID INVALID_RESOURCE = 0;
 
 // Basic Component Interface
 class IComponent {
@@ -18,8 +16,6 @@ public:
     virtual ~IComponent() = default;
     [[nodiscard]] virtual ComponentTypeID get_type_id() const = 0;
     [[nodiscard]] virtual luisa::unique_ptr<IComponent> clone() const = 0;
-    // virtual void serialize(Serializer<IComponent> &serializer) const = 0;
-    // virtual void deserialize(DeSerializer<IComponent> &deserializer) = 0;
 };
 
 // Component Array Interface for type erasure
@@ -113,7 +109,7 @@ private:
 };
 
 // Component Registry
-class RBC_CORE_API ComponentRegistry {
+class RBC_WORLD_API ComponentRegistry {
 public:
     template<typename T>
     static ComponentTypeID register_type(const char *name) {
@@ -131,11 +127,11 @@ private:
 };
 
 // Entity Manager
-class RBC_CORE_API EntityManager {
+class RBC_WORLD_API EntityManager {
 public:
     EntityManager();
     ~EntityManager() = default;
-    
+
     // Delete copy and move to prevent issues with unique_ptr members
     EntityManager(const EntityManager &) = delete;
     EntityManager(EntityManager &&) = delete;

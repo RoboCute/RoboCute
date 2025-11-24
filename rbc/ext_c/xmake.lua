@@ -1,4 +1,4 @@
-target('rbc_ext')
+target('rbc_ext_c')
     -- deps LuisaCompute
     add_rules('lc_basic_settings', {
         project_kind = 'shared'
