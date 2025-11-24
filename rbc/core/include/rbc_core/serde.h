@@ -80,11 +80,11 @@ struct is_unordered_map<vstd::HashMap<K, V>> {
     using KeyType = K;
     using ValueType = V;
 };
-template <typename K>
+template<typename K>
 struct is_vector {
     static constexpr bool value = false;
 };
-template <typename Ele>
+template<typename Ele>
 struct is_vector<luisa::vector<Ele>> {
     static constexpr bool value = true;
 };
@@ -123,7 +123,7 @@ struct Serializer : public Base {
             ptr[strv.size()] = 0;
             Base::add(ptr, args...);
         } else if constexpr (requires { t.rbc_objser(*this); }) {
-            Base::start_object();
+            Base::start_array();
             t.rbc_objser(*this);
             Base::add_last_scope_to_object(args...);
         } else if constexpr (requires { t.rbc_arrser(*this); }) {
@@ -202,10 +202,11 @@ struct Serializer : public Base {
         }
         // kv map
         else if constexpr (detail::is_unordered_map<T>::value) {
-            Base::start_object();
+            Base::start_array();
             for (auto &&i : t) {
                 if constexpr (requires { i.first.c_str(); }) {
-                    this->_store(i.second, i.first.c_str());
+                    Base::add(i.first.c_str());
+                    this->_store(i.second);
                 } else {
                     static_assert(luisa::always_false_v<T>, "Invalid HashMap key-value type.");
                 }
@@ -276,7 +277,8 @@ struct DeSerializer : public Base {
             t = (T)*value;
             return true;
         } else if constexpr (requires { t.rbc_objdeser(*this); }) {
-            if (!Base::start_object(args...)) return false;
+            uint64_t size;
+            if (!Base::start_array(size, args...)) return false;
             t.rbc_objdeser(*this);
             Base::end_scope();
             return true;
@@ -404,7 +406,8 @@ struct DeSerializer : public Base {
         }
         // kv map
         else if constexpr (detail::is_unordered_map<T>::value) {
-            if (!Base::start_object(args...)) return false;
+            uint64_t size;
+            if (!Base::start_array(size, args...)) return false;
             auto end_scope = vstd::scope_exit([&] {
                 Base::end_scope();
             });
@@ -414,10 +417,13 @@ struct DeSerializer : public Base {
                           })
 
             {
+                t.reserve(size);
                 typename detail::is_unordered_map<T>::ValueType value;
+                luisa::string key;
+                if (!this->_load(key)) return false;
                 if (!this->_load(value)) return false;
                 t.try_emplace(
-                    luisa::string{std::move(Base::last_key())},
+                    std::move(key),
                     std::move(value));
             } else {
                 static_assert(luisa::always_false_v<T>, "Invalid HashMap key-value type.");

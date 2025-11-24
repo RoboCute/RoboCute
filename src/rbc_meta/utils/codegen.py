@@ -404,7 +404,7 @@ def _cpp_impl_gen():
                 f"void {struct_type.class_name()}::rbc_objser(rbc::JsonSerializer& obj) const {{")
             cb.add_indent()
             for mem_name in struct_type._serde_members:
-                cb.add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
+                cb.add_line(f'obj._store(this->{mem_name});')
             cb.remove_indent()
             cb.add_line("}")
 
@@ -414,7 +414,7 @@ def _cpp_impl_gen():
                 f"void {struct_type.class_name()}::rbc_objdeser(rbc::JsonDeSerializer& obj){{")
             cb.add_indent()
             for mem_name in struct_type._serde_members:
-                cb.add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
+                cb.add_line(f'obj._load(this->{mem_name});')
             cb.remove_indent()
             cb.add_line("}")
         if len(namespace) > 0:
