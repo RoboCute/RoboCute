@@ -19,6 +19,9 @@ def codegen_header(header_path: Path):
         vec_str=tr.vector(tr.string),
         test_enum=MyEnum,
     )
+    MyStruct.rpc('no_arg_func')
+    MyStruct.rpc('add', lhs=tr.int, rhs=tr.float).ret_type(tr.double)
+    MyStruct.rpc('add', lhs=tr.float, rhs=tr.double)
     ut.codegen_to(header_path)(codegen.cpp_interface_gen)
 
     include = f'#include "generated.hpp"'

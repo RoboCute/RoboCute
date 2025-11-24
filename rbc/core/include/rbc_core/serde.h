@@ -13,6 +13,7 @@
 #include <rbc_core/type_traits.h>
 namespace rbc {
 namespace concepts {
+
 template<typename T>
 concept SerWriter = requires(T t) {
     t.start_array();
@@ -79,6 +80,24 @@ struct is_unordered_map<vstd::HashMap<K, V>> {
     using KeyType = K;
     using ValueType = V;
 };
+template <typename K>
+struct is_vector {
+    static constexpr bool value = false;
+};
+template <typename Ele>
+struct is_vector<luisa::vector<Ele>> {
+    static constexpr bool value = true;
+};
+template<typename T>
+static constexpr bool serializable_native_type_v = std::is_integral_v<T> || std::is_floating_point_v<T> || luisa::is_vector_v<T> || luisa::is_matrix_v<T> || detail::is_unordered_map<T>::value || std::is_same_v<std::decay_t<T>, luisa::string> || std::is_same_v<T, vstd::Guid> || std::is_same_v<std::decay_t<T>, luisa::string_view> || std::is_same_v<T, luisa::half> || std::is_same_v<T, bool> || is_vector<T>::value || std::is_enum_v<T>;
+template<typename T, typename Ser>
+static constexpr bool serializable_struct_type_v =
+    requires { std::declval<T>().rbc_objser(lvalue_declval<Ser>()); } ||
+    requires { std::declval<T>().rbc_arrser(lvalue_declval<Ser>()); };
+template<typename T, typename DeSer>
+static constexpr bool deserializable_struct_type_v =
+    requires { std::declval<T>().rbc_objdeser(lvalue_declval<DeSer>()); } ||
+    requires { std::declval<T>().rbc_arrdeser(lvalue_declval<DeSer>()); };
 }// namespace detail
 template<concepts::SerWriter Base>
 struct Serializer : public Base {
@@ -92,6 +111,7 @@ struct Serializer : public Base {
     }
 
     template<typename T, typename... Args>
+        requires(detail::serializable_native_type_v<T> || detail::serializable_struct_type_v<T, Serializer<Base>>)
     void _store(T const &t, Args... args) {
         // custom type
         if constexpr (std::is_enum_v<T>) {
@@ -242,6 +262,7 @@ struct DeSerializer : public Base {
         : Base(std::forward<Args>(args)...) {
     }
     template<typename T, typename... Args>
+        requires(detail::serializable_native_type_v<T> || detail::deserializable_struct_type_v<T, DeSerializer<Base>>)
     bool _load(T &t, Args... args) {
         // custom type
         if constexpr (std::is_enum_v<T>) {
@@ -433,4 +454,5 @@ struct DeSerializer : public Base {
 };
 using JsonSerializer = Serializer<JsonWriter>;
 using JsonDeSerializer = DeSerializer<JsonReader>;
+
 }// namespace rbc

@@ -6,6 +6,7 @@
 #include <rbc_core/serde.h>
 #include <rbc_config.h>
 #include <rbc_core/type_info.h>
+#include <rbc_core/heap_object.h>
 namespace rbc {
 
 struct RBC_CORE_API StateMap {
@@ -20,56 +21,6 @@ public:
 
 protected:
 
-    struct RBC_CORE_API HeapObject {
-        luisa::spin_mutex _obj_mtx;
-        uint64_t size{};
-        uint64_t alignment{};
-        void *data{};
-        vstd::func_ptr_t<void(void *dst, void *src)> copy_ctor{};
-        vstd::func_ptr_t<void(void *src)> deleter{};
-        vstd::func_ptr_t<void(void *src, JsonSerializer *)> json_writer{};
-        vstd::func_ptr_t<void(void *src, JsonDeSerializer *)> json_reader{};
-        HeapObject() = default;
-        template<typename T>
-        void init() {
-            size = sizeof(T);
-            alignment = alignof(T);
-            if constexpr (std::is_copy_constructible_v<T>) {
-                copy_ctor = +[](void *dst, void *src) {
-                    std::construct_at(static_cast<T *>(dst), *static_cast<T *>(src));
-                };
-            }
-            if constexpr (!std::is_trivially_destructible_v<T>) {
-                deleter = +[](void *ptr) {
-                    std::destroy_at(static_cast<T *>(ptr));
-                };
-            }
-            if constexpr (requires { lvalue_declval<T>().rbc_objser(lvalue_declval<JsonSerializer>()); }) {
-                json_writer = +[](void *src, JsonSerializer *json_writer) {
-                    static_cast<T *>(src)->rbc_objser(*json_writer);
-                };
-            }
-            if constexpr (requires { lvalue_declval<T>().rbc_objdeser(lvalue_declval<JsonDeSerializer>()); }) {
-                json_reader = +[](void *src, JsonDeSerializer *json_writer) {
-                    static_cast<T *>(src)->rbc_objdeser(*json_writer);
-                };
-            }
-        }
-        template<typename T>
-        HeapObject(T &&t) {
-            data = luisa::detail::allocator_allocate(size, alignment);
-            std::construct_at(static_cast<T *>(data), std::forward<T>(t));
-            this->template init<T>();
-        }
-        HeapObject(HeapObject const &) = delete;
-        HeapObject(HeapObject &&) = delete;
-        ~HeapObject() {
-            if (deleter) {
-                deleter(data);
-            }
-            luisa::detail::allocator_deallocate(data, alignment);
-        }
-    };
     vstd::HashMap<rbc::TypeInfo, HeapObject> _map;
     mutable luisa::spin_mutex _map_mtx;
     vstd::optional<JsonDeSerializer> _json_reader;
@@ -114,10 +65,26 @@ public:
             std::construct_at(static_cast<T *>(heap_obj.data));
             _deser(iter.first.key(), heap_obj);
         }
-        if (!heap_obj.copy_ctor) {
-            _log_err_no_copy(iter.first.key().name());
+        heap_obj.copy_to(ptr);
+        return std::move(*ptr);
+    }
+    template<concepts::RTTIType T>
+        requires(std::is_default_constructible_v<T> && std::is_copy_constructible_v<T>)
+    T read_atomic_move() {
+        vstd::Storage<T> storage;
+        auto ptr = reinterpret_cast<T *>(storage.c);
+        _map_mtx.lock();
+        auto iter = _map.try_emplace(rbc::TypeInfo::get<T>());
+        _map_mtx.unlock();
+        HeapObject &heap_obj = iter.first.value();
+        std::lock_guard lck{heap_obj._obj_mtx};
+        if (!heap_obj.data) {
+            heap_obj.template init<T>();
+            heap_obj.data = luisa::detail::allocator_allocate(heap_obj.size, heap_obj.alignment);
+            std::construct_at(static_cast<T *>(heap_obj.data));
+            _deser(iter.first.key(), heap_obj);
         }
-        heap_obj.copy_ctor(ptr, heap_obj.data);
+        heap_obj.move_to(ptr);
         return std::move(*ptr);
     }
     template<concepts::RTTIType T>

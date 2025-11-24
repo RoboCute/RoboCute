@@ -9,6 +9,19 @@
 #include <rbc_core/json_serde.h>
 #include <rbc_core/state_map.h>
 #include <luisa/vstl/md5.h>
+#include <rbc_core/func_serializer.h>
+
+namespace rbc {
+void MyStruct::no_arg_func() {
+    LUISA_INFO("calling no-arg function.");
+}
+double MyStruct::add(int32_t lhs, float rhs) {
+    return lhs + rhs;
+}
+void MyStruct::add(float lhs, double rhs) {
+    LUISA_INFO("void {} {}", dd, lhs + rhs);
+}
+}// namespace rbc
 using namespace rbc;
 using namespace luisa;
 int main() {
@@ -70,4 +83,62 @@ int main() {
         LUISA_INFO("test_enum {}", luisa::to_string(new_struct.test_enum));
         LUISA_INFO("guid {}", new_struct.guid.to_base64());
     }
+
+    // Test RPC
+    JsonSerializer rpc_ser{true};// init array json
+    MyStruct my_struct;
+    my_struct.dd = "add_string";
+    // client
+    MyStructClient::no_arg_func(
+        rpc_ser,
+        &my_struct);
+    MyStructClient::add(
+        rpc_ser,
+        &my_struct,
+        (float)1919,
+        (double)810);
+    MyStructClient::add(
+        rpc_ser,
+        &my_struct,
+        (int)114,
+        (float)514);
+    text = rpc_ser.write_to();
+    LUISA_INFO("RPC json {},", (char const *)text.data());
+
+    // server
+    JsonSerializer rpc_ret_value_json{true};
+    JsonDeSerializer rpc_deser{luisa::string_view{
+        (char const *)text.data(),
+        text.size()}};
+    for (auto i : vstd::range(3)) {
+        luisa::string func_hash;
+        uint64_t self;
+        LUISA_ASSERT(rpc_deser.read(func_hash));
+        LUISA_ASSERT(rpc_deser.read(self));
+        auto call_meta = FuncSerializer::get_call_meta(func_hash);
+        LUISA_ASSERT(call_meta);
+        void *arg = nullptr;
+        void *ret_value = nullptr;
+        // allocate
+        if (call_meta->args_meta) {
+            arg = call_meta->args_meta.allocate();
+            call_meta->args_meta.json_reader(arg, &rpc_deser);
+        }
+        if (call_meta->ret_value_meta) {
+            ret_value = call_meta->ret_value_meta.allocate();
+        }
+        // call
+        call_meta->func(&my_struct, arg, ret_value);
+        // deallocate
+        if (call_meta->args_meta) {
+            call_meta->args_meta.deallocate(arg);
+        }
+        if (call_meta->ret_value_meta) {
+            // serialize return value
+            call_meta->ret_value_meta.json_writer(ret_value, &rpc_ret_value_json);
+            call_meta->ret_value_meta.deallocate(ret_value);
+        }
+    }
+    text = rpc_ret_value_json.write_to();
+    LUISA_INFO("RPC return json {},", (char const *)text.data());
 }

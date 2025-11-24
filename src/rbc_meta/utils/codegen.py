@@ -1,5 +1,5 @@
 import rbc_meta.utils.type_register as tr
-from rbc_meta.utils.codegen_basis import get_codegen_basis
+from rbc_meta.utils.codegen_basis import get_codegen_basis, CodeGenerator
 import hashlib
 
 cb = get_codegen_basis()
@@ -89,6 +89,8 @@ def _is_non_serializable(x):
 
 
 def _print_arg_type(t, py_interface: bool = False, is_view: bool = False):
+    if not t:
+        return "void"
     f = _type_name_functions.get(t)
     if f:
         return f(t, py_interface, is_view)
@@ -253,6 +255,114 @@ def py_interface_gen(module_name: str):
         cb.remove_indent()
     return cb.get_result()
 
+def print_rpc_funcs(struct_type: tr.struct):
+    global cb
+    rpc = struct_type._rpc
+    if len(rpc) == 0:
+        return
+    for func_name in rpc:
+        mems_dict: dict = rpc[func_name]
+        for key in mems_dict:
+            func : tr._function_t = mems_dict[key]
+            is_first = True
+            args = ''
+            for arg_name in func._args:
+                if not is_first:
+                    args += ', '
+                is_first = False
+                args += f'{ _print_arg_type(func._args[arg_name])} {arg_name}'
+            cb.add_line(f'{_print_arg_type(func._ret_type)} {func_name}({args});')
+
+def print_rpc_serializer(struct_type: tr.struct):
+    global cb
+    rpc = struct_type._rpc
+    if len(rpc) == 0:
+        return
+    full_name = struct_type.full_name()
+    arg_meta_defines = ''
+    ret_value_defines = ''
+    func_names = ''
+    call_expr = ''
+    is_first = True
+    for func_name in rpc:
+        mems_dict: dict = rpc[func_name]
+        for key in mems_dict:
+            func_hasher_name =  hashlib.md5(str((full_name + '->' + key)).encode('ascii')).hexdigest()
+            func : tr._function_t = mems_dict[key]
+            if len(func._args) > 0:
+                arg_struct_name = f'Arg{func_hasher_name}'
+                cb.add_line(f'struct {arg_struct_name} {{')
+                cb.add_indent()
+                for arg_name in func._args:
+                    cb.add_line(f'{ _print_arg_type(func._args[arg_name])} {arg_name};')
+                
+                # serializer
+                cb.add_line('void rbc_objser(rbc::JsonSerializer &obj) const {')
+                cb.add_indent()
+                for arg_name in func._args:
+                    cb.add_line(f'obj._store({arg_name});')
+                cb.remove_indent()
+                cb.add_line('}')
+                                
+                # deserializer
+                cb.add_line('void rbc_objdeser(rbc::JsonDeSerializer &obj) {')
+                cb.add_indent()
+                for arg_name in func._args:
+                    cb.add_line(f'obj._load({arg_name});')
+                cb.remove_indent()
+                cb.add_line('}')
+                cb.remove_indent()
+                cb.add_line('};\n')
+            else:
+                arg_struct_name = 'void'
+
+            if not is_first:
+                func_names += ','
+                call_expr += ','
+                arg_meta_defines += ','
+                ret_value_defines += ','
+            is_first = False
+            func_names += f'"{func_hasher_name}"'
+            call_cb = CodeGenerator()
+            call_cb.add_indent()
+            call_cb.add_line('[](void *self, void *args, void *ret_value) {')
+            call_cb.add_indent()
+            if len(func._args) > 0:
+                call_cb.add_line(f'auto args_ptr = static_cast<{arg_struct_name} *>(args);')
+            
+            is_ret_void = not (func._ret_type and func._ret_type != tr.void)
+            ret_type_name = _print_arg_type(func._ret_type)
+            if not is_ret_void:
+                call_cb.add_line(f'std::construct_at(static_cast<{ret_type_name} *>(ret_value),')
+            call_cb.add_line(f'static_cast<{full_name} *>(self)->{func_name}(')
+            arg_is_first = True
+            for arg_name in func._args:
+                if not arg_is_first:
+                    call_cb.add_result(', ')
+                arg_is_first = False
+                call_cb.add_result(f'args_ptr->{arg_name}')
+            call_cb.add_result(')')
+            if not is_ret_void:
+                call_cb.add_result(')')
+            call_cb.add_result(';')
+            call_cb.remove_indent()
+            call_cb.add_line('}')
+            call_cb.remove_indent()
+            call_expr += call_cb.get_result()
+            arg_meta_defines += f'rbc::HeapObjectMeta::create<{arg_struct_name}>()'
+            ret_value_defines += f'rbc::HeapObjectMeta::create<{ret_type_name}>()'
+    
+
+    
+    args_defines = f'''static rbc::FuncSerializer func_ser{{
+    std::initializer_list<const char *>{{{func_names}}},
+    std::initializer_list<rbc::FuncSerializer::ClousureType>{{{call_expr}}},
+    std::initializer_list<rbc::HeapObjectMeta>{{{arg_meta_defines}}},
+    std::initializer_list<rbc::HeapObjectMeta>{{{ret_value_defines}}}
+}};'''
+    cb.add_result(args_defines)
+
+
 def _cpp_impl_gen():
     global cb
     # print enums
@@ -284,7 +394,8 @@ def _cpp_impl_gen():
             cb.add_line(f"namespace {namespace} {{")
         # serialize function
         if len(struct_type._serde_members) > 0:
-            cb.add_line(f"void {struct_type.class_name()}::rbc_objser(rbc::JsonSerializer& obj) const {{")
+            cb.add_line(
+                f"void {struct_type.class_name()}::rbc_objser(rbc::JsonSerializer& obj) const {{")
             cb.add_indent()
             for mem_name in struct_type._serde_members:
                 cb.add_line(f'obj._store(this->{mem_name}, "{mem_name}");')
@@ -293,7 +404,8 @@ def _cpp_impl_gen():
 
         # de-serialize function
         if len(struct_type._serde_members) > 0:
-            cb.add_line(f"void {struct_type.class_name()}::rbc_objdeser(rbc::JsonDeSerializer& obj){{")
+            cb.add_line(
+                f"void {struct_type.class_name()}::rbc_objdeser(rbc::JsonDeSerializer& obj){{")
             cb.add_indent()
             for mem_name in struct_type._serde_members:
                 cb.add_line(f'obj._load(this->{mem_name}, "{mem_name}");')
@@ -302,8 +414,10 @@ def _cpp_impl_gen():
         if len(namespace) > 0:
             cb.add_line(f"}} // namespace {namespace}")
         cb.add_result("\n")
- 
-    
+        
+        print_rpc_serializer(struct_type)
+        print_client_impl(struct_type)
+
 
 def cpp_impl_gen(*extra_includes):
     global cb
@@ -313,6 +427,57 @@ def cpp_impl_gen(*extra_includes):
     _cpp_impl_gen()
     return cb.get_result()
 
+JSON_SER_NAME = "b839f6ccb4b74f1281c6da20b9e2ce21"
+SELF_NAME = "d6922fb0e4bd44549e0a8c9d420b9c75"
+def print_client_code(struct_type: tr.struct):
+    global cb
+    rpc = struct_type._rpc
+    if len(rpc) == 0:
+        return
+    cb.add_line(f'struct {struct_type.class_name()}Client {{')
+    cb.add_indent()
+    for func_name in rpc:
+        mems_dict: dict = rpc[func_name]
+        for key in mems_dict:
+            func : tr._function_t = mems_dict[key]
+            args = ''
+            for arg_name in func._args:
+                args += ', '
+                args += f'{ _print_arg_type(func._args[arg_name])} {arg_name}'
+            cb.add_line(f'static void {func_name}(JsonSerializer &, void*{args});')
+    cb.remove_indent()
+    cb.add_line('};')
+    
+def print_client_impl(struct_type: tr.struct):
+    global cb
+    rpc = struct_type._rpc
+    if len(rpc) == 0:
+        return
+    class_name = struct_type.class_name()
+    full_name = struct_type.full_name()
+    namespace = struct_type.namespace_name()
+    if len(namespace) > 0:
+        cb.add_line(f'namespace {namespace} {{')
+    for func_name in rpc:
+        mems_dict: dict = rpc[func_name]
+        for key in mems_dict:
+            func_hasher_name =  hashlib.md5(str((full_name + '->' + key)).encode('ascii')).hexdigest()
+            func : tr._function_t = mems_dict[key]
+            args = ''
+            for arg_name in func._args:
+                args += ', '
+                args += f'{ _print_arg_type(func._args[arg_name])} {arg_name}'
+            cb.add_line(f'void {class_name}Client::{func_name}(JsonSerializer &{JSON_SER_NAME}, void* {SELF_NAME}{args}){{')
+            cb.add_indent()
+            cb.add_line(f'{JSON_SER_NAME}.add("{func_hasher_name}");')
+            cb.add_line(f'{JSON_SER_NAME}.add((uint64_t){SELF_NAME});')
+            for arg_name in func._args:
+                cb.add_line(f'{JSON_SER_NAME}._store({arg_name});')
+            cb.remove_indent()
+            cb.add_line('}')
+    if len(namespace) > 0:
+        cb.add_line('}')
+    
 
 def cpp_interface_gen(*extra_includes):
     cb.set_result("""#pragma once
@@ -322,6 +487,7 @@ def cpp_interface_gen(*extra_includes):
 #include <luisa/vstl/meta_lib.h>
 #include <luisa/vstl/v_guid.h>
 #include <rbc_core/enum_serializer.h>
+#include <rbc_core/func_serializer.h>
 #include <rbc_core/serde.h>
 #include <rbc_core/rtti.h>
 """)
@@ -356,7 +522,8 @@ def cpp_interface_gen(*extra_includes):
         namespace = struct_type.namespace_name()
         if len(namespace) > 0:
             cb.add_line(f"namespace {namespace} {{")
-        cb.add_line(f"struct {struct_type._suffix} {struct_type.class_name()} : vstd::IOperatorNewBase {{")
+        cb.add_line(
+            f"struct {struct_type._suffix} {struct_type.class_name()} : vstd::IOperatorNewBase {{")
         cb.add_indent()
         if len(struct_type._members) > 0:
             for mem_name in struct_type._members:
@@ -390,8 +557,12 @@ def cpp_interface_gen(*extra_includes):
                 cb.add_line(
                     f"virtual {ret_type} {mem_name}({__print_arg_vars_decl(func._args, True, False, True)}) = 0;"
                 )
+        # print rpc
+        print_rpc_funcs(struct_type)
+        
         cb.remove_indent()
         cb.add_line("};")
+        print_client_code(struct_type)
         if len(namespace) > 0:
             cb.add_line(f"}} // namespace {namespace}")
         cb.add_result("\n")
@@ -432,7 +603,8 @@ void {export_func_name}(nanobind::module_& m) """)
 
     # print classes
     cb.add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
-    cb.add_line(f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
+    cb.add_line(
+        f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
 
@@ -469,7 +641,8 @@ void {export_func_name}(nanobind::module_& m) """)
                 end = ""
                 if func._ret_type:
                     ret_type = (
-                        " -> " + _print_arg_type(func._ret_type, True, False) + " "
+                        " -> " +
+                        _print_arg_type(func._ret_type, True, False) + " "
                     )
                     return_decl = "return "
                     if func._ret_type == tr.string:
@@ -488,6 +661,7 @@ void {export_func_name}(nanobind::module_& m) """)
     # end
     cb.remove_indent()
     cb.add_line("}")
-    cb.add_line(f"static ModuleRegister _{export_func_name}({export_func_name});")
+    cb.add_line(
+        f"static ModuleRegister _{export_func_name}({export_func_name});")
     _cpp_impl_gen()
     return cb.get_result()

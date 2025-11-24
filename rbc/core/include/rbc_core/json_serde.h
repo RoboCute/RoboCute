@@ -16,7 +16,7 @@ struct RBC_CORE_API JsonWriter {
     JsonWriter(JsonWriter const &) = delete;
     JsonWriter(JsonWriter &&) = delete;
 
-    JsonWriter();
+    JsonWriter(bool root_array = false);
     ~JsonWriter();
 
     void start_array();

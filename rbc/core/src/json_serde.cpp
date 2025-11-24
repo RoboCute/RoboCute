@@ -31,12 +31,18 @@ namespace rbc {
     auto val = yyjson_obj_get(v.first, name);          \
     if (!val) return false;                            \
     auto type = yyjson_get_type(val);
-JsonWriter::JsonWriter() {
+JsonWriter::JsonWriter(bool root_array) {
     alc = yyjson_alc{
         .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
     json_doc = yyjson_mut_doc_new(&alc);
-    auto root = yyjson_mut_obj(json_doc);
-    _json_scope.emplace_back(root, false);
+    yyjson_mut_val *root;
+    if (root_array) {
+        root = yyjson_mut_arr(json_doc);
+        _json_scope.emplace_back(root, true);
+    } else {
+        root = yyjson_mut_obj(json_doc);
+        _json_scope.emplace_back(root, false);
+    }
     yyjson_mut_doc_set_root(json_doc, root);
 }
 BinaryBlob JsonWriter::write_to() const {

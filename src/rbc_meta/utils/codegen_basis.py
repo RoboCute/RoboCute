@@ -1,13 +1,9 @@
 # The Singleton Code Generator
 class CodeGenerator:
-    _instance = None
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(CodeGenerator, cls).__new__(cls)
-            cls._instance._line_indent = 0
-            cls._instance._result = ""
-        return cls._instance
+    def __init__(cls):
+        cls._line_indent = 0
+        cls._result = ""
 
     def add_line(self, line: str):
         self._result += "\n"

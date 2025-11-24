@@ -5,6 +5,7 @@ add_rules('lc_basic_settings', {
 add_includedirs('include', {
     public = true
 })
+set_pcxxheader('src/zz_pch.h')
 add_files('src/**.cpp')
 add_deps('lc-core', 'lc-yyjson', 'lc-vstl', 'rtm')
 add_defines('RBC_CORE_EXPORT_DLL')

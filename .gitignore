@@ -102,6 +102,5 @@ src/rbc_ext/release
 debug
 !setup.cmd
 !setup.sh
-generated.lua
 
 rbc/shader/host

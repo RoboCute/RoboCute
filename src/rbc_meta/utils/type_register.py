@@ -305,6 +305,7 @@ class struct:
         self._members = dict()
         self._cpp_initer = dict()
         self._serde_members = dict()
+        self._rpc = dict()
         self._methods = dict()
 
     def namespace_name(self):
@@ -324,6 +325,18 @@ class struct:
         if not tb:
             tb = {}
             self._methods[_func_name] = tb
+        f = _function_t(**args)
+        key = _gen_args_key(**args)
+        if tb.get(key):
+            log_err(f"member {_func_name} already exists with same arguments overload.")
+        tb[key] = f
+        return f
+    
+    def rpc(self, _func_name: str, **args):
+        tb = self._rpc.get(_func_name)
+        if not tb:
+            tb = {}
+            self._rpc[_func_name] = tb
         f = _function_t(**args)
         key = _gen_args_key(**args)
         if tb.get(key):
