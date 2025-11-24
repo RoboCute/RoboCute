@@ -11,6 +11,8 @@
 #include <luisa/vstl/md5.h>
 #include <rbc_core/func_serializer.h>
 
+#include "generated/client.hpp"
+
 namespace rbc {
 void MyStruct::no_arg_func() {
     LUISA_INFO("calling no-arg function.");

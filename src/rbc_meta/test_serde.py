@@ -24,5 +24,11 @@ def codegen_header(header_path: Path):
     MyStruct.rpc('add', lhs=tr.float, rhs=tr.double)
     ut.codegen_to(header_path)(codegen.cpp_interface_gen)
 
-    include = f'#include "generated.hpp"'
+    include = f'#include "{header_path.name}"'
     ut.codegen_to(header_path.parent / "enum_ser.cpp")(codegen.cpp_impl_gen, include)
+    
+    client_path = header_path.parent / 'client.hpp'
+    ut.codegen_to(client_path)(codegen.cpp_client_interface_gen)
+    include = '#include "client.hpp"'
+    client_path = header_path.parent / 'client.cpp'
+    ut.codegen_to(client_path)(codegen.cpp_client_impl_gen, include)
