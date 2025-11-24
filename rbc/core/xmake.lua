@@ -1,12 +1,19 @@
-target('rbc_core')
-add_rules('lc_basic_settings', {
-    project_kind = 'shared'
-})
-add_includedirs('include', {
-    public = true
-})
-set_pcxxheader('src/zz_pch.h')
-add_files('src/**.cpp')
-add_deps('lc-core', 'lc-yyjson', 'lc-vstl', 'rtm')
-add_defines('RBC_CORE_EXPORT_DLL')
-target_end()
+local function rbc_core_interface()
+    add_includedirs('include', {
+        public = true
+    })
+    add_deps('lc-core', 'lc-vstl', 'lc-yyjson')
+end
+
+local function rbc_core_impl()
+    add_rules('lc_basic_settings', {
+        project_kind = 'shared'
+    })
+
+    set_pcxxheader('src/zz_pch.h')
+    add_files('src/**.cpp')
+    add_deps('rtm')
+    add_defines('RBC_CORE_EXPORT_DLL')
+end
+
+interface_target('rbc_core', rbc_core_interface, rbc_core_impl)

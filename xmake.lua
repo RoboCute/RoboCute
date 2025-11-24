@@ -27,7 +27,7 @@ lc_options = {
     -- lc_toy_c_backend = true
 }
 
-includes('scripts/xmake/py_codegen.lua', 'scripts/xmake/option_meta.lua')
+includes('xmake/py_codegen.lua', 'xmake/option_meta.lua', 'xmake/interface_target.lua')
 includes("thirdparty", "rbc")
 
 target("lc-runtime")

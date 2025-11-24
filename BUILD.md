@@ -28,7 +28,7 @@
 
 ### 发布运行
 
-1. 运行安装脚本 `xmake l scripts/xmake/install.lua`
+1. 运行安装脚本 `xmake l /xmake/install.lua`
 2. 尝试看绑定是否正确`uv run samples/bind_struct.py`
 3. 运行测试用例 `uv run pytest`
 4. 尝试QtNode连连看`xmake run calculator`

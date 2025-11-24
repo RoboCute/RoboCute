@@ -264,7 +264,7 @@ def prepare():
                 options["lc_py_libs"] = ";".join(files) + ";"
 
         # Write to scripts/options.json
-        opt_json_path = rel("scripts/options.json")
+        opt_json_path = rel("xmake/options.json")
         print(f"Write Options to {opt_json_path}")
         with open(opt_json_path, "w") as f:
             json.dump(options, f, indent=4)

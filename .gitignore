@@ -88,7 +88,7 @@ thirdparty/nanobind
 thirdparty/libtorch
 thirdparty/LuisaCompute
 thirdparty/qt_node_editor
-scripts/options.json
+xmake/options.json
 modules/tools/nanogen/builtin/builtin.cpp
 generated/
 __pycache__

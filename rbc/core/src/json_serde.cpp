@@ -1,6 +1,7 @@
 #include <rbc_core/json_serde.h>
 #include <luisa/vstl/common.h>
 #include <luisa/core/logging.h>
+
 using namespace luisa;
 namespace rbc {
 #define JSON_DESER_INIT_ARR                           \
