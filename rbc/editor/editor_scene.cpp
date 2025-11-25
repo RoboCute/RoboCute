@@ -100,10 +100,13 @@ void EditorScene::update_from_sync(const SceneSync &sync) {
     const auto &entities = sync.entities();
     const auto &resources = sync.resources();
 
+    LUISA_INFO("EditorScene: Syncing {} entities, {} resources", entities.size(), resources.size());
+
     // Build resource path map
     luisa::unordered_map<int, luisa::string> resource_paths;
     for (const auto &res : resources) {
         resource_paths[res.id] = res.path;
+        LUISA_INFO("  Resource {}: {}", res.id, res.path);
     }
 
     // Track which entities we've seen in this update
@@ -111,6 +114,8 @@ void EditorScene::update_from_sync(const SceneSync &sync) {
 
     // Update or add entities
     for (const auto &entity : entities) {
+        LUISA_INFO("  Entity {}: {}, has_render={}", entity.id, entity.name, entity.has_render_component);
+        
         if (!entity.has_render_component) {
             continue;
         }
@@ -131,9 +136,11 @@ void EditorScene::update_from_sync(const SceneSync &sync) {
         auto it = entity_map_.find(entity.id);
         if (it != entity_map_.end()) {
             // Update existing entity
+            LUISA_INFO("  Updating entity {} transform", entity.id);
             update_entity_transform(entity.id, entity.transform);
         } else {
             // Add new entity
+            LUISA_INFO("  Adding new entity {} with mesh {}", entity.id, mesh_path);
             add_entity(entity.id, mesh_path, entity.transform);
         }
     }
@@ -150,6 +157,7 @@ void EditorScene::update_from_sync(const SceneSync &sync) {
     }
 
     tlas_ready_ = !instances_.empty();
+    LUISA_INFO("EditorScene: TLAS ready = {}, {} instances", tlas_ready_, instances_.size());
 }
 
 void EditorScene::add_entity(int entity_id, const luisa::string &mesh_path,
@@ -329,11 +337,16 @@ void EditorScene::convert_mesh_to_builder(const luisa::shared_ptr<rbc::Mesh> &me
                                           MeshBuilder &builder) {
     using namespace luisa;
 
+    // Create UV layer 0
+    if (!mesh->vertices.empty()) {
+        builder.uvs.emplace_back();
+    }
+
     // Copy vertices
     for (const auto &v : mesh->vertices) {
         builder.position.push_back(float3(v.position[0], v.position[1], v.position[2]));
         builder.normal.push_back(float3(v.normal[0], v.normal[1], v.normal[2]));
-        builder.uvs.push_back({float2(v.texcoord[0], v.texcoord[1])});
+        builder.uvs[0].push_back(float2(v.texcoord[0], v.texcoord[1]));
         // Note: tangent handling could be added if needed
     }
 

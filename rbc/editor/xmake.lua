@@ -6,6 +6,7 @@ target("rbc_editor")
     add_headerfiles("http_client.h", "scene_sync.h", "editor_scene.h")
     
     -- Dependencies
+    add_deps("rbc_core")  -- For json_serde (yyjson)
     add_deps("rbc_world")
     add_deps('rbc_runtime', 'lc-gui', 'rbc_render_interface')
     

@@ -111,6 +111,9 @@ class EditorService:
             """Get current scene state"""
             try:
                 scene_data = self.scene._save_to_dict()
+                # Debug: print scene data
+                import json as json_lib
+                print(f"[EditorService] Scene state: {json_lib.dumps(scene_data, indent=2)}")
                 return {
                     "success": True,
                     "scene": scene_data

@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <luisa/vstl/common.h>
 #include <luisa/core/stl/string.h>
+#include <rbc_core/json_serde.h>
 
 namespace rbc {
 
@@ -81,21 +82,13 @@ private:
     luisa::unordered_map<int, size_t> resource_map_;// resource_id -> index in resources_
     bool has_changes_;
 
-    // JSON parsing helpers
+    // JSON parsing helpers using yyjson
     bool parse_scene_state(const luisa::string &json);
     bool parse_resources(const luisa::string &json);
-    SceneEntity parse_entity(const luisa::string &json_object);
-    Transform parse_transform(const luisa::string &json_object);
-    RenderComponent parse_render_component(const luisa::string &json_object);
-    EditorResourceMetadata parse_resource(const luisa::string &json_object);
-
-    // Simple JSON parsing utilities (no external dependencies)
-    luisa::string json_get_string(const luisa::string &json, const char *key);
-    int json_get_int(const luisa::string &json, const char *key);
-    float json_get_float(const luisa::string &json, const char *key);
-    luisa::string json_get_object(const luisa::string &json, const char *key);
-    luisa::vector<luisa::string> json_get_array_objects(const luisa::string &json, const char *key);
-    luisa::vector<float> json_get_float_array(const luisa::string &json, const char *key);
+    SceneEntity parse_entity(JsonReader &reader);
+    Transform parse_transform(JsonReader &reader);
+    RenderComponent parse_render_component(JsonReader &reader);
+    EditorResourceMetadata parse_resource(JsonReader &reader);
 };
 
 }// namespace rbc

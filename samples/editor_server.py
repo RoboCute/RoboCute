@@ -70,15 +70,20 @@ def main():
     print("    Added transform component")
 
     # Add render component with mesh reference
-    scene.add_component(
-        robot.id,
-        "render",
-        rbc.RenderComponent(
-            mesh_id=mesh_id,
-            material_ids=[],
-        ),
+    render_comp = rbc.RenderComponent(
+        mesh_id=mesh_id,
+        material_ids=[],
     )
+    print(f"    Creating render component: mesh_id={render_comp.mesh_id}")
+    scene.add_component(robot.id, "render", render_comp)
     print("    Added render component")
+    
+    # Verify component was added
+    entity_check = scene.get_entity(robot.id)
+    print(f"    Entity has components: {list(entity_check.components.keys())}")
+    if 'render' in entity_check.components:
+        rc = entity_check.components['render']
+        print(f"    Render component mesh_id: {rc.mesh_id}")
 
     # Start editor service
     print("\n[4] Starting Editor Service...")
