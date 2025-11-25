@@ -23,55 +23,6 @@ void RPCCommandList::readback(luisa::BinaryBlob &&serialized_return_values) {
     }
 }
 
-void RPCCommandList::locally_execute() {
-    auto blob = arg_ser.write_to();
-    // TODO: ipc, execute function at server
-    const bool is_server = true;
-    if (is_server) {
-        vstd::VEngineMallocVisitor alloc_callback;
-        vstd::StackAllocator alloc(256, &alloc_callback, 2);
-        JsonDeSerializer arg_deser(luisa::string_view{
-            reinterpret_cast<char const *>(blob.data()),
-            blob.size()});
-        auto iter = ret_values.begin();
-        for (auto i : vstd::range(_func_count)) {
-            luisa::string func_hash;
-            uint64_t self;
-            LUISA_DEBUG_ASSERT(arg_deser.read(func_hash));
-            LUISA_DEBUG_ASSERT(arg_deser.read(self));
-            auto call_meta = FuncSerializer::get_call_meta(func_hash);
-            LUISA_DEBUG_ASSERT(call_meta);
-            void *arg = nullptr;
-            // allocate
-            auto const &args_meta = call_meta->args_meta;
-            if (args_meta) {
-                auto chunk = alloc.allocate(args_meta.size, args_meta.alignment);
-                arg = reinterpret_cast<void *>(chunk.handle + chunk.offset);
-                if (args_meta.default_ctor) {
-                    args_meta.default_ctor(arg);
-                } else if (args_meta.is_trivial_constructible) {
-                    std::memset(arg, 0, args_meta.size);
-                }
-                args_meta.json_reader(arg, &arg_deser);
-            }
-            void *ret_ptr{};
-            if (call_meta->ret_value_meta) {
-                LUISA_DEBUG_ASSERT(iter != ret_values.end());
-                ret_ptr = iter->storage_ptr;
-            }
-            // call
-            call_meta->func(reinterpret_cast<void *>(self), arg, ret_ptr);
-            if (call_meta->ret_value_meta) {
-                iter->mark_finished(iter->storage);
-                ++iter;
-            }
-            // destructor
-            if (arg && args_meta.deleter) {
-                args_meta.deleter(arg);
-            }
-        }
-    }
-}
 luisa::BinaryBlob RPCCommandList::server_execute(
     uint64_t call_count,
     luisa::BinaryBlob &&serialized_args) {

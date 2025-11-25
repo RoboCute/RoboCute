@@ -87,28 +87,8 @@ int main() {
     }
 
     // Test RPC
-    // Execute locally
     MyStruct my_struct;
     my_struct.dd = "add_string";
-    {
-        RPCCommandList cmdlist;
-        MyStructClient::no_arg_func(
-            cmdlist,
-            &my_struct);
-        MyStructClient::add(
-            cmdlist,
-            &my_struct,
-            (float)1919,
-            (double)810);
-        auto value = MyStructClient::add(
-            cmdlist,
-            &my_struct,
-            (int)114,
-            (float)514);
-
-        cmdlist.locally_execute();
-        LUISA_INFO("Add value should be 114+514 = 628 {}", value.get());
-    }
     // Execute remotely
     {
         RPCCommandList cmdlist;

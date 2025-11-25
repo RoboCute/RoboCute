@@ -21,7 +21,6 @@ public:
     uint64_t func_count() const { return _func_count; }
     luisa::BinaryBlob commit_commands();
     void add_functioon(char const *name, void *handle);
-    void locally_execute();
     void readback(luisa::BinaryBlob &&serialized_return_values);
     static luisa::BinaryBlob server_execute(
         uint64_t call_count,
