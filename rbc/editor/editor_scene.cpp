@@ -115,7 +115,7 @@ void EditorScene::update_from_sync(const SceneSync &sync) {
     // Update or add entities
     for (const auto &entity : entities) {
         LUISA_INFO("  Entity {}: {}, has_render={}", entity.id, entity.name, entity.has_render_component);
-        
+
         if (!entity.has_render_component) {
             continue;
         }

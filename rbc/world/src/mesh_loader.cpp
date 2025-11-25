@@ -186,6 +186,7 @@ luisa::shared_ptr<Mesh> MeshLoader::load_obj(const std::string &path) {
             texcoords.push_back(v);
         } else if (prefix == "f") {
             // Simple face parsing (assumes triangulated)
+
             for (int i = 0; i < 3; ++i) {
                 std::string vert_str;
                 iss >> vert_str;

@@ -36,15 +36,15 @@ def main():
     # Load mesh resource
     print("\n[2] Loading mesh resource...")
     # Use a mesh path - you should replace this with your actual mesh path
-    mesh_path = "D:/ws/data/assets/models/cube.obj"
-    
+    mesh_path = "D:/ws/data/assets/models/bunny.obj"
+
     # Check if default path exists, otherwise use relative path
     if not Path(mesh_path).exists():
         # Try to find a mesh in the project
         mesh_path = str(Path(__file__).parent.parent / "samples" / "test_mesh.obj")
         print(f"    Default mesh not found, using: {mesh_path}")
         print(f"    NOTE: You may need to provide a valid mesh path")
-    
+
     mesh_id = scene.resource_manager.load_mesh(
         mesh_path,
         priority=rbc.LoadPriority.High,
@@ -77,12 +77,12 @@ def main():
     print(f"    Creating render component: mesh_id={render_comp.mesh_id}")
     scene.add_component(robot.id, "render", render_comp)
     print("    Added render component")
-    
+
     # Verify component was added
     entity_check = scene.get_entity(robot.id)
     print(f"    Entity has components: {list(entity_check.components.keys())}")
-    if 'render' in entity_check.components:
-        rc = entity_check.components['render']
+    if "render" in entity_check.components:
+        rc = entity_check.components["render"]
         print(f"    Render component mesh_id: {rc.mesh_id}")
 
     # Start editor service
@@ -106,7 +106,7 @@ def main():
         frame = 0
         while True:
             time.sleep(0.1)
-            
+
             # Every 5 seconds, print status
             if frame % 50 == 0:
                 editors = editor_service.get_connected_editors()
@@ -114,9 +114,9 @@ def main():
                     print(f"[Status] Connected editors: {', '.join(editors)}")
                 else:
                     print("[Status] Waiting for editor connection...")
-            
+
             frame += 1
-            
+
     except KeyboardInterrupt:
         print("\n\n[Shutdown] Stopping server...")
         editor_service.stop()
@@ -131,4 +131,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
