@@ -65,9 +65,10 @@ size_t AsyncResourceLoader::get_memory_usage() const {
     return storage_ ? storage_->get_memory_usage() : 0;
 }
 
-bool AsyncResourceLoader::load_resource(ResourceID id, uint32_t type_value,
-                                        const std::string &path,
-                                        const std::string &options_json) {
+bool AsyncResourceLoader::load_resource(
+    ResourceID id, uint32_t type_value,
+    const char *path,
+    const char *options_json) {
     if (!running_) {
         initialize();// Auto-initialize if not started
     }
@@ -84,6 +85,7 @@ bool AsyncResourceLoader::load_resource(ResourceID id, uint32_t type_value,
     request.path = path;
     request.priority = LoadPriority::Normal;
     request.timestamp = std::chrono::steady_clock::now();
+
     // Add to queue
     {
         std::lock_guard lock(queue_mutex_);
@@ -164,8 +166,11 @@ void AsyncResourceLoader::worker_thread() {
             storage_->set_state(request.id, ResourceState::Loading);
 
             // Load resource
-            bool success = load_resource_impl(request.id, request.type,
-                                              request.path, "{}");
+            bool success = load_resource_impl(
+                request.id,
+                request.type,
+                request.path,
+                "{}");
 
             // Update state
             if (success) {

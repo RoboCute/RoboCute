@@ -9,9 +9,9 @@ namespace nb = nanobind;
 
 namespace {
 
-void register_resource_bindings(nb::module_& m) {
+void register_resource_bindings(nb::module_ &m) {
     // === Resource Enums ===
-    
+
     nb::enum_<rbc::ResourceType>(m, "ResourceType")
         .value("Unknown", rbc::ResourceType::Unknown)
         .value("Mesh", rbc::ResourceType::Mesh)
@@ -44,7 +44,7 @@ void register_resource_bindings(nb::module_& m) {
         .export_values();
 
     // === AsyncResourceLoader ===
-    
+
     nb::class_<rbc::AsyncResourceLoader>(m, "AsyncResourceLoader")
         .def(nb::init<>())
         .def("initialize", &rbc::AsyncResourceLoader::initialize,
@@ -60,10 +60,6 @@ void register_resource_bindings(nb::module_& m) {
         .def("get_memory_usage", &rbc::AsyncResourceLoader::get_memory_usage,
              "Get the current memory usage in bytes")
         .def("load_resource", &rbc::AsyncResourceLoader::load_resource,
-             nb::arg("id"),
-             nb::arg("type_value"),
-             nb::arg("path"),
-             nb::arg("options_json"),
              "Load a resource asynchronously")
         .def("is_loaded", &rbc::AsyncResourceLoader::is_loaded,
              nb::arg("id"),
@@ -88,5 +84,4 @@ void register_resource_bindings(nb::module_& m) {
 // Register using ModuleRegister pattern
 ModuleRegister resource_module_register(register_resource_bindings);
 
-} // anonymous namespace
-
+}// anonymous namespace

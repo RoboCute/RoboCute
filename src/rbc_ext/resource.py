@@ -12,11 +12,33 @@ import weakref
 import rbc_ext._C.rbc_ext_c as _C
 
 
+class ResourceType(IntEnum):
+    Unknown = 0
+    Mesh = 1
+    Texture = 2
+    Material = 3
+    Shader = 4
+    Animation = 5
+    Skeleton = 6
+    PhysicsShape = 7
+    Audio = 8
+    Custom = 1000
+
+
+class ResourceState(IntEnum):
+    Unloaded = 0
+    Pending = 1
+    Loading = 2
+    Loaded = 3
+    Failed = 4
+    Unloading = 5
+
+
 @dataclass
 class ResourceMetadata:
     id: int  # ResourceID
-    type: _C.ResourceType
-    state: _C.ResourceState
+    type: ResourceType
+    state: ResourceState
     path: str
     name: str
     memory_size: int = 0
@@ -46,9 +68,9 @@ class LoadOptions:
 @dataclass(order=True)
 class ResourceRequest:
     priority: LoadPriority = field(compare=True)
-    timestamp: float = field(default_factory=time.time, compare=True)
+    # timestamp: float = field(default_factory=time.time, compare=True)
     id: int = field(compare=False)
-    type: _C.ResourceType = field(compare=False)
+    type: ResourceType = field(compare=False)
     path: str = field(compare=False)
     options: LoadOptions = field(default_factory=LoadOptions, compare=False)
     on_complete: Optional[Callable[[int, bool], None]] = field(
@@ -158,7 +180,7 @@ class ResourceManager:
 
     # === 资源注册 ===
     def register_resource(
-        self, path: str, resource_type: _C.ResourceType, name: Optional[str] = None
+        self, path: str, resource_type: ResourceType, name: Optional[str] = None
     ) -> int:
         """
         注册资源 (不立即加载)
@@ -184,7 +206,7 @@ class ResourceManager:
             metadata = ResourceMetadata(
                 id=resource_id,
                 type=resource_type,
-                state=_C.ResourceState.Unloaded,
+                state=ResourceState.Unloaded,
                 path=path,
                 name=name or Path(path).stem,
             )
@@ -194,7 +216,7 @@ class ResourceManager:
 
             return resource_id
 
-    def _allocate_resource_id(self, resource_type: _C.ResourceType) -> int:
+    def _allocate_resource_id(self, resource_type: ResourceType) -> int:
         """分配资源ID (高32位=类型, 低32位=序列号)"""
         type_bits = int(resource_type) << 32
         serial = self._next_resource_id
@@ -230,19 +252,19 @@ class ResourceManager:
             metadata = self._resources[resource_id]
 
             # 已加载,直接返回
-            if metadata.state == _C.ResourceState.Loaded:
+            if metadata.state == ResourceState.Loaded:
                 if on_complete:
                     on_complete(resource_id, True)
                 return True
 
             # 正在加载,添加回调
-            if metadata.state in (_C.ResourceState.Pending, _C.ResourceState.Loading):
+            if metadata.state in (ResourceState.Pending, ResourceState.Loading):
                 if on_complete:
                     self._add_completion_callback(resource_id, on_complete)
                 return True
 
             # 更新状态
-            metadata.state = _C.ResourceState.Pending
+            metadata.state = ResourceState.Pending
             # 创建请求
             request = ResourceRequest(
                 priority=priority,
@@ -291,7 +313,7 @@ class ResourceManager:
         on_complete: Optional[Callable[[int, bool], None]] = None,
     ) -> int:
         """加载网格资源"""
-        resource_id = self.register_resource(path, _C.ResourceType.Mesh)
+        resource_id = self.register_resource(path, ResourceType.Mesh)
         self.load_resource(resource_id, priority, on_complete=on_complete)
         return resource_id
 
@@ -302,7 +324,7 @@ class ResourceManager:
         on_complete: Optional[Callable[[int, bool], None]] = None,
     ) -> int:
         """加载纹理资源"""
-        resource_id = self.register_resource(path, _C.ResourceType.Texture)
+        resource_id = self.register_resource(path, ResourceType.Texture)
         self.load_resource(resource_id, priority, on_complete=on_complete)
         return resource_id
 
@@ -313,7 +335,7 @@ class ResourceManager:
         on_complete: Optional[Callable[[int, bool], None]] = None,
     ) -> int:
         """加载材质资源"""
-        resource_id = self.register_resource(path, _C.ResourceType.Material)
+        resource_id = self.register_resource(path, ResourceType.Material)
         self.load_resource(resource_id, priority, on_complete=on_complete)
         return resource_id
 
@@ -362,15 +384,15 @@ class ResourceManager:
         with self._resource_lock:
             return self._resources.get(resource_id)
 
-    def get_state(self, resource_id: int) -> _C.ResourceState:
+    def get_state(self, resource_id: int) -> ResourceState:
         """获取资源状态"""
         with self._resource_lock:
             metadata = self._resources.get(resource_id)
-            return metadata.state if metadata else _C.ResourceState.Unloaded
+            return metadata.state if metadata else ResourceState.Unloaded
 
     def is_loaded(self, resource_id: int) -> bool:
         """资源是否已加载"""
-        return self.get_state(resource_id) == _C.ResourceState.Loaded
+        return self.get_state(resource_id) == ResourceState.Loaded
 
     # === 资源卸载 ===
 
@@ -390,13 +412,13 @@ class ResourceManager:
                 return
 
             # 更新状态
-            metadata.state = _C.ResourceState.Unloading
+            metadata.state = ResourceState.Unloading
 
             # 通知C++端卸载
             self._cpp_loader.unload_resource(resource_id)
 
             # 更新状态
-            metadata.state = _C.ResourceState.Unloaded
+            metadata.state = ResourceState.Unloaded
             metadata.memory_size = 0
 
     def _schedule_unload(self, resource_id: int):
@@ -410,7 +432,7 @@ class ResourceManager:
             to_unload = [
                 rid
                 for rid, meta in self._resources.items()
-                if meta.reference_count == 0 and meta.state == _C.ResourceState.Loaded
+                if meta.reference_count == 0 and meta.state == ResourceState.Loaded
             ]
 
             for rid in to_unload:
@@ -449,18 +471,19 @@ class ResourceManager:
         with self._resource_lock:
             if resource_id not in self._resources:
                 return
-            self._resources[resource_id].state = _C.ResourceState.Loading
+            self._resources[resource_id].state = ResourceState.Loading
         # 调用C++加载器
         try:
             success = self._cpp_loader.load_resource(
-                resource_id, request.type.value, request.path, request.options.__dict__
+                resource_id, request.type.value, request.path, ""
             )
+
             # 更新状态
             with self._resource_lock:
                 if resource_id in self._resources:
                     metadata = self._resources[resource_id]
                     metadata.state = (
-                        _C.ResourceState.Loaded if success else _C.ResourceState.Failed
+                        ResourceState.Loaded if success else ResourceState.Failed
                     )
 
                     if success:
@@ -477,7 +500,7 @@ class ResourceManager:
 
             with self._resource_lock:
                 if resource_id in self._resources:
-                    self._resources[resource_id].state = _C.ResourceState.Failed
+                    self._resources[resource_id].state = ResourceState.Failed
 
             self._invoke_completion_callbacks(resource_id, False)
 

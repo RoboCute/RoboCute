@@ -38,8 +38,8 @@ public:
 
     // === Resource Loading ===
     bool load_resource(ResourceID id, uint32_t type_value,
-                       const std::string &path,
-                       const std::string &options_json);
+                       const char *path,
+                       const char *options_json);
 
     bool is_loaded(ResourceID id) const;
     uint8_t get_state(ResourceID id) const;
