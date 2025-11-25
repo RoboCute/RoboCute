@@ -1,5 +1,5 @@
 #include <luisa/core/logging.h>
-#include "rbc_core/ecs.h"
+#include "rbc_world/ecs.h"
 #include "rbc_world/scene.h"
 #include "rbc_world/system.h"
 #include <chrono>

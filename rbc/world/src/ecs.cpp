@@ -1,4 +1,4 @@
-#include "rbc_core/ecs.h"
+#include "rbc_world/ecs.h"
 #include <luisa/core/logging.h>
 
 namespace rbc {

@@ -102,5 +102,8 @@ src/rbc_ext/release
 debug
 !setup.cmd
 !setup.sh
-
+.pytest_cache
+.venv
+.vscode
 rbc/shader/host
+.mypy_cache

@@ -23,4 +23,4 @@ includes('tests')
 -- Targets
 includes('editor')
 includes('samples')
--- includes("ext") -- The Pybind Extension rbc_ext
+includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd

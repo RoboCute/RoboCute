@@ -1,0 +1,6 @@
+target("rbc_editor")
+    set_kind("binary")
+    add_rules("qt.widgetapp")
+    add_files("main.cpp")
+    add_deps("qt_node_editor")
+target_end()
