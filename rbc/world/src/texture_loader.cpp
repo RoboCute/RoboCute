@@ -29,8 +29,8 @@ public:
                path.ends_with(".rbt");// RoboCute texture format
     }
 
-    std::shared_ptr<void> load(const std::string &path,
-                               const std::string &options_json) override {
+    luisa::shared_ptr<void> load(const std::string &path,
+                                 const std::string &options_json) override {
         if (path.ends_with(".rbt")) {
             return load_rbt(path);
         } else {
@@ -38,20 +38,20 @@ public:
         }
     }
 
-    [[nodiscard]] size_t get_resource_size(const std::shared_ptr<void> &resource) const override {
-        auto texture = std::static_pointer_cast<Texture>(resource);
+    [[nodiscard]] size_t get_resource_size(const luisa::shared_ptr<void> &resource) const override {
+        auto texture = luisa::static_pointer_cast<Texture>(resource);
         return texture->get_memory_size();
     }
 
 private:
-    std::shared_ptr<Texture> load_rbt(const std::string &path) {
+    luisa::shared_ptr<Texture> load_rbt(const std::string &path) {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             std::cerr << "[TextureLoader] Failed to open: " << path << "\n";
             return nullptr;
         }
 
-        auto texture = std::make_shared<Texture>();
+        auto texture = luisa::make_shared<Texture>();
 
         // Read header
         struct Header {
@@ -89,7 +89,7 @@ private:
         return texture;
     }
 
-    std::shared_ptr<Texture> load_image(const std::string &path) {
+    luisa::shared_ptr<Texture> load_image(const std::string &path) {
         // Placeholder: Simple raw file reading
         // In production, use stb_image or similar
         std::ifstream file(path, std::ios::binary | std::ios::ate);
@@ -98,7 +98,7 @@ private:
             return nullptr;
         }
 
-        auto texture = std::make_shared<Texture>();
+        auto texture = luisa::make_shared<Texture>();
 
         // For now, just read as raw data
         // TODO: Use proper image decoder (stb_image, WIC, etc.)
@@ -123,8 +123,8 @@ private:
 };
 
 // Factory function
-std::unique_ptr<ResourceLoader> create_texture_loader() {
-    return std::make_unique<TextureLoader>();
+luisa::unique_ptr<ResourceLoader> create_texture_loader() {
+    return luisa::make_unique<TextureLoader>();
 }
 
 }// namespace rbc

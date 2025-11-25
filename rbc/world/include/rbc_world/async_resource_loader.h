@@ -54,7 +54,7 @@ public:
     void clear_unused_resources();
 
     // === Register Custom Loader ===
-    using LoaderFactory = std::function<std::unique_ptr<ResourceLoader>()>;
+    using LoaderFactory = std::function<luisa::unique_ptr<ResourceLoader>()>;
     void register_loader(ResourceType type, LoaderFactory factory);
 
 private:
@@ -79,11 +79,11 @@ private:
     std::condition_variable queue_cv_;
 
     // Resource storage
-    std::unique_ptr<ResourceStorage> storage_;
+    luisa::unique_ptr<ResourceStorage> storage_;
 
     // Loader factories and instances
     std::unordered_map<ResourceType, LoaderFactory> loader_factories_;
-    std::unordered_map<ResourceType, std::unique_ptr<ResourceLoader>> loaders_;
+    std::unordered_map<ResourceType, luisa::unique_ptr<ResourceLoader>> loaders_;
 
     // Cache management
     size_t cache_budget_{static_cast<size_t>(2048 * 1024 * 1024)};// 2GB default

@@ -20,9 +20,9 @@ public:
     ~ResourceStorage() = default;
 
     // === Storage/Retrieval ===
-    void store(ResourceID id, std::shared_ptr<void> data,
+    void store(ResourceID id, luisa::shared_ptr<void> data,
                ResourceType type, size_t size);
-    std::shared_ptr<void> get(ResourceID id);
+    luisa::shared_ptr<void> get(ResourceID id);
     bool contains(ResourceID id) const;
 
     // === State Query ===
@@ -49,7 +49,7 @@ public:
 private:
     struct ResourceEntry {
         ResourceID id;
-        std::shared_ptr<void> data;
+        luisa::shared_ptr<void> data;
         ResourceType type;
         ResourceState state;
         size_t size;

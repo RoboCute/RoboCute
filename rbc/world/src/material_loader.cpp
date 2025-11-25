@@ -16,8 +16,8 @@ public:
                path.ends_with(".rbm");// RoboCute material format
     }
 
-    [[nodiscard]] std::shared_ptr<void> load(const std::string &path,
-                                             const std::string &options_json) override {
+    [[nodiscard]] luisa::shared_ptr<void> load(const std::string &path,
+                                               const std::string &options_json) override {
         if (path.ends_with(".rbm")) {
             return load_rbm(path);
         } else {
@@ -25,20 +25,20 @@ public:
         }
     }
 
-    [[nodiscard]] size_t get_resource_size(const std::shared_ptr<void> &resource) const override {
-        auto material = std::static_pointer_cast<Material>(resource);
+    [[nodiscard]] size_t get_resource_size(const luisa::shared_ptr<void> &resource) const override {
+        auto material = luisa::static_pointer_cast<Material>(resource);
         return material->get_memory_size();
     }
 
 private:
-    [[nodiscard]] std::shared_ptr<Material> load_rbm(const std::string &path) {
+    [[nodiscard]] luisa::shared_ptr<Material> load_rbm(const std::string &path) {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             std::cerr << "[MaterialLoader] Failed to open: " << path << "\n";
             return nullptr;
         }
 
-        auto material = std::make_shared<Material>();
+        auto material = luisa::make_shared<Material>();
 
         // Read header
         struct Header {
@@ -77,14 +77,14 @@ private:
         return material;
     }
 
-    std::shared_ptr<Material> load_json(const std::string &path) {
+    luisa::shared_ptr<Material> load_json(const std::string &path) {
         std::ifstream file(path);
         if (!file.is_open()) {
             std::cerr << "[MaterialLoader] Failed to open: " << path << "\n";
             return nullptr;
         }
 
-        auto material = std::make_shared<Material>();
+        auto material = luisa::make_shared<Material>();
 
         // Simple JSON parsing (very basic, not robust)
         // TODO: Use proper JSON library like nlohmann/json
@@ -135,8 +135,8 @@ private:
 };
 
 // Factory function
-std::unique_ptr<ResourceLoader> create_material_loader() {
-    return std::make_unique<MaterialLoader>();
+luisa::unique_ptr<ResourceLoader> create_material_loader() {
+    return luisa::make_unique<MaterialLoader>();
 }
 
 }// namespace rbc

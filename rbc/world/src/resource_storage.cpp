@@ -5,7 +5,7 @@ namespace rbc {
 ResourceStorage::ResourceStorage(size_t budget_bytes)
     : budget_bytes_(budget_bytes) {}
 
-void ResourceStorage::store(ResourceID id, std::shared_ptr<void> data,
+void ResourceStorage::store(ResourceID id, luisa::shared_ptr<void> data,
                             ResourceType type, size_t size) {
     std::unique_lock lock(mutex_);
 
@@ -46,7 +46,7 @@ void ResourceStorage::store(ResourceID id, std::shared_ptr<void> data,
     }
 }
 
-std::shared_ptr<void> ResourceStorage::get(ResourceID id) {
+luisa::shared_ptr<void> ResourceStorage::get(ResourceID id) {
     std::shared_lock lock(mutex_);
 
     auto it = entries_.find(id);

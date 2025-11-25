@@ -6,7 +6,7 @@
 namespace rbc {
 
 AsyncResourceLoader::AsyncResourceLoader()
-    : storage_(std::make_unique<ResourceStorage>(cache_budget_)) {
+    : storage_(luisa::make_unique<ResourceStorage>(cache_budget_)) {
 }
 
 AsyncResourceLoader::~AsyncResourceLoader() {

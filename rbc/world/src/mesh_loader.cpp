@@ -101,8 +101,8 @@ public:
                path.ends_with(".obj");
     }
 
-    std::shared_ptr<void> load(const std::string &path,
-                               const std::string &options_json) override {
+    luisa::shared_ptr<void> load(const std::string &path,
+                                 const std::string &options_json) override {
         if (path.ends_with(".rbm")) {
             return load_rbm(path);
         } else if (path.ends_with(".obj")) {
@@ -111,20 +111,20 @@ public:
         return nullptr;
     }
 
-    size_t get_resource_size(const std::shared_ptr<void> &resource) const override {
-        auto mesh = std::static_pointer_cast<Mesh>(resource);
+    size_t get_resource_size(const luisa::shared_ptr<void> &resource) const override {
+        auto mesh = luisa::static_pointer_cast<Mesh>(resource);
         return mesh->get_memory_size();
     }
 
 private:
-    std::shared_ptr<Mesh> load_rbm(const std::string &path) {
+    luisa::shared_ptr<Mesh> load_rbm(const std::string &path) {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             std::cerr << "[MeshLoader] Failed to open: " << path << "\n";
             return nullptr;
         }
 
-        auto mesh = std::make_shared<Mesh>();
+        auto mesh = luisa::make_shared<Mesh>();
 
         // Read header
         struct Header {
@@ -155,14 +155,14 @@ private:
         return mesh;
     }
 
-    std::shared_ptr<Mesh> load_obj(const std::string &path) {
+    luisa::shared_ptr<Mesh> load_obj(const std::string &path) {
         std::ifstream file(path);
         if (!file.is_open()) {
             std::cerr << "[MeshLoader] Failed to open: " << path << "\n";
             return nullptr;
         }
 
-        auto mesh = std::make_shared<Mesh>();
+        auto mesh = luisa::make_shared<Mesh>();
 
         std::vector<float> positions;
         std::vector<float> normals;
@@ -235,8 +235,8 @@ private:
 };
 
 // Factory function
-std::unique_ptr<ResourceLoader> create_mesh_loader() {
-    return std::make_unique<MeshLoader>();
+luisa::unique_ptr<ResourceLoader> create_mesh_loader() {
+    return luisa::make_unique<MeshLoader>();
 }
 
 }// namespace rbc
