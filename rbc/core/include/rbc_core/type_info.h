@@ -87,7 +87,7 @@ namespace luisa {
 template<>
 struct hash<rbc::TypeInfo> {
     using is_avalanching = void;
-    [[nodiscard]] constexpr uint64_t operator()(const rbc::TypeInfo &value) const noexcept {
+    [[nodiscard]] uint64_t operator()(const rbc::TypeInfo &value) const noexcept {
         return value.hash();
     }
 };
@@ -96,7 +96,7 @@ namespace std {
 template<>
 struct hash<rbc::TypeInfo> {
     using is_avalanching = void;
-    [[nodiscard]] constexpr uint64_t operator()(const rbc::TypeInfo &value) const noexcept {
+    [[nodiscard]] uint64_t operator()(const rbc::TypeInfo &value) const noexcept {
         return value.hash();
     }
 };
@@ -105,7 +105,7 @@ namespace vstd {
 template<>
 struct hash<rbc::TypeInfo> {
     using is_avalanching = void;
-    [[nodiscard]] constexpr uint64_t operator()(const rbc::TypeInfo &value) const noexcept {
+    [[nodiscard]] uint64_t operator()(const rbc::TypeInfo &value) const noexcept {
         return value.hash();
     }
 };

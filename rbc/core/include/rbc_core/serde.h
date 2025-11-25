@@ -193,8 +193,8 @@ struct Serializer : public Base {
         } else if constexpr (luisa::is_matrix_v<T>) {
             constexpr size_t dim = luisa::matrix_dimension_v<T>;
             double arr[dim * dim];
-            for (size_t x = 0; x < dim; ++x)
-                for (size_t y = 0; y < dim; ++y) {
+            for (size_t y = 0; y < dim; ++y)
+                for (size_t x = 0; x < dim; ++x) {
                     arr[x + y * dim] = t.cols[y][x];
                 }
             Base::add_arr(luisa::span<double const>{arr, dim * dim}, args...);
@@ -392,12 +392,19 @@ struct DeSerializer : public Base {
             }
         } else if constexpr (luisa::is_matrix_v<T>) {
             constexpr size_t dim = luisa::matrix_dimension_v<T>;
+            uint64_t size;
+            if (!Base::start_array(size, args...)) return false;
+            auto end_scope = vstd::scope_exit([&] {
+                Base::end_scope();
+            });
+            if (size != dim * dim) return false;
             for (size_t x = 0; x < dim; ++x)
                 for (size_t y = 0; y < dim; ++y) {
-                    auto ele = (double)t[i];
+                    auto i = x + y * dim;
+                    double ele;
                     bool result = Base::read(ele);
                     if (result) {
-                        t[x + y * dim] = ele;
+                        t.cols[x][y] = ele;
                     } else {
                         return false;
                     }

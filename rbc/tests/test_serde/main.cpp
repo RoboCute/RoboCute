@@ -34,6 +34,11 @@ int main() {
         my_struct.a = 114;
         my_struct.b = make_double2(1.5, 6.6);
         my_struct.c = 514.f;
+        my_struct.matrix = make_float4x4(
+            1, 2, 3, 4,
+            5, 6, 7, 8,
+            9, 10, 11, 12,
+            13, 14, 15, 16);
         my_struct.dd = "this is string";
         my_struct.ee.emplace_back(1919);
         my_struct.ee.emplace_back(810);
@@ -68,6 +73,7 @@ int main() {
         PRINT_MY_STRUCT(b);
         PRINT_MY_STRUCT(c);
         PRINT_MY_STRUCT(dd);
+        PRINT_MY_STRUCT(matrix);
         for (auto &i : new_struct.ee) {
             LUISA_INFO("ee {}", i);
         }
@@ -108,13 +114,13 @@ int main() {
             (float)514);
         uint64_t func_count = cmdlist.func_count();
         auto commands = cmdlist.commit_commands();
-        LUISA_INFO("Commit RPC commands: {}", (char const*)commands.data());
+        LUISA_INFO("Commit RPC commands: {}", (char const *)commands.data());
         // server
         auto return_blob = RPCCommandList::server_execute(
             func_count,
             std::move(commands));
         // client
-        LUISA_INFO("RPC return values: {}", (char const*)return_blob.data());
+        LUISA_INFO("RPC return values: {}", (char const *)return_blob.data());
         cmdlist.readback(std::move(return_blob));
         LUISA_INFO("Add value should be 114+514 = 628 {}", value.get());
     }

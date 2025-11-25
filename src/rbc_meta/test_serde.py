@@ -10,6 +10,7 @@ def codegen_header(header_path: Path):
     MyStruct.serde_members(
         guid=tr.GUID,
         multi_dim_vec=tr.vector(tr.vector(tr.int)),
+        matrix=tr.float4x4,
         a=tr.int,
         b=tr.double2,
         c=tr.float,
