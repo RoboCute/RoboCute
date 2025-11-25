@@ -74,18 +74,16 @@ RoboCute资源管理系统是一个**Python-First、多线程、异步加载**�
 ### 资源请求
 ### ResourceManager核心类
 
----
-
 ### 3. C++端异步加载器
 
 #### 3.1 AsyncResourceLoader
 
 ```cpp
-// rbc/runtime/include/rbc_runtime/async_resource_loader.h
+// rbc/runtime/include/rbc_world/async_resource_loader.h
 #pragma once
 
-#include <rbc_core/resource.h>
-#include <rbc_core/resource_request.h>
+#include <rbc_world/resource.h>
+#include <rbc_world/resource_request.h>
 #include <memory>
 #include <unordered_map>
 #include <thread>
@@ -194,7 +192,7 @@ public:
 // rbc/runtime/src/runtime/resource_storage.h
 #pragma once
 
-#include <rbc_core/resource.h>
+#include <rbc_world/resource.h>
 #include <memory>
 #include <unordered_map>
 #include <mutex>
@@ -468,7 +466,7 @@ class EditorService:
 // Editor端资源缓存 (rbc/editor/editor_resource_cache.h)
 #pragma once
 
-#include <rbc_core/resource.h>
+#include <rbc_world/resource.h>
 #include <memory>
 #include <unordered_map>
 #include <string>

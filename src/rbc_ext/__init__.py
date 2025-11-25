@@ -17,3 +17,24 @@ if "RBC_RUNTIME_DIR" not in os.environ:
             os.environ["PATH"] = f"{runtime_dir};{os.environ.get('PATH', '')}"
             print(f"Auto-detected RBC_RUNTIME_DIR: {runtime_dir}")
             break
+
+# Import C++ extension types (if available)
+try:
+    import rbc_ext_c  # type: ignore
+    
+    # Re-export C++ types
+    if hasattr(rbc_ext_c, 'AsyncResourceLoader'):
+        AsyncResourceLoader = rbc_ext_c.AsyncResourceLoader
+    if hasattr(rbc_ext_c, 'ResourceType'):
+        ResourceType = rbc_ext_c.ResourceType
+    if hasattr(rbc_ext_c, 'ResourceState'):
+        ResourceState = rbc_ext_c.ResourceState
+    if hasattr(rbc_ext_c, 'LoadPriority'):
+        LoadPriority = rbc_ext_c.LoadPriority
+        
+except ImportError as e:
+    print(f"Warning: Failed to import rbc_ext_c module: {e}")
+    # Define placeholder if not available
+    class AsyncResourceLoader:
+        def __init__(self):
+            raise NotImplementedError("C++ extension not available")
