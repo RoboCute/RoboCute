@@ -125,7 +125,7 @@ private:
 // Entity Manager
 struct RBC_CORE_API EntityManager {
     EntityManager();
-    ~EntityManager() = default;
+    ~EntityManager();
 
     // Delete copy and move to prevent issues with unique_ptr members
     EntityManager(const EntityManager &) = delete;

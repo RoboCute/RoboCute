@@ -52,6 +52,7 @@ EntityManager::EntityManager() {
     // Reserve some space for entities
     _entity_valid.reserve(1000);
 }
+EntityManager::~EntityManager() = default;
 
 EntityID EntityManager::create_entity() {
     EntityID entity_id;
