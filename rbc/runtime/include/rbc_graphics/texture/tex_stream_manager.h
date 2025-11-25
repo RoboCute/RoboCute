@@ -118,7 +118,7 @@ public:
         {
         }
     };
-    enum class Op : uint32_t
+    enum struct Op : uint32_t
     {
         Load,
         UnLoad

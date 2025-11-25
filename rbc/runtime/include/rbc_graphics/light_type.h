@@ -1,6 +1,6 @@
 #pragma once
 namespace rbc {
-enum class LightType {
+enum struct LightType {
 	Sphere = 0,
 	Spot = 1,
 	Area = 2,

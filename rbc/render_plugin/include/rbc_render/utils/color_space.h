@@ -5,19 +5,19 @@
 namespace rbc {
 using namespace luisa;
 inline namespace math {
-enum class EWhitePoint : uint8_t {
+enum struct EWhitePoint : uint8_t {
     CIE1931_D65,
     ACES_D60,
     DCI_CalibrationWhite,
     E,
 };
-enum class EChromaticAdaptationMethod : uint8_t {
+enum struct EChromaticAdaptationMethod : uint8_t {
     XYZScaling,
     Bradford,
     CAT02,
     VonKries,
 };
-enum class EColorSpace : uint8_t {
+enum struct EColorSpace : uint8_t {
     CIEXYZ,
     AdobeRGB,
     Rec709,// unreal default color space
@@ -35,7 +35,7 @@ enum class EColorSpace : uint8_t {
     PanasonicVGamut,
     PLASA_E1_54,
 };
-enum class EColorEncodeMethod : uint8_t {
+enum struct EColorEncodeMethod : uint8_t {
     Linear,
     sRGB,
     ST2084,

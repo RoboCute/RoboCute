@@ -99,11 +99,6 @@ struct HeapObject : HeapObjectMeta {
     }
     HeapObject(HeapObject const &) = delete;
     HeapObject(HeapObject &&) = delete;
-    ~HeapObject() {
-        if (HeapObjectMeta::deleter) {
-            HeapObjectMeta::deleter(data);
-        }
-        luisa::detail::allocator_deallocate(data, HeapObjectMeta::alignment);
-    }
+    RBC_CORE_API ~HeapObject();
 };
 }// namespace rbc

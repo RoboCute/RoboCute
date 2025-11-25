@@ -7,8 +7,7 @@
 #include <luisa/vstl/pool.h>
 namespace rbc {
 using namespace luisa;
-class RBC_RUNTIME_API BVH {
-public:
+struct RBC_RUNTIME_API BVH {
 	struct Bounding {
 		float3 min;
 		float3 max;
@@ -59,7 +58,7 @@ private:
 		vstd::variant<Node*, Element*> left_node;
 		vstd::variant<Node*, Element*> right_node;
 	};
-	enum class Axis {
+	enum struct Axis {
 		X,
 		Y,
 		Z,

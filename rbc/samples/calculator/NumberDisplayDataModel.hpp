@@ -14,11 +14,11 @@ using QtNodes::NodeDelegateModel;
 using QtNodes::PortIndex;
 using QtNodes::PortType;
 
-class QLabel;
+struct QLabel;
 
 /// The model dictates the number of inputs and outputs for the Node.
 /// In this example it has no logic.
-class NumberDisplayDataModel : public NodeDelegateModel
+struct NumberDisplayDataModel : public NodeDelegateModel
 {
     Q_OBJECT
 

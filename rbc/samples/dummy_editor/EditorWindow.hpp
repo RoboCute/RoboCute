@@ -22,7 +22,7 @@ using QtNodes::GraphicsView;
 /**
  * Main editor window
  */
-class EditorWindow : public QMainWindow {
+struct EditorWindow : public QMainWindow {
     Q_OBJECT
 
 public:

@@ -10,7 +10,7 @@ using QtNodes::NodeDelegateModelRegistry;
 /**
  * Factory for creating and registering dynamic node models from backend metadata
  */
-class NodeFactory
+struct NodeFactory
 {
 public:
     NodeFactory();

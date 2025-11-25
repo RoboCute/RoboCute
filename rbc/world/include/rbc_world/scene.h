@@ -32,7 +32,7 @@ public:
     // void deserialize(DeSerializer<IComponent> &deserializer) override;
 };
 
-class RBC_WORLD_API TransformSystem : public ISystem {
+struct RBC_WORLD_API TransformSystem : public ISystem {
 public:
     explicit TransformSystem(EntityManager *entity_manager)
         : entity_manager_(entity_manager) {}

@@ -10,7 +10,7 @@ using namespace rbc;
 using namespace luisa;
 
 // Performance measurement utilities
-class Timer {
+struct Timer {
 public:
     Timer() : start_(std::chrono::high_resolution_clock::now()) {}
 
@@ -28,7 +28,7 @@ private:
 };
 
 // Test scenario types
-enum class HierarchyType {
+enum struct HierarchyType {
     Flat,// All entities at root level
     Deep,// Long chain of parent-child
     Wide // Many children per parent
@@ -62,7 +62,7 @@ struct TestResults {
     }
 };
 
-class SceneSampleTest {
+struct SceneSampleTest {
 public:
     SceneSampleTest() = default;
 

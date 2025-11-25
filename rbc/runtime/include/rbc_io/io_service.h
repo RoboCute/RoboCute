@@ -48,7 +48,7 @@ private:
         DStorageSrcType src_type);
 
 public:
-    enum class QueueType {
+    enum struct QueueType {
         DX12,
         Fallback
     };

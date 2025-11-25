@@ -6,7 +6,7 @@ namespace rbc
 {
 
 using namespace luisa;
-class TileNodes
+struct TileNodes
 {
 public:
     struct Node {
@@ -40,14 +40,14 @@ public:
     TileNodes(TileNodes const&) = delete;
     TileNodes(TileNodes&&) = delete;
 };
-class TileStreamer
+struct TileStreamer
 {
 public:
     struct UpdateCommand {
         uint2 coord;
         uint* level;
     };
-    class LoadCallback
+    struct LoadCallback
     {
     protected:
         ~LoadCallback() = default;

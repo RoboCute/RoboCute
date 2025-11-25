@@ -168,7 +168,7 @@ struct IOCommand {
 	}
 };
 
-class IOCommandList {
+struct IOCommandList {
 private:
 	vector<IOCommand> _commands;
 	vector<IOFile> _dispose_files;

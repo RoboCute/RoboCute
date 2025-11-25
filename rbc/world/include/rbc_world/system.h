@@ -4,8 +4,7 @@ namespace rbc {
 
 using SystemTypeID = uint32_t;
 
-class ISystem {
-public:
+struct ISystem {
     virtual ~ISystem() = default;
     virtual void initialize() {}
     virtual void update(float delta_time) = 0;
@@ -17,8 +16,7 @@ public:
     [[nodiscard]] virtual luisa::vector<SystemTypeID> get_dependencies() const { return {}; }
 };
 
-class RBC_WORLD_API SystemScheduler {
-public:
+struct RBC_WORLD_API SystemScheduler {
     SystemScheduler() = default;
     ~SystemScheduler() = default;
     // delete copy and move

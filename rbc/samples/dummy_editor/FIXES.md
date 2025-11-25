@@ -54,7 +54,7 @@ m_scene->save();  // Correct - uses built-in file dialog
 m_scene->load();  // Correct - uses built-in file dialog
 ```
 
-The `DataFlowGraphicsScene` class provides `save()` and `load()` methods that automatically handle file dialogs and serialization, just like in the calculator example.
+The `DataFlowGraphicsScene` struct provides `save()` and `load()` methods that automatically handle file dialogs and serialization, just like in the calculator example.
 
 ## Compilation Status
 

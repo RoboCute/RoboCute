@@ -19,7 +19,7 @@ private:
 	bool _dirty{false};
 
 public:
-	enum class AllocateType : uint32_t {
+	enum struct AllocateType : uint32_t {
 		FirstFit,
 		BestFit
 	};

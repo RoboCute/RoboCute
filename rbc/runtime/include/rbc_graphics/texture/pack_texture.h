@@ -5,7 +5,7 @@ namespace rbc {
 using namespace luisa;
 using namespace luisa::compute;
 struct ShaderManager;
-class RBC_RUNTIME_API PackTexture {
+struct RBC_RUNTIME_API PackTexture {
 private:
 	template<typename T>
 	using ToTileShader = Shader2D<Buffer<T>, Buffer<T>, uint2>;

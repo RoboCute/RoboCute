@@ -10,7 +10,6 @@
 #include <luisa/core/stl/vector.h>
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/json_serde.h>
-#include <rbc_core/type_traits.h>
 namespace rbc {
 namespace concepts {
 
@@ -62,6 +61,7 @@ concept SerReader = requires(T t) {
     std::same_as<bool, decltype(t.read(lvalue_declval<double>(), std::declval<char const *>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<luisa::string>(), std::declval<char const *>()))>;
 };
+
 }// namespace concepts
 namespace detail {
 template<typename T>
@@ -99,6 +99,12 @@ static constexpr bool deserializable_struct_type_v =
     requires { std::declval<T>().rbc_objdeser(lvalue_declval<DeSer>()); } ||
     requires { std::declval<T>().rbc_arrdeser(lvalue_declval<DeSer>()); };
 }// namespace detail
+namespace concepts {
+template<typename T, typename Ser>
+concept SerializableType = detail::serializable_native_type_v<T> || detail::serializable_struct_type_v<T, Ser>;
+template<typename T, typename DeSer>
+concept DeSerializableType = detail::serializable_native_type_v<T> || detail::deserializable_struct_type_v<T, DeSer>;
+};// namespace concepts
 template<concepts::SerWriter Base>
 struct Serializer : public Base {
     vstd::VEngineMallocVisitor _alloc_callback;
@@ -110,8 +116,7 @@ struct Serializer : public Base {
           _alloc(4096, &_alloc_callback, 2) {
     }
 
-    template<typename T, typename... Args>
-        requires(detail::serializable_native_type_v<T> || detail::serializable_struct_type_v<T, Serializer<Base>>)
+    template<concepts::SerializableType<Serializer> T, typename... Args>
     void _store(T const &t, Args... args) {
         // custom type
         if constexpr (std::is_enum_v<T>) {
@@ -262,8 +267,7 @@ struct DeSerializer : public Base {
     DeSerializer(Args &&...args)
         : Base(std::forward<Args>(args)...) {
     }
-    template<typename T, typename... Args>
-        requires(detail::serializable_native_type_v<T> || detail::deserializable_struct_type_v<T, DeSerializer<Base>>)
+    template<concepts::DeSerializableType<DeSerializer> T, typename... Args>
     bool _load(T &t, Args... args) {
         // custom type
         if constexpr (std::is_enum_v<T>) {

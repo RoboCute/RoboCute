@@ -33,4 +33,10 @@ RBC_CORE_API void HeapObjectMeta::move(void *dst, void *src) const {
         move_ctor(dst, src);
     }
 }
+RBC_CORE_API HeapObject::~HeapObject() {
+    if (HeapObjectMeta::deleter) {
+        HeapObjectMeta::deleter(data);
+    }
+    luisa::detail::allocator_deallocate(data, HeapObjectMeta::alignment);
+}
 }// namespace rbc

@@ -26,7 +26,7 @@ public:
         luisa::compute::Buffer<uint> buffer;
     };
 
-    enum class Type {
+    enum struct Type {
         Buffer,
         Image,
         Mesh,

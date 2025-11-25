@@ -1,0 +1,135 @@
+#include <rbc_core/rpc/future.h>
+#include <rbc_core/rpc/command_list.h>
+#include <rbc_core/func_serializer.h>
+#include <luisa/vstl/stack_allocator.h>
+namespace rbc {
+void RPCCommandList::add_functioon(char const *name, void *handle) {
+    _func_count += 1;
+    arg_ser.add(name);
+    arg_ser.add((uint64_t)handle);
+}
+luisa::BinaryBlob RPCCommandList::commit_commands() {
+    return arg_ser.write_to();
+}
+
+void RPCCommandList::readback(luisa::BinaryBlob &&serialized_return_values) {
+    JsonDeSerializer ret_deser(luisa::string_view{
+        reinterpret_cast<char const *>(serialized_return_values.data()),
+        serialized_return_values.size()});
+    auto ret_value_sizes = ret_deser.last_array_size();
+    LUISA_ASSERT(ret_values.size() == ret_value_sizes);
+    for (auto &i : ret_values) {
+        i.deser_func(i.storage, &ret_deser);
+    }
+}
+
+void RPCCommandList::locally_execute() {
+    auto blob = arg_ser.write_to();
+    // TODO: ipc, execute function at server
+    const bool is_server = true;
+    if (is_server) {
+        vstd::VEngineMallocVisitor alloc_callback;
+        vstd::StackAllocator alloc(256, &alloc_callback, 2);
+        JsonDeSerializer arg_deser(luisa::string_view{
+            reinterpret_cast<char const *>(blob.data()),
+            blob.size()});
+        auto iter = ret_values.begin();
+        for (auto i : vstd::range(_func_count)) {
+            luisa::string func_hash;
+            uint64_t self;
+            LUISA_DEBUG_ASSERT(arg_deser.read(func_hash));
+            LUISA_DEBUG_ASSERT(arg_deser.read(self));
+            auto call_meta = FuncSerializer::get_call_meta(func_hash);
+            LUISA_DEBUG_ASSERT(call_meta);
+            void *arg = nullptr;
+            // allocate
+            auto const &args_meta = call_meta->args_meta;
+            if (args_meta) {
+                auto chunk = alloc.allocate(args_meta.size, args_meta.alignment);
+                arg = reinterpret_cast<void *>(chunk.handle + chunk.offset);
+                if (args_meta.default_ctor) {
+                    args_meta.default_ctor(arg);
+                } else if (args_meta.is_trivial_constructible) {
+                    std::memset(arg, 0, args_meta.size);
+                }
+                args_meta.json_reader(arg, &arg_deser);
+            }
+            void *ret_ptr{};
+            if (call_meta->ret_value_meta) {
+                LUISA_DEBUG_ASSERT(iter != ret_values.end());
+                ret_ptr = iter->storage_ptr;
+            }
+            // call
+            call_meta->func(reinterpret_cast<void *>(self), arg, ret_ptr);
+            if (call_meta->ret_value_meta) {
+                iter->mark_finished(iter->storage);
+                ++iter;
+            }
+            // destructor
+            if (arg && args_meta.deleter) {
+                args_meta.deleter(arg);
+            }
+        }
+    }
+}
+luisa::BinaryBlob RPCCommandList::server_execute(
+    uint64_t call_count,
+    luisa::BinaryBlob &&serialized_args) {
+    JsonDeSerializer arg_deser(luisa::string_view{
+        reinterpret_cast<char const *>(serialized_args.data()),
+        serialized_args.size()});
+    vstd::VEngineMallocVisitor alloc_callback;
+    vstd::StackAllocator alloc(256, &alloc_callback, 2);
+    JsonSerializer ret_ser{true};
+    vstd::vector<std::pair<void *, vstd::func_ptr_t<void(void *)>>> ret_deleters;
+    ret_deleters.reserve(call_count);
+    for (auto i : vstd::range(call_count)) {
+        luisa::string func_hash;
+        uint64_t self;
+        LUISA_DEBUG_ASSERT(arg_deser.read(func_hash));
+        LUISA_DEBUG_ASSERT(arg_deser.read(self));
+        auto call_meta = FuncSerializer::get_call_meta(func_hash);
+        LUISA_DEBUG_ASSERT(call_meta);
+        void *arg = nullptr;
+        // allocate
+        auto const &args_meta = call_meta->args_meta;
+        if (args_meta) {
+            auto chunk = alloc.allocate(args_meta.size, args_meta.alignment);
+            arg = reinterpret_cast<void *>(chunk.handle + chunk.offset);
+            if (args_meta.default_ctor) {
+                args_meta.default_ctor(arg);
+            } else if (args_meta.is_trivial_constructible) {
+                std::memset(arg, 0, args_meta.size);
+            }
+            LUISA_DEBUG_ASSERT(args_meta.json_reader);
+            args_meta.json_reader(arg, &arg_deser);
+        }
+        void *ret_ptr{};
+        auto const &ret_value_meta = call_meta->ret_value_meta;
+        if (ret_value_meta) {
+            LUISA_DEBUG_ASSERT(ret_value_meta.json_writer);
+            auto chunk = alloc.allocate(ret_value_meta.size, ret_value_meta.alignment);
+            ret_ptr = reinterpret_cast<void *>(chunk.handle + chunk.offset);
+            if (ret_value_meta.deleter) {
+                ret_deleters.emplace_back(ret_ptr, ret_value_meta.deleter);
+            }
+        }
+        // call
+        call_meta->func(reinterpret_cast<void *>(self), arg, ret_ptr);
+        if (ret_ptr)
+            ret_value_meta.json_writer(ret_ptr, &ret_ser);
+
+        // destructor
+        if (arg && args_meta.deleter) {
+            args_meta.deleter(arg);
+        }
+    }
+    auto blob = ret_ser.write_to();
+    for (auto &i : ret_deleters) {
+        i.second(i.first);
+    }
+    return blob;
+}
+RPCCommandList::RPCCommandList() : arg_ser(true) {}
+RPCCommandList::~RPCCommandList() {}
+}// namespace rbc

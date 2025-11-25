@@ -48,8 +48,9 @@ struct ManagedTexDesc {
         return (mask & 1u) != 0;
     }
 };
-class RBC_RUNTIME_API ManagedDevice : public luisa::compute::DeviceInterface
+struct RBC_RUNTIME_API ManagedDevice : public luisa::compute::DeviceInterface
 {
+private:
     struct TexResourceHandle {
         ResourceCreationInfo res_info;
         uint64_t index; // index in _native_resources

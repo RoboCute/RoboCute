@@ -11,7 +11,7 @@
 #include <luisa/vstl/v_guid.h>
 namespace rbc
 {
-class BindlessAllocator;
+struct BindlessAllocator;
 namespace matmng_detail
 {
 #include "member_reflect.inl.h"

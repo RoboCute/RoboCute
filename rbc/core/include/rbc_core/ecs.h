@@ -13,8 +13,7 @@ using ResourceID = uint32_t;
 constexpr ResourceID INVALID_RESOURCE = 0;
 
 // Basic Component Interface
-class IComponent {
-public:
+struct IComponent {
     virtual ~IComponent() = default;
     [[nodiscard]] virtual ComponentTypeID get_type_id() const = 0;
     [[nodiscard]] virtual luisa::unique_ptr<IComponent> clone() const = 0;
@@ -23,8 +22,7 @@ public:
 };
 
 // Component Array Interface for type erasure
-class IComponentArray {
-public:
+struct IComponentArray {
     virtual ~IComponentArray() = default;
     virtual void entity_destroyed(EntityID entity) = 0;
     [[nodiscard]] virtual bool has_component(EntityID entity) const = 0;
@@ -33,8 +31,7 @@ public:
 
 // Templated Component Array
 template<typename T>
-class ComponentArray : public IComponentArray {
-public:
+struct ComponentArray : public IComponentArray {
     void insert(EntityID entity, T component) {
         if (_entity_to_index.contains(entity)) {
             // Replace existing component
@@ -113,8 +110,7 @@ private:
 };
 
 // Component Registry
-class RBC_CORE_API ComponentRegistry {
-public:
+struct RBC_CORE_API ComponentRegistry {
     template<typename T>
     static ComponentTypeID register_type(const char *name) {
         static ComponentTypeID id = next_component_type_id();
@@ -131,8 +127,7 @@ private:
 };
 
 // Entity Manager
-class RBC_CORE_API EntityManager {
-public:
+struct RBC_CORE_API EntityManager {
     EntityManager();
     ~EntityManager() = default;
     

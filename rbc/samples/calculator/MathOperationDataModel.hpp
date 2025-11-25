@@ -8,7 +8,7 @@
 
 #include <iostream>
 
-class DecimalData;
+struct DecimalData;
 
 using QtNodes::NodeData;
 using QtNodes::NodeDataType;
@@ -18,7 +18,7 @@ using QtNodes::PortType;
 
 /// The model dictates the number of inputs and outputs for the Node.
 /// In this example it has no logic.
-class MathOperationDataModel : public NodeDelegateModel
+struct MathOperationDataModel : public NodeDelegateModel
 {
     Q_OBJECT
 

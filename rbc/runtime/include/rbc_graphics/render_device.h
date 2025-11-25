@@ -7,7 +7,7 @@
 
 namespace rbc
 {
-class ManagedDevice;
+struct ManagedDevice;
 using namespace luisa::compute;
 
 struct RBC_RUNTIME_API RenderDevice {

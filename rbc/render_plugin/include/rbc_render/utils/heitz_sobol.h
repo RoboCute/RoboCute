@@ -5,7 +5,7 @@
 #include <luisa/vstl/common.h>
 #include <rbc_config.h>
 
-enum class HeitzSobolSPP {
+enum struct HeitzSobolSPP {
 	SPP1,
 	SPP2,
 	SPP4,

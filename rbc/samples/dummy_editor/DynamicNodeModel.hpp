@@ -24,7 +24,7 @@ using QtNodes::PortType;
 /**
  * Simple data type for passing values between nodes
  */
-class GenericData : public NodeData {
+struct GenericData : public NodeData {
 public:
     GenericData() = default;
     explicit GenericData(const QVariant &value, const QString &typeName = "generic")
@@ -41,7 +41,7 @@ private:
 /**
  * Dynamic node model created from backend metadata
  */
-class DynamicNodeModel : public NodeDelegateModel {
+struct DynamicNodeModel : public NodeDelegateModel {
     Q_OBJECT
 
 public:

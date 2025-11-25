@@ -14,7 +14,7 @@ using namespace luisa;
 using namespace luisa::compute;
 struct BindlessManager;
 // API is thread safe
-class RBC_RUNTIME_API BindlessAllocator
+struct RBC_RUNTIME_API BindlessAllocator
 {
 private:
     friend struct BindlessManager;

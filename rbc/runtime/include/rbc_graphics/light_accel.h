@@ -72,8 +72,9 @@ public:
 
 private:
     template <typename T>
-    class Light
+    struct Light
     {
+        private:
         friend struct LightAccel;
         uint light_type : 3;
         struct DataPack {

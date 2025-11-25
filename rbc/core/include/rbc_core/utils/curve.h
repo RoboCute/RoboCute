@@ -4,7 +4,8 @@
 #include <rbc_config.h>
 namespace rbc {
 using namespace luisa;
-class RBC_CORE_API Curve {
+struct RBC_CORE_API Curve {
+private:
     vstd::vector<float2> _key_nodes;
     float2 _range{
         1e8f,

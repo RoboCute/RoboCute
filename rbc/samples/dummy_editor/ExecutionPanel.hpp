@@ -12,7 +12,7 @@
 /**
  * Panel for displaying execution results and console output
  */
-class ExecutionPanel : public QWidget {
+struct ExecutionPanel : public QWidget {
     Q_OBJECT
 
 public:

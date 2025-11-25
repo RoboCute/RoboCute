@@ -434,8 +434,8 @@ def cpp_impl_gen(*extra_includes):
     return cb.get_result()
 
 
-JSON_SER_NAME = "b839f6ccb4b74f1281c6da20b9e2ce21"
-SELF_NAME = "d6922fb0e4bd44549e0a8c9d420b9c75"
+JSON_SER_NAME = "b839f6ccb4b74"
+SELF_NAME = "d6922fb0e4bd44549"
 
 
 def _print_client_code(struct_type: tr.struct):
@@ -453,8 +453,11 @@ def _print_client_code(struct_type: tr.struct):
             for arg_name in func._args:
                 args += ', '
                 args += f'{_print_arg_type(func._args[arg_name])} {arg_name}'
+            future_name = 'void'
+            if func._ret_type and func._ret_type != tr.void:
+                future_name = f'rbc::RPCFuture<{_print_arg_type(func._ret_type)}>'
             cb.add_line(
-                f'static void {func_name}(JsonSerializer &, void*{args});')
+                f'static {future_name} {func_name}(rbc::RPCCommandList &, void*{args});')
     cb.remove_indent()
     cb.add_line('};')
 
@@ -479,13 +482,18 @@ def _print_client_impl(struct_type: tr.struct):
             for arg_name in func._args:
                 args += ', '
                 args += f'{_print_arg_type(func._args[arg_name])} {arg_name}'
+            ret_type_name = _print_arg_type(func._ret_type)
+            future_name = 'void'
+            if func._ret_type and func._ret_type != tr.void:
+                future_name = f'rbc::RPCFuture<{ret_type_name}>'
             cb.add_line(
-                f'void {class_name}Client::{func_name}(JsonSerializer &{JSON_SER_NAME}, void* {SELF_NAME}{args}){{')
+                f'{future_name} {class_name}Client::{func_name}(rbc::RPCCommandList &{JSON_SER_NAME}, void* {SELF_NAME}{args}){{')
             cb.add_indent()
-            cb.add_line(f'{JSON_SER_NAME}.add("{func_hasher_name}");')
-            cb.add_line(f'{JSON_SER_NAME}.add((uint64_t){SELF_NAME});')
+            cb.add_line(f'{JSON_SER_NAME}.add_functioon("{func_hasher_name}", {SELF_NAME});')
             for arg_name in func._args:
-                cb.add_line(f'{JSON_SER_NAME}._store({arg_name});')
+                cb.add_line(f'{JSON_SER_NAME}.add_arg({arg_name});')
+            if func._ret_type and func._ret_type != tr.void:
+                cb.add_line(f'return {JSON_SER_NAME}.return_value<{ret_type_name}>();')
             cb.remove_indent()
             cb.add_line('}')
     if len(namespace) > 0:
@@ -513,7 +521,7 @@ def cpp_client_interface_gen(*extra_includes):
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/func_serializer.h>
 #include <rbc_core/serde.h>
-#include <rbc_core/rtti.h>
+#include <rbc_core/rpc/command_list.h>
 """)
     for i in extra_includes:
         cb.add_result(i + "\n")
@@ -539,7 +547,6 @@ def cpp_interface_gen(*extra_includes):
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/func_serializer.h>
 #include <rbc_core/serde.h>
-#include <rbc_core/rtti.h>
 """)
     for i in extra_includes:
         cb.add_result(i + "\n")

@@ -6,13 +6,13 @@
 #include <QString>
 #include <functional>
 
-class QNetworkAccessManager;
-class QNetworkReply;
+struct QNetworkAccessManager;
+struct QNetworkReply;
 
 /**
  * HTTP client for communicating with the FastAPI backend
  */
-class HttpClient : public QObject
+struct HttpClient : public QObject
 {
     Q_OBJECT
 

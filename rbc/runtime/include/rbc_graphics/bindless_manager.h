@@ -13,7 +13,7 @@ namespace rbc
 using namespace luisa::compute;
 // API is thread safe
 struct RBC_RUNTIME_API BindlessManager {
-    enum class ResourceType : uint64_t
+    enum struct ResourceType : uint64_t
     {
         Buffer,
         Tex2D,

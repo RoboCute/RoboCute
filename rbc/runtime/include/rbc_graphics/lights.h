@@ -15,7 +15,7 @@ public:
         MatCode mat_code;
         uint light_id;
     };
-    enum class MeshLightLoadState : uint32_t
+    enum struct MeshLightLoadState : uint32_t
     {
         Unloaded,
         Loaded,

@@ -13,7 +13,7 @@
 #include "mat_manager.h"
 #include "light_accel.h"
 namespace rbc {
-class ManagedDevice;
+struct ManagedDevice;
 struct PipelineCtxMutable;
 struct SceneManagerEvent {
     virtual void scene_manager_tick() = 0;

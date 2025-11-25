@@ -3,10 +3,10 @@
 #include <luisa/core/stl/string.h>
 #include <luisa/vstl/pool.h>
 namespace rbc {
-class RBC_RUNTIME_API FirstFit {
+struct RBC_RUNTIME_API FirstFit {
 
 public:
-	class RBC_RUNTIME_API Node {
+	struct RBC_RUNTIME_API Node {
 
 	private:
 		Node* _next{nullptr};
@@ -14,7 +14,7 @@ public:
 		size_t _size{0u};
 
 	private:
-		friend class FirstFit;
+		friend struct FirstFit;
 
 	public:
 		Node() noexcept;

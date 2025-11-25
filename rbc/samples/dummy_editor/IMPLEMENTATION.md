@@ -49,7 +49,7 @@ Instead of hardcoding node types, the editor:
 
 #### 2. Generic Data Type
 
-`GenericData` class wraps `QVariant` to pass arbitrary data between nodes:
+`GenericData` struct wraps `QVariant` to pass arbitrary data between nodes:
 - Supports numbers, strings, booleans
 - Type information stored alongside value
 - Compatible with qt_node_editor's `NodeData` system

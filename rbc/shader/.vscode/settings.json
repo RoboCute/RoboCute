@@ -8,7 +8,7 @@
         "--background-index",
         "--background-index-priority=normal",
         "--header-insertion=never",
-        "--pch-storage=memory"
+        "--pch-storage=disk"
     ],
     "files.eol": "\n",
     "clangd.path": "..\\..\\build\\tool\\clangd\\clangd.exe"

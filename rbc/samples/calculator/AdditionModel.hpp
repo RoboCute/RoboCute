@@ -10,7 +10,7 @@
 
 /// The model dictates the number of inputs and outputs for the Node.
 /// In this example it has no logic.
-class AdditionModel : public MathOperationDataModel
+struct AdditionModel : public MathOperationDataModel
 {
 public:
     ~AdditionModel() = default;

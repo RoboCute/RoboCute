@@ -87,60 +87,55 @@ int main() {
     }
 
     // Test RPC
-    JsonSerializer rpc_ser{true};// init array json
+    // Execute locally
     MyStruct my_struct;
     my_struct.dd = "add_string";
-    // client
-    MyStructClient::no_arg_func(
-        rpc_ser,
-        &my_struct);
-    MyStructClient::add(
-        rpc_ser,
-        &my_struct,
-        (float)1919,
-        (double)810);
-    MyStructClient::add(
-        rpc_ser,
-        &my_struct,
-        (int)114,
-        (float)514);
-    text = rpc_ser.write_to();
-    LUISA_INFO("RPC json {},", (char const *)text.data());
+    {
+        RPCCommandList cmdlist;
+        MyStructClient::no_arg_func(
+            cmdlist,
+            &my_struct);
+        MyStructClient::add(
+            cmdlist,
+            &my_struct,
+            (float)1919,
+            (double)810);
+        auto value = MyStructClient::add(
+            cmdlist,
+            &my_struct,
+            (int)114,
+            (float)514);
 
-    // server
-    JsonSerializer rpc_ret_value_json{true};
-    JsonDeSerializer rpc_deser{luisa::string_view{
-        (char const *)text.data(),
-        text.size()}};
-    for (auto i : vstd::range(3)) {
-        luisa::string func_hash;
-        uint64_t self;
-        LUISA_ASSERT(rpc_deser.read(func_hash));
-        LUISA_ASSERT(rpc_deser.read(self));
-        auto call_meta = FuncSerializer::get_call_meta(func_hash);
-        LUISA_ASSERT(call_meta);
-        void *arg = nullptr;
-        void *ret_value = nullptr;
-        // allocate
-        if (call_meta->args_meta) {
-            arg = call_meta->args_meta.allocate();
-            call_meta->args_meta.json_reader(arg, &rpc_deser);
-        }
-        if (call_meta->ret_value_meta) {
-            ret_value = call_meta->ret_value_meta.allocate();
-        }
-        // call
-        call_meta->func(&my_struct, arg, ret_value);
-        // deallocate
-        if (call_meta->args_meta) {
-            call_meta->args_meta.deallocate(arg);
-        }
-        if (call_meta->ret_value_meta) {
-            // serialize return value
-            call_meta->ret_value_meta.json_writer(ret_value, &rpc_ret_value_json);
-            call_meta->ret_value_meta.deallocate(ret_value);
-        }
+        cmdlist.locally_execute();
+        LUISA_INFO("Add value should be 114+514 = 628 {}", value.get());
     }
-    text = rpc_ret_value_json.write_to();
-    LUISA_INFO("RPC return json {},", (char const *)text.data());
+    // Execute remotely
+    {
+        RPCCommandList cmdlist;
+        // client
+        MyStructClient::no_arg_func(
+            cmdlist,
+            &my_struct);
+        MyStructClient::add(
+            cmdlist,
+            &my_struct,
+            (float)1919,
+            (double)810);
+        auto value = MyStructClient::add(
+            cmdlist,
+            &my_struct,
+            (int)114,
+            (float)514);
+        uint64_t func_count = cmdlist.func_count();
+        auto commands = cmdlist.commit_commands();
+        LUISA_INFO("Commit RPC commands: {}", (char const*)commands.data());
+        // server
+        auto return_blob = RPCCommandList::server_execute(
+            func_count,
+            std::move(commands));
+        // client
+        LUISA_INFO("RPC return values: {}", (char const*)return_blob.data());
+        cmdlist.readback(std::move(return_blob));
+        LUISA_INFO("Add value should be 114+514 = 628 {}", value.get());
+    }
 }
