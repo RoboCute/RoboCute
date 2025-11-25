@@ -217,7 +217,7 @@ struct is_rtti_type<{name}> {{
 
 
 def py_interface_gen(module_name: str):
-    cb.set_result(f"from {module_name} import *")
+    cb.set_result(f"from rbc_ext._C.{module_name} import *")
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
         cb.add_line(f"class {struct_type.class_name()}:")
@@ -405,7 +405,7 @@ def _cpp_impl_gen():
             )
             cb.add_indent()
             for mem_name in struct_type._serde_members:
-                cb.add_line(f'obj._store(this->{mem_name});')
+                cb.add_line(f"obj._store(this->{mem_name});")
             cb.remove_indent()
             cb.add_line("}")
 
@@ -416,7 +416,7 @@ def _cpp_impl_gen():
             )
             cb.add_indent()
             for mem_name in struct_type._serde_members:
-                cb.add_line(f'obj._load(this->{mem_name});')
+                cb.add_line(f"obj._load(this->{mem_name});")
             cb.remove_indent()
             cb.add_line("}")
         if len(namespace) > 0:
@@ -452,13 +452,14 @@ def _print_client_code(struct_type: tr.struct):
             func: tr._function_t = mems_dict[key]
             args = ""
             for arg_name in func._args:
-                args += ', '
-                args += f'{_print_arg_type(func._args[arg_name])} {arg_name}'
-            future_name = 'void'
+                args += ", "
+                args += f"{_print_arg_type(func._args[arg_name])} {arg_name}"
+            future_name = "void"
             if func._ret_type and func._ret_type != tr.void:
-                future_name = f'rbc::RPCFuture<{_print_arg_type(func._ret_type)}>'
+                future_name = f"rbc::RPCFuture<{_print_arg_type(func._ret_type)}>"
             cb.add_line(
-                f'static {future_name} {func_name}(rbc::RPCCommandList &, void*{args});')
+                f"static {future_name} {func_name}(rbc::RPCCommandList &, void*{args});"
+            )
     cb.remove_indent()
     cb.add_line("};")
 
@@ -482,20 +483,23 @@ def _print_client_impl(struct_type: tr.struct):
             func: tr._function_t = mems_dict[key]
             args = ""
             for arg_name in func._args:
-                args += ', '
-                args += f'{_print_arg_type(func._args[arg_name])} {arg_name}'
+                args += ", "
+                args += f"{_print_arg_type(func._args[arg_name])} {arg_name}"
             ret_type_name = _print_arg_type(func._ret_type)
-            future_name = 'void'
+            future_name = "void"
             if func._ret_type and func._ret_type != tr.void:
-                future_name = f'rbc::RPCFuture<{ret_type_name}>'
+                future_name = f"rbc::RPCFuture<{ret_type_name}>"
             cb.add_line(
-                f'{future_name} {class_name}Client::{func_name}(rbc::RPCCommandList &{JSON_SER_NAME}, void* {SELF_NAME}{args}){{')
+                f"{future_name} {class_name}Client::{func_name}(rbc::RPCCommandList &{JSON_SER_NAME}, void* {SELF_NAME}{args}){{"
+            )
             cb.add_indent()
-            cb.add_line(f'{JSON_SER_NAME}.add_functioon("{func_hasher_name}", {SELF_NAME});')
+            cb.add_line(
+                f'{JSON_SER_NAME}.add_functioon("{func_hasher_name}", {SELF_NAME});'
+            )
             for arg_name in func._args:
-                cb.add_line(f'{JSON_SER_NAME}.add_arg({arg_name});')
+                cb.add_line(f"{JSON_SER_NAME}.add_arg({arg_name});")
             if func._ret_type and func._ret_type != tr.void:
-                cb.add_line(f'return {JSON_SER_NAME}.return_value<{ret_type_name}>();')
+                cb.add_line(f"return {JSON_SER_NAME}.return_value<{ret_type_name}>();")
 
             cb.remove_indent()
             cb.add_line("}")
