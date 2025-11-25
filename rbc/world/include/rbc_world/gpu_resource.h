@@ -14,7 +14,7 @@ struct Vertex {
     float tangent[4];// xyz = tangent, w = bitangent sign
 };
 
-struct Mesh {
+struct RBC_WORLD_API Mesh {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
@@ -57,7 +57,7 @@ enum class TextureFormat : uint8_t {
     BC7,// High quality
 };
 
-struct Texture {
+struct RBC_WORLD_API Texture {
     uint32_t width = 0;
     uint32_t height = 0;
     uint32_t depth = 1;// For 3D textures
@@ -82,7 +82,7 @@ struct Texture {
 
 // === Material Data ===
 
-struct Material {
+struct RBC_WORLD_API Material {
     std::string name;
 
     // PBR parameters

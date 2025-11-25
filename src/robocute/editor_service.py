@@ -11,6 +11,9 @@ import threading
 import queue
 import time
 from dataclasses import dataclass
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import uvicorn
 
 try:
     from rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
@@ -25,6 +28,16 @@ class EditorCommand:
     params: Dict[str, Any]
     timestamp: float
     editor_id: str = ""
+
+
+class HeartbeatRequest(BaseModel):
+    """Heartbeat request from editor"""
+    editor_id: str
+
+
+class RegisterRequest(BaseModel):
+    """Editor registration request"""
+    editor_id: str
 
 
 class EditorConnection:
@@ -77,11 +90,89 @@ class EditorService:
         # Service thread
         self._running = False
         self._service_thread: Optional[threading.Thread] = None
+        self._http_server_thread: Optional[threading.Thread] = None
         
         # Configuration
         self.port = 5555
         self.update_rate_hz = 30  # State push frequency
         
+        # HTTP Server
+        self._app: Optional[FastAPI] = None
+        self._setup_http_server()
+        
+    # === HTTP Server Setup ===
+    
+    def _setup_http_server(self):
+        """Setup FastAPI HTTP server"""
+        self._app = FastAPI(title="RoboCute Editor Service")
+        
+        @self._app.get("/scene/state")
+        def get_scene_state():
+            """Get current scene state"""
+            try:
+                scene_data = self.scene._save_to_dict()
+                return {
+                    "success": True,
+                    "scene": scene_data
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/resources/all")
+        def get_all_resources():
+            """Get all resource metadata"""
+            try:
+                all_metadata = self.resource_manager.get_all_metadata()
+                resources = [
+                    self.resource_manager.serialize_metadata(meta.id)
+                    for meta in all_metadata
+                ]
+                return {
+                    "success": True,
+                    "resources": resources
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/resources/{resource_id}")
+        def get_resource(resource_id: int):
+            """Get specific resource metadata"""
+            try:
+                metadata = self.resource_manager.serialize_metadata(resource_id)
+                if not metadata:
+                    raise HTTPException(status_code=404, detail="Resource not found")
+                return {
+                    "success": True,
+                    "resource": metadata
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/editor/register")
+        def register_editor(request: RegisterRequest):
+            """Register a new editor"""
+            try:
+                success = self.register_editor(request.editor_id)
+                return {
+                    "success": success,
+                    "editor_id": request.editor_id
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/editor/heartbeat")
+        def editor_heartbeat(request: HeartbeatRequest):
+            """Editor heartbeat"""
+            try:
+                with self._editors_lock:
+                    if request.editor_id in self._editors:
+                        self._editors[request.editor_id].last_heartbeat = time.time()
+                        return {"success": True}
+                    else:
+                        raise HTTPException(status_code=404, detail="Editor not registered")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+    
     # === Service Lifecycle ===
     
     def start(self, port: int = 5555):
@@ -92,6 +183,14 @@ class EditorService:
         self.port = port
         self._running = True
         
+        # Start HTTP server in separate thread
+        self._http_server_thread = threading.Thread(
+            target=self._run_http_server,
+            name="EditorHTTPServer",
+            daemon=True
+        )
+        self._http_server_thread.start()
+        
         # Start service thread
         self._service_thread = threading.Thread(
             target=self._service_loop,
@@ -101,6 +200,18 @@ class EditorService:
         self._service_thread.start()
         
         print(f"[EditorService] Started on port {port}")
+    
+    def _run_http_server(self):
+        """Run the HTTP server"""
+        config = uvicorn.Config(
+            self._app,
+            host="127.0.0.1",
+            port=self.port,
+            log_level="info",
+            access_log=False
+        )
+        server = uvicorn.Server(config)
+        server.run()
         
     def stop(self):
         """Stop the editor service"""
@@ -120,6 +231,9 @@ class EditorService:
         # Join service thread
         if self._service_thread and self._service_thread.is_alive():
             self._service_thread.join(timeout=2.0)
+        
+        # Note: HTTP server runs in daemon thread and will stop automatically
+        # when main thread exits
             
         print("[EditorService] Stopped")
         
