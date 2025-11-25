@@ -1,12 +1,15 @@
 #include "rbc_world/async_resource_loader.h"
 #include "rbc_world/resource_loader.h"
 #include "rbc_world/resource_storage.h"
+#include "rbc_world/mesh_loader.h"
 #include <iostream>
 
 namespace rbc {
 
 AsyncResourceLoader::AsyncResourceLoader()
     : storage_(luisa::make_unique<ResourceStorage>(cache_budget_)) {
+    // register default loader
+    register_loader(rbc::ResourceType::Mesh, rbc::create_mesh_loader);
 }
 
 AsyncResourceLoader::~AsyncResourceLoader() {
@@ -81,7 +84,6 @@ bool AsyncResourceLoader::load_resource(ResourceID id, uint32_t type_value,
     request.path = path;
     request.priority = LoadPriority::Normal;
     request.timestamp = std::chrono::steady_clock::now();
-
     // Add to queue
     {
         std::lock_guard lock(queue_mutex_);

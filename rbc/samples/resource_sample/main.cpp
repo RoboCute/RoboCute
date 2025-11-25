@@ -6,13 +6,11 @@ int main() {
     std::cout << "Main" << std::endl;
     rbc::AsyncResourceLoader loader;
     loader.initialize(4);
-    loader.register_loader(rbc::ResourceType::Mesh, rbc::create_mesh_loader);
     int i = 0;
     rbc::ResourceID rid = 1;
     auto res = loader.load_resource(rid, static_cast<uint32_t>(rbc::ResourceType::Mesh), "D:/ws/data/assets/models/cube.obj", "");
 
     while (!loader.is_loaded(rid)) {
-
     }
 
     std::cout << "Loaded Mesh" << std::endl;

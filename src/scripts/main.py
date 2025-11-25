@@ -57,7 +57,7 @@ def write_shader_compile_cmd():
     def build_cmd():
         return base_cmd() + f' -hostgen="{host_dir}"' + f' -cache_dir="{cache_dir}"'
 
-    backends = ["dx"] # , "vk"
+    backends = ["dx"]  # , "vk"
     # write files
     for backend in backends:
         cache_dir = shader_dir / ".cache" / backend
@@ -116,8 +116,8 @@ def download_packages():
     plat_name = f"{platform}-{arch}"
     download_path = Path(PROJECT_ROOT) / "build/download"
     download_path.mkdir(parents=True, exist_ok=True)
-    address = LC_SDK_ADDRESS
-    lc_address = RBC_SDK_ADDRESS
+    address = RBC_SDK_ADDRESS
+    lc_address = LC_SDK_ADDRESS
     lc_path = rel("thirdparty/LuisaCompute/SDKs")
     clangcxx = f"{CLANGCXX_NAME}-{plat_name}.7z"
     clangd = f"{CLANGD_NAME}-{plat_name}.7z"
@@ -141,7 +141,8 @@ def download_packages():
     }
     lua_file = f'''clangd_filename = "{clangd}"
 clangcxx_filename = "{clangcxx}"'''
-    codegen_util._write_string_to(lua_file, PROJECT_ROOT / 'rbc/generate.lua')
+    codegen_util._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
+
     def download_file(file: str, map):
         dst_path = str(map["path"] / file)
         if os.path.exists(dst_path):
