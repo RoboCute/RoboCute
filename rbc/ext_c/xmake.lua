@@ -8,9 +8,5 @@ target('rbc_ext_c')
     add_deps("rbc_world")
 
     add_includedirs('builtin')
-    add_files(
-        "*.cpp",
-        "builtin/*.cpp"
-    )
-
+    add_files("**.cpp")
 target_end()

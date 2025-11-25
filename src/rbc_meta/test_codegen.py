@@ -9,6 +9,7 @@ def codegen_module(
     py_root_path: Path,
 ):
     my_enum = tr.enum("MyEnum", enum_value_1=1, enum_value_2=None)
+
     MyStruct = tr.struct("MyStruct")
     MyStruct.method("set_pos", pos=tr.double3, idx=tr.int)
     MyStruct.method("get_pos", pos=tr.string).ret_type(tr.string)
