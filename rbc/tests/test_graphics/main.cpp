@@ -10,6 +10,12 @@
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include "simple_scene.h"
 void warm_up_accel();
+void before_frame(rbc::RenderPlugin *render_plugin, rbc::RenderPlugin::PipeCtxStub *pipe_ctx);
+void after_frame(
+    rbc::RenderPlugin *render_plugin,
+    rbc::RenderPlugin::PipeCtxStub *pipe_ctx,
+    luisa::compute::TimelineEvent *timeline_event,
+    uint64_t signal_fence);
 int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
@@ -25,8 +31,12 @@ int main(int argc, char *argv[]) {
     render_device.init(
         argv[0],
         backend);
+    // let main stream compute-stream
+    auto &compute_stream = render_device.lc_async_stream();
+    auto present_stream = render_device.lc_device().create_stream(StreamTag::GRAPHICS);
+    render_device.set_main_stream(&compute_stream);
+
     auto shader_path = render_device.lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + backend);
-    auto &main_stream = render_device.lc_main_stream();
     auto &cmdlist = render_device.lc_main_cmd_list();
     vstd::optional<SceneManager> sm;
     const uint2 resolution{1024};
@@ -53,16 +63,17 @@ int main(int argc, char *argv[]) {
     // init window
     Window window("test graphics", resolution);
     auto swapchain = render_device.lc_device().create_swapchain(
-        main_stream,
+        present_stream,
         SwapchainOption{
             .display = window.native_display(),
             .window = window.native_handle(),
             .size = resolution,
             .wants_hdr = false,
             .wants_vsync = false,
-            .back_buffer_count = 1});
+            .back_buffer_count = 2});
     // render loop
     auto timeline_event = render_device.lc_device().create_timeline_event();
+    auto stream_evt = render_device.lc_device().create_event();
     uint64_t render_frame_index = 0;
     uint64_t frame_index = 0;
     auto dst_img = render_device.lc_device().create_image<float>(swapchain.backend_storage(), resolution);
@@ -125,8 +136,8 @@ int main(int argc, char *argv[]) {
     while (!window.should_close()) {
         AssetsManager::instance()->wake_load_thread();
         window.poll_events();
-        if (frame_index > 1) {
-            timeline_event.synchronize(frame_index - 1);
+        if (frame_index > 2) {
+            timeline_event.synchronize(frame_index - 2);
         }
         auto &frame_settings = pipeline_state_map.read_mut<rbc::FrameSettings>();
         frame_settings.render_resolution = dst_img.size();
@@ -148,28 +159,28 @@ int main(int argc, char *argv[]) {
             simple_scene->move_light(*light_move);
             light_move.destroy();
         }
+        // let next-frame's render wait for display
+        compute_stream << stream_evt.wait();
         // before render
-        render_plugin->before_rendering({}, pipe_ctx);
-        sm->before_rendering(
-            cmdlist,
-            main_stream);
-        // on render
-        auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
-        managed_device->begin_managing(cmdlist);
+        before_frame(
+            render_plugin,
+            pipe_ctx);
         // frame render logic
-        render_plugin->on_rendering({}, pipe_ctx);
-        // TODO: pipeline update
-        //////////////// Test
-        managed_device->end_managing(cmdlist);
-        sm->on_frame_end(
-            cmdlist,
-            main_stream, managed_device);
-
-        main_stream << swapchain.present(dst_img) << timeline_event.signal(++frame_index);
+        after_frame(
+            render_plugin,
+            pipe_ctx,
+            &timeline_event,
+            ++frame_index);
+        present_stream << timeline_event.wait(frame_index)
+                       << swapchain.present(dst_img)
+                       << stream_evt.signal();
     }
+    timeline_event.synchronize(frame_index);
+    present_stream.synchronize();
+    stream_evt.synchronize();
     // Destroy
     if (!cmdlist.empty()) {
-        main_stream << cmdlist.commit();
+        compute_stream << cmdlist.commit();
     }
     auto pipe_settings_json = pipeline_state_map.serialize_to_json();
     if (pipe_settings_json.data()) {
@@ -177,7 +188,7 @@ int main(int argc, char *argv[]) {
                              (char const *)pipe_settings_json.data(),
                              pipe_settings_json.size()});
     }
-    main_stream.synchronize();
+    compute_stream.synchronize();
     // destroy render-pipeline
     simple_scene.destroy();
     render_plugin->destroy_pipeline_context(pipe_ctx);
@@ -187,11 +198,11 @@ int main(int argc, char *argv[]) {
     AssetsManager::destroy_instance();
     sm->before_rendering(
         cmdlist,
-        main_stream);
+        compute_stream);
     sm->on_frame_end(
         cmdlist,
-        main_stream);
-    main_stream.synchronize();
+        compute_stream);
+    compute_stream.synchronize();
     sm.destroy();
     render_device.shutdown();
 }

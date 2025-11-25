@@ -19,6 +19,11 @@ void RenderDevice::set_instance(RenderDevice* device)
     LUISA_ASSERT(device != nullptr, "Device must not be nullptr");
     render_device_detail::_inst = device;
 }
+void RenderDevice::set_main_stream(Stream* main_stream) {
+    _render_loop_mtx.lock();
+    _main_stream_ptr = main_stream;
+    _render_loop_mtx.unlock();
+}
 void RenderDevice::init(
     const luisa::filesystem::path& program_path,
     luisa::string_view backend,
@@ -57,11 +62,6 @@ void RenderDevice::init(
     {
         // create main stream
         _managed_device = Device{ luisa::make_unique<ManagedDevice>(Context{ lc_ctx() }, _device.impl()) };
-        _main_stream = _device.create_stream(StreamTag::GRAPHICS);
-        _main_stream.set_name("main_stream");
-        _main_stream.set_log_callback([](auto sv) {
-            LUISA_INFO("GPU Direct Queue: {}", sv);
-        });
         if (require_async_stream)
         {
             _async_stream = _device.create_stream(StreamTag::COMPUTE);

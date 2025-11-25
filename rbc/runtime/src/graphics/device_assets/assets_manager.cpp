@@ -198,6 +198,7 @@ AssetsManager::AssetsManager(RenderDevice& render_device, SceneManager* scene_mn
                 if (!cmdlist.empty())
                 {
                     cmdlist.add_callback([finish_callbak]() {});
+                    _render_device.async_compute_loop_mtx().lock();
                     if (frame_res.disk_io_fence > 0)
                     {
                         // _render_device.io_service()->synchronize(frame_res.disk_io_fence);
@@ -208,8 +209,8 @@ AssetsManager::AssetsManager(RenderDevice& render_device, SceneManager* scene_mn
                         // _render_device.mem_io_service()->synchronize(frame_res.mem_io_fence);
                         _render_device.lc_async_stream() << _render_device.mem_io_service()->wait(frame_res.mem_io_fence);
                     }
+                    _render_device.async_compute_loop_mtx().unlock();
                     _render_device.lc_async_stream() << cmdlist.commit() << _render_device.lc_async_timeline().signal(executed_frame);
-                    // _render_device.lc_async_stream() << synchronize();
                     frame_res.compute_fence = executed_frame;
                 }
             });

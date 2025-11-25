@@ -66,7 +66,7 @@ struct RBC_RUNTIME_API RenderDevice {
     inline luisa::compute::Device& _lc_managed_device() { return _managed_device; }
     inline luisa::compute::Device& lc_device() { return _device; }
     inline luisa::compute::DeviceConfigExt* lc_device_ext() { return _device_ext; }
-    inline luisa::compute::Stream& lc_main_stream() { return _main_stream; }
+    inline luisa::compute::Stream& lc_main_stream() { return *_main_stream_ptr; }
     inline auto& lc_async_stream() { return _async_stream; }
     inline auto& lc_async_copy_stream() { return _async_copy_stream; }
     inline auto& lc_async_timeline() { return _async_timeline; }
@@ -75,6 +75,11 @@ struct RBC_RUNTIME_API RenderDevice {
     inline auto& lc_main_cmd_list() { return _main_cmd_list; }
     static RenderDevice& instance();
     static void set_instance(RenderDevice* device);
+    std::mutex& render_loop_mtx () { 
+        return (_main_stream_ptr == &_async_stream) ? _async_compute_loop_mtx :  _render_loop_mtx;
+    };
+    std::mutex& async_compute_loop_mtx () { return _async_compute_loop_mtx;};
+    void set_main_stream(Stream* main_stream);
 
 private:
     // context
@@ -87,7 +92,7 @@ private:
     luisa::compute::DeviceConfigExt* _device_ext;
 
     // stream
-    luisa::compute::Stream _main_stream;
+    luisa::compute::Stream* _main_stream_ptr{};
 
     // command list
     luisa::compute::CommandList _main_cmd_list;
@@ -99,6 +104,8 @@ private:
     luisa::string _backend;
     IOService* _io_service = nullptr;
     IOService* _mem_io_service = nullptr;
+    std::mutex _render_loop_mtx;
+    std::mutex _async_compute_loop_mtx;
 };
 
 } // namespace rbc
