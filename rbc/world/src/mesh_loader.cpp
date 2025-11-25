@@ -1,5 +1,6 @@
 #include "rbc_world/resource_loader.h"
 #include "rbc_world/gpu_resource.h"
+#include "rbc_world/mesh_loader.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -94,147 +95,137 @@ void Mesh::upload_to_gpu() {
     gpu_uploaded = false;
 }
 
-class MeshLoader : public ResourceLoader {
-public:
-    bool can_load(const std::string &path) const override {
-        return path.ends_with(".rbm") ||
-               path.ends_with(".obj");
-    }
+bool MeshLoader::can_load(const std::string &path) const {
+    return path.ends_with(".rbm") ||
+           path.ends_with(".obj");
+}
 
-    luisa::shared_ptr<void> load(const std::string &path,
-                                 const std::string &options_json) override {
-        if (path.ends_with(".rbm")) {
-            return load_rbm(path);
-        } else if (path.ends_with(".obj")) {
-            return load_obj(path);
-        }
+luisa::shared_ptr<void> MeshLoader::load(const std::string &path,
+                                         const std::string &options_json) {
+    if (path.ends_with(".rbm")) {
+        return load_rbm(path);
+    } else if (path.ends_with(".obj")) {
+        return load_obj(path);
+    }
+    return nullptr;
+}
+
+luisa::shared_ptr<Mesh> MeshLoader::load_rbm(const std::string &path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "[MeshLoader] Failed to open: " << path << "\n";
         return nullptr;
     }
 
-    size_t get_resource_size(const luisa::shared_ptr<void> &resource) const override {
-        auto mesh = luisa::static_pointer_cast<Mesh>(resource);
-        return mesh->get_memory_size();
+    auto mesh = luisa::make_shared<Mesh>();
+
+    // Read header
+    struct Header {
+        uint32_t magic;// 'RBM\0'
+        uint32_t version;
+        uint32_t vertex_count;
+        uint32_t index_count;
+        uint32_t flags;
+    } header;
+
+    file.read(reinterpret_cast<char *>(&header), sizeof(header));
+
+    if (header.magic != 0x004D4252) {// 'RBM\0'
+        std::cerr << "[MeshLoader] Invalid RBM magic number\n";
+        return nullptr;
     }
 
-private:
-    luisa::shared_ptr<Mesh> load_rbm(const std::string &path) {
-        std::ifstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            std::cerr << "[MeshLoader] Failed to open: " << path << "\n";
-            return nullptr;
-        }
+    // Read vertices
+    mesh->vertices.resize(header.vertex_count);
+    file.read(reinterpret_cast<char *>(mesh->vertices.data()),
+              header.vertex_count * sizeof(Vertex));
 
-        auto mesh = luisa::make_shared<Mesh>();
+    // Read indices
+    mesh->indices.resize(header.index_count);
+    file.read(reinterpret_cast<char *>(mesh->indices.data()),
+              header.index_count * sizeof(uint32_t));
 
-        // Read header
-        struct Header {
-            uint32_t magic;// 'RBM\0'
-            uint32_t version;
-            uint32_t vertex_count;
-            uint32_t index_count;
-            uint32_t flags;
-        } header;
+    return mesh;
+}
 
-        file.read(reinterpret_cast<char *>(&header), sizeof(header));
-
-        if (header.magic != 0x004D4252) {// 'RBM\0'
-            std::cerr << "[MeshLoader] Invalid RBM magic number\n";
-            return nullptr;
-        }
-
-        // Read vertices
-        mesh->vertices.resize(header.vertex_count);
-        file.read(reinterpret_cast<char *>(mesh->vertices.data()),
-                  header.vertex_count * sizeof(Vertex));
-
-        // Read indices
-        mesh->indices.resize(header.index_count);
-        file.read(reinterpret_cast<char *>(mesh->indices.data()),
-                  header.index_count * sizeof(uint32_t));
-
-        return mesh;
+luisa::shared_ptr<Mesh> MeshLoader::load_obj(const std::string &path) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "[MeshLoader] Failed to open: " << path << "\n";
+        return nullptr;
     }
 
-    luisa::shared_ptr<Mesh> load_obj(const std::string &path) {
-        std::ifstream file(path);
-        if (!file.is_open()) {
-            std::cerr << "[MeshLoader] Failed to open: " << path << "\n";
-            return nullptr;
-        }
+    auto mesh = luisa::make_shared<Mesh>();
 
-        auto mesh = luisa::make_shared<Mesh>();
+    std::vector<float> positions;
+    std::vector<float> normals;
+    std::vector<float> texcoords;
 
-        std::vector<float> positions;
-        std::vector<float> normals;
-        std::vector<float> texcoords;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string prefix;
+        iss >> prefix;
 
-        std::string line;
-        while (std::getline(file, line)) {
-            std::istringstream iss(line);
-            std::string prefix;
-            iss >> prefix;
+        if (prefix == "v") {
+            float x, y, z;
+            iss >> x >> y >> z;
+            positions.push_back(x);
+            positions.push_back(y);
+            positions.push_back(z);
+        } else if (prefix == "vn") {
+            float x, y, z;
+            iss >> x >> y >> z;
+            normals.push_back(x);
+            normals.push_back(y);
+            normals.push_back(z);
+        } else if (prefix == "vt") {
+            float u, v;
+            iss >> u >> v;
+            texcoords.push_back(u);
+            texcoords.push_back(v);
+        } else if (prefix == "f") {
+            // Simple face parsing (assumes triangulated)
+            for (int i = 0; i < 3; ++i) {
+                std::string vert_str;
+                iss >> vert_str;
 
-            if (prefix == "v") {
-                float x, y, z;
-                iss >> x >> y >> z;
-                positions.push_back(x);
-                positions.push_back(y);
-                positions.push_back(z);
-            } else if (prefix == "vn") {
-                float x, y, z;
-                iss >> x >> y >> z;
-                normals.push_back(x);
-                normals.push_back(y);
-                normals.push_back(z);
-            } else if (prefix == "vt") {
-                float u, v;
-                iss >> u >> v;
-                texcoords.push_back(u);
-                texcoords.push_back(v);
-            } else if (prefix == "f") {
-                // Simple face parsing (assumes triangulated)
-                for (int i = 0; i < 3; ++i) {
-                    std::string vert_str;
-                    iss >> vert_str;
+                // Parse v/vt/vn format
+                int v_idx = 0, vt_idx = 0, vn_idx = 0;
+                sscanf(vert_str.c_str(), "%d/%d/%d", &v_idx, &vt_idx, &vn_idx);
 
-                    // Parse v/vt/vn format
-                    int v_idx = 0, vt_idx = 0, vn_idx = 0;
-                    sscanf(vert_str.c_str(), "%d/%d/%d", &v_idx, &vt_idx, &vn_idx);
-
-                    Vertex vert{};
-                    if (v_idx > 0 && (size_t)v_idx <= positions.size() / 3) {
-                        int idx = (v_idx - 1) * 3;
-                        vert.position[0] = positions[idx];
-                        vert.position[1] = positions[idx + 1];
-                        vert.position[2] = positions[idx + 2];
-                    }
-                    if (vn_idx > 0 && (size_t)vn_idx <= normals.size() / 3) {
-                        int idx = (vn_idx - 1) * 3;
-                        vert.normal[0] = normals[idx];
-                        vert.normal[1] = normals[idx + 1];
-                        vert.normal[2] = normals[idx + 2];
-                    }
-                    if (vt_idx > 0 && (size_t)vt_idx <= texcoords.size() / 2) {
-                        int idx = (vt_idx - 1) * 2;
-                        vert.texcoord[0] = texcoords[idx];
-                        vert.texcoord[1] = texcoords[idx + 1];
-                    }
-
-                    mesh->vertices.push_back(vert);
-                    mesh->indices.push_back(static_cast<uint32_t>(mesh->vertices.size() - 1));
+                Vertex vert{};
+                if (v_idx > 0 && (size_t)v_idx <= positions.size() / 3) {
+                    int idx = (v_idx - 1) * 3;
+                    vert.position[0] = positions[idx];
+                    vert.position[1] = positions[idx + 1];
+                    vert.position[2] = positions[idx + 2];
                 }
+                if (vn_idx > 0 && (size_t)vn_idx <= normals.size() / 3) {
+                    int idx = (vn_idx - 1) * 3;
+                    vert.normal[0] = normals[idx];
+                    vert.normal[1] = normals[idx + 1];
+                    vert.normal[2] = normals[idx + 2];
+                }
+                if (vt_idx > 0 && (size_t)vt_idx <= texcoords.size() / 2) {
+                    int idx = (vt_idx - 1) * 2;
+                    vert.texcoord[0] = texcoords[idx];
+                    vert.texcoord[1] = texcoords[idx + 1];
+                }
+
+                mesh->vertices.push_back(vert);
+                mesh->indices.push_back(static_cast<uint32_t>(mesh->vertices.size() - 1));
             }
         }
-
-        if (mesh->vertices.empty()) {
-            return nullptr;
-        }
-
-        return mesh;
     }
-};
 
-// Factory function
+    if (mesh->vertices.empty()) {
+        return nullptr;
+    }
+
+    return mesh;
+}
+
 luisa::unique_ptr<ResourceLoader> create_mesh_loader() {
     return luisa::make_unique<MeshLoader>();
 }
