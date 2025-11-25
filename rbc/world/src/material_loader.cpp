@@ -1,8 +1,7 @@
-#include "resource_loader.h"
+#include "rbc_world/resource_loader.h"
 #include "rbc_world/gpu_resource.h"
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <cstring>
 
 // Simple JSON-like parser (placeholder)
@@ -12,13 +11,13 @@ namespace rbc {
 
 class MaterialLoader : public ResourceLoader {
 public:
-    bool can_load(const std::string& path) const override {
-        return path.ends_with(".json") || 
-               path.ends_with(".rbm");  // RoboCute material format
+    [[nodiscard]] bool can_load(const std::string &path) const override {
+        return path.ends_with(".json") ||
+               path.ends_with(".rbm");// RoboCute material format
     }
 
-    std::shared_ptr<void> load(const std::string& path,
-                              const std::string& options_json) override {
+    [[nodiscard]] std::shared_ptr<void> load(const std::string &path,
+                                             const std::string &options_json) override {
         if (path.ends_with(".rbm")) {
             return load_rbm(path);
         } else {
@@ -26,13 +25,13 @@ public:
         }
     }
 
-    size_t get_resource_size(const std::shared_ptr<void>& resource) const override {
+    [[nodiscard]] size_t get_resource_size(const std::shared_ptr<void> &resource) const override {
         auto material = std::static_pointer_cast<Material>(resource);
         return material->get_memory_size();
     }
 
 private:
-    std::shared_ptr<Material> load_rbm(const std::string& path) {
+    [[nodiscard]] std::shared_ptr<Material> load_rbm(const std::string &path) {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             std::cerr << "[MaterialLoader] Failed to open: " << path << "\n";
@@ -43,42 +42,42 @@ private:
 
         // Read header
         struct Header {
-            uint32_t magic;  // 'RBMT'
+            uint32_t magic;// 'RBMT'
             uint32_t version;
         } header;
 
-        file.read(reinterpret_cast<char*>(&header), sizeof(header));
+        file.read(reinterpret_cast<char *>(&header), sizeof(header));
 
-        if (header.magic != 0x544D4252) {  // 'RBMT' (RoboCute Material)
+        if (header.magic != 0x544D4252) {// 'RBMT' (RoboCute Material)
             std::cerr << "[MaterialLoader] Invalid RBM material magic number\n";
             return nullptr;
         }
 
         // Read material name length
         uint32_t name_length;
-        file.read(reinterpret_cast<char*>(&name_length), sizeof(name_length));
+        file.read(reinterpret_cast<char *>(&name_length), sizeof(name_length));
 
         // Read material name
         material->name.resize(name_length);
         file.read(&material->name[0], name_length);
 
         // Read PBR parameters
-        file.read(reinterpret_cast<char*>(material->base_color), sizeof(float) * 4);
-        file.read(reinterpret_cast<char*>(&material->metallic), sizeof(float));
-        file.read(reinterpret_cast<char*>(&material->roughness), sizeof(float));
-        file.read(reinterpret_cast<char*>(material->emissive), sizeof(float) * 3);
+        file.read(reinterpret_cast<char *>(material->base_color), sizeof(float) * 4);
+        file.read(reinterpret_cast<char *>(&material->metallic), sizeof(float));
+        file.read(reinterpret_cast<char *>(&material->roughness), sizeof(float));
+        file.read(reinterpret_cast<char *>(material->emissive), sizeof(float) * 3);
 
         // Read texture IDs
-        file.read(reinterpret_cast<char*>(&material->base_color_texture), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&material->metallic_roughness_texture), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&material->normal_texture), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&material->emissive_texture), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&material->occlusion_texture), sizeof(uint32_t));
+        file.read(reinterpret_cast<char *>(&material->base_color_texture), sizeof(uint32_t));
+        file.read(reinterpret_cast<char *>(&material->metallic_roughness_texture), sizeof(uint32_t));
+        file.read(reinterpret_cast<char *>(&material->normal_texture), sizeof(uint32_t));
+        file.read(reinterpret_cast<char *>(&material->emissive_texture), sizeof(uint32_t));
+        file.read(reinterpret_cast<char *>(&material->occlusion_texture), sizeof(uint32_t));
 
         return material;
     }
 
-    std::shared_ptr<Material> load_json(const std::string& path) {
+    std::shared_ptr<Material> load_json(const std::string &path) {
         std::ifstream file(path);
         if (!file.is_open()) {
             std::cerr << "[MaterialLoader] Failed to open: " << path << "\n";
@@ -128,7 +127,7 @@ private:
             }
         }
 
-        std::cout << "[MaterialLoader] Loaded material '" << material->name 
+        std::cout << "[MaterialLoader] Loaded material '" << material->name
                   << "' from " << path << "\n";
 
         return material;
@@ -140,5 +139,4 @@ std::unique_ptr<ResourceLoader> create_material_loader() {
     return std::make_unique<MaterialLoader>();
 }
 
-} // namespace rbc
-
+}// namespace rbc

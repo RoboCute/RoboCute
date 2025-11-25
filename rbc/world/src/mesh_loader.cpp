@@ -1,4 +1,4 @@
-#include "resource_loader.h"
+#include "rbc_world/resource_loader.h"
 #include "rbc_world/gpu_resource.h"
 #include <fstream>
 #include <sstream>
@@ -26,13 +26,14 @@ void Mesh::compute_normals() {
         float n[3] = {
             e1[1] * e2[2] - e1[2] * e2[1],
             e1[2] * e2[0] - e1[0] * e2[2],
-            e1[0] * e2[1] - e1[1] * e2[0]
-        };
+            e1[0] * e2[1] - e1[1] * e2[0]};
 
         // Normalize
         float len = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
         if (len > 0.0f) {
-            n[0] /= len; n[1] /= len; n[2] /= len;
+            n[0] /= len;
+            n[1] /= len;
+            n[2] /= len;
         }
 
         // Assign to all three vertices
@@ -51,14 +52,18 @@ void Mesh::compute_tangents() {
 
         // For now, just create an orthogonal tangent to the normal
         for (auto idx : {i0, i1, i2}) {
-            float* n = vertices[idx].normal;
+            float *n = vertices[idx].normal;
             float t[3];
 
             // Pick arbitrary perpendicular vector
             if (std::abs(n[0]) > 0.9f) {
-                t[0] = 0.0f; t[1] = 1.0f; t[2] = 0.0f;
+                t[0] = 0.0f;
+                t[1] = 1.0f;
+                t[2] = 0.0f;
             } else {
-                t[0] = 1.0f; t[1] = 0.0f; t[2] = 0.0f;
+                t[0] = 1.0f;
+                t[1] = 0.0f;
+                t[2] = 0.0f;
             }
 
             // Gram-Schmidt orthogonalize
@@ -70,7 +75,9 @@ void Mesh::compute_tangents() {
             // Normalize
             float len = std::sqrt(t[0] * t[0] + t[1] * t[1] + t[2] * t[2]);
             if (len > 0.0f) {
-                t[0] /= len; t[1] /= len; t[2] /= len;
+                t[0] /= len;
+                t[1] /= len;
+                t[2] /= len;
             }
 
             vertices[idx].tangent[0] = t[0];
@@ -89,13 +96,13 @@ void Mesh::upload_to_gpu() {
 
 class MeshLoader : public ResourceLoader {
 public:
-    bool can_load(const std::string& path) const override {
-        return path.ends_with(".rbm") || 
+    bool can_load(const std::string &path) const override {
+        return path.ends_with(".rbm") ||
                path.ends_with(".obj");
     }
 
-    std::shared_ptr<void> load(const std::string& path,
-                              const std::string& options_json) override {
+    std::shared_ptr<void> load(const std::string &path,
+                               const std::string &options_json) override {
         if (path.ends_with(".rbm")) {
             return load_rbm(path);
         } else if (path.ends_with(".obj")) {
@@ -104,13 +111,13 @@ public:
         return nullptr;
     }
 
-    size_t get_resource_size(const std::shared_ptr<void>& resource) const override {
+    size_t get_resource_size(const std::shared_ptr<void> &resource) const override {
         auto mesh = std::static_pointer_cast<Mesh>(resource);
         return mesh->get_memory_size();
     }
 
 private:
-    std::shared_ptr<Mesh> load_rbm(const std::string& path) {
+    std::shared_ptr<Mesh> load_rbm(const std::string &path) {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             std::cerr << "[MeshLoader] Failed to open: " << path << "\n";
@@ -121,34 +128,34 @@ private:
 
         // Read header
         struct Header {
-            uint32_t magic;  // 'RBM\0'
+            uint32_t magic;// 'RBM\0'
             uint32_t version;
             uint32_t vertex_count;
             uint32_t index_count;
             uint32_t flags;
         } header;
 
-        file.read(reinterpret_cast<char*>(&header), sizeof(header));
+        file.read(reinterpret_cast<char *>(&header), sizeof(header));
 
-        if (header.magic != 0x004D4252) {  // 'RBM\0'
+        if (header.magic != 0x004D4252) {// 'RBM\0'
             std::cerr << "[MeshLoader] Invalid RBM magic number\n";
             return nullptr;
         }
 
         // Read vertices
         mesh->vertices.resize(header.vertex_count);
-        file.read(reinterpret_cast<char*>(mesh->vertices.data()),
-                 header.vertex_count * sizeof(Vertex));
+        file.read(reinterpret_cast<char *>(mesh->vertices.data()),
+                  header.vertex_count * sizeof(Vertex));
 
         // Read indices
         mesh->indices.resize(header.index_count);
-        file.read(reinterpret_cast<char*>(mesh->indices.data()),
-                 header.index_count * sizeof(uint32_t));
+        file.read(reinterpret_cast<char *>(mesh->indices.data()),
+                  header.index_count * sizeof(uint32_t));
 
         return mesh;
     }
 
-    std::shared_ptr<Mesh> load_obj(const std::string& path) {
+    std::shared_ptr<Mesh> load_obj(const std::string &path) {
         std::ifstream file(path);
         if (!file.is_open()) {
             std::cerr << "[MeshLoader] Failed to open: " << path << "\n";
@@ -232,5 +239,4 @@ std::unique_ptr<ResourceLoader> create_mesh_loader() {
     return std::make_unique<MeshLoader>();
 }
 
-} // namespace rbc
-
+}// namespace rbc

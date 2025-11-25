@@ -3,7 +3,6 @@
 #include "rbc_world/resource.h"
 #include <memory>
 #include <unordered_map>
-#include <mutex>
 #include <shared_mutex>
 #include <list>
 
@@ -11,9 +10,9 @@ namespace rbc {
 
 /**
  * ResourceStorage
- * - Memory pool management
- * - LRU cache strategy
- * - Thread-safe resource access
+ * * Memory pool management
+ * * LRU cache strategy
+ * * Thread-safe resource access
  */
 class ResourceStorage {
 public:
@@ -60,7 +59,7 @@ private:
     };
 
     std::unordered_map<ResourceID, ResourceEntry> entries_;
-    std::list<ResourceID> lru_list_;  // Most recently used at front
+    std::list<ResourceID> lru_list_;// Most recently used at front
 
     size_t budget_bytes_;
     std::atomic<size_t> current_memory_usage_{0};
@@ -71,5 +70,4 @@ private:
     void evict_resource_internal(ResourceID id);
 };
 
-} // namespace rbc
-
+}// namespace rbc

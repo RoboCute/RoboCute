@@ -1,11 +1,11 @@
 #include "rbc_world/async_resource_loader.h"
-#include "resource_storage.h"
-#include "resource_loader.h"
+#include "rbc_world/resource_loader.h"
+#include "rbc_world/resource_storage.h"
 #include <iostream>
 
 namespace rbc {
 
-AsyncResourceLoader::AsyncResourceLoader() 
+AsyncResourceLoader::AsyncResourceLoader()
     : storage_(std::make_unique<ResourceStorage>(cache_budget_)) {
 }
 
@@ -39,7 +39,7 @@ void AsyncResourceLoader::shutdown() {
     queue_cv_.notify_all();
 
     // Join all threads
-    for (auto& thread : worker_threads_) {
+    for (auto &thread : worker_threads_) {
         if (thread.joinable()) {
             thread.join();
         }
@@ -63,10 +63,10 @@ size_t AsyncResourceLoader::get_memory_usage() const {
 }
 
 bool AsyncResourceLoader::load_resource(ResourceID id, uint32_t type_value,
-                                       const std::string& path,
-                                       const std::string& options_json) {
+                                        const std::string &path,
+                                        const std::string &options_json) {
     if (!running_) {
-        initialize();  // Auto-initialize if not started
+        initialize();// Auto-initialize if not started
     }
 
     // Check if already loaded
@@ -107,7 +107,7 @@ size_t AsyncResourceLoader::get_resource_size(ResourceID id) const {
     return storage_ ? storage_->get_size(id) : 0;
 }
 
-void* AsyncResourceLoader::get_resource_data(ResourceID id) {
+void *AsyncResourceLoader::get_resource_data(ResourceID id) {
     if (!storage_) {
         return nullptr;
     }
@@ -163,15 +163,15 @@ void AsyncResourceLoader::worker_thread() {
 
             // Load resource
             bool success = load_resource_impl(request.id, request.type,
-                                             request.path, "{}");
+                                              request.path, "{}");
 
             // Update state
             if (success) {
                 storage_->set_state(request.id, ResourceState::Loaded);
             } else {
                 storage_->set_state(request.id, ResourceState::Failed);
-                std::cerr << "[AsyncResourceLoader] Failed to load resource: " 
-                         << request.path << "\n";
+                std::cerr << "[AsyncResourceLoader] Failed to load resource: "
+                          << request.path << "\n";
             }
 
             // Call completion callback if exists
@@ -179,9 +179,9 @@ void AsyncResourceLoader::worker_thread() {
                 request.on_complete(request.id, success);
             }
 
-        } catch (const std::exception& e) {
-            std::cerr << "[AsyncResourceLoader] Exception loading " 
-                     << request.path << ": " << e.what() << "\n";
+        } catch (const std::exception &e) {
+            std::cerr << "[AsyncResourceLoader] Exception loading "
+                      << request.path << ": " << e.what() << "\n";
             storage_->set_state(request.id, ResourceState::Failed);
 
             if (request.on_complete) {
@@ -191,7 +191,7 @@ void AsyncResourceLoader::worker_thread() {
     }
 }
 
-ResourceLoader* AsyncResourceLoader::get_loader(ResourceType type) {
+ResourceLoader *AsyncResourceLoader::get_loader(ResourceType type) {
     std::lock_guard lock(mutex_);
 
     // Check if loader already exists
@@ -211,13 +211,13 @@ ResourceLoader* AsyncResourceLoader::get_loader(ResourceType type) {
 }
 
 bool AsyncResourceLoader::load_resource_impl(ResourceID id, ResourceType type,
-                                            const std::string& path,
-                                            const std::string& options_json) {
+                                             const std::string &path,
+                                             const std::string &options_json) {
     // Get appropriate loader
-    ResourceLoader* loader = get_loader(type);
+    ResourceLoader *loader = get_loader(type);
     if (!loader) {
-        std::cerr << "[AsyncResourceLoader] No loader registered for type " 
-                 << static_cast<uint32_t>(type) << "\n";
+        std::cerr << "[AsyncResourceLoader] No loader registered for type "
+                  << static_cast<uint32_t>(type) << "\n";
         return false;
     }
 

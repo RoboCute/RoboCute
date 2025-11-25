@@ -1,5 +1,5 @@
 #pragma once
-
+#include "rbc_config.h"
 #include "rbc_world/resource.h"
 #include "rbc_world/resource_request.h"
 #include <memory>
@@ -22,7 +22,7 @@ class ResourceStorage;
  * - 解析资源文件
  * - 上传到GPU (如果需要)
  */
-class AsyncResourceLoader {
+struct RBC_WORLD_API AsyncResourceLoader {
 public:
     AsyncResourceLoader();
     ~AsyncResourceLoader();
@@ -38,8 +38,8 @@ public:
 
     // === Resource Loading ===
     bool load_resource(ResourceID id, uint32_t type_value,
-                      const std::string& path,
-                      const std::string& options_json);
+                       const std::string &path,
+                       const std::string &options_json);
 
     bool is_loaded(ResourceID id) const;
     uint8_t get_state(ResourceID id) const;
@@ -47,7 +47,7 @@ public:
 
     // === Resource Access ===
     // Generic interface (returns void*, for Python use)
-    void* get_resource_data(ResourceID id);
+    void *get_resource_data(ResourceID id);
 
     // === Resource Unloading ===
     void unload_resource(ResourceID id);
@@ -62,12 +62,12 @@ private:
     void worker_thread();
 
     // Get loader by type
-    ResourceLoader* get_loader(ResourceType type);
+    ResourceLoader *get_loader(ResourceType type);
 
     // Actual loading logic
     bool load_resource_impl(ResourceID id, ResourceType type,
-                           const std::string& path,
-                           const std::string& options_json);
+                            const std::string &path,
+                            const std::string &options_json);
 
     // Thread pool
     std::vector<std::thread> worker_threads_;
@@ -86,7 +86,7 @@ private:
     std::unordered_map<ResourceType, std::unique_ptr<ResourceLoader>> loaders_;
 
     // Cache management
-    size_t cache_budget_{2048 * 1024 * 1024};  // 2GB default
+    size_t cache_budget_{static_cast<size_t>(2048 * 1024 * 1024)};// 2GB default
     mutable std::mutex mutex_;
 };
 

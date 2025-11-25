@@ -13,7 +13,7 @@ struct Vertex {
     float position[3];
     float normal[3];
     float texcoord[2];
-    float tangent[4];  // xyz = tangent, w = bitangent sign
+    float tangent[4];// xyz = tangent, w = bitangent sign
 };
 
 struct Mesh {
@@ -21,15 +21,15 @@ struct Mesh {
     std::vector<uint32_t> indices;
 
     // GPU buffers (opaque handles, can be device pointers or buffer IDs)
-    void* vertex_buffer = nullptr;
-    void* index_buffer = nullptr;
+    void *vertex_buffer = nullptr;
+    void *index_buffer = nullptr;
 
     // Metadata
     std::string name;
     bool gpu_uploaded = false;
 
-    size_t get_memory_size() const {
-        return vertices.size() * sizeof(Vertex) + 
+    [[nodiscard]] size_t get_memory_size() const {
+        return vertices.size() * sizeof(Vertex) +
                indices.size() * sizeof(uint32_t);
     }
 
@@ -53,23 +53,23 @@ enum class TextureFormat : uint8_t {
     RG32F,
     RGB32F,
     RGBA32F,
-    BC1,  // DXT1
-    BC3,  // DXT5
-    BC5,  // Normal maps
-    BC7,  // High quality
+    BC1,// DXT1
+    BC3,// DXT5
+    BC5,// Normal maps
+    BC7,// High quality
 };
 
 struct Texture {
     uint32_t width = 0;
     uint32_t height = 0;
-    uint32_t depth = 1;  // For 3D textures
+    uint32_t depth = 1;// For 3D textures
     uint32_t mip_levels = 1;
     TextureFormat format = TextureFormat::RGBA8;
 
     std::vector<uint8_t> data;
 
     // GPU handle
-    void* gpu_texture = nullptr;
+    void *gpu_texture = nullptr;
     bool gpu_uploaded = false;
 
     std::string name;
@@ -100,10 +100,7 @@ struct Material {
     uint32_t emissive_texture = 0;
     uint32_t occlusion_texture = 0;
 
-    size_t get_memory_size() const {
-        return sizeof(Material);
-    }
+    [[nodiscard]] static size_t get_memory_size() { return sizeof(Material); }
 };
 
-} // namespace rbc
-
+}// namespace rbc

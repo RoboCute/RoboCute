@@ -1,6 +1,4 @@
-#include "resource_storage.h"
-#include <algorithm>
-#include <iostream>
+#include "rbc_world/resource_storage.h"
 
 namespace rbc {
 
@@ -8,7 +6,7 @@ ResourceStorage::ResourceStorage(size_t budget_bytes)
     : budget_bytes_(budget_bytes) {}
 
 void ResourceStorage::store(ResourceID id, std::shared_ptr<void> data,
-                           ResourceType type, size_t size) {
+                            ResourceType type, size_t size) {
     std::unique_lock lock(mutex_);
 
     // Check if already exists
@@ -182,5 +180,4 @@ void ResourceStorage::evict_resource_internal(ResourceID id) {
     entries_.erase(it);
 }
 
-} // namespace rbc
-
+}// namespace rbc

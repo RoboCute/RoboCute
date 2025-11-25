@@ -1,5 +1,5 @@
-#include "resource_loader.h"
 #include "rbc_world/gpu_resource.h"
+#include "rbc_world/resource_loader.h"
 #include <fstream>
 #include <iostream>
 #include <cstring>
@@ -22,15 +22,15 @@ void Texture::generate_mipmaps() {
 
 class TextureLoader : public ResourceLoader {
 public:
-    bool can_load(const std::string& path) const override {
-        return path.ends_with(".png") || 
-               path.ends_with(".jpg") || 
+    bool can_load(const std::string &path) const override {
+        return path.ends_with(".png") ||
+               path.ends_with(".jpg") ||
                path.ends_with(".jpeg") ||
-               path.ends_with(".rbt");  // RoboCute texture format
+               path.ends_with(".rbt");// RoboCute texture format
     }
 
-    std::shared_ptr<void> load(const std::string& path,
-                              const std::string& options_json) override {
+    std::shared_ptr<void> load(const std::string &path,
+                               const std::string &options_json) override {
         if (path.ends_with(".rbt")) {
             return load_rbt(path);
         } else {
@@ -38,13 +38,13 @@ public:
         }
     }
 
-    size_t get_resource_size(const std::shared_ptr<void>& resource) const override {
+    [[nodiscard]] size_t get_resource_size(const std::shared_ptr<void> &resource) const override {
         auto texture = std::static_pointer_cast<Texture>(resource);
         return texture->get_memory_size();
     }
 
 private:
-    std::shared_ptr<Texture> load_rbt(const std::string& path) {
+    std::shared_ptr<Texture> load_rbt(const std::string &path) {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             std::cerr << "[TextureLoader] Failed to open: " << path << "\n";
@@ -55,7 +55,7 @@ private:
 
         // Read header
         struct Header {
-            uint32_t magic;  // 'RBT\0'
+            uint32_t magic;// 'RBT\0'
             uint32_t version;
             uint32_t width;
             uint32_t height;
@@ -65,9 +65,9 @@ private:
             uint8_t reserved[3];
         } header;
 
-        file.read(reinterpret_cast<char*>(&header), sizeof(header));
+        file.read(reinterpret_cast<char *>(&header), sizeof(header));
 
-        if (header.magic != 0x00544252) {  // 'RBT\0'
+        if (header.magic != 0x00544252) {// 'RBT\0'
             std::cerr << "[TextureLoader] Invalid RBT magic number\n";
             return nullptr;
         }
@@ -80,16 +80,16 @@ private:
 
         // Read data size
         uint64_t data_size;
-        file.read(reinterpret_cast<char*>(&data_size), sizeof(data_size));
+        file.read(reinterpret_cast<char *>(&data_size), sizeof(data_size));
 
         // Read pixel data
         texture->data.resize(data_size);
-        file.read(reinterpret_cast<char*>(texture->data.data()), data_size);
+        file.read(reinterpret_cast<char *>(texture->data.data()), data_size);
 
         return texture;
     }
 
-    std::shared_ptr<Texture> load_image(const std::string& path) {
+    std::shared_ptr<Texture> load_image(const std::string &path) {
         // Placeholder: Simple raw file reading
         // In production, use stb_image or similar
         std::ifstream file(path, std::ios::binary | std::ios::ate);
@@ -106,7 +106,7 @@ private:
         file.seekg(0);
 
         texture->data.resize(file_size);
-        file.read(reinterpret_cast<char*>(texture->data.data()), file_size);
+        file.read(reinterpret_cast<char *>(texture->data.data()), file_size);
 
         // Placeholder dimensions (would come from image decoder)
         texture->width = 512;
@@ -115,7 +115,7 @@ private:
         texture->mip_levels = 1;
         texture->format = TextureFormat::RGBA8;
 
-        std::cout << "[TextureLoader] Loaded placeholder texture from " << path 
+        std::cout << "[TextureLoader] Loaded placeholder texture from " << path
                   << " (TODO: implement proper image decoding)\n";
 
         return texture;
@@ -127,5 +127,4 @@ std::unique_ptr<ResourceLoader> create_texture_loader() {
     return std::make_unique<TextureLoader>();
 }
 
-} // namespace rbc
-
+}// namespace rbc
