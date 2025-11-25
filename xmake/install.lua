@@ -1,5 +1,5 @@
 function main()
-    local ext_path = path.join(os.projectdir(), "src/rbc_ext/release")
+    local ext_path = path.join(os.projectdir(), "src/rbc_ext/_C")
     os.mkdir(ext_path)
     local target_dir = path.join(os.projectdir(), 'build', os.host(), os.arch(), 'release')
     -- copy targetdir to 
@@ -13,5 +13,11 @@ function main()
         async = true,
         detach = true
     })
+
+    -- generate "__init__.py"
+    local file = io.open(path.join(ext_path, "__init__.py"), "w")
+    file:write("# generated __init__.py")
+    file:close()
+
     os.execv("uv run stubgen")
 end

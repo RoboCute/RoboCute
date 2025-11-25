@@ -1,6 +1,6 @@
 from rbc_ext.generated.example_module import MyStruct
 import ctypes
-import test_py_codegen as tt
+import rbc_ext._C.test_py_codegen as tt
 
 if __name__ == "__main__":
     new_struct = MyStruct()
