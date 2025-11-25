@@ -1,6 +1,6 @@
-# Editor 编辑器文档
+# RoboCute编辑器
 
-RoboCute是一款**Python-First**的机器人仿真平台工具，支持类似ComfyUI的使用方法。在Python中注册Node，实现算法并开启Server，可选择性地开启RBC Editor进行场景可视化、参数调整和节点连线，最终让Server执行节点图。
+和游戏引擎与工业软件的重度编辑器不同，RoboCute的编辑器更类似于一个Debugger或者Inspector，旨在帮助完成一些用代码实现非常繁琐的参数配置，流程配置，提前预览，结果而可视化的部分。
 
 ## 核心理念：Python-First + 可选编辑器
 
@@ -13,18 +13,20 @@ RoboCute是一款**Python-First**的机器人仿真平台工具，支持类似Co
 
 2. **编辑器是调试器/可视化工具**
    - 编辑器不拥有场景数据，仅缓存Server端的镜像副本用于显示
-   - 编辑器的任何"编辑"操作都是向Server发送命令，由Server执行并返回结果
+   - 编辑器的任何"编辑"操作最终都是向Server发送命令，会和链接的Server定期同步场景，同时也会保证在开始执行命令的时候确保同步
    - 编辑器主要用于提高开发体验，而非必需组件
 
 3. **命令模式交互**
-   - Editor → Server：发送编辑命令（Create Entity, Set Transform, etc.）
-   - Server → Editor：推送场景状态更新（单向数据流）
-   - Server决定是否接受命令，Editor被动接收结果
+   - Editor → Server：缓存编辑命令（Create Entity, Set Transform, etc.）并定期同步
+   - Server → Editor：推送同步结果
 
 4. **代码优先，GUI辅助**
    - 所有功能都可以通过Python代码完成
    - 编辑器提供GUI来简化繁琐的参数设置和可视化调试
-   - 节点图编辑是GUI的主要价值点
+   - 编辑器的价值主要体现在
+     - 使用Viewport选中指定物体并使用Detail面板调整参数
+     - 使用NodeGraph编辑策略节点
+     - 对结果丰富的可视化功能
 
 ---
 
@@ -84,8 +86,6 @@ RoboCute是一款**Python-First**的机器人仿真平台工具，支持类似Co
 ## Python Server 端设计
 
 ### 1. 场景管理系统（权威数据源）
-
-Python端基于`doc/optimized_scene_design.md`的ECS架构维护场景：
 
 ```python
 # Python端场景管理器
@@ -253,38 +253,6 @@ class EditorService:
         for editor in self.connected_editors:
             editor.send(message)
 ```
-
-### 3. 无头模式支持
-
-```python
-# 示例：完全无Editor的仿真脚本
-import robocute as rbc
-
-# 创建场景
-scene = rbc.Scene()
-
-# 加载场景文件（可以是之前用Editor辅助创建的）
-scene.load("robot_simulation.rbc")
-
-# 或者纯代码构建场景
-robot = scene.create_entity("Robot")
-scene.add_component(robot, rbc.TransformComponent(position=[0, 0, 1]))
-scene.add_component(robot, rbc.MeshComponent(mesh="robot.obj"))
-scene.add_component(robot, rbc.PhysicsComponent(mass=10.0))
-
-# 加载节点图（可以是之前用Editor编辑的）
-node_graph = rbc.load_node_graph("path_planning.json")
-
-# 执行仿真（无Editor，离线渲染）
-results = scene.execute_node_graph(node_graph, frames=1000)
-
-# 导出结果
-results.export_animation("output.mp4")
-results.export_trajectory("trajectory.csv")
-```
-
----
-
 ## C++ Editor 端设计
 
 ### 1. 场景视图（只读镜像）

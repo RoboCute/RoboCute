@@ -26,17 +26,27 @@ import robocute as rbc
 
 # 创建场景
 scene = rbc.Scene()
-
+scene.start()
+# Load resources
+mesh_id = scene.load_mesh("models/robot.obj", priority=rbc.LoadPriority.High)
+material_id = rbc.create_default_material(
+    scene.resource_manager,
+    name="metal",
+    metallic=0.9,
+    roughness=0.3
+)
 # 纯代码创建场景
 ground = scene.create_entity("Ground")
 scene.add_component(ground, rbc.TransformComponent(position=[0, 0, 0]))
 scene.add_component(ground, rbc.MeshComponent(mesh="plane.obj"))
 scene.add_component(ground, rbc.PhysicsComponent(body_type="static"))
-
+# Create entity with render component
 robot = scene.create_entity("Robot")
-scene.add_component(robot, rbc.TransformComponent(position=[0, 0, 1]))
-scene.add_component(robot, rbc.MeshComponent(mesh="robot.urdf"))
-scene.add_component(robot, rbc.PhysicsComponent(body_type="dynamic", mass=50))
+scene.add_component(robot.id, "transform", rbc.TransformComponent(position=[0, 1, 0]))
+scene.add_component(robot.id, "render", rbc.RenderComponent(
+    mesh_id=mesh_id,
+    material_ids=[material_id]
+))
 
 # 加载节点图（可以是用Editor GUI编辑保存的）
 graph = rbc.load_node_graph("path_planning.json")

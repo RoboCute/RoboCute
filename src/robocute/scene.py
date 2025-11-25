@@ -9,18 +9,13 @@ from typing import Optional, Dict, List, Any
 from dataclasses import dataclass
 import json
 from pathlib import Path
-
-# Import resource management from rbc_ext
-try:
-    from rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
-except ImportError:
-    # Fallback if rbc_ext not available
-    from src.rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
+from rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
 
 
 @dataclass
 class TransformComponent:
     """Transform component for entities"""
+
     position: List[float] = None
     rotation: List[float] = None  # Quaternion (x, y, z, w)
     scale: List[float] = None
@@ -37,6 +32,7 @@ class TransformComponent:
 @dataclass
 class RenderComponent:
     """Render component with mesh and material references"""
+
     mesh_id: int = 0
     material_ids: List[int] = None
 
@@ -48,6 +44,7 @@ class RenderComponent:
 @dataclass
 class Entity:
     """Entity with components"""
+
     id: int
     name: str
     components: Dict[str, Any]
@@ -73,7 +70,7 @@ class Entity:
 class Scene:
     """
     Runtime Scene data collection
-    
+
     Manages entities, components, and resources for a scene.
     Can be loaded/saved as a .rbc file.
     """
@@ -163,7 +160,7 @@ class Scene:
             print(f"Scene file not found: {path}")
             return
 
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             data = json.load(f)
 
         self._load_from_dict(data)
@@ -176,7 +173,7 @@ class Scene:
 
         data = self._save_to_dict()
 
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump(data, f, indent=2)
 
         print(f"Scene saved to {path}")
@@ -190,8 +187,7 @@ class Scene:
         resources = data.get("resources", [])
         for res in resources:
             resource_id = self.resource_manager.register_resource(
-                res["path"],
-                ResourceType(res["type"])
+                res["path"], ResourceType(res["type"])
             )
             # Optionally load immediately
             if res.get("preload", False):
@@ -218,7 +214,7 @@ class Scene:
             "name": self._name,
             "metadata": self.metadata,
             "resources": [],
-            "entities": []
+            "entities": [],
         }
 
         # Save resources (collect from all entities)
@@ -233,23 +229,21 @@ class Scene:
         for rid in resource_ids:
             metadata = self.resource_manager.get_metadata(rid)
             if metadata:
-                data["resources"].append({
-                    "id": metadata.id,
-                    "type": metadata.type,
-                    "path": metadata.path,
-                    "preload": True
-                })
+                data["resources"].append(
+                    {
+                        "id": metadata.id,
+                        "type": metadata.type,
+                        "path": metadata.path,
+                        "preload": True,
+                    }
+                )
 
         # Save entities
         for entity in self._entities.values():
-            entity_data = {
-                "id": entity.id,
-                "name": entity.name,
-                "components": {}
-            }
+            entity_data = {"id": entity.id, "name": entity.name, "components": {}}
 
             for comp_type, component in entity.components.items():
-                if hasattr(component, '__dict__'):
+                if hasattr(component, "__dict__"):
                     entity_data["components"][comp_type] = component.__dict__
                 else:
                     entity_data["components"][comp_type] = component
@@ -264,10 +258,14 @@ class Scene:
         """Load a mesh resource"""
         return self.resource_manager.load_mesh(path, priority)
 
-    def load_texture(self, path: str, priority: LoadPriority = LoadPriority.Normal) -> int:
+    def load_texture(
+        self, path: str, priority: LoadPriority = LoadPriority.Normal
+    ) -> int:
         """Load a texture resource"""
         return self.resource_manager.load_texture(path, priority)
 
-    def load_material(self, path: str, priority: LoadPriority = LoadPriority.Normal) -> int:
+    def load_material(
+        self, path: str, priority: LoadPriority = LoadPriority.Normal
+    ) -> int:
         """Load a material resource"""
         return self.resource_manager.load_material(path, priority)
