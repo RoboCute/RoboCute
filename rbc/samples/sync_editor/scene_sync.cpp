@@ -51,62 +51,62 @@ const EditorResourceMetadata *SceneSync::get_resource(int resource_id) const {
 }
 
 bool SceneSync::parse_scene_state(const luisa::string &json) {
-    try {
-        JsonReader reader(json);
+    // try {
+    JsonReader reader(json);
 
-        // Read root "scene" object
-        if (!reader.start_object("scene")) {
-            LUISA_WARNING("No 'scene' object in JSON");
-            return false;
-        }
-
-        // Read "entities" array
-        uint64_t entity_count = 0;
-        if (!reader.start_array(entity_count, "entities")) {
-            LUISA_INFO("No entities in scene");
-            entities_.clear();
-            entity_map_.clear();
-            reader.end_scope();// end scene object
-            return true;
-        }
-
-        // Parse entities
-        luisa::vector<SceneEntity> new_entities;
-        for (uint64_t i = 0; i < entity_count; ++i) {
-            if (reader.start_object()) {
-                SceneEntity entity = parse_entity(reader);
-                new_entities.emplace_back(entity);
-                reader.end_scope();// end entity object
-            }
-        }
-
-        reader.end_scope();// end entities array
-        reader.end_scope();// end scene object
-
-        // Check if entities changed
-        bool changed = (new_entities.size() != entities_.size());
-        if (!changed) {
-            for (size_t i = 0; i < new_entities.size(); ++i) {
-                if (new_entities[i].id != entities_[i].id) {
-                    changed = true;
-                    break;
-                }
-            }
-        }
-
-        // Update entities
-        entities_ = new_entities;
-        entity_map_.clear();
-        for (size_t i = 0; i < entities_.size(); ++i) {
-            entity_map_[entities_[i].id] = i;
-        }
-
-        return changed;
-
-    } catch (const std::exception &e) {
-        LUISA_ERROR("Failed to parse scene state: {}", e.what());
+    // Read root "scene" object
+    if (!reader.start_object("scene")) {
+        LUISA_WARNING("No 'scene' object in JSON");
         return false;
     }
+
+    // Read "entities" array
+    uint64_t entity_count = 0;
+    if (!reader.start_array(entity_count, "entities")) {
+        LUISA_INFO("No entities in scene");
+        entities_.clear();
+        entity_map_.clear();
+        reader.end_scope();// end scene object
+        return true;
+    }
+
+    // Parse entities
+    luisa::vector<SceneEntity> new_entities;
+    for (uint64_t i = 0; i < entity_count; ++i) {
+        if (reader.start_object()) {
+            SceneEntity entity = parse_entity(reader);
+            new_entities.emplace_back(entity);
+            reader.end_scope();// end entity object
+        }
+    }
+
+    reader.end_scope();// end entities array
+    reader.end_scope();// end scene object
+
+    // Check if entities changed
+    bool changed = (new_entities.size() != entities_.size());
+    if (!changed) {
+        for (size_t i = 0; i < new_entities.size(); ++i) {
+            if (new_entities[i].id != entities_[i].id) {
+                changed = true;
+                break;
+            }
+        }
+    }
+
+    // Update entities
+    entities_ = new_entities;
+    entity_map_.clear();
+    for (size_t i = 0; i < entities_.size(); ++i) {
+        entity_map_[entities_[i].id] = i;
+    }
+
+    return changed;
+
+    // } catch (const std::exception &e) {
+    //     LUISA_ERROR("Failed to parse scene state: {}", e.what());
+    //     return false;
+    // }
 }
 
 SceneEntity SceneSync::parse_entity(JsonReader &reader) {
@@ -222,44 +222,44 @@ RenderComponent SceneSync::parse_render_component(JsonReader &reader) {
 }
 
 bool SceneSync::parse_resources(const luisa::string &json) {
-    try {
-        JsonReader reader(json);
+    // try {
+    JsonReader reader(json);
 
-        // Read "resources" array from root
-        uint64_t resource_count = 0;
-        if (!reader.start_array(resource_count, "resources")) {
-            LUISA_INFO("No resources in response");
-            return false;
-        }
-
-        // Parse resources
-        luisa::vector<EditorResourceMetadata> new_resources;
-        for (uint64_t i = 0; i < resource_count; ++i) {
-            if (reader.start_object()) {
-                EditorResourceMetadata resource = parse_resource(reader);
-                new_resources.emplace_back(resource);
-                reader.end_scope();// end resource object
-            }
-        }
-
-        reader.end_scope();// end resources array
-
-        // Check if resources changed
-        bool changed = (new_resources.size() != resources_.size());
-
-        // Update resources
-        resources_ = new_resources;
-        resource_map_.clear();
-        for (size_t i = 0; i < resources_.size(); ++i) {
-            resource_map_[resources_[i].id] = i;
-        }
-
-        return changed;
-
-    } catch (const std::exception &e) {
-        LUISA_ERROR("Failed to parse resources: {}", e.what());
+    // Read "resources" array from root
+    uint64_t resource_count = 0;
+    if (!reader.start_array(resource_count, "resources")) {
+        LUISA_INFO("No resources in response");
         return false;
     }
+
+    // Parse resources
+    luisa::vector<EditorResourceMetadata> new_resources;
+    for (uint64_t i = 0; i < resource_count; ++i) {
+        if (reader.start_object()) {
+            EditorResourceMetadata resource = parse_resource(reader);
+            new_resources.emplace_back(resource);
+            reader.end_scope();// end resource object
+        }
+    }
+
+    reader.end_scope();// end resources array
+
+    // Check if resources changed
+    bool changed = (new_resources.size() != resources_.size());
+
+    // Update resources
+    resources_ = new_resources;
+    resource_map_.clear();
+    for (size_t i = 0; i < resources_.size(); ++i) {
+        resource_map_[resources_[i].id] = i;
+    }
+
+    return changed;
+
+    // } catch (const std::exception &e) {
+    //     LUISA_ERROR("Failed to parse resources: {}", e.what());
+    //     return false;
+    // }
 }
 
 EditorResourceMetadata SceneSync::parse_resource(JsonReader &reader) {

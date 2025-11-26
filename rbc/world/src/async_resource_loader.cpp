@@ -161,40 +161,40 @@ void AsyncResourceLoader::worker_thread() {
         }
 
         // Process request
-        try {
-            // Set state to loading
-            storage_->set_state(request.id, ResourceState::Loading);
+        // try {
+        // Set state to loading
+        storage_->set_state(request.id, ResourceState::Loading);
 
-            // Load resource
-            bool success = load_resource_impl(
-                request.id,
-                request.type,
-                request.path,
-                "{}");
+        // Load resource
+        bool success = load_resource_impl(
+            request.id,
+            request.type,
+            request.path,
+            "{}");
 
-            // Update state
-            if (success) {
-                storage_->set_state(request.id, ResourceState::Loaded);
-            } else {
-                storage_->set_state(request.id, ResourceState::Failed);
-                std::cerr << "[AsyncResourceLoader] Failed to load resource: "
-                          << request.path << "\n";
-            }
-
-            // Call completion callback if exists
-            if (request.on_complete) {
-                request.on_complete(request.id, success);
-            }
-
-        } catch (const std::exception &e) {
-            std::cerr << "[AsyncResourceLoader] Exception loading "
-                      << request.path << ": " << e.what() << "\n";
+        // Update state
+        if (success) {
+            storage_->set_state(request.id, ResourceState::Loaded);
+        } else {
             storage_->set_state(request.id, ResourceState::Failed);
-
-            if (request.on_complete) {
-                request.on_complete(request.id, false);
-            }
+            std::cerr << "[AsyncResourceLoader] Failed to load resource: "
+                      << request.path << "\n";
         }
+
+        // Call completion callback if exists
+        if (request.on_complete) {
+            request.on_complete(request.id, success);
+        }
+
+        // } catch (const std::exception &e) {
+        //     std::cerr << "[AsyncResourceLoader] Exception loading "
+        //               << request.path << ": " << e.what() << "\n";
+        //     storage_->set_state(request.id, ResourceState::Failed);
+
+        //     if (request.on_complete) {
+        //         request.on_complete(request.id, false);
+        //     }
+        // }
     }
 }
 
