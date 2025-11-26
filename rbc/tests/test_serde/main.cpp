@@ -117,7 +117,7 @@ int main() {
         LUISA_INFO("Commit RPC commands: {}", (char const *)commands.data());
         // server
         auto return_blob = RPCCommandList::server_execute(
-            func_count,
+            ~0ull,
             std::move(commands));
         // client
         LUISA_INFO("RPC return values: {}", (char const *)return_blob.data());

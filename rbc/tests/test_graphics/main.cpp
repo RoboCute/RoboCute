@@ -9,6 +9,9 @@
 #include <luisa/core/dynamic_module.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include "simple_scene.h"
+#include "generated/generated.hpp"
+#include "rpc_hook_window.h"
+// utils.cpp
 void warm_up_accel();
 void before_frame(rbc::RenderPlugin *render_plugin, rbc::RenderPlugin::PipeCtxStub *pipe_ctx);
 void after_frame(
@@ -16,6 +19,10 @@ void after_frame(
     rbc::RenderPlugin::PipeCtxStub *pipe_ctx,
     luisa::compute::TimelineEvent *timeline_event,
     uint64_t signal_fence);
+void frame_reset(
+    rbc::RenderPlugin *render_plugin,
+    rbc::RenderPlugin::PipeCtxStub *pipe_ctx);
+
 int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
@@ -35,6 +42,7 @@ int main(int argc, char *argv[]) {
     auto &compute_stream = render_device.lc_async_stream();
     auto present_stream = render_device.lc_device().create_stream(StreamTag::GRAPHICS);
     render_device.set_main_stream(&compute_stream);
+    RPCHook rpc_hook{render_device, present_stream};
 
     auto shader_path = render_device.lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + backend);
     auto &cmdlist = render_device.lc_main_cmd_list();
@@ -133,11 +141,15 @@ int main(int argc, char *argv[]) {
         }
     });
     render_plugin->get_camera(pipe_ctx).fov = radians(80.f);
-    while (!window.should_close()) {
+    while (!window.should_close() && rpc_hook.enabled) {
         AssetsManager::instance()->wake_load_thread();
         window.poll_events();
         if (frame_index > 2) {
             timeline_event.synchronize(frame_index - 2);
+        }
+        if (rpc_hook.update()) {
+            present_stream.synchronize();
+            frame_reset(render_plugin, pipe_ctx);
         }
         auto &frame_settings = pipeline_state_map.read_mut<rbc::FrameSettings>();
         frame_settings.render_resolution = dst_img.size();
@@ -171,10 +183,14 @@ int main(int argc, char *argv[]) {
             pipe_ctx,
             &timeline_event,
             ++frame_index);
-        present_stream << timeline_event.wait(frame_index)
-                       << swapchain.present(dst_img)
-                       << stream_evt.signal();
+        present_stream << timeline_event.wait(frame_index);
+        present_stream << swapchain.present(dst_img);
+        for (auto &i : rpc_hook.shared_window.swapchains) {
+            present_stream << i.second.present(dst_img);
+        }
+        present_stream << stream_evt.signal();
     }
+    rpc_hook.shutdown_remote();
     timeline_event.synchronize(frame_index);
     present_stream.synchronize();
     stream_evt.synchronize();

@@ -74,3 +74,16 @@ void after_frame(
     }
     render_device.render_loop_mtx().unlock();
 }
+
+void frame_reset(
+    rbc::RenderPlugin *render_plugin,
+    rbc::RenderPlugin::PipeCtxStub *pipe_ctx) {
+    using namespace rbc;
+    using namespace luisa;
+    using namespace luisa::compute;
+    auto &sm = SceneManager::instance();
+    auto &render_device = RenderDevice::instance();
+    auto &main_stream = render_device.lc_main_stream();
+    main_stream.synchronize();
+    render_plugin->refresh_pipeline({}, pipe_ctx, main_stream);
+}

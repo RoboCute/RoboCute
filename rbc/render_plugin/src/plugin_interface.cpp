@@ -45,6 +45,14 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
         ptr->initialize();
         return true;
     }
+    bool refresh_pipeline(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx, luisa::compute::Stream &stream) override {
+        auto ptr = get_pipe(pipeline_name);
+        if (!ptr) return false;
+        ptr->refresh(
+            *reinterpret_cast<PipelineContext *>(pipe_ctx),
+            stream);
+        return true;
+    }
     bool before_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) override {
         auto ptr = get_pipe(pipeline_name);
         if (!ptr) return false;

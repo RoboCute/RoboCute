@@ -288,7 +288,7 @@ def _print_rpc_serializer(struct_type: tr.struct):
         mems_dict: dict = rpc[func_name]
         for key in mems_dict:
             func_hasher_name = hashlib.md5(
-                str((full_name + "->" + key)).encode("ascii")
+                str(full_name + "->" + func_name + "|" + key).encode("ascii")
             ).hexdigest()
             func: tr._function_t = mems_dict[key]
             if len(func._args) > 0:
@@ -391,13 +391,11 @@ def _cpp_impl_gen():
     # print classes
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
-        if len(struct_type._serde_members) == 0:
-            continue
         namespace = struct_type.namespace_name()
-        if len(namespace) > 0:
-            cb.add_line(f"namespace {namespace} {{")
-        # serialize function
         if len(struct_type._serde_members) > 0:
+            if len(namespace) > 0:
+                cb.add_line(f"namespace {namespace} {{")
+            # serialize function
             cb.add_line(
                 f"void {struct_type.class_name()}::rbc_objser(rbc::JsonSerializer& obj) const {{"
             )
@@ -406,9 +404,7 @@ def _cpp_impl_gen():
                 cb.add_line(f"obj._store(this->{mem_name});")
             cb.remove_indent()
             cb.add_line("}")
-
-        # de-serialize function
-        if len(struct_type._serde_members) > 0:
+            # de-serialize function
             cb.add_line(
                 f"void {struct_type.class_name()}::rbc_objdeser(rbc::JsonDeSerializer& obj){{"
             )
@@ -417,9 +413,9 @@ def _cpp_impl_gen():
                 cb.add_line(f"obj._load(this->{mem_name});")
             cb.remove_indent()
             cb.add_line("}")
-        if len(namespace) > 0:
-            cb.add_line(f"}} // namespace {namespace}")
-        cb.add_result("\n")
+            if len(namespace) > 0:
+                cb.add_line(f"}} // namespace {namespace}")
+            cb.add_result("\n")
 
         _print_rpc_serializer(struct_type)
 
@@ -476,7 +472,7 @@ def _print_client_impl(struct_type: tr.struct):
         mems_dict: dict = rpc[func_name]
         for key in mems_dict:
             func_hasher_name = hashlib.md5(
-                str((full_name + "->" + key)).encode("ascii")
+                str(full_name + "->" + func_name + "|" + key).encode("ascii")
             ).hexdigest()
             func: tr._function_t = mems_dict[key]
             args = ""
@@ -592,6 +588,10 @@ def cpp_interface_gen(*extra_includes):
             f"struct {struct_type._suffix} {struct_type.class_name()} : vstd::IOperatorNewBase {{"
         )
         cb.add_indent()
+        if struct_type._default_ctor:
+            cb.add_line(f'{struct_type.class_name()}();')
+        if struct_type._dtor:
+            cb.add_line(f'~{struct_type.class_name()}();')
         if len(struct_type._members) > 0:
             for mem_name in struct_type._members:
                 mem = struct_type._members[mem_name]

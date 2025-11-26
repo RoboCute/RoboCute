@@ -307,6 +307,14 @@ class struct:
         self._serde_members = dict()
         self._rpc = dict()
         self._methods = dict()
+        self._default_ctor = None
+        self._dtor = None
+        
+    def add_default_ctor(self):
+        self._default_ctor = True
+    
+    def add_default_dtor(self):
+        self._dtor = True
 
     def namespace_name(self):
         return self._namespace_name

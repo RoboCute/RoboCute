@@ -33,11 +33,12 @@ luisa::BinaryBlob RPCCommandList::server_execute(
     vstd::StackAllocator alloc(256, &alloc_callback, 2);
     JsonSerializer ret_ser{true};
     vstd::vector<std::pair<void *, vstd::func_ptr_t<void(void *)>>> ret_deleters;
-    ret_deleters.reserve(call_count);
-    for (auto i : vstd::range(call_count)) {
+    for (uint64_t i = 0; i < call_count; ++i) {
         luisa::string func_hash;
         uint64_t self;
-        LUISA_DEBUG_ASSERT(arg_deser.read(func_hash));
+        if (!(arg_deser.read(func_hash))) {
+            break;
+        }
         LUISA_DEBUG_ASSERT(arg_deser.read(self));
         auto call_meta = FuncSerializer::get_call_meta(func_hash);
         LUISA_DEBUG_ASSERT(call_meta);
