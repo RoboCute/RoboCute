@@ -241,7 +241,8 @@ def prepare():
 
         # Construct dictionary for JSON
         options = {}
-        options["lc_toolchain"] = "clang-cl"
+        options["lc_toolchain"] = LC_TOOLCHAIN
+        options["rbc_py_toolchain"] = PYD_TOOLCHAIN
 
         if py_path:
 

@@ -1,3 +1,4 @@
+NANOBIND_TOOLCHAIN = get_config('rbc_nb_toolchain')
 includes("nanobind")
 includes("LuisaCompute")
 includes("rtm")

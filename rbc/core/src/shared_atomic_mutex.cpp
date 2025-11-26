@@ -36,7 +36,7 @@ void shared_atomic_mutex::lock_shared() {
         any_shared_no_unique(oldval);
         // New value is expected value with a new shared lock (increment the shared lock count).
         newval = oldval + one_shared_thread;
-        LUISA_INTRIN_PAUSE();
+        std::this_thread::yield();
         // If _bitfield==oldval (there are no unique locks) then store newval in _bitfield (add a shared lock).
         // Otherwise update oldval with the latest value of _bitfield and run the test loop again.
     } while ((
@@ -71,7 +71,7 @@ void shared_atomic_mutex::acquire_unique() {
         no_shared_no_unique(oldval);
         // Set the unique lock flag to 1.
         newval = oldval + one_unique_flag;
-        LUISA_INTRIN_PAUSE();
+        std::this_thread::yield();
         // If _bitfield==oldval (there are no active shared locks and no thread has a unique lock) then store newval in _bitfield (get the unique lock).
         // Otherwise update oldval with the latest value of _bitfield and run the test loop again.
     } while ((
