@@ -1,6 +1,7 @@
 target("rbc_world")
 add_rules('lc_basic_settings', {
-    project_kind = 'shared'
+    project_kind = 'shared',
+    enable_exception = true
 })
 add_includedirs('include', { public = true})
 add_files('src/**.cpp')

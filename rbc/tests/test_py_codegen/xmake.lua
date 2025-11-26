@@ -1,7 +1,9 @@
 target('test_py_codegen')
     -- deps LuisaCompute
     add_rules('lc_basic_settings', {
-        project_kind = 'shared'
+        project_kind = 'shared',
+        enable_exception = true,
+        rtti = true
     })
     add_deps('nanobind')
     add_deps('rbc_core')

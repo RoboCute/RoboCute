@@ -1,6 +1,7 @@
 target("rbc_editor")
     add_rules('lc_basic_settings', {
-        project_kind = 'binary'
+        project_kind = 'binary',
+        enable_exception = true
     })
     add_files("main.cpp", "http_client.cpp", "scene_sync.cpp", "editor_scene.cpp")
     add_headerfiles("http_client.h", "scene_sync.h", "editor_scene.h")

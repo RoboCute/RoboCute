@@ -1,6 +1,7 @@
 local function rbc_ipc_interface()
     add_includedirs("include", {
-        public = true
+        public = true,
+        enable_exception = true
     })
 end
 local function rbc_ipc_impl()

@@ -1,6 +1,7 @@
 target('cpp-ipc')
 add_rules('lc_basic_settings', {
-    project_kind = 'static'
+    project_kind = 'static',
+    enable_exception = true
 })
 add_includedirs('include', {
     public = true
