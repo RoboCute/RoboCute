@@ -1,6 +1,7 @@
 set_xmakever("3.0.4")
 add_rules("mode.release", "mode.debug", "mode.releasedbg")
 set_policy("build.ccache", not is_plat("windows"))
+set_languages("c++20")
 set_policy("check.auto_ignore_flags", false)
 set_policy("build.optimization.lto", false)
 includes('xmake/options.lua')

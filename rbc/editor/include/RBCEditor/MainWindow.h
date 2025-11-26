@@ -1,6 +1,5 @@
 #pragma once
 #include <QMainWindow>
-
 class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
@@ -13,4 +12,3 @@ private:
     void setupToolBar();
     void setupDocks();
 };
-
