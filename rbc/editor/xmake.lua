@@ -3,16 +3,15 @@ target("rbc_editor")
         project_kind = 'binary',
         enable_exception = true
     })
-    add_files("main.cpp", "http_client.cpp", "scene_sync.cpp", "editor_scene.cpp")
-    add_headerfiles("http_client.h", "scene_sync.h", "editor_scene.h")
-    
+    add_rules("qt.widgetapp")
+    add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")
+
+    add_files("*.cpp")
+    add_files("*.h")
+    add_headerfiles("*.h")
     -- Dependencies
     add_deps("rbc_core")  -- For json_serde (yyjson)
     add_deps("rbc_world")
     add_deps('rbc_runtime', 'lc-gui', 'rbc_render_interface')
-    
-    -- System libraries for WinHTTP
-    if is_plat("windows") then
-        add_syslinks("winhttp")
-    end
+    add_deps("qt_node_editor")
 target_end()
