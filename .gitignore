@@ -87,6 +87,10 @@ xmake.log
 thirdparty/libtorch
 thirdparty/LuisaCompute
 thirdparty/qt_node_editor
+thirdparty/acl
+thirdparty/ozz_animation
+thirdparty/jolt_physics
+
 xmake/options.json
 xmake/options.lua
 modules/tools/nanogen/builtin/builtin.cpp

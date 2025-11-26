@@ -1,7 +1,158 @@
-#include <iostream>
 #include <QApplication>
+#include "MainWindow.h"
 
 int main(int argc, char **argv) {
     QApplication app(argc, argv);
+
+    // Modern Dark Industrial Theme QSS
+    QString styleSheet = R"(
+        /* Global Colors and Fonts */
+        QWidget {
+            background-color: #2b2b2b;
+            color: #cccccc;
+            font-family: "Segoe UI", "Roboto", sans-serif;
+            font-size: 10pt;
+        }
+
+        /* QMainWindow Separators */
+        QMainWindow::separator {
+            background-color: #1e1e1e;
+            width: 4px; 
+            height: 4px;
+        }
+        QMainWindow::separator:hover {
+            background-color: #007acc;
+        }
+
+        /* Menu Bar */
+        QMenuBar {
+            background-color: #1e1e1e;
+            padding: 2px;
+            border-bottom: 1px solid #3e3e42;
+        }
+        QMenuBar::item {
+            background: transparent;
+            padding: 4px 10px;
+        }
+        QMenuBar::item:selected {
+            background-color: #3e3e42;
+            border-radius: 2px;
+        }
+        QMenu {
+            background-color: #252526;
+            border: 1px solid #3e3e42;
+        }
+        QMenu::item {
+            padding: 6px 24px;
+        }
+        QMenu::item:selected {
+            background-color: #094771;
+        }
+
+        /* Toolbar */
+        QToolBar {
+            background-color: #2b2b2b;
+            border-bottom: 1px solid #3e3e42;
+            spacing: 6px;
+            padding: 4px;
+        }
+        QToolButton {
+            background-color: transparent;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            padding: 4px;
+        }
+        QToolButton:hover {
+            background-color: #3e3e42;
+            border: 1px solid #555555;
+        }
+        QToolButton:pressed {
+            background-color: #007acc;
+        }
+
+        /* Dock Widgets */
+        QDockWidget {
+            titlebar-close-icon: url(:/icons/close.png);
+            titlebar-normal-icon: url(:/icons/float.png);
+        }
+        QDockWidget::title {
+            background: #252526;
+            text-align: left;
+            padding: 6px;
+            padding-left: 10px;
+            border-bottom: 1px solid #3e3e42;
+            font-weight: bold;
+        }
+        
+        /* Tree & List Views */
+        QTreeWidget, QListWidget {
+            background-color: #1e1e1e;
+            border: 1px solid #3e3e42;
+            outline: none;
+        }
+        QTreeWidget::item, QListWidget::item {
+            padding: 4px;
+        }
+        QTreeWidget::item:selected, QListWidget::item:selected {
+            background-color: #094771;
+            color: white;
+        }
+        QHeaderView::section {
+            background-color: #252526;
+            border: none;
+            padding: 4px;
+        }
+
+        /* Central Viewport Placeholder */
+        QLabel#Viewport {
+            background-color: #111111;
+            border: 1px solid #3e3e42;
+            color: #666666;
+            font-size: 16pt;
+            font-weight: bold;
+        }
+        
+        QLabel#NodeEditorPlaceholder {
+             background-color: #202020;
+             color: #555555;
+        }
+
+        /* Scrollbars */
+        QScrollBar:vertical {
+            border: none;
+            background: #2b2b2b;
+            width: 10px;
+            margin: 0px;
+        }
+        QScrollBar::handle:vertical {
+            background: #4e4e4e;
+            min-height: 20px;
+            border-radius: 5px;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0px;
+        }
+        
+        QScrollBar:horizontal {
+            border: none;
+            background: #2b2b2b;
+            height: 10px;
+            margin: 0px;
+        }
+        QScrollBar::handle:horizontal {
+            background: #4e4e4e;
+            min-width: 20px;
+            border-radius: 5px;
+        }
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+            width: 0px;
+        }
+    )";
+    
+    app.setStyleSheet(styleSheet);
+
+    MainWindow window;
+    window.show();
+
     return app.exec();
 }
