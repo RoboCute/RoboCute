@@ -25,7 +25,7 @@ _type_names = {
 
 def _print_str(t, py_interface: bool = False, is_view: bool = False):
     if py_interface:
-        return "luisa::string_view"
+        return "luisa::string"
     elif is_view:
         return "luisa::string_view"
     else:
