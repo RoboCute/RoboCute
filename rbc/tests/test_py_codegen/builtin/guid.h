@@ -1,11 +1,11 @@
 #pragma once
 #include <luisa/vstl/v_guid.h>
-#include <nanobind/nanobind.h>
+#include <pybind11/pybind11.h>
 struct GuidData : vstd::IOperatorNewBase {
     uint64_t data0;
     uint64_t data1;
     GuidData() : data0(0), data1(0) {}
-    GuidData(nanobind::str const &str);
+    GuidData(luisa::string_view str);
     operator vstd::Guid &() {
         return *reinterpret_cast<vstd::Guid *>(this);
     }

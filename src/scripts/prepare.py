@@ -100,5 +100,5 @@ LC_DX_SDK = "dx_sdk_20250816.zip"
 RENDER_RESOURCE_NAME = "render_resources.7z"
 PLATFORM = 'windows'
 ARCH = 'x64'
-LC_TOOLCHAIN = "llvm"
-PYD_TOOLCHAIN = "clang-cl"
+XMAKE_GLOBAL_TOOLCHAIN = "llvm"
+PYD_TOOLCHAIN = "msvc"

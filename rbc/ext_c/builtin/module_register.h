@@ -1,7 +1,7 @@
 #pragma once
-#include <nanobind/nanobind.h>
+#include <pybind11/pybind11.h>
 #include <luisa/core/dynamic_module.h>
-
+namespace py = pybind11;
 struct ModuleRegister {
 private:
     static ModuleRegister *header;
@@ -20,16 +20,16 @@ public:
         RefCountModule &module);
     static void module_deref(RefCountModule &module);
 
-    static void init(nanobind::module_ &m);
-    void (*_callback)(nanobind::module_ &);
-    ModuleRegister(void (*callback)(nanobind::module_ &));
+    static void init(py::module &m);
+    void (*_callback)(py::module &);
+    ModuleRegister(void (*callback)(py::module &));
 };
-inline nanobind::str to_nb_str(auto const &str) {
+inline luisa::string to_nb_str(auto const &str) {
     if constexpr (requires {str.data(); str.size(); }) {
-        return nanobind::str{str.data(), str.size()};
+        return luisa::string{str.data(), str.size()};
     } else if constexpr (requires { str.c_str(); }) {
-        return nanobind::str{str.c_str()};
+        return luisa::string{str.c_str()};
     } else {
-        return nanobind::str{str};
+        return luisa::string{str};
     }
 }

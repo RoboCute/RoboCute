@@ -78,3 +78,24 @@ end, {
     jobgraph = true
 })
 rule_end()
+
+rule('pybind')
+on_load(function(target)
+    local lc_py_include = get_config("lc_py_include")
+    if lc_py_include then
+        target:add("includedirs", lc_py_include:split(";"))
+    end
+    local lc_py_linkdir = get_config("lc_py_linkdir")
+    local lc_py_libs = get_config("lc_py_libs")
+    if type(lc_py_linkdir) == "string" then
+        target:add("linkdirs", lc_py_linkdir:split(";"))
+    end
+    if type(lc_py_libs) == "string" then
+        target:add("links", lc_py_libs:split(";"))
+    end
+    target:add("cxflags", "/bigobj", {
+        tools = "cl"
+    })
+    target:add('includedirs', path.join(os.projectdir(), 'thirdparty/LuisaCompute/src/ext/pybind11/include'))
+end)
+rule_end()

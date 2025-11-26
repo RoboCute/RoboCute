@@ -1,60 +1,51 @@
-#include <nanobind/nanobind.h>
+#include <pybind11/pybind11.h>
 #include <luisa/core/logging.h>
-#include <luisa/runtime/device.h>
-#include <luisa/runtime/context.h>
-#include <luisa/runtime/stream.h>
-#include <luisa/runtime/rhi/command.h>
-#include <luisa/runtime/image.h>
-#include <luisa/runtime/rtx/accel.h>
-#include <luisa/runtime/rtx/mesh.h>
-#include <luisa/runtime/rtx/hit.h>
-#include <luisa/runtime/rtx/ray.h>
+#include <luisa/core/mathematics.h>
 #include "module_register.h"
 
-namespace nb = nanobind;
+namespace py = pybind11;
 using namespace luisa;
-using namespace luisa::compute;
 
 #define LUISA_EXPORT_ARITHMETIC_OP(T)                                                                              \
     m##T                                                                                                           \
-        .def("__add__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a + b; }, nb::is_operator())     \
-        .def("__add__", [](const Vector<T, 3> &a, const T &b) { return a + b; }, nb::is_operator())                \
-        .def("__radd__", [](const Vector<T, 3> &a, const T &b) { return a + b; }, nb::is_operator())               \
-        .def("__sub__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a - b; }, nb::is_operator())     \
-        .def("__sub__", [](const Vector<T, 3> &a, const T &b) { return a - b; }, nb::is_operator())                \
-        .def("__rsub__", [](const Vector<T, 3> &a, const T &b) { return b - a; }, nb::is_operator())               \
-        .def("__mul__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a * b; }, nb::is_operator())     \
-        .def("__mul__", [](const Vector<T, 3> &a, const T &b) { return a * b; }, nb::is_operator())                \
-        .def("__rmul__", [](const Vector<T, 3> &a, const T &b) { return a * b; }, nb::is_operator())               \
-        .def("__truediv__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a / b; }, nb::is_operator()) \
-        .def("__truediv__", [](const Vector<T, 3> &a, const T &b) { return a / b; }, nb::is_operator())            \
-        .def("__rtruediv__", [](const Vector<T, 3> &a, const T &b) { return b / a; }, nb::is_operator())           \
-        .def("__gt__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a > b; }, nb::is_operator())      \
-        .def("__ge__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a >= b; }, nb::is_operator())     \
-        .def("__lt__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a < b; }, nb::is_operator())      \
-        .def("__le__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a <= b; }, nb::is_operator())     \
-        .def("__eq__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a == b; }, nb::is_operator())     \
-        .def("__ne__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a != b; }, nb::is_operator());
+        .def("__add__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a + b; }, py::is_operator())     \
+        .def("__add__", [](const Vector<T, 3> &a, const T &b) { return a + b; }, py::is_operator())                \
+        .def("__radd__", [](const Vector<T, 3> &a, const T &b) { return a + b; }, py::is_operator())               \
+        .def("__sub__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a - b; }, py::is_operator())     \
+        .def("__sub__", [](const Vector<T, 3> &a, const T &b) { return a - b; }, py::is_operator())                \
+        .def("__rsub__", [](const Vector<T, 3> &a, const T &b) { return b - a; }, py::is_operator())               \
+        .def("__mul__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a * b; }, py::is_operator())     \
+        .def("__mul__", [](const Vector<T, 3> &a, const T &b) { return a * b; }, py::is_operator())                \
+        .def("__rmul__", [](const Vector<T, 3> &a, const T &b) { return a * b; }, py::is_operator())               \
+        .def("__truediv__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a / b; }, py::is_operator()) \
+        .def("__truediv__", [](const Vector<T, 3> &a, const T &b) { return a / b; }, py::is_operator())            \
+        .def("__rtruediv__", [](const Vector<T, 3> &a, const T &b) { return b / a; }, py::is_operator())           \
+        .def("__gt__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a > b; }, py::is_operator())      \
+        .def("__ge__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a >= b; }, py::is_operator())     \
+        .def("__lt__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a < b; }, py::is_operator())      \
+        .def("__le__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a <= b; }, py::is_operator())     \
+        .def("__eq__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a == b; }, py::is_operator())     \
+        .def("__ne__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a != b; }, py::is_operator());
 
 #define LUISA_EXPORT_BOOL_OP(T)                                                                                 \
     m##T                                                                                                        \
-        .def("__eq__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a == b; }, nb::is_operator())  \
-        .def("__ne__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a != b; }, nb::is_operator())  \
-        .def("__and__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a && b; }, nb::is_operator()) \
-        .def("__or__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a || b; }, nb::is_operator());
+        .def("__eq__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a == b; }, py::is_operator())  \
+        .def("__ne__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a != b; }, py::is_operator())  \
+        .def("__and__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a && b; }, py::is_operator()) \
+        .def("__or__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a || b; }, py::is_operator());
 
 #define LUISA_EXPORT_INT_OP(T)                                                                                 \
     m##T                                                                                                       \
-        .def("__mod__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a % b; }, nb::is_operator()) \
-        .def("__mod__", [](const Vector<T, 3> &a, const T &b) { return a % b; }, nb::is_operator())            \
-        .def("__rmod__", [](const Vector<T, 3> &a, const T &b) { return b % a; }, nb::is_operator())           \
-        .def("__shl__", [](const Vector<T, 3> &a, const T &b) { return a << b; }, nb::is_operator())           \
-        .def("__shr__", [](const Vector<T, 3> &a, const T &b) { return a >> b; }, nb::is_operator())           \
-        .def("__xor__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a ^ b; }, nb::is_operator());
+        .def("__mod__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a % b; }, py::is_operator()) \
+        .def("__mod__", [](const Vector<T, 3> &a, const T &b) { return a % b; }, py::is_operator())            \
+        .def("__rmod__", [](const Vector<T, 3> &a, const T &b) { return b % a; }, py::is_operator())           \
+        .def("__shl__", [](const Vector<T, 3> &a, const T &b) { return a << b; }, py::is_operator())           \
+        .def("__shr__", [](const Vector<T, 3> &a, const T &b) { return a >> b; }, py::is_operator())           \
+        .def("__xor__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return a ^ b; }, py::is_operator());
 
 #define LUISA_EXPORT_FLOAT_OP(T) \
     m##T                         \
-        .def("__pow__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return luisa::pow(a, b); }, nb::is_operator());
+        .def("__pow__", [](const Vector<T, 3> &a, const Vector<T, 3> &b) { return luisa::pow(a, b); }, py::is_operator());
 
 #define LUISA_EXPORT_UNARY_FUNC(T, name) \
     m.def(#name, [](const Vector<T, 3> &v) { return luisa::name(v); });
@@ -101,140 +92,140 @@ using namespace luisa::compute;
     LUISA_EXPORT_UNARY_FUNC(T, translation)
 
 #define LUISA_EXPORT_VECTOR3(T)                                                                                           \
-    nb::class_<luisa::detail::VectorStorage<T, 3>>(m, "_vectorstorage_" #T "3");                                          \
-    auto m##T = nb::class_<Vector<T, 3>, luisa::detail::VectorStorage<T, 3>>(m, #T "3")                                   \
-                    .def(nb::init<T>())                                                                                   \
-                    .def(nb::init<T, T, T>())                                                                             \
-                    .def(nb::init<Vector<T, 3>>())                                                                        \
-                    .def("__repr__", [](Vector<T, 3> &self) { return to_nb_str(format(#T "3({},{},{})", self.x, self.y, self.z)); }) \
+    py::class_<luisa::detail::VectorStorage<T, 3>>(m, "_vectorstorage_" #T "3");                                          \
+    auto m##T = py::class_<Vector<T, 3>, luisa::detail::VectorStorage<T, 3>>(m, #T "3")                                   \
+                    .def(py::init<T>())                                                                                   \
+                    .def(py::init<T, T, T>())                                                                             \
+                    .def(py::init<Vector<T, 3>>())                                                                        \
+                    .def("__repr__", [](Vector<T, 3> &self) { return format(#T "3({},{},{})", self.x, self.y, self.z); }) \
                     .def("__getitem__", [](Vector<T, 3> &self, size_t i) { return self[i]; })                             \
                     .def("__setitem__", [](Vector<T, 3> &self, size_t i, T k) { self[i] = k; })                           \
                     .def("copy", [](Vector<T, 3> &self) { return Vector<T, 3>(self); })                                   \
-                    .def_rw("x", &Vector<T, 3>::x)                                                                 \
-                    .def_rw("y", &Vector<T, 3>::y)                                                                 \
-                    .def_rw("z", &Vector<T, 3>::z)                                                                 \
-                    .def_prop_ro("xx", &Vector<T, 3>::xx)                                                       \
-                    .def_prop_ro("xy", &Vector<T, 3>::xy)                                                       \
-                    .def_prop_ro("xz", &Vector<T, 3>::xz)                                                       \
-                    .def_prop_ro("yx", &Vector<T, 3>::yx)                                                       \
-                    .def_prop_ro("yy", &Vector<T, 3>::yy)                                                       \
-                    .def_prop_ro("yz", &Vector<T, 3>::yz)                                                       \
-                    .def_prop_ro("zx", &Vector<T, 3>::zx)                                                       \
-                    .def_prop_ro("zy", &Vector<T, 3>::zy)                                                       \
-                    .def_prop_ro("zz", &Vector<T, 3>::zz)                                                       \
-                    .def_prop_ro("xxx", &Vector<T, 3>::xxx)                                                     \
-                    .def_prop_ro("xxy", &Vector<T, 3>::xxy)                                                     \
-                    .def_prop_ro("xxz", &Vector<T, 3>::xxz)                                                     \
-                    .def_prop_ro("xyx", &Vector<T, 3>::xyx)                                                     \
-                    .def_prop_ro("xyy", &Vector<T, 3>::xyy)                                                     \
-                    .def_prop_ro("xyz", &Vector<T, 3>::xyz)                                                     \
-                    .def_prop_ro("xzx", &Vector<T, 3>::xzx)                                                     \
-                    .def_prop_ro("xzy", &Vector<T, 3>::xzy)                                                     \
-                    .def_prop_ro("xzz", &Vector<T, 3>::xzz)                                                     \
-                    .def_prop_ro("yxx", &Vector<T, 3>::yxx)                                                     \
-                    .def_prop_ro("yxy", &Vector<T, 3>::yxy)                                                     \
-                    .def_prop_ro("yxz", &Vector<T, 3>::yxz)                                                     \
-                    .def_prop_ro("yyx", &Vector<T, 3>::yyx)                                                     \
-                    .def_prop_ro("yyy", &Vector<T, 3>::yyy)                                                     \
-                    .def_prop_ro("yyz", &Vector<T, 3>::yyz)                                                     \
-                    .def_prop_ro("yzx", &Vector<T, 3>::yzx)                                                     \
-                    .def_prop_ro("yzy", &Vector<T, 3>::yzy)                                                     \
-                    .def_prop_ro("yzz", &Vector<T, 3>::yzz)                                                     \
-                    .def_prop_ro("zxx", &Vector<T, 3>::zxx)                                                     \
-                    .def_prop_ro("zxy", &Vector<T, 3>::zxy)                                                     \
-                    .def_prop_ro("zxz", &Vector<T, 3>::zxz)                                                     \
-                    .def_prop_ro("zyx", &Vector<T, 3>::zyx)                                                     \
-                    .def_prop_ro("zyy", &Vector<T, 3>::zyy)                                                     \
-                    .def_prop_ro("zyz", &Vector<T, 3>::zyz)                                                     \
-                    .def_prop_ro("zzx", &Vector<T, 3>::zzx)                                                     \
-                    .def_prop_ro("zzy", &Vector<T, 3>::zzy)                                                     \
-                    .def_prop_ro("zzz", &Vector<T, 3>::zzz)                                                     \
-                    .def_prop_ro("xxxx", &Vector<T, 3>::xxxx)                                                   \
-                    .def_prop_ro("xxxy", &Vector<T, 3>::xxxy)                                                   \
-                    .def_prop_ro("xxxz", &Vector<T, 3>::xxxz)                                                   \
-                    .def_prop_ro("xxyx", &Vector<T, 3>::xxyx)                                                   \
-                    .def_prop_ro("xxyy", &Vector<T, 3>::xxyy)                                                   \
-                    .def_prop_ro("xxyz", &Vector<T, 3>::xxyz)                                                   \
-                    .def_prop_ro("xxzx", &Vector<T, 3>::xxzx)                                                   \
-                    .def_prop_ro("xxzy", &Vector<T, 3>::xxzy)                                                   \
-                    .def_prop_ro("xxzz", &Vector<T, 3>::xxzz)                                                   \
-                    .def_prop_ro("xyxx", &Vector<T, 3>::xyxx)                                                   \
-                    .def_prop_ro("xyxy", &Vector<T, 3>::xyxy)                                                   \
-                    .def_prop_ro("xyxz", &Vector<T, 3>::xyxz)                                                   \
-                    .def_prop_ro("xyyx", &Vector<T, 3>::xyyx)                                                   \
-                    .def_prop_ro("xyyy", &Vector<T, 3>::xyyy)                                                   \
-                    .def_prop_ro("xyyz", &Vector<T, 3>::xyyz)                                                   \
-                    .def_prop_ro("xyzx", &Vector<T, 3>::xyzx)                                                   \
-                    .def_prop_ro("xyzy", &Vector<T, 3>::xyzy)                                                   \
-                    .def_prop_ro("xyzz", &Vector<T, 3>::xyzz)                                                   \
-                    .def_prop_ro("xzxx", &Vector<T, 3>::xzxx)                                                   \
-                    .def_prop_ro("xzxy", &Vector<T, 3>::xzxy)                                                   \
-                    .def_prop_ro("xzxz", &Vector<T, 3>::xzxz)                                                   \
-                    .def_prop_ro("xzyx", &Vector<T, 3>::xzyx)                                                   \
-                    .def_prop_ro("xzyy", &Vector<T, 3>::xzyy)                                                   \
-                    .def_prop_ro("xzyz", &Vector<T, 3>::xzyz)                                                   \
-                    .def_prop_ro("xzzx", &Vector<T, 3>::xzzx)                                                   \
-                    .def_prop_ro("xzzy", &Vector<T, 3>::xzzy)                                                   \
-                    .def_prop_ro("xzzz", &Vector<T, 3>::xzzz)                                                   \
-                    .def_prop_ro("yxxx", &Vector<T, 3>::yxxx)                                                   \
-                    .def_prop_ro("yxxy", &Vector<T, 3>::yxxy)                                                   \
-                    .def_prop_ro("yxxz", &Vector<T, 3>::yxxz)                                                   \
-                    .def_prop_ro("yxyx", &Vector<T, 3>::yxyx)                                                   \
-                    .def_prop_ro("yxyy", &Vector<T, 3>::yxyy)                                                   \
-                    .def_prop_ro("yxyz", &Vector<T, 3>::yxyz)                                                   \
-                    .def_prop_ro("yxzx", &Vector<T, 3>::yxzx)                                                   \
-                    .def_prop_ro("yxzy", &Vector<T, 3>::yxzy)                                                   \
-                    .def_prop_ro("yxzz", &Vector<T, 3>::yxzz)                                                   \
-                    .def_prop_ro("yyxx", &Vector<T, 3>::yyxx)                                                   \
-                    .def_prop_ro("yyxy", &Vector<T, 3>::yyxy)                                                   \
-                    .def_prop_ro("yyxz", &Vector<T, 3>::yyxz)                                                   \
-                    .def_prop_ro("yyyx", &Vector<T, 3>::yyyx)                                                   \
-                    .def_prop_ro("yyyy", &Vector<T, 3>::yyyy)                                                   \
-                    .def_prop_ro("yyyz", &Vector<T, 3>::yyyz)                                                   \
-                    .def_prop_ro("yyzx", &Vector<T, 3>::yyzx)                                                   \
-                    .def_prop_ro("yyzy", &Vector<T, 3>::yyzy)                                                   \
-                    .def_prop_ro("yyzz", &Vector<T, 3>::yyzz)                                                   \
-                    .def_prop_ro("yzxx", &Vector<T, 3>::yzxx)                                                   \
-                    .def_prop_ro("yzxy", &Vector<T, 3>::yzxy)                                                   \
-                    .def_prop_ro("yzxz", &Vector<T, 3>::yzxz)                                                   \
-                    .def_prop_ro("yzyx", &Vector<T, 3>::yzyx)                                                   \
-                    .def_prop_ro("yzyy", &Vector<T, 3>::yzyy)                                                   \
-                    .def_prop_ro("yzyz", &Vector<T, 3>::yzyz)                                                   \
-                    .def_prop_ro("yzzx", &Vector<T, 3>::yzzx)                                                   \
-                    .def_prop_ro("yzzy", &Vector<T, 3>::yzzy)                                                   \
-                    .def_prop_ro("yzzz", &Vector<T, 3>::yzzz)                                                   \
-                    .def_prop_ro("zxxx", &Vector<T, 3>::zxxx)                                                   \
-                    .def_prop_ro("zxxy", &Vector<T, 3>::zxxy)                                                   \
-                    .def_prop_ro("zxxz", &Vector<T, 3>::zxxz)                                                   \
-                    .def_prop_ro("zxyx", &Vector<T, 3>::zxyx)                                                   \
-                    .def_prop_ro("zxyy", &Vector<T, 3>::zxyy)                                                   \
-                    .def_prop_ro("zxyz", &Vector<T, 3>::zxyz)                                                   \
-                    .def_prop_ro("zxzx", &Vector<T, 3>::zxzx)                                                   \
-                    .def_prop_ro("zxzy", &Vector<T, 3>::zxzy)                                                   \
-                    .def_prop_ro("zxzz", &Vector<T, 3>::zxzz)                                                   \
-                    .def_prop_ro("zyxx", &Vector<T, 3>::zyxx)                                                   \
-                    .def_prop_ro("zyxy", &Vector<T, 3>::zyxy)                                                   \
-                    .def_prop_ro("zyxz", &Vector<T, 3>::zyxz)                                                   \
-                    .def_prop_ro("zyyx", &Vector<T, 3>::zyyx)                                                   \
-                    .def_prop_ro("zyyy", &Vector<T, 3>::zyyy)                                                   \
-                    .def_prop_ro("zyyz", &Vector<T, 3>::zyyz)                                                   \
-                    .def_prop_ro("zyzx", &Vector<T, 3>::zyzx)                                                   \
-                    .def_prop_ro("zyzy", &Vector<T, 3>::zyzy)                                                   \
-                    .def_prop_ro("zyzz", &Vector<T, 3>::zyzz)                                                   \
-                    .def_prop_ro("zzxx", &Vector<T, 3>::zzxx)                                                   \
-                    .def_prop_ro("zzxy", &Vector<T, 3>::zzxy)                                                   \
-                    .def_prop_ro("zzxz", &Vector<T, 3>::zzxz)                                                   \
-                    .def_prop_ro("zzyx", &Vector<T, 3>::zzyx)                                                   \
-                    .def_prop_ro("zzyy", &Vector<T, 3>::zzyy)                                                   \
-                    .def_prop_ro("zzyz", &Vector<T, 3>::zzyz)                                                   \
-                    .def_prop_ro("zzzx", &Vector<T, 3>::zzzx)                                                   \
-                    .def_prop_ro("zzzy", &Vector<T, 3>::zzzy)                                                   \
-                    .def_prop_ro("zzzz", &Vector<T, 3>::zzzz);                                                  \
+                    .def_readwrite("x", &Vector<T, 3>::x)                                                                 \
+                    .def_readwrite("y", &Vector<T, 3>::y)                                                                 \
+                    .def_readwrite("z", &Vector<T, 3>::z)                                                                 \
+                    .def_property_readonly("xx", &Vector<T, 3>::xx)                                                       \
+                    .def_property_readonly("xy", &Vector<T, 3>::xy)                                                       \
+                    .def_property_readonly("xz", &Vector<T, 3>::xz)                                                       \
+                    .def_property_readonly("yx", &Vector<T, 3>::yx)                                                       \
+                    .def_property_readonly("yy", &Vector<T, 3>::yy)                                                       \
+                    .def_property_readonly("yz", &Vector<T, 3>::yz)                                                       \
+                    .def_property_readonly("zx", &Vector<T, 3>::zx)                                                       \
+                    .def_property_readonly("zy", &Vector<T, 3>::zy)                                                       \
+                    .def_property_readonly("zz", &Vector<T, 3>::zz)                                                       \
+                    .def_property_readonly("xxx", &Vector<T, 3>::xxx)                                                     \
+                    .def_property_readonly("xxy", &Vector<T, 3>::xxy)                                                     \
+                    .def_property_readonly("xxz", &Vector<T, 3>::xxz)                                                     \
+                    .def_property_readonly("xyx", &Vector<T, 3>::xyx)                                                     \
+                    .def_property_readonly("xyy", &Vector<T, 3>::xyy)                                                     \
+                    .def_property_readonly("xyz", &Vector<T, 3>::xyz)                                                     \
+                    .def_property_readonly("xzx", &Vector<T, 3>::xzx)                                                     \
+                    .def_property_readonly("xzy", &Vector<T, 3>::xzy)                                                     \
+                    .def_property_readonly("xzz", &Vector<T, 3>::xzz)                                                     \
+                    .def_property_readonly("yxx", &Vector<T, 3>::yxx)                                                     \
+                    .def_property_readonly("yxy", &Vector<T, 3>::yxy)                                                     \
+                    .def_property_readonly("yxz", &Vector<T, 3>::yxz)                                                     \
+                    .def_property_readonly("yyx", &Vector<T, 3>::yyx)                                                     \
+                    .def_property_readonly("yyy", &Vector<T, 3>::yyy)                                                     \
+                    .def_property_readonly("yyz", &Vector<T, 3>::yyz)                                                     \
+                    .def_property_readonly("yzx", &Vector<T, 3>::yzx)                                                     \
+                    .def_property_readonly("yzy", &Vector<T, 3>::yzy)                                                     \
+                    .def_property_readonly("yzz", &Vector<T, 3>::yzz)                                                     \
+                    .def_property_readonly("zxx", &Vector<T, 3>::zxx)                                                     \
+                    .def_property_readonly("zxy", &Vector<T, 3>::zxy)                                                     \
+                    .def_property_readonly("zxz", &Vector<T, 3>::zxz)                                                     \
+                    .def_property_readonly("zyx", &Vector<T, 3>::zyx)                                                     \
+                    .def_property_readonly("zyy", &Vector<T, 3>::zyy)                                                     \
+                    .def_property_readonly("zyz", &Vector<T, 3>::zyz)                                                     \
+                    .def_property_readonly("zzx", &Vector<T, 3>::zzx)                                                     \
+                    .def_property_readonly("zzy", &Vector<T, 3>::zzy)                                                     \
+                    .def_property_readonly("zzz", &Vector<T, 3>::zzz)                                                     \
+                    .def_property_readonly("xxxx", &Vector<T, 3>::xxxx)                                                   \
+                    .def_property_readonly("xxxy", &Vector<T, 3>::xxxy)                                                   \
+                    .def_property_readonly("xxxz", &Vector<T, 3>::xxxz)                                                   \
+                    .def_property_readonly("xxyx", &Vector<T, 3>::xxyx)                                                   \
+                    .def_property_readonly("xxyy", &Vector<T, 3>::xxyy)                                                   \
+                    .def_property_readonly("xxyz", &Vector<T, 3>::xxyz)                                                   \
+                    .def_property_readonly("xxzx", &Vector<T, 3>::xxzx)                                                   \
+                    .def_property_readonly("xxzy", &Vector<T, 3>::xxzy)                                                   \
+                    .def_property_readonly("xxzz", &Vector<T, 3>::xxzz)                                                   \
+                    .def_property_readonly("xyxx", &Vector<T, 3>::xyxx)                                                   \
+                    .def_property_readonly("xyxy", &Vector<T, 3>::xyxy)                                                   \
+                    .def_property_readonly("xyxz", &Vector<T, 3>::xyxz)                                                   \
+                    .def_property_readonly("xyyx", &Vector<T, 3>::xyyx)                                                   \
+                    .def_property_readonly("xyyy", &Vector<T, 3>::xyyy)                                                   \
+                    .def_property_readonly("xyyz", &Vector<T, 3>::xyyz)                                                   \
+                    .def_property_readonly("xyzx", &Vector<T, 3>::xyzx)                                                   \
+                    .def_property_readonly("xyzy", &Vector<T, 3>::xyzy)                                                   \
+                    .def_property_readonly("xyzz", &Vector<T, 3>::xyzz)                                                   \
+                    .def_property_readonly("xzxx", &Vector<T, 3>::xzxx)                                                   \
+                    .def_property_readonly("xzxy", &Vector<T, 3>::xzxy)                                                   \
+                    .def_property_readonly("xzxz", &Vector<T, 3>::xzxz)                                                   \
+                    .def_property_readonly("xzyx", &Vector<T, 3>::xzyx)                                                   \
+                    .def_property_readonly("xzyy", &Vector<T, 3>::xzyy)                                                   \
+                    .def_property_readonly("xzyz", &Vector<T, 3>::xzyz)                                                   \
+                    .def_property_readonly("xzzx", &Vector<T, 3>::xzzx)                                                   \
+                    .def_property_readonly("xzzy", &Vector<T, 3>::xzzy)                                                   \
+                    .def_property_readonly("xzzz", &Vector<T, 3>::xzzz)                                                   \
+                    .def_property_readonly("yxxx", &Vector<T, 3>::yxxx)                                                   \
+                    .def_property_readonly("yxxy", &Vector<T, 3>::yxxy)                                                   \
+                    .def_property_readonly("yxxz", &Vector<T, 3>::yxxz)                                                   \
+                    .def_property_readonly("yxyx", &Vector<T, 3>::yxyx)                                                   \
+                    .def_property_readonly("yxyy", &Vector<T, 3>::yxyy)                                                   \
+                    .def_property_readonly("yxyz", &Vector<T, 3>::yxyz)                                                   \
+                    .def_property_readonly("yxzx", &Vector<T, 3>::yxzx)                                                   \
+                    .def_property_readonly("yxzy", &Vector<T, 3>::yxzy)                                                   \
+                    .def_property_readonly("yxzz", &Vector<T, 3>::yxzz)                                                   \
+                    .def_property_readonly("yyxx", &Vector<T, 3>::yyxx)                                                   \
+                    .def_property_readonly("yyxy", &Vector<T, 3>::yyxy)                                                   \
+                    .def_property_readonly("yyxz", &Vector<T, 3>::yyxz)                                                   \
+                    .def_property_readonly("yyyx", &Vector<T, 3>::yyyx)                                                   \
+                    .def_property_readonly("yyyy", &Vector<T, 3>::yyyy)                                                   \
+                    .def_property_readonly("yyyz", &Vector<T, 3>::yyyz)                                                   \
+                    .def_property_readonly("yyzx", &Vector<T, 3>::yyzx)                                                   \
+                    .def_property_readonly("yyzy", &Vector<T, 3>::yyzy)                                                   \
+                    .def_property_readonly("yyzz", &Vector<T, 3>::yyzz)                                                   \
+                    .def_property_readonly("yzxx", &Vector<T, 3>::yzxx)                                                   \
+                    .def_property_readonly("yzxy", &Vector<T, 3>::yzxy)                                                   \
+                    .def_property_readonly("yzxz", &Vector<T, 3>::yzxz)                                                   \
+                    .def_property_readonly("yzyx", &Vector<T, 3>::yzyx)                                                   \
+                    .def_property_readonly("yzyy", &Vector<T, 3>::yzyy)                                                   \
+                    .def_property_readonly("yzyz", &Vector<T, 3>::yzyz)                                                   \
+                    .def_property_readonly("yzzx", &Vector<T, 3>::yzzx)                                                   \
+                    .def_property_readonly("yzzy", &Vector<T, 3>::yzzy)                                                   \
+                    .def_property_readonly("yzzz", &Vector<T, 3>::yzzz)                                                   \
+                    .def_property_readonly("zxxx", &Vector<T, 3>::zxxx)                                                   \
+                    .def_property_readonly("zxxy", &Vector<T, 3>::zxxy)                                                   \
+                    .def_property_readonly("zxxz", &Vector<T, 3>::zxxz)                                                   \
+                    .def_property_readonly("zxyx", &Vector<T, 3>::zxyx)                                                   \
+                    .def_property_readonly("zxyy", &Vector<T, 3>::zxyy)                                                   \
+                    .def_property_readonly("zxyz", &Vector<T, 3>::zxyz)                                                   \
+                    .def_property_readonly("zxzx", &Vector<T, 3>::zxzx)                                                   \
+                    .def_property_readonly("zxzy", &Vector<T, 3>::zxzy)                                                   \
+                    .def_property_readonly("zxzz", &Vector<T, 3>::zxzz)                                                   \
+                    .def_property_readonly("zyxx", &Vector<T, 3>::zyxx)                                                   \
+                    .def_property_readonly("zyxy", &Vector<T, 3>::zyxy)                                                   \
+                    .def_property_readonly("zyxz", &Vector<T, 3>::zyxz)                                                   \
+                    .def_property_readonly("zyyx", &Vector<T, 3>::zyyx)                                                   \
+                    .def_property_readonly("zyyy", &Vector<T, 3>::zyyy)                                                   \
+                    .def_property_readonly("zyyz", &Vector<T, 3>::zyyz)                                                   \
+                    .def_property_readonly("zyzx", &Vector<T, 3>::zyzx)                                                   \
+                    .def_property_readonly("zyzy", &Vector<T, 3>::zyzy)                                                   \
+                    .def_property_readonly("zyzz", &Vector<T, 3>::zyzz)                                                   \
+                    .def_property_readonly("zzxx", &Vector<T, 3>::zzxx)                                                   \
+                    .def_property_readonly("zzxy", &Vector<T, 3>::zzxy)                                                   \
+                    .def_property_readonly("zzxz", &Vector<T, 3>::zzxz)                                                   \
+                    .def_property_readonly("zzyx", &Vector<T, 3>::zzyx)                                                   \
+                    .def_property_readonly("zzyy", &Vector<T, 3>::zzyy)                                                   \
+                    .def_property_readonly("zzyz", &Vector<T, 3>::zzyz)                                                   \
+                    .def_property_readonly("zzzx", &Vector<T, 3>::zzzx)                                                   \
+                    .def_property_readonly("zzzy", &Vector<T, 3>::zzzy)                                                   \
+                    .def_property_readonly("zzzz", &Vector<T, 3>::zzzz);                                                  \
     m.def("make_" #T "3", [](T a) { return make_##T##3(a); });                                                            \
     m.def("make_" #T "3", [](T a, T b, T c) { return make_##T##3(a, b, c); });                                            \
     m.def("make_" #T "3", [](Vector<T, 3> a) { return make_##T##3(a); });
 
-void export_vector3(nb::module_ &m) {
+void export_vector3(py::module &m) {
     LUISA_EXPORT_VECTOR3(bool)
     LUISA_EXPORT_VECTOR3(uint)
     LUISA_EXPORT_VECTOR3(int)

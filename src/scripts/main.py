@@ -241,7 +241,6 @@ def prepare():
 
         # Construct dictionary for JSON
         options = {}
-        options["lc_toolchain"] = LC_TOOLCHAIN
         options["rbc_py_toolchain"] = PYD_TOOLCHAIN
 
         if py_path:
@@ -265,11 +264,18 @@ def prepare():
             if files:
                 options["lc_py_libs"] = ";".join(files) + ";"
 
-        # Write to scripts/options.json
+        # Write to xmake/options.json
         opt_json_path = rel("xmake/options.json")
         print(f"Write Options to {opt_json_path}")
         with open(opt_json_path, "w") as f:
             json.dump(options, f, indent=4)
+        # Write to xmake/options.lua
+        lua_sentence = f'''set_config('toolchain', '{XMAKE_GLOBAL_TOOLCHAIN}')
+'''
+        opt_lua_path = rel("xmake/options.lua")
+        print(f"Write Options to {opt_lua_path}")
+        with open(opt_lua_path, "w") as f:
+            f.write(lua_sentence)
         write_shader_compile_cmd()
 
     # ------------------------------ Clean Up ------------------------------
