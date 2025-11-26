@@ -9,6 +9,7 @@ target("rbc_editor")
 
     add_files("*.cpp")
     add_files("*.h") -- qt moc file required
+    add_files("rbc_editor.qrc") -- qt resource files
     add_headerfiles("*.h")
     -- Dependencies
     add_deps("rbc_core")  -- For json_serde (yyjson)
