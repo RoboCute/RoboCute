@@ -84,7 +84,6 @@ xmake.log
 -.json
 .vscode/launch.json
 .vscode/tasks.json
-thirdparty/nanobind
 thirdparty/libtorch
 thirdparty/LuisaCompute
 thirdparty/qt_node_editor

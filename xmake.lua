@@ -35,7 +35,3 @@ add_defines("LUISA_ENABLE_SAFE_MODE", {
     public = true
 })
 target_end()
-
-target('nanobind')
-set_values('lc_toolchain', get_config('rbc_py_toolchain'))
-target_end()

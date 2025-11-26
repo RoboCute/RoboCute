@@ -1,16 +1,4 @@
 GIT_TASKS = {
-    "nanobind": {
-        "subdir": "thirdparty/nanobind",
-        "url": "https://github.com/LuisaGroup/nanobind.git",
-        "branch": None,
-        "deps": [],
-    },
-    "robinmap": {
-        "subdir": "thirdparty/nanobind/ext/robin_map",
-        "url": "https://github.com/Tessil/robin-map.git",
-        "branch": None,
-        "deps": ["nanobind"],
-    },
     "lc": {
         "subdir": "thirdparty/LuisaCompute",
         "url": "https://github.com/LuisaGroup/LuisaCompute.git",
@@ -86,6 +74,12 @@ GIT_TASKS = {
     "yyjson": {
         "subdir": "thirdparty/LuisaCompute/src/ext/yyjson",
         "url": "https://github.com/ibireme/yyjson.git",
+        "branch": None,
+        "deps": ["lc"],
+    },
+    "pybind11": {
+        "subdir": "thirdparty/LuisaCompute/src/ext/pybind11",
+        "url": "https://github.com/LuisaGroup/pybind11.git",
         "branch": None,
         "deps": ["lc"],
     },
