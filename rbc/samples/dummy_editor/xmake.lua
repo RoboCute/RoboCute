@@ -1,6 +1,7 @@
 target("dummy_editor")
     set_kind("binary")
     add_rules("qt.widgetapp")
+    set_toolchains(get_config('rbc_py_toolchain'))
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")
     add_files(
         "main.cpp",

@@ -1,5 +1,2 @@
--- includes('test_py_codegen')
-includes('test_serde')
-includes('test_graphics')
-includes('test_plugin') 
-includes('test_ipc')
+includes('test_py_codegen')
+includes('test_serde', 'test_graphics', 'test_plugin', 'test_ipc')

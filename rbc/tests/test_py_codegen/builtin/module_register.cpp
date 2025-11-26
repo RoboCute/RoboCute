@@ -2,12 +2,12 @@
 #include <luisa/core/stl/unordered_map.h>
 #include <luisa/core/stl/string.h>
 ModuleRegister *ModuleRegister::header{};
-ModuleRegister::ModuleRegister(void (*callback)(nanobind::module_ &))
+ModuleRegister::ModuleRegister(void (*callback)(py::module &))
     : _callback(callback) {
     next = header;
     header = this;
 }
-void ModuleRegister::init(nanobind::module_ &m) {
+void ModuleRegister::init(py::module &m) {
     auto ptr = header;
     while (ptr) {
         ptr->_callback(m);

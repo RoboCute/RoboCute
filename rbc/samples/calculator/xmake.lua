@@ -1,5 +1,6 @@
 target("calculator")
     set_kind("binary")
+    set_toolchains(get_config('rbc_py_toolchain'))
     add_rules("qt.widgetapp")
     add_files(
         "main.cpp",

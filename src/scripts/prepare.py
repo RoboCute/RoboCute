@@ -1,16 +1,4 @@
 GIT_TASKS = {
-    "nanobind": {
-        "subdir": "thirdparty/nanobind",
-        "url": "https://github.com/LuisaGroup/nanobind.git",
-        "branch": None,
-        "deps": [],
-    },
-    "robinmap": {
-        "subdir": "thirdparty/nanobind/ext/robin_map",
-        "url": "https://github.com/Tessil/robin-map.git",
-        "branch": None,
-        "deps": ["nanobind"],
-    },
     "lc": {
         "subdir": "thirdparty/LuisaCompute",
         "url": "https://github.com/LuisaGroup/LuisaCompute.git",
@@ -89,6 +77,12 @@ GIT_TASKS = {
         "branch": None,
         "deps": ["lc"],
     },
+    "pybind11": {
+        "subdir": "thirdparty/LuisaCompute/src/ext/pybind11",
+        "url": "https://github.com/LuisaGroup/pybind11.git",
+        "branch": None,
+        "deps": ["lc"],
+    },
     "qt_node_editor": {
         "subdir": "thirdparty/qt_node_editor",
         "url": "https://github.com/RoboCute/nodeeditor.git",
@@ -106,5 +100,5 @@ LC_DX_SDK = "dx_sdk_20250816.zip"
 RENDER_RESOURCE_NAME = "render_resources.7z"
 PLATFORM = 'windows'
 ARCH = 'x64'
-LC_TOOLCHAIN = "llvm"
-PYD_TOOLCHAIN = "clang-cl"
+XMAKE_GLOBAL_TOOLCHAIN = "llvm"
+PYD_TOOLCHAIN = "msvc"

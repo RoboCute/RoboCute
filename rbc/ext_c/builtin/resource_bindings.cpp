@@ -2,14 +2,14 @@
 #include <rbc_world/async_resource_loader.h>
 #include <rbc_world/resource.h>
 #include <rbc_world/resource_request.h>
-#include <nanobind/nanobind.h>
+#include <pybind11/pybind11.h>
 #include <nanobind/stl/string.h>
 
-namespace nb = nanobind;
+namespace py = pybind11;
 
 namespace {
 
-void register_resource_bindings(nb::module_ &m) {
+void register_resource_bindings(py::module &m) {
     // === Resource Enums ===
 
     nb::enum_<rbc::ResourceType>(m, "ResourceType")

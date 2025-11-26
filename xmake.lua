@@ -3,6 +3,7 @@ add_rules("mode.release", "mode.debug", "mode.releasedbg")
 set_policy("build.ccache", not is_plat("windows"))
 set_policy("check.auto_ignore_flags", false)
 set_policy("build.optimization.lto", false)
+includes('xmake/options.lua')
 lc_options = {
     lc_cpu_backend = false,
     lc_cuda_backend = false,
@@ -34,8 +35,4 @@ target("lc-runtime")
 add_defines("LUISA_ENABLE_SAFE_MODE", {
     public = true
 })
-target_end()
-
-target('nanobind')
-set_values('lc_toolchain', get_config('rbc_py_toolchain'))
 target_end()

@@ -84,11 +84,11 @@ xmake.log
 -.json
 .vscode/launch.json
 .vscode/tasks.json
-thirdparty/nanobind
 thirdparty/libtorch
 thirdparty/LuisaCompute
 thirdparty/qt_node_editor
 xmake/options.json
+xmake/options.lua
 modules/tools/nanogen/builtin/builtin.cpp
 generated/
 __pycache__

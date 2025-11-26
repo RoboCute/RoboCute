@@ -25,7 +25,7 @@ _type_names = {
 
 def _print_str(t, py_interface: bool = False, is_view: bool = False):
     if py_interface:
-        return "nb::str"
+        return "luisa::string_view"
     elif is_view:
         return "luisa::string_view"
     else:
@@ -135,8 +135,6 @@ def _print_arg_vars(args: dict, is_first: bool, py_interface: bool):
             r += ", "
         is_first = False
         r += arg_name
-        if py_interface and arg_type == tr.string:
-            r += ".c_str()"
     return r
 
 
@@ -643,7 +641,7 @@ def cpp_interface_gen(*extra_includes):
 
 
 def nanobind_codegen(module_name: str, dll_path: str, *extra_includes):
-    cb.set_result("""#include <nanobind/nanobind.h>
+    cb.set_result("""#include <pybind11/pybind11.h>
 #include <luisa/core/dynamic_module.h>
 #include <luisa/core/basic_types.h>
 #include <luisa/core/basic_traits.h>
@@ -654,16 +652,15 @@ def nanobind_codegen(module_name: str, dll_path: str, *extra_includes):
     export_func_name = f"export_{module_name}"
     for i in extra_includes:
         cb.add_result(i + "\n")
-    cb.add_result(f"""namespace nb = nanobind;
-using namespace nb::literals;
-void {export_func_name}(nanobind::module_& m) """)
+    cb.add_result(f"""namespace py = pybind11;
+void {export_func_name}(py::module& m) """)
     cb.add_result("{")
     cb.add_indent()
 
     # print enums
     for enum_name in tr._registed_enum_types:
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
-        cb.add_line(f'nb::enum_<{enum_name}>(m, "{enum_name}")')
+        cb.add_line(f'py::enum_<{enum_name}>(m, "{enum_name}")')
         cb.add_indent()
         for params_name_and_type in enum_type._params:
             cb.add_line(
