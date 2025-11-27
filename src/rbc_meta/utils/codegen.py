@@ -514,6 +514,12 @@ def cpp_client_impl_gen(*extra_includes):
 
 def cpp_client_interface_gen(*extra_includes):
     global cb
+    use_rpc = False
+    for struct_name in tr._registed_struct_types:
+        struct_type: tr.struct = tr._registed_struct_types[struct_name]
+        if len(struct_type._rpc) > 0:
+            use_rpc = True
+            break
     cb.set_result("""#pragma once
 #include <luisa/core/basic_types.h>
 #include <luisa/core/basic_traits.h>
@@ -522,9 +528,9 @@ def cpp_client_interface_gen(*extra_includes):
 #include <luisa/vstl/v_guid.h>
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/func_serializer.h>
-#include <rbc_core/serde.h>
-#include <rbc_core/rpc/command_list.h>
-""")
+#include <rbc_core/serde.h>""")
+    if use_rpc:
+        cb.add_line('#include <rbc_ipc/command_list.h>')
     for i in extra_includes:
         cb.add_result(i + "\n")
     for struct_name in tr._registed_struct_types:

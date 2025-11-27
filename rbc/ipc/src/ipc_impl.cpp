@@ -11,9 +11,11 @@ struct IPCMessageSender : IMessageSender {
     std::atomic_bool first_time{true};
     ipc_channel cc;
     std::mutex mtx;
+    size_t _max_size;
     IPCMessageSender(char const *topic, size_t max_size)
-        : cc(topic, ::ipc::sender) {
+        : cc(topic, ::ipc::sender), _max_size(max_size) {
     }
+    uint64_t max_size() const override { return _max_size; }
     bool push(const luisa::span<const std::byte> data) override {
         std::lock_guard lck(mtx);
         if (first_time) {
@@ -26,9 +28,11 @@ struct IPCMessageSender : IMessageSender {
 
 struct IPCMessageReceiver : IMessageReceiver {
     ipc_channel cc;
+    size_t _max_size;
     IPCMessageReceiver(char const *topic, size_t max_size)
-        : cc(topic, ::ipc::receiver) {
+        : cc(topic, ::ipc::receiver), _max_size(max_size) {
     }
+    uint64_t max_size() const override { return _max_size; }
     luisa::BinaryBlob try_pop() override {
         auto buf = cc.try_recv();
         if (buf.empty())

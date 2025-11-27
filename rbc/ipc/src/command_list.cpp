@@ -1,7 +1,8 @@
-#include <rbc_core/rpc/future.h>
-#include <rbc_core/rpc/command_list.h>
+#include <rbc_ipc/future.h>
+#include <rbc_ipc/command_list.h>
 #include <rbc_core/func_serializer.h>
 #include <luisa/vstl/stack_allocator.h>
+#include <rbc_ipc/rpc_server.h>
 namespace rbc {
 void RPCCommandList::_add_future(RPCRetValueBase *future) {
     future->next = std::move(return_values);
@@ -10,43 +11,59 @@ void RPCCommandList::_add_future(RPCRetValueBase *future) {
 
 void RPCCommandList::add_functioon(char const *name, void *handle) {
     _func_count += 1;
-    arg_ser.add(name);
+    auto guid = vstd::Guid::TryParseGuid(name);
+    LUISA_DEBUG_ASSERT(guid);
+    arg_ser._store(*guid);
     arg_ser.add((uint64_t)handle);
 }
-luisa::BinaryBlob RPCCommandList::commit_commands() {
-    return arg_ser.write_to();
+auto RPCCommandList::commit_commands() -> Commit {
+    auto d = vstd::scope_exit([&] {
+        vstd::reset(arg_ser);
+        _func_count = 0;
+        _arg_count = 0;
+    });
+    return {
+        arg_ser.write_to(),
+        std::move(return_values)};
 }
 
 void RPCCommandList::readback(
-    vstd::function<RC<RPCRetValueBase>(uint64_t)> const &get_cmdlist,
-    luisa::BinaryBlob &&serialized_return_values) {
+    vstd::function<RC<RPCRetValueBase>(uint64_t)> const &get_retvalue_handle,
+    luisa::span<std::byte const> data) {
     JsonDeSerializer ret_deser(luisa::string_view{
-        reinterpret_cast<char const *>(serialized_return_values.data()),
-        serialized_return_values.size()});
+        reinterpret_cast<char const *>(data.data()),
+        data.size()});
     uint64_t handle;
     LUISA_DEBUG_ASSERT(ret_deser.read(handle));
+    auto ret_values = get_retvalue_handle(handle);
 
     // auto ret_value_sizes = ret_deser.last_array_size();
     // LUISA_ASSERT(ret_values.size() == ret_value_sizes);
-    // for (auto &i : ret_values) {
-    //     i.deser_func(i.storage, &ret_deser);
-    // }
+    while (ret_values) {
+        ret_values->deser_func(ret_values, &ret_deser);
+        ret_values = ret_values->next;
+    }
 }
 
 luisa::BinaryBlob RPCCommandList::server_execute(
     uint64_t call_count,
-    luisa::BinaryBlob &&serialized_args) {
+    luisa::span<std::byte const> data) {
     JsonDeSerializer arg_deser(luisa::string_view{
-        reinterpret_cast<char const *>(serialized_args.data()),
-        serialized_args.size()});
+        reinterpret_cast<char const *>(data.data()),
+        data.size()});
     vstd::VEngineMallocVisitor alloc_callback;
     vstd::StackAllocator alloc(256, &alloc_callback, 2);
     JsonSerializer ret_ser{true};
     vstd::vector<std::pair<void *, vstd::func_ptr_t<void(void *)>>> ret_deleters;
+    bool has_ret_value{false};
+    uint64_t handle;
+    LUISA_DEBUG_ASSERT(arg_deser.read(handle));
+    ret_ser.add(handle);
+
     for (uint64_t i = 0; i < call_count; ++i) {
-        luisa::string func_hash;
+        vstd::Guid func_hash;
         uint64_t self;
-        if (!(arg_deser.read(func_hash))) {
+        if (!(arg_deser._load(func_hash))) {
             break;
         }
         LUISA_DEBUG_ASSERT(arg_deser.read(self));
@@ -78,22 +95,33 @@ luisa::BinaryBlob RPCCommandList::server_execute(
         }
         // call
         call_meta->func(reinterpret_cast<void *>(self), arg, ret_ptr);
-        if (ret_ptr)
+        if (ret_ptr) {
             ret_value_meta.json_writer(ret_ptr, &ret_ser);
+            has_ret_value = true;
+        }
 
         // destructor
         if (arg && args_meta.deleter) {
             args_meta.deleter(arg);
         }
     }
+    if (!has_ret_value) return {};
     auto blob = ret_ser.write_to();
     for (auto &i : ret_deleters) {
         i.second(i.first);
     }
     return blob;
 }
-RPCCommandList::RPCCommandList(uint64_t custom_handle) : arg_ser(true) {
+RPCCommandList::RPCCommandList(RPCServer *server, uint thread_id, uint64_t custom_handle)
+    : _server(server),
+      arg_ser(true),
+      _thread_id{thread_id},
+      _custom_id{custom_handle} {
     arg_ser.add(custom_handle);
 }
-RPCCommandList::~RPCCommandList() {}
+RPCCommandList::~RPCCommandList() {
+    if (_func_count > 0) [[unlikely]] {
+        LUISA_ERROR("cmdlist disposed without commit.");
+    }
+}
 }// namespace rbc

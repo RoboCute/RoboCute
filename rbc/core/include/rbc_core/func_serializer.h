@@ -2,6 +2,7 @@
 #include <luisa/core/stl/unordered_map.h>
 #include <luisa/core/stl/optional.h>
 #include <luisa/vstl/common.h>
+#include <luisa/vstl/v_guid.h>
 #include <rbc_config.h>
 #include <rbc_core/serde.h>
 #include <rbc_core/heap_object.h>
@@ -25,11 +26,6 @@ struct RBC_CORE_API FuncSerializer {
         std::initializer_list<HeapObjectMeta> args_meta,
         std::initializer_list<HeapObjectMeta> ret_value_meta);
     ~FuncSerializer();
-    static FuncCall const* get_call_meta(luisa::string_view name);
-    static bool try_call(
-        luisa::string_view name,
-        void *self,
-        void *args,
-        void *ret_value);
+    static FuncCall const* get_call_meta(vstd::Guid const& name);
 };
 }// namespace rbc

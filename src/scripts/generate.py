@@ -13,6 +13,11 @@ GENERATION_TASKS = [
         Path("rbc/tests/test_serde/generated/generated.hpp").resolve(),
     ),
     (
+        "rbc_meta.test_ipc",
+        "codegen_header",
+        Path("rbc/tests/test_ipc/generated").resolve(),
+    ),
+    (
         "rbc_meta.test_shared_window",
         "codegen_header",
         Path("rbc/tests/test_graphics/generated").resolve(),

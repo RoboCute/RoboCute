@@ -11,19 +11,7 @@
 #include <luisa/vstl/md5.h>
 #include <rbc_core/func_serializer.h>
 
-#include "generated/client.hpp"
 
-namespace rbc {
-void MyStruct::no_arg_func() {
-    LUISA_INFO("calling no-arg function.");
-}
-double MyStruct::add(int32_t lhs, float rhs) {
-    return lhs + rhs;
-}
-void MyStruct::add(float lhs, double rhs) {
-    LUISA_INFO("void {} {}", dd, lhs + rhs);
-}
-}// namespace rbc
 using namespace rbc;
 using namespace luisa;
 int main() {
@@ -92,36 +80,4 @@ int main() {
         LUISA_INFO("guid {}", new_struct.guid.to_base64());
     }
 
-    // Test RPC
-    MyStruct my_struct;
-    my_struct.dd = "add_string";
-    // Execute remotely
-    // {
-    //     RPCCommandList cmdlist;
-    //     // client
-    //     MyStructClient::no_arg_func(
-    //         cmdlist,
-    //         &my_struct);
-    //     MyStructClient::add(
-    //         cmdlist,
-    //         &my_struct,
-    //         (float)1919,
-    //         (double)810);
-    //     auto value = MyStructClient::add(
-    //         cmdlist,
-    //         &my_struct,
-    //         (int)114,
-    //         (float)514);
-    //     uint64_t func_count = cmdlist.func_count();
-    //     auto commands = cmdlist.commit_commands();
-    //     LUISA_INFO("Commit RPC commands: {}", (char const *)commands.data());
-    //     // server
-    //     auto return_blob = RPCCommandList::server_execute(
-    //         ~0ull,
-    //         std::move(commands));
-    //     // client
-    //     LUISA_INFO("RPC return values: {}", (char const *)return_blob.data());
-    //     cmdlist.readback(std::move(return_blob));
-    //     LUISA_INFO("Add value should be 114+514 = 628 {}", value.get());
-    // }
 }

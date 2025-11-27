@@ -2,7 +2,7 @@
 #include "generated/generated.hpp"
 #include <luisa/runtime/device.h>
 #include <rbc_runtime/render_plugin.h>
-#include <rbc_core/rpc/command_list.h>
+#include <rbc_ipc/command_list.h>
 #include "rpc_hook_window.h"
 #include <luisa/core/logging.h>
 

@@ -1,4 +1,4 @@
-#include <rbc_core/rpc/command_list.h>
+#include <rbc_ipc/command_list.h>
 #include <rbc_ipc/message_manager.h>
 #include <luisa/gui/window.h>
 #include <luisa/core/logging.h>

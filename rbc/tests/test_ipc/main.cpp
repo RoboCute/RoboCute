@@ -1,56 +1,56 @@
 #include <rbc_ipc/message_manager.h>
+#include <rbc_ipc/rpc_server.h>
 #include <luisa/core/logging.h>
+#include "generated/server.hpp"
+#include "generated/client.hpp"
+#include <iostream>
 using namespace rbc;
 using namespace luisa;
-int main(int argc, char *argv[]) {
-    LUISA_INFO("Start");
-    luisa::vector<std::byte> receive_data;
-    bool send_first = argc > 1;
-    if (send_first) {
-        auto sender = ipc::IMessageSender::create("rbc_test_ipc", ipc::EMessageQueueBackend::IPC);
-        luisa::vector<std::byte> data;
-        auto push_str = [&](uint8_t id, luisa::string_view str) {
-            ipc::TypedHeader header{
-                .custom_id = id,
-                .size = (uint32_t)str.size()};
-            vstd::push_back_all(data, (std::byte *)&header, sizeof(header));
-            vstd::push_back_all(data, (std::byte *)str.data(), str.size());
-        };
-        auto send = [&](uint start, uint end) {
-            while (!sender->push(luisa::span{data}.subspan(start, end - start))) {
-                //    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-        };
-        push_str(5, "The first sentence");
-        push_str(1, "The second sentence");
-        push_str(2, "The third sentence");
-        push_str(3, "The last sentence");
-        for (int i = 1; i < 5; ++i) {
-            auto cut = data.size() * ((float)i / 5.0);
-            send(0, cut);
-            send(cut, data.size());
-        }
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+luisa::string Chat::chat(luisa::string value) {
+    LUISA_INFO("Sending message {}", value);
+    return luisa::format("Received message {} with size {}", value, value.size());
+}
 
-    } else {
-        auto receiver = ipc::IMessageReceiver::create("rbc_test_ipc", ipc::EMessageQueueBackend::IPC);
-        uint8_t id;
-        auto async_popper = ipc::AsyncTypedMessagePop{};
-        auto print = [&]() {
-            async_popper.reset(receiver.get());
-            while(async_popper.next_step()) {
+int main(int argc, char *argv[]) {
+    LUISA_INFO("Start, input strings");
+    luisa::vector<std::byte> receive_data;
+    bool is_server = argc > 1;
+    auto server_name = "rbc_test_ipc_s";
+    auto client_name = "rbc_test_ipc";
+    auto sender = ipc::IMessageSender::create(is_server ? server_name : client_name, ipc::EMessageQueueBackend::IPC);
+    auto receiver = ipc::IMessageReceiver::create(is_server ? client_name : server_name, ipc::EMessageQueueBackend::IPC);
+    RPCServer service(
+        std::move(receiver),
+        std::move(sender),
+        1);
+    std::atomic_bool enabling{true};
+    std::thread thd{[&] {
+        while (enabling) {
+            service.tick_pop();
+            if (!service.tick_push()) {
+                enabling = false;
+                return;
             }
-            id = async_popper.id();
-            auto data = async_popper.get_data();
-            LUISA_INFO("ID {} Data {}", id, luisa::string_view{(char const *)data.data(), data.size()});
-        };
-        for (int i = 1; i < 2; ++i) {
-            print();
-            print();
-            print();
-            print();
+            service.execute_remote(0);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+    }};
+    Chat chat;
+    while (enabling) {
+        luisa::string s;
+        std::cin >> s;
+        if(s == "exit") {
+            enabling = false;
+            break;
+        }
+        auto cmdlist = service.create_cmdlist(0);
+        auto future = ChatClient::chat(cmdlist, &chat, s);
+        service.commit(std::move(cmdlist));
+        auto str = future.take();
+        LUISA_INFO("{}", str);
     }
-    //TODO: new ipc test wip
+
+    thd.join();
+
     return 0;
 }

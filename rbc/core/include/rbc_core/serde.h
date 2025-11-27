@@ -115,6 +115,10 @@ struct Serializer : public Base {
         : Base(std::forward<Args>(args)...),
           _alloc(4096, &_alloc_callback, 2) {
     }
+    void* allocate_temp_str(size_t size) {
+        auto c = _alloc.allocate(size);
+        return reinterpret_cast<void*>(c.handle + c.offset);
+    }
 
     template<concepts::SerializableType<Serializer> T, typename... Args>
     void _store(T const &t, Args... args) {
@@ -122,8 +126,7 @@ struct Serializer : public Base {
         if constexpr (std::is_enum_v<T>) {
             static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
             auto strv = EnumSerializer::template get_enum_value_name<T>(luisa::to_underlying(t));
-            auto chunk = _alloc.allocate(strv.size() + 1);
-            auto ptr = (char *)(chunk.handle + chunk.offset);
+            auto ptr = (char *)allocate_temp_str(strv.size());
             std::memcpy(ptr, strv.data(), strv.size());
             ptr[strv.size()] = 0;
             Base::add(ptr, args...);
@@ -200,17 +203,38 @@ struct Serializer : public Base {
             Base::add_arr(luisa::span<double const>{arr, dim * dim}, args...);
         }
         // string
+        else if constexpr (
+            requires{
+                std::is_same_v<char, std::remove_cvref_t<std::remove_pointer_t<decltype(t.data())>>>;
+                t.size();
+            }
+        ) {
+            auto len = t.size();
+            auto ptr = (char *)allocate_temp_str(len + 1);
+            ptr[len] = 0;
+            std::memcpy(ptr, t.data(), len);
+            Base::add(ptr, args...);
+        }
         else if constexpr (std::is_same_v<std::decay_t<T>, char const *> || std::is_same_v<std::decay_t<T>, char *>) {
-            Base::add((char const *)t, args...);
+            auto len = strlen(t);
+            auto ptr = (char *)allocate_temp_str(len + 1);
+            ptr[len] = 0;
+            std::memcpy(ptr, t, len);
+            Base::add(ptr, args...);
         } else if constexpr (requires { std::is_same_v<decltype(t.c_str()), char const *>; }) {
-            Base::add(t.c_str(), args...);
+            auto p = t.c_str();
+            auto len = strlen(p);
+            auto ptr = (char *)allocate_temp_str(len + 1);
+            ptr[len] = 0;
+            std::memcpy(ptr, p, len);
+            Base::add(ptr, args...);
         }
         // kv map
         else if constexpr (detail::is_unordered_map<T>::value) {
             Base::start_array();
             for (auto &&i : t) {
                 if constexpr (requires { i.first.c_str(); }) {
-                    Base::add(i.first.c_str());
+                    this->_store(i.first);
                     this->_store(i.second);
                 } else {
                     static_assert(luisa::always_false_v<T>, "Invalid HashMap key-value type.");

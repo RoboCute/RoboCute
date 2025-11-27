@@ -7,7 +7,6 @@ struct RPCRetValueBase : RCBase {
     std::atomic_bool finished{false};
     vstd::func_ptr_t<void(RC<RPCRetValueBase> &, JsonDeSerializer *ret_deser)> deser_func;
     RC<RPCRetValueBase> next{nullptr};
-    void *storage_ptr{nullptr};
     virtual ~RPCRetValueBase() = default;
 };
 template<concepts::DeSerializableType<JsonDeSerializer> T>
@@ -20,7 +19,6 @@ private:
     struct ValueType : RPCRetValueBase {
         vstd::Storage<T> v;
         ValueType() {
-            storage_ptr = v.c;
             deser_func = +[](RC<RPCRetValueBase> &rc, JsonDeSerializer *ret_deser) {
                 auto value_ptr = static_cast<ValueType *>(rc.get());
                 auto ptr = reinterpret_cast<T *>(value_ptr->v.c);
@@ -66,7 +64,7 @@ public:
 
     T take() {
         wait();
-        return std::move(reinterpret_cast<T *>(_value->v.c));
+        return std::move(*reinterpret_cast<T *>(_value->v.c));
     }
 };
 }// namespace rbc
