@@ -67,8 +67,8 @@ int main(int argc, char *argv[]) {
     auto present_stream = render_device.lc_device().create_stream(StreamTag::GRAPHICS);
     render_device.set_main_stream(&compute_stream);
 
-    auto shader_path = render_device.lc_ctx().runtime_directory().parent_path() / 
-                      (luisa::string("shader_build_") + backend);
+    auto shader_path = render_device.lc_ctx().runtime_directory().parent_path() /
+                       (luisa::string("shader_build_") + backend);
     auto &cmdlist = render_device.lc_main_cmd_list();
 
     // Initialize scene manager
@@ -245,9 +245,9 @@ int main(int argc, char *argv[]) {
     auto pipe_settings_json = pipeline_state_map.serialize_to_json();
     if (pipe_settings_json.data()) {
         LUISA_INFO("Pipeline settings: {}",
-                  luisa::string_view{
-                      (char const *)pipe_settings_json.data(),
-                      pipe_settings_json.size()});
+                   luisa::string_view{
+                       (char const *)pipe_settings_json.data(),
+                       pipe_settings_json.size()});
     }
 
     compute_stream.synchronize();
@@ -326,6 +326,9 @@ void after_frame(
     auto &cmdlist = render_device.lc_main_cmd_list();
     render_plugin->on_rendering({}, pipe_ctx);
     managed_device->end_managing(cmdlist);
+    if (timeline_event && signal_fence > 1) {
+        timeline_event->synchronize(signal_fence - 1);
+    }
     sm.on_frame_end(cmdlist, main_stream, managed_device);
     if (timeline_event && signal_fence > 0) [[likely]] {
         main_stream << timeline_event->signal(signal_fence);

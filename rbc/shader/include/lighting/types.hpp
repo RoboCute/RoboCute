@@ -29,7 +29,7 @@ struct BVHNode {
 	}
 };
 struct MeshLight {
-	float4x4 transform;
+	std::array<float4, 4> transform; 
 	std::array<float, 3> bounding_min;
 	uint blas_heap_idx;
 	std::array<float, 3> bounding_max;
@@ -39,7 +39,7 @@ struct MeshLight {
 };
 
 struct AreaLight {
-	float4x4 transform;
+	std::array<float4, 4> transform; 
 	std::array<float, 3> radiance;
 	float area;
 	uint emission;

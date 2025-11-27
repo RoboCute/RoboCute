@@ -17,7 +17,7 @@ void before_frame(rbc::RenderPlugin *render_plugin, rbc::RenderPlugin::PipeCtxSt
 void after_frame(
     rbc::RenderPlugin *render_plugin,
     rbc::RenderPlugin::PipeCtxStub *pipe_ctx,
-    luisa::compute::TimelineEvent *timeline_event,
+    luisa::compute::TimelineEvent *compute_event,
     uint64_t signal_fence);
 void frame_reset(
     rbc::RenderPlugin *render_plugin,
@@ -80,10 +80,13 @@ int main(int argc, char *argv[]) {
             .wants_vsync = false,
             .back_buffer_count = 2});
     // render loop
-    auto timeline_event = render_device.lc_device().create_timeline_event();
+    auto compute_event = render_device.lc_device().create_timeline_event();
+    auto present_event = render_device.lc_device().create_timeline_event();
     auto stream_evt = render_device.lc_device().create_event();
-    uint64_t render_frame_index = 0;
     uint64_t frame_index = 0;
+    // Present is ping-pong frame-buffer and compute is triple-buffer
+    uint64_t present_queue_index = 0;
+    uint64_t compute_queue_index = 0;
     auto dst_img = render_device.lc_device().create_image<float>(swapchain.backend_storage(), resolution);
     Clock clk;
     double last_frame_time = 0;
@@ -93,7 +96,7 @@ int main(int argc, char *argv[]) {
     vstd::optional<float3> cube_move, light_move;
     window.set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
         if (action != Action::ACTION_PRESSED) return;
-        render_frame_index = 0;
+        frame_index = 0;
         switch (key) {
             case Key::KEY_SPACE: {
                 LUISA_INFO("Reset frame");
@@ -144,9 +147,6 @@ int main(int argc, char *argv[]) {
     while (!window.should_close() && rpc_hook.enabled) {
         AssetsManager::instance()->wake_load_thread();
         window.poll_events();
-        if (frame_index > 2) {
-            timeline_event.synchronize(frame_index - 2);
-        }
         if (rpc_hook.update()) {
             present_stream.synchronize();
             frame_reset(render_plugin, pipe_ctx);
@@ -160,8 +160,8 @@ int main(int argc, char *argv[]) {
         last_frame_time = time;
         frame_settings.delta_time = (float)delta_time;
         frame_settings.time = time;
-        frame_settings.frame_index = render_frame_index;
-        ++render_frame_index;
+        frame_settings.frame_index = frame_index;
+        ++frame_index;
         // scene logic
         if (cube_move) {
             simple_scene->move_cube(*cube_move);
@@ -181,17 +181,21 @@ int main(int argc, char *argv[]) {
         after_frame(
             render_plugin,
             pipe_ctx,
-            &timeline_event,
-            ++frame_index);
-        present_stream << timeline_event.wait(frame_index);
+            &compute_event,
+            ++compute_queue_index);
+        present_stream << compute_event.wait(compute_queue_index);
+        if (present_queue_index > 1) {
+            present_event.synchronize(present_queue_index - 1);
+        }
         present_stream << swapchain.present(dst_img);
         for (auto &i : rpc_hook.shared_window.swapchains) {
             present_stream << i.second.present(dst_img);
         }
-        present_stream << stream_evt.signal();
+        present_stream << stream_evt.signal() << present_event.signal(++present_queue_index);
     }
     rpc_hook.shutdown_remote();
-    timeline_event.synchronize(frame_index);
+    compute_event.synchronize(compute_queue_index);
+    present_event.synchronize(present_queue_index);
     present_stream.synchronize();
     stream_evt.synchronize();
     // Destroy

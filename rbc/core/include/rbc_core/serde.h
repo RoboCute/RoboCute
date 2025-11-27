@@ -242,27 +242,28 @@ struct Serializer : public Base {
             }
             Base::add_last_scope_to_object(args...);
         }
-        // duck type
-        else if constexpr (requires {t.data(); t. size(); }) {
-            auto i = t.data();
-            auto end = i + t.size();
-            Base::start_array();
-            while (i != end) {
-                this->_store(*i);
-                ++i;
-            }
-            Base::add_last_scope_to_object(args...);
+        // duck type (this is no good)
+        // else if constexpr (requires {t.data(); t. size(); }) {
+        //     auto i = t.data();
+        //     auto end = i + t.size();
+        //     Base::start_array();
+        //     while (i != end) {
+        //         this->_store(*i);
+        //         ++i;
+        //     }
+        //     Base::add_last_scope_to_object(args...);
 
-        } else if constexpr (requires { t.begin() ; t.end(); }) {
-            auto i = t.begin();
-            auto end = i.end();
-            Base::start_array();
-            while (i != end) {
-                this->_store(*i);
-                ++i;
-            }
-            Base::add_last_scope_to_object(args...);
-        } else if constexpr (std::is_same_v<T, vstd::Guid>) {
+        // } else if constexpr (requires { t.begin() ; t.end(); }) {
+        //     auto i = t.begin();
+        //     auto end = i.end();
+        //     Base::start_array();
+        //     while (i != end) {
+        //         this->_store(*i);
+        //         ++i;
+        //     }
+        //     Base::add_last_scope_to_object(args...);
+        // } 
+        else if constexpr (std::is_same_v<T, vstd::Guid>) {
             auto chunk = _alloc.allocate(23);
             auto ptr = (char *)(chunk.handle + chunk.offset);
             t.to_base64(ptr);

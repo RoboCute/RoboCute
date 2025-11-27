@@ -8,7 +8,7 @@ RPCServer::RPCServer(
     uint64_t async_queue_count)
     : receiver(std::move(receiver)),
       sender(std::move(sender)) {
-    LUISA_ASSERT(async_queue_count < 128);
+    LUISA_ASSERT(async_queue_count < 126);
     _threads_count = async_queue_count;
     _threads = luisa::allocate_with_allocator<ThreadData>(_threads_count);
     for (auto i : vstd::range(_threads_count)) {

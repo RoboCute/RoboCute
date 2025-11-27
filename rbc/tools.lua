@@ -43,7 +43,7 @@ before_build(function(target)
     end
     compiler_path = path.join(os.projectdir(), "build/tool/clangcxx_compiler", compiler_path)
     local shader_dir = path.translate(path.join(os.projectdir(), "rbc/shader/"))
-    local backends = {'dx'}
+    local backends = {'dx', 'vk'}
     import("async.jobgraph")
     import("async.runjobs")
     local jobs = jobgraph.new()

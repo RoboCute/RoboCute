@@ -40,7 +40,6 @@ struct [[builtin("matrix")]] matrix<3> {
 	constexpr matrix() noexcept = default;
 	constexpr matrix(float3 col0, float3 col1, float3 col2)
 		: _v(float4(col0, 0), float4(col1, 0), float4(col2, 0)) {}
-
 	constexpr matrix(float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22)
 		: _v(float4(m00, m01, m02, 0),
 			 float4(m10, m11, m12, 0),
@@ -69,7 +68,6 @@ struct alignas(16) [[builtin("matrix")]] matrix<4> {
 	constexpr matrix() noexcept = default;
 	constexpr matrix(float4 col0, float4 col1, float4 col2, float4 col3)
 		: _v(col0, col1, col2, col3) {}
-
 	constexpr matrix(float m00, float m01, float m02, float m03,
 					 float m10, float m11, float m12, float m13,
 					 float m20, float m21, float m22, float m23,
@@ -144,5 +142,25 @@ constexpr matrix<4> matrix<4>::identity() {
 using float2x2 = matrix<2>;
 using float3x3 = matrix<3>;
 using float4x4 = matrix<4>;
-
+float2x2 make_float2x2(std::array<float2, 2> vec){
+	float2x2 v;
+	v[0] = vec[0];
+	v[1] = vec[1];
+	return v;
+}
+float3x3 make_float3x3(std::array<float3, 3> vec){
+	float3x3 v;
+	v[0] = vec[0];
+	v[1] = vec[1];
+	v[2] = vec[2];
+	return v;
+}
+float4x4 make_float4x4(std::array<float4, 4> vec){
+	float4x4 v;
+	v[0] = vec[0];
+	v[1] = vec[1];
+	v[2] = vec[2];
+	v[3] = vec[3];
+	return v;
+}
 }// namespace luisa::shader
