@@ -40,7 +40,7 @@ struct OpenPBR {
 	} uvs;
 
 	struct Specular {
-		std::array<float, 3> specular_color{1.0f, 1.0f, 1.0f};
+		half3 specular_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
 		half roughness{0.3f};
 		half roughness_anisotropy{0.0f};
 		MatImageHandle specular_anisotropy_level_tex;
@@ -67,16 +67,16 @@ struct OpenPBR {
 	} subsurface;
 
 	struct Transmission {
-		std::array<float, 3> transmission_color{1.0f, 1.0f, 1.0f};
+		half3 transmission_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
 		half transmission_depth{0.0f};
-		std::array<float, 3> transmission_scatter{0.0f, 0.0f, 0.0f};
+		half3 transmission_scatter{MAKE_HALF3(0.0f, 0.0f, 0.0f)};
 		half transmission_scatter_anisotropy{0.0f};
 		half transmission_dispersion_scale{0.0f};
 		half transmission_dispersion_abbe_number{20.0f};
 	} transmission;
 
 	struct Coat {
-		std::array<float, 3> coat_color{1.0f, 1.0f, 1.0f};
+		half3 coat_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
 		half coat_roughness{0.0f};
 		half coat_roughness_anisotropy{0.0f};
 		half coat_roughness_anisotropy_angle{0.0f};// radians
@@ -86,12 +86,12 @@ struct OpenPBR {
 	} coat;
 
 	struct Fuzz {
-		std::array<float, 3> fuzz_color{1.0f, 1.0f, 1.0f};
+		half3 fuzz_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
 		half fuzz_roughness{0.5f};
 	} fuzz;
 
 	struct Diffraction {
-		std::array<float, 3> diffraction_color{1.0f, 1.0f, 1.0f};
+		half3 diffraction_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
 		half diffraction_thickness{0.5f};// μm
 		half diffraction_inv_pitch_x{1.0f / 3.0f};
 		half diffraction_inv_pitch_y{0.0f};

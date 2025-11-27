@@ -238,12 +238,6 @@ inline bool OpenPBR::transform_to_params(
         }
 
     // Diffraction
-    // {
-    //     auto my_mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Diffraction>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, diffraction));
-    //     if (all(dispatch_id() == dispatch_size() / 2u)) {
-    //         device_log("{}", (float)my_mat.diffraction_inv_pitch_x);
-    //     }
-    // }
     if constexpr (requires { params.diffraction; })
         if ((float)weight.diffraction > 0.f) {
             auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Diffraction>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, diffraction));
