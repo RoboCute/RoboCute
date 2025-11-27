@@ -7,6 +7,7 @@ from pathlib import Path
 def codegen_header(header_path: Path):
     Chat = tr.struct('Chat')
     Chat.rpc("chat", value=tr.string).ret_type(tr.string)
+    Chat.rpc("exit")
     
     ut.codegen_to(header_path / "server.hpp")(codegen.cpp_interface_gen)
 

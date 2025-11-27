@@ -6,6 +6,10 @@
 #include <iostream>
 using namespace rbc;
 using namespace luisa;
+std::atomic_bool enabled{true};
+void Chat::exit() {
+    enabled = false;
+}
 luisa::string Chat::chat(luisa::string value) {
     LUISA_INFO("Sending message {}", value);
     return luisa::format("Received message {} with size {}", value, value.size());
@@ -23,34 +27,44 @@ int main(int argc, char *argv[]) {
         std::move(receiver),
         std::move(sender),
         1);
-    std::atomic_bool enabling{true};
     std::thread thd{[&] {
-        while (enabling) {
+        auto d = vstd::scope_exit([&] {
+            exit(0);
+        });
+        while (enabled) {
             service.tick_pop();
             if (!service.tick_push()) {
-                enabling = false;
+                LUISA_INFO("push failed.");
+                enabled = false;
                 return;
             }
             service.execute_remote(0);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+        service.tick_push();
     }};
     Chat chat;
-    while (enabling) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    while (enabled) {
         luisa::string s;
         std::cin >> s;
-        if(s == "exit") {
-            enabling = false;
-            break;
-        }
         auto cmdlist = service.create_cmdlist(0);
-        auto future = ChatClient::chat(cmdlist, &chat, s);
-        service.commit(std::move(cmdlist));
-        auto str = future.take();
-        LUISA_INFO("{}", str);
+        if (s == "exit") {
+            {
+                ChatClient::exit(cmdlist, &chat);
+                service.commit(std::move(cmdlist));
+            }
+            enabled = false;
+            break;
+        } else {
+            auto future = ChatClient::chat(cmdlist, &chat, s);
+            service.commit(std::move(cmdlist));
+            auto str = future.take();
+            LUISA_INFO("{}", str);
+        }
     }
-
     thd.join();
-
+    // wait last ipc finished
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     return 0;
 }
