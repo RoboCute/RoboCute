@@ -64,9 +64,7 @@ void EditorScene::init_material() {
     auto &cmdlist = render_device.lc_main_cmd_list();
 
     material::OpenPBR mat{};
-    for (auto &i : mat.base.albedo) {
-        i = 0.5f;
-    }
+    mat.base.albedo = make_half3((half)0.5f);
     mat.specular.roughness = 0.5f;
 
     // Make material instance

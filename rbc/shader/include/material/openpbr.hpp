@@ -2,19 +2,25 @@
 
 #include <utils/shader_host.hpp>
 namespace material {
+#ifndef __SHADER_LANG__
+luisa::half3 _make_half3_(float a, float b, float c) { return luisa::half3{(half)a, (half)b, (half)c} ;}
+#define MAKE_HALF3(...) _make_half3_(__VA_ARGS__)
+#else
+#define MAKE_HALF3(...) __VA_ARGS__
+#endif
 struct OpenPBR {
 	struct Weight {
-		float base{1.0f};
-		float diffuse_roughness{0.0f};
-		float specular{1.0f};
-		float metallic{0.0f};
+		half base{1.0f};
+		half diffuse_roughness{0.0f};
+		half specular{1.0f};
+		half metallic{0.0f};
 		MatImageHandle metallic_roughness_tex;
-		float subsurface{0.0f};
-		float transmission{0.0f};
-		float thin_film{0.0f};
-		float fuzz{0.0f};
-		float coat{0.0f};
-		float diffraction{0.0f};
+		half subsurface{0.0f};
+		half transmission{0.0f};
+		half thin_film{0.0f};
+		half fuzz{0.0f};
+		half coat{0.0f};
+		half diffraction{0.0f};
 	} weight;
 
 	struct Geometry {
@@ -35,68 +41,68 @@ struct OpenPBR {
 
 	struct Specular {
 		std::array<float, 3> specular_color{1.0f, 1.0f, 1.0f};
-		float roughness{0.3f};
-		float roughness_anisotropy{0.0f};
+		half roughness{0.3f};
+		half roughness_anisotropy{0.0f};
 		MatImageHandle specular_anisotropy_level_tex;
-		float roughness_anisotropy_angle{0.0f};// radians
+		half roughness_anisotropy_angle{0.0f};// radians
 		MatImageHandle specular_anisotropy_angle_tex;
-		float ior{1.5f};
+		half ior{1.5f};
 	} specular;
 
 	struct Emission {
-		std::array<float, 3> luminance{0.0f, 0.0f, 0.0f};
+		half3 luminance{MAKE_HALF3(0.0f, 0.0f, 0.0f)};
 		MatImageHandle emission_tex;
 	} emission;
 
 	struct Base {
-		std::array<float, 3> albedo{1.0f, 1.0f, 1.0f};
+		half3 albedo{MAKE_HALF3(1,1,1)};
 		MatImageHandle albedo_tex;
 	} base;
 
 	struct Subsurface {
-		std::array<float, 3> subsurface_color{0.8f, 0.8f, 0.8f};
-		float subsurface_radius{0.05f};
-		std::array<float, 3> subsurface_radius_scale{1.0f, 0.5f, 0.25f};
-		float subsurface_scatter_anisotropy{0.0f};
+		half3 subsurface_color{MAKE_HALF3(0.8f, 0.8f, 0.8f)};
+		half subsurface_radius{0.05f};
+		half3 subsurface_radius_scale{MAKE_HALF3(1.0f, 0.5f, 0.25f)};
+		half subsurface_scatter_anisotropy{0.0f};
 	} subsurface;
 
 	struct Transmission {
 		std::array<float, 3> transmission_color{1.0f, 1.0f, 1.0f};
-		float transmission_depth{0.0f};
+		half transmission_depth{0.0f};
 		std::array<float, 3> transmission_scatter{0.0f, 0.0f, 0.0f};
-		float transmission_scatter_anisotropy{0.0f};
-		float transmission_dispersion_scale{0.0f};
-		float transmission_dispersion_abbe_number{20.0f};
+		half transmission_scatter_anisotropy{0.0f};
+		half transmission_dispersion_scale{0.0f};
+		half transmission_dispersion_abbe_number{20.0f};
 	} transmission;
 
 	struct Coat {
 		std::array<float, 3> coat_color{1.0f, 1.0f, 1.0f};
-		float coat_roughness{0.0f};
-		float coat_roughness_anisotropy{0.0f};
-		float coat_roughness_anisotropy_angle{0.0f};// radians
-		float coat_ior{1.6f};
-		float coat_darkening{1.0f};
-		float coat_roughening{1.0f};
+		half coat_roughness{0.0f};
+		half coat_roughness_anisotropy{0.0f};
+		half coat_roughness_anisotropy_angle{0.0f};// radians
+		half coat_ior{1.6f};
+		half coat_darkening{1.0f};
+		half coat_roughening{1.0f};
 	} coat;
 
 	struct Fuzz {
 		std::array<float, 3> fuzz_color{1.0f, 1.0f, 1.0f};
-		float fuzz_roughness{0.5f};
+		half fuzz_roughness{0.5f};
 	} fuzz;
 
 	struct Diffraction {
 		std::array<float, 3> diffraction_color{1.0f, 1.0f, 1.0f};
-		float diffraction_thickness{0.5f};// μm
-		float diffraction_inv_pitch_x{1.0f / 3.0f};
-		float diffraction_inv_pitch_y{0.0f};
-		float diffraction_angle{0.0f};// radians
+		half diffraction_thickness{0.5f};// μm
+		half diffraction_inv_pitch_x{1.0f / 3.0f};
+		half diffraction_inv_pitch_y{0.0f};
+		half diffraction_angle{0.0f};// radians
 		uint diffraction_lobe_count{5};
 		uint diffraction_type{1};// 0: Sinusoidal, 1: Rectangular, 2: Linear
 	} diffraction;
 
 	struct ThinFilm {
-		float thin_film_thickness{0.5f};// μm
-		float thin_film_ior{1.4f};
+		half thin_film_thickness{0.5f};// μm
+		half thin_film_ior{1.4f};
 	} thin_film;
 
 	SHADER_CODE(
