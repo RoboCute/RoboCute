@@ -10,11 +10,11 @@ luisa::half3 _make_half3_(float a, float b, float c) { return luisa::half3{(half
 #endif
 struct OpenPBR {
 	struct Weight {
+		MatImageHandle metallic_roughness_tex;
 		half base{1.0f};
 		half diffuse_roughness{0.0f};
 		half specular{1.0f};
 		half metallic{0.0f};
-		MatImageHandle metallic_roughness_tex;
 		half subsurface{0.0f};
 		half transmission{0.0f};
 		half thin_film{0.0f};
@@ -24,14 +24,14 @@ struct OpenPBR {
 	} weight;
 
 	struct Geometry {
-		float cutout_threshold{0.3f};
-		float opacity{1.0f};
+		half thickness{0.5f};// cm
+		half cutout_threshold{0.3f};
+		half opacity{1.0f};
+		half bump_scale{1.0f};
 		MatImageHandle opacity_tex;
-		float thickness{0.5f};// cm
-		bool thin_walled{true};
 		int nested_priority{0};
-		float bump_scale{1.0f};
 		MatImageHandle normal_tex;
+		bool thin_walled{true};
 	} geometry;
 
 	struct UVs {
@@ -43,14 +43,14 @@ struct OpenPBR {
 		half3 specular_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
 		half roughness{0.3f};
 		half roughness_anisotropy{0.0f};
-		MatImageHandle specular_anisotropy_level_tex;
 		half roughness_anisotropy_angle{0.0f};// radians
-		MatImageHandle specular_anisotropy_angle_tex;
 		half ior{1.5f};
+		MatImageHandle specular_anisotropy_angle_tex;
+		MatImageHandle specular_anisotropy_level_tex;
 	} specular;
 
 	struct Emission {
-		half3 luminance{MAKE_HALF3(0.0f, 0.0f, 0.0f)};
+		std::array<float, 3> luminance{0.0f, 0.0f, 0.0f};
 		MatImageHandle emission_tex;
 	} emission;
 
@@ -61,15 +61,15 @@ struct OpenPBR {
 
 	struct Subsurface {
 		half3 subsurface_color{MAKE_HALF3(0.8f, 0.8f, 0.8f)};
-		half subsurface_radius{0.05f};
 		half3 subsurface_radius_scale{MAKE_HALF3(1.0f, 0.5f, 0.25f)};
+		half subsurface_radius{0.05f};
 		half subsurface_scatter_anisotropy{0.0f};
 	} subsurface;
 
 	struct Transmission {
 		half3 transmission_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
-		half transmission_depth{0.0f};
 		half3 transmission_scatter{MAKE_HALF3(0.0f, 0.0f, 0.0f)};
+		half transmission_depth{0.0f};
 		half transmission_scatter_anisotropy{0.0f};
 		half transmission_dispersion_scale{0.0f};
 		half transmission_dispersion_abbe_number{20.0f};

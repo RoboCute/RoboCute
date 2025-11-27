@@ -41,10 +41,10 @@ inline bool OpenPBR::cutout(
             geo_opacity *= read_tex(uv, base.albedo_tex).w;
         }
     }
-    if (geo.cutout_threshold == 0.0f) {
+    if ((float)geo.cutout_threshold == 0.0f) {
         return geo_opacity < rng.next(buffer_heap);
     } else {
-        return geo_opacity < geo.cutout_threshold;
+        return geo_opacity < (float)geo.cutout_threshold;
     }
 }
 inline float3 OpenPBR::get_emission(
@@ -129,11 +129,11 @@ inline bool OpenPBR::transform_to_params(
     if constexpr (requires { params.geometry; }) {
         auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Geometry>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, geometry));
         params.geometry.thin_walled = mat.thin_walled;
-        params.geometry.thickness = mat.thickness * 1e-2f;
+        params.geometry.thickness = (float)mat.thickness * 1e-2f;
         if (mat.normal_tex.valid()) {
             auto tan_normal = read_tex(mat.normal_tex).xyz;
 
-            tan_normal.xy = (tan_normal.xy * 2.f - 1.f) * mat.bump_scale;
+            tan_normal.xy = (tan_normal.xy * 2.f - 1.f) * (float)mat.bump_scale;
             tan_normal = normalize(tan_normal);
             params.geometry.onb.replace_normal(tan_normal, -input_dir);
         }
