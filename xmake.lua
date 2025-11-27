@@ -5,6 +5,7 @@ set_languages("c++20")
 set_policy("check.auto_ignore_flags", false)
 set_policy("build.optimization.lto", false)
 includes('xmake/options.lua')
+
 lc_options = {
     lc_cpu_backend = false,
     lc_cuda_backend = false,
@@ -30,6 +31,7 @@ lc_options = {
 }
 
 includes('xmake/py_codegen.lua', 'xmake/option_meta.lua', 'xmake/interface_target.lua')
+includes('xmake/qt/rbc_rules.lua') -- our special compilation rules for Qt
 includes("thirdparty", "rbc")
 
 target("lc-runtime")
