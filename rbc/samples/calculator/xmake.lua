@@ -1,7 +1,9 @@
 target("calculator")
-    set_kind("binary")
-    set_toolchains(get_config('rbc_py_toolchain'))
-    add_rules("qt.widgetapp")
+    add_rules("lc_basic_settings", {
+        project_kind = "binary",
+        rtti = true
+    })
+    add_rules("qt.mywidget")
     add_files(
         "main.cpp",
         "MathOperationDataModel.cpp",

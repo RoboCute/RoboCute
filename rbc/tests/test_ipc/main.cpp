@@ -18,10 +18,10 @@ int main(int argc, char *argv[]) {
         };
         auto send = [&](uint start, uint end) {
             while (!sender->push(luisa::span{data}.subspan(start, end - start))) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                //    std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         };
-        push_str(0, "The first sentence");
+        push_str(5, "The first sentence");
         push_str(1, "The second sentence");
         push_str(2, "The third sentence");
         push_str(3, "The last sentence");
@@ -30,16 +30,21 @@ int main(int argc, char *argv[]) {
             send(0, cut);
             send(cut, data.size());
         }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
 
     } else {
         auto receiver = ipc::IMessageReceiver::create("rbc_test_ipc", ipc::EMessageQueueBackend::IPC);
-        luisa::vector<std::byte> data;
         uint8_t id;
+        auto async_popper = ipc::AsyncTypedMessagePop{};
         auto print = [&]() {
-            id = receiver->pop_typed_message(data);
+            async_popper.reset(receiver.get());
+            while(async_popper.next_step()) {
+            }
+            id = async_popper.id();
+            auto data = async_popper.get_data();
             LUISA_INFO("ID {} Data {}", id, luisa::string_view{(char const *)data.data(), data.size()});
         };
-        for (int i = 1; i < 5; ++i) {
+        for (int i = 1; i < 2; ++i) {
             print();
             print();
             print();

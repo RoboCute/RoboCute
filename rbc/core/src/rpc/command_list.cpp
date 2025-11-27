@@ -3,6 +3,11 @@
 #include <rbc_core/func_serializer.h>
 #include <luisa/vstl/stack_allocator.h>
 namespace rbc {
+void RPCCommandList::_add_future(RPCRetValueBase *future) {
+    future->next = std::move(return_values);
+    return_values = future;
+}
+
 void RPCCommandList::add_functioon(char const *name, void *handle) {
     _func_count += 1;
     arg_ser.add(name);
@@ -12,15 +17,20 @@ luisa::BinaryBlob RPCCommandList::commit_commands() {
     return arg_ser.write_to();
 }
 
-void RPCCommandList::readback(luisa::BinaryBlob &&serialized_return_values) {
+void RPCCommandList::readback(
+    vstd::function<RC<RPCRetValueBase>(uint64_t)> const &get_cmdlist,
+    luisa::BinaryBlob &&serialized_return_values) {
     JsonDeSerializer ret_deser(luisa::string_view{
         reinterpret_cast<char const *>(serialized_return_values.data()),
         serialized_return_values.size()});
-    auto ret_value_sizes = ret_deser.last_array_size();
-    LUISA_ASSERT(ret_values.size() == ret_value_sizes);
-    for (auto &i : ret_values) {
-        i.deser_func(i.storage, &ret_deser);
-    }
+    uint64_t handle;
+    LUISA_DEBUG_ASSERT(ret_deser.read(handle));
+
+    // auto ret_value_sizes = ret_deser.last_array_size();
+    // LUISA_ASSERT(ret_values.size() == ret_value_sizes);
+    // for (auto &i : ret_values) {
+    //     i.deser_func(i.storage, &ret_deser);
+    // }
 }
 
 luisa::BinaryBlob RPCCommandList::server_execute(
@@ -82,6 +92,8 @@ luisa::BinaryBlob RPCCommandList::server_execute(
     }
     return blob;
 }
-RPCCommandList::RPCCommandList() : arg_ser(true) {}
+RPCCommandList::RPCCommandList(uint64_t custom_handle) : arg_ser(true) {
+    arg_ser.add(custom_handle);
+}
 RPCCommandList::~RPCCommandList() {}
 }// namespace rbc

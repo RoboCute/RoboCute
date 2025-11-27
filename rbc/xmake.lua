@@ -25,7 +25,3 @@ includes('tests')
 includes('editor')
 includes('samples')
 -- includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd
-
-target("qt_node_editor")
-set_toolchains(get_config('rbc_py_toolchain'))
-target_end()

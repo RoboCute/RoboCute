@@ -241,7 +241,7 @@ def prepare():
 
         # Construct dictionary for JSON
         options = {}
-        options["rbc_py_toolchain"] = PYD_TOOLCHAIN
+        # options["rbc_py_toolchain"] = PYD_TOOLCHAIN
 
         if py_path:
 

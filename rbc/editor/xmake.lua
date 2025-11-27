@@ -3,8 +3,7 @@ target("rbc_editor")
         project_kind = 'binary',
         enable_exception = true
     })
-    set_toolchains(get_config('rbc_py_toolchain'))
-    add_rules("qt.widgetapp")
+    add_rules("qt.mywidget")
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")
 
     add_includedirs("include")

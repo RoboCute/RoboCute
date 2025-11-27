@@ -4,8 +4,7 @@ do
     add_rules('lc_basic_settings', {
         project_kind = 'shared',
         enable_exception = true,
-        rtti = true,
-        toolchain = get_config('rbc_py_toolchain')
+        rtti = true
     })
     add_deps('rbc_core')
     set_extension('.pyd')
