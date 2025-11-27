@@ -3,7 +3,7 @@ target("rbc_editor")
         project_kind = 'binary',
         enable_exception = true
     })
-    add_rules("qt.mywidget")
+    add_rules("qt.widgetapp")
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")
 
     add_includedirs("include")

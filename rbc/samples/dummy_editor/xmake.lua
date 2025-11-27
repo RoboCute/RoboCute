@@ -2,7 +2,7 @@ target("dummy_editor")
     add_rules("lc_basic_settings", {
         project_kind = "binary"
     })
-    add_rules("qt.mywidget")
+    add_rules("qt.widgetapp")
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")
     add_files(
         "main.cpp",

@@ -3,7 +3,7 @@ target("calculator")
         project_kind = "binary",
         rtti = true
     })
-    add_rules("qt.mywidget")
+    add_rules("qt.widgetapp")
     add_files(
         "main.cpp",
         "MathOperationDataModel.cpp",
