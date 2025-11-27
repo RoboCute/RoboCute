@@ -270,7 +270,11 @@ def _print_rpc_funcs(struct_type: tr.struct):
                     args += ", "
                 is_first = False
                 args += f"{_print_arg_type(func._args[arg_name])} {arg_name}"
-            cb.add_line(f"{_print_arg_type(func._ret_type)} {func_name}({args});")
+            static = ''
+            if func._static:
+                static = 'static '
+            cb.add_line(
+                f"{static}{_print_arg_type(func._ret_type)} {func_name}({args});")
 
 
 def _print_rpc_serializer(struct_type: tr.struct):
@@ -284,6 +288,7 @@ def _print_rpc_serializer(struct_type: tr.struct):
     func_names = ""
     call_expr = ""
     is_first = True
+    is_statics = ""
     for func_name in rpc:
         mems_dict: dict = rpc[func_name]
         for key in mems_dict:
@@ -296,10 +301,12 @@ def _print_rpc_serializer(struct_type: tr.struct):
                 cb.add_line(f"struct {arg_struct_name} {{")
                 cb.add_indent()
                 for arg_name in func._args:
-                    cb.add_line(f"{_print_arg_type(func._args[arg_name])} {arg_name};")
+                    cb.add_line(
+                        f"{_print_arg_type(func._args[arg_name])} {arg_name};")
 
                 # serializer
-                cb.add_line("void rbc_objser(rbc::JsonSerializer &obj) const {")
+                cb.add_line(
+                    "void rbc_objser(rbc::JsonSerializer &obj) const {")
                 cb.add_indent()
                 for arg_name in func._args:
                     cb.add_line(f"obj._store({arg_name});")
@@ -323,11 +330,20 @@ def _print_rpc_serializer(struct_type: tr.struct):
                 call_expr += ","
                 arg_meta_defines += ","
                 ret_value_defines += ","
+                is_statics += ", "
             is_first = False
             func_names += f'"{func_hasher_name}"'
             call_cb = CodeGenerator()
             call_cb.add_indent()
-            call_cb.add_line("[](void *self, void *args, void *ret_value) {")
+            self_name = ''
+            if not func._static:
+                self_name = 'void *self, '
+                is_statics += "false"
+            else:
+                is_statics += "true"
+            
+            call_cb.add_line(
+                f"(rbc::FuncSerializer::AnyFuncPtr)+[]({self_name}void *args, void *ret_value) {{")
             call_cb.add_indent()
             if len(func._args) > 0:
                 call_cb.add_line(
@@ -340,7 +356,10 @@ def _print_rpc_serializer(struct_type: tr.struct):
                 call_cb.add_line(
                     f"std::construct_at(static_cast<{ret_type_name} *>(ret_value),"
                 )
-            call_cb.add_line(f"static_cast<{full_name} *>(self)->{func_name}(")
+            if func._static:
+                call_cb.add_line(f"{full_name}::{func_name}(")
+            else:
+                call_cb.add_line(f"static_cast<{full_name} *>(self)->{func_name}(")
             arg_is_first = True
             for arg_name in func._args:
                 if not arg_is_first:
@@ -357,12 +376,13 @@ def _print_rpc_serializer(struct_type: tr.struct):
             call_expr += call_cb.get_result()
             arg_meta_defines += f"rbc::HeapObjectMeta::create<{arg_struct_name}>()"
             ret_value_defines += f"rbc::HeapObjectMeta::create<{ret_type_name}>()"
-
-    args_defines = f"""static rbc::FuncSerializer func_ser{{
+    hash_name = hashlib.md5(struct_type.full_name().encode('ascii')).hexdigest()
+    args_defines = f"""static rbc::FuncSerializer func_ser{hash_name}{{
     std::initializer_list<const char *>{{{func_names}}},
-    std::initializer_list<rbc::FuncSerializer::ClousureType>{{{call_expr}}},
+    std::initializer_list<rbc::FuncSerializer::AnyFuncPtr>{{{call_expr}}},
     std::initializer_list<rbc::HeapObjectMeta>{{{arg_meta_defines}}},
-    std::initializer_list<rbc::HeapObjectMeta>{{{ret_value_defines}}}
+    std::initializer_list<rbc::HeapObjectMeta>{{{ret_value_defines}}},
+    std::initializer_list<bool>{{{is_statics}}}
 }};"""
     cb.add_result(args_defines)
 
@@ -451,8 +471,11 @@ def _print_client_code(struct_type: tr.struct):
             future_name = "void"
             if func._ret_type and func._ret_type != tr.void:
                 future_name = f"rbc::RPCFuture<{_print_arg_type(func._ret_type)}>"
+            self_decl = ''
+            if not func._static:
+                self_decl = ', void*'
             cb.add_line(
-                f"static {future_name} {func_name}(rbc::RPCCommandList &, void*{args});"
+                f"static {future_name} {func_name}(rbc::RPCCommandList &{self_decl}{args});"
             )
     cb.remove_indent()
     cb.add_line("};")
@@ -483,17 +506,23 @@ def _print_client_impl(struct_type: tr.struct):
             future_name = "void"
             if func._ret_type and func._ret_type != tr.void:
                 future_name = f"rbc::RPCFuture<{ret_type_name}>"
+            self_decl = ''
+            self_arg = ''
+            if not func._static:
+                self_decl += f', void* {SELF_NAME}'
+                self_arg += f', {SELF_NAME}'
             cb.add_line(
-                f"{future_name} {class_name}Client::{func_name}(rbc::RPCCommandList &{JSON_SER_NAME}, void* {SELF_NAME}{args}){{"
+                f"{future_name} {class_name}Client::{func_name}(rbc::RPCCommandList &{JSON_SER_NAME}{self_decl}{args}){{"
             )
             cb.add_indent()
             cb.add_line(
-                f'{JSON_SER_NAME}.add_functioon("{func_hasher_name}", {SELF_NAME});'
+                f'{JSON_SER_NAME}.add_functioon("{func_hasher_name}"{self_arg});'
             )
             for arg_name in func._args:
                 cb.add_line(f"{JSON_SER_NAME}.add_arg({arg_name});")
             if func._ret_type and func._ret_type != tr.void:
-                cb.add_line(f"return {JSON_SER_NAME}.return_value<{ret_type_name}>();")
+                cb.add_line(
+                    f"return {JSON_SER_NAME}.return_value<{ret_type_name}>();")
 
             cb.remove_indent()
             cb.add_line("}")
@@ -677,7 +706,8 @@ void {export_func_name}(py::module& m) """)
 
     # print classes
     cb.add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
-    cb.add_line(f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
+    cb.add_line(
+        f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
 
@@ -714,7 +744,8 @@ void {export_func_name}(py::module& m) """)
                 end = ""
                 if func._ret_type:
                     ret_type = (
-                        " -> " + _print_arg_type(func._ret_type, True, False) + " "
+                        " -> " +
+                        _print_arg_type(func._ret_type, True, False) + " "
                     )
                     return_decl = "return "
                     if func._ret_type == tr.string:
@@ -733,6 +764,7 @@ void {export_func_name}(py::module& m) """)
     # end
     cb.remove_indent()
     cb.add_line("}")
-    cb.add_line(f"static ModuleRegister _{export_func_name}({export_func_name});")
+    cb.add_line(
+        f"static ModuleRegister _{export_func_name}({export_func_name});")
     _cpp_impl_gen()
     return cb.get_result()

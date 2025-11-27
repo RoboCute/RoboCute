@@ -14,10 +14,12 @@ def codegen_header(backend_path: Path, frontend_path: Path):
     )
     SharedWindow.rpc(
         'open_window',
+        False,
         window_handle=tr.ulong
     )
     SharedWindow.rpc(
         'close_window',
+        False,
         window_handle=tr.ulong
     )
     SharedWindow.add_default_ctor()

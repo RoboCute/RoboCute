@@ -43,7 +43,6 @@ int main(int argc, char *argv[]) {
         }
         service.tick_push();
     }};
-    Chat chat;
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     while (enabled) {
         luisa::string s;
@@ -51,13 +50,13 @@ int main(int argc, char *argv[]) {
         auto cmdlist = service.create_cmdlist(0);
         if (s == "exit") {
             {
-                ChatClient::exit(cmdlist, &chat);
+                ChatClient::exit(cmdlist);
                 service.commit(std::move(cmdlist));
             }
             enabled = false;
             break;
         } else {
-            auto future = ChatClient::chat(cmdlist, &chat, s);
+            auto future = ChatClient::chat(cmdlist, s);
             service.commit(std::move(cmdlist));
             auto str = future.take();
             LUISA_INFO("{}", str);

@@ -280,6 +280,7 @@ class _function_t:
         _check_args(**args)
         self._args = args
         self._ret_type = None
+        self._static = None
 
     def ret_type(self, ret_type):
         _check_ret_type(ret_type)
@@ -340,12 +341,13 @@ class struct:
         tb[key] = f
         return f
     
-    def rpc(self, _func_name: str, **args):
+    def rpc(self, _func_name: str, _is_static: bool, **args):
         tb = self._rpc.get(_func_name)
         if not tb:
             tb = {}
             self._rpc[_func_name] = tb
         f = _function_t(**args)
+        f._static = _is_static
         key = _gen_args_key(**args)
         if tb.get(key):
             log_err(f"member {_func_name} already exists with same arguments overload.")

@@ -28,6 +28,7 @@ public:
     Commit commit_commands();
     auto thread_id() const { return _thread_id; }
     void add_functioon(char const *name, void *handle);
+    void add_functioon(char const *name);
     static void readback(
         vstd::function<RC<RPCRetValueBase>(uint64_t)> const &get_retvalue_handle,
         luisa::span<std::byte const> data);

@@ -14,10 +14,11 @@ static luisa::unordered_map<vstd::Guid::GuidData, luisa::unique_ptr<FuncSerializ
 
 FuncSerializer::FuncSerializer(
     std::initializer_list<const char *> names,
-    std::initializer_list<ClousureType> funcs,
+    std::initializer_list<AnyFuncPtr> funcs,
     std::initializer_list<HeapObjectMeta> args_meta,
-    std::initializer_list<HeapObjectMeta> ret_value_meta) {
-    LUISA_DEBUG_ASSERT(names.size() == funcs.size() && names.size() == args_meta.size() && names.size() == ret_value_meta.size());
+    std::initializer_list<HeapObjectMeta> ret_value_meta,
+    std::initializer_list<bool> is_static) {
+    LUISA_DEBUG_ASSERT(names.size() == funcs.size() && names.size() == args_meta.size() && names.size() == ret_value_meta.size() && names.size() == is_static.size());
     func_ser_detail::func_maps.reserve(names.size());
     for (size_t i = 0; i < names.size(); ++i) {
         auto guid = vstd::Guid::TryParseGuid(names.begin()[i]);
@@ -27,7 +28,8 @@ FuncSerializer::FuncSerializer(
             luisa::make_unique<FuncCall>(
                 funcs.begin()[i],
                 args_meta.begin()[i],
-                ret_value_meta.begin()[i]));
+                ret_value_meta.begin()[i],
+                is_static.begin()[i]));
     }
 }
 FuncSerializer::~FuncSerializer() {}

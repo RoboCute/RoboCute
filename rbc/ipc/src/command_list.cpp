@@ -16,6 +16,12 @@ void RPCCommandList::add_functioon(char const *name, void *handle) {
     arg_ser._store(*guid);
     arg_ser.add((uint64_t)handle);
 }
+void RPCCommandList::add_functioon(char const *name) {
+    _func_count += 1;
+    auto guid = vstd::Guid::TryParseGuid(name);
+    LUISA_DEBUG_ASSERT(guid);
+    arg_ser._store(*guid);
+}
 auto RPCCommandList::commit_commands() -> Commit {
     auto d = vstd::scope_exit([&] {
         vstd::reset(arg_ser);
@@ -62,14 +68,18 @@ luisa::BinaryBlob RPCCommandList::server_execute(
 
     for (uint64_t i = 0; i < call_count; ++i) {
         vstd::Guid func_hash;
-        uint64_t self;
         if (!(arg_deser._load(func_hash))) {
             break;
         }
-        LUISA_DEBUG_ASSERT(arg_deser.read(self));
         auto call_meta = FuncSerializer::get_call_meta(func_hash);
         LUISA_DEBUG_ASSERT(call_meta);
         void *arg = nullptr;
+        // self
+        uint64_t self;
+        // check if is static?
+        if (!call_meta->is_static) {
+            LUISA_DEBUG_ASSERT(arg_deser.read(self));
+        }
         // allocate
         auto const &args_meta = call_meta->args_meta;
         if (args_meta) {
@@ -94,7 +104,12 @@ luisa::BinaryBlob RPCCommandList::server_execute(
             }
         }
         // call
-        call_meta->func(reinterpret_cast<void *>(self), arg, ret_ptr);
+        if (call_meta->is_static) {
+            reinterpret_cast<FuncSerializer::StaticFuncType>(call_meta->func)(arg, ret_ptr);
+        } else {
+            reinterpret_cast<FuncSerializer::ClousureType>(call_meta->func)(reinterpret_cast<void *>(self), arg, ret_ptr);
+        }
+
         if (ret_ptr) {
             ret_value_meta.json_writer(ret_ptr, &ret_ser);
             has_ret_value = true;
