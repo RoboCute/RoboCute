@@ -321,7 +321,7 @@ LightSample light_importance_sampling(
 			result.mis_weight = area_light.mis_weight;
 			auto light_uv = sampler.next2f();
 			auto light_local_pos = light_uv - 0.5f;
-			float4x4 transform = make_float4x4(area_light.transform);
+			float4x4 transform = area_light.transform;
 			auto p_light = (transform * float4(light_local_pos, 0.f, 1.f)).xyz;
 			auto light_normal = (transform * float4(0, 0, 1, 0)).xyz;
 			light_normal = normalize(light_normal);
@@ -352,9 +352,8 @@ LightSample light_importance_sampling(
 			auto light_uvw = sampler.next3f();
 			auto light_uvw_len = light_uvw.x + light_uvw.y + light_uvw.z;
 			light_uvw /= max(light_uvw_len, 1e-5f);
-			float4x4 transform = make_float4x4(mesh_light.transform);
 			for (uint vv = 0; vv < 3; ++vv) {
-				vertices[vv].pos = (transform * float4(vertices[vv].pos, 1.)).xyz;
+				vertices[vv].pos = (mesh_light.transform * float4(vertices[vv].pos, 1.)).xyz;
 			}
 			auto p_light = vertices[0].pos * light_uvw.x + vertices[1].pos * light_uvw.y + vertices[2].pos * light_uvw.z;
 			float3 light_normal;

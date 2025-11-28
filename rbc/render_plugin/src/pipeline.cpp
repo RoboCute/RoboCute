@@ -87,9 +87,4 @@ void Pipeline::disable(
         i->on_disable(*this, device, cmdlist, scene);
     }
 }
-
-void Pipeline::refresh(PipelineContext &ctx, Stream &stream) {
-    ctx.scene->refresh_pipeline(*ctx.cmdlist, stream);
-    ctx.mut.clear();
-}
 }// namespace rbc

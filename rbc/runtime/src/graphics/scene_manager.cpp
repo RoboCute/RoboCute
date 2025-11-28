@@ -36,10 +36,13 @@ Accel &SceneManager::accel() {
 
 void SceneManager::refresh_pipeline(
     CommandList &cmdlist,
-    Stream &stream) {
+    Stream &stream,
+    bool start_new_frame) {
     before_rendering(cmdlist, stream);
     on_frame_end(cmdlist, stream);
     stream << synchronize();
+    if (start_new_frame)
+        prepare_frame();
 }
 void SceneManager::before_rendering(
     CommandList &cmdlist,
@@ -91,6 +94,15 @@ void SceneManager::add_on_frame_end_event(vstd::string_view name, SceneManagerEv
     std::lock_guard lck{_evt_mtx};
     _before_render_evts.try_emplace(name, std::move(func));
 }
+void SceneManager::prepare_frame() {
+    if (!_temp_buffer) {
+        if (auto new_temp_buffer = _temp_buffers.pop()) {
+            _temp_buffer = std::move(*new_temp_buffer);
+        } else {
+            _temp_buffer = vstd::make_unique<HostBufferManager>(_device);
+        }
+    }
+}
 bool SceneManager::on_frame_end(
     CommandList &cmdlist,
     Stream &stream,
@@ -108,19 +120,16 @@ bool SceneManager::on_frame_end(
     // store transform in accel
     for (auto &i : _accel_mngs)
         i->update_last_transform(cmdlist);
-
-    // cleanup temp buffer after rendering done
-    cmdlist.add_callback([t = std::move(_temp_buffer), this]() mutable {
-        t->clear();
-        _temp_buffers.push(std::move(t));
-    });
+    if (_temp_buffer) {
+        _temp_buffer->flush();
+        // cleanup temp buffer after rendering done
+        cmdlist.add_callback([t = std::move(_temp_buffer), this]() mutable {
+            t->clear();
+            _temp_buffers.push(std::move(t));
+        });
+    }
 
     // create new temp buffer for next frame
-    if (auto new_temp_buffer = _temp_buffers.pop()) {
-        _temp_buffer = std::move(*new_temp_buffer);
-    } else {
-        _temp_buffer = vstd::make_unique<HostBufferManager>(_device);
-    }
 
     // push dispose queue callback
     _dsp_queue.on_frame_end(cmdlist);
@@ -136,7 +145,6 @@ bool SceneManager::on_frame_end(
 
     // commit command list
     if (cmdlist.empty()) return false;
-    _temp_buffer->flush();
     if (managed_device) {
         managed_device->dispatch(stream.handle(), std::move(cmdlist));
         cmdlist.clear();
@@ -145,15 +153,15 @@ bool SceneManager::on_frame_end(
     }
     return true;
 }
-void SceneManager::load_shader(luisa::fiber::counter &counter) {
-    _mesh_mng.load_shader(counter);
+void SceneManager::load_shader(luisa::fiber::counter& init_counter) {
+    _mesh_mng.load_shader(init_counter);
     // default scene
     _accel_mngs.emplace_back(luisa::make_unique<AccelManager>(_device));
     for (auto &i : _accel_mngs)
-        i->load_shader(counter);
-    _uploader.load_shader(counter);
-    _tex_uploader.load_shader(counter);
-    _light_accel.load_shader(counter);
+        i->load_shader(init_counter);
+    _uploader.load_shader(init_counter);
+    _tex_uploader.load_shader(init_counter);
+    _light_accel.load_shader(init_counter);
 }
 
 void SceneManager::add_after_commit_callback(vstd::function<void()> &&callback) {

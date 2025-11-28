@@ -1,0 +1,102 @@
+import rbc_meta.utils.type_register as tr
+import rbc_meta.utils.codegen_util as ut
+from pathlib import Path
+
+
+def codegen_module(
+    cpp_root_path: Path,
+    py_root_path: Path,
+):
+    pyd_name = 'rbc_backend'
+    file_name = 'rbc_backend'
+    Context = tr.struct('Context')
+    # frame
+    Context.method(
+        'init_device',
+        rhi_backend=tr.string,
+        program_path=tr.string,
+        shader_path=tr.string)
+    # render
+    Context.method('init_render')
+    Context.method('load_skybox', path=tr.string)
+    Context.method('create_window', name=tr.string)
+    Context.method('add_external_window', window_handle=tr.ulong)
+    # mesh
+    Context.method('load_mesh', path=tr.string).ret_type(tr.VoidPtr)
+    Context.method('create_mesh', data=tr.VoidPtr, vertex_count=tr.uint,
+                   contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint).ret_type(tr.VoidPtr)
+    Context.method('remove_mesh', handle=tr.ulong)
+    # light
+    Context.method(
+        'add_area_light', matrix=tr.float4x4,
+        luminance=tr.float3, visible=tr.bool).ret_type(tr.VoidPtr)
+    Context.method(
+        'add_disk_light', center=tr.float3, radius=tr.float,
+        luminance=tr.float3, forward_dir=tr.float3, visible=tr.bool).ret_type(tr.VoidPtr)
+    Context.method(
+        'add_point_light', center=tr.float3,
+        radius=tr.float, luminance=tr.float3, visible=tr.bool).ret_type(tr.VoidPtr)
+    Context.method(
+        'add_spot_light', center=tr.float3, radius=tr.float, luminance=tr.float3, forward_dir=tr.float3,
+        angle_radians=tr.float, small_angle_radians=tr.float, angle_atten_po=tr.float, visible=tr.bool).ret_type(tr.VoidPtr)
+    Context.method(
+        'remove_light', handle=tr.ulong
+    )
+    Context.method(
+        'update_area_light', light=tr.VoidPtr, matrix=tr.float4x4,
+        luminance=tr.float3, visible=tr.bool)
+    Context.method(
+        'update_disk_light', light=tr.VoidPtr, center=tr.float3, radius=tr.float,
+        luminance=tr.float3, forward_dir=tr.float3, visible=tr.bool)
+    Context.method(
+        'update_point_light', light=tr.VoidPtr, center=tr.float3,
+        radius=tr.float, luminance=tr.float3, visible=tr.bool)
+    Context.method(
+        'update_spot_light', light=tr.VoidPtr, center=tr.float3, radius=tr.float, luminance=tr.float3, forward_dir=tr.float3,
+        angle_radians=tr.float, small_angle_radians=tr.float, angle_atten_po=tr.float, visible=tr.bool)
+    Context.method(
+        'remove_light', light=tr.VoidPtr
+    )
+    # object
+    Context.method(
+        'create_object',
+        matrix=tr.float4x4,
+        mesh=tr.VoidPtr
+        # TODO: material
+    ).ret_type(tr.VoidPtr)
+    
+    Context.method(
+        'update_object',
+        matrix=tr.float4x4,
+        # TODO: material
+    )
+    Context.method(
+        'update_object',
+        matrix=tr.float4x4,
+        mesh=tr.VoidPtr
+        # TODO: material
+    )
+    Context.method(
+        'remove_object',
+        object_ptr=tr.VoidPtr
+    )
+    
+    # view
+    Context.method(
+        'reset_view',
+        resolution=tr.uint2
+    )
+    Context.method(
+        'set_view_camera',
+        pos=tr.float3,
+        forward_dir=tr.float3,
+        up_dir=tr.float3
+    )
+    Context.method(
+        'disable_view'
+    )
+
+    # codegen
+    ut.codegen_pyd_module(
+        pyd_name, file_name, 'test_graphics', cpp_root_path, py_root_path
+    )

@@ -68,6 +68,10 @@ struct ClickManager {
     inline void clear_requires() {
         _requires.clear();
     }
+    void clear() {
+        _requires.clear();
+        _results.clear();
+    }
 
 private:
     luisa::vector<std::pair<luisa::string, luisa::variant<RayCastRequire, ClickRequire>>> _requires;

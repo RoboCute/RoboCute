@@ -13,7 +13,7 @@ using namespace luisa::compute;
 struct RBC_RUNTIME_API RenderDevice {
     // ctor & dtor
     RenderDevice() = default;
-    ~RenderDevice() = default;
+    ~RenderDevice();
 
     // delete copy & move
     RenderDevice(const RenderDevice&) = delete;
@@ -23,7 +23,6 @@ struct RBC_RUNTIME_API RenderDevice {
 
     // init & shutdown
     void init(const luisa::filesystem::path& program_path, luisa::string_view backend = "dx", bool headless = false,  bool require_async_stream = true, bool require_io_service = true, bool gpu_dump = false, void* external_device = nullptr);
-    void shutdown();
     template <typename T>
     Buffer<T> create_transient_buffer(vstd::string name, size_t element_count)
     {

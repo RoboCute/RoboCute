@@ -52,7 +52,6 @@ public:
 
     void wait_enable();
 
-    void refresh(PipelineContext &ctx, Stream &stream);
     void disable(
         Device &device,
         CommandList &cmdlist,

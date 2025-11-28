@@ -85,7 +85,7 @@ void RenderDevice::init(
         }
     }
 }
-void RenderDevice::shutdown()
+RenderDevice::~RenderDevice()
 {
     if (!_headless)
     {

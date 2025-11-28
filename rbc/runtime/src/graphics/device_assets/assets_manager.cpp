@@ -285,6 +285,11 @@ void AssetsManager::execute_render_thread()
 
 AssetsManager::~AssetsManager()
 {
+    for(auto& i : _async_frame_res){
+        _render_device.io_service()->synchronize(i.disk_io_fence);
+        _render_device.mem_io_service()->synchronize(i.mem_io_fence);
+    }
+    _render_device.lc_async_copy_stream().synchronize();
     {
         std::lock_guard lck(_load_thd_mtx);
         std::lock_guard lck1(_load_executive_thd_mtx);

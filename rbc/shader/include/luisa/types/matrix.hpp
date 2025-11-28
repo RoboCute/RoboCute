@@ -142,25 +142,4 @@ constexpr matrix<4> matrix<4>::identity() {
 using float2x2 = matrix<2>;
 using float3x3 = matrix<3>;
 using float4x4 = matrix<4>;
-float2x2 make_float2x2(std::array<float2, 2> vec){
-	float2x2 v;
-	v[0] = vec[0];
-	v[1] = vec[1];
-	return v;
-}
-float3x3 make_float3x3(std::array<float3, 3> vec){
-	float3x3 v;
-	v[0] = vec[0];
-	v[1] = vec[1];
-	v[2] = vec[2];
-	return v;
-}
-float4x4 make_float4x4(std::array<float4, 4> vec){
-	float4x4 v;
-	v[0] = vec[0];
-	v[1] = vec[1];
-	v[2] = vec[2];
-	v[3] = vec[3];
-	return v;
-}
 }// namespace luisa::shader

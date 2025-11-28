@@ -5,6 +5,7 @@ PipelineCtxMutable::PipelineCtxMutable() {
 }
 PipelineCtxMutable::~PipelineCtxMutable() = default;
 void PipelineCtxMutable::clear() {
+    click_manager.clear();
     _pass_contexts.clear();
 }
 void PipelineCtxMutable::delay_dispose(DisposeQueue &queue) {
