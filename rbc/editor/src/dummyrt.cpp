@@ -11,15 +11,14 @@
 
 using namespace luisa;
 using namespace luisa::compute;
-
 // clang-format off
-LUISA_STRUCT(Onb, tangent, binormal, normal){
+LUISA_STRUCT(rbc::Onb, tangent, binormal, normal){
     [[nodiscard]] Float3 to_world(Expr<float3> v) const noexcept {
         return v.x * tangent + v.y * binormal + v.z * normal;
     }
 };
 
-LUISA_STRUCT(Camera, position, front, up, right, fov) {
+LUISA_STRUCT(rbc::Camera, position, front, up, right, fov) {
     [[nodiscard]] auto generate_ray(Expr<float2> p/* normalized pixel coordinate */) const noexcept {
         auto fov_radians = radians(fov);
         auto wi_local = make_float3(p * tan(0.5f * fov_radians), -1.0f);
@@ -29,6 +28,7 @@ LUISA_STRUCT(Camera, position, front, up, right, fov) {
 };
 // clang-format on
 
+namespace rbc {
 void App::init(
     luisa::compute::Context &ctx, const char *backend_name) {
     luisa::string_view backend = backend_name;
@@ -430,3 +430,4 @@ void *App::init_vulkan(luisa::compute::Context &ctx) {
         nullptr, 0,
         nullptr, nullptr);
 }
+}// namespace rbc

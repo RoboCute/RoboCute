@@ -14,80 +14,24 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QDebug>
-#include "qlogging.h"
 #include "rhi/qrhi.h"
 #include "QtGui/rhi/qrhi_platform.h"
 #include "RBCEditor/components/rhiwindow.h"
+#include "RBCEditor/dummyrt.h"
+#include <luisa/gui/input.h>
 
-// 自定义容器Widget，用于转发键盘和鼠标事件到嵌入的RhiWindow
-class WindowContainerWidget : public QWidget {
-public:
-    RhiWindow *rhiWindow = nullptr;
-
-    WindowContainerWidget(RhiWindow *window, QWidget *parent = nullptr)
-        : QWidget(parent), rhiWindow(window) {
-        setFocusPolicy(Qt::StrongFocus);
-        setMouseTracking(true);
-    }
-
-protected:
-    void keyPressEvent(QKeyEvent *event) override {
-        qInfo() << "WindowContainerWidget::keyPressEvent - forwarding to RhiWindow";
-        if (rhiWindow) {
-            QCoreApplication::sendEvent(rhiWindow, event);
-        }
-        QWidget::keyPressEvent(event);
-    }
-
-    void keyReleaseEvent(QKeyEvent *event) override {
-        if (rhiWindow) {
-            QCoreApplication::sendEvent(rhiWindow, event);
-        }
-        QWidget::keyReleaseEvent(event);
-    }
-
-    void mousePressEvent(QMouseEvent *event) override {
-        qInfo() << "WindowContainerWidget::mousePressEvent - setting focus and forwarding";
-        setFocus();// 点击时获取焦点
-        if (rhiWindow) {
-            QCoreApplication::sendEvent(rhiWindow, event);
-        }
-        QWidget::mousePressEvent(event);
-    }
-
-    void mouseReleaseEvent(QMouseEvent *event) override {
-        if (rhiWindow) {
-            QCoreApplication::sendEvent(rhiWindow, event);
-        }
-        QWidget::mouseReleaseEvent(event);
-    }
-
-    void mouseMoveEvent(QMouseEvent *event) override {
-        if (rhiWindow) {
-            QCoreApplication::sendEvent(rhiWindow, event);
-        }
-        QWidget::mouseMoveEvent(event);
-    }
-
-    void wheelEvent(QWheelEvent *event) override {
-        if (rhiWindow) {
-            QCoreApplication::sendEvent(rhiWindow, event);
-        }
-        QWidget::wheelEvent(event);
-    }
-};
-
-struct RendererImpl : public IRenderer {
-    QRhi::Implementation backend;
-    App *render_app;
+// 用来给Qt窗口嵌入自定义Renderer
+struct RendererImpl : public rbc::IRenderer {
+    QRhi::Implementation backend = QRhi::Implementation::D3D12;
+    rbc::App *render_app = nullptr;
     bool is_paused = false;
     void init(QRhiNativeHandles &handles_base) override {
         if (backend == QRhi::D3D12) {
             auto &handles = static_cast<QRhiD3D12NativeHandles &>(handles_base);
             handles.dev = render_app->device.native_handle();
             handles.minimumFeatureLevel = 0;
-            handles.adapterLuidHigh = render_app->dx_adaptor_luid.x;
-            handles.adapterLuidLow = render_app->dx_adaptor_luid.y;
+            handles.adapterLuidHigh = (qint32)render_app->dx_adaptor_luid.x;
+            handles.adapterLuidLow = (qint32)render_app->dx_adaptor_luid.y;
             handles.commandQueue = render_app->stream.native_handle();
         } else {
             LUISA_ERROR("Backend unsupported.");
@@ -106,6 +50,8 @@ struct RendererImpl : public IRenderer {
 };
 
 int main(int argc, char **argv) {
+    using namespace rbc;
+
     QApplication app(argc, argv);
     // Load Style
     QFile f(":/main.qss");
@@ -122,13 +68,28 @@ int main(int argc, char **argv) {
     App render_app;
     luisa::string backend = "dx";
     QRhi::Implementation graphicsApi = QRhi::D3D12;
-    // Init renderer
     render_app.init(ctx, backend.c_str());
     QWidget mainWindow;
+    // ============ 核心模块：创建LC-Driven Viewport ===============
+    auto *renderWindow = new RhiWindow(graphicsApi);
+    RendererImpl renderer_impl;
+    renderer_impl.backend = graphicsApi;
+    renderer_impl.render_app = &render_app;
+    renderWindow->renderer = &renderer_impl;
+    renderWindow->workspace_path = luisa::to_string(luisa::filesystem::path(argv[0]).parent_path());// set runtime workspace path
+
+    // ============ 核心模块：创建LC-Driven Viewport ===============
+    // 创建自定义容器Widget来转发事件
+    auto *renderContainerWrapper = new RHIWindowContainerWidget(renderWindow, &mainWindow);
+    renderContainerWrapper->setMinimumSize(800, 600);
+    renderContainerWrapper->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    // Other Layout
     mainWindow.setWindowTitle("LuisaCompute Qt Sample");
     mainWindow.resize(1280, 800);
     // 创建主布局
-    QVBoxLayout *mainLayout = new QVBoxLayout(&mainWindow);
+
+    auto *mainLayout = new QVBoxLayout(&mainWindow);
     mainLayout->setSpacing(10);
     mainLayout->setContentsMargins(10, 10, 10, 10);
     QHBoxLayout *topBarLayout = new QHBoxLayout();
@@ -148,19 +109,6 @@ int main(int argc, char **argv) {
     inputDebugLabel->setStyleSheet("QLabel { background-color: #f0f0f0; padding: 5px; border: 1px solid #ccc; }");
     inputDebugLabel->setWordWrap(true);
     mainLayout->addWidget(inputDebugLabel);
-
-    // ============ 核心模块：创建LC-Driven Viewport ===============
-    RhiWindow *renderWindow = new RhiWindow(graphicsApi);
-    RendererImpl renderer_impl;
-    renderer_impl.backend = graphicsApi;
-    renderer_impl.render_app = &render_app;
-    renderWindow->renderer = &renderer_impl;
-    renderWindow->workspace_path = luisa::to_string(luisa::filesystem::path(argv[0]).parent_path());// set runtime workspace path
-    // ============ 核心模块：创建LC-Driven Viewport ===============
-    // 创建自定义容器Widget来转发事件
-    WindowContainerWidget *renderContainerWrapper = new WindowContainerWidget(renderWindow, &mainWindow);
-    renderContainerWrapper->setMinimumSize(800, 600);
-    renderContainerWrapper->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     // 创建布局并将RhiWindow的容器嵌入其中
     QVBoxLayout *containerLayout = new QVBoxLayout(renderContainerWrapper);
@@ -270,18 +218,13 @@ int main(int argc, char **argv) {
         inputDebugLabel->setStyleSheet("QLabel { background-color: #d1ecf1; padding: 5px; border: 1px solid #17a2b8; color: #0c5460; }");
     });
 
-    // 显示主窗口
-    mainWindow.show();
-
     // MainWindow window;
     // window.show();
 
     // 显示主窗口
     mainWindow.show();
 
-    int ret = app.exec();
-    // Move stream here to make it destroy later than QT
-    // 清理资源
+    int ret = QApplication::exec();
     if (renderWindow->handle())
         renderWindow->releaseSwapChain();
     return ret;

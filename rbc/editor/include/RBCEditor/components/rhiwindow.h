@@ -2,9 +2,13 @@
 #include <QWindow>
 #include <QOffscreenSurface>
 #include <rhi/qrhi.h>
-#include "RBCEditor/dummyrt.h"
+#include <QKeyEvent>
+#include <QMouseEvent>
+#include <QWidget>
+#include "RBCEditor/runtime/renderer.hpp"
 #include <luisa/gui/input.h>
 
+namespace rbc {
 inline luisa::compute::Key key_map(int key) {
     using namespace luisa::compute;
     switch (key) {
@@ -15,17 +19,6 @@ inline luisa::compute::Key key_map(int key) {
         default: return KEY_UNKNOWN;
     }
 }
-
-struct IRenderer {
-    virtual void init(QRhiNativeHandles &) = 0;
-    virtual void update() = 0;
-    virtual void pause() = 0;
-    virtual void resume() = 0;
-    virtual void handle_key(luisa::compute::Key key) = 0;
-    virtual uint64_t get_present_texture(luisa::uint2 resolution) = 0;
-protected:
-    ~IRenderer() = default;
-};
 
 class RhiWindow : public QWindow {
     Q_OBJECT
@@ -77,3 +70,63 @@ private:
 
     QRhiResourceUpdateBatch *m_initialUpdates = nullptr;
 };
+
+// 用于包装RhiWindow，转发Event的QWidget
+class RHIWindowContainerWidget : public QWidget {
+public:
+    RhiWindow *rhiWindow = nullptr;
+
+    explicit RHIWindowContainerWidget(RhiWindow *window, QWidget *parent = nullptr)
+        : QWidget(parent), rhiWindow(window) {
+        setFocusPolicy(Qt::StrongFocus);
+        setMouseTracking(true);
+    }
+
+protected:
+    void keyPressEvent(QKeyEvent *event) override {
+        qInfo() << "WindowContainerWidget::keyPressEvent - forwarding to RhiWindow";
+        if (rhiWindow) {
+            QCoreApplication::sendEvent(rhiWindow, event);
+        }
+        QWidget::keyPressEvent(event);
+    }
+
+    void keyReleaseEvent(QKeyEvent *event) override {
+        if (rhiWindow) {
+            QCoreApplication::sendEvent(rhiWindow, event);
+        }
+        QWidget::keyReleaseEvent(event);
+    }
+
+    void mousePressEvent(QMouseEvent *event) override {
+        qInfo() << "WindowContainerWidget::mousePressEvent - setting focus and forwarding";
+        setFocus();// 点击时获取焦点
+        if (rhiWindow) {
+            QCoreApplication::sendEvent(rhiWindow, event);
+        }
+        QWidget::mousePressEvent(event);
+    }
+
+    void mouseReleaseEvent(QMouseEvent *event) override {
+        if (rhiWindow) {
+            QCoreApplication::sendEvent(rhiWindow, event);
+        }
+        QWidget::mouseReleaseEvent(event);
+    }
+
+    void mouseMoveEvent(QMouseEvent *event) override {
+        if (rhiWindow) {
+            QCoreApplication::sendEvent(rhiWindow, event);
+        }
+        QWidget::mouseMoveEvent(event);
+    }
+
+    void wheelEvent(QWheelEvent *event) override {
+        if (rhiWindow) {
+            QCoreApplication::sendEvent(rhiWindow, event);
+        }
+        QWidget::wheelEvent(event);
+    }
+};
+
+}// namespace rbc

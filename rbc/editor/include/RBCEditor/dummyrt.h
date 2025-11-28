@@ -6,6 +6,7 @@
 #include <luisa/runtime/rhi/resource.h>
 #include <luisa/backends/ext/native_resource_ext_interface.h>
 
+namespace rbc {
 struct Onb {
     luisa::compute::float3 tangent;
     luisa::compute::float3 binormal;
@@ -113,3 +114,5 @@ struct App {
     void *init_vulkan(luisa::compute::Context &ctx);
     ~App();
 };
+
+}// namespace rbc

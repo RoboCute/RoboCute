@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <rhi/qshader.h>
 
+namespace rbc {
 static QShader getShader(const QString &name) {
     QFile f(name);
     if (f.open(QIODevice::ReadOnly))
@@ -288,3 +289,4 @@ void RhiWindow::mouseMoveEvent(QMouseEvent *event) {
     // qDebug() << "RhiWindow::mouseMoveEvent - Pos:" << event->pos();
     QWindow::mouseMoveEvent(event);
 }
+}// namespace rbc
