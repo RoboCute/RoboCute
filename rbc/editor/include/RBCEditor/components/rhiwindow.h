@@ -5,7 +5,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWidget>
-#include "RBCEditor/runtime/renderer.hpp"
+#include "RBCEditor/runtime/renderer.h"
 #include <luisa/gui/input.h>
 
 namespace rbc {

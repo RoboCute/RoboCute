@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
 
     // Other Layout
     mainWindow.setWindowTitle("LuisaCompute Qt Sample");
-    mainWindow.resize(1280, 800);
+    // mainWindow.resize(1280, 800);
     // 创建主布局
 
     auto *mainLayout = new QVBoxLayout(&mainWindow);

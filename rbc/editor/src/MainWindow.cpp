@@ -8,6 +8,7 @@
 #include <QKeyEvent>
 #include <QApplication>
 #include <QStatusBar>
+#include "RBCEditor/components/node_editor.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }
@@ -17,12 +18,7 @@ MainWindow::~MainWindow() {}
 void MainWindow::setupUi(QWidget *central_viewport) {
     resize(1600, 900);
     setWindowTitle("RoboCute Editor");
-
-    // Central Widget (3D Viewport Placeholder)
-    // QLabel *centralWidget = new QLabel("3D Viewport", this);
-    // centralWidget->setAlignment(Qt::AlignCenter);
-    // centralWidget->setObjectName("Viewport");// For styling
-    // setCentralWidget(centralWidget);
+    // 3D Viewport
     setCentralWidget(central_viewport);
 
     setupMenuBar();
@@ -71,18 +67,18 @@ void MainWindow::setupToolBar() {
 
 void MainWindow::setupDocks() {
     // 1. Scene Hierarchy (Left)
-    QDockWidget *sceneDock = new QDockWidget("Scene Hierarchy", this);
+    auto *sceneDock = new QDockWidget("Scene Hierarchy", this);
     sceneDock->setObjectName("SceneDock");
     sceneDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
-    QTreeWidget *sceneTree = new QTreeWidget(sceneDock);
+    auto *sceneTree = new QTreeWidget(sceneDock);
     sceneTree->setHeaderHidden(true);
 
-    QTreeWidgetItem *root = new QTreeWidgetItem(sceneTree, {"Scene Root"});
+    auto *root = new QTreeWidgetItem(sceneTree, {"Scene Root"});
     root->setExpanded(true);
     new QTreeWidgetItem(root, {"Main Camera"});
     new QTreeWidgetItem(root, {"Directional Light"});
-    QTreeWidgetItem *models = new QTreeWidgetItem(root, {"Models"});
+    auto *models = new QTreeWidgetItem(root, {"Models"});
     models->setExpanded(true);
     new QTreeWidgetItem(models, {"Robot Arm Base"});
     new QTreeWidgetItem(models, {"Robot Arm Link 1"});
@@ -109,14 +105,10 @@ void MainWindow::setupDocks() {
     addDockWidget(Qt::RightDockWidgetArea, detailsDock);
 
     // 3. Node Editor (Bottom)
-    QDockWidget *nodeDock = new QDockWidget("Node Graph", this);
+    auto *nodeDock = new QDockWidget("Node Graph", this);
     nodeDock->setObjectName("NodeDock");
     nodeDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
-
-    QLabel *nodePlaceholder = new QLabel("Node Graph Editor Placeholder", nodeDock);
-    nodePlaceholder->setAlignment(Qt::AlignCenter);
-    nodePlaceholder->setObjectName("NodeEditorPlaceholder");
-
-    nodeDock->setWidget(nodePlaceholder);
+    auto *node_editor = new rbc::NodeEditor(nodeDock);
+    nodeDock->setWidget(node_editor);
     addDockWidget(Qt::BottomDockWidgetArea, nodeDock);
 }
