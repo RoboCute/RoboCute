@@ -10,20 +10,20 @@
 #include <QStatusBar>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-    setupUi();
 }
 
 MainWindow::~MainWindow() {}
 
-void MainWindow::setupUi() {
+void MainWindow::setupUi(QWidget *central_viewport) {
     resize(1600, 900);
     setWindowTitle("RoboCute Editor");
 
     // Central Widget (3D Viewport Placeholder)
-    QLabel *centralWidget = new QLabel("3D Viewport", this);
-    centralWidget->setAlignment(Qt::AlignCenter);
-    centralWidget->setObjectName("Viewport");// For styling
-    setCentralWidget(centralWidget);
+    // QLabel *centralWidget = new QLabel("3D Viewport", this);
+    // centralWidget->setAlignment(Qt::AlignCenter);
+    // centralWidget->setObjectName("Viewport");// For styling
+    // setCentralWidget(centralWidget);
+    setCentralWidget(central_viewport);
 
     setupMenuBar();
     setupToolBar();

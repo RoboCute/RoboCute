@@ -69,6 +69,9 @@ int main(int argc, char **argv) {
     luisa::string backend = "dx";
     QRhi::Implementation graphicsApi = QRhi::D3D12;
     render_app.init(ctx, backend.c_str());
+
+    MainWindow window;
+
     QWidget mainWindow;
     // ============ 核心模块：创建LC-Driven Viewport ===============
     auto *renderWindow = new RhiWindow(graphicsApi);
@@ -202,12 +205,9 @@ int main(int argc, char **argv) {
     QObject::connect(sampleSlider, &QSlider::valueChanged, [sampleValueLabel](int value) {
         sampleValueLabel->setText(QString::number(value));
     });
-
     QObject::connect(bounceSlider, &QSlider::valueChanged, [bounceValueLabel](int value) {
         bounceValueLabel->setText(QString::number(value));
     });
-
-    // 连接RhiWindow的输入事件信号到UI标签
     QObject::connect(renderWindow, &RhiWindow::keyPressed, [inputDebugLabel](const QString &keyInfo) {
         inputDebugLabel->setText(QString("Input Events: %1").arg(keyInfo));
         inputDebugLabel->setStyleSheet("QLabel { background-color: #d4edda; padding: 5px; border: 1px solid #28a745; color: #155724; }");
@@ -218,12 +218,10 @@ int main(int argc, char **argv) {
         inputDebugLabel->setStyleSheet("QLabel { background-color: #d1ecf1; padding: 5px; border: 1px solid #17a2b8; color: #0c5460; }");
     });
 
-    // MainWindow window;
-    // window.show();
-
     // 显示主窗口
-    mainWindow.show();
-
+    // mainWindow.show();
+    window.setupUi(&mainWindow);
+    window.show();
     int ret = QApplication::exec();
     if (renderWindow->handle())
         renderWindow->releaseSwapChain();
