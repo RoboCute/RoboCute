@@ -3,13 +3,14 @@ import rbc_meta.utils.codegen_util as ut
 from pathlib import Path
 
 
-def codegen_module(
+def codegen_header(
     cpp_root_path: Path,
+    header_root_path: Path,
     py_root_path: Path,
 ):
     pyd_name = 'rbc_backend'
     file_name = 'rbc_backend'
-    Context = tr.struct('Context')
+    Context = tr.struct('RBCContext', "TEST_GRAPHICS_API")
     # frame
     Context.method(
         'init_device',
@@ -18,9 +19,8 @@ def codegen_module(
         shader_path=tr.string)
     # render
     Context.method('init_render')
-    Context.method('load_skybox', path=tr.string)
+    Context.method('load_skybox', path=tr.string, size=tr.uint2)
     Context.method('create_window', name=tr.string)
-    Context.method('add_external_window', window_handle=tr.ulong)
     # mesh
     Context.method('load_mesh', path=tr.string).ret_type(tr.VoidPtr)
     Context.method('create_mesh', data=tr.VoidPtr, vertex_count=tr.uint,
@@ -98,5 +98,5 @@ def codegen_module(
 
     # codegen
     ut.codegen_pyd_module(
-        pyd_name, file_name, 'test_graphics', cpp_root_path, py_root_path
+        pyd_name, file_name, 'test_graphics', cpp_root_path, header_root_path, py_root_path
     )

@@ -36,11 +36,11 @@ struct GraphicsUtils {
     GraphicsUtils();
     void dispose(vstd::function<void()> after_sync = {});
     ~GraphicsUtils();
-    void init_device(char const *program_path, char const *backend_name);
-    void init_graphics();
+    void init_device(luisa::string_view program_path, luisa::string_view backend_name);
+    void init_graphics(luisa::filesystem::path const& shader_path);
     void init_render();
-
-    void init_display(char const *name, uint2 resolution, bool resizable);
+    void resize_swapchain(uint2 size);
+    void init_display(luisa::string_view name, uint2 resolution, bool resizable);
     void reset_frame();
     bool should_close();
     void tick(vstd::function<void()> before_render = {});

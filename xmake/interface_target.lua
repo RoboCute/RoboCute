@@ -14,6 +14,7 @@ function interface_target(target_name, interface_callback, impl_callback, no_lin
 
     target(target_name)
     set_kind('phony')
+    add_rules('lc_run_target')
     add_deps(target_interface_name)
     add_deps(target_impl_name, {
         inherit = false
@@ -23,6 +24,4 @@ function interface_target(target_name, interface_callback, impl_callback, no_lin
             public = true
         })
     end
-    target_end()
-
 end

@@ -262,7 +262,6 @@ int main(int argc, char *argv[]) {
     sm->on_frame_end(cmdlist, compute_stream);
     compute_stream.synchronize();
     sm.destroy();
-    render_device.shutdown();
 
     LUISA_INFO("Editor shutdown complete");
     return 0;

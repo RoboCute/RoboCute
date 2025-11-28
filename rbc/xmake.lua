@@ -1,9 +1,10 @@
-function tool_target(name)
+-- Let few target depend together without compile-order and inherit
+function nested_target(name, ...)
     local bin_name = name .. '_b'
     target(name)
     set_kind('phony')
     add_rules('lc_run_target')
-    add_deps(bin_name, 'lc-backends-dummy', 'rbc_render_plugin', {
+    add_deps(bin_name, ..., {
         inherit = false
     })
     target_end()

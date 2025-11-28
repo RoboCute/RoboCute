@@ -3,7 +3,7 @@ set_kind('headeronly')
 add_includedirs('include', { public = true})
 target_end()
 
-target('rbc_render_plugin')
+nested_target('rbc_render_plugin')
 add_rules('lc_basic_settings', {
     project_kind = 'shared'
 })

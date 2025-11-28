@@ -1,4 +1,4 @@
-target('test_py_codegen')
+nested_target('test_py_codegen', 'rbc_render_plugin', 'lc-backends-dummy')
 do
     -- deps LuisaCompute
     add_rules('lc_basic_settings', {
@@ -6,7 +6,7 @@ do
         enable_exception = true,
         rtti = true
     })
-    add_deps('rbc_core')
+    add_deps('rbc_core', 'test_graphics')
     set_extension('.pyd')
     add_files('builtin/*.cpp', 'generated/*.cpp', 'main.cpp')
     add_includedirs('builtin')

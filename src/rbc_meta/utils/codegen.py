@@ -620,7 +620,7 @@ def cpp_interface_gen(*extra_includes):
         if len(namespace) > 0:
             cb.add_line(f"namespace {namespace} {{")
         cb.add_line(
-            f"struct {struct_type._suffix} {struct_type.class_name()} : vstd::IOperatorNewBase {{"
+            f"struct {struct_type.class_name()} : vstd::IOperatorNewBase {{"
         )
         cb.add_indent()
         if struct_type._default_ctor:
@@ -644,6 +644,7 @@ def cpp_interface_gen(*extra_includes):
                 cb.add_line("void rbc_objdeser(rbc::JsonDeSerializer& obj);")
         if len(struct_type._methods) > 0:
             cb.add_result(f"""
+   {struct_type._suffix} static {struct_name}* _create_();
     virtual void dispose() = 0;
     virtual ~{struct_name}() = default;""")
 
@@ -677,7 +678,6 @@ def cpp_interface_gen(*extra_includes):
 
 def nanobind_codegen(module_name: str, dll_path: str, *extra_includes):
     cb.set_result("""#include <pybind11/pybind11.h>
-#include <luisa/core/dynamic_module.h>
 #include <luisa/core/basic_types.h>
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/logging.h>
@@ -705,32 +705,27 @@ void {export_func_name}(py::module& m) """)
         cb.add_result(";")
 
     # print classes
-    cb.add_line('static char const* env = std::getenv("RBC_RUNTIME_DIR");')
-    cb.add_line(
-        f'auto dynamic_module = ModuleRegister::load_module("{dll_path}");')
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
 
         # create
         create_name = f"create__{struct_name}__"
-        cb.add_line(f'm.def("{create_name}", [dynamic_module]() -> void* ')
+        cb.add_line(f'm.def("{create_name}", []() -> void* ')
         cb.add_result("{")
         cb.add_indent()
-        cb.add_line("ModuleRegister::module_addref(env,*dynamic_module);")
         cb.add_line(
-            f'return dynamic_module->dll.invoke<void *()>("create_{struct_name}");'
+            f'return {struct_name}::_create_();'
         )
         cb.remove_indent()
         cb.add_line("});")
         ptr_name = f"ptr_484111b5e8ed4230b5ef5f5fdc33ca81"  # magic name
         # dispose
         cb.add_line(
-            f'm.def("dispose__{struct_name}__", [dynamic_module](void* {ptr_name})'
+            f'm.def("dispose__{struct_name}__", [](void* {ptr_name})'
             + "{"
         )
         cb.add_indent()
         cb.add_line(f"static_cast<{struct_name}*>({ptr_name})->dispose();")
-        cb.add_line("ModuleRegister::module_deref(*dynamic_module);")
         cb.remove_indent()
         cb.add_line("});")
 
@@ -741,23 +736,19 @@ void {export_func_name}(py::module& m) """)
                 ret_type = ""
                 return_decl = ""
                 func: tr._function_t = mems_dict[key]
-                end = ""
                 if func._ret_type:
                     ret_type = (
                         " -> " +
                         _print_arg_type(func._ret_type, True, False) + " "
                     )
                     return_decl = "return "
-                    if func._ret_type == tr.string:
-                        return_decl += "to_nb_str("
-                        end = ")"
 
                 cb.add_line(
                     f'm.def("{struct_name}__{mem_name}__", [](void* {ptr_name}{__print_arg_vars_decl(func._args, False, True, False)}){ret_type}{{'
                 )
                 cb.add_indent()
                 cb.add_line(
-                    f"{return_decl}static_cast<{struct_name}*>({ptr_name})->{mem_name}({_print_arg_vars(func._args, True, True)}){end};"
+                    f"{return_decl}static_cast<{struct_name}*>({ptr_name})->{mem_name}({_print_arg_vars(func._args, True, True)});"
                 )
                 cb.remove_indent()
                 cb.add_line("});")

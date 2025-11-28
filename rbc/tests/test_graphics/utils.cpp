@@ -23,16 +23,15 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     dst_image.reset();
     window.reset();
 }
-void GraphicsUtils::init_device(char const *program_path, char const *backend_name) {
+void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
     render_device.init(program_path, backend_name);
     auto &compute_stream = render_device.lc_async_stream();
     render_device.set_main_stream(&compute_stream);
     compute_event.event = render_device.lc_device().create_timeline_event();
     this->backend_name = backend_name;
 }
-void GraphicsUtils::init_graphics() {
+void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     auto &cmdlist = render_device.lc_main_cmd_list();
-    auto shader_path = render_device.lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + backend_name);
     sm.create(
         render_device.lc_ctx(),
         render_device.lc_device(),
@@ -76,11 +75,11 @@ void GraphicsUtils::init_render() {
     LUISA_ASSERT(render_plugin->initialize_pipeline({}));
 }
 
-void GraphicsUtils::init_display(char const *name, uint2 resolution, bool resizable) {
+void GraphicsUtils::init_display(luisa::string_view name, uint2 resolution, bool resizable) {
     auto &device = render_device.lc_device();
     present_stream = device.create_stream(StreamTag::GRAPHICS);
     present_event.event = device.create_timeline_event();
-    window.create(name, resolution, resizable);
+    window.create(luisa::string{name}.c_str(), resolution, resizable);
     swapchain = device.create_swapchain(
         present_stream,
         SwapchainOption{
@@ -89,7 +88,7 @@ void GraphicsUtils::init_display(char const *name, uint2 resolution, bool resiza
             .size = resolution,
             .wants_hdr = false,
             .wants_vsync = false,
-            .back_buffer_count = 2});
+            .back_buffer_count = 1});
     dst_image = render_device.lc_device().create_image<float>(swapchain.backend_storage(), resolution);
 }
 void GraphicsUtils::reset_frame() {
@@ -152,5 +151,22 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
     //     present_stream << i.second.present(dst_img);
     // }
     present_stream << present_event.event.signal(++present_event.fence_index);
+}
+void GraphicsUtils::resize_swapchain(uint2 size) {
+    reset_frame();
+    present_event.event.synchronize(present_event.fence_index);
+    present_stream.synchronize();
+    dst_image.reset();
+    dst_image = render_device.lc_device().create_image<float>(swapchain.backend_storage(), size);
+    swapchain.reset();
+    swapchain = render_device.lc_device().create_swapchain(
+        present_stream,
+        SwapchainOption{
+            .display = window->native_display(),
+            .window = window->native_handle(),
+            .size = size,
+            .wants_hdr = false,
+            .wants_vsync = false,
+            .back_buffer_count = 1});
 }
 }// namespace rbc

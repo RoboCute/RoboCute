@@ -2,12 +2,6 @@ from pathlib import Path
 
 GENERATION_TASKS = [
     (
-        "rbc_meta.test_codegen",
-        "codegen_module",
-        Path("rbc/tests/test_py_codegen/generated").resolve(),
-        Path("src/rbc_ext/generated").resolve(),
-    ),
-    (
         "rbc_meta.test_serde",
         "codegen_header",
         Path("rbc/tests/test_serde/generated/generated.hpp").resolve(),
@@ -18,10 +12,11 @@ GENERATION_TASKS = [
         Path("rbc/tests/test_ipc/generated").resolve(),
     ),
     (
-        "rbc_meta.test_shared_window",
+        "rbc_meta.backend_interface",
         "codegen_header",
+        Path("rbc/tests/test_py_codegen/generated").resolve(),
         Path("rbc/tests/test_graphics/generated").resolve(),
-        Path("rbc/tests/test_window_hook/generated").resolve(),
+        Path("rbc/tests/test_py_codegen/generated").resolve(),
     ),
     (
         "rbc_meta.pipeline_settings",

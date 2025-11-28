@@ -9,20 +9,12 @@
 #include <luisa/core/dynamic_module.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include "simple_scene.h"
-#include "generated/generated.hpp"
 #include "utils.h"
-// utils.cpp
-void warm_up_accel();
-void before_frame(rbc::RenderPlugin *render_plugin, rbc::RenderPlugin::PipeCtxStub *pipe_ctx);
-void after_frame(
-    rbc::RenderPlugin *render_plugin,
-    rbc::RenderPlugin::PipeCtxStub *pipe_ctx,
-    luisa::compute::TimelineEvent *compute_event,
-    uint64_t signal_fence);
-void frame_reset(
-    rbc::RenderPlugin *render_plugin,
-    rbc::RenderPlugin::PipeCtxStub *pipe_ctx);
-
+#include "generated/rbc_backend.h"
+using namespace rbc;
+using namespace luisa;
+using namespace luisa::compute;
+#ifdef STANDALONE
 int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
@@ -37,10 +29,11 @@ int main(int argc, char *argv[]) {
     utils.init_device(
         argv[0],
         backend.c_str());
-    utils.init_graphics();
+    utils.init_graphics(
+        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name));
     utils.init_render();
     utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
-    utils.init_display("test_graphics", uint2(1024), false);
+    utils.init_display("test_graphics", uint2(1024), true);
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer
     Clock clk;
@@ -100,13 +93,22 @@ int main(int argc, char *argv[]) {
             } break;
         }
     });
-    utils.render_plugin->get_camera(utils.display_pipe_ctx).fov = radians(80.f);
+    uint2 window_size = utils.window->size();
+    utils.window->set_window_size_callback([&](uint2 size) {
+        window_size = size;
+    });
+    auto& cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
+    cam.fov = radians(80.f);
     while (!utils.should_close()) {
         if (reset) {
             reset = false;
             utils.reset_frame();
         }
         utils.tick([&]() {
+            if (any(window_size != utils.dst_image.size())) {
+                utils.resize_swapchain(window_size);
+            }
+            cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
             auto &frame_settings = utils.render_settings.read_mut<rbc::FrameSettings>();
             auto &dst_img = utils.dst_image;
             frame_settings.render_resolution = dst_img.size();
@@ -142,3 +144,72 @@ int main(int argc, char *argv[]) {
         simple_scene.destroy();
     });
 }
+#else
+struct ContextImpl : RBCContext {
+    luisa::fiber::scheduler scheduler;
+    luisa::string backend = "dx";
+    GraphicsUtils utils;
+    ContextImpl() {
+        log_level_info();
+    }
+    void dispose() override {
+        delete this;
+    }
+    ~ContextImpl() = default;
+    void init_device(luisa::string_view rhi_backend, luisa::string_view program_path, luisa::string_view shader_path) override {
+        backend = rhi_backend;
+        utils.init_device(
+            program_path,
+            backend);
+        utils.init_graphics(shader_path);
+    }
+    void init_render() override {
+        utils.init_render();
+    }
+    void load_skybox(luisa::string_view path, uint2 size) override {
+        utils.render_plugin->update_skybox("../sky.bytes", size);
+    }
+    void create_window(luisa::string_view name) override {
+        // utils.init_display(name)
+    }
+    void add_external_window(uint64_t window_handle) override {}
+    void *load_mesh(luisa::string_view path) override {
+        return nullptr;
+    }
+    void *create_mesh(void *data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count) override {
+        return nullptr;
+    }
+    void remove_mesh(uint64_t handle) override {}
+    void *add_area_light(luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {
+        return nullptr;
+    }
+    void *add_disk_light(luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, bool visible) override {
+        return nullptr;
+    }
+    void *add_point_light(luisa::float3 center, float radius, luisa::float3 luminance, bool visible) override {
+        return nullptr;
+    }
+    void *add_spot_light(luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, float angle_radians, float small_angle_radians, float angle_atten_po, bool visible) override {
+        return nullptr;
+    }
+    void remove_light(uint64_t handle) override {}
+    void remove_light(void *light) override {}
+    void update_area_light(void *light, luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {}
+    void update_disk_light(void *light, luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, bool visible) override {}
+    void update_point_light(void *light, luisa::float3 center, float radius, luisa::float3 luminance, bool visible) override {}
+    void update_spot_light(void *light, luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, float angle_radians, float small_angle_radians, float angle_atten_po, bool visible) override {}
+    void *create_object(luisa::float4x4 matrix, void *mesh) override {
+        return nullptr;
+    }
+    void update_object(luisa::float4x4 matrix) override {}
+    void update_object(luisa::float4x4 matrix, void *mesh) override {}
+    void remove_object(void *object_ptr) override {}
+    void reset_view(luisa::uint2 resolution) override {}
+    void set_view_camera(luisa::float3 pos, luisa::float3 forward_dir, luisa::float3 up_dir) override {}
+    void disable_view() override {}
+};
+RBCContext *RBCContext::_create_() {
+    return new ContextImpl{};
+}
+
+#endif
