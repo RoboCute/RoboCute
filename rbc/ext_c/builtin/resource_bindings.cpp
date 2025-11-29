@@ -3,10 +3,8 @@
 #include <rbc_world/resource.h>
 #include <rbc_world/resource_request.h>
 #include <pybind11/pybind11.h>
-
+#include "module_register.h"
 namespace py = pybind11;
-
-namespace {
 
 void register_resource_bindings(py::module &m) {
     // === Resource Enums ===
@@ -74,10 +72,10 @@ void register_resource_bindings(py::module &m) {
              py::return_value_policy::reference,
              "Get the raw pointer to resource data")
         .def("unload_resource", &rbc::AsyncResourceLoader::unload_resource,
-            py::arg("id"),
-            "Unload a specific resource")
+             py::arg("id"),
+             "Unload a specific resource")
         .def("clear_unused_resources", &rbc::AsyncResourceLoader::clear_unused_resources,
-            "Clear unused resources to free memory");
+             "Clear unused resources to free memory");
 }
 
-}// anonymous namespace
+static ModuleRegister _module_register(register_resource_bindings);
