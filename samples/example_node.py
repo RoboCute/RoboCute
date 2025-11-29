@@ -5,7 +5,8 @@
 """
 
 # 导入必要的组件
-from rbc_execution import (
+import example_nodes
+from robocute import (
     # 核心类
     RBCNode,
     NodeInput,

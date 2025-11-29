@@ -1,16 +1,21 @@
 # 最小价值产品(Minimal Valuable Product)
 
-旨在通过最直接的方式跑通pipeline，包括
+## 核心目标
 
-- PythonServer加载场景和资源
-- PythonServer自定义命令节点（这个例子是一个简单的绕中心点旋转的Transform动画）
-- Editor连接
-- Editor编辑场景参数
-- Editor编辑节点图
-- Editor发起执行命令
-- PythonServer同步场景和参数
-- PythonServer执行RuntimeNodeGraph和对应python完成的方法
-- Editor通过查询获得执行状态
-- 执行完毕生成节点定义的Result(是一系列Timestep和对应的Transform构成的AnimSequence)
-- 将ResultAnimSequence同步到Editor
-- Editor执行播放ResultAnimSequence查看结果
+通过**编辑器驱动的拖放式交互**跑通完整的算法构建和可视化pipeline：
+
+1. **场景准备**: PythonServer加载场景和资源
+2. **拖放式连接**: 从编辑器场景视图拖拽Entity到NodeGraph节点输入端口
+3. **节点图构建**: 在NodeGraph中连接算法节点（如旋转动画生成器）
+4. **执行计算**: PythonServer从Editor中同步初始值（当前场景），执行节点图，生成AnimSequence结果
+5. **结果展示**: 在算法节点的Result Dropdown中刷新当前这一次仿真结果的记录，用户选中对应的节点，然后选择Play执行
+
+## Step 1
+
+纯Editor部分功能
+
+- 创建初始场景
+- 连接节点图
+- 播放结果动画
+
+

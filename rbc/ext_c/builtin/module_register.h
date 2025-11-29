@@ -11,5 +11,5 @@ public:
 
     static void init(py::module &m);
     void (*_callback)(py::module &);
-    ModuleRegister(void (*callback)(py::module &));
+    explicit ModuleRegister(void (*callback)(py::module &));
 };
