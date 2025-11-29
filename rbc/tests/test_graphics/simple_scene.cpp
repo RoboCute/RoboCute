@@ -116,7 +116,7 @@ void SimpleScene::_init_material() {
     material::OpenPBR mat{};
     mat.base.albedo = make_half3((half)0.5f, (half)0.5f, (half)0.5f);
     // mat.weight.metallic = 1.0f;
-    mat.specular.roughness = 0.5f;
+    mat.specular.specular_color_and_rough.w = 0.5f;
     mat.specular.roughness_anisotropy_angle = 0.7f;
     // Make material instance
     default_mat_code = sm.mat_manager().emplace_mat_instance(

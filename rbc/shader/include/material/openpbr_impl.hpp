@@ -63,7 +63,7 @@ inline float3 OpenPBR::get_emission(
     auto weight = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Weight>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, weight));
     if ((float)weight.coat > 0.f) {
         auto coat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Coat>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, coat));
-        col *= lerp(float3(1), float3(coat.coat_color), float3(weight.coat));
+        col *= lerp(float3(1), float3(coat.coat_color_and_roughness.xyz), float3(weight.coat));
     }
     return col;
 };
@@ -145,8 +145,8 @@ inline bool OpenPBR::transform_to_params(
     {
 
         auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Specular>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, specular));
-        params.specular.color = float3(mat.specular_color);
-        params.specular.roughness *= (float)mat.roughness;
+        params.specular.color = float3(mat.specular_color_and_rough.xyz);
+        params.specular.roughness *= (float)mat.specular_color_and_rough.w;
         params.specular.roughness_anisotropy = (float)mat.roughness_anisotropy;
         if (mat.specular_anisotropy_level_tex.valid()) {
             params.specular.roughness_anisotropy *= read_tex(mat.specular_anisotropy_level_tex).x;
@@ -191,19 +191,19 @@ inline bool OpenPBR::transform_to_params(
     if constexpr (requires { params.subsurface; })
         if ((float)weight.subsurface > 0.f) {
             auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Subsurface>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, subsurface));
-            params.subsurface.color = float3(mat.subsurface_color);
-            params.subsurface.radius = float3(mat.subsurface_radius_scale) * (float)mat.subsurface_radius;
-            params.subsurface.scatter_anisotropy = mat.subsurface_scatter_anisotropy;
+            params.subsurface.color = float3(mat.subsurface_color_and_radius.xyz);
+            params.subsurface.radius = float3(mat.subsurface_radius_scale_andaniso.xyz) * (float)mat.subsurface_color_and_radius.w;
+            params.subsurface.scatter_anisotropy = mat.subsurface_radius_scale_andaniso.w;
         }
 
     // Transmission
     if constexpr (requires { params.transmission; })
         if ((float)weight.transmission > 0.f) {
             auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Transmission>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, transmission));
-            params.transmission.color = float3(mat.transmission_color);
-            params.transmission.depth = mat.transmission_depth;
-            params.transmission.scatter = float3(mat.transmission_scatter);
-            params.transmission.scatter_anisotropy = mat.transmission_scatter_anisotropy;
+            params.transmission.color = float3(mat.transmission_color_and_depth.xyz);
+            params.transmission.depth = mat.transmission_color_and_depth.w;
+            params.transmission.scatter = float3(mat.transmission_scatter_and_aniso.xyz);
+            params.transmission.scatter_anisotropy = mat.transmission_scatter_and_aniso.w;
             params.transmission.dispersion_scale = mat.transmission_dispersion_scale;
             params.transmission.dispersion_abbe_number = mat.transmission_dispersion_abbe_number;
         }
@@ -213,8 +213,8 @@ inline bool OpenPBR::transform_to_params(
         if ((float)weight.coat > 0.f) {
             auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Coat>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, coat));
             params.coat.coat_onb.rotate_tangent((float)mat.coat_roughness_anisotropy_angle);
-            params.coat.color = float3(mat.coat_color);
-            params.coat.roughness = mat.coat_roughness;
+            params.coat.color = float3(mat.coat_color_and_roughness.xyz);
+            params.coat.roughness = mat.coat_color_and_roughness.w;
             params.coat.roughness_anisotropy = mat.coat_roughness_anisotropy;
             params.coat.ior = mat.coat_ior;
             params.coat.darkening = mat.coat_darkening;
@@ -225,8 +225,8 @@ inline bool OpenPBR::transform_to_params(
     if constexpr (requires { params.fuzz; })
         if ((float)weight.fuzz > 0.f) {
             auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Fuzz>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, fuzz));
-            params.fuzz.color = float3(mat.fuzz_color);
-            params.fuzz.roughness = mat.fuzz_roughness;
+            params.fuzz.color = float3(mat.fuzz_color_and_roughness.xyz);
+            params.fuzz.roughness = mat.fuzz_color_and_roughness.w;
         }
 
     //ThinFilm
@@ -241,8 +241,8 @@ inline bool OpenPBR::transform_to_params(
     if constexpr (requires { params.diffraction; })
         if ((float)weight.diffraction > 0.f) {
             auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Diffraction>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, diffraction));
-            params.diffraction.color = float3(mat.diffraction_color);
-            params.diffraction.thickness = mat.diffraction_thickness;
+            params.diffraction.color = float3(mat.diffraction_color_and_thickness.xyz);
+            params.diffraction.thickness = mat.diffraction_color_and_thickness.w;
             params.diffraction.inv_pitch = float2(mat.diffraction_inv_pitch_x, mat.diffraction_inv_pitch_y);
             params.diffraction.angle = mat.diffraction_angle;
             params.diffraction.lobe_count = mat.diffraction_lobe_count;

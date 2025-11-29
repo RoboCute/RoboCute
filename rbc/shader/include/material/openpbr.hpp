@@ -4,9 +4,12 @@
 namespace material {
 #ifndef __SHADER_LANG__
 luisa::half3 _make_half3_(float a, float b, float c) { return luisa::half3{(half)a, (half)b, (half)c} ;}
+luisa::half4 _make_half4_(float a, float b, float c, float d) { return luisa::half4{(half)a, (half)b, (half)c, (half)d} ;}
 #define MAKE_HALF3(...) _make_half3_(__VA_ARGS__)
+#define MAKE_HALF4(...) _make_half4_(__VA_ARGS__)
 #else
 #define MAKE_HALF3(...) __VA_ARGS__
+#define MAKE_HALF4(...) __VA_ARGS__
 #endif
 struct OpenPBR {
 	struct Weight {
@@ -40,8 +43,7 @@ struct OpenPBR {
 	} uvs;
 
 	struct Specular {
-		half3 specular_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
-		half roughness{0.3f};
+		half4 specular_color_and_rough{MAKE_HALF4(1.0f, 1.0f, 1.0f, 0.3f)};
 		half roughness_anisotropy{0.0f};
 		half roughness_anisotropy_angle{0.0f};// radians
 		half ior{1.5f};
@@ -60,24 +62,19 @@ struct OpenPBR {
 	} base;
 
 	struct Subsurface {
-		half3 subsurface_color{MAKE_HALF3(0.8f, 0.8f, 0.8f)};
-		half3 subsurface_radius_scale{MAKE_HALF3(1.0f, 0.5f, 0.25f)};
-		half subsurface_radius{0.05f};
-		half subsurface_scatter_anisotropy{0.0f};
+		half4 subsurface_color_and_radius{MAKE_HALF4(0.8f, 0.8f, 0.8f, 0.05f)};
+		half4 subsurface_radius_scale_andaniso{MAKE_HALF4(1.0f, 0.5f, 0.25f, 0.0f)};
 	} subsurface;
 
 	struct Transmission {
-		half3 transmission_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
-		half3 transmission_scatter{MAKE_HALF3(0.0f, 0.0f, 0.0f)};
-		half transmission_depth{0.0f};
-		half transmission_scatter_anisotropy{0.0f};
+		half4 transmission_color_and_depth{MAKE_HALF4(1.0f, 1.0f, 1.0f, 0.0f)};
+		half4 transmission_scatter_and_aniso{MAKE_HALF4(0.0f, 0.0f, 0.0f, 0.0f)};
 		half transmission_dispersion_scale{0.0f};
 		half transmission_dispersion_abbe_number{20.0f};
 	} transmission;
 
 	struct Coat {
-		half3 coat_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
-		half coat_roughness{0.0f};
+		half4 coat_color_and_roughness{MAKE_HALF4(1.0f, 1.0f, 1.0f, 0.0f)};
 		half coat_roughness_anisotropy{0.0f};
 		half coat_roughness_anisotropy_angle{0.0f};// radians
 		half coat_ior{1.6f};
@@ -86,13 +83,11 @@ struct OpenPBR {
 	} coat;
 
 	struct Fuzz {
-		half3 fuzz_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
-		half fuzz_roughness{0.5f};
+		half4 fuzz_color_and_roughness{MAKE_HALF4(1.0f, 1.0f, 1.0f, 0.5f)};
 	} fuzz;
 
 	struct Diffraction {
-		half3 diffraction_color{MAKE_HALF3(1.0f, 1.0f, 1.0f)};
-		half diffraction_thickness{0.5f};// μm
+		half4 diffraction_color_and_thickness{MAKE_HALF4(1.0f, 1.0f, 1.0f, 0.5f)};
 		half diffraction_inv_pitch_x{1.0f / 3.0f};
 		half diffraction_inv_pitch_y{0.0f};
 		half diffraction_angle{0.0f};// radians

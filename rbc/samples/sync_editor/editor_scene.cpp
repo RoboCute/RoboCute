@@ -65,7 +65,6 @@ void EditorScene::init_material() {
 
     material::OpenPBR mat{};
     mat.base.albedo = make_half3((half)0.5f);
-    mat.specular.roughness = 0.5f;
 
     // Make material instance
     default_mat_code_ = sm.mat_manager().emplace_mat_instance(

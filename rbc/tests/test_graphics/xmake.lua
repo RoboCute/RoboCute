@@ -1,6 +1,6 @@
 local targets = {
-    test_graphics = false
-    -- test_graphics_bin = true
+    test_graphics = false,
+    test_graphics_bin = true
 }
 for target_name, is_standalone in pairs(targets) do
     local function test_graphics_interface()
