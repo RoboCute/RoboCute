@@ -1,10 +1,11 @@
-#include "ExecutionPanel.hpp"
+#include "RBCEditor/components/ExecutionPanel.h"
 #include <QDateTime>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QHBoxLayout>
 #include <QHeaderView>
 
+namespace rbc {
 ExecutionPanel::ExecutionPanel(QWidget *parent)
     : QWidget(parent) {
     setupUI();
@@ -159,3 +160,5 @@ void ExecutionPanel::setExecutionStatus(const QString &status, bool isRunning) {
         m_statusLabel->setStyleSheet("QLabel { font-weight: bold; }");
     }
 }
+
+}// namespace rbc

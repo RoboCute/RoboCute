@@ -9,6 +9,7 @@
 #include <QPushButton>
 #include <QLabel>
 
+namespace rbc {
 /**
  * Panel for displaying execution results and console output
  */
@@ -50,3 +51,5 @@ private:
     QLabel *m_statusLabel;
     QPushButton *m_cancelButton;
 };
+
+}// namespace rbc

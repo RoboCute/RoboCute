@@ -1,33 +1,29 @@
 #pragma once
-
-#include <QMainWindow>
-#include <QDockWidget>
+#include <QWidget>
 #include <QListWidget>
 #include <QToolBar>
 #include <QLabel>
 #include <memory>
+#include <unordered_set>
 
 #include <QtNodes/DataFlowGraphModel>
 #include <QtNodes/DataFlowGraphicsScene>
 #include <QtNodes/GraphicsView>
 
-#include "HttpClient.hpp"
-#include "NodeFactory.hpp"
-#include "ExecutionPanel.hpp"
+#include "RBCEditor/runtime/HttpClient.h"
+#include "RBCEditor/nodes/NodeFactory.h"
+#include "RBCEditor/components/ExecutionPanel.h"
 
+namespace rbc {
 using QtNodes::DataFlowGraphModel;
 using QtNodes::DataFlowGraphicsScene;
 using QtNodes::GraphicsView;
 
-/**
- * Main editor window
- */
-struct EditorWindow : public QMainWindow {
+class NodeEditor : public QWidget {
     Q_OBJECT
-
 public:
-    explicit EditorWindow(QWidget *parent = nullptr);
-    ~EditorWindow() override;
+    explicit NodeEditor(QWidget *parent);
+    ~NodeEditor() override;
 
 private slots:
     void onConnectionStatusChanged(bool connected);
@@ -42,11 +38,12 @@ private slots:
     void onServerSettings();
     void onRefreshNodes();
 
+
 private:
     void setupUI();
-    void setupMenuBar();
-    void setupToolBar();
-    void setupDockWindows();
+    // void setupMenuBar();
+    // void setupToolBar();
+    // void setupDockWindows();
     void setupConnections();
     void loadNodesFromBackend();
     void updateConnectionStatus(bool connected);
@@ -70,11 +67,8 @@ private:
     QLabel *m_connectionStatusLabel;
     QAction *m_executeAction;
 
-    // Dock widgets
-    QDockWidget *m_nodePaletteDock;
+    // Widgets
     QListWidget *m_nodePalette;
-
-    QDockWidget *m_executionPanelDock;
     ExecutionPanel *m_executionPanel;
 
     // State
@@ -82,3 +76,5 @@ private:
     bool m_isExecuting;
     QString m_serverUrl;
 };
+
+}// namespace rbc

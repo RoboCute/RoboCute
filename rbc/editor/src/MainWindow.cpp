@@ -8,7 +8,7 @@
 #include <QKeyEvent>
 #include <QApplication>
 #include <QStatusBar>
-#include "RBCEditor/components/node_editor.h"
+#include "RBCEditor/components/NodeEditor.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }

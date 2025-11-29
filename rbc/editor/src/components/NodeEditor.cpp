@@ -1,9 +1,9 @@
-#include "EditorWindow.hpp"
-#include "DynamicNodeModel.hpp"
-#include <QMenuBar>
-#include <QMenu>
+#include "RBCEditor/components/NodeEditor.h"
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QSplitter>
+#include <QLabel>
 #include <QToolButton>
-#include <QStatusBar>
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QInputDialog>
@@ -11,28 +11,28 @@
 #include <QJsonArray>
 #include <QFile>
 #include <QDebug>
+#include <QFont>
+#include <QLineEdit>
 
 #include <QtNodes/ConnectionStyle>
+#include "RBCEditor/components/ExecutionPanel.h"
+#include "RBCEditor/nodes/DynamicNodeModel.h"
 
-EditorWindow::EditorWindow(QWidget *parent)
-    : QMainWindow(parent), m_httpClient(new HttpClient(this)), m_nodeFactory(std::make_unique<NodeFactory>()), m_isExecuting(false), m_serverUrl("http://127.0.0.1:8000") {
+namespace rbc {
+
+NodeEditor::NodeEditor(QWidget *parent) : QWidget(parent),
+                                          m_httpClient(new HttpClient(this)),
+                                          m_nodeFactory(std::make_unique<NodeFactory>()),
+                                          m_isExecuting(false),
+                                          m_serverUrl("http://127.0.0.1:8000") {
     setupUI();
     setupConnections();
-
-    // Set window properties
-    setWindowTitle("RoboCute Node Editor");
-    resize(1400, 900);
-
-    // Load nodes from backend
     loadNodesFromBackend();
 }
 
-EditorWindow::~EditorWindow() = default;
+NodeEditor::~NodeEditor() = default;
 
-void EditorWindow::setupUI() {
-    setupMenuBar();
-    setupToolBar();
-
+void NodeEditor::setupUI() {
     // Set up node editor style
     QtNodes::ConnectionStyle::setConnectionStyle(
         R"({
@@ -52,96 +52,87 @@ void EditorWindow::setupUI() {
     // Create graph model and scene
     m_graphModel = std::make_shared<DataFlowGraphModel>(m_nodeFactory->getRegistry());
     m_scene = new DataFlowGraphicsScene(*m_graphModel, this);
-
-    // Create view
     m_view = new GraphicsView(m_scene);
-    setCentralWidget(m_view);
 
-    // Setup dock windows
-    setupDockWindows();
+    // Create main layout
+    auto *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
 
-    // Status bar
-    statusBar()->showMessage("Ready");
-}
-
-void EditorWindow::setupMenuBar() {
-    // File menu
-    QMenu *fileMenu = menuBar()->addMenu("&File");
-
-    QAction *newAction = fileMenu->addAction("&New");
-    newAction->setShortcut(QKeySequence::New);
-    connect(newAction, &QAction::triggered, this, &EditorWindow::onNewGraph);
-
-    QAction *saveAction = fileMenu->addAction("&Save");
-    saveAction->setShortcut(QKeySequence::Save);
-    connect(saveAction, &QAction::triggered, this, &EditorWindow::onSaveGraph);
-
-    QAction *loadAction = fileMenu->addAction("&Open");
-    loadAction->setShortcut(QKeySequence::Open);
-    connect(loadAction, &QAction::triggered, this, &EditorWindow::onLoadGraph);
-
-    fileMenu->addSeparator();
-
-    QAction *exitAction = fileMenu->addAction("E&xit");
-    exitAction->setShortcut(QKeySequence::Quit);
-    connect(exitAction, &QAction::triggered, this, &QWidget::close);
-
-    // Execute menu
-    QMenu *executeMenu = menuBar()->addMenu("&Execute");
-
-    m_executeAction = executeMenu->addAction("&Execute Graph");
-    m_executeAction->setShortcut(QKeySequence("F5"));
-    connect(m_executeAction, &QAction::triggered, this, &EditorWindow::onExecuteGraph);
-
-    // Tools menu
-    QMenu *toolsMenu = menuBar()->addMenu("&Tools");
-
-    QAction *refreshAction = toolsMenu->addAction("&Refresh Nodes");
-    refreshAction->setShortcut(QKeySequence::Refresh);
-    connect(refreshAction, &QAction::triggered, this, &EditorWindow::onRefreshNodes);
-
-    QAction *settingsAction = toolsMenu->addAction("&Server Settings");
-    connect(settingsAction, &QAction::triggered, this, &EditorWindow::onServerSettings);
-}
-
-void EditorWindow::setupToolBar() {
-    m_toolBar = addToolBar("Main Toolbar");
+    // Create toolbar
+    m_toolBar = new QToolBar(this);
     m_toolBar->setMovable(false);
 
-    // Execute button
-    QAction *executeAction = m_toolBar->addAction("Execute");
-    connect(executeAction, &QAction::triggered, this, &EditorWindow::onExecuteGraph);
+    // New graph button
+    QAction *newAction = m_toolBar->addAction("New");
+    connect(newAction, &QAction::triggered, this, &NodeEditor::onNewGraph);
+
+    // Save graph button
+    QAction *saveAction = m_toolBar->addAction("Save");
+    connect(saveAction, &QAction::triggered, this, &NodeEditor::onSaveGraph);
+
+    // Load graph button
+    QAction *loadAction = m_toolBar->addAction("Load");
+    connect(loadAction, &QAction::triggered, this, &NodeEditor::onLoadGraph);
 
     m_toolBar->addSeparator();
 
-    // Connection status
+    // Execute button
+    m_executeAction = m_toolBar->addAction("Execute");
+    m_executeAction->setEnabled(false);
+    connect(m_executeAction, &QAction::triggered, this, &NodeEditor::onExecuteGraph);
+
+    m_toolBar->addSeparator();
+
+    // Refresh nodes button
+    QAction *refreshAction = m_toolBar->addAction("Refresh Nodes");
+    connect(refreshAction, &QAction::triggered, this, &NodeEditor::onRefreshNodes);
+
+    // Server settings button
+    QAction *settingsAction = m_toolBar->addAction("Server Settings");
+    connect(settingsAction, &QAction::triggered, this, &NodeEditor::onServerSettings);
+
+    m_toolBar->addSeparator();
+
+    // Connection status label
     m_connectionStatusLabel = new QLabel("Disconnected");
     m_connectionStatusLabel->setStyleSheet("QLabel { padding: 5px; }");
     m_toolBar->addWidget(m_connectionStatusLabel);
     updateConnectionStatus(false);
-}
 
-void EditorWindow::setupDockWindows() {
-    // Node palette dock (left)
-    m_nodePaletteDock = new QDockWidget("Node Palette", this);
+    mainLayout->addWidget(m_toolBar);
+
+    // Create horizontal splitter for main content
+    auto *mainSplitter = new QSplitter(Qt::Horizontal, this);
+
+    // Left side: Node palette
     m_nodePalette = new QListWidget();
     m_nodePalette->setStyleSheet("QListWidget { font-size: 11pt; }");
-    m_nodePaletteDock->setWidget(m_nodePalette);
-    addDockWidget(Qt::LeftDockWidgetArea, m_nodePaletteDock);
+    m_nodePalette->setMaximumWidth(250);
+    mainSplitter->addWidget(m_nodePalette);
 
-    // Execution panel dock (bottom)
-    m_executionPanelDock = new QDockWidget("Execution", this);
-    m_executionPanel = new ExecutionPanel();
-    m_executionPanelDock->setWidget(m_executionPanel);
-    addDockWidget(Qt::BottomDockWidgetArea, m_executionPanelDock);
+    // Center: Graph view
+    mainSplitter->addWidget(m_view);
+
+    // Right side: Execution panel
+    m_executionPanel = new ExecutionPanel(this);
+    m_executionPanel->setMaximumWidth(400);
+    mainSplitter->addWidget(m_executionPanel);
+
+    // Set splitter sizes
+    mainSplitter->setStretchFactor(0, 1);  // Node palette
+    mainSplitter->setStretchFactor(1, 3);  // Graph view
+    mainSplitter->setStretchFactor(2, 2);  // Execution panel
+
+    mainLayout->addWidget(mainSplitter);
 }
 
-void EditorWindow::setupConnections() {
+void NodeEditor::setupConnections() {
     // HTTP client signals
     connect(m_httpClient, &HttpClient::connectionStatusChanged,
-            this, &EditorWindow::onConnectionStatusChanged);
+            this, &NodeEditor::onConnectionStatusChanged);
     connect(m_httpClient, &HttpClient::errorOccurred,
-            this, &EditorWindow::onHttpError);
+            this, &NodeEditor::onHttpError);
 
     // Scene signals
     connect(m_scene, &DataFlowGraphicsScene::sceneLoaded,
@@ -150,7 +141,7 @@ void EditorWindow::setupConnections() {
             this, [this]() { setWindowModified(true); });
 }
 
-void EditorWindow::loadNodesFromBackend() {
+void NodeEditor::loadNodesFromBackend() {
     m_executionPanel->logMessage("Connecting to backend server...");
 
     // First check health
@@ -170,11 +161,11 @@ void EditorWindow::loadNodesFromBackend() {
     });
 }
 
-void EditorWindow::onConnectionStatusChanged(bool connected) {
+void NodeEditor::onConnectionStatusChanged(bool connected) {
     updateConnectionStatus(connected);
 }
 
-void EditorWindow::updateConnectionStatus(bool connected) {
+void NodeEditor::updateConnectionStatus(bool connected) {
     if (connected) {
         m_connectionStatusLabel->setText("Connected");
         m_connectionStatusLabel->setStyleSheet("QLabel { padding: 5px; background-color: #90EE90; }");
@@ -186,12 +177,11 @@ void EditorWindow::updateConnectionStatus(bool connected) {
     }
 }
 
-void EditorWindow::onHttpError(const QString &error) {
+void NodeEditor::onHttpError(const QString &error) {
     m_executionPanel->logError(error);
-    statusBar()->showMessage(error, 5000);
 }
 
-void EditorWindow::onNodesLoaded(const QJsonArray &nodes, bool success) {
+void NodeEditor::onNodesLoaded(const QJsonArray &nodes, bool success) {
     if (!success) {
         m_executionPanel->logError("Failed to load nodes from backend");
         return;
@@ -230,11 +220,9 @@ void EditorWindow::onNodesLoaded(const QJsonArray &nodes, bool success) {
             m_nodePalette->addItem(item);
         }
     }
-
-    statusBar()->showMessage(QString("Loaded %1 node types").arg(nodes.size()), 3000);
 }
 
-void EditorWindow::onExecuteGraph() {
+void NodeEditor::onExecuteGraph() {
     if (m_isExecuting) {
         m_executionPanel->logError("Already executing a graph");
         return;
@@ -260,7 +248,7 @@ void EditorWindow::onExecuteGraph() {
     });
 }
 
-void EditorWindow::onGraphExecuted(const QString &executionId, bool success) {
+void NodeEditor::onGraphExecuted(const QString &executionId, bool success) {
     if (!success) {
         m_executionPanel->logError("Failed to execute graph");
         m_executionPanel->setExecutionStatus("Execution Failed", false);
@@ -277,7 +265,7 @@ void EditorWindow::onGraphExecuted(const QString &executionId, bool success) {
     });
 }
 
-void EditorWindow::onOutputsReceived(const QJsonObject &outputs, bool success) {
+void NodeEditor::onOutputsReceived(const QJsonObject &outputs, bool success) {
     m_isExecuting = false;
 
     if (!success) {
@@ -303,8 +291,6 @@ void EditorWindow::onOutputsReceived(const QJsonObject &outputs, bool success) {
             QJsonObject outputValues = it.value().toObject();
 
             // Find the node in the graph and update it
-            // Note: This is simplified - in a real implementation, you'd need to
-            // map node IDs to actual node instances in the scene
             highlightNodeAfterExecution(nodeId, true);
         }
     }
@@ -312,8 +298,64 @@ void EditorWindow::onOutputsReceived(const QJsonObject &outputs, bool success) {
     m_executionPanel->logMessage("=== Execution Complete ===");
 }
 
-QJsonObject EditorWindow::serializeGraph()
-{
+void NodeEditor::onNewGraph() {
+    if (isWindowModified()) {
+        auto reply = QMessageBox::question(this, "New Graph",
+            "Current graph has unsaved changes. Continue?",
+            QMessageBox::Yes | QMessageBox::No);
+        
+        if (reply != QMessageBox::Yes) {
+            return;
+        }
+    }
+    
+    // Clear all nodes from the graph
+    auto nodeIds = m_graphModel->allNodeIds();
+    for (const auto &nodeId : nodeIds) {
+        m_graphModel->deleteNode(nodeId);
+    }
+    
+    m_executionPanel->clearConsole();
+    m_executionPanel->clearResults();
+    setWindowModified(false);
+    m_executionPanel->logMessage("Created new graph");
+}
+
+void NodeEditor::onSaveGraph() {
+    if (m_scene->save()) {
+        setWindowModified(false);
+        m_executionPanel->logSuccess("Graph saved successfully");
+    } else {
+        m_executionPanel->logError("Failed to save graph");
+    }
+}
+
+void NodeEditor::onLoadGraph() {
+    // The scene->load() method will handle the file dialog and loading
+    m_scene->load();
+}
+
+void NodeEditor::onServerSettings() {
+    bool ok;
+    QString newUrl = QInputDialog::getText(this, "Server Settings",
+                                           "Backend Server URL:", QLineEdit::Normal, m_serverUrl, &ok);
+
+    if (ok && !newUrl.isEmpty()) {
+        m_serverUrl = newUrl;
+        m_httpClient->setServerUrl(newUrl);
+        m_executionPanel->logMessage(QString("Server URL changed to: %1").arg(newUrl));
+
+        // Reconnect and reload nodes
+        loadNodesFromBackend();
+    }
+}
+
+void NodeEditor::onRefreshNodes() {
+    m_executionPanel->logMessage("Refreshing nodes from backend...");
+    loadNodesFromBackend();
+}
+
+QJsonObject NodeEditor::serializeGraph() {
     QJsonObject graphDef;
     QJsonArray nodesArray;
     QJsonArray connectionsArray;
@@ -365,7 +407,7 @@ QJsonObject EditorWindow::serializeGraph()
     return graphDef;
 }
 
-void EditorWindow::highlightNodeAfterExecution(const QString &nodeId, bool success) {
+void NodeEditor::highlightNodeAfterExecution(const QString &nodeId, bool success) {
     // This is a placeholder for node highlighting
     // In a full implementation, you would visually highlight nodes
     // based on execution status (green for success, red for error)
@@ -373,61 +415,4 @@ void EditorWindow::highlightNodeAfterExecution(const QString &nodeId, bool succe
     Q_UNUSED(success);
 }
 
-void EditorWindow::onNewGraph()
-{
-    if (isWindowModified()) {
-        auto reply = QMessageBox::question(this, "New Graph",
-            "Current graph has unsaved changes. Continue?",
-            QMessageBox::Yes | QMessageBox::No);
-        
-        if (reply != QMessageBox::Yes) {
-            return;
-        }
-    }
-    
-    // Clear all nodes from the graph
-    auto nodeIds = m_graphModel->allNodeIds();
-    for (const auto &nodeId : nodeIds) {
-        m_graphModel->deleteNode(nodeId);
-    }
-    
-    m_executionPanel->clearConsole();
-    m_executionPanel->clearResults();
-    setWindowModified(false);
-    m_executionPanel->logMessage("Created new graph");
-}
-
-void EditorWindow::onSaveGraph() {
-    if (m_scene->save()) {
-        setWindowModified(false);
-        m_executionPanel->logSuccess("Graph saved successfully");
-        statusBar()->showMessage("Graph saved", 3000);
-    } else {
-        m_executionPanel->logError("Failed to save graph");
-    }
-}
-
-void EditorWindow::onLoadGraph() {
-    // The scene->load() method will handle the file dialog and loading
-    m_scene->load();
-}
-
-void EditorWindow::onServerSettings() {
-    bool ok;
-    QString newUrl = QInputDialog::getText(this, "Server Settings",
-                                           "Backend Server URL:", QLineEdit::Normal, m_serverUrl, &ok);
-
-    if (ok && !newUrl.isEmpty()) {
-        m_serverUrl = newUrl;
-        m_httpClient->setServerUrl(newUrl);
-        m_executionPanel->logMessage(QString("Server URL changed to: %1").arg(newUrl));
-
-        // Reconnect and reload nodes
-        loadNodesFromBackend();
-    }
-}
-
-void EditorWindow::onRefreshNodes() {
-    m_executionPanel->logMessage("Refreshing nodes from backend...");
-    loadNodesFromBackend();
-}
+}// namespace rbc
