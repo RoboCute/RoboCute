@@ -37,10 +37,12 @@ Accel &SceneManager::accel() {
 void SceneManager::refresh_pipeline(
     CommandList &cmdlist,
     Stream &stream,
-    bool start_new_frame) {
+    bool start_new_frame,
+    bool sync) {
     before_rendering(cmdlist, stream);
     on_frame_end(cmdlist, stream);
-    stream << synchronize();
+    if (sync)
+        stream << synchronize();
     if (start_new_frame)
         prepare_frame();
 }
@@ -153,7 +155,7 @@ bool SceneManager::on_frame_end(
     }
     return true;
 }
-void SceneManager::load_shader(luisa::fiber::counter& init_counter) {
+void SceneManager::load_shader(luisa::fiber::counter &init_counter) {
     _mesh_mng.load_shader(init_counter);
     // default scene
     _accel_mngs.emplace_back(luisa::make_unique<AccelManager>(_device));

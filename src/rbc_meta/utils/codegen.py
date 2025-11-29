@@ -39,11 +39,16 @@ def _print_guid(t, py_interface: bool = False, is_view: bool = False):
         return "vstd::Guid const&"
     else:
         return "vstd::Guid"
-
+def _print_data_buffer(t, py_interface: bool = False, is_view: bool = False):
+    if py_interface:
+        return "py::buffer"
+    else:
+        return "void*"
 
 _type_name_functions = {
     tr.string: _print_str,
     tr.GUID: _print_guid,
+    tr.DataBuffer: _print_data_buffer
 }
 
 
@@ -68,6 +73,7 @@ _py_names = {
     tr.string: "str",
     tr.vector: "list",
     tr.VoidPtr: "",
+    tr.DataBuffer: ""
 }
 
 _serde_blacklist = {
@@ -135,6 +141,8 @@ def _print_arg_vars(args: dict, is_first: bool, py_interface: bool):
             r += ", "
         is_first = False
         r += arg_name
+        if arg_type == tr.DataBuffer:
+            r += '.request().ptr'
     return r
 
 
@@ -175,7 +183,7 @@ def _print_py_args(args: dict, is_first: bool):
             r += ", "
         is_first = False
         r += arg_name
-        if arg_type == tr.VoidPtr or type(arg_type) == tr.ClassPtr:
+        if type(arg_type) == tr.ClassPtr:
             r += "._handle"
     return r
 

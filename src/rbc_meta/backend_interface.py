@@ -8,7 +8,7 @@ def codegen_header(
     header_root_path: Path,
     py_root_path: Path,
 ):
-    pyd_name = 'rbc_backend'
+    pyd_name = 'test_py_codegen'
     file_name = 'rbc_backend'
     Context = tr.struct('RBCContext', "TEST_GRAPHICS_API")
     # frame
@@ -23,7 +23,7 @@ def codegen_header(
     Context.method('create_window', name=tr.string,
                    size=tr.uint2, resizable=tr.bool)
     # mesh
-    Context.method('create_mesh', data=tr.VoidPtr, vertex_count=tr.uint,
+    Context.method('create_mesh', data=tr.DataBuffer, vertex_count=tr.uint,
                    contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint
                    # TODO: submesh
                    ).ret_type(tr.VoidPtr)
@@ -95,6 +95,13 @@ def codegen_header(
     Context.method(
         'disable_view'
     )
+    # tick
+    Context.method(
+        'tick'
+    )
+    Context.method(
+        'should_close'
+    ).ret_type(tr.bool)
 
     # codegen
     ut.codegen_pyd_module(

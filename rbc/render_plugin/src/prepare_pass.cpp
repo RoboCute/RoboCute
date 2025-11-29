@@ -194,13 +194,13 @@ void PreparePass::on_enable(
     static constexpr auto lut3d_size = spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * 3ull * sizeof(float4);
     static const uint3 transmission_ggx_energy_size{32u};
     static const size_t transmission_ggx_energy_size_bytes = transmission_ggx_energy_size.x * transmission_ggx_energy_size.y * transmission_ggx_energy_size.z * sizeof(float4);
+    auto runtime_dir = RenderDevice::instance().lc_ctx().runtime_directory();
     {
-
         luisa::vector<std::byte> vec;
         vec.resize_uninitialized(lut3d_size);
         _lut_load_cmds.emplace_back(
-            luisa::fiber::async([&device, this, ptr = vec.data()]() {
-                BinaryFileStream file_stream{luisa::to_string(luisa::filesystem::path{luisa::current_executable_path()}.parent_path() / "rec2020.coeff")};
+            luisa::fiber::async([&device, runtime_dir, this, ptr = vec.data()]() {
+                BinaryFileStream file_stream{luisa::to_string(runtime_dir / "rec2020.coeff")};
                 LUISA_ASSERT(file_stream.length() == lut3d_size);
                 file_stream.read({ptr, lut3d_size});
                 spectrum_lut_3d = device.create_volume<float>(PixelStorage::FLOAT4, uint3(spectrum::spectrum_lut3d_res * 3, spectrum::spectrum_lut3d_res, spectrum::spectrum_lut3d_res));
@@ -212,8 +212,8 @@ void PreparePass::on_enable(
         luisa::vector<std::byte> vec;
         vec.resize_uninitialized(transmission_ggx_energy_size_bytes);
         _lut_load_cmds.emplace_back(
-            luisa::fiber::async([&device, this, ptr = vec.data()]() {
-                BinaryFileStream file_stream{luisa::to_string(luisa::filesystem::path{luisa::current_executable_path()}.parent_path() / "trans_ggx.bytes")};
+            luisa::fiber::async([&device, runtime_dir, this, ptr = vec.data()]() {
+                BinaryFileStream file_stream{luisa::to_string(runtime_dir / "trans_ggx.bytes")};
                 LUISA_ASSERT(file_stream.length() == transmission_ggx_energy_size_bytes);
                 file_stream.read({ptr, transmission_ggx_energy_size_bytes});
                 transmission_ggx_energy = device.create_volume<float>(PixelStorage::FLOAT4, transmission_ggx_energy_size);

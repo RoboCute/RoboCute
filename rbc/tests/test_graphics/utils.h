@@ -29,7 +29,7 @@ struct GraphicsUtils {
     Image<float> dst_image;
     // render
     DynamicModule render_module;
-    RenderPlugin *render_plugin;
+    RenderPlugin *render_plugin{};
     StateMap render_settings;
     RenderPlugin::PipeCtxStub *display_pipe_ctx{};
     vstd::optional<rbc::Lights> lights;

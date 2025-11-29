@@ -9,18 +9,27 @@ namespace rbc {
 GraphicsUtils::GraphicsUtils() {}
 GraphicsUtils::~GraphicsUtils() {};
 void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
-    compute_event.event.synchronize(compute_event.fence_index);
+    if (sm) {
+        sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false, true);
+    }
+    if (compute_event.event)
+        compute_event.event.synchronize(compute_event.fence_index);
     if (display_pipe_ctx)
         render_plugin->destroy_pipeline_context(display_pipe_ctx);
     if (after_sync)
         after_sync();
-    render_plugin->dispose();
-    lights.destroy();
+    if (render_plugin)
+        render_plugin->dispose();
+    if (lights)
+        lights.destroy();
     AssetsManager::destroy_instance();
-    sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false);
-    sm.destroy();
-    present_event.event.synchronize(present_event.fence_index);
-    present_stream.synchronize();
+    if (sm) {
+        sm.destroy();
+    }
+    if (present_event.event)
+        present_event.event.synchronize(present_event.fence_index);
+    if (present_stream)
+        present_stream.synchronize();
     dst_image.reset();
     window.reset();
 }
@@ -75,6 +84,7 @@ void GraphicsUtils::init_render() {
     render_plugin = RBC_LOAD_PLUGIN(render_module, RenderPlugin);
     display_pipe_ctx = render_plugin->create_pipeline_context(render_settings);
     LUISA_ASSERT(render_plugin->initialize_pipeline({}));
+    sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false, false);
 }
 
 void GraphicsUtils::init_display(luisa::string_view name, uint2 resolution, bool resizable) {
@@ -94,7 +104,7 @@ void GraphicsUtils::init_display(luisa::string_view name, uint2 resolution, bool
     dst_image = render_device.lc_device().create_image<float>(swapchain.backend_storage(), resolution);
 }
 void GraphicsUtils::reset_frame() {
-    sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), true);
+    sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), true, true);
     render_plugin->clear_context(display_pipe_ctx);
 }
 

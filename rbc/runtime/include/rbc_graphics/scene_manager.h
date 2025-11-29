@@ -100,7 +100,7 @@ public:
     void add_on_frame_end_event(vstd::string_view name, SceneManagerEvent *func);
     void remove_before_render_event(vstd::string_view name);
     void remove_on_frame_end_event(vstd::string_view name);
-    void load_shader(luisa::fiber::counter& init_counter);
+    void load_shader(luisa::fiber::counter &init_counter);
     void prepare_frame();
     void before_rendering(CommandList &cmdlist, Stream &stream);
     bool on_frame_end(
@@ -114,7 +114,8 @@ public:
     void refresh_pipeline(
         CommandList &cmdlist,
         Stream &stream,
-    bool start_new_frame);
+        bool start_new_frame,
+        bool sync);
     void add_after_commit_callback(vstd::function<void()> &&callback);
     template<typename T>
         requires(!std::is_reference_v<T> && std::is_move_constructible_v<T> && !std::is_trivially_destructible_v<T>)

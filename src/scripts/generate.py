@@ -16,7 +16,7 @@ GENERATION_TASKS = [
         "codegen_header",
         Path("rbc/tests/test_py_codegen/generated").resolve(),
         Path("rbc/tests/test_graphics/generated").resolve(),
-        Path("rbc/tests/test_py_codegen/generated").resolve(),
+        Path("src/rbc_ext").resolve(),
     ),
     (
         "rbc_meta.pipeline_settings",

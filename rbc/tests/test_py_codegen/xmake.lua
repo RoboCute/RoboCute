@@ -8,7 +8,7 @@ do
     })
     add_deps('rbc_core', 'test_graphics')
     set_extension('.pyd')
-    add_files('builtin/*.cpp', 'generated/*.cpp', 'main.cpp')
+    add_files('builtin/**.cpp', 'generated/**.cpp', 'main.cpp')
     add_includedirs('builtin')
     set_pcxxheader('builtin/zz_pch.h')
     add_rules('pybind')

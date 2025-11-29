@@ -4,6 +4,9 @@ import rbc_meta.utils.type_register_base as base
 class VoidPtr:
     pass
 
+class DataBuffer:
+    pass
+
 
 class ClassPtr:
     def __init__(self, element=None):
@@ -206,6 +209,7 @@ _basic_types = {
     long2,
     long3,
     VoidPtr,
+    DataBuffer,
     long4,
     ulong2,
     ulong3,
