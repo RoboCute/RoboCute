@@ -18,7 +18,8 @@ private:
     void _async_load(
         LoadType&& load_type,
         uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint>&& submesh_triangle_offset,
-        bool build_mesh, bool calculate_bound
+        bool build_mesh, bool calculate_bound,
+        uint64_t file_size = ~0ull
     );
 
 public:
@@ -32,9 +33,10 @@ public:
 
     void async_load_from_file(
         luisa::filesystem::path const& path,
-        size_t file_offset,
         uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint>&& submesh_triangle_offset,
-        bool build_mesh = true, bool calculate_bound = false
+        bool build_mesh = true, bool calculate_bound = false,
+        uint64_t file_offset = 0,
+        uint64_t file_max_size = ~0ull
     );
     void async_load_from_memory(
         BinaryBlob&& data,

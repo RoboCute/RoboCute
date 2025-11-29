@@ -4,7 +4,7 @@
 #include <rbc_graphics/lights.h>
 #include <rbc_graphics/mat_code.h>
 struct SimpleScene {
-    rbc::Lights lights;
+    rbc::Lights& lights;
     rbc::MatCode default_mat_code;
     luisa::vector<rbc::RC<rbc::DeviceMesh>> device_meshes;
     luisa::vector<uint32_t> tlas_indices;
@@ -13,7 +13,7 @@ struct SimpleScene {
     luisa::float3 light_pos;
     bool tlas_loaded{};
 
-    SimpleScene();
+    SimpleScene(rbc::Lights& lights);
     ~SimpleScene();
     void move_cube(luisa::float3 pos);
     void move_light(luisa::float3 pos);

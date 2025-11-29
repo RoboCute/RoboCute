@@ -126,7 +126,7 @@ void SimpleScene::_init_material() {
         sm.buffer_uploader(),
         sm.dispose_queue(), material::PolymorphicMaterial::index<material::OpenPBR>);
 }
-SimpleScene::SimpleScene() {
+SimpleScene::SimpleScene(rbc::Lights& lights) : lights(lights){
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;

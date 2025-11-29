@@ -2,6 +2,7 @@
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/shader_manager.h>
 #include <rbc_graphics/render_device.h>
+#include <rbc_graphics/lights.h>
 #include <luisa/core/clock.h>
 #include <luisa/gui/window.h>
 #include <luisa/vstl/functional.h>
@@ -31,13 +32,14 @@ struct GraphicsUtils {
     RenderPlugin *render_plugin;
     StateMap render_settings;
     RenderPlugin::PipeCtxStub *display_pipe_ctx{};
+    vstd::optional<rbc::Lights> lights;
     bool require_reset{false};
 
     GraphicsUtils();
     void dispose(vstd::function<void()> after_sync = {});
     ~GraphicsUtils();
     void init_device(luisa::string_view program_path, luisa::string_view backend_name);
-    void init_graphics(luisa::filesystem::path const& shader_path);
+    void init_graphics(luisa::filesystem::path const &shader_path);
     void init_render();
     void resize_swapchain(uint2 size);
     void init_display(luisa::string_view name, uint2 resolution, bool resizable);

@@ -15,6 +15,7 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     if (after_sync)
         after_sync();
     render_plugin->dispose();
+    lights.destroy();
     AssetsManager::destroy_instance();
     sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false);
     sm.destroy();
@@ -67,6 +68,7 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
         render_device.lc_main_stream().synchronize();
         init_counter.wait();
     }
+    lights.create();
 }
 void GraphicsUtils::init_render() {
     render_module = DynamicModule::load("rbc_render_plugin");

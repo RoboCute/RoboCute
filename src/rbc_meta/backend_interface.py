@@ -20,12 +20,14 @@ def codegen_header(
     # render
     Context.method('init_render')
     Context.method('load_skybox', path=tr.string, size=tr.uint2)
-    Context.method('create_window', name=tr.string)
+    Context.method('create_window', name=tr.string,
+                   size=tr.uint2, resizable=tr.bool)
     # mesh
-    Context.method('load_mesh', path=tr.string).ret_type(tr.VoidPtr)
     Context.method('create_mesh', data=tr.VoidPtr, vertex_count=tr.uint,
-                   contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint).ret_type(tr.VoidPtr)
-    Context.method('remove_mesh', handle=tr.ulong)
+                   contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint
+                   # TODO: submesh
+                   ).ret_type(tr.VoidPtr)
+    Context.method('remove_mesh', handle=tr.VoidPtr)
     # light
     Context.method(
         'add_area_light', matrix=tr.float4x4,
@@ -38,10 +40,7 @@ def codegen_header(
         radius=tr.float, luminance=tr.float3, visible=tr.bool).ret_type(tr.VoidPtr)
     Context.method(
         'add_spot_light', center=tr.float3, radius=tr.float, luminance=tr.float3, forward_dir=tr.float3,
-        angle_radians=tr.float, small_angle_radians=tr.float, angle_atten_po=tr.float, visible=tr.bool).ret_type(tr.VoidPtr)
-    Context.method(
-        'remove_light', handle=tr.ulong
-    )
+        angle_radians=tr.float, small_angle_radians=tr.float, angle_atten_pow=tr.float, visible=tr.bool).ret_type(tr.VoidPtr)
     Context.method(
         'update_area_light', light=tr.VoidPtr, matrix=tr.float4x4,
         luminance=tr.float3, visible=tr.bool)
@@ -53,7 +52,7 @@ def codegen_header(
         radius=tr.float, luminance=tr.float3, visible=tr.bool)
     Context.method(
         'update_spot_light', light=tr.VoidPtr, center=tr.float3, radius=tr.float, luminance=tr.float3, forward_dir=tr.float3,
-        angle_radians=tr.float, small_angle_radians=tr.float, angle_atten_po=tr.float, visible=tr.bool)
+        angle_radians=tr.float, small_angle_radians=tr.float, angle_atten_pow=tr.float, visible=tr.bool)
     Context.method(
         'remove_light', light=tr.VoidPtr
     )
@@ -64,7 +63,7 @@ def codegen_header(
         mesh=tr.VoidPtr
         # TODO: material
     ).ret_type(tr.VoidPtr)
-    
+
     Context.method(
         'update_object',
         matrix=tr.float4x4,
@@ -80,7 +79,7 @@ def codegen_header(
         'remove_object',
         object_ptr=tr.VoidPtr
     )
-    
+
     # view
     Context.method(
         'reset_view',
@@ -89,8 +88,9 @@ def codegen_header(
     Context.method(
         'set_view_camera',
         pos=tr.float3,
-        forward_dir=tr.float3,
-        up_dir=tr.float3
+        roll=tr.float,
+        pitch=tr.float,
+        yaw=tr.float
     )
     Context.method(
         'disable_view'

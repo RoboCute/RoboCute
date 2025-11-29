@@ -11,7 +11,7 @@ InlayHints:
   BlockEnd: No
   Designators: Yes
   Enabled: Yes
-  ParameterNames: Yes
+  ParameterNames: No
   DeducedTypes: Yes
   DefaultArguments: Yes
   TypeNameLimit: 24

@@ -9,31 +9,24 @@
 namespace rbc {
 using RCCounterType = uint64_t;
 struct RCBase;
-// constants
-inline static constexpr RCCounterType kRCCounterUniqueFlag = 1 << 31;
-inline static constexpr RCCounterType kRCCounterMax = kRCCounterUniqueFlag - 1;
-
 // operations
 inline static RCCounterType rc_ref_count(const std::atomic<RCCounterType> &counter) {
-    return counter.load(std::memory_order_relaxed) & ~kRCCounterUniqueFlag;
+    return counter.load(std::memory_order_relaxed);
 }
-inline static bool rc_is_unique(RCCounterType counter) {
-    return (counter & kRCCounterUniqueFlag) != 0;
-}
+
 inline static RCCounterType rc_add_ref(std::atomic<RCCounterType> &counter) {
     RCCounterType old = counter.load(std::memory_order_relaxed);
-    LUISA_DEBUG_ASSERT(!rc_is_unique(old) && "try to add ref on a unique object");
     while (!counter.compare_exchange_weak(
         old,
         old + 1,
         std::memory_order_relaxed)) {
-        LUISA_DEBUG_ASSERT(!rc_is_unique(old) && "try to add ref on a unique object");
+        std::this_thread::yield();
     }
     return old + 1;
 }
 inline static RCCounterType rc_weak_lock(std::atomic<RCCounterType> &counter) {
     for (RCCounterType old = counter.load(std::memory_order_relaxed); old != 0;) {
-        LUISA_DEBUG_ASSERT(!rc_is_unique(old));
+        std::this_thread::yield();
         if (counter.compare_exchange_weak(
                 old,
                 old + 1,
@@ -43,35 +36,9 @@ inline static RCCounterType rc_weak_lock(std::atomic<RCCounterType> &counter) {
     }
     return 0;
 }
-inline static RCCounterType rc_add_ref_unique(std::atomic<RCCounterType> &counter) {
-    RCCounterType old = counter.load(std::memory_order_relaxed);
-    LUISA_DEBUG_ASSERT(old == 0 && "try to add ref on a non-unique object");
-    while (!counter.compare_exchange_weak(
-        old,
-        kRCCounterUniqueFlag | 1,
-        std::memory_order_relaxed)) {
-        LUISA_DEBUG_ASSERT(old == 0 && "try to add ref on a non-unique object");
-    }
-    return kRCCounterUniqueFlag;
-}
-inline static RCCounterType rc_release_unique(std::atomic<RCCounterType> &counter) {
-    RCCounterType old = counter.load(std::memory_order_relaxed);
-    LUISA_DEBUG_ASSERT(rc_is_unique(old) && "try to release a non-unique object");
-    while (!counter.compare_exchange_weak(
-        old,
-        0,
-        std::memory_order_relaxed)) {
-        LUISA_DEBUG_ASSERT(rc_is_unique(old) && "try to release a non-unique object");
-    }
-    return 0;
-}
 inline static RCCounterType rc_release(std::atomic<RCCounterType> &counter) {
     RCCounterType old = counter.fetch_sub(1, std::memory_order_release);
-    if (rc_is_unique(old)) {
-        return 0;
-    } else {
-        return old - 1;
-    }
+    return old - 1;
 }
 
 // weak block
@@ -197,8 +164,6 @@ template<typename T>
 concept ObjectWithRC = requires(const T *const_obj, T *obj) {
     { const_obj->rbc_rc_count() } -> std::same_as<rbc::RCCounterType>;
     { const_obj->rbc_rc_add_ref() } -> std::same_as<rbc::RCCounterType>;
-    { const_obj->rbc_rc_add_ref_unique() } -> std::same_as<rbc::RCCounterType>;
-    { const_obj->rbc_rc_release_unique() } -> std::same_as<rbc::RCCounterType>;
     { const_obj->rbc_rc_weak_lock() } -> std::same_as<rbc::RCCounterType>;
     { const_obj->rbc_rc_release() } -> std::same_as<rbc::RCCounterType>;
     { const_obj->rbc_rc_weak_ref_count() } -> std::same_as<rbc::RCCounterType>;
@@ -239,12 +204,14 @@ struct RCDeleterTraits<T> {
 
 // release helper
 template<typename T>
-inline void rc_release_with_delete(T *p) {
+inline bool rc_release_with_delete(T *p) {
     LUISA_DEBUG_ASSERT(p != nullptr);
     if (p->rbc_rc_release() == 0) {
         p->rbc_rc_weak_ref_counter_notify_dead();
         RCDeleterTraits<T>::do_delete(p);
+        return true;
     }
+    return false;
 }
 
 }// namespace rbc
@@ -253,8 +220,6 @@ inline void rc_release_with_delete(T *p) {
 #define RBC_RC_INTEFACE()                                               \
     virtual rbc::RCCounterType rbc_rc_count() const = 0;                \
     virtual rbc::RCCounterType rbc_rc_add_ref() const = 0;              \
-    virtual rbc::RCCounterType rbc_rc_add_ref_unique() const = 0;       \
-    virtual rbc::RCCounterType rbc_rc_release_unique() const = 0;       \
     virtual rbc::RCCounterType rbc_rc_weak_lock() const = 0;            \
     virtual rbc::RCCounterType rbc_rc_release() const = 0;              \
     virtual rbc::RCCounterType rbc_rc_weak_ref_count() const = 0;       \
@@ -276,12 +241,6 @@ private:                                                                        
     inline rbc::RCCounterType rbc_rc_add_ref() const {                              \
         return rbc::rc_add_ref(zz_rbc_rc);                                          \
     }                                                                               \
-    inline rbc::RCCounterType rbc_rc_add_ref_unique() const {                       \
-        return rbc::rc_add_ref_unique(zz_rbc_rc);                                   \
-    }                                                                               \
-    inline rbc::RCCounterType rbc_rc_release_unique() const {                       \
-        return rbc::rc_release_unique(zz_rbc_rc);                                   \
-    }                                                                               \
     inline rbc::RCCounterType rbc_rc_weak_lock() const {                            \
         return rbc::rc_weak_lock(zz_rbc_rc);                                        \
     }                                                                               \
@@ -298,19 +257,16 @@ private:                                                                        
         rbc::rc_notify_weak_ref_counter_dead(zz_rbc_weak_counter);                  \
     }
 #define RBC_RC_IMPL RBC_RC_IMPL_(public)
-#define RBC_RC_DELETER_IMPL_DEFAULT             \
-    inline void rbc_rc_delete() {               \
+#define RBC_RC_DELETER_IMPL_DEFAULT         \
+    inline void rbc_rc_delete() {           \
         luisa::delete_with_allocator(this); \
     }
 
 namespace rbc {
-
 template<typename T>
 struct RC;
 template<typename T>
 struct RCWeak;
-template<typename T>
-struct RCUnique;
 template<typename T>
 struct RCWeakLocker;
 struct RCBase : vstd::IOperatorNewBase {
@@ -319,11 +275,9 @@ struct RCBase : vstd::IOperatorNewBase {
     template<typename T>
     friend struct RCWeak;
     template<typename T>
-    friend struct RCUnique;
-    template<typename T>
     friend struct RCWeakLocker;
     template<typename T>
-    friend void rc_release_with_delete(T *p);
+    friend bool rc_release_with_delete(T *p);
 
     RBC_RC_IMPL_(private)
     RBC_RC_DELETER_IMPL_DEFAULT
@@ -340,8 +294,6 @@ struct RC {
     RC(T *ptr);
     template<RCLegalType<T> U>
     RC(U *ptr);
-    template<RCLegalType<T> U>
-    RC(RCUnique<U> &&rhs);
     ~RC();
 
     // copy & move
@@ -363,8 +315,6 @@ struct RC {
     RC &operator=(const RC<U> &rhs);
     template<RCLegalType<T> U>
     RC &operator=(RC<U> &&rhs);
-    template<RCLegalType<T> U>
-    RC &operator=(RCUnique<U> &&rhs);
 
     // factory
     template<typename... Args>
@@ -396,68 +346,28 @@ struct RC {
     // cast
     template<typename U>
     RC<U> cast_static() const;
-
-private:
-    // helper
-    void _release();
-
-private:
-    T *_ptr = nullptr;
-};
-
-template<typename T>
-struct RCUnique {
-    // ctor & dtor
-    RCUnique();
-    RCUnique(std::nullptr_t);
-    RCUnique(T *ptr);
-    template<RCLegalType<T> U>
-    RCUnique(U *ptr);
-    ~RCUnique();
-
-    // copy & move
-    RCUnique(const RCUnique &rhs) = delete;
-    RCUnique(RCUnique &&rhs);
-    template<RCLegalType<T> U>
-    RCUnique(RCUnique<U> &&rhs);
-
-    // assign & move assign
-    RCUnique &operator=(std::nullptr_t);
-    RCUnique &operator=(T *ptr);
-    RCUnique &operator=(const RCUnique &rhs) = delete;
-    RCUnique &operator=(RCUnique &&rhs);
-    template<RCLegalType<T> U>
-    RCUnique &operator=(U *ptr);
-    template<RCLegalType<T> U>
-    RCUnique &operator=(RCUnique<U> &&rhs);
-
-    // factory
-    template<typename... Args>
-        requires(luisa::is_constructible_v<T, Args...>)
-    static RCUnique New(Args &&...args);
-
-    // getter
-    T *get() const;
-
-    // count getter
-    RCCounterType ref_count() const;
-    RCCounterType ref_count_weak() const;
-
-    // empty
-    bool is_empty() const;
-    operator bool() const;
-
-    // ops
-    void reset();
-    void reset(T *ptr);
-    template<RCLegalType<T> U>
-    void reset(U *ptr);
-    T *release();
-    void swap(RCUnique &rhs);
-
-    // pointer behaviour
-    T *operator->() const;
-    T &operator*() const;
+    static RCCounterType manually_add_ref(T *ptr) {
+        return ptr->rbc_rc_add_ref();
+    }
+    static bool manually_release_ref(T *ptr) {
+        return rc_release_with_delete(ptr);
+    }
+    template<typename Func>
+        requires(std::is_invocable_v<Func> || std::is_invocable_v<Func, T *>)
+    static bool manually_release_ref(T *ptr, Func &&destruct_callback) {
+        LUISA_DEBUG_ASSERT(ptr != nullptr);
+        if (ptr->rbc_rc_release() == 0) {
+            if constexpr (std::is_invocable_v<Func>) {
+                destruct_callback();
+            } else {
+                destruct_callback(ptr);
+            }
+            ptr->rbc_rc_weak_ref_counter_notify_dead();
+            RCDeleterTraits<T>::do_delete(ptr);
+            return true;
+        }
+        return false;
+    }
 
 private:
     // helper
@@ -511,8 +421,6 @@ struct RCWeak {
     RCWeak(U *ptr);
     template<RCLegalType<T> U>
     RCWeak(const RC<U> &ptr);
-    template<RCLegalType<T> U>
-    RCWeak(const RCUnique<U> &ptr);
     ~RCWeak();
 
     // copy & move
@@ -536,8 +444,6 @@ struct RCWeak {
     RCWeak &operator=(RCWeak<U> &&rhs);
     template<RCLegalType<T> U>
     RCWeak &operator=(const RC<U> &rhs);
-    template<RCLegalType<T> U>
-    RCWeak &operator=(const RCUnique<U> &rhs);
 
     // unsafe getter
     T *get_unsafe() const;
@@ -562,8 +468,6 @@ struct RCWeak {
     void reset(U *ptr);
     template<RCLegalType<T> U>
     void reset(const RC<U> &ptr);
-    template<RCLegalType<T> U>
-    void reset(const RCUnique<U> &ptr);
     void swap(RCWeak &rhs);
 
     // cast
@@ -613,17 +517,6 @@ inline RC<T>::RC(U *ptr) {
     if (ptr) {
         _ptr = static_cast<T *>(ptr);
         _ptr->rbc_rc_add_ref();
-    }
-}
-template<typename T>
-template<RCLegalType<T> U>
-inline RC<T>::RC(RCUnique<U> &&rhs) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (!rhs.is_empty()) {
-        _ptr = rhs.release();
-        if (_ptr) {
-            _ptr->rbc_rc_add_ref();
-        }
     }
 }
 template<typename T>
@@ -720,20 +613,6 @@ inline RC<T> &RC<T>::operator=(RC<U> &&rhs) {
     }
     return *this;
 }
-template<typename T>
-template<RCLegalType<T> U>
-inline RC<T> &RC<T>::operator=(RCUnique<U> &&rhs) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    reset();
-    if (!rhs.is_empty()) {
-        _ptr = rhs.release();
-        if (_ptr) {
-            _ptr->rbc_rc_add_ref();
-        }
-    }
-    return *this;
-}
-
 // factory
 template<typename T>
 template<typename... Args>
@@ -827,195 +706,6 @@ inline RC<U> RC<T>::cast_static() const {
     } else {
         return nullptr;
     }
-}
-
-}// namespace rbc
-
-// impl for RCUnique
-namespace rbc {
-// helper
-template<typename T>
-inline void RCUnique<T>::_release() {
-    rc_release_with_delete(_ptr);
-}
-
-// ctor & dtor
-template<typename T>
-inline RCUnique<T>::RCUnique() {
-}
-template<typename T>
-inline RCUnique<T>::RCUnique(std::nullptr_t) {
-}
-template<typename T>
-template<RCLegalType<T> U>
-inline RCUnique<T>::RCUnique(U *ptr) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (ptr) {
-        _ptr = static_cast<T *>(ptr);
-        _ptr->rbc_rc_add_ref_unique();
-    }
-}
-template<typename T>
-inline RCUnique<T>::RCUnique(T *ptr)
-    : _ptr(ptr) {
-    if (_ptr) {
-        _ptr->rbc_rc_add_ref_unique();
-    }
-}
-template<typename T>
-inline RCUnique<T>::~RCUnique() {
-    reset();
-}
-
-// copy & move
-template<typename T>
-inline RCUnique<T>::RCUnique(RCUnique &&rhs)
-    : _ptr(rhs._ptr) {
-    rhs._ptr = nullptr;
-}
-template<typename T>
-template<RCLegalType<T> U>
-inline RCUnique<T>::RCUnique(RCUnique<U> &&rhs) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (!rhs.is_empty()) {
-        reset(static_cast<T *>(rhs.release()));
-    }
-}
-
-// assign & move assign
-template<typename T>
-inline RCUnique<T> &RCUnique<T>::operator=(std::nullptr_t) {
-    reset();
-    return *this;
-}
-template<typename T>
-inline RCUnique<T> &RCUnique<T>::operator=(T *ptr) {
-    reset(ptr);
-    return *this;
-}
-template<typename T>
-inline RCUnique<T> &RCUnique<T>::operator=(RCUnique &&rhs) {
-    if (this != &rhs) {
-        reset();
-        _ptr = rhs._ptr;
-        rhs._ptr = nullptr;
-    }
-    return *this;
-}
-template<typename T>
-template<RCLegalType<T> U>
-inline RCUnique<T> &RCUnique<T>::operator=(U *ptr) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    reset(ptr);
-    return *this;
-}
-template<typename T>
-template<RCLegalType<T> U>
-inline RCUnique<T> &RCUnique<T>::operator=(RCUnique<U> &&rhs) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (rhs.is_empty()) {
-        reset();
-    } else {
-        reset(static_cast<T *>(rhs.release()));
-    }
-    return *this;
-}
-
-// factory
-template<typename T>
-template<typename... Args>
-    requires(luisa::is_constructible_v<T, Args...>)
-inline RCUnique<T> RCUnique<T>::New(Args &&...args) {
-    return {luisa::new_with_allocator<T>(std::forward<Args>(args)...)};
-}
-
-// getter
-template<typename T>
-inline T *RCUnique<T>::get() const {
-    return _ptr;
-}
-
-// count getter
-template<typename T>
-inline RCCounterType RCUnique<T>::ref_count() const {
-    return _ptr ? _ptr->rbc_rc_count() : 0;
-}
-template<typename T>
-inline RCCounterType RCUnique<T>::ref_count_weak() const {
-    return _ptr ? _ptr->rbc_rc_weak_ref_count() : 0;
-}
-
-// empty
-template<typename T>
-inline bool RCUnique<T>::is_empty() const {
-    return _ptr == nullptr;
-}
-template<typename T>
-inline RCUnique<T>::operator bool() const {
-    return !is_empty();
-}
-
-// ops
-template<typename T>
-inline void RCUnique<T>::reset() {
-    if (_ptr) {
-        _release();
-        _ptr = nullptr;
-    }
-}
-template<typename T>
-inline void RCUnique<T>::reset(T *ptr) {
-    if (_ptr != ptr) {
-        // release old ptr
-        if (_ptr) {
-            _release();
-        }
-
-        // add ref to new ptr
-        _ptr = ptr;
-        if (_ptr) {
-            _ptr->rbc_rc_add_ref_unique();
-        }
-    }
-}
-template<typename T>
-template<RCLegalType<T> U>
-inline void RCUnique<T>::reset(U *ptr) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (ptr) {
-        reset(static_cast<T *>(ptr));
-    } else {
-        reset();
-    }
-}
-template<typename T>
-inline T *RCUnique<T>::release() {
-    if (_ptr) {
-        T *tmp = _ptr;
-        _ptr->rbc_rc_release_unique();
-        _ptr = nullptr;
-        return tmp;
-    } else {
-        return nullptr;
-    }
-}
-template<typename T>
-inline void RCUnique<T>::swap(RCUnique &rhs) {
-    if (this != &rhs) {
-        T *tmp = _ptr;
-        _ptr = rhs._ptr;
-        rhs._ptr = tmp;
-    }
-}
-
-// pointer behaviour
-template<typename T>
-inline T *RCUnique<T>::operator->() const {
-    return _ptr;
-}
-template<typename T>
-inline T &RCUnique<T>::operator*() const {
-    return *_ptr;
 }
 
 }// namespace rbc
@@ -1163,15 +853,7 @@ inline RCWeak<T>::RCWeak(const RC<U> &ptr)
         _take_weak_ref_counter();
     }
 }
-template<typename T>
-template<RCLegalType<T> U>
-inline RCWeak<T>::RCWeak(const RCUnique<U> &ptr)
-    : _ptr(static_cast<T *>(ptr.get())) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (_ptr) {
-        _take_weak_ref_counter();
-    }
-}
+
 template<typename T>
 inline RCWeak<T>::~RCWeak() {
     reset();
@@ -1281,13 +963,6 @@ inline RCWeak<T> &RCWeak<T>::operator=(const RC<U> &rhs) {
     reset(rhs);
     return *this;
 }
-template<typename T>
-template<RCLegalType<T> U>
-inline RCWeak<T> &RCWeak<T>::operator=(const RCUnique<U> &rhs) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    reset(rhs);
-    return *this;
-}
 
 // unsafe getter
 template<typename T>
@@ -1374,16 +1049,7 @@ inline void RCWeak<T>::reset(const RC<U> &ptr) {
         reset();
     }
 }
-template<typename T>
-template<RCLegalType<T> U>
-inline void RCWeak<T>::reset(const RCUnique<U> &ptr) {
-    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (!ptr.is_empty()) {
-        reset(static_cast<T *>(ptr.get()));
-    } else {
-        reset();
-    }
-}
+
 template<typename T>
 inline void RCWeak<T>::swap(RCWeak &rhs) {
     if (this != &rhs) {

@@ -2,7 +2,7 @@ function interface_target(target_name, interface_callback, impl_callback, no_lin
     local target_interface_name = target_name .. '_int__'
     local target_impl_name = target_name .. '_impl__'
     target(target_interface_name)
-    set_kind('headeronly')
+    set_kind('phony')
     interface_callback()
     target_end()
 
