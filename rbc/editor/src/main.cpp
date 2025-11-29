@@ -72,7 +72,6 @@ int main(int argc, char **argv) {
 
     MainWindow window;
 
-    QWidget mainWindow;
     // ============ 核心模块：创建LC-Driven Viewport ===============
     auto *renderWindow = new RhiWindow(graphicsApi);
     RendererImpl renderer_impl;
@@ -81,18 +80,21 @@ int main(int argc, char **argv) {
     renderWindow->renderer = &renderer_impl;
     renderWindow->workspace_path = luisa::to_string(luisa::filesystem::path(argv[0]).parent_path());// set runtime workspace path
 
+    // Initialize scene sync in render app
+    // render_app.init_scene_sync(window.httpClient());
+
     // ============ 核心模块：创建LC-Driven Viewport ===============
     // 创建自定义容器Widget来转发事件
-    auto *renderContainerWrapper = new RHIWindowContainerWidget(renderWindow, &mainWindow);
+    QWidget centralViewport;
+    auto *renderContainerWrapper = new RHIWindowContainerWidget(renderWindow, &centralViewport);
     renderContainerWrapper->setMinimumSize(400, 300);
     renderContainerWrapper->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     // Other Layout
-    mainWindow.setWindowTitle("LuisaCompute Qt Sample");
-    // mainWindow.resize(1280, 800);
+    centralViewport.setWindowTitle("LuisaCompute Qt Sample");
     // 创建主布局
 
-    auto *mainLayout = new QVBoxLayout(&mainWindow);
+    auto *mainLayout = new QVBoxLayout(&centralViewport);
     mainLayout->setSpacing(10);
     mainLayout->setContentsMargins(10, 10, 10, 10);
     QHBoxLayout *topBarLayout = new QHBoxLayout();
@@ -146,9 +148,13 @@ int main(int argc, char **argv) {
         inputDebugLabel->setStyleSheet("QLabel { background-color: #d1ecf1; padding: 5px; border: 1px solid #17a2b8; color: #0c5460; }");
     });
 
+    // Setup main window with central viewport
+    window.setupUi(&centralViewport);
+
+    // Start scene synchronization
+    window.startSceneSync("http://127.0.0.1:5555");
+
     // 显示主窗口
-    // mainWindow.show();
-    window.setupUi(&mainWindow);
     window.show();
     int ret = QApplication::exec();
     if (renderWindow->handle())

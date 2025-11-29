@@ -63,6 +63,36 @@ void HttpClient::healthCheck(std::function<void(bool)> callback) {
     });
 }
 
+// Scene Synchronization Methods
+
+void HttpClient::getSceneState(std::function<void(const QJsonObject &, bool)> callback) {
+    sendGetRequest("/scene/state", callback);
+}
+
+void HttpClient::getAllResources(std::function<void(const QJsonObject &, bool)> callback) {
+    sendGetRequest("/resources/all", callback);
+}
+
+void HttpClient::registerEditor(const QString &editorId, std::function<void(bool)> callback) {
+    QJsonObject requestBody;
+    requestBody["editor_id"] = editorId;
+
+    sendPostRequest("/editor/register", requestBody, [callback](const QJsonObject &response, bool success) {
+        bool registered = success && response.contains("success") && response["success"].toBool();
+        callback(registered);
+    });
+}
+
+void HttpClient::sendHeartbeat(const QString &editorId, std::function<void(bool)> callback) {
+    QJsonObject requestBody;
+    requestBody["editor_id"] = editorId;
+
+    sendPostRequest("/editor/heartbeat", requestBody, [callback](const QJsonObject &response, bool success) {
+        bool acknowledged = success && response.contains("success") && response["success"].toBool();
+        callback(acknowledged);
+    });
+}
+
 void HttpClient::sendGetRequest(const QString &endpoint, std::function<void(const QJsonObject &, bool)> callback) {
     QUrl url(m_serverUrl + endpoint);
     QNetworkRequest request(url);
