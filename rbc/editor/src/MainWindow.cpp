@@ -14,7 +14,7 @@
 #include "RBCEditor/runtime/HttpClient.h"
 #include "RBCEditor/runtime/SceneSyncManager.h"
 
-MainWindow::MainWindow(QWidget *parent) 
+MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       httpClient_(new rbc::HttpClient(this)),
       sceneSyncManager_(nullptr),
@@ -45,14 +45,12 @@ void MainWindow::startSceneSync(const QString &serverUrl) {
     // Create scene sync manager if not already created
     if (!sceneSyncManager_) {
         sceneSyncManager_ = new rbc::SceneSyncManager(httpClient_, this);
-        
         // Connect signals
         connect(sceneSyncManager_, &rbc::SceneSyncManager::sceneUpdated,
                 this, &MainWindow::onSceneUpdated);
         connect(sceneSyncManager_, &rbc::SceneSyncManager::connectionStatusChanged,
                 this, &MainWindow::onConnectionStatusChanged);
     }
-    
     // Start sync
     sceneSyncManager_->start(serverUrl);
 }
@@ -77,12 +75,12 @@ void MainWindow::onEntitySelected(int entityId) {
     if (sceneSyncManager_) {
         const auto *sceneSync = sceneSyncManager_->sceneSync();
         const auto *entity = sceneSync->getEntity(entityId);
-        
+
         const rbc::EditorResourceMetadata *resource = nullptr;
         if (entity && entity->has_render_component) {
             resource = sceneSync->getResource(entity->render_component.mesh_id);
         }
-        
+
         // Update details panel
         if (detailsPanel_) {
             detailsPanel_->showEntity(entity, resource);
@@ -142,7 +140,7 @@ void MainWindow::setupDocks() {
             this, &MainWindow::onEntitySelected);
 
     // 2. Details Panel (Right)
-    QDockWidget *detailsDock = new QDockWidget("Details", this);
+    auto *detailsDock = new QDockWidget("Details", this);
     detailsDock->setObjectName("DetailsDock");
     detailsDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 

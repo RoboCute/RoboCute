@@ -1,3 +1,5 @@
+
+
 #include "RBCEditor/runtime/SceneSync.h"
 #include <luisa/core/logging.h>
 #include <rbc_core/json_serde.h>
@@ -26,13 +28,20 @@ const EditorResourceMetadata *SceneSync::getResource(int resource_id) const {
     return nullptr;
 }
 
-bool SceneSync::parseSceneState(const luisa::string &json) {
+/**
+* ParseSceneState
+
+*/
+
+bool SceneSync::parseSceneState(const std::string &json) {
+    // TODO: 未来改为增量场景传输
     try {
         JsonReader reader(json);
 
         // Read root "scene" object
         if (!reader.start_object("scene")) {
             LUISA_WARNING("No 'scene' object in JSON");
+            // TODO: Error Handling for Invalid Response
             return false;
         }
 
@@ -69,7 +78,7 @@ bool SceneSync::parseSceneState(const luisa::string &json) {
                 }
             }
         }
-
+        // 当前为了方便开发我们每次全量更新
         // Update entities
         entities_ = new_entities;
         entity_map_.clear();
@@ -187,7 +196,8 @@ RenderComponent SceneSync::parseRenderComponent(JsonReader &reader) {
     return render;
 }
 
-bool SceneSync::parseResources(const luisa::string &json) {
+bool SceneSync::parseResources(const std::string &json) {
+    // parse all resource metadata
     try {
         JsonReader reader(json);
 
@@ -229,8 +239,8 @@ bool SceneSync::parseResources(const luisa::string &json) {
 }
 
 EditorResourceMetadata SceneSync::parseResourceMetadata(JsonReader &reader) {
-    EditorResourceMetadata resource;
 
+    EditorResourceMetadata resource;
     int64_t id_val = 0;
     reader.read(id_val, "id");
     resource.id = static_cast<int>(id_val);

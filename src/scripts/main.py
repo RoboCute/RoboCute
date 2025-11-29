@@ -270,8 +270,8 @@ def prepare():
         with open(opt_json_path, "w") as f:
             json.dump(options, f, indent=4)
         # Write to xmake/options.lua
-        lua_sentence = f'''set_config('toolchain', '{XMAKE_GLOBAL_TOOLCHAIN}')
-'''
+        lua_sentence = f"""set_config('toolchain', '{XMAKE_GLOBAL_TOOLCHAIN}')
+"""
         opt_lua_path = rel("xmake/options.lua")
         print(f"Write Options to {opt_lua_path}")
         with open(opt_lua_path, "w") as f:
@@ -382,24 +382,6 @@ def generate_stub_impl(module_name: str, pyd_dir: Path, output_dir: Path):
     except ImportError as e:
         print(f"  ✗ Error: Cannot import module {module_name}")
         print(f"    {e}")
-        sys.exit(1)
-
-    # Generate stub using nanobind-stubgen
-    try:
-        from nanobind_stubgen.__main__ import main as stubgen_main
-
-        # Prepare arguments for stubgen
-        original_argv = sys.argv.copy()
-        sys.argv = ["nanobind-stubgen", module_name, "--out", str(output_dir)]
-
-        print(f"  Running: nanobind-stubgen {module_name} --out {output_dir}")
-        stubgen_main()
-
-        sys.argv = original_argv
-        print(f"  ✓ Stub file generated: {output_dir / f'{module_name}.pyi'}")
-
-    except Exception as e:
-        print(f"  ✗ Error generating stub: {e}")
         sys.exit(1)
 
 

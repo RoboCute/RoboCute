@@ -5,10 +5,9 @@ target('rbc_ext_c')
         enable_exception = true,
         rtti = true
     })
-    add_deps('nanobind')
+    add_rules('pybind')
     set_extension('.pyd')
     add_deps("rbc_world")
-
     add_includedirs('builtin')
     add_files("**.cpp")
 target_end()

@@ -47,7 +47,7 @@ def codegen_pyd_module(
 ):
     codegen_to(hpp_root_path / f"{file_name}.h")(codegen.cpp_interface_gen)
     codegen_to(cpp_root_path / f"{file_name}.cpp")(
-        codegen.nanobind_codegen,
+        codegen.pybind_codegen,
         file_name,
         f"{backend_module_name}",
         f'#include "{file_name}.h"',

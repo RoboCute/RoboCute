@@ -60,19 +60,19 @@ public:
     ~SceneSync();
 
     // Parse scene state from JSON string (typically from HttpClient)
-    bool parseSceneState(const luisa::string &json);
-    bool parseResources(const luisa::string &json);
+    bool parseSceneState(const std::string &json);
+    bool parseResources(const std::string &json);
 
     // Get entities
-    const luisa::vector<SceneEntity> &entities() const { return entities_; }
-    const SceneEntity *getEntity(int entity_id) const;
+    [[nodiscard]] const luisa::vector<SceneEntity> &entities() const { return entities_; }
+    [[nodiscard]] const SceneEntity *getEntity(int entity_id) const;
 
     // Get resources
-    const luisa::vector<EditorResourceMetadata> &resources() const { return resources_; }
-    const EditorResourceMetadata *getResource(int resource_id) const;
+    [[nodiscard]] const luisa::vector<EditorResourceMetadata> &resources() const { return resources_; }
+    [[nodiscard]] const EditorResourceMetadata *getResource(int resource_id) const;
 
     // Check if scene has changed since last update
-    bool hasChanges() const { return has_changes_; }
+    [[nodiscard]] bool hasChanges() const { return has_changes_; }
     void clearChanges() { has_changes_ = false; }
 
 private:
@@ -90,4 +90,3 @@ private:
 };
 
 }// namespace rbc
-

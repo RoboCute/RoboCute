@@ -15,11 +15,9 @@ SceneSyncManager::SceneSyncManager(HttpClient *httpClient, QObject *parent)
 
     // Generate unique editor ID
     editorId_ = QString("qt_editor_%1").arg(QDateTime::currentMSecsSinceEpoch());
-
     // Setup timers
-    syncTimer_->setInterval(100);      // 100ms sync interval
-    heartbeatTimer_->setInterval(1000);// 1s heartbeat interval
-
+    syncTimer_->setInterval(1000);     // 1s sync interval
+    heartbeatTimer_->setInterval(2000);// 1s heartbeat interval
     connect(syncTimer_, &QTimer::timeout, this, &SceneSyncManager::syncWithServer);
     connect(heartbeatTimer_, &QTimer::timeout, this, &SceneSyncManager::sendHeartbeat);
 }
@@ -33,13 +31,10 @@ void SceneSyncManager::start(const QString &serverUrl) {
     if (isRunning_) {
         return;
     }
-
     // Set server URL
     httpClient_->setServerUrl(serverUrl);
-
     // Register with server
     registerWithServer();
-
     // Start timers
     syncTimer_->start();
     heartbeatTimer_->start();
@@ -97,9 +92,7 @@ void SceneSyncManager::syncWithServer() {
         // Parse scene state
         QJsonDocument doc(response);
         QString jsonStr = doc.toJson(QJsonDocument::Compact);
-        std::string json_luisa = jsonStr.toStdString();
-
-        bool sceneChanged = sceneSync_->parseSceneState(json_luisa.c_str());
+        bool sceneChanged = sceneSync_->parseSceneState(jsonStr.toStdString());
 
         // Fetch resources if scene changed
         if (sceneChanged) {
@@ -107,9 +100,7 @@ void SceneSyncManager::syncWithServer() {
                 if (resSuccess) {
                     QJsonDocument resDoc(resResponse);
                     QString resJsonStr = resDoc.toJson(QJsonDocument::Compact);
-                    luisa::string res_json = resJsonStr.toStdString().c_str();
-
-                    sceneSync_->parseResources(res_json);
+                    sceneSync_->parseResources(resJsonStr.toStdString());
 
                     // Emit scene updated signal
                     emit sceneUpdated();

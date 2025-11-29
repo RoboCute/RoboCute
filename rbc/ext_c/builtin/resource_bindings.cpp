@@ -3,7 +3,6 @@
 #include <rbc_world/resource.h>
 #include <rbc_world/resource_request.h>
 #include <pybind11/pybind11.h>
-#include <nanobind/stl/string.h>
 
 namespace py = pybind11;
 
