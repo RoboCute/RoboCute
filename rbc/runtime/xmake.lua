@@ -12,7 +12,7 @@ local function rbc_runtime_impl()
     add_files('src/**.cpp')
     set_pcxxheader('src/zz_pch.h')
     add_deps('lc-volk', 'tinyexr', 'tiny_obj_loader', 'stb-image', 'open_fbx', 'tinytiff')
-    add_defines('RBC_RUNTIME_EXPORT_DLL')
+    add_defines('RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT')
     on_load(function(target)
         if target:is_plat('windows') then
             target:add('syslinks', 'd3d12', 'User32')
@@ -22,3 +22,4 @@ local function rbc_runtime_impl()
 end
 
 interface_target('rbc_runtime', rbc_runtime_interface, rbc_runtime_impl)
+add_defines('RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_IMPORT', {public = true})

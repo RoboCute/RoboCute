@@ -7,6 +7,7 @@ add_includedirs('include', { public = true})
 add_files('src/**.cpp')
 set_pcxxheader('src/zz_pch.h')
 add_deps('rbc_core')
-add_defines('RBC_WORLD_EXPORT_DLL')
+add_defines('RBC_WORLD_API=LUISA_DECLSPEC_DLL_EXPORT')
+add_defines('RBC_WORLD_API=LUISA_DECLSPEC_DLL_IMPORT', {interface = true})
 
 target_end()

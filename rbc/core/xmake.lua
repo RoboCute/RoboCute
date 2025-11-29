@@ -13,7 +13,10 @@ local function rbc_core_impl()
     set_pcxxheader('src/zz_pch.h')
     add_files('src/**.cpp')
     add_deps('rtm')
-    add_defines('RBC_CORE_EXPORT_DLL')
+    add_defines('RBC_CORE_API=LUISA_DECLSPEC_DLL_EXPORT')
 end
 
 interface_target('rbc_core', rbc_core_interface, rbc_core_impl)
+add_defines('RBC_CORE_API=LUISA_DECLSPEC_DLL_IMPORT', {
+    public = true
+})
