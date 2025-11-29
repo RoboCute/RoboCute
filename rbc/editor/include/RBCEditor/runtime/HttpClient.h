@@ -23,7 +23,7 @@ public:
 
     // Set the backend server URL
     void setServerUrl(const QString &url);
-    QString serverUrl() const { return m_serverUrl; }
+    [[nodiscard]] QString serverUrl() const { return m_serverUrl; }
 
     // API methods
     void fetchAllNodes(std::function<void(const QJsonArray &, bool)> callback);
