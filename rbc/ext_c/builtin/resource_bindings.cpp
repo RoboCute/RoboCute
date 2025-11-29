@@ -11,7 +11,7 @@ namespace {
 void register_resource_bindings(py::module &m) {
     // === Resource Enums ===
 
-    nb::enum_<rbc::ResourceType>(m, "ResourceType")
+    py::enum_<rbc::ResourceType>(m, "ResourceType")
         .value("Unknown", rbc::ResourceType::Unknown)
         .value("Mesh", rbc::ResourceType::Mesh)
         .value("Texture", rbc::ResourceType::Texture)
@@ -24,7 +24,7 @@ void register_resource_bindings(py::module &m) {
         .value("Custom", rbc::ResourceType::Custom)
         .export_values();
 
-    nb::enum_<rbc::ResourceState>(m, "ResourceState")
+    py::enum_<rbc::ResourceState>(m, "ResourceState")
         .value("Unloaded", rbc::ResourceState::Unloaded)
         .value("Pending", rbc::ResourceState::Pending)
         .value("Loading", rbc::ResourceState::Loading)
@@ -34,7 +34,7 @@ void register_resource_bindings(py::module &m) {
         .value("Unloading", rbc::ResourceState::Unloading)
         .export_values();
 
-    nb::enum_<rbc::LoadPriority>(m, "LoadPriority")
+    py::enum_<rbc::LoadPriority>(m, "LoadPriority")
         .value("Critical", rbc::LoadPriority::Critical)
         .value("High", rbc::LoadPriority::High)
         .value("Normal", rbc::LoadPriority::Normal)
@@ -44,15 +44,15 @@ void register_resource_bindings(py::module &m) {
 
     // === AsyncResourceLoader ===
 
-    nb::class_<rbc::AsyncResourceLoader>(m, "AsyncResourceLoader")
-        .def(nb::init<>())
+    py::class_<rbc::AsyncResourceLoader>(m, "AsyncResourceLoader")
+        .def(py::init<>())
         .def("initialize", &rbc::AsyncResourceLoader::initialize,
-             nb::arg("num_threads") = 4,
+             py::arg("num_threads") = 4,
              "Initialize the resource loader with specified number of threads")
         .def("shutdown", &rbc::AsyncResourceLoader::shutdown,
              "Shutdown the resource loader and join all threads")
         .def("set_cache_budget", &rbc::AsyncResourceLoader::set_cache_budget,
-             nb::arg("bytes"),
+             py::arg("bytes"),
              "Set the memory budget for resource cache in bytes")
         .def("get_cache_budget", &rbc::AsyncResourceLoader::get_cache_budget,
              "Get the current memory budget in bytes")
@@ -61,26 +61,23 @@ void register_resource_bindings(py::module &m) {
         .def("load_resource", &rbc::AsyncResourceLoader::load_resource,
              "Load a resource asynchronously")
         .def("is_loaded", &rbc::AsyncResourceLoader::is_loaded,
-             nb::arg("id"),
+             py::arg("id"),
              "Check if a resource is loaded")
         .def("get_state", &rbc::AsyncResourceLoader::get_state,
-             nb::arg("id"),
+             py::arg("id"),
              "Get the state of a resource")
         .def("get_resource_size", &rbc::AsyncResourceLoader::get_resource_size,
-             nb::arg("id"),
+             py::arg("id"),
              "Get the size of a resource in bytes")
         .def("get_resource_data", &rbc::AsyncResourceLoader::get_resource_data,
-             nb::arg("id"),
-             nb::rv_policy::reference,
+             py::arg("id"),
+             py::return_value_policy::reference,
              "Get the raw pointer to resource data")
         .def("unload_resource", &rbc::AsyncResourceLoader::unload_resource,
-             nb::arg("id"),
-             "Unload a specific resource")
+            py::arg("id"),
+            "Unload a specific resource")
         .def("clear_unused_resources", &rbc::AsyncResourceLoader::clear_unused_resources,
-             "Clear unused resources to free memory");
+            "Clear unused resources to free memory");
 }
-
-// Register using ModuleRegister pattern
-ModuleRegister resource_module_register(register_resource_bindings);
 
 }// anonymous namespace

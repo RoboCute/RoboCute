@@ -13,6 +13,7 @@ from scripts.generate import GENERATION_TASKS
 from scripts.prepare import *
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder
+from mypy import stubgen
 import rbc_meta.utils.codegen_util as codegen_util
 
 
@@ -384,13 +385,44 @@ def generate_stub_impl(module_name: str, pyd_dir: Path, output_dir: Path):
         print(f"    {e}")
         sys.exit(1)
 
+    options = stubgen.Options(
+        pyversion=sys.version_info[:2],
+        no_import=False,
+        inspect=True,
+        doc_dir='',
+        search_path=[str(pyd_dir)],
+        interpreter=sys.executable,
+        parse_only=False,
+        ignore_errors=False,
+        include_private=False,
+        output_dir=str(output_dir),
+        modules=[module_name],
+        packages=[],
+        files=[],
+        verbose=True,
+        quiet=False,
+        export_less=False,
+        include_docstrings=False
+    )
+    try:
+        stubgen.generate_stubs(options)
+    except Exception as e:
+        print(f"Error generating stubs: {e}")
+        sys.exit(1)
+    print(f"Stub generated for module: {module_name}")
+    print(f"  Output directory: {output_dir.resolve()}")
+
+
 
 def generate_stub():
+    start_time = time.time()
     for task in GENERATE_SUB_TASKS:
+        print(f"Generating stub for module: {task['module_name']}")
         generate_stub_impl(
             task["module_name"], rel(task["pyd_dir"]), rel(task["stub_output"])
         )
-
+    duration = time.time() - start_time
+    print(f"Stub generation finished in {duration:.2f} seconds.")
 
 if __name__ == "__main__":
     # main()
