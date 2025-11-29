@@ -1,5 +1,13 @@
 # Editor
 
+## Source
+
+- include/RBCEditor
+- shaders
+- src
+- styles
+- rbc_editor.qrc
+
 ## HttpClient
 
 - `GET /scene/state/`: returns current scene entities and transforms
