@@ -6,11 +6,12 @@
 
 import argparse
 import uvicorn
-from rbc_execution.api import app
-from rbc_execution.node_registry import get_registry
+from robocute.api import app
+from robocute.node_registry import get_registry
 
 # 导入示例节点以触发注册
-from rbc_execution import example_nodes
+from robocute import example_nodes
+import animation_nodes  # Import animation nodes for registration
 
 
 def init_nodes():

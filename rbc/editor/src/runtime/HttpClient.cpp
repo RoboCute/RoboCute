@@ -93,6 +93,17 @@ void HttpClient::sendHeartbeat(const QString &editorId, std::function<void(bool)
     });
 }
 
+// Animation Methods
+
+void HttpClient::getAnimations(std::function<void(const QJsonObject &, bool)> callback) {
+    sendGetRequest("/animations/all", callback);
+}
+
+void HttpClient::getAnimationData(const QString &name, std::function<void(const QJsonObject &, bool)> callback) {
+    QString endpoint = QString("/animations/%1").arg(name);
+    sendGetRequest(endpoint, callback);
+}
+
 void HttpClient::sendGetRequest(const QString &endpoint, std::function<void(const QJsonObject &, bool)> callback) {
     QUrl url(m_serverUrl + endpoint);
     QNetworkRequest request(url);

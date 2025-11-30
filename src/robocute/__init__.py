@@ -1,4 +1,7 @@
 from robocute.scene import Scene, TransformComponent, RenderComponent, Entity
+from robocute.animation import AnimationKeyframe, AnimationSequence, AnimationClip
+from robocute.scene_context import SceneContext
+from robocute.api import set_scene
 from robocute.resource import (
     ResourceManager,
     ResourceHandle,
@@ -35,6 +38,14 @@ __all__ = [
     "Entity",
     "TransformComponent",
     "RenderComponent",
+    # Animation
+    "AnimationKeyframe",
+    "AnimationSequence",
+    "AnimationClip",
+    # Scene Context
+    "SceneContext",
+    # API Utilities
+    "set_scene",
     # Resource Management
     "ResourceManager",
     "ResourceHandle",

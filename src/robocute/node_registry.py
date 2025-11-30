@@ -4,8 +4,11 @@
 提供节点注册中心和装饰器，用于管理所有可用的节点类型。
 """
 
-from typing import Dict, Type, List, Optional
+from typing import Dict, Type, List, Optional, TYPE_CHECKING
 from .node_base import RBCNode, NodeMetadata
+
+if TYPE_CHECKING:
+    from .scene_context import SceneContext
 
 
 class NodeRegistry:
@@ -77,13 +80,14 @@ class NodeRegistry:
         """
         return self._registry.get(node_type)
 
-    def create_node(self, node_type: str, node_id: str) -> Optional[RBCNode]:
+    def create_node(self, node_type: str, node_id: str, context: Optional['SceneContext'] = None) -> Optional[RBCNode]:
         """
         创建节点实例
 
         Args:
             node_type: 节点类型
             node_id: 节点ID
+            context: Optional scene context for the node
 
         Returns:
             节点实例，如果节点类型不存在则返回 None
@@ -92,7 +96,7 @@ class NodeRegistry:
         if node_class is None:
             return None
 
-        return node_class(node_id)
+        return node_class(node_id, context)
 
     def get_all_node_types(self) -> List[str]:
         """

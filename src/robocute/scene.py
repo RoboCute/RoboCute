@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 from rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
+from .animation import AnimationClip
 
 
 @dataclass
@@ -87,6 +88,9 @@ class Scene:
 
         # Scene metadata
         self.metadata: Dict[str, Any] = {}
+        
+        # Animation storage
+        self._animations: Dict[str, AnimationClip] = {}
 
     def start(self):
         """Start the scene (initializes resource manager)"""
@@ -146,6 +150,25 @@ class Scene:
         """Get a component from an entity"""
         entity = self.get_entity(entity_id)
         return entity.get_component(component_type) if entity else None
+
+    # === Animation Management ===
+
+    def add_animation(self, name: str, clip: AnimationClip):
+        """Add an animation clip to the scene"""
+        self._animations[name] = clip
+
+    def get_animation(self, name: str) -> Optional[AnimationClip]:
+        """Get an animation clip by name"""
+        return self._animations.get(name)
+
+    def get_all_animations(self) -> Dict[str, AnimationClip]:
+        """Get all animation clips in the scene"""
+        return self._animations.copy()
+
+    def remove_animation(self, name: str):
+        """Remove an animation clip from the scene"""
+        if name in self._animations:
+            del self._animations[name]
 
     # === Scene Serialization ===
 
@@ -208,6 +231,12 @@ class Scene:
                     component = comp_data
                 entity.add_component(comp_type, component)
 
+        # Load animations
+        animations_data = data.get("animations", {})
+        for name, clip_data in animations_data.items():
+            clip = AnimationClip.from_dict(clip_data)
+            self._animations[name] = clip
+
     def _save_to_dict(self) -> dict:
         """Save scene to dictionary"""
         data = {
@@ -215,6 +244,7 @@ class Scene:
             "metadata": self.metadata,
             "resources": [],
             "entities": [],
+            "animations": {},
         }
 
         # Save resources (collect from all entities)
@@ -249,6 +279,10 @@ class Scene:
                     entity_data["components"][comp_type] = component
 
             data["entities"].append(entity_data)
+
+        # Save animations
+        for name, clip in self._animations.items():
+            data["animations"][name] = clip.to_dict()
 
         return data
 

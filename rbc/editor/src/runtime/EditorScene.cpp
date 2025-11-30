@@ -206,6 +206,17 @@ void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
     LUISA_INFO("Entity {} added to TLAS at index {}", entity_id, instance.tlas_index);
 }
 
+void EditorScene::setAnimationTransform(int entity_id, const Transform &transform) {
+    animation_transforms_[entity_id] = transform;
+    
+    // Also update the entity's actual transform
+    updateEntityTransform(entity_id, transform);
+}
+
+void EditorScene::clearAnimationTransforms() {
+    animation_transforms_.clear();
+}
+
 void EditorScene::updateEntityTransform(int entity_id, const Transform &transform) {
     using namespace luisa;
     using namespace luisa::compute;

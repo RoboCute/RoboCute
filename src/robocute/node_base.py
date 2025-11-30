@@ -5,8 +5,11 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from .scene_context import SceneContext
 
 
 class NodeInput(BaseModel):
@@ -51,14 +54,16 @@ class RBCNode(ABC):
     CATEGORY: str = "default"
     DESCRIPTION: str = ""
 
-    def __init__(self, node_id: str):
+    def __init__(self, node_id: str, context: Optional['SceneContext'] = None):
         """
         初始化节点
 
         Args:
             node_id: 节点的唯一标识符
+            context: Optional scene context for accessing scene data
         """
         self.node_id = node_id
+        self.context = context
         self._inputs: Dict[str, Any] = {}
         self._outputs: Dict[str, Any] = {}
 

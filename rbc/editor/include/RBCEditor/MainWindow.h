@@ -7,6 +7,10 @@ class SceneSyncManager;
 class SceneHierarchyWidget;
 class DetailsPanel;
 class ViewportWidget;
+class ResultPanel;
+class AnimationPlayer;
+class AnimationPlaybackManager;
+class EditorScene;
 }
 
 class MainWindow : public QMainWindow {
@@ -32,6 +36,8 @@ private slots:
     void onSceneUpdated();
     void onConnectionStatusChanged(bool connected);
     void onEntitySelected(int entityId);
+    void onAnimationSelected(QString animName);
+    void onAnimationFrameChanged(int frame);
 
 private:
     rbc::HttpClient *httpClient_;
@@ -39,4 +45,8 @@ private:
     rbc::SceneHierarchyWidget *sceneHierarchy_;
     rbc::DetailsPanel *detailsPanel_;
     rbc::ViewportWidget *viewportWidget_;
+    rbc::ResultPanel *resultPanel_;
+    rbc::AnimationPlayer *animationPlayer_;
+    rbc::AnimationPlaybackManager *playbackManager_;
+    rbc::EditorScene *editorScene_;
 };

@@ -37,6 +37,10 @@ public:
     void getAllResources(std::function<void(const QJsonObject &, bool)> callback);
     void registerEditor(const QString &editorId, std::function<void(bool)> callback);
     void sendHeartbeat(const QString &editorId, std::function<void(bool)> callback);
+    
+    // API methods - Animation
+    void getAnimations(std::function<void(const QJsonObject &, bool)> callback);
+    void getAnimationData(const QString &name, std::function<void(const QJsonObject &, bool)> callback);
 
 signals:
     void connectionStatusChanged(bool connected);

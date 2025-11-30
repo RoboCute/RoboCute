@@ -13,6 +13,7 @@ from datetime import datetime
 from .node_registry import get_registry
 from .graph import NodeGraph, GraphDefinition
 from .executor import GraphExecutor, ExecutionStatus, GraphExecutionResult
+from .scene_context import SceneContext
 
 
 # 创建 FastAPI 应用
@@ -26,6 +27,7 @@ app = FastAPI(
 # 内存存储
 _graphs: Dict[str, NodeGraph] = {}
 _execution_results: Dict[str, GraphExecutionResult] = {}
+_scene: Optional[Any] = None  # Global scene reference for animation storage
 
 
 # API 数据模型
@@ -213,8 +215,9 @@ async def execute_graph(request: GraphExecuteRequest):
         else:
             raise HTTPException(status_code=400, detail="Either graph_id or graph_definition must be provided")
         
-        # 执行图
-        executor = GraphExecutor(graph)
+        # 执行图 with scene context if available
+        scene_context = SceneContext(_scene) if _scene else None
+        executor = GraphExecutor(graph, scene_context)
         result = executor.execute()
         
         # 存储执行结果
@@ -376,4 +379,72 @@ async def health_check():
         "executions_count": len(_execution_results),
         "registered_nodes": len(get_registry())
     }
+
+
+# === Animation Endpoints ===
+
+def set_scene(scene):
+    """Set the global scene reference for API access"""
+    global _scene
+    _scene = scene
+
+
+@app.get("/animations")
+async def get_animations():
+    """
+    Get all animations in the scene
+    
+    Returns:
+        List of animation names and metadata
+    """
+    if _scene is None:
+        raise HTTPException(status_code=503, detail="Scene not initialized")
+    
+    try:
+        animations = _scene.get_all_animations()
+        result = []
+        
+        for name, clip in animations.items():
+            result.append({
+                "name": clip.name,
+                "total_frames": clip.get_total_frames(),
+                "fps": clip.fps,
+                "duration_seconds": clip.get_duration_seconds(),
+                "num_sequences": len(clip.sequences)
+            })
+        
+        return {
+            "animations": result,
+            "count": len(result)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching animations: {str(e)}")
+
+
+@app.get("/animations/{name}")
+async def get_animation(name: str):
+    """
+    Get specific animation data
+    
+    Args:
+        name: Animation name
+        
+    Returns:
+        Full animation clip data
+    """
+    if _scene is None:
+        raise HTTPException(status_code=503, detail="Scene not initialized")
+    
+    try:
+        clip = _scene.get_animation(name)
+        if clip is None:
+            raise HTTPException(status_code=404, detail=f"Animation '{name}' not found")
+        
+        return {
+            "animation": clip.to_dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching animation: {str(e)}")
 

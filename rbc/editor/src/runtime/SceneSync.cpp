@@ -262,4 +262,161 @@ EditorResourceMetadata SceneSync::parseResourceMetadata(JsonReader &reader) {
     return resource;
 }
 
+const AnimationClip *SceneSync::getAnimation(const luisa::string &name) const {
+    auto it = animation_map_.find(name);
+    if (it != animation_map_.end()) {
+        return &animations_[it->second];
+    }
+    return nullptr;
+}
+
+bool SceneSync::parseAnimations(const std::string &json) {
+    try {
+        JsonReader reader(json);
+
+        // Read "animations" array from root
+        uint64_t anim_count = 0;
+        if (!reader.start_array(anim_count, "animations")) {
+            LUISA_INFO("No animations in response");
+            return false;
+        }
+
+        // Parse animations
+        luisa::vector<AnimationClip> new_animations;
+        for (uint64_t i = 0; i < anim_count; ++i) {
+            if (reader.start_object()) {
+                AnimationClip clip = parseAnimationClip(reader);
+                new_animations.emplace_back(clip);
+                reader.end_scope();// end animation object
+            }
+        }
+
+        reader.end_scope();// end animations array
+
+        // Check if animations changed
+        bool changed = (new_animations.size() != animations_.size());
+
+        // Update animations
+        animations_ = new_animations;
+        animation_map_.clear();
+        for (size_t i = 0; i < animations_.size(); ++i) {
+            animation_map_[animations_[i].name] = i;
+        }
+
+        LUISA_INFO("Parsed {} animations", animations_.size());
+        return changed;
+
+    } catch (const std::exception &e) {
+        LUISA_ERROR("Failed to parse animations: {}", e.what());
+        return false;
+    }
+}
+
+AnimationClip SceneSync::parseAnimationClip(JsonReader &reader) {
+    AnimationClip clip;
+
+    reader.read(clip.name, "name");
+    
+    double fps_val = 30.0;
+    reader.read(fps_val, "fps");
+    clip.fps = static_cast<float>(fps_val);
+
+    int64_t total_frames_val = 0;
+    reader.read(total_frames_val, "total_frames");
+    clip.total_frames = static_cast<int>(total_frames_val);
+
+    double duration_val = 0.0;
+    reader.read(duration_val, "duration_seconds");
+    clip.duration_seconds = static_cast<float>(duration_val);
+
+    // Read sequences array
+    uint64_t seq_count = 0;
+    if (reader.start_array(seq_count, "sequences")) {
+        for (uint64_t i = 0; i < seq_count; ++i) {
+            if (reader.start_object()) {
+                AnimationSequence seq = parseAnimationSequence(reader);
+                clip.sequences.emplace_back(seq);
+                reader.end_scope();// end sequence object
+            }
+        }
+        reader.end_scope();// end sequences array
+    }
+
+    return clip;
+}
+
+AnimationSequence SceneSync::parseAnimationSequence(JsonReader &reader) {
+    AnimationSequence seq;
+
+    int64_t entity_id_val = 0;
+    reader.read(entity_id_val, "entity_id");
+    seq.entity_id = static_cast<int>(entity_id_val);
+
+    // Read keyframes array
+    uint64_t keyframe_count = 0;
+    if (reader.start_array(keyframe_count, "keyframes")) {
+        for (uint64_t i = 0; i < keyframe_count; ++i) {
+            if (reader.start_object()) {
+                AnimationKeyframe kf = parseAnimationKeyframe(reader);
+                seq.keyframes.emplace_back(kf);
+                reader.end_scope();// end keyframe object
+            }
+        }
+        reader.end_scope();// end keyframes array
+    }
+
+    return seq;
+}
+
+AnimationKeyframe SceneSync::parseAnimationKeyframe(JsonReader &reader) {
+    AnimationKeyframe kf;
+
+    int64_t frame_val = 0;
+    reader.read(frame_val, "frame");
+    kf.frame = static_cast<int>(frame_val);
+
+    // Read position array
+    uint64_t pos_size = 0;
+    if (reader.start_array(pos_size, "position") && pos_size >= 3) {
+        double x, y, z;
+        reader.read(x);
+        reader.read(y);
+        reader.read(z);
+        kf.position[0] = static_cast<float>(x);
+        kf.position[1] = static_cast<float>(y);
+        kf.position[2] = static_cast<float>(z);
+        reader.end_scope();// end position array
+    }
+
+    // Read rotation array (quaternion)
+    uint64_t rot_size = 0;
+    if (reader.start_array(rot_size, "rotation") && rot_size >= 4) {
+        double x, y, z, w;
+        reader.read(x);
+        reader.read(y);
+        reader.read(z);
+        reader.read(w);
+        kf.rotation[0] = static_cast<float>(x);
+        kf.rotation[1] = static_cast<float>(y);
+        kf.rotation[2] = static_cast<float>(z);
+        kf.rotation[3] = static_cast<float>(w);
+        reader.end_scope();// end rotation array
+    }
+
+    // Read scale array
+    uint64_t scale_size = 0;
+    if (reader.start_array(scale_size, "scale") && scale_size >= 3) {
+        double x, y, z;
+        reader.read(x);
+        reader.read(y);
+        reader.read(z);
+        kf.scale[0] = static_cast<float>(x);
+        kf.scale[1] = static_cast<float>(y);
+        kf.scale[2] = static_cast<float>(z);
+        reader.end_scope();// end scale array
+    }
+
+    return kf;
+}
+
 }// namespace rbc

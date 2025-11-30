@@ -175,6 +175,23 @@ class EditorService:
                         raise HTTPException(status_code=404, detail="Editor not registered")
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/animations/all")
+        def get_all_animations():
+            """Get all animations in the scene"""
+            try:
+                animations = self.scene.get_all_animations()
+                result = []
+                
+                for name, clip in animations.items():
+                    result.append(clip.to_dict())
+                
+                return {
+                    "success": True,
+                    "animations": result
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
     
     # === Service Lifecycle ===
     
@@ -336,6 +353,14 @@ class EditorService:
             'scene': scene_data
         }
         self._send_to_editor(editor_id, message)
+    
+    def broadcast_animation_created(self, name: str, clip):
+        """Broadcast animation creation event to all editors"""
+        message = {
+            'event': 'animation_created',
+            'animation': clip.to_dict()
+        }
+        self._broadcast(message)
         
     def push_simulation_state(self):
         """Push current simulation state (called every frame)"""

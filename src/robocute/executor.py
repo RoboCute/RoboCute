@@ -3,11 +3,14 @@
 
 提供节点图的执行功能，按拓扑顺序执行节点。
 """
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, TYPE_CHECKING
 from enum import Enum
 from datetime import datetime
 from pydantic import BaseModel
 from .graph import NodeGraph, NodeConnection
+
+if TYPE_CHECKING:
+    from .scene_context import SceneContext
 
 
 class ExecutionStatus(str, Enum):
@@ -48,14 +51,16 @@ class GraphExecutor:
     按拓扑顺序执行节点图中的所有节点。
     """
     
-    def __init__(self, graph: NodeGraph):
+    def __init__(self, graph: NodeGraph, scene_context: Optional['SceneContext'] = None):
         """
         初始化执行器
         
         Args:
             graph: 要执行的节点图
+            scene_context: Optional scene context for nodes to access scene data
         """
         self.graph = graph
+        self.scene_context = scene_context
         self._execution_result: Optional[GraphExecutionResult] = None
         self._callbacks: List[Callable[[str, ExecutionStatus], None]] = []
     

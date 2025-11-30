@@ -2,8 +2,15 @@ import robocute as rbc
 from typing import Dict, Any, List
 import time
 
+from robocute.api import app
 
-@rbc.node_registry
+# Import animation nodes for registration
+import sys
+sys.path.insert(0, 'samples')
+import animation_nodes
+
+
+@rbc.register_node
 class RotSimNode(rbc.RBCNode):
     """RotSim Node
     最简单的自定义Node来模拟一个物理仿真过程。
@@ -29,6 +36,34 @@ class RotSimNode(rbc.RBCNode):
         # for execute sim
         # return animation sequence
         return {}
+
+
+def init_nodes():
+    """初始化节点系统"""
+    print("=" * 60)
+    print("RBCNode System - ComfyUI Style Node Backend")
+    print("=" * 60)
+
+    registry = rbc.get_registry()
+    print(f"\nRegistered {len(registry)} node types:")
+
+    # 按类别组织节点
+    nodes_by_category = {}
+    for node_type in registry.get_all_node_types():
+        metadata = registry.get_metadata(node_type)
+        if metadata:
+            category = metadata.category
+            if category not in nodes_by_category:
+                nodes_by_category[category] = []
+            nodes_by_category[category].append(metadata)
+
+    # 打印节点列表
+    for category, nodes in sorted(nodes_by_category.items()):
+        print(f"\n  [{category}]")
+        for node in nodes:
+            print(f"    - {node.display_name} ({node.node_type})")
+
+    print("\n" + "=" * 60)
 
 
 def main():
@@ -71,15 +106,33 @@ def main():
         rc = entity_check.components["render"]
         print(f"    Render component mesh_id: {rc.mesh_id}")
 
+    init_nodes()
+
     # Start editor service
     print("\n[4] Starting Editor Service...")
     editor_service = rbc.EditorService(scene)
+
+    # Set scene in API for animation endpoints
+    print("    Setting scene in API...")
+    rbc.set_scene(scene)
+    
+    # Merge Node API
+    try:
+        from robocute.api import app as node_api_app
+        print("    Merging Node API into Editor Service...")
+        editor_service._app.include_router(node_api_app.router)
+        print("    Node API merged successfully")
+    except ImportError as e:
+        print(f"    Warning: Could not import Node API: {e}")
+
     editor_service.start(port=5555)
     print("    Editor Service started on port 5555")
     print("    Endpoints available:")
     print("      - GET  http://127.0.0.1:5555/scene/state")
     print("      - GET  http://127.0.0.1:5555/resources/all")
     print("      - POST http://127.0.0.1:5555/editor/register")
+    print("      - GET  http://127.0.0.1:5555/nodes (Node API)")
+    print("      - GET  http://127.0.0.1:5555/docs (API Documentation)")
     print("\n[5] Server is running...")
     print("    You can now start the C++ editor (editor.exe)")
     print("    The editor will connect and display the scene")

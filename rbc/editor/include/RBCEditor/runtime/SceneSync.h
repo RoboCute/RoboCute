@@ -4,6 +4,7 @@
 #include <luisa/vstl/common.h>
 #include <luisa/core/stl/string.h>
 #include <rbc_core/json_serde.h>
+#include "RBCEditor/animation/AnimationClip.h"
 
 namespace rbc {
 
@@ -62,6 +63,7 @@ public:
     // Parse scene state from JSON string (typically from HttpClient)
     bool parseSceneState(const std::string &json);
     bool parseResources(const std::string &json);
+    bool parseAnimations(const std::string &json);
 
     // Get entities
     [[nodiscard]] const luisa::vector<SceneEntity> &entities() const { return entities_; }
@@ -71,6 +73,10 @@ public:
     [[nodiscard]] const luisa::vector<EditorResourceMetadata> &resources() const { return resources_; }
     [[nodiscard]] const EditorResourceMetadata *getResource(int resource_id) const;
 
+    // Get animations
+    [[nodiscard]] const luisa::vector<AnimationClip> &animations() const { return animations_; }
+    [[nodiscard]] const AnimationClip *getAnimation(const luisa::string &name) const;
+
     // Check if scene has changed since last update
     [[nodiscard]] bool hasChanges() const { return has_changes_; }
     void clearChanges() { has_changes_ = false; }
@@ -78,8 +84,10 @@ public:
 private:
     luisa::vector<SceneEntity> entities_;
     luisa::vector<EditorResourceMetadata> resources_;
+    luisa::vector<AnimationClip> animations_;
     luisa::unordered_map<int, size_t> entity_map_;  // entity_id -> index in entities_
     luisa::unordered_map<int, size_t> resource_map_;// resource_id -> index in resources_
+    luisa::unordered_map<luisa::string, size_t> animation_map_;// animation name -> index in animations_
     bool has_changes_;
 
     // JSON parsing helpers using yyjson
@@ -87,6 +95,9 @@ private:
     Transform parseTransform(JsonReader &reader);
     RenderComponent parseRenderComponent(JsonReader &reader);
     EditorResourceMetadata parseResourceMetadata(JsonReader &reader);
+    AnimationClip parseAnimationClip(JsonReader &reader);
+    AnimationSequence parseAnimationSequence(JsonReader &reader);
+    AnimationKeyframe parseAnimationKeyframe(JsonReader &reader);
 };
 
 }// namespace rbc

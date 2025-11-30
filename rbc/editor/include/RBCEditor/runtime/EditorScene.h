@@ -29,6 +29,10 @@ public:
 
     // Check if TLAS is ready for rendering
     bool isReady() const { return tlas_ready_; }
+    
+    // Animation transform override
+    void setAnimationTransform(int entity_id, const Transform &transform);
+    void clearAnimationTransforms();
 
 private:
     struct EntityInstance {
@@ -43,6 +47,7 @@ private:
     MatCode default_mat_code_;
     luisa::vector<EntityInstance> instances_;
     luisa::unordered_map<int, size_t> entity_map_;// entity_id -> index in instances_
+    luisa::unordered_map<int, Transform> animation_transforms_;// entity_id -> animation transform
     uint32_t light_id_ = 0;
     bool tlas_ready_ = false;
 

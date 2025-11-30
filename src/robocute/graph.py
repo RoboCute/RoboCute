@@ -3,10 +3,13 @@
 
 提供节点图的构建、验证和序列化功能。
 """
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, TYPE_CHECKING
 from pydantic import BaseModel, Field
 from .node_base import RBCNode
 from .node_registry import get_registry
+
+if TYPE_CHECKING:
+    from .scene_context import SceneContext
 
 
 class NodeConnection(BaseModel):
@@ -39,14 +42,16 @@ class NodeGraph:
     管理节点实例和它们之间的连接关系。
     """
     
-    def __init__(self, graph_id: str = "default"):
+    def __init__(self, graph_id: str = "default", scene_context: Optional['SceneContext'] = None):
         """
         初始化节点图
         
         Args:
             graph_id: 图的唯一标识符
+            scene_context: Optional scene context for nodes to access scene data
         """
         self.graph_id = graph_id
+        self.scene_context = scene_context
         self._nodes: Dict[str, RBCNode] = {}
         self._connections: List[NodeConnection] = []
         self._metadata: Dict[str, Any] = {}
@@ -67,7 +72,7 @@ class NodeGraph:
             raise ValueError(f"Node with id '{node_id}' already exists in the graph")
         
         registry = get_registry()
-        node = registry.create_node(node_type, node_id)
+        node = registry.create_node(node_type, node_id, self.scene_context)
         
         if node is None:
             return None
@@ -254,13 +259,14 @@ class NodeGraph:
         }
     
     @classmethod
-    def from_definition(cls, definition: GraphDefinition, graph_id: str = "default") -> 'NodeGraph':
+    def from_definition(cls, definition: GraphDefinition, graph_id: str = "default", scene_context: Optional['SceneContext'] = None) -> 'NodeGraph':
         """
         从图定义创建节点图
         
         Args:
             definition: 图定义
             graph_id: 图ID
+            scene_context: Optional scene context for nodes
             
         Returns:
             节点图实例
@@ -268,7 +274,7 @@ class NodeGraph:
         Raises:
             ValueError: 如果定义无效
         """
-        graph = cls(graph_id)
+        graph = cls(graph_id, scene_context)
         
         # 添加节点
         for node_def in definition.nodes:

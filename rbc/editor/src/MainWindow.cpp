@@ -12,8 +12,12 @@
 #include "RBCEditor/components/SceneHierarchyWidget.h"
 #include "RBCEditor/components/DetailsPanel.h"
 #include "RBCEditor/components/ViewportWidget.h"
+#include "RBCEditor/components/ResultPanel.h"
+#include "RBCEditor/components/AnimationPlayer.h"
+#include "RBCEditor/animation/AnimationPlaybackManager.h"
 #include "RBCEditor/runtime/HttpClient.h"
 #include "RBCEditor/runtime/SceneSyncManager.h"
+#include "RBCEditor/runtime/EditorScene.h"
 #include "RBCEditor/EditorEngine.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -22,7 +26,13 @@ MainWindow::MainWindow(QWidget *parent)
       sceneSyncManager_(nullptr),
       sceneHierarchy_(nullptr),
       detailsPanel_(nullptr),
-      viewportWidget_(nullptr) {
+      viewportWidget_(nullptr),
+      resultPanel_(nullptr),
+      animationPlayer_(nullptr),
+      playbackManager_(nullptr),
+      editorScene_(nullptr) {
+    // Create editor scene for animation playback
+    editorScene_ = new rbc::EditorScene();
 }
 
 MainWindow::~MainWindow() {
@@ -34,7 +44,7 @@ MainWindow::~MainWindow() {
 void MainWindow::setupUi() {
     resize(1600, 900);
     setWindowTitle("RoboCute Editor");
-    
+
     // 3D Viewport
     viewportWidget_ = new rbc::ViewportWidget(&rbc::EditorEngine::instance(), this);
     setCentralWidget(viewportWidget_);
@@ -44,7 +54,7 @@ void MainWindow::setupUi() {
     setupDocks();
 
     statusBar()->showMessage("Ready");
-    
+
     // Setup HttpClient in Engine if needed, or engine's one.
     // Ideally, Engine manages networking too, but for now MainWindow owns HttpClient.
     // Let's sync:
@@ -69,6 +79,11 @@ void MainWindow::onSceneUpdated() {
     // Update scene hierarchy
     if (sceneHierarchy_ && sceneSyncManager_) {
         sceneHierarchy_->updateFromScene(sceneSyncManager_->sceneSync());
+    }
+
+    // Update result panel with animations
+    if (resultPanel_ && sceneSyncManager_) {
+        resultPanel_->updateFromSync(sceneSyncManager_->sceneSync());
     }
 }
 
@@ -96,6 +111,32 @@ void MainWindow::onEntitySelected(int entityId) {
             detailsPanel_->showEntity(entity, resource);
         }
     }
+}
+
+void MainWindow::onAnimationSelected(QString animName) {
+    if (!sceneSyncManager_) return;
+
+    const auto *sceneSync = sceneSyncManager_->sceneSync();
+    const auto *anim = sceneSync->getAnimation(animName.toStdString().c_str());
+
+    if (anim && animationPlayer_ && playbackManager_) {
+        // Set animation in animation player UI
+        animationPlayer_->setAnimation(animName, anim->total_frames, anim->fps);
+
+        // Set animation in playback manager
+        playbackManager_->setAnimation(anim);
+
+        statusBar()->showMessage(QString("Loaded animation: %1").arg(animName));
+    }
+}
+
+void MainWindow::onAnimationFrameChanged(int frame) {
+    // Update playback manager to apply transforms to scene
+    if (playbackManager_) {
+        playbackManager_->setFrame(frame);
+    }
+
+    statusBar()->showMessage(QString("Animation frame: %1").arg(frame));
 }
 
 void MainWindow::setupMenuBar() {
@@ -165,4 +206,35 @@ void MainWindow::setupDocks() {
     auto *node_editor = new rbc::NodeEditor(nodeDock);
     nodeDock->setWidget(node_editor);
     addDockWidget(Qt::BottomDockWidgetArea, nodeDock);
+
+    // 4. Result Panel (Right, below Details)
+    auto *resultDock = new QDockWidget("Results", this);
+    resultDock->setObjectName("ResultDock");
+    resultDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    // Create a container widget for ResultPanel and AnimationPlayer
+    auto *resultContainer = new QWidget(resultDock);
+    auto *resultLayout = new QVBoxLayout(resultContainer);
+
+    resultPanel_ = new rbc::ResultPanel(resultContainer);
+    animationPlayer_ = new rbc::AnimationPlayer(resultContainer);
+
+    resultLayout->addWidget(resultPanel_);
+    resultLayout->addWidget(animationPlayer_);
+    resultContainer->setLayout(resultLayout);
+
+    resultDock->setWidget(resultContainer);
+    addDockWidget(Qt::RightDockWidgetArea, resultDock);
+
+    // Stack Result dock below Details dock
+    splitDockWidget(detailsDock, resultDock, Qt::Vertical);
+
+    // Create animation playback manager
+    playbackManager_ = new rbc::AnimationPlaybackManager(editorScene_, this);
+
+    // Connect signals
+    connect(resultPanel_, &rbc::ResultPanel::animationSelected,
+            this, &MainWindow::onAnimationSelected);
+    connect(animationPlayer_, &rbc::AnimationPlayer::frameChanged,
+            this, &MainWindow::onAnimationFrameChanged);
 }
