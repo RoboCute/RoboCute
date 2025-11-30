@@ -58,6 +58,7 @@ struct RBC_RUNTIME_API RenderDevice {
     inline luisa::compute::Context &lc_ctx() { return _context.value(); }
     inline luisa::compute::Device &_lc_managed_device() { return _managed_device; }
     inline luisa::compute::Device &lc_device() { return _device; }
+    inline const luisa::compute::Device &lc_device() const { return _device; }
     inline luisa::compute::DeviceConfigExt *lc_device_ext() { return _device_ext; }
     inline luisa::compute::Stream &lc_main_stream() { return *_main_stream_ptr; }
     const inline luisa::compute::Stream &lc_main_stream() const { return *_main_stream_ptr; }
