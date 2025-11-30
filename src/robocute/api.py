@@ -219,7 +219,16 @@ async def execute_graph(request: GraphExecuteRequest):
                 print(f"  Node: {node_def.node_id} (type: {node_def.node_type})")
                 print(f"    Inputs: {node_def.inputs}")
             
-            graph = NodeGraph.from_definition(request.graph_definition, execution_id)
+            # Create scene context BEFORE creating graph
+            if _scene:
+                print(f"[API] Creating scene context with {len(_scene.get_all_entities())} entities")
+                scene_context = SceneContext(_scene)
+            else:
+                print("[API] WARNING: No scene available, graph will have no context")
+                scene_context = None
+            
+            # Create graph WITH scene context
+            graph = NodeGraph.from_definition(request.graph_definition, execution_id, scene_context)
             
             # 验证图
             print("[API] Validating graph...")
@@ -231,13 +240,19 @@ async def execute_graph(request: GraphExecuteRequest):
         else:
             raise HTTPException(status_code=400, detail="Either graph_id or graph_definition must be provided")
         
-        # 执行图 with scene context if available
-        if _scene:
-            print(f"[API] Using scene context with {len(_scene.get_all_entities())} entities")
-            scene_context = SceneContext(_scene)
+        # Note: scene_context should already be set in graph at this point
+        # For graph_id case, we need to create it here
+        if request.graph_id:
+            if _scene:
+                print(f"[API] Creating scene context for existing graph with {len(_scene.get_all_entities())} entities")
+                scene_context = SceneContext(_scene)
+            else:
+                print("[API] WARNING: No scene available for existing graph")
+                scene_context = None
         else:
-            print("[API] WARNING: No scene available, executing without context")
-            scene_context = None
+            # For graph_definition case, scene_context was already created and passed to graph
+            scene_context = graph.scene_context
+            print(f"[API] Using scene context from graph: {scene_context is not None}")
         
         print("[API] Creating executor...")
         executor = GraphExecutor(graph, scene_context)
