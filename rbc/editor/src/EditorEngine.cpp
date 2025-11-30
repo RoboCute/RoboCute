@@ -17,17 +17,13 @@ EditorEngine::~EditorEngine() {
 
 void EditorEngine::init(int argc, char **argv) {
     if (m_context) return;
-
     // Initialize LuisaCompute Context
     m_context = std::make_unique<luisa::compute::Context>(argv[0]);
-    
     // Initialize Renderer App
-    m_renderApp = std::make_unique<App>();
-    
-    // TODO: Make backend configurable via arguments or config
     luisa::string backend = "dx";
     m_graphicsApi = QRhi::D3D12;
-    
+
+    m_renderApp = std::make_unique<App>();
     m_renderApp->init(*m_context, backend.c_str());
 }
 
@@ -40,6 +36,10 @@ void EditorEngine::init(QRhiNativeHandles &handles_base) {
     if (!m_renderApp) return;
 
     if (m_graphicsApi == QRhi::D3D12) {
+        // bind Renderer Handle to Qt Handle
+        // Native DX Device
+        // Native DX Adapter
+        // Native DX Command Queue
         auto &handles = static_cast<QRhiD3D12NativeHandles &>(handles_base);
         handles.dev = m_renderApp->device.native_handle();
         handles.minimumFeatureLevel = 0;
@@ -77,5 +77,4 @@ uint64_t EditorEngine::get_present_texture(luisa::uint2 resolution) {
     return 0;
 }
 
-} // namespace rbc
-
+}// namespace rbc

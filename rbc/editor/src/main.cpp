@@ -54,7 +54,6 @@ struct ContextImpl : RBCContext {
             program_path,
             backend);
         utils.init_graphics(shader_path);
-        // TODO: make material for test
         material::OpenPBR mat{};
         mat.base.albedo = make_half3((half)0.5f, (half)0.5f, (half)0.5f);
         mat.specular.specular_color_and_rough.w = 0.5f;
@@ -356,6 +355,7 @@ RBCContext *RBCContext::_create_() {
 }
 int main(int argc, char **argv) {
     int ret = 0;
+    log_level_info();
     // QApplication app(argc, argv);
     // QFile f(":/main.qss");
     // QString styleSheet = "";
@@ -373,7 +373,6 @@ int main(int argc, char **argv) {
     // }
     // rbc::EditorEngine::instance().shutdown();
 
-    log_level_info();
     luisa::fiber::scheduler scheduler;
     luisa::string backend = "dx";
     if (argc >= 2) {
@@ -388,6 +387,7 @@ int main(int argc, char **argv) {
     utils.init_render();
     utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
     utils.init_display("test_graphics", uint2(1024), true);
+
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer
     Clock clk;
@@ -397,6 +397,7 @@ int main(int argc, char **argv) {
     // Test FOV
     vstd::optional<float3> cube_move, light_move;
     bool reset = false;
+
     utils.window->set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
         if (action != Action::ACTION_PRESSED) return;
         frame_index = 0;

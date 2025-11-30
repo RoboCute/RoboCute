@@ -111,7 +111,6 @@ struct App {
     uint64_t create_texture(uint width, uint height);
     void update();
     void handle_key(luisa::compute::Key key);
-    void *init_vulkan(luisa::compute::Context &ctx);
     ~App();
 };
 

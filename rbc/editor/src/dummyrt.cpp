@@ -39,35 +39,15 @@ void App::init(
     gpu_dump = true;
 #endif
     DeviceConfig device_config = {};
-#ifdef LUISA_QT_SAMPLE_ENABLE_DX
-    if (backend == "dx") {
-        device_config.extension = make_dx_device_config(nullptr, gpu_dump);
-    }
-#endif
-#ifdef LUISA_QT_SAMPLE_ENABLE_VK
-    if (backend == "vk") {
-        device_config.extension = make_vk_device_config(nullptr, nullptr, nullptr);
-    }
-#endif
-#ifdef LUISA_QT_SAMPLE_ENABLE_METAL
-    if (backend == "metal") {
-        device_config.extension = nullptr;
-    }
-#endif
+
+    device_config.extension = make_dx_device_config(nullptr, gpu_dump);
     device_config_ext = device_config.extension.get();
     device = ctx.create_device(backend, &device_config);
-#ifdef LUISA_QT_SAMPLE_ENABLE_DX
     void *native_device;
     if (backend == "dx") {
         get_dx_device(device_config_ext, native_device, dx_adaptor_luid);
     }
-#endif
-#ifdef LUISA_QT_SAMPLE_ENABLE_VK
-    if (backend == "vk") {
-        device_config.extension = make_vk_device_config(nullptr, nullptr, nullptr);
-        get_vk_device(device_config_ext, native_device, vk_physical_device, vk_instance, vk_queue_family_idx);
-    }
-#endif
+
     stream = device.create_stream(StreamTag::GRAPHICS);
 
     // load the Cornell Box scene
@@ -397,6 +377,7 @@ void App::update() {
     // cmd_list
     //     << draw_shader(dummy_image, clk.toc() * 1e-3, f_res).dispatch(resolution);
     // stream << cmd_list.commit();
+
     delta_time = clk.toc() - last_time;
     last_time = clk.toc();
     if (is_dirty) {
@@ -411,23 +392,11 @@ void App::update() {
     cmd_list << hdr2ldr_shader(accum_image, dummy_image, 1.0f, false).dispatch(resolution);
     stream << cmd_list.commit();
 
-    // Post Update
-    if (device.backend_name() == "dx") {
-        set_dx_before_state(device_config_ext, Argument::Texture{dummy_image.handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
-    } else {
-        set_vk_before_state(device_config_ext, Argument::Texture{dummy_image.handle(), 0}, VkResourceUsageType::RasterRead);
-    }
+    set_dx_before_state(device_config_ext, Argument::Texture{dummy_image.handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
 }
 App::~App() {
     camera_controller.reset();
     stream.synchronize();
 }
-void *App::init_vulkan(luisa::compute::Context &ctx) {
-    auto const &vk_backend = ctx.load_backend("vk");
-    return vk_backend.invoke<void *(bool enable_validation, const luisa::string *extra_instance_exts, size_t extra_instance_ext_count, const char *custom_vk_lib_path, const char *custom_vk_lib_name)>(
-        "init_vk_instance",
-        false,
-        nullptr, 0,
-        nullptr, nullptr);
-}
+
 }// namespace rbc
