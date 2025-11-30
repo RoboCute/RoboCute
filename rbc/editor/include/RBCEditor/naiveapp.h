@@ -9,7 +9,7 @@
 
 namespace rbc {
 
-struct PBRApp : public IApp {
+struct NaiveApp : public IApp {
     luisa::compute::Device device;
     luisa::compute::Stream stream;
     luisa::compute::CommandList cmd_list;
@@ -33,7 +33,7 @@ struct PBRApp : public IApp {
     void handle_key(luisa::compute::Key key) override;
     void *GetStreamNativeHandle() const override { return stream.native_handle(); }
     void *GetDeviceNativeHandle() const override { return device.native_handle(); }
-    ~PBRApp();
+    ~NaiveApp();
 };
 
 }// namespace rbc

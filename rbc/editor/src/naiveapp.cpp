@@ -1,4 +1,4 @@
-#include "RBCEditor/pbrapp.h"
+#include "RBCEditor/naiveapp.h"
 #include "luisa/core/dynamic_module.h"
 #include "luisa/runtime/rhi/pixel.h"
 #include <luisa/backends/ext/native_resource_ext.hpp>
@@ -8,7 +8,7 @@ using namespace luisa;
 using namespace luisa::compute;
 
 namespace rbc {
-void PBRApp::init(
+void NaiveApp::init(
     luisa::compute::Context &ctx, const char *backend_name) {
     luisa::string_view backend = backend_name;
     bool gpu_dump;
@@ -48,7 +48,7 @@ void PBRApp::init(
     draw_shader = device.compile(draw_kernel);
 }
 
-uint64_t PBRApp::create_texture(uint width, uint height) {
+uint64_t NaiveApp::create_texture(uint width, uint height) {
     resolution = {width, height};
     if (dummy_image && any(dummy_image.size() != uint2(width, height))) {
         cmd_list.add_callback([dummy_image = std::move(dummy_image)] {});
@@ -60,10 +60,10 @@ uint64_t PBRApp::create_texture(uint width, uint height) {
     return (int64_t)dummy_image.native_handle();
 }
 
-void PBRApp::handle_key(luisa::compute::Key key) {
+void NaiveApp::handle_key(luisa::compute::Key key) {
 }
 
-void PBRApp::update() {
+void NaiveApp::update() {
     cmd_list << clear_shader(dummy_image).dispatch(resolution);
     float2 f_res = {(float)resolution.x, (float)resolution.y};
     cmd_list
@@ -71,7 +71,7 @@ void PBRApp::update() {
     stream << cmd_list.commit();
     set_dx_before_state(device_config_ext, Argument::Texture{dummy_image.handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
 }
-PBRApp::~PBRApp() {
+NaiveApp::~NaiveApp() {
     stream.synchronize();
 }
 

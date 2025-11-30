@@ -2,7 +2,7 @@
 #include "QtGui/rhi/qrhi_platform.h"
 #include <QDebug>
 #include "RBCEditor/dummyapp.h"
-#include "RBCEditor/pbrapp.h"
+#include "RBCEditor/naiveapp.h"
 
 namespace rbc {
 
@@ -25,7 +25,8 @@ void EditorEngine::init(int argc, char **argv) {
     luisa::string backend = "dx";
     m_graphicsApi = QRhi::D3D12;
 
-    m_renderApp = std::make_unique<DummyApp>();
+    // m_renderApp = std::make_unique<DummyApp>();
+    m_renderApp = std::make_unique<NaiveApp>();
 
     m_renderApp->init(*m_context, backend.c_str());
 }
