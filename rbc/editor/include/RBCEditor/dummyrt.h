@@ -13,7 +13,7 @@ struct Onb {
     luisa::compute::float3 normal;
 };
 
-struct Camera {
+struct EditorCamera {
     luisa::compute::float3 position;
     luisa::compute::float3 front;
     luisa::compute::float3 up;
@@ -24,13 +24,13 @@ struct Camera {
 class FPVCameraController {
 
 private:
-    Camera &_camera;
+    EditorCamera &_camera;
     float _move_speed;
     float _rotate_speed;
     float _zoom_speed;
 
 public:
-    explicit FPVCameraController(Camera &camera,
+    explicit FPVCameraController(EditorCamera &camera,
                                  float move_speed,
                                  float rotate_speed,
                                  float zoom_speed) noexcept
@@ -88,7 +88,7 @@ struct App {
 
     luisa::compute::Shader<2, luisa::compute::Image<float>> clear_shader;
     luisa::compute::Shader<2, luisa::compute::Image<float>, float, luisa::compute::float2> draw_shader;
-    luisa::compute::Shader<2, luisa::compute::Image<float>, luisa::compute::Image<uint>, Camera, luisa::compute::Accel, luisa::uint2> raytracing_shader;
+    luisa::compute::Shader<2, luisa::compute::Image<float>, luisa::compute::Image<uint>, EditorCamera, luisa::compute::Accel, luisa::uint2> raytracing_shader;
     luisa::compute::Shader<2, luisa::compute::Image<float>, luisa::compute::Image<float>, float, bool> hdr2ldr_shader;
     luisa::compute::Shader<2, luisa::compute::Image<float>, luisa::compute::Image<float>> accumulate_shader;
     luisa::compute::Shader<2, luisa::compute::Image<uint>> make_sampler_shader;
@@ -98,7 +98,7 @@ struct App {
     double delta_time;
     double last_time;
 
-    Camera camera;
+    EditorCamera camera;
     luisa::unique_ptr<FPVCameraController> camera_controller;
     luisa::compute::Accel accel;
     bool is_dirty;

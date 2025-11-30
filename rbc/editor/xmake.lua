@@ -19,7 +19,10 @@ target("rbc_editor")
     -- Dependencies
     add_deps("rbc_core")  -- For json_serde (yyjson)
     add_deps("rbc_world")
-    add_deps('rbc_runtime', 'lc-gui', 'rbc_render_interface')
+    add_deps('rbc_runtime', 'lc-gui', 'rbc_render_interface', 'lc-backends-dummy')
+
     add_deps("lc-volk")
     add_deps("qt_node_editor")
+
+
 target_end()

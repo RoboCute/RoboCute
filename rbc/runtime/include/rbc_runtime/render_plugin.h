@@ -13,7 +13,7 @@ struct RenderPlugin : Plugin {
 
     // render_loop
     virtual bool initialize_pipeline(luisa::string_view pipeline_name) = 0;
-    virtual void clear_context(PipeCtxStub* ctx) = 0;
+    virtual void clear_context(PipeCtxStub *ctx) = 0;
     virtual bool before_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) = 0;
     virtual bool on_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) = 0;
 

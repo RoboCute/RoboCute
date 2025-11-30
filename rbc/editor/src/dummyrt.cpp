@@ -18,7 +18,7 @@ LUISA_STRUCT(rbc::Onb, tangent, binormal, normal){
     }
 };
 
-LUISA_STRUCT(rbc::Camera, position, front, up, right, fov) {
+LUISA_STRUCT(rbc::EditorCamera, position, front, up, right, fov) {
     [[nodiscard]] auto generate_ray(Expr<float2> p/* normalized pixel coordinate */) const noexcept {
         auto fov_radians = radians(fov);
         auto wi_local = make_float3(p * tan(0.5f * fov_radians), -1.0f);
@@ -188,7 +188,7 @@ void App::init(
     };
 
     Kernel2D raytracing_kernel = [&](ImageFloat image, ImageUInt seed_image,
-                                     Var<Camera> camera, AccelVar accel, UInt2 resolution) noexcept {
+                                     Var<EditorCamera> camera, AccelVar accel, UInt2 resolution) noexcept {
         set_block_size(16u, 16u, 1u);
         UInt2 coord = dispatch_id().xy();
         Float frame_size = min(resolution.x, resolution.y).cast<float>();
@@ -316,7 +316,7 @@ void App::init(
     raytracing_shader = device.compile(raytracing_kernel);
     make_sampler_shader = device.compile(make_sampler_kernel);
 
-    camera = Camera{
+    camera = EditorCamera{
         .position = make_float3(-0.01f, 0.995f, 5.0f),
         .front = make_float3(0.f, 0.f, -1.f),
         .up = make_float3(0.f, 1.f, 0.f),
