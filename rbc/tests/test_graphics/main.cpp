@@ -103,8 +103,8 @@ struct ContextImpl : RBCContext {
             uv_count,
             {},   // TODO: submesh & materials
             false,// only build BLAS while need ray-tracing
+            true,
             true);
-        ptr->wait_finished();
         return ptr;
     }
     void remove_mesh(void *handle) override {
@@ -210,13 +210,13 @@ struct ContextImpl : RBCContext {
         ptr->wait_finished();
         return ptr;
     }
-    uint texture_heap_idx(void* ptr) override {
-        auto tex = (DeviceImage*)ptr;
+    uint texture_heap_idx(void *ptr) override {
+        auto tex = (DeviceImage *)ptr;
         tex->wait_finished();
         return tex->heap_idx();
     }
     void destroy_texture(void *ptr) override {
-        auto tex = (DeviceImage*)ptr;
+        auto tex = (DeviceImage *)ptr;
         RC<DeviceImage>::manually_release_ref(tex);
     }
     void update_area_light(void *light, luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {
@@ -279,15 +279,18 @@ struct ContextImpl : RBCContext {
         auto &sm = SceneManager::instance();
         stub->mesh_ref = reinterpret_cast<DeviceMesh *>(mesh);
         stub->mesh_ref->wait_finished();
-        stub->tlas_idx = sm.accel_manager().emplace_mesh_instance(
+        //TODO :mat code
+        stub->material_codes.emplace_back(test_default_mat_code);
+        stub->mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
             render_device.lc_main_cmd_list(),
             sm.host_upload_buffer(),
             sm.buffer_allocator(),
             sm.buffer_uploader(),
             sm.dispose_queue(),
             stub->mesh_ref->mesh_data(),
-            {&test_default_mat_code, 1},//TODO :mat code
+            stub->material_codes,
             matrix);
+        stub->type = ObjectRenderType::Mesh;
         return stub;
     }
     void update_object(luisa::float4x4 matrix) override {
@@ -295,11 +298,29 @@ struct ContextImpl : RBCContext {
         RC<ObjectStub>::manually_add_ref(stub);
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
-        sm.accel_manager().set_mesh_instance(
-            render_device.lc_main_cmd_list(),
-            sm.buffer_uploader(),
-            stub->tlas_idx,
-            matrix, 0xff, true);
+        switch (stub->type) {
+            case ObjectRenderType::Mesh:
+                sm.accel_manager().set_mesh_instance(
+                    render_device.lc_main_cmd_list(),
+                    sm.buffer_uploader(),
+                    stub->mesh_light_idx,
+                    matrix, 0xff, true);
+                break;
+            case ObjectRenderType::EmissionMesh:
+                utils.lights->update_mesh_light_sync(
+                    render_device.lc_main_cmd_list(),
+                    stub->mesh_light_idx,
+                    matrix,
+                    stub->material_codes[0]);
+                break;
+            case ObjectRenderType::Procedural:
+                sm.accel_manager().set_procedural_instance(
+                    stub->procedural_idx,
+                    matrix,
+                    0xffu,
+                    true);
+                break;
+        }
     }
     void update_object(luisa::float4x4 matrix, void *mesh) override {
         auto stub = new ObjectStub{};
@@ -308,26 +329,55 @@ struct ContextImpl : RBCContext {
         auto &sm = SceneManager::instance();
         stub->mesh_ref = reinterpret_cast<DeviceMesh *>(mesh);
         stub->mesh_ref->wait_finished();
-        sm.accel_manager().set_mesh_instance(
-            stub->tlas_idx,
-            render_device.lc_main_cmd_list(),
-            sm.host_upload_buffer(),
-            sm.buffer_allocator(),
-            sm.buffer_uploader(),
-            sm.dispose_queue(),
-            stub->mesh_ref->mesh_data(),
-            {&test_default_mat_code, 1},// TODO: mat_code
-            matrix);
+        switch (stub->type) {
+            case ObjectRenderType::Mesh:
+                sm.accel_manager().set_mesh_instance(
+                    stub->mesh_tlas_idx,
+                    render_device.lc_main_cmd_list(),
+                    sm.host_upload_buffer(),
+                    sm.buffer_allocator(),
+                    sm.buffer_uploader(),
+                    sm.dispose_queue(),
+                    stub->mesh_ref->mesh_data(),
+                    {&test_default_mat_code, 1},// TODO: mat_code
+                    matrix);
+                break;
+            case ObjectRenderType::EmissionMesh:
+                utils.lights->update_mesh_light_sync(
+                    render_device.lc_main_cmd_list(),
+                    stub->mesh_light_idx,
+                    matrix,
+                    stub->material_codes[0],
+                    &stub->mesh_ref);
+                break;
+            case ObjectRenderType::Procedural:
+                LUISA_ERROR("Procedural type not supported.");
+                break;
+        }
     }
     void remove_object(void *object_ptr) override {
         auto stub = reinterpret_cast<ObjectStub *>(object_ptr);
         RC<ObjectStub>::manually_release_ref(stub, [&] {
             auto &render_device = RenderDevice::instance();
             auto &sm = SceneManager::instance();
-            sm.accel_manager().remove_mesh_instance(
-                sm.buffer_allocator(),
-                sm.buffer_uploader(),
-                stub->tlas_idx);
+            switch (stub->type) {
+                case ObjectRenderType::Mesh:
+                    sm.accel_manager().remove_mesh_instance(
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        stub->mesh_tlas_idx);
+                    break;
+                case ObjectRenderType::EmissionMesh:
+                    utils.lights->remove_mesh_light(stub->mesh_light_idx);
+                    break;
+                case ObjectRenderType::Procedural:
+                    sm.accel_manager().remove_procedural_instance(
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        sm.dispose_queue(),
+                        stub->procedural_idx);
+                    break;
+            }
         });
     }
     void reset_view(luisa::uint2 resolution) override {

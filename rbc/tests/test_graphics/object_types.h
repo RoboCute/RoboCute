@@ -7,8 +7,19 @@ struct LightStub : RCBase {
     LightType light_type;
     uint32_t id;
 };
+enum class ObjectRenderType {
+    Mesh,
+    EmissionMesh,
+    Procedural
+};
 struct ObjectStub : RCBase {
     RC<DeviceMesh> mesh_ref;
-    uint tlas_idx;
+    union {
+        uint mesh_tlas_idx;
+        uint mesh_light_idx;
+        uint procedural_idx;
+    };
+    ObjectRenderType type;
+    luisa::vector<MatCode> material_codes;
 };
-}// namespace stub_obj
+}// namespace rbc

@@ -22,7 +22,8 @@ void DeviceMesh::_async_load(
     LoadType &&load_type,
     uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
     bool build_mesh, bool calculate_bound,
-    uint64_t file_size) {
+    uint64_t file_size,
+    bool copy_to_host) {
     _contained_normal = normal;
     _contained_tangent = tangent;
     _uv_count = uv_count;
@@ -32,7 +33,7 @@ void DeviceMesh::_async_load(
     }
     _gpu_load_frame = std::numeric_limits<uint64_t>::max();
     inst->load_thd_queue.push(
-        [vertex_count, build_mesh, calculate_bound, file_size, normal, tangent, uv_count, this_shared = RC{this}, submesh_triangle_offset = std::move(submesh_triangle_offset), load_type = std::move(load_type)](LoadTaskArgs const &args) mutable {
+        [vertex_count, build_mesh, calculate_bound, copy_to_host, file_size, normal, tangent, uv_count, this_shared = RC{this}, submesh_triangle_offset = std::move(submesh_triangle_offset), load_type = std::move(load_type)](LoadTaskArgs const &args) mutable {
             auto ptr = static_cast<DeviceMesh *>(this_shared.get());
             if (ptr->_gpu_load_frame != std::numeric_limits<uint64_t>::max()) return;
             ptr->_gpu_load_frame = args.load_frame;
@@ -51,10 +52,25 @@ void DeviceMesh::_async_load(
                 uint64_t size = (file.length() - file_offset) + sizeof(uint) - 1;
                 size = std::min(size, file_size);
                 auto data_buffer = inst->lc_device().create_buffer<uint>(size / sizeof(uint));
-                args.io_cmdlist << IOCommand(
-                    file,
-                    file_offset,
-                    IOBufferSubView(data_buffer));
+                if (copy_to_host) {
+                    *args.require_disk_io_sync = true;
+                    auto &host_data = this_shared->_host_data;
+                    host_data.clear();
+                    host_data.push_back_uninitialized(data_buffer.size_bytes());
+                    args.io_cmdlist << IOCommand(
+                        file,
+                        file_offset,
+                        luisa::span{host_data});
+                    args.mem_io_cmdlist << IOCommand{
+                        IOCommand::SrcType{host_data.data()},
+                        0,
+                        IOBufferSubView(data_buffer)};
+                } else {
+                    args.io_cmdlist << IOCommand(
+                        file,
+                        file_offset,
+                        IOBufferSubView(data_buffer));
+                }
 
                 ptr->_render_mesh_data = inst->scene_mng()->mesh_manager().load_mesh(
                     inst->scene_mng()->bindless_allocator(),
@@ -119,8 +135,18 @@ void DeviceMesh::async_load_from_memory(
     BinaryBlob &&data,
     uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
     bool build_mesh,
-    bool calculate_bound) {
-    _async_load(MemoryLoad{std::move(data)}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound);
+    bool calculate_bound,
+    bool copy_to_host) {
+    if (copy_to_host) {
+        _host_data.clear();
+        _host_data.push_back_uninitialized(data.size());
+        std::memcpy(_host_data.data(), data.data(), data.size());
+        data = BinaryBlob{
+            _host_data.data(),
+            _host_data.size(),
+            {}};
+    }
+    _async_load(MemoryLoad{std::move(data)}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, ~0ull);
 }
 
 void DeviceMesh::async_load_from_file(
@@ -130,7 +156,8 @@ void DeviceMesh::async_load_from_file(
     bool build_mesh,
     bool calculate_bound,
     uint64_t file_offset,
-    uint64_t file_max_size) {
-    _async_load(FileLoad{path, file_offset}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, file_max_size);
+    uint64_t file_max_size,
+    bool copy_to_host) {
+    _async_load(FileLoad{path, file_offset}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, file_max_size, copy_to_host);
 }
 }// namespace rbc

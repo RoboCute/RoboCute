@@ -25,6 +25,8 @@ struct LoadTaskArgs {
     IOCommandList& mem_io_cmdlist;
     CommandList& cmdlist;
     uint64_t load_frame;
+    bool* require_disk_io_sync;
+    bool* require_memory_io_sync;
 };
 struct RBC_RUNTIME_API AssetsManager : vstd::IOperatorNewBase {
 public:
