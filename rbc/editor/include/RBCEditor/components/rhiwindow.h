@@ -10,13 +10,51 @@
 
 namespace rbc {
 inline luisa::compute::Key key_map(int key) {
-    using namespace luisa::compute;
     switch (key) {
-        case Qt::Key_W: return KEY_W;
-        case Qt::Key_A: return KEY_A;
-        case Qt::Key_S: return KEY_S;
-        case Qt::Key_D: return KEY_D;
-        default: return KEY_UNKNOWN;
+        case Qt::Key_W: return luisa::compute::KEY_W;
+        case Qt::Key_A: return luisa::compute::KEY_A;
+        case Qt::Key_S: return luisa::compute::KEY_S;
+        case Qt::Key_D: return luisa::compute::KEY_D;
+        case Qt::Key_Q: return luisa::compute::KEY_Q;
+        case Qt::Key_E: return luisa::compute::KEY_E;
+        case Qt::Key_Z: return luisa::compute::KEY_Z;
+        case Qt::Key_X: return luisa::compute::KEY_X;
+        case Qt::Key_C: return luisa::compute::KEY_C;
+        case Qt::Key_V: return luisa::compute::KEY_V;
+        case Qt::Key_B: return luisa::compute::KEY_B;
+        case Qt::Key_N: return luisa::compute::KEY_N;
+        case Qt::Key_M: return luisa::compute::KEY_M;
+        case Qt::Key_Comma: return luisa::compute::KEY_COMMA;
+        case Qt::Key_Period: return luisa::compute::KEY_PERIOD;
+        case Qt::Key_Up: return luisa::compute::KEY_UP;
+        case Qt::Key_Down: return luisa::compute::KEY_DOWN;
+        case Qt::Key_Left: return luisa::compute::KEY_LEFT;
+        case Qt::Key_Right: return luisa::compute::KEY_RIGHT;
+        case Qt::Key_Space: return luisa::compute::KEY_SPACE;
+        case Qt::Key_Enter: return luisa::compute::KEY_ENTER;
+        case Qt::Key_Escape: return luisa::compute::KEY_ESCAPE;
+        case Qt::Key_Tab: return luisa::compute::KEY_TAB;
+        case Qt::Key_Backspace: return luisa::compute::KEY_BACKSPACE;
+        case Qt::Key_Delete: return luisa::compute::KEY_DELETE;
+        case Qt::Key_Home: return luisa::compute::KEY_HOME;
+        case Qt::Key_End: return luisa::compute::KEY_END;
+        case Qt::Key_PageUp: return luisa::compute::KEY_PAGE_UP;
+        case Qt::Key_PageDown: return luisa::compute::KEY_PAGE_DOWN;
+        case Qt::Key_Insert: return luisa::compute::KEY_INSERT;
+        case Qt::Key_F1: return luisa::compute::KEY_F1;
+        case Qt::Key_F2: return luisa::compute::KEY_F2;
+        case Qt::Key_F3: return luisa::compute::KEY_F3;
+        case Qt::Key_F4: return luisa::compute::KEY_F4;
+        case Qt::Key_F5: return luisa::compute::KEY_F5;
+        case Qt::Key_F6: return luisa::compute::KEY_F6;
+        case Qt::Key_F7: return luisa::compute::KEY_F7;
+        case Qt::Key_F8: return luisa::compute::KEY_F8;
+        case Qt::Key_F9: return luisa::compute::KEY_F9;
+        case Qt::Key_F10: return luisa::compute::KEY_F10;
+        case Qt::Key_F11: return luisa::compute::KEY_F11;
+        case Qt::Key_F12: return luisa::compute::KEY_F12;
+
+        default: return luisa::compute::KEY_UNKNOWN;
     }
 }
 
@@ -63,8 +101,6 @@ private:
     std::unique_ptr<QRhiBuffer> m_ubuf;
     std::unique_ptr<QRhiTexture> m_texture;
     std::unique_ptr<QRhiSampler> m_sampler;
-    std::unique_ptr<QRhiShaderResourceBindings> m_colorTriSrb;
-    std::unique_ptr<QRhiGraphicsPipeline> m_colorPipeline;
     std::unique_ptr<QRhiShaderResourceBindings> m_fullscreenQuadSrb;
     std::unique_ptr<QRhiGraphicsPipeline> m_fullscreenQuadPipeline;
 

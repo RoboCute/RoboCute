@@ -36,6 +36,11 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     if (sm) {
         sm.destroy();
     }
+
+    if (present_event.event)
+        present_event.event.synchronize(present_event.fence_index);
+    if (present_stream)
+        present_stream.synchronize();
     dst_image.reset();
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
@@ -95,6 +100,8 @@ void GraphicsUtils::init_render() {
 void GraphicsUtils::init_display(luisa::string_view name, uint2 resolution, bool resizable) {
     if (display_initialized) { return; }
     auto &device = render_device.lc_device();
+    present_stream = device.create_stream(StreamTag::GRAPHICS);
+    present_event.event = device.create_timeline_event();
 
     dst_image = render_device.lc_device().create_image<float>(PixelStorage::BYTE4, resolution);
     display_initialized = true;
@@ -138,9 +145,17 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
         sm->prepare_frame();
     });
     render_device.render_loop_mtx().unlock();
+
+    present_stream << compute_event.event.wait(compute_event.fence_index);
+    if (present_event.fence_index > 1) {
+        present_event.event.synchronize(present_event.fence_index - 1);
+    }
+    present_stream << present_event.event.signal(++present_event.fence_index);
 }
 void GraphicsUtils::resize_swapchain(uint2 size) {
     reset_frame();
+    present_event.event.synchronize(present_event.fence_index);
+    present_stream.synchronize();
     dst_image.reset();
     dst_image = render_device.lc_device().create_image<float>(PixelStorage::BYTE4, size);
 }

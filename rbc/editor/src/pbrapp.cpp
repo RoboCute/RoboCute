@@ -29,6 +29,7 @@ void PBRApp::init(
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name));
     utils.init_render();
+
     utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
     simple_scene.create(*utils.lights);
     auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
@@ -37,13 +38,13 @@ void PBRApp::init(
 
 uint64_t PBRApp::create_texture(uint width, uint height) {
     resolution = {width, height};
+    if (utils.DisplayInitialized() && any(resolution != utils.GetDestImage().size())) {
+        utils.resize_swapchain(resolution);
+    }
     if (!utils.DisplayInitialized()) {
         utils.init_display("rbc_editor", resolution, true);
     }
-    if (any(resolution != utils.GetDestImage().size())) {
-        utils.resize_swapchain(resolution);
-    }
-    return (int64_t)utils.GetDestImage().native_handle();
+    return (uint64_t)utils.GetDestImage().native_handle();
 }
 
 void PBRApp::handle_key(luisa::compute::Key key) {
@@ -141,7 +142,6 @@ PBRApp::~PBRApp() {
         // destroy render-pipeline
         simple_scene.destroy();
     });
-    utils.render_device.lc_main_stream().synchronize();
     ctx.reset();
 }
 

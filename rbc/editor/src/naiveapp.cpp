@@ -19,7 +19,6 @@ void NaiveApp::init(
     gpu_dump = true;
 #endif
     DeviceConfig device_config = {};
-
     device_config.extension = make_dx_device_config(nullptr, gpu_dump);
     device_config_ext = device_config.extension.get();
     device = ctx->create_device(backend, &device_config);
@@ -58,7 +57,7 @@ uint64_t NaiveApp::create_texture(uint width, uint height) {
         dummy_image = device.create_image<float>(PixelStorage::BYTE4, width, height);
     }
     // resolution changed, all textures should reload
-    return (int64_t)dummy_image.native_handle();
+    return (uint64_t)dummy_image.native_handle();
 }
 
 void NaiveApp::handle_key(luisa::compute::Key key) {

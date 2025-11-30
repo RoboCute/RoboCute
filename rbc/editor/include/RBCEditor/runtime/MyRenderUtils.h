@@ -23,6 +23,8 @@ struct GraphicsUtils {
     luisa::string backend_name;
     EventFence compute_event;
     vstd::optional<SceneManager> sm;
+    Stream present_stream;
+    EventFence present_event;
     Image<float> dst_image;
     // render
     DynamicModule render_module;
@@ -42,7 +44,7 @@ struct GraphicsUtils {
     void resize_swapchain(uint2 size);
     void init_display(luisa::string_view name, uint2 resolution, bool resizable);
     void reset_frame();
-    const Image<float> &GetDestImage() const { return dst_image; }
+    inline Image<float> &GetDestImage() { return dst_image; }
     bool DisplayInitialized() const { return display_initialized; }
 
     void tick(vstd::function<void()> before_render = {});
