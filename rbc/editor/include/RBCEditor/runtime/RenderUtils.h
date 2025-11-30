@@ -11,6 +11,7 @@
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
+
 namespace rbc {
 struct EventFence {
     TimelineEvent event;

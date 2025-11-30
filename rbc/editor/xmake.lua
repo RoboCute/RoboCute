@@ -20,7 +20,9 @@ target("rbc_editor")
     add_deps("rbc_core")  -- For json_serde (yyjson)
     add_deps("rbc_world")
     add_deps('rbc_runtime', 'lc-gui')
-    add_deps('rbc_render_interface', { links = false, inherit = false})
+    add_deps('rbc_render_interface'
+    -- , { links = false, inherit = false}
+    )
     add_deps("lc-volk")
     add_deps("qt_node_editor")
 

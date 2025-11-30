@@ -20,8 +20,6 @@
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 
-#include "generated/rbc_backend.h"
-#include "object_types.h"
 #include "RBCEditor/runtime/RenderUtils.h"
 #include "RBCEditor/runtime/RenderScene.h"
 
