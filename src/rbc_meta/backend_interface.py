@@ -56,6 +56,12 @@ def codegen_header(
     Context.method(
         'remove_light', light=tr.VoidPtr
     )
+    # texture
+    # Context.method(
+    #     'create_texture',
+    #     data=tr.DataBuffer,
+    #     size=tr.uint2
+    # )
     # object
     Context.method(
         'create_object',
@@ -104,6 +110,10 @@ def codegen_header(
     ).ret_type(tr.bool)
 
     # codegen
-    ut.codegen_pyd_module(
-        pyd_name, file_name, 'test_graphics', cpp_root_path, header_root_path, py_root_path
+    ut.codegen_to(header_root_path / f"{file_name}.h")(ut.codegen.cpp_interface_gen, '#include <rbc_runtime/generated/resource_meta.hpp>')
+    ut.codegen_to(cpp_root_path / f"{file_name}.cpp")(
+        ut.codegen.pybind_codegen,
+        file_name,
+        f'#include "{file_name}.h"',
     )
+    ut.codegen_to(py_root_path / f"{file_name}.py")(ut.codegen.py_interface_gen, pyd_name)

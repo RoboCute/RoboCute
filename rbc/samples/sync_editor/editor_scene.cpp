@@ -1,4 +1,4 @@
-#include "RBCEditor/runtime/EditorScene.h"
+#include "editor_scene.h"
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
@@ -26,8 +26,8 @@ EditorScene::EditorScene() {
         sm.bindless_allocator(), 65536,
         material::PolymorphicMaterial::index<material::Unlit>);
 
-    initMaterial();
-    initLight();
+    init_material();
+    init_light();
 
     LUISA_INFO("EditorScene initialized");
 }
@@ -56,7 +56,7 @@ EditorScene::~EditorScene() {
     sm.mat_manager().discard_mat_instance(default_mat_code_);
 }
 
-void EditorScene::initMaterial() {
+void EditorScene::init_material() {
     using namespace luisa;
     using namespace luisa::compute;
     auto &sm = SceneManager::instance();
@@ -76,7 +76,7 @@ void EditorScene::initMaterial() {
         material::PolymorphicMaterial::index<material::OpenPBR>);
 }
 
-void EditorScene::initLight() {
+void EditorScene::init_light() {
     using namespace luisa;
     using namespace luisa::compute;
     auto &render_device = RenderDevice::instance();
@@ -90,7 +90,7 @@ void EditorScene::initLight() {
     light_id_ = lights_.add_area_light(cmdlist, area_light_transform, light_emission);
 }
 
-void EditorScene::updateFromSync(const SceneSync &sync) {
+void EditorScene::update_from_sync(const SceneSync &sync) {
     using namespace luisa;
     using namespace luisa::compute;
 
@@ -134,11 +134,11 @@ void EditorScene::updateFromSync(const SceneSync &sync) {
         if (it != entity_map_.end()) {
             // Update existing entity
             LUISA_INFO("  Updating entity {} transform", entity.id);
-            updateEntityTransform(entity.id, entity.transform);
+            update_entity_transform(entity.id, entity.transform);
         } else {
             // Add new entity
             LUISA_INFO("  Adding new entity {} with mesh {}", entity.id, mesh_path);
-            addEntity(entity.id, mesh_path, entity.transform);
+            add_entity(entity.id, mesh_path, entity.transform);
         }
     }
 
@@ -150,15 +150,15 @@ void EditorScene::updateFromSync(const SceneSync &sync) {
         }
     }
     for (int entity_id : to_remove) {
-        removeEntity(entity_id);
+        remove_entity(entity_id);
     }
 
     tlas_ready_ = !instances_.empty();
     LUISA_INFO("EditorScene: TLAS ready = {}, {} instances", tlas_ready_, instances_.size());
 }
 
-void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
-                            const Transform &transform) {
+void EditorScene::add_entity(int entity_id, const luisa::string &mesh_path,
+                             const Transform &transform) {
     using namespace luisa;
     using namespace luisa::compute;
 
@@ -169,7 +169,7 @@ void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
     instance.mesh_path = mesh_path;
 
     // Load mesh from file
-    instance.device_mesh = loadMeshFromFile(mesh_path);
+    instance.device_mesh = load_mesh_from_file(mesh_path);
     if (!instance.device_mesh) {
         LUISA_ERROR("Failed to load mesh: {}", mesh_path);
         return;
@@ -206,7 +206,7 @@ void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
     LUISA_INFO("Entity {} added to TLAS at index {}", entity_id, instance.tlas_index);
 }
 
-void EditorScene::updateEntityTransform(int entity_id, const Transform &transform) {
+void EditorScene::update_entity_transform(int entity_id, const Transform &transform) {
     using namespace luisa;
     using namespace luisa::compute;
 
@@ -235,7 +235,7 @@ void EditorScene::updateEntityTransform(int entity_id, const Transform &transfor
         transform_matrix, ~0ull, true);
 }
 
-void EditorScene::removeEntity(int entity_id) {
+void EditorScene::remove_entity(int entity_id) {
     using namespace luisa;
     using namespace luisa::compute;
 
@@ -267,7 +267,7 @@ void EditorScene::removeEntity(int entity_id) {
     entity_map_.erase(entity_id);
 }
 
-RC<DeviceMesh> EditorScene::loadMeshFromFile(const luisa::string &path) {
+RC<DeviceMesh> EditorScene::load_mesh_from_file(const luisa::string &path) {
     using namespace luisa;
     using namespace luisa::compute;
 
@@ -301,7 +301,7 @@ RC<DeviceMesh> EditorScene::loadMeshFromFile(const luisa::string &path) {
 
     // Convert to MeshBuilder format
     MeshBuilder mesh_builder;
-    convertMeshToBuilder(mesh, mesh_builder);
+    convert_mesh_to_builder(mesh, mesh_builder);
 
     // Create DeviceMesh
     RC<DeviceMesh> device_mesh{new DeviceMesh{}};
@@ -330,8 +330,8 @@ RC<DeviceMesh> EditorScene::loadMeshFromFile(const luisa::string &path) {
     return device_mesh;
 }
 
-void EditorScene::convertMeshToBuilder(const luisa::shared_ptr<rbc::Mesh> &mesh,
-                                       MeshBuilder &builder) {
+void EditorScene::convert_mesh_to_builder(const luisa::shared_ptr<rbc::Mesh> &mesh,
+                                          MeshBuilder &builder) {
     using namespace luisa;
 
     // Create UV layer 0

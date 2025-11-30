@@ -71,9 +71,12 @@ private:
     };
     AsyncFrameResource _async_frame_res[FRAME_COUNT];
     RenderDevice& _render_device;
-    std::atomic_uint64_t _finished_frame_index = 0;
+    // where load thread start commiting
     std::atomic_uint64_t _load_thd_frame_index = 0;
+    // where load thread finish commit, start executing
     std::atomic_uint64_t _load_executive_thd_frame_index = 0;
+    // where load thread finish executing.
+    std::atomic_uint64_t _finished_frame_index = 0;
     luisa::fiber::mutex _load_thd_mtx;
     luisa::fiber::condition_variable _load_thd_cv;
     luisa::fiber::mutex _load_executive_thd_mtx;
@@ -95,7 +98,9 @@ public:
     void set_root_path(luisa::filesystem::path assets_root_path);
 
     [[nodiscard]] auto const& root_path() const { return _assets_root_path; }
-    [[nodiscard]] uint64 load_finished_index() const { return _finished_frame_index.load(); }
+    [[nodiscard]] uint64 load_started_index() const { return _load_thd_frame_index.load(std::memory_order_relaxed); }
+    [[nodiscard]] uint64 load_executed_index() const { return _load_executive_thd_frame_index.load(std::memory_order_relaxed); }
+    [[nodiscard]] uint64 load_finished_index() const { return _finished_frame_index.load(std::memory_order_relaxed); }
     [[nodiscard]] auto& lc_device() const { return _render_device.lc_device(); }
     [[nodiscard]] auto& scene_mng() const { return _scene_mng; }
     [[nodiscard]] auto& render_device() const { return _render_device; }

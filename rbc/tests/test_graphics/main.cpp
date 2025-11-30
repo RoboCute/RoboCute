@@ -90,10 +90,9 @@ struct ContextImpl : RBCContext {
     void *create_mesh(void *data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count) override {
         auto mesh_size = get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
         luisa::BinaryBlob temp_blob{
-            (std::byte *)vengine_malloc(mesh_size),
+            (std::byte *)data,
             mesh_size,
-            [](void *ptr) { vengine_free(ptr); }};
-        std::memcpy(temp_blob.data(), data, temp_blob.size());
+            {}};
         auto ptr = new DeviceMesh();
         RC<DeviceMesh>::manually_add_ref(ptr);
         ptr->async_load_from_memory(
@@ -105,6 +104,7 @@ struct ContextImpl : RBCContext {
             {},   // TODO: submesh & materials
             false,// only build BLAS while need ray-tracing
             true);
+        ptr->wait_finished();
         return ptr;
     }
     void remove_mesh(void *handle) override {
@@ -252,7 +252,7 @@ struct ContextImpl : RBCContext {
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
         stub->mesh_ref = reinterpret_cast<DeviceMesh *>(mesh);
-        stub->mesh_ref->sync_wait();
+        stub->mesh_ref->wait_finished();
         stub->tlas_idx = sm.accel_manager().emplace_mesh_instance(
             render_device.lc_main_cmd_list(),
             sm.host_upload_buffer(),
@@ -281,7 +281,7 @@ struct ContextImpl : RBCContext {
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
         stub->mesh_ref = reinterpret_cast<DeviceMesh *>(mesh);
-        stub->mesh_ref->sync_wait();
+        stub->mesh_ref->wait_finished();
         sm.accel_manager().set_mesh_instance(
             stub->tlas_idx,
             render_device.lc_main_cmd_list(),

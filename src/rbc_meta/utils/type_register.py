@@ -237,6 +237,8 @@ class enum:
     def __init__(self, _func_name: str, _enable_serde: bool = True, **params):
         namespace_cut = _func_name.rfind("::")
         self._serde = _enable_serde
+        self._cpp_external = False
+        self._py_external = False
         if namespace_cut >= 0:
             self._namespace_name = _func_name[0:namespace_cut]
             self._class_name = _func_name[namespace_cut + 2 : len(_func_name)]
@@ -265,7 +267,12 @@ class enum:
         if len(s) > 0:
             s += "::"
         return s + self._class_name
-
+    # will not generate this class in cpp
+    def mark_cpp_external(self):
+        self._cpp_external = True
+    # will not generate this class in py
+    def mark_py_external(self):
+        self._py_external = True
 
 def log_err(s: str):
     print(f"\033[31m{s}\033[0m")
@@ -314,6 +321,8 @@ class struct:
         self._methods = dict()
         self._default_ctor = None
         self._dtor = None
+        self._cpp_external = False
+        self._py_external = False
         
     def add_default_ctor(self):
         self._default_ctor = True
@@ -382,7 +391,12 @@ class struct:
             else:
                 v = str(v)
             self._cpp_initer[i] = str(v)
-
+    # will not generate this class
+    def mark_cpp_external(self):
+        self._cpp_external = True
+    # will not generate this class
+    def mark_py_external(self):
+        self._py_external = True
 
 def _check_arg(key, arg):
     if (
