@@ -3,7 +3,7 @@
 #include <memory>
 #include <luisa/luisa-compute.h>
 #include <QtGui/rhi/qrhi.h>
-#include "RBCEditor/dummyrt.h"
+#include "RBCEditor/dummyapp.h"
 #include "RBCEditor/runtime/renderer.h"
 #include "RBCEditor/runtime/HttpClient.h"
 
@@ -18,7 +18,7 @@ public:
 
     void init(int argc, char **argv);
     void shutdown();
-    
+
     // IRenderer interface
     void init(QRhiNativeHandles &handles) override;
     void update() override;
@@ -28,7 +28,7 @@ public:
     uint64_t get_present_texture(luisa::uint2 resolution) override;
 
     // Accessors
-    App *getRenderApp() { return m_renderApp.get(); }
+    IApp *getRenderApp() { return m_renderApp.get(); }
     HttpClient *getHttpClient() { return m_httpClient; }
     void setHttpClient(HttpClient *client) { m_httpClient = client; }
 
@@ -36,12 +36,12 @@ public:
 
 private:
     std::unique_ptr<luisa::compute::Context> m_context;
-    std::unique_ptr<App> m_renderApp;
+    std::unique_ptr<IApp> m_renderApp;
+
     HttpClient *m_httpClient = nullptr;
-    
+
     bool m_isPaused = false;
     QRhi::Implementation m_graphicsApi = QRhi::D3D12;
 };
 
-} // namespace rbc
-
+}// namespace rbc

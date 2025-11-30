@@ -1,6 +1,8 @@
 #include "RBCEditor/EditorEngine.h"
 #include "QtGui/rhi/qrhi_platform.h"
 #include <QDebug>
+#include "RBCEditor/dummyapp.h"
+#include "RBCEditor/pbrapp.h"
 
 namespace rbc {
 
@@ -23,7 +25,8 @@ void EditorEngine::init(int argc, char **argv) {
     luisa::string backend = "dx";
     m_graphicsApi = QRhi::D3D12;
 
-    m_renderApp = std::make_unique<App>();
+    m_renderApp = std::make_unique<DummyApp>();
+
     m_renderApp->init(*m_context, backend.c_str());
 }
 
@@ -41,11 +44,11 @@ void EditorEngine::init(QRhiNativeHandles &handles_base) {
         // Native DX Adapter
         // Native DX Command Queue
         auto &handles = static_cast<QRhiD3D12NativeHandles &>(handles_base);
-        handles.dev = m_renderApp->device.native_handle();
+        handles.dev = m_renderApp->GetDeviceNativeHandle();
         handles.minimumFeatureLevel = 0;
-        handles.adapterLuidHigh = (qint32)m_renderApp->dx_adaptor_luid.x;
-        handles.adapterLuidLow = (qint32)m_renderApp->dx_adaptor_luid.y;
-        handles.commandQueue = m_renderApp->stream.native_handle();
+        handles.adapterLuidHigh = (qint32)m_renderApp->GetDXAdapterLUIDHigh();
+        handles.adapterLuidLow = (qint32)m_renderApp->GetDXAdapterLUIDLow();
+        handles.commandQueue = m_renderApp->GetStreamNativeHandle();
     } else {
         LUISA_ERROR("Backend unsupported.");
     }

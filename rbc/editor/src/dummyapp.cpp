@@ -1,4 +1,4 @@
-#include "RBCEditor/dummyrt.h"
+#include "RBCEditor/dummyapp.h"
 #include "luisa/core/dynamic_module.h"
 #include "luisa/runtime/rhi/pixel.h"
 #include <luisa/backends/ext/native_resource_ext.hpp>
@@ -29,7 +29,7 @@ LUISA_STRUCT(rbc::EditorCamera, position, front, up, right, fov) {
 // clang-format on
 
 namespace rbc {
-void App::init(
+void DummyApp::init(
     luisa::compute::Context &ctx, const char *backend_name) {
     luisa::string_view backend = backend_name;
     bool gpu_dump;
@@ -327,7 +327,7 @@ void App::init(
     draw_shader = device.compile(draw_kernel);
 }
 
-uint64_t App::create_texture(uint width, uint height) {
+uint64_t DummyApp::create_texture(uint width, uint height) {
 
     resolution = {width, height};
     if (dummy_image && any(dummy_image.size() != uint2(width, height))) {
@@ -346,7 +346,7 @@ uint64_t App::create_texture(uint width, uint height) {
     return (int64_t)dummy_image.native_handle();
 }
 
-void App::handle_key(luisa::compute::Key key) {
+void DummyApp::handle_key(luisa::compute::Key key) {
     if (!camera_controller.get()) { return; }
     auto dt = static_cast<float>(delta_time / 1000.0);
     switch (key) {
@@ -371,7 +371,7 @@ void App::handle_key(luisa::compute::Key key) {
     }
 }
 
-void App::update() {
+void DummyApp::update() {
     // cmd_list << clear_shader(dummy_image).dispatch(resolution);
     // float2 f_res = {(float)resolution.x, (float)resolution.y};
     // cmd_list
@@ -394,7 +394,7 @@ void App::update() {
 
     set_dx_before_state(device_config_ext, Argument::Texture{dummy_image.handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
 }
-App::~App() {
+DummyApp::~DummyApp() {
     camera_controller.reset();
     stream.synchronize();
 }
