@@ -22,5 +22,5 @@ def codegen_module(
 
     # codegen
     ut.codegen_pyd_module(
-        pyd_name, file_name, "py_backend_impl", cpp_root_path, py_root_path
+        pyd_name, file_name, cpp_root_path, py_root_path
     )

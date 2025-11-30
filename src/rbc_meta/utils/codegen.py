@@ -603,6 +603,8 @@ def cpp_interface_gen(*extra_includes):
     # print enums
     for enum_name in tr._registed_enum_types:
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
+        if enum_type._cpp_external:
+            continue
         namespace = enum_type.namespace_name()
         if len(namespace) > 0:
             cb.add_line(f"namespace {namespace} {{")
@@ -626,6 +628,8 @@ def cpp_interface_gen(*extra_includes):
     # print classes
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
+        if struct_type._cpp_external:
+            continue
         namespace = struct_type.namespace_name()
         if len(namespace) > 0:
             cb.add_line(f"namespace {namespace} {{")
@@ -684,7 +688,7 @@ def cpp_interface_gen(*extra_includes):
     return cb.get_result()
 
 
-def pybind_codegen(module_name: str, dll_path: str, *extra_includes):
+def pybind_codegen(module_name: str, *extra_includes):
     cb.set_result("""#include <pybind11/pybind11.h>
 #include <luisa/core/basic_types.h>
 #include <luisa/core/basic_traits.h>
@@ -703,6 +707,8 @@ void {export_func_name}(py::module& m) """)
     # print enums
     for enum_name in tr._registed_enum_types:
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
+        if enum_type._py_external:
+            continue
         cb.add_line(f'py::enum_<{enum_name}>(m, "{enum_name}")')
         cb.add_indent()
         for params_name_and_type in enum_type._params:
@@ -715,7 +721,8 @@ void {export_func_name}(py::module& m) """)
     # print classes
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
-
+        if struct_type._py_external:
+            continue
         # create
         create_name = f"create__{struct_name}__"
         cb.add_line(f'm.def("{create_name}", []() -> void* ')

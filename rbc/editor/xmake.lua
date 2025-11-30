@@ -1,7 +1,8 @@
 target("rbc_editor")
     add_rules('lc_basic_settings', {
         project_kind = 'binary',
-        enable_exception = true
+        enable_exception = true,
+        rtti = true
     })
     add_rules("qt.widgetapp")
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")

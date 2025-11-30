@@ -35,10 +35,12 @@ public:
     };
     virtual Type resource_type() const = 0;
     RBC_RUNTIME_API virtual bool load_finished() const;
+    RBC_RUNTIME_API virtual bool load_executed() const;
     bool loaded() const {
         return _gpu_load_frame != 0;
     }
-    virtual RBC_RUNTIME_API void sync_wait();
+    RBC_RUNTIME_API virtual void wait_executed();
+    RBC_RUNTIME_API virtual void wait_finished();
     uint64_t gpu_load_frame() const { return _gpu_load_frame.load(); }
     virtual ~DeviceResource() = default;
 };

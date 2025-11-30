@@ -3,8 +3,8 @@
 #include <utils/shader_host.hpp>
 namespace material {
 #ifndef __SHADER_LANG__
-luisa::half3 _make_half3_(float a, float b, float c) { return luisa::half3{(half)a, (half)b, (half)c} ;}
-luisa::half4 _make_half4_(float a, float b, float c, float d) { return luisa::half4{(half)a, (half)b, (half)c, (half)d} ;}
+inline luisa::half3 _make_half3_(float a, float b, float c) { return luisa::half3{(half)a, (half)b, (half)c} ;}
+inline luisa::half4 _make_half4_(float a, float b, float c, float d) { return luisa::half4{(half)a, (half)b, (half)c, (half)d} ;}
 #define MAKE_HALF3(...) _make_half3_(__VA_ARGS__)
 #define MAKE_HALF4(...) _make_half4_(__VA_ARGS__)
 #else

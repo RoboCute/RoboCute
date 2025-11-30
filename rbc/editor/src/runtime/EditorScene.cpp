@@ -176,7 +176,7 @@ void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
     }
 
     // Wait for mesh to be loaded
-    instance.device_mesh->sync_wait();
+    instance.device_mesh->wait_finished();
     instance.mesh_loaded = true;
 
     // Add to TLAS

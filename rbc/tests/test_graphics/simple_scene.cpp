@@ -86,7 +86,7 @@ void SimpleScene::_init_tlas() {
     auto &render_device = RenderDevice::instance();
     auto &cmdlist = render_device.lc_main_cmd_list();
     auto &cube_mesh = device_meshes[0];
-    cube_mesh->sync_wait();
+    cube_mesh->wait_finished();
     cube_pos = float3(-1, -1, 3);
     float4x4 cube_transform = translation(cube_pos);
     // add object

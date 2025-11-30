@@ -7,12 +7,13 @@ for target_name, is_standalone in pairs(targets) do
         add_includedirs('generated', {
             interface = true
         })
+        add_deps('rbc_runtime')
     end
 
     local function test_graphics_impl()
         add_rules('lc_basic_settings', {})
         add_files('**.cpp')
-        add_deps('rbc_runtime', 'lc-gui', 'rbc_render_interface', 'rbc_ipc')
+        add_deps('lc-gui', 'rbc_render_interface', 'rbc_ipc')
         on_load(function(target)
             if is_standalone then
                 target:set('kind', 'binary')
