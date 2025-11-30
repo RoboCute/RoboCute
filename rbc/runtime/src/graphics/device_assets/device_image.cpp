@@ -138,7 +138,7 @@ void DeviceImage::_async_load(
                     {
                         auto img_view = img.view(i);
                         inst->load_tex_uploader().upload(
-                            args.io_cmdlist,
+                            args.mem_io_cmdlist,
                             args.cmdlist,
                             args.device,
                             *args.disp_queue,

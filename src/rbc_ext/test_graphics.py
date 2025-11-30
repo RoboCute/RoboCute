@@ -6,7 +6,7 @@ import numpy as np
 def main():
     backend_name = 'vk'
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
-    program_path = str(runtime_dir)
+    program_path = str(runtime_dir.parent / 'debug')
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
     sky_path = str(runtime_dir.parent / 'sky.bytes')
 
@@ -17,6 +17,17 @@ def main():
     ctx.create_window("py_window", uint2(1920, 1080), True)
 
     mesh_array, vertex_count, triangle_count = create_mesh_array()
+    
+    # tex_array = np.zeros(1024 * 1024 * 4, dtype=np.float32)
+    # tex = ctx.create_texture(
+    #     tex_array,
+    #     LCPixelStorage.FLOAT4,
+    #     uint2(1024, 1024),
+    #     SamplerAddress.EDGE,
+    #     SamplerFilter.LINEAR_POINT,
+    #     1,
+    #     False
+    # )
     mesh = ctx.create_mesh(
         mesh_array,
         vertex_count,

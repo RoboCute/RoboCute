@@ -1,18 +1,3 @@
--- Let few target depend together without compile-order and inherit
-function nested_target(name, ...)
-    local bin_name = name .. '_b'
-    target(name)
-    set_kind('phony')
-    add_rules('lc_run_target')
-    add_deps(bin_name, ..., {
-        inherit = false
-    })
-    target_end()
-
-    target(bin_name)
-    set_basename(name)
-end
-
 -- Modules
 includes('core') -- 底层数据结构
 includes('world') -- 场景和资源定义

@@ -91,3 +91,25 @@ PixelFormat = tr.enum(
     BC7SRGB=None,
     RGBA8SRGB=None,
 )
+SamplerFilter = tr.enum(
+    'rbc::SamplerFilter',
+    POINT=None,
+    LINEAR_POINT=None,
+    LINEAR_LINEAR=None,
+    ANISOTROPIC=None
+)
+
+SamplerAddress = tr.enum(
+    'rbc::SamplerAddress',
+    EDGE=None,
+    REPEAT=None,
+    MIRROR=None,
+    ZERO=None
+)
+
+
+def mark_enums_external():
+    PixelStorage.mark_cpp_external()
+    PixelFormat.mark_cpp_external()
+    SamplerFilter.mark_cpp_external()
+    SamplerAddress.mark_cpp_external()

@@ -403,6 +403,8 @@ def _cpp_impl_gen():
     # print enums
     for enum_name in tr._registed_enum_types:
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
+        if enum_type._cpp_external:
+            continue
         full_name = enum_type.full_name()
         m = hashlib.md5(full_name.encode("ascii"))
         digest = m.hexdigest()
@@ -422,6 +424,8 @@ def _cpp_impl_gen():
     # print classes
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
+        if struct_type._cpp_external:
+            continue
         namespace = struct_type.namespace_name()
         if len(struct_type._serde_members) > 0:
             if len(namespace) > 0:
@@ -649,11 +653,11 @@ def cpp_interface_gen(*extra_includes):
 
             # serialize function
             if len(struct_type._serde_members) > 0:
-                cb.add_line("void rbc_objser(rbc::JsonSerializer& obj) const;")
+                cb.add_line(f"{struct_type._suffix} void rbc_objser(rbc::JsonSerializer& obj) const;")
 
             # de-serialize function
             if len(struct_type._serde_members) > 0:
-                cb.add_line("void rbc_objdeser(rbc::JsonDeSerializer& obj);")
+                cb.add_line(f"{struct_type._suffix} void rbc_objdeser(rbc::JsonDeSerializer& obj);")
         if len(struct_type._methods) > 0:
             cb.add_result(f"""
    {struct_type._suffix} static {struct_name}* _create_();
@@ -709,7 +713,7 @@ void {export_func_name}(py::module& m) """)
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
         if enum_type._py_external:
             continue
-        cb.add_line(f'py::enum_<{enum_name}>(m, "{enum_name}")')
+        cb.add_line(f'py::enum_<{enum_name}>(m, "{enum_type.class_name()}")')
         cb.add_indent()
         for params_name_and_type in enum_type._params:
             cb.add_line(
