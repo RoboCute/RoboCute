@@ -2,6 +2,7 @@
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
+#include <luisa/core/logging.h>
 
 namespace rbc {
 #include <rbc_graphics/materials.h>
@@ -135,9 +136,11 @@ SimpleScene::SimpleScene(rbc::Lights &lights) : lights(lights) {
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;
+
     auto &sm = SceneManager::instance();
     sm.mat_manager().emplace_mat_type<material::OpenPBR>(sm.bindless_allocator(), 65536, material::PolymorphicMaterial::index<material::OpenPBR>);
     sm.mat_manager().emplace_mat_type<material::Unlit>(sm.bindless_allocator(), 65536, material::PolymorphicMaterial::index<material::Unlit>);
+
     _init_mesh();
     _init_material();
     _init_tlas();

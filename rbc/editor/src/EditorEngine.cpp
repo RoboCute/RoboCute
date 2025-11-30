@@ -1,9 +1,11 @@
 #include "RBCEditor/EditorEngine.h"
 #include "QtGui/rhi/qrhi_platform.h"
 #include <QDebug>
+#include <luisa/core/logging.h>
 #include "RBCEditor/dummyapp.h"
 #include "RBCEditor/naiveapp.h"
 #include "RBCEditor/pbrapp.h"
+#include "RBCEditor/visapp.h"
 
 namespace rbc {
 
@@ -27,7 +29,8 @@ void EditorEngine::init(int argc, char **argv) {
 
     // m_renderApp = std::make_unique<DummyApp>();
     // m_renderApp = std::make_unique<NaiveApp>();
-    m_renderApp = std::make_unique<PBRApp>();
+    // m_renderApp = std::make_unique<PBRApp>();
+    m_renderApp = std::make_unique<VisApp>();
     m_renderApp->init(argv[0], backend.c_str());
     m_isInitialized = true;
 }

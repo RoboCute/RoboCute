@@ -23,12 +23,34 @@
 #include "RBCEditor/runtime/RenderUtils.h"
 #include "RBCEditor/runtime/RenderScene.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#include <fcntl.h>
+#endif
+
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
 #include <material/mats.inl>
 
 int main(int argc, char **argv) {
+
+#ifdef _WIN32
+    // Allocate console window for debug output on Windows
+    AllocConsole();
+    
+    // Redirect stdout and stderr to console
+    FILE* pCout;
+    FILE* pCerr;
+    FILE* pCin;
+    freopen_s(&pCout, "CONOUT$", "w", stdout);
+    freopen_s(&pCerr, "CONOUT$", "w", stderr);
+    freopen_s(&pCin, "CONIN$", "r", stdin);
+    
+    // Set console title
+    SetConsoleTitleA("RoboCute Editor - Debug Console");
+#endif
 
     int ret = 0;
     log_level_info();

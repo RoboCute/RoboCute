@@ -3,6 +3,7 @@
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
 #include <luisa/core/logging.h>
+#include <QDebug>
 
 namespace rbc {
 #include <rbc_graphics/materials.h>
@@ -30,7 +31,7 @@ EditorScene::EditorScene() {
     // DO NOT initialize light here - wait until first entity is added
     // This matches SimpleScene pattern where light is added with mesh instances
 
-    LUISA_INFO("EditorScene initialized (light will be initialized on first entity)");
+    qDebug("EditorScene initialized (light will be initialized on first entity)");
 }
 
 EditorScene::~EditorScene() {
@@ -90,8 +91,8 @@ void EditorScene::initLight() {
 
     light_id_ = lights_.add_area_light(cmdlist, area_light_transform, light_emission);
     light_initialized_ = true;
-    
-    LUISA_INFO("EditorScene: Light initialized");
+
+    qDebug() << "EditorScene: Light initialized";
 }
 
 void EditorScene::ensureLightInitialized() {
@@ -109,13 +110,13 @@ void EditorScene::updateFromSync(const SceneSync &sync) {
     const auto &entities = sync.entities();
     const auto &resources = sync.resources();
 
-    LUISA_INFO("EditorScene: Syncing {} entities, {} resources", entities.size(), resources.size());
+    qDebug() << "EditorScene: Syncing " << entities.size() << " entities, {} resources" << resources.size();
 
     // Build resource path map
     luisa::unordered_map<int, luisa::string> resource_paths;
     for (const auto &res : resources) {
         resource_paths[res.id] = res.path;
-        LUISA_INFO("  Resource {}: {}", res.id, res.path);
+        qDebug() << "  Resource " << res.id << ":" << res.path;
     }
 
     // Track which entities we've seen in this update
@@ -123,7 +124,7 @@ void EditorScene::updateFromSync(const SceneSync &sync) {
 
     // Update or add entities
     for (const auto &entity : entities) {
-        LUISA_INFO("  Entity {}: {}, has_render={}", entity.id, entity.name, entity.has_render_component);
+        // qDebug("  Entity {}: {}, has_render={}", entity.id, entity.name, entity.has_render_component);
 
         if (!entity.has_render_component) {
             continue;
@@ -145,11 +146,11 @@ void EditorScene::updateFromSync(const SceneSync &sync) {
         auto it = entity_map_.find(entity.id);
         if (it != entity_map_.end()) {
             // Update existing entity
-            LUISA_INFO("  Updating entity {} transform", entity.id);
+            // qDebug("  Updating entity {} transform", entity.id);
             updateEntityTransform(entity.id, entity.transform);
         } else {
             // Add new entity
-            LUISA_INFO("  Adding new entity {} with mesh {}", entity.id, mesh_path);
+            // qDebug("  Adding new entity {} with mesh {}", entity.id, mesh_path);
             addEntity(entity.id, mesh_path, entity.transform);
         }
     }
@@ -166,7 +167,7 @@ void EditorScene::updateFromSync(const SceneSync &sync) {
     }
 
     tlas_ready_ = !instances_.empty();
-    LUISA_INFO("EditorScene: TLAS ready = {}, {} instances", tlas_ready_, instances_.size());
+    qDebug() << "EditorScene: TLAS ready = " << tlas_ready_ << ":" << instances_.size() << " instances";
 }
 
 void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
@@ -174,7 +175,7 @@ void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
     using namespace luisa;
     using namespace luisa::compute;
 
-    LUISA_INFO("Adding entity {} with mesh: {}", entity_id, mesh_path);
+    qDebug() << "Adding entity " << entity_id << "  with mesh: " << mesh_path;
 
     // Ensure light is initialized before adding first entity
     // This matches SimpleScene pattern: light is created alongside mesh instances
@@ -219,12 +220,12 @@ void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
     instances_.push_back(instance);
     entity_map_[entity_id] = idx;
 
-    LUISA_INFO("Entity {} added to TLAS at index {}", entity_id, instance.tlas_index);
+    qDebug() << "Entity " << entity_id << " added to TLAS at index " << instance.tlas_index;
 }
 
 void EditorScene::setAnimationTransform(int entity_id, const Transform &transform) {
     animation_transforms_[entity_id] = transform;
-    
+
     // Also update the entity's actual transform
     updateEntityTransform(entity_id, transform);
 }
@@ -271,7 +272,7 @@ void EditorScene::removeEntity(int entity_id) {
         return;
     }
 
-    LUISA_INFO("Removing entity {}", entity_id);
+    qDebug() << "Removing entity " << entity_id;
 
     EntityInstance &instance = instances_[it->second];
 
@@ -298,7 +299,7 @@ RC<DeviceMesh> EditorScene::loadMeshFromFile(const luisa::string &path) {
     using namespace luisa;
     using namespace luisa::compute;
 
-    LUISA_INFO("Loading mesh from file: {}", path);
+    qDebug() << "Loading mesh from file: " << path.c_str();
 
     // Use MeshLoader to load the mesh
     MeshLoader loader;
@@ -351,8 +352,7 @@ RC<DeviceMesh> EditorScene::loadMeshFromFile(const luisa::string &path) {
         false,// No need to build BLAS for origin mesh
         true);
 
-    LUISA_INFO("Mesh loaded: {} vertices, {} indices",
-               mesh->vertices.size(), mesh->indices.size());
+    qDebug() << "Mesh loaded: " << mesh->vertices.size() << " vertices, " << mesh->indices.size() << " indices";
 
     return device_mesh;
 }
