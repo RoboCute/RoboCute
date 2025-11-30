@@ -49,6 +49,7 @@ private:
     luisa::unordered_map<int, size_t> entity_map_;// entity_id -> index in instances_
     luisa::unordered_map<int, Transform> animation_transforms_;// entity_id -> animation transform
     uint32_t light_id_ = 0;
+    bool light_initialized_ = false;  // Track if light has been initialized
     bool tlas_ready_ = false;
 
     // Mesh loading and conversion
@@ -59,6 +60,7 @@ private:
     // Scene initialization
     void initMaterial();
     void initLight();
+    void ensureLightInitialized();  // Lazy initialization of light
 
     // Entity management
     void addEntity(int entity_id, const luisa::string &mesh_path, const Transform &transform);

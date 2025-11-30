@@ -24,10 +24,21 @@ NodeEditor::NodeEditor(QWidget *parent) : QWidget(parent),
                                           m_httpClient(new HttpClient(this)),
                                           m_nodeFactory(std::make_unique<NodeFactory>()),
                                           m_isExecuting(false),
-                                          m_serverUrl("http://127.0.0.1:8000") {
+                                          m_serverUrl("http://127.0.0.1:5555") {
     setupUI();
     setupConnections();
-    loadNodesFromBackend();
+    // Do not load nodes immediately - wait for proper initialization
+}
+
+NodeEditor::NodeEditor(HttpClient *httpClient, QWidget *parent) : QWidget(parent),
+                                          m_httpClient(httpClient),
+                                          m_nodeFactory(std::make_unique<NodeFactory>()),
+                                          m_isExecuting(false),
+                                          m_serverUrl(httpClient->serverUrl()) {
+    setupUI();
+    setupConnections();
+    // Load nodes after server connection is established
+    // Will be triggered by MainWindow after scene sync starts
 }
 
 NodeEditor::~NodeEditor() = default;
@@ -139,6 +150,10 @@ void NodeEditor::setupConnections() {
             m_view, &GraphicsView::centerScene);
     connect(m_scene, &DataFlowGraphicsScene::modified,
             this, [this]() { setWindowModified(true); });
+}
+
+void NodeEditor::loadNodesDeferred() {
+    loadNodesFromBackend();
 }
 
 void NodeEditor::loadNodesFromBackend() {

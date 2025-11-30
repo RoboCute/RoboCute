@@ -9,7 +9,7 @@
 
 namespace rbc {
 HttpClient::HttpClient(QObject *parent)
-    : QObject(parent), m_networkManager(new QNetworkAccessManager(this)), m_serverUrl("http://127.0.0.1:8000"), m_isConnected(false) {
+    : QObject(parent), m_networkManager(new QNetworkAccessManager(this)), m_serverUrl("http://127.0.0.1:5555"), m_isConnected(false) {
 }
 
 HttpClient::~HttpClient() = default;

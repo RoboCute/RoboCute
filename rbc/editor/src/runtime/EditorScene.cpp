@@ -27,9 +27,10 @@ EditorScene::EditorScene() {
         material::PolymorphicMaterial::index<material::Unlit>);
 
     initMaterial();
-    initLight();
+    // DO NOT initialize light here - wait until first entity is added
+    // This matches SimpleScene pattern where light is added with mesh instances
 
-    LUISA_INFO("EditorScene initialized");
+    LUISA_INFO("EditorScene initialized (light will be initialized on first entity)");
 }
 
 EditorScene::~EditorScene() {
@@ -47,8 +48,8 @@ EditorScene::~EditorScene() {
         }
     }
 
-    // Remove light
-    if (light_id_ != 0) {
+    // Remove light (only if it was initialized)
+    if (light_initialized_ && light_id_ != 0) {
         lights_.remove_area_light(light_id_);
     }
 
@@ -88,6 +89,17 @@ void EditorScene::initLight() {
         rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f) * scaling(0.1f);
 
     light_id_ = lights_.add_area_light(cmdlist, area_light_transform, light_emission);
+    light_initialized_ = true;
+    
+    LUISA_INFO("EditorScene: Light initialized");
+}
+
+void EditorScene::ensureLightInitialized() {
+    // Lazy initialization: initialize light when first entity is added
+    // This follows the SimpleScene pattern where light is added alongside mesh instances
+    if (!light_initialized_) {
+        initLight();
+    }
 }
 
 void EditorScene::updateFromSync(const SceneSync &sync) {
@@ -163,6 +175,10 @@ void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
     using namespace luisa::compute;
 
     LUISA_INFO("Adding entity {} with mesh: {}", entity_id, mesh_path);
+
+    // Ensure light is initialized before adding first entity
+    // This matches SimpleScene pattern: light is created alongside mesh instances
+    ensureLightInitialized();
 
     EntityInstance instance;
     instance.entity_id = entity_id;

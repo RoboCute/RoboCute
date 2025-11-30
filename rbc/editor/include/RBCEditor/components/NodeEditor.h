@@ -23,7 +23,11 @@ class NodeEditor : public QWidget {
     Q_OBJECT
 public:
     explicit NodeEditor(QWidget *parent);
+    explicit NodeEditor(HttpClient *httpClient, QWidget *parent);
     ~NodeEditor() override;
+    
+    // Load nodes from backend (called after server is connected)
+    void loadNodesDeferred();
 
 private slots:
     void onConnectionStatusChanged(bool connected);

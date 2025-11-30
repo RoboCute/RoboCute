@@ -11,6 +11,7 @@ class ResultPanel;
 class AnimationPlayer;
 class AnimationPlaybackManager;
 class EditorScene;
+class NodeEditor;
 }
 
 class MainWindow : public QMainWindow {
@@ -49,4 +50,5 @@ private:
     rbc::AnimationPlayer *animationPlayer_;
     rbc::AnimationPlaybackManager *playbackManager_;
     rbc::EditorScene *editorScene_;
+    rbc::NodeEditor *nodeEditor_;
 };

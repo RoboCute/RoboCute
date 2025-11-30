@@ -8,6 +8,8 @@
 #include <QKeyEvent>
 #include <QApplication>
 #include <QStatusBar>
+#include <QTimer>
+#include <QVBoxLayout>
 #include "RBCEditor/components/NodeEditor.h"
 #include "RBCEditor/components/SceneHierarchyWidget.h"
 #include "RBCEditor/components/DetailsPanel.h"
@@ -30,7 +32,8 @@ MainWindow::MainWindow(QWidget *parent)
       resultPanel_(nullptr),
       animationPlayer_(nullptr),
       playbackManager_(nullptr),
-      editorScene_(nullptr) {
+      editorScene_(nullptr),
+      nodeEditor_(nullptr) {
     // Create editor scene for animation playback
     editorScene_ = new rbc::EditorScene();
 }
@@ -73,6 +76,16 @@ void MainWindow::startSceneSync(const QString &serverUrl) {
     }
     // Start sync
     sceneSyncManager_->start(serverUrl);
+    
+    // Trigger node loading in NodeEditor after connection is established
+    if (nodeEditor_) {
+        // Small delay to ensure server connection is ready
+        QTimer::singleShot(500, [this]() {
+            if (nodeEditor_) {
+                nodeEditor_->loadNodesDeferred();
+            }
+        });
+    }
 }
 
 void MainWindow::onSceneUpdated() {
@@ -199,12 +212,12 @@ void MainWindow::setupDocks() {
     detailsDock->setWidget(detailsPanel_);
     addDockWidget(Qt::RightDockWidgetArea, detailsDock);
 
-    // 3. Node Editor (Bottom)
+    // 3. Node Editor (Bottom) - use shared HttpClient
     auto *nodeDock = new QDockWidget("Node Graph", this);
     nodeDock->setObjectName("NodeDock");
     nodeDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
-    auto *node_editor = new rbc::NodeEditor(nodeDock);
-    nodeDock->setWidget(node_editor);
+    nodeEditor_ = new rbc::NodeEditor(httpClient_, nodeDock);
+    nodeDock->setWidget(nodeEditor_);
     addDockWidget(Qt::BottomDockWidgetArea, nodeDock);
 
     // 4. Result Panel (Right, below Details)
