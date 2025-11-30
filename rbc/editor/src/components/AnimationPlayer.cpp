@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QSlider>
 #include <QPushButton>
+#include <QCheckBox>
 #include <QTimer>
 
 namespace rbc {
@@ -13,7 +14,8 @@ AnimationPlayer::AnimationPlayer(QWidget *parent)
       totalFrames_(0),
       fps_(30.0f),
       currentFrame_(0),
-      isPlaying_(false) {
+      isPlaying_(false),
+      isLooping_(true) {
     
     setupUi();
     
@@ -49,6 +51,12 @@ void AnimationPlayer::setupUi() {
     playPauseButton_->setFixedWidth(80);
     controlsLayout->addWidget(playPauseButton_);
     
+    // Loop checkbox
+    loopCheckBox_ = new QCheckBox("Loop", this);
+    loopCheckBox_->setChecked(true);
+    loopCheckBox_->setEnabled(false);
+    controlsLayout->addWidget(loopCheckBox_);
+    
     // Frame label
     frameLabel_ = new QLabel("Frame: 0 / 0", this);
     controlsLayout->addWidget(frameLabel_);
@@ -62,6 +70,8 @@ void AnimationPlayer::setupUi() {
             this, &AnimationPlayer::onPlayPauseClicked);
     connect(timelineSlider_, &QSlider::valueChanged,
             this, &AnimationPlayer::onSliderValueChanged);
+    connect(loopCheckBox_, &QCheckBox::toggled,
+            this, &AnimationPlayer::setLoop);
     
     setLayout(mainLayout);
 }
@@ -85,6 +95,7 @@ void AnimationPlayer::setAnimation(const QString &name, int totalFrames, float f
     timelineSlider_->setEnabled(true);
     
     playPauseButton_->setEnabled(true);
+    loopCheckBox_->setEnabled(true);
     
     updateFrameLabel();
     
@@ -109,6 +120,7 @@ void AnimationPlayer::clear() {
     timelineSlider_->setEnabled(false);
     
     playPauseButton_->setEnabled(false);
+    loopCheckBox_->setEnabled(false);
     
     updateFrameLabel();
 }
@@ -171,9 +183,16 @@ void AnimationPlayer::onTimerTick() {
     
     currentFrame_++;
     
-    // Loop animation
+    // Handle end of animation
     if (currentFrame_ > totalFrames_) {
-        currentFrame_ = 0;
+        if (isLooping_) {
+            // Loop: reset to beginning
+            currentFrame_ = 0;
+        } else {
+            // No loop: pause at last frame
+            currentFrame_ = totalFrames_;
+            pause();
+        }
     }
     
     timelineSlider_->setValue(currentFrame_);
@@ -192,6 +211,10 @@ void AnimationPlayer::updatePlayButton() {
 
 void AnimationPlayer::updateFrameLabel() {
     frameLabel_->setText(QString("Frame: %1 / %2").arg(currentFrame_).arg(totalFrames_));
+}
+
+void AnimationPlayer::setLoop(bool loop) {
+    isLooping_ = loop;
 }
 
 }  // namespace rbc

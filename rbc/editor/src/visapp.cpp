@@ -69,6 +69,7 @@ void VisApp::update() {
         add_vk_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, VkResourceUsageType::RasterRead);
     }
     utils.tick([&]() {
+        frame_index = 0;// force update
         cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
         auto &frame_settings = utils.render_settings.read_mut<rbc::FrameSettings>();
         auto &dst_img = utils.dst_image;

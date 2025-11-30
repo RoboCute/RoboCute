@@ -4,6 +4,7 @@
 #include <QSlider>
 #include <QPushButton>
 #include <QLabel>
+#include <QCheckBox>
 #include <QString>
 
 namespace rbc {
@@ -36,6 +37,10 @@ public:
     // Frame control
     void setFrame(int frame);
     int currentFrame() const;
+    
+    // Loop control
+    void setLoop(bool loop);
+    bool isLooping() const { return isLooping_; }
 
 signals:
     // Emitted when frame changes (either by slider or playback)
@@ -56,6 +61,7 @@ private:
 
     QSlider *timelineSlider_;
     QPushButton *playPauseButton_;
+    QCheckBox *loopCheckBox_;
     QLabel *frameLabel_;
     QLabel *animNameLabel_;
     
@@ -64,6 +70,7 @@ private:
     float fps_;
     int currentFrame_;
     bool isPlaying_;
+    bool isLooping_;
     
     QTimer *playbackTimer_;
 };

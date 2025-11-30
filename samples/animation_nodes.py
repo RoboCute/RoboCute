@@ -165,8 +165,8 @@ class RotationAnimationNode(rbc.RBCNode):
         center_x = float(self.get_input("center_x", 0.0))
         center_y = float(self.get_input("center_y", 0.0))
         center_z = float(self.get_input("center_z", 0.0))
-        radius = float(self.get_input("radius", 20.0))
-        angular_velocity = float(self.get_input("angular_velocity", 50.0))
+        radius = float(self.get_input("radius", 10.0))
+        angular_velocity = float(self.get_input("angular_velocity", 5.0))
         duration_frames = int(self.get_input("duration_frames", 120))
         fps = float(self.get_input("fps", 30.0))
 
