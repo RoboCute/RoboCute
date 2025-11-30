@@ -256,6 +256,12 @@ void NodeEditor::onExecuteGraph() {
     m_executionPanel->logMessage(QString("Graph: %1 nodes, %2 connections")
                                      .arg(nodeCount)
                                      .arg(connectionCount));
+    
+    // Debug: Log graph definition
+    QJsonDocument debugDoc(graphDef);
+    QString debugJson = debugDoc.toJson(QJsonDocument::Indented);
+    m_executionPanel->logMessage("Graph Definition:");
+    m_executionPanel->logMessage(debugJson.left(500));  // First 500 chars
 
     // Execute
     m_httpClient->executeGraph(graphDef, [this](const QString &executionId, bool success) {
@@ -265,7 +271,8 @@ void NodeEditor::onExecuteGraph() {
 
 void NodeEditor::onGraphExecuted(const QString &executionId, bool success) {
     if (!success) {
-        m_executionPanel->logError("Failed to execute graph");
+        m_executionPanel->logError("Failed to execute graph - HTTP request failed");
+        m_executionPanel->logError("Check if backend server is running");
         m_executionPanel->setExecutionStatus("Execution Failed", false);
         m_isExecuting = false;
         return;
@@ -273,6 +280,7 @@ void NodeEditor::onGraphExecuted(const QString &executionId, bool success) {
 
     m_currentExecutionId = executionId;
     m_executionPanel->logMessage(QString("Execution ID: %1").arg(executionId));
+    m_executionPanel->logMessage("Fetching execution outputs...");
 
     // Fetch outputs
     m_httpClient->fetchExecutionOutputs(executionId, [this](const QJsonObject &outputs, bool success) {
@@ -295,6 +303,14 @@ void NodeEditor::onOutputsReceived(const QJsonObject &outputs, bool success) {
 
     // Display results
     m_executionPanel->displayExecutionResults(outputs);
+    
+    // Check for errors in execution
+    if (status == "failed") {
+        m_executionPanel->logError("Graph execution failed on server side");
+        if (outputs.contains("error")) {
+            m_executionPanel->logError(QString("Server error: %1").arg(outputs["error"].toString()));
+        }
+    }
 
     // Update node outputs in the graph
     if (outputs.contains("outputs")) {

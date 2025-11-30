@@ -71,14 +71,21 @@ class NodeGraph:
         if node_id in self._nodes:
             raise ValueError(f"Node with id '{node_id}' already exists in the graph")
         
+        print(f"[NodeGraph] Creating node '{node_id}' of type '{node_type}'")
+        print(f"[NodeGraph]   Scene context available: {self.scene_context is not None}")
+        
         registry = get_registry()
         node = registry.create_node(node_type, node_id, self.scene_context)
         
         if node is None:
+            print(f"[NodeGraph]   ✗ Failed to create node")
             return None
+        
+        print(f"[NodeGraph]   ✓ Node created: {node.__class__.__name__}")
         
         # 设置静态输入值
         if inputs:
+            print(f"[NodeGraph]   Setting {len(inputs)} input(s)")
             for name, value in inputs.items():
                 node.set_input(name, value)
         
@@ -274,22 +281,34 @@ class NodeGraph:
         Raises:
             ValueError: 如果定义无效
         """
+        print(f"[NodeGraph] Creating graph '{graph_id}' from definition")
+        print(f"[NodeGraph] Scene context provided: {scene_context is not None}")
+        
         graph = cls(graph_id, scene_context)
         
         # 添加节点
+        print(f"[NodeGraph] Adding {len(definition.nodes)} nodes...")
         for node_def in definition.nodes:
+            print(f"[NodeGraph]   Adding node '{node_def.node_id}' (type: {node_def.node_type})")
             node = graph.add_node(node_def.node_id, node_def.node_type, node_def.inputs)
             if node is None:
+                print(f"[NodeGraph]   ✗ Failed to create node '{node_def.node_id}'")
                 raise ValueError(f"Failed to create node: {node_def.node_id} (type: {node_def.node_type})")
+            print(f"[NodeGraph]   ✓ Node '{node_def.node_id}' created")
         
         # 添加连接
+        print(f"[NodeGraph] Adding {len(definition.connections)} connections...")
         for conn in definition.connections:
+            print(f"[NodeGraph]   {conn.from_node}.{conn.from_output} → {conn.to_node}.{conn.to_input}")
             success = graph.add_connection(
                 conn.from_node, conn.from_output,
                 conn.to_node, conn.to_input
             )
             if not success:
+                print(f"[NodeGraph]   ✗ Failed to create connection")
                 raise ValueError(f"Failed to create connection: {conn}")
+        
+        print(f"[NodeGraph] ✓ Graph created successfully")
         
         # 设置元数据
         graph._metadata = definition.metadata

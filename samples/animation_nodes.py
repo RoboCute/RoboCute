@@ -43,13 +43,23 @@ class EntityInputNode(rbc.RBCNode):
     def execute(self) -> Dict[str, Any]:
         entity_id = int(self.get_input("entity_id", 1))
         
+        print(f"[EntityInputNode] Looking for entity ID: {entity_id}")
+        
         # Validate entity exists in scene context
         if self.context is None:
+            print("[EntityInputNode] ✗ No scene context available!")
             raise RuntimeError("EntityInputNode requires a scene context")
+        
+        print(f"[EntityInputNode] Scene context available, {len(self.context.get_all_entities())} entities in scene")
         
         entity = self.context.get_entity(entity_id)
         if entity is None:
+            print(f"[EntityInputNode] ✗ Entity {entity_id} not found")
+            all_entities = self.context.get_all_entities()
+            print(f"[EntityInputNode] Available entities: {[e.id for e in all_entities]}")
             raise ValueError(f"Entity with ID {entity_id} not found in scene")
+        
+        print(f"[EntityInputNode] ✓ Found entity: {entity.name} (ID: {entity.id})")
         
         # Return entity reference as a dict
         return {
@@ -142,10 +152,14 @@ class RotationAnimationNode(rbc.RBCNode):
     def execute(self) -> Dict[str, Any]:
         # Get inputs
         entity = self.get_input("entity")
+        print(f"[RotationAnimationNode] Entity input: {entity}")
+        
         if entity is None:
+            print("[RotationAnimationNode] ✗ No entity input provided")
             raise ValueError("Entity input is required")
         
         entity_id = entity["id"]
+        print(f"[RotationAnimationNode] Generating rotation animation for entity {entity_id}")
         
         center_x = float(self.get_input("center_x", 0.0))
         center_y = float(self.get_input("center_y", 0.0))
@@ -202,6 +216,9 @@ class RotationAnimationNode(rbc.RBCNode):
             
             animation_seq.add_keyframe(keyframe)
         
+        print(f"[RotationAnimationNode] ✓ Generated {len(animation_seq.keyframes)} keyframes")
+        print(f"[RotationAnimationNode]   Total frames: {animation_seq.get_total_frames()}")
+        
         return {
             "animation": animation_seq
         }
@@ -253,14 +270,20 @@ class AnimationOutputNode(rbc.RBCNode):
     
     def execute(self) -> Dict[str, Any]:
         animation_seq = self.get_input("animation")
+        print(f"[AnimationOutputNode] Animation input received: {type(animation_seq)}")
+        
         if animation_seq is None:
+            print("[AnimationOutputNode] ✗ No animation input provided")
             raise ValueError("Animation input is required")
         
         name = self.get_input("name", "animation")
         fps = float(self.get_input("fps", 30.0))
         
+        print(f"[AnimationOutputNode] Storing animation as '{name}'")
+        
         # Validate scene context
         if self.context is None:
+            print("[AnimationOutputNode] ✗ No scene context available!")
             raise RuntimeError("AnimationOutputNode requires a scene context")
         
         # Create animation clip

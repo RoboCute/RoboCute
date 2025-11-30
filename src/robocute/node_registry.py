@@ -94,9 +94,22 @@ class NodeRegistry:
         """
         node_class = self.get_node_class(node_type)
         if node_class is None:
+            print(f"[NodeRegistry] ✗ Node type '{node_type}' not found in registry")
+            print(f"[NodeRegistry]   Registered types: {list(self._registry.keys())}")
             return None
 
-        return node_class(node_id, context)
+        print(f"[NodeRegistry] Creating instance of {node_class.__name__}")
+        print(f"[NodeRegistry]   Context provided: {context is not None}")
+        
+        try:
+            node = node_class(node_id, context)
+            print(f"[NodeRegistry] ✓ Node instance created successfully")
+            return node
+        except Exception as e:
+            print(f"[NodeRegistry] ✗ Failed to instantiate node: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     def get_all_node_types(self) -> List[str]:
         """

@@ -136,8 +136,14 @@ class GraphExecutor:
             # 通知开始执行
             self._notify_callbacks(node_id, ExecutionStatus.RUNNING)
             
+            print(f"[Executor] Executing node '{node_id}' (type: {node.__class__.__name__})")
+            print(f"[Executor]   Inputs: {node._inputs}")
+            
             # 执行节点
             outputs = node.run()
+            
+            print(f"[Executor]   ✓ Node '{node_id}' completed")
+            print(f"[Executor]   Outputs: {outputs}")
             
             # 记录结果
             result.outputs = outputs
@@ -156,6 +162,10 @@ class GraphExecutor:
             
         except Exception as e:
             # 记录错误
+            print(f"[Executor]   ✗ Node '{node_id}' failed: {e}")
+            import traceback
+            traceback.print_exc()
+            
             result.status = ExecutionStatus.FAILED
             result.error = str(e)
             result.end_time = datetime.now()
@@ -176,6 +186,9 @@ class GraphExecutor:
         Returns:
             图执行结果
         """
+        print(f"\n[Executor] Starting execution of graph '{self.graph.graph_id}'")
+        print(f"[Executor] Scene context available: {self.scene_context is not None}")
+        
         # 初始化结果
         self._execution_result = GraphExecutionResult(
             graph_id=self.graph.graph_id,
@@ -185,20 +198,27 @@ class GraphExecutor:
         
         try:
             # 验证图
+            print("[Executor] Validating graph...")
             is_valid, error = self.graph.validate()
             if not is_valid:
+                print(f"[Executor] ✗ Validation failed: {error}")
                 self._execution_result.status = ExecutionStatus.FAILED
                 self._execution_result.error = f"Graph validation failed: {error}"
                 self._execution_result.end_time = datetime.now()
                 return self._execution_result
+            print("[Executor] ✓ Validation passed")
             
             # 获取拓扑排序
+            print("[Executor] Computing execution order...")
             execution_order = self.graph.topological_sort()
             if execution_order is None:
+                print("[Executor] ✗ Failed to compute execution order (cycle detected)")
                 self._execution_result.status = ExecutionStatus.FAILED
                 self._execution_result.error = "Failed to get execution order (cycle detected)"
                 self._execution_result.end_time = datetime.now()
                 return self._execution_result
+            
+            print(f"[Executor] ✓ Execution order: {' → '.join(execution_order)}")
             
             # 按顺序执行节点
             for node_id in execution_order:
@@ -207,11 +227,13 @@ class GraphExecutor:
                 
                 # 如果节点执行失败，停止执行
                 if node_result.status == ExecutionStatus.FAILED:
+                    print(f"[Executor] ✗ Stopping execution due to node '{node_id}' failure")
                     self._execution_result.status = ExecutionStatus.FAILED
                     self._execution_result.error = f"Node {node_id} failed: {node_result.error}"
                     break
             else:
                 # 所有节点执行成功
+                print("[Executor] ✓ All nodes executed successfully")
                 self._execution_result.status = ExecutionStatus.COMPLETED
             
         except Exception as e:

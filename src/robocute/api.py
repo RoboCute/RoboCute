@@ -191,6 +191,10 @@ async def execute_graph(request: GraphExecuteRequest):
     Returns:
         执行结果
     """
+    print("\n" + "="*60)
+    print("[API] Graph execution request received")
+    print("="*60)
+    
     try:
         graph = None
         execution_id = None
@@ -206,22 +210,56 @@ async def execute_graph(request: GraphExecuteRequest):
         elif request.graph_definition:
             # 临时创建并执行图
             execution_id = f"exec_{uuid.uuid4()}"
+            print(f"[API] Creating graph from definition: {execution_id}")
+            print(f"[API] Nodes: {len(request.graph_definition.nodes)}")
+            print(f"[API] Connections: {len(request.graph_definition.connections)}")
+            
+            # Log node details
+            for node_def in request.graph_definition.nodes:
+                print(f"  Node: {node_def.node_id} (type: {node_def.node_type})")
+                print(f"    Inputs: {node_def.inputs}")
+            
             graph = NodeGraph.from_definition(request.graph_definition, execution_id)
             
             # 验证图
+            print("[API] Validating graph...")
             is_valid, error = graph.validate()
             if not is_valid:
+                print(f"[API] ✗ Graph validation failed: {error}")
                 raise HTTPException(status_code=400, detail=f"Invalid graph: {error}")
+            print("[API] ✓ Graph validation passed")
         else:
             raise HTTPException(status_code=400, detail="Either graph_id or graph_definition must be provided")
         
         # 执行图 with scene context if available
-        scene_context = SceneContext(_scene) if _scene else None
+        if _scene:
+            print(f"[API] Using scene context with {len(_scene.get_all_entities())} entities")
+            scene_context = SceneContext(_scene)
+        else:
+            print("[API] WARNING: No scene available, executing without context")
+            scene_context = None
+        
+        print("[API] Creating executor...")
         executor = GraphExecutor(graph, scene_context)
+        
+        print("[API] Starting graph execution...")
         result = executor.execute()
+        
+        print(f"[API] Execution finished: {result.status.value}")
+        if result.error:
+            print(f"[API] Error: {result.error}")
         
         # 存储执行结果
         _execution_results[execution_id] = result
+        
+        # Log node results
+        for node_id, node_result in result.node_results.items():
+            status_icon = "✓" if node_result.status == ExecutionStatus.COMPLETED else "✗"
+            print(f"  {status_icon} Node '{node_id}': {node_result.status.value}")
+            if node_result.error:
+                print(f"      Error: {node_result.error}")
+        
+        print("="*60 + "\n")
         
         return GraphExecuteResponse(
             execution_id=execution_id,
@@ -230,8 +268,14 @@ async def execute_graph(request: GraphExecuteRequest):
         )
         
     except ValueError as e:
+        print(f"[API] ValueError during graph execution: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"[API] Exception during graph execution: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 
