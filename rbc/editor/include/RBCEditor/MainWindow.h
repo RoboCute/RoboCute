@@ -6,13 +6,14 @@ class HttpClient;
 class SceneSyncManager;
 class SceneHierarchyWidget;
 class DetailsPanel;
+class ViewportWidget;
 }
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
     explicit MainWindow(QWidget *parent = nullptr);
-    void setupUi(QWidget *central_viewport);
+    void setupUi();
     ~MainWindow();
 
     // Access to HTTP client for scene sync
@@ -37,4 +38,5 @@ private:
     rbc::SceneSyncManager *sceneSyncManager_;
     rbc::SceneHierarchyWidget *sceneHierarchy_;
     rbc::DetailsPanel *detailsPanel_;
+    rbc::ViewportWidget *viewportWidget_;
 };

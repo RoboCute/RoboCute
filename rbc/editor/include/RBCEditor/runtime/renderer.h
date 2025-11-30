@@ -13,8 +13,7 @@ struct IRenderer {
     virtual void resume() = 0;
     virtual void handle_key(luisa::compute::Key key) = 0;
     virtual uint64_t get_present_texture(luisa::uint2 resolution) = 0;
-protected:
-    ~IRenderer() = default;
+    virtual ~IRenderer() = default;
 };
 
 }// namespace rbc

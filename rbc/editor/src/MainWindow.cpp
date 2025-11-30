@@ -11,15 +11,18 @@
 #include "RBCEditor/components/NodeEditor.h"
 #include "RBCEditor/components/SceneHierarchyWidget.h"
 #include "RBCEditor/components/DetailsPanel.h"
+#include "RBCEditor/components/ViewportWidget.h"
 #include "RBCEditor/runtime/HttpClient.h"
 #include "RBCEditor/runtime/SceneSyncManager.h"
+#include "RBCEditor/EditorEngine.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       httpClient_(new rbc::HttpClient(this)),
       sceneSyncManager_(nullptr),
       sceneHierarchy_(nullptr),
-      detailsPanel_(nullptr) {
+      detailsPanel_(nullptr),
+      viewportWidget_(nullptr) {
 }
 
 MainWindow::~MainWindow() {
@@ -28,17 +31,24 @@ MainWindow::~MainWindow() {
     }
 }
 
-void MainWindow::setupUi(QWidget *central_viewport) {
+void MainWindow::setupUi() {
     resize(1600, 900);
     setWindowTitle("RoboCute Editor");
+    
     // 3D Viewport
-    setCentralWidget(central_viewport);
+    viewportWidget_ = new rbc::ViewportWidget(&rbc::EditorEngine::instance(), this);
+    setCentralWidget(viewportWidget_);
 
     setupMenuBar();
     setupToolBar();
     setupDocks();
 
     statusBar()->showMessage("Ready");
+    
+    // Setup HttpClient in Engine if needed, or engine's one.
+    // Ideally, Engine manages networking too, but for now MainWindow owns HttpClient.
+    // Let's sync:
+    rbc::EditorEngine::instance().setHttpClient(httpClient_);
 }
 
 void MainWindow::startSceneSync(const QString &serverUrl) {
