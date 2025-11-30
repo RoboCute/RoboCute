@@ -1,8 +1,8 @@
 #include "RBCEditor/pbrapp.h"
 #include "luisa/core/dynamic_module.h"
 #include "luisa/runtime/rhi/pixel.h"
+#include <rbc_graphics/make_device_config.h>
 #include <luisa/backends/ext/native_resource_ext.hpp>
-#include "RBCEditor/base/device_config.h"
 
 using namespace luisa;
 using namespace luisa::compute;
@@ -103,6 +103,15 @@ void PBRApp::update() {
         reset = false;
         utils.reset_frame();
     }
+    if (utils.backend_name == "dx") {
+        clear_dx_states(utils.render_device.lc_device_ext());
+        add_dx_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+        add_dx_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+    } else if (utils.backend_name == "vk") {
+        clear_vk_states(utils.render_device.lc_device_ext());
+        add_vk_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, VkResourceUsageType::RasterRead);
+        add_vk_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, VkResourceUsageType::RasterRead);
+    }
     utils.tick([&]() {
         cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
         auto &frame_settings = utils.render_settings.read_mut<rbc::FrameSettings>();
@@ -127,7 +136,6 @@ void PBRApp::update() {
             light_move.destroy();
         }
     });
-    set_dx_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
 }
 PBRApp::~PBRApp() {
     utils.dispose([&]() {
