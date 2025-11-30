@@ -157,34 +157,38 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                                         finish_callbak = std::move(finish_callbak)] mutable {
                 if (!io_cmdlist.empty()) {
                     if (cmdlist.empty()) {
-                        io_cmdlist.add_callback([finish_callbak]() {});
+                        if (finish_callbak)
+                            io_cmdlist.add_callback([finish_callbak]() {});
                     }
                     frame_res.disk_io_fence = _render_device.io_service()->execute(std::move(io_cmdlist));
                     if (require_disk_io_sync) {
                         _render_device.io_service()->synchronize(frame_res.disk_io_fence);
                     }
                 } else {
+                    // If not task, consider this queue already synchronized
                     require_disk_io_sync = true;
                 }
 
                 if (!mem_io_cmdlist.empty()) {
                     if (cmdlist.empty()) {
-                        mem_io_cmdlist.add_callback([finish_callbak]() {});
+                        if (finish_callbak)
+                            mem_io_cmdlist.add_callback([finish_callbak]() {});
                     }
                     frame_res.mem_io_fence = _render_device.mem_io_service()->execute(std::move(mem_io_cmdlist));
                     if (require_memory_io_sync) {
                         _render_device.mem_io_service()->synchronize(frame_res.mem_io_fence);
                     }
                 } else {
+                    // If not task, consider this queue already synchronized
                     require_memory_io_sync = true;
                 }
                 if (!cmdlist.empty()) {
                     cmdlist.add_callback([finish_callbak]() {});
                     _render_device.async_compute_loop_mtx().lock();
-                    if (frame_res.disk_io_fence > 0 && !require_disk_io_sync) {
+                    if (!require_disk_io_sync) {
                         _render_device.lc_async_stream() << _render_device.io_service()->wait(frame_res.disk_io_fence);
                     }
-                    if (frame_res.mem_io_fence > 0 && !require_memory_io_sync) {
+                    if (!require_memory_io_sync) {
                         _render_device.lc_async_stream() << _render_device.mem_io_service()->wait(frame_res.mem_io_fence);
                     }
                     _render_device.async_compute_loop_mtx().unlock();
