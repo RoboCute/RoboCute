@@ -6,7 +6,8 @@ from robocute.api import app
 
 # Import animation nodes for registration
 import sys
-sys.path.insert(0, 'samples')
+
+sys.path.insert(0, "samples")
 import animation_nodes
 
 
@@ -87,7 +88,7 @@ def main():
         rbc.TransformComponent(
             position=[0.0, 1.0, 3.0],
             rotation=[0.0, 0.0, 0.0, 1.0],
-            scale=[1.0, 1.0, 1.0],
+            scale=[10.0, 10.0, 10.0],
         ),
     )
     print("    Added transform component")
@@ -115,10 +116,11 @@ def main():
     # Set scene in API for animation endpoints
     print("    Setting scene in API...")
     rbc.set_scene(scene)
-    
+
     # Merge Node API
     try:
         from robocute.api import app as node_api_app
+
         print("    Merging Node API into Editor Service...")
         editor_service._app.include_router(node_api_app.router)
         print("    Node API merged successfully")

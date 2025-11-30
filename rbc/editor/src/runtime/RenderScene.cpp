@@ -145,6 +145,7 @@ SimpleScene::SimpleScene(rbc::Lights &lights) : lights(lights) {
     _init_material();
     _init_tlas();
 }
+
 SimpleScene::~SimpleScene() {
     using namespace rbc;
     using namespace luisa;

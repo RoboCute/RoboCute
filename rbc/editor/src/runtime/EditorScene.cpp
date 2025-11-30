@@ -140,7 +140,7 @@ void EditorScene::updateFromSync(const SceneSync &sync) {
         if (it != entity_map_.end()) {
             // Update existing entity
             // qDebug("  Updating entity {} transform", entity.id);
-            updateEntityTransform(entity.id, entity.transform);
+            // updateEntityTransform(entity.id, entity.transform);
         } else {
             // Add new entity
             // qDebug("  Adding new entity {} with mesh {}", entity.id, mesh_path);
