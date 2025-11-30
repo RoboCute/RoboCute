@@ -22,7 +22,6 @@ public:
         Disposed,
     };
     struct MeshLightData {
-        MeshManager::MeshData* mesh_data;
         Buffer<BVH::PackedNode> blas_buffer;
         RC<DeviceMesh> device_mesh;
         vstd::optional<luisa::fiber::future<MeshLightAccel::HostResult>> host_result;
@@ -94,7 +93,7 @@ public:
 
     uint add_mesh_light_sync(
         CommandList& cmdlist,
-        MeshManager::MeshData* mesh_data,
+        RC<DeviceMesh> const& device_mesh,
         float4x4 local_to_world,
         MatCode material_code
     );
@@ -103,7 +102,8 @@ public:
         CommandList& cmdlist,
         uint light_index,
         float4x4 local_to_world,
-        MatCode material_code
+        MatCode material_code,
+        RC<DeviceMesh> const * new_mesh = nullptr
     );
 
     void update_area_light(

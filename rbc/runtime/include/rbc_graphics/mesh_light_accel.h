@@ -4,7 +4,7 @@
 #include <rbc_graphics/dispose_queue.h>
 #include <rbc_graphics/mesh_manager.h>
 #include <rbc_graphics/accel_manager.h>
-#include <rbc_graphics/accel_manager.h>
+#include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/texture/tex_stream_manager.h>
 #include <luisa/core/stl/vector.h>
 #include <luisa/runtime/rtx/triangle.h>
@@ -29,8 +29,8 @@ private:
         float4x4                 // local_to_global
         > const* _node_local_to_global;
     struct Task {
-        vector<float3> poses;
-        vector<Triangle> triangles;
+        float4x4 transform;
+        RC<DeviceMesh> mesh;
         vector<float> lums;
         luisa::fiber::future<HostResult> result;
     };
@@ -50,6 +50,7 @@ public:
         float4x4 transform
     );
     HostResult build_bvh(
+        float4x4 matrix,
         span<float3 const> vertices,
         span<Triangle const> triangles,
         span<float const> triangle_lum
@@ -59,13 +60,11 @@ public:
         CommandList& cmdlist,
         BindlessArray& heap,
         BindlessArray& image_heap,
-        MeshManager::MeshMeta const& mesh_meta,
+        RC<DeviceMesh> const& mesh,
         uint mat_index,
         uint mat_idx_buffer_heap_idx,
-        BufferView<uint> mesh_data_buffer,
-        uint tri_offset_uint,
-        uint vertex_count,
-        TexStreamManager* tex_stream_mng
+        TexStreamManager* tex_stream_mng,
+        float4x4 transform
     );
 
     void update();

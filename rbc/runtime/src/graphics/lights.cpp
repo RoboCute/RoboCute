@@ -441,7 +441,7 @@ void Lights::add_tick(vstd::function<bool()> &&func) {
 }
 uint Lights::add_mesh_light_sync(
     CommandList &cmdlist,
-    MeshManager::MeshData *mesh_data,
+    RC<DeviceMesh> const &device_mesh,
     float4x4 local_to_world,
     MatCode material_code) {
     auto &scene = SceneManager::instance();
@@ -454,20 +454,19 @@ uint Lights::add_mesh_light_sync(
         mesh_lights.removed_list.pop_back();
     }
     auto &v = mesh_lights.light_data[data_index];
-    v.mesh_data = mesh_data;
+    v.device_mesh = device_mesh;
     v._load_flag = luisa::make_unique<std::atomic<MeshLightLoadState>>(MeshLightLoadState::Unloaded);
+    device_mesh->wait_finished();
     v.host_result = mesh_light_accel.build_bvh(
         RenderDevice::instance().lc_device(),
         cmdlist,
         scene.buffer_heap(),
         scene.image_heap(),
-        mesh_data->meta,
+        device_mesh,
         material_code.value,
         heap_indices::buffer_allocator_heap_index,
-        mesh_data->pack.data,
-        mesh_data->meta.tri_byte_offset / sizeof(uint),
-        mesh_data->meta.vertex_count,
-        TexStreamManager::instance());
+        TexStreamManager::instance(),
+        local_to_world);
     auto &stream = RenderDevice::instance().lc_main_stream();
     stream << cmdlist.commit() << synchronize();
     mesh_light_accel.update();
@@ -479,7 +478,7 @@ uint Lights::add_mesh_light_sync(
     v.tlas_id = scene.accel_manager().emplace_mesh_instance(
         cmdlist, scene.host_upload_buffer(), scene.buffer_allocator(),
         scene.buffer_uploader(), scene.dispose_queue(),
-        v.mesh_data,
+        device_mesh->mesh_data(),
         {&material_code, 1},
         local_to_world,
         0xffu,
@@ -524,20 +523,17 @@ uint Lights::add_mesh_light_async(
         if (!v.device_mesh->load_finished())
             return true;
         auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();
-        v.mesh_data = v.device_mesh->mesh_data();
         auto &scene = SceneManager::instance();
         v.host_result = mesh_light_accel.build_bvh(
             RenderDevice::instance().lc_device(),
             cmdlist,
             scene.buffer_heap(),
             scene.image_heap(),
-            v.mesh_data->meta,
+            v.device_mesh,
             material_code.value,
             heap_indices::buffer_allocator_heap_index,
-            v.mesh_data->pack.data,
-            v.mesh_data->meta.tri_byte_offset / sizeof(uint),
-            v.mesh_data->meta.vertex_count,
-            TexStreamManager::instance());
+            TexStreamManager::instance(),
+            local_to_world);
         // Load data
         add_tick([this, data_index, local_to_world, material_code, load_flag = v._load_flag]() {
             auto &scene = SceneManager::instance();
@@ -556,7 +552,7 @@ uint Lights::add_mesh_light_async(
             v.tlas_id = scene.accel_manager().emplace_mesh_instance(
                 cmdlist, scene.host_upload_buffer(), scene.buffer_allocator(),
                 scene.buffer_uploader(), scene.dispose_queue(),
-                v.mesh_data,
+                v.device_mesh->mesh_data(),
                 {&material_code, 1},
                 local_to_world,
                 0xffu,
@@ -661,25 +657,27 @@ void Lights::update_mesh_light_sync(
     CommandList &cmdlist,
     uint data_index,
     float4x4 local_to_world,
-    MatCode material_code) {
+    MatCode material_code,
+    RC<DeviceMesh> const *new_mesh) {
     auto &scene = SceneManager::instance();
     auto &v = mesh_lights.light_data[data_index];
-    auto &mesh_data = v.mesh_data;
-    if (!v._load_flag || v._load_flag->load() != MeshLightLoadState::Loaded || !mesh_data) [[unlikely]] {
+    if (!v._load_flag || v._load_flag->load() != MeshLightLoadState::Loaded) [[unlikely]] {
         LUISA_ERROR("Mesh light unloaded.");
     }
+    if (new_mesh) {
+        v.device_mesh = *new_mesh;
+    }
+    v.device_mesh->wait_finished();
     v.host_result = mesh_light_accel.build_bvh(
         RenderDevice::instance().lc_device(),
         cmdlist,
         scene.buffer_heap(),
         scene.image_heap(),
-        mesh_data->meta,
+        v.device_mesh,
         material_code.value,
         heap_indices::buffer_allocator_heap_index,
-        mesh_data->pack.data,
-        mesh_data->meta.tri_byte_offset / sizeof(uint),
-        mesh_data->meta.vertex_count,
-        TexStreamManager::instance());
+        TexStreamManager::instance(),
+        local_to_world);
     auto &stream = RenderDevice::instance().lc_main_stream();
     stream << cmdlist.commit() << synchronize();
     mesh_light_accel.update();
@@ -985,7 +983,6 @@ void Lights::remove_mesh_light(uint light_index) {
     auto &data = mesh_lights.light_data[light_index];
     scene.dispose_after_sync(std::move(data.blas_buffer));
     data.device_mesh.reset();
-    data.mesh_data = nullptr;
     data.host_result.reset();
     if (data.tlas_id != ~0u)
         scene.accel_manager().remove_mesh_instance(
