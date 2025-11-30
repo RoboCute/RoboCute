@@ -28,8 +28,6 @@ EditorScene::EditorScene() {
         material::PolymorphicMaterial::index<material::Unlit>);
 
     initMaterial();
-    // DO NOT initialize light here - wait until first entity is added
-    // This matches SimpleScene pattern where light is added with mesh instances
 
     qDebug("EditorScene initialized (light will be initialized on first entity)");
 }
@@ -51,7 +49,10 @@ EditorScene::~EditorScene() {
 
     // Remove light (only if it was initialized)
     if (light_initialized_ && light_id_ != 0) {
-        lights_.remove_area_light(light_id_);
+        lights_->remove_area_light(light_id_);
+    }
+    if (lights_) {
+        lights_.destroy();
     }
 
     // Discard material
@@ -81,6 +82,7 @@ void EditorScene::initMaterial() {
 void EditorScene::initLight() {
     using namespace luisa;
     using namespace luisa::compute;
+    lights_.create();
     auto &render_device = RenderDevice::instance();
     auto &cmdlist = render_device.lc_main_cmd_list();
 
@@ -89,18 +91,9 @@ void EditorScene::initLight() {
         translation(light_pos) *
         rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f) * scaling(0.1f);
 
-    light_id_ = lights_.add_area_light(cmdlist, area_light_transform, light_emission);
+    light_id_ = lights_->add_area_light(cmdlist, area_light_transform, light_emission);
     light_initialized_ = true;
-
     qDebug() << "EditorScene: Light initialized";
-}
-
-void EditorScene::ensureLightInitialized() {
-    // Lazy initialization: initialize light when first entity is added
-    // This follows the SimpleScene pattern where light is added alongside mesh instances
-    if (!light_initialized_) {
-        initLight();
-    }
 }
 
 void EditorScene::updateFromSync(const SceneSync &sync) {
@@ -176,10 +169,6 @@ void EditorScene::addEntity(int entity_id, const luisa::string &mesh_path,
     using namespace luisa::compute;
 
     qDebug() << "Adding entity " << entity_id << "  with mesh: " << mesh_path;
-
-    // Ensure light is initialized before adding first entity
-    // This matches SimpleScene pattern: light is created alongside mesh instances
-    ensureLightInitialized();
 
     EntityInstance instance;
     instance.entity_id = entity_id;
@@ -371,9 +360,7 @@ void EditorScene::convertMeshToBuilder(const luisa::shared_ptr<rbc::Mesh> &mesh,
         builder.position.push_back(float3(v.position[0], v.position[1], v.position[2]));
         builder.normal.push_back(float3(v.normal[0], v.normal[1], v.normal[2]));
         builder.uvs[0].push_back(float2(v.texcoord[0], v.texcoord[1]));
-        // Note: tangent handling could be added if needed
     }
-
     // Copy indices
     auto &triangle = builder.triangle_indices.emplace_back();
     for (uint32_t idx : mesh->indices) {

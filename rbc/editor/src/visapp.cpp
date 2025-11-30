@@ -9,6 +9,7 @@ using namespace luisa;
 using namespace luisa::compute;
 
 namespace rbc {
+
 void VisApp::init(
     const char *program_path, const char *backend_name) {
     luisa::string_view backend = backend_name;
@@ -30,7 +31,6 @@ void VisApp::init(
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name));
     utils.init_render();
-
     utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
 
     auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);

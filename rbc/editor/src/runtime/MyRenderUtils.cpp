@@ -91,6 +91,12 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
         init_counter.wait();
     }
     lights.create();
+    auto light_pos = float3(0.5, 0.5f, 1);
+    float4x4 area_light_transform =
+        translation(light_pos) *
+        rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f) * scaling(0.1f);
+    constexpr float3 light_emission = luisa::float3(7, 6, 3) * 1000.f;
+    lights->add_area_light(cmdlist, area_light_transform, light_emission);
 }
 void GraphicsUtils::init_render() {
     render_module = DynamicModule::load("rbc_render_plugin");

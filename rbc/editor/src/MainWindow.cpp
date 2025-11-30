@@ -98,6 +98,11 @@ void MainWindow::onSceneUpdated() {
     if (resultPanel_ && sceneSyncManager_) {
         resultPanel_->updateFromSync(sceneSyncManager_->sceneSync());
     }
+    qDebug() << "Scene updated";
+    // update editor scene
+    if (editorScene_ && sceneSyncManager_) {
+        editorScene_->updateFromSync(*sceneSyncManager_->sceneSync());
+    }
 }
 
 void MainWindow::onConnectionStatusChanged(bool connected) {
