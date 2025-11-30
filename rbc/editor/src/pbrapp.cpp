@@ -31,8 +31,6 @@ void PBRApp::init(
     utils.init_render();
     utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
     simple_scene.create(*utils.lights);
-    // TODO: Key Callback
-
     auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
     cam.fov = radians(80.f);
 }
@@ -49,6 +47,53 @@ uint64_t PBRApp::create_texture(uint width, uint height) {
 }
 
 void PBRApp::handle_key(luisa::compute::Key key) {
+    frame_index = 0;
+    reset = true;
+    switch (key) {
+        case Key::KEY_SPACE: {
+            LUISA_INFO("Reset frame");
+        } break;
+        case Key::KEY_W: {
+            light_move.create();
+            *light_move += float3(0, 0.1, 0);
+        } break;
+        case Key::KEY_S: {
+            light_move.create();
+            *light_move += float3(0, -0.1, 0);
+        } break;
+        case Key::KEY_A: {
+            light_move.create();
+            *light_move += float3(-0.1, 0, 0);
+        } break;
+        case Key::KEY_D: {
+            light_move.create();
+            *light_move += float3(0.1, 0, 0);
+        } break;
+        case Key::KEY_Q: {
+            light_move.create();
+            *light_move += float3(0, 0, -0.1);
+        } break;
+        case Key::KEY_E: {
+            light_move.create();
+            *light_move += float3(0, 0, 0.1);
+        } break;
+        case Key::KEY_UP: {
+            cube_move.create();
+            *cube_move += float3(0, 0.1, 0);
+        } break;
+        case Key::KEY_DOWN: {
+            cube_move.create();
+            *cube_move += float3(0, -0.1, 0);
+        } break;
+        case Key::KEY_LEFT: {
+            cube_move.create();
+            *cube_move += float3(-0.1, 0, 0);
+        } break;
+        case Key::KEY_RIGHT: {
+            cube_move.create();
+            *cube_move += float3(0.1, 0, 0);
+        } break;
+    }
 }
 
 void PBRApp::update() {
@@ -81,6 +126,9 @@ void PBRApp::update() {
             light_move.destroy();
         }
     });
+    set_dx_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+}
+PBRApp::~PBRApp() {
     utils.dispose([&]() {
         auto pipe_settings_json = utils.render_settings.serialize_to_json();
         if (pipe_settings_json.data()) {
@@ -93,10 +141,6 @@ void PBRApp::update() {
         // destroy render-pipeline
         simple_scene.destroy();
     });
-
-    set_dx_before_state(device_config_ext, Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
-}
-PBRApp::~PBRApp() {
     utils.render_device.lc_main_stream().synchronize();
     ctx.reset();
 }

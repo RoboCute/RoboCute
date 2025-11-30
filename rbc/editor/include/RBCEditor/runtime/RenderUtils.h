@@ -44,7 +44,7 @@ struct GraphicsUtils {
     void init_graphics(luisa::filesystem::path const &shader_path);
     void init_render();
     void resize_swapchain(uint2 size);
-    void init_display(luisa::string_view name, uint2 resolution, bool resizable, bool create_window = false);
+    void init_display(luisa::string_view name, uint2 resolution, bool resizable);
     void reset_frame();
     bool should_close();
     const Image<float> &GetDestImage() const { return dst_image; }

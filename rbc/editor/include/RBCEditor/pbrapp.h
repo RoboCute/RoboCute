@@ -13,17 +13,12 @@
 namespace rbc {
 
 struct PBRApp : public IApp {
-    luisa::compute::DeviceConfigExt *device_config_ext{};
-
-    luisa::compute::Shader<2, luisa::compute::Image<float>> clear_shader;
-    luisa::compute::Shader<2, luisa::compute::Image<float>, float, luisa::compute::float2> draw_shader;
-
     luisa::uint2 resolution;
-
     luisa::uint2 dx_adaptor_luid;
 
     luisa::fiber::scheduler scheduler;
     my::GraphicsUtils utils;
+
     uint64_t frame_index = 0;
     double last_frame_time = 0;
     luisa::Clock clk;

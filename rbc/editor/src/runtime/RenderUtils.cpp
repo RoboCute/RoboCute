@@ -96,24 +96,22 @@ void GraphicsUtils::init_render() {
     sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false, false);
 }
 
-void GraphicsUtils::init_display(luisa::string_view name, uint2 resolution, bool resizable, bool create_window) {
+void GraphicsUtils::init_display(luisa::string_view name, uint2 resolution, bool resizable) {
     if (display_initialized) { return; }
     auto &device = render_device.lc_device();
     present_stream = device.create_stream(StreamTag::GRAPHICS);
     present_event.event = device.create_timeline_event();
 
-    if (create_window) {
-        window.create(luisa::string{name}.c_str(), resolution, resizable);
-        swapchain = device.create_swapchain(
-            present_stream,
-            SwapchainOption{
-                .display = window->native_display(),
-                .window = window->native_handle(),
-                .size = resolution,
-                .wants_hdr = false,
-                .wants_vsync = false,
-                .back_buffer_count = 1});
-    }
+    window.create(luisa::string{name}.c_str(), resolution, resizable);
+    swapchain = device.create_swapchain(
+        present_stream,
+        SwapchainOption{
+            .display = window->native_display(),
+            .window = window->native_handle(),
+            .size = resolution,
+            .wants_hdr = false,
+            .wants_vsync = false,
+            .back_buffer_count = 1});
 
     dst_image = render_device.lc_device().create_image<float>(swapchain.backend_storage(), resolution);
     display_initialized = true;
