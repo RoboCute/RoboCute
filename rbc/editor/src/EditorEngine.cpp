@@ -3,6 +3,7 @@
 #include <QDebug>
 #include "RBCEditor/dummyapp.h"
 #include "RBCEditor/naiveapp.h"
+#include "RBCEditor/pbrapp.h"
 
 namespace rbc {
 
@@ -26,7 +27,8 @@ void EditorEngine::init(int argc, char **argv) {
     m_graphicsApi = QRhi::D3D12;
 
     // m_renderApp = std::make_unique<DummyApp>();
-    m_renderApp = std::make_unique<NaiveApp>();
+    // m_renderApp = std::make_unique<NaiveApp>();
+    m_renderApp = std::make_unique<PBRApp>();
 
     m_renderApp->init(*m_context, backend.c_str());
 }
