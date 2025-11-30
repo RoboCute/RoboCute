@@ -33,7 +33,9 @@ public:
     uint64_t create_texture(uint width, uint height) override;
     void update() override;
     void handle_key(luisa::compute::Key key) override;
-    [[nodiscard]] void *GetStreamNativeHandle() const override { return utils.present_stream.native_handle(); }
+    [[nodiscard]] void *GetStreamNativeHandle() const override { 
+        return utils.present_stream.native_handle(); 
+    }
     [[nodiscard]] void *GetDeviceNativeHandle() const override { return utils.render_device.lc_device().native_handle(); }
     ~PBRApp();
 };

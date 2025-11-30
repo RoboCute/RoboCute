@@ -49,6 +49,9 @@ void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_v
     render_device.set_main_stream(&compute_stream);
     compute_event.event = render_device.lc_device().create_timeline_event();
     this->backend_name = backend_name;
+    auto &device = render_device.lc_device();
+    present_stream = device.create_stream(StreamTag::GRAPHICS);
+    present_event.event = device.create_timeline_event();
 }
 void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     auto &cmdlist = render_device.lc_main_cmd_list();
@@ -99,10 +102,6 @@ void GraphicsUtils::init_render() {
 
 void GraphicsUtils::init_display(luisa::string_view name, uint2 resolution, bool resizable) {
     if (display_initialized) { return; }
-    auto &device = render_device.lc_device();
-    present_stream = device.create_stream(StreamTag::GRAPHICS);
-    present_event.event = device.create_timeline_event();
-
     dst_image = render_device.lc_device().create_image<float>(PixelStorage::BYTE4, resolution);
     display_initialized = true;
 }
@@ -113,7 +112,6 @@ void GraphicsUtils::reset_frame() {
 }
 
 void GraphicsUtils::tick(vstd::function<void()> before_render) {
-    sm->prepare_frame();
     AssetsManager::instance()->wake_load_thread();
     if (require_reset) {
         require_reset = false;
@@ -126,6 +124,10 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
     }
     auto &main_stream = render_device.lc_main_stream();
     render_device.render_loop_mtx().lock();
+    sm->prepare_frame();
+    present_stream << present_event.event.signal(++present_event.fence_index);
+    main_stream << present_event.event.wait(present_event.fence_index);
+    // present_event.event.synchronize(present_event.fence_index); // todo
     auto &cmdlist = render_device.lc_main_cmd_list();
     render_plugin->before_rendering({}, display_pipe_ctx);
     auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
@@ -139,18 +141,12 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
         cmdlist,
         main_stream, managed_device);
     main_stream << compute_event.event.signal(++compute_event.fence_index);
-    auto prepare_next_frame = vstd::scope_exit([&] {
-        if (compute_event.fence_index > 2)
-            compute_event.event.synchronize(compute_event.fence_index - 2);
-        sm->prepare_frame();
-    });
+    if (compute_event.fence_index > 2)
+        compute_event.event.synchronize(compute_event.fence_index - 2);
     render_device.render_loop_mtx().unlock();
-
+    // main_stream.synchronize(); // todo
+    compute_event.event.synchronize(compute_event.fence_index);
     present_stream << compute_event.event.wait(compute_event.fence_index);
-    if (present_event.fence_index > 1) {
-        present_event.event.synchronize(present_event.fence_index - 1);
-    }
-    present_stream << present_event.event.signal(++present_event.fence_index);
 }
 void GraphicsUtils::resize_swapchain(uint2 size) {
     reset_frame();
