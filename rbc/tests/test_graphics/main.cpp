@@ -193,6 +193,32 @@ struct ContextImpl : RBCContext {
             }
         });
     }
+    void *create_texture(void *data, rbc::LCPixelStorage storage, luisa::uint2 size, rbc::SamplerAddress address, rbc::SamplerFilter filter, uint32_t mip_level, bool is_virtual_texture) override {
+        size_t size_bytes = 0;
+        for (auto i : vstd::range(mip_level))
+            size_bytes += pixel_storage_size((PixelStorage)storage, make_uint3(size >> (uint)i, 1u));
+        auto ptr = new DeviceImage();
+        RC<DeviceImage>::manually_add_ref(ptr);
+        ptr->async_load_from_memory(
+            luisa::BinaryBlob((std::byte *)data, size_bytes, {}),
+            Sampler{
+                (Sampler::Filter)filter,
+                (Sampler::Address)address},
+            (PixelStorage)storage,
+            size,
+            mip_level);
+        ptr->wait_finished();
+        return ptr;
+    }
+    uint texture_heap_idx(void* ptr) override {
+        auto tex = (DeviceImage*)ptr;
+        tex->wait_finished();
+        return tex->heap_idx();
+    }
+    void destroy_texture(void *ptr) override {
+        auto tex = (DeviceImage*)ptr;
+        RC<DeviceImage>::manually_release_ref(tex);
+    }
     void update_area_light(void *light, luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {
         auto &render_device = RenderDevice::instance();
         auto stub = reinterpret_cast<LightStub *>(light);

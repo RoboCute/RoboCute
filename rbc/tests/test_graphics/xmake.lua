@@ -21,6 +21,10 @@ for target_name, is_standalone in pairs(targets) do
             else
                 target:set('kind', 'shared')
             end
+            target:add('deps', 'rbc_render_plugin', 'lc-backends-dummy', {
+                inherit = false,
+                links = false
+            })
         end)
         add_defines('TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
     end
@@ -30,13 +34,6 @@ for target_name, is_standalone in pairs(targets) do
         add_defines('TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_IMPORT', {
             public = true
         })
-        on_load(function(target)
-            if is_standalone then
-                target:add('deps', 'rbc_render_plugin', 'lc-backends-dummy', {
-                    inherit = false
-                })
-            end
-        end)
     end
 
 end

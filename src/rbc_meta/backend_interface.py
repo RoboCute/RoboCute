@@ -1,5 +1,6 @@
 import rbc_meta.utils.type_register as tr
 import rbc_meta.utils.codegen_util as ut
+import rbc_meta.resource_enums as res_enums
 from pathlib import Path
 
 
@@ -11,6 +12,8 @@ def codegen_header(
     pyd_name = 'test_py_codegen'
     file_name = 'rbc_backend'
     Context = tr.struct('RBCContext', "TEST_GRAPHICS_API")
+    # these enums defined in rbc_runtime
+    res_enums.mark_enums_external()
     # frame
     Context.method(
         'init_device',
@@ -57,11 +60,24 @@ def codegen_header(
         'remove_light', light=tr.VoidPtr
     )
     # texture
-    # Context.method(
-    #     'create_texture',
-    #     data=tr.DataBuffer,
-    #     size=tr.uint2
-    # )
+    Context.method(
+        'create_texture',
+        data=tr.DataBuffer,
+        storage = res_enums.PixelStorage,
+        size=tr.uint2,
+        address=res_enums.SamplerAddress,
+        filter=res_enums.SamplerFilter,
+        mip_level=tr.uint,
+        is_virtual_texture=tr.bool
+    ).ret_type(tr.VoidPtr)
+    Context.method(
+        'texture_heap_idx',
+        ptr = tr.VoidPtr
+    ).ret_type(tr.uint)
+    Context.method(
+        'destroy_texture',
+        ptr = tr.VoidPtr
+    )
     # object
     Context.method(
         'create_object',

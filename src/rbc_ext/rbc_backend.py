@@ -34,6 +34,12 @@ class RBCContext:
 		RBCContext__update_spot_light__(self._handle, light, center, radius, luminance, forward_dir, angle_radians, small_angle_radians, angle_atten_pow, visible)
 	def remove_light(self, light):
 		RBCContext__remove_light__(self._handle, light)
+	def create_texture(self, data, storage: LCPixelStorage, size: uint2, address: SamplerAddress, filter: SamplerFilter, mip_level: int, is_virtual_texture: bool):
+		return RBCContext__create_texture__(self._handle, data, storage, size, address, filter, mip_level, is_virtual_texture)
+	def texture_heap_idx(self, ptr):
+		return RBCContext__texture_heap_idx__(self._handle, ptr)
+	def destroy_texture(self, ptr):
+		RBCContext__destroy_texture__(self._handle, ptr)
 	def create_object(self, matrix: float4x4, mesh):
 		return RBCContext__create_object__(self._handle, matrix, mesh)
 	def update_object(self, matrix: float4x4):
