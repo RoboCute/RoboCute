@@ -9,9 +9,10 @@ using namespace luisa::compute;
 
 namespace rbc {
 void NaiveApp::init(
-    luisa::compute::Context &ctx, const char *backend_name) {
+    const char *program_path, const char *backend_name) {
     luisa::string_view backend = backend_name;
     bool gpu_dump;
+    ctx = luisa::make_unique<luisa::compute::Context>(program_path);
 #ifdef NDEBUG
     gpu_dump = false;
 #else
@@ -21,7 +22,7 @@ void NaiveApp::init(
 
     device_config.extension = make_dx_device_config(nullptr, gpu_dump);
     device_config_ext = device_config.extension.get();
-    device = ctx.create_device(backend, &device_config);
+    device = ctx->create_device(backend, &device_config);
     void *native_device;
     if (backend == "dx") {
         get_dx_device(device_config_ext, native_device, dx_adaptor_luid);
@@ -73,6 +74,7 @@ void NaiveApp::update() {
 }
 NaiveApp::~NaiveApp() {
     stream.synchronize();
+    ctx.reset();
 }
 
 }// namespace rbc

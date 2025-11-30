@@ -30,9 +30,11 @@ LUISA_STRUCT(rbc::EditorCamera, position, front, up, right, fov) {
 
 namespace rbc {
 void DummyApp::init(
-    luisa::compute::Context &ctx, const char *backend_name) {
+    const char *program_path, const char *backend_name) {
     luisa::string_view backend = backend_name;
+    ctx = luisa::make_unique<luisa::compute::Context>(program_path);
     bool gpu_dump;
+
 #ifdef NDEBUG
     gpu_dump = false;
 #else
@@ -42,7 +44,8 @@ void DummyApp::init(
 
     device_config.extension = make_dx_device_config(nullptr, gpu_dump);
     device_config_ext = device_config.extension.get();
-    device = ctx.create_device(backend, &device_config);
+    device = ctx->create_device(backend, &device_config);
+
     void *native_device;
     if (backend == "dx") {
         get_dx_device(device_config_ext, native_device, dx_adaptor_luid);
@@ -397,6 +400,7 @@ void DummyApp::update() {
 DummyApp::~DummyApp() {
     camera_controller.reset();
     stream.synchronize();
+    ctx.reset();
 }
 
 }// namespace rbc

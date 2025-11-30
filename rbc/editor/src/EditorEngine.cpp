@@ -19,9 +19,8 @@ EditorEngine::~EditorEngine() {
 }
 
 void EditorEngine::init(int argc, char **argv) {
-    if (m_context) return;
+    if (m_isInitialized) return;
     // Initialize LuisaCompute Context
-    m_context = std::make_unique<luisa::compute::Context>(argv[0]);
     // Initialize Renderer App
     luisa::string backend = "dx";
     m_graphicsApi = QRhi::D3D12;
@@ -29,13 +28,12 @@ void EditorEngine::init(int argc, char **argv) {
     // m_renderApp = std::make_unique<DummyApp>();
     // m_renderApp = std::make_unique<NaiveApp>();
     m_renderApp = std::make_unique<PBRApp>();
-
-    m_renderApp->init(*m_context, backend.c_str());
+    m_renderApp->init(argv[0], backend.c_str());
+    m_isInitialized = true;
 }
 
 void EditorEngine::shutdown() {
     m_renderApp.reset();
-    m_context.reset();
 }
 
 void EditorEngine::init(QRhiNativeHandles &handles_base) {

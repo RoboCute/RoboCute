@@ -6,6 +6,7 @@
 #include <luisa/runtime/rhi/resource.h>
 #include <luisa/backends/ext/native_resource_ext_interface.h>
 #include "RBCEditor/app.h"
+#include "RBCEditor/runtime/RenderUtils.h"
 
 namespace rbc {
 
@@ -25,9 +26,12 @@ struct PBRApp : public IApp {
     luisa::Clock clk;
     luisa::uint2 dx_adaptor_luid;
 
+    luisa::fiber::scheduler scheduler;
+    GraphicsUtils utils;
+public:
     [[nodiscard]] unsigned int GetDXAdapterLUIDHigh() const override { return dx_adaptor_luid.x; }
     [[nodiscard]] unsigned int GetDXAdapterLUIDLow() const override { return dx_adaptor_luid.y; }
-    void init(luisa::compute::Context &ctx, const char *backend_name) override;
+    void init(const char *program_path, const char *backend_name) override;
     uint64_t create_texture(uint width, uint height) override;
     void update() override;
     void handle_key(luisa::compute::Key key) override;

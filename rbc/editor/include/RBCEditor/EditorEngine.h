@@ -35,11 +35,11 @@ public:
     QRhi::Implementation getGraphicsApi() const { return m_graphicsApi; }
 
 private:
-    std::unique_ptr<luisa::compute::Context> m_context;
     std::unique_ptr<IApp> m_renderApp;
 
     HttpClient *m_httpClient = nullptr;
 
+    bool m_isInitialized = false;
     bool m_isPaused = false;
     QRhi::Implementation m_graphicsApi = QRhi::D3D12;
 };

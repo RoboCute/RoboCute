@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     int ret = 0;
     log_level_info();
 
-    if (false) {
+    if (true) {
         QApplication app(argc, argv);
         QFile f(":/main.qss");
         QString styleSheet = "";
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
         rbc::EditorEngine::instance().shutdown();
     }
 
-    if (true) {
+    if (false) {
         luisa::fiber::scheduler scheduler;
         luisa::string backend = "dx";
         if (argc >= 2) {

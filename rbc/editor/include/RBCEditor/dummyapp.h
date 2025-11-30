@@ -75,6 +75,7 @@ public:
 struct DummyApp : public IApp {
 
 private:
+
     luisa::compute::Device device;
     luisa::compute::Stream stream;
     luisa::compute::CommandList cmd_list;
@@ -113,7 +114,7 @@ private:
 public:
     unsigned int GetDXAdapterLUIDHigh() const override { return dx_adaptor_luid.x; }
     unsigned int GetDXAdapterLUIDLow() const override { return dx_adaptor_luid.y; }
-    void init(luisa::compute::Context &ctx, const char *backend_name) override;
+    void init(const char *program_path, const char *backend_name) override;
     uint64_t create_texture(uint width, uint height) override;
     void update() override;
     void handle_key(luisa::compute::Key key) override;
