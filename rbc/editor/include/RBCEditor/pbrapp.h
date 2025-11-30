@@ -6,28 +6,31 @@
 #include <luisa/runtime/rhi/resource.h>
 #include <luisa/backends/ext/native_resource_ext_interface.h>
 #include "RBCEditor/app.h"
-#include "RBCEditor/runtime/RenderUtils.h"
+// #include "RBCEditor/runtime/RenderUtils.h"
+#include "RBCEditor/runtime/MyRenderUtils.h"
+#include "RBCEditor/runtime/RenderScene.h"
 
 namespace rbc {
 
 struct PBRApp : public IApp {
-    luisa::compute::Device device;
-    luisa::compute::Stream stream;
-    luisa::compute::CommandList cmd_list;
-
-    luisa::compute::Image<float> dummy_image;
-
     luisa::compute::DeviceConfigExt *device_config_ext{};
 
     luisa::compute::Shader<2, luisa::compute::Image<float>> clear_shader;
     luisa::compute::Shader<2, luisa::compute::Image<float>, float, luisa::compute::float2> draw_shader;
 
     luisa::uint2 resolution;
-    luisa::Clock clk;
+
     luisa::uint2 dx_adaptor_luid;
 
     luisa::fiber::scheduler scheduler;
-    GraphicsUtils utils;
+    my::GraphicsUtils utils;
+    uint64_t frame_index = 0;
+    double last_frame_time = 0;
+    luisa::Clock clk;
+    vstd::optional<rbc::SimpleScene> simple_scene;
+    vstd::optional<float3> cube_move, light_move;
+    bool reset = false;
+
 public:
     [[nodiscard]] unsigned int GetDXAdapterLUIDHigh() const override { return dx_adaptor_luid.x; }
     [[nodiscard]] unsigned int GetDXAdapterLUIDLow() const override { return dx_adaptor_luid.y; }
@@ -35,8 +38,8 @@ public:
     uint64_t create_texture(uint width, uint height) override;
     void update() override;
     void handle_key(luisa::compute::Key key) override;
-    [[nodiscard]] void *GetStreamNativeHandle() const override { return stream.native_handle(); }
-    [[nodiscard]] void *GetDeviceNativeHandle() const override { return device.native_handle(); }
+    [[nodiscard]] void *GetStreamNativeHandle() const override { return utils.render_device.lc_main_stream().native_handle(); }
+    [[nodiscard]] void *GetDeviceNativeHandle() const override { return utils.render_device.lc_main_stream().native_handle(); }
     ~PBRApp();
 };
 

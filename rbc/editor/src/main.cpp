@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
             RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name));
         utils.init_render();
         utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
-        utils.init_display("test_graphics", uint2(1024), true);
+        utils.init_display("test_graphics", uint2(1024), true, true);
 
         uint64_t frame_index = 0;
         // Present is ping-pong frame-buffer and compute is triple-buffer
@@ -134,6 +134,7 @@ int main(int argc, char **argv) {
         utils.window->set_window_size_callback([&](uint2 size) {
             window_size = size;
         });
+
         auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
         cam.fov = radians(80.f);
         while (!utils.should_close()) {

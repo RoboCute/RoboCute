@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/shader_manager.h>
 #include <rbc_graphics/render_device.h>
@@ -11,7 +12,8 @@
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
-namespace rbc {
+
+namespace rbc::my {
 struct EventFence {
     TimelineEvent event;
     uint64_t fence_index{};
@@ -21,11 +23,6 @@ struct GraphicsUtils {
     luisa::string backend_name;
     EventFence compute_event;
     vstd::optional<SceneManager> sm;
-    // present
-    Stream present_stream;
-    EventFence present_event;
-    vstd::optional<Window> window;
-    Swapchain swapchain;
     Image<float> dst_image;
     // render
     DynamicModule render_module;
@@ -43,12 +40,11 @@ struct GraphicsUtils {
     void init_graphics(luisa::filesystem::path const &shader_path);
     void init_render();
     void resize_swapchain(uint2 size);
-    void init_display(luisa::string_view name, uint2 resolution, bool resizable, bool create_window = false);
+    void init_display(luisa::string_view name, uint2 resolution, bool resizable);
     void reset_frame();
-    bool should_close();
     const Image<float> &GetDestImage() const { return dst_image; }
     bool DisplayInitialized() const { return display_initialized; }
 
     void tick(vstd::function<void()> before_render = {});
 };
-}// namespace rbc
+}// namespace rbc::my

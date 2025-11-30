@@ -18,61 +18,87 @@ void PBRApp::init(
 #else
     gpu_dump = true;
 #endif
-    DeviceConfig device_config = {};
-    device_config.extension = make_dx_device_config(nullptr, gpu_dump);
-    device_config_ext = device_config.extension.get();
-    device = ctx->create_device(backend, &device_config);
+
     void *native_device;
-    if (backend == "dx") {
-        get_dx_device(device_config_ext, native_device, dx_adaptor_luid);
-    }
-    stream = device.create_stream(StreamTag::GRAPHICS);
-    Kernel2D clear_kernel = [](ImageFloat image) noexcept {
-        image.write(dispatch_id().xy(), make_float4(0.0f));
-    };
-    clear_shader = device.compile(clear_kernel);
-    Kernel2D draw_kernel = [](ImageFloat image, Float time, Float2 resolution) noexcept {
-        auto p = dispatch_id().xy();
-        auto uv = make_float2(p) / make_float2(resolution) * 2.0f - 1.0f;
-        auto color = def(make_float4());
-        Constant scales{pi, luisa::exp(1.f), luisa::sqrt(2.f)};
-        for (auto i = 0u; i < 3u; i++) {
-            color[i] = cos(time * scales[i] + uv.y * 11.f +
-                           sin(-time * scales[2u - i] + uv.x * 7.f) * 4.f) *
-                           .5f +
-                       .5f;
-        }
-        color[3] = 1.0f;
-        image.write(p, color);
-    };
-    draw_shader = device.compile(draw_kernel);
+    utils.init_device(
+        program_path,
+        backend);
+
+    get_dx_device(utils.render_device.lc_device_ext(), native_device, dx_adaptor_luid);
+
+    utils.init_graphics(
+        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name));
+    utils.init_render();
+    utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
+    simple_scene.create(*utils.lights);
+    // TODO: Key Callback
+
+    auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
+    cam.fov = radians(80.f);
 }
 
 uint64_t PBRApp::create_texture(uint width, uint height) {
     resolution = {width, height};
-    if (dummy_image && any(dummy_image.size() != uint2(width, height))) {
-        cmd_list.add_callback([dummy_image = std::move(dummy_image)] {});
+    if (!utils.DisplayInitialized()) {
+        utils.init_display("rbc_editor", resolution, true);
     }
-    if (!dummy_image) {
-        dummy_image = device.create_image<float>(PixelStorage::BYTE4, width, height);
+    if (any(resolution != utils.GetDestImage().size())) {
+        utils.resize_swapchain(resolution);
     }
-    // resolution changed, all textures should reload
-    return (int64_t)dummy_image.native_handle();
+    return (int64_t)utils.GetDestImage().native_handle();
 }
 
 void PBRApp::handle_key(luisa::compute::Key key) {
 }
 
 void PBRApp::update() {
-    cmd_list << clear_shader(dummy_image).dispatch(resolution);
-    float2 f_res = {(float)resolution.x, (float)resolution.y};
-    cmd_list
-        << draw_shader(dummy_image, clk.toc() * 1e-3, f_res).dispatch(resolution);
-    stream << cmd_list.commit();
-    set_dx_before_state(device_config_ext, Argument::Texture{dummy_image.handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+    auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
+    if (reset) {
+        reset = false;
+        utils.reset_frame();
+    }
+    utils.tick([&]() {
+        cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
+        auto &frame_settings = utils.render_settings.read_mut<rbc::FrameSettings>();
+        auto &dst_img = utils.dst_image;
+        frame_settings.render_resolution = dst_img.size();
+        frame_settings.display_resolution = dst_img.size();
+        frame_settings.dst_img = &dst_img;
+        auto time = clk.toc();
+        auto delta_time = time - last_frame_time;
+        last_frame_time = time;
+        frame_settings.delta_time = (float)delta_time;
+        frame_settings.time = time;
+        frame_settings.frame_index = frame_index;
+        ++frame_index;
+        // scene logic
+        if (cube_move) {
+            simple_scene->move_cube(*cube_move);
+            cube_move.destroy();
+        }
+        if (light_move) {
+            simple_scene->move_light(*light_move);
+            light_move.destroy();
+        }
+    });
+    utils.dispose([&]() {
+        auto pipe_settings_json = utils.render_settings.serialize_to_json();
+        if (pipe_settings_json.data()) {
+            LUISA_INFO(
+                "{}",
+                luisa::string_view{
+                    (char const *)pipe_settings_json.data(),
+                    pipe_settings_json.size()});
+        }
+        // destroy render-pipeline
+        simple_scene.destroy();
+    });
+
+    set_dx_before_state(device_config_ext, Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
 }
 PBRApp::~PBRApp() {
-    stream.synchronize();
+    utils.render_device.lc_main_stream().synchronize();
+    ctx.reset();
 }
 
 }// namespace rbc
