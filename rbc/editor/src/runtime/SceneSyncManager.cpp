@@ -101,21 +101,21 @@ void SceneSyncManager::syncWithServer() {
                     QJsonDocument resDoc(resResponse);
                     QString resJsonStr = resDoc.toJson(QJsonDocument::Compact);
                     sceneSync_->parseResources(resJsonStr.toStdString());
-
-                    // Also fetch animations
-                    httpClient_->getAnimations([this](const QJsonObject &animResponse, bool animSuccess) {
-                        if (animSuccess) {
-                            QJsonDocument animDoc(animResponse);
-                            QString animJsonStr = animDoc.toJson(QJsonDocument::Compact);
-                            sceneSync_->parseAnimations(animJsonStr.toStdString());
-                        }
-                        
-                        // Emit scene updated signal after all data is synced
-                        emit sceneUpdated();
-                    });
                 }
             });
         }
+
+        // Also fetch animations
+        httpClient_->getAnimations([this](const QJsonObject &animResponse, bool animSuccess) {
+            if (animSuccess) {
+                QJsonDocument animDoc(animResponse);
+                QString animJsonStr = animDoc.toJson(QJsonDocument::Compact);
+                sceneSync_->parseAnimations(animJsonStr.toStdString());
+            }
+
+            // Emit scene updated signal after all data is synced
+            emit sceneUpdated();
+        });
     });
 }
 
