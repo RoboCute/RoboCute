@@ -45,7 +45,7 @@ public:
 	template<class T>
 	trait_struct instance {
 		using type = T;
-		static constexpr size_t index = type_list::index<T>;
+		static constexpr size_t index = type_list::template index<T>;
 	};
 
 	template<class Fn>

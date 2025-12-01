@@ -485,20 +485,25 @@ uint Lights::add_mesh_light_sync(
     stream << cmdlist.commit() << synchronize();
     mesh_light_accel.update();
     auto &host_result = v.host_result->wait();
-    auto blas_node_count = host_result.nodes.size();
-    mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
-    v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
+    if (host_result.nodes.empty()) {
+        v.light_id = ~0u;
+        v.blas_heap_idx = ~0u;
+    } else {
+        auto blas_node_count = host_result.nodes.size();
+        mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
+        v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
 
-    // TODO: blas_heap_idx
-    LightAccel::MeshLight mesh_light{
-        local_to_world,
-        {host_result.bounding.min.x, host_result.bounding.min.y, host_result.bounding.min.z},
-        v.blas_heap_idx,
-        {host_result.bounding.max.x, host_result.bounding.max.y, host_result.bounding.max.z},
-        v.tlas_id,
-        host_result.contribute,
-        1.f};
-    v.light_id = scene.light_accel().emplace(cmdlist, scene, mesh_light, data_index);
+        // TODO: blas_heap_idx
+        LightAccel::MeshLight mesh_light{
+            local_to_world,
+            {host_result.bounding.min.x, host_result.bounding.min.y, host_result.bounding.min.z},
+            v.blas_heap_idx,
+            {host_result.bounding.max.x, host_result.bounding.max.y, host_result.bounding.max.z},
+            v.tlas_id,
+            host_result.contribute,
+            1.f};
+        v.light_id = scene.light_accel().emplace(cmdlist, scene, mesh_light, data_index);
+    }
     v._load_flag->store(MeshLightLoadState::Loaded);
     return data_index;
 }
@@ -609,12 +614,15 @@ void Lights::update_mesh_light_sync(
     stream << cmdlist.commit() << synchronize();
     mesh_light_accel.update();
     auto &host_result = v.host_result->wait();
-    auto blas_node_count = host_result.nodes.size();
-    mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
-    if (v.blas_heap_idx) {
+    if (v.blas_heap_idx != ~0u) {
         scene.bindless_allocator().deallocate_buffer(v.blas_heap_idx);
     }
-    v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
+    if (host_result.nodes.empty()) {
+        v.blas_heap_idx = ~0u;
+    } else {
+        mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
+        v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
+    }
     if (new_mesh) {
         scene.accel_manager().set_mesh_instance(
             v.tlas_id,
@@ -640,18 +648,33 @@ void Lights::update_mesh_light_sync(
             0xffu,
             true);
     }
-    LightAccel::MeshLight mesh_light{
-        local_to_world,
-        {host_result.bounding.min.x, host_result.bounding.min.y, host_result.bounding.min.z},
-        v.blas_heap_idx,
-        {host_result.bounding.max.x, host_result.bounding.max.y, host_result.bounding.max.z},
-        v.tlas_id,
-        host_result.contribute,
-        1.f};
-    scene.light_accel().update(
-        scene,
-        v.light_id,
-        mesh_light);
+    if (v.blas_heap_idx != ~0u) {
+        LightAccel::MeshLight mesh_light{
+            local_to_world,
+            {host_result.bounding.min.x, host_result.bounding.min.y, host_result.bounding.min.z},
+            v.blas_heap_idx,
+            {host_result.bounding.max.x, host_result.bounding.max.y, host_result.bounding.max.z},
+            v.tlas_id,
+            host_result.contribute,
+            1.f};
+        if (v.light_id != ~0u) {
+            scene.light_accel().update(
+                scene,
+                v.light_id,
+                mesh_light);
+        } else {
+            v.light_id = scene.light_accel().emplace(
+                cmdlist,
+                scene,
+                mesh_light,
+                data_index);
+        }
+    } else {
+        if (v.light_id != ~0u) {
+            _swap_back(scene.light_accel().remove_mesh(scene, v.light_id), mesh_lights.light_data);
+            v.light_id = ~0u;
+        }
+    }
 }
 
 void Lights::update_point_light(
@@ -939,7 +962,11 @@ void Lights::remove_mesh_light(uint light_index) {
     }
     if (data.blas_heap_idx != uint(-1))
         scene.bindless_allocator().deallocate_buffer(data.blas_heap_idx);
-    _swap_back(scene.light_accel().remove_mesh(scene, data.light_id), mesh_lights.light_data);
+
+    if (data.light_id != ~0u) {
+        _swap_back(scene.light_accel().remove_mesh(scene, data.light_id), mesh_lights.light_data);
+        data.light_id = ~0u;
+    }
     mesh_lights.removed_list.emplace_back(light_index);
 }
 

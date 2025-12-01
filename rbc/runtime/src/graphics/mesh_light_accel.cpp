@@ -52,9 +52,13 @@ auto MeshLightAccel::build_bvh(
     auto bvh_result = BVH::build(
         r.nodes,
         input_nodes);
-    LUISA_ASSERT(r.nodes.size() > 0);
-    r.contribute = r.nodes[0].lum;
-    r.bounding = bvh_result.bound;
+    if (r.nodes.empty()) {
+        r.contribute = 0;
+        r.bounding = {};
+    } else {
+        r.contribute = r.nodes[0].lum;
+        r.bounding = bvh_result.bound;
+    }
     return r;
 }
 
@@ -135,7 +139,7 @@ void MeshLightAccel::create_or_update_blas(
     if (!buffer) {
         buffer = RenderDevice::instance().lc_device().create_buffer<BVH::PackedNode>(nodes.size());
     }
-    auto to_float3 = [](std::array<float, 3> a){
+    auto to_float3 = [](std::array<float, 3> a) {
         return float3(a[0], a[1], a[2]);
     };
     cmdlist << buffer.view(0, nodes.size()).copy_from(nodes.data());

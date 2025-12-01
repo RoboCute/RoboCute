@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/shader_manager.h>
 #include <rbc_graphics/render_device.h>
