@@ -39,11 +39,14 @@ auto MeshLightAccel::build_bvh(
         return r;
     };
     input_nodes.reserve(triangles.size());
-    for (auto i : vstd::range(triangles.size())) {
-        if (triangle_lum[i] > 1e-5f) {
-            input_nodes.emplace_back(func(i));
-        }
-    }
+    luisa::fiber::parallel(
+        triangles.size(),
+        [&](size_t i) {
+            if (triangle_lum[i] > 1e-5f) {
+                input_nodes.emplace_back(func(i));
+            }
+        },
+        128);
     auto bvh_result = BVH::build(
         r.nodes,
         input_nodes);

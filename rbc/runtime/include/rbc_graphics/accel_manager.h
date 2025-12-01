@@ -142,6 +142,7 @@ public:
     [[nodiscard]] auto const& last_trans_buffer() const { return _last_trans_buffer; }
     [[nodiscard]] auto const& accel() const { return _accel; }
     [[nodiscard]] auto& accel() { return _accel; }
+    [[nodiscard]] auto const& instance_data(uint id) const { return _insts[id]; }
     AccelManager(Device& device);
     void load_shader(luisa::fiber::counter& counter);
     void set_mesh_instance(

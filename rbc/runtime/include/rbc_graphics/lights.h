@@ -4,8 +4,7 @@
 #include <luisa/runtime/image.h>
 #include <rbc_core/rc.h>
 #include <luisa/vstl/functional.h>
-namespace rbc
-{
+namespace rbc {
 struct TexStreamManager;
 struct DeviceMesh;
 struct RBC_RUNTIME_API Lights : public SceneManagerEvent {
@@ -15,8 +14,7 @@ public:
         MatCode mat_code;
         uint light_id;
     };
-    enum struct MeshLightLoadState : uint32_t
-    {
+    enum struct MeshLightLoadState : uint32_t {
         Unloaded,
         Loaded,
         Disposed,
@@ -29,8 +27,9 @@ public:
         uint blas_heap_idx;
         uint tlas_id;
         uint light_id;
+        uint tlas_light_id;
     };
-    template <typename T>
+    template<typename T>
     struct LightList {
         luisa::vector<size_t> removed_list;
         luisa::vector<T> light_data;
@@ -42,111 +41,95 @@ public:
     LightList<MeshLightData> mesh_lights;
 
     MeshLightAccel mesh_light_accel;
-    MeshManager::MeshData* point_mesh{};
-    MeshManager::MeshData* quad_mesh{};
-    MeshManager::MeshData* disk_mesh{};
+    MeshManager::MeshData *point_mesh{};
+    MeshManager::MeshData *quad_mesh{};
+    MeshManager::MeshData *disk_mesh{};
     Lights();
     // return: light index
     uint add_area_light(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         float4x4 local_to_world,
         float3 emission,
-        Image<float> const* emission_img = nullptr,
-        Sampler const* sampler = nullptr,
-        bool visible = true
-    );
+        Image<float> const *emission_img = nullptr,
+        Sampler const *sampler = nullptr,
+        bool visible = true);
 
     uint add_disk_light(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         float3 center,
         float radius,
         float3 emission,
         float3 forward_dir,
-        bool visible = true
-    );
+        bool visible = true);
 
     uint add_point_light(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         float3 center,
         float radius,
         float3 emission,
-        bool visible = true
-    );
+        bool visible = true);
 
     uint add_spot_light(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         float3 center,
         float radius,
         float3 emission,
         float3 forward_dir,
-        float angle,       // radian
-        float small_angle, // radian
+        float angle,      // radian
+        float small_angle,// radian
         float angle_atten_pow,
-        bool visible = true
-    );
-
-    uint add_mesh_light_async(
-        RC<DeviceMesh> const& device_mesh,
-        float4x4 local_to_world,
-        MatCode material_code
-    );
+        bool visible = true);
 
     uint add_mesh_light_sync(
-        CommandList& cmdlist,
-        RC<DeviceMesh> const& device_mesh,
+        CommandList &cmdlist,
+        RC<DeviceMesh> const &device_mesh,
         float4x4 local_to_world,
-        MatCode material_code
-    );
+        luisa::span<MatCode const> material_codes);
 
     void update_mesh_light_sync(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         uint light_index,
         float4x4 local_to_world,
-        MatCode material_code,
-        RC<DeviceMesh> const * new_mesh = nullptr
-    );
+        luisa::span<MatCode const> material_codes,
+        RC<DeviceMesh> const *new_mesh = nullptr);
 
     void update_area_light(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         uint light_index,
         float4x4 local_to_world,
         float3 emission,
-        Image<float> const* emission_img = nullptr,
-        Sampler const* sampler = nullptr,
-        bool visible = true
-    );
+        Image<float> const *emission_img = nullptr,
+        Sampler const *sampler = nullptr,
+        bool visible = true);
 
     void update_disk_light(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         uint light_index,
         float3 center,
         float radius,
         float3 emission,
         float3 forward_dir,
-        bool visible = true
-    );
+        bool visible = true);
 
     void update_spot_light(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         uint light_index,
         float3 center,
         float radius,
         float3 emission,
         float3 forward_dir,
-        float angle,       // radian
-        float small_angle, // radian
+        float angle,      // radian
+        float small_angle,// radian
         float angle_atten_pow,
-        bool visible = true
-    );
+        bool visible = true);
 
     void update_point_light(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         uint light_index,
         float3 center,
         float radius,
         float3 emission,
-        bool visible = true
-    );
+        bool visible = true);
 
     void remove_point_light(uint light_index);
     void remove_area_light(uint light_index);
@@ -157,13 +140,13 @@ public:
     void dispose();
     void scene_manager_tick() override;
     ~Lights();
-    static Lights* instance();
+    static Lights *instance();
 
 private:
-    template <typename T>
-    static void _swap_back(LightAccel::SwapBackCmd const& cmd, luisa::vector<T>& light_data);
+    template<typename T>
+    static void _swap_back(LightAccel::SwapBackCmd const &cmd, luisa::vector<T> &light_data);
     luisa::spin_mutex _before_render_mtx;
     vstd::vector<vstd::function<bool()>> _before_render_funcs;
-    void add_tick(vstd::function<bool()>&& func);
+    void add_tick(vstd::function<bool()> &&func);
 };
-} // namespace rbc
+}// namespace rbc

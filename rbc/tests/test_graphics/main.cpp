@@ -311,7 +311,7 @@ struct ContextImpl : RBCContext {
                     render_device.lc_main_cmd_list(),
                     stub->mesh_light_idx,
                     matrix,
-                    stub->material_codes[0]);
+                    stub->material_codes);
                 break;
             case ObjectRenderType::Procedural:
                 sm.accel_manager().set_procedural_instance(
@@ -347,7 +347,7 @@ struct ContextImpl : RBCContext {
                     render_device.lc_main_cmd_list(),
                     stub->mesh_light_idx,
                     matrix,
-                    stub->material_codes[0],
+                    stub->material_codes,
                     &stub->mesh_ref);
                 break;
             case ObjectRenderType::Procedural:

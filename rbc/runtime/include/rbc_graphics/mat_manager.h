@@ -129,6 +129,22 @@ public:
             span<const std::byte>(reinterpret_cast<const std::byte *>(&mat), sizeof(U)));
     }
 
+    template<typename Polymorphic, typename U>
+        requires(std::is_trivially_copyable_v<U> && std::is_trivially_destructible_v<U> && requires { Polymorphic::index<U>; })
+    [[nodiscard]] MatCode emplace_mat_instance(
+        U &mat,
+        CommandList &cmdlist,
+        BindlessAllocator &alloc,
+        BufferUploader &uploader,
+        DisposeQueue &disp_queue) {
+        return _emplace_mat_instance(
+            cmdlist,
+            Polymorphic::index<U>,
+            alloc,
+            uploader,
+            disp_queue,
+            span<const std::byte>(reinterpret_cast<const std::byte *>(&mat), sizeof(U)));
+    }
     ///////// Main thread only
 
     ~MatManager();

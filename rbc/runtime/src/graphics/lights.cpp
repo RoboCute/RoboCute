@@ -6,7 +6,6 @@
 #include <rbc_graphics/scene_manager.h>
 namespace rbc {
 #include <material/mats.inl>
-constexpr auto unlit_mat_index = material::PolymorphicMaterial::index<rbc::material::Unlit>;
 namespace light_detail {
 static Lights *_inst = nullptr;
 }// namespace light_detail
@@ -139,7 +138,7 @@ Lights::Lights()
             false, false, 0, {});
     }
     // ///////////// Add emission material type
-    scene.mat_manager().emplace_mat_type<rbc::material::Unlit>(scene.bindless_allocator(), 4096, unlit_mat_index);
+    scene.mat_manager().emplace_mat_type<material::PolymorphicMaterial, rbc::material::Unlit>(scene.bindless_allocator(), 4096);
 }
 
 uint Lights::add_point_light(
@@ -155,13 +154,12 @@ uint Lights::add_point_light(
     point_light.mis_weight = visible ? 1 : -1;
     rbc::material::Unlit mat_inst{.color{emission.x, emission.y, emission.z}};
 
-    auto mat = scene.mat_manager().emplace_mat_instance(
+    auto mat = scene.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
         mat_inst,
         cmdlist,
         scene.bindless_allocator(),
         scene.buffer_uploader(),
-        scene.dispose_queue(),
-        unlit_mat_index);
+        scene.dispose_queue());
     uint data_index = 0;
     if (point_lights.removed_list.empty()) {
         point_lights.light_data.emplace_back();
@@ -225,13 +223,12 @@ uint Lights::add_spot_light(
     rbc::material::Unlit mat_inst{.color{emission.x, emission.y, emission.z}};
 
     auto &scene = SceneManager::instance();
-    auto mat = scene.mat_manager().emplace_mat_instance(
+    auto mat = scene.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
         mat_inst,
         cmdlist,
         scene.bindless_allocator(),
         scene.buffer_uploader(),
-        scene.dispose_queue(),
-        unlit_mat_index);
+        scene.dispose_queue());
     uint data_index = 0;
     if (spot_lights.removed_list.empty()) {
         spot_lights.light_data.emplace_back();
@@ -303,13 +300,12 @@ uint Lights::add_area_light(
     rbc::material::Unlit mat_inst{.color{emission.x, emission.y, emission.z}};
 
     mat_inst.tex.index = area_light.emission_tex_id;
-    auto mat = scene.mat_manager().emplace_mat_instance(
+    auto mat = scene.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
         mat_inst,
         cmdlist,
         scene.bindless_allocator(),
         scene.buffer_uploader(),
-        scene.dispose_queue(),
-        unlit_mat_index);
+        scene.dispose_queue());
     uint data_index = 0;
     if (area_lights.removed_list.empty()) {
         this->area_lights.light_data.emplace_back();
@@ -372,13 +368,12 @@ uint Lights::add_disk_light(
     rbc::material::Unlit mat_inst{.color{emission.x, emission.y, emission.z}};
 
     mat_inst.tex.index = -1;
-    auto mat = scene.mat_manager().emplace_mat_instance(
+    auto mat = scene.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
         mat_inst,
         cmdlist,
         scene.bindless_allocator(),
         scene.buffer_uploader(),
-        scene.dispose_queue(),
-        unlit_mat_index);
+        scene.dispose_queue());
     uint data_index = 0;
     if (disk_lights.removed_list.empty()) {
         this->disk_lights.light_data.emplace_back();
@@ -439,11 +434,12 @@ void Lights::add_tick(vstd::function<bool()> &&func) {
     std::lock_guard lck{_before_render_mtx};
     _before_render_funcs.emplace_back(std::move(func));
 }
+
 uint Lights::add_mesh_light_sync(
     CommandList &cmdlist,
     RC<DeviceMesh> const &device_mesh,
     float4x4 local_to_world,
-    MatCode material_code) {
+    luisa::span<MatCode const> material_codes) {
     auto &scene = SceneManager::instance();
     uint data_index = 0;
     if (mesh_lights.removed_list.empty()) {
@@ -457,13 +453,31 @@ uint Lights::add_mesh_light_sync(
     v.device_mesh = device_mesh;
     v._load_flag = luisa::make_unique<std::atomic<MeshLightLoadState>>(MeshLightLoadState::Unloaded);
     device_mesh->wait_finished();
+    v.tlas_light_id = scene.light_accel()._get_next_meshlight_index();
+    v.tlas_id = scene.accel_manager().emplace_mesh_instance(
+        cmdlist, scene.host_upload_buffer(), scene.buffer_allocator(),
+        scene.buffer_uploader(), scene.dispose_queue(),
+        device_mesh->mesh_data(),
+        material_codes,
+        local_to_world,
+        0xffu,
+        true,
+        v.tlas_light_id,
+        LightAccel::t_MeshLight);
+    uint mat_index;
+    auto mat_node = scene.accel_manager().instance_data(v.tlas_id).material_node;
+    if (mat_node) {
+        mat_index = mat_node.offset_bytes() / sizeof(uint);
+    } else {
+        mat_index = material_codes[0].value;
+    }
     v.host_result = mesh_light_accel.build_bvh(
         RenderDevice::instance().lc_device(),
         cmdlist,
         scene.buffer_heap(),
         scene.image_heap(),
         device_mesh,
-        material_code.value,
+        mat_index,
         heap_indices::buffer_allocator_heap_index,
         TexStreamManager::instance(),
         local_to_world);
@@ -475,16 +489,7 @@ uint Lights::add_mesh_light_sync(
     mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
     mesh_light_accel.update_blas_transform(cmdlist, v.blas_buffer, blas_node_count, local_to_world);
     v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
-    v.tlas_id = scene.accel_manager().emplace_mesh_instance(
-        cmdlist, scene.host_upload_buffer(), scene.buffer_allocator(),
-        scene.buffer_uploader(), scene.dispose_queue(),
-        device_mesh->mesh_data(),
-        {&material_code, 1},
-        local_to_world,
-        0xffu,
-        true,
-        scene.light_accel()._get_next_meshlight_index(),
-        LightAccel::t_MeshLight);
+
     // TODO: blas_heap_idx
     LightAccel::MeshLight mesh_light{
         local_to_world,
@@ -496,90 +501,6 @@ uint Lights::add_mesh_light_sync(
         1.f};
     v.light_id = scene.light_accel().emplace(cmdlist, scene, mesh_light, data_index);
     v._load_flag->store(MeshLightLoadState::Loaded);
-    return data_index;
-}
-
-uint Lights::add_mesh_light_async(
-    RC<DeviceMesh> const &device_mesh,
-    float4x4 local_to_world,
-    MatCode material_code) {
-    auto &scene = SceneManager::instance();
-    uint data_index = 0;
-    if (mesh_lights.removed_list.empty()) {
-        mesh_lights.light_data.emplace_back();
-        data_index = mesh_lights.light_data.size() - 1;
-    } else {
-        data_index = mesh_lights.removed_list.back();
-        mesh_lights.removed_list.pop_back();
-    }
-    auto &v = mesh_lights.light_data[data_index];
-    v.device_mesh = device_mesh;
-    v._load_flag = luisa::make_unique<std::atomic<MeshLightLoadState>>(MeshLightLoadState::Unloaded);
-    auto gen_bvh_func = [this, local_to_world, material_code, data_index, load_flag = v._load_flag]() {
-        if (load_flag->load() != MeshLightLoadState::Unloaded) {
-            return false;
-        }
-        auto &v = mesh_lights.light_data[data_index];
-        if (!v.device_mesh->load_finished())
-            return true;
-        auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();
-        auto &scene = SceneManager::instance();
-        v.host_result = mesh_light_accel.build_bvh(
-            RenderDevice::instance().lc_device(),
-            cmdlist,
-            scene.buffer_heap(),
-            scene.image_heap(),
-            v.device_mesh,
-            material_code.value,
-            heap_indices::buffer_allocator_heap_index,
-            TexStreamManager::instance(),
-            local_to_world);
-        // Load data
-        add_tick([this, data_index, local_to_world, material_code, load_flag = v._load_flag]() {
-            auto &scene = SceneManager::instance();
-            if (load_flag->load() != MeshLightLoadState::Unloaded) {
-                return false;
-            }
-            auto &v = mesh_lights.light_data[data_index];
-            if (!v.host_result->isSignalled())
-                return true;
-            auto &host_result = v.host_result->wait();
-            auto blas_node_count = host_result.nodes.size();
-            auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();
-            mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
-            mesh_light_accel.update_blas_transform(cmdlist, v.blas_buffer, blas_node_count, local_to_world);
-            v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
-            v.tlas_id = scene.accel_manager().emplace_mesh_instance(
-                cmdlist, scene.host_upload_buffer(), scene.buffer_allocator(),
-                scene.buffer_uploader(), scene.dispose_queue(),
-                v.device_mesh->mesh_data(),
-                {&material_code, 1},
-                local_to_world,
-                0xffu,
-                true,
-                scene.light_accel()._get_next_meshlight_index(),
-                LightAccel::t_MeshLight);
-            // TODO: blas_heap_idx
-            LightAccel::MeshLight mesh_light{
-                local_to_world,
-                {host_result.bounding.min.x, host_result.bounding.min.y, host_result.bounding.min.z},
-                v.blas_heap_idx,
-                {host_result.bounding.max.x, host_result.bounding.max.y, host_result.bounding.max.z},
-                v.tlas_id,
-                host_result.contribute,
-                1.f};
-            v.light_id = scene.light_accel().emplace(cmdlist, scene, mesh_light, data_index);
-            load_flag->store(MeshLightLoadState::Loaded);
-            return false;
-        });
-        return false;
-        // TODO: set host_data to
-    };
-    if (device_mesh->load_finished()) {
-        gen_bvh_func();
-    } else {
-        add_tick(std::move(gen_bvh_func));
-    }
     return data_index;
 }
 
@@ -657,7 +578,7 @@ void Lights::update_mesh_light_sync(
     CommandList &cmdlist,
     uint data_index,
     float4x4 local_to_world,
-    MatCode material_code,
+    luisa::span<MatCode const> material_codes,
     RC<DeviceMesh> const *new_mesh) {
     auto &scene = SceneManager::instance();
     auto &v = mesh_lights.light_data[data_index];
@@ -668,13 +589,20 @@ void Lights::update_mesh_light_sync(
         v.device_mesh = *new_mesh;
     }
     v.device_mesh->wait_finished();
+    uint mat_index;
+    auto mat_node = scene.accel_manager().instance_data(v.tlas_id).material_node;
+    if (mat_node) {
+        mat_index = mat_node.offset_bytes() / sizeof(uint);
+    } else {
+        mat_index = material_codes[0].value;
+    }
     v.host_result = mesh_light_accel.build_bvh(
         RenderDevice::instance().lc_device(),
         cmdlist,
         scene.buffer_heap(),
         scene.image_heap(),
         v.device_mesh,
-        material_code.value,
+        mat_index,
         heap_indices::buffer_allocator_heap_index,
         TexStreamManager::instance(),
         local_to_world);
@@ -689,13 +617,31 @@ void Lights::update_mesh_light_sync(
         scene.bindless_allocator().deallocate_buffer(v.blas_heap_idx);
     }
     v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
-    scene.accel_manager().set_mesh_instance(
-        cmdlist,
-        scene.buffer_uploader(),
-        v.tlas_id,
-        local_to_world,
-        0xffu,
-        true);
+    if (new_mesh) {
+        scene.accel_manager().set_mesh_instance(
+            v.tlas_id,
+            cmdlist,
+            scene.host_upload_buffer(),
+            scene.buffer_allocator(),
+            scene.buffer_uploader(),
+            scene.dispose_queue(),
+            v.device_mesh->mesh_data(),
+            material_codes,
+            local_to_world,
+            0xffu,
+            true,
+            v.tlas_light_id,
+            LightAccel::t_MeshLight,
+            true);
+    } else {
+        scene.accel_manager().set_mesh_instance(
+            cmdlist,
+            scene.buffer_uploader(),
+            v.tlas_id,
+            local_to_world,
+            0xffu,
+            true);
+    }
     LightAccel::MeshLight mesh_light{
         local_to_world,
         {host_result.bounding.min.x, host_result.bounding.min.y, host_result.bounding.min.z},
