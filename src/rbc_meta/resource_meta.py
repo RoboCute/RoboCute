@@ -13,7 +13,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         normal=tr.bool,
         tangent=tr.bool,
         uv_count=tr.uint,
-        submesh_offset=tr.vector(tr.uint)
+        submesh_offset=tr.external_type("luisa::vector<uint32_t>")
     )
     TextureMeta = tr.struct('rbc::TextureMeta', suffix)
     TextureMeta.serde_members(

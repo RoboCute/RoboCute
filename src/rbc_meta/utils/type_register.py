@@ -181,12 +181,6 @@ class double4x4:
     pass
 
 
-class vector:
-    def __init__(self, element):
-        _check_arg("vector element", element)
-        self._element = element
-
-
 _basic_types = {
     bool,
     byte,
@@ -228,7 +222,7 @@ _basic_types = {
     double4x4,
     GUID,
 }
-_template_types = {vector, ClassPtr, unordered_map, external_type}
+_template_types = {ClassPtr, unordered_map, external_type}
 _registed_struct_types = {}
 _registed_enum_types = {}
 

@@ -13,5 +13,19 @@ public:
 
     static void init(py::module &m);
     void (*_callback)(py::module &);
-    ModuleRegister(void (*callback)(py::module &));
+    explicit ModuleRegister(void (*callback)(py::module &));
 };
+
+
+inline luisa::span<std::byte> to_span_5d4636ab(py::buffer const &b) {
+    auto r = b.request();
+    return {
+        (std::byte *)r.ptr,
+        (size_t)r.size * (size_t)r.itemsize};
+}
+
+inline py::memoryview to_memoryview_5d4636ab(luisa::span<std::byte> const &sp) {
+    return py::memoryview::from_memory(
+        sp.data(),
+        sp.size());
+}

@@ -87,10 +87,13 @@ struct ContextImpl : RBCContext {
         return size;
     }
 
-    void *create_mesh(void *data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count) override {
+    void *create_mesh(luisa::span<std::byte> data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count) override {
         auto mesh_size = get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
+        if (mesh_size != data.size_bytes()) [[unlikely]] {
+            LUISA_ERROR("Mesh desired size {} unmatch to buffer size {}", mesh_size, data.size_bytes());
+        }
         luisa::BinaryBlob temp_blob{
-            (std::byte *)data,
+            data.data(),
             mesh_size,
             {}};
         auto ptr = new DeviceMesh();
@@ -107,9 +110,30 @@ struct ContextImpl : RBCContext {
             true);
         return ptr;
     }
-    void *get_mesh_data(void *handle) override {
+    void *load_mesh(luisa::string_view name, uint64_t file_offset, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count) override {
+        auto mesh_size = get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
+        auto ptr = new DeviceMesh();
+        RC<DeviceMesh>::manually_add_ref(ptr);
+        ptr->async_load_from_file(
+            name,
+            vertex_count,
+            contained_normal,
+            contained_tangent,
+            uv_count,
+            {},
+            false,
+            true,
+            file_offset,
+            ~0ull,
+            true);
+        return ptr;
+    }
+
+    luisa::span<std::byte> get_mesh_data(void *handle) override {
         auto mesh = (DeviceMesh *)handle;
-        return (void *)mesh->host_data().data();
+        mesh->wait_finished();
+        auto host_data = mesh->host_data();
+        return host_data;
     }
     void remove_mesh(void *handle) override {
         RC<DeviceMesh>::manually_release_ref((DeviceMesh *)handle);
@@ -198,14 +222,17 @@ struct ContextImpl : RBCContext {
             }
         });
     }
-    void *create_texture(void *data, rbc::LCPixelStorage storage, luisa::uint2 size, rbc::SamplerAddress address, rbc::SamplerFilter filter, uint32_t mip_level, bool is_virtual_texture) override {
+    void *create_texture(luisa::span<std::byte> data, rbc::LCPixelStorage storage, luisa::uint2 size, rbc::SamplerAddress address, rbc::SamplerFilter filter, uint32_t mip_level, bool is_virtual_texture) override {
         size_t size_bytes = 0;
         for (auto i : vstd::range(mip_level))
             size_bytes += pixel_storage_size((PixelStorage)storage, make_uint3(size >> (uint)i, 1u));
+        if (size_bytes != data.size()) [[unlikely]] {
+            LUISA_ERROR("Texture desired size {} unmatch to buffer size {}", size_bytes, data.size_bytes());
+        }
         auto ptr = new DeviceImage();
         RC<DeviceImage>::manually_add_ref(ptr);
         ptr->async_load_from_memory(
-            luisa::BinaryBlob((std::byte *)data, size_bytes, {}),
+            luisa::BinaryBlob(data.data(), data.size(), {}),
             Sampler{
                 (Sampler::Filter)filter,
                 (Sampler::Address)address},

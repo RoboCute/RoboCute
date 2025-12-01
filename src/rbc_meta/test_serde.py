@@ -9,15 +9,15 @@ def codegen_header(header_path: Path):
     MyEnum = tr.enum("rbc::MyEnum", On=1, Off=None)
     MyStruct.serde_members(
         guid=tr.GUID,
-        multi_dim_vec=tr.vector(tr.vector(tr.int)),
+        multi_dim_vec=tr.external_type("luisa::vector<luisa::vector<int32_t>>"),
         matrix=tr.float4x4,
         a=tr.int,
         b=tr.double2,
         c=tr.float,
         dd=tr.string,
-        ee=tr.vector(tr.int),
+        ee=tr.external_type("luisa::vector<int32_t>"),
         ff=tr.unordered_map(tr.string, tr.float4),
-        vec_str=tr.vector(tr.string),
+        vec_str=tr.external_type("luisa::vector<luisa::string>"),
         test_enum=MyEnum,
     )
     ut.codegen_to(header_path)(codegen.cpp_interface_gen)

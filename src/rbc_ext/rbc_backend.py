@@ -14,6 +14,8 @@ class RBCContext:
 		RBCContext__create_window__(self._handle, name, size, resizable)
 	def create_mesh(self, data, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int):
 		return RBCContext__create_mesh__(self._handle, data, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count)
+	def load_mesh(self, path: str, file_offset: int, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int):
+		return RBCContext__load_mesh__(self._handle, path, file_offset, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count)
 	def get_mesh_data(self, handle):
 		return RBCContext__get_mesh_data__(self._handle, handle)
 	def remove_mesh(self, handle):

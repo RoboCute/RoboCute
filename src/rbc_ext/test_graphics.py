@@ -17,6 +17,14 @@ def main():
     ctx.create_window("py_window", uint2(1920, 1080), True)
 
     mesh_array, vertex_count, triangle_count = create_mesh_array()
+    mesh = ctx.create_mesh(
+        mesh_array,
+        vertex_count,
+        False,
+        False,
+        0,
+        triangle_count
+    )
     
     # tex_array = np.zeros(1024 * 1024 * 4, dtype=np.float32)
     # tex = ctx.create_texture(
@@ -28,17 +36,30 @@ def main():
     #     1,
     #     False
     # )
-    mesh = ctx.create_mesh(
-        mesh_array,
-        vertex_count,
-        False,
-        False,
-        0,
-        triangle_count
-    )
+    
+    ##################### load and store mesh through file
+    # f = open('test_mesh.bytes', 'wb')
+    # f.write(mesh_array)
+    # f.close()
+    # mesh = ctx.load_mesh(
+    #     'test_mesh.bytes',
+    #     0,
+    #     vertex_count,
+    #     False,
+    #     False,
+    #     0,
+    #     triangle_count
+    # )
     mesh_buffer = ctx.get_mesh_data(mesh)
     # TODO: how to transform void* to buffer?
-    # mesh_copyed_array = np.ndarray(shape=mesh_array.size, dtype=mesh_array.dtype, buffer=mesh_buffer)
+    vertex_array = np.ndarray(shape=8 * 4, dtype=mesh_array.dtype, buffer=mesh_buffer, offset=0)
+    triangle_array = np.ndarray(shape=6*6, dtype=np.uint32, buffer=mesh_buffer, offset=vertex_array.itemsize * vertex_array.size)
+    print(f'readback mesh size {vertex_array.size}')
+    for i in range(8):
+        print(float3(vertex_array[i * 4], vertex_array[i * 4 + 1], vertex_array[i * 4 + 2]))
+    for i in range(12):
+        print(int3(triangle_array[i * 3], triangle_array[i * 3 + 1], triangle_array[i * 3 + 2]))
+    
     obj = ctx.create_object(
         make_float4x4(
             1,0,0,0,
@@ -53,9 +74,9 @@ def main():
             1,0,0,0,
             0,0,1,0,
             0,-1,0,0,
-            1,1,3,1
+            1,1,4,1
         ),
-        float3(1, 0.8, 0.7) * 20,
+        float3(1, 0.8, 0.7) * 100,
         True
     )
     while not ctx.should_close():

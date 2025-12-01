@@ -51,6 +51,7 @@ public:
     [[nodiscard]] Image<int> const& get_int_image() const;
     [[nodiscard]] Image<uint> const& get_uint_image() const;
     [[nodiscard]] luisa::span<std::byte const> host_data() const override { return _host_data; }
+    [[nodiscard]] luisa::span<std::byte> host_data() override { return _host_data; }
     DeviceImage();
     ~DeviceImage();
 

@@ -44,6 +44,9 @@ public:
     virtual luisa::span<std::byte const> host_data() const {
         return {};
     }
+    virtual luisa::span<std::byte> host_data() {
+        return {};
+    }
 
     uint64_t gpu_load_frame() const { return _gpu_load_frame.load(); }
     virtual ~DeviceResource() = default;
