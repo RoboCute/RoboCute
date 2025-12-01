@@ -37,6 +37,17 @@ public:
         ImageView<float> img,
         uint64_t file_offset = 0
     ) const;
+    void upload_with_copy(
+        IOCommandList& file_io_cmdlist,
+        IOCommandList& mem_io_cmdlist,
+        luisa::vector<std::byte>& copy,
+        CommandList& cmdlist,
+        Device& devive,
+        DisposeQueue& disp_queue,
+        IOFile::Handle io_file,
+        ImageView<float> img,
+        uint64_t file_offset = 0
+    ) const;
     void upload(
         IOCommandList& io_mem_cmdlist,
         CommandList& cmdlist,

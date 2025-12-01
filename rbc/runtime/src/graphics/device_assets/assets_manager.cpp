@@ -122,7 +122,6 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                 continue;
             }
             bool require_disk_io_sync = false;
-            bool require_memory_io_sync = false;
             LoadTaskArgs load_task{
                 &_load_stream_disqueue,
                 &_load_buffer_uploader,
@@ -132,8 +131,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                 mem_io_cmdlist,
                 cmdlist,
                 executed_frame,
-                &require_disk_io_sync,
-                &require_memory_io_sync};
+                &require_disk_io_sync};
             for (auto &i : funcs) {
                 i(load_task);
             }
@@ -149,7 +147,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
             set_cmdlist(cmdlist, frame_res.compute_fence);
             _load_executive_queue.push([this,
                                         &frame_res,
-                                        require_disk_io_sync, require_memory_io_sync,
+                                        require_disk_io_sync,
                                         executed_frame,
                                         mem_io_cmdlist = std::move(mem_io_cmdlist),
                                         io_cmdlist = std::move(io_cmdlist),
@@ -169,6 +167,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                     require_disk_io_sync = true;
                 }
 
+                bool require_memory_io_sync = false;
                 if (!mem_io_cmdlist.empty()) {
                     if (cmdlist.empty()) {
                         if (finish_callbak)

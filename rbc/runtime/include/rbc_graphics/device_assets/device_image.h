@@ -38,8 +38,10 @@ private:
         uint2 size,
         uint mip_level,
         ImageType image_type,
-        LoadType&& load_type
+        LoadType&& load_type,
+        bool copy_to_memory = false
     );
+    luisa::vector<std::byte> _host_data;
 
 public:
     Type resource_type() const override { return Type::Image; }
@@ -48,6 +50,7 @@ public:
     [[nodiscard]] Image<float> const& get_float_image() const;
     [[nodiscard]] Image<int> const& get_int_image() const;
     [[nodiscard]] Image<uint> const& get_uint_image() const;
+    [[nodiscard]] luisa::span<std::byte const> host_data() const override { return _host_data; }
     DeviceImage();
     ~DeviceImage();
 
@@ -64,7 +67,8 @@ public:
         PixelStorage storage,
         uint2 size,
         uint mip_level = 1u,
-        ImageType image_type = ImageType::Float
+        ImageType image_type = ImageType::Float,
+        bool copy_to_host = false
     );
     void async_load_from_memory(
         BinaryBlob&& data,
@@ -72,7 +76,8 @@ public:
         PixelStorage storage,
         uint2 size,
         uint mip_level = 1u,
-        ImageType image_type = ImageType::Float
+        ImageType image_type = ImageType::Float,
+        bool copy_to_host = false
     );
     void async_load_from_buffer(
         BufferView<uint> buffer,

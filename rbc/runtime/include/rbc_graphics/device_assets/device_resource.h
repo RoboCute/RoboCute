@@ -41,6 +41,10 @@ public:
     }
     RBC_RUNTIME_API virtual void wait_executed();
     RBC_RUNTIME_API virtual void wait_finished();
+    virtual luisa::span<std::byte const> host_data() const {
+        return {};
+    }
+
     uint64_t gpu_load_frame() const { return _gpu_load_frame.load(); }
     virtual ~DeviceResource() = default;
 };

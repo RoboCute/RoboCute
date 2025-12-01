@@ -107,8 +107,12 @@ struct ContextImpl : RBCContext {
             true);
         return ptr;
     }
+    void *get_mesh_data(void *handle) override {
+        auto mesh = (DeviceMesh *)handle;
+        return (void *)mesh->host_data().data();
+    }
     void remove_mesh(void *handle) override {
-        RC<DeviceMesh>::manually_release_ref(reinterpret_cast<DeviceMesh *>(handle));
+        RC<DeviceMesh>::manually_release_ref((DeviceMesh *)handle);
     }
     void *add_area_light(luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {
         auto &render_device = RenderDevice::instance();
@@ -207,8 +211,9 @@ struct ContextImpl : RBCContext {
                 (Sampler::Address)address},
             (PixelStorage)storage,
             size,
-            mip_level);
-        ptr->wait_finished();
+            mip_level,
+            DeviceImage::ImageType::Float,
+            true);
         return ptr;
     }
     uint texture_heap_idx(void *ptr) override {

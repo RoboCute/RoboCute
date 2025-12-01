@@ -30,6 +30,8 @@ def codegen_header(
                    contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint
                    # TODO: submesh
                    ).ret_type(tr.VoidPtr)
+    Context.method('get_mesh_data', handle=tr.VoidPtr).ret_type(tr.VoidPtr)
+
     Context.method('remove_mesh', handle=tr.VoidPtr)
     # light
     Context.method(

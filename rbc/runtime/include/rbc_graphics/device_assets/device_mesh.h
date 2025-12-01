@@ -27,7 +27,7 @@ public:
     [[nodiscard]] auto contained_tangent() const { return _contained_tangent; }
     [[nodiscard]] auto uv_count() const { return _uv_count; }
     [[nodiscard]] auto mesh_data() const { return _render_mesh_data; }
-    [[nodiscard]] luisa::span<std::byte const> host_data() const { return _host_data; }
+    [[nodiscard]] luisa::span<std::byte const> host_data() const override { return _host_data; }
     DeviceMesh();
     ~DeviceMesh();
 

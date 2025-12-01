@@ -77,7 +77,8 @@ void DeviceImage::_async_load(
     uint2 size,
     uint mip_level,
     ImageType image_type,
-    LoadType&& load_type
+    LoadType&& load_type,
+    bool copy_to_memory
 )
 {
     if (luisa::to_underlying(image_type) >= luisa::to_underlying(ImageType::None)) [[unlikely]]
@@ -91,7 +92,7 @@ void DeviceImage::_async_load(
     }
     _gpu_load_frame = std::numeric_limits<uint64_t>::max();
     inst->load_thd_queue.push(
-        [this_shared = RC{ this }, storage, load_type = std::move(load_type), size, image_type, mip_level, sampler](
+        [this_shared = RC{ this }, storage, copy_to_memory, load_type = std::move(load_type), size, image_type, mip_level, sampler](
             LoadTaskArgs const& args
         ) mutable {
             auto ptr = static_cast<DeviceImage*>(this_shared.get());
@@ -113,15 +114,30 @@ void DeviceImage::_async_load(
                     for (auto i : vstd::range(dst_mip_level))
                     {
                         auto img_view = img.view(i);
-                        inst->load_tex_uploader().upload(
-                            args.io_cmdlist,
-                            args.cmdlist,
-                            args.device,
-                            *args.disp_queue,
-                            file,
-                            reinterpret_cast<ImageView<float>&>(img_view), // layout is same
-                            offset
-                        );
+                        if(copy_to_memory) {
+                            *args.require_disk_io_sync = true;
+                            inst->load_tex_uploader().upload_with_copy(
+                                args.io_cmdlist,
+                                args.mem_io_cmdlist,
+                                this_shared->_host_data,
+                                args.cmdlist,
+                                args.device,
+                                *args.disp_queue,
+                                file,
+                                reinterpret_cast<ImageView<float>&>(img_view), // layout is same
+                                offset
+                            );
+                        } else {
+                            inst->load_tex_uploader().upload(
+                                args.io_cmdlist,
+                                args.cmdlist,
+                                args.device,
+                                *args.disp_queue,
+                                file,
+                                reinterpret_cast<ImageView<float>&>(img_view), // layout is same
+                                offset
+                            );
+                        }
                         offset += img_view.size_bytes();
                     }
                 }
@@ -227,10 +243,11 @@ void DeviceImage::async_load_from_file(
     PixelStorage storage,
     uint2 size,
     uint mip_level,
-    ImageType image_type
+    ImageType image_type,
+    bool copy_to_host
 )
 {
-    _async_load(sampler, storage, size, mip_level, image_type, FileLoad{ path, file_offset });
+    _async_load(sampler, storage, size, mip_level, image_type, FileLoad{ path, file_offset }, copy_to_host);
 }
 
 void DeviceImage::async_load_from_buffer(
@@ -250,9 +267,19 @@ void DeviceImage::async_load_from_memory(
     PixelStorage storage,
     uint2 size,
     uint mip_level,
-    ImageType image_type
+    ImageType image_type,
+    bool copy_to_host
 )
 {
+    if (copy_to_host) {
+        _host_data.clear();
+        _host_data.push_back_uninitialized(data.size());
+        std::memcpy(_host_data.data(), data.data(), data.size());
+        data = BinaryBlob{
+            _host_data.data(),
+            _host_data.size(),
+            {}};
+    }
     _async_load(sampler, storage, size, mip_level, image_type, MemoryLoad{ std::move(data) });
 }
 } // namespace rbc

@@ -36,6 +36,9 @@ def main():
         0,
         triangle_count
     )
+    mesh_buffer = ctx.get_mesh_data(mesh)
+    # TODO: how to transform void* to buffer?
+    # mesh_copyed_array = np.ndarray(shape=mesh_array.size, dtype=mesh_array.dtype, buffer=mesh_buffer)
     obj = ctx.create_object(
         make_float4x4(
             1,0,0,0,
