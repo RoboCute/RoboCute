@@ -115,9 +115,9 @@ struct Serializer : public Base {
         : Base(std::forward<Args>(args)...),
           _alloc(4096, &_alloc_callback, 2) {
     }
-    void* allocate_temp_str(size_t size) {
+    void *allocate_temp_str(size_t size) {
         auto c = _alloc.allocate(size);
-        return reinterpret_cast<void*>(c.handle + c.offset);
+        return reinterpret_cast<void *>(c.handle + c.offset);
     }
 
     template<concepts::SerializableType<Serializer> T, typename... Args>
@@ -204,18 +204,16 @@ struct Serializer : public Base {
         }
         // string
         else if constexpr (
-            requires{
+            requires {
                 std::is_same_v<char, std::remove_cvref_t<std::remove_pointer_t<decltype(t.data())>>>;
                 t.size();
-            }
-        ) {
+            }) {
             auto len = t.size();
             auto ptr = (char *)allocate_temp_str(len + 1);
             ptr[len] = 0;
             std::memcpy(ptr, t.data(), len);
             Base::add(ptr, args...);
-        }
-        else if constexpr (std::is_same_v<std::decay_t<T>, char const *> || std::is_same_v<std::decay_t<T>, char *>) {
+        } else if constexpr (std::is_same_v<std::decay_t<T>, char const *> || std::is_same_v<std::decay_t<T>, char *>) {
             auto len = strlen(t);
             auto ptr = (char *)allocate_temp_str(len + 1);
             ptr[len] = 0;
@@ -262,7 +260,7 @@ struct Serializer : public Base {
         //         ++i;
         //     }
         //     Base::add_last_scope_to_object(args...);
-        // } 
+        // }
         else if constexpr (std::is_same_v<T, vstd::Guid>) {
             auto chunk = _alloc.allocate(23);
             auto ptr = (char *)(chunk.handle + chunk.offset);
@@ -496,5 +494,24 @@ struct DeSerializer : public Base {
 };
 using JsonSerializer = Serializer<JsonWriter>;
 using JsonDeSerializer = DeSerializer<JsonReader>;
-
+template<typename T>
+struct is_serializer {
+    static constexpr bool value = false;
+};
+template<typename T>
+struct is_deserializer {
+    static constexpr bool value = false;
+};
+template<typename T>
+struct is_serializer<Serializer<T>> {
+    static constexpr bool value = true;
+};
+template<typename T>
+struct is_deserializer<DeSerializer<T>> {
+    static constexpr bool value = true;
+};
+template<typename T>
+static constexpr bool is_serializer_v = is_serializer<T>::value;
+template<typename T>
+static constexpr bool is_deserializer_v = is_deserializer<T>::value;
 }// namespace rbc

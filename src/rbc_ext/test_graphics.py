@@ -25,6 +25,9 @@ def main():
         0,
         triangle_count
     )
+    mat = ctx.create_pbr_material(create_orange_mat())
+    mat_json = ctx.get_material_data(mat)
+    print(mat_json)
     
     # tex_array = np.zeros(1024 * 1024 * 4, dtype=np.float32)
     # tex = ctx.create_texture(
@@ -159,6 +162,116 @@ def create_mesh_array():
     push_indices(7)
     push_indices(5)
     return mesh_array, vertex_count, indices_arr.size // 3
+
+def create_orange_mat():
+    return '''{
+    "weight_base": 1.0,
+    "weight_diffuse_roughness": 0.0,
+    "weight_specular": 1.0,
+    "weight_metallic": 0.0,
+    "weight_metallic_roughness_tex": 4294967295,
+    "weight_subsurface": 0.0,
+    "weight_transmission": 0.0,
+    "weight_thin_film": 0.0,
+    "weight_fuzz": 0.0,
+    "weight_coat": 0.0,
+    "weight_diffraction": 0.0,
+    "geometry_cutout_threshold": 0.30000001192092896,
+    "geometry_opacity": 1.0,
+    "geometry_opacity_tex": 4294967295,
+    "geometry_thickness": 0.5,
+    "geometry_thin_walled": true,
+    "geometry_nested_priority": 0,
+    "geometry_bump_scale": 1.0,
+    "geometry_normal_tex": 4294967295,
+    "uv_scale": [
+        1.0,
+        1.0
+    ],
+    "uv_offset": [
+        0.0,
+        0.0
+    ],
+    "specular_color": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "specular_roughness": 0.30000001192092896,
+    "specular_roughness_anisotropy": 0.0,
+    "specular_anisotropy_level_tex": 4294967295,
+    "specular_roughness_anisotropy_angle": 0.0,
+    "specular_anisotropy_angle_tex": 4294967295,
+    "specular_ior": 1.5,
+    "emission_luminance": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emission_tex": 4294967295,
+    "base_albedo": [
+        0.9,
+        0.7,
+        0.3
+    ],
+    "base_albedo_tex": 4294967295,
+    "subsurface_color": [
+        0.800000011920929,
+        0.800000011920929,
+        0.800000011920929
+    ],
+    "subsurface_radius": 0.05000000074505806,
+    "subsurface_radius_scale": [
+        1.0,
+        0.5,
+        0.25
+    ],
+    "subsurface_scatter_anisotropy": 0.0,
+    "transmission_color": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "transmission_depth": 0.0,
+    "transmission_scatter": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "transmission_scatter_anisotropy": 0.0,
+    "transmission_dispersion_scale": 0.0,
+    "transmission_dispersion_abbe_number": 20.0,
+    "coat_color": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "coat_roughness": 0.0,
+    "coat_roughness_anisotropy": 0.0,
+    "coat_roughness_anisotropy_angle": 0.0,
+    "coat_ior": 1.600000023841858,
+    "coat_darkening": 1.0,
+    "coat_roughening": 1.0,
+    "fuzz_color": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "fuzz_roughness": 0.5,
+    "diffraction_color": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "diffraction_thickness": 0.5,
+    "diffraction_inv_pitch_x": 0.3333333432674408,
+    "diffraction_inv_pitch_y": 0.0,
+    "diffraction_angle": 0.0,
+    "diffraction_lobe_count": 5,
+    "diffraction_type": 1,
+    "thin_film_thickness": 0.5,
+    "thin_film_ior": 1.399999976158142
+}'''
 
 if __name__ == '__main__':
     main()

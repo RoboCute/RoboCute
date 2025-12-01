@@ -12,61 +12,120 @@ using namespace luisa::compute;
 namespace rbc {
 GraphicsUtils::GraphicsUtils() {}
 GraphicsUtils::~GraphicsUtils() {};
+template<typename T, typename OpenPBR>
+void serde_openpbr(
+    T t,
+    OpenPBR x) {
+    auto serde_func = [&]<typename U>(U &u, char const *name) {
+        using PureU = std::remove_cvref_t<U>;
+        constexpr bool is_index = requires { u.index; };
+        constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
+        if constexpr (rbc::is_serializer_v<std::remove_cvref_t<T>>) {
+            if constexpr (is_index) {
+                t._store(u.index, name);
+            } else if constexpr (is_array) {
+                t.start_array();
+                for (auto &i : u) {
+                    t._store(i);
+                }
+                t.add_last_scope_to_object(name);
+            } else {
+                t._store(u, name);
+            }
+        } else {
+            if constexpr (is_index) {
+                t._load(u.index, name);
+            } else if constexpr (is_array) {
+                uint64_t size;
+                if (!t.start_array(size, name))
+                    return;
+                LUISA_ASSERT(size == u.size(), "Variable {} array size mismatch.", name);
+                for (auto &i : u) {
+                    t._load(i);
+                }
+                t.end_scope();
+            } else {
+                t._load(u, name);
+            }
+        }
+    };
+    serde_func(x.weight.base, "weight_base");
+    serde_func(x.weight.diffuse_roughness, "weight_diffuse_roughness");
+    serde_func(x.weight.specular, "weight_specular");
+    serde_func(x.weight.metallic, "weight_metallic");
+    serde_func(x.weight.metallic_roughness_tex, "weight_metallic_roughness_tex");
+    serde_func(x.weight.subsurface, "weight_subsurface");
+    serde_func(x.weight.transmission, "weight_transmission");
+    serde_func(x.weight.thin_film, "weight_thin_film");
+    serde_func(x.weight.fuzz, "weight_fuzz");
+    serde_func(x.weight.coat, "weight_coat");
+    serde_func(x.weight.diffraction, "weight_diffraction");
+    serde_func(x.geometry.cutout_threshold, "geometry_cutout_threshold");
+    serde_func(x.geometry.opacity, "geometry_opacity");
+    serde_func(x.geometry.opacity_tex, "geometry_opacity_tex");
+    serde_func(x.geometry.thickness, "geometry_thickness");
+    serde_func(x.geometry.thin_walled, "geometry_thin_walled");
+    serde_func(x.geometry.nested_priority, "geometry_nested_priority");
+    serde_func(x.geometry.bump_scale, "geometry_bump_scale");
+    serde_func(x.geometry.normal_tex, "geometry_normal_tex");
+    serde_func(x.uvs.uv_scale, "uv_scale");
+    serde_func(x.uvs.uv_offset, "uv_offset");
+    serde_func(x.specular.specular_color, "specular_color");
+    serde_func(x.specular.roughness, "specular_roughness");
+    serde_func(x.specular.roughness_anisotropy, "specular_roughness_anisotropy");
+    serde_func(x.specular.specular_anisotropy_level_tex, "specular_anisotropy_level_tex");
+    serde_func(x.specular.roughness_anisotropy_angle, "specular_roughness_anisotropy_angle");
+    serde_func(x.specular.specular_anisotropy_angle_tex, "specular_anisotropy_angle_tex");
+    serde_func(x.specular.ior, "specular_ior");
+    serde_func(x.emission.luminance, "emission_luminance");
+    serde_func(x.emission.emission_tex, "emission_tex");
+    serde_func(x.base.albedo, "base_albedo");
+    serde_func(x.base.albedo_tex, "base_albedo_tex");
+    serde_func(x.subsurface.subsurface_color, "subsurface_color");
+    serde_func(x.subsurface.subsurface_radius, "subsurface_radius");
+    serde_func(x.subsurface.subsurface_radius_scale, "subsurface_radius_scale");
+    serde_func(x.subsurface.subsurface_scatter_anisotropy, "subsurface_scatter_anisotropy");
+    serde_func(x.transmission.transmission_color, "transmission_color");
+    serde_func(x.transmission.transmission_depth, "transmission_depth");
+    serde_func(x.transmission.transmission_scatter, "transmission_scatter");
+    serde_func(x.transmission.transmission_scatter_anisotropy, "transmission_scatter_anisotropy");
+    serde_func(x.transmission.transmission_dispersion_scale, "transmission_dispersion_scale");
+    serde_func(x.transmission.transmission_dispersion_abbe_number, "transmission_dispersion_abbe_number");
+    serde_func(x.coat.coat_color, "coat_color");
+    serde_func(x.coat.coat_roughness, "coat_roughness");
+    serde_func(x.coat.coat_roughness_anisotropy, "coat_roughness_anisotropy");
+    serde_func(x.coat.coat_roughness_anisotropy_angle, "coat_roughness_anisotropy_angle");
+    serde_func(x.coat.coat_ior, "coat_ior");
+    serde_func(x.coat.coat_darkening, "coat_darkening");
+    serde_func(x.coat.coat_roughening, "coat_roughening");
+    serde_func(x.fuzz.fuzz_color, "fuzz_color");
+    serde_func(x.fuzz.fuzz_roughness, "fuzz_roughness");
+    serde_func(x.diffraction.diffraction_color, "diffraction_color");
+    serde_func(x.diffraction.diffraction_thickness, "diffraction_thickness");
+    serde_func(x.diffraction.diffraction_inv_pitch_x, "diffraction_inv_pitch_x");
+    serde_func(x.diffraction.diffraction_inv_pitch_y, "diffraction_inv_pitch_y");
+    serde_func(x.diffraction.diffraction_angle, "diffraction_angle");
+    serde_func(x.diffraction.diffraction_lobe_count, "diffraction_lobe_count");
+    serde_func(x.diffraction.diffraction_type, "diffraction_type");
+    serde_func(x.thin_film.thin_film_thickness, "thin_film_thickness");
+    serde_func(x.thin_film.thin_film_ior, "thin_film_ior");
+}
+
+void GraphicsUtils::openpbr_json_ser(JsonSerializer &json_ser, material::OpenPBR const &mat) {
+    serde_openpbr<JsonSerializer &, material::OpenPBR const &>(json_ser, mat);
+}
+void GraphicsUtils::openpbr_json_deser(JsonDeSerializer &json_deser, material::OpenPBR &mat) {
+    serde_openpbr<JsonDeSerializer &, material::OpenPBR &>(json_deser, mat);
+}
+void GraphicsUtils::openpbr_json_ser(JsonSerializer &json_ser, material::Unlit const &mat) {
+    LUISA_NOT_IMPLEMENTED();
+}
+void GraphicsUtils::openpbr_json_deser(JsonDeSerializer &json_deser, material::Unlit &mat) {
+    LUISA_NOT_IMPLEMENTED();
+}
 void deser_openpbr(
     JsonSerializer &serde,
     material::OpenPBR &x) {
-    // serde._store(x.weight.metallic_roughness_tex, "weight.metallic_roughness_tex");
-    // serde._store(x.weight.base, "weight.base");
-    // serde._store(x.weight.diffuse_roughness, "weight.diffuse_roughness");
-    // serde._store(x.weight.specular, "weight.specular");
-    // serde._store(x.weight.metallic, "weight.metallic");
-    // serde._store(x.weight.subsurface, "weight.subsurface");
-    // serde._store(x.weight.transmission, "weight.transmission");
-    // serde._store(x.weight.thin_film, "weight.thin_film");
-    // serde._store(x.weight.fuzz, "weight.fuzz");
-    // serde._store(x.weight.coat, "weight.coat");
-    // serde._store(x.weight.diffraction, "weight.diffraction");
-    // serde._store(x.geometry.thickness, "geometry.thickness");
-    // serde._store(x.geometry.cutout_threshold, "geometry.cutout_threshold");
-    // serde._store(x.geometry.opacity, "geometry.opacity");
-    // serde._store(x.geometry.bump_scale, "geometry.bump_scale");
-    // serde._store(x.geometry.opacity_tex, "geometry.opacity_tex");
-    // serde._store(x.geometry.nested_priority, "geometry.nested_priority");
-    // serde._store(x.geometry.normal_tex, "geometry.normal_tex");
-    // serde._store(x.geometry.thin_walled, "geometry.thin_walled");
-    // serde._store(x.uvs.uv_scale, "uvs.uv_scale");
-    // serde._store(x.uvs.uv_offset, "uvs.uv_offset");
-    // serde._store(x.specular.specular_color_and_rough, "specular.specular_color_and_rough");
-    // serde._store(x.specular.roughness_anisotropy, "specular.roughness_anisotropy");
-    // serde._store(x.specular.roughness_anisotropy_angle, "specular.roughness_anisotropy_angle");
-    // serde._store(x.specular.ior, "specular.ior");
-    // serde._store(x.specular.specular_anisotropy_angle_tex, "specular.specular_anisotropy_angle_tex");
-    // serde._store(x.specular.specular_anisotropy_level_tex, "specular.specular_anisotropy_level_tex");
-    // serde._store(x.emission.luminance, "emission.luminance");
-    // serde._store(x.emission.emission_tex, "emission.emission_tex");
-    // serde._store(x.base.albedo, "base.albedo");
-    // serde._store(x.base.albedo_tex, "base.albedo_tex");
-    // serde._store(x.subsurface.subsurface_color_and_radius, "subsurface.subsurface_color_and_radius");
-    // serde._store(x.subsurface.subsurface_radius_scale_andaniso, "subsurface.subsurface_radius_scale_andaniso");
-    // serde._store(x.transmission.transmission_color_and_depth, "transmission.transmission_color_and_depth");
-    // serde._store(x.transmission.transmission_scatter_and_aniso, "transmission.transmission_scatter_and_aniso");
-    // serde._store(x.transmission.transmission_dispersion_scale, "transmission.transmission_dispersion_scale");
-    // serde._store(x.transmission.transmission_dispersion_abbe_number, "transmission.transmission_dispersion_abbe_number");
-    // serde._store(x.coat.coat_color_and_roughness, "coat.coat_color_and_roughness");
-    // serde._store(x.coat.coat_roughness_anisotropy, "coat.coat_roughness_anisotropy");
-    // serde._store(x.coat.coat_roughness_anisotropy_angle, "coat.coat_roughness_anisotropy_angle");
-    // serde._store(x.coat.coat_ior, "coat.coat_ior");
-    // serde._store(x.coat.coat_darkening, "coat.coat_darkening");
-    // serde._store(x.coat.coat_roughening, "coat.coat_roughening");
-    // serde._store(x.fuzz.fuzz_color_and_roughness, "fuzz.fuzz_color_and_roughness");
-    // serde._store(x.diffraction.diffraction_color_and_thickness, "diffraction.diffraction_color_and_thickness");
-    // serde._store(x.diffraction.diffraction_inv_pitch_x, "diffraction.diffraction_inv_pitch_x");
-    // serde._store(x.diffraction.diffraction_inv_pitch_y, "diffraction.diffraction_inv_pitch_y");
-    // serde._store(x.diffraction.diffraction_angle, "diffraction.diffraction_angle");
-    // serde._store(x.diffraction.diffraction_lobe_count, "diffraction.diffraction_lobe_count");
-    // serde._store(x.diffraction.diffraction_type, "diffraction.diffraction_type");
-    // serde._store(x.thin_film.thin_film_thickness, "thin_film.thin_film_thickness");
-    // serde._store(x.thin_film.thin_film_ior, "thin_film.thin_film_ior");
 }
 void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     if (sm) {

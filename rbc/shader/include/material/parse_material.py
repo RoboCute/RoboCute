@@ -57,4 +57,6 @@ for line in lines:
         
 for s in finished_struct:
     for word in s[0]:
-        print(f'serde._store(x.{s[1]}.{word}, "{s[1]}.{word}");')
+        f = f'serde_func(x.{s[1]}.{word}, "{s[1]}_{word}");'
+        f = f.replace(f'{s[1]}_{s[1]}_', f'{s[1]}_')
+        print(f)

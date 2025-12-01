@@ -138,6 +138,42 @@ struct ContextImpl : RBCContext {
     void remove_mesh(void *handle) override {
         RC<DeviceMesh>::manually_release_ref((DeviceMesh *)handle);
     }
+    void *create_pbr_material(luisa::string_view json) override {
+        auto ptr = new MaterialStub();
+        ptr->mat_data.reset_as(MaterialStub::MatDataType::IndexOf<material::OpenPBR>);
+        JsonDeSerializer deser(json);
+        RC<MaterialStub>::manually_add_ref(ptr);
+        auto &mat_data = ptr->mat_data.force_get<material::OpenPBR>();
+        GraphicsUtils::openpbr_json_deser(
+            deser,
+            mat_data);
+        auto &sm = SceneManager::instance();
+        auto &render_device = RenderDevice::instance();
+        sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, material::OpenPBR>(
+            mat_data,
+            render_device.lc_main_cmd_list(),
+            sm.bindless_allocator(),
+            sm.buffer_uploader(),
+            sm.dispose_queue());
+        return ptr;
+    }
+    luisa::string get_material_data(void *mat_ptr) override {
+        auto ptr = (MaterialStub *)mat_ptr;
+        JsonSerializer ser(false);
+        ptr->mat_data.visit(
+            [&](auto &a) {
+                GraphicsUtils::openpbr_json_ser(ser, a);
+            });
+        auto data = ser.write_to();
+        return luisa::string{
+            luisa::string_view{(char const *)data.data(), data.size()}};
+    }
+    void remove_material(void *mat_ptr) override {
+        auto ptr = (MaterialStub *)mat_ptr;
+        auto &sm = SceneManager::instance();
+        sm.mat_manager().discard_mat_instance(ptr->mat_code);
+        RC<MaterialStub>::manually_release_ref(ptr);
+    }
     void *add_area_light(luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {
         auto &render_device = RenderDevice::instance();
         auto stub = new LightStub{};
@@ -245,7 +281,7 @@ struct ContextImpl : RBCContext {
     }
     uint texture_heap_idx(void *ptr) override {
         auto tex = (DeviceImage *)ptr;
-        tex->wait_finished();
+        tex->wait_executed();
         return tex->heap_idx();
     }
     void destroy_texture(void *ptr) override {

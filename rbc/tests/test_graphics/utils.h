@@ -12,6 +12,11 @@
 #include <luisa/core/dynamic_module.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 namespace rbc {
+using namespace rbc;
+using namespace luisa;
+using namespace luisa::compute;
+#include <material/mats.inl>
+
 struct EventFence {
     TimelineEvent event;
     uint64_t fence_index{};
@@ -46,5 +51,9 @@ struct GraphicsUtils {
     void reset_frame();
     bool should_close();
     void tick(vstd::function<void()> before_render = {});
+    static void openpbr_json_ser(JsonSerializer &json_ser, material::OpenPBR const &mat);
+    static void openpbr_json_deser(JsonDeSerializer &json_deser, material::OpenPBR &mat);
+    static void openpbr_json_ser(JsonSerializer &json_ser, material::Unlit const &mat);
+    static void openpbr_json_deser(JsonDeSerializer &json_deser, material::Unlit &mat);
 };
 }// namespace rbc

@@ -44,6 +44,12 @@ class RBCContext:
 		return RBCContext__texture_heap_idx__(self._handle, ptr)
 	def destroy_texture(self, ptr):
 		RBCContext__destroy_texture__(self._handle, ptr)
+	def create_pbr_material(self, json: str):
+		return RBCContext__create_pbr_material__(self._handle, json)
+	def get_material_data(self, mat):
+		return RBCContext__get_material_data__(self._handle, mat)
+	def remove_material(self, ptr):
+		RBCContext__remove_material__(self._handle, ptr)
 	def create_object(self, matrix: float4x4, mesh):
 		return RBCContext__create_object__(self._handle, matrix, mesh)
 	def update_object(self, matrix: float4x4):

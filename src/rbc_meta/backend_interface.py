@@ -32,7 +32,7 @@ def codegen_header(
                    ).ret_type(tr.VoidPtr)
     Context.method('load_mesh', path=tr.string, file_offset=tr.ulong, vertex_count=tr.uint,
                    contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint).ret_type(tr.VoidPtr)
-    
+
     Context.method('get_mesh_data', handle=tr.VoidPtr).ret_type(tr.DataBuffer)
 
     Context.method('remove_mesh', handle=tr.VoidPtr)
@@ -68,7 +68,7 @@ def codegen_header(
     Context.method(
         'create_texture',
         data=tr.DataBuffer,
-        storage = res_enums.PixelStorage,
+        storage=res_enums.PixelStorage,
         size=tr.uint2,
         address=res_enums.SamplerAddress,
         filter=res_enums.SamplerFilter,
@@ -77,11 +77,24 @@ def codegen_header(
     ).ret_type(tr.VoidPtr)
     Context.method(
         'texture_heap_idx',
-        ptr = tr.VoidPtr
+        ptr=tr.VoidPtr
     ).ret_type(tr.uint)
     Context.method(
         'destroy_texture',
-        ptr = tr.VoidPtr
+        ptr=tr.VoidPtr
+    )
+    # material
+    Context.method(
+        'create_pbr_material',
+        json=tr.string
+    ).ret_type(tr.VoidPtr)
+    Context.method(
+        'get_material_data',
+        mat=tr.VoidPtr
+    ).ret_type(tr.string)
+    Context.method(
+        'remove_material',
+        ptr=tr.VoidPtr
     )
     # object
     Context.method(
@@ -131,10 +144,12 @@ def codegen_header(
     ).ret_type(tr.bool)
 
     # codegen
-    ut.codegen_to(header_root_path / f"{file_name}.h")(ut.codegen.cpp_interface_gen, '#include <rbc_runtime/generated/resource_meta.hpp>')
+    ut.codegen_to(header_root_path / f"{file_name}.h")(
+        ut.codegen.cpp_interface_gen, '#include <rbc_runtime/generated/resource_meta.hpp>')
     ut.codegen_to(cpp_root_path / f"{file_name}.cpp")(
         ut.codegen.pybind_codegen,
         file_name,
         f'#include "{file_name}.h"',
     )
-    ut.codegen_to(py_root_path / f"{file_name}.py")(ut.codegen.py_interface_gen, pyd_name)
+    ut.codegen_to(
+        py_root_path / f"{file_name}.py")(ut.codegen.py_interface_gen, pyd_name)
