@@ -3,40 +3,7 @@ from typing import Dict, Any, List
 import time
 
 from robocute.api import app
-
-# Import animation nodes for registration
-import sys
-
-sys.path.insert(0, "samples")
-import animation_nodes
-
-
-@rbc.register_node
-class RotSimNode(rbc.RBCNode):
-    """RotSim Node
-    最简单的自定义Node来模拟一个物理仿真过程。
-    对于编辑器来说，所有的物理仿真过程实质上都是动画生成的过程，输入场景中的Entity元素，在Scene中查询必要的数据，执行算法并最终生成一个动画序列导出，同步到编辑器中进行可视化展示
-    """
-
-    NODE_TYPE = "NODETYPE_ROTSIM"
-    DISPLAY_NAME = "RotSim"
-    CATEGORY = "SIM"
-    DESCRIPTION = "提供若干选中的场景，执行‘绕圈’这个物理仿真"
-
-    @classmethod
-    def get_inputs(cls) -> List[rbc.NodeInput]:
-        return []
-
-    @classmethod
-    def get_outputs(cls) -> List[rbc.NodeOutput]:
-        return []
-
-    def execute(self) -> Dict[str, Any]:
-        # sim start from
-        # sim end frame
-        # for execute sim
-        # return animation sequence
-        return {}
+import custom_nodes.animation_nodes as animation_nodes
 
 
 def init_nodes():
@@ -107,7 +74,7 @@ def main():
         rc = entity_check.components["render"]
         print(f"    Render component mesh_id: {rc.mesh_id}")
 
-    init_nodes()
+    init_nodes()  # 初始化注册的节点系统
 
     # Start editor service
     print("\n[4] Starting Editor Service...")
