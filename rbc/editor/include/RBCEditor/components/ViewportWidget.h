@@ -2,7 +2,7 @@
 
 #include <QWidget>
 #include <memory>
-#include "RBCEditor/components/rhiwindow.h"
+#include "RBCEditor/components/RHIWindow.h"
 #include "RBCEditor/runtime/renderer.h"
 
 namespace rbc {
@@ -10,10 +10,10 @@ namespace rbc {
 class ViewportWidget : public QWidget {
     Q_OBJECT
 public:
-    explicit ViewportWidget(IRenderer* renderer, QWidget *parent = nullptr);
+    explicit ViewportWidget(IRenderer *renderer, QWidget *parent = nullptr);
     ~ViewportWidget() override;
 
-    RhiWindow* getRhiWindow() const { return m_rhiWindow; }
+    RhiWindow *getRhiWindow() const { return m_rhiWindow; }
 
 protected:
     // Event forwarding
@@ -23,16 +23,15 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
-    
+
     void resizeEvent(QResizeEvent *event) override;
 
 private:
     void setupUi();
 
-    IRenderer* m_renderer = nullptr;
-    RhiWindow* m_rhiWindow = nullptr;
-    QWidget* m_container = nullptr;
+    IRenderer *m_renderer = nullptr;
+    RhiWindow *m_rhiWindow = nullptr;
+    QWidget *m_container = nullptr;
 };
 
-} // namespace rbc
-
+}// namespace rbc

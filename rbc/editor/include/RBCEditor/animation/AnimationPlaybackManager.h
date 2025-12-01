@@ -35,11 +35,11 @@ public:
     void play();
     void pause();
     void stop();
-    bool isPlaying() const { return isPlaying_; }
+    [[nodiscard]] bool isPlaying() const { return isPlaying_; }
 
     // Frame control
     void setFrame(int frame);
-    inline int currentFrame() const { return currentFrame_; }
+    [[nodiscard]] inline int currentFrame() const { return currentFrame_; }
 
 signals:
     void frameChanged(int frame);
@@ -50,7 +50,7 @@ private slots:
 
 private:
     void applyFrame(int frame);
-    void sampleKeyframe(const AnimationSequence &seq, int frame, AnimationKeyframe &out) const;
+    static void sampleKeyframe(const AnimationSequence &seq, int frame, AnimationKeyframe &out);
 
     EditorScene *scene_;
     const AnimationClip *currentClip_;

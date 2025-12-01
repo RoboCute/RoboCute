@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QString>
+#include <atomic>
 
 namespace rbc {
 
@@ -22,22 +23,22 @@ class AnimationPlayer : public QWidget {
 
 public:
     explicit AnimationPlayer(QWidget *parent = nullptr);
-    
+
     // Set animation parameters
     void setAnimation(const QString &name, int totalFrames, float fps);
-    
+
     // Clear animation
     void clear();
-    
+
     // Playback control
     void play();
     void pause();
-    bool isPlaying() const { return isPlaying_; }
-    
+    [[nodiscard]] bool isPlaying() const { return isPlaying_; }
+
     // Frame control
     void setFrame(int frame);
-    int currentFrame() const;
-    
+    [[nodiscard]] int currentFrame() const;
+
     // Loop control
     void setLoop(bool loop);
     bool isLooping() const { return isLooping_; }
@@ -45,7 +46,7 @@ public:
 signals:
     // Emitted when frame changes (either by slider or playback)
     void frameChanged(int frame);
-    
+
     // Emitted when play state changes
     void playStateChanged(bool playing);
 
@@ -64,16 +65,16 @@ private:
     QCheckBox *loopCheckBox_;
     QLabel *frameLabel_;
     QLabel *animNameLabel_;
-    
+
     QString animationName_;
     int totalFrames_;
     float fps_;
     int currentFrame_;
     bool isPlaying_;
     bool isLooping_;
-    
+    std::atomic<bool> isAutoUpdate_;// mark as automatic update, no pause
+
     QTimer *playbackTimer_;
 };
 
-}  // namespace rbc
-
+}// namespace rbc

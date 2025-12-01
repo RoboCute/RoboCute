@@ -108,7 +108,7 @@ void AnimationPlaybackManager::applyFrame(int frame) {
     }
 }
 
-void AnimationPlaybackManager::sampleKeyframe(const AnimationSequence &seq, int frame, AnimationKeyframe &out) const {
+void AnimationPlaybackManager::sampleKeyframe(const AnimationSequence &seq, int frame, AnimationKeyframe &out) {
     // Find exact keyframe or nearest keyframe
     const AnimationKeyframe *exactKf = seq.getKeyframeAtFrame(frame);
 

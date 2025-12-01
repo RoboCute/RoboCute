@@ -1,5 +1,4 @@
-#include "RBCEditor/components/rhiwindow.h"
-
+#include "RBCEditor/components/RHIWindow.h"
 #include "qbytearrayview.h"
 #include "rhi/qrhi_platform.h"
 #include <QPlatformSurfaceEvent>
