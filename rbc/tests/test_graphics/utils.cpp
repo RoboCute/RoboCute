@@ -145,6 +145,7 @@ void GraphicsUtils::init_render() {
     display_pipe_ctx = render_plugin->create_pipeline_context(render_settings);
     LUISA_ASSERT(render_plugin->initialize_pipeline({}));
     sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false, false);
+    sm->prepare_frame();
 }
 
 void GraphicsUtils::init_display(luisa::string_view name, uint2 resolution, bool resizable) {

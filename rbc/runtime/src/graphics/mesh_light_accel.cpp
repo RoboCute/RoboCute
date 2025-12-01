@@ -38,18 +38,21 @@ auto MeshLightAccel::build_bvh(
         r.write_index(luisa::to_underlying(LightType::Triangle), i);
         return r;
     };
-    input_nodes.reserve(triangles.size());
+    input_nodes.push_back_uninitialized(triangles.size());
+    std::atomic_size_t input_nodes_count{};
     luisa::fiber::parallel(
         triangles.size(),
         [&](size_t i) {
             if (triangle_lum[i] > 1e-5f) {
-                input_nodes.emplace_back(func(i));
+                input_nodes[input_nodes_count++] = func(i);
             }
         },
         128);
+    input_nodes.resize_uninitialized(input_nodes_count);
     auto bvh_result = BVH::build(
         r.nodes,
         input_nodes);
+    LUISA_ASSERT(r.nodes.size() > 0);
     r.contribute = r.nodes[0].lum;
     r.bounding = bvh_result.bound;
     return r;
@@ -73,7 +76,16 @@ auto MeshLightAccel::build_bvh(
     lums.push_back_uninitialized(triangle_count);
     auto lum_buffer = device.create_buffer<float>(triangle_count);
     cmdlist
-        << (*_estimate_mesh)(tex_stream_mng->level_buffer(), heap, image_heap, meta, mat_index, mat_idx_buffer_heap_idx, lum_buffer).dispatch(lum_buffer.size())
+        << (*_estimate_mesh)(
+               tex_stream_mng->level_buffer(),
+               heap,
+               ByteBufferView{mesh->mesh_data()->pack.data},
+               image_heap,
+               meta.submesh_heap_idx,
+               meta.vertex_count,
+               meta.tri_byte_offset,
+               meta.ele_mask, mat_index, mat_idx_buffer_heap_idx, lum_buffer)
+               .dispatch(lum_buffer.size())
         << lum_buffer.view().copy_to(lums.data());
     cmdlist.add_callback(
         [lum_buffer = std::move(lum_buffer),
@@ -117,29 +129,20 @@ void MeshLightAccel::create_or_update_blas(
     Buffer<BVH::PackedNode> &buffer,
     vector<BVH::PackedNode> &&nodes) {
     LUISA_ASSERT(!nodes.empty());
-    if (buffer && buffer.size() != nodes.size() * 2) {
+    if (buffer && buffer.size() != nodes.size()) {
         SceneManager::instance().dispose_queue().dispose_after_queue(std::move(buffer));
     }
     if (!buffer) {
-        buffer = RenderDevice::instance().lc_device().create_buffer<BVH::PackedNode>(nodes.size() * 2);
+        buffer = RenderDevice::instance().lc_device().create_buffer<BVH::PackedNode>(nodes.size());
     }
-    cmdlist << buffer.view(nodes.size(), nodes.size()).copy_from(nodes.data());
+    auto to_float3 = [](std::array<float, 3> a){
+        return float3(a[0], a[1], a[2]);
+    };
+    cmdlist << buffer.view(0, nodes.size()).copy_from(nodes.data());
     SceneManager::instance().dispose_after_commit(std::move(nodes));
 }
 
-void MeshLightAccel::update_blas_transform(
-    CommandList &cmdlist,
-    BufferView<BVH::PackedNode> nodes,
-    uint node_count,
-    float4x4 transform) {
-    LUISA_ASSERT(nodes.size() == node_count * 2);
-    cmdlist << (*_node_local_to_global)(
-                   nodes,
-                   transform)
-                   .dispatch(node_count);
-}
 MeshLightAccel::MeshLightAccel() {
     ShaderManager::instance()->load("combine_mesh/estimate_mesh.bin", _estimate_mesh);
-    ShaderManager::instance()->load("combine_mesh/global_light_blas.bin", _node_local_to_global);
 }
 }// namespace rbc

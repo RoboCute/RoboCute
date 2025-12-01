@@ -135,7 +135,7 @@ bool select_light(
 	out_light_idx = out_light_idx & ((uint(1) << uint(29)) - uint(1));
 	out_tlas_idx = out_light_idx;
 	if (is_accel) {
-		out_mesh_light = g_buffer_heap.uniform_idx_buffer_read<MeshLight>(
+		out_mesh_light = g_buffer_heap.buffer_read<MeshLight>(
 			mesh_lights_heap_idx, out_light_idx);
 		accel_idx = out_mesh_light.blas_heap_idx;
 		while (true) {
@@ -189,7 +189,7 @@ bool select_light(
 			out_light_type = out_light_idx >> uint(29);
 			out_light_idx = out_light_idx & ((uint(1) << uint(29)) - uint(1));
 			if (is_accel) {
-				out_mesh_light = g_buffer_heap.uniform_idx_buffer_read<MeshLight>(
+				out_mesh_light = g_buffer_heap.buffer_read<MeshLight>(
 					mesh_lights_heap_idx, out_light_idx);
 				out_tlas_idx = out_light_idx;
 				accel_idx = out_mesh_light.blas_heap_idx;

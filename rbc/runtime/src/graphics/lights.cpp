@@ -487,7 +487,6 @@ uint Lights::add_mesh_light_sync(
     auto &host_result = v.host_result->wait();
     auto blas_node_count = host_result.nodes.size();
     mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
-    mesh_light_accel.update_blas_transform(cmdlist, v.blas_buffer, blas_node_count, local_to_world);
     v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
 
     // TODO: blas_heap_idx
@@ -612,7 +611,6 @@ void Lights::update_mesh_light_sync(
     auto &host_result = v.host_result->wait();
     auto blas_node_count = host_result.nodes.size();
     mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
-    mesh_light_accel.update_blas_transform(cmdlist, v.blas_buffer, blas_node_count, local_to_world);
     if (v.blas_heap_idx) {
         scene.bindless_allocator().deallocate_buffer(v.blas_heap_idx);
     }

@@ -6,6 +6,7 @@
 struct SimpleScene {
     rbc::Lights& lights;
     rbc::MatCode default_mat_code;
+    rbc::MatCode light_mat_code;
     luisa::vector<rbc::RC<rbc::DeviceMesh>> device_meshes;
     luisa::vector<uint32_t> tlas_indices;
     luisa::vector<uint32_t> light_id;

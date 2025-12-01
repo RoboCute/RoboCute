@@ -104,7 +104,41 @@ void SimpleScene::_init_tlas() {
     float4x4 area_light_transform =
         translation(light_pos) *
         rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f) * scaling(0.1f);
-    light_id.emplace_back(lights.add_area_light(cmdlist, area_light_transform, light_emission));
+    // light_id.emplace_back(lights.add_area_light(cmdlist, area_light_transform, light_emission));
+    auto &quad_mesh = device_meshes.emplace_back(new DeviceMesh{});
+    uint quad_data[4 * 4 + 4 * 2 + 6];
+    auto quad_verts = (luisa::float3 *)quad_data;
+    quad_verts[0] = float3(-0.5, -0.5, 0);
+    quad_verts[1] = float3(-0.5, 0.5, 0);
+    quad_verts[2] = float3(0.5, -0.5, 0);
+    quad_verts[3] = float3(0.5, 0.5, 0);
+    auto quad_uvs = (luisa::float2 *)(quad_verts + 4);
+    quad_uvs[0] = float2(0, 0);
+    quad_uvs[1] = float2(0, 1);
+    quad_uvs[2] = float2(1, 0);
+    quad_uvs[3] = float2(1, 1);
+    auto quad_tri = (geometry::Triangle *)(quad_uvs + 4);
+    quad_tri[0] = geometry::Triangle{0, 2, 1};
+    quad_tri[1] = geometry::Triangle{1, 2, 3};
+    quad_mesh->async_load_from_memory(
+        luisa::BinaryBlob{
+            (std::byte *)quad_data,
+            vstd::array_byte_size(quad_data),
+            {}},
+        4,
+        false,
+        false,
+        1,
+        {},
+        true,
+        false,
+        true);
+    sm.buffer_uploader().commit(cmdlist, sm.host_upload_buffer());
+    light_id.emplace_back(lights.add_mesh_light_sync(
+        cmdlist,
+        quad_mesh,
+        area_light_transform,
+        {&light_mat_code, 1}));
 }
 void SimpleScene::_init_material() {
     using namespace rbc;
@@ -119,14 +153,23 @@ void SimpleScene::_init_material() {
     mat.specular.specular_color_and_rough.w = 0.5f;
     mat.specular.roughness_anisotropy_angle = 0.7f;
     // Make material instance
-    default_mat_code = sm.mat_manager().emplace_mat_instance(
+    default_mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
         mat,
         cmdlist,
         sm.bindless_allocator(),
         sm.buffer_uploader(),
-        sm.dispose_queue(), material::PolymorphicMaterial::index<material::OpenPBR>);
+        sm.dispose_queue());
+    material::Unlit light_mat{};
+    for (auto i : vstd::range(3))
+        light_mat.color[i] = light_emission[i];
+    light_mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
+        light_mat,
+        cmdlist,
+        sm.bindless_allocator(),
+        sm.buffer_uploader(),
+        sm.dispose_queue());
 }
-SimpleScene::SimpleScene(rbc::Lights& lights) : lights(lights){
+SimpleScene::SimpleScene(rbc::Lights &lights) : lights(lights) {
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;
@@ -146,9 +189,10 @@ SimpleScene::~SimpleScene() {
         sm.accel_manager().remove_mesh_instance(sm.buffer_allocator(), sm.buffer_uploader(), i);
     }
     for (auto &i : light_id) {
-        lights.remove_area_light(i);
+        lights.remove_mesh_light(i);
     }
     sm.mat_manager().discard_mat_instance(default_mat_code);
+    sm.mat_manager().discard_mat_instance(light_mat_code);
 }
 void SimpleScene::move_cube(luisa::float3 pos) {
     using namespace rbc;
@@ -170,10 +214,16 @@ void SimpleScene::move_light(luisa::float3 pos) {
     auto &sm = SceneManager::instance();
     auto &render_device = RenderDevice::instance();
     light_pos += pos;
-    lights.update_area_light(
+    // lights.update_area_light(
+    //     render_device.lc_main_cmd_list(),
+    //     light_id[0],
+    //     translation(light_pos) *
+    //         rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f) * scaling(0.1f),
+    //     light_emission);
+    lights.update_mesh_light_sync(
         render_device.lc_main_cmd_list(),
         light_id[0],
         translation(light_pos) *
             rotation(float3(1.0f, 0.0f, 0.0f), pi * 0.5f) * scaling(0.1f),
-        light_emission);
+        {&light_mat_code, 1});
 }
