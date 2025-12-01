@@ -165,6 +165,7 @@ struct ContextImpl : RBCContext {
             small_angle_radians,
             angle_atten_pow,
             visible);
+        return stub;
     }
     void remove_light(void *light) override {
         auto stub = reinterpret_cast<LightStub *>(light);

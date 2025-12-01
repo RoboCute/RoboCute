@@ -99,7 +99,7 @@ public:
     }
 
     template<typename Polymorphic, typename U>
-        requires(std::is_trivially_copyable_v<U> && std::is_trivially_destructible_v<U> && requires { Polymorphic::index<U>; })
+        requires(std::is_trivially_copyable_v<U> && std::is_trivially_destructible_v<U> && requires { Polymorphic::template index<U>; })
     [[nodiscard]] uint emplace_mat_type(
         BindlessAllocator &alloc,
         uint init_capacity) {
@@ -108,7 +108,7 @@ public:
             init_capacity,
             sizeof(U),
             alignof(U),
-            Polymorphic::index<U>);
+            Polymorphic::template index<U>);
     }
 
     template<typename U>
@@ -130,7 +130,7 @@ public:
     }
 
     template<typename Polymorphic, typename U>
-        requires(std::is_trivially_copyable_v<U> && std::is_trivially_destructible_v<U> && requires { Polymorphic::index<U>; })
+        requires(std::is_trivially_copyable_v<U> && std::is_trivially_destructible_v<U> && requires { Polymorphic::template index<U>; })
     [[nodiscard]] MatCode emplace_mat_instance(
         U &mat,
         CommandList &cmdlist,
@@ -139,7 +139,7 @@ public:
         DisposeQueue &disp_queue) {
         return _emplace_mat_instance(
             cmdlist,
-            Polymorphic::index<U>,
+            Polymorphic::template index<U>,
             alloc,
             uploader,
             disp_queue,
