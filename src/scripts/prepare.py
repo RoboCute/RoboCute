@@ -108,7 +108,7 @@ GIT_TASKS = {
         "deps": [],
     },
 }
-CLANGCXX_NAME = "clangcxx_compiler-v2.0.2"
+CLANGCXX_NAME = "clangcxx_compiler-v2.0.3"
 CLANGCXX_PATH = "build/tool/clangcxx_compiler/clangcxx_compiler.exe"
 SHADER_PATH = "rbc/shader"
 CLANGD_NAME = "clangd-v19.1.7"

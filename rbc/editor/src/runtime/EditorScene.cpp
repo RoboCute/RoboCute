@@ -67,7 +67,7 @@ void EditorScene::initMaterial() {
     auto &cmdlist = render_device.lc_main_cmd_list();
 
     material::OpenPBR mat{};
-    mat.base.albedo = make_half3((half)0.5f);
+    mat.base.albedo = {0.5f, 0.5f, 0.5f};
 
     // Make material instance
     default_mat_code_ = sm.mat_manager().emplace_mat_instance(

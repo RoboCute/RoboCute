@@ -22,7 +22,7 @@ inline uint _mat_code(
 	uint prim_id) {
 	uint submesh_idx;
 	if (submesh_heap_idx != max_uint32) {
-		submesh_idx = heap.buffer_read<uint>(submesh_heap_idx, prim_id);
+		submesh_idx = heap.buffer_read<uint16>(submesh_heap_idx, prim_id);
 		mat_index = heap.uniform_idx_buffer_read<uint>(mat_idx_buffer_heap_idx, mat_index + submesh_idx);
 	}
 	return mat_index;

@@ -25,7 +25,7 @@ public:
     using MeshMeta = geometry::MeshMeta;
     struct MeshPack {
         Buffer<uint> data;
-        Buffer<uint> submesh_indices;
+        Buffer<uint16_t> submesh_indices;
         Mesh mesh;
     };
     struct MeshData;
@@ -67,7 +67,7 @@ private:
     luisa::spin_mutex _bounding_mtx;
     luisa::vector<std::pair<MeshData*, AccelOption>> _build_cmds;
     luisa::vector<MeshData*> _unload_cmds;
-    Shader1D<Buffer<uint>, Buffer<uint>> const* set_submesh{ nullptr };
+    Shader1D<Buffer<uint16_t>, Buffer<uint>> const* set_submesh{ nullptr };
     Shader1D<
         BindlessArray, //& buffer_heap,
         Buffer<uint2>, //& offset_buffer,// x: vertex_heap_idx  y: tri_element_offset

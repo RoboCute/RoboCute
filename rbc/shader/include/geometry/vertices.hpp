@@ -17,12 +17,12 @@ struct PosUV {
 inline uint get_submesh_idx(BindlessBuffer &heap, uint submesh_heap_idx, uint prim_id) {
     uint submesh_idx = 0;
     if (submesh_heap_idx != max_uint32) {
-        submesh_idx = heap.buffer_read<uint>(submesh_heap_idx, prim_id);
+        submesh_idx = heap.buffer_read<uint16>(submesh_heap_idx, prim_id);
     }
     return submesh_idx;
 }
 inline uint get_submesh_idx(ByteBuffer<> &byte_buffer, uint prim_id) {
-    return byte_buffer.byte_read<uint>(sizeof(uint) * prim_id);
+    return byte_buffer.byte_read<uint16>(sizeof(uint16) * prim_id);
 }
 inline float3 read_pos(ByteBuffer<> &byte_buffer, uint vert_id) {
     return byte_buffer.byte_read<float3>(sizeof(float3) * vert_id);

@@ -15,57 +15,68 @@ void SimpleScene::_init_mesh() {
     auto &render_device = RenderDevice::instance();
     // create cube mesh
     MeshBuilder mesh_builder;
-    mesh_builder.position.push_back(float3(-0.5f, -0.5f, -0.5f));// 0: Left Bottom Back
-    mesh_builder.position.push_back(float3(-0.5f, -0.5f, 0.5f)); // 1: Left Bottom Front
-    mesh_builder.position.push_back(float3(0.5f, -0.5f, -0.5f)); // 2: Right Buttom Back
-    mesh_builder.position.push_back(float3(0.5f, -0.5f, 0.5f));  // 3: Right Buttom Front
-    mesh_builder.position.push_back(float3(-0.5f, 0.5f, -0.5f)); // 4: Left Up Back
-    mesh_builder.position.push_back(float3(-0.5f, 0.5f, 0.5f));  // 5: Left Up Front
-    mesh_builder.position.push_back(float3(0.5f, 0.5f, -0.5f));  // 6: Right Up Back
-    mesh_builder.position.push_back(float3(0.5f, 0.5f, 0.5f));   // 7: Right Up Front
-    auto &triangle = mesh_builder.triangle_indices.emplace_back();
-    // Buttom face
-    triangle.emplace_back(0);
-    triangle.emplace_back(1);
-    triangle.emplace_back(2);
-    triangle.emplace_back(1);
-    triangle.emplace_back(3);
-    triangle.emplace_back(2);
-    // Up face
-    triangle.emplace_back(4);
-    triangle.emplace_back(5);
-    triangle.emplace_back(6);
-    triangle.emplace_back(5);
-    triangle.emplace_back(7);
-    triangle.emplace_back(6);
-    // Left face
-    triangle.emplace_back(0);
-    triangle.emplace_back(1);
-    triangle.emplace_back(4);
-    triangle.emplace_back(1);
-    triangle.emplace_back(5);
-    triangle.emplace_back(4);
-    // Right face
-    triangle.emplace_back(2);
-    triangle.emplace_back(3);
-    triangle.emplace_back(6);
-    triangle.emplace_back(3);
-    triangle.emplace_back(7);
-    triangle.emplace_back(6);
-    // Back face
-    triangle.emplace_back(0);
-    triangle.emplace_back(2);
-    triangle.emplace_back(4);
-    triangle.emplace_back(2);
-    triangle.emplace_back(6);
-    triangle.emplace_back(4);
-    // Front face
-    triangle.emplace_back(1);
-    triangle.emplace_back(3);
-    triangle.emplace_back(5);
-    triangle.emplace_back(3);
-    triangle.emplace_back(7);
-    triangle.emplace_back(5);
+    auto emplace = [&] {
+        mesh_builder.position.push_back(float3(-0.5f, -0.5f, -0.5f));// 0: Left Bottom Back
+        mesh_builder.position.push_back(float3(-0.5f, -0.5f, 0.5f)); // 1: Left Bottom Front
+        mesh_builder.position.push_back(float3(0.5f, -0.5f, -0.5f)); // 2: Right Buttom Back
+        mesh_builder.position.push_back(float3(0.5f, -0.5f, 0.5f));  // 3: Right Buttom Front
+        mesh_builder.position.push_back(float3(-0.5f, 0.5f, -0.5f)); // 4: Left Up Back
+        mesh_builder.position.push_back(float3(-0.5f, 0.5f, 0.5f));  // 5: Left Up Front
+        mesh_builder.position.push_back(float3(0.5f, 0.5f, -0.5f));  // 6: Right Up Back
+        mesh_builder.position.push_back(float3(0.5f, 0.5f, 0.5f));   // 7: Right Up Front
+        auto &triangle = mesh_builder.triangle_indices.emplace_back();
+        // Buttom face
+        triangle.emplace_back(0);
+        triangle.emplace_back(1);
+        triangle.emplace_back(2);
+        triangle.emplace_back(1);
+        triangle.emplace_back(3);
+        triangle.emplace_back(2);
+        // Up face
+        triangle.emplace_back(4);
+        triangle.emplace_back(5);
+        triangle.emplace_back(6);
+        triangle.emplace_back(5);
+        triangle.emplace_back(7);
+        triangle.emplace_back(6);
+        // Left face
+        triangle.emplace_back(0);
+        triangle.emplace_back(1);
+        triangle.emplace_back(4);
+        triangle.emplace_back(1);
+        triangle.emplace_back(5);
+        triangle.emplace_back(4);
+        // Right face
+        triangle.emplace_back(2);
+        triangle.emplace_back(3);
+        triangle.emplace_back(6);
+        triangle.emplace_back(3);
+        triangle.emplace_back(7);
+        triangle.emplace_back(6);
+        // Back face
+        triangle.emplace_back(0);
+        triangle.emplace_back(2);
+        triangle.emplace_back(4);
+        triangle.emplace_back(2);
+        triangle.emplace_back(6);
+        triangle.emplace_back(4);
+        // Front face
+        triangle.emplace_back(1);
+        triangle.emplace_back(3);
+        triangle.emplace_back(5);
+        triangle.emplace_back(3);
+        triangle.emplace_back(7);
+        triangle.emplace_back(5);
+    };
+    emplace();
+    auto vert_start = mesh_builder.position.size();
+    emplace();
+    for (auto &i : mesh_builder.triangle_indices.back()) {
+        i += vert_start;
+    }
+    for (auto &i : luisa::span{mesh_builder.position}.subspan(vert_start)) {
+        i += make_float3(0, 1.1f, 0);
+    }
     RC<DeviceMesh> cube_mesh{new DeviceMesh{}};
     luisa::vector<std::byte> mesh_data;
     vstd::vector<uint> submesh_triangle_offset;// not used
@@ -90,6 +101,7 @@ void SimpleScene::_init_tlas() {
     cube_pos = float3(-1, -1, 3);
     float4x4 cube_transform = translation(cube_pos);
     // add object
+    MatCode mats[] = {default_mat_code, default_mat_code_orange};
     tlas_indices.emplace_back(
         sm.accel_manager().emplace_mesh_instance(
             cmdlist, sm.host_upload_buffer(),
@@ -97,7 +109,7 @@ void SimpleScene::_init_tlas() {
             sm.buffer_uploader(),
             sm.dispose_queue(),
             cube_mesh->mesh_data(),
-            {&default_mat_code, 1},
+            mats,
             cube_transform));
     // add light
     light_pos = float3(0.5, 0.5f, 1);
@@ -148,12 +160,19 @@ void SimpleScene::_init_material() {
     auto &render_device = RenderDevice::instance();
     auto &cmdlist = render_device.lc_main_cmd_list();
     material::OpenPBR mat{};
-    mat.base.albedo = make_half3((half)0.5f, (half)0.5f, (half)0.5f);
+    mat.base.albedo = {0.5f, 0.5f, 0.5f};
     // mat.weight.metallic = 1.0f;
-    mat.specular.specular_color_and_rough.w = 0.5f;
+    mat.specular.roughness = 0.5f;
     mat.specular.roughness_anisotropy_angle = 0.7f;
     // Make material instance
     default_mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
+        mat,
+        cmdlist,
+        sm.bindless_allocator(),
+        sm.buffer_uploader(),
+        sm.dispose_queue());
+    mat.base.albedo = {0.7f, 0.5f, 0.5f};
+    default_mat_code_orange = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
         mat,
         cmdlist,
         sm.bindless_allocator(),
@@ -192,6 +211,7 @@ SimpleScene::~SimpleScene() {
         lights.remove_mesh_light(i);
     }
     sm.mat_manager().discard_mat_instance(default_mat_code);
+    sm.mat_manager().discard_mat_instance(default_mat_code_orange);
     sm.mat_manager().discard_mat_instance(light_mat_code);
 }
 void SimpleScene::move_cube(luisa::float3 pos) {

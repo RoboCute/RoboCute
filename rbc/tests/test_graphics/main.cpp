@@ -47,8 +47,8 @@ struct ContextImpl : RBCContext {
         utils.init_graphics(shader_path);
         // TODO: make material for test
         material::OpenPBR mat{};
-        mat.base.albedo = make_half3((half)0.5f, (half)0.5f, (half)0.5f);
-        mat.specular.specular_color_and_rough.w = 0.5f;
+        mat.base.albedo = {0.5f, 0.5f, 0.5f};
+        mat.specular.roughness = 0.5f;
         mat.specular.roughness_anisotropy_angle = 0.7f;
         // Make material instance
         auto &sm = SceneManager::instance();

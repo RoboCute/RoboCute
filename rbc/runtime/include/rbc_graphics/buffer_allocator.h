@@ -16,7 +16,7 @@ private:
 	// thread-safe area
 	Buffer<uint> _buffer;
 	size_t _capacity;
-	bool _dirty{false};
+	bool _dirty{true};
 
 public:
 	enum struct AllocateType : uint32_t {

@@ -206,7 +206,7 @@ void MeshManager::_create_submesh_buffer(
     auto&& submesh_indices = m->pack.submesh_indices;
     LUISA_DEBUG_ASSERT(!submesh_indices);
     auto& submesh_offset = m->submesh_offset;
-    submesh_indices = device.create_buffer<uint>(m->triangle_size);
+    submesh_indices = device.create_buffer<uint16_t>(m->triangle_size);
     auto offset_buffer = temp_buffer.allocate_upload_buffer(submesh_offset.size_bytes(), 16);
     memcpy(offset_buffer.mapped_ptr(), submesh_offset.data(), submesh_offset.size_bytes());
     vstd::vector<uint3> dispatch_list;
