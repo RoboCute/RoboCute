@@ -151,6 +151,9 @@ class ResourceManager:
         # 引用追踪 (弱引用)
         self._handles: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
 
+    def get_memory_usage(self):
+        return self._cpp_loader.get_memory_usage()
+
     # === 启动/停止 ===
     def start(self):
         """启动资源管理器 (在app.is_running()时调用)"""
