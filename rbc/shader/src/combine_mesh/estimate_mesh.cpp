@@ -1,4 +1,4 @@
-// #define DEBUG
+#define DEBUG
 #include <luisa/printer.hpp>
 #include <luisa/std.hpp>
 #include <luisa/resources.hpp>

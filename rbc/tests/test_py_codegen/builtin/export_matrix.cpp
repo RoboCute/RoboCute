@@ -102,4 +102,4 @@ void export_matrix(py::module &m) {
     // TODO export matrix operators
 }
 
-static ModuleRegister _module_register(export_matrix);
+static ModuleRegister module_register_export_matrix(export_matrix);

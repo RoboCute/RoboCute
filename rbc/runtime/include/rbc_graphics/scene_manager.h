@@ -103,6 +103,7 @@ public:
     void load_shader(luisa::fiber::counter &init_counter);
     void prepare_frame();
     void before_rendering(CommandList &cmdlist, Stream &stream);
+    void sync_bindless_heap(CommandList &cmdlist, Stream &stream);
     bool on_frame_end(
         CommandList &cmdlist,
         Stream &stream,

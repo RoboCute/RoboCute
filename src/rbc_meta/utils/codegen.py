@@ -167,8 +167,6 @@ def _print_py_type(t):
         return t.__name__
     if type(t) is tr.struct or type(t) is tr.enum:
         return t.class_name()
-    if type(t) == tr.external_type:
-        tr.log_err("external type not allowed in python")
     return None
 
 

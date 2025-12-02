@@ -440,6 +440,7 @@ uint Lights::add_mesh_light_sync(
     RC<DeviceMesh> const &device_mesh,
     float4x4 local_to_world,
     luisa::span<MatCode const> material_codes) {
+    auto &stream = RenderDevice::instance().lc_main_stream();
     auto &scene = SceneManager::instance();
     uint data_index = 0;
     if (mesh_lights.removed_list.empty()) {
@@ -471,6 +472,8 @@ uint Lights::add_mesh_light_sync(
     } else {
         mat_index = material_codes[0].value;
     }
+    scene.buffer_uploader().commit(cmdlist, scene.host_upload_buffer());
+    scene.sync_bindless_heap(cmdlist, stream);
     v.host_result = mesh_light_accel.build_bvh(
         RenderDevice::instance().lc_device(),
         cmdlist,
@@ -481,7 +484,6 @@ uint Lights::add_mesh_light_sync(
         heap_indices::buffer_allocator_heap_index,
         TexStreamManager::instance(),
         local_to_world);
-    auto &stream = RenderDevice::instance().lc_main_stream();
     stream << cmdlist.commit() << synchronize();
     mesh_light_accel.update();
     auto &host_result = v.host_result->wait();
@@ -585,6 +587,7 @@ void Lights::update_mesh_light_sync(
     luisa::span<MatCode const> material_codes,
     RC<DeviceMesh> const *new_mesh) {
     auto &scene = SceneManager::instance();
+    scene.buffer_uploader().commit(cmdlist, scene.host_upload_buffer());
     auto &v = mesh_lights.light_data[data_index];
     if (!v._load_flag || v._load_flag->load() != MeshLightLoadState::Loaded) [[unlikely]] {
         LUISA_ERROR("Mesh light unloaded.");

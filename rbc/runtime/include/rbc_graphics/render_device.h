@@ -69,6 +69,7 @@ struct RBC_RUNTIME_API RenderDevice {
     inline auto mem_io_service() { return _mem_io_service; }
     inline auto &lc_main_cmd_list() { return _main_cmd_list; }
     static RenderDevice &instance();
+    static RenderDevice *instance_ptr();
     static void set_instance(RenderDevice *device);
     std::mutex &render_loop_mtx() {
         return (_main_stream_ptr == &_async_stream) ? _async_compute_loop_mtx : _render_loop_mtx;

@@ -3,6 +3,7 @@ import rbc_meta.utils.codegen as codegen
 
 from pathlib import Path
 import os
+import re
 
 import hashlib
 
@@ -51,3 +52,13 @@ def codegen_pyd_module(
         f'#include "{file_name}.h"',
     )
     codegen_to(py_root_path / f"{file_name}.py")(codegen.py_interface_gen, pyd_name)
+
+
+def re_translate(
+    text:str,
+    replacements:dict
+):
+    pattern = re.compile("|".join(re.escape(k) for k in sorted(replacements, key=len, reverse=True)))
+    updated_text = pattern.sub(lambda match: replacements[match.group(0)], text)
+    return updated_text
+    

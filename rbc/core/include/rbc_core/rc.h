@@ -352,22 +352,6 @@ struct RC {
     static bool manually_release_ref(T *ptr) {
         return rc_release_with_delete(ptr);
     }
-    template<typename Func>
-        requires(std::is_invocable_v<Func> || std::is_invocable_v<Func, T *>)
-    static bool manually_release_ref(T *ptr, Func &&destruct_callback) {
-        LUISA_DEBUG_ASSERT(ptr != nullptr);
-        if (ptr->rbc_rc_release() == 0) {
-            if constexpr (std::is_invocable_v<Func>) {
-                destruct_callback();
-            } else {
-                destruct_callback(ptr);
-            }
-            ptr->rbc_rc_weak_ref_counter_notify_dead();
-            RCDeleterTraits<T>::do_delete(ptr);
-            return true;
-        }
-        return false;
-    }
 
 private:
     // helper

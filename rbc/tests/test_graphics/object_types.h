@@ -8,6 +8,8 @@ namespace rbc {
 struct LightStub : RCBase {
     LightType light_type;
     uint32_t id;
+    LightStub() = default;
+    ~LightStub();
 };
 enum class ObjectRenderType {
     Mesh,
@@ -20,6 +22,8 @@ struct MaterialStub : RCBase {
         material::Unlit>;
     MatCode mat_code;
     MatDataType mat_data;
+    MaterialStub() = default;
+    ~MaterialStub();
 };
 struct ObjectStub : RCBase {
     RC<DeviceMesh> mesh_ref;
@@ -31,5 +35,7 @@ struct ObjectStub : RCBase {
     ObjectRenderType type;
     luisa::vector<RC<MaterialStub>> materials;
     luisa::vector<MatCode> material_codes;
+    ObjectStub() = default;
+    ~ObjectStub();
 };
 }// namespace rbc

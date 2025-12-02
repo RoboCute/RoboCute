@@ -27,11 +27,12 @@ def codegen_header(
                    size=tr.uint2, resizable=tr.bool)
     # mesh
     Context.method('create_mesh', data=tr.DataBuffer, vertex_count=tr.uint,
-                   contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint
-                   # TODO: submesh
+                   contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint,
+                   offsets_uint32=tr.DataBuffer
                    ).ret_type(tr.VoidPtr)
     Context.method('load_mesh', path=tr.string, file_offset=tr.ulong, vertex_count=tr.uint,
-                   contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint).ret_type(tr.VoidPtr)
+                   contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint,
+                   offsets_uint32=tr.DataBuffer).ret_type(tr.VoidPtr)
 
     Context.method('get_mesh_data', handle=tr.VoidPtr).ret_type(tr.DataBuffer)
 
@@ -89,7 +90,7 @@ def codegen_header(
         json=tr.string
     ).ret_type(tr.VoidPtr)
     Context.method(
-        'get_material_data',
+        'get_material_json',
         mat=tr.VoidPtr
     ).ret_type(tr.string)
     Context.method(
@@ -100,20 +101,19 @@ def codegen_header(
     Context.method(
         'create_object',
         matrix=tr.float4x4,
-        mesh=tr.VoidPtr
-        # TODO: material
+        mesh=tr.VoidPtr,
+        materials=tr.external_type('luisa::vector<rbc::RC<rbc::RCBase>> const&')
     ).ret_type(tr.VoidPtr)
 
     Context.method(
         'update_object',
-        matrix=tr.float4x4,
-        # TODO: material
+        matrix=tr.float4x4
     )
     Context.method(
         'update_object',
         matrix=tr.float4x4,
-        mesh=tr.VoidPtr
-        # TODO: material
+        mesh=tr.VoidPtr,
+        materials=tr.external_type('luisa::vector<rbc::RC<rbc::RCBase>> const&')
     )
     Context.method(
         'remove_object',
@@ -125,6 +125,7 @@ def codegen_header(
         'reset_view',
         resolution=tr.uint2
     )
+    Context.method('reset_frame_index')
     Context.method(
         'set_view_camera',
         pos=tr.float3,
@@ -145,11 +146,13 @@ def codegen_header(
 
     # codegen
     ut.codegen_to(header_root_path / f"{file_name}.h")(
-        ut.codegen.cpp_interface_gen, '#include <rbc_runtime/generated/resource_meta.hpp>')
+        ut.codegen.cpp_interface_gen, '''#include <rbc_runtime/generated/resource_meta.hpp>
+#include <rbc_core/rc.h>''')
     ut.codegen_to(cpp_root_path / f"{file_name}.cpp")(
         ut.codegen.pybind_codegen,
         file_name,
-        f'#include "{file_name}.h"',
+        f'''#include "{file_name}.h"
+#include <rbc_core/rc.h>''',
     )
     ut.codegen_to(
         py_root_path / f"{file_name}.py")(ut.codegen.py_interface_gen, pyd_name)

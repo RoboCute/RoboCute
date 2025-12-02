@@ -46,6 +46,18 @@ void SceneManager::refresh_pipeline(
     if (start_new_frame)
         prepare_frame();
 }
+void SceneManager::sync_bindless_heap(CommandList &cmdlist, Stream &stream) {
+    if (_bf_alloc.dirty()) {
+        _bf_alloc.mark_clean();
+        bindless_allocator().set_reserved_buffer(heap_indices::buffer_allocator_heap_index, _bf_alloc.buffer());
+    }
+
+    if (bindless_allocator().require_sync()) {
+        LUISA_WARNING("Bindless resource update synchronize.");
+        stream.synchronize();
+    }
+    bindless_allocator().commit(cmdlist);
+}
 void SceneManager::before_rendering(
     CommandList &cmdlist,
     Stream &stream) {
@@ -72,16 +84,7 @@ void SceneManager::before_rendering(
         i->build_accel(cmdlist);
     }
     _uploader.commit(cmdlist, *_temp_buffer);
-    if (_bf_alloc.dirty()) {
-        _bf_alloc.mark_clean();
-        bindless_allocator().set_reserved_buffer(heap_indices::buffer_allocator_heap_index, _bf_alloc.buffer());
-    }
-
-    if (bindless_allocator().require_sync()) {
-        LUISA_WARNING("Bindless resource update synchronize.");
-        stream.synchronize();
-    }
-    bindless_allocator().commit(cmdlist);
+    sync_bindless_heap(cmdlist, stream);
     _mesh_mng.execute_compute_bounding(
         cmdlist,
         _bdls_mng.buffer_heap(),

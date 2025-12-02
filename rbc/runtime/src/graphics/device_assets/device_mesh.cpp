@@ -82,7 +82,7 @@ void DeviceMesh::_async_load(
                     normal,
                     tangent,
                     uv_count,
-                    submesh_triangle_offset,
+                    std::move(submesh_triangle_offset),
                     calculate_bound);
             }
             /////////// Load as memory
@@ -103,7 +103,7 @@ void DeviceMesh::_async_load(
                     normal,
                     tangent,
                     uv_count,
-                    submesh_triangle_offset,
+                    std::move(submesh_triangle_offset),
                     true);
             }
             /////////// Load as Buffer
@@ -119,7 +119,7 @@ void DeviceMesh::_async_load(
                     normal,
                     tangent,
                     uv_count,
-                    submesh_triangle_offset);
+                    std::move(submesh_triangle_offset));
             }
         });
 }

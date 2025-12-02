@@ -170,7 +170,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         // .bmese_phase_idx = prepare_pass->bmese_phase_idx,
         .time = 0.0f,
         .require_reject = frameSettings.offline_capturing};
-
     if (ctx.cam.enable_physical_camera) {
         auto lens_radius = static_cast<float>(0.05 / ctx.cam.aperture);
         auto resolution = make_float2(frameSettings.render_resolution);

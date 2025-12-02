@@ -101,7 +101,7 @@ public:
         bool tangent,
         uint uv_count,
         // submesh range, first element must be 0
-        vstd::span<uint const> submesh_triangle_offset,
+        vstd::vector<uint>&& submesh_triangle_offset,
         bool calculate_bounding = false
     );
 

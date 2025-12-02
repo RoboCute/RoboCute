@@ -14,6 +14,10 @@ RenderDevice& RenderDevice::instance()
 {
     return *render_device_detail::_inst;
 }
+RenderDevice* RenderDevice::instance_ptr()
+{
+    return render_device_detail::_inst;
+}
 void RenderDevice::set_instance(RenderDevice* device)
 {
     LUISA_ASSERT(device != nullptr, "Device must not be nullptr");
@@ -102,6 +106,7 @@ RenderDevice::~RenderDevice()
     _managed_device = {};
     _device = {};
     _context.reset();
+    render_device_detail::_inst = nullptr;
 }
 
 } // namespace rbc

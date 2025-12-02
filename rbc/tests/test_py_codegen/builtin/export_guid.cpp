@@ -36,4 +36,4 @@ void export_guid(py::module &m) {
             return luisa::string(str.data(), str.size());
         });
 }
-static ModuleRegister _module_register(export_guid);
+static ModuleRegister module_register_export_guid(export_guid);

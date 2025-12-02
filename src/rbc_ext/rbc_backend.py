@@ -12,10 +12,10 @@ class RBCContext:
 		RBCContext__load_skybox__(self._handle, path, size)
 	def create_window(self, name: str, size: uint2, resizable: bool):
 		RBCContext__create_window__(self._handle, name, size, resizable)
-	def create_mesh(self, data, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int):
-		return RBCContext__create_mesh__(self._handle, data, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count)
-	def load_mesh(self, path: str, file_offset: int, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int):
-		return RBCContext__load_mesh__(self._handle, path, file_offset, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count)
+	def create_mesh(self, data, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int, offsets_uint32):
+		return RBCContext__create_mesh__(self._handle, data, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, offsets_uint32)
+	def load_mesh(self, path: str, file_offset: int, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int, offsets_uint32):
+		return RBCContext__load_mesh__(self._handle, path, file_offset, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, offsets_uint32)
 	def get_mesh_data(self, handle):
 		return RBCContext__get_mesh_data__(self._handle, handle)
 	def remove_mesh(self, handle):
@@ -46,20 +46,22 @@ class RBCContext:
 		RBCContext__destroy_texture__(self._handle, ptr)
 	def create_pbr_material(self, json: str):
 		return RBCContext__create_pbr_material__(self._handle, json)
-	def get_material_data(self, mat):
-		return RBCContext__get_material_data__(self._handle, mat)
+	def get_material_json(self, mat):
+		return RBCContext__get_material_json__(self._handle, mat)
 	def remove_material(self, ptr):
 		RBCContext__remove_material__(self._handle, ptr)
-	def create_object(self, matrix: float4x4, mesh):
-		return RBCContext__create_object__(self._handle, matrix, mesh)
+	def create_object(self, matrix: float4x4, mesh, materials):
+		return RBCContext__create_object__(self._handle, matrix, mesh, materials)
 	def update_object(self, matrix: float4x4):
 		RBCContext__update_object__(self._handle, matrix)
-	def update_object(self, matrix: float4x4, mesh):
-		RBCContext__update_object__(self._handle, matrix, mesh)
+	def update_object(self, matrix: float4x4, mesh, materials):
+		RBCContext__update_object__(self._handle, matrix, mesh, materials)
 	def remove_object(self, object_ptr):
 		RBCContext__remove_object__(self._handle, object_ptr)
 	def reset_view(self, resolution: uint2):
 		RBCContext__reset_view__(self._handle, resolution)
+	def reset_frame_index(self):
+		RBCContext__reset_frame_index__(self._handle)
 	def set_view_camera(self, pos: float3, roll: float, pitch: float, yaw: float):
 		RBCContext__set_view_camera__(self._handle, pos, roll, pitch, yaw)
 	def disable_view(self):

@@ -464,4 +464,4 @@ void export_vector4(py::module& m)
     LUISA_EXPORT_FLOAT_OP(double)
     LUISA_EXPORT_BOOL_OP(bool)
 }
-static ModuleRegister _module_register(export_vector4);
+static ModuleRegister module_register_export_vector4(export_vector4);

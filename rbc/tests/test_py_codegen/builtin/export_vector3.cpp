@@ -247,4 +247,4 @@ void export_vector3(py::module &m) {
     LUISA_EXPORT_FLOAT_OP(double)
     LUISA_EXPORT_BOOL_OP(bool)
 }
-static ModuleRegister _module_register(export_vector3);
+static ModuleRegister module_register_export_vector3(export_vector3);

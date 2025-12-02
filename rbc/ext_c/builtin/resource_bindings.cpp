@@ -78,4 +78,4 @@ void register_resource_bindings(py::module &m) {
              "Clear unused resources to free memory");
 }
 
-static ModuleRegister _module_register(register_resource_bindings);
+static ModuleRegister module_register_register_resource_bindings(register_resource_bindings);

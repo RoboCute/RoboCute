@@ -87,7 +87,7 @@ struct ContextImpl : RBCContext {
         return size;
     }
 
-    void *create_mesh(luisa::span<std::byte> data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count) override {
+    void *create_mesh(luisa::span<std::byte> data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) override {
         auto mesh_size = get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
         if (mesh_size != data.size_bytes()) [[unlikely]] {
             LUISA_ERROR("Mesh desired size {} unmatch to buffer size {}", mesh_size, data.size_bytes());
@@ -98,29 +98,35 @@ struct ContextImpl : RBCContext {
             {}};
         auto ptr = new DeviceMesh();
         RC<DeviceMesh>::manually_add_ref(ptr);
+        vstd::vector<uint32_t> vec;
+        vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
+        std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
         ptr->async_load_from_memory(
             std::move(temp_blob),
             vertex_count,
             contained_normal,
             contained_tangent,
             uv_count,
-            {},   // TODO: submesh & materials
+            std::move(vec),
             false,// only build BLAS while need ray-tracing
             true,
             true);
         return ptr;
     }
-    void *load_mesh(luisa::string_view name, uint64_t file_offset, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count) override {
+    void *load_mesh(luisa::string_view name, uint64_t file_offset, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) override {
         auto mesh_size = get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
         auto ptr = new DeviceMesh();
         RC<DeviceMesh>::manually_add_ref(ptr);
+        vstd::vector<uint32_t> vec;
+        vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
+        std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
         ptr->async_load_from_file(
             name,
             vertex_count,
             contained_normal,
             contained_tangent,
             uv_count,
-            {},
+            std::move(vec),
             false,
             true,
             file_offset,
@@ -149,7 +155,7 @@ struct ContextImpl : RBCContext {
             mat_data);
         auto &sm = SceneManager::instance();
         auto &render_device = RenderDevice::instance();
-        sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, material::OpenPBR>(
+        ptr->mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, material::OpenPBR>(
             mat_data,
             render_device.lc_main_cmd_list(),
             sm.bindless_allocator(),
@@ -157,7 +163,7 @@ struct ContextImpl : RBCContext {
             sm.dispose_queue());
         return ptr;
     }
-    luisa::string get_material_data(void *mat_ptr) override {
+    luisa::string get_material_json(void *mat_ptr) override {
         auto ptr = (MaterialStub *)mat_ptr;
         JsonSerializer ser(false);
         ptr->mat_data.visit(
@@ -170,8 +176,6 @@ struct ContextImpl : RBCContext {
     }
     void remove_material(void *mat_ptr) override {
         auto ptr = (MaterialStub *)mat_ptr;
-        auto &sm = SceneManager::instance();
-        sm.mat_manager().discard_mat_instance(ptr->mat_code);
         RC<MaterialStub>::manually_release_ref(ptr);
     }
     void *add_area_light(luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {
@@ -233,30 +237,7 @@ struct ContextImpl : RBCContext {
     }
     void remove_light(void *light) override {
         auto stub = reinterpret_cast<LightStub *>(light);
-
-        RC<LightStub>::manually_release_ref(stub, [&] {
-            auto id = stub->id;
-            auto type = stub->light_type;
-            switch (type) {
-                case rbc::LightType::Sphere:
-                    utils.lights->remove_point_light(id);
-                    break;
-                case rbc::LightType::Spot:
-                    utils.lights->remove_spot_light(id);
-                    break;
-                case rbc::LightType::Area:
-                    utils.lights->remove_area_light(id);
-                    break;
-                case rbc::LightType::Disk:
-                    utils.lights->remove_disk_light(id);
-                    break;
-                case rbc::LightType::Blas:
-                    utils.lights->remove_mesh_light(id);
-                    break;
-                default:
-                    LUISA_ERROR("Unsupported light type.");
-            }
-        });
+        RC<LightStub>::manually_release_ref(stub);
     }
     void *create_texture(luisa::span<std::byte> data, rbc::LCPixelStorage storage, luisa::uint2 size, rbc::SamplerAddress address, rbc::SamplerFilter filter, uint32_t mip_level, bool is_virtual_texture) override {
         size_t size_bytes = 0;
@@ -341,25 +322,72 @@ struct ContextImpl : RBCContext {
             angle_atten_pow,
             visible);
     }
-    void *create_object(luisa::float4x4 matrix, void *mesh) override {
+    static bool material_is_emission(luisa::span<RC<RCBase> const> materials) {
+        bool contained_emission = false;
+        for (auto &i : materials) {
+            static_cast<MaterialStub *>(i.get())->mat_data.visit([&]<typename T>(T const &t) {
+                if constexpr (std::is_same_v<T, material::OpenPBR>) {
+                    for (auto &i : t.emission.luminance) {
+                        if (i > 1e-3f) {
+                            contained_emission = true;
+                            return;
+                        }
+                    }
+                } else {
+                    for (auto &i : t.color) {
+                        if (i > 1e-3f) {
+                            contained_emission = true;
+                            return;
+                        }
+                    }
+                }
+            });
+        }
+        return contained_emission;
+    };
+    void *create_object(luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) override {
         auto stub = new ObjectStub{};
         RC<ObjectStub>::manually_add_ref(stub);
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
         stub->mesh_ref = reinterpret_cast<DeviceMesh *>(mesh);
-        stub->mesh_ref->wait_finished();
-        //TODO :mat code
-        stub->material_codes.emplace_back(test_default_mat_code);
-        stub->mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
-            render_device.lc_main_cmd_list(),
-            sm.host_upload_buffer(),
-            sm.buffer_allocator(),
-            sm.buffer_uploader(),
-            sm.dispose_queue(),
-            stub->mesh_ref->mesh_data(),
+        vstd::push_back_func(
+            stub->materials,
+            materials.size(),
+            [&](size_t i) {
+                return static_cast<MaterialStub *>(materials[i].get());
+            });
+        vstd::push_back_func(
             stub->material_codes,
-            matrix);
-        stub->type = ObjectRenderType::Mesh;
+            stub->materials.size(),
+            [&](size_t i) {
+                return stub->materials[i]->mat_code;
+            });
+        stub->mesh_ref->wait_finished();
+        auto submesh_size = std::max<size_t>(1, stub->mesh_ref->mesh_data()->submesh_offset.size());
+        if (!(materials.size() == submesh_size)) [[unlikely]] {
+            LUISA_ERROR("Submesh size {} mismatch with material size {}", submesh_size, materials.size());
+        }
+        // if (material_is_emission(materials)) {
+            
+        // } else {
+        //     stub->mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
+        //         render_device.lc_main_cmd_list(),
+        //         sm.host_upload_buffer(),
+        //         sm.buffer_allocator(),
+        //         sm.buffer_uploader(),
+        //         sm.dispose_queue(),
+        //         stub->mesh_ref->mesh_data(),
+        //         stub->material_codes,
+        //         matrix);
+        //     stub->type = ObjectRenderType::Mesh;
+        // }
+        stub->mesh_light_idx = Lights::instance()->add_mesh_light_sync(
+            render_device.lc_main_cmd_list(),
+            stub->mesh_ref,
+            matrix,
+            stub->material_codes);
+        stub->type = ObjectRenderType::EmissionMesh;
         return stub;
     }
     void update_object(luisa::float4x4 matrix) override {
@@ -372,7 +400,7 @@ struct ContextImpl : RBCContext {
                 sm.accel_manager().set_mesh_instance(
                     render_device.lc_main_cmd_list(),
                     sm.buffer_uploader(),
-                    stub->mesh_light_idx,
+                    stub->mesh_tlas_idx,
                     matrix, 0xff, true);
                 break;
             case ObjectRenderType::EmissionMesh:
@@ -391,13 +419,32 @@ struct ContextImpl : RBCContext {
                 break;
         }
     }
-    void update_object(luisa::float4x4 matrix, void *mesh) override {
+    void update_object(luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) override {
         auto stub = new ObjectStub{};
         RC<ObjectStub>::manually_add_ref(stub);
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
         stub->mesh_ref = reinterpret_cast<DeviceMesh *>(mesh);
+        stub->materials.clear();
+        stub->material_codes.clear();
+        auto submesh_size = std::max<size_t>(1, stub->mesh_ref->mesh_data()->submesh_offset.size());
+        if (!(materials.size() == submesh_size)) [[unlikely]] {
+            LUISA_ERROR("Submesh size {} mismatch with material size {}", submesh_size, materials.size());
+        }
+        vstd::push_back_func(
+            stub->materials,
+            materials.size(),
+            [&](size_t i) {
+                return static_cast<MaterialStub *>(materials[i].get());
+            });
+        vstd::push_back_func(
+            stub->material_codes,
+            stub->materials.size(),
+            [&](size_t i) {
+                return stub->materials[i]->mat_code;
+            });
         stub->mesh_ref->wait_finished();
+        // TODO: change light type
         switch (stub->type) {
             case ObjectRenderType::Mesh:
                 sm.accel_manager().set_mesh_instance(
@@ -408,7 +455,7 @@ struct ContextImpl : RBCContext {
                     sm.buffer_uploader(),
                     sm.dispose_queue(),
                     stub->mesh_ref->mesh_data(),
-                    {&test_default_mat_code, 1},// TODO: mat_code
+                    stub->material_codes,
                     matrix);
                 break;
             case ObjectRenderType::EmissionMesh:
@@ -426,31 +473,13 @@ struct ContextImpl : RBCContext {
     }
     void remove_object(void *object_ptr) override {
         auto stub = reinterpret_cast<ObjectStub *>(object_ptr);
-        RC<ObjectStub>::manually_release_ref(stub, [&] {
-            auto &render_device = RenderDevice::instance();
-            auto &sm = SceneManager::instance();
-            switch (stub->type) {
-                case ObjectRenderType::Mesh:
-                    sm.accel_manager().remove_mesh_instance(
-                        sm.buffer_allocator(),
-                        sm.buffer_uploader(),
-                        stub->mesh_tlas_idx);
-                    break;
-                case ObjectRenderType::EmissionMesh:
-                    utils.lights->remove_mesh_light(stub->mesh_light_idx);
-                    break;
-                case ObjectRenderType::Procedural:
-                    sm.accel_manager().remove_procedural_instance(
-                        sm.buffer_allocator(),
-                        sm.buffer_uploader(),
-                        sm.dispose_queue(),
-                        stub->procedural_idx);
-                    break;
-            }
-        });
+        RC<ObjectStub>::manually_release_ref(stub);
     }
     void reset_view(luisa::uint2 resolution) override {
         utils.resize_swapchain(resolution);
+    }
+    void reset_frame_index() override {
+        frame_index = 0;
     }
     void set_view_camera(luisa::float3 pos, float roll, float pitch, float yaw) override {
         auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
