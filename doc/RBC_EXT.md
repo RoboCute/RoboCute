@@ -1,4 +1,6 @@
-# Python Extension
+# RBC_EXT 
+
+RBC_EXT的功能是提供python端原生很难提供的功能，比如高性能的计算，异步资源加载等
 
 PythonExtension的目标是为了补足通用python很难完成的工作包括
 
