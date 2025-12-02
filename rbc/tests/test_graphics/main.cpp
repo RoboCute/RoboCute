@@ -13,9 +13,9 @@
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include "simple_scene.h"
-#include "utils.h"
+#include <rbc_app/graphics_utils.h>
 #include "generated/rbc_backend.h"
-#include "object_types.h"
+#include "rbc_app/graphics_object_types.h"
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 using namespace rbc;
@@ -26,7 +26,6 @@ struct ContextImpl : RBCContext {
     luisa::fiber::scheduler scheduler;
     luisa::string backend = "dx";
     GraphicsUtils utils;
-    MatCode test_default_mat_code;
     uint2 window_size;
     double last_frame_time{};
     Clock clk;
@@ -46,20 +45,6 @@ struct ContextImpl : RBCContext {
             program_path,
             backend);
         utils.init_graphics(shader_path);
-        // TODO: make material for test
-        material::OpenPBR mat{};
-        mat.base.albedo = {0.5f, 0.5f, 0.5f};
-        mat.specular.roughness = 0.5f;
-        mat.specular.roughness_anisotropy_angle = 0.7f;
-        // Make material instance
-        auto &sm = SceneManager::instance();
-        sm.mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(sm.bindless_allocator(), 65536);
-        test_default_mat_code = sm.mat_manager().emplace_mat_instance(
-            mat,
-            RenderDevice::instance().lc_main_cmd_list(),
-            sm.bindless_allocator(),
-            sm.buffer_uploader(),
-            sm.dispose_queue(), material::PolymorphicMaterial::index<material::OpenPBR>);
     }
 
     void init_render() override {
@@ -69,7 +54,7 @@ struct ContextImpl : RBCContext {
         utils.render_plugin->update_skybox(path, size);
     }
     void create_window(luisa::string_view name, uint2 size, bool resiable) override {
-        utils.init_display(name, size, resiable);
+        utils.init_display_with_window(name, size, resiable);
         window_size = size;
         utils.window->set_window_size_callback([&](uint2 size) {
             window_size = size;
@@ -555,7 +540,7 @@ int main(int argc, char *argv[]) {
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name));
     utils.init_render();
     utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
-    utils.init_display("test_graphics", uint2(1024), true);
+    utils.init_display_with_window("test_graphics", uint2(1024), true);
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer
     Clock clk;

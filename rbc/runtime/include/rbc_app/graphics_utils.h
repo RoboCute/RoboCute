@@ -21,19 +21,18 @@ struct EventFence {
     TimelineEvent event;
     uint64_t fence_index{};
 };
-struct GraphicsUtils {
+struct RBC_RUNTIME_API GraphicsUtils {
     RenderDevice render_device;
     luisa::string backend_name;
     EventFence compute_event;
     vstd::optional<SceneManager> sm;
     // present
     Stream present_stream;
-    EventFence present_event;
     vstd::optional<Window> window;
     Swapchain swapchain;
     Image<float> dst_image;
     // render
-    DynamicModule render_module;
+    DynamicModule const* render_module;
     RenderPlugin *render_plugin{};
     StateMap render_settings;
     RenderPlugin::PipeCtxStub *display_pipe_ctx{};
@@ -45,9 +44,11 @@ struct GraphicsUtils {
     ~GraphicsUtils();
     void init_device(luisa::string_view program_path, luisa::string_view backend_name);
     void init_graphics(luisa::filesystem::path const &shader_path);
+    void init_present_stream();
     void init_render();
     void resize_swapchain(uint2 size);
-    void init_display(luisa::string_view name, uint2 resolution, bool resizable);
+    void init_display_with_window(luisa::string_view name, uint2 resolution, bool resizable);
+    void init_display(uint2 resolution);
     void reset_frame();
     bool should_close();
     void tick(vstd::function<void()> before_render = {});

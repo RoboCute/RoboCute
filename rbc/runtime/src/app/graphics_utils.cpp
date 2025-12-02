@@ -4,7 +4,8 @@
 #include <luisa/runtime/rtx/accel.h>
 #include <luisa/runtime/rtx/mesh.h>
 #include <luisa/runtime/rtx/triangle.h>
-#include "utils.h"
+#include <rbc_app/graphics_utils.h>
+#include <rbc_runtime/plugin_manager.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -145,17 +146,16 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     if (sm) {
         sm.destroy();
     }
-    if (present_event.event)
-        present_event.event.synchronize(present_event.fence_index);
     if (present_stream)
         present_stream.synchronize();
     dst_image.reset();
     window.reset();
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
+    PluginManager::init();
     render_device.init(program_path, backend_name);
-    auto &compute_stream = render_device.lc_async_stream();
-    render_device.set_main_stream(&compute_stream);
+    init_present_stream();
+    render_device.set_main_stream(&present_stream);
     compute_event.event = render_device.lc_device().create_timeline_event();
     this->backend_name = backend_name;
 }
@@ -199,29 +199,53 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     lights.create();
 }
 void GraphicsUtils::init_render() {
-    render_module = DynamicModule::load("rbc_render_plugin");
-    render_plugin = RBC_LOAD_PLUGIN(render_module, RenderPlugin);
+    PluginManager::init();
+    sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
+        sm->bindless_allocator(),
+        65536);
+    sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
+        sm->bindless_allocator(),
+        65536);
+    render_module = &PluginManager::instance().load_module("rbc_render_plugin");
+    LUISA_ASSERT(render_module, "Render module not found.");
+    render_plugin = RBC_LOAD_PLUGIN(*render_module, RenderPlugin);
     display_pipe_ctx = render_plugin->create_pipeline_context(render_settings);
     LUISA_ASSERT(render_plugin->initialize_pipeline({}));
     sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false, false);
     sm->prepare_frame();
 }
 
-void GraphicsUtils::init_display(luisa::string_view name, uint2 resolution, bool resizable) {
+void GraphicsUtils::init_present_stream() {
     auto &device = render_device.lc_device();
-    present_stream = device.create_stream(StreamTag::GRAPHICS);
-    present_event.event = device.create_timeline_event();
+    if (!present_stream)
+        present_stream = device.create_stream(StreamTag::GRAPHICS);
+}
+
+void GraphicsUtils::init_display(uint2 resolution) {
+    auto &device = render_device.lc_device();
+    init_present_stream();
+    if (dst_image && any(dst_image.size() != resolution)) {
+        resize_swapchain(resolution);
+    } else if (!dst_image) {
+        if (!swapchain && window) {
+            swapchain = device.create_swapchain(
+                present_stream,
+                SwapchainOption{
+                    .display = window->native_display(),
+                    .window = window->native_handle(),
+                    .size = resolution,
+                    .wants_hdr = false,
+                    .wants_vsync = false,
+                    .back_buffer_count = 1});
+        }
+        dst_image = render_device.lc_device().create_image<float>(swapchain ? swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, true);
+        dst_image.set_name("Dest image");
+    }
+}
+
+void GraphicsUtils::init_display_with_window(luisa::string_view name, uint2 resolution, bool resizable) {
     window.create(luisa::string{name}.c_str(), resolution, resizable);
-    swapchain = device.create_swapchain(
-        present_stream,
-        SwapchainOption{
-            .display = window->native_display(),
-            .window = window->native_handle(),
-            .size = resolution,
-            .wants_hdr = false,
-            .wants_vsync = false,
-            .back_buffer_count = 1});
-    dst_image = render_device.lc_device().create_image<float>(swapchain.backend_storage(), resolution);
+    init_display(resolution);
 }
 void GraphicsUtils::reset_frame() {
     sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), true, true);
@@ -232,8 +256,9 @@ bool GraphicsUtils::should_close() {
     return window && window->should_close();
 }
 void GraphicsUtils::tick(vstd::function<void()> before_render) {
-    sm->prepare_frame();
     AssetsManager::instance()->wake_load_thread();
+    std::unique_lock render_lck{render_device.render_loop_mtx()};
+    sm->prepare_frame();
     if (window)
         window->poll_events();
     if (require_reset) {
@@ -248,9 +273,6 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
         before_render();
     }
     auto &main_stream = render_device.lc_main_stream();
-    if (present_event.fence_index > 0)
-        main_stream << present_event.event.wait(present_event.fence_index);
-    render_device.render_loop_mtx().lock();
     auto &cmdlist = render_device.lc_main_cmd_list();
     render_plugin->before_rendering({}, display_pipe_ctx);
     auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
@@ -270,35 +292,32 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
     auto prepare_next_frame = vstd::scope_exit([&] {
         if (compute_event.fence_index > 2)
             compute_event.event.synchronize(compute_event.fence_index - 2);
-        sm->prepare_frame();
     });
-    render_device.render_loop_mtx().unlock();
     /////////// Present
-    present_stream << compute_event.event.wait(compute_event.fence_index);
-    if (present_event.fence_index > 1) {
-        present_event.event.synchronize(present_event.fence_index - 1);
-    }
-    present_stream << swapchain.present(dst_image);
+    if (swapchain)
+        present_stream << swapchain.present(dst_image);
+    render_lck.unlock();
     // for (auto &i : rpc_hook.shared_window.swapchains) {
     //     present_stream << i.second.present(dst_img);
     // }
-    present_stream << present_event.event.signal(++present_event.fence_index);
 }
 void GraphicsUtils::resize_swapchain(uint2 size) {
     reset_frame();
-    present_event.event.synchronize(present_event.fence_index);
+    compute_event.event.synchronize(compute_event.fence_index);
     present_stream.synchronize();
     dst_image.reset();
-    dst_image = render_device.lc_device().create_image<float>(swapchain.backend_storage(), size);
+    dst_image = render_device.lc_device().create_image<float>(swapchain ? swapchain.backend_storage() : PixelStorage::BYTE4, size, true);
+    dst_image.set_name("Dest image");
     swapchain.reset();
-    swapchain = render_device.lc_device().create_swapchain(
-        present_stream,
-        SwapchainOption{
-            .display = window->native_display(),
-            .window = window->native_handle(),
-            .size = size,
-            .wants_hdr = false,
-            .wants_vsync = false,
-            .back_buffer_count = 1});
+    if (window)
+        swapchain = render_device.lc_device().create_swapchain(
+            present_stream,
+            SwapchainOption{
+                .display = window->native_display(),
+                .window = window->native_handle(),
+                .size = size,
+                .wants_hdr = false,
+                .wants_vsync = false,
+                .back_buffer_count = 1});
 }
 }// namespace rbc

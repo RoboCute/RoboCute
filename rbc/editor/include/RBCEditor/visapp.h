@@ -7,7 +7,7 @@
 #include <luisa/backends/ext/native_resource_ext_interface.h>
 #include "RBCEditor/app.h"
 // #include "RBCEditor/runtime/RenderUtils.h"
-#include "RBCEditor/runtime/MyRenderUtils.h"
+#include <rbc_app/graphics_utils.h>
 #include "RBCEditor/runtime/RenderScene.h"
 
 namespace rbc {
@@ -17,12 +17,13 @@ struct VisApp : public IApp {
     luisa::uint2 dx_adaptor_luid;
 
     luisa::fiber::scheduler scheduler;
-    my::GraphicsUtils utils;
+    GraphicsUtils utils;
 
     uint64_t frame_index = 0;
     double last_frame_time = 0;
     luisa::Clock clk;
     bool reset = false;
+    bool dst_image_reseted = false;
 
 public:
     [[nodiscard]] unsigned int GetDXAdapterLUIDHigh() const override { return dx_adaptor_luid.x; }
@@ -32,6 +33,7 @@ public:
     void update() override;
     void handle_key(luisa::compute::Key key) override;
     [[nodiscard]] void *GetStreamNativeHandle() const override {
+        LUISA_ASSERT(utils.present_stream);
         return utils.present_stream.native_handle();
     }
     [[nodiscard]] void *GetDeviceNativeHandle() const override { return utils.render_device.lc_device().native_handle(); }

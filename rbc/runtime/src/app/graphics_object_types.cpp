@@ -1,4 +1,4 @@
-#include "object_types.h"
+#include <rbc_app/graphics_object_types.h>
 namespace rbc {
 ObjectStub::~ObjectStub() {
     auto sm = SceneManager::instance_ptr();

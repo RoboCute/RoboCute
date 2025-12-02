@@ -38,13 +38,13 @@ void PBRApp::init(
 
 uint64_t PBRApp::create_texture(uint width, uint height) {
     resolution = {width, height};
-    if (utils.DisplayInitialized() && any(resolution != utils.GetDestImage().size())) {
+    if (utils.dst_image && any(resolution != utils.dst_image.size())) {
         utils.resize_swapchain(resolution);
     }
-    if (!utils.DisplayInitialized()) {
-        utils.init_display("rbc_editor", resolution, true);
+    if (!utils.dst_image) {
+        utils.init_display(resolution);
     }
-    return (uint64_t)utils.GetDestImage().native_handle();
+    return (uint64_t)utils.dst_image.native_handle();
 }
 
 void PBRApp::handle_key(luisa::compute::Key key) {
@@ -105,12 +105,12 @@ void PBRApp::update() {
     }
     if (utils.backend_name == "dx") {
         clear_dx_states(utils.render_device.lc_device_ext());
-        add_dx_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
-        add_dx_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+        add_dx_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+        add_dx_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
     } else if (utils.backend_name == "vk") {
         clear_vk_states(utils.render_device.lc_device_ext());
-        add_vk_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, VkResourceUsageType::RasterRead);
-        add_vk_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, VkResourceUsageType::RasterRead);
+        add_vk_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, VkResourceUsageType::RasterRead);
+        add_vk_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, VkResourceUsageType::RasterRead);
     }
     utils.tick([&]() {
         cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
@@ -152,5 +152,8 @@ PBRApp::~PBRApp() {
     });
     ctx.reset();
 }
-
+void *PBRApp::GetStreamNativeHandle() const {
+    LUISA_ASSERT(utils.present_stream);
+    return utils.present_stream.native_handle();
+}
 }// namespace rbc

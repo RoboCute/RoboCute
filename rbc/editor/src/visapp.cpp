@@ -31,6 +31,7 @@ void VisApp::init(
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name));
     utils.init_render();
+
     utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
 
     auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
@@ -39,13 +40,15 @@ void VisApp::init(
 
 uint64_t VisApp::create_texture(uint width, uint height) {
     resolution = {width, height};
-    if (utils.DisplayInitialized() && any(resolution != utils.GetDestImage().size())) {
+    if (utils.dst_image && any(resolution != utils.dst_image.size())) {
         utils.resize_swapchain(resolution);
+        dst_image_reseted = true;
     }
-    if (!utils.DisplayInitialized()) {
-        utils.init_display("rbc_editor", resolution, true);
+    if (!utils.dst_image) {
+        utils.init_display(resolution);
+        dst_image_reseted = true;
     }
-    return (uint64_t)utils.GetDestImage().native_handle();
+    return (uint64_t)utils.dst_image.native_handle();
 }
 
 void VisApp::handle_key(luisa::compute::Key key) {
@@ -61,13 +64,12 @@ void VisApp::update() {
     }
     if (utils.backend_name == "dx") {
         clear_dx_states(utils.render_device.lc_device_ext());
-        add_dx_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
-        add_dx_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+        add_dx_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
     } else if (utils.backend_name == "vk") {
         clear_vk_states(utils.render_device.lc_device_ext());
-        add_vk_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, VkResourceUsageType::RasterRead);
-        add_vk_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.GetDestImage().handle(), 0}, VkResourceUsageType::RasterRead);
+        add_vk_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, VkResourceUsageType::RasterRead);
     }
+    dst_image_reseted = false;
     utils.tick([&]() {
         frame_index = 0;// force update
         cam.aspect_ratio = (float)resolution.x / (float)resolution.y;

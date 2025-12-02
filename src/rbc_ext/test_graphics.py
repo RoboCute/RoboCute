@@ -42,6 +42,7 @@ def main():
     #     1
     # )
     # mat_default_json['base_albedo_tex'] = ctx.texture_heap_idx(tex)
+
     second_mat = ctx.create_pbr_material(json.dumps(mat_default_json))
 
     mat_vector = capsule_vector()
@@ -68,6 +69,7 @@ def main():
         float3(0, 0, 1.0) * 100,
         True
     )
+
     obj_changed = False
     start_time = None
     while not ctx.should_close():

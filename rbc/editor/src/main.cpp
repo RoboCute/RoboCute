@@ -20,7 +20,6 @@
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 
-#include "RBCEditor/runtime/MyRenderUtils.h"
 #include "RBCEditor/runtime/RenderScene.h"
 
 #ifdef _WIN32

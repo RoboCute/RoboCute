@@ -222,7 +222,9 @@ void RhiWindow::ensureFullscreenTexture(const QSize &pixelSize, QRhiResourceUpda
         m_texture->setPixelSize(pixelSize);
 
     uint64_t handle = renderer->get_present_texture(luisa::uint2(pixelSize.width(), pixelSize.height()));
-    m_texture->createFrom({handle, m_graphicsApi == QRhi::Vulkan ? 1 : 0});
+    // D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+    // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    m_texture->createFrom({handle, m_graphicsApi == QRhi::Vulkan ? 5 : 128});
 }
 
 void RhiWindow::keyPressEvent(QKeyEvent *event) {
