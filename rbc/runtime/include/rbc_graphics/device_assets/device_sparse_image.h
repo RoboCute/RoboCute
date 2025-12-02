@@ -28,6 +28,7 @@ public:
         TexStreamManager* tex_stream,
         luisa::move_only_function<void()>&& init_callback,
         luisa::filesystem::path const& path,
+        uint64_t file_offset,
         Sampler sampler,
         PixelStorage storage,
         uint2 size,

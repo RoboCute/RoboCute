@@ -35,8 +35,6 @@ def codegen_header(
                    offsets_uint32=tr.DataBuffer).ret_type(tr.VoidPtr)
 
     Context.method('get_mesh_data', handle=tr.VoidPtr).ret_type(tr.DataBuffer)
-
-    Context.method('remove_mesh', handle=tr.VoidPtr)
     # light
     Context.method(
         'add_area_light', matrix=tr.float4x4,
@@ -62,9 +60,6 @@ def codegen_header(
     Context.method(
         'update_spot_light', light=tr.VoidPtr, center=tr.float3, radius=tr.float, luminance=tr.float3, forward_dir=tr.float3,
         angle_radians=tr.float, small_angle_radians=tr.float, angle_atten_pow=tr.float, visible=tr.bool)
-    Context.method(
-        'remove_light', light=tr.VoidPtr
-    )
     # texture
     Context.method(
         'create_texture',
@@ -73,17 +68,12 @@ def codegen_header(
         size=tr.uint2,
         address=res_enums.SamplerAddress,
         filter=res_enums.SamplerFilter,
-        mip_level=tr.uint,
-        is_virtual_texture=tr.bool
+        mip_level=tr.uint
     ).ret_type(tr.VoidPtr)
     Context.method(
         'texture_heap_idx',
         ptr=tr.VoidPtr
     ).ret_type(tr.uint)
-    Context.method(
-        'destroy_texture',
-        ptr=tr.VoidPtr
-    )
     # material
     Context.method(
         'create_pbr_material',
@@ -98,10 +88,6 @@ def codegen_header(
         'get_material_json',
         mat=tr.VoidPtr
     ).ret_type(tr.string)
-    Context.method(
-        'remove_material',
-        ptr=tr.VoidPtr
-    )
     # object
     Context.method(
         'create_object',
@@ -122,11 +108,6 @@ def codegen_header(
         mesh=tr.VoidPtr,
         materials=tr.external_type('luisa::vector<rbc::RC<rbc::RCBase>> const&')
     )
-    Context.method(
-        'remove_object',
-        object_ptr=tr.VoidPtr
-    )
-
     # view
     Context.method(
         'reset_view',
@@ -150,7 +131,7 @@ def codegen_header(
     Context.method(
         'should_close'
     ).ret_type(tr.bool)
-
+    
     # codegen
     ut.codegen_to(header_root_path / f"{file_name}.h")(
         ut.codegen.cpp_interface_gen, '''#include <rbc_runtime/generated/resource_meta.hpp>

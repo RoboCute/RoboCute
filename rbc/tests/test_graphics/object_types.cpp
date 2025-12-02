@@ -11,8 +11,9 @@ ObjectStub::~ObjectStub() {
                 mesh_tlas_idx);
             break;
         case ObjectRenderType::EmissionMesh:
-            if (Lights::instance())
+            if (Lights::instance()) {
                 Lights::instance()->remove_mesh_light(mesh_light_idx);
+            }
             break;
         case ObjectRenderType::Procedural:
             sm->accel_manager().remove_procedural_instance(

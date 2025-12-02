@@ -28,7 +28,8 @@ public:
         ImageView<float> img,
         luisa::span<const uint2> update_tiles
     )>;
-    using TexPath = vstd::variant<luisa::string, RuntimeVTCallback>;
+    using FilePath = std::pair<luisa::string, uint64_t>;
+    using TexPath = vstd::variant<FilePath, RuntimeVTCallback>;
     struct RBC_RUNTIME_API SparseHeap {
         TexStreamManager* self{ nullptr };
         SparseTextureHeap heap;
@@ -93,9 +94,6 @@ public:
         uint bindless_idx;
         uint loaded_countdown;
         uint vector_idx{ std::numeric_limits<uint>::max() };
-        std::atomic_size_t write_rc{ 0 };
-        luisa::spin_mutex _update_mtx;
-        luisa::unordered_set<Coord, CoordHash> _update_coords;
         luisa::move_only_function<void()> init_callback;
         SparseHeap& get_heap(uint2 tile_idx, uint level)
         {
@@ -134,11 +132,6 @@ public:
         uint offset;
         uint value;
     };
-    struct UpdateChunk {
-        Coord coord;
-        vstd::vector<std::byte> data;
-    };
-
 private:
     Device& _device;
     Stream& _async_stream;
@@ -161,8 +154,6 @@ private:
     };
     vstd::LockFreeArrayQueue<FrameResource> _frame_res;
     vstd::LockFreeArrayQueue<vstd::vector<uint>> _frame_datas;
-    luisa::spin_mutex _update_global_mtx;
-    vstd::vector<std::pair<shared_ptr<TexIndex>, vstd::vector<UpdateChunk>>> _update_cmds;
     struct UInt3Equal {
         bool operator()(uint3 const& a, uint3 const& b) const
         {
@@ -189,7 +180,6 @@ private:
     const uint8_t _lru_frame;
     const uint8_t _lru_frame_memoryless;
     IOCommandList _process_readback(vstd::span<uint const> readback, SparseCommandList& map_cmdlist);
-    void _update_img(TexIndex* tex, UpdateChunk& chunk);
     luisa::compute::TimelineEvent _main_stream_event;
 
     struct CopyStreamCallback {
@@ -253,10 +243,6 @@ public:
     void unload_sparse_img(
         uint64 img_uid,
         DisposeQueue& disp_queue
-    );
-    void update_img(
-        uint64 img_uid,
-        vstd::vector<UpdateChunk>&& chunk
     );
     void before_rendering(
         Stream& main_stream,

@@ -18,8 +18,6 @@ class RBCContext:
 		return RBCContext__load_mesh__(self._handle, path, file_offset, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, offsets_uint32)
 	def get_mesh_data(self, handle):
 		return RBCContext__get_mesh_data__(self._handle, handle)
-	def remove_mesh(self, handle):
-		RBCContext__remove_mesh__(self._handle, handle)
 	def add_area_light(self, matrix: float4x4, luminance: float3, visible: bool):
 		return RBCContext__add_area_light__(self._handle, matrix, luminance, visible)
 	def add_disk_light(self, center: float3, radius: float, luminance: float3, forward_dir: float3, visible: bool):
@@ -36,30 +34,22 @@ class RBCContext:
 		RBCContext__update_point_light__(self._handle, light, center, radius, luminance, visible)
 	def update_spot_light(self, light, center: float3, radius: float, luminance: float3, forward_dir: float3, angle_radians: float, small_angle_radians: float, angle_atten_pow: float, visible: bool):
 		RBCContext__update_spot_light__(self._handle, light, center, radius, luminance, forward_dir, angle_radians, small_angle_radians, angle_atten_pow, visible)
-	def remove_light(self, light):
-		RBCContext__remove_light__(self._handle, light)
-	def create_texture(self, data, storage: LCPixelStorage, size: uint2, address: SamplerAddress, filter: SamplerFilter, mip_level: int, is_virtual_texture: bool):
-		return RBCContext__create_texture__(self._handle, data, storage, size, address, filter, mip_level, is_virtual_texture)
+	def create_texture(self, data, storage: LCPixelStorage, size: uint2, address: SamplerAddress, filter: SamplerFilter, mip_level: int):
+		return RBCContext__create_texture__(self._handle, data, storage, size, address, filter, mip_level)
 	def texture_heap_idx(self, ptr):
 		return RBCContext__texture_heap_idx__(self._handle, ptr)
-	def destroy_texture(self, ptr):
-		RBCContext__destroy_texture__(self._handle, ptr)
 	def create_pbr_material(self, json: str):
 		return RBCContext__create_pbr_material__(self._handle, json)
 	def update_pbr_material(self, mat_ptr, json: str):
 		RBCContext__update_pbr_material__(self._handle, mat_ptr, json)
 	def get_material_json(self, mat):
 		return RBCContext__get_material_json__(self._handle, mat)
-	def remove_material(self, ptr):
-		RBCContext__remove_material__(self._handle, ptr)
 	def create_object(self, matrix: float4x4, mesh, materials):
 		return RBCContext__create_object__(self._handle, matrix, mesh, materials)
 	def update_object_pos(self, object_ptr, matrix: float4x4):
 		RBCContext__update_object_pos__(self._handle, object_ptr, matrix)
 	def update_object(self, object_ptr, matrix: float4x4, mesh, materials):
 		RBCContext__update_object__(self._handle, object_ptr, matrix, mesh, materials)
-	def remove_object(self, object_ptr):
-		RBCContext__remove_object__(self._handle, object_ptr)
 	def reset_view(self, resolution: uint2):
 		RBCContext__reset_view__(self._handle, resolution)
 	def reset_frame_index(self):

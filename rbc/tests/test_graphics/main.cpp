@@ -9,6 +9,7 @@
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
+#include <rbc_graphics/device_assets/device_sparse_image.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include "simple_scene.h"
@@ -141,9 +142,6 @@ struct ContextImpl : RBCContext {
         auto host_data = mesh->host_data();
         return host_data;
     }
-    void remove_mesh(void *handle) override {
-        RC<DeviceMesh>::manually_release_ref((DeviceMesh *)handle);
-    }
     void *create_pbr_material(luisa::string_view json) override {
         auto ptr = new MaterialStub();
         ptr->mat_data.reset_as(MaterialStub::MatDataType::IndexOf<material::OpenPBR>);
@@ -191,10 +189,6 @@ struct ContextImpl : RBCContext {
         auto data = ser.write_to();
         return luisa::string{
             luisa::string_view{(char const *)data.data(), data.size()}};
-    }
-    void remove_material(void *mat_ptr) override {
-        auto ptr = (MaterialStub *)mat_ptr;
-        RC<MaterialStub>::manually_release_ref(ptr);
     }
     void *add_area_light(luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {
         auto &render_device = RenderDevice::instance();
@@ -253,11 +247,7 @@ struct ContextImpl : RBCContext {
             visible);
         return stub;
     }
-    void remove_light(void *light) override {
-        auto stub = reinterpret_cast<LightStub *>(light);
-        RC<LightStub>::manually_release_ref(stub);
-    }
-    void *create_texture(luisa::span<std::byte> data, rbc::LCPixelStorage storage, luisa::uint2 size, rbc::SamplerAddress address, rbc::SamplerFilter filter, uint32_t mip_level, bool is_virtual_texture) override {
+    void *create_texture(luisa::span<std::byte> data, rbc::LCPixelStorage storage, luisa::uint2 size, rbc::SamplerAddress address, rbc::SamplerFilter filter, uint32_t mip_level) override {
         size_t size_bytes = 0;
         for (auto i : vstd::range(mip_level))
             size_bytes += pixel_storage_size((PixelStorage)storage, make_uint3(size >> (uint)i, 1u));
@@ -278,14 +268,49 @@ struct ContextImpl : RBCContext {
             true);
         return ptr;
     }
+    void *load_texture(
+        luisa::string_view file_path, uint64_t file_offset,
+        rbc::LCPixelStorage storage, luisa::uint2 size, rbc::SamplerAddress address, rbc::SamplerFilter filter, uint32_t mip_level, bool is_virtual_texture) {
+        size_t size_bytes = 0;
+        auto &sm = SceneManager::instance();
+        for (auto i : vstd::range(mip_level))
+            size_bytes += pixel_storage_size((PixelStorage)storage, make_uint3(size >> (uint)i, 1u));
+        if (is_virtual_texture) {
+            auto ptr = new DeviceSparseImage();
+            RC<DeviceSparseImage>::manually_add_ref(ptr);
+            ptr->load(
+                &sm.tex_streamer(),
+                {},
+                file_path,
+                file_offset,
+                Sampler{
+                    (Sampler::Filter)filter,
+                    (Sampler::Address)address},
+                (PixelStorage)storage,
+                size,
+                mip_level);
+            return ptr;
+        } else {
+            auto ptr = new DeviceImage();
+            RC<DeviceImage>::manually_add_ref(ptr);
+            ptr->async_load_from_file(
+                file_path,
+                file_offset,
+                Sampler{
+                    (Sampler::Filter)filter,
+                    (Sampler::Address)address},
+                (PixelStorage)storage,
+                size,
+                mip_level,
+                DeviceImage::ImageType::Float,
+                true);
+            return ptr;
+        }
+    }
     uint texture_heap_idx(void *ptr) override {
         auto tex = (DeviceImage *)ptr;
         tex->wait_executed();
         return tex->heap_idx();
-    }
-    void destroy_texture(void *ptr) override {
-        auto tex = (DeviceImage *)ptr;
-        RC<DeviceImage>::manually_release_ref(tex);
     }
     void update_area_light(void *light, luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {
         auto &render_device = RenderDevice::instance();
@@ -517,10 +542,6 @@ struct ContextImpl : RBCContext {
                 LUISA_ERROR("Procedural not supported.");
             } break;
         }
-    }
-    void remove_object(void *object_ptr) override {
-        auto stub = reinterpret_cast<ObjectStub *>(object_ptr);
-        RC<ObjectStub>::manually_release_ref(stub);
     }
     void reset_view(luisa::uint2 resolution) override {
         utils.resize_swapchain(resolution);

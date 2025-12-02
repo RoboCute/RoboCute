@@ -14,6 +14,7 @@ void DeviceSparseImage::load(
     TexStreamManager *tex_stream,
     luisa::move_only_function<void()> &&init_callback,
     luisa::filesystem::path const &path,
+    uint64_t file_offset,
     Sampler sampler,
     PixelStorage storage,
     uint2 size,
@@ -24,7 +25,7 @@ void DeviceSparseImage::load(
     _gpu_load_frame = std::numeric_limits<uint64_t>::max();
     _tex_stream_mng = tex_stream;
     AssetsManager::instance()->load_thd_queue.push(
-        [this_shared = RC{this}, tex_stream, storage, path, size, mip_level, sampler, init_callback = std::move(init_callback)](LoadTaskArgs const &args) mutable {
+        [this_shared = RC{this}, tex_stream, storage, path, size, mip_level, sampler, file_offset, init_callback = std::move(init_callback)](LoadTaskArgs const &args) mutable {
             auto ptr = static_cast<DeviceSparseImage *>(this_shared.get());
             if (ptr->_gpu_load_frame != std::numeric_limits<uint64_t>::max()) return;
             ptr->_gpu_load_frame = args.load_frame;
@@ -33,7 +34,7 @@ void DeviceSparseImage::load(
                 allowed_level--;
             }
             auto sparse_img = AssetsManager::instance()->lc_device().create_sparse_image<float>(storage, size, allowed_level);
-            auto result = tex_stream->load_sparse_img(std::move(sparse_img), luisa::to_string(path), sampler, *args.disp_queue, args.cmdlist, std::move(init_callback));
+            auto result = tex_stream->load_sparse_img(std::move(sparse_img), TexStreamManager::FilePath{luisa::to_string(path), file_offset}, sampler, *args.disp_queue, args.cmdlist, std::move(init_callback));
             ptr->_sparse_img = result.img_ptr;
             ptr->_heap_idx = result.bindless_index;
             ptr->_tex_idx = result.tex_idx;

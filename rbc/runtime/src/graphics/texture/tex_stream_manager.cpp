@@ -195,7 +195,8 @@ void TexStreamManager::_async_logic()
         );
         for (auto& i : res->depended_texs)
         {
-            i->init_callback();
+            if (i->init_callback)
+                i->init_callback();
         }
         // for (auto&& tex : res->load_cmds) {
         // 	auto& tex_idx = tex.tex_idx;
@@ -344,10 +345,6 @@ TexStreamManager::~TexStreamManager()
         i.second->heaps.clear();
         _level_buffer.free(i.second->node);
     }
-    for (auto& i : _update_cmds)
-    {
-        i.first->heaps.clear();
-    }
     _async_stream << _main_stream_event.signal(signalled_fence + 1);
     _async_stream.synchronize();
     if (_last_io_fence > 0)
@@ -426,32 +423,6 @@ auto TexStreamManager::load_sparse_img(
         v.get()
     };
 }
-void TexStreamManager::update_img(
-    uint64 img_uid,
-    vstd::vector<UpdateChunk>&& chunk
-)
-{
-    if (chunk.empty()) return;
-    auto iter = _loaded_texs.find(img_uid);
-    LUISA_ASSERT(iter, "Trying to update non-exists tex.");
-    iter.value()->write_rc += 1;
-    std::lock_guard lck{ _update_global_mtx };
-    _update_cmds.emplace_back(iter.value(), std::move(chunk));
-}
-
-void TexStreamManager::_update_img(TexIndex* tex, UpdateChunk& chunk)
-{
-    auto& coord = chunk.coord;
-    auto& heap = tex->get_heap(make_uint2(coord.tile_idx[0], coord.tile_idx[1]), coord.level);
-    BinaryFileWriter writer{ tex->path.get<0>(), true };
-    writer.set_pos(tex->get_byte_offset(make_uint2(coord.tile_idx[0], coord.tile_idx[1]), coord.level));
-    writer.write(chunk.data);
-    if (heap)
-    {
-        std::lock_guard lck{ tex->_update_mtx };
-        tex->_update_coords.emplace(coord);
-    };
-}
 
 void TexStreamManager::unload_sparse_img(
     uint64 img_uid,
@@ -494,7 +465,6 @@ IOCommandList TexStreamManager::_process_readback(vstd::span<uint const> readbac
     auto event = luisa::fiber::async_parallel(_tex_indices.size(), [&](size_t idx) {
         auto& i = _tex_indices[idx];
         auto& tex_idx = *i;
-        if (tex_idx.write_rc > 0) return;
         size_t chunk_allocated_size = 0;
 
         vstd::unordered_map<Coord, bool, CoordHash> load_cmds;
@@ -578,16 +548,6 @@ IOCommandList TexStreamManager::_process_readback(vstd::span<uint const> readbac
             }
         }
         bool runtime_dirty = false;
-        {
-            auto update_coords = [&]() {
-                std::lock_guard lck{ tex_idx._update_mtx };
-                return std::move(tex_idx._update_coords);
-            }();
-            for (auto& c : update_coords)
-            {
-                load_cmds.force_emplace(c, true);
-            }
-        }
         tex_idx.path.visit([&]<typename T>(T const& t) {
             auto tex_pixel_size = pixel_storage_size(tex_idx.img.storage(), uint3(chunk_resolution, chunk_resolution, 1));
             const bool is_runtime_vt = std::is_same_v<T, RuntimeVTCallback>;
@@ -637,11 +597,11 @@ IOCommandList TexStreamManager::_process_readback(vstd::span<uint const> readbac
                         {
                             if (!tex_idx.tex_file) [[unlikely]]
                             {
-                                tex_idx.tex_file = IOFile{ t };
+                                tex_idx.tex_file = IOFile{ t.first };
                             }
                             IOCommand io_cmd{
                                 tex_idx.tex_file,
-                                tex_idx.get_byte_offset(tile_idx, level),
+                                t.second + tex_idx.get_byte_offset(tile_idx, level),
                                 IOTextureSubView{
                                     tex_idx.img.view(level),
                                     tile_idx * uint2(chunk_resolution),
@@ -678,23 +638,11 @@ IOCommandList TexStreamManager::_process_readback(vstd::span<uint const> readbac
             }
         });
     });
-    _update_global_mtx.lock();
-    auto update_cmd = std::move(_update_cmds);
-    _update_global_mtx.unlock();
     event.wait();
-    io_cmdlist.add_callback([this, update_cmd = std::move(update_cmd), frame_res = std::move(frame_res), depended_texs = std::move(depended_texs)]() mutable {
+    io_cmdlist.add_callback([this, frame_res = std::move(frame_res), depended_texs = std::move(depended_texs)]() mutable {
         frame_res.depended_texs = std::move(depended_texs);
         _frame_res.push(std::move(frame_res));
-        for (auto& i : update_cmd)
-        {
-            if (i.first->tex_file)
-                i.first->tex_file = {};
-            for (auto& j : i.second)
-            {
-                _update_img(i.first.get(), j);
-            }
-            i.first->write_rc -= 1;
-        }
+
     });
     return io_cmdlist;
 }

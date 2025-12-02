@@ -7,14 +7,14 @@ import json
 
 
 def main():
-    backend_name = 'vk'
+    backend_name = 'dx'
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
     program_path = str(runtime_dir.parent / 'debug')
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
     sky_path = str(runtime_dir.parent / 'sky.bytes')
 
     ctx = RBCContext()
-    ctx.init_device('vk', program_path, shader_path)
+    ctx.init_device(backend_name, program_path, shader_path)
     ctx.init_render()
     ctx.load_skybox(sky_path, uint2(4096, 2048))
     ctx.create_window("py_window", uint2(1920, 1080), True)
@@ -60,11 +60,11 @@ def main():
         True
     )
     obj_changed = False
-    start_time = time.perf_counter()
+    start_time = None
     while not ctx.should_close():
         if not obj_changed:
             end_time = time.perf_counter()
-            if end_time - start_time > 2:
+            if start_time and end_time - start_time > 2:
                 obj_changed = True
                 mat_default_json['base_albedo'] = [1, 0.6, 0]
                 mat_default_json['emission_luminance'] = [0, 0, 0]
@@ -80,8 +80,10 @@ def main():
                                   ))
                 ctx.reset_frame_index()
         ctx.tick()
+        if not start_time:
+            start_time = time.perf_counter()
 
-    ctx.remove_mesh(mesh)
+    destroy_object(mesh)
     del ctx
 
 
