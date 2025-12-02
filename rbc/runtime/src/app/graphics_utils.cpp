@@ -274,17 +274,6 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
     }
     auto &main_stream = render_device.lc_main_stream();
     auto &cmdlist = render_device.lc_main_cmd_list();
-    render_plugin->before_rendering({}, display_pipe_ctx);
-    auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
-    managed_device->begin_managing(cmdlist);
-    sm->before_rendering(
-        cmdlist,
-        main_stream);
-    // on render
-    render_plugin->on_rendering({}, display_pipe_ctx);
-    // TODO: pipeline update
-    //////////////// Test
-    managed_device->end_managing(cmdlist);
     if (!frame_mem_io_list.empty()) {
         mem_io_fence = render_device.mem_io_service()->execute(std::move(frame_mem_io_list));
     }
@@ -300,6 +289,24 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
     };
     sync_io(mem_io_fence, render_device.mem_io_service());
     sync_io(disk_io_fence, render_device.io_service());
+    for (auto &i : build_meshes) {
+        auto &mesh = i->mesh_data()->pack.mesh;
+        if (mesh)
+            cmdlist << mesh.build();
+    }
+    build_meshes.clear();
+
+    render_plugin->before_rendering({}, display_pipe_ctx);
+    auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
+    managed_device->begin_managing(cmdlist);
+    sm->before_rendering(
+        cmdlist,
+        main_stream);
+    // on render
+    render_plugin->on_rendering({}, display_pipe_ctx);
+    // TODO: pipeline update
+    //////////////// Test
+    managed_device->end_managing(cmdlist);
     sm->on_frame_end(
         cmdlist,
         main_stream, managed_device);

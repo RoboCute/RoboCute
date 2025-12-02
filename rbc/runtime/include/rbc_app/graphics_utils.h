@@ -43,6 +43,7 @@ struct RBC_RUNTIME_API GraphicsUtils {
 
     IOCommandList frame_mem_io_list;
     IOCommandList frame_disk_io_list;
+    luisa::unordered_set<RC<DeviceMesh>, luisa::hash<RC<DeviceMesh>>, std::equal_to<RC<DeviceMesh>>> build_meshes;
     GraphicsUtils();
     void dispose(vstd::function<void()> after_sync = {});
     ~GraphicsUtils();

@@ -1081,3 +1081,49 @@ inline size_t RCWeak<T>::_rbc_hash(const RCWeak &obj) {
 }
 
 }// namespace rbc
+
+namespace luisa {
+template<typename T>
+struct hash<rbc::RC<T>> {
+    size_t operator()(rbc::RC<T> const &h, size_t seed = luisa::hash64_default_seed) const {
+        return luisa::hash64(
+            &h,
+            sizeof(rbc::RC<T>),
+            seed);
+    }
+};
+}// namespace luisa
+
+namespace std {
+template<typename T>
+struct equal_to<rbc::RC<T>> {
+    bool operator()(rbc::RC<T> const &lhs, rbc::RC<T> const &rhs) const {
+        return lhs.get() == rhs.get();
+    }
+};
+template<typename T>
+struct less<rbc::RC<T>> {
+    bool operator()(rbc::RC<T> const &lhs, rbc::RC<T> const &rhs) const {
+        return (size_t)lhs.get() < (size_t)rhs.get();
+    }
+};
+}// namespace std
+
+namespace vstd {
+template<typename T>
+struct hash<rbc::RC<T>> {
+    size_t operator()(rbc::RC<T> const &h, size_t seed = luisa::hash64_default_seed) const {
+        return luisa::hash64(
+            &h,
+            sizeof(rbc::RC<T>),
+            seed);
+    }
+};
+template<typename T>
+struct compare<rbc::RC<T>> {
+    int32_t operator()(rbc::RC<T> const &lhs, rbc::RC<T> const &rhs) const {
+        if (lhs.get() == rhs.get()) return 0;
+        return (size_t)lhs.get() < (size_t)rhs.get() ? -1 : 1;
+    }
+};
+};// namespace vstd

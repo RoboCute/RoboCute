@@ -144,11 +144,14 @@ struct ContextImpl : RBCContext {
                 0,
                 IOBufferSubView{mesh_data->pack.data}};
         }
+        utils.frame_mem_io_list.add_callback([
+            m = RC<DeviceMesh>(mesh)
+        ]{});
         auto &sm = SceneManager::instance();
         if (mesh->tlas_ref_count > 0)
             sm.accel_manager().mark_dirty();
         if (mesh_data->pack.mesh) {
-            RenderDevice::instance().lc_main_cmd_list() << mesh_data->pack.mesh.build();
+            utils.build_meshes.emplace(mesh);
         }
     }
     void *create_pbr_material(luisa::string_view json) override {
