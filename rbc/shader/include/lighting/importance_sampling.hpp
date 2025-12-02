@@ -113,10 +113,10 @@ bool select_light(
 		}
 		right_rate /= sum_rate;
 		if (right_rate > 1e-8f) {
-			right_rate = max(right_rate, 0.02f);
+			right_rate = max(right_rate, 0.05f);
 		}
 		if (left_rate > 1e-8f) {
-			right_rate = min(right_rate, 0.98f);
+			right_rate = min(right_rate, 0.95f);
 		}
 		left_rate = 1.f - right_rate;
 		auto rand = sampler.next();
@@ -168,10 +168,10 @@ bool select_light(
 				}
 				right_rate /= sum_rate;
 				if (right_rate > 1e-8f) {
-					right_rate = max(right_rate, 0.02f);
+					right_rate = max(right_rate, 0.05f);
 				}
 				if (left_rate > 1e-8f) {
-					right_rate = min(right_rate, 0.98f);
+					right_rate = min(right_rate, 0.95f);
 				}
 				left_rate = 1.f - right_rate;
 				auto rand = sampler.next();

@@ -90,6 +90,11 @@ def codegen_header(
         json=tr.string
     ).ret_type(tr.VoidPtr)
     Context.method(
+        'update_pbr_material',
+        mat_ptr=tr.VoidPtr,
+        json=tr.string
+    )
+    Context.method(
         'get_material_json',
         mat=tr.VoidPtr
     ).ret_type(tr.string)
@@ -106,11 +111,13 @@ def codegen_header(
     ).ret_type(tr.VoidPtr)
 
     Context.method(
-        'update_object',
+        'update_object_pos',
+        object_ptr=tr.VoidPtr,
         matrix=tr.float4x4
     )
     Context.method(
         'update_object',
+        object_ptr=tr.VoidPtr,
         matrix=tr.float4x4,
         mesh=tr.VoidPtr,
         materials=tr.external_type('luisa::vector<rbc::RC<rbc::RCBase>> const&')

@@ -46,16 +46,18 @@ class RBCContext:
 		RBCContext__destroy_texture__(self._handle, ptr)
 	def create_pbr_material(self, json: str):
 		return RBCContext__create_pbr_material__(self._handle, json)
+	def update_pbr_material(self, mat_ptr, json: str):
+		RBCContext__update_pbr_material__(self._handle, mat_ptr, json)
 	def get_material_json(self, mat):
 		return RBCContext__get_material_json__(self._handle, mat)
 	def remove_material(self, ptr):
 		RBCContext__remove_material__(self._handle, ptr)
 	def create_object(self, matrix: float4x4, mesh, materials):
 		return RBCContext__create_object__(self._handle, matrix, mesh, materials)
-	def update_object(self, matrix: float4x4):
-		RBCContext__update_object__(self._handle, matrix)
-	def update_object(self, matrix: float4x4, mesh, materials):
-		RBCContext__update_object__(self._handle, matrix, mesh, materials)
+	def update_object_pos(self, object_ptr, matrix: float4x4):
+		RBCContext__update_object_pos__(self._handle, object_ptr, matrix)
+	def update_object(self, object_ptr, matrix: float4x4, mesh, materials):
+		RBCContext__update_object__(self._handle, object_ptr, matrix, mesh, materials)
 	def remove_object(self, object_ptr):
 		RBCContext__remove_object__(self._handle, object_ptr)
 	def reset_view(self, resolution: uint2):

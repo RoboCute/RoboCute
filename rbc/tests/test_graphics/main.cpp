@@ -163,6 +163,24 @@ struct ContextImpl : RBCContext {
             sm.dispose_queue());
         return ptr;
     }
+    void update_pbr_material(void *ptr, luisa::string_view json) override {
+        auto mat = static_cast<MaterialStub *>(ptr);
+        if (mat->mat_code.get_type() != material::PolymorphicMaterial::index<material::OpenPBR>) [[unlikely]] {
+            LUISA_ERROR("Material type mismatch.");
+        }
+        JsonDeSerializer deser(json);
+        RC<MaterialStub>::manually_add_ref(mat);
+        auto &mat_data = mat->mat_data.force_get<material::OpenPBR>();
+        GraphicsUtils::openpbr_json_deser(
+            deser,
+            mat_data);
+        auto &sm = SceneManager::instance();
+        sm.mat_manager().set_mat_instance(
+            mat->mat_code,
+            sm.buffer_uploader(),
+            {(std::byte const *)&mat_data,
+             sizeof(mat_data)});
+    }
     luisa::string get_material_json(void *mat_ptr) override {
         auto ptr = (MaterialStub *)mat_ptr;
         JsonSerializer ser(false);
@@ -322,7 +340,7 @@ struct ContextImpl : RBCContext {
             angle_atten_pow,
             visible);
     }
-    static bool material_is_emission(luisa::span<RC<RCBase> const> materials) {
+    static bool material_is_emission(luisa::span<RC<MaterialStub> const> materials) {
         bool contained_emission = false;
         for (auto &i : materials) {
             static_cast<MaterialStub *>(i.get())->mat_data.visit([&]<typename T>(T const &t) {
@@ -368,41 +386,42 @@ struct ContextImpl : RBCContext {
         if (!(materials.size() == submesh_size)) [[unlikely]] {
             LUISA_ERROR("Submesh size {} mismatch with material size {}", submesh_size, materials.size());
         }
-        // if (material_is_emission(materials)) {
-            
-        // } else {
-        //     stub->mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
-        //         render_device.lc_main_cmd_list(),
-        //         sm.host_upload_buffer(),
-        //         sm.buffer_allocator(),
-        //         sm.buffer_uploader(),
-        //         sm.dispose_queue(),
-        //         stub->mesh_ref->mesh_data(),
-        //         stub->material_codes,
-        //         matrix);
-        //     stub->type = ObjectRenderType::Mesh;
-        // }
-        stub->mesh_light_idx = Lights::instance()->add_mesh_light_sync(
-            render_device.lc_main_cmd_list(),
-            stub->mesh_ref,
-            matrix,
-            stub->material_codes);
-        stub->type = ObjectRenderType::EmissionMesh;
+        if (material_is_emission(
+                {reinterpret_cast<RC<MaterialStub> const *>(materials.data()),
+                 materials.size()})) {
+            stub->mesh_light_idx = Lights::instance()->add_mesh_light_sync(
+                render_device.lc_main_cmd_list(),
+                stub->mesh_ref,
+                matrix,
+                stub->material_codes);
+            stub->type = ObjectRenderType::EmissionMesh;
+        } else {
+            stub->mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
+                render_device.lc_main_cmd_list(),
+                sm.host_upload_buffer(),
+                sm.buffer_allocator(),
+                sm.buffer_uploader(),
+                sm.dispose_queue(),
+                stub->mesh_ref->mesh_data(),
+                stub->material_codes,
+                matrix);
+            stub->type = ObjectRenderType::Mesh;
+        }
         return stub;
     }
-    void update_object(luisa::float4x4 matrix) override {
-        auto stub = new ObjectStub{};
+    void update_object_pos(void *ptr, luisa::float4x4 matrix) override {
+        auto stub = static_cast<ObjectStub *>(ptr);
         RC<ObjectStub>::manually_add_ref(stub);
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
         switch (stub->type) {
-            case ObjectRenderType::Mesh:
+            case ObjectRenderType::Mesh: {
                 sm.accel_manager().set_mesh_instance(
                     render_device.lc_main_cmd_list(),
                     sm.buffer_uploader(),
                     stub->mesh_tlas_idx,
                     matrix, 0xff, true);
-                break;
+            } break;
             case ObjectRenderType::EmissionMesh:
                 utils.lights->update_mesh_light_sync(
                     render_device.lc_main_cmd_list(),
@@ -419,8 +438,8 @@ struct ContextImpl : RBCContext {
                 break;
         }
     }
-    void update_object(luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) override {
-        auto stub = new ObjectStub{};
+    void update_object(void *ptr, luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) override {
+        auto stub = static_cast<ObjectStub *>(ptr);
         RC<ObjectStub>::manually_add_ref(stub);
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
@@ -445,30 +464,58 @@ struct ContextImpl : RBCContext {
             });
         stub->mesh_ref->wait_finished();
         // TODO: change light type
+        bool is_emission = material_is_emission(stub->materials);
         switch (stub->type) {
             case ObjectRenderType::Mesh:
-                sm.accel_manager().set_mesh_instance(
-                    stub->mesh_tlas_idx,
-                    render_device.lc_main_cmd_list(),
-                    sm.host_upload_buffer(),
-                    sm.buffer_allocator(),
-                    sm.buffer_uploader(),
-                    sm.dispose_queue(),
-                    stub->mesh_ref->mesh_data(),
-                    stub->material_codes,
-                    matrix);
+                if (is_emission) {
+                    sm.accel_manager().remove_mesh_instance(
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        stub->mesh_tlas_idx);
+                    stub->mesh_light_idx = Lights::instance()->add_mesh_light_sync(
+                        render_device.lc_main_cmd_list(),
+                        stub->mesh_ref,
+                        matrix,
+                        stub->material_codes);
+                    stub->type = ObjectRenderType::EmissionMesh;
+                } else {
+                    sm.accel_manager().set_mesh_instance(
+                        stub->mesh_tlas_idx,
+                        render_device.lc_main_cmd_list(),
+                        sm.host_upload_buffer(),
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        sm.dispose_queue(),
+                        stub->mesh_ref->mesh_data(),
+                        stub->material_codes,
+                        matrix);
+                }
                 break;
             case ObjectRenderType::EmissionMesh:
-                utils.lights->update_mesh_light_sync(
-                    render_device.lc_main_cmd_list(),
-                    stub->mesh_light_idx,
-                    matrix,
-                    stub->material_codes,
-                    &stub->mesh_ref);
+                if (!is_emission) {
+                    Lights::instance()->remove_mesh_light(stub->mesh_light_idx);
+                    stub->mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
+                        render_device.lc_main_cmd_list(),
+                        sm.host_upload_buffer(),
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        sm.dispose_queue(),
+                        stub->mesh_ref->mesh_data(),
+                        stub->material_codes,
+                        matrix);
+                    stub->type = ObjectRenderType::Mesh;
+                } else {
+                    utils.lights->update_mesh_light_sync(
+                        render_device.lc_main_cmd_list(),
+                        stub->mesh_light_idx,
+                        matrix,
+                        stub->material_codes,
+                        &stub->mesh_ref);
+                }
                 break;
-            case ObjectRenderType::Procedural:
-                LUISA_ERROR("Procedural type not supported.");
-                break;
+            case ObjectRenderType::Procedural: {
+                LUISA_ERROR("Procedural not supported.");
+            } break;
         }
     }
     void remove_object(void *object_ptr) override {

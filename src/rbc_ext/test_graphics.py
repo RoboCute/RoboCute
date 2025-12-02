@@ -54,19 +54,31 @@ def main():
             1, 0, 0, 0,
             0, 0, 1, 0,
             0, -1, 0, 0,
-            1, 1, 4, 1
+            1, 1.5, 4, 1
         ),
         float3(0, 0, 1.0) * 100,
         True
     )
+    obj_changed = False
     start_time = time.perf_counter()
     while not ctx.should_close():
-        # if obj:
-        #     end_time = time.perf_counter()
-        #     if end_time - start_time > 2:
-        #         ctx.reset_frame_index()
-        #         ctx.remove_object(obj)
-        #         obj = None
+        if not obj_changed:
+            end_time = time.perf_counter()
+            if end_time - start_time > 2:
+                obj_changed = True
+                mat_default_json['base_albedo'] = [1, 0.6, 0]
+                mat_default_json['emission_luminance'] = [0, 0, 0]
+                mat_default_json['specular_roughness'] = 0.0
+                mat_default_json['weight_metallic'] = 1.0
+                ctx.update_pbr_material(second_mat, json.dumps(mat_default_json))
+                ctx.update_object_pos(obj,
+                                  make_float4x4(
+                                      1, 0, 0, 0,
+                                      0, 1, 0, 0,
+                                      0, 0, 1, 0,
+                                      -0.8, -1.0, 4, 1
+                                  ))
+                ctx.reset_frame_index()
         ctx.tick()
 
     ctx.remove_mesh(mesh)
@@ -86,6 +98,7 @@ def create_mesh_array():
     size = 0
     offset = float4(0)
     scale = float4(1)
+
     def push_vec4(x, y, z):
         nonlocal size, offset, scale
         vec = float4(x, y, z, 0) * scale + offset
@@ -110,7 +123,7 @@ def create_mesh_array():
     push_vert()
     last_vert_size = size
     offset = float4(0, 1, 0, 0)
-    scale = float4(0.2, 0.2, 0.2, 0)
+    scale = float4(0.4, 0.4, 0.4, 0)
     push_vert()
     size = 0
     # Buttom face
