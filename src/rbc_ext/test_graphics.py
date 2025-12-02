@@ -33,6 +33,15 @@ def main():
     mat_default_json = json.loads(ctx.get_material_json(mat))
     mat_default_json['base_albedo'] = [0, 0, 0]
     mat_default_json['emission_luminance'] = [100, 0, 0]
+    # Texture:
+    # tex_data = np.ones(1024 * 1024 * 4, dtype=np.float32)
+    # tex = ctx.create_texture(
+    #     tex_data,
+    #     LCPixelStorage.FLOAT4,
+    #     uint2(1024, 1024),
+    #     1
+    # )
+    # mat_default_json['base_albedo_tex'] = ctx.texture_heap_idx(tex)
     second_mat = ctx.create_pbr_material(json.dumps(mat_default_json))
 
     mat_vector = capsule_vector()

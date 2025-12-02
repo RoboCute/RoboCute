@@ -14,8 +14,6 @@ class RBCContext:
 		RBCContext__create_window__(self._handle, name, size, resizable)
 	def create_mesh(self, data, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int, offsets_uint32):
 		return RBCContext__create_mesh__(self._handle, data, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, offsets_uint32)
-	def load_mesh(self, path: str, file_offset: int, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int, offsets_uint32):
-		return RBCContext__load_mesh__(self._handle, path, file_offset, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, offsets_uint32)
 	def get_mesh_data(self, handle):
 		return RBCContext__get_mesh_data__(self._handle, handle)
 	def add_area_light(self, matrix: float4x4, luminance: float3, visible: bool):
@@ -34,8 +32,8 @@ class RBCContext:
 		RBCContext__update_point_light__(self._handle, light, center, radius, luminance, visible)
 	def update_spot_light(self, light, center: float3, radius: float, luminance: float3, forward_dir: float3, angle_radians: float, small_angle_radians: float, angle_atten_pow: float, visible: bool):
 		RBCContext__update_spot_light__(self._handle, light, center, radius, luminance, forward_dir, angle_radians, small_angle_radians, angle_atten_pow, visible)
-	def create_texture(self, data, storage: LCPixelStorage, size: uint2, address: SamplerAddress, filter: SamplerFilter, mip_level: int):
-		return RBCContext__create_texture__(self._handle, data, storage, size, address, filter, mip_level)
+	def create_texture(self, data, storage: LCPixelStorage, size: uint2, mip_level: int):
+		return RBCContext__create_texture__(self._handle, data, storage, size, mip_level)
 	def texture_heap_idx(self, ptr):
 		return RBCContext__texture_heap_idx__(self._handle, ptr)
 	def create_pbr_material(self, json: str):

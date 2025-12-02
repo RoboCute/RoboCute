@@ -114,27 +114,6 @@ struct ContextImpl : RBCContext {
             true);
         return ptr;
     }
-    void *load_mesh(luisa::string_view name, uint64_t file_offset, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) override {
-        auto mesh_size = get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
-        auto ptr = new DeviceMesh();
-        RC<DeviceMesh>::manually_add_ref(ptr);
-        vstd::vector<uint32_t> vec;
-        vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
-        std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
-        ptr->async_load_from_file(
-            name,
-            vertex_count,
-            contained_normal,
-            contained_tangent,
-            uv_count,
-            std::move(vec),
-            false,
-            true,
-            file_offset,
-            ~0ull,
-            true);
-        return ptr;
-    }
 
     luisa::span<std::byte> get_mesh_data(void *handle) override {
         auto mesh = (DeviceMesh *)handle;
@@ -247,7 +226,7 @@ struct ContextImpl : RBCContext {
             visible);
         return stub;
     }
-    void *create_texture(luisa::span<std::byte> data, rbc::LCPixelStorage storage, luisa::uint2 size, rbc::SamplerAddress address, rbc::SamplerFilter filter, uint32_t mip_level) override {
+    void *create_texture(luisa::span<std::byte> data, rbc::LCPixelStorage storage, luisa::uint2 size, uint32_t mip_level) override {
         size_t size_bytes = 0;
         for (auto i : vstd::range(mip_level))
             size_bytes += pixel_storage_size((PixelStorage)storage, make_uint3(size >> (uint)i, 1u));
@@ -258,54 +237,13 @@ struct ContextImpl : RBCContext {
         RC<DeviceImage>::manually_add_ref(ptr);
         ptr->async_load_from_memory(
             luisa::BinaryBlob(data.data(), data.size(), {}),
-            Sampler{
-                (Sampler::Filter)filter,
-                (Sampler::Address)address},
+            Sampler{},
             (PixelStorage)storage,
             size,
             mip_level,
             DeviceImage::ImageType::Float,
             true);
         return ptr;
-    }
-    void *load_texture(
-        luisa::string_view file_path, uint64_t file_offset,
-        rbc::LCPixelStorage storage, luisa::uint2 size, rbc::SamplerAddress address, rbc::SamplerFilter filter, uint32_t mip_level, bool is_virtual_texture) {
-        size_t size_bytes = 0;
-        auto &sm = SceneManager::instance();
-        for (auto i : vstd::range(mip_level))
-            size_bytes += pixel_storage_size((PixelStorage)storage, make_uint3(size >> (uint)i, 1u));
-        if (is_virtual_texture) {
-            auto ptr = new DeviceSparseImage();
-            RC<DeviceSparseImage>::manually_add_ref(ptr);
-            ptr->load(
-                &sm.tex_streamer(),
-                {},
-                file_path,
-                file_offset,
-                Sampler{
-                    (Sampler::Filter)filter,
-                    (Sampler::Address)address},
-                (PixelStorage)storage,
-                size,
-                mip_level);
-            return ptr;
-        } else {
-            auto ptr = new DeviceImage();
-            RC<DeviceImage>::manually_add_ref(ptr);
-            ptr->async_load_from_file(
-                file_path,
-                file_offset,
-                Sampler{
-                    (Sampler::Filter)filter,
-                    (Sampler::Address)address},
-                (PixelStorage)storage,
-                size,
-                mip_level,
-                DeviceImage::ImageType::Float,
-                true);
-            return ptr;
-        }
     }
     uint texture_heap_idx(void *ptr) override {
         auto tex = (DeviceImage *)ptr;

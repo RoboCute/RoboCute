@@ -30,10 +30,6 @@ def codegen_header(
                    contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint,
                    offsets_uint32=tr.DataBuffer
                    ).ret_type(tr.VoidPtr)
-    Context.method('load_mesh', path=tr.string, file_offset=tr.ulong, vertex_count=tr.uint,
-                   contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint,
-                   offsets_uint32=tr.DataBuffer).ret_type(tr.VoidPtr)
-
     Context.method('get_mesh_data', handle=tr.VoidPtr).ret_type(tr.DataBuffer)
     # light
     Context.method(
@@ -66,8 +62,6 @@ def codegen_header(
         data=tr.DataBuffer,
         storage=res_enums.PixelStorage,
         size=tr.uint2,
-        address=res_enums.SamplerAddress,
-        filter=res_enums.SamplerFilter,
         mip_level=tr.uint
     ).ret_type(tr.VoidPtr)
     Context.method(
