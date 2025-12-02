@@ -650,6 +650,7 @@ void AccelManager::update_last_transform(
                    _last_trans_buffer
     )
                    .dispatch(_accel.size());
+    _accel_builded = false;
 }
 void AccelManager::move_the_world(
     CommandList& cmdlist,

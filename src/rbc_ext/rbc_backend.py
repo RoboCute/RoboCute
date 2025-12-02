@@ -14,8 +14,12 @@ class RBCContext:
 		RBCContext__create_window__(self._handle, name, size, resizable)
 	def create_mesh(self, data, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int, offsets_uint32):
 		return RBCContext__create_mesh__(self._handle, data, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, offsets_uint32)
+	def load_mesh(self, file_path: str, file_offset: int, vertex_count: int, contained_normal: bool, contained_tangent: bool, uv_count: int, triangle_count: int, offsets_uint32):
+		return RBCContext__load_mesh__(self._handle, file_path, file_offset, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, offsets_uint32)
 	def get_mesh_data(self, handle):
 		return RBCContext__get_mesh_data__(self._handle, handle)
+	def update_mesh(self, handle, only_vertex: bool):
+		RBCContext__update_mesh__(self._handle, handle, only_vertex)
 	def add_area_light(self, matrix: float4x4, luminance: float3, visible: bool):
 		return RBCContext__add_area_light__(self._handle, matrix, luminance, visible)
 	def add_disk_light(self, center: float3, radius: float, luminance: float3, forward_dir: float3, visible: bool):
@@ -34,6 +38,8 @@ class RBCContext:
 		RBCContext__update_spot_light__(self._handle, light, center, radius, luminance, forward_dir, angle_radians, small_angle_radians, angle_atten_pow, visible)
 	def create_texture(self, data, storage: LCPixelStorage, size: uint2, mip_level: int):
 		return RBCContext__create_texture__(self._handle, data, storage, size, mip_level)
+	def load_texture(self, path: str, file_offset: int, storage: LCPixelStorage, size: uint2, mip_level: int, is_virtual_texture: bool):
+		return RBCContext__load_texture__(self._handle, path, file_offset, storage, size, mip_level, is_virtual_texture)
 	def texture_heap_idx(self, ptr):
 		return RBCContext__texture_heap_idx__(self._handle, ptr)
 	def create_pbr_material(self, json: str):

@@ -4,6 +4,7 @@ from pathlib import Path
 from rbc_ext.rbc_backend import *
 import numpy as np
 import json
+import math
 
 
 def main():
@@ -72,9 +73,14 @@ def main():
 
     obj_changed = False
     start_time = None
+    mesh_array = np.ndarray(vertex_count * 4 + triangle_count * 3, dtype=np.float32, buffer=ctx.get_mesh_data(mesh))
     while not ctx.should_close():
+        end_time = time.perf_counter()
+        if start_time:
+            for i in range(4, 8):
+                mesh_array[i * 4 + 1] = 0.5 + math.sin(end_time - start_time) * 0.2
+        ctx.update_mesh(mesh, False)
         if not obj_changed:
-            end_time = time.perf_counter()
             if start_time and end_time - start_time > 2:
                 obj_changed = True
                 mat_default_json['base_albedo'] = [1, 0.6, 0]

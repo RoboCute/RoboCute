@@ -9,7 +9,7 @@ using namespace luisa;
 
 void export_memory(py::module &m) {
     m.def("destroy_object", [](void *ptr) {
-        rbc::RC<rbc::RCBase>::manually_release_ref((rbc::RCBase *)ptr);
+        manually_release_ref((rbc::RCBase *)ptr);
     });
 }
 static ModuleRegister module_register_export_memory(export_memory);

@@ -9,19 +9,20 @@
 namespace rbc {
 struct RBC_RUNTIME_API DeviceMesh : DeviceResource {
 private:
+    luisa::vector<std::byte> _host_data;
+    MeshManager::MeshData *_render_mesh_data{};
     bool _contained_normal : 1 {};
     bool _contained_tangent : 1 {};
     uint _uv_count{};
-    MeshManager::MeshData *_render_mesh_data{};
     template<typename LoadType>
     void _async_load(
         LoadType &&load_type,
         uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
         bool build_mesh, bool calculate_bound,
         uint64_t file_size = ~0ull, bool copy_to_host = false);
-    luisa::vector<std::byte> _host_data;
 
 public:
+    std::atomic_uint tlas_ref_count{};
     Type resource_type() const override { return Type::Mesh; }
     [[nodiscard]] auto contained_normal() const { return _contained_normal; }
     [[nodiscard]] auto contained_tangent() const { return _contained_tangent; }

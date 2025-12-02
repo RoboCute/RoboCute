@@ -2,6 +2,9 @@
 namespace rbc {
 ObjectStub::~ObjectStub() {
     auto sm = SceneManager::instance_ptr();
+    if (mesh_ref) {
+        mesh_ref->tlas_ref_count--;
+    }
     if (!sm) return;
     switch (type) {
         case ObjectRenderType::Mesh:

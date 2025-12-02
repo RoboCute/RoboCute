@@ -30,7 +30,12 @@ def codegen_header(
                    contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint,
                    offsets_uint32=tr.DataBuffer
                    ).ret_type(tr.VoidPtr)
+    Context.method('load_mesh', file_path=tr.string, file_offset=tr.ulong, vertex_count=tr.uint,
+                   contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint,
+                   offsets_uint32=tr.DataBuffer
+                   ).ret_type(tr.VoidPtr)
     Context.method('get_mesh_data', handle=tr.VoidPtr).ret_type(tr.DataBuffer)
+    Context.method('update_mesh', handle=tr.VoidPtr, only_vertex=tr.bool)
     # light
     Context.method(
         'add_area_light', matrix=tr.float4x4,
@@ -63,6 +68,15 @@ def codegen_header(
         storage=res_enums.PixelStorage,
         size=tr.uint2,
         mip_level=tr.uint
+    ).ret_type(tr.VoidPtr)
+    Context.method(
+        'load_texture',
+        path=tr.string,
+        file_offset=tr.ulong,
+        storage=res_enums.PixelStorage,
+        size=tr.uint2,
+        mip_level=tr.uint,
+        is_virtual_texture=tr.bool
     ).ret_type(tr.VoidPtr)
     Context.method(
         'texture_heap_idx',

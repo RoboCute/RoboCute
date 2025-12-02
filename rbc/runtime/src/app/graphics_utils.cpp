@@ -236,7 +236,7 @@ void GraphicsUtils::init_display(uint2 resolution) {
                     .size = resolution,
                     .wants_hdr = false,
                     .wants_vsync = false,
-                    .back_buffer_count = 1});
+                    .back_buffer_count = 2});
         }
         dst_image = render_device.lc_device().create_image<float>(swapchain ? swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, true);
         dst_image.set_name("Dest image");
@@ -285,6 +285,21 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
     // TODO: pipeline update
     //////////////// Test
     managed_device->end_managing(cmdlist);
+    if (!frame_mem_io_list.empty()) {
+        mem_io_fence = render_device.mem_io_service()->execute(std::move(frame_mem_io_list));
+    }
+    if (!frame_disk_io_list.empty()) {
+        disk_io_fence = render_device.io_service()->execute(std::move(frame_disk_io_list));
+    }
+    // io sync
+    auto sync_io = [&](std::atomic_uint64_t &fence, IOService *service) {
+        auto io_fence = fence.exchange(0);
+        if (io_fence > 0) {
+            main_stream << service->wait(io_fence);
+        }
+    };
+    sync_io(mem_io_fence, render_device.mem_io_service());
+    sync_io(disk_io_fence, render_device.io_service());
     sm->on_frame_end(
         cmdlist,
         main_stream, managed_device);
@@ -292,6 +307,7 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
     auto prepare_next_frame = vstd::scope_exit([&] {
         if (compute_event.fence_index > 2)
             compute_event.event.synchronize(compute_event.fence_index - 2);
+        sm->prepare_frame();
     });
     /////////// Present
     if (swapchain)

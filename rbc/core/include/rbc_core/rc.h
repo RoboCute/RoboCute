@@ -278,6 +278,12 @@ struct RCBase : vstd::IOperatorNewBase {
     friend struct RCWeakLocker;
     template<typename T>
     friend bool rc_release_with_delete(T *p);
+    template<typename T>
+        requires(ObjectWithRC<T> || std::is_base_of_v<RCBase, T>)
+    friend RCCounterType manually_add_ref(T *ptr);
+    template<typename T>
+        requires(ObjectWithRC<T> || std::is_base_of_v<RCBase, T>)
+    friend bool manually_release_ref(T *ptr);
 
     RBC_RC_IMPL_(private)
     RBC_RC_DELETER_IMPL_DEFAULT
@@ -346,12 +352,6 @@ struct RC {
     // cast
     template<typename U>
     RC<U> cast_static() const;
-    static RCCounterType manually_add_ref(T *ptr) {
-        return ptr->rbc_rc_add_ref();
-    }
-    static bool manually_release_ref(T *ptr) {
-        return rc_release_with_delete(ptr);
-    }
 
 private:
     // helper
@@ -360,6 +360,16 @@ private:
 private:
     T *_ptr = nullptr;
 };
+template<typename T>
+    requires(ObjectWithRC<T> || std::is_base_of_v<RCBase, T>)
+RCCounterType manually_add_ref(T *ptr) {
+    return ptr->rbc_rc_add_ref();
+}
+template<typename T>
+    requires(ObjectWithRC<T> || std::is_base_of_v<RCBase, T>)
+bool manually_release_ref(T *ptr) {
+    return rc_release_with_delete(ptr);
+}
 
 template<typename T>
 struct RCWeakLocker {

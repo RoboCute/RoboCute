@@ -32,13 +32,17 @@ struct RBC_RUNTIME_API GraphicsUtils {
     Swapchain swapchain;
     Image<float> dst_image;
     // render
-    DynamicModule const* render_module;
+    DynamicModule const *render_module;
     RenderPlugin *render_plugin{};
     StateMap render_settings;
     RenderPlugin::PipeCtxStub *display_pipe_ctx{};
     vstd::optional<rbc::Lights> lights;
     bool require_reset{false};
+    std::atomic_uint64_t mem_io_fence{};
+    std::atomic_uint64_t disk_io_fence{};
 
+    IOCommandList frame_mem_io_list;
+    IOCommandList frame_disk_io_list;
     GraphicsUtils();
     void dispose(vstd::function<void()> after_sync = {});
     ~GraphicsUtils();

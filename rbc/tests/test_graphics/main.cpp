@@ -83,7 +83,7 @@ struct ContextImpl : RBCContext {
             mesh_size,
             {}};
         auto ptr = new DeviceMesh();
-        RC<DeviceMesh>::manually_add_ref(ptr);
+        manually_add_ref(ptr);
         vstd::vector<uint32_t> vec;
         vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
         std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
@@ -100,17 +100,62 @@ struct ContextImpl : RBCContext {
         return ptr;
     }
 
+    void *load_mesh(luisa::string_view file_path, uint64_t file_offset, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) override {
+        auto mesh_size = get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
+        auto ptr = new DeviceMesh();
+        manually_add_ref(ptr);
+        vstd::vector<uint32_t> vec;
+        vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
+        std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
+        ptr->async_load_from_file(
+            file_path,
+            file_offset,
+            contained_normal,
+            contained_tangent,
+            uv_count,
+            std::move(vec),
+            false,
+            true,
+            file_offset,
+            ~0ull,
+            true);
+        return ptr;
+    }
+
     luisa::span<std::byte> get_mesh_data(void *handle) override {
         auto mesh = (DeviceMesh *)handle;
         mesh->wait_finished();
         auto host_data = mesh->host_data();
         return host_data;
     }
+    void update_mesh(void *handle, bool only_vertex) override {
+        auto mesh = (DeviceMesh *)handle;
+        mesh->wait_finished();
+        auto host_data = mesh->host_data();
+        auto mesh_data = mesh->mesh_data();
+        if (only_vertex) {
+            utils.frame_mem_io_list << IOCommand{
+                host_data.data(),
+                0,
+                IOBufferSubView{mesh_data->pack.data.view(0, mesh_data->meta.tri_byte_offset / sizeof(uint))}};
+        } else {
+            utils.frame_mem_io_list << IOCommand{
+                host_data.data(),
+                0,
+                IOBufferSubView{mesh_data->pack.data}};
+        }
+        auto &sm = SceneManager::instance();
+        if (mesh->tlas_ref_count > 0)
+            sm.accel_manager().mark_dirty();
+        if (mesh_data->pack.mesh) {
+            RenderDevice::instance().lc_main_cmd_list() << mesh_data->pack.mesh.build();
+        }
+    }
     void *create_pbr_material(luisa::string_view json) override {
         auto ptr = new MaterialStub();
         ptr->mat_data.reset_as(MaterialStub::MatDataType::IndexOf<material::OpenPBR>);
         JsonDeSerializer deser(json);
-        RC<MaterialStub>::manually_add_ref(ptr);
+        manually_add_ref(ptr);
         auto &mat_data = ptr->mat_data.force_get<material::OpenPBR>();
         GraphicsUtils::openpbr_json_deser(
             deser,
@@ -131,7 +176,6 @@ struct ContextImpl : RBCContext {
             LUISA_ERROR("Material type mismatch.");
         }
         JsonDeSerializer deser(json);
-        RC<MaterialStub>::manually_add_ref(mat);
         auto &mat_data = mat->mat_data.force_get<material::OpenPBR>();
         GraphicsUtils::openpbr_json_deser(
             deser,
@@ -157,7 +201,7 @@ struct ContextImpl : RBCContext {
     void *add_area_light(luisa::float4x4 matrix, luisa::float3 luminance, bool visible) override {
         auto &render_device = RenderDevice::instance();
         auto stub = new LightStub{};
-        RC<LightStub>::manually_add_ref(stub);
+        manually_add_ref(stub);
         stub->light_type = LightType::Area;
         stub->id = utils.lights->add_area_light(
             render_device.lc_main_cmd_list(),
@@ -170,7 +214,7 @@ struct ContextImpl : RBCContext {
     void *add_disk_light(luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, bool visible) override {
         auto &render_device = RenderDevice::instance();
         auto stub = new LightStub{};
-        RC<LightStub>::manually_add_ref(stub);
+        manually_add_ref(stub);
         stub->light_type = LightType::Disk;
         stub->id = utils.lights->add_disk_light(
             render_device.lc_main_cmd_list(),
@@ -184,7 +228,7 @@ struct ContextImpl : RBCContext {
     void *add_point_light(luisa::float3 center, float radius, luisa::float3 luminance, bool visible) override {
         auto &render_device = RenderDevice::instance();
         auto stub = new LightStub{};
-        RC<LightStub>::manually_add_ref(stub);
+        manually_add_ref(stub);
         stub->light_type = LightType::Sphere;
         stub->id = utils.lights->add_point_light(
             render_device.lc_main_cmd_list(),
@@ -197,7 +241,7 @@ struct ContextImpl : RBCContext {
     void *add_spot_light(luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, float angle_radians, float small_angle_radians, float angle_atten_pow, bool visible) override {
         auto &render_device = RenderDevice::instance();
         auto stub = new LightStub{};
-        RC<LightStub>::manually_add_ref(stub);
+        manually_add_ref(stub);
         stub->light_type = LightType::Spot;
         stub->id = utils.lights->add_spot_light(
             render_device.lc_main_cmd_list(),
@@ -219,7 +263,7 @@ struct ContextImpl : RBCContext {
             LUISA_ERROR("Texture desired size {} unmatch to buffer size {}", size_bytes, data.size_bytes());
         }
         auto ptr = new DeviceImage();
-        RC<DeviceImage>::manually_add_ref(ptr);
+        manually_add_ref(ptr);
         ptr->async_load_from_memory(
             luisa::BinaryBlob(data.data(), data.size(), {}),
             Sampler{},
@@ -229,6 +273,36 @@ struct ContextImpl : RBCContext {
             DeviceImage::ImageType::Float,
             true);
         return ptr;
+    }
+    void *load_texture(luisa::string_view file_path, uint64_t file_offset, rbc::LCPixelStorage storage, luisa::uint2 size, uint32_t mip_level, bool is_vt) override {
+        auto &sm = SceneManager::instance();
+        if (is_vt) {
+            auto ptr = new DeviceSparseImage();
+            manually_add_ref(ptr);
+            ptr->load(
+                &sm.tex_streamer(),
+                {},
+                file_path,
+                file_offset,
+                Sampler{},
+                (PixelStorage)storage,
+                size,
+                mip_level);
+            return ptr;
+        } else {
+            auto ptr = new DeviceImage();
+            manually_add_ref(ptr);
+            ptr->async_load_from_file(
+                file_path,
+                file_offset,
+                Sampler{},
+                (PixelStorage)storage,
+                size,
+                mip_level,
+                DeviceImage::ImageType::Float,
+                true);
+            return ptr;
+        }
     }
     uint texture_heap_idx(void *ptr) override {
         auto tex = (DeviceImage *)ptr;
@@ -313,10 +387,11 @@ struct ContextImpl : RBCContext {
     };
     void *create_object(luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) override {
         auto stub = new ObjectStub{};
-        RC<ObjectStub>::manually_add_ref(stub);
+        manually_add_ref(stub);
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
         stub->mesh_ref = reinterpret_cast<DeviceMesh *>(mesh);
+        stub->mesh_ref->tlas_ref_count++;
         vstd::push_back_func(
             stub->materials,
             materials.size(),
@@ -359,7 +434,6 @@ struct ContextImpl : RBCContext {
     }
     void update_object_pos(void *ptr, luisa::float4x4 matrix) override {
         auto stub = static_cast<ObjectStub *>(ptr);
-        RC<ObjectStub>::manually_add_ref(stub);
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
         switch (stub->type) {
@@ -388,10 +462,14 @@ struct ContextImpl : RBCContext {
     }
     void update_object(void *ptr, luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) override {
         auto stub = static_cast<ObjectStub *>(ptr);
-        RC<ObjectStub>::manually_add_ref(stub);
         auto &render_device = RenderDevice::instance();
         auto &sm = SceneManager::instance();
+        if (stub->mesh_ref) {
+            stub->mesh_ref->tlas_ref_count--;
+            stub->mesh_ref.reset();
+        }
         stub->mesh_ref = reinterpret_cast<DeviceMesh *>(mesh);
+        stub->mesh_ref->tlas_ref_count++;
         stub->materials.clear();
         stub->material_codes.clear();
         auto submesh_size = std::max<size_t>(1, stub->mesh_ref->mesh_data()->submesh_offset.size());
