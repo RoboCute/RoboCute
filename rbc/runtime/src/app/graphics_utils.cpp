@@ -343,4 +343,28 @@ void GraphicsUtils::resize_swapchain(uint2 size) {
                 .wants_vsync = false,
                 .back_buffer_count = 1});
 }
+void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
+    mesh->wait_finished();
+    auto mesh_data = mesh->mesh_data();
+    LUISA_ASSERT(mesh_data, "Mesh not loaded.");
+    auto host_data = mesh->host_data();
+    if (only_vertex) {
+        frame_mem_io_list << IOCommand{
+            host_data.data(),
+            0,
+            IOBufferSubView{mesh_data->pack.data.view(0, mesh_data->meta.tri_byte_offset / sizeof(uint))}};
+    } else {
+        frame_mem_io_list << IOCommand{
+            host_data.data(),
+            0,
+            IOBufferSubView{mesh_data->pack.data}};
+    }
+    frame_mem_io_list.add_callback([m = RC<DeviceMesh>(mesh)] {});
+    auto &sm = SceneManager::instance();
+    if (mesh->tlas_ref_count > 0)
+        sm.accel_manager().mark_dirty();
+    if (mesh_data->pack.mesh) {
+        build_meshes.emplace(mesh);
+    }
+}
 }// namespace rbc

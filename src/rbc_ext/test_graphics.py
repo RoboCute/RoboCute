@@ -83,18 +83,21 @@ def main():
         if not obj_changed:
             if start_time and end_time - start_time > 2:
                 obj_changed = True
-                mat_default_json['base_albedo'] = [1, 0.6, 0]
+                mat_default_json['base_albedo'] = [1, 0.84, 0]
                 mat_default_json['emission_luminance'] = [0, 0, 0]
                 mat_default_json['specular_roughness'] = 0.0
                 mat_default_json['weight_metallic'] = 1.0
+                mat_vector.clear()
+                mat_vector.emplace_back(second_mat)
+                mat_vector.emplace_back(mat)
                 ctx.update_pbr_material(second_mat, json.dumps(mat_default_json))
-                ctx.update_object_pos(obj,
+                ctx.update_object(obj,
                                   make_float4x4(
                                       1, 0, 0, 0,
                                       0, 1, 0, 0,
                                       0, 0, 1, 0,
                                       -0.8, -1.0, 4, 1
-                                  ))
+                                  ), mesh, mat_vector)
                 ctx.reset_frame_index()
         ctx.tick()
         if not start_time:

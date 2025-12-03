@@ -160,4 +160,46 @@ void DeviceMesh::async_load_from_file(
     bool copy_to_host) {
     _async_load(FileLoad{path, file_offset}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, file_max_size, copy_to_host);
 }
+
+void DeviceMesh::create_mesh(
+    CommandList &cmdlist,
+    uint vertex_count, bool normal, bool tangent, uint uv_count, uint triangle_count, vstd::vector<uint> &&submesh_triangle_offset) {
+    LUISA_ASSERT(_render_mesh_data == nullptr && _gpu_load_frame == 0, "Device mesh already loaded.");
+    _contained_normal = normal;
+    _contained_tangent = tangent;
+    _uv_count = uv_count;
+    auto &sm = SceneManager::instance();
+    auto &render_device = RenderDevice::instance();
+    _render_mesh_data = sm.mesh_manager().load_mesh(
+        sm.bindless_allocator(),
+        cmdlist,
+        sm.host_upload_buffer(),
+        render_device.lc_device().create_buffer<uint>(get_mesh_size(vertex_count, normal, tangent, uv_count, triangle_count) / sizeof(uint)),
+        {}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset),
+        false);
+}
+void DeviceMesh::set_bounding_box(luisa::span<AABB const> bounding_box) {
+    LUISA_ASSERT(_render_mesh_data, "Mesh data not loaded.");
+    LUISA_ASSERT(bounding_box.size() == std::max<size_t>(_render_mesh_data->submesh_offset.size(), 1), "Bounding box size mismatch with submesh size");
+    auto &bbox_request = _render_mesh_data->bbox_requests;
+    if (!bbox_request) {
+        bbox_request = new MeshManager::BBoxRequest();
+    }
+    bbox_request->finished = true;
+    bbox_request->mesh_data = _render_mesh_data;
+    bbox_request->bounding_box.clear();
+    vstd::push_back_all(bbox_request->bounding_box, bounding_box);
+}
+uint64_t DeviceMesh::get_mesh_size(uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count) {
+    uint64_t size = vertex_count * sizeof(float3);
+    if (contained_normal) {
+        size += vertex_count * sizeof(float3);
+    }
+    if (contained_tangent) {
+        size += vertex_count * sizeof(float4);
+    }
+    size += uv_count * sizeof(float2);
+    size += triangle_count * sizeof(Triangle);
+    return size;
+}
 }// namespace rbc

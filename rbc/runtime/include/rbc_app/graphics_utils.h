@@ -57,6 +57,7 @@ struct RBC_RUNTIME_API GraphicsUtils {
     void reset_frame();
     bool should_close();
     void tick(vstd::function<void()> before_render = {});
+    void update_mesh_data(DeviceMesh* mesh, bool only_vertex);
     static void openpbr_json_ser(JsonSerializer &json_ser, material::OpenPBR const &mat);
     static void openpbr_json_deser(JsonDeSerializer &json_deser, material::OpenPBR &mat);
     static void openpbr_json_ser(JsonSerializer &json_ser, material::Unlit const &mat);

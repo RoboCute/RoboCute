@@ -30,9 +30,16 @@ public:
     [[nodiscard]] auto mesh_data() const { return _render_mesh_data; }
     [[nodiscard]] luisa::span<std::byte const> host_data() const override { return _host_data; }
     [[nodiscard]] luisa::span<std::byte> host_data() override { return _host_data; }
+    [[nodiscard]] luisa::vector<std::byte>& host_data_ref()  { return _host_data; }
     DeviceMesh();
     ~DeviceMesh();
-
+    static uint64_t get_mesh_size(uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count);
+    // sync
+    void create_mesh(
+        CommandList &cmdlist,
+        uint vertex_count, bool normal, bool tangent, uint uv_count, uint triangle_count, vstd::vector<uint> &&submesh_triangle_offset);
+    void set_bounding_box(luisa::span<AABB const> bounding_box);
+    // async
     void async_load_from_file(
         luisa::filesystem::path const &path,
         uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,

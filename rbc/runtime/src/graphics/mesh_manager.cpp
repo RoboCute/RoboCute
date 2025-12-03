@@ -28,8 +28,7 @@ void MeshManager::emplace_unload_mesh_cmd(
     std::lock_guard lck{_mtx};
     _unload_cmds.emplace_back(mesh_data);
 }
-
-void MeshManager::MeshData::build_mesh(Device &device, CommandList &cmdlist, AccelOption const &option) {
+void MeshManager::MeshData::create_blas(Device &device, CommandList &cmdlist, AccelOption const &option) {
     auto &&data_buffer = pack.data;
     if (!pack.mesh) {
         auto vertex_count = meta.vertex_count;
@@ -38,6 +37,9 @@ void MeshManager::MeshData::build_mesh(Device &device, CommandList &cmdlist, Acc
         BufferView<Triangle> ib = data_buffer.view(tri_offset, data_buffer.size() - tri_offset).as<Triangle>();
         pack.mesh = device.create_mesh(vb, ib, option);
     }
+}
+void MeshManager::MeshData::build_mesh(Device &device, CommandList &cmdlist, AccelOption const &option) {
+    create_blas(device, cmdlist, option);
     cmdlist << pack.mesh.build();
 }
 
@@ -135,7 +137,7 @@ auto MeshManager::load_mesh(
         cmdlist << m->pack.mesh.build();
     }
     if (calculate_bounding) {
-        m->bbox_requests = luisa::make_shared<BBoxRequest>();
+        m->bbox_requests = new BBoxRequest();
         m->bbox_requests->mesh_data = m;
         m->bbox_requests->bounding_box.push_back_uninitialized(
             std::max<size_t>(1, submesh_offset.size()));

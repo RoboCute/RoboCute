@@ -14,6 +14,7 @@
 #include <luisa/vstl/pool.h>
 #include <rbc_graphics/host_buffer_manager.h>
 #include <rbc_graphics/dispose_queue.h>
+#include <rbc_core/rc.h>
 namespace rbc
 {
 #include <geometry/types.hpp>
@@ -29,7 +30,7 @@ public:
         Mesh mesh;
     };
     struct MeshData;
-    struct BBoxRequest {
+    struct BBoxRequest : RCBase{
         luisa::fixed_vector<AABB, 1> bounding_box;
         std::atomic_bool finished{};
         MeshData* mesh_data;
@@ -37,13 +38,14 @@ public:
     struct MeshData {
         friend struct MeshManager;
         luisa::vector<uint> submesh_offset;
-        luisa::shared_ptr<BBoxRequest> bbox_requests;
+        RC<BBoxRequest> bbox_requests;
         MeshPack pack;
         uint triangle_size;
         MeshMeta meta;
         bool is_vertex_instance;
         MeshData(MeshData const&) = delete;
         MeshData(MeshData&&) = delete;
+        RBC_RUNTIME_API void create_blas(Device& device, CommandList& cmdlist, AccelOption const& option);
         RBC_RUNTIME_API void build_mesh(Device& device, CommandList& cmdlist, AccelOption const& option);
 
     private:
@@ -61,7 +63,7 @@ private:
     vstd::Pool<MeshDataPack, false> pool;
     Device& device;
     Buffer<AABB> _aabb_cache_buffer;
-    luisa::vector<luisa::shared_ptr<BBoxRequest>> _bounding_requests;
+    luisa::vector<RC<BBoxRequest>> _bounding_requests;
     luisa::spin_mutex _pool_mtx;
     luisa::spin_mutex _mtx;
     luisa::spin_mutex _bounding_mtx;
