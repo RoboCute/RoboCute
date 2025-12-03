@@ -227,6 +227,9 @@ public:
     {
         delete this;
     }
+    bool timeline_signaled(uint64_t timeline) override {
+        return true;
+    }
     DStorageStreamDX12Impl(
         Device& device,
         DStorageSrcType src_type

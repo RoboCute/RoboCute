@@ -283,8 +283,15 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
     // io sync
     auto sync_io = [&](std::atomic_uint64_t &fence, IOService *service) {
         auto io_fence = fence.exchange(0);
+        // support direct-storage
         if (io_fence > 0) {
-            main_stream << service->wait(io_fence);
+            if (render_device.backend_name() == "dx") {
+                main_stream << service->wait(io_fence);
+            } else {
+                while (!service->timeline_signaled(io_fence)) {
+                    std::this_thread::yield();
+                }
+            }
         }
     };
     sync_io(mem_io_fence, render_device.mem_io_service());

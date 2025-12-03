@@ -126,6 +126,7 @@ public:
         uint64_t fence_index) = 0;
     virtual void submit() = 0;
     virtual void free_queue() = 0;
+    virtual bool timeline_signaled(uint64_t timeline) = 0;
     virtual void sync_event(
         DeviceInterface *device_interface,
         uint64_t event_handle,

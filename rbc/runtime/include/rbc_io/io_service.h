@@ -66,6 +66,7 @@ public:
         DStorageSrcType src_type);
     static void dispose_service(IOService *);
     uint64_t execute(IOCommandList &&cmdlist);
+    bool timeline_signaled(uint64_t timeline);
 };
 
 }// namespace rbc

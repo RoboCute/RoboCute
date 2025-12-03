@@ -20,6 +20,7 @@ struct DStorageStreamFallbackImpl : DStorageStream
 {
 public:
     inline static uint64_t staging_size{};
+    std::atomic_uint64_t signaled_fence_idx{};
     ~DStorageStreamFallbackImpl();
     void enqueue_request(
         IOFile::Handle const& file,
@@ -90,6 +91,9 @@ public:
     void dispose()
     {
         delete this;
+    }
+    bool timeline_signaled(uint64_t timeline) override {
+        return signaled_fence_idx.load() >= timeline;
     }
     DStorageStreamFallbackImpl(
         Device& device,
@@ -508,9 +512,10 @@ void DStorageStreamFallbackImpl::enqueue_signal(
 )
 {
     auto queue_impl = static_cast<detail::IOQueue*>(queue);
-    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [event_handle, fence_index](detail::IOQueue* queue) {
+    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [event_handle, fence_index, this](detail::IOQueue* queue) {
         queue->commit();
         queue->stream << Event::Signal{ event_handle, fence_index };
+        signaled_fence_idx = fence_index;
     } };
     queue_impl->work_thd.lock();
     queue_impl->works.emplace_back(std::move(io_queue));

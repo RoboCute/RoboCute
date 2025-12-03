@@ -135,6 +135,9 @@ void IOService::init(
     }
     ioservice_detail::_thds = vstd::make_unique<ioservice_detail::CallbackThread>();
 }
+bool IOService::timeline_signaled(uint64_t timeline) {
+    return dstorage_stream->timeline_signaled( timeline);
+}
 void IOService::_join()
 {
     auto lock_page = [&]() {
