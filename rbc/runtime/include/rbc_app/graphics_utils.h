@@ -3,6 +3,8 @@
 #include <rbc_graphics/shader_manager.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/lights.h>
+#include <rbc_graphics/device_assets/device_image.h>
+#include <rbc_graphics/device_assets/device_mesh.h>
 #include <luisa/core/clock.h>
 #include <luisa/gui/window.h>
 #include <luisa/vstl/functional.h>
@@ -57,7 +59,15 @@ struct RBC_RUNTIME_API GraphicsUtils {
     void reset_frame();
     bool should_close();
     void tick(vstd::function<void()> before_render = {});
-    void update_mesh_data(DeviceMesh* mesh, bool only_vertex);
+    void create_texture_from_memory(
+        DeviceImage *ptr,
+        luisa::span<std::byte> data, 
+        PixelStorage storage,
+        uint2 size, uint mip_level);
+    void create_mesh_from_memory(
+        DeviceMesh *ptr,
+        luisa::span<std::byte> data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets);
+    void update_mesh_data(DeviceMesh *mesh, bool only_vertex);
     static void openpbr_json_ser(JsonSerializer &json_ser, material::OpenPBR const &mat);
     static void openpbr_json_deser(JsonDeSerializer &json_deser, material::OpenPBR &mat);
     static void openpbr_json_ser(JsonSerializer &json_ser, material::Unlit const &mat);

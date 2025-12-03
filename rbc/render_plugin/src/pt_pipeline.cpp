@@ -31,6 +31,7 @@ void PTPipeline::initialize() {
 
 void PTPipeline::update(rbc::PipelineContext &ctx) {
     this->rbc::Pipeline::update(ctx);
+    ctx.mut.resolved_img = nullptr;
 }
 
 PTPipeline::~PTPipeline() {
@@ -113,7 +114,6 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // path-tracing
     // pt_pass->set_actived(!frameSettings.realtime_rendering);
     // accum_pass->set_actived(!frameSettings.realtime_rendering);
-
     raster_pass->set_actived(false);
     pt_pass->set_actived(true);
     accum_pass->set_actived(true);

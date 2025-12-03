@@ -8,7 +8,7 @@ import math
 
 
 def main():
-    backend_name = 'dx'
+    backend_name = 'vk'
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
     program_path = str(runtime_dir.parent / 'debug')
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")

@@ -18,6 +18,7 @@
 #include "rbc_app/graphics_object_types.h"
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
+#include <rbc_core/utils/binary_search.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -62,59 +63,22 @@ struct ContextImpl : RBCContext {
     }
 
     void *create_mesh(luisa::span<std::byte> data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) override {
-        auto mesh_size = DeviceMesh::get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
-        if (mesh_size != data.size_bytes()) [[unlikely]] {
-            LUISA_ERROR("Mesh desired size {} unmatch to buffer size {}", mesh_size, data.size_bytes());
-        }
         auto ptr = new DeviceMesh();
-        auto &host_data = ptr->host_data_ref();
-        host_data.clear();
-        host_data.push_back_uninitialized(data.size_bytes());
-        std::memcpy(host_data.data(), data.data(), data.size_bytes());
         manually_add_ref(ptr);
         vstd::vector<uint32_t> vec;
         vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
         std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
-        auto &render_device = RenderDevice::instance();
-        ptr->create_mesh(
-            render_device.lc_main_cmd_list(),
-            vertex_count,
-            contained_normal,
-            contained_tangent,
-            uv_count,
-            triangle_count,
-            std::move(vec));
-        auto mesh_data = ptr->mesh_data();
-        utils.frame_mem_io_list << IOCommand{
-            ptr->host_data().data(),
-            0,
-            IOBufferSubView{mesh_data->pack.data}};
-        utils.frame_mem_io_list.add_callback([m = RC<DeviceMesh>(ptr)] {});
-        ptr->mesh_data()->create_blas(
-            render_device.lc_device(),
-            render_device.lc_main_cmd_list(),
-            AccelOption{});
-        utils.build_meshes.emplace(ptr);
-        // ptr->async_load_from_memory(
-        //     std::move(temp_blob),
-        //     vertex_count,
-        //     contained_normal,
-        //     contained_tangent,
-        //     uv_count,
-        //     std::move(vec),
-        //     false,// only build BLAS while need ray-tracing
-        //     true,
-        //     true);
+        utils.create_mesh_from_memory(ptr, data, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, std::move(vec));
         return ptr;
     }
 
     void *load_mesh(luisa::string_view file_path, uint64_t file_offset, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) override {
-        auto mesh_size = DeviceMesh::get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
-        auto ptr = new DeviceMesh();
-        manually_add_ref(ptr);
+
         vstd::vector<uint32_t> vec;
         vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
         std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
+        auto ptr = new DeviceMesh();
+        manually_add_ref(ptr);
         ptr->async_load_from_file(
             file_path,
             file_offset,
@@ -123,10 +87,11 @@ struct ContextImpl : RBCContext {
             uv_count,
             std::move(vec),
             false,
-            true,
+            false,
             file_offset,
             ~0ull,
             true);
+        ptr->calculate_bounding_box();
         return ptr;
     }
 
@@ -190,22 +155,9 @@ struct ContextImpl : RBCContext {
         return stub;
     }
     void *create_texture(luisa::span<std::byte> data, rbc::LCPixelStorage storage, luisa::uint2 size, uint32_t mip_level) override {
-        size_t size_bytes = 0;
-        for (auto i : vstd::range(mip_level))
-            size_bytes += pixel_storage_size((PixelStorage)storage, make_uint3(size >> (uint)i, 1u));
-        if (size_bytes != data.size()) [[unlikely]] {
-            LUISA_ERROR("Texture desired size {} unmatch to buffer size {}", size_bytes, data.size_bytes());
-        }
         auto ptr = new DeviceImage();
         manually_add_ref(ptr);
-        ptr->async_load_from_memory(
-            luisa::BinaryBlob(data.data(), data.size(), {}),
-            Sampler{},
-            (PixelStorage)storage,
-            size,
-            mip_level,
-            DeviceImage::ImageType::Float,
-            true);
+        utils.create_texture_from_memory(ptr, data, (PixelStorage)storage, size, mip_level);
         return ptr;
     }
     void *load_texture(luisa::string_view file_path, uint64_t file_offset, rbc::LCPixelStorage storage, luisa::uint2 size, uint32_t mip_level, bool is_vt) override {
@@ -267,7 +219,7 @@ struct ContextImpl : RBCContext {
     void *create_object(luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) override {
         auto stub = new ObjectStub{};
         manually_add_ref(stub);
-        stub->create_object(matrix, (DeviceMesh*)mesh, materials);
+        stub->create_object(matrix, (DeviceMesh *)mesh, materials);
         return stub;
     }
     void update_object_pos(void *ptr, luisa::float4x4 matrix) override {
@@ -276,7 +228,7 @@ struct ContextImpl : RBCContext {
     }
     void update_object(void *ptr, luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) override {
         auto stub = static_cast<ObjectStub *>(ptr);
-        stub->update_object(matrix, (DeviceMesh*)mesh, materials);
+        stub->update_object(matrix, (DeviceMesh *)mesh, materials);
     }
     void reset_view(luisa::uint2 resolution) override {
         utils.resize_swapchain(resolution);
@@ -340,6 +292,15 @@ int main(int argc, char *argv[]) {
 
     log_level_info();
     luisa::fiber::scheduler scheduler;
+    int offsets[] = {0, 3, 6, 8};
+    for (auto i : vstd::range(10)) {
+        LUISA_INFO(binary_search(luisa::span<int>{offsets}, i + 1, [](auto a, auto b) {
+            if (a < b) return -1;
+            return a > b ? 1 : 0;
+        }));
+    }
+
+    return 0;
     luisa::string backend = "dx";
     if (argc >= 2) {
         backend = argv[1];
