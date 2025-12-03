@@ -178,6 +178,51 @@ void DeviceMesh::create_mesh(
         {}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset),
         false);
 }
+void DeviceMesh::calculate_bounding_box() {
+    LUISA_ASSERT(_render_mesh_data, "Mesh data not loaded.");
+    LUISA_ASSERT(_host_data.empty(), "Host data not loaded.");
+    auto indices = (uint *)(_host_data.data() + _render_mesh_data->meta.tri_byte_offset);
+    auto verts = (float3 *)_host_data.data();
+    auto &bbox_request = _render_mesh_data->bbox_requests;
+    auto calculate_bound = [&](luisa::span<std::atomic<float>> boundings) {
+        // TODO
+    };
+    if constexpr (sizeof(std::atomic<float>) == sizeof(float)) {
+        bbox_request->bounding_box.clear();
+        vstd::push_back_all(
+            bbox_request->bounding_box,
+            std::max<size_t>(1, _render_mesh_data->submesh_offset.size()),
+            AABB{.packed_min = {1e28f, 1e28f, 1e28f},
+                 .packed_max = {-1e28f, -1e28f, -1e28f}});
+        auto float_size = bbox_request->bounding_box.size() * sizeof(AABB) / sizeof(float);
+        calculate_bound(
+            {// type force change, need launder here
+             std::launder((std::atomic<float> *)bbox_request->bounding_box.data()),
+             float_size});
+    } else {
+        luisa::vector<std::atomic<float>> atomic_data;
+        bbox_request->bounding_box.clear();
+        bbox_request->bounding_box.resize(std::max<size_t>(1, _render_mesh_data->submesh_offset.size()));
+        auto float_size = bbox_request->bounding_box.size() * sizeof(AABB) / sizeof(float);
+        atomic_data.resize(float_size);
+        for (auto i : vstd::range(bbox_request->bounding_box.size())) {
+            atomic_data[i * 6] = 1e28;
+            atomic_data[i * 6 + 1] = 1e28;
+            atomic_data[i * 6 + 2] = 1e28;
+            atomic_data[i * 6 + 3] = -1e28;
+            atomic_data[i * 6 + 4] = -1e28;
+            atomic_data[i * 6 + 5] = -1e28;
+        }
+        calculate_bound(atomic_data);
+        for (auto i : vstd::range(bbox_request->bounding_box.size())) {
+            auto& ab = bbox_request->bounding_box[i];
+            for(auto j : vstd::range(3)){
+                ab.packed_min[j] = atomic_data[i * 6 + j];
+                ab.packed_max[j] = atomic_data[i * 6 + j + 3];
+            }
+        }
+    }
+}
 void DeviceMesh::set_bounding_box(luisa::span<AABB const> bounding_box) {
     LUISA_ASSERT(_render_mesh_data, "Mesh data not loaded.");
     LUISA_ASSERT(bounding_box.size() == std::max<size_t>(_render_mesh_data->submesh_offset.size(), 1), "Bounding box size mismatch with submesh size");

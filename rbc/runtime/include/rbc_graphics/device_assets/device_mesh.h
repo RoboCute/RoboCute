@@ -39,6 +39,7 @@ public:
         CommandList &cmdlist,
         uint vertex_count, bool normal, bool tangent, uint uv_count, uint triangle_count, vstd::vector<uint> &&submesh_triangle_offset);
     void set_bounding_box(luisa::span<AABB const> bounding_box);
+    void calculate_bounding_box();
     // async
     void async_load_from_file(
         luisa::filesystem::path const &path,
