@@ -19,14 +19,6 @@ public:
 		Image<float>,
 		uint2,
 		uint> const* accum;
-	Shader2D<
-		Image<float>,
-		Buffer<float>> const* tex_to_buffer;
-	Shader2D<
-		Buffer<float>,
-		Buffer<float>,
-		Image<float>,
-		float> const* buffer_to_tex_blend;
 	// ShaderBase const* _lut_baker;
 	Buffer<float4> lut_buffer;
 	uint64_t buffer_frame_idx = 0;
@@ -43,18 +35,6 @@ public:
 		Pipeline const& pipeline,
 		Device& device,
 		SceneManager& scene) override;
-	Image<float> const* copy_hdr_img_to_buffer(
-		Pipeline const& pipeline,
-		PipelineContext const& ctx,
-		CommandList& cmdlist,
-		Buffer<float>& buffer);
-	Image<float> const* copy_buffer_to_hdr_img(
-		Pipeline const& pipeline,
-		PipelineContext const& ctx,
-		CommandList& cmdlist,
-		Buffer<float>& noisy_buffer,
-		Buffer<float>& denoise_buffer,
-		float denoise_weight);
 	void on_disable(Pipeline const& pipeline,
 					Device& device,
 					CommandList& cmdlist,

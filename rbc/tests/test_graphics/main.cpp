@@ -18,7 +18,6 @@
 #include "rbc_app/graphics_object_types.h"
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
-#include <rbc_core/utils/binary_search.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -280,27 +279,7 @@ int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;
-    // ContextImpl impl{};
-    // impl.init_device(
-    //     "vk",
-    //     "D:/RoboCute/build/windows/x64/debug",
-    //     "D:/RoboCute/build/windows/x64/shader_build_vk");
-    // impl.init_render();
-    // impl.load_skybox("../sky.bytes", uint2(4096, 2048));
-    // impl.create_window("py_window", uint2(1920, 1080), true);
-    // std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    log_level_info();
     luisa::fiber::scheduler scheduler;
-    int offsets[] = {0, 3, 6, 8};
-    for (auto i : vstd::range(10)) {
-        LUISA_INFO(binary_search(luisa::span<int>{offsets}, i + 1, [](auto a, auto b) {
-            if (a < b) return -1;
-            return a > b ? 1 : 0;
-        }));
-    }
-
-    return 0;
     luisa::string backend = "dx";
     if (argc >= 2) {
         backend = argv[1];

@@ -21,8 +21,6 @@ void AccumPass::on_enable(
         ShaderManager::instance()->async_load(init_counter, name, var);
     };
     load("path_tracer/accum/offline_accum.bin", accum);
-    load("path_tracer/accum/offline_accum_tex2buffer.bin", tex_to_buffer);
-    load("path_tracer/accum/offline_accum_buffer2tex_blend.bin", buffer_to_tex_blend);
     // _lut_baker = lut_baker::load_shader("path_tracer/lut_gen.bin");
 }
 void AccumPass::wait_enable() {
@@ -58,31 +56,6 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     };
     jitter_data.jitter_phase_count = ~0u;
     jitter_data.jitter = float2(halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 2), halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 3)) - 0.5f;
-}
-Image<float> const *AccumPass::copy_hdr_img_to_buffer(
-    Pipeline const &pipeline,
-    PipelineContext const &ctx,
-    CommandList &cmdlist,
-    Buffer<float> &buffer) {
-    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
-    auto pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
-    cmdlist << (*tex_to_buffer)(
-                   pass_ctx->hdr,
-                   buffer)
-                   .dispatch(frameSettings.display_resolution);
-    return &pass_ctx->hdr;
-}
-Image<float> const *AccumPass::copy_buffer_to_hdr_img(
-    Pipeline const &pipeline,
-    PipelineContext const &ctx,
-    CommandList &cmdlist,
-    Buffer<float> &noisy_buffer,
-    Buffer<float> &denoise_buffer,
-    float denoise_weight) {
-    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
-    auto pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
-    cmdlist << (*buffer_to_tex_blend)(noisy_buffer, denoise_buffer, pass_ctx->hdr, denoise_weight).dispatch(frameSettings.display_resolution);
-    return &pass_ctx->hdr;
 }
 void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &pt_pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
