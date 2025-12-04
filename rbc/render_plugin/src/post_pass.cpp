@@ -120,12 +120,12 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &toneMappingSettings = ctx.pipeline_settings->read_mut<ToneMappingSettings>();
     const auto &displaySettings = ctx.pipeline_settings->read<DisplaySettings>();
     const auto &exposureSettings = ctx.pipeline_settings->read<ExposureSettings>();
-    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
+    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();
 
     ///////////// recycle unused gbuffer
     ///////////// recycle unused gbuffer
-    if (!ctx.mut.resolved_img) [[unlikely]] {
+    if (!frameSettings.resolved_img) [[unlikely]] {
         LUISA_ERROR("Resolved image is empty");
     }
     auto &scene = *ctx.scene;
@@ -134,10 +134,10 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
 
     auto temp_res = render_device.create_transient_image<float>(
         "post_temp_img",
-        ctx.mut.resolved_img->storage(),
-        ctx.mut.resolved_img->size());
+        frameSettings.resolved_img->storage(),
+        frameSettings.resolved_img->size());
     Image<float> const *imgs[2]{
-        ctx.mut.resolved_img,
+        frameSettings.resolved_img,
         &temp_res,
     };
 
@@ -190,7 +190,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                           post_ctx->exposure.exposure_buffer,
                           *uber_out_img)
                           .dispatch(frameSettings.display_resolution);
-    ctx.mut.resolved_img = nullptr;
+    frameSettings.resolved_img = nullptr;
 }
 
 void PostPass::on_frame_end(Pipeline const &pipeline, Device &device, SceneManager &scene) {

@@ -25,7 +25,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto pass_ctx = ctx.mut.get_pass_context<RasterPassContext>();
     auto &sm = SceneManager::instance();
     auto &render_device = RenderDevice::instance();
-    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
+    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
     const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
     if (pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frameSettings.render_resolution)) {
         sm.dispose_after_sync(std::move(pass_ctx->depth_buffer));
@@ -79,7 +79,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                        .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frameSettings.render_resolution.x, frameSettings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, emission);
     }
 
-    ctx.mut.resolved_img = &emission;
+    frameSettings.resolved_img = &emission;
 }
 void RasterPass::on_disable(
     Pipeline const &pipeline,

@@ -62,12 +62,10 @@ void Pipeline::update(PipelineContext &ctx) {
     for (auto &i : _enabled_passes) {
         i->on_frame_end(*this, *ctx.device, *ctx.scene);
     }
-    ctx.mut.after_frame_task.wait();
     _enabled_passes.clear();
 }
 
 void Pipeline::early_update(PipelineContext &ctx) {
-    ctx.mut.before_frame_task.wait();
     _enabled_passes.clear();
     _enabled_passes.reserve(_passes.size());
     for (auto &i : _passes) {

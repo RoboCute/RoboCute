@@ -20,6 +20,11 @@ struct CameraData {
     float4x4 last_sky_vp;
     float4x4 last_inv_vp;
 };
+struct SkyHeapIndices {
+    uint sky_heap_idx = ~0u;
+    uint alias_heap_idx = ~0u;
+    uint pdf_heap_idx = ~0u;
+};
 struct JitterData {
     float2 last_jitter;
     uint jitter_phase_count;
@@ -32,3 +37,4 @@ struct RealtimePTSettings {
 RBC_RTTI(rbc::CameraData)
 RBC_RTTI(rbc::JitterData)
 RBC_RTTI(rbc::RealtimePTSettings)
+RBC_RTTI(rbc::SkyHeapIndices)

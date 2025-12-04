@@ -104,6 +104,9 @@ def codegen_header(header_path: Path, cpp_path: Path):
         resource_color_space=ResourceColorSpace,
         realtime_rendering=tr.bool,
         offline_capturing=tr.bool,
+        albedo_buffer=tr.external_type("luisa::compute::Buffer<float> const*"),
+        normal_buffer=tr.external_type("luisa::compute::Buffer<float> const*"),
+        resolved_img=tr.external_type("luisa::compute::Image<float> const*"),
         dst_img=tr.external_type("luisa::compute::Image<float> const*"),
     )
     FrameSettings.init_member(resource_color_space="ResourceColorSpace::Rec709",
@@ -233,6 +236,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
     )
 
     include = """#include <luisa/runtime/image.h>
+#include <luisa/runtime/buffer.h>
 #include <rbc_core/utils/curve.h>
 #include <rbc_render/procedural/sky_atmosphere.h>"""
     ut.codegen_to(header_path)(cpp_interface_gen, include)

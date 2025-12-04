@@ -59,17 +59,13 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
 }
 void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &pt_pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
-    if (pt_pass_ctx && pt_pass_ctx->noisy_initialized && pass_ctx->hdr) {
-        ctx.mut.resolved_img = &pass_ctx->hdr;
-    } else {
-        auto &render_device = RenderDevice::instance();
-        const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
-        auto &scene = *ctx.scene;
-        auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frameSettings.render_resolution);
-        temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frameSettings.display_resolution);
-        (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frameSettings.render_resolution, pass_ctx->frame_index).dispatch(frameSettings.display_resolution);
-        ctx.mut.resolved_img = &temp_img;
-    }
+    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &render_device = RenderDevice::instance();
+    auto &scene = *ctx.scene;
+    auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frameSettings.render_resolution);
+    temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frameSettings.display_resolution);
+    (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frameSettings.render_resolution, pass_ctx->frame_index).dispatch(frameSettings.display_resolution);
+    frameSettings.resolved_img = &temp_img;
 
     /////// Bake lut
     // constexpr uint64_t lut_frame = 16384;

@@ -79,6 +79,14 @@ Lights::Lights()
         false,
         false,
         1, {});
+    quad_mesh->bbox_requests = new MeshManager::BBoxRequest();
+    quad_mesh->bbox_requests->finished = true;
+    quad_mesh->bbox_requests->mesh_data = quad_mesh;
+    quad_mesh->bbox_requests->bounding_box.emplace_back(
+        AABB{
+            .packed_min = {-0.5f, -0.5f, 0},
+            .packed_max = {0.5f, 0.5f, 0},
+        });
 
     luisa::vector<float3> sphere_vertices;
     luisa::vector<uint> sphere_triangles;
@@ -99,6 +107,14 @@ Lights::Lights()
             AccelOption{.allow_compaction = false, .allow_update = false},
             sphere_vertices.size(),
             false, false, 0, {});
+        point_mesh->bbox_requests = new MeshManager::BBoxRequest();
+        point_mesh->bbox_requests->finished = true;
+        point_mesh->bbox_requests->mesh_data = point_mesh;
+        point_mesh->bbox_requests->bounding_box.emplace_back(
+            AABB{
+                .packed_min = {-1, -1, -1},
+                .packed_max = {1, 1, 1},
+            });
     }
     luisa::vector<float3> disk_vertices;
     luisa::vector<uint> disk_triangles;
@@ -136,6 +152,14 @@ Lights::Lights()
             AccelOption{.allow_compaction = false, .allow_update = false},
             disk_vertices.size(),
             false, false, 0, {});
+        disk_mesh->bbox_requests = new MeshManager::BBoxRequest();
+        disk_mesh->bbox_requests->finished = true;
+        disk_mesh->bbox_requests->mesh_data = disk_mesh;
+        disk_mesh->bbox_requests->bounding_box.emplace_back(
+            AABB{
+                .packed_min = {-0.5f, -0.5f, 0},
+                .packed_max = {0.5f, 0.5f, 0},
+            });
     }
     // ///////////// Add emission material type
     scene.mat_manager().emplace_mat_type<material::PolymorphicMaterial, rbc::material::Unlit>(scene.bindless_allocator(), 4096);

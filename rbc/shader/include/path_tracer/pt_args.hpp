@@ -13,7 +13,6 @@ struct PTArgs {
     // hdri
     float3x3 world_2_sky_mat;
     uint sky_heap_idx;
-    uint sky_lum_idx;
     uint alias_table_idx;
     uint pdf_table_idx;
     // cam

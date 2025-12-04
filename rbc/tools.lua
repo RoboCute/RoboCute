@@ -8,7 +8,8 @@ add_rules('lc_install_sdk', {
         -- download in python
         -- address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/',
         copy_dir = '',
-        extract_dir = 'build/tool/clangcxx_compiler'
+        extract_dir = 'build/tool/clangcxx_compiler',
+        plat_spec = true
 
     }
 })
@@ -22,9 +23,13 @@ add_rules('lc_install_sdk', {
     libnames = {{
         name = clangd_filename,
         copy_dir = '',
-        extract_dir = 'build/tool/clangd'
+        extract_dir = 'build/tool/clangd',
+        plat_spec = true
     }, {
         name = 'render_resources.7z'
+    }, {
+        name = oidn,
+        plat_spec = true
     }}
 })
 target_end()

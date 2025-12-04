@@ -72,11 +72,6 @@ public:
     Buffer<uint> key_buffer;
     Buffer<uint> value_buffer;
 
-    uint sky_heap_idx = ~0u;
-    uint sky_lum_idx = ~0u;
-    uint alias_heap_idx = ~0u;
-    uint pdf_heap_idx = ~0u;
-
     void on_enable(
         Pipeline const &pipeline,
         Device &device,
@@ -98,10 +93,7 @@ public:
 };
 struct PTPassContext : public PassContext {
 public:
-    Buffer<float> albedo_buffer;
-    Buffer<float> normal_buffer;
     uint gbuffer_accumed_frame{};
-    bool noisy_initialized{false};
     PTPassContext();
     ~PTPassContext();
 };

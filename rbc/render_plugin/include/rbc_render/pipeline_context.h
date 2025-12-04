@@ -104,9 +104,6 @@ public:
     vstd::unique_ptr<T> &get_pass_context_mut() {
         return reinterpret_cast<vstd::unique_ptr<T> &>(_pass_contexts.emplace(TypeInfo::get<T>()).value());
     }
-    Image<float> const *resolved_img{};
-    luisa::fiber::counter before_frame_task;
-    luisa::fiber::counter after_frame_task;
     PipelineCtxMutable();
     PipelineCtxMutable(PipelineCtxMutable &&) = delete;
     ~PipelineCtxMutable();

@@ -30,8 +30,14 @@ void PTPipeline::initialize() {
 }
 
 void PTPipeline::update(rbc::PipelineContext &ctx) {
+    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto& render_device = RenderDevice::instance();
+    auto albedo_buffer = render_device.create_transient_buffer<float>("albedo_buffer", frameSettings.render_resolution.x * frameSettings.render_resolution.y * 3);
+    auto normal_buffer = render_device.create_transient_buffer<float>("normal_buffer", frameSettings.render_resolution.x * frameSettings.render_resolution.y * 3);
+    frameSettings.albedo_buffer = &albedo_buffer;
+    frameSettings.normal_buffer = &normal_buffer;
     this->rbc::Pipeline::update(ctx);
-    ctx.mut.resolved_img = nullptr;
+    frameSettings.resolved_img = nullptr;
 }
 
 PTPipeline::~PTPipeline() {
@@ -51,6 +57,7 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // get settings
     auto &sky_settings = ctx.pipeline_settings->read_mut<SkySettings>();
     auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &sky_heap = ctx.pipeline_settings->read_mut<SkyHeapIndices>();
     // update atom
     if (sky_settings.sky_atom) {
         auto &sky_atom = *sky_settings.sky_atom;
@@ -96,13 +103,13 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
             // frameSettings.sky_confidence = 1.0f;
             frameSettings.frame_index = 0;
         }
-        pt_pass->sky_heap_idx = sky_atom.sky_id();
-        pt_pass->alias_heap_idx = sky_atom.sky_alias_id();
-        pt_pass->pdf_heap_idx = sky_atom.sky_pdf_id();
+        sky_heap.sky_heap_idx = sky_atom.sky_id();
+        sky_heap.alias_heap_idx = sky_atom.sky_alias_id();
+        sky_heap.pdf_heap_idx = sky_atom.sky_pdf_id();
     } else {
-        pt_pass->sky_heap_idx = ~0u;
-        pt_pass->alias_heap_idx = ~0u;
-        pt_pass->pdf_heap_idx = ~0u;
+        sky_heap.sky_heap_idx = ~0u;
+        sky_heap.alias_heap_idx = ~0u;
+        sky_heap.pdf_heap_idx = ~0u;
     }
 
     // update camera settings

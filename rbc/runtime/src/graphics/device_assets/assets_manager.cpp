@@ -185,9 +185,15 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                     cmdlist.add_callback([finish_callbak]() {});
                     _render_device.async_compute_loop_mtx().lock();
                     if (!require_disk_io_sync) {
+                        while (!_render_device.io_service()->timeline_signaled(frame_res.disk_io_fence)) {
+                            std::this_thread::yield();
+                        }
                         _render_device.lc_async_stream() << _render_device.io_service()->wait(frame_res.disk_io_fence);
                     }
                     if (!require_memory_io_sync) {
+                        while (!_render_device.mem_io_service()->timeline_signaled(frame_res.mem_io_fence)) {
+                            std::this_thread::yield();
+                        }
                         _render_device.lc_async_stream() << _render_device.mem_io_service()->wait(frame_res.mem_io_fence);
                     }
                     _render_device.async_compute_loop_mtx().unlock();

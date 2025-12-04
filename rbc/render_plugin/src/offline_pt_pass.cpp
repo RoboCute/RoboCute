@@ -103,12 +103,13 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
     const auto &ptSettings = ctx.pipeline_settings->read<PathTracerSettings>();
 
+    const auto &sky_heap = ctx.pipeline_settings->read<SkyHeapIndices>();
     if (!accel || accel.size() == 0) {
         cmdlist << (*draw_sky_shader)(
                        emission,
                        scene.image_heap(),
                        scene.volume_heap(),
-                       sky_heap_idx,
+                       sky_heap.sky_heap_idx,
                        frameSettings.to_rec2020_matrix,
                        cam_data.world_to_sky,
                        cam_data.inv_vp,
@@ -154,10 +155,9 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     offline::PTArgs pt_args{
         .resource_to_rec2020_mat = frameSettings.to_rec2020_matrix,
         .world_2_sky_mat = cam_data.world_to_sky,
-        .sky_heap_idx = sky_heap_idx,
-        .sky_lum_idx = sky_lum_idx,
-        .alias_table_idx = alias_heap_idx,
-        .pdf_table_idx = pdf_heap_idx,
+        .sky_heap_idx = sky_heap.sky_heap_idx,
+        .alias_table_idx = sky_heap.alias_heap_idx,
+        .pdf_table_idx = sky_heap.pdf_heap_idx,
         .cam_pos = make_float3(ctx.cam.position),
         .inv_view = cam_data.inv_view,
         .view = cam_data.view,
@@ -179,6 +179,8 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     if (accum_pass_ctx->frame_index == 0) {
         cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, 0).dispatch(key_buffer.size());
     }
+    if (frameSettings.frame_index == 0)
+        pass_ctx->gbuffer_accumed_frame = 0;
     for (auto i : vstd::range(ptSettings.offline_spp)) {
         pt_args.bounce = ptSettings.offline_origin_bounce;
         pt_args.gbuffer_temporal_weight = 1.0f - (1.0f / float(pass_ctx->gbuffer_accumed_frame + 1));
@@ -188,7 +190,16 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         pt_args.jitter_offset = float2(halton(pt_args.frame_index & 65535, 2), halton(pt_args.frame_index & 65535, 3));
         // output gbuffer for denoise
         cmdlist << (*clear_ptr_buffer)(multibounce_buffer_counter.view(), 0).dispatch(1);
-        if (pass_ctx->albedo_buffer && pass_ctx->normal_buffer) {
+        if ((bool)frameSettings.albedo_buffer != (bool)frameSettings.normal_buffer) [[unlikely]] {
+            LUISA_ERROR("normal_buffer and albedo_buffer must be provided together.");
+        }
+
+        if (frameSettings.albedo_buffer && frameSettings.normal_buffer) {
+            auto desired_buffer_size = frameSettings.render_resolution.x * frameSettings.render_resolution.y * 3 * sizeof(float);
+            if (frameSettings.albedo_buffer->size_bytes() != desired_buffer_size ||
+                frameSettings.normal_buffer->size_bytes() != desired_buffer_size) [[unlikely]] {
+                LUISA_ERROR("Buffer size mismatch.");
+            }
             cmdlist << offline_pt_shader_denoise::dispatch_shader(
                 pt_shader_denoise, ((frameSettings.render_resolution + 1u) / 2u) * 2u,
                 scene.tex_streamer().level_buffer(),
@@ -199,18 +210,15 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 accel,
                 emission,
                 geo_buffer.view(),
-                pass_ctx->albedo_buffer,
-                pass_ctx->normal_buffer,
+                *frameSettings.albedo_buffer,
+                *frameSettings.normal_buffer,
                 scene.accel_manager().last_trans_buffer(),
                 multibounce_buffer.view(),
                 multibounce_buffer_counter,
                 pt_args,
                 frameSettings.render_resolution);
             pass_ctx->gbuffer_accumed_frame++;
-            scene.dispose_queue().dispose_after_queue(std::move(pass_ctx->albedo_buffer));
-            scene.dispose_queue().dispose_after_queue(std::move(pass_ctx->normal_buffer));
         } else {
-
             cmdlist << offline_pt_shader::dispatch_shader(
                 pt_shader, ((frameSettings.render_resolution + 1u) / 2u) * 2u,
                 scene.tex_streamer().level_buffer(),

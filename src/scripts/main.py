@@ -112,16 +112,14 @@ def git_clone_or_pull(git_address, subdir, branch=None):
 
 
 def download_packages():
-    platform = PLATFORM
-    arch = ARCH
-    plat_name = f"{platform}-{arch}"
     download_path = Path(PROJECT_ROOT) / "build/download"
     download_path.mkdir(parents=True, exist_ok=True)
     address = RBC_SDK_ADDRESS
     lc_address = LC_SDK_ADDRESS
     lc_path = rel("thirdparty/LuisaCompute/SDKs")
-    clangcxx = f"{CLANGCXX_NAME}-{plat_name}.7z"
-    clangd = f"{CLANGD_NAME}-{plat_name}.7z"
+    clangcxx = f"{CLANGCXX_NAME}.7z"
+    clangd = f"{CLANGD_NAME}.7z"
+    oidn = f'{OIDN_NAME}.7z'
     downloads = {
         clangcxx: {
             "address": address,
@@ -130,6 +128,10 @@ def download_packages():
         clangd: {
             "address": address,
             "path": download_path,
+        },
+        oidn: {
+            "address": address,
+            "path": download_path
         },
         RENDER_RESOURCE_NAME: {
             "address": address,
@@ -141,7 +143,8 @@ def download_packages():
         },
     }
     lua_file = f'''clangd_filename = "{clangd}"
-clangcxx_filename = "{clangcxx}"'''
+clangcxx_filename = "{clangcxx}
+oidn = "{oidn}""'''
     codegen_util._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
 
     def download_file(file: str, map):

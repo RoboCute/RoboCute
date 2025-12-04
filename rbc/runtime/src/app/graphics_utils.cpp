@@ -315,11 +315,9 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
         cmdlist,
         main_stream, managed_device);
     main_stream << compute_event.event.signal(++compute_event.fence_index);
-    auto prepare_next_frame = vstd::scope_exit([&] {
-        if (compute_event.fence_index > 2)
-            compute_event.event.synchronize(compute_event.fence_index - 2);
-        sm->prepare_frame();
-    });
+    if (compute_event.fence_index > 2)
+        compute_event.event.synchronize(compute_event.fence_index - 2);
+    sm->prepare_frame();
     /////////// Present
     if (swapchain)
         present_stream << swapchain.present(dst_image);
