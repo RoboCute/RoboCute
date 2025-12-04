@@ -190,7 +190,6 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                           post_ctx->exposure.exposure_buffer,
                           *uber_out_img)
                           .dispatch(frameSettings.display_resolution);
-    frameSettings.resolved_img = nullptr;
 }
 
 void PostPass::on_frame_end(Pipeline const &pipeline, Device &device, SceneManager &scene) {

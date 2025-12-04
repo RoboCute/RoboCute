@@ -46,6 +46,23 @@ public:
     }
     template<concepts::RTTIType T>
         requires(std::is_default_constructible_v<T>)
+    T *read_if() {
+        _map_mtx.lock();
+        auto iter = _map.find(rbc::TypeInfo::get<T>());
+        _map_mtx.unlock();
+        if (!iter) return nullptr;
+        HeapObject &heap_obj = iter.value();
+        std::lock_guard lck{heap_obj._obj_mtx};
+        if (!heap_obj.data) {
+            heap_obj.template init<T>();
+            heap_obj.data = luisa::detail::allocator_allocate(heap_obj.size, heap_obj.alignment);
+            std::construct_at(static_cast<T *>(heap_obj.data));
+            _deser(iter.key(), heap_obj);
+        }
+        return static_cast<T *>(heap_obj.data);
+    }
+    template<concepts::RTTIType T>
+        requires(std::is_default_constructible_v<T>)
     T const &read() {
         return this->template read_mut<T>();
     }

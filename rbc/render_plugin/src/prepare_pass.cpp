@@ -10,6 +10,7 @@
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <luisa/core/platform.h>
 #include <luisa/core/stl/filesystem.h>
+#include <rbc_render/click_manager.h>
 namespace rbc {
 struct PreparePassContext : PassContext {
     Camera last_cam;
@@ -188,9 +189,6 @@ void PreparePass::on_enable(
     sobol_scrambling = heitz_sobol_scrambling(device, cmdlist, HeitzSobolSPP::SPP1);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_256d_heap_idx, sobol_256d);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_scrambling_heap_idx, sobol_scrambling);
-    init_evt = luisa::fiber::async([&]() {
-        ShaderManager::instance()->load("path_tracer/host_raytracer.bin", _host_raytracer);
-    });
     static constexpr auto lut3d_size = spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * 3ull * sizeof(float4);
     static const uint3 transmission_ggx_energy_size{32u};
     static const size_t transmission_ggx_energy_size_bytes = transmission_ggx_energy_size.x * transmission_ggx_energy_size.y * transmission_ggx_energy_size.z * sizeof(float4);
@@ -296,7 +294,6 @@ void PreparePass::on_enable(
 }
 
 void PreparePass::wait_enable() {
-    init_evt.wait();
 }
 
 void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
@@ -396,84 +393,6 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     }
 }
 void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    auto &reqs = ctx.mut.click_manager._requires;
-    if (!reqs.empty()) {
-        size_t size = 16384;
-        while (size < reqs.size()) {
-            size *= 2;
-        }
-        auto &render_device = RenderDevice::instance();
-        Buffer<RayInput> ray_input_buffer = render_device.create_transient_buffer<RayInput>("ray_input", size);
-        Buffer<RayOutput> ray_output_buffer = render_device.create_transient_buffer<RayOutput>("ray_output", size);
-        if (ctx.scene->accel() && ctx.scene->accel().size() > 0 && reqs.size() > 0) {
-            luisa::vector<RayInput> ray_inputs;
-            luisa::vector<RayOutput> ray_outputs;
-            ray_inputs.push_back_uninitialized(reqs.size());
-            ray_outputs.push_back_uninitialized(reqs.size());
-            auto const &cam_data = ctx.pipeline_settings->read<CameraData>();
-            for (auto i : vstd::range(ray_inputs.size())) {
-                auto &inp = reqs[i].second;
-                luisa::visit(
-                    [&]<typename T>(T const &t) {
-                        if constexpr (std::is_same_v<T, RayCastRequire>) {
-                            ray_inputs[i] = RayInput{
-                                .ray_origin = {t.ray_origin.x, t.ray_origin.y, t.ray_origin.z},
-                                .ray_dir = {t.ray_dir.x, t.ray_dir.y, t.ray_dir.z},
-                                .t_min = t.t_min,
-                                .t_max = t.t_max,
-                                .mask = static_cast<uint>(t.mask)};
-                        } else {
-                            auto ray_origin = cam_data.inv_vp * make_float4(t.screen_uv * 2.0f - 1.0f, 1.0f, 1.0f);
-                            auto ray_dst = cam_data.inv_vp * make_float4(t.screen_uv * 2.0f - 1.0f, 0.0f, 1.0f);
-                            ray_origin /= ray_origin.w;
-                            ray_dst /= ray_dst.w;
-                            auto ray_t = distance(ray_dst.xyz(), ray_origin.xyz());
-                            auto ray_dir = (ray_dst.xyz() - ray_origin.xyz()) / max(1e-4f, ray_t);
-                            ray_inputs[i] = RayInput{
-                                .ray_origin = {ray_origin.x, ray_origin.y, ray_origin.z},
-                                .ray_dir = {ray_dir.x, ray_dir.y, ray_dir.z},
-                                .t_min = 0.f,
-                                .t_max = ray_t,
-                                .mask = static_cast<uint>(t.mask)};
-                        }
-                    },
-                    inp);
-            }
-            auto input_buffer_view = ray_input_buffer.view(0, reqs.size());
-            auto output_buffer_view = ray_output_buffer.view(0, reqs.size());
-            (*ctx.cmdlist)
-                << input_buffer_view.copy_from(ray_inputs.data())
-                << (*_host_raytracer)(
-                       ctx.scene->accel(),
-                       ctx.scene->buffer_heap(),
-                       input_buffer_view,
-                       output_buffer_view,
-                       heap_indices::inst_buffer_heap_idx,
-                       heap_indices::mat_idx_buffer_heap_idx)
-                       .dispatch(reqs.size())
-                << output_buffer_view.copy_to(ray_outputs.data());
-            ctx.cmdlist->add_callback(
-                [click_mng = &ctx.mut.click_manager,
-                 _requires = std::move(reqs),
-                 ray_outputs = std::move(ray_outputs)]() {
-                    for (auto i : vstd::range(ray_outputs.size())) {
-                        auto &outputs = ray_outputs[i];
-                        RayCastResult result{
-                            .mat_code = MatCode{outputs.mat_code},
-                            .inst_id = outputs.tlas_inst_id,
-                            .prim_id = outputs.blas_prim_id,
-                            .submesh_id = outputs.blas_submesh_id,
-                            .ray_length = outputs.ray_t,
-                            .triangle_bary = float2(outputs.triangle_bary[0], outputs.triangle_bary[1])};
-                        std::lock_guard lck{click_mng->_mtx};
-                        click_mng->_results.try_emplace(
-                            _requires[i].first,
-                            result);
-                    }
-                });
-            ctx.scene->dispose_after_commit(std::move(ray_inputs));
-        }
-    }
     auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(ctx.cam);
     auto &jitter_data = ctx.pipeline_settings->read_mut<JitterData>();
     pass_ctx->last_jitter = jitter_data.jitter;

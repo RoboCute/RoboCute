@@ -6,7 +6,6 @@
 #include <rbc_render/renderer_data.h>
 namespace rbc {
 struct PreparePass : public Pass {
-    luisa::fiber::event init_evt;
     struct LutLoadCmd {
         luisa::fiber::event evt;
         luisa::vector<std::byte> data;
@@ -42,14 +41,6 @@ public:
         uint blas_submesh_id;
         std::array<float, 2> triangle_bary;
     };
-    Shader1D<
-        Accel,            // accel,
-        BindlessArray,    // heap,
-        Buffer<RayInput>, // ray_input_buffer,
-        Buffer<RayOutput>,// ray_output_buffer,
-        uint,             // inst_buffer_heap_idx,
-        uint              // mat_idx_buffer_heap_idx
-        > const *_host_raytracer;
     void on_enable(
         Pipeline const &pipeline,
         Device &device,

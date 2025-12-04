@@ -30,11 +30,17 @@ struct JitterData {
     uint jitter_phase_count;
     float2 jitter;
 };
-struct RealtimePTSettings {
-    bool split_albedo_mode{false};
+enum struct PTPipelineMode {
+    PathTracingComputing,
+    PathTracingDisplay,
+    RasterDisplay,
+    OnlyDisplay
+};
+struct PTPipelineSettings {
+    PTPipelineMode mode{PTPipelineMode::PathTracingDisplay};
 };
 }// namespace rbc
 RBC_RTTI(rbc::CameraData)
 RBC_RTTI(rbc::JitterData)
-RBC_RTTI(rbc::RealtimePTSettings)
 RBC_RTTI(rbc::SkyHeapIndices)
+RBC_RTTI(rbc::PTPipelineSettings)

@@ -31,7 +31,6 @@ void PTPipeline::initialize() {
 
 void PTPipeline::update(rbc::PipelineContext &ctx) {
     auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
-    auto& render_device = RenderDevice::instance();
     this->rbc::Pipeline::update(ctx);
     frameSettings.resolved_img = nullptr;
 }
@@ -121,10 +120,47 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // raster_pass->set_actived(true);
     // pt_pass->set_actived(false);
     // accum_pass->set_actived(false);
-    raster_pass->set_actived(false);
-    pt_pass->set_actived(true);
-    accum_pass->set_actived(true);
-    post_pass->set_actived(true);
+    auto& pt_pipe_settings = ctx.pipeline_settings->read<PTPipelineSettings>();
+    auto assert_no_resolve = [&] {
+        if (frameSettings.resolved_img) [[unlikely]] {
+            LUISA_ERROR("Pipeline mode {} can not have resolved_img", luisa::to_string(pt_pipe_settings.mode));
+        }
+    };
+    auto assert_resolve = [&] {
+        if (!frameSettings.resolved_img) [[unlikely]] {
+            LUISA_ERROR("Pipeline mode {} must have resolved_img", luisa::to_string(pt_pipe_settings.mode));
+        }
+    };
+    switch (pt_pipe_settings.mode) {
+        case PTPipelineMode::PathTracingComputing:
+            assert_no_resolve();
+            raster_pass->set_actived(false);
+            pt_pass->set_actived(true);
+            accum_pass->set_actived(true);
+            post_pass->set_actived(false);
+            break;
+        case PTPipelineMode::PathTracingDisplay:
+            assert_no_resolve();
+            raster_pass->set_actived(false);
+            pt_pass->set_actived(true);
+            accum_pass->set_actived(true);
+            post_pass->set_actived(true);
+            break;
+        case PTPipelineMode::RasterDisplay:
+            assert_no_resolve();
+            raster_pass->set_actived(true);
+            pt_pass->set_actived(false);
+            accum_pass->set_actived(false);
+            post_pass->set_actived(true);
+            break;
+        case PTPipelineMode::OnlyDisplay:
+            assert_resolve();
+            raster_pass->set_actived(false);
+            pt_pass->set_actived(false);
+            accum_pass->set_actived(false);
+            post_pass->set_actived(true);
+            break;
+    }
 
     this->rbc::Pipeline::early_update(ctx);
 }

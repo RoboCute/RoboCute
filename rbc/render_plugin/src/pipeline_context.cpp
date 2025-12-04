@@ -1,11 +1,11 @@
 #include <rbc_render/pipeline_context.h>
 #include <rbc_render/renderer_data.h>
+#include <rbc_render/click_manager.h>
 namespace rbc {
 PipelineCtxMutable::PipelineCtxMutable() {
 }
 PipelineCtxMutable::~PipelineCtxMutable() = default;
 void PipelineCtxMutable::clear() {
-    click_manager.clear();
     _pass_contexts.clear();
 }
 void PipelineCtxMutable::delay_dispose(DisposeQueue &queue) {
@@ -29,6 +29,12 @@ PipelineContext::PipelineContext(
         1, 0, 0,
         0, 1, 0,
         0, 0, 1);
+}
+void PipelineContext::clear() {
+    mut.clear();
+    auto click_mng = pipeline_settings->read_if<ClickManager>();
+    if (click_mng)
+        click_mng->clear();
 }
 
 PipelineContext::~PipelineContext() {}
