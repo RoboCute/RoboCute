@@ -32,10 +32,6 @@ void PTPipeline::initialize() {
 void PTPipeline::update(rbc::PipelineContext &ctx) {
     auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
     auto& render_device = RenderDevice::instance();
-    auto albedo_buffer = render_device.create_transient_buffer<float>("albedo_buffer", frameSettings.render_resolution.x * frameSettings.render_resolution.y * 3);
-    auto normal_buffer = render_device.create_transient_buffer<float>("normal_buffer", frameSettings.render_resolution.x * frameSettings.render_resolution.y * 3);
-    frameSettings.albedo_buffer = &albedo_buffer;
-    frameSettings.normal_buffer = &normal_buffer;
     this->rbc::Pipeline::update(ctx);
     frameSettings.resolved_img = nullptr;
 }
