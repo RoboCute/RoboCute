@@ -84,12 +84,19 @@ xmake.log
 -.json
 .vscode/launch.json
 .vscode/tasks.json
+thirdparty/cpptrace
+thirdparty/eigen
+thirdparty/libigl
+thirdparty/urdfdom
+thirdparty/libuipc
 thirdparty/libtorch
 thirdparty/LuisaCompute
 thirdparty/qt_node_editor
 thirdparty/acl
 thirdparty/ozz_animation
 thirdparty/jolt_physics
+thirdparty/cppitertools
+thirdparty/dylib
 
 xmake/options.json
 xmake/options.lua

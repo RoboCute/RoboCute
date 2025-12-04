@@ -107,6 +107,36 @@ GIT_TASKS = {
         "branch": None,
         "deps": [],
     },
+    # "cpptrace": {
+    #     "subdir": "thirdparty/cpptrace",
+    #     "url": "https://github.com/RoboCute/cpptrace.git",
+    #     "branch": None,
+    #     "deps": [],
+    # },
+    # "libigl": {
+    #     "subdir": "thirdparty/libigl",
+    #     "url": "https://github.com/RoboCute/libigl.git",
+    #     "branch": None,
+    #     "deps": [],
+    # },
+    # "eigen": {
+    #     "subdir": "thirdparty/eigen",
+    #     "url": "https://github.com/RoboCute/eigen.git",
+    #     "branch": "3.4",
+    #     "deps": [],
+    # },
+    # "cppitertools": {
+    #     "subdir": "thirdparty/cppitertools",
+    #     "url": "https://github.com/RoboCute/cppitertools.git",
+    #     "branch": "3.4",
+    #     "deps": [],
+    # },
+    # "dylib": {
+    #     "subdir": "thirdparty/dylib",
+    #     "url": "https://github.com/RoboCute/dylib.git",
+    #     "branch": "3.4",
+    #     "deps": [],
+    # },
 }
 CLANGCXX_NAME = "clangcxx_compiler-v2.0.3"
 CLANGCXX_PATH = "build/tool/clangcxx_compiler/clangcxx_compiler.exe"
