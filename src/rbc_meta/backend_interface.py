@@ -26,7 +26,7 @@ def codegen_header(
     Context.method('create_window', name=tr.string,
                    size=tr.uint2, resizable=tr.bool)
     # mesh
-    Context.method('create_mesh', data=tr.DataBuffer, vertex_count=tr.uint,
+    Context.method('create_mesh', vertex_count=tr.uint,
                    contained_normal=tr.bool, contained_tangent=tr.bool, uv_count=tr.uint, triangle_count=tr.uint,
                    offsets_uint32=tr.DataBuffer
                    ).ret_type(tr.VoidPtr)
@@ -64,11 +64,15 @@ def codegen_header(
     # texture
     Context.method(
         'create_texture',
-        data=tr.DataBuffer,
         storage=res_enums.PixelStorage,
         size=tr.uint2,
         mip_level=tr.uint
     ).ret_type(tr.VoidPtr)
+    Context.method('get_texture_data', handle=tr.VoidPtr).ret_type(tr.DataBuffer)
+    Context.method(
+        'update_texture',
+        handle=tr.VoidPtr
+    )
     Context.method(
         'load_texture',
         path=tr.string,
@@ -84,11 +88,10 @@ def codegen_header(
     ).ret_type(tr.uint)
     # material
     Context.method(
-        'create_pbr_material',
-        json=tr.string
+        'create_pbr_material'
     ).ret_type(tr.VoidPtr)
     Context.method(
-        'update_pbr_material',
+        'update_material',
         mat_ptr=tr.VoidPtr,
         json=tr.string
     )
@@ -101,7 +104,8 @@ def codegen_header(
         'create_object',
         matrix=tr.float4x4,
         mesh=tr.VoidPtr,
-        materials=tr.external_type('luisa::vector<rbc::RC<rbc::RCBase>> const&')
+        materials=tr.external_type(
+            'luisa::vector<rbc::RC<rbc::RCBase>> const&')
     ).ret_type(tr.VoidPtr)
 
     Context.method(
@@ -114,7 +118,8 @@ def codegen_header(
         object_ptr=tr.VoidPtr,
         matrix=tr.float4x4,
         mesh=tr.VoidPtr,
-        materials=tr.external_type('luisa::vector<rbc::RC<rbc::RCBase>> const&')
+        materials=tr.external_type(
+            'luisa::vector<rbc::RC<rbc::RCBase>> const&')
     )
     # view
     Context.method(
@@ -139,7 +144,7 @@ def codegen_header(
     Context.method(
         'should_close'
     ).ret_type(tr.bool)
-    
+
     # codegen
     ut.codegen_to(header_root_path / f"{file_name}.h")(
         ut.codegen.cpp_interface_gen, '''#include <rbc_runtime/generated/resource_meta.hpp>

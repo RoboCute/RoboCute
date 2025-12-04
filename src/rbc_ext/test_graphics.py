@@ -6,7 +6,8 @@ import numpy as np
 import json
 import math
 
-
+vertex_count = 16
+triangle_count = 24
 def main():
     backend_name = 'vk'
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
@@ -20,31 +21,51 @@ def main():
     ctx.load_skybox(sky_path, uint2(4096, 2048))
     ctx.create_window("py_window", uint2(1920, 1080), True)
 
-    mesh_array, vertex_count, triangle_count, submesh_offset = create_mesh_array()
+# make_submesh
+    submesh_offsets = np.empty(shape=2, dtype=np.uint32)
+    # first submesh start at 0
+    submesh_offsets[0] = 0
+    # first submesh start at 'last_tri_size'
+
+    submesh_offsets[1] = triangle_count // 2
     mesh = ctx.create_mesh(
-        mesh_array,
         vertex_count,
         False,
         False,
         0,
         triangle_count,
-        submesh_offset
+        submesh_offsets
     )
-    mat = ctx.create_pbr_material("{}")
+    mesh_array = np.ndarray(vertex_count * 4 + triangle_count * 3, dtype=np.float32, buffer=ctx.get_mesh_data(mesh))
+    create_mesh_array(mesh_array)
+    ctx.update_mesh(mesh, False)
+    mat = ctx.create_pbr_material()
+    ctx.update_material(mat, "{}") # use default value
+    
     mat_default_json = json.loads(ctx.get_material_json(mat))
     mat_default_json['base_albedo'] = [0, 0, 0]
     mat_default_json['emission_luminance'] = [100, 0, 0]
-    # Texture:
-    # tex_data = np.ones(1024 * 1024 * 4, dtype=np.float32)
+    
+    # Use texture to turn cube to red
+    # TEX_SIZE = 1024
     # tex = ctx.create_texture(
-    #     tex_data,
     #     LCPixelStorage.FLOAT4,
-    #     uint2(1024, 1024),
+    #     uint2(TEX_SIZE, TEX_SIZE),
     #     1
     # )
     # mat_default_json['base_albedo_tex'] = ctx.texture_heap_idx(tex)
+    # tex_array = np.ndarray(TEX_SIZE * TEX_SIZE * 4, dtype=np.float32, buffer = ctx.get_texture_data(tex))
+    # for x in range(TEX_SIZE):
+    #     for y in range(TEX_SIZE):
+    #         idx = (y * TEX_SIZE + x) * 4
+    #         tex_array[idx] = 1.0
+    #         tex_array[idx + 1] = 0.
+    #         tex_array[idx + 2] = 0.
+    # ctx.update_texture(tex)
+    
 
-    second_mat = ctx.create_pbr_material(json.dumps(mat_default_json))
+    second_mat = ctx.create_pbr_material()
+    ctx.update_material(second_mat, json.dumps(mat_default_json))
 
     mat_vector = capsule_vector()
     mat_vector.emplace_back(mat)
@@ -73,13 +94,12 @@ def main():
 
     obj_changed = False
     start_time = None
-    mesh_array = np.ndarray(vertex_count * 4 + triangle_count * 3, dtype=np.float32, buffer=ctx.get_mesh_data(mesh))
     while not ctx.should_close():
         end_time = time.perf_counter()
         if start_time:
             for i in range(4, 8):
                 mesh_array[i * 4 + 1] = 0.5 + math.sin(end_time - start_time) * 0.2
-        ctx.update_mesh(mesh, False)
+        ctx.update_mesh(mesh, True)
         if not obj_changed:
             if start_time and end_time - start_time > 2:
                 obj_changed = True
@@ -90,7 +110,7 @@ def main():
                 mat_vector.clear()
                 mat_vector.emplace_back(second_mat)
                 mat_vector.emplace_back(mat)
-                ctx.update_pbr_material(second_mat, json.dumps(mat_default_json))
+                ctx.update_material(second_mat, json.dumps(mat_default_json))
                 ctx.update_object(obj,
                                   make_float4x4(
                                       1, 0, 0, 0,
@@ -107,12 +127,10 @@ def main():
     del ctx
 
 
-def create_mesh_array():
+def create_mesh_array(mesh_array):        
     # create a cube
-    vertex_count = 16
-    triangle_count = 24
-    mesh_array = np.empty(
-        vertex_count * 4 + triangle_count * 3, dtype=np.float32)
+    if mesh_array.size != vertex_count * 4 + triangle_count * 3:
+        raise Exception('Bad mesh-array size')
     vertex_arr = np.ndarray(
         vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
     indices_arr = np.ndarray(shape=triangle_count * 3, dtype=np.uint32,
@@ -199,15 +217,8 @@ def create_mesh_array():
     push_cube_triangles()
     for i in range(last_index_size, size):
         indices_arr[i] += last_vert_size // 4
-    # make_submesh
-    submesh_offsets = np.empty(shape=2, dtype=np.uint32)
-    # first submesh start at 0
-    submesh_offsets[0] = 0
-    # first submesh start at 'last_tri_size'
+    
 
-    submesh_offsets[1] = last_tri_size
-
-    return mesh_array, vertex_count, triangle_count, submesh_offsets
 
 
 if __name__ == '__main__':

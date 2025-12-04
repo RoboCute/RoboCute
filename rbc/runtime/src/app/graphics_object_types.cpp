@@ -2,37 +2,46 @@
 #include <rbc_app/graphics_utils.h>
 #include <luisa/vstl/common.h>
 namespace rbc {
-void MaterialStub::craete_pbr_material(luisa::string_view json) {
+void MaterialStub::craete_pbr_material() {
     mat_data.reset_as(MaterialStub::MatDataType::IndexOf<material::OpenPBR>);
-    JsonDeSerializer deser(json);
-    auto &pbr_mat_data = this->mat_data.force_get<material::OpenPBR>();
-    GraphicsUtils::openpbr_json_deser(
-        deser,
-        pbr_mat_data);
-    auto &sm = SceneManager::instance();
-    auto &render_device = RenderDevice::instance();
-    mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, material::OpenPBR>(
-        pbr_mat_data,
-        render_device.lc_main_cmd_list(),
-        sm.bindless_allocator(),
-        sm.buffer_uploader(),
-        sm.dispose_queue());
+    mat_code.value = ~0u;
 }
-void MaterialStub::update_pbr_material(luisa::string_view json) {
-    if (mat_code.get_type() != material::PolymorphicMaterial::index<material::OpenPBR>) [[unlikely]] {
-        LUISA_ERROR("Material type mismatch.");
-    }
-    JsonDeSerializer deser(json);
-    auto &pbr_mat_data = mat_data.force_get<material::OpenPBR>();
-    GraphicsUtils::openpbr_json_deser(
-        deser,
-        pbr_mat_data);
-    auto &sm = SceneManager::instance();
-    sm.mat_manager().set_mat_instance(
-        mat_code,
-        sm.buffer_uploader(),
-        {(std::byte const *)&pbr_mat_data,
-         sizeof(pbr_mat_data)});
+void MaterialStub::update_material(luisa::string_view json) {
+    mat_data.visit([&]<typename T>(T &t) {
+        if constexpr (std::is_same_v<T, material::OpenPBR>) {
+            if (mat_code.value != ~0u && mat_code.get_type() != material::PolymorphicMaterial::index<material::OpenPBR>) [[unlikely]] {
+                LUISA_ERROR("Material type mismatch.");
+            }
+            JsonDeSerializer deser(json);
+            GraphicsUtils::openpbr_json_deser(
+                deser,
+                t);
+            auto &sm = SceneManager::instance();
+            auto &render_device = RenderDevice::instance();
+            if (mat_code.value == ~0u) {
+                mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, material::OpenPBR>(
+                    t,
+                    render_device.lc_main_cmd_list(),
+                    sm.bindless_allocator(),
+                    sm.buffer_uploader(),
+                    sm.dispose_queue());
+            } else {
+                sm.mat_manager().set_mat_instance(
+                    mat_code,
+                    sm.buffer_uploader(),
+                    {(std::byte const *)&t,
+                     sizeof(t)});
+            }
+        } else {
+            LUISA_ERROR("Material type not supported.");
+        }
+    });
+}
+MaterialStub::~MaterialStub() {
+    auto sm = SceneManager::instance_ptr();
+    if (!sm) return;
+    if (mat_code.value != ~0u)
+        sm->mat_manager().discard_mat_instance(mat_code);
 }
 ObjectStub::~ObjectStub() {
     auto sm = SceneManager::instance_ptr();
@@ -359,9 +368,5 @@ void ObjectStub::update_object_pos(luisa::float4x4 matrix) {
             break;
     }
 }
-MaterialStub::~MaterialStub() {
-    auto sm = SceneManager::instance_ptr();
-    if (!sm) return;
-    sm->mat_manager().discard_mat_instance(mat_code);
-}
+
 }// namespace rbc

@@ -59,14 +59,16 @@ struct RBC_RUNTIME_API GraphicsUtils {
     void reset_frame();
     bool should_close();
     void tick(vstd::function<void()> before_render = {});
-    void create_texture_from_memory(
+    void create_texture(
         DeviceImage *ptr,
-        luisa::span<std::byte> data, 
         PixelStorage storage,
         uint2 size, uint mip_level);
-    void create_mesh_from_memory(
+    void update_texture(
+        DeviceImage* ptr
+    );
+    void create_mesh(
         DeviceMesh *ptr,
-        luisa::span<std::byte> data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets);
+        uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets);
     void update_mesh_data(DeviceMesh *mesh, bool only_vertex);
     static void openpbr_json_ser(JsonSerializer &json_ser, material::OpenPBR const &mat);
     static void openpbr_json_deser(JsonDeSerializer &json_deser, material::OpenPBR &mat);

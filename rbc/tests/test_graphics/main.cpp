@@ -61,13 +61,13 @@ struct ContextImpl : RBCContext {
         });
     }
 
-    void *create_mesh(luisa::span<std::byte> data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) override {
+    void *create_mesh(uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) override {
         auto ptr = new DeviceMesh();
         manually_add_ref(ptr);
         vstd::vector<uint32_t> vec;
         vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
         std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
-        utils.create_mesh_from_memory(ptr, data, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, std::move(vec));
+        utils.create_mesh(ptr, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, std::move(vec));
         return ptr;
     }
 
@@ -101,18 +101,17 @@ struct ContextImpl : RBCContext {
         return host_data;
     }
     void update_mesh(void *handle, bool only_vertex) override {
-        auto mesh = (DeviceMesh *)handle;
-        utils.update_mesh_data(mesh, only_vertex);
+        utils.update_mesh_data((DeviceMesh *)handle, only_vertex);
     }
-    void *create_pbr_material(luisa::string_view json) override {
+    void *create_pbr_material() override {
         auto ptr = new MaterialStub();
         manually_add_ref(ptr);
-        ptr->craete_pbr_material(json);
+        ptr->craete_pbr_material();
         return ptr;
     }
-    void update_pbr_material(void *ptr, luisa::string_view json) override {
+    void update_material(void *ptr, luisa::string_view json) override {
         auto mat = static_cast<MaterialStub *>(ptr);
-        mat->update_pbr_material(json);
+        mat->update_material(json);
     }
     luisa::string get_material_json(void *mat_ptr) override {
         auto ptr = (MaterialStub *)mat_ptr;
@@ -153,11 +152,20 @@ struct ContextImpl : RBCContext {
         stub->add_spot_light(center, radius, luminance, forward_dir, angle_radians, small_angle_radians, angle_atten_pow, visible);
         return stub;
     }
-    void *create_texture(luisa::span<std::byte> data, rbc::LCPixelStorage storage, luisa::uint2 size, uint32_t mip_level) override {
+    void *create_texture(rbc::LCPixelStorage storage, luisa::uint2 size, uint32_t mip_level) override {
         auto ptr = new DeviceImage();
         manually_add_ref(ptr);
-        utils.create_texture_from_memory(ptr, data, (PixelStorage)storage, size, mip_level);
+        utils.create_texture(ptr, (PixelStorage)storage, size, mip_level);
         return ptr;
+    }
+    luisa::span<std::byte> get_texture_data(void *handle) override {
+        auto mesh = (DeviceImage *)handle;
+        mesh->wait_finished();
+        auto host_data = mesh->host_data();
+        return host_data;
+    }
+    void update_texture(void *ptr) override {
+        utils.update_texture((DeviceImage *)ptr);
     }
     void *load_texture(luisa::string_view file_path, uint64_t file_offset, rbc::LCPixelStorage storage, luisa::uint2 size, uint32_t mip_level, bool is_vt) override {
         auto &sm = SceneManager::instance();

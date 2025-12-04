@@ -45,7 +45,6 @@ public:
         bool is_vertex_instance;
         MeshData(MeshData const&) = delete;
         MeshData(MeshData&&) = delete;
-        RBC_RUNTIME_API void create_blas(Device& device, CommandList& cmdlist, AccelOption const& option);
         RBC_RUNTIME_API void build_mesh(Device& device, CommandList& cmdlist, AccelOption const& option);
 
     private:

@@ -348,6 +348,7 @@ void GraphicsUtils::resize_swapchain(uint2 size) {
                 .back_buffer_count = 1});
 }
 void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
+    mesh->calculate_bounding_box();
     mesh->wait_finished();
     auto mesh_data = mesh->mesh_data();
     LUISA_ASSERT(mesh_data, "Mesh not loaded.");
@@ -371,17 +372,12 @@ void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
         build_meshes.emplace(mesh);
     }
 }
-void GraphicsUtils::create_mesh_from_memory(
+void GraphicsUtils::create_mesh(
     DeviceMesh *ptr,
-    luisa::span<std::byte> data, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets) {
+    uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets) {
     auto mesh_size = DeviceMesh::get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
-    if (mesh_size != data.size_bytes()) [[unlikely]] {
-        LUISA_ERROR("Mesh desired size {} unmatch to buffer size {}", mesh_size, data.size_bytes());
-    }
     auto &host_data = ptr->host_data_ref();
-    host_data.clear();
-    host_data.push_back_uninitialized(data.size_bytes());
-    std::memcpy(host_data.data(), data.data(), data.size_bytes());
+    host_data.push_back_uninitialized(mesh_size);
     auto &render_device = RenderDevice::instance();
     ptr->create_mesh(
         render_device.lc_main_cmd_list(),
@@ -391,40 +387,25 @@ void GraphicsUtils::create_mesh_from_memory(
         uv_count,
         triangle_count,
         std::move(offsets));
-    ptr->calculate_bounding_box();
-    auto mesh_data = ptr->mesh_data();
-    frame_mem_io_list << IOCommand{
-        ptr->host_data().data(),
-        0,
-        IOBufferSubView{mesh_data->pack.data}};
-    frame_mem_io_list.add_callback([m = RC<DeviceMesh>(ptr)] {});
-    ptr->mesh_data()->create_blas(
-        render_device.lc_device(),
-        render_device.lc_main_cmd_list(),
-        AccelOption{});
-    build_meshes.emplace(ptr);
 }
-void GraphicsUtils::create_texture_from_memory(
-    DeviceImage *ptr,
-    luisa::span<std::byte> data,
-    PixelStorage storage,
-    uint2 size, uint mip_level) {
-    size_t size_bytes = 0;
-    for (auto i : vstd::range(mip_level))
-        size_bytes += pixel_storage_size(storage, make_uint3(size >> (uint)i, 1u));
-    if (size_bytes != data.size()) [[unlikely]] {
-        LUISA_ERROR("Texture desired size {} unmatch to buffer size {}", size_bytes, data.size_bytes());
-    }
-    auto &host_data = ptr->host_data_ref();
-    host_data.clear();
-    host_data.push_back_uninitialized(data.size_bytes());
-    std::memcpy(host_data.data(), data.data(), data.size_bytes());
-    auto &device = RenderDevice::instance().lc_device();
-    ptr->create_texture<float>(device, storage, size, mip_level);
+void GraphicsUtils::update_texture(DeviceImage *ptr) {
     frame_mem_io_list << IOCommand{
         ptr->host_data().data(),
         0,
         IOTextureSubView{ptr->get_float_image()}};
     frame_mem_io_list.add_callback([m = RC<DeviceImage>(ptr)] {});
+}
+void GraphicsUtils::create_texture(
+    DeviceImage *ptr,
+    PixelStorage storage,
+    uint2 size, uint mip_level) {
+    size_t size_bytes = 0;
+    for (auto i : vstd::range(mip_level))
+        size_bytes += pixel_storage_size(storage, make_uint3(size >> (uint)i, 1u));
+
+    auto &host_data = ptr->host_data_ref();
+    host_data.push_back_uninitialized(size_bytes);
+    auto &device = RenderDevice::instance().lc_device();
+    ptr->create_texture<float>(device, storage, size, mip_level);
 }
 }// namespace rbc
