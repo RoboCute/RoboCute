@@ -3,12 +3,35 @@
 #include <rbc_render/pt_pipeline.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
+#include <oidn_denoiser.h>
 namespace rbc {
+
+struct DenoiserStream {
+    luisa::shared_ptr<Denoiser> denoiser;
+    DenoiserExt::DenoiserInput input;
+    DenoiserStream(
+        luisa::shared_ptr<Denoiser> &&denoiser,
+        uint2 res)
+        : denoiser(std::move(denoiser)), input(res.x, res.y) {
+    }
+};
+
 struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
-    // HDRI
+    ////////////////////////////////////////  HDRI
     vstd::optional<HDRI> hdri;
     vstd::optional<SkyAtmosphere> sky_atom;
-
+    //////////////////////////////////////// denoise
+    enum struct OidnSupport : uint8_t {
+        UnChecked,
+        UnSupported,
+        Supported
+    };
+    OidnSupport oidn_support{OidnSupport::UnChecked};
+    std::mutex oidn_mtx;
+    DynamicModule oidn_module;
+    rbc::DenoiserExt *oidn_ext{};
+    vstd::HashMap<uint64, DenoiserStream> _denoisers;
+    //////////////////////////////////////// pipeline
     luisa::unordered_map<luisa::string, luisa::unique_ptr<Pipeline>> pipelines;
     virtual void dispose() override { delete this; }
     RenderPluginImpl() {
@@ -45,8 +68,8 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
         ptr->initialize();
         return true;
     }
-    void clear_context(PipeCtxStub* ctx) override {
-        reinterpret_cast<PipelineContext*>(ctx)->clear();
+    void clear_context(PipeCtxStub *ctx) override {
+        reinterpret_cast<PipelineContext *>(ctx)->clear();
     }
     bool before_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) override {
         auto ptr = get_pipe(pipeline_name);
@@ -107,10 +130,98 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
             sky_atom.destroy();
         }
     }
+    bool init_oidn() override {
+        std::lock_guard lck{oidn_mtx};
+        auto &render_device = RenderDevice::instance();
+        auto &lc_ctx = render_device.lc_ctx();
+        if (oidn_support == OidnSupport::UnChecked) {
+            auto checker_path = luisa::to_string(lc_ctx.runtime_directory() / "oidn_checker.exe");
+            checker_path = luisa::format("{} {} {}", checker_path, luisa::to_string(lc_ctx.runtime_directory()), render_device.backend_name());
+            auto result = std::system(checker_path.c_str());
+            oidn_support = OidnSupport::UnSupported;
+            switch (result) {
+                case 0:
+                    LUISA_INFO("OIDN support.");
+                    oidn_support = OidnSupport::Supported;
+                    break;
+                case 1:
+                    LUISA_WARNING("OIDN not support for reason: invalid check args.");
+                    break;
+                case 2:
+                    LUISA_WARNING("OIDN not support for reason: unsupported backend.");
+                    break;
+                case 3:
+                    LUISA_WARNING("OIDN not support for reason: plugin not found.");
+                    break;
+                default:
+                    LUISA_WARNING("OIDN not support for unknown reason.");
+                    break;
+            }
+        }
+        if (oidn_support != OidnSupport::Supported) return false;
+        oidn_module = DynamicModule::load(lc_ctx.runtime_directory(), "oidn_plugin");
+        if (!oidn_module) {
+            LUISA_WARNING("OIDN not support for reason: plugin not found.");
+            return false;
+        }
+        oidn_ext = oidn_module.invoke<rbc::DenoiserExt *(luisa::compute::Device const &device)>("rbc_create_oidn", render_device.lc_device());
+        if (!oidn_ext) {
+            LUISA_WARNING("OIDN not support for reason: plugin not found.");
+            return false;
+        }
+        return true;
+    }
+    DenoisePack create_denoise_task(
+        luisa::compute::Stream &stream,
+        uint2 render_resolution) override {
+        bool init = false;
 
+        // emplace denoiser pack
+        auto iter = _denoisers.emplace(
+            stream.handle(),
+            vstd::lazy_eval([&]() {
+                init = true;
+                return DenoiserStream(oidn_ext->create(), render_resolution);
+            }));
+
+        auto &denoiser = *iter.value().denoiser;
+        auto &input = iter.value().input;
+
+        // check if the resolution is changed
+        if (input.width != render_resolution.x || input.height != render_resolution.y) {
+            init = true;
+            vstd::reset(input, render_resolution.x, render_resolution.y);
+        }
+
+        // rebuild denoiser data
+        if (init) {
+            input.push_noisy_image(DenoiserExt::ImageFormat::FLOAT3);
+            input.push_feature_image("albedo", DenoiserExt::ImageFormat::FLOAT3);
+            input.push_feature_image("normal", DenoiserExt::ImageFormat::FLOAT3);
+            input.noisy_features = true;
+            input.filter_quality = DenoiserExt::FilterQuality::ACCURATE;
+            input.prefilter_mode = DenoiserExt::PrefilterMode::ACCURATE;
+            denoiser.init(input);
+        }
+
+        auto *denoise_ext = static_cast<DXOidnDenoiserExt *>(oidn_ext);
+        return DenoisePack{
+            .external_albedo = denoise_ext->buffer_from_image<float>(input.features[0].image),
+            .external_normal = denoise_ext->buffer_from_image<float>(input.features[1].image),
+            .external_input = denoise_ext->buffer_from_image<float>(input.inputs[0]),
+            .external_output = denoise_ext->buffer_from_image<float>(input.outputs[0]),
+            .denoise_callback = [&denoiser, &stream]() {
+                stream << synchronize();
+                denoiser.execute();
+                stream << synchronize();
+            }};
+    }
     ~RenderPluginImpl() {
+        _denoisers.clear();
         pipelines.clear();
         dispose_skybox();
+        delete oidn_ext;
+        oidn_module.reset();
     }
 };
 RBC_PLUGIN_ENTRY(RenderPlugin) {

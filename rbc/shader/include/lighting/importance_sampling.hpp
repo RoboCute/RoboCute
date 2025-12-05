@@ -20,7 +20,6 @@ namespace lighting {
 
 template<class T>
 concept BindlessIndices = requires(T t) {
-	{ auto(t.time) } -> std::same_as<float>;
 	{ auto(t.frame_countdown) } -> std::same_as<uint>;
 	{ auto(t.light_count) } -> std::same_as<uint>;
 	{ auto(t.alias_table_idx) } -> std::same_as<uint>;

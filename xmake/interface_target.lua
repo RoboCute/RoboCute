@@ -17,7 +17,8 @@ function interface_target(target_name, interface_callback, impl_callback, no_lin
     add_rules('lc_run_target')
     add_deps(target_interface_name)
     add_deps(target_impl_name, {
-        inherit = false
+        inherit = false,
+        links = not no_link
     })
     if not no_link then
         add_links(target_name, {

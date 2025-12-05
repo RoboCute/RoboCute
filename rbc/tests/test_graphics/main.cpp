@@ -257,25 +257,22 @@ struct ContextImpl : RBCContext {
         return utils.should_close();
     }
     void tick() override {
-        utils.tick([&]() {
-            auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
-            if (any(window_size != utils.dst_image.size())) {
-                utils.resize_swapchain(window_size);
-            }
-            cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
-            auto &frame_settings = utils.render_settings.read_mut<rbc::FrameSettings>();
-            auto &dst_img = utils.dst_image;
-            frame_settings.render_resolution = dst_img.size();
-            frame_settings.display_resolution = dst_img.size();
-            frame_settings.dst_img = &dst_img;
-            auto time = clk.toc();
-            auto delta_time = time - last_frame_time;
-            last_frame_time = time;
-            frame_settings.delta_time = (float)delta_time;
-            frame_settings.time = time;
-            frame_settings.frame_index = frame_index;
-            ++frame_index;
-        });
+        if (utils.window)
+            utils.window->poll_events();
+        auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
+        if (any(window_size != utils.dst_image.size())) {
+            utils.resize_swapchain(window_size);
+        }
+        cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
+        auto time = clk.toc();
+        auto delta_time = time - last_frame_time;
+        last_frame_time = time;
+
+        utils.tick(
+            static_cast<float>(delta_time),
+            frame_index,
+            window_size);
+        ++frame_index;
     }
 };
 RBCContext *RBCContext::_create_() {
@@ -371,33 +368,30 @@ int main(int argc, char *argv[]) {
             reset = false;
             utils.reset_frame();
         }
-        utils.tick([&]() {
-            if (any(window_size != utils.dst_image.size())) {
-                utils.resize_swapchain(window_size);
-            }
-            cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
-            auto &frame_settings = utils.render_settings.read_mut<rbc::FrameSettings>();
-            auto &dst_img = utils.dst_image;
-            frame_settings.render_resolution = dst_img.size();
-            frame_settings.display_resolution = dst_img.size();
-            frame_settings.dst_img = &dst_img;
-            auto time = clk.toc();
-            auto delta_time = time - last_frame_time;
-            last_frame_time = time;
-            frame_settings.delta_time = (float)delta_time;
-            frame_settings.time = time;
-            frame_settings.frame_index = frame_index;
-            ++frame_index;
-            // scene logic
-            if (cube_move) {
-                simple_scene->move_cube(*cube_move);
-                cube_move.destroy();
-            }
-            if (light_move) {
-                simple_scene->move_light(*light_move);
-                light_move.destroy();
-            }
-        });
+        if (utils.window)
+            utils.window->poll_events();
+        auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
+        if (any(window_size != utils.dst_image.size())) {
+            utils.resize_swapchain(window_size);
+        }
+        cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
+        auto time = clk.toc();
+        auto delta_time = time - last_frame_time;
+        last_frame_time = time;
+        // scene logic
+        if (cube_move) {
+            simple_scene->move_cube(*cube_move);
+            cube_move.destroy();
+        }
+        if (light_move) {
+            simple_scene->move_light(*light_move);
+            light_move.destroy();
+        }
+        utils.tick(
+            static_cast<float>(delta_time),
+            frame_index,
+            window_size);
+        ++frame_index;
     }
     // rpc_hook.shutdown_remote();
     utils.dispose([&]() {

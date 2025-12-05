@@ -186,8 +186,7 @@ static IntegratorResult sample_material(
             float4(ddx, ddy),
             input_dir,
             world_pos,
-            reject,
-            bdls_indices.time);
+            reject);
         if (basic_param.geometry.thin_walled && dot(input_dir, vertices_normal) >= 0.0f) {
             basic_param.geometry.onb.normal = -basic_param.geometry.onb.normal;
         }
@@ -270,8 +269,7 @@ static IntegratorResult sample_material(
                 float4(ddx, ddy),
                 input_dir,
                 world_pos,
-                reject,
-                bdls_indices.time);
+                reject);
         } else {
             if constexpr (requires { extra_param.base; }) {
                 extra_param.base.color = float3(0.3f, 0.6f, 0.7f);

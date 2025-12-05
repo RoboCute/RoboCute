@@ -168,7 +168,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         .enable_physical_camera = ctx.cam.enable_physical_camera,
         // .srgb_to_fourier_even_idx = prepare_pass->srgb_to_fourier_even_idx,
         // .bmese_phase_idx = prepare_pass->bmese_phase_idx,
-        .time = 0.0f,
         .require_reject = frameSettings.offline_capturing};
     if (ctx.cam.enable_physical_camera) {
         auto lens_radius = static_cast<float>(0.05 / ctx.cam.aperture);

@@ -17,16 +17,18 @@ int main(int argc, char *argv[]) {
     if (argc != 3) {
         return 1;
     }
-    luisa::log_level_error();
-    Context ctx{argv[1]};
     DeviceConfig config{};
     if (luisa::string_view{argv[2]} == "dx") {
         config.extension = luisa::make_unique<DXOidnCheckerExt>();
     } else if (luisa::string_view{argv[2]} == "vk") {
         config.extension = luisa::make_unique<VKOidnCheckerExt>();
+    } else if (luisa::string_view{argv[2]} == "cuda") {
+        return 0;
     } else {
         return 2;// unsupported backend
     }
+    luisa::log_level_error();
+    Context ctx{argv[1]};
     Device device = ctx.create_device(argv[2], &config);
     DynamicModule denoiser_module = DynamicModule::load(ctx.runtime_directory(), "oidn_plugin");
     if (!denoiser_module) {

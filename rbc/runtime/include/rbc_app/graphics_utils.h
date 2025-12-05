@@ -58,14 +58,16 @@ struct RBC_RUNTIME_API GraphicsUtils {
     void init_display(uint2 resolution);
     void reset_frame();
     bool should_close();
-    void tick(vstd::function<void()> before_render = {});
+    void tick(
+        float delta_time,
+        uint64_t frame_index,
+        uint2 resolution);
     void create_texture(
         DeviceImage *ptr,
         PixelStorage storage,
         uint2 size, uint mip_level);
     void update_texture(
-        DeviceImage* ptr
-    );
+        DeviceImage *ptr);
     void create_mesh(
         DeviceMesh *ptr,
         uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets);

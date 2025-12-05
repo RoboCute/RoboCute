@@ -255,12 +255,14 @@ void GraphicsUtils::reset_frame() {
 bool GraphicsUtils::should_close() {
     return window && window->should_close();
 }
-void GraphicsUtils::tick(vstd::function<void()> before_render) {
+void GraphicsUtils::tick(
+    float delta_time,
+    uint64_t frame_index,
+    uint2 resolution) {
     AssetsManager::instance()->wake_load_thread();
     std::unique_lock render_lck{render_device.render_loop_mtx()};
     sm->prepare_frame();
-    if (window)
-        window->poll_events();
+
     if (require_reset) {
         require_reset = false;
         reset_frame();
@@ -269,8 +271,14 @@ void GraphicsUtils::tick(vstd::function<void()> before_render) {
     // TODO: later for many context
     if (!display_pipe_ctx)
         return;
-    if (before_render) {
-        before_render();
+
+    {
+        auto &frame_settings = render_settings.read_mut<rbc::FrameSettings>();
+        frame_settings.render_resolution = resolution;
+        frame_settings.display_resolution = dst_image.size();
+        frame_settings.dst_img = &dst_image;
+        frame_settings.delta_time = (float)delta_time;
+        frame_settings.frame_index = frame_index;
     }
     auto &main_stream = render_device.lc_main_stream();
     auto &cmdlist = render_device.lc_main_cmd_list();
@@ -372,7 +380,8 @@ void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
 }
 void GraphicsUtils::create_mesh(
     DeviceMesh *ptr,
-    uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets) {
+    uint32_t vertex_count, bool contained_normal, bool contained_tangent,
+    uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets) {
     auto mesh_size = DeviceMesh::get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
     auto &host_data = ptr->host_data_ref();
     host_data.push_back_uninitialized(mesh_size);

@@ -42,6 +42,7 @@ def find_process_path(process_name):
 
 
 def write_shader_compile_cmd():
+    
     clangcxx_dir = rel(CLANGCXX_PATH)
     shader_dir = rel(SHADER_PATH)
     in_dir = shader_dir / "src"
@@ -117,21 +118,18 @@ def download_packages():
     address = RBC_SDK_ADDRESS
     lc_address = LC_SDK_ADDRESS
     lc_path = rel("thirdparty/LuisaCompute/SDKs")
-    clangcxx = f"{CLANGCXX_NAME}.7z"
-    clangd = f"{CLANGD_NAME}.7z"
-    oidn = f'{OIDN_NAME}.7z'
     downloads = {
-        clangcxx: {
+        CLANGCXX_NAME: {
             "address": address,
             "path": download_path,
         },
-        clangd: {
+        CLANGD_NAME: {
             "address": address,
             "path": download_path,
         },
-        oidn: {
+        OIDN_NAME: {
             "address": address,
-            "path": download_path
+            "path": download_path,
         },
         RENDER_RESOURCE_NAME: {
             "address": address,
@@ -142,12 +140,13 @@ def download_packages():
             "path": lc_path,
         },
     }
-    lua_file = f'''clangd_filename = "{clangd}"
-clangcxx_filename = "{clangcxx}
-oidn = "{oidn}""'''
+    lua_file = f'''clangd_filename = "{CLANGD_NAME}"
+clangcxx_filename = "{CLANGCXX_NAME}"
+oidn = "{OIDN_NAME}"'''
     codegen_util._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
 
-    def download_file(file: str, map):
+    def download_file(file: str, map:dict):
+        print(file)
         dst_path = str(map["path"] / file)
         if os.path.exists(dst_path):
             print(f"'{dst_path}' exists, skip download.")

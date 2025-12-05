@@ -28,7 +28,6 @@ struct PTArgs {
     bool enable_physical_camera;
     float focus_distance;
     float lens_radius;
-    float time;
     uint bounce;
     float gbuffer_temporal_weight;
     bool reset_emission;

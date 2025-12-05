@@ -11,7 +11,7 @@
 
 namespace rbc {
 
-class OidnDenoiser : public Denoiser {
+struct OidnDenoiser : public Denoiser {
 protected:
     DeviceInterface *_device;
     oidn::DeviceRef _oidn_device;
@@ -34,7 +34,7 @@ public:
     void init(DenoiserExt::DenoiserInput const &input) noexcept override;
 };
 
-class DXOidnDenoiser : public OidnDenoiser {
+struct DXOidnDenoiser : public OidnDenoiser {
     // InteropExt _interop;
     DxCudaInterop *_dx_interop_ext;
     VkCudaInterop *_vk_interop_ext;
@@ -253,6 +253,6 @@ luisa::shared_ptr<Denoiser> DXOidnDenoiserExt::create() noexcept {
     }
 }
 }// namespace rbc
-extern "C" OIDN_API rbc::DenoiserExt *rbc_create_oidn(luisa::compute::Device const &device) {
+OIDN_API rbc::DenoiserExt *rbc_create_oidn(luisa::compute::Device const &device) {
     return new rbc::DXOidnDenoiserExt(device);
 }

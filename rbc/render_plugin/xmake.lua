@@ -12,7 +12,7 @@ add_deps('rbc_runtime')
 add_deps("compile_shaders", {
     inherit = false
 })
-add_deps('rbc_render_interface')
+add_deps('rbc_render_interface', 'oidn_plugin')
 add_includedirs('../shader/host', {
     public = true
 })
