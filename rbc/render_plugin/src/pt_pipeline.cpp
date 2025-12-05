@@ -120,7 +120,6 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // pt_pass->set_actived(false);
     // accum_pass->set_actived(false);
     auto &pt_pipe_settings = ctx.pipeline_settings->read_mut<PTPipelineSettings>();
-    pt_pipe_settings.use_post_filter = true;
     if(pt_pipe_settings.use_raster && pt_pipe_settings.use_raytracing) [[unlikely]] {
         LUISA_ERROR("Can not enable both raster and raytracing.");
     }

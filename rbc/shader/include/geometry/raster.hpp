@@ -13,6 +13,7 @@ struct AppDataBase {
 struct InstanceData {
 	float4x4 local_to_world;
 	uint user_id;
+	uint prim_id_offset;
 };
 
 template<typename T>
@@ -27,8 +28,10 @@ InstanceData get_instance_data(
 	Buffer<geometry::RasterElement>& raster_elem) {
 	InstanceData inst_data;
 	auto elem = raster_elem.read(object_id() + app_data.instance_id);
-	inst_data.local_to_world = elem.local_to_world_and_mat_code;
-	inst_data.user_id = bit_cast<uint>(elem.local_to_world_and_mat_code[3][3]);
+	inst_data.local_to_world = elem.local_to_world_and_inst_id;
+	inst_data.prim_id_offset = bit_cast<uint>(elem.local_to_world_and_inst_id[2][3]);
+	inst_data.user_id = bit_cast<uint>(elem.local_to_world_and_inst_id[3][3]);
+	inst_data.local_to_world[2][3] = 0.0f;
 	inst_data.local_to_world[3][3] = 1.0f;
 	return inst_data;
 }

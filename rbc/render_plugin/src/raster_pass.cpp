@@ -6,17 +6,45 @@
 #include <rbc_graphics/render_device.h>
 #include <luisa/backends/ext/raster_ext.hpp>
 namespace rbc {
+namespace click_pick {
+#include <raster/click_pick.inl>
+}// namespace click_pick
 void RasterPass::on_enable(
     Pipeline const &pipeline,
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
+#define RBC_LOAD_SHADER(SHADER_NAME, NAME_SPACE, PATH) \
+    _init_counter.add();                               \
+    luisa::fiber::schedule([this]() {                  \
+        SHADER_NAME = NAME_SPACE::load_shader(PATH);   \
+        _init_counter.done();                          \
+    })
+    // _init_counter.add();
+    // luisa::fiber::schedule([this] {
+    //     _draw_scene_shader =
+    //         ShaderManager::instance()
+    //             ->load_raster_shader<Buffer<AccelManager::RasterElement>, raster::VertArgs>("raster/test_raster.bin");
+    //     _init_counter.done();
+    // });
     _init_counter.add();
     luisa::fiber::schedule([this] {
-        _draw_scene_shader = ShaderManager::instance()->load_raster_shader<Buffer<AccelManager::RasterElement>, raster::VertArgs>("raster/test_raster.bin");
+        _draw_id_shader =
+            ShaderManager::instance()
+                ->load_raster_shader<Buffer<AccelManager::RasterElement>, raster::VertArgs>("raster/accel_id.bin");
         _init_counter.done();
     });
+    ShaderManager::instance()->async_load(
+        _init_counter,
+        "raster/clear_id.bin",
+        clear_id);
+    ShaderManager::instance()->async_load(
+        _init_counter,
+        "raster/shading_id.bin",
+        shading_id);
+    RBC_LOAD_SHADER(click_pick, click_pick, "raster/click_pick.bin");
 }
+#undef RBC_LOAD_SHADER
 void RasterPass::wait_enable() {
     _init_counter.wait();
 }
@@ -66,20 +94,50 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             .write = true},
     };
     auto raster_ext = render_device.lc_device().extension<RasterExt>();
+    auto id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frameSettings.render_resolution, 1, false, true);
     emission = render_device.create_transient_image<float>("emission", PixelStorage::HALF4, frameSettings.render_resolution, 1, false, true);
-    cmdlist << raster_ext->clear_render_target(emission, float4(0.3f, 0.6f, 0.7f, 1.f))
-            << pass_ctx->depth_buffer.clear(0.0f);
+    cmdlist << pass_ctx->depth_buffer.clear(0.0f)
+            << (*clear_id)(id_map, uint4(-1, -1, 0, 0)).dispatch(frameSettings.render_resolution);
     //
     if (!draw_meshes.empty()) {
         raster::VertArgs vert_args{
             .view = cam_data.view,
             .proj = cam_data.proj,
             .view_proj = cam_data.vp};
-        cmdlist << _draw_scene_shader(data_buffer, vert_args)
-                       .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frameSettings.render_resolution.x, frameSettings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, emission);
+        // cmdlist << _draw_scene_shader(data_buffer, vert_args)
+        //                .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frameSettings.render_resolution.x, frameSettings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, emission);
+        cmdlist << _draw_id_shader(data_buffer, vert_args)
+                       .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frameSettings.render_resolution.x, frameSettings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, id_map);
     }
-
+    cmdlist << (*shading_id)(id_map, emission).dispatch(frameSettings.render_resolution);
     frameSettings.resolved_img = &emission;
+    auto click_manager = ctx.pipeline_settings->read_if<ClickManager>();
+    if (click_manager && !click_manager->_requires.empty()) {
+        auto &reqs = click_manager->_requires;
+        auto require_buffer = sm.host_upload_buffer().allocate_upload_buffer<float2>(reqs.size());
+        auto result_buffer = render_device.create_transient_buffer<RayCastResult>(
+            "click_result",
+            reqs.size());
+        luisa::fixed_vector<float2, 4> req_coords;
+        luisa::vector<RayCastResult> result;
+        result.push_back_uninitialized(reqs.size());
+        vstd::push_back_func(req_coords, reqs.size(), [&](size_t i) {
+            return reqs[i].second.screen_uv;
+        });
+        std::memcpy(require_buffer.mapped_ptr(), req_coords.data(), req_coords.size_bytes());
+        cmdlist << click_pick::dispatch_shader(click_pick, reqs.size(), sm.buffer_heap(), require_buffer.view, id_map, result_buffer.view())
+                << result_buffer.view().copy_to(result.data());
+        cmdlist.add_callback([&ctx,
+                              reqs = std::move(reqs),
+                              result = std::move(result)]() mutable {
+            auto click_manager = ctx.pipeline_settings->read_if<ClickManager>();
+            if (!click_manager) return;
+            std::lock_guard lck{click_manager->_mtx};
+            for (auto i : vstd::range(reqs.size())) {
+                click_manager->_results.force_emplace(std::move(reqs[i].first), result[i]);
+            }
+        });
+    }
 }
 void RasterPass::on_disable(
     Pipeline const &pipeline,

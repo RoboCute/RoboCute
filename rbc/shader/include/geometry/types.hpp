@@ -37,6 +37,6 @@ struct Vertex {
 	std::array<float2, 4> uvs;
 };
 struct RasterElement {
-	float4x4 local_to_world_and_mat_code;// mat_code = reinterpret_cast<uint&>(local_to_world[3][3])
+	float4x4 local_to_world_and_inst_id;// inst_id = reinterpret_cast<uint&>(local_to_world[3][3])
 };
 }// namespace geometry

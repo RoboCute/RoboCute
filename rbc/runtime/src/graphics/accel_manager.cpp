@@ -772,8 +772,10 @@ void AccelManager::make_draw_list(
             {
                 auto& inst = _accel_elements[i];
                 auto& elem = elem_host.emplace_back();
-                elem.local_to_world_and_mat_code = inst.transform;
-                reinterpret_cast<uint&>(elem.local_to_world_and_mat_code[3][3]) = inst.user_id;
+                elem.local_to_world_and_inst_id = inst.transform;
+                
+                reinterpret_cast<uint&>(elem.local_to_world_and_inst_id[2][3]) = buffer_offset;
+                reinterpret_cast<uint&>(elem.local_to_world_and_inst_id[3][3]) = inst.user_id;
             }
         }
     }

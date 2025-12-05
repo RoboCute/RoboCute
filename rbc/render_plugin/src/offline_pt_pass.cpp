@@ -25,7 +25,7 @@ void OfflinePTPass::on_enable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
-#define RBQ_LOAD_SHADER(SHADER_NAME, NAME_SPACE, PATH) \
+#define RBC_LOAD_SHADER(SHADER_NAME, NAME_SPACE, PATH) \
     init_counter.add();                                \
     luisa::fiber::schedule([this]() {                  \
         SHADER_NAME = NAME_SPACE::load_shader(PATH);   \
@@ -67,9 +67,9 @@ void OfflinePTPass::on_enable(
     // pt_shader.load_all(init_counter);
     // pt_shader_denoise.load_all(init_counter);
     // multi_bounce.load_all(init_counter);
-    RBQ_LOAD_SHADER(pt_shader, offline_pt_shader, "path_tracer/offline_pt.bin");
-    RBQ_LOAD_SHADER(pt_shader_denoise, offline_pt_shader_denoise, "path_tracer/offline_pt_denoise.bin");
-    RBQ_LOAD_SHADER(multi_bounce, offline_multibounce, "path_tracer/pt_multi_bounce_offline.bin");
+    RBC_LOAD_SHADER(pt_shader, offline_pt_shader, "path_tracer/offline_pt.bin");
+    RBC_LOAD_SHADER(pt_shader_denoise, offline_pt_shader_denoise, "path_tracer/offline_pt_denoise.bin");
+    RBC_LOAD_SHADER(multi_bounce, offline_multibounce, "path_tracer/pt_multi_bounce_offline.bin");
     load("path_tracer/draw_sky.bin", draw_sky_shader);
     load("surfel/clear_hashgrid_offline.bin", clear_hashgrid);
     load("surfel/accum_hashgrid_offline.bin", accum_hashgrid);
@@ -82,7 +82,7 @@ void OfflinePTPass::on_enable(
         value_buffer = device.create_buffer<uint>(hash_size * 4);
         init_counter.done();
     });
-#undef RBQ_LOAD_SHADER
+#undef RBC_LOAD_SHADER
     // click_buffer = device.create_buffer<uint2>(1);
 }
 void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {

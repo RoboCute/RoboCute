@@ -18,6 +18,7 @@
 #include "rbc_app/graphics_object_types.h"
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
+#include <rbc_render/click_manager.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -307,6 +308,16 @@ int main(int argc, char *argv[]) {
     // Test FOV
     vstd::optional<float3> cube_move, light_move;
     bool reset = false;
+    auto &click_mng = utils.render_settings.read_mut<ClickManager>();
+    uint2 window_size = utils.window->size();
+    utils.window->set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
+        if (action != Action::ACTION_PRESSED) {
+            return;
+        }
+        click_mng.add_require(
+            "click",
+            ClickRequire{xy / make_float2(window_size)});
+    });
     utils.window->set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
         if (action != Action::ACTION_PRESSED) return;
         frame_index = 0;
@@ -357,7 +368,6 @@ int main(int argc, char *argv[]) {
             } break;
         }
     });
-    uint2 window_size = utils.window->size();
     utils.window->set_window_size_callback([&](uint2 size) {
         window_size = size;
     });
@@ -388,21 +398,32 @@ int main(int argc, char *argv[]) {
             simple_scene->move_light(*light_move);
             light_move.destroy();
         }
-        auto tick_stage = GraphicsUtils::TickStage::OffineCapturing;
-        const uint sample = 16;
-        if (frame_index > sample) {
-            tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
-        }
+        auto tick_stage = GraphicsUtils::TickStage::RasterPreview;
+        // const uint sample = 16;
+        // if (frame_index > sample) {
+        //     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
+        // }
         utils.tick(
             static_cast<float>(delta_time),
             frame_index,
             window_size,
             tick_stage);
-        if (frame_index == sample) {
-            LUISA_INFO("Denoising..");
-            utils.denoise();
-        }
+        // if (frame_index == sample) {
+        //     LUISA_INFO("Denoising..");
+        //     utils.denoise();
+        // }
         ++frame_index;
+        auto click_result = click_mng.query_result("click");
+        if (click_result) {
+            MatCode m{click_result->mat_code};
+            LUISA_INFO("Clicked:\ntriangle_bary: {}\ninst_id: {}\nprim_id: {}\nmat_type: {}\nmat_idx: {}\nsubmesh_index: {}",
+                       click_result->triangle_bary,
+                       click_result->inst_id,
+                       click_result->prim_id,
+                       m.get_type(),
+                       m.get_inst_id(),
+                       click_result->submesh_index);
+        }
     }
     // rpc_hook.shutdown_remote();
     utils.dispose([&]() {

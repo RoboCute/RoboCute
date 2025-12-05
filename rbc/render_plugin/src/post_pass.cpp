@@ -95,7 +95,11 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
     const auto &displaySettings = ctx.pipeline_settings->read<DisplaySettings>();
     const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
     const auto &exposureSettings = ctx.pipeline_settings->read<ExposureSettings>();
-
+    init_counter.wait();
+    if (!frameSettings.resolved_img && !frameSettings.radiance_buffer) {
+        post_ctx = nullptr;
+        return;
+    }
     post_ctx = ctx.mut.get_pass_context<PostPassContext>(
         (*ctx.device),
         init_counter,
@@ -106,7 +110,6 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
         toneMappingSettings.lpm.displayMinLuminance,
         toneMappingSettings.lpm.displayMaxLuminance,
         displaySettings.use_hdr_display);
-    init_counter.wait();
     post_ctx->reset |= frameSettings.frame_index == 0;
     auto &scene = ctx.scene;
     if (post_ctx->reset) {
@@ -209,7 +212,8 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
 }
 
 void PostPass::on_frame_end(Pipeline const &pipeline, Device &device, SceneManager &scene) {
-    post_ctx->reset = false;
+    if (post_ctx)
+        post_ctx->reset = false;
 }
 
 void PostPass::on_disable(Pipeline const &pipeline, Device &device, CommandList &cmdlist, SceneManager &scene) {
