@@ -16,7 +16,6 @@ public:
     explicit ModuleRegister(void (*callback)(py::module &));
 };
 
-
 inline luisa::span<std::byte> to_span_5d4636ab(py::buffer const &b) {
     auto r = b.request();
     return {

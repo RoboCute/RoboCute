@@ -23,6 +23,7 @@ from scripts.prepare import (
     PLATFORM,
     ARCH,
     XMAKE_GLOBAL_TOOLCHAIN,
+    OIDN_NAME,
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder
@@ -55,7 +56,6 @@ def find_process_path(process_name):
 
 
 def write_shader_compile_cmd():
-    
     clangcxx_dir = rel(CLANGCXX_PATH)
     shader_dir = rel(SHADER_PATH)
     in_dir = shader_dir / "src"
@@ -158,7 +158,7 @@ clangcxx_filename = "{CLANGCXX_NAME}"
 oidn = "{OIDN_NAME}"'''
     codegen_util._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
 
-    def download_file(file: str, map:dict):
+    def download_file(file: str, map: dict):
         print(file)
         dst_path = str(map["path"] / file)
         if os.path.exists(dst_path):

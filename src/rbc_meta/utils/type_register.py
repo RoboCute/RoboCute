@@ -241,9 +241,11 @@ _registed_enum_types = {}
 class enum:
     def __init__(self, _func_name: str, _enable_serde: bool = True, **params):
         namespace_cut = _func_name.rfind("::")
+
         self._serde = _enable_serde
         self._cpp_external = False
         self._py_external = False
+
         if namespace_cut >= 0:
             self._namespace_name = _func_name[0:namespace_cut]
             self._class_name = _func_name[namespace_cut + 2 : len(_func_name)]
@@ -356,8 +358,6 @@ class struct:
         self._serde_members = dict()
         self._rpc = dict()
         self._methods = dict()
-        self._default_ctor = None
-        self._dtor = None
         self._cpp_external = False
         self._py_external = False
         self._new_arch_class = None
@@ -435,12 +435,6 @@ class struct:
         }
         return type_mapping.get(old_type, object)
 
-    def add_default_ctor(self):
-        self._default_ctor = True
-
-    def add_default_dtor(self):
-        self._dtor = True
-
     def namespace_name(self):
         return self._namespace_name
 
@@ -455,9 +449,11 @@ class struct:
 
     def method(self, _func_name: str, **args):
         tb = self._methods.get(_func_name)
+
         if not tb:
             tb = {}
             self._methods[_func_name] = tb
+
         f = _function_t(**args)
         key = _gen_args_key(**args)
         if tb.get(key):
@@ -513,17 +509,8 @@ class struct:
             except:
                 pass
 
-    def init_member(self, **argv):
-        for i in argv:
-            v = argv[i]
-            if base.is_type_bool(type(v)):
-                if v:
-                    v = "true"
-                else:
-                    v = "false"
-            else:
-                v = str(v)
-            self._cpp_initer[i] = str(v)
+    def init_member(self, cpp_initer):
+        self._cpp_initer = cpp_initer
 
     # will not generate this class
     def mark_cpp_external(self):

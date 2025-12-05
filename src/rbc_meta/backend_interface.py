@@ -12,6 +12,7 @@ def codegen_pybind(
     pyd_name = "test_py_codegen"
     file_name = "rbc_backend"
     Context = tr.struct("RBCContext", "TEST_GRAPHICS_API")
+
     # these enums defined in rbc_runtime
     res_enums.mark_enums_external()
     # frame
@@ -81,6 +82,7 @@ def codegen_pybind(
         angle_atten_pow=tr.float,
         visible=tr.bool,
     ).ret_type(tr.VoidPtr)
+
     Context.method(
         "update_area_light",
         light=tr.VoidPtr,
@@ -119,21 +121,15 @@ def codegen_pybind(
     )
     # texture
     Context.method(
-<<<<<<< HEAD
-        'create_texture',
-=======
         "create_texture",
         data=tr.DataBuffer,
->>>>>>> 78c6c3d (arch adapter)
         storage=res_enums.PixelStorage,
         size=tr.uint2,
         mip_level=tr.uint,
     ).ret_type(tr.VoidPtr)
-    Context.method('get_texture_data', handle=tr.VoidPtr).ret_type(tr.DataBuffer)
-    Context.method(
-        'update_texture',
-        handle=tr.VoidPtr
-    )
+
+    Context.method("get_texture_data", handle=tr.VoidPtr).ret_type(tr.DataBuffer)
+    Context.method("update_texture", handle=tr.VoidPtr)
     Context.method(
         "load_texture",
         path=tr.string,
@@ -176,17 +172,18 @@ def codegen_pybind(
     Context.method("should_close").ret_type(tr.bool)
 
     # codegen
-    ut.codegen_to(header_root_path / f"{file_name}.h")(
+    ut.codegen_to(header_root_path / f"{file_name}.new.h")(
         ut.codegen.cpp_interface_gen,
         """#include <rbc_runtime/generated/resource_meta.hpp>
 #include <rbc_core/rc.h>""",
     )
-    ut.codegen_to(cpp_root_path / f"{file_name}.cpp")(
+
+    ut.codegen_to(cpp_root_path / f"{file_name}.new.cpp")(
         ut.codegen.pybind_codegen,
         file_name,
         f'''#include "{file_name}.h"
 #include <rbc_core/rc.h>''',
     )
-    ut.codegen_to(py_root_path / f"{file_name}.py")(
+    ut.codegen_to(py_root_path / f"{file_name}.new.py")(
         ut.codegen.py_interface_gen, pyd_name
     )

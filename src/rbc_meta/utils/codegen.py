@@ -2,6 +2,20 @@ import rbc_meta.utils.type_register as tr
 from rbc_meta.utils.codegen_basis import get_codegen_basis, CodeGenerator
 import hashlib
 
+from rbc_meta.utils_next.templates import (
+    DEFAULT_INDENT,
+    CPP_ENUM_KVPAIR_TEMPLATE,
+    CPP_ENUM_TEMPLATE,
+    CPP_STRUCT_TEMPLATE,
+    CPP_STRUCT_CTOR_DECL_TEMPLATE,
+    CPP_STRUCT_DTOR_DECL_TEMPLATE,
+    CPP_STRUCT_MEMBER_EXPR_TEMPLATE,
+    CPP_STRUCT_SER_DECL_TEMPLATE,
+    CPP_STRUCT_DESER_DECL_TEMPLATE,
+    CPP_STRUCT_METHOD_DECL_TEMPLATE,
+    CPP_INTERFACE_TEMPLATE,
+)
+
 cb = get_codegen_basis()
 
 _type_names = {
@@ -190,40 +204,6 @@ def _print_py_args(args: dict, is_first: bool):
     return r
 
 
-def _print_cpp_rtti(t):
-    if type(t) == tr.struct:
-        name = t.full_name()
-        m = hashlib.md5(name.encode("ascii"))
-        is_first = True
-        digest = ""
-        for i in m.digest():
-            if not is_first:
-                digest += ", "
-            is_first = False
-            digest += str(int(i))
-        cb.add_result(f'''
-namespace rbc_rtti_detail {{
-template<>
-struct is_rtti_type<{name}> {{
-    static constexpr bool value = true;
-    static constexpr const char* name{{"{name}"}};
-    static constexpr uint8_t md5[16]{{{digest}}};
-}};
-}} // rbc_rtti_detail
-''')
-    else:
-        name = t.full_name()
-        cb.add_result(f'''
-namespace rbc_rtti_detail {{
-template<>
-struct is_rtti_type<{name}> {{
-    static constexpr bool value = true;
-    static constexpr const char* name{{"{name}"}};
-}};
-}} // rbc_rtti_detail
-''')
-
-
 def py_interface_gen(module_name: str):
     cb.set_result(f"from rbc_ext._C.{module_name} import *")
     for struct_name in tr._registed_struct_types:
@@ -262,30 +242,6 @@ def py_interface_gen(module_name: str):
         # nenbers
         cb.remove_indent()
     return cb.get_result()
-
-
-def _print_rpc_funcs(struct_type: tr.struct):
-    global cb
-    rpc = struct_type._rpc
-    if len(rpc) == 0:
-        return
-    for func_name in rpc:
-        mems_dict: dict = rpc[func_name]
-        for key in mems_dict:
-            func: tr._function_t = mems_dict[key]
-            is_first = True
-            args = ""
-            for arg_name in func._args:
-                if not is_first:
-                    args += ", "
-                is_first = False
-                args += f"{_print_arg_type(func._args[arg_name])} {arg_name}"
-            static = ""
-            if func._static:
-                static = "static "
-            cb.add_line(
-                f"{static}{_print_arg_type(func._ret_type)} {func_name}({args});"
-            )
 
 
 def _print_rpc_serializer(struct_type: tr.struct):
@@ -457,6 +413,7 @@ def _cpp_impl_gen():
 def cpp_impl_gen(*extra_includes):
     global cb
     cb.set_result("#include <rbc_core/serde.h>\n")
+
     for i in extra_includes:
         cb.add_result(i + "\n")
     _cpp_impl_gen()
@@ -571,6 +528,7 @@ def cpp_client_interface_gen(*extra_includes):
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/func_serializer.h>
 #include <rbc_core/serde.h>""")
+
     if use_rpc:
         cb.add_line("#include <rbc_ipc/command_list.h>")
     for i in extra_includes:
@@ -588,109 +546,159 @@ def cpp_client_interface_gen(*extra_includes):
 
 def cpp_interface_gen(*extra_includes):
     global cb
-    cb.set_result("""//! This File is Generated From Python Def
-//! Modifying This File will not affect final result, checkout src/rbc_meta/ for real defs
-//! ================== GENERATED CODE BEGIN ==================
-#pragma once
-#include <luisa/core/basic_types.h>
-#include <luisa/core/basic_traits.h>
-#include <luisa/core/stl.h>
-#include <luisa/vstl/meta_lib.h>
-#include <luisa/vstl/v_guid.h>
-#include <rbc_core/enum_serializer.h>
-#include <rbc_core/func_serializer.h>
-#include <rbc_core/serde.h>
-""")
-    for i in extra_includes:
-        cb.add_result(i + "\n")
-    # print enums
-    for enum_name in tr._registed_enum_types:
+    INDENT = DEFAULT_INDENT
+
+    extra_includes_expr = "\n".join(extra_includes)
+
+    def get_enum_expr(enum_name: str):
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
+
         if enum_type._cpp_external:
-            continue
-        namespace = enum_type.namespace_name()
-        if len(namespace) > 0:
-            cb.add_line(f"namespace {namespace} {{")
-        cb.add_line(f"enum struct {enum_type.class_name()} : uint32_t {{")
-        cb.add_indent()
-        for param_name_and_value in enum_type._params:
-            cb.add_line(f"{param_name_and_value[0]}")
-            if param_name_and_value[1] != None:
-                cb.add_result(f" = {param_name_and_value[1]}")
-            cb.add_result(",")
-        cb.remove_indent()
-        cb.add_line("};")
+            return ""
 
-        if len(namespace) > 0:
-            cb.add_line(f"}} // namespace {namespace}")
+        enum_kvpairs = ",\n".join(
+            [
+                CPP_ENUM_KVPAIR_TEMPLATE.substitute(
+                    INDENT=INDENT,
+                    KEY=kv[0],
+                    VALUE_EXPR=f"= {kv[1]}" if kv[1] is not None else "",
+                )
+                for kv in enum_type._params
+            ]
+        )
+        enum_expr = CPP_ENUM_TEMPLATE.substitute(
+            INDENT=INDENT,
+            NAMESPACE_NAME=enum_type.namespace_name(),
+            ENUM_NAME=enum_type.class_name(),
+            ENUM_KVPAIRS=enum_kvpairs,
+        )
+        return enum_expr
 
-        cb.add_result("\n")
-        # RTTI
-        _print_cpp_rtti(enum_type)
+    enums_expr = "\n".join(
+        [get_enum_expr(enum_name) for enum_name in tr._registed_enum_types]
+    )
 
-    # print classes
-    for struct_name in tr._registed_struct_types:
+    def get_struct_expr(struct_name):
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
         if struct_type._cpp_external:
-            continue
-        namespace = struct_type.namespace_name()
-        if len(namespace) > 0:
-            cb.add_line(f"namespace {namespace} {{")
-        cb.add_line(f"struct {struct_type.class_name()} : vstd::IOperatorNewBase {{")
-        cb.add_indent()
-        if struct_type._default_ctor:
-            cb.add_line(f"{struct_type.class_name()}();")
-        if struct_type._dtor:
-            cb.add_line(f"~{struct_type.class_name()}();")
-        if len(struct_type._members) > 0:
-            for mem_name in struct_type._members:
-                mem = struct_type._members[mem_name]
-                initer = struct_type._cpp_initer.get(mem_name)
-                if not initer:
-                    initer = ""
-                cb.add_line(f"{_print_arg_type(mem)} {mem_name}{{{initer}}};")
+            return ""
 
-            # serialize function
-            if len(struct_type._serde_members) > 0:
-                cb.add_line(
-                    f"{struct_type._suffix} void rbc_objser(rbc::JsonSerializer& obj) const;"
-                )
+        def get_member_expr(mem_name):
+            mem = struct_type._members[mem_name]
+            initer = struct_type._cpp_initer.get(mem_name)
+            init_expr = initer if initer else ""
+            var_type_name = _print_arg_type(mem)
+            member_expr = CPP_STRUCT_MEMBER_EXPR_TEMPLATE.substitute(
+                INDENT=INDENT,
+                VAR_TYPE_NAME=var_type_name,
+                MEMBER_NAME=mem_name,
+                INIT_EXPR=init_expr,
+            )
+            return member_expr
 
-            # de-serialize function
-            if len(struct_type._serde_members) > 0:
-                cb.add_line(
-                    f"{struct_type._suffix} void rbc_objdeser(rbc::JsonDeSerializer& obj);"
-                )
-        if len(struct_type._methods) > 0:
-            cb.add_result(f"""
-   {struct_type._suffix} static {struct_name}* _create_();
-    virtual void dispose() = 0;
-    virtual ~{struct_name}() = default;""")
+        members_expr = "\n".join(
+            [get_member_expr(mem_name) for mem_name in struct_type._members]
+        )
+
+        has_serde = (
+            len(struct_type._members) > 0 and len(struct_type._serde_members) > 0
+        )
+
+        ser_decl = (
+            CPP_STRUCT_SER_DECL_TEMPLATE.substitute(FUNC_API=struct_type._suffix)
+            if has_serde
+            else ""
+        )
+
+        deser_decl = (
+            CPP_STRUCT_DESER_DECL_TEMPLATE.substitute(FUNC_API=struct_type._suffix)
+            if has_serde
+            else ""
+        )
+
+        def get_method_expr(func: tr._function_t, method_name: str):
+            ret_type = (
+                _print_arg_type(func._ret_type, False, False)
+                if func.ret_type
+                else "void"
+            )
+            args_expr = _print_arg_vars_decl(func._args, True, False, True)
+            return CPP_STRUCT_METHOD_DECL_TEMPLATE.substitute(
+                INDENT=INDENT,
+                RET_TYPE=ret_type,
+                FUNC_NAME=method_name,
+                ARGS_EXPR=args_expr,
+            )
+
+        methods_list = []
 
         # print methods
         for mem_name in struct_type._methods:
             mems_dict: dict = struct_type._methods[mem_name]
             for key in mems_dict:
                 func: tr._function_t = mems_dict[key]
-                if func._ret_type:
-                    ret_type = _print_arg_type(func._ret_type, False, False)
-                else:
-                    ret_type = "void"
-                cb.add_line(
-                    f"virtual {ret_type} {mem_name}({_print_arg_vars_decl(func._args, True, False, True)}) = 0;"
-                )
-        # print rpc
-        _print_rpc_funcs(struct_type)
+                methods_list.append(get_method_expr(func, mem_name))
 
-        cb.remove_indent()
-        cb.add_line("};")
-        if len(namespace) > 0:
-            cb.add_line(f"}} // namespace {namespace}")
-        cb.add_result("\n")
-        # RTTI
-        _print_cpp_rtti(struct_type)
+        methods_decl = "\n".join(methods_list)
 
-    cb.add_line("//! ================== GENERATED CODE END ==================")
+        name = struct_type.full_name()
+        m = hashlib.md5(name.encode("ascii"))
+        is_first = True
+        digest = ""
+        for i in m.digest():
+            if not is_first:
+                digest += ", "
+            is_first = False
+            digest += str(int(i))
+
+        def get_rpc_expr(rpc):
+            rpc_list = []
+            for func_name in rpc:
+                mems_dict: dict = rpc[func_name]
+                for key in mems_dict:
+                    func: tr._function_t = mems_dict[key]
+                    is_first = True
+                    args = ""
+                    for arg_name in func._args:
+                        if not is_first:
+                            args += ", "
+                        is_first = False
+                        args += f"{_print_arg_type(func._args[arg_name])} {arg_name}"
+                    static = ""
+                    if func._static:
+                        static = "static "
+                    rpc_list.append(
+                        f"{static}{_print_arg_type(func._ret_type)} {func_name}({args});"
+                    )
+            return "\n".join(rpc_list)
+
+        rpc_expr = "" if len(struct_type._rpc) == 0 else get_rpc_expr(struct_type._rpc)
+
+        struct_expr = CPP_STRUCT_TEMPLATE.substitute(
+            NAMESPACE_NAME=struct_type.namespace_name(),
+            STRUCT_NAME=struct_type.class_name(),
+            INDENT=INDENT,
+            FUNC_API=struct_type._suffix,
+            MEMBERS_EXPR=members_expr,
+            SER_DECL=ser_decl,
+            DESER_DECL=deser_decl,
+            RPC_FUNC_DECL=rpc_expr,
+            USER_DEFINED_METHODS_DECL=methods_decl,
+            MD5_DIGEST=digest,
+        )
+
+        return struct_expr
+
+    structs_expr = "\n".join(
+        [get_struct_expr(struct_name) for struct_name in tr._registed_struct_types]
+    )
+
+    cpp_interface_expr = CPP_INTERFACE_TEMPLATE.substitute(
+        EXTRA_INCLUDE=extra_includes_expr,
+        ENUMS_EXPR=enums_expr,
+        STRUCTS_EXPR=structs_expr,
+    )
+    cb.add_result(cpp_interface_expr)
 
     return cb.get_result()
 

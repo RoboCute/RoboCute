@@ -12,6 +12,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         REC2020=2,
         Display=3,
     )
+
     ResourceColorSpace = tr.enum(
         "rbc::ResourceColorSpace",
         Rec709=0,
@@ -28,6 +29,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         FSHDR_2084=3,
         FSHDR_SCRGB=4,
     )
+
     NRD_CheckerboardMode = tr.enum(
         "rbc::NRD_CheckerboardMode", OFF=None, BLACK=None, WHITE=None, MAX_NUM=None
     )
@@ -43,6 +45,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         AREA_5X5=None,
         MAX_NUM=None,
     )
+
     DistortionSettings = tr.struct("rbc::DistortionSettings")
     DistortionSettings.serde_members(
         scale=tr.float,
@@ -51,8 +54,14 @@ def codegen_header(header_path: Path, cpp_path: Path):
         center=tr.float2,
     )
     DistortionSettings.init_member(
-        scale=1.0, intensity=0.0, intensity_multiplier="1, 1", center="0.0f, 0.0f"
+        {
+            "scale": "1.0",
+            "intensity": "0.0",
+            "intensity_multiplier": "1, 1",
+            "center": "0.0f, 0.0f",
+        }
     )
+
     LpmDispatchParameters = tr.struct("rbc::LpmDispatchParameters")
     LpmDispatchParameters.serde_members(
         shoulder=tr.bool,
@@ -73,15 +82,17 @@ def codegen_header(header_path: Path, cpp_path: Path):
         displayMaxLuminance=tr.float,
     )
     LpmDispatchParameters.init_member(
-        shoulder=True,
-        hdrMax=1847,
-        lpmExposure=10,
-        shoulderContrast=1.0,
-        saturation="0.f, 0.f, 0.f",
-        crosstalk="1.f, 1.f, 1.f",
-        colorSpace="rbc::LpmColorSpace::REC2020",
-        displayMinLuminance=0.001,
-        displayMaxLuminance=1000,
+        {
+            "shoulder": "true",
+            "hdrMax": "1847",
+            "lpmExposure": "10",
+            "shoulderContrast": "1.0",
+            "saturation": "0.f, 0.f, 0.f",
+            "crosstalk": "1.f, 1.f, 1.f",
+            "colorSpace": "rbc::LpmColorSpace::REC2020",
+            "displayMinLuminance": "0.001",
+            "displayMaxLuminance": "1000",
+        }
     )
     ToneMappingParameters = tr.struct("rbc::ToneMappingParameters")
     ToneMappingParameters.serde_members(
@@ -89,8 +100,10 @@ def codegen_header(header_path: Path, cpp_path: Path):
         hdr_paper_white=tr.float,
     )
     ToneMappingParameters.init_member(
-        hdr_display_multiplier="5.0f",
-        hdr_paper_white="80.0f",
+        {
+            "hdr_display_multiplier": "5.0f",
+            "hdr_paper_white": "80.0f",
+        }
     )
     FrameSettings = tr.struct("rbc::FrameSettings")
     FrameSettings.members(
@@ -110,8 +123,12 @@ def codegen_header(header_path: Path, cpp_path: Path):
         resolved_img=tr.external_type("luisa::compute::Image<float> const*"),
         dst_img=tr.external_type("luisa::compute::Image<float> const*"),
     )
-    FrameSettings.init_member(resource_color_space="ResourceColorSpace::Rec709",
-                              realtime_rendering=True)
+    FrameSettings.init_member(
+        {
+            "resource_color_space": "ResourceColorSpace::Rec709",
+            "realtime_rendering": "true",
+        }
+    )
     curve = tr.external_type("Curve")
     ACESParameters = tr.struct("rbc::ACESParameters")
     ACESParameters.members(
@@ -149,19 +166,21 @@ def codegen_header(header_path: Path, cpp_path: Path):
     )
 
     ACESParameters.init_member(
-        hueVsHueCurve="{ float2(0, 0.5f) }",
-        hueVsSatCurve="{ float2(0, 0.5f) }",
-        satVsSatCurve="{ float2(0, 0.5f) }",
-        lumVsSatCurve="{ float2(0, 0.5f) }",
-        temperature=6500,
-        mixerRedOutRedIn=100,
-        mixerGreenOutGreenIn=100,
-        mixerBlueOutBlueIn=100,
-        lift="1, 1, 1, 0",
-        gamma="1, 1, 1, 0",
-        gain="1, 1, 1, 0",
-        colorFilter="1, 1, 1, 1",
-        dirty=True,
+        {
+            "hueVsHueCurve": "{ float2(0, 0.5f) }",
+            "hueVsSatCurve": "{ float2(0, 0.5f) }",
+            "satVsSatCurve": "{ float2(0, 0.5f) }",
+            "lumVsSatCurve": "{ float2(0, 0.5f) }",
+            "temperature": "6500",
+            "mixerRedOutRedIn": "100",
+            "mixerGreenOutGreenIn": "100",
+            "mixerBlueOutBlueIn": "100",
+            "lift": "1, 1, 1, 0",
+            "gamma": "1, 1, 1, 0",
+            "gain": "1, 1, 1, 0",
+            "colorFilter": "1, 1, 1, 1",
+            "dirty": "true",
+        }
     )
     ExposureSettings = tr.struct("ExposureSettings")
     ExposureSettings.serde_members(
@@ -173,14 +192,17 @@ def codegen_header(header_path: Path, cpp_path: Path):
         speedUp=tr.float,
         speedDown=tr.float,
     )
+
     ExposureSettings.init_member(
-        use_auto_exposure=True,
-        filtering="1.0f, 95.0f",
-        minLuminance=-9,
-        maxLuminance=9,
-        globalExposure=0.5,
-        speedUp=16,
-        speedDown=16,
+        {
+            "use_auto_exposure": "true",
+            "filtering": "1.0f, 95.0f",
+            "minLuminance": "-9",
+            "maxLuminance": "9",
+            "globalExposure": "0.5",
+            "speedUp": "16",
+            "speedDown": "16",
+        }
     )
     PathTracerSettings = tr.struct("rbc::PathTracerSettings")
     PathTracerSettings.serde_members(
@@ -190,13 +212,19 @@ def codegen_header(header_path: Path, cpp_path: Path):
         resource_color_space=ResourceColorSpace,
     )
     PathTracerSettings.init_member(
-        offline_spp=2, offline_origin_bounce=2, offline_indirect_bounce=4
+        {
+            "offline_spp": "2",
+            "offline_origin_bounce": "2",
+            "offline_indirect_bounce": "4",
+        }
     )
     ToneMappingSettings = tr.struct("rbc::ToneMappingSettings")
-    ToneMappingSettings.serde_members(
-        lpm=LpmDispatchParameters, aces=ACESParameters
+    ToneMappingSettings.serde_members(lpm=LpmDispatchParameters, aces=ACESParameters)
+    ToneMappingSettings.init_member(
+        {
+            "use_lpm": "true",
+        }
     )
-    ToneMappingSettings.init_member(use_lpm=True)
     DisplaySettings = tr.struct("rbc::DisplaySettings")
     DisplaySettings.serde_members(
         use_linear_sdr=tr.bool,
@@ -206,11 +234,13 @@ def codegen_header(header_path: Path, cpp_path: Path):
         chromatic_aberration=tr.float,
     )
     DisplaySettings.init_member(
-        use_linear_sdr=True,
-        use_hdr_display=False,
-        use_hdr_10=False,
-        gamma=2.2,
-        chromatic_aberration=0.001,
+        {
+            "use_linear_sdr": "true",
+            "use_hdr_display": "false",
+            "use_hdr_10": "false",
+            "gamma": "2.2",
+            "chromatic_aberration": "0.001",
+        }
     )
     SkySettings = tr.struct("rbc::SkySettings")
     SkySettings.members(
@@ -228,18 +258,21 @@ def codegen_header(header_path: Path, cpp_path: Path):
         sun_angle=tr.float,
     )
     SkySettings.init_member(
-        force_sync=True,
-        sky_max_lum=65535,
-        sky_color="1, 1, 1",
-        sun_color="1, 1, 1",
-        sun_dir="0, -1, 0",
-        sun_angle=0.5,
+        {
+            "force_sync": "true",
+            "sky_max_lum": "65535",
+            "sky_color": "1, 1, 1",
+            "sun_color": "1, 1, 1",
+            "sun_dir": "0, -1, 0",
+            "sun_angle": "0.5",
+        }
     )
 
     include = """#include <luisa/runtime/image.h>
 #include <luisa/runtime/buffer.h>
 #include <rbc_core/utils/curve.h>
 #include <rbc_render/procedural/sky_atmosphere.h>"""
+
     ut.codegen_to(header_path)(cpp_interface_gen, include)
     include = "#include <rbc_render/generated/pipeline_settings.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, include)

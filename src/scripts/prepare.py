@@ -152,9 +152,13 @@ RENDER_RESOURCE_NAME = "render_resources.7z"
 XMAKE_GLOBAL_TOOLCHAIN = "msvc"
 PLATFORM = "windows"
 ARCH = "x64"
+
+
 # TODO: platform
 def _to_platform_spec(name):
     return f"{name}-{PLATFORM}-{ARCH}.7z"
+
+
 OIDN_NAME = _to_platform_spec(OIDN_NAME)
 CLANGCXX_NAME = _to_platform_spec(CLANGCXX_NAME)
 CLANGD_NAME = _to_platform_spec(CLANGD_NAME)
