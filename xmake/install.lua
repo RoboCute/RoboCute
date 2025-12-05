@@ -22,5 +22,5 @@ function main(mode)
     file:write("# generated __init__.py")
     file:close()
 
-    os.execv("uv run stubgen")
+    os.execv("uv run stub")
 end

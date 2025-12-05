@@ -18,7 +18,7 @@ dependencies = [
 [project.scripts]
 prepare = "scripts.main:prepare"
 gen = "scripts.main:generate"
-stubgen = "scripts.main:generate_stub"
+stub = "scripts.main:generate_stub"
 
 [build-system]
 requires = ["setuptools>=61.0"]

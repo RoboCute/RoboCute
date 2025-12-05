@@ -10,7 +10,20 @@ import time
 import importlib
 from multiprocessing import Process
 from scripts.generate import GENERATION_TASKS
-from scripts.prepare import *
+from scripts.prepare import (
+    GIT_TASKS,
+    CLANGCXX_NAME,
+    CLANGCXX_PATH,
+    SHADER_PATH,
+    CLANGD_NAME,
+    LC_SDK_ADDRESS,
+    RBC_SDK_ADDRESS,
+    LC_DX_SDK,
+    RENDER_RESOURCE_NAME,
+    PLATFORM,
+    ARCH,
+    XMAKE_GLOBAL_TOOLCHAIN,
+)
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder
 from mypy import stubgen
@@ -391,7 +404,7 @@ def generate_stub_impl(module_name: str, pyd_dir: Path, output_dir: Path):
         pyversion=sys.version_info[:2],
         no_import=False,
         inspect=True,
-        doc_dir='',
+        doc_dir="",
         search_path=[str(pyd_dir)],
         interpreter=sys.executable,
         parse_only=False,
@@ -404,27 +417,27 @@ def generate_stub_impl(module_name: str, pyd_dir: Path, output_dir: Path):
         verbose=True,
         quiet=False,
         export_less=False,
-        include_docstrings=False
+        include_docstrings=False,
     )
     try:
         stubgen.generate_stubs(options)
     except Exception as e:
         print(f"Error generating stubs: {e}")
         sys.exit(1)
+
     print(f"Stub generated for module: {module_name}")
     print(f"  Output directory: {output_dir.resolve()}")
-
 
 
 def generate_stub():
     start_time = time.time()
     for task in GENERATE_SUB_TASKS:
-        print(f"Generating stub for module: {task['module_name']}")
         generate_stub_impl(
             task["module_name"], rel(task["pyd_dir"]), rel(task["stub_output"])
         )
     duration = time.time() - start_time
     print(f"Stub generation finished in {duration:.2f} seconds.")
+
 
 if __name__ == "__main__":
     # main()

@@ -21,12 +21,9 @@ _type_names = {
     tr.VoidPtr: "void*",
     tr.GUID: "GuidData",
 }
-pybind_argument_pass = {
-    tr.DataBuffer: lambda x: 'to_span_5d4636ab'
-}
-pybind_return_pass = {
-    tr.DataBuffer: lambda x: 'to_memoryview_5d4636ab'
-}
+
+pybind_argument_pass = {tr.DataBuffer: lambda x: "to_span_5d4636ab"}
+pybind_return_pass = {tr.DataBuffer: lambda x: "to_memoryview_5d4636ab"}
 
 
 def _print_str(t, py_interface: bool = False, is_view: bool = False):
@@ -124,9 +121,7 @@ def _print_arg_type(t, py_interface: bool = False, is_view: bool = False):
     tr.log_err(f"invalid type {str(t)}")
 
 
-def _print_arg_vars_decl(
-    args: dict, is_first: bool, py_interface: bool, is_view: bool
-):
+def _print_arg_vars_decl(args: dict, is_first: bool, py_interface: bool, is_view: bool):
     r = ""
     for arg_name in args:
         arg_type = args[arg_name]
@@ -139,8 +134,6 @@ def _print_arg_vars_decl(
     return r
 
 
-
-
 def _print_arg_vars(args: dict, is_first: bool, py_interface: bool):
     r = ""
     for arg_name in args:
@@ -150,10 +143,10 @@ def _print_arg_vars(args: dict, is_first: bool, py_interface: bool):
         is_first = False
         f = pybind_argument_pass.get(arg_type)
         if f:
-            r += f(arg_type) + '('
+            r += f(arg_type) + "("
         r += arg_name
         if f:
-            r += ')'
+            r += ")"
     return r
 
 
@@ -319,12 +312,10 @@ def _print_rpc_serializer(struct_type: tr.struct):
                 cb.add_line(f"struct {arg_struct_name} {{")
                 cb.add_indent()
                 for arg_name in func._args:
-                    cb.add_line(
-                        f"{_print_arg_type(func._args[arg_name])} {arg_name};")
+                    cb.add_line(f"{_print_arg_type(func._args[arg_name])} {arg_name};")
 
                 # serializer
-                cb.add_line(
-                    "void rbc_objser(rbc::JsonSerializer &obj) const {")
+                cb.add_line("void rbc_objser(rbc::JsonSerializer &obj) const {")
                 cb.add_indent()
                 for arg_name in func._args:
                     cb.add_line(f"obj._store({arg_name});")
@@ -378,8 +369,7 @@ def _print_rpc_serializer(struct_type: tr.struct):
             if func._static:
                 call_cb.add_line(f"{full_name}::{func_name}(")
             else:
-                call_cb.add_line(
-                    f"static_cast<{full_name} *>(self)->{func_name}(")
+                call_cb.add_line(f"static_cast<{full_name} *>(self)->{func_name}(")
             arg_is_first = True
             for arg_name in func._args:
                 if not arg_is_first:
@@ -396,8 +386,7 @@ def _print_rpc_serializer(struct_type: tr.struct):
             call_expr += call_cb.get_result()
             arg_meta_defines += f"rbc::HeapObjectMeta::create<{arg_struct_name}>()"
             ret_value_defines += f"rbc::HeapObjectMeta::create<{ret_type_name}>()"
-    hash_name = hashlib.md5(
-        struct_type.full_name().encode("ascii")).hexdigest()
+    hash_name = hashlib.md5(struct_type.full_name().encode("ascii")).hexdigest()
     args_defines = f"""static rbc::FuncSerializer func_ser{hash_name}{{
     std::initializer_list<const char *>{{{func_names}}},
     std::initializer_list<rbc::FuncSerializer::AnyFuncPtr>{{{call_expr}}},
@@ -546,8 +535,7 @@ def _print_client_impl(struct_type: tr.struct):
             for arg_name in func._args:
                 cb.add_line(f"{JSON_SER_NAME}.add_arg({arg_name});")
             if func._ret_type and func._ret_type != tr.void:
-                cb.add_line(
-                    f"return {JSON_SER_NAME}.return_value<{ret_type_name}>();")
+                cb.add_line(f"return {JSON_SER_NAME}.return_value<{ret_type_name}>();")
 
             cb.remove_indent()
             cb.add_line("}")
@@ -648,8 +636,7 @@ def cpp_interface_gen(*extra_includes):
         namespace = struct_type.namespace_name()
         if len(namespace) > 0:
             cb.add_line(f"namespace {namespace} {{")
-        cb.add_line(
-            f"struct {struct_type.class_name()} : vstd::IOperatorNewBase {{")
+        cb.add_line(f"struct {struct_type.class_name()} : vstd::IOperatorNewBase {{")
         cb.add_indent()
         if struct_type._default_ctor:
             cb.add_line(f"{struct_type.class_name()}();")
@@ -666,12 +653,14 @@ def cpp_interface_gen(*extra_includes):
             # serialize function
             if len(struct_type._serde_members) > 0:
                 cb.add_line(
-                    f"{struct_type._suffix} void rbc_objser(rbc::JsonSerializer& obj) const;")
+                    f"{struct_type._suffix} void rbc_objser(rbc::JsonSerializer& obj) const;"
+                )
 
             # de-serialize function
             if len(struct_type._serde_members) > 0:
                 cb.add_line(
-                    f"{struct_type._suffix} void rbc_objdeser(rbc::JsonDeSerializer& obj);")
+                    f"{struct_type._suffix} void rbc_objdeser(rbc::JsonDeSerializer& obj);"
+                )
         if len(struct_type._methods) > 0:
             cb.add_result(f"""
    {struct_type._suffix} static {struct_name}* _create_();
@@ -751,8 +740,7 @@ void {export_func_name}(py::module& m) """)
         cb.add_line("});")
         ptr_name = f"ptr_484111b5e8ed4230b5ef5f5fdc33ca81"  # magic name
         # dispose
-        cb.add_line(
-            f'm.def("dispose__{struct_name}__", [](void* {ptr_name})' + "{")
+        cb.add_line(f'm.def("dispose__{struct_name}__", [](void* {ptr_name})' + "{")
         cb.add_indent()
         cb.add_line(f"static_cast<{struct_name}*>({ptr_name})->dispose();")
         cb.remove_indent()
@@ -768,13 +756,12 @@ void {export_func_name}(py::module& m) """)
                 brace = 0
                 if func._ret_type:
                     ret_type = (
-                        " -> " +
-                        _print_arg_type(func._ret_type, True, False) + " "
+                        " -> " + _print_arg_type(func._ret_type, True, False) + " "
                     )
                     return_decl = "return "
                     f = pybind_return_pass.get(func._ret_type)
                     if f:
-                        return_decl += f(func._ret_type) + '('
+                        return_decl += f(func._ret_type) + "("
                         brace += 1
 
                 cb.add_line(
@@ -785,15 +772,14 @@ void {export_func_name}(py::module& m) """)
                     f"{return_decl}static_cast<{struct_name}*>({ptr_name})->{mem_name}({_print_arg_vars(func._args, True, True)})"
                 )
                 while brace != 0:
-                    cb.add_result(')')
+                    cb.add_result(")")
                     brace -= 1
-                cb.add_result(';')
+                cb.add_result(";")
                 cb.remove_indent()
                 cb.add_line("});")
     # end
     cb.remove_indent()
     cb.add_line("}")
-    cb.add_line(
-        f"static ModuleRegister {export_func_name}_({export_func_name});")
+    cb.add_line(f"static ModuleRegister {export_func_name}_({export_func_name});")
     _cpp_impl_gen()
     return cb.get_result()

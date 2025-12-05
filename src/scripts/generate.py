@@ -13,7 +13,7 @@ GENERATION_TASKS = [
     ),
     (
         "rbc_meta.backend_interface",
-        "codegen_header",
+        "codegen_pybind",
         Path("rbc/tests/test_py_codegen/generated").resolve(),
         Path("rbc/tests/test_graphics/generated").resolve(),
         Path("src/rbc_ext").resolve(),
