@@ -136,7 +136,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             cmdlist << (*blit_from_buffer)(temp_img, *frameSettings.radiance_buffer, 3).dispatch(frameSettings.display_resolution);
             frameSettings.resolved_img = &temp_img;
         } else {
-            LUISA_ERROR("Resolved image and radiance buffer is empty");
+            return;
         }
     }
     auto &pipeline_mode = ctx.pipeline_settings->read<PTPipelineSettings>();

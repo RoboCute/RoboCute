@@ -265,7 +265,6 @@ void GraphicsUtils::tick(
     AssetsManager::instance()->wake_load_thread();
     std::unique_lock render_lck{render_device.render_loop_mtx()};
     sm->prepare_frame();
-
     if (require_reset) {
         require_reset = false;
         reset_frame();
@@ -460,6 +459,7 @@ void GraphicsUtils::update_texture(DeviceImage *ptr) {
     frame_mem_io_list.add_callback([m = RC<DeviceImage>(ptr)] {});
 }
 void GraphicsUtils::denoise() {
+    if (!denoiser_inited) return;
     if (!denoise_pack.denoise_callback) {
         LUISA_ERROR("Denoiser not ready.");
     }

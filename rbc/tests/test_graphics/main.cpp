@@ -373,6 +373,7 @@ int main(int argc, char *argv[]) {
         auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
         if (any(window_size != utils.dst_image.size())) {
             utils.resize_swapchain(window_size);
+            frame_index = 0;
         }
         cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
         auto time = clk.toc();
@@ -388,7 +389,7 @@ int main(int argc, char *argv[]) {
             light_move.destroy();
         }
         auto tick_stage = GraphicsUtils::TickStage::OffineCapturing;
-        const uint sample = 128;
+        const uint sample = 16;
         if (frame_index > sample) {
             tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
         }
