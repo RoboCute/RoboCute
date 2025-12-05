@@ -16,12 +16,8 @@ void AccumPass::on_enable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
-    // scene.shader_manager().load("path_tracer/nrd_modulate.bin", modulate);
-    auto load = [&](auto name, auto &&var) {
-        ShaderManager::instance()->async_load(init_counter, name, var);
-    };
-    load("path_tracer/accum/offline_accum.bin", accum);
-    // _lut_baker = lut_baker::load_shader("path_tracer/lut_gen.bin");
+    ShaderManager::instance()->async_load(init_counter, "path_tracer/accum/offline_accum.bin", accum);
+    ShaderManager::instance()->async_load(init_counter, "path_tracer/accum/offline_accum_to_buffer.bin", accum_buffer);
 }
 void AccumPass::wait_enable() {
     init_counter.wait();
@@ -64,7 +60,12 @@ void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &scene = *ctx.scene;
     auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frameSettings.render_resolution);
     temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frameSettings.display_resolution);
-    (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frameSettings.render_resolution, pass_ctx->frame_index).dispatch(frameSettings.display_resolution);
+    if (frameSettings.radiance_buffer) {
+        (*ctx.cmdlist) << (*accum_buffer)(emission, pass_ctx->hdr, temp_img, *frameSettings.radiance_buffer, frameSettings.render_resolution, pass_ctx->frame_index).dispatch(frameSettings.display_resolution);
+    } else {
+        (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frameSettings.render_resolution, pass_ctx->frame_index).dispatch(frameSettings.display_resolution);
+    }
+    frameSettings.radiance_buffer = nullptr;
     frameSettings.resolved_img = &temp_img;
 
     /////// Bake lut

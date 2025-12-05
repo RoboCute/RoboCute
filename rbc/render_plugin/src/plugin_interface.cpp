@@ -162,11 +162,13 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
         oidn_module = DynamicModule::load(lc_ctx.runtime_directory(), "oidn_plugin");
         if (!oidn_module) {
             LUISA_WARNING("OIDN not support for reason: plugin not found.");
+            oidn_support != OidnSupport::UnSupported;
             return false;
         }
         oidn_ext = oidn_module.invoke<rbc::DenoiserExt *(luisa::compute::Device const &device)>("rbc_create_oidn", render_device.lc_device());
         if (!oidn_ext) {
             LUISA_WARNING("OIDN not support for reason: plugin not found.");
+            oidn_support != OidnSupport::UnSupported;
             return false;
         }
         return true;
@@ -174,6 +176,9 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
     DenoisePack create_denoise_task(
         luisa::compute::Stream &stream,
         uint2 render_resolution) override {
+        if (oidn_support != OidnSupport::Supported) {
+            LUISA_ERROR("Denoiser not supported.");
+        }
         bool init = false;
 
         // emplace denoiser pack
@@ -215,6 +220,9 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
                 denoiser.execute();
                 stream << synchronize();
             }};
+    }
+    void destroy_denoise_task(luisa::compute::Stream &stream) override {
+        _denoisers.remove(stream.handle());
     }
     ~RenderPluginImpl() {
         _denoisers.clear();

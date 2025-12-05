@@ -14,45 +14,55 @@ using Array = std::array<T, i>;
 namespace rbc {
 struct BufferUploader;
 struct PostPassContext;
-struct  PostPass : public Pass {
+struct PostPass : public Pass {
 public:
-	vstd::optional<LPM> lpm;
-	DeviceConfigExt* device_config;
-	// Shader2D<Image<float>, Image<float>> const* hdr_to_ldr_shader;
+    vstd::optional<LPM> lpm;
+    DeviceConfigExt *device_config;
+    // Shader2D<Image<float>, Image<float>> const* hdr_to_ldr_shader;
 
 private:
-	PostPassContext* post_ctx{};
-	bool aces_lut_dirty = true;
+    PostPassContext *post_ctx{};
+    bool aces_lut_dirty = true;
 
-	using UberShader = Shader2D<
-		Image<float>, // src_img,
-		Volume<float>,// tonemap_volume,
-		post_uber_pass::Args,
-		post_uber_pass::LpmArgs,
-		Buffer<float>,// exposure buffer
-		Image<float>  // out texture
-		>;
-	UberShader const* uber_shader{};
-	luisa::fiber::counter init_counter;
+    using UberShader = Shader2D<
+        Image<float>, // src_img,
+        Volume<float>,// tonemap_volume,
+        post_uber_pass::Args,
+        post_uber_pass::LpmArgs,
+        Buffer<float>,// exposure buffer
+        Image<float>  // out texture
+        >;
+    UberShader const *uber_shader{};
+    Shader2D<
+        Image<float>,// dst
+        Image<float>,// src
+        bool         // reverse rgb
+        > const *blit_shader;
+    Shader2D<
+        Image<float>, // dst
+        Buffer<float>,// src
+        uint          // channel
+        > const *blit_from_buffer;
+    luisa::fiber::counter init_counter;
 
 public:
-	BufferView<float> exposure_buffer() const;
+    BufferView<float> exposure_buffer() const;
 
-	PostPass(DeviceConfigExt* device_config = nullptr);
+    PostPass(DeviceConfigExt *device_config = nullptr);
 
-	~PostPass();
+    ~PostPass();
 
-	void on_enable(Pipeline const& pipeline, Device& device, CommandList& cmdlist, SceneManager& scene) override;
+    void on_enable(Pipeline const &pipeline, Device &device, CommandList &cmdlist, SceneManager &scene) override;
 
-	void early_update(Pipeline const& pipeline, PipelineContext const& ctx) override;
+    void early_update(Pipeline const &pipeline, PipelineContext const &ctx) override;
 
-	void update(Pipeline const& pipeline, PipelineContext const& ctx) override;
+    void update(Pipeline const &pipeline, PipelineContext const &ctx) override;
 
-	void on_frame_end(Pipeline const& pipeline, Device& device, SceneManager& scene) override;
+    void on_frame_end(Pipeline const &pipeline, Device &device, SceneManager &scene) override;
 
-	void on_disable(Pipeline const& pipeline, Device& device, CommandList& cmdlist, SceneManager& scene) override;
+    void on_disable(Pipeline const &pipeline, Device &device, CommandList &cmdlist, SceneManager &scene) override;
 
-	void wait_enable() override;
+    void wait_enable() override;
 };
 }// namespace rbc
 RBC_RTTI(rbc::PostPass)

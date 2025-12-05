@@ -7,6 +7,7 @@
 #include <luisa/runtime/stream.h>
 namespace rbc {
 struct DenoisePack {
+    // not really buffer
     luisa::compute::Buffer<float> external_albedo;
     luisa::compute::Buffer<float> external_normal;
     luisa::compute::Buffer<float> external_input;
@@ -36,5 +37,6 @@ struct RenderPlugin : Plugin {
     virtual DenoisePack create_denoise_task(
         luisa::compute::Stream &stream,
         uint2 render_resolution) = 0;
+    virtual void destroy_denoise_task(luisa::compute::Stream &stream) = 0;
 };
 }// namespace rbc

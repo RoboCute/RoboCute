@@ -24,7 +24,7 @@ protected:
     oidn::BufferRef _normal_buffer;
     oidn::FilterRef _albedo_prefilter;
     oidn::FilterRef _normal_prefilter;
-    virtual void reset() noexcept;
+    virtual void reset() noexcept override;
     virtual oidn::BufferRef get_buffer(DenoiserExt::Image const &img, bool read) noexcept = 0;
     void exec_filters() noexcept;
     virtual ~OidnDenoiser() = default;

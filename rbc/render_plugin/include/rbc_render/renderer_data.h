@@ -30,14 +30,10 @@ struct JitterData {
     uint jitter_phase_count;
     float2 jitter;
 };
-enum struct PTPipelineMode {
-    PathTracingComputing,
-    PathTracingDisplay,
-    RasterDisplay,
-    OnlyDisplay
-};
 struct PTPipelineSettings {
-    PTPipelineMode mode{PTPipelineMode::PathTracingDisplay};
+    bool use_raster: 1{false};
+    bool use_raytracing: 1{true};
+    bool use_post_filter : 1{true};
 };
 }// namespace rbc
 RBC_RTTI(rbc::CameraData)

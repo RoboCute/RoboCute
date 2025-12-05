@@ -106,6 +106,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         offline_capturing=tr.bool,
         albedo_buffer=tr.external_type("luisa::compute::Buffer<float> const*"),
         normal_buffer=tr.external_type("luisa::compute::Buffer<float> const*"),
+        radiance_buffer=tr.external_type("luisa::compute::Buffer<float> const*"),
         resolved_img=tr.external_type("luisa::compute::Image<float> const*"),
         dst_img=tr.external_type("luisa::compute::Image<float> const*"),
     )

@@ -33,13 +33,15 @@ struct RBC_RUNTIME_API GraphicsUtils {
     vstd::optional<Window> window;
     Swapchain swapchain;
     Image<float> dst_image;
+    DenoisePack denoise_pack;
     // render
     DynamicModule const *render_module;
     RenderPlugin *render_plugin{};
     StateMap render_settings;
     RenderPlugin::PipeCtxStub *display_pipe_ctx{};
     vstd::optional<rbc::Lights> lights;
-    bool require_reset{false};
+    bool require_reset : 1 {false};
+    bool denoiser_inited : 1 {false};
     std::atomic_uint64_t mem_io_fence{};
     std::atomic_uint64_t disk_io_fence{};
 
@@ -58,10 +60,18 @@ struct RBC_RUNTIME_API GraphicsUtils {
     void init_display(uint2 resolution);
     void reset_frame();
     bool should_close();
+    enum struct TickStage {
+        RasterPreview,
+        PathTracingPreview,
+        OffineCapturing,
+        PresentOfflineResult
+    };
     void tick(
         float delta_time,
         uint64_t frame_index,
-        uint2 resolution);
+        uint2 resolution,
+        TickStage tick_stage = TickStage::PathTracingPreview);
+    void denoise();
     void create_texture(
         DeviceImage *ptr,
         PixelStorage storage,

@@ -19,6 +19,13 @@ public:
 		Image<float>,
 		uint2,
 		uint> const* accum;
+	Shader2D<
+		Image<float>,
+		Image<float>,
+		Image<float>,
+		Buffer<float>,
+		uint2,
+		uint> const* accum_buffer;
 	// ShaderBase const* _lut_baker;
 	Buffer<float4> lut_buffer;
 	uint64_t buffer_frame_idx = 0;

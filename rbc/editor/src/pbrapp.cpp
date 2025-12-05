@@ -112,30 +112,22 @@ void PBRApp::update() {
         add_vk_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, VkResourceUsageType::RasterRead);
         add_vk_after_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, VkResourceUsageType::RasterRead);
     }
-    utils.tick([&]() {
-        cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
-        auto &frame_settings = utils.render_settings.read_mut<rbc::FrameSettings>();
-        auto &dst_img = utils.dst_image;
-        frame_settings.render_resolution = dst_img.size();
-        frame_settings.display_resolution = dst_img.size();
-        frame_settings.dst_img = &dst_img;
-        auto time = clk.toc();
-        auto delta_time = time - last_frame_time;
-        last_frame_time = time;
-        frame_settings.delta_time = (float)delta_time;
-        frame_settings.time = time;
-        frame_settings.frame_index = frame_index;
-        ++frame_index;
-        // scene logic
-        if (cube_move) {
-            simple_scene->move_cube(*cube_move);
-            cube_move.destroy();
-        }
-        if (light_move) {
-            simple_scene->move_light(*light_move);
-            light_move.destroy();
-        }
-    });
+    cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
+    auto time = clk.toc();
+    auto delta_time = time - last_frame_time;
+    last_frame_time = time;
+    // scene logic
+    if (cube_move) {
+        simple_scene->move_cube(*cube_move);
+        cube_move.destroy();
+    }
+    if (light_move) {
+        simple_scene->move_light(*light_move);
+        light_move.destroy();
+    }
+    utils.tick(delta_time, frame_index, resolution, GraphicsUtils::TickStage::PresentOfflineResult);
+
+    ++frame_index;
 }
 PBRApp::~PBRApp() {
     utils.dispose([&]() {

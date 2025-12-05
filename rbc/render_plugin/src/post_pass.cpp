@@ -4,6 +4,7 @@
 #include <rbc_graphics/scene_manager.h>
 #include <luisa/runtime/context.h>
 #include <rbc_graphics/render_device.h>
+#include <rbc_render/renderer_data.h>
 
 namespace rbc {
 struct PostPassContext : public PassContext {
@@ -76,6 +77,8 @@ void PostPass::on_enable(Pipeline const &pipeline, Device &device, CommandList &
 
     // uber_shader
     ShaderManager::instance()->async_load(init_counter, "post_process/uber.bin", uber_shader);
+    ShaderManager::instance()->async_load(init_counter, "gui/blit_shader.bin", blit_shader);
+    ShaderManager::instance()->async_load(init_counter, "gui/blit_from_buffer.bin", blit_from_buffer);
     aces_lut_dirty = true;
 }
 
@@ -125,8 +128,21 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
 
     ///////////// recycle unused gbuffer
     ///////////// recycle unused gbuffer
-    if (!frameSettings.resolved_img) [[unlikely]] {
-        LUISA_ERROR("Resolved image is empty");
+    Image<float> temp_img;
+    auto &cmdlist = (*ctx.cmdlist);
+    if (!frameSettings.resolved_img) {
+        if (frameSettings.radiance_buffer) {
+            temp_img = render_device.create_transient_image<float>("temp_tex_from_radiance", PixelStorage::FLOAT4, frameSettings.display_resolution);
+            cmdlist << (*blit_from_buffer)(temp_img, *frameSettings.radiance_buffer, 3).dispatch(frameSettings.display_resolution);
+            frameSettings.resolved_img = &temp_img;
+        } else {
+            LUISA_ERROR("Resolved image and radiance buffer is empty");
+        }
+    }
+    auto &pipeline_mode = ctx.pipeline_settings->read<PTPipelineSettings>();
+    if (!pipeline_mode.use_post_filter) {
+        cmdlist << (*blit_shader)(*frameSettings.dst_img, *frameSettings.resolved_img, false).dispatch(frameSettings.dst_img->size());
+        return;
     }
     auto &scene = *ctx.scene;
 
@@ -158,13 +174,13 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
 
     post_ctx->exposure.generate(
         exposureSettings,
-        (*ctx.cmdlist),
+        cmdlist,
         read_tex(),
         frameSettings.display_resolution,
         post_ctx->reset, frameSettings.delta_time);
 
     if (aces_lut_dirty) {
-        post_ctx->aces.dispatch(toneMappingSettings.aces, (*ctx.cmdlist));
+        post_ctx->aces.dispatch(toneMappingSettings.aces, cmdlist);
         aces_lut_dirty = false;
     }
     args.saturate_result = !displaySettings.use_hdr_display;
@@ -181,15 +197,15 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     LUISA_ASSERT(read_tex(), "Bad read");
     LUISA_ASSERT(post_ctx->aces.lut3d_volume, "Bad lut3d");
     auto lpm_args = LPM::compute(toneMappingSettings.lpm);
-    (*ctx.cmdlist) << (*uber_shader)(
-                          read_tex(),
-                          post_ctx->aces.lut3d_volume,
-                          //    post_ctx->exposure.local_exp_volume,
-                          args,
-                          lpm_args,
-                          post_ctx->exposure.exposure_buffer,
-                          *uber_out_img)
-                          .dispatch(frameSettings.display_resolution);
+    cmdlist << (*uber_shader)(
+                   read_tex(),
+                   post_ctx->aces.lut3d_volume,
+                   //    post_ctx->exposure.local_exp_volume,
+                   args,
+                   lpm_args,
+                   post_ctx->exposure.exposure_buffer,
+                   *uber_out_img)
+                   .dispatch(frameSettings.display_resolution);
 }
 
 void PostPass::on_frame_end(Pipeline const &pipeline, Device &device, SceneManager &scene) {

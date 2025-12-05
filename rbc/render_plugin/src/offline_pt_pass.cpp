@@ -92,7 +92,7 @@ void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const
 }
 void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
-    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
+    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
     auto &scene = *ctx.scene;
     auto &cmdlist = (*ctx.cmdlist);
     auto &accel = scene.accel();
@@ -271,6 +271,8 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                        .dispatch(frameSettings.render_resolution);
         cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, max_accum).dispatch(key_buffer.size());
     }
+    frameSettings.albedo_buffer = nullptr;
+    frameSettings.normal_buffer = nullptr;
 }
 void OfflinePTPass::on_frame_end(
     Pipeline const &pipeline,

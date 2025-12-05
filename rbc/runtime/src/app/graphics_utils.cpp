@@ -6,6 +6,7 @@
 #include <luisa/runtime/rtx/triangle.h>
 #include <rbc_app/graphics_utils.h>
 #include <rbc_runtime/plugin_manager.h>
+#include <rbc_render/renderer_data.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -213,6 +214,7 @@ void GraphicsUtils::init_render() {
     LUISA_ASSERT(render_plugin->initialize_pipeline({}));
     sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false, false);
     sm->prepare_frame();
+    denoiser_inited = render_plugin->init_oidn();
 }
 
 void GraphicsUtils::init_present_stream() {
@@ -258,7 +260,8 @@ bool GraphicsUtils::should_close() {
 void GraphicsUtils::tick(
     float delta_time,
     uint64_t frame_index,
-    uint2 resolution) {
+    uint2 resolution,
+    TickStage tick_stage) {
     AssetsManager::instance()->wake_load_thread();
     std::unique_lock render_lck{render_device.render_loop_mtx()};
     sm->prepare_frame();
@@ -272,15 +275,69 @@ void GraphicsUtils::tick(
     if (!display_pipe_ctx)
         return;
 
-    {
-        auto &frame_settings = render_settings.read_mut<rbc::FrameSettings>();
-        frame_settings.render_resolution = resolution;
-        frame_settings.display_resolution = dst_image.size();
-        frame_settings.dst_img = &dst_image;
-        frame_settings.delta_time = (float)delta_time;
-        frame_settings.frame_index = frame_index;
-    }
+    auto &frame_settings = render_settings.read_mut<rbc::FrameSettings>();
+    auto &pipe_settings = render_settings.read_mut<rbc::PTPipelineSettings>();
+    frame_settings.render_resolution = resolution;
+    frame_settings.display_resolution = dst_image.size();
+    frame_settings.dst_img = &dst_image;
+    frame_settings.delta_time = (float)delta_time;
+    frame_settings.frame_index = frame_index;
+    frame_settings.albedo_buffer = nullptr;
+    frame_settings.normal_buffer = nullptr;
+    frame_settings.radiance_buffer = nullptr;
+    frame_settings.resolved_img = nullptr;
     auto &main_stream = render_device.lc_main_stream();
+    auto dispose_denoise_pack = vstd::scope_exit([&] {
+        if (denoise_pack.external_albedo)
+            sm->dispose_after_sync(std::move(denoise_pack.external_albedo));
+        if (denoise_pack.external_input)
+            sm->dispose_after_sync(std::move(denoise_pack.external_input));
+        if (denoise_pack.external_output)
+            sm->dispose_after_sync(std::move(denoise_pack.external_output));
+        if (denoise_pack.external_normal)
+            sm->dispose_after_sync(std::move(denoise_pack.external_normal));
+    });
+    denoise_pack = {};
+    switch (tick_stage) {
+        case TickStage::OffineCapturing:
+        case TickStage::PresentOfflineResult:
+            if (denoiser_inited) {
+                denoise_pack = render_plugin->create_denoise_task(
+                    main_stream,
+                    frame_settings.display_resolution);
+            }
+            break;
+    }
+    switch (tick_stage) {
+        case TickStage::RasterPreview:
+            pipe_settings.use_raster = true;
+            pipe_settings.use_raytracing = false;
+            pipe_settings.use_post_filter = false;
+            break;
+        case TickStage::PathTracingPreview:
+            pipe_settings.use_raster = false;
+            pipe_settings.use_raytracing = true;
+            pipe_settings.use_post_filter = true;
+            break;
+        case TickStage::OffineCapturing:
+            if (denoiser_inited) {
+                frame_settings.albedo_buffer = &denoise_pack.external_albedo;
+                frame_settings.normal_buffer = &denoise_pack.external_normal;
+                frame_settings.radiance_buffer = &denoise_pack.external_input;
+            }
+            pipe_settings.use_raster = false;
+            pipe_settings.use_raytracing = true;
+            pipe_settings.use_post_filter = true;
+            break;
+        case TickStage::PresentOfflineResult:
+            if (denoiser_inited) {
+                frame_settings.radiance_buffer = &denoise_pack.external_output;
+            }
+            pipe_settings.use_raster = false;
+            pipe_settings.use_raytracing = false;
+            pipe_settings.use_post_filter = true;
+            break;
+    }
     auto &cmdlist = render_device.lc_main_cmd_list();
     if (!frame_mem_io_list.empty()) {
         mem_io_fence = render_device.mem_io_service()->execute(std::move(frame_mem_io_list));
@@ -401,6 +458,12 @@ void GraphicsUtils::update_texture(DeviceImage *ptr) {
         0,
         IOTextureSubView{ptr->get_float_image()}};
     frame_mem_io_list.add_callback([m = RC<DeviceImage>(ptr)] {});
+}
+void GraphicsUtils::denoise() {
+    if (!denoise_pack.denoise_callback) {
+        LUISA_ERROR("Denoiser not ready.");
+    }
+    denoise_pack.denoise_callback();
 }
 void GraphicsUtils::create_texture(
     DeviceImage *ptr,

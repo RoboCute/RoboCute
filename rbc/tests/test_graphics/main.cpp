@@ -387,10 +387,20 @@ int main(int argc, char *argv[]) {
             simple_scene->move_light(*light_move);
             light_move.destroy();
         }
+        auto tick_stage = GraphicsUtils::TickStage::OffineCapturing;
+        const uint sample = 128;
+        if (frame_index > sample) {
+            tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
+        }
         utils.tick(
             static_cast<float>(delta_time),
             frame_index,
-            window_size);
+            window_size,
+            tick_stage);
+        if (frame_index == sample) {
+            LUISA_INFO("Denoising..");
+            utils.denoise();
+        }
         ++frame_index;
     }
     // rpc_hook.shutdown_remote();
