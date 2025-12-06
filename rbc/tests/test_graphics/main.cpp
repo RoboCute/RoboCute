@@ -310,16 +310,23 @@ int main(int argc, char *argv[]) {
     bool reset = false;
     auto &click_mng = utils.render_settings.read_mut<ClickManager>();
     uint2 window_size = utils.window->size();
+    float2 start_uv, end_uv;
+    bool dragging = false;
     utils.window->set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
-        if (action != Action::ACTION_PRESSED) {
-            return;
+        if (action == Action::ACTION_PRESSED) {
+            start_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
+            dragging = true;
+        } else if (action == Action::ACTION_RELEASED) {
+            dragging = false;
         }
-        click_mng.add_require(
-            "click",
-            ClickRequire{xy / make_float2(window_size)});
+    });
+    utils.window->set_cursor_position_callback([&](float2 xy) {
+        if (dragging) {
+            end_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
+        }
     });
     utils.window->set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
-        if (action != Action::ACTION_PRESSED) return;
+        if (action == Action::ACTION_PRESSED) return;
         frame_index = 0;
         reset = true;
         switch (key) {
@@ -398,6 +405,12 @@ int main(int argc, char *argv[]) {
             simple_scene->move_light(*light_move);
             light_move.destroy();
         }
+        click_mng.add_frame_selection("dragging", min(start_uv, end_uv) * 2.f - 1.f, max(start_uv, end_uv) * 2.f - 1.f);
+        auto dragging_result = click_mng.query_frame_selection("dragging");
+        if (!dragging_result.empty()) {
+            click_mng.set_contour_objects(std::move(dragging_result));
+        }
+
         auto tick_stage = GraphicsUtils::TickStage::RasterPreview;
         // const uint sample = 16;
         // if (frame_index > sample) {

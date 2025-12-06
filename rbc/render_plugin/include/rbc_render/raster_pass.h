@@ -12,8 +12,8 @@ namespace rbc {
 struct RasterPass : public Pass {// struct Reservoir
 private:
     luisa::fiber::counter _init_counter;
-    RasterShader<Buffer<AccelManager::RasterElement>, raster::VertArgs> const *_draw_id_shader;
-    RasterShader<AccelManager::RasterElement, float4x4> const *_contour_draw;
+    RasterShader<Buffer<geometry::RasterElement>, raster::VertArgs> const *_draw_id_shader;
+    RasterShader<Buffer<geometry::RasterElement>, float4x4> const *_contour_draw;
     Shader2D<Image<uint>, uint4> const *_clear_id;
     Shader2D<Image<uint>, Image<float>> const *_shading_id;
     Shader2D<Image<float>, Image<float>, int2, int, float> const *_contour_flood;
@@ -36,7 +36,7 @@ public:
     ~RasterPass();
     Image<float> emission;
     void wait_enable() override;
-    void contour(PipelineContext const &ctx, uint object_id);
+    void contour(PipelineContext const &ctx, luisa::span<uint const> draw_indices);
 };
 struct RasterPassContext : public PassContext {
     DepthBuffer depth_buffer;

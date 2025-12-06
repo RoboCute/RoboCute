@@ -572,7 +572,7 @@ void AccelManager::move_the_world(
     _dirty = true;
 }
 
-auto AccelManager::draw_object(uint inst_id, uint submesh_index) -> DrawCommand {
+auto AccelManager::draw_object(uint inst_id, uint draw_instance_count, uint object_id, uint submesh_index) -> DrawCommand {
     DrawCommand cmd;
     auto inst = try_get_accel_element(inst_id);
     if (!inst) return cmd;
@@ -601,7 +601,7 @@ auto AccelManager::draw_object(uint inst_id, uint submesh_index) -> DrawCommand 
         mesh_data->pack.data.view(
             mesh_data->meta.tri_byte_offset / sizeof(uint) + triangle_offset * 3,
             triangle_size * 3),
-        1, 0, 0);
+        draw_instance_count, object_id, 0);
     return cmd;
 }
 
@@ -700,6 +700,30 @@ void AccelManager::make_draw_list(
     after_commit_dispqueue.dispose_after_queue(std::move(elem_host));
     mesh_map->clear();
     _cache_maps.push(std::move(*mesh_map));
+}
+
+void AccelManager::iterate_scene(
+    vstd::function<bool(uint user_id, float4x4 const &transform, AABB const &bounding_box)> const &callback// return: true to break submesh
+) {
+    luisa::fiber::parallel(
+        _accel_elements.size(), [&](uint idx) {
+            auto &inst = _accel_elements[idx];
+            if (!inst.mesh_data.is_type_of<MeshManager::MeshData *>()) {
+                return;
+            }
+            auto mesh = inst.mesh_data.force_get<MeshManager::MeshData *>();
+            for (auto submesh_idx : vstd::range(std::max<uint>(mesh->submesh_offset.size(), 1))) {
+                // bool keep = false;
+                // TODO: cull
+                if (!mesh->bbox_requests || !mesh->bbox_requests->finished) {
+                    continue;
+                }
+                if (callback(inst.user_id, inst.transform, mesh->bbox_requests->bounding_box[submesh_idx])) {
+                    break;
+                }
+            }
+        },
+        128);
 }
 
 }// namespace rbc

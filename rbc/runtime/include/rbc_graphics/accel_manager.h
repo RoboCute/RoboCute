@@ -7,7 +7,7 @@
 #include <luisa/core/fiber.h>
 #include <luisa/runtime/raster/raster_scene.h>
 #include <luisa/runtime/raster/raster_shader.h>
-#include <luisa/runtime/shader.h> 
+#include <luisa/runtime/shader.h>
 #include <luisa/runtime/rtx/accel.h>
 #include <luisa/runtime/raster/raster_state.h>
 #include <luisa/runtime/rtx/procedural_primitive.h>
@@ -236,10 +236,13 @@ public:
         vstd::function<bool(float4x4 const &, AABB const &)> const &cull_func,
         DrawListMap &out_draw_meshes,
         BufferView<RasterElement> &out_data_buffer);
+    void iterate_scene(
+        vstd::function<bool(uint user_id, float4x4 const &transform, AABB const &bounding_box)> const &callback// return: true to break submesh
+    );
     struct DrawCommand {
         RasterMesh mesh;
         RasterElement info;
     };
-    DrawCommand draw_object(uint inst_id, uint submesh_index = ~0u);// submesh_index = -1 for draw all submesh
+    DrawCommand draw_object(uint inst_id, uint draw_instance_count, uint object_id, uint submesh_index = ~0u);// submesh_index = -1 for draw all submesh
 };
 }// namespace rbc

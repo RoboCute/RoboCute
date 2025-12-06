@@ -23,9 +23,9 @@ struct RBC_RUNTIME_API Camera {
     void set_aspect_ratio_from_resolution(float width, float height);
 
     // matrix getter
-    std::array<float3, 8> frustum_corners() const;
-    std::array<float3, 4> frustum_plane_points(float z_depth) const;
-    std::array<float4, 6> frustum_plane() const;
+    std::array<float3, 8> frustum_corners(float2 min_projection = float2(-1, -1), float2 max_projection = float2(1, 1)) const;
+    std::array<float3, 4> frustum_plane_points(float z_depth, float2 min_projection = float2(-1, -1), float2 max_projection = float2(1, 1)) const;
+    std::array<float4, 6> frustum_plane(float2 min_projection = float2(-1, -1), float2 max_projection = float2(1, 1)) const;
     float4x4 rotation_matrix() const;
     float4x4 projection_matrix() const;
     float4x4 local_to_world_matrix() const;

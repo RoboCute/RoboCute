@@ -2,10 +2,10 @@
 #include <luisa/vstl/common.h>
 namespace rbc {
 struct ClickRequire {
-    float2 screen_uv;
+    luisa::float2 screen_uv;
 };
 struct RayCastResult {
-    float2 triangle_bary;
+    luisa::float2 triangle_bary;
     uint inst_id{~0u};
     uint prim_id{~0u};
     uint mat_code;
@@ -13,11 +13,20 @@ struct RayCastResult {
 };
 
 struct ClickManager {
+    friend struct PipelineContext;
     friend struct RasterPass;
     inline void add_require(
         luisa::string &&key,
         ClickRequire const &require) {
+        std::lock_guard lck{_mtx};
         _requires.emplace_back(std::move(key), require);
+    }
+    inline void add_frame_selection(
+        luisa::string &&key,
+        luisa::float2 min_projection,
+        luisa::float2 max_projection) {
+        std::lock_guard lck{_mtx};
+        _frame_selection_requires.emplace_back(std::move(key), luisa::make_float4(min_projection, max_projection));
     }
     inline luisa::optional<RayCastResult> query_result(luisa::string_view key) {
         std::lock_guard lck{_mtx};
@@ -32,19 +41,34 @@ struct ClickManager {
         }
         return {};
     }
-    inline void clear_requires() {
+    inline luisa::vector<uint> query_frame_selection(luisa::string_view key) {
         std::lock_guard lck{_mtx};
-        _requires.clear();
+        if (auto kvp = _frame_selection_results.find(key)) {
+            auto disp = vstd::scope_exit([&]() {
+                _frame_selection_results.remove(kvp);
+            });
+            return {std::move(kvp.value())};
+        }
+        return {};
     }
-    void clear() {
+
+    inline void set_contour_objects(luisa::vector<uint> &&obj_ids) {
         std::lock_guard lck{_mtx};
-        _requires.clear();
-        _results.clear();
+        _contour_objects = std::move(obj_ids);
+    }
+    inline void add_contour_objects(uint obj_id) {
+        std::lock_guard lck{_mtx};
+        _contour_objects.emplace_back(obj_id);
     }
 
 private:
+    void clear_requires();
+    void clear();
+    luisa::vector<uint> _contour_objects;
     luisa::vector<std::pair<luisa::string, ClickRequire>> _requires;
+    luisa::vector<std::pair<luisa::string, luisa::float4>> _frame_selection_requires;
     vstd::HashMap<luisa::string, RayCastResult> _results;
+    vstd::HashMap<luisa::string, luisa::vector<uint>> _frame_selection_results;
     luisa::spin_mutex _mtx;
 };
 }// namespace rbc
