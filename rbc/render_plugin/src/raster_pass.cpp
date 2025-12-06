@@ -46,13 +46,13 @@ void RasterPass::wait_enable() {
     _init_counter.wait();
 }
 
-void RasterPass::contour(PipelineContext const &ctx) {
+void RasterPass::contour(PipelineContext const &ctx, uint object_id) {
     RasterState raster_state{
         .cull_mode = CullMode::None,
     };
     auto &sm = SceneManager::instance();
     auto &render_device = RenderDevice::instance();
-    auto draw_cmd = sm.accel_manager().draw_object(0);
+    auto draw_cmd = sm.accel_manager().draw_object(object_id);
     luisa::vector<RasterMesh> meshes;
     meshes.push_back(std::move(draw_cmd.mesh));
     const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
@@ -168,7 +168,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                        .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, id_map);
     }
     cmdlist << (*_shading_id)(id_map, emission).dispatch(frame_settings.render_resolution);
-    contour(ctx);
+    // contour(ctx, 0);
     auto click_manager = ctx.pipeline_settings->read_if<ClickManager>();
     if (click_manager && !click_manager->_requires.empty()) {
         auto &reqs = click_manager->_requires;

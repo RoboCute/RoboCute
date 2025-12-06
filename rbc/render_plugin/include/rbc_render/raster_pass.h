@@ -36,7 +36,7 @@ public:
     ~RasterPass();
     Image<float> emission;
     void wait_enable() override;
-    void contour(PipelineContext const &ctx);
+    void contour(PipelineContext const &ctx, uint object_id);
 };
 struct RasterPassContext : public PassContext {
     DepthBuffer depth_buffer;
