@@ -11,7 +11,8 @@ struct PostPassContext : public PassContext {
     // FrameGen frame_gen;
     ACES aces;
     Exposure exposure;
-    bool reset{true};
+    bool reset : 1 {true};
+    bool aces_lut_dirty : 1 {true};
     PostPassContext(
         Device &device,
         luisa::fiber::counter &init_counter,
@@ -79,7 +80,6 @@ void PostPass::on_enable(Pipeline const &pipeline, Device &device, CommandList &
     ShaderManager::instance()->async_load(init_counter, "post_process/uber.bin", uber_shader);
     ShaderManager::instance()->async_load(init_counter, "gui/blit_shader.bin", blit_shader);
     ShaderManager::instance()->async_load(init_counter, "gui/blit_from_buffer.bin", blit_from_buffer);
-    aces_lut_dirty = true;
 }
 
 void PostPass::wait_enable() {
@@ -96,7 +96,8 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
     const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
     const auto &exposureSettings = ctx.pipeline_settings->read<ExposureSettings>();
     init_counter.wait();
-    if (!frameSettings.resolved_img && !frameSettings.radiance_buffer) {
+    auto &pipeline_mode = ctx.pipeline_settings->read<PTPipelineSettings>();
+    if (!pipeline_mode.use_post_filter) {
         post_ctx = nullptr;
         return;
     }
@@ -110,13 +111,14 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
         toneMappingSettings.lpm.displayMinLuminance,
         toneMappingSettings.lpm.displayMaxLuminance,
         displaySettings.use_hdr_display);
+    init_counter.wait();
     post_ctx->reset |= frameSettings.frame_index == 0;
     auto &scene = ctx.scene;
     if (post_ctx->reset) {
-        aces_lut_dirty = true;
+        post_ctx->aces_lut_dirty = true;
     }
-    aces_lut_dirty |= toneMappingSettings.aces.dirty;
-    if (aces_lut_dirty) {
+    post_ctx->aces_lut_dirty |= toneMappingSettings.aces.dirty;
+    if (post_ctx->aces_lut_dirty) {
         post_ctx->aces.early_render(toneMappingSettings.aces, (*ctx.device), (*ctx.cmdlist), ctx.scene->host_upload_buffer());
     }
 }
@@ -182,9 +184,9 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         frameSettings.display_resolution,
         post_ctx->reset, frameSettings.delta_time);
 
-    if (aces_lut_dirty) {
+    if (post_ctx->aces_lut_dirty) {
         post_ctx->aces.dispatch(toneMappingSettings.aces, cmdlist);
-        aces_lut_dirty = false;
+        post_ctx->aces_lut_dirty = false;
     }
     args.saturate_result = !displaySettings.use_hdr_display;
     args.gamma = displaySettings.use_hdr_display || displaySettings.use_linear_sdr ? 1.0f : 1.0f / displaySettings.gamma;// TODO

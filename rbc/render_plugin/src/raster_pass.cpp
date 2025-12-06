@@ -27,22 +27,19 @@ void RasterPass::on_enable(
     //             ->load_raster_shader<Buffer<AccelManager::RasterElement>, raster::VertArgs>("raster/test_raster.bin");
     //     _init_counter.done();
     // });
-    _init_counter.add();
-    luisa::fiber::schedule([this] {
-        _draw_id_shader =
-            ShaderManager::instance()
-                ->load_raster_shader<Buffer<AccelManager::RasterElement>, raster::VertArgs>("raster/accel_id.bin");
-        _init_counter.done();
-    });
+    ShaderManager::instance()->async_load_raster_shader(_init_counter, "raster/accel_id.bin", _draw_id_shader);
     ShaderManager::instance()->async_load(
         _init_counter,
         "raster/clear_id.bin",
-        clear_id);
+        _clear_id);
     ShaderManager::instance()->async_load(
         _init_counter,
         "raster/shading_id.bin",
-        shading_id);
-    RBC_LOAD_SHADER(click_pick, click_pick, "raster/click_pick.bin");
+        _shading_id);
+    ShaderManager::instance()->async_load_raster_shader(_init_counter,  "raster/contour_draw.bin", _contour_draw);
+    ShaderManager::instance()->async_load(_init_counter, "raster/contour_flood.bin", _contour_flood);
+    ShaderManager::instance()->async_load(_init_counter, "raster/contour_reduce.bin", _contour_reduce);
+    RBC_LOAD_SHADER(_click_pick, click_pick, "raster/click_pick.bin");
 }
 #undef RBC_LOAD_SHADER
 void RasterPass::wait_enable() {
@@ -97,7 +94,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frameSettings.render_resolution, 1, false, true);
     emission = render_device.create_transient_image<float>("emission", PixelStorage::HALF4, frameSettings.render_resolution, 1, false, true);
     cmdlist << pass_ctx->depth_buffer.clear(0.0f)
-            << (*clear_id)(id_map, uint4(-1, -1, 0, 0)).dispatch(frameSettings.render_resolution);
+            << (*_clear_id)(id_map, uint4(-1, -1, 0, 0)).dispatch(frameSettings.render_resolution);
     //
     if (!draw_meshes.empty()) {
         raster::VertArgs vert_args{
@@ -109,7 +106,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         cmdlist << _draw_id_shader(data_buffer, vert_args)
                        .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frameSettings.render_resolution.x, frameSettings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, id_map);
     }
-    cmdlist << (*shading_id)(id_map, emission).dispatch(frameSettings.render_resolution);
+    cmdlist << (*_shading_id)(id_map, emission).dispatch(frameSettings.render_resolution);
     frameSettings.resolved_img = &emission;
     auto click_manager = ctx.pipeline_settings->read_if<ClickManager>();
     if (click_manager && !click_manager->_requires.empty()) {
@@ -125,7 +122,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             return reqs[i].second.screen_uv;
         });
         std::memcpy(require_buffer.mapped_ptr(), req_coords.data(), req_coords.size_bytes());
-        cmdlist << click_pick::dispatch_shader(click_pick, reqs.size(), sm.buffer_heap(), require_buffer.view, id_map, result_buffer.view())
+        cmdlist << click_pick::dispatch_shader(_click_pick, reqs.size(), sm.buffer_heap(), require_buffer.view, id_map, result_buffer.view())
                 << result_buffer.view().copy_to(result.data());
         cmdlist.add_callback([&ctx,
                               reqs = std::move(reqs),

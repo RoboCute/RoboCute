@@ -22,7 +22,6 @@ public:
 
 private:
     PostPassContext *post_ctx{};
-    bool aces_lut_dirty = true;
 
     using UberShader = Shader2D<
         Image<float>, // src_img,

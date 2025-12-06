@@ -12,9 +12,12 @@ struct RasterPass : public Pass {// struct Reservoir
 private:
     luisa::fiber::counter _init_counter;
     RasterShader<Buffer<AccelManager::RasterElement>, raster::VertArgs> _draw_id_shader;
-    Shader2D<Image<uint>, uint4> const *clear_id;
-    Shader2D<Image<uint>, Image<float>> const *shading_id;
-    ShaderBase const* click_pick;
+    RasterShader<Buffer<AccelManager::RasterElement>, float4x4> _contour_draw;
+    Shader2D<Image<uint>, uint4> const *_clear_id;
+    Shader2D<Image<uint>, Image<float>> const *_shading_id;
+    Shader2D<Image<float>, Image<float>, int2, int, float> const *_contour_flood;
+    Shader2D<Image<float>, Image<float>> const *_contour_reduce;
+    ShaderBase const *_click_pick;
 
 public:
     void on_enable(

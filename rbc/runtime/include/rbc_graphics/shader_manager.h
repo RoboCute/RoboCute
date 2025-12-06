@@ -167,6 +167,14 @@ public:
     RasterShader<Args...> load_raster_shader(luisa::string_view shader_name) {
         return _device.template load_raster_shader<Args...>(luisa::to_string(_shader_path / shader_name));
     }
+    template<typename... Args>
+    void async_load_raster_shader(luisa::fiber::counter &counter, luisa::string_view shader_name, RasterShader<Args...> &shader) {
+        counter.add();
+        luisa::fiber::schedule([this, counter, &shader, shader_name = luisa::string(shader_name)] {
+            shader = _device.template load_raster_shader<Args...>(luisa::to_string(_shader_path / shader_name));
+            counter.done();
+        });
+    }
     template<size_t N, typename Func>
         requires(std::negation_v<luisa::compute::detail::is_dsl_kernel<std::remove_cvref_t<Func>>> && N >= 1 && N <= 3)
     [[nodiscard]] auto compile(
