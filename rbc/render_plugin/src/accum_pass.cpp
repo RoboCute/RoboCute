@@ -25,18 +25,18 @@ void AccumPass::wait_enable() {
 void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &jitter_data = ctx.pipeline_settings->read_mut<JitterData>();
 
-    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
+    const auto &frame_settings = ctx.pipeline_settings->read<FrameSettings>();
     pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
-    pass_ctx->frame_index = std::min<size_t>(pass_ctx->frame_index, frameSettings.frame_index);
-    if (any(frameSettings.render_resolution != frameSettings.display_resolution)) {
+    pass_ctx->frame_index = std::min<size_t>(pass_ctx->frame_index, frame_settings.frame_index);
+    if (any(frame_settings.render_resolution != frame_settings.display_resolution)) {
         pass_ctx->frame_index = 0;
     }
     auto &hdr = pass_ctx->hdr;
-    if (hdr && any(hdr.size() != frameSettings.display_resolution)) {
+    if (hdr && any(hdr.size() != frame_settings.display_resolution)) {
         hdr.reset();
     }
     if (!hdr) {
-        hdr = ctx.device->create_image<float>(PixelStorage::FLOAT4, frameSettings.display_resolution);
+        hdr = ctx.device->create_image<float>(PixelStorage::FLOAT4, frame_settings.display_resolution);
     }
     auto &mut = ctx.mut;
     auto halton = [](uint i, uint b) {
@@ -55,18 +55,18 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
 }
 void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &pt_pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
-    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();
     auto &scene = *ctx.scene;
-    auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frameSettings.render_resolution);
-    temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frameSettings.display_resolution);
-    if (frameSettings.radiance_buffer) {
-        (*ctx.cmdlist) << (*accum_buffer)(emission, pass_ctx->hdr, temp_img, *frameSettings.radiance_buffer, frameSettings.render_resolution, pass_ctx->frame_index).dispatch(frameSettings.display_resolution);
+    auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);
+    temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frame_settings.display_resolution);
+    if (frame_settings.radiance_buffer) {
+        (*ctx.cmdlist) << (*accum_buffer)(emission, pass_ctx->hdr, temp_img, *frame_settings.radiance_buffer, frame_settings.render_resolution, pass_ctx->frame_index).dispatch(frame_settings.display_resolution);
     } else {
-        (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frameSettings.render_resolution, pass_ctx->frame_index).dispatch(frameSettings.display_resolution);
+        (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frame_settings.render_resolution, pass_ctx->frame_index).dispatch(frame_settings.display_resolution);
     }
-    frameSettings.radiance_buffer = nullptr;
-    frameSettings.resolved_img = &temp_img;
+    frame_settings.radiance_buffer = nullptr;
+    frame_settings.resolved_img = &temp_img;
 
     /////// Bake lut
     // constexpr uint64_t lut_frame = 16384;

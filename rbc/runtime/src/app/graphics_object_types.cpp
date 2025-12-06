@@ -3,7 +3,7 @@
 #include <luisa/vstl/common.h>
 namespace rbc {
 void MaterialStub::craete_pbr_material() {
-    mat_data.reset_as(MaterialStub::MatDataType::IndexOf<material::OpenPBR>);
+    mat_data.reset_as<material::OpenPBR>();
     mat_code.value = ~0u;
 }
 void MaterialStub::update_material(luisa::string_view json) {

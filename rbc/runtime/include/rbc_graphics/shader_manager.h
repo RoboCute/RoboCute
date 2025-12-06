@@ -4,6 +4,7 @@
 #include <luisa/dsl/func.h>
 #include <luisa/core/fiber.h>
 #include <luisa/runtime/shader.h>
+#include <luisa/runtime/raster/raster_shader.h>
 #include <luisa/ast/function.h>
 #include <luisa/vstl/common.h>
 #include <luisa/vstl/functional.h>
@@ -31,10 +32,26 @@ struct is_lc_shader<Shader<dim, Args...>> {
         return luisa::compute::detail::shader_argument_types<Args...>();
     }
 };
+template<typename... Args>
+struct is_lc_shader<RasterShader<Args...>> {
+    static constexpr bool value = true;
+    static RasterShader<Args...> load_shader(Device &device, string_view name) {
+        auto shader = device.load_raster_shader<Args...>(name);
+        if (!shader) [[unlikely]] {
+            shader_notfound_log(name);
+        }
+        return shader;
+    }
+    static auto arg_types() {
+        return luisa::compute::detail::shader_argument_types<Args...>();
+    }
+};
+using ShaderType = vstd::variant<ShaderBase, RasterShader<>>;
+;
 struct RBC_RUNTIME_API ShaderManager {
-    using ReloadFunc = vstd::function<ShaderBase(Device &device, string_view name)>;
+    using ReloadFunc = vstd::function<ShaderType(Device &device, string_view name)>;
     struct ShaderVariant {
-        ShaderBase shader;
+        ShaderType shader;
         vstd::vector<Type const *> arg_types;
         ReloadFunc reload_func{nullptr};
         luisa::spin_mutex local_mtx;
@@ -43,12 +60,14 @@ struct RBC_RUNTIME_API ShaderManager {
         ShaderVariant()
             : _evt(luisa::fiber::event::Mode::Auto) {
         }
+        template<typename ShaderT>
+            requires(ShaderType::IndexOf<std::remove_cvref_t<ShaderT>> < ShaderType::argSize)
         ShaderVariant(
-            ShaderBase &&shader,
+            ShaderT &&shader,
             vstd::vector<Type const *> &&arg_types,
             ReloadFunc &&reload_func = {},
             bool support_preload = true)
-            : shader(std::move(shader)), arg_types(std::move(arg_types)), reload_func(std::move(reload_func)), _evt(luisa::fiber::event::Mode::Auto), support_preload(support_preload) {
+            : shader(std::forward<ShaderT>(shader)), arg_types(std::move(arg_types)), reload_func(std::move(reload_func)), _evt(luisa::fiber::event::Mode::Auto), support_preload(support_preload) {
         }
     };
 
@@ -66,13 +85,13 @@ private:
     vstd::HashMap<string, ShaderVariant> _shaders;
     void _empty_path_error();
     void _captured_not_empty_error(string_view name);
-    ShaderBase const *_load_shader(
+    ShaderType const *_load_shader(
         luisa::filesystem::path const &shader_path,
         luisa::variant<
             luisa::span<Type const *const>,
             luisa::span<Variable const>>
             args,
-        vstd::FuncRef<ShaderBase(string_view shader_path)> &&create_func,
+        vstd::FuncRef<ShaderType(string_view shader_path)> &&create_func,
         ReloadFunc reload_func,
         bool support_preload);
     template<size_t N, typename... Args>
@@ -88,7 +107,7 @@ private:
         if (!func->bound_arguments().empty()) {
             _captured_not_empty_error(option.name);
         }
-        auto cb = [&](string_view shader_path) -> ShaderBase {
+        auto cb = [&](string_view shader_path) -> ShaderType {
             auto new_option = option;
             new_option.name = shader_path;
             return _device.compile(kernel, new_option);
@@ -99,7 +118,8 @@ private:
                 kernel.function()->arguments(),
                 cb,
                 nullptr,
-                support_preload));
+                support_preload)
+                ->template try_get<ShaderBase>());
     }
     luisa::string_view _path_to_key(luisa::filesystem::path const &path, luisa::string &can_path_str, luisa::string &buffer) const;
 
@@ -116,17 +136,19 @@ public:
     void load(luisa::filesystem::path const &shader_path, T &shader_ptr, bool support_preload = true) {
         using PureT = std::remove_cvref_t<std::remove_pointer_t<T>>;
         using TT = is_lc_shader<PureT>;
-        auto c1 = [&](string_view shader_path) -> ShaderBase {
+        auto c1 = [&](string_view shader_path) -> ShaderType {
             return TT::load_shader(_device, shader_path);
         };
-        auto c2 = [](Device &device, string_view name) -> ShaderBase {
+        auto c2 = [](Device &device, string_view name) -> ShaderType {
             return TT::load_shader(device, name);
         };
-        shader_ptr = static_cast<T>(_load_shader(
-            shader_path,
-            TT::arg_types(),
-            c1, c2,
-            support_preload));
+        shader_ptr = static_cast<T>(
+            _load_shader(
+                shader_path,
+                TT::arg_types(),
+                c1, c2,
+                support_preload)
+                ->template try_get<ShaderBase>());
     }
     template<typename T>
         requires(
@@ -140,7 +162,7 @@ public:
         });
     }
     ShaderBase const *load_typeless(luisa::filesystem::path const &shader_path, luisa::span<Type const *const> types, bool support_preload = true) {
-        auto c1 = [&](string_view shader_path) -> ShaderBase {
+        auto c1 = [&](string_view shader_path) -> ShaderType {
             auto uniform_size = ShaderDispatchCmdEncoder::compute_uniform_size(types);
             return ShaderBase{
                 _device.impl(),
@@ -149,7 +171,7 @@ public:
         };
         luisa::vector<Type const *> types_vec;
         vstd::push_back_all(types_vec, types);
-        auto c2 = [types_vec = std::move(types_vec)](Device &device, string_view name) -> ShaderBase {
+        auto c2 = [types_vec = std::move(types_vec)](Device &device, string_view name) -> ShaderType {
             auto uniform_size = ShaderDispatchCmdEncoder::compute_uniform_size(types_vec);
             return ShaderBase{
                 device.impl(),
@@ -158,20 +180,38 @@ public:
         };
 
         return _load_shader(
-            shader_path,
-            types,
-            c1, c2,
-            support_preload);
+                   shader_path,
+                   types,
+                   c1, c2,
+                   support_preload)
+            ->template try_get<ShaderBase>();
+    }
+    template<typename T>
+        requires(std::is_pointer_v<T> &&
+                 is_lc_shader<std::remove_cvref_t<std::remove_pointer_t<T>>>::value)
+    void load_raster_shader(luisa::filesystem::path const &shader_path, T &shader_ptr) {
+        using PureT = std::remove_cvref_t<std::remove_pointer_t<T>>;
+        using TT = is_lc_shader<PureT>;
+        auto c1 = [&](string_view shader_path) -> ShaderType {
+            return reinterpret_cast<RasterShader<> &&>(TT::load_shader(_device, shader_path));
+        };
+        auto c2 = [](Device &device, string_view name) -> ShaderType {
+            return reinterpret_cast<RasterShader<> &&>(TT::load_shader(device, name));
+        };
+        shader_ptr = reinterpret_cast<T>(
+            _load_shader(
+                shader_path,
+                TT::arg_types(),
+                c1, c2,
+                // raster no support preload
+                false)
+                ->template try_get<RasterShader<>>());
     }
     template<typename... Args>
-    RasterShader<Args...> load_raster_shader(luisa::string_view shader_name) {
-        return _device.template load_raster_shader<Args...>(luisa::to_string(_shader_path / shader_name));
-    }
-    template<typename... Args>
-    void async_load_raster_shader(luisa::fiber::counter &counter, luisa::string_view shader_name, RasterShader<Args...> &shader) {
+    void async_load_raster_shader(luisa::fiber::counter &counter, luisa::string_view shader_name, RasterShader<Args...> const *&shader) {
         counter.add();
-        luisa::fiber::schedule([this, counter, &shader, shader_name = luisa::string(shader_name)] {
-            shader = _device.template load_raster_shader<Args...>(luisa::to_string(_shader_path / shader_name));
+        luisa::fiber::schedule([this, counter, &shader, shader_name = luisa::filesystem::path(shader_name)] {
+            load_raster_shader(shader_name, shader);
             counter.done();
         });
     }

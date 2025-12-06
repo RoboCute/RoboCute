@@ -129,6 +129,3 @@
 #include <rbc_core/rc.h>
 #include <rbc_core/type_info.h>
 #include <rbc_core/enum_serializer.h>
-#include <rbc_graphics/scene_manager.h>
-#include <rbc_graphics/render_device.h>
-#include <rbc_graphics/camera.h>

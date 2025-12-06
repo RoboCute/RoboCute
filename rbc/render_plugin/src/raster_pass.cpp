@@ -36,7 +36,7 @@ void RasterPass::on_enable(
         _init_counter,
         "raster/shading_id.bin",
         _shading_id);
-    ShaderManager::instance()->async_load_raster_shader(_init_counter,  "raster/contour_draw.bin", _contour_draw);
+    ShaderManager::instance()->async_load_raster_shader(_init_counter, "raster/contour_draw.bin", _contour_draw);
     ShaderManager::instance()->async_load(_init_counter, "raster/contour_flood.bin", _contour_flood);
     ShaderManager::instance()->async_load(_init_counter, "raster/contour_reduce.bin", _contour_reduce);
     RBC_LOAD_SHADER(_click_pick, click_pick, "raster/click_pick.bin");
@@ -46,17 +46,77 @@ void RasterPass::wait_enable() {
     _init_counter.wait();
 }
 
+void RasterPass::contour(PipelineContext const &ctx) {
+    RasterState raster_state{
+        .cull_mode = CullMode::None,
+    };
+    auto &sm = SceneManager::instance();
+    auto &render_device = RenderDevice::instance();
+    auto draw_cmd = sm.accel_manager().draw_object(0);
+    luisa::vector<RasterMesh> meshes;
+    meshes.push_back(std::move(draw_cmd.mesh));
+    const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
+    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &cmdlist = *ctx.cmdlist;
+    auto origin_map = render_device.create_transient_image<float>(
+        "contour_origin",
+        PixelStorage::BYTE1,
+        frame_settings.render_resolution,
+        1, false, true);
+    Image<float>
+        contour_imgs[2]{
+            render_device.create_transient_image<float>(
+                "contour_temp0",
+                PixelStorage::BYTE1,
+                frame_settings.render_resolution),
+            render_device.create_transient_image<float>(
+                "contour_temp1",
+                PixelStorage::BYTE1,
+                frame_settings.render_resolution)};
+    cmdlist << (*_contour_draw)(
+                   draw_cmd.info,
+                   cam_data.vp)
+                   .draw(
+                       std::move(meshes),
+                       sm.accel_manager().basic_foramt(),
+                       Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, nullptr, origin_map);
+    auto const *src_img = &origin_map;
+    for (int i = 0; i < 2; ++i) {
+        cmdlist << (*_contour_flood)(
+                       *src_img,
+                       contour_imgs[1],
+                       int2(0, 1),
+                       3,
+                       2.0f)
+                       .dispatch(frame_settings.render_resolution)
+                << (*_contour_flood)(
+                       contour_imgs[1],
+                       contour_imgs[0],
+                       int2(1, 0),
+                       3,
+                       2.0f)
+                       .dispatch(frame_settings.render_resolution);
+        src_img = &contour_imgs[0];
+    }
+    cmdlist << (*_contour_reduce)(
+                   origin_map,
+                   *src_img,
+                   emission,
+                   float3(1.0f, 1.0f, 1.0f))
+                   .dispatch(frame_settings.render_resolution);
+}
+
 void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto pass_ctx = ctx.mut.get_pass_context<RasterPassContext>();
     auto &sm = SceneManager::instance();
     auto &render_device = RenderDevice::instance();
-    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
     const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
-    if (pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frameSettings.render_resolution)) {
+    if (pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frame_settings.render_resolution)) {
         sm.dispose_after_sync(std::move(pass_ctx->depth_buffer));
     }
     if (!pass_ctx->depth_buffer) {
-        pass_ctx->depth_buffer = render_device.lc_device().create_depth_buffer(DepthFormat::D32, frameSettings.render_resolution);
+        pass_ctx->depth_buffer = render_device.lc_device().create_depth_buffer(DepthFormat::D32, frame_settings.render_resolution);
     }
     AccelManager::DrawListMap draw_meshes;
     BufferView<AccelManager::RasterElement> data_buffer;
@@ -91,10 +151,11 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             .write = true},
     };
     auto raster_ext = render_device.lc_device().extension<RasterExt>();
-    auto id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frameSettings.render_resolution, 1, false, true);
-    emission = render_device.create_transient_image<float>("emission", PixelStorage::HALF4, frameSettings.render_resolution, 1, false, true);
+    emission = render_device.create_transient_image<float>("emission", PixelStorage::HALF4, frame_settings.render_resolution, 1, false, true);
+    frame_settings.resolved_img = &emission;
+    auto id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
     cmdlist << pass_ctx->depth_buffer.clear(0.0f)
-            << (*_clear_id)(id_map, uint4(-1, -1, 0, 0)).dispatch(frameSettings.render_resolution);
+            << (*_clear_id)(id_map, uint4(-1, -1, 0, 0)).dispatch(frame_settings.render_resolution);
     //
     if (!draw_meshes.empty()) {
         raster::VertArgs vert_args{
@@ -102,12 +163,12 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             .proj = cam_data.proj,
             .view_proj = cam_data.vp};
         // cmdlist << _draw_scene_shader(data_buffer, vert_args)
-        //                .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frameSettings.render_resolution.x, frameSettings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, emission);
-        cmdlist << _draw_id_shader(data_buffer, vert_args)
-                       .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frameSettings.render_resolution.x, frameSettings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, id_map);
+        //                .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, emission);
+        cmdlist << (*_draw_id_shader)(data_buffer, vert_args)
+                       .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, id_map);
     }
-    cmdlist << (*_shading_id)(id_map, emission).dispatch(frameSettings.render_resolution);
-    frameSettings.resolved_img = &emission;
+    cmdlist << (*_shading_id)(id_map, emission).dispatch(frame_settings.render_resolution);
+    contour(ctx);
     auto click_manager = ctx.pipeline_settings->read_if<ClickManager>();
     if (click_manager && !click_manager->_requires.empty()) {
         auto &reqs = click_manager->_requires;

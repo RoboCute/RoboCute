@@ -92,12 +92,12 @@ void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const
 }
 void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
-    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
     auto &scene = *ctx.scene;
     auto &cmdlist = (*ctx.cmdlist);
     auto &accel = scene.accel();
     auto &render_device = RenderDevice::instance();
-    auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frameSettings.render_resolution);
+    auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);
 
     const auto &jitter_data = ctx.pipeline_settings->read<JitterData>();
     const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
@@ -110,28 +110,28 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                        scene.image_heap(),
                        scene.volume_heap(),
                        sky_heap.sky_heap_idx,
-                       frameSettings.to_rec2020_matrix,
+                       frame_settings.to_rec2020_matrix,
                        cam_data.world_to_sky,
                        cam_data.inv_vp,
                        make_float3(ctx.cam.position),
                        jitter_data.jitter,
-                       frameSettings.frame_index)
-                       .dispatch(frameSettings.render_resolution);
+                       frame_settings.frame_index)
+                       .dispatch(frame_settings.render_resolution);
         return;
     }
-    auto surfel_mark = render_device.create_transient_image<uint>("surfel_mask", PixelStorage::INT1, frameSettings.render_resolution);
+    auto surfel_mark = render_device.create_transient_image<uint>("surfel_mask", PixelStorage::INT1, frame_settings.render_resolution);
     auto &pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
     Buffer<offline::MultiBouncePixel> multibounce_buffer;
     Buffer<uint> multibounce_buffer_counter;
     {
-        uint2 res = frameSettings.display_resolution;
+        uint2 res = frame_settings.display_resolution;
         auto buffer_size = ((res + 1u) / 2u);
         multibounce_buffer = render_device.create_transient_buffer<offline::MultiBouncePixel>("offline_multibounce", buffer_size.x * buffer_size.y);
         multibounce_buffer_counter = render_device.create_transient_buffer<uint>("offline_multibounce_counter", 1);
     }
 
-    Buffer<pt::GBuffer> geo_buffer = render_device.create_transient_buffer<pt::GBuffer>("offline_geo_buffer", frameSettings.display_resolution.x * frameSettings.display_resolution.y);
-    if (all(frameSettings.display_resolution == frameSettings.render_resolution) && accum_pass_ctx->frame_index < 8) {
+    Buffer<pt::GBuffer> geo_buffer = render_device.create_transient_buffer<pt::GBuffer>("offline_geo_buffer", frame_settings.display_resolution.x * frame_settings.display_resolution.y);
+    if (all(frame_settings.display_resolution == frame_settings.render_resolution) && accum_pass_ctx->frame_index < 8) {
         scene.tex_streamer().force_sync();
     }
 
@@ -153,7 +153,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     ////////// Physical camera
 
     offline::PTArgs pt_args{
-        .resource_to_rec2020_mat = frameSettings.to_rec2020_matrix,
+        .resource_to_rec2020_mat = frame_settings.to_rec2020_matrix,
         .world_2_sky_mat = cam_data.world_to_sky,
         .sky_heap_idx = sky_heap.sky_heap_idx,
         .alias_table_idx = sky_heap.alias_heap_idx,
@@ -168,17 +168,17 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         .enable_physical_camera = ctx.cam.enable_physical_camera,
         // .srgb_to_fourier_even_idx = prepare_pass->srgb_to_fourier_even_idx,
         // .bmese_phase_idx = prepare_pass->bmese_phase_idx,
-        .require_reject = frameSettings.offline_capturing};
+        .require_reject = frame_settings.offline_capturing};
     if (ctx.cam.enable_physical_camera) {
         auto lens_radius = static_cast<float>(0.05 / ctx.cam.aperture);
-        auto resolution = make_float2(frameSettings.render_resolution);
+        auto resolution = make_float2(frame_settings.render_resolution);
         pt_args.focus_distance = ctx.cam.focus_distance;
         pt_args.lens_radius = lens_radius;
     }
     if (accum_pass_ctx->frame_index == 0) {
         cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, 0).dispatch(key_buffer.size());
     }
-    if (frameSettings.frame_index == 0)
+    if (frame_settings.frame_index == 0)
         pass_ctx->gbuffer_accumed_frame = 0;
     for (auto i : vstd::range(ptSettings.offline_spp)) {
         pt_args.bounce = ptSettings.offline_origin_bounce;
@@ -189,18 +189,18 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         pt_args.jitter_offset = float2(halton(pt_args.frame_index & 65535, 2), halton(pt_args.frame_index & 65535, 3));
         // output gbuffer for denoise
         cmdlist << (*clear_ptr_buffer)(multibounce_buffer_counter.view(), 0).dispatch(1);
-        if ((bool)frameSettings.albedo_buffer != (bool)frameSettings.normal_buffer) [[unlikely]] {
+        if ((bool)frame_settings.albedo_buffer != (bool)frame_settings.normal_buffer) [[unlikely]] {
             LUISA_ERROR("normal_buffer and albedo_buffer must be provided together.");
         }
 
-        if (frameSettings.albedo_buffer && frameSettings.normal_buffer) {
-            auto desired_buffer_size = frameSettings.render_resolution.x * frameSettings.render_resolution.y * 3 * sizeof(float);
-            if (frameSettings.albedo_buffer->size_bytes() != desired_buffer_size ||
-                frameSettings.normal_buffer->size_bytes() != desired_buffer_size) [[unlikely]] {
+        if (frame_settings.albedo_buffer && frame_settings.normal_buffer) {
+            auto desired_buffer_size = frame_settings.render_resolution.x * frame_settings.render_resolution.y * 3 * sizeof(float);
+            if (frame_settings.albedo_buffer->size_bytes() != desired_buffer_size ||
+                frame_settings.normal_buffer->size_bytes() != desired_buffer_size) [[unlikely]] {
                 LUISA_ERROR("Buffer size mismatch.");
             }
             cmdlist << offline_pt_shader_denoise::dispatch_shader(
-                pt_shader_denoise, ((frameSettings.render_resolution + 1u) / 2u) * 2u,
+                pt_shader_denoise, ((frame_settings.render_resolution + 1u) / 2u) * 2u,
                 scene.tex_streamer().level_buffer(),
                 scene.buffer_heap(),
                 scene.image_heap(),
@@ -209,17 +209,17 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 accel,
                 emission,
                 geo_buffer.view(),
-                *frameSettings.albedo_buffer,
-                *frameSettings.normal_buffer,
+                *frame_settings.albedo_buffer,
+                *frame_settings.normal_buffer,
                 scene.accel_manager().last_trans_buffer(),
                 multibounce_buffer.view(),
                 multibounce_buffer_counter,
                 pt_args,
-                frameSettings.render_resolution);
+                frame_settings.render_resolution);
             pass_ctx->gbuffer_accumed_frame++;
         } else {
             cmdlist << offline_pt_shader::dispatch_shader(
-                pt_shader, ((frameSettings.render_resolution + 1u) / 2u) * 2u,
+                pt_shader, ((frame_settings.render_resolution + 1u) / 2u) * 2u,
                 scene.tex_streamer().level_buffer(),
                 scene.buffer_heap(),
                 scene.image_heap(),
@@ -232,7 +232,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 multibounce_buffer.view(),
                 multibounce_buffer_counter,
                 pt_args,
-                frameSettings.render_resolution);
+                frame_settings.render_resolution);
             pass_ctx->gbuffer_accumed_frame = 0;
         }
         pt_args.bounce = ptSettings.offline_indirect_bounce;
@@ -248,7 +248,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
             multibounce_buffer_counter,
             geo_buffer.view(),
             pt_args,
-            frameSettings.render_resolution);
+            frame_settings.render_resolution);
         cmdlist << (*accum_hashgrid)(
                        geo_buffer,
                        key_buffer,
@@ -260,7 +260,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                        key_buffer.size(),
                        8,
                        max_accum)
-                       .dispatch(frameSettings.render_resolution);
+                       .dispatch(frame_settings.render_resolution);
         cmdlist << (*integrate_hashgrid)(
                        geo_buffer,
                        emission,
@@ -268,11 +268,11 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                        surfel_mark,
                        max_accum,
                        i == (ptSettings.offline_spp - 1) ? (1.0f / float(ptSettings.offline_spp)) : 1.0f)
-                       .dispatch(frameSettings.render_resolution);
+                       .dispatch(frame_settings.render_resolution);
         cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, max_accum).dispatch(key_buffer.size());
     }
-    frameSettings.albedo_buffer = nullptr;
-    frameSettings.normal_buffer = nullptr;
+    frame_settings.albedo_buffer = nullptr;
+    frame_settings.normal_buffer = nullptr;
 }
 void OfflinePTPass::on_frame_end(
     Pipeline const &pipeline,

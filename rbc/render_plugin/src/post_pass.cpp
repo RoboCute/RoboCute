@@ -93,7 +93,7 @@ BufferView<float> PostPass::exposure_buffer() const {
 void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
     const auto &toneMappingSettings = ctx.pipeline_settings->read<ToneMappingSettings>();
     const auto &displaySettings = ctx.pipeline_settings->read<DisplaySettings>();
-    const auto &frameSettings = ctx.pipeline_settings->read<FrameSettings>();
+    const auto &frame_settings = ctx.pipeline_settings->read<FrameSettings>();
     const auto &exposureSettings = ctx.pipeline_settings->read<ExposureSettings>();
     init_counter.wait();
     auto &pipeline_mode = ctx.pipeline_settings->read<PTPipelineSettings>();
@@ -107,12 +107,12 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
         ctx.scene->ctx().runtime_directory(),
         pipeline, ctx.scene->buffer_uploader(),
         exposureSettings.globalExposure,
-        frameSettings.display_resolution,
+        frame_settings.display_resolution,
         toneMappingSettings.lpm.displayMinLuminance,
         toneMappingSettings.lpm.displayMaxLuminance,
         displaySettings.use_hdr_display);
     init_counter.wait();
-    post_ctx->reset |= frameSettings.frame_index == 0;
+    post_ctx->reset |= frame_settings.frame_index == 0;
     auto &scene = ctx.scene;
     if (post_ctx->reset) {
         post_ctx->aces_lut_dirty = true;
@@ -128,25 +128,25 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &toneMappingSettings = ctx.pipeline_settings->read_mut<ToneMappingSettings>();
     const auto &displaySettings = ctx.pipeline_settings->read<DisplaySettings>();
     const auto &exposureSettings = ctx.pipeline_settings->read<ExposureSettings>();
-    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();
 
     ///////////// recycle unused gbuffer
     ///////////// recycle unused gbuffer
     Image<float> temp_img;
     auto &cmdlist = (*ctx.cmdlist);
-    if (!frameSettings.resolved_img) {
-        if (frameSettings.radiance_buffer) {
-            temp_img = render_device.create_transient_image<float>("temp_tex_from_radiance", PixelStorage::FLOAT4, frameSettings.display_resolution);
-            cmdlist << (*blit_from_buffer)(temp_img, *frameSettings.radiance_buffer, 3).dispatch(frameSettings.display_resolution);
-            frameSettings.resolved_img = &temp_img;
+    if (!frame_settings.resolved_img) {
+        if (frame_settings.radiance_buffer) {
+            temp_img = render_device.create_transient_image<float>("temp_tex_from_radiance", PixelStorage::FLOAT4, frame_settings.display_resolution);
+            cmdlist << (*blit_from_buffer)(temp_img, *frame_settings.radiance_buffer, 3).dispatch(frame_settings.display_resolution);
+            frame_settings.resolved_img = &temp_img;
         } else {
             return;
         }
     }
     auto &pipeline_mode = ctx.pipeline_settings->read<PTPipelineSettings>();
     if (!pipeline_mode.use_post_filter) {
-        cmdlist << (*blit_shader)(*frameSettings.dst_img, *frameSettings.resolved_img, false).dispatch(frameSettings.dst_img->size());
+        cmdlist << (*blit_shader)(*frame_settings.dst_img, *frame_settings.resolved_img, false).dispatch(frame_settings.dst_img->size());
         return;
     }
     auto &scene = *ctx.scene;
@@ -155,10 +155,10 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
 
     auto temp_res = render_device.create_transient_image<float>(
         "post_temp_img",
-        frameSettings.resolved_img->storage(),
-        frameSettings.resolved_img->size());
+        frame_settings.resolved_img->storage(),
+        frame_settings.resolved_img->size());
     Image<float> const *imgs[2]{
-        frameSettings.resolved_img,
+        frame_settings.resolved_img,
         &temp_res,
     };
 
@@ -175,14 +175,14 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     ///////// distortion
     rbc::detail::post_process_distortion(args.distortion_CenterScale, args.distortion_Amount, distortionSettings);
     args.chromatic_aberration = displaySettings.chromatic_aberration;
-    args.pixel_offset = frameSettings.display_offset;
+    args.pixel_offset = frame_settings.display_offset;
 
     post_ctx->exposure.generate(
         exposureSettings,
         cmdlist,
         read_tex(),
-        frameSettings.display_resolution,
-        post_ctx->reset, frameSettings.delta_time);
+        frame_settings.display_resolution,
+        post_ctx->reset, frame_settings.delta_time);
 
     if (post_ctx->aces_lut_dirty) {
         post_ctx->aces.dispatch(toneMappingSettings.aces, cmdlist);
@@ -198,7 +198,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     }
     args.hdr_input_multiplier = hdr_input_multiplier;
     // args.localExposure_detail_strength = pipeline.settings.exposure.localExposureDetail;
-    Image<float> const *uber_out_img = frameSettings.dst_img;
+    Image<float> const *uber_out_img = frame_settings.dst_img;
     LUISA_ASSERT(read_tex(), "Bad read");
     LUISA_ASSERT(post_ctx->aces.lut3d_volume, "Bad lut3d");
     auto lpm_args = LPM::compute(toneMappingSettings.lpm);
@@ -210,7 +210,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                    lpm_args,
                    post_ctx->exposure.exposure_buffer,
                    *uber_out_img)
-                   .dispatch(frameSettings.display_resolution);
+                   .dispatch(frame_settings.display_resolution);
 }
 
 void PostPass::on_frame_end(Pipeline const &pipeline, Device &device, SceneManager &scene) {

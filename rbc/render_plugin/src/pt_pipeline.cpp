@@ -5,6 +5,7 @@
 #include <rbc_render/offline_pt_pass.h>
 #include <rbc_render/accum_pass.h>
 #include <rbc_render/raster_pass.h>
+#include <rbc_graphics/render_device.h>
 // TODO: test hdri
 #include <luisa/core/platform.h>
 
@@ -30,7 +31,6 @@ void PTPipeline::initialize() {
 }
 
 void PTPipeline::update(rbc::PipelineContext &ctx) {
-    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
     this->rbc::Pipeline::update(ctx);
 }
 
@@ -50,7 +50,7 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
 
     // get settings
     auto &sky_settings = ctx.pipeline_settings->read_mut<SkySettings>();
-    auto &frameSettings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
     auto &sky_heap = ctx.pipeline_settings->read_mut<SkyHeapIndices>();
     // update atom
     if (sky_settings.sky_atom) {
@@ -94,8 +94,8 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
             sky_settings.dirty = false;
         }
         if (sky_atom.update(*ctx.cmdlist, *ctx.stream, ctx.scene->bindless_allocator(), sky_settings.force_sync)) {
-            // frameSettings.sky_confidence = 1.0f;
-            frameSettings.frame_index = 0;
+            // frame_settings.sky_confidence = 1.0f;
+            frame_settings.frame_index = 0;
         }
         sky_heap.sky_heap_idx = sky_atom.sky_id();
         sky_heap.alias_heap_idx = sky_atom.sky_alias_id();
@@ -107,14 +107,14 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     }
 
     // update camera settings
-    ctx.cam.set_aspect_ratio_from_resolution(frameSettings.render_resolution.x, frameSettings.render_resolution.y);
+    ctx.cam.set_aspect_ratio_from_resolution(frame_settings.render_resolution.x, frame_settings.render_resolution.y);
     // TODO: testing
 
     // realtime
-    // raster_pass->set_actived(frameSettings.realtime_rendering);
+    // raster_pass->set_actived(frame_settings.realtime_rendering);
     // path-tracing
-    // pt_pass->set_actived(!frameSettings.realtime_rendering);
-    // accum_pass->set_actived(!frameSettings.realtime_rendering);
+    // pt_pass->set_actived(!frame_settings.realtime_rendering);
+    // accum_pass->set_actived(!frame_settings.realtime_rendering);
 
     // raster_pass->set_actived(true);
     // pt_pass->set_actived(false);

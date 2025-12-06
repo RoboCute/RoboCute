@@ -49,7 +49,10 @@ ShaderBase ShaderManager::unload_shader(
     value._evt.wait();
     _shaders.remove(iter);
     _mtx.unlock();
-    return std::move(value.shader);
+    LUISA_DEBUG_ASSERT(value.shader.is_type_of<ShaderBase>());
+    ShaderBase v = std::move(value.shader.force_get<ShaderBase>());
+    value.shader.dispose();
+    return v;
 }
 luisa::string_view ShaderManager::_path_to_key(luisa::filesystem::path const &path, luisa::string &can_path_str, luisa::string &buffer) const {
     luisa::string_view key_strview;
@@ -65,15 +68,15 @@ luisa::string_view ShaderManager::_path_to_key(luisa::filesystem::path const &pa
     return key_strview;
 }
 
-ShaderBase const *ShaderManager::_load_shader(
+auto ShaderManager::_load_shader(
     luisa::filesystem::path const &rela_shader_path,
     luisa::variant<
         luisa::span<Type const *const>,
         luisa::span<Variable const>>
         args,
-    vstd::FuncRef<ShaderBase(string_view shader_path)> &&create_func,
+    vstd::FuncRef<ShaderType(string_view shader_path)> &&create_func,
     ReloadFunc reload_func,
-    bool support_preload) {
+    bool support_preload) -> ShaderType const *{
     luisa::string key_str;
     luisa::string can_path_str;
     auto key_strview = _path_to_key(rela_shader_path, can_path_str, key_str);
@@ -120,10 +123,10 @@ ShaderBase const *ShaderManager::_load_shader(
         LUISA_ERROR("Load same shader {} multiple-times with different type.", can_path_str);
     }
     _all_shader_count++;
-    if (!value.shader)
+    if (!value.shader.valid())
         value.shader = create_func(can_path_str);
     _finished_shaders++;
-    if (!value.shader) {
+    if (!value.shader.valid()) {
         _mtx.lock();
         _shaders.remove(key_strview);
         _mtx.unlock();
