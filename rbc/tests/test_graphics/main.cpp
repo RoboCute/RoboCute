@@ -315,6 +315,7 @@ int main(int argc, char *argv[]) {
     utils.window->set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
         if (action == Action::ACTION_PRESSED) {
             start_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
+            end_uv = start_uv;
             dragging = true;
         } else if (action == Action::ACTION_RELEASED) {
             dragging = false;

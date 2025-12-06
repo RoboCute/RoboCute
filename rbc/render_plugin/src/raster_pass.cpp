@@ -143,12 +143,8 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         frustum_max_point = max(frustum_max_point, frustum_corners[i]);
     }
     static bool bb = false;
-    // if (!bb)
-    // LUISA_INFO("min {} max {}", frustum_min_point, frustum_max_point);
-    // bb = true;
     auto frustum_cull_callback = [&](float4x4 const &transform, AABB const &bounding) {
         return frustum_cull(transform, bounding, frustum_planes, frustum_min_point, frustum_max_point, ctx.cam.dir_forward(), make_float3(ctx.cam.position));
-        //  return true;
     };
     sm.accel_manager().make_draw_list(
         cmdlist,
@@ -226,9 +222,6 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             }
             selection_result.clear();
             auto select_call = [&](uint user_id, float4x4 const &transform, AABB const &bounding_box) {
-                if (user_id == 1) {
-                    int x = 0;
-                }
                 if (!frustum_cull(transform, bounding_box, frustum_planes, frustum_min_point, frustum_max_point, ctx.cam.dir_forward(), make_float3(ctx.cam.position))) {
                     return false;
                 }
