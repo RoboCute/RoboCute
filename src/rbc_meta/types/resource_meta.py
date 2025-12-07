@@ -1,9 +1,6 @@
-import rbc_meta.utils.codegen_util as ut
 from rbc_meta.utils_next.reflect import reflect
 from rbc_meta.utils_next.builtin import uint, Vector
-from rbc_meta.utils_next.codegen import cpp_interface_gen, cpp_impl_gen
-from pathlib import Path
-from rbc_meta.types.resource_enums import PixelStorage
+from rbc_meta.types.resource_enums import LCPixelStorage
 
 
 @reflect(cpp_namespace="rbc", serde=True, module_name="runtime")
@@ -19,5 +16,5 @@ class MeshMeta:
 class TextureMeta:
     width: uint
     height: uint
-    storage: PixelStorage
+    storage: LCPixelStorage
     mip_level: uint

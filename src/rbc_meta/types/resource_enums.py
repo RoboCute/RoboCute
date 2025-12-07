@@ -3,7 +3,7 @@ from enum import Enum
 
 
 @reflect(cpp_namespace="rbc", module_name="runtime")
-class PixelStorage(Enum):
+class LCPixelStorage(Enum):
     BYTE1 = 1
     BYTE2 = 2
     BYTE4 = 3
@@ -33,7 +33,7 @@ class PixelStorage(Enum):
 
 
 @reflect(cpp_namespace="rbc", module_name="runtime")
-class PixelFormat(Enum):
+class LCPixelFormat(Enum):
     R8SInt = 0
     R8UInt = 1
     R8UNorm = 2
@@ -87,3 +87,11 @@ class SamplerFilter(Enum):
     LINEAR_POINT = 1
     LINEAR_LINEAR = 2
     ANISOTROPIC = 3
+
+
+@reflect(cpp_namespace="rbc", module_name="runtime")
+class SamplerAddress(Enum):
+    EDGE = 0
+    REPEAT = 1
+    MIRROR = 2
+    ZERO = 3

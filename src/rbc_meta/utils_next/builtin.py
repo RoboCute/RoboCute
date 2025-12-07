@@ -24,6 +24,19 @@ class ubyte:
 class ulong:
     __slot__ = {}
     _reflected_ = True
+    _cpp_type_name = "unsigned long"
+    _py_type_name = "ctypes.ulong"
+
+
+class GUID:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "GUID"
+
+
+class float4x4:
+    _reflected_ = True
+    _cpp_type_name = "luisa::float4x4"
 
 
 T = TypeVar("T")

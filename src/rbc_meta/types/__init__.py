@@ -1,2 +1,2 @@
 # register types here
-from . import resource_enums, resource_meta, resource_type
+from . import resource_enums, resource_meta, resource_type, test_ipc

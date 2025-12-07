@@ -42,6 +42,7 @@ class MethodInfo:
     parameter_generics: Dict[str, Optional["GenericInfo"]] = None  # 参数的泛型信息
     doc: Optional[str] = None
     cpp_prefix: str = ""  # sum cpp prefix info like `RBC_API`
+    is_rpc = False
 
     def __post_init__(self):
         """后处理，确保字典不为None"""

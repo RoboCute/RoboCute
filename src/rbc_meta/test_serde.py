@@ -21,6 +21,7 @@ def codegen_header(header_path: Path):
         vec_str=tr.external_type("luisa::vector<luisa::string>"),
         test_enum=MyEnum,
     )
+
     ut.codegen_to(header_path)(codegen.cpp_interface_gen)
 
     include = f'#include "{header_path.name}"'

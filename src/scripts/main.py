@@ -30,7 +30,10 @@ from scripts.utils import is_empty_folder
 from mypy import stubgen
 import rbc_meta.utils.codegen_util as codegen_util
 import rbc_meta.utils.codegen_util as ut
-from rbc_meta.utils_next.codegen import cpp_interface_gen, cpp_impl_gen
+from rbc_meta.utils_next.codegen import (
+    cpp_interface_gen,
+    cpp_impl_gen,
+)
 
 
 def get_project_root():
@@ -365,6 +368,20 @@ def generate():
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     include = "#include <rbc_runtime/generated/resource_meta.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
+
+    target_modules = ["world"]
+    header_path = Path(
+        "rbc/world/include/rbc_world/generated/resource_type.new.hpp"
+    ).resolve()
+    cpp_path = Path("rbc/world/src/generated/resource_type.new.cpp").resolve()
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules)
+    ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules)
+
+    ut.codegen_to(header_path / "server.new.hpp")(cpp_interface_gen)
+
+    include = '#include "server.hpp"'
+    ut.codegen_to(header_path / "server.new.cpp")(cpp_impl_gen, include)
+
     # processes = []
     # for module_name, function_name, *args in GENERATION_TASKS:
     #     p = Process(

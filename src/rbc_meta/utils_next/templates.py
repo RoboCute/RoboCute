@@ -184,7 +184,7 @@ CPP_ENUM_INITER_TEMPLATE = Template(
 )
 
 CPP_STRUCT_SER_IMPL_TEMPLATE = Template("""
-${NAMESPACE_NAME} {
+namespace ${NAMESPACE_NAME} {
 void ${CLASS_NAME}::rbc_objser(rbc::JsonSerializer& obj) const {
 ${STORE_STMTS}
 }
@@ -192,11 +192,11 @@ ${STORE_STMTS}
 """)
 
 CPP_STRUCT_DESER_IMPL_TEMPLATE = Template("""
-${NAMESPACE_NAME} {
+namespace ${NAMESPACE_NAME} {
 void ${CLASS_NAME}::rbc_objdeser(rbc::JsonDeSerializer& obj) {
 ${LOAD_STMTS}
 }
-}${NAMESPACE_NAME}
+}// ${NAMESPACE_NAME}
 """)
 
 CPP_RPC_ARG_STRUCT_TEMPLATE = Template("""
