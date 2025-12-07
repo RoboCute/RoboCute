@@ -15,7 +15,7 @@
     cpp_header = generator.generate_cpp_header("MyClass", namespace="myns")
 """
 
-from .reflect import reflect, ReflectionRegistry, ClassInfo, MethodInfo, FieldInfo
+from .reflect import reflect, ReflectionRegistry, ClassInfo, MethodInfo, FieldInfo, GenericInfo
 from .generator import CodeGenerator, PythonGenerator, CppGenerator, TypeMapper
 
 # Builtin Types
@@ -28,6 +28,7 @@ __all__ = [
     "ClassInfo",
     "MethodInfo",
     "FieldInfo",
+    "GenericInfo",
     "CodeGenerator",
     "PythonGenerator",
     "CppGenerator",
