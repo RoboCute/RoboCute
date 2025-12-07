@@ -63,15 +63,6 @@ struct RBC_RUNTIME_API Camera {
     float aspect_ratio = 1;
     float near_plane = 0.3f;
     float far_plane = 20000.0f;
-
-    // two point perspective
-    // 这里两点透视的平移和缩放位置均是作用在左上角为原点的[0,1]屏幕坐标
-    TwoPointPerspectiveType two_point_perspective_type = TwoPointPerspectiveType::None;
-    float2 two_point_perspective_shift = {0, 0};
-    float two_point_perspective_scale = 1;
-    float2 two_point_perspective_mouse_origin_position = {0.5, 0.5};
-    float2 two_point_perspective_mouse_screen_position = {0.5, 0.5};
-
     // physical camera
     bool enable_physical_camera = false;
     float aperture = 1.4f;

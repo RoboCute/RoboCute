@@ -9,6 +9,9 @@ local function rbc_runtime_impl()
     add_rules('lc_basic_settings', {
         project_kind = 'shared'
     })
+    add_rules("c++.unity_build", {
+        batchsize = 8
+    })
     add_files('src/**.cpp')
     set_pcxxheader('src/zz_pch.h')
     add_deps('lc-backends-dummy', {

@@ -12,13 +12,22 @@ for target_name, is_standalone in pairs(targets) do
 
     local function test_graphics_impl()
         add_rules('lc_basic_settings', {})
-        add_files('**.cpp')
         add_deps('lc-gui', 'rbc_render_interface', 'rbc_ipc')
         on_load(function(target)
             if is_standalone then
+                for _, v in ipairs(os.files(path.join(os.scriptdir(), '**.cpp'))) do
+                    if path.basename(v) ~= 'interface' then
+                        target:add('files', v)
+                    end
+                end
                 target:set('kind', 'binary')
                 target:add('defines', 'STANDALONE')
             else
+                for _, v in ipairs(os.files(path.join(os.scriptdir(), '**.cpp'))) do
+                    if path.basename(v) ~= 'main' then
+                        target:add('files', v)
+                    end
+                end
                 target:set('kind', 'shared')
             end
             target:add('deps', 'rbc_render_plugin', 'lc-backends-dummy', {

@@ -37,26 +37,6 @@ float4x4 Camera::projection_matrix() const {
         far_plane,
         near_plane);
 
-    if (two_point_perspective_type == TwoPointPerspectiveType::Shift) {
-        float2 shift = float2(two_point_perspective_shift.x * 2, -two_point_perspective_shift.y * 2);
-        float scale = two_point_perspective_scale;
-        float2 mouse_offset0 = float2((two_point_perspective_mouse_origin_position.x - 0.5) * 2, (0.5 - two_point_perspective_mouse_origin_position.y) * 2);
-        float2 mouse_offset1 = float2((two_point_perspective_mouse_screen_position.x - 0.5) * 2, (0.5 - two_point_perspective_mouse_screen_position.y) * 2);
-
-        float4x4 translate_scale;
-        translate_scale[0][0] = scale;
-        translate_scale[1][1] = scale;
-        translate_scale[3][0] = (shift.x - mouse_offset0.x) * scale + mouse_offset1.x;
-        translate_scale[3][1] = (shift.y - mouse_offset0.y) * scale + mouse_offset1.y;
-
-        result = translate_scale * result;// 注意矩阵相乘顺序，这里是行主导但右乘
-    } else if (two_point_perspective_type == TwoPointPerspectiveType::Legacy) {
-        result[2][0] = shift.x;
-        result[2][1] = shift.y;
-        result[0][0] *= scale.x;
-        result[1][1] *= scale.y;
-    }
-
     return result;
 }
 
