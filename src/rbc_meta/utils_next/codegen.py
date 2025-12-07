@@ -572,7 +572,7 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
             if _is_rpc_method(method):
                 continue  # RPC methods are handled separately
             ret_type = (
-                _get_full_cpp_type(method.return_type, registry, False, True)
+                _get_full_cpp_type(method.return_type, registry, False, False)
                 if method.return_type
                 else "void"
             )

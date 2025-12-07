@@ -50,7 +50,6 @@ class RBCContext:
     # mesh
     def create_mesh(
         self,
-        data: DataBuffer,
         vertex_count: uint,
         contained_normal: bool,
         contained_tangent: bool,
@@ -151,7 +150,6 @@ class RBCContext:
     # texture
     def create_texture(
         self,
-        data: DataBuffer,
         storage: LCPixelStorage,
         size: uint2,
         mip_level: uint,
@@ -179,10 +177,10 @@ class RBCContext:
         ...
 
     # material
-    def create_pbr_material(self, json: str) -> VoidPtr:
+    def create_pbr_material(self) -> VoidPtr:
         ...
 
-    def update_pbr_material(self, mat_ptr: VoidPtr, json: str) -> None:
+    def update_material(self, mat_ptr: VoidPtr, json: str) -> None:
         ...
 
     def get_material_json(self, mat: VoidPtr) -> str:

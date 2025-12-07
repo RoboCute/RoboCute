@@ -4,7 +4,7 @@ import rbc_meta.types.resource_enums as res_enums
 from pathlib import Path
 
 
-def codegen_pybind(
+def codegen_header(
     cpp_root_path: Path,
     header_root_path: Path,
     py_root_path: Path,
@@ -12,7 +12,8 @@ def codegen_pybind(
     pyd_name = "test_py_codegen"
     file_name = "rbc_backend"
     Context = tr.struct("RBCContext", "TEST_GRAPHICS_API")
-
+    # these enums defined in rbc_runtime
+    res_enums.mark_enums_external()
     # frame
     Context.method(
         "init_device",
@@ -27,7 +28,6 @@ def codegen_pybind(
     # mesh
     Context.method(
         "create_mesh",
-        data=tr.DataBuffer,
         vertex_count=tr.uint,
         contained_normal=tr.bool,
         contained_tangent=tr.bool,
@@ -35,7 +35,6 @@ def codegen_pybind(
         triangle_count=tr.uint,
         offsets_uint32=tr.DataBuffer,
     ).ret_type(tr.VoidPtr)
-
     Context.method(
         "load_mesh",
         file_path=tr.string,
@@ -47,7 +46,6 @@ def codegen_pybind(
         triangle_count=tr.uint,
         offsets_uint32=tr.DataBuffer,
     ).ret_type(tr.VoidPtr)
-
     Context.method("get_mesh_data", handle=tr.VoidPtr).ret_type(tr.DataBuffer)
     Context.method("update_mesh", handle=tr.VoidPtr, only_vertex=tr.bool)
     # light
@@ -80,7 +78,6 @@ def codegen_pybind(
         angle_atten_pow=tr.float,
         visible=tr.bool,
     ).ret_type(tr.VoidPtr)
-
     Context.method(
         "update_area_light",
         light=tr.VoidPtr,
@@ -120,12 +117,10 @@ def codegen_pybind(
     # texture
     Context.method(
         "create_texture",
-        data=tr.DataBuffer,
         storage=res_enums.PixelStorage,
         size=tr.uint2,
         mip_level=tr.uint,
     ).ret_type(tr.VoidPtr)
-
     Context.method("get_texture_data", handle=tr.VoidPtr).ret_type(tr.DataBuffer)
     Context.method("update_texture", handle=tr.VoidPtr)
     Context.method(
@@ -139,8 +134,8 @@ def codegen_pybind(
     ).ret_type(tr.VoidPtr)
     Context.method("texture_heap_idx", ptr=tr.VoidPtr).ret_type(tr.uint)
     # material
-    Context.method("create_pbr_material", json=tr.string).ret_type(tr.VoidPtr)
-    Context.method("update_pbr_material", mat_ptr=tr.VoidPtr, json=tr.string)
+    Context.method("create_pbr_material").ret_type(tr.VoidPtr)
+    Context.method("update_material", mat_ptr=tr.VoidPtr, json=tr.string)
     Context.method("get_material_json", mat=tr.VoidPtr).ret_type(tr.string)
     # object
     Context.method(
@@ -170,18 +165,17 @@ def codegen_pybind(
     Context.method("should_close").ret_type(tr.bool)
 
     # codegen
-    ut.codegen_to(header_root_path / f"{file_name}.new.h")(
+    ut.codegen_to(header_root_path / f"{file_name}.h")(
         ut.codegen.cpp_interface_gen,
         """#include <rbc_runtime/generated/resource_meta.hpp>
 #include <rbc_core/rc.h>""",
     )
-
-    ut.codegen_to(cpp_root_path / f"{file_name}.new.cpp")(
+    ut.codegen_to(cpp_root_path / f"{file_name}.cpp")(
         ut.codegen.pybind_codegen,
         file_name,
         f'''#include "{file_name}.h"
 #include <rbc_core/rc.h>''',
     )
-    ut.codegen_to(py_root_path / f"{file_name}.new.py")(
+    ut.codegen_to(py_root_path / f"{file_name}.py")(
         ut.codegen.py_interface_gen, pyd_name
     )

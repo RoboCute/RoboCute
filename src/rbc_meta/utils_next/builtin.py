@@ -24,7 +24,7 @@ class ubyte:
 class ulong:
     __slot__ = {}
     _reflected_ = True
-    _cpp_type_name = "unsigned long"
+    _cpp_type_name = "uint64_t"
     _py_type_name = "ctypes.ulong"
 
 

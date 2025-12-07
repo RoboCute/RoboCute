@@ -434,7 +434,7 @@ def generate():
     pyd_name = "test_py_codegen"
     header_path = Path("rbc/tests/test_graphics/generated/rbc_backend.h").resolve()
     cpp_path = Path("rbc/tests/test_py_codegen/generated/rbc_backend.cpp").resolve()
-    py_path = Path("src/rbc_ext/generated/rbc_backend.py").resolve()
+    py_path = Path("src/rbc_ext/rbc_backend.py").resolve()
     include = """#include <rbc_runtime/generated/resource_meta.hpp>
 #include <rbc_core/rc.h>"""
 
