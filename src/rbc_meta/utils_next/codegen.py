@@ -97,8 +97,11 @@ _TYPE_NAME_FUNCTIONS = {
 # Import GUID from builtin to check type
 try:
     from rbc_meta.utils_next.builtin import GUID as BuiltinGUID
+
     _TYPE_NAME_FUNCTIONS[BuiltinGUID] = lambda t, py_interface=False, is_view=False: (
-        "GuidData" if py_interface else ("vstd::Guid const&" if is_view else "vstd::Guid")
+        "GuidData"
+        if py_interface
+        else ("vstd::Guid const&" if is_view else "vstd::Guid")
     )
 except ImportError:
     pass
@@ -136,9 +139,13 @@ def _get_cpp_type(
     if hasattr(type_hint, "__origin__"):
         origin = type_hint.__origin__
         args = getattr(type_hint, "__args__", ())
-        
+
         # Check if origin is a custom container type (Vector, UnorderedMap, etc.)
-        if hasattr(origin, "_cpp_type_name") and hasattr(origin, "_is_container") and origin._is_container:
+        if (
+            hasattr(origin, "_cpp_type_name")
+            and hasattr(origin, "_is_container")
+            and origin._is_container
+        ):
             cpp_name = origin._cpp_type_name
             if len(args) == 1:
                 inner_type = _get_cpp_type(args[0], py_interface, is_view)
@@ -147,18 +154,22 @@ def _get_cpp_type(
                 key_type = _get_cpp_type(args[0], py_interface, is_view)
                 value_type = _get_cpp_type(args[1], py_interface, is_view)
                 return f"{cpp_name}<{key_type}, {value_type}>"
-        
+
         # Handle standard Python generic types
         if isinstance(origin, list):
             return f"luisa::vector<{_get_cpp_type(args[0], py_interface, is_view)}>"
         elif isinstance(origin, dict):
             return f"luisa::unordered_map<{_get_cpp_type(args[0], py_interface, is_view)}, {_get_cpp_type(args[1], py_interface, is_view)}>"
         elif isinstance(origin, set):
-            return f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
+            return (
+                f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
+            )
         elif isinstance(origin, tuple):
             return f"luisa::tuple<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in args])}>"
         elif isinstance(origin, frozenset):
-            return f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
+            return (
+                f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
+            )
         elif isinstance(origin, Optional):
             return f"std::optional<{_get_cpp_type(args[0], py_interface, is_view)}>"
         elif isinstance(origin, Union):
@@ -221,7 +232,7 @@ def _get_py_type(type_hint: Any) -> Optional[str]:
     f = _PY_NAMES.get(type_hint)
     if f is not None:
         return f
-    
+
     # For class types (not instances), return the class name
     if isinstance(type_hint, type):
         if hasattr(type_hint, "__name__"):
@@ -232,7 +243,7 @@ def _get_py_type(type_hint: Any) -> Optional[str]:
                 if name in ("uint", "ulong"):
                     return "int"
                 return name
-    
+
     # For instances (like ExternalType instances), don't generate type hints
     # Check if it's a registered class
     return None
@@ -467,7 +478,7 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
         # Filter by module
         if module_filter and info.module not in module_filter:
             continue
-        print(f"Generating Interface for {key} with {module_filter}")
+        # print(f"Generating Interface for {key} with {module_filter}")
 
         namespace_name = info.cpp_namespace
         class_name = info.name
@@ -519,7 +530,9 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
                         value_type = _get_full_cpp_type(
                             field.generic_info.args[1], registry
                         )
-                        var_type_name = f"{field.generic_info.cpp_name}<{key_type}, {value_type}>"
+                        var_type_name = (
+                            f"{field.generic_info.cpp_name}<{key_type}, {value_type}>"
+                        )
                     else:
                         # Fallback to using the type directly
                         var_type_name = _get_full_cpp_type(field.type, registry)
@@ -578,9 +591,7 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
             )
             # Filter out 'self' parameter for C++ method declarations
             method_params = {k: v for k, v in method.parameters.items() if k != "self"}
-            args_expr = _print_arg_vars_decl(
-                method_params, True, False, True, registry
-            )
+            args_expr = _print_arg_vars_decl(method_params, True, False, True, registry)
             method_expr = CPP_STRUCT_METHOD_DECL_TEMPLATE.substitute(
                 INDENT=INDENT,
                 RET_TYPE=ret_type,
@@ -670,7 +681,7 @@ def cpp_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
     all_classes = registry.get_all_classes().items()
 
     for key, info in all_classes:
-        print(f"Registering {key}")
+        # print(f"Registering {key}")
         if module_filter and info.module not in module_filter:
             continue
 
@@ -1073,7 +1084,9 @@ def pybind_codegen(
         class_name = info.name  # Use class name instead of full key
         # Use full namespace-qualified name for C++ code
         namespace_name = info.cpp_namespace or ""
-        struct_name = f"{namespace_name}::{class_name}" if namespace_name else class_name
+        struct_name = (
+            f"{namespace_name}::{class_name}" if namespace_name else class_name
+        )
 
         # create function
         create_name = f"create__{class_name}__"
@@ -1104,15 +1117,22 @@ def pybind_codegen(
             return_close = ""
             if method.return_type:
                 # Get the return type for pybind (py_interface=True)
-                pybind_ret_type = _get_full_cpp_type(method.return_type, registry, True, False)
+                pybind_ret_type = _get_full_cpp_type(
+                    method.return_type, registry, True, False
+                )
                 # Get the actual C++ method return type (is_view=True for interface methods)
-                cpp_ret_type = _get_full_cpp_type(method.return_type, registry, False, True)
-                
+                cpp_ret_type = _get_full_cpp_type(
+                    method.return_type, registry, False, True
+                )
+
                 ret_type = f" -> {pybind_ret_type}"
                 return_expr = "return "
-                
+
                 # If C++ method returns string_view but pybind expects string, add conversion
-                if cpp_ret_type == "luisa::string_view" and pybind_ret_type == "luisa::string":
+                if (
+                    cpp_ret_type == "luisa::string_view"
+                    and pybind_ret_type == "luisa::string"
+                ):
                     return_expr = "return luisa::string("
                     return_close = ")"
                 else:
@@ -1120,9 +1140,7 @@ def pybind_codegen(
 
             # Filter out 'self' parameter for pybind method bindings
             method_params = {k: v for k, v in method.parameters.items() if k != "self"}
-            args_decl = _print_arg_vars_decl(
-                method_params, False, True, True, registry
-            )
+            args_decl = _print_arg_vars_decl(method_params, False, True, True, registry)
             args_call = _print_py_args(method_params, True)
 
             method_func = PYBIND_METHOD_FUNC_TEMPLATE.substitute(
