@@ -1,19 +1,21 @@
 import os
 import time
 from pathlib import Path
-from rbc_ext.rbc_backend import *
+from rbc_ext.generated.rbc_backend import *
 import numpy as np
 import json
 import math
 
 vertex_count = 16
 triangle_count = 24
+
+
 def main():
-    backend_name = 'vk'
+    backend_name = "vk"
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
-    program_path = str(runtime_dir.parent / 'debug')
+    program_path = str(runtime_dir.parent / "debug")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
-    sky_path = str(runtime_dir.parent / 'sky.bytes')
+    sky_path = str(runtime_dir.parent / "sky.bytes")
 
     ctx = RBCContext()
     ctx.init_device(backend_name, program_path, shader_path)
@@ -21,7 +23,7 @@ def main():
     ctx.load_skybox(sky_path, uint2(4096, 2048))
     ctx.create_window("py_window", uint2(1920, 1080), True)
 
-# make_submesh
+    # make_submesh
     submesh_offsets = np.empty(shape=2, dtype=np.uint32)
     # first submesh start at 0
     submesh_offsets[0] = 0
@@ -29,23 +31,22 @@ def main():
 
     submesh_offsets[1] = triangle_count // 2
     mesh = ctx.create_mesh(
-        vertex_count,
-        False,
-        False,
-        0,
-        triangle_count,
-        submesh_offsets
+        vertex_count, False, False, 0, triangle_count, submesh_offsets
     )
-    mesh_array = np.ndarray(vertex_count * 4 + triangle_count * 3, dtype=np.float32, buffer=ctx.get_mesh_data(mesh))
+    mesh_array = np.ndarray(
+        vertex_count * 4 + triangle_count * 3,
+        dtype=np.float32,
+        buffer=ctx.get_mesh_data(mesh),
+    )
     create_mesh_array(mesh_array)
     ctx.update_mesh(mesh, False)
     mat = ctx.create_pbr_material()
-    ctx.update_material(mat, "{}") # use default value
-    
+    ctx.update_material(mat, "{}")  # use default value
+
     mat_default_json = json.loads(ctx.get_material_json(mat))
-    mat_default_json['base_albedo'] = [0, 0, 0]
-    mat_default_json['emission_luminance'] = [100, 0, 0]
-    
+    mat_default_json["base_albedo"] = [0, 0, 0]
+    mat_default_json["emission_luminance"] = [100, 0, 0]
+
     # Use texture to turn cube to red
     # TEX_SIZE = 1024
     # tex = ctx.create_texture(
@@ -62,7 +63,6 @@ def main():
     #         tex_array[idx + 1] = 0.
     #         tex_array[idx + 2] = 0.
     # ctx.update_texture(tex)
-    
 
     second_mat = ctx.create_pbr_material()
     ctx.update_material(second_mat, json.dumps(mat_default_json))
@@ -72,24 +72,14 @@ def main():
     mat_vector.emplace_back(second_mat)
 
     obj = ctx.create_object(
-        make_float4x4(
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            -0.8, -0.8, 4, 1
-        ),
+        make_float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -0.8, -0.8, 4, 1),
         mesh,
-        mat_vector
+        mat_vector,
     )
     area_light = ctx.add_area_light(
-        make_float4x4(
-            1, 0, 0, 0,
-            0, 0, 1, 0,
-            0, -1, 0, 0,
-            1, 1.5, 4, 1
-        ),
+        make_float4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 1, 1.5, 4, 1),
         float3(0, 0, 1.0) * 100,
-        True
+        True,
     )
 
     obj_changed = False
@@ -103,21 +93,20 @@ def main():
         if not obj_changed:
             if start_time and end_time - start_time > 2:
                 obj_changed = True
-                mat_default_json['base_albedo'] = [1, 0.84, 0]
-                mat_default_json['emission_luminance'] = [0, 0, 0]
-                mat_default_json['specular_roughness'] = 0.0
-                mat_default_json['weight_metallic'] = 1.0
+                mat_default_json["base_albedo"] = [1, 0.84, 0]
+                mat_default_json["emission_luminance"] = [0, 0, 0]
+                mat_default_json["specular_roughness"] = 0.0
+                mat_default_json["weight_metallic"] = 1.0
                 mat_vector.clear()
                 mat_vector.emplace_back(second_mat)
                 mat_vector.emplace_back(mat)
                 ctx.update_material(second_mat, json.dumps(mat_default_json))
-                ctx.update_object(obj,
-                                  make_float4x4(
-                                      1, 0, 0, 0,
-                                      0, 1, 0, 0,
-                                      0, 0, 1, 0,
-                                      -0.8, -1.0, 4, 1
-                                  ), mesh, mat_vector)
+                ctx.update_object(
+                    obj,
+                    make_float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -0.8, -1.0, 4, 1),
+                    mesh,
+                    mat_vector,
+                )
                 ctx.reset_frame_index()
         ctx.tick()
         if not start_time:
@@ -127,14 +116,17 @@ def main():
     del ctx
 
 
-def create_mesh_array(mesh_array):        
+def create_mesh_array(mesh_array):
     # create a cube
     if mesh_array.size != vertex_count * 4 + triangle_count * 3:
-        raise Exception('Bad mesh-array size')
-    vertex_arr = np.ndarray(
-        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
-    indices_arr = np.ndarray(shape=triangle_count * 3, dtype=np.uint32,
-                             buffer=mesh_array.data, offset=vertex_arr.size * vertex_arr.itemsize)
+        raise Exception("Bad mesh-array size")
+    vertex_arr = np.ndarray(vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+    indices_arr = np.ndarray(
+        shape=triangle_count * 3,
+        dtype=np.uint32,
+        buffer=mesh_array.data,
+        offset=vertex_arr.size * vertex_arr.itemsize,
+    )
     size = 0
     offset = float4(0)
     scale = float4(1)
@@ -159,7 +151,8 @@ def create_mesh_array(mesh_array):
         push_vec4(-0.5, 0.5, -0.5)  # 4: Left Up Back
         push_vec4(-0.5, 0.5, 0.5)  # 5: Left Up Front
         push_vec4(0.5, 0.5, -0.5)  # 6: Right Up Back
-        push_vec4(0.5, 0.5, 0.5)   # 7: Right Up Front
+        push_vec4(0.5, 0.5, 0.5)  # 7: Right Up Front
+
     push_vert()
     last_vert_size = size
     offset = float4(0, 1, 0, 0)
@@ -210,6 +203,7 @@ def create_mesh_array(mesh_array):
         push_indices(3)
         push_indices(7)
         push_indices(5)
+
     push_cube_triangles()
     last_index_size = size
     # index size to triangle size
@@ -217,9 +211,7 @@ def create_mesh_array(mesh_array):
     push_cube_triangles()
     for i in range(last_index_size, size):
         indices_arr[i] += last_vert_size // 4
-    
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

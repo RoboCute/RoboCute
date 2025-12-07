@@ -9,14 +9,14 @@ def codegen_header(header_path: Path):
     Chat.rpc("chat", True, value=tr.string).ret_type(tr.string)
     Chat.rpc("exit", True)
 
-    ut.codegen_to(header_path / "server.hpp")(codegen.cpp_interface_gen)
+    ut.codegen_to(header_path / "server.new.hpp")(codegen.cpp_interface_gen)
 
     include = '#include "server.hpp"'
-    ut.codegen_to(header_path / "server.cpp")(codegen.cpp_impl_gen, include)
+    ut.codegen_to(header_path / "server.new.cpp")(codegen.cpp_impl_gen, include)
 
-    client_path = header_path / "client.hpp"
+    client_path = header_path / "client.new.hpp"
     ut.codegen_to(client_path)(codegen.cpp_client_interface_gen)
-    include = '#include "client.hpp"'
+    include = '#include "client.new.hpp"'
 
-    client_path = header_path / "client.cpp"
+    client_path = header_path / "client.new.cpp"
     ut.codegen_to(client_path)(codegen.cpp_client_impl_gen, include)
