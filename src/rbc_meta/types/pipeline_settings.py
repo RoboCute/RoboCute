@@ -1,4 +1,5 @@
-from rbc_meta.utils_next.reflect import reflect
+from typing import Annotated
+from rbc_meta.utils_next.reflect import reflect, serde_field, no_serde_field
 from rbc_meta.utils_next.builtin import (
     uint,
     uint2,
@@ -175,61 +176,37 @@ class FrameSettings:
 @reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
 class ACESParameters:
     # Non-serde members (members only, not serialized)
-    hueVsHueCurve: Curve
-    hueVsSatCurve: Curve
-    satVsSatCurve: Curve
-    lumVsSatCurve: Curve
-    redCurve: Curve
-    greenCurve: Curve
-    blueCurve: Curve
-    masterCurve: Curve
-    dirty: bool
+    hueVsHueCurve: Annotated[Curve, no_serde_field()]
+    hueVsSatCurve: Annotated[Curve, no_serde_field()]
+    satVsSatCurve: Annotated[Curve, no_serde_field()]
+    lumVsSatCurve: Annotated[Curve, no_serde_field()]
+    redCurve: Annotated[Curve, no_serde_field()]
+    greenCurve: Annotated[Curve, no_serde_field()]
+    blueCurve: Annotated[Curve, no_serde_field()]
+    masterCurve: Annotated[Curve, no_serde_field()]
+    dirty: Annotated[bool, no_serde_field()]
 
-    # Serde members (serialized)
-    temperature: float
-    tint: float
-    use_white_balance_mode: bool
-    hueShift: float
-    saturation: float
-    contrast: float
-    mixerRedOutRedIn: float
-    mixerRedOutGreenIn: float
-    mixerRedOutBlueIn: float
-    mixerGreenOutRedIn: float
-    mixerGreenOutGreenIn: float
-    mixerGreenOutBlueIn: float
-    mixerBlueOutRedIn: float
-    mixerBlueOutGreenIn: float
-    mixerBlueOutBlueIn: float
-    lift: float4
-    gamma: float4
-    gain: float4
-    colorFilter: float4
-    tone_mapping: ToneMappingParameters
-
-    # Mark which fields should be serialized
-    _serde_fields = {
-        "temperature",
-        "tint",
-        "use_white_balance_mode",
-        "hueShift",
-        "saturation",
-        "contrast",
-        "mixerRedOutRedIn",
-        "mixerRedOutGreenIn",
-        "mixerRedOutBlueIn",
-        "mixerGreenOutRedIn",
-        "mixerGreenOutGreenIn",
-        "mixerGreenOutBlueIn",
-        "mixerBlueOutRedIn",
-        "mixerBlueOutGreenIn",
-        "mixerBlueOutBlueIn",
-        "lift",
-        "gamma",
-        "gain",
-        "colorFilter",
-        "tone_mapping",
-    }
+    # Serde members (serialized) - using Annotated with serde_field()
+    temperature: Annotated[float, serde_field()]
+    tint: Annotated[float, serde_field()]
+    use_white_balance_mode: Annotated[bool, serde_field()]
+    hueShift: Annotated[float, serde_field()]
+    saturation: Annotated[float, serde_field()]
+    contrast: Annotated[float, serde_field()]
+    mixerRedOutRedIn: Annotated[float, serde_field()]
+    mixerRedOutGreenIn: Annotated[float, serde_field()]
+    mixerRedOutBlueIn: Annotated[float, serde_field()]
+    mixerGreenOutRedIn: Annotated[float, serde_field()]
+    mixerGreenOutGreenIn: Annotated[float, serde_field()]
+    mixerGreenOutBlueIn: Annotated[float, serde_field()]
+    mixerBlueOutRedIn: Annotated[float, serde_field()]
+    mixerBlueOutGreenIn: Annotated[float, serde_field()]
+    mixerBlueOutBlueIn: Annotated[float, serde_field()]
+    lift: Annotated[float4, serde_field()]
+    gamma: Annotated[float4, serde_field()]
+    gain: Annotated[float4, serde_field()]
+    colorFilter: Annotated[float4, serde_field()]
+    tone_mapping: Annotated[ToneMappingParameters, serde_field()]
 
     _cpp_init = {
         "hueVsHueCurve": "{ float2(0, 0.5f) }",
@@ -248,7 +225,7 @@ class ACESParameters:
     }
 
 
-@reflect(serde=True, module_name="rbc_render")
+@reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
 class ExposureSettings:
     use_auto_exposure: bool
     filtering: float2
@@ -309,29 +286,18 @@ class DisplaySettings:
 @reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
 class SkySettings:
     # Non-serde members (members only, not serialized)
-    sky_atom: SkyAtmospherePtr
-    dirty: bool
-    force_sync: bool
+    sky_atom: Annotated[SkyAtmospherePtr, no_serde_field()]
+    dirty: Annotated[bool, no_serde_field()]
+    force_sync: Annotated[bool, no_serde_field()]
 
-    # Serde members (serialized)
-    sky_angle: float
-    sky_max_lum: float
-    sky_color: float3
-    sun_color: float3
-    sun_dir: float3
-    sun_intensity: float
-    sun_angle: float
-
-    # Mark which fields should be serialized
-    _serde_fields = {
-        "sky_angle",
-        "sky_max_lum",
-        "sky_color",
-        "sun_color",
-        "sun_dir",
-        "sun_intensity",
-        "sun_angle",
-    }
+    # Serde members (serialized) - using Annotated with serde_field()
+    sky_angle: Annotated[float, serde_field()]
+    sky_max_lum: Annotated[float, serde_field()]
+    sky_color: Annotated[float3, serde_field()]
+    sun_color: Annotated[float3, serde_field()]
+    sun_dir: Annotated[float3, serde_field()]
+    sun_intensity: Annotated[float, serde_field()]
+    sun_angle: Annotated[float, serde_field()]
 
     _cpp_init = {
         "force_sync": "true",

@@ -415,11 +415,9 @@ def generate():
 
     target_modules = ["rbc_render"]
     header_path = Path(
-        "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.new.hpp"
+        "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.hpp"
     ).resolve()
-    cpp_path = Path(
-        "rbc/render_plugin/src/generated/pipeline_settings.new.cpp"
-    ).resolve()
+    cpp_path = Path("rbc/render_plugin/src/generated/pipeline_settings.cpp").resolve()
     include = """#include <luisa/runtime/image.h>
 #include <luisa/runtime/buffer.h>
 #include <rbc_core/utils/curve.h>

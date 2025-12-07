@@ -6,9 +6,17 @@
 import inspect
 import importlib
 import typing
+import sys
 from typing import Dict, List, Optional, Any, Type, get_type_hints, get_origin, get_args
 from enum import Enum as PyEnum
 from dataclasses import dataclass
+
+# Annotated is available from Python 3.9+
+if sys.version_info >= (3, 9):
+    from typing import Annotated
+else:
+    # For Python 3.8 compatibility, create a dummy Annotated
+    Annotated = None
 
 
 @dataclass
@@ -243,7 +251,8 @@ class ReflectionRegistry:
         else:
             # 普通类的字段提取
             try:
-                hints = get_type_hints(cls)
+                # 使用 include_extras=True 来保留 Annotated 类型信息
+                hints = get_type_hints(cls, include_extras=True)
 
                 # 获取 C++ 初始化表达式字典（如果存在）
                 cpp_init_dict = getattr(cls, "_cpp_init", {})
@@ -258,22 +267,31 @@ class ReflectionRegistry:
                     # 获取 C++ 初始化表达式
                     cpp_init_expr = cpp_init_dict.get(name)
 
-                    # 检查字段是否在 serde_fields 集合中
-                    field_serde = None
-                    if name in serde_fields:
-                        field_serde = True
-                    elif hasattr(cls, "_non_serde_fields") and name in getattr(
-                        cls, "_non_serde_fields", set()
-                    ):
-                        field_serde = False
+                    # 检查类型注解中是否有 serde 标记（优先使用注解标记）
+                    field_serde = _is_serde_field_annotation(type_hint)
+                    
+                    # 如果没有注解标记，检查 _serde_fields 集合（向后兼容）
+                    if field_serde is None:
+                        if name in serde_fields:
+                            field_serde = True
+                        elif hasattr(cls, "_non_serde_fields") and name in getattr(
+                            cls, "_non_serde_fields", set()
+                        ):
+                            field_serde = False
+                        # 如果类定义了 _serde_fields 集合（非空），则不在集合中的字段默认不序列化
+                        elif len(serde_fields) > 0:
+                            field_serde = False
 
-                    # 解析字段类型的泛型信息
-                    generic_info = self._parse_generic_type(type_hint)
+                    # 提取实际类型（如果是 Annotated，提取内部类型）
+                    actual_type = _extract_annotated_type(type_hint)
+                    
+                    # 解析字段类型的泛型信息（使用实际类型）
+                    generic_info = self._parse_generic_type(actual_type)
 
                     fields.append(
                         FieldInfo(
                             name=name,
-                            type=type_hint,
+                            type=actual_type,  # 使用实际类型，而不是 Annotated 类型
                             generic_info=generic_info,
                             default=default,
                             cpp_init_expr=cpp_init_expr,
@@ -488,6 +506,135 @@ def rpc(is_static: bool = False):
         return func
 
     return decorator
+
+
+class SerdeField:
+    """
+    序列化字段标记类，用于在类型注解中标记字段需要序列化
+    
+    用法:
+        from typing import Annotated
+        
+        @reflect(serde=True)
+        class MyClass:
+            # 方式1: 使用 Annotated 标记序列化字段
+            temperature: Annotated[float, SerdeField()]
+            name: str  # 不序列化（如果类有 serde=True，默认序列化）
+            
+            # 方式2: 仍然可以使用 _serde_fields 集合
+            # _serde_fields = {"temperature"}
+    """
+    pass
+
+
+def serde_field():
+    """
+    序列化字段标记函数，返回 SerdeField 实例
+    
+    用法:
+        from typing import Annotated
+        
+        @reflect(serde=True)
+        class MyClass:
+            temperature: Annotated[float, serde_field()]
+            name: str
+    """
+    return SerdeField()
+
+
+class NonSerdeField:
+    """
+    非序列化字段标记类，用于在类型注解中标记字段不需要序列化
+    
+    用法:
+        from typing import Annotated
+        
+        @reflect(serde=True)
+        class MyClass:
+            # 序列化字段
+            temperature: Annotated[float, serde_field()]
+            # 明确标记不序列化的字段
+            internal_cache: Annotated[dict, no_serde_field()]
+    """
+    pass
+
+
+def no_serde_field():
+    """
+    非序列化字段标记函数，返回 NonSerdeField 实例
+    
+    用法:
+        from typing import Annotated
+        
+        @reflect(serde=True)
+        class MyClass:
+            temperature: Annotated[float, serde_field()]
+            internal_cache: Annotated[dict, no_serde_field()]
+    """
+    return NonSerdeField()
+
+
+def _is_serde_field_annotation(type_hint: Any) -> Optional[bool]:
+    """
+    检查类型注解中是否包含 serde 标记
+    
+    Args:
+        type_hint: 类型注解
+        
+    Returns:
+        True: 标记为序列化
+        False: 标记为不序列化
+        None: 没有标记，使用类级别设置
+    """
+    # Python 3.8 不支持 Annotated
+    if Annotated is None:
+        return None
+    
+    # 检查是否是 Annotated 类型
+    origin = get_origin(type_hint)
+    if origin is not Annotated:
+        return None
+    
+    # 获取 Annotated 的参数
+    args = get_args(type_hint)
+    if len(args) < 2:
+        return None
+    
+    # 检查元数据中是否包含 SerdeField 或 NonSerdeField
+    metadata = args[1:]
+    for meta in metadata:
+        # 检查是否是 SerdeField（标记为序列化）
+        # 支持实例检查 (serde_field() 返回 SerdeField() 实例)
+        # 也支持类本身检查 (虽然不太可能，但为了完整性)
+        if isinstance(meta, SerdeField) or meta is SerdeField:
+            return True
+        # 检查是否是 NonSerdeField（标记为不序列化）
+        if isinstance(meta, NonSerdeField) or meta is NonSerdeField:
+            return False
+    
+    return None
+
+
+def _extract_annotated_type(type_hint: Any) -> Type:
+    """
+    从 Annotated 类型注解中提取实际的类型
+    
+    Args:
+        type_hint: 类型注解
+        
+    Returns:
+        实际的类型，如果不是 Annotated 则返回原类型
+    """
+    # Python 3.8 不支持 Annotated
+    if Annotated is None:
+        return type_hint
+    
+    origin = get_origin(type_hint)
+    if origin is Annotated:
+        args = get_args(type_hint)
+        if len(args) > 0:
+            return args[0]
+    return type_hint
 
 
 def cpp_prefix(prefix: str):

@@ -428,8 +428,8 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
     structs_expr_list = []
     enums_expr_list = []
 
-    # Sort classes to ensure deterministic output (by name)
-    all_classes = sorted(registry.get_all_classes().items(), key=lambda x: x[0])
+    # Use original order from registry to preserve module-defined order
+    all_classes = registry.get_all_classes().items()
 
     for key, info in all_classes:
         # Filter by module
@@ -617,7 +617,8 @@ def cpp_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
     struct_impls_list = []
     enum_initers_list = []
 
-    all_classes = sorted(registry.get_all_classes().items(), key=lambda x: x[0])
+    # Use original order from registry to preserve module-defined order
+    all_classes = registry.get_all_classes().items()
 
     for key, info in all_classes:
         print(f"Registering {key}")
@@ -666,6 +667,7 @@ def cpp_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
                 # field.serde == True 表示序列化
                 # field.serde == False 表示不序列化
                 should_serde = info.serde
+                # print(f"{field.name}: {field.serde}")
                 if field.serde is not None:
                     should_serde = field.serde
 
@@ -766,7 +768,8 @@ def py_interface_gen(module_name: str, module_filter: List[str] = None) -> str:
         )
 
     classes_expr_list = []
-    all_classes = sorted(registry.get_all_classes().items(), key=lambda x: x[0])
+    # Use original order from registry to preserve module-defined order
+    all_classes = registry.get_all_classes().items()
     for key, info in all_classes:
         if module_filter and info.module not in module_filter:
             continue
@@ -934,7 +937,8 @@ def cpp_client_interface_gen(module_filter: List[str] = None, *extra_includes) -
     rpc_include = "#include <rbc_ipc/command_list.h>" if use_rpc else ""
 
     client_classes = []
-    all_classes = sorted(registry.get_all_classes().items(), key=lambda x: x[0])
+    # Use original order from registry to preserve module-defined order
+    all_classes = registry.get_all_classes().items()
     for key, info in all_classes:
         if module_filter and info.module not in module_filter:
             continue
@@ -957,7 +961,8 @@ def cpp_client_impl_gen(module_filter: List[str] = None, *extra_includes) -> str
     extra_includes_expr = "\n".join(extra_includes)
 
     client_impls = []
-    all_classes = sorted(registry.get_all_classes().items(), key=lambda x: x[0])
+    # Use original order from registry to preserve module-defined order
+    all_classes = registry.get_all_classes().items()
 
     for key, info in all_classes:
         if module_filter and info.module not in module_filter:
@@ -1067,7 +1072,8 @@ def pybind_codegen(
 
         return "\n".join(result_parts)
 
-    all_classes = sorted(registry.get_all_classes().items(), key=lambda x: x[0])
+    # Use original order from registry to preserve module-defined order
+    all_classes = registry.get_all_classes().items()
     for key, info in all_classes:
         if module_filter and info.module not in module_filter:
             continue
@@ -1124,12 +1130,21 @@ def pybind_codegen(
                 load_stmts_list = []
 
                 for field in info.fields:
-                    store_stmts_list.append(
-                        f"{INDENT}{INDENT}obj._store(this->{field.name});"
-                    )
-                    load_stmts_list.append(
-                        f"{INDENT}{INDENT}obj._load(this->{field.name});"
-                    )
+                    # 检查字段级别的 serde 设置
+                    # field.serde == None 表示使用类级别的 serde 设置
+                    # field.serde == True 表示序列化
+                    # field.serde == False 表示不序列化
+                    should_serde = info.serde
+                    if field.serde is not None:
+                        should_serde = field.serde
+
+                    if should_serde:
+                        store_stmts_list.append(
+                            f"{INDENT}{INDENT}obj._store(this->{field.name});"
+                        )
+                        load_stmts_list.append(
+                            f"{INDENT}{INDENT}obj._load(this->{field.name});"
+                        )
 
                 store_stmts = "\n".join(store_stmts_list)
                 load_stmts = "\n".join(load_stmts_list)
