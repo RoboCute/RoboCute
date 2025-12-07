@@ -104,8 +104,8 @@ ${MEMBERS_EXPR}
                     
 // BUILT-IN METHODS
 ${INDENT}${FUNC_API} static ${STRUCT_NAME}* _create_();
-virtual void dispose() = 0;
-virtual ~${STRUCT_NAME}() = default;  
+${INDENT}virtual void dispose() = 0;
+${INDENT}virtual ~${STRUCT_NAME}() = default;  
                                 
 ${INDENT}${SER_DECL}
 ${INDENT}${DESER_DECL}  
@@ -125,7 +125,7 @@ ${INDENT}static constexpr const char* name{"${NAMESPACE_NAME}::${STRUCT_NAME}"};
 ${INDENT}static constexpr uint8_t md5[16]{${MD5_DIGEST}};
 };
                                
-}} // rbc_rtti_detail
+} // rbc_rtti_detail
 """)
 
 CPP_STRUCT_CTOR_DECL_TEMPLATE = Template("${STRUCT_NAME}();")
@@ -293,9 +293,13 @@ ${RETURN_STMT}
 ${NAMESPACE_CLOSE}
 """)
 
-CPP_CLIENT_ADD_ARG_STMT_TEMPLATE = Template("${INDENT}${JSON_SER_NAME}.add_arg(${ARG_NAME});")
+CPP_CLIENT_ADD_ARG_STMT_TEMPLATE = Template(
+    "${INDENT}${JSON_SER_NAME}.add_arg(${ARG_NAME});"
+)
 
-CPP_CLIENT_RETURN_STMT_TEMPLATE = Template("${INDENT}return ${JSON_SER_NAME}.return_value<${RET_TYPE}>();")
+CPP_CLIENT_RETURN_STMT_TEMPLATE = Template(
+    "${INDENT}return ${JSON_SER_NAME}.return_value<${RET_TYPE}>();"
+)
 
 # Pybind templates
 PYBIND_CODE_TEMPLATE = Template("""
@@ -330,7 +334,9 @@ ${ENUM_VALUES}
 ${INDENT};
 """)
 
-PYBIND_ENUM_VALUE_TEMPLATE = Template("${INDENT}${INDENT}.value(\"${VALUE_NAME}\", ${ENUM_NAME}::${VALUE_NAME})")
+PYBIND_ENUM_VALUE_TEMPLATE = Template(
+    '${INDENT}${INDENT}.value("${VALUE_NAME}", ${ENUM_NAME}::${VALUE_NAME})'
+)
 
 PYBIND_CREATE_FUNC_TEMPLATE = Template("""
 ${INDENT}m.def("${CREATE_NAME}", []() -> void* {

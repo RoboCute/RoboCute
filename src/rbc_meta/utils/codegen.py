@@ -101,7 +101,7 @@ _type_name_functions = {
 
 
 _template_names = {
-    tr.unordered_map: lambda ele: f"luisa::unordered_map<{_print_arg_type(ele._key)}, {_print_arg_type(ele._value)}>",
+    tr.unordered_map: lambda ele: f"luisa::unordered_map<{get_arg_type(ele._key)}, {get_arg_type(ele._value)}>",
     tr.ClassPtr: lambda ele: "void*",
     tr.external_type: lambda x: x._name,
 }
@@ -139,7 +139,7 @@ def _is_non_serializable(x):
         return v(x)
 
 
-def _print_arg_type(t, py_interface: bool = False, is_view: bool = False):
+def get_arg_type(t, py_interface: bool = False, is_view: bool = False):
     if not t:
         return "void"
     f = _type_name_functions.get(t)
@@ -167,7 +167,7 @@ def _print_arg_vars_decl(args: dict, is_first: bool, py_interface: bool, is_view
         if not is_first:
             r += ", "
         is_first = False
-        r += _print_arg_type(arg_type, py_interface, is_view)
+        r += get_arg_type(arg_type, py_interface, is_view)
         r += " "
         r += arg_name
     return r
@@ -231,25 +231,25 @@ def _print_py_args(args: dict, is_first: bool):
 
 def py_interface_gen(module_name: str):
     INDENT = DEFAULT_INDENT
-    
+
     def get_class_expr(struct_name: str):
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
-        
+
         init_method = PY_INIT_METHOD_TEMPLATE.substitute(
             INDENT=INDENT,
             STRUCT_NAME=struct_name,
         )
-        
+
         dispose_method = PY_DISPOSE_METHOD_TEMPLATE.substitute(
             INDENT=INDENT,
             STRUCT_NAME=struct_name,
         )
-        
+
         def get_method_expr(mem_name: str, func: tr._function_t):
             args_decl = _print_py_args_decl(func._args, False)
             args_call = _print_py_args(func._args, False)
             return_expr = "return " if func._ret_type else ""
-            
+
             return PY_METHOD_TEMPLATE.substitute(
                 INDENT=INDENT,
                 METHOD_NAME=mem_name,
@@ -258,27 +258,27 @@ def py_interface_gen(module_name: str):
                 STRUCT_NAME=struct_name,
                 ARGS_CALL=args_call,
             )
-        
+
         methods_list = []
         for mem_name in struct_type._methods:
             mems_dict: dict = struct_type._methods[mem_name]
             for key in mems_dict:
                 func: tr._function_t = mems_dict[key]
                 methods_list.append(get_method_expr(mem_name, func))
-        
+
         methods_expr = "".join(methods_list)
-        
+
         return PY_INTERFACE_CLASS_TEMPLATE.substitute(
             CLASS_NAME=struct_type.class_name(),
             INIT_METHOD=init_method,
             DISPOSE_METHOD=dispose_method,
             METHODS_EXPR=methods_expr,
         )
-    
+
     classes_expr = "\n".join(
         [get_class_expr(struct_name) for struct_name in tr._registed_struct_types]
     )
-    
+
     result = f"from rbc_ext._C.{module_name} import *\n{classes_expr}"
     cb.set_result(result)
     return cb.get_result()
@@ -290,14 +290,14 @@ def _print_rpc_serializer(struct_type: tr.struct):
     if len(rpc) == 0:
         return ""
     full_name = struct_type.full_name()
-    
+
     arg_structs = []
     func_names_list = []
     call_exprs_list = []
     arg_metas_list = []
     ret_metas_list = []
     is_statics_list = []
-    
+
     for func_name in rpc:
         mems_dict: dict = rpc[func_name]
         for key in mems_dict:
@@ -305,36 +305,42 @@ def _print_rpc_serializer(struct_type: tr.struct):
                 str(full_name + "->" + func_name + "|" + key).encode("ascii")
             ).hexdigest()
             func: tr._function_t = mems_dict[key]
-            
+
             arg_struct_name = "void"
             if len(func._args) > 0:
                 arg_struct_name = f"Arg{func_hasher_name}"
-                
-                arg_members = "\n".join([
-                    CPP_RPC_ARG_MEMBER_TEMPLATE.substitute(
-                        INDENT=INDENT,
-                        ARG_TYPE=_print_arg_type(func._args[arg_name]),
-                        ARG_NAME=arg_name,
-                    )
-                    for arg_name in func._args
-                ])
-                
-                ser_stmts = "\n".join([
-                    CPP_RPC_SER_STMT_TEMPLATE.substitute(
-                        INDENT=INDENT,
-                        ARG_NAME=arg_name,
-                    )
-                    for arg_name in func._args
-                ])
-                
-                deser_stmts = "\n".join([
-                    CPP_RPC_DESER_STMT_TEMPLATE.substitute(
-                        INDENT=INDENT,
-                        ARG_NAME=arg_name,
-                    )
-                    for arg_name in func._args
-                ])
-                
+
+                arg_members = "\n".join(
+                    [
+                        CPP_RPC_ARG_MEMBER_TEMPLATE.substitute(
+                            INDENT=INDENT,
+                            ARG_TYPE=get_arg_type(func._args[arg_name]),
+                            ARG_NAME=arg_name,
+                        )
+                        for arg_name in func._args
+                    ]
+                )
+
+                ser_stmts = "\n".join(
+                    [
+                        CPP_RPC_SER_STMT_TEMPLATE.substitute(
+                            INDENT=INDENT,
+                            ARG_NAME=arg_name,
+                        )
+                        for arg_name in func._args
+                    ]
+                )
+
+                deser_stmts = "\n".join(
+                    [
+                        CPP_RPC_DESER_STMT_TEMPLATE.substitute(
+                            INDENT=INDENT,
+                            ARG_NAME=arg_name,
+                        )
+                        for arg_name in func._args
+                    ]
+                )
+
                 arg_struct = CPP_RPC_ARG_STRUCT_TEMPLATE.substitute(
                     ARG_STRUCT_NAME=arg_struct_name,
                     ARG_MEMBERS=arg_members,
@@ -343,29 +349,39 @@ def _print_rpc_serializer(struct_type: tr.struct):
                     DESER_STMTS=deser_stmts,
                 )
                 arg_structs.append(arg_struct)
-            
+
             func_names_list.append(f'"{func_hasher_name}"')
-            
+
             # Build lambda call expression
             self_param = "void *self, " if not func._static else ""
             is_statics_list.append("true" if func._static else "false")
-            
+
             args_cast = ""
             if len(func._args) > 0:
                 args_cast = f"{INDENT}{INDENT}auto args_ptr = static_cast<{arg_struct_name} *>(args);\n"
-            
+
             is_ret_void = not (func._ret_type and func._ret_type != tr.void)
-            ret_type_name = _print_arg_type(func._ret_type)
-            
+            ret_type_name = get_arg_type(func._ret_type)
+
             ret_construct = ""
             if not is_ret_void:
                 ret_construct = f"{INDENT}{INDENT}std::construct_at(static_cast<{ret_type_name} *>(ret_value),\n"
-            
-            func_call_prefix = f"{full_name}::{func_name}(" if func._static else f"static_cast<{full_name} *>(self)->{func_name}("
-            args_call = ", ".join([f"args_ptr->{arg_name}" for arg_name in func._args]) if len(func._args) > 0 else ""
+
+            func_call_prefix = (
+                f"{full_name}::{func_name}("
+                if func._static
+                else f"static_cast<{full_name} *>(self)->{func_name}("
+            )
+            args_call = (
+                ", ".join([f"args_ptr->{arg_name}" for arg_name in func._args])
+                if len(func._args) > 0
+                else ""
+            )
             func_call_suffix = ")" if not is_ret_void else ""
-            func_call = f"{INDENT}{INDENT}{func_call_prefix}{args_call}){func_call_suffix};"
-            
+            func_call = (
+                f"{INDENT}{INDENT}{func_call_prefix}{args_call}){func_call_suffix};"
+            )
+
             call_expr = CPP_RPC_CALL_LAMBDA_TEMPLATE.substitute(
                 SELF_PARAM=self_param,
                 ARGS_CAST=args_cast,
@@ -374,15 +390,15 @@ def _print_rpc_serializer(struct_type: tr.struct):
                 RET_CLOSE="",
             )
             call_exprs_list.append(call_expr)
-            
+
             arg_metas_list.append(f"rbc::HeapObjectMeta::create<{arg_struct_name}>()")
             ret_metas_list.append(f"rbc::HeapObjectMeta::create<{ret_type_name}>()")
-    
+
     hash_name = hashlib.md5(struct_type.full_name().encode("ascii")).hexdigest()
-    
+
     result_parts = []
     result_parts.extend(arg_structs)
-    
+
     func_serializer = CPP_FUNC_SERIALIZER_TEMPLATE.substitute(
         HASH_NAME=hash_name,
         FUNC_NAMES=", ".join(func_names_list),
@@ -392,97 +408,107 @@ def _print_rpc_serializer(struct_type: tr.struct):
         IS_STATICS=", ".join(is_statics_list),
     )
     result_parts.append(func_serializer)
-    
+
     return "\n".join(result_parts)
 
 
 def _cpp_impl_gen():
     INDENT = DEFAULT_INDENT
-    
+
     def get_enum_initer_expr(enum_name: str):
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
         if enum_type._cpp_external:
             return ""
-        
+
         full_name = enum_type.full_name()
         m = hashlib.md5(full_name.encode("ascii"))
         digest = m.hexdigest()
-        
+
         enum_names = ", ".join([f'"{kv[0]}"' for kv in enum_type._params])
-        enum_values = ", ".join([
-            f"(uint64_t)luisa::to_underlying({enum_name}::{kv[0]})"
-            for kv in enum_type._params
-        ])
-        
+        enum_values = ", ".join(
+            [
+                f"(uint64_t)luisa::to_underlying({enum_name}::{kv[0]})"
+                for kv in enum_type._params
+            ]
+        )
+
         initer = f'"{full_name}", std::initializer_list<char const*>{{{enum_names}}}, std::initializer_list<uint64_t>{{{enum_values}}}'
-        
+
         return CPP_ENUM_INITER_TEMPLATE.substitute(
             DIGEST=digest,
             INITER=initer,
         )
-    
-    enum_initers = [get_enum_initer_expr(enum_name) for enum_name in tr._registed_enum_types]
+
+    enum_initers = [
+        get_enum_initer_expr(enum_name) for enum_name in tr._registed_enum_types
+    ]
     enum_initers_expr = "\n".join([e for e in enum_initers if e])
-    
+
     def get_struct_impl_expr(struct_name: str):
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
         if struct_type._cpp_external:
             return ""
-        
+
         namespace = struct_type.namespace_name()
         namespace_open = f"namespace {namespace} {{\n" if len(namespace) > 0 else ""
         namespace_close = f"\n}} // namespace {namespace}" if len(namespace) > 0 else ""
-        
+
         result_parts = []
-        
+
         if len(struct_type._serde_members) > 0:
-            store_stmts = "\n".join([
-                f"{INDENT}{INDENT}obj._store(this->{mem_name});"
-                for mem_name in struct_type._serde_members
-            ])
-            
+            store_stmts = "\n".join(
+                [
+                    f"{INDENT}{INDENT}obj._store(this->{mem_name});"
+                    for mem_name in struct_type._serde_members
+                ]
+            )
+
             ser_impl = CPP_STRUCT_SER_IMPL_TEMPLATE.substitute(
                 NAMESPACE_OPEN=namespace_open,
                 CLASS_NAME=struct_type.class_name(),
                 STORE_STMTS=store_stmts,
             )
             result_parts.append(ser_impl)
-            
-            load_stmts = "\n".join([
-                f"{INDENT}{INDENT}obj._load(this->{mem_name});"
-                for mem_name in struct_type._serde_members
-            ])
-            
+
+            load_stmts = "\n".join(
+                [
+                    f"{INDENT}{INDENT}obj._load(this->{mem_name});"
+                    for mem_name in struct_type._serde_members
+                ]
+            )
+
             deser_impl = CPP_STRUCT_DESER_IMPL_TEMPLATE.substitute(
                 CLASS_NAME=struct_type.class_name(),
                 LOAD_STMTS=load_stmts,
                 NAMESPACE_CLOSE=namespace_close,
             )
             result_parts.append(deser_impl)
-        
+
         rpc_serializer = _print_rpc_serializer(struct_type)
         if rpc_serializer:
             result_parts.append(rpc_serializer)
-        
+
         return "\n".join(result_parts)
-    
-    struct_impls = [get_struct_impl_expr(struct_name) for struct_name in tr._registed_struct_types]
+
+    struct_impls = [
+        get_struct_impl_expr(struct_name) for struct_name in tr._registed_struct_types
+    ]
     struct_impls_expr = "\n".join([s for s in struct_impls if s])
-    
+
     return enum_initers_expr, struct_impls_expr
 
 
 def cpp_impl_gen(*extra_includes):
     extra_includes_expr = "\n".join(extra_includes) if extra_includes else ""
-    
+
     enum_initers_expr, struct_impls_expr = _cpp_impl_gen()
-    
+
     result = CPP_IMPL_TEMPLATE.substitute(
         EXTRA_INCLUDES=extra_includes_expr,
         ENUM_INITERS_EXPR=enum_initers_expr,
         STRUCT_IMPLS_EXPR=struct_impls_expr,
     )
-    
+
     cb.set_result(result)
     return cb.get_result()
 
@@ -496,21 +522,23 @@ def _print_client_code(struct_type: tr.struct):
     rpc = struct_type._rpc
     if len(rpc) == 0:
         return ""
-    
+
     def get_method_decl(func_name: str, func: tr._function_t):
-        args_decl = ", ".join([
-            f"{_print_arg_type(func._args[arg_name])} {arg_name}"
-            for arg_name in func._args
-        ])
+        args_decl = ", ".join(
+            [
+                f"{get_arg_type(func._args[arg_name])} {arg_name}"
+                for arg_name in func._args
+            ]
+        )
         if args_decl:
             args_decl = ", " + args_decl
-        
+
         ret_type = "void"
         if func._ret_type and func._ret_type != tr.void:
-            ret_type = f"rbc::RPCFuture<{_print_arg_type(func._ret_type)}>"
-        
+            ret_type = f"rbc::RPCFuture<{get_arg_type(func._ret_type)}>"
+
         self_param = ", void*" if not func._static else ""
-        
+
         return CPP_CLIENT_METHOD_DECL_TEMPLATE.substitute(
             INDENT=INDENT,
             RET_TYPE=ret_type,
@@ -518,20 +546,20 @@ def _print_client_code(struct_type: tr.struct):
             SELF_PARAM=self_param,
             ARGS_DECL=args_decl,
         )
-    
+
     method_decls = []
     for func_name in rpc:
         mems_dict: dict = rpc[func_name]
         for key in mems_dict:
             func: tr._function_t = mems_dict[key]
             method_decls.append(get_method_decl(func_name, func))
-    
+
     methods_decl = "\n".join(method_decls)
-    
+
     namespace = struct_type.namespace_name()
     namespace_open = f"namespace {namespace} {{\n" if len(namespace) > 0 else ""
     namespace_close = f"\n}} // namespace {namespace}" if len(namespace) > 0 else ""
-    
+
     return CPP_CLIENT_CLASS_TEMPLATE.substitute(
         NAMESPACE_OPEN=namespace_open,
         CLASS_NAME=struct_type.class_name(),
@@ -545,16 +573,16 @@ def _print_client_impl(struct_type: tr.struct):
     rpc = struct_type._rpc
     if len(rpc) == 0:
         return ""
-    
+
     class_name = struct_type.class_name()
     full_name = struct_type.full_name()
     namespace = struct_type.namespace_name()
     namespace_open = f"namespace {namespace} {{\n" if len(namespace) > 0 else ""
     namespace_close = f"\n}} // namespace {namespace}" if len(namespace) > 0 else ""
-    
+
     method_impls = []
     is_first = True
-    
+
     for func_name in rpc:
         mems_dict: dict = rpc[func_name]
         for key in mems_dict:
@@ -562,31 +590,35 @@ def _print_client_impl(struct_type: tr.struct):
             func_hasher_name = hashlib.md5(
                 str(full_name + "->" + func_name + "|" + key).encode("ascii")
             ).hexdigest()
-            
-            args_decl = ", ".join([
-                f"{_print_arg_type(func._args[arg_name])} {arg_name}"
-                for arg_name in func._args
-            ])
+
+            args_decl = ", ".join(
+                [
+                    f"{get_arg_type(func._args[arg_name])} {arg_name}"
+                    for arg_name in func._args
+                ]
+            )
             if args_decl:
                 args_decl = ", " + args_decl
-            
-            ret_type_name = _print_arg_type(func._ret_type)
+
+            ret_type_name = get_arg_type(func._ret_type)
             ret_type = "void"
             if func._ret_type and func._ret_type != tr.void:
                 ret_type = f"rbc::RPCFuture<{ret_type_name}>"
-            
+
             self_param = f", void* {SELF_NAME}" if not func._static else ""
             self_arg = f", {SELF_NAME}" if not func._static else ""
-            
-            add_args_stmts = "\n".join([
-                CPP_CLIENT_ADD_ARG_STMT_TEMPLATE.substitute(
-                    INDENT=INDENT,
-                    JSON_SER_NAME=JSON_SER_NAME,
-                    ARG_NAME=arg_name,
-                )
-                for arg_name in func._args
-            ])
-            
+
+            add_args_stmts = "\n".join(
+                [
+                    CPP_CLIENT_ADD_ARG_STMT_TEMPLATE.substitute(
+                        INDENT=INDENT,
+                        JSON_SER_NAME=JSON_SER_NAME,
+                        ARG_NAME=arg_name,
+                    )
+                    for arg_name in func._args
+                ]
+            )
+
             return_stmt = ""
             if func._ret_type and func._ret_type != tr.void:
                 return_stmt = CPP_CLIENT_RETURN_STMT_TEMPLATE.substitute(
@@ -594,7 +626,7 @@ def _print_client_impl(struct_type: tr.struct):
                     JSON_SER_NAME=JSON_SER_NAME,
                     RET_TYPE=ret_type_name,
                 )
-            
+
             method_impl = CPP_CLIENT_METHOD_IMPL_TEMPLATE.substitute(
                 NAMESPACE_OPEN=namespace_open if is_first else "",
                 RET_TYPE=ret_type,
@@ -611,31 +643,31 @@ def _print_client_impl(struct_type: tr.struct):
             )
             method_impls.append(method_impl)
             is_first = False
-    
+
     # Add namespace close to last method
     if namespace_close and method_impls:
         method_impls[-1] = method_impls[-1].rstrip() + namespace_close
-    
+
     return "\n".join(method_impls)
 
 
 def cpp_client_impl_gen(*extra_includes):
     extra_includes_expr = "\n".join(extra_includes) if extra_includes else ""
-    
+
     client_impls = []
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
         client_impl = _print_client_impl(struct_type)
         if client_impl:
             client_impls.append(client_impl)
-    
+
     client_impls_expr = "\n".join(client_impls)
-    
+
     result = CPP_CLIENT_IMPL_TEMPLATE.substitute(
         EXTRA_INCLUDES=extra_includes_expr,
         CLIENT_IMPLS_EXPR=client_impls_expr,
     )
-    
+
     cb.set_result(result)
     return cb.get_result()
 
@@ -647,25 +679,25 @@ def cpp_client_interface_gen(*extra_includes):
         if len(struct_type._rpc) > 0:
             use_rpc = True
             break
-    
+
     rpc_include = "#include <rbc_ipc/command_list.h>" if use_rpc else ""
     extra_includes_expr = "\n".join(extra_includes) if extra_includes else ""
-    
+
     client_classes = []
     for struct_name in tr._registed_struct_types:
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
         client_code = _print_client_code(struct_type)
         if client_code:
             client_classes.append(client_code)
-    
+
     client_classes_expr = "\n".join(client_classes)
-    
+
     result = CPP_CLIENT_INTERFACE_TEMPLATE.substitute(
         RPC_INCLUDE=rpc_include,
         EXTRA_INCLUDES=extra_includes_expr,
         CLIENT_CLASSES_EXPR=client_classes_expr,
     )
-    
+
     cb.set_result(result)
     return cb.get_result()
 
@@ -713,7 +745,7 @@ def cpp_interface_gen(*extra_includes):
             mem = struct_type._members[mem_name]
             initer = struct_type._cpp_initer.get(mem_name)
             init_expr = initer if initer else ""
-            var_type_name = _print_arg_type(mem)
+            var_type_name = get_arg_type(mem)
             member_expr = CPP_STRUCT_MEMBER_EXPR_TEMPLATE.substitute(
                 INDENT=INDENT,
                 VAR_TYPE_NAME=var_type_name,
@@ -744,9 +776,7 @@ def cpp_interface_gen(*extra_includes):
 
         def get_method_expr(func: tr._function_t, method_name: str):
             ret_type = (
-                _print_arg_type(func._ret_type, False, False)
-                if func.ret_type
-                else "void"
+                get_arg_type(func._ret_type, False, False) if func.ret_type else "void"
             )
             args_expr = _print_arg_vars_decl(func._args, True, False, True)
             return CPP_STRUCT_METHOD_DECL_TEMPLATE.substitute(
@@ -789,12 +819,12 @@ def cpp_interface_gen(*extra_includes):
                         if not is_first:
                             args += ", "
                         is_first = False
-                        args += f"{_print_arg_type(func._args[arg_name])} {arg_name}"
+                        args += f"{get_arg_type(func._args[arg_name])} {arg_name}"
                     static = ""
                     if func._static:
                         static = "static "
                     rpc_list.append(
-                        f"{static}{_print_arg_type(func._ret_type)} {func_name}({args});"
+                        f"{static}{get_arg_type(func._ret_type)} {func_name}({args});"
                     )
             return "\n".join(rpc_list)
 
@@ -834,38 +864,42 @@ def pybind_codegen(module_name: str, *extra_includes):
     export_func_name = f"export_{module_name}"
     extra_includes_expr = "\n".join(extra_includes) if extra_includes else ""
     ptr_name = "ptr_484111b5e8ed4230b5ef5f5fdc33ca81"  # magic name
-    
+
     def get_enum_binding(enum_name: str):
         enum_type: tr.enum = tr._registed_enum_types[enum_name]
         if enum_type._py_external:
             return ""
-        
-        enum_values = "\n".join([
-            PYBIND_ENUM_VALUE_TEMPLATE.substitute(
-                INDENT=INDENT,
-                VALUE_NAME=kv[0],
-                ENUM_NAME=enum_name,
-            )
-            for kv in enum_type._params
-        ])
-        
+
+        enum_values = "\n".join(
+            [
+                PYBIND_ENUM_VALUE_TEMPLATE.substitute(
+                    INDENT=INDENT,
+                    VALUE_NAME=kv[0],
+                    ENUM_NAME=enum_name,
+                )
+                for kv in enum_type._params
+            ]
+        )
+
         return PYBIND_ENUM_BINDING_TEMPLATE.substitute(
             INDENT=INDENT,
             ENUM_NAME=enum_name,
             CLASS_NAME=enum_type.class_name(),
             ENUM_VALUES=enum_values,
         )
-    
-    enum_bindings = [get_enum_binding(enum_name) for enum_name in tr._registed_enum_types]
+
+    enum_bindings = [
+        get_enum_binding(enum_name) for enum_name in tr._registed_enum_types
+    ]
     enum_bindings_expr = "\n".join([e for e in enum_bindings if e])
-    
+
     def get_struct_bindings(struct_name: str):
         struct_type: tr.struct = tr._registed_struct_types[struct_name]
         if struct_type._py_external:
             return ""
-        
+
         result_parts = []
-        
+
         # create function
         create_name = f"create__{struct_name}__"
         create_func = PYBIND_CREATE_FUNC_TEMPLATE.substitute(
@@ -874,7 +908,7 @@ def pybind_codegen(module_name: str, *extra_includes):
             STRUCT_NAME=struct_name,
         )
         result_parts.append(create_func)
-        
+
         # dispose function
         dispose_name = f"dispose__{struct_name}__"
         dispose_func = PYBIND_DISPOSE_FUNC_TEMPLATE.substitute(
@@ -884,27 +918,27 @@ def pybind_codegen(module_name: str, *extra_includes):
             STRUCT_NAME=struct_name,
         )
         result_parts.append(dispose_func)
-        
+
         # method functions
         for mem_name in struct_type._methods:
             mems_dict: dict = struct_type._methods[mem_name]
             for key in mems_dict:
                 func: tr._function_t = mems_dict[key]
-                
+
                 ret_type = ""
                 return_expr = ""
                 return_close = ""
                 if func._ret_type:
-                    ret_type = f" -> {_print_arg_type(func._ret_type, True, False)}"
+                    ret_type = f" -> {get_arg_type(func._ret_type, True, False)}"
                     return_expr = "return "
                     f = pybind_return_pass.get(func._ret_type)
                     if f:
                         return_expr += f(func._ret_type) + "("
                         return_close = ")"
-                
+
                 args_decl = _print_arg_vars_decl(func._args, False, True, True)
                 args_call = _print_arg_vars(func._args, True, True)
-                
+
                 method_func = PYBIND_METHOD_FUNC_TEMPLATE.substitute(
                     INDENT=INDENT,
                     METHOD_NAME=f"{struct_name}__{mem_name}__",
@@ -918,15 +952,21 @@ def pybind_codegen(module_name: str, *extra_includes):
                     RETURN_CLOSE=return_close,
                 )
                 result_parts.append(method_func)
-        
+
         return "\n".join(result_parts)
-    
-    struct_bindings = [get_struct_bindings(struct_name) for struct_name in tr._registed_struct_types]
+
+    struct_bindings = [
+        get_struct_bindings(struct_name) for struct_name in tr._registed_struct_types
+    ]
     struct_bindings_expr = "\n".join([s for s in struct_bindings if s])
-    
+
     enum_initers_expr, struct_impls_expr = _cpp_impl_gen()
-    impl_code = f"{enum_initers_expr}\n\n{struct_impls_expr}" if enum_initers_expr or struct_impls_expr else ""
-    
+    impl_code = (
+        f"{enum_initers_expr}\n\n{struct_impls_expr}"
+        if enum_initers_expr or struct_impls_expr
+        else ""
+    )
+
     result = PYBIND_CODE_TEMPLATE.substitute(
         EXTRA_INCLUDES=extra_includes_expr,
         EXPORT_FUNC_NAME=export_func_name,
@@ -934,6 +974,6 @@ def pybind_codegen(module_name: str, *extra_includes):
         STRUCT_BINDINGS=struct_bindings_expr,
         IMPL_CODE=impl_code,
     )
-    
+
     cb.set_result(result)
     return cb.get_result()
