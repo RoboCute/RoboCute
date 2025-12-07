@@ -26,14 +26,14 @@ GENERATION_TASKS = [
     #     ).resolve(),
     #     Path("rbc/render_plugin/src/generated/pipeline_settings.new.cpp").resolve(),
     # ),
-    (
-        "rbc_meta.resource_meta",
-        "codegen_header",
-        Path(
-            "rbc/runtime/include/rbc_runtime/generated/resource_meta.new.hpp"
-        ).resolve(),
-        Path("rbc/runtime/src/runtime/generated/resource_meta.new.cpp").resolve(),
-    ),
+    # (
+    #     "rbc_meta.resource_meta",
+    #     "codegen_header",
+    #     Path(
+    #         "rbc/runtime/include/rbc_runtime/generated/resource_meta.new.hpp"
+    #     ).resolve(),
+    #     Path("rbc/runtime/src/runtime/generated/resource_meta.new.cpp").resolve(),
+    # ),
     # (
     #     "rbc_meta.resource_type",
     #     "codegen_header",

@@ -450,8 +450,6 @@ def _cpp_impl_gen():
             return ""
 
         namespace = struct_type.namespace_name()
-        namespace_open = f"namespace {namespace} {{\n" if len(namespace) > 0 else ""
-        namespace_close = f"\n}} // namespace {namespace}" if len(namespace) > 0 else ""
 
         result_parts = []
 
@@ -464,7 +462,7 @@ def _cpp_impl_gen():
             )
 
             ser_impl = CPP_STRUCT_SER_IMPL_TEMPLATE.substitute(
-                NAMESPACE_OPEN=namespace_open,
+                NAMESPACE_NAME=namespace,
                 CLASS_NAME=struct_type.class_name(),
                 STORE_STMTS=store_stmts,
             )
@@ -480,7 +478,7 @@ def _cpp_impl_gen():
             deser_impl = CPP_STRUCT_DESER_IMPL_TEMPLATE.substitute(
                 CLASS_NAME=struct_type.class_name(),
                 LOAD_STMTS=load_stmts,
-                NAMESPACE_CLOSE=namespace_close,
+                NAMESPACE_NAME=namespace,
             )
             result_parts.append(deser_impl)
 
@@ -557,14 +555,10 @@ def _print_client_code(struct_type: tr.struct):
     methods_decl = "\n".join(method_decls)
 
     namespace = struct_type.namespace_name()
-    namespace_open = f"namespace {namespace} {{\n" if len(namespace) > 0 else ""
-    namespace_close = f"\n}} // namespace {namespace}" if len(namespace) > 0 else ""
-
     return CPP_CLIENT_CLASS_TEMPLATE.substitute(
-        NAMESPACE_OPEN=namespace_open,
+        NAMESPACE_NAME=namespace,
         CLASS_NAME=struct_type.class_name(),
         METHOD_DECLS=methods_decl,
-        NAMESPACE_CLOSE=namespace_close,
     )
 
 
@@ -639,7 +633,7 @@ def _print_client_impl(struct_type: tr.struct):
                 SELF_ARG=self_arg,
                 ADD_ARGS_STMTS=add_args_stmts,
                 RETURN_STMT=return_stmt,
-                NAMESPACE_CLOSE="",
+                NAMESPACE_NAME="",
             )
             method_impls.append(method_impl)
             is_first = False

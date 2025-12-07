@@ -1,0 +1,23 @@
+import rbc_meta.utils.codegen_util as ut
+from rbc_meta.utils_next.reflect import reflect
+from rbc_meta.utils_next.builtin import uint, Vector
+from rbc_meta.utils_next.codegen import cpp_interface_gen, cpp_impl_gen
+from pathlib import Path
+from rbc_meta.types.resource_enums import PixelStorage
+
+
+@reflect(cpp_namespace="rbc", serde=True, module_name="runtime")
+class MeshMeta:
+    vertex_count: uint
+    normal: bool
+    tangent: bool
+    uv_count: uint
+    submesh_offset: Vector[uint]
+
+
+@reflect(cpp_namespace="rbc", serde=True, module_name="runtime")
+class TextureMeta:
+    width: uint
+    height: uint
+    storage: PixelStorage
+    mip_level: uint

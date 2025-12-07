@@ -1,6 +1,6 @@
 import rbc_meta.utils.type_register as tr
 import rbc_meta.utils.codegen_util as ut
-import rbc_meta.resource_enums as res_enums
+import rbc_meta.types.resource_enums as res_enums
 from pathlib import Path
 
 
@@ -13,8 +13,6 @@ def codegen_pybind(
     file_name = "rbc_backend"
     Context = tr.struct("RBCContext", "TEST_GRAPHICS_API")
 
-    # these enums defined in rbc_runtime
-    res_enums.mark_enums_external()
     # frame
     Context.method(
         "init_device",

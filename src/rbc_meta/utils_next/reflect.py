@@ -73,6 +73,7 @@ class ClassInfo:
     base_classes: List[str]
     doc: Optional[str] = None
     cpp_namespace: str = ""
+    serde = False
 
     def __post_init__(self):
         """后处理，确保列表不为None"""
@@ -97,7 +98,7 @@ class ReflectionRegistry:
         return cls._instance
 
     def register(
-        self, cls: Type, module_name: str = None, cpp_namespace: str = None
+        self, cls: Type, module_name: str = None, cpp_namespace: str = None, serde=False
     ) -> Type:
         """注册类"""
         # print(f"registering {cls} with module name {module_name}")
@@ -105,7 +106,10 @@ class ReflectionRegistry:
             module_name = cls.__module__
 
         class_info = self._extract_class_info(cls, module_name)
+
         class_info.cpp_namespace = cpp_namespace
+        class_info.serde = serde
+
         key = f"{module_name}.{cls.__name__}"
         self._registered_classes[key] = class_info
 
@@ -330,7 +334,7 @@ class ReflectionRegistry:
             for name, obj in inspect.getmembers(module, predicate=inspect.isclass):
                 # print(f"Scanning {name}")
                 # 检查是否有标记属性
-                if hasattr(obj, "__reflected__"):
+                if hasattr(obj, "_reflected_"):
                     self.register(obj, module_name)
         except ImportError as e:
             import warnings
@@ -339,7 +343,7 @@ class ReflectionRegistry:
 
 
 def reflect(
-    cls: Type = None, *, module_name: str = None, cpp_namespace: str = None
+    cls: Type = None, *, module_name: str = None, cpp_namespace: str = None, serde=False
 ) -> Type:
     """
     反射装饰器，用于标记需要反射的类
@@ -360,9 +364,11 @@ def reflect(
 
     def decorator(cls: Type) -> Type:
         registry = ReflectionRegistry()
-        registry.register(cls, module_name=module_name, cpp_namespace=cpp_namespace)
+        registry.register(
+            cls, module_name=module_name, cpp_namespace=cpp_namespace, serde=serde
+        )
         # 添加标记属性
-        cls.__reflected__ = True
+        cls._reflected_ = True
         return cls
 
     # 支持 @reflect 和 @reflect(...) 两种用法

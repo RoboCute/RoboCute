@@ -1,6 +1,6 @@
 # 导入新版架构
 try:
-    import rbc_meta.utils_next.reflect as reflect_new
+    from rbc_meta.utils_next.reflect import ReflectionRegistry
     import rbc_meta.utils_next.generator as generator_new
 
     _USE_NEW_ARCH = True
@@ -243,6 +243,7 @@ class enum:
         self._serde = _enable_serde
         self._cpp_external = False
         self._py_external = False
+        self._new_arch_class = None
 
         if namespace_cut >= 0:
             self._namespace_name = _func_name[0:namespace_cut]
@@ -253,39 +254,11 @@ class enum:
         full_name = self.full_name()
         if _registed_enum_types.get(full_name):
             log_err(f"enum {full_name} already exists.")
+
         _registed_enum_types[full_name] = self
         self._params = []
         for i in params:
             self._params.append((i, params[i]))
-
-        # 使用新版架构注册（如果可用）
-        if _USE_NEW_ARCH:
-            self._register_to_new_arch()
-
-    def _register_to_new_arch(self):
-        """将枚举注册到新版架构"""
-        try:
-            from enum import Enum as PyEnum
-
-            # 创建枚举字典
-            enum_dict = {}
-            for name, value in self._params:
-                enum_dict[name] = value if value is not None else name
-
-            # 动态创建枚举类
-            enum_cls = PyEnum(self.class_name(), enum_dict)
-            # 注册到新版架构
-            registry = reflect_new.ReflectionRegistry()
-            module_name = (
-                self._namespace_name.replace("::", ".")
-                if self._namespace_name
-                else __name__
-            )
-            registry.register(enum_cls, module_name)
-            self._new_arch_class = enum_cls
-        except Exception as e:
-            # 如果注册失败，继续使用旧版架构
-            pass
 
     def add(self, key: str, value=None):
         self._params.append((key, value))
@@ -397,13 +370,15 @@ class struct:
             dynamic_cls = type(self._class_name, (object,), class_dict)
 
             # 注册到新版架构
-            registry = reflect_new.ReflectionRegistry()
+            registry = ReflectionRegistry()
             module_name = (
                 self._namespace_name.replace("::", ".")
                 if self._namespace_name
                 else __name__
             )
-            registry.register(dynamic_cls, module_name)
+            registry.register(
+                dynamic_cls, module_name, cpp_namespace=self._namespace_name
+            )
             self._new_arch_class = dynamic_cls
         except Exception as e:
             # 如果注册失败，继续使用旧版架构

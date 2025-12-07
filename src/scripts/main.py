@@ -29,6 +29,8 @@ from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder
 from mypy import stubgen
 import rbc_meta.utils.codegen_util as codegen_util
+import rbc_meta.utils.codegen_util as ut
+from rbc_meta.utils_next.codegen import cpp_interface_gen, cpp_impl_gen
 
 
 def get_project_root():
@@ -351,21 +353,33 @@ def generate():
     """
     start_time = time.time()
     print(f"Starting code generation for {len(GENERATION_TASKS)} modules...")
-    processes = []
-    for module_name, function_name, *args in GENERATION_TASKS:
-        p = Process(
-            target=run_generation_task, args=(module_name, function_name, *args)
-        )
-        p.start()
-        processes.append(p)
 
-    # Wait for all processes to complete
+    import rbc_meta.types
+
+    target_modules = ["runtime"]
+    include = """#include<luisa/runtime/rhi/pixel.h>"""
+    header_path = Path(
+        "rbc/runtime/include/rbc_runtime/generated/resource_meta.new.hpp"
+    ).resolve()
+    cpp_path = Path("rbc/runtime/src/runtime/generated/resource_meta.new.cpp").resolve()
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
+    include = "#include <rbc_runtime/generated/resource_meta.hpp>"
+    ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
+    # processes = []
+    # for module_name, function_name, *args in GENERATION_TASKS:
+    #     p = Process(
+    #         target=run_generation_task, args=(module_name, function_name, *args)
+    #     )
+    #     p.start()
+    #     processes.append(p)
+
+    # # Wait for all processes to complete
     exit_code = 0
-    for p in processes:
-        p.join()
-        if p.exitcode != 0:
-            exit_code = 1
-            print(f"Process for task {p.name} failed with exit code {p.exitcode}")
+    # for p in processes:
+    #     p.join()
+    #     if p.exitcode != 0:
+    #         exit_code = 1
+    #         print(f"Process for task {p.name} failed with exit code {p.exitcode}")
 
     duration = time.time() - start_time
     print(f"Code generation finished in {duration:.2f} seconds.")
