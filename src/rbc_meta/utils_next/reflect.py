@@ -42,7 +42,8 @@ class MethodInfo:
     parameter_generics: Dict[str, Optional["GenericInfo"]] = None  # 参数的泛型信息
     doc: Optional[str] = None
     cpp_prefix: str = ""  # sum cpp prefix info like `RBC_API`
-    is_rpc = False
+    is_rpc: bool = False  # 是否为RPC方法
+    is_static: bool = False  # 是否为静态方法
 
     def __post_init__(self):
         """后处理，确保字典不为None"""
@@ -75,6 +76,7 @@ class ClassInfo:
     doc: Optional[str] = None
     cpp_namespace: str = ""
     serde = False
+    pybind = False
 
     def __post_init__(self):
         """后处理，确保列表不为None"""
@@ -99,7 +101,12 @@ class ReflectionRegistry:
         return cls._instance
 
     def register(
-        self, cls: Type, module_name: str = None, cpp_namespace: str = None, serde=False
+        self,
+        cls: Type,
+        module_name: str = None,
+        cpp_namespace: str = None,
+        serde=False,
+        pybind=False,
     ) -> Type:
         """注册类"""
         # print(f"registering {cls} with module name {module_name}")
@@ -110,6 +117,7 @@ class ReflectionRegistry:
 
         class_info.cpp_namespace = cpp_namespace
         class_info.serde = serde
+        class_info.pybind = pybind
 
         key = f"{module_name}.{cls.__name__}"
         self._registered_classes[key] = class_info
@@ -123,46 +131,88 @@ class ReflectionRegistry:
 
         # 提取方法信息
         methods = []
-        for name, method in inspect.getmembers(cls, predicate=inspect.isfunction):
-            if not name.startswith("_"):
-                try:
-                    sig = inspect.signature(method)
-                    return_type = (
-                        sig.return_annotation
-                        if sig.return_annotation != inspect.Signature.empty
-                        else None
-                    )
+        # 遍历类的所有属性，查找方法
+        for name in dir(cls):
+            if name.startswith("_"):
+                continue
 
-                    # 解析返回类型的泛型信息
-                    return_type_generic = None
-                    if return_type is not None:
-                        return_type_generic = self._parse_generic_type(return_type)
+            attr = getattr(cls, name, None)
+            if attr is None:
+                continue
 
+            # 检查是否是方法（函数、绑定方法、静态方法、类方法）
+            is_static_method = isinstance(attr, staticmethod)
+            is_class_method = isinstance(attr, classmethod)
+            is_function = inspect.isfunction(attr)
+            is_method = inspect.ismethod(attr)
+
+            if not (is_static_method or is_class_method or is_function or is_method):
+                continue
+
+            try:
+                # 获取原始函数
+                if is_static_method:
+                    func = attr.__func__
+                    is_static = True
+                elif is_class_method:
+                    func = attr.__func__
+                    is_static = False  # 类方法不是静态方法
+                elif is_function:
+                    func = attr
+                    # 函数可能是静态方法（没有self参数）
+                    sig = inspect.signature(func)
                     parameters = {name: param for name, param in sig.parameters.items()}
+                    is_static = len(parameters) == 0 or "self" not in parameters
+                else:  # is_method
+                    func = attr.__func__ if hasattr(attr, "__func__") else attr
+                    is_static = False
 
-                    # 解析参数的泛型信息
-                    parameter_generics = {}
-                    for param_name, param in parameters.items():
-                        if param.annotation != inspect.Signature.empty:
-                            param_generic = self._parse_generic_type(param.annotation)
-                            parameter_generics[param_name] = param_generic
-                        else:
-                            parameter_generics[param_name] = None
+                sig = inspect.signature(func)
+                return_type = (
+                    sig.return_annotation
+                    if sig.return_annotation != inspect.Signature.empty
+                    else None
+                )
 
-                    methods.append(
-                        MethodInfo(
-                            name=name,
-                            signature=sig,
-                            return_type=return_type,
-                            parameters=parameters,
-                            return_type_generic=return_type_generic,
-                            parameter_generics=parameter_generics,
-                            doc=inspect.getdoc(method),
-                        )
+                # 解析返回类型的泛型信息
+                return_type_generic = None
+                if return_type is not None:
+                    return_type_generic = self._parse_generic_type(return_type)
+
+                parameters = {name: param for name, param in sig.parameters.items()}
+
+                # 解析参数的泛型信息
+                parameter_generics = {}
+                for param_name, param in parameters.items():
+                    if param.annotation != inspect.Signature.empty:
+                        param_generic = self._parse_generic_type(param.annotation)
+                        parameter_generics[param_name] = param_generic
+                    else:
+                        parameter_generics[param_name] = None
+
+                # 检查是否为RPC方法（通过装饰器标记）
+                is_rpc = hasattr(func, "_rpc_") and getattr(func, "_rpc_", False)
+
+                # 如果通过@rpc装饰器标记了is_static，使用装饰器的设置
+                if hasattr(func, "_static_"):
+                    is_static = getattr(func, "_static_", is_static)
+
+                methods.append(
+                    MethodInfo(
+                        name=name,
+                        signature=sig,
+                        return_type=return_type,
+                        parameters=parameters,
+                        return_type_generic=return_type_generic,
+                        parameter_generics=parameter_generics,
+                        doc=inspect.getdoc(func),
+                        is_rpc=is_rpc,
+                        is_static=is_static,
                     )
-                except (ValueError, TypeError):
-                    # 某些方法可能无法获取签名
-                    pass
+                )
+            except (ValueError, TypeError) as e:
+                # 某些方法可能无法获取签名
+                pass
 
         # 提取字段信息
         fields = []
@@ -344,7 +394,12 @@ class ReflectionRegistry:
 
 
 def reflect(
-    cls: Type = None, *, module_name: str = None, cpp_namespace: str = None, serde=False
+    cls: Type = None,
+    *,
+    module_name: str = None,
+    cpp_namespace: str = None,
+    serde=False,
+    pybind=False,
 ) -> Type:
     """
     反射装饰器，用于标记需要反射的类
@@ -366,7 +421,11 @@ def reflect(
     def decorator(cls: Type) -> Type:
         registry = ReflectionRegistry()
         registry.register(
-            cls, module_name=module_name, cpp_namespace=cpp_namespace, serde=serde
+            cls,
+            module_name=module_name,
+            cpp_namespace=cpp_namespace,
+            serde=serde,
+            pybind=pybind,
         )
         # 添加标记属性
         cls._reflected_ = True
@@ -377,3 +436,28 @@ def reflect(
         return decorator
     else:
         return decorator(cls)
+
+
+def rpc(is_static: bool = False):
+    """
+    RPC方法装饰器，用于标记方法为RPC方法
+
+    用法:
+        @reflect
+        class MyClass:
+            @rpc
+            def my_rpc_method(self, arg: int) -> str:
+                ...
+
+            @rpc(is_static=True)
+            def my_static_rpc_method(arg: int) -> str:
+                ...
+    """
+
+    def decorator(func):
+        # 标记方法为RPC方法
+        func._rpc_ = True
+        func._static_ = is_static
+        return func
+
+    return decorator

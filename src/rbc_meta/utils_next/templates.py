@@ -95,6 +95,12 @@ ${INDENT}static constexpr const char *name{"${NAMESPACE_NAME}::${ENUM_NAME}"};
 
 CPP_ENUM_KVPAIR_TEMPLATE = Template("${INDENT}${KEY}${VALUE_EXPR}")
 
+CPP_STRUCT_BUILTIN_METHODS_TEMPLATE = Template("""
+${INDENT}${FUNC_API} static ${STRUCT_NAME}* _create_();
+${INDENT}virtual void dispose() = 0;
+${INDENT}virtual ~${STRUCT_NAME}() = default;  
+""")
+
 CPP_STRUCT_TEMPLATE = Template("""
 namespace ${NAMESPACE_NAME} {
                                
@@ -103,13 +109,13 @@ struct ${STRUCT_NAME} : vstd::IOperatorNewBase {
 ${MEMBERS_EXPR}
                     
 // BUILT-IN METHODS
-${INDENT}${FUNC_API} static ${STRUCT_NAME}* _create_();
-${INDENT}virtual void dispose() = 0;
-${INDENT}virtual ~${STRUCT_NAME}() = default;  
+${BUILT_IN_METHODS_EXPR}
                                 
 ${INDENT}${SER_DECL}
 ${INDENT}${DESER_DECL}  
-${INDENT}${RPC_FUNC_DECL}                                  
+                               
+// RPC METHODS
+${RPC_METHODS_DECL}                                  
 // USER-DEFINED METHODS
 ${USER_DEFINED_METHODS_DECL}  
                          
@@ -141,6 +147,9 @@ CPP_STRUCT_DESER_DECL_TEMPLATE = Template(
 )
 CPP_STRUCT_METHOD_DECL_TEMPLATE = Template(
     "${INDENT}virtual ${RET_TYPE} ${FUNC_NAME}(${ARGS_EXPR}) = 0;"
+)
+CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE = Template(
+    "${INDENT}${STATIC_EXPR}${RET_TYPE} ${FUNC_NAME}(${ARGS_EXPR});"
 )
 
 # Python interface templates
@@ -211,6 +220,12 @@ ${INDENT}}
 };
 """)
 
+CPP_IMPL_BLOCK_TEMPLATE = Template("""
+${NAMESPACE_OPEN}
+${IMPLS_EXPR}
+${NAMESPACE_CLOSE}
+""")
+
 CPP_RPC_ARG_MEMBER_TEMPLATE = Template("${INDENT}${ARG_TYPE} ${ARG_NAME};")
 
 CPP_RPC_SER_STMT_TEMPLATE = Template("${INDENT}${INDENT}obj._store(${ARG_NAME});")
@@ -228,11 +243,11 @@ ${RET_CLOSE}
 
 CPP_FUNC_SERIALIZER_TEMPLATE = Template("""
 static rbc::FuncSerializer func_ser${HASH_NAME}{
-    std::initializer_list<const char *>{{${FUNC_NAMES}}},
-    std::initializer_list<rbc::FuncSerializer::AnyFuncPtr>{{${CALL_EXPRS}}},
-    std::initializer_list<rbc::HeapObjectMeta>{{${ARG_METAS}}},
-    std::initializer_list<rbc::HeapObjectMeta>{{${RET_METAS}}},
-    std::initializer_list<bool>{{${IS_STATICS}}}
+    std::initializer_list<const char *>{${FUNC_NAMES}},
+    std::initializer_list<rbc::FuncSerializer::AnyFuncPtr>{${CALL_EXPRS}},
+    std::initializer_list<rbc::HeapObjectMeta>{${ARG_METAS}},
+    std::initializer_list<rbc::HeapObjectMeta>{${RET_METAS}},
+    std::initializer_list<bool>{${IS_STATICS}}
 };
 """)
 
@@ -260,12 +275,13 @@ ${CLIENT_CLASSES_EXPR}
 //! ================== GENERATED CODE END ==================
 """)
 
+
 CPP_CLIENT_CLASS_TEMPLATE = Template("""
-${NAMESPACE_NAME}{
+namespace ${NAMESPACE_NAME}{
 struct ${CLASS_NAME}Client {
 ${METHOD_DECLS}
 };
-}${NAMESPACE_NAME}
+}// namespace ${NAMESPACE_NAME}
 """)
 
 CPP_CLIENT_METHOD_DECL_TEMPLATE = Template(
@@ -279,21 +295,20 @@ CPP_CLIENT_IMPL_TEMPLATE = Template("""
 //! ================== GENERATED CODE BEGIN ==================
 
 ${EXTRA_INCLUDES}
-
+         
 ${CLIENT_IMPLS_EXPR}
 
 //! ================== GENERATED CODE END ==================
 """)
 
 CPP_CLIENT_METHOD_IMPL_TEMPLATE = Template("""
-${NAMESPACE_NAME}{
-${RET_TYPE} ${CLASS_NAME}Client::${METHOD_NAME}(rbc::RPCCommandList &${JSON_SER_NAME}${SELF_PARAM}${ARGS_DECL}) {
+${RET_TYPE} ${NAMESPACE_EXPR}${CLASS_NAME}Client::${METHOD_NAME}(rbc::RPCCommandList &${JSON_SER_NAME}${SELF_PARAM}${ARGS_DECL}) {
 ${INDENT}${JSON_SER_NAME}.add_functioon("${FUNC_HASH}"${SELF_ARG});
 ${ADD_ARGS_STMTS}
 ${RETURN_STMT}
 }
-}${NAMESPACE_NAME}
 """)
+
 
 CPP_CLIENT_ADD_ARG_STMT_TEMPLATE = Template(
     "${INDENT}${JSON_SER_NAME}.add_arg(${ARG_NAME});"

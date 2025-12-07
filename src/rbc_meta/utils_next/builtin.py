@@ -34,9 +34,24 @@ class GUID:
     _cpp_type_name = "GUID"
 
 
+class float4:
+    _reflected_ = True
+    _cpp_type_name = "luisa::float4"
+
+
 class float4x4:
     _reflected_ = True
     _cpp_type_name = "luisa::float4x4"
+
+
+class double2:
+    _reflected_ = True
+    _cpp_type_name = "luisa::double2"
+
+
+class string:
+    _reflected_ = True
+    _cpp_type_name = "luisa::string"
 
 
 T = TypeVar("T")
@@ -48,3 +63,15 @@ class Vector(Generic[T]):
     _cpp_type_name = "luisa::vector"
     _is_container = True
     _py_type_name = "List"
+
+
+K = TypeVar("K")
+V = TypeVar("V")
+
+
+class UnorderedMap(Generic[K, V]):
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "luisa::unordered_map"
+    _is_container = True
+    _py_type_name = "dict"

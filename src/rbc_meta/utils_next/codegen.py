@@ -1,5 +1,5 @@
 import hashlib
-from typing import Dict, List, Optional, Any, Type
+from typing import Dict, List, Optional, Any, Type, Union
 import inspect
 
 from rbc_meta.utils_next.reflect import (
@@ -22,6 +22,7 @@ from rbc_meta.utils_next.templates import (
     CPP_IMPL_TEMPLATE,
     CPP_STRUCT_SER_IMPL_TEMPLATE,
     CPP_STRUCT_DESER_IMPL_TEMPLATE,
+    CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE,
     CPP_RPC_ARG_STRUCT_TEMPLATE,
     CPP_RPC_ARG_MEMBER_TEMPLATE,
     CPP_RPC_SER_STMT_TEMPLATE,
@@ -35,6 +36,7 @@ from rbc_meta.utils_next.templates import (
     CPP_CLIENT_METHOD_IMPL_TEMPLATE,
     CPP_CLIENT_ADD_ARG_STMT_TEMPLATE,
     CPP_CLIENT_RETURN_STMT_TEMPLATE,
+    CPP_STRUCT_BUILTIN_METHODS_TEMPLATE,
     PY_INTERFACE_CLASS_TEMPLATE,
     PY_INIT_METHOD_TEMPLATE,
     PY_DISPOSE_METHOD_TEMPLATE,
@@ -101,6 +103,13 @@ _PY_NAMES = {
 }
 
 
+# 获取meta类型对应的cpp类型
+# None -> void
+# Specific String
+# _cpp_type_name
+# 常见通用类型_TYPE_NAMES
+
+
 def _get_cpp_type(
     type_hint: Any, py_interface: bool = False, is_view: bool = False
 ) -> str:
@@ -114,6 +123,7 @@ def _get_cpp_type(
         return f(type_hint, py_interface, is_view)
 
     # Handle basic types mapped in builtin.py or standard python types
+
     if hasattr(type_hint, "_cpp_type_name"):
         return type_hint._cpp_type_name
 
@@ -131,13 +141,23 @@ def _get_cpp_type(
         elif name == "str":
             return "luisa::string"
 
-    # Handle Generic types (Vector[T])
+    # Handle Generic types (Vector[T], UnorderedMap[K, V])
     if hasattr(type_hint, "__origin__"):
         origin = type_hint.__origin__
-        args = getattr(type_hint, "__args__", ())
-        if hasattr(origin, "_cpp_type_name"):
-            inner = _get_cpp_type(args[0], py_interface, is_view)
-            return f"{origin._cpp_type_name}<{inner}>"
+        if isinstance(origin, list):
+            return f"luisa::vector<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}>"
+        elif isinstance(origin, dict):
+            return f"luisa::unordered_map<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}, {_get_cpp_type(type_hint.__args__[1], py_interface, is_view)}>"
+        elif isinstance(origin, set):
+            return f"luisa::unordered_set<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}>"
+        elif isinstance(origin, tuple):
+            return f"luisa::tuple<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in type_hint.__args__])}>"
+        elif isinstance(origin, frozenset):
+            return f"luisa::unordered_set<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}>"
+        elif isinstance(origin, Optional):
+            return f"std::optional<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}>"
+        elif isinstance(origin, Union):
+            return f"std::variant<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in type_hint.__args__])}>"
 
     # Fallback to class name (assuming it's a registered type)
     if hasattr(type_hint, "__name__"):
@@ -240,15 +260,8 @@ def _print_py_args(parameters: Dict[str, inspect.Parameter], is_first: bool) -> 
 
 def _is_rpc_method(method: MethodInfo) -> bool:
     """Check if a method is marked as RPC."""
-    # Check if method has is_rpc attribute
-    if hasattr(method, "is_rpc"):
-        return method.is_rpc
-    # Check if method has _rpc attribute (for compatibility)
-    if hasattr(method, "_rpc"):
-        return method._rpc
-    # Default: no RPC methods unless explicitly marked
-    # In the future, this could check for decorators or other markers
-    return False
+    # Check if method has is_rpc attribute (from MethodInfo dataclass)
+    return method.is_rpc
 
 
 def _get_rpc_methods(info: ClassInfo) -> Dict[str, List[MethodInfo]]:
@@ -345,13 +358,8 @@ def _print_rpc_serializer(struct_type: ClassInfo, registry: ReflectionRegistry) 
             func_names_list.append(f'"{func_hasher_name}"')
 
             # Build lambda call expression
-            # Check if method is static (no 'self' parameter)
-            # In Python, instance methods have 'self' as first parameter
-            # Static methods don't have 'self'
-            is_static = "self" not in method.parameters
-            # Also check if method is marked as static
-            if hasattr(method, "is_static"):
-                is_static = method.is_static
+            # Check if method is static (from MethodInfo)
+            is_static = method.is_static
             is_statics_list.append("true" if is_static else "false")
 
             self_param = "void *self, " if not is_static else ""
@@ -528,9 +536,7 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
         rpc_list = []
         for func_name, method_list in rpc_methods.items():
             for method in method_list:
-                is_static = "self" not in method.parameters
-                if hasattr(method, "is_static"):
-                    is_static = method.is_static
+                is_static = method.is_static
                 # Filter out 'self' parameter for RPC declarations
                 rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
                 args = _print_arg_vars_decl(rpc_params, True, False, False, registry)
@@ -540,7 +546,18 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
                     if method.return_type
                     else "void"
                 )
-                rpc_list.append(f"{static}{ret_type} {func_name}({args});")
+
+                # rpc_list.append(f"{static}{ret_type} {func_name}({args});")
+                rpc_list.append(
+                    CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE.substitute(
+                        INDENT=INDENT,
+                        STATIC_EXPR=static,
+                        RET_TYPE=ret_type,
+                        FUNC_NAME=func_name,
+                        ARGS_EXPR=args,
+                    )
+                )
+
         rpc_expr = "\n".join(rpc_list)
 
         # MD5 Digest
@@ -548,15 +565,23 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
         m = hashlib.md5(full_name.encode("ascii"))
         digest = ", ".join(str(b) for b in m.digest())
 
+        built_in_methods_decl = (
+            ""
+            if not info.pybind
+            else CPP_STRUCT_BUILTIN_METHODS_TEMPLATE.substitute(
+                INDENT=INDENT, FUNC_API=func_api, STRUCT_NAME=class_name
+            )
+        )
+
         struct_expr = CPP_STRUCT_TEMPLATE.substitute(
             NAMESPACE_NAME=namespace_name or "",
             STRUCT_NAME=class_name,
             INDENT=INDENT,
-            FUNC_API=func_api,
+            BUILT_IN_METHODS_EXPR=built_in_methods_decl,
             MEMBERS_EXPR=members_expr,
             SER_DECL=ser_decl,
             DESER_DECL=deser_decl,
-            RPC_FUNC_DECL=rpc_expr,
+            RPC_METHODS_DECL=rpc_expr,
             USER_DEFINED_METHODS_DECL=methods_decl,
             MD5_DIGEST=digest,
         )
@@ -742,26 +767,26 @@ def _print_client_code(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
     if len(rpc_methods) == 0:
         return ""
 
-        def get_method_decl(method: MethodInfo):
-            # Filter out 'self' parameter for client method declarations
-            rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
-            args_decl = ", ".join(
-                [
-                    f"{_get_full_cpp_type(param.annotation if param.annotation != inspect.Signature.empty else None, registry)} {param_name}"
-                    for param_name, param in rpc_params.items()
-                ]
+    def get_method_decl(method: MethodInfo):
+        # Filter out 'self' parameter for client method declarations
+        rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
+        args_decl = ", ".join(
+            [
+                f"{_get_full_cpp_type(param.annotation if param.annotation != inspect.Signature.empty else None, registry)} {param_name}"
+                for param_name, param in rpc_params.items()
+            ]
+        )
+        if args_decl:
+            args_decl = ", " + args_decl
+
+        ret_type = "void"
+        if method.return_type and method.return_type != type(None):
+            ret_type = (
+                f"rbc::RPCFuture<{_get_full_cpp_type(method.return_type, registry)}>"
             )
-            if args_decl:
-                args_decl = ", " + args_decl
 
-            ret_type = "void"
-            if method.return_type and method.return_type != type(None):
-                ret_type = f"rbc::RPCFuture<{_get_full_cpp_type(method.return_type, registry)}>"
-
-            is_static = "self" not in method.parameters
-            if hasattr(method, "is_static"):
-                is_static = method.is_static
-            self_param = ", void*" if not is_static else ""
+        is_static = method.is_static
+        self_param = ", void*" if not is_static else ""
 
         return CPP_CLIENT_METHOD_DECL_TEMPLATE.substitute(
             INDENT=INDENT,
@@ -779,17 +804,10 @@ def _print_client_code(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
     methods_decl = "\n".join(method_decls)
 
     namespace_name = struct_type.cpp_namespace or ""
-    namespace_open = f"namespace {namespace_name} {{\n" if namespace_name else ""
-    namespace_close = f"\n}} // namespace {namespace_name}" if namespace_name else ""
-
-    return (
-        namespace_open
-        + CPP_CLIENT_CLASS_TEMPLATE.substitute(
-            NAMESPACE_NAME=namespace_name,
-            CLASS_NAME=struct_type.name,
-            METHOD_DECLS=methods_decl,
-        )
-        + namespace_close
+    return CPP_CLIENT_CLASS_TEMPLATE.substitute(
+        NAMESPACE_NAME=namespace_name,
+        CLASS_NAME=struct_type.name,
+        METHOD_DECLS=methods_decl,
     )
 
 
@@ -801,17 +819,17 @@ def _print_client_impl(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
         return ""
 
     class_name = struct_type.name
+    namespace_name = struct_type.cpp_namespace
+    namespace_expr = (
+        "" if not struct_type.cpp_namespace else struct_type.cpp_namespace + "::"
+    )
+
     full_name = (
         f"{struct_type.cpp_namespace}::{class_name}"
         if struct_type.cpp_namespace
         else class_name
     )
-    namespace_name = struct_type.cpp_namespace or ""
-    namespace_open = f"namespace {namespace_name} {{\n" if namespace_name else ""
-    namespace_close = f"\n}} // namespace {namespace_name}" if namespace_name else ""
-
     method_impls = []
-    is_first = True
 
     for func_name, method_list in rpc_methods.items():
         for method in method_list:
@@ -834,12 +852,10 @@ def _print_client_impl(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
 
             ret_type_name = _get_full_cpp_type(method.return_type, registry)
             ret_type = "void"
-            if method.return_type and method.return_type != type(None):
+            if method.return_type and method.return_type is not type(None):
                 ret_type = f"rbc::RPCFuture<{ret_type_name}>"
 
-            is_static = "self" not in method.parameters
-            if hasattr(method, "is_static"):
-                is_static = method.is_static
+            is_static = method.is_static
             self_param = f", void* {SELF_NAME}" if not is_static else ""
             self_arg = f", {SELF_NAME}" if not is_static else ""
 
@@ -855,17 +871,17 @@ def _print_client_impl(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
             )
 
             return_stmt = ""
-            if method.return_type and method.return_type != type(None):
+            if method.return_type and method.return_type is not type(None):
                 return_stmt = CPP_CLIENT_RETURN_STMT_TEMPLATE.substitute(
                     INDENT=INDENT,
                     JSON_SER_NAME=JSON_SER_NAME,
                     RET_TYPE=ret_type_name,
                 )
 
-            namespace_expr = f"namespace {namespace_name} {{" if namespace_name else ""
             method_impl = CPP_CLIENT_METHOD_IMPL_TEMPLATE.substitute(
-                NAMESPACE_NAME=namespace_expr if is_first else "",
+                INDENT=INDENT,
                 RET_TYPE=ret_type,
+                NAMESPACE_EXPR=namespace_expr,
                 CLASS_NAME=class_name,
                 METHOD_NAME=func_name,
                 JSON_SER_NAME=JSON_SER_NAME,
@@ -877,11 +893,6 @@ def _print_client_impl(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
                 RETURN_STMT=return_stmt,
             )
             method_impls.append(method_impl)
-            is_first = False
-
-    # Add namespace close to last method
-    if namespace_close and method_impls:
-        method_impls[-1] = method_impls[-1].rstrip() + namespace_close
 
     return "\n".join(method_impls)
 
@@ -927,6 +938,7 @@ def cpp_client_impl_gen(module_filter: List[str] = None, *extra_includes) -> str
 
     client_impls = []
     all_classes = sorted(registry.get_all_classes().items(), key=lambda x: x[0])
+
     for key, info in all_classes:
         if module_filter and info.module not in module_filter:
             continue

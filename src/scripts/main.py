@@ -362,25 +362,66 @@ def generate():
     target_modules = ["runtime"]
     include = """#include<luisa/runtime/rhi/pixel.h>"""
     header_path = Path(
-        "rbc/runtime/include/rbc_runtime/generated/resource_meta.new.hpp"
+        "rbc/runtime/include/rbc_runtime/generated/resource_meta.hpp"
     ).resolve()
-    cpp_path = Path("rbc/runtime/src/runtime/generated/resource_meta.new.cpp").resolve()
+    cpp_path = Path("rbc/runtime/src/runtime/generated/resource_meta.cpp").resolve()
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     include = "#include <rbc_runtime/generated/resource_meta.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
     target_modules = ["world"]
     header_path = Path(
-        "rbc/world/include/rbc_world/generated/resource_type.new.hpp"
+        "rbc/world/include/rbc_world/generated/resource_type.hpp"
     ).resolve()
-    cpp_path = Path("rbc/world/src/generated/resource_type.new.cpp").resolve()
+    cpp_path = Path("rbc/world/src/generated/resource_type.cpp").resolve()
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules)
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules)
 
-    ut.codegen_to(header_path / "server.new.hpp")(cpp_interface_gen)
+    from rbc_meta.utils_next.codegen import (
+        cpp_client_interface_gen,
+        cpp_client_impl_gen,
+    )
+
+    target_modules = ["test_ipc"]
+    header_path = Path("rbc/tests/test_ipc/generated").resolve()
+    ut.codegen_to(header_path / "server.hpp")(cpp_interface_gen, target_modules)
 
     include = '#include "server.hpp"'
-    ut.codegen_to(header_path / "server.new.cpp")(cpp_impl_gen, include)
+    ut.codegen_to(header_path / "server.cpp")(cpp_impl_gen, target_modules, include)
+
+    client_path = header_path / "client.hpp"
+    ut.codegen_to(client_path)(cpp_client_interface_gen, target_modules)
+
+    include = '#include "client.hpp"'
+
+    client_path = header_path / "client.cpp"
+    ut.codegen_to(client_path)(cpp_client_impl_gen, target_modules, include)
+
+    target_modules = ["test_serde"]
+    header_path = Path("rbc/tests/test_serde/generated/generated.hpp").resolve()
+
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules)
+
+    include = f'#include "{header_path.name}"'
+    ut.codegen_to(header_path.parent / "enum_ser.cpp")(
+        cpp_impl_gen, target_modules, include
+    )
+
+    client_path = header_path.parent / "client.hpp"
+    ut.codegen_to(client_path)(cpp_client_interface_gen, target_modules)
+    include = '#include "client.hpp"'
+    client_path = header_path.parent / "client.cpp"
+    ut.codegen_to(client_path)(cpp_client_impl_gen, target_modules, include)
+
+    target_modules = ["rbc_render"]
+    header_path = (
+        Path(
+            "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.new.hpp"
+        ).resolve(),
+    )
+    cpp_path = (
+        Path("rbc/render_plugin/src/generated/pipeline_settings.new.cpp").resolve(),
+    )
 
     # processes = []
     # for module_name, function_name, *args in GENERATION_TASKS:
