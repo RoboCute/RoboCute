@@ -41,6 +41,7 @@ class MethodInfo:
     return_type_generic: Optional["GenericInfo"] = None  # 返回类型的泛型信息
     parameter_generics: Dict[str, Optional["GenericInfo"]] = None  # 参数的泛型信息
     doc: Optional[str] = None
+
     cpp_prefix: str = ""  # sum cpp prefix info like `RBC_API`
     is_rpc: bool = False  # 是否为RPC方法
     is_static: bool = False  # 是否为静态方法
@@ -59,6 +60,8 @@ class FieldInfo:
     type: Type
     generic_info: Optional["GenericInfo"] = None  # 字段类型的泛型信息
     default: Any = None
+    cpp_init_expr: Optional[str] = None  # C++ 初始化表达式
+    serde: Optional[bool] = None  # 是否序列化，None 表示使用类级别的 serde 设置
     doc: Optional[str] = None
 
 
@@ -75,6 +78,7 @@ class ClassInfo:
     base_classes: List[str]
     doc: Optional[str] = None
     cpp_namespace: str = ""
+    cpp_prefix: str = ""
     serde = False
     pybind = False
 
@@ -107,6 +111,7 @@ class ReflectionRegistry:
         cpp_namespace: str = None,
         serde=False,
         pybind=False,
+        cpp_prefix="",
     ) -> Type:
         """注册类"""
         # print(f"registering {cls} with module name {module_name}")
@@ -118,6 +123,7 @@ class ReflectionRegistry:
         class_info.cpp_namespace = cpp_namespace
         class_info.serde = serde
         class_info.pybind = pybind
+        class_info.cpp_prefix = cpp_prefix
 
         key = f"{module_name}.{cls.__name__}"
         self._registered_classes[key] = class_info
@@ -239,10 +245,27 @@ class ReflectionRegistry:
             try:
                 hints = get_type_hints(cls)
 
+                # 获取 C++ 初始化表达式字典（如果存在）
+                cpp_init_dict = getattr(cls, "_cpp_init", {})
+                # 获取字段级别的 serde 设置字典（如果存在）
+                serde_fields = getattr(cls, "_serde_fields", set())
+
                 for name, type_hint in hints.items():
                     default = None
                     if hasattr(cls, name):
                         default = getattr(cls, name, None)
+
+                    # 获取 C++ 初始化表达式
+                    cpp_init_expr = cpp_init_dict.get(name)
+
+                    # 检查字段是否在 serde_fields 集合中
+                    field_serde = None
+                    if name in serde_fields:
+                        field_serde = True
+                    elif hasattr(cls, "_non_serde_fields") and name in getattr(
+                        cls, "_non_serde_fields", set()
+                    ):
+                        field_serde = False
 
                     # 解析字段类型的泛型信息
                     generic_info = self._parse_generic_type(type_hint)
@@ -253,6 +276,8 @@ class ReflectionRegistry:
                             type=type_hint,
                             generic_info=generic_info,
                             default=default,
+                            cpp_init_expr=cpp_init_expr,
+                            serde=field_serde,
                         )
                     )
             except (TypeError, AttributeError):
@@ -400,6 +425,7 @@ def reflect(
     cpp_namespace: str = None,
     serde=False,
     pybind=False,
+    cpp_prefix="",
 ) -> Type:
     """
     反射装饰器，用于标记需要反射的类
@@ -426,6 +452,7 @@ def reflect(
             cpp_namespace=cpp_namespace,
             serde=serde,
             pybind=pybind,
+            cpp_prefix=cpp_prefix,
         )
         # 添加标记属性
         cls._reflected_ = True
@@ -458,6 +485,18 @@ def rpc(is_static: bool = False):
         # 标记方法为RPC方法
         func._rpc_ = True
         func._static_ = is_static
+        return func
+
+    return decorator
+
+
+def cpp_prefix(prefix: str):
+    """
+    C++前缀装饰器，用于标记方法为C++前缀方法
+    """
+
+    def decorator(func):
+        func._cpp_prefix_ = prefix
         return func
 
     return decorator

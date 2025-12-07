@@ -414,14 +414,20 @@ def generate():
     ut.codegen_to(client_path)(cpp_client_impl_gen, target_modules, include)
 
     target_modules = ["rbc_render"]
-    header_path = (
-        Path(
-            "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.new.hpp"
-        ).resolve(),
-    )
-    cpp_path = (
-        Path("rbc/render_plugin/src/generated/pipeline_settings.new.cpp").resolve(),
-    )
+    header_path = Path(
+        "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.new.hpp"
+    ).resolve()
+    cpp_path = Path(
+        "rbc/render_plugin/src/generated/pipeline_settings.new.cpp"
+    ).resolve()
+    include = """#include <luisa/runtime/image.h>
+#include <luisa/runtime/buffer.h>
+#include <rbc_core/utils/curve.h>
+#include <rbc_render/procedural/sky_atmosphere.h>"""
+
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
+    include = "#include <rbc_render/generated/pipeline_settings.hpp>"
+    ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
     # processes = []
     # for module_name, function_name, *args in GENERATION_TASKS:

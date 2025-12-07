@@ -49,6 +49,41 @@ class double2:
     _cpp_type_name = "luisa::double2"
 
 
+class double:
+    _reflected_ = True
+    _cpp_type_name = "double"
+
+
+class float2:
+    _reflected_ = True
+    _cpp_type_name = "luisa::float2"
+
+
+class float3:
+    _reflected_ = True
+    _cpp_type_name = "luisa::float3"
+
+
+class float3x3:
+    _reflected_ = True
+    _cpp_type_name = "luisa::float3x3"
+
+
+class uint2:
+    _reflected_ = True
+    _cpp_type_name = "luisa::uint2"
+
+
+class uint3:
+    _reflected_ = True
+    _cpp_type_name = "luisa::uint3"
+
+
+class uint4:
+    _reflected_ = True
+    _cpp_type_name = "luisa::uint4"
+
+
 class string:
     _reflected_ = True
     _cpp_type_name = "luisa::string"

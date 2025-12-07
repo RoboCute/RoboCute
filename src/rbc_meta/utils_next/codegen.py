@@ -481,7 +481,18 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
             else:
                 var_type_name = _get_full_cpp_type(field.type, registry)
 
+            # 使用 C++ 初始化表达式（如果提供），否则使用默认值
             init_expr = ""
+            if field.cpp_init_expr:
+                init_expr = field.cpp_init_expr
+            elif field.default is not None:
+                # 尝试将 Python 默认值转换为 C++ 初始化表达式
+                if isinstance(field.default, bool):
+                    init_expr = "true" if field.default else "false"
+                elif isinstance(field.default, (int, float)):
+                    init_expr = str(field.default)
+                elif isinstance(field.default, str):
+                    init_expr = f'"{field.default}"'
 
             member_expr = CPP_STRUCT_MEMBER_EXPR_TEMPLATE.substitute(
                 INDENT=INDENT,
@@ -494,7 +505,7 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
         members_expr = "\n".join(members_list)
 
         # Serde declarations
-        func_api = "RBC_RUNTIME_API"
+        func_api = info.cpp_prefix
         has_serde = info.serde and len(info.fields) > 0
 
         ser_decl = (
@@ -650,12 +661,21 @@ def cpp_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
             load_stmts_list = []
 
             for field in info.fields:
-                store_stmts_list.append(
-                    f"{INDENT}{INDENT}obj._store(this->{field.name});"
-                )
-                load_stmts_list.append(
-                    f"{INDENT}{INDENT}obj._load(this->{field.name});"
-                )
+                # 检查字段级别的 serde 设置
+                # field.serde == None 表示使用类级别的 serde 设置
+                # field.serde == True 表示序列化
+                # field.serde == False 表示不序列化
+                should_serde = info.serde
+                if field.serde is not None:
+                    should_serde = field.serde
+
+                if should_serde:
+                    store_stmts_list.append(
+                        f"{INDENT}{INDENT}obj._store(this->{field.name});"
+                    )
+                    load_stmts_list.append(
+                        f"{INDENT}{INDENT}obj._load(this->{field.name});"
+                    )
 
             store_stmts = "\n".join(store_stmts_list)
             load_stmts = "\n".join(load_stmts_list)
