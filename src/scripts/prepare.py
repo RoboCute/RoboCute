@@ -53,12 +53,6 @@ GIT_TASKS = {
         "branch": None,
         "deps": ["lc"],
     },
-    "imgui": {
-        "subdir": "thirdparty/LuisaCompute/src/ext/imgui",
-        "url": "https://github.com/ocornut/imgui.git",
-        "branch": "docking",
-        "deps": ["lc"],
-    },
     "reproc": {
         "subdir": "thirdparty/LuisaCompute/src/ext/reproc",
         "url": "https://github.com/LuisaGroup/reproc.git",
@@ -139,7 +133,7 @@ GIT_TASKS = {
     # },
 }
 OIDN_NAME = "oidn-2.3.3"
-CLANGCXX_NAME = "clangcxx_compiler-v2.0.4"
+CLANGCXX_NAME = "clangcxx_compiler-v2.0.5"
 CLANGCXX_PATH = "build/tool/clangcxx_compiler/clangcxx_compiler.exe"
 SHADER_PATH = "rbc/shader"
 CLANGD_NAME = "clangd-v19.1.7"

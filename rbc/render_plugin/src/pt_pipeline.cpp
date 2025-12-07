@@ -5,6 +5,7 @@
 #include <rbc_render/offline_pt_pass.h>
 #include <rbc_render/accum_pass.h>
 #include <rbc_render/raster_pass.h>
+#include <rbc_render/editing_pass.h>
 #include <rbc_graphics/render_device.h>
 // TODO: test hdri
 #include <luisa/core/platform.h>
@@ -21,6 +22,7 @@ void PTPipeline::initialize() {
     accum_pass = this->emplace_instance<AccumPass>();
     raster_pass = this->emplace_instance<RasterPass>();
     post_pass = this->emplace_instance<PostPass>(device.lc_device_ext());
+    editing_pass = this->emplace_instance<EditingPass>();
     // enable passes
     {
         this->enable(
@@ -108,22 +110,12 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
 
     // update camera settings
     ctx.cam.set_aspect_ratio_from_resolution(frame_settings.render_resolution.x, frame_settings.render_resolution.y);
-    // TODO: testing
-
-    // realtime
-    // raster_pass->set_actived(frame_settings.realtime_rendering);
-    // path-tracing
-    // pt_pass->set_actived(!frame_settings.realtime_rendering);
-    // accum_pass->set_actived(!frame_settings.realtime_rendering);
-
-    // raster_pass->set_actived(true);
-    // pt_pass->set_actived(false);
-    // accum_pass->set_actived(false);
     auto &pt_pipe_settings = ctx.pipeline_settings->read_mut<PTPipelineSettings>();
     if(pt_pipe_settings.use_raster && pt_pipe_settings.use_raytracing) [[unlikely]] {
         LUISA_ERROR("Can not enable both raster and raytracing.");
     }
     raster_pass->set_actived(pt_pipe_settings.use_raster);
+    editing_pass->set_actived(pt_pipe_settings.use_raster);
     pt_pass->set_actived(pt_pipe_settings.use_raytracing);
     accum_pass->set_actived(pt_pipe_settings.use_raytracing);
     this->rbc::Pipeline::early_update(ctx);

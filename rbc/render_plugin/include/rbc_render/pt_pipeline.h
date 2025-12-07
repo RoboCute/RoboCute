@@ -8,6 +8,7 @@ struct RasterPass;
 struct OfflinePTPass;
 struct AccumPass;
 struct PostPass;
+struct EditingPass;
 struct PTPipeline : public rbc::Pipeline {
     PTPipeline();
     ~PTPipeline();
@@ -20,6 +21,7 @@ struct PTPipeline : public rbc::Pipeline {
     rbc::OfflinePTPass *pt_pass = nullptr;
     rbc::AccumPass *accum_pass = nullptr;
     rbc::PostPass *post_pass = nullptr;
+    rbc::EditingPass *editing_pass = nullptr;
 
     // monitor info
 };

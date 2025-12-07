@@ -112,7 +112,7 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
         toneMappingSettings.lpm.displayMaxLuminance,
         displaySettings.use_hdr_display);
     init_counter.wait();
-    post_ctx->reset |= frame_settings.frame_index == 0;
+    // post_ctx->reset |= frame_settings.frame_index == 0;
     auto &scene = ctx.scene;
     if (post_ctx->reset) {
         post_ctx->aces_lut_dirty = true;

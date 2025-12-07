@@ -9,7 +9,7 @@ add_rules('lc_basic_settings', {
 })
 set_pcxxheader('src/zz_pch.h')
 add_deps('rbc_runtime')
-add_deps("compile_shaders", {
+add_deps("compile_shaders_hostgen", {
     inherit = false
 })
 add_deps('rbc_render_interface', 'oidn_plugin')

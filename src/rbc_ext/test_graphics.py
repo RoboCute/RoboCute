@@ -1,7 +1,7 @@
 import os
 import time
 from pathlib import Path
-from rbc_ext.generated.rbc_backend import *
+from rbc_ext.rbc_backend import *
 import numpy as np
 import json
 import math
@@ -16,7 +16,6 @@ def main():
     program_path = str(runtime_dir.parent / "debug")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
     sky_path = str(runtime_dir.parent / "sky.bytes")
-
     ctx = RBCContext()
     ctx.init_device(backend_name, program_path, shader_path)
     ctx.init_render()

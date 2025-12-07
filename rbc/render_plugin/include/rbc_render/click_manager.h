@@ -11,10 +11,10 @@ struct RayCastResult {
     uint mat_code;
     uint submesh_index{};
 };
-
+struct EditingPass;
 struct ClickManager {
     friend struct PipelineContext;
-    friend struct RasterPass;
+    friend struct EditingPass;
     inline void add_require(
         luisa::string &&key,
         ClickRequire const &require) {

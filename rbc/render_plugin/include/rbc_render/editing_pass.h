@@ -7,14 +7,17 @@
 #include <rbc_render/click_manager.h>
 #include <raster/raster_args.hpp>
 #include <rbc_graphics/scene_manager.h>
-namespace rbc {
 
-struct RasterPass : public Pass {// struct Reservoir
+namespace rbc {
+struct EditingPass : Pass {
 private:
     luisa::fiber::counter _init_counter;
-    RasterShader<Buffer<geometry::RasterElement>, raster::VertArgs> const *_draw_id_shader;
-    Shader2D<Image<uint>, uint4> const *_clear_id;
-    Shader2D<Image<uint>, Image<float>> const *_shading_id;
+    RasterShader<Buffer<geometry::RasterElement>, float4x4> const *_contour_draw;
+    Shader2D<Image<float>, Image<float>, int2, int, float> const *_contour_flood;
+    Shader2D<Image<float>, Image<float>, Image<float>, float3> const *_contour_reduce;
+    Shader2D<Image<float>, float4, int2> const *_draw_frame_selection;
+    ShaderBase const *_click_pick;
+
 public:
     void on_enable(
         Pipeline const &pipeline,
@@ -27,16 +30,12 @@ public:
         Device &device,
         CommandList &cmdlist,
         SceneManager &scene) override;
-    RasterPass();
-    ~RasterPass();
+    EditingPass();
+    ~EditingPass();
     Image<float> emission;
     void wait_enable() override;
-};
-struct RasterPassContext : public PassContext {
-    DepthBuffer depth_buffer;
-    RasterPassContext();
-    ~RasterPassContext();
+    void contour(PipelineContext const &ctx, luisa::span<uint const> draw_indices);
 };
 }// namespace rbc
-RBC_RTTI(rbc::RasterPass)
-RBC_RTTI(rbc::RasterPassContext)
+
+RBC_RTTI(rbc::EditingPass)
