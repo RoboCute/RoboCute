@@ -17,7 +17,9 @@ class GenericInfo:
 
     origin: Type  # 泛型原始类型，如 list, dict, Optional
     args: tuple  # 泛型参数，如 (int,) 或 (str, int)
-    cpp_name: Optional[str] = None  # C++类型名称，如 "std::vector", "std::unordered_map"
+    cpp_name: Optional[str] = (
+        None  # C++类型名称，如 "std::vector", "std::unordered_map"
+    )
     is_container: bool = False  # 是否为容器类型
     is_optional: bool = False  # 是否为Optional类型
 
@@ -33,11 +35,13 @@ class MethodInfo:
 
     name: str
     signature: inspect.Signature
+
     return_type: Optional[Type]
     parameters: Dict[str, inspect.Parameter]
     return_type_generic: Optional["GenericInfo"] = None  # 返回类型的泛型信息
     parameter_generics: Dict[str, Optional["GenericInfo"]] = None  # 参数的泛型信息
     doc: Optional[str] = None
+    cpp_prefix: str = ""  # sum cpp prefix info like `RBC_API`
 
     def __post_init__(self):
         """后处理，确保字典不为None"""
@@ -68,6 +72,7 @@ class ClassInfo:
     fields: List[FieldInfo]
     base_classes: List[str]
     doc: Optional[str] = None
+    cpp_namespace: str = ""
 
     def __post_init__(self):
         """后处理，确保列表不为None"""
@@ -91,13 +96,16 @@ class ReflectionRegistry:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def register(self, cls: Type, module_name: str = None) -> Type:
+    def register(
+        self, cls: Type, module_name: str = None, cpp_namespace: str = None
+    ) -> Type:
         """注册类"""
         # print(f"registering {cls} with module name {module_name}")
         if module_name is None:
             module_name = cls.__module__
 
         class_info = self._extract_class_info(cls, module_name)
+        class_info.cpp_namespace = cpp_namespace
         key = f"{module_name}.{cls.__name__}"
         self._registered_classes[key] = class_info
 
@@ -119,14 +127,14 @@ class ReflectionRegistry:
                         if sig.return_annotation != inspect.Signature.empty
                         else None
                     )
-                    
+
                     # 解析返回类型的泛型信息
                     return_type_generic = None
                     if return_type is not None:
                         return_type_generic = self._parse_generic_type(return_type)
-                    
+
                     parameters = {name: param for name, param in sig.parameters.items()}
-                    
+
                     # 解析参数的泛型信息
                     parameter_generics = {}
                     for param_name, param in parameters.items():
@@ -135,7 +143,7 @@ class ReflectionRegistry:
                             parameter_generics[param_name] = param_generic
                         else:
                             parameter_generics[param_name] = None
-                    
+
                     methods.append(
                         MethodInfo(
                             name=name,
@@ -213,16 +221,16 @@ class ReflectionRegistry:
     def _parse_generic_type(self, type_hint: Any) -> Optional[GenericInfo]:
         """
         解析泛型类型，提取泛型信息
-        
+
         支持的泛型类型：
         - List[T] / list[T] -> std::vector
         - Dict[K, V] / dict[K, V] -> std::map
         - Optional[T] / Union[T, None] -> std::optional
         - 自定义Generic容器（如Vector[T]）
-        
+
         Args:
             type_hint: 类型提示
-            
+
         Returns:
             GenericInfo对象，如果不是泛型则返回None
         """
@@ -270,20 +278,20 @@ class ReflectionRegistry:
         # 例如：Vector[T], UnorderedMap[K, V] 等
         if hasattr(origin, "__name__"):
             origin_name = origin.__name__.lower()
-            
+
             # 检查是否有_cpp_type_name属性
             if hasattr(origin, "_cpp_type_name"):
                 generic_info.cpp_name = origin._cpp_type_name
                 if hasattr(origin, "_is_container"):
                     generic_info.is_container = origin._is_container
                 return generic_info
-            
+
             # 通过名称识别常见的容器类型
             if "vector" in origin_name or "list" in origin_name:
                 generic_info.cpp_name = "std::vector"
                 generic_info.is_container = True
                 return generic_info
-            
+
             if "map" in origin_name or "dict" in origin_name:
                 if "unordered" in origin_name:
                     generic_info.cpp_name = "std::unordered_map"
@@ -330,7 +338,9 @@ class ReflectionRegistry:
             warnings.warn(f"Cannot import module {module_name}: {e}", ImportWarning)
 
 
-def reflect(cls: Type) -> Type:
+def reflect(
+    cls: Type = None, *, module_name: str = None, cpp_namespace: str = None
+) -> Type:
     """
     反射装饰器，用于标记需要反射的类
 
@@ -339,12 +349,24 @@ def reflect(cls: Type) -> Type:
         class MyClass:
             ...
 
-        @reflect
+        @reflect(cpp_namespace="rbc")
         class MyEnum(Enum):
             ...
+
+        @reflect(module_name="custom.module", cpp_namespace="custom::ns")
+        class MyStruct:
+            ...
     """
-    registry = ReflectionRegistry()
-    registry.register(cls)
-    # 添加标记属性
-    cls.__reflected__ = True
-    return cls
+
+    def decorator(cls: Type) -> Type:
+        registry = ReflectionRegistry()
+        registry.register(cls, module_name=module_name, cpp_namespace=cpp_namespace)
+        # 添加标记属性
+        cls.__reflected__ = True
+        return cls
+
+    # 支持 @reflect 和 @reflect(...) 两种用法
+    if cls is None:
+        return decorator
+    else:
+        return decorator(cls)

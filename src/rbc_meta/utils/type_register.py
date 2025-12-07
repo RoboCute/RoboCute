@@ -1,5 +1,3 @@
-import rbc_meta.utils.type_register_base as base
-
 # 导入新版架构
 try:
     import rbc_meta.utils_next.reflect as reflect_new

@@ -8,6 +8,7 @@ from rbc_meta.resource_enums import *
 def codegen_header(header_path: Path, cpp_path: Path):
     suffix = "RBC_RUNTIME_API"
     MeshMeta = tr.struct("rbc::MeshMeta", suffix)
+
     MeshMeta.serde_members(
         vertex_count=tr.uint,
         normal=tr.bool,
@@ -22,6 +23,7 @@ def codegen_header(header_path: Path, cpp_path: Path):
         storage=PixelStorage,
         mip_level=tr.uint,
     )
+
     include = """#include<luisa/runtime/rhi/pixel.h>
 """
     ut.codegen_to(header_path)(cpp_interface_gen, include)
