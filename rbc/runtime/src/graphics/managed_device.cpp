@@ -210,9 +210,14 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
                 auto c = static_cast<DrawRasterSceneCommand const*>(cmd);
                 for (auto& i : c->arguments())
                 {
-                    if (i.tag == Argument::Tag::TEXTURE)
+                    switch (i.tag)
                     {
+                    case Argument::Tag::BUFFER:
+                        _mark_buffer(i.buffer.handle, idx);
+                        break;
+                    case Argument::Tag::TEXTURE:
                         _mark_tex(i.texture.handle, idx);
+                        break;
                     }
                 }
                 for (auto& i : c->rtv_texs())
@@ -439,9 +444,18 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
                 auto c = static_cast<DrawRasterSceneCommand*>(cmd);
                 for (auto& i : c->arguments())
                 {
-                    if (i.tag == Argument::Tag::TEXTURE)
+                    switch (i.tag)
                     {
+                    case Argument::Tag::BUFFER: {
+                        auto bf = _get_buffer_handle_offset(i.buffer.handle);
+                        i.buffer.handle = bf.first;
+                        i.buffer.offset += bf.second;
+                    }
+                    break;
+                    case Argument::Tag::TEXTURE: {
                         i.texture.handle = _get_tex_handle(i.texture.handle);
+                    }
+                    break;
                     }
                 }
                 auto rtv_texs = c->rtv_texs();

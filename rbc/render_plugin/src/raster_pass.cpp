@@ -39,6 +39,7 @@ void RasterPass::on_enable(
     ShaderManager::instance()->async_load_raster_shader(_init_counter, "raster/contour_draw.bin", _contour_draw);
     ShaderManager::instance()->async_load(_init_counter, "raster/contour_flood.bin", _contour_flood);
     ShaderManager::instance()->async_load(_init_counter, "raster/contour_reduce.bin", _contour_reduce);
+    ShaderManager::instance()->async_load(_init_counter, "raster/draw_frame_selection.bin", _draw_frame_selection);
     RBC_LOAD_SHADER(_click_pick, click_pick, "raster/click_pick.bin");
 }
 #undef RBC_LOAD_SHADER
@@ -57,16 +58,17 @@ void RasterPass::contour(PipelineContext const &ctx, luisa::span<uint const> dra
     luisa::vector<geometry::RasterElement> host_data;
     meshes.reserve(draw_indices.size());
     host_data.reserve(draw_indices.size());
-    auto elem_buffer = sm.host_upload_buffer().allocate_upload_buffer<geometry::RasterElement>(draw_indices.size());
+    auto elem_buffer = render_device.create_transient_buffer<geometry::RasterElement>("contour_elem_buffer", draw_indices.size());
     for (auto &i : draw_indices) {
         auto draw_cmd = sm.accel_manager().draw_object(i, 1, meshes.size());
         meshes.push_back(std::move(draw_cmd.mesh));
         host_data.push_back(draw_cmd.info);
     }
-    std::memcpy(elem_buffer.mapped_ptr(), host_data.data(), host_data.size_bytes());
+    auto &cmdlist = *ctx.cmdlist;
+    cmdlist << elem_buffer.view(0, host_data.size()).copy_from(host_data.data());
+    sm.dispose_after_commit(std::move(host_data));
     const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
     auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
-    auto &cmdlist = *ctx.cmdlist;
     auto raster_ext = render_device.lc_device().extension<RasterExt>();
     auto origin_map = render_device.create_transient_image<float>(
         "contour_origin",
@@ -84,15 +86,16 @@ void RasterPass::contour(PipelineContext const &ctx, luisa::span<uint const> dra
                 PixelStorage::BYTE1,
                 frame_settings.render_resolution)};
     cmdlist << raster_ext->clear_render_target(
-                   origin_map,
-                   float4(0))
-            << (*_contour_draw)(
-                   elem_buffer.view,
+        origin_map,
+        float4(0));
+    cmdlist << (*_contour_draw)(
+                   elem_buffer,
                    cam_data.vp)
                    .draw(
                        std::move(meshes),
                        sm.accel_manager().basic_foramt(),
                        Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, nullptr, origin_map);
+    sm.dispose_after_sync(std::move(elem_buffer));
     auto const *src_img = &origin_map;
     for (int i = 0; i < 2; ++i) {
         cmdlist << (*_contour_flood)(
@@ -114,7 +117,7 @@ void RasterPass::contour(PipelineContext const &ctx, luisa::span<uint const> dra
     cmdlist << (*_contour_reduce)(
                    origin_map,
                    *src_img,
-                   emission,
+                   *frame_settings.resolved_img,
                    float3(1.0f, 1.0f, 1.0f))
                    .dispatch(frame_settings.render_resolution);
 }
@@ -171,17 +174,18 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             .view = cam_data.view,
             .proj = cam_data.proj,
             .view_proj = cam_data.vp};
-        // cmdlist << _draw_scene_shader(data_buffer, vert_args)
-        //                .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, emission);
         cmdlist << (*_draw_id_shader)(data_buffer, vert_args)
                        .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, id_map);
     }
     cmdlist << (*_shading_id)(id_map, emission).dispatch(frame_settings.render_resolution);
     auto click_manager = ctx.pipeline_settings->read_if<ClickManager>();
     if (click_manager) {
-        if (!click_manager->_contour_objects.empty()) {
-            contour(ctx, click_manager->_contour_objects);
-            click_manager->_contour_objects.clear();
+        click_manager->_mtx.lock();
+        auto contour_objects = std::move(click_manager->_contour_objects);
+        auto frame_selection = std::move(click_manager->_frame_selection_requires);
+        click_manager->_mtx.unlock();
+        if (!contour_objects.empty()) {
+            contour(ctx, contour_objects);
         }
         if (!click_manager->_requires.empty()) {
             // click
@@ -191,7 +195,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 "click_result",
                 reqs.size());
             luisa::fixed_vector<float2, 2> req_coords;
-            luisa::fixed_vector<RayCastResult, 2> result;
+            luisa::vector<RayCastResult> result;
             result.push_back_uninitialized(reqs.size());
             vstd::push_back_func(req_coords, reqs.size(), [&](size_t i) {
                 return reqs[i].second.screen_uv;
@@ -213,12 +217,19 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         // frame selection
         luisa::vector<uint> selection_result;
         luisa::spin_mutex selection_mtx;
-        click_manager->_mtx.lock();
-        auto frame_selection = std::move(click_manager->_frame_selection_requires);
-        click_manager->_mtx.unlock();
+
         for (auto &i : frame_selection) {
-            if (length(abs(i.second.xy() - i.second.zw())) < 1e-3f) {
+            if (length(abs(i.min_projection - i.max_projection)) < 1e-3f) {
                 continue;
+            }
+            auto start_pixel = make_int2((i.min_projection * 0.5f + 0.5f) * make_float2(frame_settings.render_resolution));
+            auto end_pixel = make_int2((i.max_projection * 0.5f + 0.5f) * make_float2(frame_settings.render_resolution) + 0.9999f);
+            if (i.draw_rectangle) {
+                cmdlist << (*_draw_frame_selection)(
+                               *frame_settings.resolved_img,
+                               float4(0, 0, 1, 0.3f),
+                               start_pixel)
+                               .dispatch(make_uint2(end_pixel - start_pixel));
             }
             selection_result.clear();
             auto select_call = [&](uint user_id, float4x4 const &transform, AABB const &bounding_box) {
@@ -238,7 +249,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                             proj_min = min(proj_min, proj.xyz());
                             proj_max = max(proj_max, proj.xyz());
                         }
-                if (all(proj_max < make_float3(i.second.zw(), 1e20f) && proj_min > make_float3(i.second.xy(), 0.f))) {
+                if (all(proj_max < make_float3(i.max_projection, 1e20f) && proj_min > make_float3(i.min_projection, 0.f))) {
                     std::lock_guard lck{selection_mtx};
                     selection_result.push_back(user_id);
                     return true;
@@ -248,7 +259,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             sm.accel_manager().iterate_scene(select_call);
             if (!selection_result.empty()) {
                 std::lock_guard lck{click_manager->_mtx};
-                click_manager->_frame_selection_results.force_emplace(std::move(i.first), std::move(selection_result));
+                click_manager->_frame_selection_results.force_emplace(std::move(i.name), std::move(selection_result));
             }
         }
     }

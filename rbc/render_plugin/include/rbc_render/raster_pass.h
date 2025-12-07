@@ -18,6 +18,7 @@ private:
     Shader2D<Image<uint>, Image<float>> const *_shading_id;
     Shader2D<Image<float>, Image<float>, int2, int, float> const *_contour_flood;
     Shader2D<Image<float>, Image<float>, Image<float>, float3> const *_contour_reduce;
+    Shader2D<Image<float>, float4, int2> const *_draw_frame_selection;
     ShaderBase const *_click_pick;
 
 public:

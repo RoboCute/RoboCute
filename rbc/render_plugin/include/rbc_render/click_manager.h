@@ -24,9 +24,15 @@ struct ClickManager {
     inline void add_frame_selection(
         luisa::string &&key,
         luisa::float2 min_projection,
-        luisa::float2 max_projection) {
+        luisa::float2 max_projection,
+        bool draw_rectangle) {
         std::lock_guard lck{_mtx};
-        _frame_selection_requires.emplace_back(std::move(key), luisa::make_float4(min_projection, max_projection));
+        _frame_selection_requires.emplace_back(
+            FrameSelectionRequires{
+                .name = std::move(key),
+                .min_projection = min_projection,
+                .max_projection = max_projection,
+                .draw_rectangle = draw_rectangle});
     }
     inline luisa::optional<RayCastResult> query_result(luisa::string_view key) {
         std::lock_guard lck{_mtx};
@@ -65,8 +71,14 @@ private:
     void clear_requires();
     void clear();
     luisa::vector<uint> _contour_objects;
+    struct FrameSelectionRequires {
+        luisa::string name;
+        luisa::float2 min_projection;
+        luisa::float2 max_projection;
+        bool draw_rectangle;
+    };
     luisa::vector<std::pair<luisa::string, ClickRequire>> _requires;
-    luisa::vector<std::pair<luisa::string, luisa::float4>> _frame_selection_requires;
+    luisa::vector<FrameSelectionRequires> _frame_selection_requires;
     vstd::HashMap<luisa::string, RayCastResult> _results;
     vstd::HashMap<luisa::string, luisa::vector<uint>> _frame_selection_results;
     luisa::spin_mutex _mtx;

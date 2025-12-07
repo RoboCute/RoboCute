@@ -311,18 +311,31 @@ int main(int argc, char *argv[]) {
     auto &click_mng = utils.render_settings.read_mut<ClickManager>();
     uint2 window_size = utils.window->size();
     float2 start_uv, end_uv;
-    bool dragging = false;
+    luisa::vector<uint> dragged_object_ids;
+    uint clicked_user_id;
+    enum struct MouseStage {
+        None,
+        Dragging,
+        Clicking,
+        Clicked,
+    };
+    MouseStage stage{MouseStage::None};
     utils.window->set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
-        if (action == Action::ACTION_PRESSED) {
+        if (button == MOUSE_BUTTON_2) {
+            if (action == Action::ACTION_PRESSED) {
+                start_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
+                end_uv = start_uv;
+                stage = MouseStage::Dragging;
+            } else if (action == Action::ACTION_RELEASED) {
+                stage = MouseStage::None;
+            }
+        } else if (button == MOUSE_BUTTON_1) {
             start_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
-            end_uv = start_uv;
-            dragging = true;
-        } else if (action == Action::ACTION_RELEASED) {
-            dragging = false;
+            stage = MouseStage::Clicking;
         }
     });
     utils.window->set_cursor_position_callback([&](float2 xy) {
-        if (dragging) {
+        if (stage == MouseStage::Dragging) {
             end_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
         }
     });
@@ -406,17 +419,31 @@ int main(int argc, char *argv[]) {
             simple_scene->move_light(*light_move);
             light_move.destroy();
         }
-        click_mng.add_frame_selection("dragging", min(start_uv, end_uv) * 2.f - 1.f, max(start_uv, end_uv) * 2.f - 1.f);
-        auto dragging_result = click_mng.query_frame_selection("dragging");
-        if (!dragging_result.empty()) {
-            click_mng.set_contour_objects(std::move(dragging_result));
+        // click
+        if (stage == MouseStage::Clicking) {
+            click_mng.add_require("click", ClickRequire{.screen_uv = start_uv});
+        }
+        // set drag
+        else if (stage == MouseStage::Dragging) {
+            click_mng.add_frame_selection("dragging", min(start_uv, end_uv) * 2.f - 1.f, max(start_uv, end_uv) * 2.f - 1.f, true);
+        }
+        if (stage == MouseStage::Clicking || stage == MouseStage::Dragging) {
+            dragged_object_ids.clear();
+        }
+        if (stage == MouseStage::Clicked) {
+            auto click_result = click_mng.query_result("click");
+            if (click_result) {
+                dragged_object_ids.push_back(click_result->inst_id);
+            }
+        } else if (stage == MouseStage::Dragging) {
+            auto dragging_result = click_mng.query_frame_selection("dragging");
+            if (!dragging_result.empty())
+                dragged_object_ids = std::move(dragging_result);
         }
 
         auto tick_stage = GraphicsUtils::TickStage::RasterPreview;
-        // const uint sample = 16;
-        // if (frame_index > sample) {
-        //     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
-        // }
+        click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
+
         utils.tick(
             static_cast<float>(delta_time),
             frame_index,
@@ -427,16 +454,10 @@ int main(int argc, char *argv[]) {
         //     utils.denoise();
         // }
         ++frame_index;
-        auto click_result = click_mng.query_result("click");
-        if (click_result) {
-            MatCode m{click_result->mat_code};
-            LUISA_INFO("Clicked:\ntriangle_bary: {}\ninst_id: {}\nprim_id: {}\nmat_type: {}\nmat_idx: {}\nsubmesh_index: {}",
-                       click_result->triangle_bary,
-                       click_result->inst_id,
-                       click_result->prim_id,
-                       m.get_type(),
-                       m.get_inst_id(),
-                       click_result->submesh_index);
+        switch (stage) {
+            case MouseStage::Clicking:
+                stage = MouseStage::Clicked;
+                break;
         }
     }
     // rpc_hook.shutdown_remote();
