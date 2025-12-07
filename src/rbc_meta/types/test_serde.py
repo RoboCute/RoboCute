@@ -20,7 +20,7 @@ class MyEnum(Enum):
 @reflect(cpp_namespace="rbc", serde=True, module_name="test_serde")
 class MyStruct:
     guid: GUID
-    multi_dim_vec = Vector[Vector[int]]
+    multi_dim_vec: Vector[Vector[int]]
     matrix: float4x4
     a: int
     b: double2

@@ -1,5 +1,5 @@
 import hashlib
-from typing import Dict, List, Optional, Any, Type, Union
+from typing import Dict, List, Optional, Any, Type, Union, get_origin, get_args
 import inspect
 
 from rbc_meta.utils_next.reflect import (
@@ -94,6 +94,15 @@ _TYPE_NAME_FUNCTIONS = {
     # For now, we'll handle them in _get_cpp_type if needed
 }
 
+# Import GUID from builtin to check type
+try:
+    from rbc_meta.utils_next.builtin import GUID as BuiltinGUID
+    _TYPE_NAME_FUNCTIONS[BuiltinGUID] = lambda t, py_interface=False, is_view=False: (
+        "GuidData" if py_interface else ("vstd::Guid const&" if is_view else "vstd::Guid")
+    )
+except ImportError:
+    pass
+
 # Python type names for type hints
 _PY_NAMES = {
     int: "int",
@@ -122,8 +131,40 @@ def _get_cpp_type(
     if f:
         return f(type_hint, py_interface, is_view)
 
-    # Handle basic types mapped in builtin.py or standard python types
+    # Handle Generic types FIRST (before checking _cpp_type_name)
+    # This is important for nested generics like Vector[Vector[int]]
+    if hasattr(type_hint, "__origin__"):
+        origin = type_hint.__origin__
+        args = getattr(type_hint, "__args__", ())
+        
+        # Check if origin is a custom container type (Vector, UnorderedMap, etc.)
+        if hasattr(origin, "_cpp_type_name") and hasattr(origin, "_is_container") and origin._is_container:
+            cpp_name = origin._cpp_type_name
+            if len(args) == 1:
+                inner_type = _get_cpp_type(args[0], py_interface, is_view)
+                return f"{cpp_name}<{inner_type}>"
+            elif len(args) == 2:
+                key_type = _get_cpp_type(args[0], py_interface, is_view)
+                value_type = _get_cpp_type(args[1], py_interface, is_view)
+                return f"{cpp_name}<{key_type}, {value_type}>"
+        
+        # Handle standard Python generic types
+        if isinstance(origin, list):
+            return f"luisa::vector<{_get_cpp_type(args[0], py_interface, is_view)}>"
+        elif isinstance(origin, dict):
+            return f"luisa::unordered_map<{_get_cpp_type(args[0], py_interface, is_view)}, {_get_cpp_type(args[1], py_interface, is_view)}>"
+        elif isinstance(origin, set):
+            return f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
+        elif isinstance(origin, tuple):
+            return f"luisa::tuple<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in args])}>"
+        elif isinstance(origin, frozenset):
+            return f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
+        elif isinstance(origin, Optional):
+            return f"std::optional<{_get_cpp_type(args[0], py_interface, is_view)}>"
+        elif isinstance(origin, Union):
+            return f"std::variant<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in args])}>"
 
+    # Handle basic types mapped in builtin.py or standard python types
     if hasattr(type_hint, "_cpp_type_name"):
         return type_hint._cpp_type_name
 
@@ -140,24 +181,6 @@ def _get_cpp_type(
             return "float"
         elif name == "str":
             return "luisa::string"
-
-    # Handle Generic types (Vector[T], UnorderedMap[K, V])
-    if hasattr(type_hint, "__origin__"):
-        origin = type_hint.__origin__
-        if isinstance(origin, list):
-            return f"luisa::vector<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}>"
-        elif isinstance(origin, dict):
-            return f"luisa::unordered_map<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}, {_get_cpp_type(type_hint.__args__[1], py_interface, is_view)}>"
-        elif isinstance(origin, set):
-            return f"luisa::unordered_set<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}>"
-        elif isinstance(origin, tuple):
-            return f"luisa::tuple<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in type_hint.__args__])}>"
-        elif isinstance(origin, frozenset):
-            return f"luisa::unordered_set<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}>"
-        elif isinstance(origin, Optional):
-            return f"std::optional<{_get_cpp_type(type_hint.__args__[0], py_interface, is_view)}>"
-        elif isinstance(origin, Union):
-            return f"std::variant<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in type_hint.__args__])}>"
 
     # Fallback to class name (assuming it's a registered type)
     if hasattr(type_hint, "__name__"):
@@ -198,10 +221,19 @@ def _get_py_type(type_hint: Any) -> Optional[str]:
     f = _PY_NAMES.get(type_hint)
     if f is not None:
         return f
-    if hasattr(type_hint, "__name__"):
-        name = type_hint.__name__
-        if name in ("bool", "int", "float", "str"):
-            return name
+    
+    # For class types (not instances), return the class name
+    if isinstance(type_hint, type):
+        if hasattr(type_hint, "__name__"):
+            name = type_hint.__name__
+            # Basic types are already handled above
+            if name not in ("bool", "int", "float", "str"):
+                # Map uint and ulong to int for Python type hints
+                if name in ("uint", "ulong"):
+                    return "int"
+                return name
+    
+    # For instances (like ExternalType instances), don't generate type hints
     # Check if it's a registered class
     return None
 
@@ -472,10 +504,25 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
             # Use generic info if available
             if field.generic_info:
                 if field.generic_info.cpp_name:
-                    inner_type = _get_full_cpp_type(
-                        field.generic_info.args[0], registry
-                    )
-                    var_type_name = f"{field.generic_info.cpp_name}<{inner_type}>"
+                    # Handle different container types
+                    if len(field.generic_info.args) == 1:
+                        # Single parameter containers (Vector, etc.)
+                        inner_type = _get_full_cpp_type(
+                            field.generic_info.args[0], registry
+                        )
+                        var_type_name = f"{field.generic_info.cpp_name}<{inner_type}>"
+                    elif len(field.generic_info.args) == 2:
+                        # Two parameter containers (UnorderedMap, etc.)
+                        key_type = _get_full_cpp_type(
+                            field.generic_info.args[0], registry
+                        )
+                        value_type = _get_full_cpp_type(
+                            field.generic_info.args[1], registry
+                        )
+                        var_type_name = f"{field.generic_info.cpp_name}<{key_type}, {value_type}>"
+                    else:
+                        # Fallback to using the type directly
+                        var_type_name = _get_full_cpp_type(field.type, registry)
                 else:
                     var_type_name = _get_full_cpp_type(field.type, registry)
             else:
@@ -529,8 +576,10 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
                 if method.return_type
                 else "void"
             )
+            # Filter out 'self' parameter for C++ method declarations
+            method_params = {k: v for k, v in method.parameters.items() if k != "self"}
             args_expr = _print_arg_vars_decl(
-                method.parameters, True, False, True, registry
+                method_params, True, False, True, registry
             )
             method_expr = CPP_STRUCT_METHOD_DECL_TEMPLATE.substitute(
                 INDENT=INDENT,
@@ -726,7 +775,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = None) -> str:
         if info.is_enum:
             return ""
 
-        struct_name = key  # Use full key as struct name for C++ binding
+        struct_name = info.name  # Use class name as struct name for C++ binding
 
         init_method = PY_INIT_METHOD_TEMPLATE.substitute(
             INDENT=INDENT,
@@ -739,8 +788,10 @@ def py_interface_gen(module_name: str, module_filter: List[str] = None) -> str:
         )
 
         def get_method_expr(method: MethodInfo):
-            args_decl = _print_py_args_decl(method.parameters, False)
-            args_call = _print_py_args(method.parameters, False)
+            # Filter out 'self' parameter for Python method declarations
+            method_params = {k: v for k, v in method.parameters.items() if k != "self"}
+            args_decl = _print_py_args_decl(method_params, False)
+            args_call = _print_py_args(method_params, False)
             return_expr = "return " if method.return_type else ""
 
             return PY_METHOD_TEMPLATE.substitute(
@@ -1019,23 +1070,27 @@ def pybind_codegen(
             return ""
 
         result_parts = []
+        class_name = info.name  # Use class name instead of full key
+        # Use full namespace-qualified name for C++ code
+        namespace_name = info.cpp_namespace or ""
+        struct_name = f"{namespace_name}::{class_name}" if namespace_name else class_name
 
         # create function
-        create_name = f"create__{key}__"
+        create_name = f"create__{class_name}__"
         create_func = PYBIND_CREATE_FUNC_TEMPLATE.substitute(
             INDENT=INDENT,
             CREATE_NAME=create_name,
-            STRUCT_NAME=key,
+            STRUCT_NAME=struct_name,
         )
         result_parts.append(create_func)
 
         # dispose function
-        dispose_name = f"dispose__{key}__"
+        dispose_name = f"dispose__{class_name}__"
         dispose_func = PYBIND_DISPOSE_FUNC_TEMPLATE.substitute(
             INDENT=INDENT,
             DISPOSE_NAME=dispose_name,
             PTR_NAME=ptr_name,
-            STRUCT_NAME=key,
+            STRUCT_NAME=struct_name,
         )
         result_parts.append(dispose_func)
 
@@ -1048,22 +1103,36 @@ def pybind_codegen(
             return_expr = ""
             return_close = ""
             if method.return_type:
-                ret_type = f" -> {_get_full_cpp_type(method.return_type, registry, True, False)}"
+                # Get the return type for pybind (py_interface=True)
+                pybind_ret_type = _get_full_cpp_type(method.return_type, registry, True, False)
+                # Get the actual C++ method return type (is_view=True for interface methods)
+                cpp_ret_type = _get_full_cpp_type(method.return_type, registry, False, True)
+                
+                ret_type = f" -> {pybind_ret_type}"
                 return_expr = "return "
+                
+                # If C++ method returns string_view but pybind expects string, add conversion
+                if cpp_ret_type == "luisa::string_view" and pybind_ret_type == "luisa::string":
+                    return_expr = "return luisa::string("
+                    return_close = ")"
+                else:
+                    return_close = ""
 
+            # Filter out 'self' parameter for pybind method bindings
+            method_params = {k: v for k, v in method.parameters.items() if k != "self"}
             args_decl = _print_arg_vars_decl(
-                method.parameters, False, True, True, registry
+                method_params, False, True, True, registry
             )
-            args_call = _print_py_args(method.parameters, True)
+            args_call = _print_py_args(method_params, True)
 
             method_func = PYBIND_METHOD_FUNC_TEMPLATE.substitute(
                 INDENT=INDENT,
-                METHOD_NAME=f"{key}__{method.name}__",
+                METHOD_NAME=f"{class_name}__{method.name}__",
                 PTR_NAME=ptr_name,
                 ARGS_DECL=args_decl,
                 RET_TYPE=ret_type,
                 RETURN_EXPR=return_expr,
-                STRUCT_NAME=key,
+                STRUCT_NAME=struct_name,
                 METHOD_NAME_CALL=method.name,
                 ARGS_CALL=args_call,
                 RETURN_CLOSE=return_close,

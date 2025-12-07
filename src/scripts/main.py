@@ -33,6 +33,8 @@ import rbc_meta.utils.codegen_util as ut
 from rbc_meta.utils_next.codegen import (
     cpp_interface_gen,
     cpp_impl_gen,
+    pybind_codegen,
+    py_interface_gen,
 )
 
 
@@ -426,6 +428,20 @@ def generate():
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     include = "#include <rbc_render/generated/pipeline_settings.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
+
+    target_modules = ["backend_interface"]
+    file_name = "rbc_backend"
+    pyd_name = "test_py_codegen"
+    header_path = Path("rbc/tests/test_graphics/generated/rbc_backend.h").resolve()
+    cpp_path = Path("rbc/tests/test_py_codegen/generated/rbc_backend.cpp").resolve()
+    py_path = Path("src/rbc_ext/generated/rbc_backend.py").resolve()
+    include = """#include <rbc_runtime/generated/resource_meta.hpp>
+#include <rbc_core/rc.h>"""
+
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
+    include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
+    ut.codegen_to(cpp_path)(pybind_codegen, pyd_name, target_modules, include)
+    ut.codegen_to(py_path)(py_interface_gen, pyd_name, target_modules)
 
     # processes = []
     # for module_name, function_name, *args in GENERATION_TASKS:
