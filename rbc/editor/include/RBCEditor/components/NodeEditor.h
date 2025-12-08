@@ -3,6 +3,7 @@
 #include <QListWidget>
 #include <QToolBar>
 #include <QLabel>
+#include <QSplitter>
 #include <memory>
 #include <unordered_set>
 
