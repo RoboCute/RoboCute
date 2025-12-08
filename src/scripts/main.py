@@ -28,13 +28,15 @@ from scripts.prepare import (
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder
 from mypy import stubgen
-import rbc_meta.utils.codegen_util as codegen_util
-import rbc_meta.utils.codegen_util as ut
+import rbc_meta.utils_next.codegen_util as ut
+
 from rbc_meta.utils_next.codegen import (
     cpp_interface_gen,
     cpp_impl_gen,
     pybind_codegen,
     py_interface_gen,
+    cpp_client_interface_gen,
+    cpp_client_impl_gen,
 )
 
 
@@ -163,7 +165,7 @@ def download_packages():
     lua_file = f'''clangd_filename = "{CLANGD_NAME}"
 clangcxx_filename = "{CLANGCXX_NAME}"
 oidn = "{OIDN_NAME}"'''
-    codegen_util._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
+    ut._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
 
     def download_file(file: str, map: dict):
         print(file)
@@ -379,11 +381,6 @@ def generate():
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules)
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules)
 
-    from rbc_meta.utils_next.codegen import (
-        cpp_client_interface_gen,
-        cpp_client_impl_gen,
-    )
-
     target_modules = ["test_ipc"]
     header_path = Path("rbc/tests/test_ipc/generated").resolve()
     ut.codegen_to(header_path / "server.hpp")(cpp_interface_gen, target_modules)
@@ -429,7 +426,6 @@ def generate():
     include = "#include <rbc_render/generated/pipeline_settings.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
-
     target_modules = ["backend_interface"]
     file_name = "rbc_backend"
     pyd_name = "test_py_codegen"
@@ -448,7 +444,9 @@ def generate():
 
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
-    ut.codegen_to(cpp_path)(pybind_codegen, pyd_name, ["backend_interface", "runtime"], include) # TODO: 对pybind特殊处理，指定所有导出的module_filter，不太优雅
+    ut.codegen_to(cpp_path)(
+        pybind_codegen, pyd_name, ["backend_interface", "runtime"], include
+    )  # TODO: 对pybind特殊处理，指定所有导出的module_filter，不太优雅
     ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["backend_interface", "runtime"])
 
     # processes = []
