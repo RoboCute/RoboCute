@@ -17,10 +17,6 @@ local function oidn_plugin_impl()
 end
 interface_target('oidn_plugin', oidn_plugin_interface, oidn_plugin_impl, true)
 
--- add_deps('dxcuda-interop')
-
-target_end()
-
 target('oidn_checker')
 do
     add_rules('lc_basic_settings', {

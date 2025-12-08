@@ -26,3 +26,9 @@ function interface_target(target_name, interface_callback, impl_callback, no_lin
         })
     end
 end
+
+function add_interface_deps(...)
+    for _, v in ipairs({...}) do
+        add_deps(v .. '_int__')
+    end
+end

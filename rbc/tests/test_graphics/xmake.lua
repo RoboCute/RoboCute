@@ -12,7 +12,6 @@ for target_name, is_standalone in pairs(targets) do
 
     local function test_graphics_impl()
         add_rules('lc_basic_settings', {})
-        add_deps('lc-gui', 'rbc_render_interface', 'rbc_ipc')
         on_load(function(target)
             if is_standalone then
                 for _, v in ipairs(os.files(path.join(os.scriptdir(), '**.cpp'))) do
@@ -30,12 +29,9 @@ for target_name, is_standalone in pairs(targets) do
                 end
                 target:set('kind', 'shared')
             end
-            target:add('deps', 'rbc_render_plugin', 'lc-backends-dummy', {
-                inherit = false,
-                links = false
-            })
+            target:add('deps', 'lc-gui', 'rbc_render_plugin', 'rbc_ipc')
+            target:add('defines', 'TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
         end)
-        add_defines('TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
     end
 
     interface_target(target_name, test_graphics_interface, test_graphics_impl)
