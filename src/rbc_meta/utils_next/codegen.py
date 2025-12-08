@@ -126,7 +126,7 @@ _PY_NAMES = {
 
 
 def _get_cpp_type(
-    type_hint: Any, py_interface: bool = False, is_view: bool = False
+    type_hint: Any, py_interface: bool = False, is_view: bool = True
 ) -> str:
     """Map Python type to C++ type string."""
     if type_hint is None:
@@ -179,6 +179,9 @@ def _get_cpp_type(
             return f"std::variant<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in args])}>"
 
     # Handle basic types mapped in builtin.py or standard python types
+    if hasattr(type_hint, "cpp_type_name"):
+        return type_hint.cpp_type_name(py_interface, is_view)
+    
     if hasattr(type_hint, "_cpp_type_name"):
         return type_hint._cpp_type_name
 
