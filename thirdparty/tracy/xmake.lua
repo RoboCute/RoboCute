@@ -1,0 +1,11 @@
+target("RBCTracy")
+    set_kind("shared")
+    add_headerfiles("tracy/*.h")
+    add_includedirs("tracy/", { public = true})
+    add_files("tracy/TracyClient.cpp")
+    add_defines("TRACY_EXPORTS", { private = true })
+    add_defines("TRACY_IMPORTS", { interface = true })
+    add_defines("RBC_PROFILE_ENABLE", { public = true })
+    -- 确保 TRACY_ENABLE 在编译 TracyClient.cpp 时被定义
+    add_defines("TRACY_ENABLE", { private = true })
+target_end()

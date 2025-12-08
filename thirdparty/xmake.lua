@@ -18,6 +18,7 @@ includes('jolt_xmake.lua')
 includes('ozz_xmake.lua')
 includes('qt_xmake.lua')
 includes('oidn')
+includes('tracy')
 
 -- target('magic_enum')
 -- set_kind('headeronly')
