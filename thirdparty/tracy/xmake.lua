@@ -1,5 +1,7 @@
 target("RBCTracy")
-    set_kind("shared")
+    add_rules("lc_basic_settings", {
+        project_kind = "static"
+    })
     add_headerfiles("tracy/*.h")
     add_includedirs("tracy/", { public = true})
     add_files("tracy/TracyClient.cpp")
