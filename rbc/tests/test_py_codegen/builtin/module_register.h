@@ -28,3 +28,13 @@ inline py::memoryview to_memoryview_5d4636ab(luisa::span<std::byte> const &sp) {
         sp.data(),
         sp.size());
 }
+template<typename T>
+struct Vec {
+    luisa::vector<T> vec;
+    operator luisa::vector<T> &() {
+        return vec;
+    }
+    operator luisa::vector<T> const &() const {
+        return vec;
+    }
+};

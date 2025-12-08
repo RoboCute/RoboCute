@@ -81,6 +81,7 @@ constexpr size_t spp256_rankingTile_offset = 8388608;
 constexpr size_t sobol_256d_offset = 8912896;
 
 luisa::compute::Buffer<uint> heitz_sobol_scrambling(
+    luisa::string const& path,
     luisa::compute::Device &device,
     luisa::compute::CommandList &cmdlist,
     rbc::DisposeQueue &after_commit_dspqueue,
@@ -111,7 +112,7 @@ luisa::compute::Buffer<uint> heitz_sobol_scrambling(
         }
     }();
     luisa::BinaryFileStream file_stream(
-        "heitz_sobol.bin");
+        path);
     file_stream.set_pos(ptr_offset);
     luisa::vector<uint> data;
     data.push_back_uninitialized(128 * 128 * 8);
@@ -125,6 +126,7 @@ luisa::compute::Buffer<uint> heitz_sobol_scrambling(
     return buffer;
 }
 luisa::compute::Buffer<uint> heitz_sobol_ranking(
+    luisa::string const& path,
     luisa::compute::Device &device,
     luisa::compute::CommandList &cmdlist,
     rbc::DisposeQueue &after_commit_dspqueue,
@@ -156,7 +158,7 @@ luisa::compute::Buffer<uint> heitz_sobol_ranking(
         }
     }();
     luisa::BinaryFileStream file_stream(
-        "heitz_sobol.bin");
+        path);
     file_stream.set_pos(ptr_offset);
     luisa::vector<uint> data;
     data.push_back_uninitialized(128 * 128 * 8);
@@ -169,11 +171,12 @@ luisa::compute::Buffer<uint> heitz_sobol_ranking(
     return buffer;
 }
 luisa::compute::Buffer<uint> heitz_sobol_256d(
+    luisa::string const& path,
     luisa::compute::Device &device,
     luisa::compute::CommandList &cmdlist,
     rbc::DisposeQueue &after_commit_dspqueue) {
     luisa::BinaryFileStream file_stream(
-        "heitz_sobol.bin");
+        path);
     file_stream.set_pos(sobol_256d_offset);
     luisa::vector<uint> data;
     data.push_back_uninitialized(256 * 256);

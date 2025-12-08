@@ -32,6 +32,11 @@ class GUID:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "GUID"
+    
+class DataBuffer:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "luisa::span<std::byte>"
 
 
 class float4:

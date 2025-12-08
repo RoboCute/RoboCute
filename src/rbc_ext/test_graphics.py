@@ -68,7 +68,6 @@ def main():
     ctx.update_mesh(mesh, False)
     mat = ctx.create_pbr_material()
     ctx.update_material(mat, "{}")  # use default value
-
     mat_default_json = json.loads(ctx.get_material_json(mat))
     mat_default_json["base_albedo"] = [0, 0, 0]
     mat_default_json["emission_luminance"] = [100, 0, 0]
@@ -107,7 +106,6 @@ def main():
         float3(0, 0, 1.0) * 100,
         True,
     )
-
     obj_changed = False
     start_time = None
     while not ctx.should_close():

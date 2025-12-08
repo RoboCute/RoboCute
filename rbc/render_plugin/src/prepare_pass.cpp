@@ -267,8 +267,9 @@ void PreparePass::on_enable(
         }
         LUISA_ASSERT(spectrum::illum_d65_size == lut_resolution);
     }
-    sobol_256d = heitz_sobol_256d(device, cmdlist, scene.after_commit_dsp_queue());
-    sobol_scrambling = heitz_sobol_scrambling(device, cmdlist, scene.after_commit_dsp_queue(), HeitzSobolSPP::SPP1);
+    auto sobol_path = luisa::to_string(runtime_dir / "heitz_sobol.bin");
+    sobol_256d = heitz_sobol_256d(sobol_path, device, cmdlist, scene.after_commit_dsp_queue());
+    sobol_scrambling = heitz_sobol_scrambling(sobol_path, device, cmdlist, scene.after_commit_dsp_queue(), HeitzSobolSPP::SPP1);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_256d_heap_idx, sobol_256d);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_scrambling_heap_idx, sobol_scrambling);
     lut_counter.wait();

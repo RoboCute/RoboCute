@@ -1,4 +1,5 @@
 from rbc_meta.utils_next.reflect import reflect
+from rbc_meta.utils_next.builtin import DataBuffer
 from rbc_meta.utils_next.builtin import (
     uint,
     uint2,
@@ -13,15 +14,18 @@ from rbc_meta.types.resource_enums import LCPixelStorage
 class ExternalType:
     """Helper class for external C++ types"""
 
-    def __init__(self, cpp_type_name: str):
+    def __init__(self, cpp_type_name: str, py_type_name: str = None):
         self._cpp_type_name = cpp_type_name
+        if py_type_name:
+            self._py_type_name = py_type_name
+        else:
+            self._py_type_name = cpp_type_name
         self._reflected_ = True
 
 
 # Define external types
-DataBuffer = ExternalType("luisa::span<std::byte>")
 VoidPtr = ExternalType("void*")
-MaterialsVector = ExternalType("luisa::vector<rbc::RC<rbc::RCBase>> const&")
+MaterialsVector = ExternalType("luisa::vector<rbc::RC<rbc::RCBase>> const&", "Vec<rbc::RC<rbc::RCBase>> const&")
 
 
 @reflect(
