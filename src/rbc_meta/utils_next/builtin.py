@@ -4,14 +4,40 @@ from typing import NewType, TypeVar, Generic
 # uint = NewType("uint", int)
 
 
-class int:
+class size_t:
     __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "size_t"
 
 
 class uint:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "uint32_t"
+
+
+class u8:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "uint8_t"
+
+
+class u16:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "uint16_t"
+
+
+class u32:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "uint32_t"
+
+
+class u64:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "uint64_t"
 
 
 class ubyte:

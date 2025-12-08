@@ -2,7 +2,7 @@ from rbc_meta.utils_next.reflect import reflect
 from enum import Enum
 
 
-@reflect(cpp_namespace="rbc", module_name="world")
+@reflect(cpp_namespace="rbc", module_name="resource_type", pybind=True)
 class ResourceType(Enum):
     Unknown = 0
     Mesh = 1
@@ -16,7 +16,7 @@ class ResourceType(Enum):
     Custom = 1000
 
 
-@reflect(cpp_namespace="rbc", module_name="world")
+@reflect(cpp_namespace="rbc", module_name="resource_type", pybind=True)
 class ResourceState(Enum):
     Unloaded = 1  # 未加载
     Pending = 2  # 加载请求已提交

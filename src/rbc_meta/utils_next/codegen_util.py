@@ -9,7 +9,7 @@ import hashlib
 def _write_string_to(s: str, path: str):
     data = s.encode("utf-8")
     new_md5 = hashlib.md5(data).hexdigest()
-
+    print(f"Writing to {path}")
     if os.path.exists(path):
         with open(path, "rb") as f:
             old_data = f.read()
@@ -19,6 +19,7 @@ def _write_string_to(s: str, path: str):
             return False
 
     Path(path).parent.mkdir(parents=True, exist_ok=True)
+
     with open(path, "wb") as f:
         f.write(data)
     return True

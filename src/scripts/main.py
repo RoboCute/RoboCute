@@ -375,14 +375,6 @@ def generate():
     include = "#include <rbc_runtime/generated/resource_meta.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
-    target_modules = ["world"]
-    header_path = Path(
-        "rbc/world/include/rbc_world/generated/resource_type.hpp"
-    ).resolve()
-    cpp_path = Path("rbc/world/src/generated/resource_type.cpp").resolve()
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules)
-    ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules)
-
     target_modules = ["test_ipc"]
     header_path = Path("rbc/tests/test_ipc/generated").resolve()
     ut.codegen_to(header_path / "server.hpp")(cpp_interface_gen, target_modules)
@@ -450,6 +442,20 @@ def generate():
         pybind_codegen, pyd_name, ["backend_interface", "runtime"], include
     )  # TODO: 对pybind特殊处理，指定所有导出的module_filter，不太优雅
     ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["backend_interface", "runtime"])
+
+    target_modules = ["resource_type"]
+    header_path = Path(
+        "rbc/world/include/rbc_world/generated/resource_type.hpp"
+    ).resolve()
+    cpp_path = Path("rbc/world/src/generated/resource_type.cpp").resolve()
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules)
+    ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules)
+
+    target_modules = ["resource_loader"]
+    header_path = Path(
+        "rbc/world/include/rbc_world/generated/resource_loader.hpp"
+    ).resolve()
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
 
     # processes = []
     # for module_name, function_name, *args in GENERATION_TASKS:
