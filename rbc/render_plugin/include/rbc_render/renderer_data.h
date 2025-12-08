@@ -31,9 +31,10 @@ struct JitterData {
     float2 jitter;
 };
 struct PTPipelineSettings {
-    bool use_raster: 1{false};
-    bool use_raytracing: 1{true};
-    bool use_post_filter : 1{true};
+    bool use_raster : 1 {false};
+    bool use_raytracing : 1 {true};
+    bool use_editing : 1 {true};
+    bool use_post_filter : 1 {true};
 };
 }// namespace rbc
 RBC_RTTI(rbc::CameraData)

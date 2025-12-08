@@ -24,7 +24,7 @@ add_rules('lc_install_sdk', {
         copy_dir = '',
         extract_dir = 'build/tool/clangd'
     }, {
-        name = 'render_resources.7z'
+        name = render_resources
     }}
 })
 target_end()

@@ -103,8 +103,6 @@ int main(int argc, char *argv[]) {
         } else {
             return;
         }
-        frame_index = 0;
-        reset = true;
         switch (key) {
             case Key::KEY_SPACE: {
                 camera_input.is_space_down = pressed;
@@ -186,6 +184,8 @@ int main(int argc, char *argv[]) {
         auto time = clk.toc();
         auto delta_time = (time - last_frame_time) * 1e-3f;
         cam_controller.grab_input_from_viewport(camera_input, delta_time);
+        if (cam_controller.any_changed())
+            frame_index = 0;
         last_frame_time = time;
         // scene logic
         if (cube_move) {
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
                 dragged_object_ids = std::move(dragging_result);
         }
 
-        auto tick_stage = GraphicsUtils::TickStage::RasterPreview;
+        auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
         click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
 
         utils.tick(

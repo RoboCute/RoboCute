@@ -142,7 +142,7 @@ RBC_SDK_ADDRESS = (
     "https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/"
 )
 LC_DX_SDK = "dx_sdk_20250816.zip"
-RENDER_RESOURCE_NAME = "render_resources.7z"
+RENDER_RESOURCE_NAME = "render_resources-v1.0.0.7z"
 XMAKE_GLOBAL_TOOLCHAIN = "msvc"
 PLATFORM = "windows"
 ARCH = "x64"

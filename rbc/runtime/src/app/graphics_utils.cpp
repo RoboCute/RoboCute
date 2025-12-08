@@ -311,11 +311,13 @@ void GraphicsUtils::tick(
         case TickStage::RasterPreview:
             pipe_settings.use_raster = true;
             pipe_settings.use_raytracing = false;
+            pipe_settings.use_editing  = true;
             pipe_settings.use_post_filter = false;
             break;
         case TickStage::PathTracingPreview:
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
+            pipe_settings.use_editing  = true;
             pipe_settings.use_post_filter = true;
             break;
         case TickStage::OffineCapturing:
@@ -327,6 +329,7 @@ void GraphicsUtils::tick(
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
             pipe_settings.use_post_filter = true;
+            pipe_settings.use_editing  = false;
             break;
         case TickStage::PresentOfflineResult:
             if (denoiser_inited) {
@@ -335,6 +338,7 @@ void GraphicsUtils::tick(
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = false;
             pipe_settings.use_post_filter = true;
+            pipe_settings.use_editing  = false;
             break;
     }
     auto &cmdlist = render_device.lc_main_cmd_list();

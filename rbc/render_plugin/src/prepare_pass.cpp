@@ -185,10 +185,6 @@ void PreparePass::on_enable(
     SceneManager &scene) {
     constexpr const float wavelength_min = 360;
     constexpr const float wavelength_max = 830;
-    sobol_256d = heitz_sobol_256d(device, cmdlist);
-    sobol_scrambling = heitz_sobol_scrambling(device, cmdlist, HeitzSobolSPP::SPP1);
-    scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_256d_heap_idx, sobol_256d);
-    scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_scrambling_heap_idx, sobol_scrambling);
     static constexpr auto lut3d_size = spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * 3ull * sizeof(float4);
     static const uint3 transmission_ggx_energy_size{32u};
     static const size_t transmission_ggx_energy_size_bytes = transmission_ggx_energy_size.x * transmission_ggx_energy_size.y * transmission_ggx_energy_size.z * sizeof(float4);
@@ -271,6 +267,10 @@ void PreparePass::on_enable(
         }
         LUISA_ASSERT(spectrum::illum_d65_size == lut_resolution);
     }
+    sobol_256d = heitz_sobol_256d(device, cmdlist, scene.after_commit_dsp_queue());
+    sobol_scrambling = heitz_sobol_scrambling(device, cmdlist, scene.after_commit_dsp_queue(), HeitzSobolSPP::SPP1);
+    scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_256d_heap_idx, sobol_256d);
+    scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_scrambling_heap_idx, sobol_scrambling);
     lut_counter.wait();
     cie_xyz_cdfinv = device.create_image<float>(PixelStorage::FLOAT4, make_uint2(spectrum::cie_xyz_cdfinv_size, 1));
     cmdlist << cie_xyz_cdfinv.copy_from(cie_xyz_lut_data.data());

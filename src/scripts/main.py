@@ -164,7 +164,9 @@ def download_packages():
     }
     lua_file = f'''clangd_filename = "{CLANGD_NAME}"
 clangcxx_filename = "{CLANGCXX_NAME}"
-oidn = "{OIDN_NAME}"'''
+oidn = "{OIDN_NAME}"
+render_resources = "{RENDER_RESOURCE_NAME}"
+'''
     ut._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
 
     def download_file(file: str, map: dict):

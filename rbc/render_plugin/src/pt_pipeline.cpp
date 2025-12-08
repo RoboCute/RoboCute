@@ -115,7 +115,7 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
         LUISA_ERROR("Can not enable both raster and raytracing.");
     }
     raster_pass->set_actived(pt_pipe_settings.use_raster);
-    editing_pass->set_actived(pt_pipe_settings.use_raster);
+    editing_pass->set_actived(pt_pipe_settings.use_editing);
     pt_pass->set_actived(pt_pipe_settings.use_raytracing);
     accum_pass->set_actived(pt_pipe_settings.use_raytracing);
     this->rbc::Pipeline::early_update(ctx);
