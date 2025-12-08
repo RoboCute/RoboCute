@@ -48,6 +48,7 @@ struct RBC_RUNTIME_API ObjectStub : RCBase {
     void create_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::span<RC<RCBase> const> materials);
     void update_object_pos(luisa::float4x4 matrix);
     void update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::span<RC<RCBase> const> materials);
+    uint get_tlas_index() const;
     ObjectStub();
     ~ObjectStub();
 };

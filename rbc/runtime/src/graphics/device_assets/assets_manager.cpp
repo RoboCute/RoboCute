@@ -16,7 +16,7 @@ AssetsManager::CallQueue<T>::CallQueue() = default;
 template<typename T>
 AssetsManager::CallQueue<T>::~CallQueue() = default;
 namespace asset_mng_detail {
-vstd::unique_ptr<AssetsManager> _inst{};
+AssetsManager *_inst{};
 template<typename T>
 void atomic_max(std::atomic<T> &a, T b) {
     uint64 prev_value = a;
@@ -42,11 +42,11 @@ struct FinishCallback : vstd::IOperatorNewBase {
 };
 };// namespace asset_mng_detail
 AssetsManager *AssetsManager::instance() {
-    return asset_mng_detail::_inst.get();
+    return asset_mng_detail::_inst;
 }
 void AssetsManager::init_instance(RenderDevice &render_device, SceneManager *scene_mng) {
     if (!asset_mng_detail::_inst) {
-        asset_mng_detail::_inst = vstd::make_unique<AssetsManager>(render_device, scene_mng);
+        asset_mng_detail::_inst = new AssetsManager(render_device, scene_mng);
         luisa::fiber::counter counter;
         asset_mng_detail::_inst->_load_buffer_uploader.load_shader(counter);
         asset_mng_detail::_inst->_load_tex_uploader.load_shader(counter);
@@ -54,9 +54,8 @@ void AssetsManager::init_instance(RenderDevice &render_device, SceneManager *sce
     }
 }
 void AssetsManager::destroy_instance() {
-    if (asset_mng_detail::_inst) {
-        asset_mng_detail::_inst.reset();
-    }
+    delete asset_mng_detail::_inst;
+    asset_mng_detail::_inst = nullptr;
 }
 void AssetsManager::set_root_path(luisa::filesystem::path assets_root_path) {
     _assets_root_path = assets_root_path.lexically_normal().make_preferred();

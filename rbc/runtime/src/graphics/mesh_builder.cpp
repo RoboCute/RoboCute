@@ -1,5 +1,5 @@
 #include <rbc_graphics/mesh_builder.h>
-#include <rbc_io/binary_file_writer.h>
+#include <rbc_core/binary_file_writer.h>
 #include <luisa/core/stl/format.h>
 #include <luisa/core/logging.h>
 

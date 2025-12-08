@@ -1,5 +1,5 @@
 #include <rbc_render/utils/heitz_sobol.h>
-#include <rbc_io/binary_file_writer.h>
+#include <rbc_core/binary_file_writer.h>
 #include <luisa/core/logging.h>
 // export heitz-sobol binary data
 /*

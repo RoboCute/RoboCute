@@ -48,7 +48,7 @@ struct is_lc_shader<RasterShader<Args...>> {
 };
 using ShaderType = vstd::variant<ShaderBase, RasterShader<>>;
 ;
-struct RBC_RUNTIME_API ShaderManager {
+struct RBC_RUNTIME_API ShaderManager : vstd::IOperatorNewBase {
     using ReloadFunc = vstd::function<ShaderType(Device &device, string_view name)>;
     struct ShaderVariant {
         ShaderType shader;

@@ -369,4 +369,16 @@ void ObjectStub::update_object_pos(luisa::float4x4 matrix) {
     }
 }
 
+uint ObjectStub::get_tlas_index() const {
+    switch (type) {
+        case ObjectRenderType::Mesh:
+            return mesh_tlas_idx;
+        case ObjectRenderType::EmissionMesh:
+            return Lights::instance()->mesh_lights.light_data[mesh_light_idx].tlas_id;
+        case ObjectRenderType::Procedural:
+            return procedural_idx;
+        default:
+            return ~0u;
+    }
+}
 }// namespace rbc

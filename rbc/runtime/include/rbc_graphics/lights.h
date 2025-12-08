@@ -8,7 +8,6 @@ namespace rbc {
 struct TexStreamManager;
 struct DeviceMesh;
 struct RBC_RUNTIME_API Lights : public SceneManagerEvent {
-public:
     struct LightData {
         uint tlas_id;
         MatCode mat_code;

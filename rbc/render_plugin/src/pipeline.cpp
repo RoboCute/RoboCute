@@ -1,7 +1,7 @@
 #include <rbc_render/pipeline.h>
 #include <luisa/core/logging.h>
 #include <luisa/core/binary_file_stream.h>
-#include <rbc_io/binary_file_writer.h>
+#include <rbc_core/binary_file_writer.h>
 #include <rbc_graphics/scene_manager.h>
 #include <luisa/vstl/v_guid.h>
 

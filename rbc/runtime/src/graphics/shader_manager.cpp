@@ -6,28 +6,29 @@
 namespace rbc {
 
 // singleton
-static luisa::optional<ShaderManager> _shader_manager_instance;
+static ShaderManager *_shader_manager_instance{};
 ShaderManager *ShaderManager::instance() {
-    if (_shader_manager_instance.has_value()) {
-        return &_shader_manager_instance.value();
+    if (_shader_manager_instance) {
+        return _shader_manager_instance;
     } else {
         LUISA_ERROR("ShaderManager instance not created.");
         return nullptr;
     }
 }
 void ShaderManager::create_instance(Device &device, luisa::filesystem::path const &shader_path) {
-    if (_shader_manager_instance.has_value()) {
+    if (_shader_manager_instance) {
         LUISA_WARNING("ShaderManager instance already created.");
         return;
     }
-    _shader_manager_instance.emplace(device, shader_path);
+    _shader_manager_instance = new ShaderManager(device, shader_path);
 }
 void ShaderManager::destroy_instance() {
-    if (!_shader_manager_instance.has_value()) {
+    if (!_shader_manager_instance) {
         LUISA_WARNING("ShaderManager instance not created.");
         return;
     }
-    _shader_manager_instance.reset();
+    delete _shader_manager_instance;
+    _shader_manager_instance = nullptr;
 }
 
 ShaderManager::ShaderManager(Device &device, luisa::filesystem::path const &shader_path)
@@ -76,7 +77,7 @@ auto ShaderManager::_load_shader(
         args,
     vstd::FuncRef<ShaderType(string_view shader_path)> &&create_func,
     ReloadFunc reload_func,
-    bool support_preload) -> ShaderType const *{
+    bool support_preload) -> ShaderType const * {
     luisa::string key_str;
     luisa::string can_path_str;
     auto key_strview = _path_to_key(rela_shader_path, can_path_str, key_str);
