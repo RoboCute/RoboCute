@@ -15,6 +15,9 @@
 #include <QDoubleSpinBox>
 #include <QTextEdit>
 #include <QCheckBox>
+#include <QPixmap>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <map>
 #include <memory>
 
@@ -74,6 +77,9 @@ public:
     [[nodiscard]] QString category() const { return m_category; }
     [[nodiscard]] QJsonObject getInputValues() const;
     void setOutputValues(const QJsonObject &outputs);
+    
+    // Preview functionality
+    void updatePreview(const QJsonValue &previewData, const QString &outputName);
 
 private:
     void createInputWidgets();
@@ -93,6 +99,9 @@ private:
 
     QWidget *m_mainWidget;
     std::map<QString, QWidget *> m_inputWidgets;
+    
+    // Preview widgets for outputs
+    std::map<QString, QWidget *> m_previewWidgets;
 };
 
 }// namespace rbc

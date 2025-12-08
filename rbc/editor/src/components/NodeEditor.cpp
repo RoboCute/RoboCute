@@ -24,7 +24,8 @@ NodeEditor::NodeEditor(QWidget *parent) : QWidget(parent),
                                           m_httpClient(new HttpClient(this)),
                                           m_nodeFactory(std::make_unique<NodeFactory>()),
                                           m_isExecuting(false),
-                                          m_serverUrl("http://127.0.0.1:5555") {
+                                          m_serverUrl("http://127.0.0.1:5555"),
+                                          m_isCentralWidget(false) {
     setupUI();
     setupConnections();
     // Do not load nodes immediately - wait for proper initialization
@@ -34,7 +35,8 @@ NodeEditor::NodeEditor(HttpClient *httpClient, QWidget *parent) : QWidget(parent
                                           m_httpClient(httpClient),
                                           m_nodeFactory(std::make_unique<NodeFactory>()),
                                           m_isExecuting(false),
-                                          m_serverUrl(httpClient->serverUrl()) {
+                                          m_serverUrl(httpClient->serverUrl()),
+                                          m_isCentralWidget(false) {
     setupUI();
     setupConnections();
     // Load nodes after server connection is established
@@ -114,28 +116,28 @@ void NodeEditor::setupUI() {
     mainLayout->addWidget(m_toolBar);
 
     // Create horizontal splitter for main content
-    auto *mainSplitter = new QSplitter(Qt::Horizontal, this);
+    m_mainSplitter = new QSplitter(Qt::Horizontal, this);
 
     // Left side: Node palette
     m_nodePalette = new QListWidget();
     m_nodePalette->setStyleSheet("QListWidget { font-size: 11pt; }");
     m_nodePalette->setMaximumWidth(250);
-    mainSplitter->addWidget(m_nodePalette);
+    m_mainSplitter->addWidget(m_nodePalette);
 
     // Center: Graph view
-    mainSplitter->addWidget(m_view);
+    m_mainSplitter->addWidget(m_view);
 
     // Right side: Execution panel
     m_executionPanel = new ExecutionPanel(this);
     m_executionPanel->setMaximumWidth(400);
-    mainSplitter->addWidget(m_executionPanel);
+    m_mainSplitter->addWidget(m_executionPanel);
 
     // Set splitter sizes
-    mainSplitter->setStretchFactor(0, 1);  // Node palette
-    mainSplitter->setStretchFactor(1, 3);  // Graph view
-    mainSplitter->setStretchFactor(2, 2);  // Execution panel
+    m_mainSplitter->setStretchFactor(0, 1);  // Node palette
+    m_mainSplitter->setStretchFactor(1, 3);  // Graph view
+    m_mainSplitter->setStretchFactor(2, 2);  // Execution panel
 
-    mainLayout->addWidget(mainSplitter);
+    mainLayout->addWidget(m_mainSplitter);
 }
 
 void NodeEditor::setupConnections() {
@@ -318,11 +320,22 @@ void NodeEditor::onOutputsReceived(const QJsonObject &outputs, bool success) {
 
         // Iterate through all nodes in the scene and update their outputs
         for (auto it = nodeOutputs.begin(); it != nodeOutputs.end(); ++it) {
-            QString nodeId = it.key();
+            QString nodeIdStr = it.key();
             QJsonObject outputValues = it.value().toObject();
 
+            // Convert nodeId string to NodeId
+            bool ok;
+            QtNodes::NodeId nodeId = nodeIdStr.toULongLong(&ok);
+            if (ok && m_graphModel->nodeExists(nodeId)) {
+                // Get the node delegate model and update outputs
+                auto *delegateModel = m_graphModel->delegateModel<DynamicNodeModel>(nodeId);
+                if (delegateModel) {
+                    delegateModel->setOutputValues(outputValues);
+                }
+            }
+
             // Find the node in the graph and update it
-            highlightNodeAfterExecution(nodeId, true);
+            highlightNodeAfterExecution(nodeIdStr, true);
         }
     }
 
@@ -444,6 +457,28 @@ void NodeEditor::highlightNodeAfterExecution(const QString &nodeId, bool success
     // based on execution status (green for success, red for error)
     Q_UNUSED(nodeId);
     Q_UNUSED(success);
+}
+
+void NodeEditor::setAsCentralWidget(bool isCentral) {
+    m_isCentralWidget = isCentral;
+
+    if (isCentral) {
+        // When as central widget, maximize graph view area
+        // Optionally hide or minimize side panels
+        m_nodePalette->setMaximumWidth(200);
+        m_executionPanel->setMaximumWidth(300);
+        // Adjust splitter to give more space to graph view
+        m_mainSplitter->setStretchFactor(0, 0);  // Node palette - less space
+        m_mainSplitter->setStretchFactor(1, 5);  // Graph view - more space
+        m_mainSplitter->setStretchFactor(2, 1);  // Execution panel - less space
+    } else {
+        // Restore default layout
+        m_nodePalette->setMaximumWidth(250);
+        m_executionPanel->setMaximumWidth(400);
+        m_mainSplitter->setStretchFactor(0, 1);  // Node palette
+        m_mainSplitter->setStretchFactor(1, 3);  // Graph view
+        m_mainSplitter->setStretchFactor(2, 2);  // Execution panel
+    }
 }
 
 }// namespace rbc

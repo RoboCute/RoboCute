@@ -1,5 +1,6 @@
 #pragma once
 #include <QMainWindow>
+#include "RBCEditor/WorkflowManager.h"
 
 namespace rbc {
 class HttpClient;
@@ -12,6 +13,7 @@ class AnimationPlayer;
 class AnimationPlaybackManager;
 class EditorScene;
 class NodeEditor;
+class WorkflowManager;
 }
 
 class MainWindow : public QMainWindow {
@@ -32,6 +34,8 @@ private:
     void setupMenuBar();
     void setupToolBar();
     void setupDocks();
+    void switchWorkflow(WorkflowType workflow);
+    QDockWidget* createViewportDock();
 
 private slots:
     void onSceneUpdated();
@@ -39,16 +43,26 @@ private slots:
     void onEntitySelected(int entityId);
     void onAnimationSelected(QString animName);
     void onAnimationFrameChanged(int frame);
+    void onWorkflowChanged(WorkflowType newWorkflow, WorkflowType oldWorkflow);
+    void switchToSceneEditingWorkflow();
+    void switchToText2ImageWorkflow();
 
 private:
     rbc::HttpClient *httpClient_;
     rbc::SceneSyncManager *sceneSyncManager_;
+    rbc::WorkflowManager *workflowManager_;
     rbc::SceneHierarchyWidget *sceneHierarchy_;
     rbc::DetailsPanel *detailsPanel_;
     rbc::ViewportWidget *viewportWidget_;
+    QDockWidget *viewportDock_;
     rbc::ResultPanel *resultPanel_;
     rbc::AnimationPlayer *animationPlayer_;
     rbc::AnimationPlaybackManager *playbackManager_;
     rbc::EditorScene *editorScene_;
     rbc::NodeEditor *nodeEditor_;
+    QDockWidget *nodeDock_;
+    
+    // Workflow actions
+    QAction *sceneEditingAction_;
+    QAction *text2ImageAction_;
 };

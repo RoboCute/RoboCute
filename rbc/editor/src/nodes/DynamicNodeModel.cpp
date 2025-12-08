@@ -1,6 +1,12 @@
 #include "RBCEditor/nodes/DynamicNodeModel.h"
 #include <QFormLayout>
 #include <QJsonDocument>
+#include <QVBoxLayout>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QBuffer>
+#include <QDebug>
 
 namespace rbc {
 
@@ -174,6 +180,9 @@ void DynamicNodeModel::setOutputValues(const QJsonObject &outputs) {
         if (outputs.contains(outputName)) {
             QVariant value = outputs[outputName].toVariant();
             updateOutputData(i, value, outputType);
+            
+            // Update preview if applicable
+            updatePreview(outputs[outputName], outputName);
         }
     }
 }
@@ -208,6 +217,105 @@ void DynamicNodeModel::load(QJsonObject const &p) {
                 } else if (auto checkBox = qobject_cast<QCheckBox *>(widget)) {
                     checkBox->setChecked(it.value().toBool());
                 }
+            }
+        }
+    }
+}
+
+void DynamicNodeModel::updatePreview(const QJsonValue &previewData, const QString &outputName) {
+    // Find the output definition to determine type
+    QString outputType;
+    for (int i = 0; i < m_outputs.size(); ++i) {
+        QJsonObject outputDef = m_outputs[i].toObject();
+        if (outputDef["name"].toString() == outputName) {
+            outputType = outputDef["type"].toString().toLower();
+            break;
+        }
+    }
+
+    // Handle image preview
+    if (outputType.contains("image") || outputType.contains("picture") || outputType.contains("img")) {
+        QString imageData;
+        
+        if (previewData.isString()) {
+            imageData = previewData.toString();
+        } else if (previewData.isObject()) {
+            QJsonObject obj = previewData.toObject();
+            if (obj.contains("url")) {
+                imageData = obj["url"].toString();
+            } else if (obj.contains("data")) {
+                imageData = obj["data"].toString();
+            } else if (obj.contains("path")) {
+                imageData = obj["path"].toString();
+            }
+        }
+
+        if (!imageData.isEmpty()) {
+            // Create or update preview widget
+            QLabel *previewLabel = nullptr;
+            if (m_previewWidgets.count(outputName)) {
+                previewLabel = qobject_cast<QLabel*>(m_previewWidgets[outputName]);
+            }
+
+            if (!previewLabel) {
+                previewLabel = new QLabel();
+                previewLabel->setScaledContents(true);
+                previewLabel->setMinimumSize(150, 150);
+                previewLabel->setMaximumSize(300, 300);
+                previewLabel->setAlignment(Qt::AlignCenter);
+                previewLabel->setStyleSheet("QLabel { border: 1px solid gray; background-color: white; }");
+                m_previewWidgets[outputName] = previewLabel;
+
+                // Add to main widget layout
+                if (m_mainWidget) {
+                    auto formLayout = qobject_cast<QFormLayout*>(m_mainWidget->layout());
+                    if (formLayout) {
+                        // Add preview as a new row in the form layout
+                        formLayout->addRow(QString("Preview (%1)").arg(outputName), previewLabel);
+                    } else {
+                        // If no layout exists, create a VBoxLayout
+                        auto layout = new QVBoxLayout();
+                        layout->addWidget(previewLabel);
+                        m_mainWidget->setLayout(layout);
+                    }
+                }
+            }
+
+            // Load image
+            QPixmap pixmap;
+            bool loaded = false;
+
+            // Try to load from URL or base64 data
+            if (imageData.startsWith("http://") || imageData.startsWith("https://")) {
+                // URL - would need async loading, for now skip
+                // In production, use QNetworkAccessManager
+                previewLabel->setText("Loading...");
+            } else if (imageData.startsWith("data:image") || imageData.startsWith("base64,")) {
+                // Base64 encoded image
+                QString base64Data = imageData;
+                if (base64Data.contains(",")) {
+                    base64Data = base64Data.split(",").last();
+                }
+                QByteArray imageBytes = QByteArray::fromBase64(base64Data.toUtf8());
+                loaded = pixmap.loadFromData(imageBytes);
+            } else {
+                // Try as file path or direct base64
+                QByteArray imageBytes = QByteArray::fromBase64(imageData.toUtf8());
+                if (!imageBytes.isEmpty()) {
+                    loaded = pixmap.loadFromData(imageBytes);
+                }
+                if (!loaded) {
+                    // Try as file path
+                    loaded = pixmap.load(imageData);
+                }
+            }
+
+            if (loaded && !pixmap.isNull()) {
+                // Scale pixmap to fit preview size
+                pixmap = pixmap.scaled(200, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                previewLabel->setPixmap(pixmap);
+            } else {
+                previewLabel->setText("Preview\n(Unable to load)");
             }
         }
     }
