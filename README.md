@@ -34,3 +34,10 @@
 - connect and execute
 - fetch the result from python side
 - playback in editor
+
+## Licence
+
+### Third-Party C++ Packages
+
+- Tracy v0.13.0: 使用源码引入，3-clause BSD license.
+- Qt v6.9.3
