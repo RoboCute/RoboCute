@@ -39,21 +39,21 @@ int main(int argc, char *argv[]) {
         argv[0],
         backend.c_str());
     utils.init_graphics(
-        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name));
+        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
-    utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
+    utils.render_plugin()->update_skybox("../sky.bytes", uint2(4096, 2048));
     utils.init_display_with_window("test_graphics", uint2(1024), true);
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer
     Clock clk;
     double last_frame_time = 0;
     vstd::optional<SimpleScene> simple_scene;
-    simple_scene.create(*utils.lights);
+    simple_scene.create(*Lights::instance());
     // Test FOV
     vstd::optional<float3> cube_move, light_move;
     bool reset = false;
-    auto &click_mng = utils.render_settings.read_mut<ClickManager>();
-    uint2 window_size = utils.window->size();
+    auto &click_mng = utils.render_settings().read_mut<ClickManager>();
+    uint2 window_size = utils.window()->size();
     float2 start_uv, end_uv;
     luisa::vector<uint> dragged_object_ids;
     uint clicked_user_id;
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
 
     MouseStage stage{MouseStage::None};
     CameraController::Input camera_input;
-    utils.window->set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
+    utils.window()->set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
         if (button == MOUSE_BUTTON_1) {
             if (action == Action::ACTION_PRESSED) {
                 start_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
@@ -88,13 +88,13 @@ int main(int argc, char *argv[]) {
             }
         }
     });
-    utils.window->set_cursor_position_callback([&](float2 xy) {
+    utils.window()->set_cursor_position_callback([&](float2 xy) {
         if (stage == MouseStage::Dragging) {
             end_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
         }
         camera_input.mouse_cursor_pos = xy;
     });
-    utils.window->set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
+    utils.window()->set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
         bool pressed = false;
         if (action == Action::ACTION_PRESSED) {
             pressed = true;
@@ -159,11 +159,11 @@ int main(int argc, char *argv[]) {
                 // } break;
         }
     });
-    auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
+    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
     CameraController cam_controller;
     cam_controller.camera = &cam;
 
-    utils.window->set_window_size_callback([&](uint2 size) {
+    utils.window()->set_window_size_callback([&](uint2 size) {
         window_size = size;
     });
     cam.fov = radians(80.f);
@@ -172,10 +172,10 @@ int main(int argc, char *argv[]) {
             reset = false;
             utils.reset_frame();
         }
-        if (utils.window)
-            utils.window->poll_events();
-        auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
-        if (any(window_size != utils.dst_image.size())) {
+        if (utils.window())
+            utils.window()->poll_events();
+        auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+        if (any(window_size != utils.dst_image().size())) {
             utils.resize_swapchain(window_size);
             frame_index = 0;
         }
@@ -239,7 +239,7 @@ int main(int argc, char *argv[]) {
     }
     // rpc_hook.shutdown_remote();
     utils.dispose([&]() {
-        auto pipe_settings_json = utils.render_settings.serialize_to_json();
+        auto pipe_settings_json = utils.render_settings().serialize_to_json();
         if (pipe_settings_json.data()) {
             LUISA_INFO("{}", luisa::string_view{
                                  (char const *)pipe_settings_json.data(),

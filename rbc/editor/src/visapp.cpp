@@ -26,29 +26,30 @@ void VisApp::init(
         program_path,
         backend);
 
-    get_dx_device(utils.render_device.lc_device_ext(), native_device, dx_adaptor_luid);
+    auto &render_device = RenderDevice::instance();
+    get_dx_device(render_device.lc_device_ext(), native_device, dx_adaptor_luid);
 
     utils.init_graphics(
-        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name));
+        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
 
-    utils.render_plugin->update_skybox("../sky.bytes", uint2(4096, 2048));
+    utils.render_plugin()->update_skybox("../sky.bytes", uint2(4096, 2048));
 
-    auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
+    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
     cam.fov = radians(80.f);
 }
 
 uint64_t VisApp::create_texture(uint width, uint height) {
     resolution = {width, height};
-    if (utils.dst_image && any(resolution != utils.dst_image.size())) {
+    if (utils.dst_image() && any(resolution != utils.dst_image().size())) {
         utils.resize_swapchain(resolution);
         dst_image_reseted = true;
     }
-    if (!utils.dst_image) {
+    if (!utils.dst_image()) {
         utils.init_display(resolution);
         dst_image_reseted = true;
     }
-    return (uint64_t)utils.dst_image.native_handle();
+    return (uint64_t)utils.dst_image().native_handle();
 }
 
 void VisApp::handle_key(luisa::compute::Key key) {
@@ -57,29 +58,30 @@ void VisApp::handle_key(luisa::compute::Key key) {
 }
 
 void VisApp::update() {
-    auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
+    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
     if (reset) {
         reset = false;
         utils.reset_frame();
     }
-    if (utils.backend_name == "dx") {
-        clear_dx_states(utils.render_device.lc_device_ext());
-        add_dx_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
-    } else if (utils.backend_name == "vk") {
-        clear_vk_states(utils.render_device.lc_device_ext());
-        add_vk_before_state(utils.render_device.lc_device_ext(), Argument::Texture{utils.dst_image.handle(), 0}, VkResourceUsageType::RasterRead);
+    auto &render_device = RenderDevice::instance();
+    if (utils.backend_name() == "dx") {
+        clear_dx_states(render_device.lc_device_ext());
+        add_dx_before_state(render_device.lc_device_ext(), Argument::Texture{utils.dst_image().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+    } else if (utils.backend_name() == "vk") {
+        clear_vk_states(render_device.lc_device_ext());
+        add_vk_before_state(render_device.lc_device_ext(), Argument::Texture{utils.dst_image().handle(), 0}, VkResourceUsageType::RasterRead);
     }
     dst_image_reseted = false;
-        frame_index = 0;// force update
+    frame_index = 0;// force update
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
     auto time = clk.toc();
-        auto delta_time = time - last_frame_time;
-        last_frame_time = time;
+    auto delta_time = time - last_frame_time;
+    last_frame_time = time;
     utils.tick(delta_time, frame_index, resolution, GraphicsUtils::TickStage::PresentOfflineResult);
 }
 VisApp::~VisApp() {
     utils.dispose([&]() {
-        auto pipe_settings_json = utils.render_settings.serialize_to_json();
+        auto pipe_settings_json = utils.render_settings().serialize_to_json();
         if (pipe_settings_json.data()) {
             LUISA_INFO(
                 "{}",

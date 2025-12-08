@@ -34,7 +34,7 @@ public:
     void update() override;
     void handle_key(luisa::compute::Key key) override;
     [[nodiscard]] void *GetStreamNativeHandle() const override;
-    [[nodiscard]] void *GetDeviceNativeHandle() const override { return utils.render_device.lc_device().native_handle(); }
+    [[nodiscard]] void *GetDeviceNativeHandle() const override { return RenderDevice::instance().lc_device().native_handle(); }
     ~PBRApp();
 };
 

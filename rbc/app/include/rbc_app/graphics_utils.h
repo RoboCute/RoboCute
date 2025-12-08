@@ -23,31 +23,42 @@ struct EventFence {
     TimelineEvent event;
     uint64_t fence_index{};
 };
-struct RBC_RUNTIME_API GraphicsUtils {
-    RenderDevice render_device;
-    luisa::string backend_name;
-    EventFence compute_event;
-    vstd::optional<SceneManager> sm;
+struct RBC_APP_API GraphicsUtils {
+private:
+    RenderDevice _render_device;
+    luisa::string _backend_name;
+    EventFence _compute_event;
+    vstd::optional<SceneManager> _sm;
     // present
-    Stream present_stream;
-    vstd::optional<Window> window;
-    Swapchain swapchain;
-    Image<float> dst_image;
-    DenoisePack denoise_pack;
+    Stream _present_stream;
+    vstd::optional<Window> _window;
+    Swapchain _swapchain;
+    Image<float> _dst_image;
+    DenoisePack _denoise_pack;
     // render
-    DynamicModule const *render_module;
-    RenderPlugin *render_plugin{};
-    StateMap render_settings;
-    RenderPlugin::PipeCtxStub *display_pipe_ctx{};
-    vstd::optional<rbc::Lights> lights;
-    bool require_reset : 1 {false};
-    bool denoiser_inited : 1 {false};
-    std::atomic_uint64_t mem_io_fence{};
-    std::atomic_uint64_t disk_io_fence{};
+    DynamicModule const *_render_module;
+    RenderPlugin *_render_plugin{};
+    StateMap _render_settings;
+    RenderPlugin::PipeCtxStub *_display_pipe_ctx{};
+    vstd::optional<rbc::Lights> _lights;
+    bool _require_reset : 1 {false};
+    bool _denoiser_inited : 1 {false};
+    std::atomic_uint64_t _mem_io_fence{};
+    std::atomic_uint64_t _disk_io_fence{};
 
-    IOCommandList frame_mem_io_list;
-    IOCommandList frame_disk_io_list;
-    luisa::unordered_set<RC<DeviceMesh>, luisa::hash<RC<DeviceMesh>>, std::equal_to<RC<DeviceMesh>>> build_meshes;
+    IOCommandList _frame_mem_io_list;
+    IOCommandList _frame_disk_io_list;
+    luisa::unordered_set<RC<DeviceMesh>, luisa::hash<RC<DeviceMesh>>, std::equal_to<RC<DeviceMesh>>> _build_meshes;
+public:
+    auto render_plugin() const { return _render_plugin; }
+    auto &present_stream() const { return _present_stream; }
+    auto &window() const { return _window; }
+    auto &window() { return _window; }
+    auto &render_settings() const { return _render_settings; }
+    auto &render_settings() { return _render_settings; }
+    auto default_pipe_ctx() const { return _display_pipe_ctx; }
+    auto &dst_image() const { return _dst_image; }
+    auto &backend_name() const { return _backend_name; }
     GraphicsUtils();
     void dispose(vstd::function<void()> after_sync = {});
     ~GraphicsUtils();

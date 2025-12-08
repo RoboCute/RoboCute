@@ -130,52 +130,52 @@ void deser_openpbr(
     material::OpenPBR &x) {
 }
 void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
-    if (sm) {
-        sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false, true);
+    if (_sm) {
+        _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, true);
     }
-    if (compute_event.event)
-        compute_event.event.synchronize(compute_event.fence_index);
-    if (display_pipe_ctx)
-        render_plugin->destroy_pipeline_context(display_pipe_ctx);
+    if (_compute_event.event)
+        _compute_event.event.synchronize(_compute_event.fence_index);
+    if (_display_pipe_ctx)
+        _render_plugin->destroy_pipeline_context(_display_pipe_ctx);
     if (after_sync)
         after_sync();
-    if (render_plugin)
-        render_plugin->dispose();
-    if (lights)
-        lights.destroy();
+    if (_render_plugin)
+        _render_plugin->dispose();
+    if (_lights)
+        _lights.destroy();
     AssetsManager::destroy_instance();
-    if (sm) {
-        sm.destroy();
+    if (_sm) {
+        _sm.destroy();
     }
-    if (present_stream)
-        present_stream.synchronize();
-    dst_image.reset();
-    window.reset();
+    if (_present_stream)
+        _present_stream.synchronize();
+    _dst_image.reset();
+    _window.reset();
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
     PluginManager::init();
-    render_device.init(program_path, backend_name);
+    _render_device.init(program_path, backend_name);
     init_present_stream();
-    render_device.set_main_stream(&present_stream);
-    compute_event.event = render_device.lc_device().create_timeline_event();
-    this->backend_name = backend_name;
+    _render_device.set_main_stream(&_present_stream);
+    _compute_event.event = _render_device.lc_device().create_timeline_event();
+    _backend_name = backend_name;
 }
 void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
-    auto &cmdlist = render_device.lc_main_cmd_list();
-    sm.create(
-        render_device.lc_ctx(),
-        render_device.lc_device(),
-        render_device.lc_async_copy_stream(),
-        *render_device.io_service(),
+    auto &cmdlist = _render_device.lc_main_cmd_list();
+    _sm.create(
+        _render_device.lc_ctx(),
+        _render_device.lc_device(),
+        _render_device.lc_async_copy_stream(),
+        *_render_device.io_service(),
         cmdlist,
         shader_path);
-    AssetsManager::init_instance(render_device, sm);
+    AssetsManager::init_instance(_render_device, _sm);
     // init
     {
         luisa::fiber::counter init_counter;
-        sm->load_shader(init_counter);
+        _sm->load_shader(init_counter);
         // Build a simple accel to preload driver builtin shaders
-        auto buffer = render_device.lc_device().create_buffer<uint>(4 * 3 + 3);
+        auto buffer = _render_device.lc_device().create_buffer<uint>(4 * 3 + 3);
         auto vb = buffer.view(0, 4 * 3).as<float3>();
         auto ib = buffer.view(4 * 3, 3).as<Triangle>();
         uint tri[] = {0, 1, 2};
@@ -186,76 +186,76 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
             reinterpret_cast<float &>(tri[0]),
             reinterpret_cast<float &>(tri[1]),
             reinterpret_cast<float &>(tri[2])};
-        auto mesh = render_device.lc_device().create_mesh(vb, ib, AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
-        auto accel = render_device.lc_device().create_accel(AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
+        auto mesh = _render_device.lc_device().create_mesh(vb, ib, AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
+        auto accel = _render_device.lc_device().create_accel(AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
         accel.emplace_back(mesh);
-        render_device.lc_main_stream()
+        _render_device.lc_main_stream()
             << buffer.view().copy_from(data)
             << mesh.build()
             << accel.build()
             << [accel = std::move(accel), mesh = std::move(mesh), buffer = std::move(buffer)]() {};
-        render_device.lc_main_stream().synchronize();
+        _render_device.lc_main_stream().synchronize();
         init_counter.wait();
     }
-    lights.create();
+    _lights.create();
 }
 void GraphicsUtils::init_render() {
     PluginManager::init();
-    sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
-        sm->bindless_allocator(),
+    _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
+        _sm->bindless_allocator(),
         65536);
-    sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
-        sm->bindless_allocator(),
+    _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
+        _sm->bindless_allocator(),
         65536);
-    render_module = &PluginManager::instance().load_module("rbc_render_plugin");
-    LUISA_ASSERT(render_module, "Render module not found.");
-    render_plugin = RBC_LOAD_PLUGIN(*render_module, RenderPlugin);
-    display_pipe_ctx = render_plugin->create_pipeline_context(render_settings);
-    LUISA_ASSERT(render_plugin->initialize_pipeline({}));
-    sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), false, false);
-    sm->prepare_frame();
-    denoiser_inited = render_plugin->init_oidn();
+    _render_module = &PluginManager::instance().load_module("rbc_render_plugin");
+    LUISA_ASSERT(_render_module, "Render module not found.");
+    _render_plugin = RBC_LOAD_PLUGIN(*_render_module, RenderPlugin);
+    _display_pipe_ctx = _render_plugin->create_pipeline_context(_render_settings);
+    LUISA_ASSERT(_render_plugin->initialize_pipeline({}));
+    _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, false);
+    _sm->prepare_frame();
+    _denoiser_inited = _render_plugin->init_oidn();
 }
 
 void GraphicsUtils::init_present_stream() {
-    auto &device = render_device.lc_device();
-    if (!present_stream)
-        present_stream = device.create_stream(StreamTag::GRAPHICS);
+    auto &device = _render_device.lc_device();
+    if (!_present_stream)
+        _present_stream = device.create_stream(StreamTag::GRAPHICS);
 }
 
 void GraphicsUtils::init_display(uint2 resolution) {
-    auto &device = render_device.lc_device();
+    auto &device = _render_device.lc_device();
     init_present_stream();
-    if (dst_image && any(dst_image.size() != resolution)) {
+    if (_dst_image && any(_dst_image.size() != resolution)) {
         resize_swapchain(resolution);
-    } else if (!dst_image) {
-        if (!swapchain && window) {
-            swapchain = device.create_swapchain(
-                present_stream,
+    } else if (!_dst_image) {
+        if (!_swapchain && _window) {
+            _swapchain = device.create_swapchain(
+                _present_stream,
                 SwapchainOption{
-                    .display = window->native_display(),
-                    .window = window->native_handle(),
+                    .display = _window->native_display(),
+                    .window = _window->native_handle(),
                     .size = resolution,
                     .wants_hdr = false,
                     .wants_vsync = false,
                     .back_buffer_count = 2});
         }
-        dst_image = render_device.lc_device().create_image<float>(swapchain ? swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, true);
-        dst_image.set_name("Dest image");
+        _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, true);
+        _dst_image.set_name("Dest image");
     }
 }
 
 void GraphicsUtils::init_display_with_window(luisa::string_view name, uint2 resolution, bool resizable) {
-    window.create(luisa::string{name}.c_str(), resolution, resizable);
+    _window.create(luisa::string{name}.c_str(), resolution, resizable);
     init_display(resolution);
 }
 void GraphicsUtils::reset_frame() {
-    sm->refresh_pipeline(render_device.lc_main_cmd_list(), render_device.lc_main_stream(), true, true);
-    render_plugin->clear_context(display_pipe_ctx);
+    _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), true, true);
+    _render_plugin->clear_context(_display_pipe_ctx);
 }
 
 bool GraphicsUtils::should_close() {
-    return window && window->should_close();
+    return _window && _window->should_close();
 }
 void GraphicsUtils::tick(
     float delta_time,
@@ -263,45 +263,45 @@ void GraphicsUtils::tick(
     uint2 resolution,
     TickStage tick_stage) {
     AssetsManager::instance()->wake_load_thread();
-    std::unique_lock render_lck{render_device.render_loop_mtx()};
-    sm->prepare_frame();
-    if (require_reset) {
-        require_reset = false;
+    std::unique_lock render_lck{_render_device.render_loop_mtx()};
+    _sm->prepare_frame();
+    if (_require_reset) {
+        _require_reset = false;
         reset_frame();
     }
 
     // TODO: later for many context
-    if (!display_pipe_ctx)
+    if (!_display_pipe_ctx)
         return;
 
-    auto &frame_settings = render_settings.read_mut<rbc::FrameSettings>();
-    auto &pipe_settings = render_settings.read_mut<rbc::PTPipelineSettings>();
+    auto &frame_settings = _render_settings.read_mut<rbc::FrameSettings>();
+    auto &pipe_settings = _render_settings.read_mut<rbc::PTPipelineSettings>();
     frame_settings.render_resolution = resolution;
-    frame_settings.display_resolution = dst_image.size();
-    frame_settings.dst_img = &dst_image;
+    frame_settings.display_resolution = _dst_image.size();
+    frame_settings.dst_img = &_dst_image;
     frame_settings.delta_time = (float)delta_time;
     frame_settings.frame_index = frame_index;
     frame_settings.albedo_buffer = nullptr;
     frame_settings.normal_buffer = nullptr;
     frame_settings.radiance_buffer = nullptr;
     frame_settings.resolved_img = nullptr;
-    auto &main_stream = render_device.lc_main_stream();
+    auto &main_stream = _render_device.lc_main_stream();
     auto dispose_denoise_pack = vstd::scope_exit([&] {
-        if (denoise_pack.external_albedo)
-            sm->dispose_after_sync(std::move(denoise_pack.external_albedo));
-        if (denoise_pack.external_input)
-            sm->dispose_after_sync(std::move(denoise_pack.external_input));
-        if (denoise_pack.external_output)
-            sm->dispose_after_sync(std::move(denoise_pack.external_output));
-        if (denoise_pack.external_normal)
-            sm->dispose_after_sync(std::move(denoise_pack.external_normal));
+        if (_denoise_pack.external_albedo)
+            _sm->dispose_after_sync(std::move(_denoise_pack.external_albedo));
+        if (_denoise_pack.external_input)
+            _sm->dispose_after_sync(std::move(_denoise_pack.external_input));
+        if (_denoise_pack.external_output)
+            _sm->dispose_after_sync(std::move(_denoise_pack.external_output));
+        if (_denoise_pack.external_normal)
+            _sm->dispose_after_sync(std::move(_denoise_pack.external_normal));
     });
-    denoise_pack = {};
+    _denoise_pack = {};
     switch (tick_stage) {
         case TickStage::OffineCapturing:
         case TickStage::PresentOfflineResult:
-            if (denoiser_inited) {
-                denoise_pack = render_plugin->create_denoise_task(
+            if (_denoiser_inited) {
+                _denoise_pack = _render_plugin->create_denoise_task(
                     main_stream,
                     frame_settings.display_resolution);
             }
@@ -321,10 +321,10 @@ void GraphicsUtils::tick(
             pipe_settings.use_post_filter = true;
             break;
         case TickStage::OffineCapturing:
-            if (denoiser_inited) {
-                frame_settings.albedo_buffer = &denoise_pack.external_albedo;
-                frame_settings.normal_buffer = &denoise_pack.external_normal;
-                frame_settings.radiance_buffer = &denoise_pack.external_input;
+            if (_denoiser_inited) {
+                frame_settings.albedo_buffer = &_denoise_pack.external_albedo;
+                frame_settings.normal_buffer = &_denoise_pack.external_normal;
+                frame_settings.radiance_buffer = &_denoise_pack.external_input;
             }
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
@@ -332,8 +332,8 @@ void GraphicsUtils::tick(
             pipe_settings.use_editing  = false;
             break;
         case TickStage::PresentOfflineResult:
-            if (denoiser_inited) {
-                frame_settings.radiance_buffer = &denoise_pack.external_output;
+            if (_denoiser_inited) {
+                frame_settings.radiance_buffer = &_denoise_pack.external_output;
             }
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = false;
@@ -341,12 +341,12 @@ void GraphicsUtils::tick(
             pipe_settings.use_editing  = false;
             break;
     }
-    auto &cmdlist = render_device.lc_main_cmd_list();
-    if (!frame_mem_io_list.empty()) {
-        mem_io_fence = render_device.mem_io_service()->execute(std::move(frame_mem_io_list));
+    auto &cmdlist = _render_device.lc_main_cmd_list();
+    if (!_frame_mem_io_list.empty()) {
+        _mem_io_fence = _render_device.mem_io_service()->execute(std::move(_frame_mem_io_list));
     }
-    if (!frame_disk_io_list.empty()) {
-        disk_io_fence = render_device.io_service()->execute(std::move(frame_disk_io_list));
+    if (!_frame_disk_io_list.empty()) {
+        _disk_io_fence = _render_device.io_service()->execute(std::move(_frame_disk_io_list));
     }
     // io sync
     auto sync_io = [&](std::atomic_uint64_t &fence, IOService *service) {
@@ -359,55 +359,55 @@ void GraphicsUtils::tick(
             main_stream << service->wait(io_fence);
         }
     };
-    sync_io(mem_io_fence, render_device.mem_io_service());
-    sync_io(disk_io_fence, render_device.io_service());
-    for (auto &i : build_meshes) {
+    sync_io(_mem_io_fence, _render_device.mem_io_service());
+    sync_io(_disk_io_fence, _render_device.io_service());
+    for (auto &i : _build_meshes) {
         auto &mesh = i->mesh_data()->pack.mesh;
         if (mesh)
             cmdlist << mesh.build();
     }
-    build_meshes.clear();
+    _build_meshes.clear();
 
-    render_plugin->before_rendering({}, display_pipe_ctx);
+    _render_plugin->before_rendering({}, _display_pipe_ctx);
     auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
     managed_device->begin_managing(cmdlist);
-    sm->before_rendering(
+    _sm->before_rendering(
         cmdlist,
         main_stream);
     // on render
-    render_plugin->on_rendering({}, display_pipe_ctx);
+    _render_plugin->on_rendering({}, _display_pipe_ctx);
     // TODO: pipeline update
     //////////////// Test
     managed_device->end_managing(cmdlist);
-    sm->on_frame_end(
+    _sm->on_frame_end(
         cmdlist,
         main_stream, managed_device);
-    main_stream << compute_event.event.signal(++compute_event.fence_index);
-    if (compute_event.fence_index > 2)
-        compute_event.event.synchronize(compute_event.fence_index - 2);
-    sm->prepare_frame();
+    main_stream << _compute_event.event.signal(++_compute_event.fence_index);
+    if (_compute_event.fence_index > 2)
+        _compute_event.event.synchronize(_compute_event.fence_index - 2);
+    _sm->prepare_frame();
     /////////// Present
-    if (swapchain)
-        present_stream << swapchain.present(dst_image);
+    if (_swapchain)
+        _present_stream << _swapchain.present(_dst_image);
     render_lck.unlock();
     // for (auto &i : rpc_hook.shared_window.swapchains) {
-    //     present_stream << i.second.present(dst_img);
+    //     _present_stream << i.second.present(dst_img);
     // }
 }
 void GraphicsUtils::resize_swapchain(uint2 size) {
     reset_frame();
-    compute_event.event.synchronize(compute_event.fence_index);
-    present_stream.synchronize();
-    dst_image.reset();
-    dst_image = render_device.lc_device().create_image<float>(swapchain ? swapchain.backend_storage() : PixelStorage::BYTE4, size, true);
-    dst_image.set_name("Dest image");
-    swapchain.reset();
-    if (window)
-        swapchain = render_device.lc_device().create_swapchain(
-            present_stream,
+    _compute_event.event.synchronize(_compute_event.fence_index);
+    _present_stream.synchronize();
+    _dst_image.reset();
+    _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, size, true);
+    _dst_image.set_name("Dest image");
+    _swapchain.reset();
+    if (_window)
+        _swapchain = _render_device.lc_device().create_swapchain(
+            _present_stream,
             SwapchainOption{
-                .display = window->native_display(),
-                .window = window->native_handle(),
+                .display = _window->native_display(),
+                .window = _window->native_handle(),
                 .size = size,
                 .wants_hdr = false,
                 .wants_vsync = false,
@@ -420,22 +420,22 @@ void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
     LUISA_ASSERT(mesh_data, "Mesh not loaded.");
     auto host_data = mesh->host_data();
     if (only_vertex) {
-        frame_mem_io_list << IOCommand{
+        _frame_mem_io_list << IOCommand{
             host_data.data(),
             0,
             IOBufferSubView{mesh_data->pack.data.view(0, mesh_data->meta.tri_byte_offset / sizeof(uint))}};
     } else {
-        frame_mem_io_list << IOCommand{
+        _frame_mem_io_list << IOCommand{
             host_data.data(),
             0,
             IOBufferSubView{mesh_data->pack.data}};
     }
-    frame_mem_io_list.add_callback([m = RC<DeviceMesh>(mesh)] {});
+    _frame_mem_io_list.add_callback([m = RC<DeviceMesh>(mesh)] {});
     auto &sm = SceneManager::instance();
     if (mesh->tlas_ref_count > 0)
         sm.accel_manager().mark_dirty();
     if (mesh_data->pack.mesh) {
-        build_meshes.emplace(mesh);
+        _build_meshes.emplace(mesh);
     }
 }
 void GraphicsUtils::create_mesh(
@@ -445,7 +445,7 @@ void GraphicsUtils::create_mesh(
     auto mesh_size = DeviceMesh::get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
     auto &host_data = ptr->host_data_ref();
     host_data.push_back_uninitialized(mesh_size);
-    auto &render_device = RenderDevice::instance();
+    auto& render_device = RenderDevice::instance();
     ptr->create_mesh(
         render_device.lc_main_cmd_list(),
         vertex_count,
@@ -456,18 +456,18 @@ void GraphicsUtils::create_mesh(
         std::move(offsets));
 }
 void GraphicsUtils::update_texture(DeviceImage *ptr) {
-    frame_mem_io_list << IOCommand{
+    _frame_mem_io_list << IOCommand{
         ptr->host_data().data(),
         0,
         IOTextureSubView{ptr->get_float_image()}};
-    frame_mem_io_list.add_callback([m = RC<DeviceImage>(ptr)] {});
+    _frame_mem_io_list.add_callback([m = RC<DeviceImage>(ptr)] {});
 }
 void GraphicsUtils::denoise() {
-    if (!denoiser_inited) return;
-    if (!denoise_pack.denoise_callback) {
+    if (!_denoiser_inited) return;
+    if (!_denoise_pack.denoise_callback) {
         LUISA_ERROR("Denoiser not ready.");
     }
-    denoise_pack.denoise_callback();
+    _denoise_pack.denoise_callback();
 }
 void GraphicsUtils::create_texture(
     DeviceImage *ptr,

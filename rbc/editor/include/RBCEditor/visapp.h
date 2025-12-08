@@ -33,10 +33,10 @@ public:
     void update() override;
     void handle_key(luisa::compute::Key key) override;
     [[nodiscard]] void *GetStreamNativeHandle() const override {
-        LUISA_ASSERT(utils.present_stream);
-        return utils.present_stream.native_handle();
+        LUISA_ASSERT(utils.present_stream());
+        return utils.present_stream().native_handle();
     }
-    [[nodiscard]] void *GetDeviceNativeHandle() const override { return utils.render_device.lc_device().native_handle(); }
+    [[nodiscard]] void *GetDeviceNativeHandle() const override { return RenderDevice::instance().lc_device().native_handle(); }
     ~VisApp();
 };
 

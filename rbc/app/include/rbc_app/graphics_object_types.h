@@ -5,7 +5,7 @@
 namespace rbc {
 #include <rbc_graphics/materials.h>
 #include <material/mats.inl>
-struct RBC_RUNTIME_API LightStub : RCBase {
+struct RBC_APP_API LightStub : RCBase {
     LightType light_type{(LightType)-1};
     uint32_t id;
     LightStub() = default;
@@ -24,7 +24,7 @@ enum class ObjectRenderType {
     EmissionMesh,
     Procedural
 };
-struct RBC_RUNTIME_API MaterialStub : RCBase {
+struct RBC_APP_API MaterialStub : RCBase {
     using MatDataType = vstd::variant<
         material::OpenPBR,
         material::Unlit>;
@@ -35,7 +35,7 @@ struct RBC_RUNTIME_API MaterialStub : RCBase {
     MaterialStub() = default;
     ~MaterialStub();
 };
-struct RBC_RUNTIME_API ObjectStub : RCBase {
+struct RBC_APP_API ObjectStub : RCBase {
     RC<DeviceMesh> mesh_ref;
     union {
         uint mesh_tlas_idx;

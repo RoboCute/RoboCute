@@ -53,12 +53,12 @@ struct ContextImpl : RBCContext {
         utils.init_render();
     }
     void load_skybox(luisa::string_view path, uint2 size) override {
-        utils.render_plugin->update_skybox(path, size);
+        utils.render_plugin()->update_skybox(path, size);
     }
     void create_window(luisa::string_view name, uint2 size, bool resiable) override {
         utils.init_display_with_window(name, size, resiable);
         window_size = size;
-        utils.window->set_window_size_callback([&](uint2 size) {
+        utils.window()->set_window_size_callback([&](uint2 size) {
             window_size = size;
         });
     }
@@ -246,7 +246,7 @@ struct ContextImpl : RBCContext {
         frame_index = 0;
     }
     void set_view_camera(luisa::float3 pos, float roll, float pitch, float yaw) override {
-        auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
+        auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
         cam.position = make_double3(pos);
         cam.rotation_roll = roll;
         cam.rotation_pitch = pitch;
@@ -259,10 +259,10 @@ struct ContextImpl : RBCContext {
         return utils.should_close();
     }
     void tick() override {
-        if (utils.window)
-            utils.window->poll_events();
-        auto &cam = utils.render_plugin->get_camera(utils.display_pipe_ctx);
-        if (any(window_size != utils.dst_image.size())) {
+        if (utils.window())
+            utils.window()->poll_events();
+        auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+        if (any(window_size != utils.dst_image().size())) {
             utils.resize_swapchain(window_size);
         }
         cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
