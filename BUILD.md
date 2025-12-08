@@ -16,7 +16,7 @@
 ### Python环境配置
 
 - 安装uv
-- `uv sync`同步所有包
+- `uv sync --extra cu128/cu130`同步所有包
 - (Optional) Pylance Select Interpreter `.venv/Scripts/python.exe`
 
 ### RBC环境启动

@@ -39,8 +39,11 @@ MainWindow::MainWindow(QWidget *parent)
       editorScene_(nullptr),
       nodeEditor_(nullptr),
       nodeDock_(nullptr),
+      workflowActionGroup_(nullptr),
       sceneEditingAction_(nullptr),
-      text2ImageAction_(nullptr) {
+      text2ImageAction_(nullptr),
+      sceneEditingToolAction_(nullptr),
+      text2ImageToolAction_(nullptr) {
     // Create editor scene for animation playback
     editorScene_ = new rbc::EditorScene();
     
@@ -64,7 +67,7 @@ void MainWindow::setupUi() {
     setupDocks();
 
     // Set default workflow (SceneEditing)
-    switchWorkflow(WorkflowType::SceneEditing);
+    switchWorkflow(rbc::WorkflowType::SceneEditing);
 
     statusBar()->showMessage("Ready");
 
@@ -167,15 +170,15 @@ void MainWindow::onAnimationFrameChanged(int frame) {
     statusBar()->showMessage(QString("Animation frame: %1").arg(frame));
 }
 
-void MainWindow::switchWorkflow(WorkflowType workflow) {
+void MainWindow::switchWorkflow(rbc::WorkflowType workflow) {
     workflowManager_->switchWorkflow(workflow);
 }
 
-void MainWindow::onWorkflowChanged(WorkflowType newWorkflow, WorkflowType oldWorkflow) {
+void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow) {
     Q_UNUSED(oldWorkflow);
     
     // Update UI based on workflow
-    if (newWorkflow == WorkflowType::SceneEditing) {
+    if (newWorkflow == rbc::WorkflowType::SceneEditing) {
         // SceneEditing: Viewport as central, NodeGraph as dock
         // Move NodeEditor back to dock if it was central
         if (centralWidget() == nodeEditor_) {
@@ -205,7 +208,7 @@ void MainWindow::onWorkflowChanged(WorkflowType newWorkflow, WorkflowType oldWor
         }
         
         statusBar()->showMessage("Switched to Scene Editing workflow");
-    } else if (newWorkflow == WorkflowType::Text2Image) {
+    } else if (newWorkflow == rbc::WorkflowType::Text2Image) {
         // Text2Image: NodeGraph as central, Viewport minimized
         // Remove viewport from central if it's there
         if (centralWidget() == viewportWidget_) {
@@ -247,11 +250,11 @@ void MainWindow::onWorkflowChanged(WorkflowType newWorkflow, WorkflowType oldWor
 }
 
 void MainWindow::switchToSceneEditingWorkflow() {
-    switchWorkflow(WorkflowType::SceneEditing);
+    switchWorkflow(rbc::WorkflowType::SceneEditing);
 }
 
 void MainWindow::switchToText2ImageWorkflow() {
-    switchWorkflow(WorkflowType::Text2Image);
+    switchWorkflow(rbc::WorkflowType::Text2Image);
 }
 
 void MainWindow::setupMenuBar() {
@@ -271,17 +274,18 @@ void MainWindow::setupMenuBar() {
     editMenu->addAction("Preferences...");
 
     QMenu *workflowMenu = menuBar()->addMenu("Workflow");
-    QActionGroup *workflowGroup = new QActionGroup(this);
+    // Create shared action group for menu and toolbar
+    workflowActionGroup_ = new QActionGroup(this);
     
     sceneEditingAction_ = workflowMenu->addAction("Scene Editing");
     sceneEditingAction_->setCheckable(true);
     sceneEditingAction_->setChecked(true);
-    sceneEditingAction_->setActionGroup(workflowGroup);
+    sceneEditingAction_->setActionGroup(workflowActionGroup_);
     connect(sceneEditingAction_, &QAction::triggered, this, &MainWindow::switchToSceneEditingWorkflow);
     
     text2ImageAction_ = workflowMenu->addAction("Text2Image");
     text2ImageAction_->setCheckable(true);
-    text2ImageAction_->setActionGroup(workflowGroup);
+    text2ImageAction_->setActionGroup(workflowActionGroup_);
     connect(text2ImageAction_, &QAction::triggered, this, &MainWindow::switchToText2ImageWorkflow);
 
     QMenu *windowMenu = menuBar()->addMenu("Window");
@@ -296,19 +300,17 @@ void MainWindow::setupToolBar() {
     toolbar->setObjectName("MainToolbar");
     toolbar->setMovable(false);
 
-    // Workflow switcher
-    QActionGroup *workflowGroup = new QActionGroup(this);
+    // Workflow switcher (use shared action group from menu)
+    sceneEditingToolAction_ = toolbar->addAction("Scene");
+    sceneEditingToolAction_->setCheckable(true);
+    sceneEditingToolAction_->setChecked(true);
+    sceneEditingToolAction_->setActionGroup(workflowActionGroup_);
+    connect(sceneEditingToolAction_, &QAction::triggered, this, &MainWindow::switchToSceneEditingWorkflow);
     
-    auto sceneEditingToolAction = toolbar->addAction("Scene");
-    sceneEditingToolAction->setCheckable(true);
-    sceneEditingToolAction->setChecked(true);
-    sceneEditingToolAction->setActionGroup(workflowGroup);
-    connect(sceneEditingToolAction, &QAction::triggered, this, &MainWindow::switchToSceneEditingWorkflow);
-    
-    auto text2ImageToolAction = toolbar->addAction("Text2Image");
-    text2ImageToolAction->setCheckable(true);
-    text2ImageToolAction->setActionGroup(workflowGroup);
-    connect(text2ImageToolAction, &QAction::triggered, this, &MainWindow::switchToText2ImageWorkflow);
+    text2ImageToolAction_ = toolbar->addAction("Text2Image");
+    text2ImageToolAction_->setCheckable(true);
+    text2ImageToolAction_->setActionGroup(workflowActionGroup_);
+    connect(text2ImageToolAction_, &QAction::triggered, this, &MainWindow::switchToText2ImageWorkflow);
     
     toolbar->addSeparator();
 

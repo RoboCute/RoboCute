@@ -4,6 +4,11 @@ import time
 
 from robocute.api import app
 import custom_nodes.animation_nodes as animation_nodes
+try:
+    import custom_nodes.text2image_nodes as text2image_nodes
+    print("    Text2Image nodes loaded")
+except ImportError as e:
+    print(f"    Warning: Could not load Text2Image nodes: {e}")
 
 
 def init_nodes():

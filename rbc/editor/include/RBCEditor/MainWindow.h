@@ -34,7 +34,7 @@ private:
     void setupMenuBar();
     void setupToolBar();
     void setupDocks();
-    void switchWorkflow(WorkflowType workflow);
+    void switchWorkflow(rbc::WorkflowType workflow);
     QDockWidget* createViewportDock();
 
 private slots:
@@ -43,7 +43,7 @@ private slots:
     void onEntitySelected(int entityId);
     void onAnimationSelected(QString animName);
     void onAnimationFrameChanged(int frame);
-    void onWorkflowChanged(WorkflowType newWorkflow, WorkflowType oldWorkflow);
+    void onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow);
     void switchToSceneEditingWorkflow();
     void switchToText2ImageWorkflow();
 
@@ -62,7 +62,10 @@ private:
     rbc::NodeEditor *nodeEditor_;
     QDockWidget *nodeDock_;
     
-    // Workflow actions
+    // Workflow actions (menu and toolbar share the same action group)
+    QActionGroup *workflowActionGroup_;
     QAction *sceneEditingAction_;
     QAction *text2ImageAction_;
+    QAction *sceneEditingToolAction_;
+    QAction *text2ImageToolAction_;
 };
