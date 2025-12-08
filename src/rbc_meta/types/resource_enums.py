@@ -2,7 +2,7 @@ from rbc_meta.utils_next.reflect import reflect
 from enum import Enum
 
 
-@reflect(cpp_namespace="rbc", module_name="runtime")
+@reflect(cpp_namespace="rbc", module_name="runtime", pybind=True)
 class LCPixelStorage(Enum):
     BYTE1 = 1
     BYTE2 = 2
@@ -32,7 +32,7 @@ class LCPixelStorage(Enum):
     BYTE4_SRGB = 26
 
 
-@reflect(cpp_namespace="rbc", module_name="runtime")
+@reflect(cpp_namespace="rbc", module_name="runtime", pybind=True)
 class LCPixelFormat(Enum):
     R8SInt = 0
     R8UInt = 1

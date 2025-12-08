@@ -3,7 +3,12 @@ from rbc_meta.utils_next.builtin import uint, Vector
 from rbc_meta.types.resource_enums import LCPixelStorage
 
 
-@reflect(cpp_namespace="rbc", serde=True, module_name="runtime")
+@reflect(
+    cpp_namespace="rbc",
+    serde=True,
+    module_name="runtime",
+    cpp_prefix="RBC_RUNTIME_API",
+)
 class MeshMeta:
     vertex_count: uint
     normal: bool
@@ -12,7 +17,12 @@ class MeshMeta:
     submesh_offset: Vector[uint]
 
 
-@reflect(cpp_namespace="rbc", serde=True, module_name="runtime")
+@reflect(
+    cpp_namespace="rbc",
+    serde=True,
+    module_name="runtime",
+    cpp_prefix="RBC_RUNTIME_API",
+)
 class TextureMeta:
     width: uint
     height: uint

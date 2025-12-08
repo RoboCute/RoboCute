@@ -37,11 +37,15 @@ from rbc_meta.utils_next.templates import (
     CPP_CLIENT_ADD_ARG_STMT_TEMPLATE,
     CPP_CLIENT_RETURN_STMT_TEMPLATE,
     CPP_STRUCT_BUILTIN_METHODS_TEMPLATE,
+    PY_MODULE_TEMPLATE,
     PY_INTERFACE_CLASS_TEMPLATE,
+    PY_ENUM_EXPR_TEMPLATE,
+    PY_ENUM_VALUE_TEMPLATE,
     PY_INIT_METHOD_TEMPLATE,
     PY_DISPOSE_METHOD_TEMPLATE,
     PY_METHOD_TEMPLATE,
     PYBIND_CODE_TEMPLATE,
+    PYBIND_METHOD_NAME_TEMPLATE,
     PYBIND_ENUM_BINDING_TEMPLATE,
     PYBIND_ENUM_VALUE_TEMPLATE,
     PYBIND_CREATE_FUNC_TEMPLATE,
@@ -782,9 +786,34 @@ def py_interface_gen(module_name: str, module_filter: List[str] = None) -> str:
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
 
+    import_names = []
+
+    def get_enum_expr(key: str, info: ClassInfo):
+        print(f"Generating Enum for {info.name}")
+        if not info.is_enum:
+            return ""
+
+        enum_name = info.name
+        enum_values = "\n".join(
+            [
+                PY_ENUM_VALUE_TEMPLATE.substitute(
+                    INDENT=INDENT,
+                    VALUE_NAME=info.fields[i].name,
+                    VALUE_EXPR=f"= {info.fields[i].default}"
+                    if info.fields[i].default is not None
+                    else "",
+                )
+                for i in range(len(info.fields))
+            ]
+        )
+
+        return PY_ENUM_EXPR_TEMPLATE.substitute(
+            ENUM_NAME=enum_name, ENUM_VALUES=enum_values
+        )
+
     def get_class_expr(key: str, info: ClassInfo):
         if info.is_enum:
-            return ""
+            return "", []
 
         struct_name = info.name  # Use class name as struct name for C++ binding
 
@@ -798,19 +827,28 @@ def py_interface_gen(module_name: str, module_filter: List[str] = None) -> str:
             STRUCT_NAME=struct_name,
         )
 
+        pybind_methods_list = []
+        pybind_methods_list.append(f"create__{struct_name}__")
+        pybind_methods_list.append(f"dispose__{struct_name}__")
+
         def get_method_expr(method: MethodInfo):
             # Filter out 'self' parameter for Python method declarations
             method_params = {k: v for k, v in method.parameters.items() if k != "self"}
             args_decl = _print_py_args_decl(method_params, False)
             args_call = _print_py_args(method_params, False)
             return_expr = "return " if method.return_type else ""
+            pybind_method_name = PYBIND_METHOD_NAME_TEMPLATE.substitute(
+                STRUCT_NAME=struct_name,
+                METHOD_NAME=method.name,
+            )
+            pybind_methods_list.append(pybind_method_name)
 
             return PY_METHOD_TEMPLATE.substitute(
                 INDENT=INDENT,
                 METHOD_NAME=method.name,
                 ARGS_DECL=args_decl,
                 RETURN_EXPR=return_expr,
-                STRUCT_NAME=struct_name,
+                PYBIND_METHOD_NAME=pybind_method_name,
                 ARGS_CALL=args_call,
             )
 
@@ -827,21 +865,41 @@ def py_interface_gen(module_name: str, module_filter: List[str] = None) -> str:
             INIT_METHOD=init_method,
             DISPOSE_METHOD=dispose_method,
             METHODS_EXPR=methods_expr,
-        )
+        ), pybind_methods_list
 
     classes_expr_list = []
+    enum_exprs = []
+
     # Use original order from registry to preserve module-defined order
     all_classes = registry.get_all_classes().items()
     for key, info in all_classes:
         if module_filter and info.module not in module_filter:
             continue
-        class_expr = get_class_expr(key, info)
+
+        if not info.pybind:  # filter out classes marked pybind
+            continue
+
+        # enum_expr = get_enum_expr(key, info)
+        # if enum_expr:
+        #     enum_exprs.append(enum_expr)
+        if info.is_enum:
+            import_names.append(info.name)
+
+        class_expr, pybind_methods_list = get_class_expr(key, info)
         if class_expr:
             classes_expr_list.append(class_expr)
+            import_names.extend(pybind_methods_list)
 
     classes_expr = "\n".join(classes_expr_list)
+    enum_exprs = "\n".join(enum_exprs)
 
-    result = f"from rbc_ext._C.{module_name} import *\n{classes_expr}"
+    result = PY_MODULE_TEMPLATE.substitute(
+        MODULE_NAME=module_name,
+        IMPORT_NAMES=", ".join(import_names),
+        ENUM_EXPRS=enum_exprs,
+        CLASS_EXPRS=classes_expr,
+    )
+
     return result
 
 
@@ -865,7 +923,7 @@ def _print_client_code(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
             args_decl = ", " + args_decl
 
         ret_type = "void"
-        if method.return_type and method.return_type != type(None):
+        if method.return_type and method.return_type is not type(None):
             ret_type = (
                 f"rbc::RPCFuture<{_get_full_cpp_type(method.return_type, registry)}>"
             )
@@ -1054,13 +1112,14 @@ def pybind_codegen(
     def get_enum_binding(key: str, info: ClassInfo):
         if not info.is_enum:
             return ""
-
+        enum_name = info.name
+        namespace_name = info.cpp_namespace or ""
         enum_values = "\n".join(
             [
                 PYBIND_ENUM_VALUE_TEMPLATE.substitute(
                     INDENT=INDENT,
                     VALUE_NAME=field.name,
-                    ENUM_NAME=key,  # Use full key for enum name
+                    ENUM_NAME=enum_name,  # Use full key for enum name
                 )
                 for field in info.fields
             ]
@@ -1068,7 +1127,8 @@ def pybind_codegen(
 
         return PYBIND_ENUM_BINDING_TEMPLATE.substitute(
             INDENT=INDENT,
-            ENUM_NAME=key,
+            NAMESPACE_NAME=namespace_name,
+            ENUM_NAME=enum_name,
             CLASS_NAME=info.name,
             ENUM_VALUES=enum_values,
         )
@@ -1078,6 +1138,8 @@ def pybind_codegen(
 
     def get_struct_bindings(key: str, info: ClassInfo):
         if info.is_enum:
+            return ""
+        if not info.pybind:
             return ""
 
         result_parts = []
@@ -1211,6 +1273,7 @@ def pybind_codegen(
                 INITER=initer,
             )
             enum_initers_list.append(enum_initer)
+
         else:
             if info.serde and len(info.fields) > 0:
                 store_stmts_list = []
@@ -1259,18 +1322,9 @@ def pybind_codegen(
             if rpc_serializer:
                 struct_impls_list.append(rpc_serializer)
 
-    enum_initers_expr = "\n".join(enum_initers_list)
-    struct_impls_expr = "\n".join(struct_impls_list)
-    impl_code = (
-        f"{enum_initers_expr}\n\n{struct_impls_expr}"
-        if enum_initers_expr or struct_impls_expr
-        else ""
-    )
-
     return PYBIND_CODE_TEMPLATE.substitute(
         EXTRA_INCLUDES=extra_includes_expr,
         EXPORT_FUNC_NAME=export_func_name,
         ENUM_BINDINGS=enum_bindings_expr,
         STRUCT_BINDINGS=struct_bindings_expr,
-        IMPL_CODE=impl_code,
     )

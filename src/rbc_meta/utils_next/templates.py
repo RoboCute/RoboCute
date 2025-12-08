@@ -153,6 +153,42 @@ CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE = Template(
 )
 
 # Python interface templates
+
+PY_MODULE_TEMPLATE = Template("""
+# This File is Generated From Python Def
+# Modifying This File will not affect final result, checkout src/rbc_meta/ for real defs
+# ================== GENERATED CODE BEGIN ==================
+
+# BUILT-IN_IMPORT BEGIN
+from rbc_ext._C.test_py_codegen import (
+    float4x4,
+    float3,
+    uint2,
+    capsule_vector,
+    make_float4x4,
+    float4,
+    destroy_object,
+)
+# BUILT-IN_IMPORT END
+
+# USER_DEFINED_IMPORT BEGIN
+from rbc_ext._C.${MODULE_NAME} import ${IMPORT_NAMES}
+# USER_DEFINED_IMPORT END
+
+${ENUM_EXPRS}
+
+${CLASS_EXPRS}
+# ================== GENERATED CODE END ==================
+""")
+
+
+PY_ENUM_EXPR_TEMPLATE = Template("""
+class ${ENUM_NAME}:
+${ENUM_VALUES}
+""")
+
+PY_ENUM_VALUE_TEMPLATE = Template("${INDENT}${VALUE_NAME} ${VALUE_EXPR}")
+
 PY_INTERFACE_CLASS_TEMPLATE = Template("""
 class ${CLASS_NAME}:
 ${INIT_METHOD}
@@ -169,9 +205,10 @@ ${INDENT}${INDENT}dispose__${STRUCT_NAME}__(self._handle)
 """)
 
 PY_METHOD_TEMPLATE = Template("""${INDENT}def ${METHOD_NAME}(self${ARGS_DECL}):
-${INDENT}${INDENT}${RETURN_EXPR}${STRUCT_NAME}__${METHOD_NAME}__(self._handle${ARGS_CALL})
+${INDENT}${INDENT}${RETURN_EXPR}${PYBIND_METHOD_NAME}(self._handle${ARGS_CALL})
 """)
 
+PYBIND_METHOD_NAME_TEMPLATE = Template("${STRUCT_NAME}__${METHOD_NAME}__")
 # C++ implementation templates
 CPP_IMPL_TEMPLATE = Template("""
 //! This File is Generated From Python Def
@@ -340,12 +377,11 @@ ${STRUCT_BINDINGS}
 
 static ModuleRegister ${EXPORT_FUNC_NAME}_(${EXPORT_FUNC_NAME});
 
-${IMPL_CODE}
-
 //! ================== GENERATED CODE END ==================
 """)
 
 PYBIND_ENUM_BINDING_TEMPLATE = Template("""
+${INDENT}using namespace ${NAMESPACE_NAME};
 ${INDENT}py::enum_<${ENUM_NAME}>(m, "${CLASS_NAME}")
 ${ENUM_VALUES}
 ${INDENT};

@@ -429,19 +429,27 @@ def generate():
     include = "#include <rbc_render/generated/pipeline_settings.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
+
     target_modules = ["backend_interface"]
     file_name = "rbc_backend"
     pyd_name = "test_py_codegen"
     header_path = Path("rbc/tests/test_graphics/generated/rbc_backend.h").resolve()
     cpp_path = Path("rbc/tests/test_py_codegen/generated/rbc_backend.cpp").resolve()
-    py_path = Path("src/rbc_ext/rbc_backend.py").resolve()
+    py_root_path = Path("src/rbc_ext/generated").resolve()
+    # add __init__.py to py_path if not exists
+    if not py_root_path.exists():
+        py_root_path.mkdir(parents=True, exist_ok=True)
+    if not (py_root_path / "__init__.py").exists():
+        (py_root_path / "__init__.py").touch()
+    py_path = py_root_path / f"{file_name}.py"
+
     include = """#include <rbc_runtime/generated/resource_meta.hpp>
 #include <rbc_core/rc.h>"""
 
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
-    ut.codegen_to(cpp_path)(pybind_codegen, pyd_name, target_modules, include)
-    ut.codegen_to(py_path)(py_interface_gen, pyd_name, target_modules)
+    ut.codegen_to(cpp_path)(pybind_codegen, pyd_name, ["backend_interface", "runtime"], include) # TODO: 对pybind特殊处理，指定所有导出的module_filter，不太优雅
+    ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["backend_interface", "runtime"])
 
     # processes = []
     # for module_name, function_name, *args in GENERATION_TASKS:
