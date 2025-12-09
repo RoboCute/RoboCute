@@ -11,9 +11,6 @@ struct RBC_RUNTIME_API DeviceMesh : DeviceResource {
 private:
     luisa::vector<std::byte> _host_data;
     MeshManager::MeshData *_render_mesh_data{};
-    bool _contained_normal : 1 {};
-    bool _contained_tangent : 1 {};
-    uint _uv_count{};
     template<typename LoadType>
     void _async_load(
         LoadType &&load_type,
@@ -24,9 +21,6 @@ private:
 public:
     std::atomic_uint tlas_ref_count{};
     Type resource_type() const override { return Type::Mesh; }
-    [[nodiscard]] auto contained_normal() const { return _contained_normal; }
-    [[nodiscard]] auto contained_tangent() const { return _contained_tangent; }
-    [[nodiscard]] auto uv_count() const { return _uv_count; }
     [[nodiscard]] auto mesh_data() const { return _render_mesh_data; }
     [[nodiscard]] luisa::span<std::byte const> host_data() const override { return _host_data; }
     [[nodiscard]] luisa::span<std::byte> host_data() override { return _host_data; }

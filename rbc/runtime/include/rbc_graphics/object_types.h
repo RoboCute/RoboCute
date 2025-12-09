@@ -5,7 +5,7 @@
 namespace rbc {
 #include <rbc_graphics/materials.h>
 #include <material/mats.inl>
-struct RBC_APP_API LightStub : RCBase {
+struct RBC_RUNTIME_API LightStub : RCBase {
     LightType light_type{(LightType)-1};
     uint32_t id;
     LightStub() = default;
@@ -24,7 +24,7 @@ enum class ObjectRenderType {
     EmissionMesh,
     Procedural
 };
-struct RBC_APP_API MaterialStub : RCBase {
+struct RBC_RUNTIME_API MaterialStub : RCBase {
     using MatDataType = vstd::variant<
         material::OpenPBR,
         material::Unlit>;
@@ -34,8 +34,12 @@ struct RBC_APP_API MaterialStub : RCBase {
     void update_material(luisa::string_view json);
     MaterialStub() = default;
     ~MaterialStub();
+    static void openpbr_json_ser(JsonSerializer &json_ser, material::OpenPBR const &mat);
+    static void openpbr_json_deser(JsonDeSerializer &json_deser, material::OpenPBR &mat);
+    static void openpbr_json_ser(JsonSerializer &json_ser, material::Unlit const &mat);
+    static void openpbr_json_deser(JsonDeSerializer &json_deser, material::Unlit &mat);
 };
-struct RBC_APP_API ObjectStub : RCBase {
+struct RBC_RUNTIME_API ObjectStub : RCBase {
     RC<DeviceMesh> mesh_ref;
     union {
         uint mesh_tlas_idx;

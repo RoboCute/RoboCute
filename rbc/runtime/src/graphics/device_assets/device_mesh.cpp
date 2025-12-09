@@ -26,9 +26,6 @@ void DeviceMesh::_async_load(
     bool build_mesh, bool calculate_bound,
     uint64_t file_size,
     bool copy_to_host) {
-    _contained_normal = normal;
-    _contained_tangent = tangent;
-    _uv_count = uv_count;
     auto inst = AssetsManager::instance();
     if (_gpu_load_frame != 0) [[unlikely]] {
         return;
@@ -167,9 +164,6 @@ void DeviceMesh::create_mesh(
     CommandList &cmdlist,
     uint vertex_count, bool normal, bool tangent, uint uv_count, uint triangle_count, vstd::vector<uint> &&submesh_triangle_offset) {
     LUISA_ASSERT(_render_mesh_data == nullptr && _gpu_load_frame == 0, "Device mesh already loaded.");
-    _contained_normal = normal;
-    _contained_tangent = tangent;
-    _uv_count = uv_count;
     auto &sm = SceneManager::instance();
     auto &render_device = RenderDevice::instance();
     _render_mesh_data = sm.mesh_manager().load_mesh(

@@ -12,7 +12,6 @@
 #include <rbc_runtime/render_plugin.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
-#include <rbc_render/generated/pipeline_settings.hpp>
 namespace rbc {
 using namespace rbc;
 using namespace luisa;
@@ -36,7 +35,7 @@ private:
     Image<float> _dst_image;
     DenoisePack _denoise_pack;
     // render
-    DynamicModule const *_render_module;
+    luisa::shared_ptr<DynamicModule> _render_module;
     RenderPlugin *_render_plugin{};
     StateMap _render_settings;
     RenderPlugin::PipeCtxStub *_display_pipe_ctx{};
@@ -93,9 +92,5 @@ public:
         DeviceMesh *ptr,
         uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets);
     void update_mesh_data(DeviceMesh *mesh, bool only_vertex);
-    static void openpbr_json_ser(JsonSerializer &json_ser, material::OpenPBR const &mat);
-    static void openpbr_json_deser(JsonDeSerializer &json_deser, material::OpenPBR &mat);
-    static void openpbr_json_ser(JsonSerializer &json_ser, material::Unlit const &mat);
-    static void openpbr_json_deser(JsonDeSerializer &json_deser, material::Unlit &mat);
 };
 }// namespace rbc

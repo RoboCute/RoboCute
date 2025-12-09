@@ -10,13 +10,13 @@ struct RBC_RUNTIME_API PluginManager {
 private:
     vstd::HashMap<
         luisa::string,
-        luisa::DynamicModule>
+        luisa::weak_ptr<luisa::DynamicModule>>
         loaded_modules;
     std::mutex mtx;
 public:
     PluginManager();
     ~PluginManager();
-    luisa::DynamicModule const &load_module(luisa::string_view name);
+    luisa::shared_ptr<luisa::DynamicModule> load_module(luisa::string_view name);
     void unload_module(luisa::string_view name);
     static PluginManager &instance();
     static void init();

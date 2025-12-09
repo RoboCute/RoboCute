@@ -43,6 +43,7 @@ struct DualQuaternion {
 [[nodiscard]] RBC_CORE_API DecomposedTransform decompose(float4x4 m) noexcept;
 [[nodiscard]] RBC_CORE_API Quaternion quaternion(float3x3 m) noexcept;
 [[nodiscard]] RBC_CORE_API float4x4 rotation(float3 pos, Quaternion rot, float3 local_scale) noexcept;
+[[nodiscard]] RBC_CORE_API double4x4 rotation(double3 pos, Quaternion rot, double3 local_scale) noexcept;
 [[nodiscard]] RBC_CORE_API float dot(Quaternion q1, Quaternion q2) noexcept;
 [[nodiscard]] RBC_CORE_API float length(Quaternion q) noexcept;
 [[nodiscard]] RBC_CORE_API float angle_between(Quaternion q1, Quaternion q2) noexcept;

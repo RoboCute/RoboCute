@@ -13,8 +13,7 @@ void StateMap::init_json(luisa::string_view json) {
 void StateMap::_deser(TypeInfo const &type_info, HeapObject &heap_obj) {
     if (!_json_reader || !heap_obj.json_reader) return;
     auto name = type_info.name_c_str();
-    uint64_t size;
-    if (_json_reader->start_array(size, name)) {
+    if (_json_reader->start_object(name)) {
         heap_obj.json_reader(heap_obj.data, _json_reader.ptr());
         _json_reader->end_scope();
     }
@@ -29,7 +28,7 @@ luisa::BinaryBlob StateMap::serialize_to_json() {
             auto &v = i.second;
             if (!v.json_writer) continue;
             auto& name = strs.emplace_back(i.first.name());
-            ser.start_array();
+            ser.start_object();
             v.json_writer(v.data, &ser);
             ser.add_last_scope_to_object(name.c_str());
         }

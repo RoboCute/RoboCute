@@ -15,7 +15,7 @@
 #include "simple_scene.h"
 #include <rbc_app/graphics_utils.h>
 #include "generated/rbc_backend.h"
-#include "rbc_app/graphics_object_types.h"
+#include "rbc_graphics/object_types.h"
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 #include <rbc_render/click_manager.h>
@@ -120,7 +120,7 @@ struct ContextImpl : RBCContext {
         JsonSerializer ser(false);
         ptr->mat_data.visit(
             [&](auto &a) {
-                GraphicsUtils::openpbr_json_ser(ser, a);
+                MaterialStub::openpbr_json_ser(ser, a);
             });
         auto data = ser.write_to();
         return luisa::string{

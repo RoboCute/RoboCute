@@ -131,7 +131,7 @@ struct Serializer : public Base {
             ptr[strv.size()] = 0;
             Base::add(ptr, args...);
         } else if constexpr (requires { t.rbc_objser(*this); }) {
-            Base::start_array();
+            Base::start_object();
             t.rbc_objser(*this);
             Base::add_last_scope_to_object(args...);
         } else if constexpr (requires { t.rbc_arrser(*this); }) {
@@ -203,28 +203,11 @@ struct Serializer : public Base {
             Base::add_arr(luisa::span<double const>{arr, dim * dim}, args...);
         }
         // string
-        else if constexpr (
-            requires {
-                std::is_same_v<char, std::remove_cvref_t<std::remove_pointer_t<decltype(t.data())>>>;
-                t.size();
-            }) {
+        else if constexpr (std::is_same_v<T, luisa::string>) {
             auto len = t.size();
             auto ptr = (char *)allocate_temp_str(len + 1);
             ptr[len] = 0;
             std::memcpy(ptr, t.data(), len);
-            Base::add(ptr, args...);
-        } else if constexpr (std::is_same_v<std::decay_t<T>, char const *> || std::is_same_v<std::decay_t<T>, char *>) {
-            auto len = strlen(t);
-            auto ptr = (char *)allocate_temp_str(len + 1);
-            ptr[len] = 0;
-            std::memcpy(ptr, t, len);
-            Base::add(ptr, args...);
-        } else if constexpr (requires { std::is_same_v<decltype(t.c_str()), char const *>; }) {
-            auto p = t.c_str();
-            auto len = strlen(p);
-            auto ptr = (char *)allocate_temp_str(len + 1);
-            ptr[len] = 0;
-            std::memcpy(ptr, p, len);
             Base::add(ptr, args...);
         }
         // kv map
@@ -237,6 +220,13 @@ struct Serializer : public Base {
                 } else {
                     static_assert(luisa::always_false_v<T>, "Invalid HashMap key-value type.");
                 }
+            }
+            Base::add_last_scope_to_object(args...);
+        }
+        else if constexpr (detail::is_vector<T>::value) {
+            Base::start_array();
+            for(auto&& i : t) {
+                this->_store(i);
             }
             Base::add_last_scope_to_object(args...);
         }
@@ -304,8 +294,7 @@ struct DeSerializer : public Base {
             t = (T)*value;
             return true;
         } else if constexpr (requires { t.rbc_objdeser(*this); }) {
-            uint64_t size;
-            if (!Base::start_array(size, args...)) return false;
+            if (!Base::start_object(args...)) return false;
             t.rbc_objdeser(*this);
             Base::end_scope();
             return true;
@@ -435,7 +424,7 @@ struct DeSerializer : public Base {
             return true;
         }
         // string
-        else if constexpr (std::is_same_v<std::decay_t<T>, luisa::string>) {
+        else if constexpr (std::is_same_v<T, luisa::string>) {
             return Base::read(t, args...);
         }
         // kv map
@@ -465,7 +454,7 @@ struct DeSerializer : public Base {
             return true;
         }
         // duck type
-        else if constexpr (requires { t.emplace_back(); }) {
+        else if constexpr (detail::is_vector<T>::value) {
             uint64_t size{};
             if (!Base::start_array(size, args...)) return false;
             auto end_scope = vstd::scope_exit([&] {

@@ -764,10 +764,10 @@ def cpp_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
 
                 if should_serde:
                     store_stmts_list.append(
-                        f"{INDENT}{INDENT}obj._store(this->{field.name});"
+                        f"{INDENT}{INDENT}obj._store(this->{field.name}, \"{field.name}\");"
                     )
                     load_stmts_list.append(
-                        f"{INDENT}{INDENT}obj._load(this->{field.name});"
+                        f"{INDENT}{INDENT}obj._load(this->{field.name}, \"{field.name}\");"
                     )
 
             store_stmts = "\n".join(store_stmts_list)

@@ -1,6 +1,7 @@
 #include <rbc_runtime/render_plugin.h>
 #include <rbc_render/pipeline_context.h>
 #include <rbc_render/pt_pipeline.h>
+#include <rbc_runtime/plugin_manager.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
 #include <oidn_denoiser.h>
@@ -28,7 +29,7 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
     };
     OidnSupport oidn_support{OidnSupport::UnChecked};
     std::mutex oidn_mtx;
-    DynamicModule oidn_module;
+    luisa::shared_ptr<DynamicModule> oidn_module;
     rbc::DenoiserExt *oidn_ext{};
     vstd::HashMap<uint64, DenoiserStream> _denoisers;
     //////////////////////////////////////// pipeline
@@ -159,13 +160,13 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
             }
         }
         if (oidn_support != OidnSupport::Supported) return false;
-        oidn_module = DynamicModule::load(lc_ctx.runtime_directory(), "oidn_plugin");
+        oidn_module = PluginManager::instance().load_module("oidn_plugin");
         if (!oidn_module) {
             LUISA_WARNING("OIDN not support for reason: plugin not found.");
             oidn_support != OidnSupport::UnSupported;
             return false;
         }
-        oidn_ext = oidn_module.invoke<rbc::DenoiserExt *(luisa::compute::Device const &device)>("rbc_create_oidn", render_device.lc_device());
+        oidn_ext = oidn_module->invoke<rbc::DenoiserExt *(luisa::compute::Device const &device)>("rbc_create_oidn", render_device.lc_device());
         if (!oidn_ext) {
             LUISA_WARNING("OIDN not support for reason: plugin not found.");
             oidn_support != OidnSupport::UnSupported;
@@ -229,7 +230,6 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
         pipelines.clear();
         dispose_skybox();
         delete oidn_ext;
-        oidn_module.reset();
     }
 };
 RBC_PLUGIN_ENTRY(RenderPlugin) {

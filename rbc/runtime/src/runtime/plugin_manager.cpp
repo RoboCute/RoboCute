@@ -22,13 +22,17 @@ void PluginManager::unload_module(luisa::string_view name) {
     std::lock_guard lck{mtx};
     loaded_modules.remove(name);
 }
-luisa::DynamicModule const &PluginManager::load_module(luisa::string_view name) {
+luisa::shared_ptr<luisa::DynamicModule> PluginManager::load_module(luisa::string_view name) {
     std::lock_guard lck{mtx};
-    return loaded_modules.try_emplace(
-                             name,
-                             vstd::lazy_eval([&]() {
-                                 return luisa::DynamicModule::load(name);
-                             }))
-        .first.value();
+    auto iter = loaded_modules.try_emplace(name);
+    luisa::shared_ptr<luisa::DynamicModule> r;
+    if (!iter.second) {
+        r = iter.first.value().lock();
+    }
+    if (!r) {
+        r = luisa::make_shared<luisa::DynamicModule>(luisa::DynamicModule::load(name));
+        iter.first.value() = r;
+    }
+    return r;
 }
 }// namespace rbc

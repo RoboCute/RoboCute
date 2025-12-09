@@ -248,10 +248,10 @@ ${LOAD_STMTS}
 CPP_RPC_ARG_STRUCT_TEMPLATE = Template("""
 struct ${ARG_STRUCT_NAME} {
 ${ARG_MEMBERS}
-${INDENT}void rbc_objser(rbc::JsonSerializer &obj) const {
+${INDENT}void rbc_arrser(rbc::JsonSerializer &obj) const {
 ${SER_STMTS}
 ${INDENT}}
-${INDENT}void rbc_objdeser(rbc::JsonDeSerializer &obj) {
+${INDENT}void rbc_arrdeser(rbc::JsonDeSerializer &obj) {
 ${DESER_STMTS}
 ${INDENT}}
 };

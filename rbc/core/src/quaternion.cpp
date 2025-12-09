@@ -1,5 +1,6 @@
 #include <rbc_core/quaternion.h>
 #include <luisa/core/logging.h>
+#include <rtm/qvvd.h>
 #include <rtm/qvvf.h>
 namespace rbc
 {
@@ -45,6 +46,21 @@ Quaternion quaternion(float3x3 m) noexcept
 {
     auto quad = rtm::quat_from_matrix(reinterpret_cast<rtm::matrix3x3f const&>(m));
     return reinterpret_cast<Quaternion const&>(quad);
+}
+
+double4x4 rotation(double3 pos, Quaternion rot, double3 local_scale) noexcept {
+    rtm::qvvd qvv{
+        .rotation = reinterpret_cast<rtm::quatd const&>(rot),
+        .translation = reinterpret_cast<rtm::vector4d const&>(pos),
+        .scale = reinterpret_cast<rtm::vector4d const&>(local_scale)
+    };
+    auto result = rtm::matrix_from_qvv(qvv);
+    return make_double4x4(
+        reinterpret_cast<double4 const&>(result.x_axis),
+        reinterpret_cast<double4 const&>(result.y_axis),
+        reinterpret_cast<double4 const&>(result.z_axis),
+        double4(0, 0, 0, 1)
+    );
 }
 
 float4x4 rotation(float3 pos, Quaternion rot, float3 local_scale) noexcept
