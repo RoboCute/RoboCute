@@ -42,3 +42,7 @@ function interface_target(target_name, interface_callback, impl_callback, no_lin
         target_interface_name = target_interface_name
     })
 end
+
+function add_interface_depend(target)
+    add_deps(target .. '_int__')
+end
