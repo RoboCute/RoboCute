@@ -12,7 +12,9 @@ on_load(function(target)
         links = false
     })
     if not no_link then
-        target:add('links', target_name, { public = true })
+        target:add('links', target_name, {
+            public = true
+        })
     end
 end)
 rule_end()
