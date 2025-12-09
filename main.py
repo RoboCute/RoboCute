@@ -5,13 +5,6 @@ import time
 from robocute.api import app
 import custom_nodes.animation_nodes as animation_nodes
 
-try:
-    import custom_nodes.text2image_nodes as text2image_nodes
-
-    print("    Text2Image nodes loaded")
-except ImportError as e:
-    print(f"    Warning: Could not load Text2Image nodes: {e}")
-
 
 def init_nodes():
     """初始化节点系统"""
@@ -46,8 +39,7 @@ def main():
     mesh_path = "D:/ws/data/assets/models/bunny.obj"
     scene = rbc.Scene()
     scene.start()  # start resource/scene manager singleton
-    # Access the resource manager
-    resource_mgr = scene.resource_manager
+
     print("[1] Loading basic resources...")
     # Load a mesh resource
     mesh_id = scene.load_mesh(mesh_path, priority=rbc.LoadPriority.High)

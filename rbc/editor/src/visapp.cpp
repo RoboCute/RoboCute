@@ -64,20 +64,21 @@ void VisApp::update() {
         utils.reset_frame();
     }
     auto &render_device = RenderDevice::instance();
-    if (utils.backend_name() == "dx") {
-        clear_dx_states(render_device.lc_device_ext());
-        add_dx_before_state(render_device.lc_device_ext(), Argument::Texture{utils.dst_image().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
-    } else if (utils.backend_name() == "vk") {
-        clear_vk_states(render_device.lc_device_ext());
-        add_vk_before_state(render_device.lc_device_ext(), Argument::Texture{utils.dst_image().handle(), 0}, VkResourceUsageType::RasterRead);
-    }
+
+    clear_dx_states(render_device.lc_device_ext());
+    add_dx_before_state(render_device.lc_device_ext(), Argument::Texture{utils.dst_image().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+
     dst_image_reseted = false;
     frame_index = 0;// force update
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
     auto time = clk.toc();
     auto delta_time = time - last_frame_time;
     last_frame_time = time;
-    utils.tick(delta_time, frame_index, resolution, GraphicsUtils::TickStage::PresentOfflineResult);
+    utils.tick(
+        (float)delta_time,
+        frame_index,
+        resolution,
+        GraphicsUtils::TickStage::RasterPreview);
 }
 VisApp::~VisApp() {
     utils.dispose([&]() {

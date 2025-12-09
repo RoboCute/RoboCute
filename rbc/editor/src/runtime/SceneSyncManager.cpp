@@ -18,6 +18,7 @@ SceneSyncManager::SceneSyncManager(HttpClient *httpClient, QObject *parent)
     // Setup timers
     syncTimer_->setInterval(1000);     // 1s sync interval
     heartbeatTimer_->setInterval(2000);// 1s heartbeat interval
+
     connect(syncTimer_, &QTimer::timeout, this, &SceneSyncManager::syncWithServer);
     connect(heartbeatTimer_, &QTimer::timeout, this, &SceneSyncManager::sendHeartbeat);
 }

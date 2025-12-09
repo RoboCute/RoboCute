@@ -152,7 +152,8 @@ class ResourceManager:
         self._handles: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
 
     def get_memory_usage(self):
-        return self._cpp_loader.get_memory_usage()
+        # return self._cpp_loader.get_memory_usage()
+        return 0
 
     # === 启动/停止 ===
     def start(self):
@@ -178,7 +179,7 @@ class ResourceManager:
         if self._loader_thread:
             self._loader_thread.join(timeout=5.0)
 
-        self._cpp_loader.shutdown()
+        # self._cpp_loader.shutdown()
         print("[ResourceManager] Stopped")
 
     # === 资源注册 ===
@@ -418,7 +419,7 @@ class ResourceManager:
             metadata.state = ResourceState.Unloading
 
             # 通知C++端卸载
-            self._cpp_loader.unload_resource(resource_id)
+            # self._cpp_loader.unload_resource(resource_id)
 
             # 更新状态
             metadata.state = ResourceState.Unloaded
@@ -470,6 +471,7 @@ class ResourceManager:
     def _process_request(self, request: ResourceRequest):
         """处理资源加载请求"""
         resource_id = request.id
+
         # 更新状态
         with self._resource_lock:
             if resource_id not in self._resources:

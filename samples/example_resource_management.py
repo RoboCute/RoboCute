@@ -23,16 +23,15 @@ def main():
     print("[1] Loading basic resources...")
 
     # Load a mesh resource
+
     mesh_id = scene.load_mesh(
-        "models/robot.obj",
-        priority=rbc.LoadPriority.High
+        "D:/ws/data/assets/models/bunny.obj", priority=rbc.LoadPriority.High
     )
     print(f"   Registered mesh: {mesh_id}")
 
     # Load a texture
     texture_id = scene.load_texture(
-        "textures/metal_base.png",
-        priority=rbc.LoadPriority.Normal
+        "D:/ws/data/assets/textures/albert.png", priority=rbc.LoadPriority.Normal
     )
     print(f"   Registered texture: {texture_id}")
 
@@ -42,7 +41,7 @@ def main():
         name="robot_material",
         base_color=(0.8, 0.2, 0.2, 1.0),
         metallic=0.9,
-        roughness=0.3
+        roughness=0.3,
     )
     print(f"   Created material: {material_id}")
 
@@ -56,16 +55,13 @@ def main():
         rbc.TransformComponent(
             position=[0.0, 1.0, 0.0],
             rotation=[0.0, 0.0, 0.0, 1.0],
-            scale=[1.0, 1.0, 1.0]
-        )
+            scale=[1.0, 1.0, 1.0],
+        ),
     )
     scene.add_component(
         robot.id,
         "render",
-        rbc.RenderComponent(
-            mesh_id=mesh_id,
-            material_ids=[material_id]
-        )
+        rbc.RenderComponent(mesh_id=mesh_id, material_ids=[material_id]),
     )
     print(f"   Created entity: {robot.name} (ID: {robot.id})")
 
@@ -73,15 +69,19 @@ def main():
 
     # Batch load multiple resources
     resources = [
-        {"path": "models/prop1.obj", "type": rbc.ResourceType.Mesh},
-        {"path": "models/prop2.obj", "type": rbc.ResourceType.Mesh},
-        {"path": "textures/ground.png", "type": rbc.ResourceType.Texture},
+        {"path": "D:/ws/data/assets/models/cube.obj", "type": rbc.ResourceType.Mesh},
+        {
+            "path": "D:/ws/data/assets/models/triangle.obj",
+            "type": rbc.ResourceType.Mesh,
+        },
+        {
+            "path": "D:/ws/data/assets/textures/wall_512x512.png",
+            "type": rbc.ResourceType.Texture,
+        },
     ]
 
     batch_ids = rbc.batch_load_resources(
-        resource_mgr,
-        resources,
-        priority=rbc.LoadPriority.Background
+        resource_mgr, resources, priority=rbc.LoadPriority.Background
     )
     print(f"   Batch loaded {len(batch_ids)} resources")
 
@@ -89,9 +89,7 @@ def main():
 
     # Load multiple LOD levels with priorities
     lod_ids = rbc.preload_with_lod(
-        resource_mgr,
-        "models/terrain.obj",
-        num_levels=3
+        resource_mgr, "D:/ws/data/assets/models/cube.obj", num_levels=3
     )
     print(f"   Loaded {len(lod_ids)} LOD levels")
 
@@ -99,9 +97,9 @@ def main():
 
     # Use ResourceBatch helper
     batch = rbc.ResourceBatch(resource_mgr)
-    batch.add("models/building1.obj", rbc.ResourceType.Mesh)
-    batch.add("models/building2.obj", rbc.ResourceType.Mesh)
-    batch.add("textures/brick.png", rbc.ResourceType.Texture)
+    batch.add("D:/ws/data/assets/models/cube.obj", rbc.ResourceType.Mesh)
+    batch.add("D:/ws/data/assets/models/cube.obj", rbc.ResourceType.Mesh)
+    batch.add("D:/ws/data/assets/textures/wall_512x512.png", rbc.ResourceType.Texture)
 
     def on_batch_progress(loaded, total):
         print(f"   Batch progress: {loaded}/{total}")
@@ -149,7 +147,9 @@ def main():
             # Print status every 30 frames
             if frame % 30 == 0:
                 mem_usage = resource_mgr.get_memory_usage()
-                print(f"   Frame {frame}: Memory usage: {mem_usage / 1024 / 1024:.2f} MB")
+                print(
+                    f"   Frame {frame}: Memory usage: {mem_usage / 1024 / 1024:.2f} MB"
+                )
 
             frame += 1
             time.sleep(0.016)
@@ -207,4 +207,3 @@ if __name__ == "__main__":
 
     # Uncomment to run editor example
     # example_with_editor()
-

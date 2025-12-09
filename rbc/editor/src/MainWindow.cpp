@@ -1,4 +1,5 @@
 #include "RBCEditor/MainWindow.h"
+// Qt Components
 #include <QMenuBar>
 #include <QToolBar>
 #include <QDockWidget>
@@ -11,12 +12,15 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QActionGroup>
+// Our Components
 #include "RBCEditor/components/NodeEditor.h"
 #include "RBCEditor/components/SceneHierarchyWidget.h"
 #include "RBCEditor/components/DetailsPanel.h"
 #include "RBCEditor/components/ViewportWidget.h"
 #include "RBCEditor/components/ResultPanel.h"
 #include "RBCEditor/components/AnimationPlayer.h"
+
+// Our Runtime
 #include "RBCEditor/animation/AnimationPlaybackManager.h"
 #include "RBCEditor/runtime/HttpClient.h"
 #include "RBCEditor/runtime/SceneSyncManager.h"
@@ -46,7 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
       text2ImageToolAction_(nullptr) {
     // Create editor scene for animation playback
     editorScene_ = new rbc::EditorScene();
-    
+
     // Connect workflow manager signals
     connect(workflowManager_, &rbc::WorkflowManager::workflowChanged,
             this, &MainWindow::onWorkflowChanged);
@@ -89,7 +93,7 @@ void MainWindow::startSceneSync(const QString &serverUrl) {
     }
     // Start sync
     sceneSyncManager_->start(serverUrl);
-    
+
     // Trigger node loading in NodeEditor after connection is established
     if (nodeEditor_) {
         // Small delay to ensure server connection is ready
@@ -148,7 +152,8 @@ void MainWindow::onAnimationSelected(QString animName) {
     if (!sceneSyncManager_) return;
 
     const auto *sceneSync = sceneSyncManager_->sceneSync();
-    const auto *anim = sceneSync->getAnimation(animName.toStdString().c_str());
+    const auto *anim = sceneSync->getAnimation(
+        animName.toStdString().c_str());
 
     if (anim && animationPlayer_ && playbackManager_) {
         // Set animation in animation player UI
@@ -176,7 +181,7 @@ void MainWindow::switchWorkflow(rbc::WorkflowType workflow) {
 
 void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow) {
     Q_UNUSED(oldWorkflow);
-    
+
     // Update UI based on workflow
     if (newWorkflow == rbc::WorkflowType::SceneEditing) {
         // SceneEditing: Viewport as central, NodeGraph as dock
@@ -186,27 +191,28 @@ void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowT
             addDockWidget(Qt::BottomDockWidgetArea, nodeDock_);
         }
         nodeEditor_->setAsCentralWidget(false);
-        
+
         // Set Viewport as central widget
         if (viewportDock_->widget() == viewportWidget_) {
             viewportDock_->setWidget(nullptr);
         }
         setCentralWidget(viewportWidget_);
-        viewportDock_->setVisible(false);  // Hide dock since viewport is central
-        
+        viewportDock_->setVisible(false);// Hide dock since viewport is central
+
         // Show scene-related docks
-        auto *sceneDock = findChild<QDockWidget*>("SceneDock");
-        auto *detailsDock = findChild<QDockWidget*>("DetailsDock");
-        auto *resultDock = findChild<QDockWidget*>("ResultDock");
+        auto *sceneDock = findChild<QDockWidget *>("SceneDock");
+        auto *detailsDock = findChild<QDockWidget *>("DetailsDock");
+        auto *resultDock = findChild<QDockWidget *>("ResultDock");
+
         if (sceneDock) sceneDock->setVisible(true);
         if (detailsDock) detailsDock->setVisible(true);
         if (resultDock) resultDock->setVisible(true);
-        
+
         // Update action states
         if (sceneEditingAction_) {
             sceneEditingAction_->setChecked(true);
         }
-        
+
         statusBar()->showMessage("Switched to Scene Editing workflow");
     } else if (newWorkflow == rbc::WorkflowType::Text2Image) {
         // Text2Image: NodeGraph as central, Viewport minimized
@@ -215,14 +221,14 @@ void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowT
             viewportDock_->setWidget(viewportWidget_);
             setCentralWidget(nullptr);
         }
-        
+
         // Set NodeEditor as central widget
         if (nodeDock_->widget() == nodeEditor_) {
             nodeDock_->setWidget(nullptr);
         }
         setCentralWidget(nodeEditor_);
         nodeEditor_->setAsCentralWidget(true);
-        
+
         // Show viewport dock (can be minimized by user)
         viewportDock_->setVisible(true);
         viewportDock_->setFloating(false);
@@ -230,7 +236,7 @@ void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowT
         if (!viewportDock_->parent() || viewportDock_->parent() != this) {
             addDockWidget(Qt::RightDockWidgetArea, viewportDock_);
         }
-        
+
         // Keep scene-related docks visible (user can hide if needed)
         // Optionally hide them:
         // auto *sceneDock = findChild<QDockWidget*>("SceneDock");
@@ -239,12 +245,12 @@ void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowT
         // if (sceneDock) sceneDock->setVisible(false);
         // if (detailsDock) detailsDock->setVisible(false);
         // if (resultDock) resultDock->setVisible(false);
-        
+
         // Update action states
         if (text2ImageAction_) {
             text2ImageAction_->setChecked(true);
         }
-        
+
         statusBar()->showMessage("Switched to Text2Image workflow");
     }
 }
@@ -258,6 +264,7 @@ void MainWindow::switchToText2ImageWorkflow() {
 }
 
 void MainWindow::setupMenuBar() {
+
     QMenu *fileMenu = menuBar()->addMenu("File");
     fileMenu->addAction("New Scene");
     fileMenu->addAction("Open Scene...");
@@ -276,13 +283,13 @@ void MainWindow::setupMenuBar() {
     QMenu *workflowMenu = menuBar()->addMenu("Workflow");
     // Create shared action group for menu and toolbar
     workflowActionGroup_ = new QActionGroup(this);
-    
+
     sceneEditingAction_ = workflowMenu->addAction("Scene Editing");
     sceneEditingAction_->setCheckable(true);
     sceneEditingAction_->setChecked(true);
     sceneEditingAction_->setActionGroup(workflowActionGroup_);
     connect(sceneEditingAction_, &QAction::triggered, this, &MainWindow::switchToSceneEditingWorkflow);
-    
+
     text2ImageAction_ = workflowMenu->addAction("Text2Image");
     text2ImageAction_->setCheckable(true);
     text2ImageAction_->setActionGroup(workflowActionGroup_);
@@ -306,12 +313,12 @@ void MainWindow::setupToolBar() {
     sceneEditingToolAction_->setChecked(true);
     sceneEditingToolAction_->setActionGroup(workflowActionGroup_);
     connect(sceneEditingToolAction_, &QAction::triggered, this, &MainWindow::switchToSceneEditingWorkflow);
-    
+
     text2ImageToolAction_ = toolbar->addAction("Text2Image");
     text2ImageToolAction_->setCheckable(true);
     text2ImageToolAction_->setActionGroup(workflowActionGroup_);
     connect(text2ImageToolAction_, &QAction::triggered, this, &MainWindow::switchToText2ImageWorkflow);
-    
+
     toolbar->addSeparator();
 
     toolbar->addAction("Select");
@@ -353,7 +360,7 @@ void MainWindow::setupDocks() {
     // 4. Node Editor (Bottom) - use shared HttpClient
     nodeDock_ = new QDockWidget("Node Graph", this);
     nodeDock_->setObjectName("NodeDock");
-    nodeDock_->setAllowedAreas(Qt::AllDockWidgetAreas);  // Allow as central widget
+    nodeDock_->setAllowedAreas(Qt::AllDockWidgetAreas);// Allow as central widget
     nodeEditor_ = new rbc::NodeEditor(httpClient_, nodeDock_);
     nodeDock_->setWidget(nodeEditor_);
     addDockWidget(Qt::BottomDockWidgetArea, nodeDock_);
@@ -390,13 +397,13 @@ void MainWindow::setupDocks() {
             this, &MainWindow::onAnimationFrameChanged);
 }
 
-QDockWidget* MainWindow::createViewportDock() {
+QDockWidget *MainWindow::createViewportDock() {
     viewportWidget_ = new rbc::ViewportWidget(&rbc::EditorEngine::instance(), this);
-    
+
     auto *dock = new QDockWidget("Viewport", this);
     dock->setObjectName("ViewportDock");
     dock->setAllowedAreas(Qt::AllDockWidgetAreas);
     dock->setWidget(viewportWidget_);
-    
+
     return dock;
 }

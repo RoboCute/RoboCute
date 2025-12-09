@@ -88,7 +88,7 @@ class Scene:
 
         # Scene metadata
         self.metadata: Dict[str, Any] = {}
-        
+
         # Animation storage
         self._animations: Dict[str, AnimationClip] = {}
 

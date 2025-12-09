@@ -4,9 +4,9 @@ GENERATE_SUB_TASKS = [
         "pyd_dir": "src/rbc_ext/_C",
         "stub_output": "src/rbc_ext/_C",
     },
-    # {
-    #     "module_name": "rbc_ext_c",
-    #     "pyd_dir": "src/rbc_ext/_C",
-    #     "stub_output": "src/rbc_ext/_C",
-    # },
+    {
+        "module_name": "rbc_ext_c",
+        "pyd_dir": "src/rbc_ext/_C",
+        "stub_output": "src/rbc_ext/_C",
+    },
 ]
