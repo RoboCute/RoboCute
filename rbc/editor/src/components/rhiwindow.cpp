@@ -127,9 +127,11 @@ void RhiWindow::init() {
         qFatal("Failed to create RHI backend");
 
     m_sc.reset(m_rhi->newSwapChain());
-    m_ds.reset(m_rhi->newRenderBuffer(QRhiRenderBuffer::DepthStencil,
-                                      QSize(),// no need to set the size here, due to UsedWithSwapChainOnly
-                                      1, QRhiRenderBuffer::UsedWithSwapChainOnly));
+    m_ds.reset(m_rhi->newRenderBuffer(
+        QRhiRenderBuffer::DepthStencil,
+        QSize(),// no need to set the size here, due to UsedWithSwapChainOnly
+        1, QRhiRenderBuffer::UsedWithSwapChainOnly));
+
     m_sc->setWindow(this);
     m_sc->setDepthStencil(m_ds.get());
     m_rp.reset(m_sc->newCompatibleRenderPassDescriptor());

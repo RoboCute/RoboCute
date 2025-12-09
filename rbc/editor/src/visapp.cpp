@@ -74,6 +74,7 @@ void VisApp::update() {
     auto time = clk.toc();
     auto delta_time = time - last_frame_time;
     last_frame_time = time;
+
     utils.tick(
         (float)delta_time,
         frame_index,

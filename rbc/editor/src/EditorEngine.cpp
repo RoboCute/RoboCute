@@ -22,11 +22,8 @@ EditorEngine::~EditorEngine() {
 
 void EditorEngine::init(int argc, char **argv) {
     if (m_isInitialized) return;
-    // Initialize LuisaCompute Context
-    // Initialize Renderer App
     luisa::string backend = "dx";
     m_graphicsApi = QRhi::D3D12;
-
     // m_renderApp = std::make_unique<DummyApp>();
     // m_renderApp = std::make_unique<NaiveApp>();
     // m_renderApp = std::make_unique<PBRApp>();
