@@ -7,9 +7,9 @@ struct EntityImpl : Entity {
     ~EntityImpl() {
         for (auto &i : _components) {
             auto obj = get_object(i.second);
-            if (obj) {
-                obj->dispose();
-            }
+            if (!obj) continue;
+            LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
+            obj->dispose();
         }
     }
     void dispose() override;

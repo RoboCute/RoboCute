@@ -22,6 +22,8 @@ int main() {
         auto world_module = PluginManager::instance().load_module("rbc_world_v2");
         auto world_plugin = world_module->invoke<world::WorldPlugin *()>("create_world_plugin");
         auto trans = world_plugin->create_object(TypeInfo::get<world::Transform>());
+        LUISA_ASSERT(trans->is_type_of(TypeInfo::get<world::Transform>()));
+        LUISA_ASSERT(trans->base_type() == world::BaseObjectType::Component);
         rbc::JsonSerializer writer;
         trans->rbc_objser(writer);
         auto json = writer.write_to();

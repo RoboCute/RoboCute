@@ -3,9 +3,9 @@
 namespace rbc::world {
 static std::atomic_uint64_t _instance_count{};
 static luisa::spin_mutex _instance_mtx;
-static luisa::unordered_map<uint64_t, BaseObject*> _instance_ids;
-BaseObject* BaseObject::get_object(InstanceID instance_id) {
-    BaseObject* ptr;
+static luisa::unordered_map<uint64_t, BaseObject *> _instance_ids;
+BaseObject *BaseObject::get_object(InstanceID instance_id) {
+    BaseObject *ptr;
     _instance_mtx.lock();
     auto iter = _instance_ids.find(instance_id._placeholder);
     ptr = (iter == _instance_ids.end()) ? nullptr : iter->second;
@@ -37,6 +37,12 @@ void BaseObjectImpl::rbc_objdeser(rbc::JsonDeSerializer &obj) {
         _guid.reset();
     }
     deserialize(obj);
+}
+
+bool BaseObjectImpl::is_type_of(TypeInfo const &type) const {
+    auto dst = type_id();
+    auto &&src = type.md5();
+    return src[0] == dst[0] && src[1] == dst[1];
 }
 
 }// namespace rbc::world

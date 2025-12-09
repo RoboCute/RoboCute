@@ -19,5 +19,8 @@ struct ComponentDerive : Component {
     [[nodiscard]] std::array<uint64_t, 2> type_id() const override {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
+    [[nodiscard]] BaseObjectType base_type() const  override{
+        return BaseObjectType::Component;
+    }
 };
 }// namespace rbc::world

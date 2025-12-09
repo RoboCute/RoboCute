@@ -20,7 +20,10 @@ struct TransformImpl : Transform {
     }
     ~TransformImpl() {
         for (auto &i : _children) {
-            // i->entity()->dispose();
+            auto obj = get_object(i);
+            if (!obj) continue;
+            LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
+            static_cast<Component *>(obj)->entity()->dispose();
         }
     }
     void dispose() override;
