@@ -19,6 +19,7 @@ enum buffer {
 	inst_buffer_heap_idx,
 	// noise
 	sobol_256d_heap_idx,
+	sobol_ranking_heap_idx,
 	sobol_scrambling_heap_idx,
 	// buffer allocator
 	buffer_allocator_heap_index,

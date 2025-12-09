@@ -269,9 +269,11 @@ void PreparePass::on_enable(
     }
     auto sobol_path = luisa::to_string(runtime_dir / "heitz_sobol.bin");
     sobol_256d = heitz_sobol_256d(sobol_path, device, cmdlist, scene.after_commit_dsp_queue());
-    sobol_scrambling = heitz_sobol_scrambling(sobol_path, device, cmdlist, scene.after_commit_dsp_queue(), HeitzSobolSPP::SPP1);
+    sobol_scrambling = heitz_sobol_scrambling(sobol_path, device, cmdlist, scene.after_commit_dsp_queue(), HeitzSobolSPP::SPP256);
+    sobol_ranking = heitz_sobol_ranking(sobol_path, device, cmdlist, scene.after_commit_dsp_queue(), HeitzSobolSPP::SPP256);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_256d_heap_idx, sobol_256d);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_scrambling_heap_idx, sobol_scrambling);
+    scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_ranking_heap_idx, sobol_ranking);
     lut_counter.wait();
     cie_xyz_cdfinv = device.create_image<float>(PixelStorage::FLOAT4, make_uint2(spectrum::cie_xyz_cdfinv_size, 1));
     cmdlist << cie_xyz_cdfinv.copy_from(cie_xyz_lut_data.data());

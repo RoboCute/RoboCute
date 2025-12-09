@@ -16,6 +16,7 @@ struct PreparePass : public Pass {
 public:
     Buffer<uint> sobol_256d;
     Buffer<uint> sobol_scrambling;
+    Buffer<uint> sobol_ranking;
 
     Volume<float> spectrum_lut_3d;
     // Volume<float> srgb_to_fourier_even;

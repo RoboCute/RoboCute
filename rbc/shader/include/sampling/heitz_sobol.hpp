@@ -33,13 +33,12 @@ inline float sample_heitz_sobol_rank_bindless(
 	uint2 pixel,
 	uint sample_index,
 	uint sample_dimension,
-	BindlessBuffer& heap,
-	uint ranking_tile_idx) {
+	BindlessBuffer& heap) {
 	pixel = pixel & 127u;
 	sample_index = sample_index & 255u;
 	auto offset = (pixel.x + pixel.y * 128) * 8 + (sample_dimension & 7);
 	sample_index = sample_index ^ heap.uniform_idx_buffer_read<uint>(
-									  ranking_tile_idx, offset);
+									  heap_indices::sobol_ranking_heap_idx, offset);
 	auto value = heap.uniform_idx_buffer_read<uint>(heap_indices::sobol_256d_heap_idx,
 													(sample_dimension & 255u) + sample_index * 256);
 	value = value ^ heap.uniform_idx_buffer_read<uint>(heap_indices::sobol_scrambling_heap_idx, offset);
@@ -56,7 +55,7 @@ struct HeitzSobol {
 		  dimension(0) {
 	}
 	float next(BindlessBuffer& heap) {
-		auto f = sampling::sample_heitz_sobol_bindless(
+		auto f = sampling::sample_heitz_sobol_rank_bindless(
 					 pixel,
 					 sample_idx,
 					 dimension,
