@@ -7,7 +7,6 @@
 #include <luisa/runtime/raster/raster_shader.h>
 #include <luisa/ast/function.h>
 #include <luisa/vstl/common.h>
-#include <luisa/vstl/functional.h>
 #include <luisa/vstl/spin_mutex.h>
 #include <luisa/core/fiber.h>
 namespace rbc {
@@ -49,7 +48,7 @@ struct is_lc_shader<RasterShader<Args...>> {
 using ShaderType = vstd::variant<ShaderBase, RasterShader<>>;
 ;
 struct RBC_RUNTIME_API ShaderManager : vstd::IOperatorNewBase {
-    using ReloadFunc = vstd::function<ShaderType(Device &device, string_view name)>;
+    using ReloadFunc = vstd::func_ptr_t<ShaderType(Device &device, string_view name, luisa::span<Type const* const> arg_types)>;
     struct ShaderVariant {
         ShaderType shader;
         vstd::vector<Type const *> arg_types;
@@ -65,9 +64,9 @@ struct RBC_RUNTIME_API ShaderManager : vstd::IOperatorNewBase {
         ShaderVariant(
             ShaderT &&shader,
             vstd::vector<Type const *> &&arg_types,
-            ReloadFunc &&reload_func = {},
+            ReloadFunc reload_func = {},
             bool support_preload = true)
-            : shader(std::forward<ShaderT>(shader)), arg_types(std::move(arg_types)), reload_func(std::move(reload_func)), _evt(luisa::fiber::event::Mode::Auto), support_preload(support_preload) {
+            : shader(std::forward<ShaderT>(shader)), arg_types(std::move(arg_types)), reload_func(reload_func), _evt(luisa::fiber::event::Mode::Auto), support_preload(support_preload) {
         }
     };
 
@@ -139,7 +138,7 @@ public:
         auto c1 = [&](string_view shader_path) -> ShaderType {
             return TT::load_shader(_device, shader_path);
         };
-        auto c2 = [](Device &device, string_view name) -> ShaderType {
+        auto c2 = [](Device &device, string_view name, luisa::span<Type const* const> arg_types) -> ShaderType {
             return TT::load_shader(device, name);
         };
         shader_ptr = static_cast<T>(
@@ -161,31 +160,7 @@ public:
             counter.done();
         });
     }
-    ShaderBase const *load_typeless(luisa::filesystem::path const &shader_path, luisa::span<Type const *const> types, bool support_preload = true) {
-        auto c1 = [&](string_view shader_path) -> ShaderType {
-            auto uniform_size = ShaderDispatchCmdEncoder::compute_uniform_size(types);
-            return ShaderBase{
-                _device.impl(),
-                _device.impl()->load_shader(shader_path, types),
-                uniform_size};
-        };
-        luisa::vector<Type const *> types_vec;
-        vstd::push_back_all(types_vec, types);
-        auto c2 = [types_vec = std::move(types_vec)](Device &device, string_view name) -> ShaderType {
-            auto uniform_size = ShaderDispatchCmdEncoder::compute_uniform_size(types_vec);
-            return ShaderBase{
-                device.impl(),
-                device.impl()->load_shader(name, types_vec),
-                uniform_size};
-        };
-
-        return _load_shader(
-                   shader_path,
-                   types,
-                   c1, c2,
-                   support_preload)
-            ->template try_get<ShaderBase>();
-    }
+    ShaderBase const *load_typeless(luisa::filesystem::path const &shader_path, luisa::span<Type const *const> types, bool support_preload = true);
     template<typename T>
         requires(std::is_pointer_v<T> &&
                  is_lc_shader<std::remove_cvref_t<std::remove_pointer_t<T>>>::value)
@@ -196,7 +171,7 @@ public:
             auto shader = TT::load_shader(_device, shader_path);
             return reinterpret_cast<RasterShader<> &&>(shader);
         };
-        auto c2 = [](Device &device, string_view name) -> ShaderType {
+        auto c2 = [](Device &device, string_view name, luisa::span<Type const* const> arg_types) -> ShaderType {
             auto shader = TT::load_shader(device, name);
             return reinterpret_cast<RasterShader<> &&>(shader);
         };

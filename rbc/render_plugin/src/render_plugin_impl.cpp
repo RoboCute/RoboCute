@@ -231,7 +231,8 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
         delete oidn_ext;
     }
 };
-LUISA_EXPORT_API RenderPlugin* create_render_plugin() {
-    return new RenderPluginImpl();
+static RenderPluginImpl render_plugin_singleton{};
+LUISA_EXPORT_API RenderPlugin *get_render_plugin() {
+    return &render_plugin_singleton;
 }
 }// namespace rbc

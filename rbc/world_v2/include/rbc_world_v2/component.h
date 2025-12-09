@@ -2,10 +2,11 @@
 #include <rbc_world_v2/base_object.h>
 namespace rbc::world {
 struct Entity;
+struct EntityImpl;
 struct Component : BaseObjectImpl {
-    friend struct Entity;
+    friend struct EntityImpl;
 protected:
-    Entity *_entity;
+    Entity *_entity{};
 public:
     [[nodiscard]] Entity *entity() const {
         return _entity;

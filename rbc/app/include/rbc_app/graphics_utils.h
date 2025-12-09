@@ -37,7 +37,7 @@ private:
     // render
     luisa::shared_ptr<DynamicModule> _render_module;
     RenderPlugin *_render_plugin{};
-    StateMap _render_settings;
+    vstd::optional<StateMap> _render_settings;
     RenderPlugin::PipeCtxStub *_display_pipe_ctx{};
     vstd::optional<rbc::Lights> _lights;
     bool _require_reset : 1 {false};
@@ -53,8 +53,8 @@ public:
     auto &present_stream() const { return _present_stream; }
     auto &window() const { return _window; }
     auto &window() { return _window; }
-    auto &render_settings() const { return _render_settings; }
-    auto &render_settings() { return _render_settings; }
+    auto &render_settings() const { return *_render_settings; }
+    auto &render_settings() { return *_render_settings; }
     auto default_pipe_ctx() const { return _display_pipe_ctx; }
     auto &dst_image() const { return _dst_image; }
     auto &backend_name() const { return _backend_name; }

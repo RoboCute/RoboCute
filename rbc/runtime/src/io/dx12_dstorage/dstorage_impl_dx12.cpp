@@ -227,7 +227,7 @@ public:
     {
         delete this;
     }
-    bool timeline_signaled(uint64_t timeline) override {
+    bool timeline_signaled(uint64_t timeline) const override {
         return true;
     }
     DStorageStreamDX12Impl(

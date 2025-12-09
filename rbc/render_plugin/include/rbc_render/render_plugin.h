@@ -37,6 +37,7 @@ struct RenderPlugin : Plugin {
         luisa::compute::Stream &stream,
         uint2 render_resolution) = 0;
     virtual void destroy_denoise_task(luisa::compute::Stream &stream) = 0;
-    virtual ~RenderPlugin() = default;
+protected:
+    ~RenderPlugin() = default;
 };
 }// namespace rbc

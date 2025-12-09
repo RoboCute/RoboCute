@@ -92,7 +92,7 @@ public:
     {
         delete this;
     }
-    bool timeline_signaled(uint64_t timeline) override {
+    bool timeline_signaled(uint64_t timeline) const override {
         return signaled_fence_idx.load() >= timeline;
     }
     DStorageStreamFallbackImpl(

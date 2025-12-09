@@ -30,10 +30,10 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
         _render_plugin->destroy_pipeline_context(_display_pipe_ctx);
     if (after_sync)
         after_sync();
-    delete _render_plugin;
-    _render_plugin = nullptr;
     if (_lights)
         _lights.destroy();
+    _render_settings.destroy();
+    _render_module.reset();
     AssetsManager::destroy_instance();
     if (_sm) {
         _sm.destroy();
@@ -100,8 +100,9 @@ void GraphicsUtils::init_render() {
         65536);
     _render_module = PluginManager::instance().load_module("rbc_render_plugin");
     LUISA_ASSERT(_render_module, "Render module not found.");
-    _render_plugin = _render_module->invoke<RenderPlugin *()>("create_render_plugin");
-    _display_pipe_ctx = _render_plugin->create_pipeline_context(_render_settings);
+    _render_plugin = _render_module->invoke<RenderPlugin *()>("get_render_plugin");
+    _render_settings.create();
+    _display_pipe_ctx = _render_plugin->create_pipeline_context(*_render_settings);
     LUISA_ASSERT(_render_plugin->initialize_pipeline({}));
     _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, false);
     _sm->prepare_frame();
@@ -165,8 +166,8 @@ void GraphicsUtils::tick(
     if (!_display_pipe_ctx)
         return;
 
-    auto &frame_settings = _render_settings.read_mut<rbc::FrameSettings>();
-    auto &pipe_settings = _render_settings.read_mut<rbc::PTPipelineSettings>();
+    auto &frame_settings = _render_settings->read_mut<rbc::FrameSettings>();
+    auto &pipe_settings = _render_settings->read_mut<rbc::PTPipelineSettings>();
     frame_settings.render_resolution = resolution;
     frame_settings.display_resolution = _dst_image.size();
     frame_settings.dst_img = &_dst_image;
@@ -244,9 +245,7 @@ void GraphicsUtils::tick(
         auto io_fence = fence.exchange(0);
         // support direct-storage
         if (io_fence > 0) {
-            while (!service->timeline_signaled(io_fence)) {
-                std::this_thread::yield();
-            }
+            
             main_stream << service->wait(io_fence);
         }
     };

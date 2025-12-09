@@ -2,10 +2,12 @@
 #include <rbc_config.h>
 #include <rbc_core/type_info.h>
 #include <luisa/vstl/common.h>
+#include <luisa/core/stl/hash.h>
 namespace rbc::world {
 enum struct BaseObjectType {
     Component,
     Entity,
+    Resource,
     Custom
 };
 struct InstanceID {
@@ -20,10 +22,11 @@ protected:
     virtual ~BaseObject();
     static BaseObject *get_object(InstanceID instance_id);
 public:
-    InstanceID instance_id() const {
+    [[nodiscard]] InstanceID instance_id() const {
         return InstanceID{_instance_id};
     }
-    virtual BaseObjectType base_type() const = 0;
+    [[nodiscard]] auto guid() const { return _guid; }
+    [[nodiscard]] virtual BaseObjectType base_type() const = 0;
     virtual void serialize(rbc::JsonSerializer &obj) const {}
     virtual void deserialize(rbc::JsonDeSerializer &obj) {}
     virtual void rbc_objser(rbc::JsonSerializer &obj) const = 0;
@@ -103,4 +106,23 @@ struct BaseObjectDerive : BaseObjectImpl {
     }
 };
 }// namespace rbc::world
+namespace luisa {
+template<>
+struct hash<std::array<uint64_t, 2>> {
+    using T = std::array<uint64_t, 2>;
+    using is_avalanching = void;
+    [[nodiscard]] uint64_t operator()(T const &value, uint64_t seed = hash64_default_seed) const noexcept {
+        return luisa::hash64(value.data(), value.size() * sizeof(uint64_t), seed);
+    }
+};
+}// namespace luisa
+namespace std {
+template<>
+struct equal_to<std::array<uint64_t, 2>> {
+    using T = std::array<uint64_t, 2>;
+    [[nodiscard]] bool operator()(T const &a, T const &b) const noexcept {
+        return a[0] == b[0] && a[1] == b[1];
+    }
+};
+}// namespace std
 RBC_RTTI(rbc::world::BaseObject);

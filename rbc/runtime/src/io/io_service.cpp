@@ -9,6 +9,9 @@ namespace rbc
 {
 TimelineEvent::Wait IOService::wait(uint64_t timeline) const
 {
+    while (!timeline_signaled(timeline)) {
+        std::this_thread::yield();
+    }
     return { _evt.handle(), timeline };
 }
 void IOService::synchronize(uint64_t timeline) const
@@ -135,7 +138,7 @@ void IOService::init(
     }
     ioservice_detail::_thds = vstd::make_unique<ioservice_detail::CallbackThread>();
 }
-bool IOService::timeline_signaled(uint64_t timeline) {
+bool IOService::timeline_signaled(uint64_t timeline) const {
     return dstorage_stream->timeline_signaled( timeline);
 }
 void IOService::_join()

@@ -34,6 +34,11 @@ struct DecomposedTransform {
     Quaternion quaternion;
     float3 translation;
 };
+struct DecomposedTransformDouble {
+    double3 scaling;
+    Quaternion quaternion;
+    double3 translation;
+};
 
 struct DualQuaternion {
     float4 rotation_quaternion;
@@ -41,7 +46,9 @@ struct DualQuaternion {
 };
 
 [[nodiscard]] RBC_CORE_API DecomposedTransform decompose(float4x4 m) noexcept;
+[[nodiscard]] RBC_CORE_API DecomposedTransformDouble decompose(double4x4 const &m) noexcept;
 [[nodiscard]] RBC_CORE_API Quaternion quaternion(float3x3 m) noexcept;
+[[nodiscard]] RBC_CORE_API Quaternion quaternion(double3x3 const &m) noexcept;
 [[nodiscard]] RBC_CORE_API float4x4 rotation(float3 pos, Quaternion rot, float3 local_scale) noexcept;
 [[nodiscard]] RBC_CORE_API double4x4 rotation(double3 pos, Quaternion rot, double3 local_scale) noexcept;
 [[nodiscard]] RBC_CORE_API float dot(Quaternion q1, Quaternion q2) noexcept;

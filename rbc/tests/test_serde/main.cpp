@@ -20,7 +20,7 @@ int main() {
     PluginManager::init();
     {
         auto world_module = PluginManager::instance().load_module("rbc_world_v2");
-        auto world_plugin = world_module->invoke<world::WorldPlugin *()>("create_world_plugin");
+        auto world_plugin = world_module->invoke<world::WorldPlugin *()>("get_world_plugin");
         auto trans = world_plugin->create_object(TypeInfo::get<world::Transform>());
         LUISA_ASSERT(trans->is_type_of(TypeInfo::get<world::Transform>()));
         LUISA_ASSERT(trans->base_type() == world::BaseObjectType::Component);
@@ -32,7 +32,6 @@ int main() {
             luisa::string_view{
                 (char const *)json.data(),
                 json.size()});
-        delete world_plugin;
     }
     rbc::JsonSerializer writer;
     StateMap state_map;

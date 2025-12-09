@@ -42,6 +42,7 @@ struct TypeInfo {
 private:
     luisa::string_view _name;
     uint64_t _md5[2];
+public:
     TypeInfo(luisa::string_view name, uint64_t d0, uint64_t d1)
         : _name(name) {
         _md5[0] = d0;
@@ -51,7 +52,6 @@ private:
         : _name(name) {
         std::memcpy(_md5, ptr, 16);
     }
-public:
     [[nodiscard]] std::array<uint64_t, 2> md5() const { return {_md5[0], _md5[1]}; }
     [[nodiscard]] RBC_CORE_API luisa::string md5_to_string(bool upper = false) const;
     [[nodiscard]] RBC_CORE_API luisa::string md5_to_base64() const;

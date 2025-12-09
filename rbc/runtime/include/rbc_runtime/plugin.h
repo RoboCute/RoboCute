@@ -3,6 +3,7 @@
 
 namespace rbc {
 struct Plugin : vstd::IOperatorNewBase {
-    virtual ~Plugin() = default;
+protected:
+    ~Plugin() = default;
 };
 }// namespace rbc

@@ -297,11 +297,34 @@ struct ReloadLogic {
         if (value->reload_func == nullptr)
             return;
         if (!parent_path)
-            value->shader = value->reload_func(device, *key);
+            value->shader = value->reload_func(device, *key, value->arg_types);
         else
-            value->shader = value->reload_func(device, luisa::to_string(*parent_path / *key));
+            value->shader = value->reload_func(device, luisa::to_string(*parent_path / *key), value->arg_types);
     }
 };
+ShaderBase const *ShaderManager::load_typeless(luisa::filesystem::path const &shader_path, luisa::span<Type const *const> types, bool support_preload) {
+    auto c1 = [&](string_view shader_path) -> ShaderType {
+        auto uniform_size = ShaderDispatchCmdEncoder::compute_uniform_size(types);
+        return ShaderBase{
+            _device.impl(),
+            _device.impl()->load_shader(shader_path, types),
+            uniform_size};
+    };
+    auto c2 = [](Device &device, string_view name, luisa::span<Type const *const> arg_types) -> ShaderType {
+        auto uniform_size = ShaderDispatchCmdEncoder::compute_uniform_size(arg_types);
+        return ShaderBase{
+            device.impl(),
+            device.impl()->load_shader(name, arg_types),
+            uniform_size};
+    };
+
+    return _load_shader(
+               shader_path,
+               types,
+               c1, c2,
+               support_preload)
+        ->template try_get<ShaderBase>();
+}
 fiber::counter ShaderManager::reload_shaders(
     Device &device) {
     std::lock_guard lck{this->_mtx};
