@@ -1,19 +1,22 @@
 {
-    "C_Cpp.codeAnalysis.runAutomatically": false,
-    "C_Cpp.intelliSenseEngine": "disabled",
-    "C_Cpp.formatting": "disabled",
-    "C_Cpp.autoAddFileAssociations": false,
-    "C_Cpp.autocompleteAddParentheses": false,
-    "C_Cpp.autocomplete": "disabled",
-    "C_Cpp.errorSquiggles": "disabled",
-    "clangd.arguments": [
-      "--compile-commands-dir=.vscode",
-      "--log=error",
-      "--completion-style=bundled",
-      "--background-index", 
-      "--background-index-priority=normal",
-      "--header-insertion=never",
-      "--pch-storage=memory"
-    ],
-    "files.eol":"\n"
-  }
+  "C_Cpp.codeAnalysis.runAutomatically": false,
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "C_Cpp.formatting": "disabled",
+  "C_Cpp.autoAddFileAssociations": false,
+  "C_Cpp.autocompleteAddParentheses": false,
+  "C_Cpp.autocomplete": "disabled",
+  "C_Cpp.errorSquiggles": "disabled",
+  "clangd.arguments": [
+    "--compile-commands-dir=.vscode",
+    "--log=error",
+    "--completion-style=bundled",
+    "--background-index",
+    "--background-index-priority=normal",
+    "--header-insertion=never",
+    "--pch-storage=memory"
+  ],
+  "files.eol": "\n",
+  "python.analysis.extraPaths": [
+    "packages/pyuipc/src/"
+  ]
+}
