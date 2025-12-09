@@ -16,7 +16,6 @@ struct DenoisePack {
 };
 struct RenderPlugin : Plugin {
     struct PipeCtxStub {};
-    virtual ~RenderPlugin() = default;
     virtual PipeCtxStub *create_pipeline_context(StateMap &render_settings_map) = 0;
     virtual void destroy_pipeline_context(PipeCtxStub *ctx) = 0;
     virtual Camera &get_camera(PipeCtxStub *pipe_ctx) = 0;
@@ -38,5 +37,7 @@ struct RenderPlugin : Plugin {
         luisa::compute::Stream &stream,
         uint2 render_resolution) = 0;
     virtual void destroy_denoise_task(luisa::compute::Stream &stream) = 0;
+protected:
+    ~RenderPlugin() = default;
 };
 }// namespace rbc

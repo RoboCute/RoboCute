@@ -5,7 +5,7 @@
 #include <luisa/gui/window.h>
 #include <luisa/runtime/swapchain.h>
 #include <luisa/core/binary_io.h>
-#include <rbc_runtime/render_plugin.h>
+#include <rbc_render/render_plugin.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
@@ -20,6 +20,7 @@
 #include <rbc_graphics/materials.h>
 #include <rbc_render/click_manager.h>
 #include <rbc_app/camera_controller.h>
+#include <rbc_runtime/plugin_manager.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -35,6 +36,7 @@ int main(int argc, char *argv[]) {
         backend = argv[1];
     }
     GraphicsUtils utils;
+    PluginManager::init();
     utils.init_device(
         argv[0],
         backend.c_str());

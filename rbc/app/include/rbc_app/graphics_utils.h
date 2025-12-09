@@ -9,7 +9,7 @@
 #include <luisa/gui/window.h>
 #include <luisa/vstl/functional.h>
 #include <luisa/runtime/swapchain.h>
-#include <rbc_runtime/render_plugin.h>
+#include <rbc_render/render_plugin.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 namespace rbc {

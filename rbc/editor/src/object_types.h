@@ -11,4 +11,4 @@ struct ObjectStub : RCBase {
     RC<DeviceMesh> mesh_ref;
     uint tlas_idx;
 };
-}// namespace stub_obj
+}// namespace rbc

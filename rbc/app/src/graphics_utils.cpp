@@ -1,6 +1,6 @@
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
-#include <rbc_runtime/render_plugin.h>
+#include <rbc_render/render_plugin.h>
 #include <luisa/runtime/rtx/accel.h>
 #include <luisa/runtime/rtx/mesh.h>
 #include <luisa/runtime/rtx/triangle.h>
@@ -100,7 +100,7 @@ void GraphicsUtils::init_render() {
         65536);
     _render_module = PluginManager::instance().load_module("rbc_render_plugin");
     LUISA_ASSERT(_render_module, "Render module not found.");
-    _render_plugin = RBC_LOAD_PLUGIN(*_render_module, RenderPlugin);
+    _render_plugin = _render_module->invoke<RenderPlugin *()>("create_render_plugin");
     _display_pipe_ctx = _render_plugin->create_pipeline_context(_render_settings);
     LUISA_ASSERT(_render_plugin->initialize_pipeline({}));
     _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, false);
@@ -202,13 +202,13 @@ void GraphicsUtils::tick(
         case TickStage::RasterPreview:
             pipe_settings.use_raster = true;
             pipe_settings.use_raytracing = false;
-            pipe_settings.use_editing  = true;
+            pipe_settings.use_editing = true;
             pipe_settings.use_post_filter = false;
             break;
         case TickStage::PathTracingPreview:
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
-            pipe_settings.use_editing  = true;
+            pipe_settings.use_editing = true;
             pipe_settings.use_post_filter = true;
             break;
         case TickStage::OffineCapturing:
@@ -220,7 +220,7 @@ void GraphicsUtils::tick(
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
             pipe_settings.use_post_filter = true;
-            pipe_settings.use_editing  = false;
+            pipe_settings.use_editing = false;
             break;
         case TickStage::PresentOfflineResult:
             if (_denoiser_inited) {
@@ -229,7 +229,7 @@ void GraphicsUtils::tick(
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = false;
             pipe_settings.use_post_filter = true;
-            pipe_settings.use_editing  = false;
+            pipe_settings.use_editing = false;
             break;
     }
     auto &cmdlist = _render_device.lc_main_cmd_list();
@@ -336,7 +336,7 @@ void GraphicsUtils::create_mesh(
     auto mesh_size = DeviceMesh::get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
     auto &host_data = ptr->host_data_ref();
     host_data.push_back_uninitialized(mesh_size);
-    auto& render_device = RenderDevice::instance();
+    auto &render_device = RenderDevice::instance();
     ptr->create_mesh(
         render_device.lc_main_cmd_list(),
         vertex_count,

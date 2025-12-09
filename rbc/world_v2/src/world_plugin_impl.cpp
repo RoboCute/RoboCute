@@ -1,0 +1,67 @@
+#include <rbc_world_v2/world_plugin.h>
+#include "type_register.h"
+namespace rbc::world {
+namespace detail {
+struct GuidHashEqual {
+    using T = std::array<uint64_t, 2>;
+    size_t operator()(T const &a, size_t seed = luisa::hash64_default_seed) const {
+        return luisa::hash64(a.data(), a.size() * sizeof(uint64_t), seed);
+    }
+    bool operator()(T const &a, T const &b) const {
+        return a[0] == b[0] && a[1] == b[1];
+    }
+};
+}// namespace detail
+
+struct TypeRegisterSingleton : vstd::IOperatorNewBase {
+    luisa::unordered_map<std::array<uint64_t, 2>, TypeRegisterBase *, detail::GuidHashEqual> _create_funcs;
+};
+static TypeRegisterSingleton *_type_reg_singleton{};
+static TypeRegisterBase *_type_register_header{};
+void type_regist_init_mark(TypeRegisterBase *type_register) {
+    type_register->p_next = _type_register_header;
+    _type_register_header = type_register;
+}
+
+struct WorldPluginImpl : WorldPlugin {
+    WorldPluginImpl() {
+        LUISA_DEBUG_ASSERT(!_type_reg_singleton, "World plugin can only be load once");
+        _type_reg_singleton = new TypeRegisterSingleton{};
+        for (auto p = _type_register_header; p; p = p->p_next) {
+            _type_reg_singleton->_create_funcs.try_emplace(p->type_id, p);
+        }
+    }
+    ~WorldPluginImpl() {
+        delete _type_reg_singleton;
+        _type_reg_singleton = nullptr;
+    }
+    void dispose() override {
+        delete this;
+    }
+    BaseObject *create_object(vstd::Guid const &guid) {
+        auto iter = _type_reg_singleton->_create_funcs.find(
+            reinterpret_cast<std::array<uint64_t, 2> const &>(guid));
+        if (iter == _type_reg_singleton->_create_funcs.end()) {
+            return nullptr;
+        }
+        return iter->second->create_func();
+    }
+    BaseObject *create_object(rbc::TypeInfo const &type_info) override {
+        auto md5 = type_info.md5();
+        return create_object(reinterpret_cast<vstd::Guid const &>(md5));
+    }
+    BaseObject *deserialize_object(rbc::JsonDeSerializer &obj) override {
+        vstd::Guid type_id;
+        if (!obj._load(type_id, "__type_id__")) [[unlikely]]
+            return nullptr;
+        auto ptr = create_object(type_id);
+        if (!ptr) [[unlikely]]
+            return nullptr;
+        ptr->rbc_objdeser(obj);
+        return ptr;
+    }
+};
+LUISA_EXPORT_API WorldPlugin *create_world_plugin() {
+    return new WorldPluginImpl{};
+}
+}// namespace rbc::world

@@ -5,7 +5,7 @@
 #include <luisa/gui/window.h>
 #include <luisa/runtime/swapchain.h>
 #include <luisa/core/binary_io.h>
-#include <rbc_runtime/render_plugin.h>
+#include <rbc_render/render_plugin.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 #include <rbc_render/generated/pipeline_settings.hpp>

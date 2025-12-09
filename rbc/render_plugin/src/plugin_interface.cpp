@@ -1,4 +1,4 @@
-#include <rbc_runtime/render_plugin.h>
+#include <rbc_render/render_plugin.h>
 #include <rbc_render/pipeline_context.h>
 #include <rbc_render/pt_pipeline.h>
 #include <rbc_runtime/plugin_manager.h>
@@ -232,7 +232,7 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
         delete oidn_ext;
     }
 };
-RBC_PLUGIN_ENTRY(RenderPlugin) {
+LUISA_EXPORT_API RenderPlugin* create_render_plugin() {
     return new RenderPluginImpl();
 }
 }// namespace rbc
