@@ -1,12 +1,6 @@
 from rbc_meta.utils_next.reflect import reflect
 from rbc_meta.utils_next.builtin import DataBuffer
-from rbc_meta.utils_next.builtin import (
-    uint,
-    uint2,
-    ulong,
-    float3,
-    float4x4,
-)
+from rbc_meta.utils_next.builtin import uint, uint2, ulong, float3, float4x4, VoidPtr
 from rbc_meta.types.resource_enums import LCPixelStorage
 
 
@@ -14,7 +8,12 @@ from rbc_meta.types.resource_enums import LCPixelStorage
 class ExternalType:
     """Helper class for external C++ types"""
 
-    def __init__(self, cpp_type_name: str, is_trivial_type: bool = False, py_type_name: str = None):
+    def __init__(
+        self,
+        cpp_type_name: str,
+        is_trivial_type: bool = False,
+        py_type_name: str = None,
+    ):
         self._cpp_type_name = cpp_type_name
         if py_type_name:
             self._py_type_name = py_type_name
@@ -22,19 +21,20 @@ class ExternalType:
             self._py_type_name = cpp_type_name
         self._reflected_ = True
         self._is_trivial_type = is_trivial_type
+
     def cpp_type_name(self, py_interface: bool = False, is_view: bool = True):
         if py_interface:
             name = self._py_type_name
         else:
             name = self._cpp_type_name
         if not self._is_trivial_type and is_view:
-            name += ' const&'
+            name += " const&"
         return name
 
 
-# Define external types
-VoidPtr = ExternalType("void*", True)
-MaterialsVector = ExternalType("luisa::vector<rbc::RC<rbc::RCBase>>", False, "Vec<rbc::RC<rbc::RCBase>>")
+MaterialsVector = ExternalType(
+    "luisa::vector<rbc::RC<rbc::RCBase>>", False, "Vec<rbc::RC<rbc::RCBase>>"
+)
 
 
 @reflect(
@@ -47,18 +47,14 @@ class RBCContext:
     # frame
     def init_device(
         self, rhi_backend: str, program_path: str, shader_path: str
-    ) -> None:
-        ...
+    ) -> None: ...
 
     # render
-    def init_render(self) -> None:
-        ...
+    def init_render(self) -> None: ...
 
-    def load_skybox(self, path: str, size: uint2) -> None:
-        ...
+    def load_skybox(self, path: str, size: uint2) -> None: ...
 
-    def create_window(self, name: str, size: uint2, resizable: bool) -> None:
-        ...
+    def create_window(self, name: str, size: uint2, resizable: bool) -> None: ...
 
     # mesh
     def create_mesh(
@@ -69,8 +65,7 @@ class RBCContext:
         uv_count: uint,
         triangle_count: uint,
         offsets_uint32: DataBuffer,
-    ) -> VoidPtr:
-        ...
+    ) -> VoidPtr: ...
 
     def load_mesh(
         self,
@@ -82,20 +77,16 @@ class RBCContext:
         uv_count: uint,
         triangle_count: uint,
         offsets_uint32: DataBuffer,
-    ) -> VoidPtr:
-        ...
+    ) -> VoidPtr: ...
 
-    def get_mesh_data(self, handle: VoidPtr) -> DataBuffer:
-        ...
+    def get_mesh_data(self, handle: VoidPtr) -> DataBuffer: ...
 
-    def update_mesh(self, handle: VoidPtr, only_vertex: bool) -> None:
-        ...
+    def update_mesh(self, handle: VoidPtr, only_vertex: bool) -> None: ...
 
     # light
     def add_area_light(
         self, matrix: float4x4, luminance: float3, visible: bool
-    ) -> VoidPtr:
-        ...
+    ) -> VoidPtr: ...
 
     def add_disk_light(
         self,
@@ -104,13 +95,11 @@ class RBCContext:
         luminance: float3,
         forward_dir: float3,
         visible: bool,
-    ) -> VoidPtr:
-        ...
+    ) -> VoidPtr: ...
 
     def add_point_light(
         self, center: float3, radius: float, luminance: float3, visible: bool
-    ) -> VoidPtr:
-        ...
+    ) -> VoidPtr: ...
 
     def add_spot_light(
         self,
@@ -122,13 +111,11 @@ class RBCContext:
         small_angle_radians: float,
         angle_atten_pow: float,
         visible: bool,
-    ) -> VoidPtr:
-        ...
+    ) -> VoidPtr: ...
 
     def update_area_light(
         self, light: VoidPtr, matrix: float4x4, luminance: float3, visible: bool
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def update_disk_light(
         self,
@@ -138,13 +125,16 @@ class RBCContext:
         luminance: float3,
         forward_dir: float3,
         visible: bool,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def update_point_light(
-        self, light: VoidPtr, center: float3, radius: float, luminance: float3, visible: bool
-    ) -> None:
-        ...
+        self,
+        light: VoidPtr,
+        center: float3,
+        radius: float,
+        luminance: float3,
+        visible: bool,
+    ) -> None: ...
 
     def update_spot_light(
         self,
@@ -157,8 +147,7 @@ class RBCContext:
         small_angle_radians: float,
         angle_atten_pow: float,
         visible: bool,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     # texture
     def create_texture(
@@ -166,14 +155,11 @@ class RBCContext:
         storage: LCPixelStorage,
         size: uint2,
         mip_level: uint,
-    ) -> VoidPtr:
-        ...
+    ) -> VoidPtr: ...
 
-    def get_texture_data(self, handle: VoidPtr) -> DataBuffer:
-        ...
+    def get_texture_data(self, handle: VoidPtr) -> DataBuffer: ...
 
-    def update_texture(self, handle: VoidPtr) -> None:
-        ...
+    def update_texture(self, handle: VoidPtr) -> None: ...
 
     def load_texture(
         self,
@@ -183,30 +169,23 @@ class RBCContext:
         size: uint2,
         mip_level: uint,
         is_virtual_texture: bool,
-    ) -> VoidPtr:
-        ...
+    ) -> VoidPtr: ...
 
-    def texture_heap_idx(self, ptr: VoidPtr) -> uint:
-        ...
+    def texture_heap_idx(self, ptr: VoidPtr) -> uint: ...
 
     # material
-    def create_pbr_material(self) -> VoidPtr:
-        ...
+    def create_pbr_material(self) -> VoidPtr: ...
 
-    def update_material(self, mat_ptr: VoidPtr, json: str) -> None:
-        ...
+    def update_material(self, mat_ptr: VoidPtr, json: str) -> None: ...
 
-    def get_material_json(self, mat: VoidPtr) -> str:
-        ...
+    def get_material_json(self, mat: VoidPtr) -> str: ...
 
     # object
     def create_object(
         self, matrix: float4x4, mesh: VoidPtr, materials: MaterialsVector
-    ) -> VoidPtr:
-        ...
+    ) -> VoidPtr: ...
 
-    def update_object_pos(self, object_ptr: VoidPtr, matrix: float4x4) -> None:
-        ...
+    def update_object_pos(self, object_ptr: VoidPtr, matrix: float4x4) -> None: ...
 
     def update_object(
         self,
@@ -214,28 +193,20 @@ class RBCContext:
         matrix: float4x4,
         mesh: VoidPtr,
         materials: MaterialsVector,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     # view
-    def reset_view(self, resolution: uint2) -> None:
-        ...
+    def reset_view(self, resolution: uint2) -> None: ...
 
-    def reset_frame_index(self) -> None:
-        ...
+    def reset_frame_index(self) -> None: ...
 
     def set_view_camera(
         self, pos: float3, roll: float, pitch: float, yaw: float
-    ) -> None:
-        ...
+    ) -> None: ...
 
-    def disable_view(self) -> None:
-        ...
+    def disable_view(self) -> None: ...
 
     # tick
-    def tick(self) -> None:
-        ...
+    def tick(self) -> None: ...
 
-    def should_close(self) -> bool:
-        ...
-
+    def should_close(self) -> bool: ...

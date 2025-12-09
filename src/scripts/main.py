@@ -438,6 +438,7 @@ def generate():
 
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
+
     ut.codegen_to(cpp_path)(
         pybind_codegen, pyd_name, ["backend_interface", "runtime"], include
     )  # TODO: 对pybind特殊处理，指定所有导出的module_filter，不太优雅
@@ -451,14 +452,20 @@ def generate():
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules)
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules)
 
+    include = "#include <rbc_core/rc.h>"
     target_modules = ["resource_loader"]
     header_path = Path(
         "rbc/world/include/rbc_world/generated/resource_loader.hpp"
     ).resolve()
-
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
 
     # rbc_ext_c
+    pyd_name = "rbc_ext_c"
+    pybind_cpp_path = Path("rbc/ext_c/generated/resource_loader.cpp").resolve()
+    includes = "#include <rbc_world/generated/resource_type.hpp>\n#include <rbc_world/generated/resource_loader.hpp>"
+    ut.codegen_to(pybind_cpp_path)(
+        pybind_codegen, pyd_name, ["resource_loader", "resource_type"], includes
+    )
 
     # processes = []
     # for module_name, function_name, *args in GENERATION_TASKS:

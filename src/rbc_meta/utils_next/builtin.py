@@ -58,7 +58,8 @@ class GUID:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "GUID"
-    
+
+
 class DataBuffer:
     __slot__ = {}
     _reflected_ = True
@@ -118,6 +119,16 @@ class uint4:
 class string:
     _reflected_ = True
     _cpp_type_name = "luisa::string"
+
+
+# ===================================================
+# ================== CONTAINERS =====================
+# ===================================================
+
+
+class VoidPtr:
+    _reflected_ = True
+    _cpp_type_name = "void*"
 
 
 T = TypeVar("T")

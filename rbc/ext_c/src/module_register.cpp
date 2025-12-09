@@ -1,4 +1,4 @@
-#include "module_register.h"
+#include "builtin/module_register.h"
 #include <luisa/core/stl/unordered_map.h>
 #include <luisa/core/stl/string.h>
 ModuleRegister *ModuleRegister::header{};
