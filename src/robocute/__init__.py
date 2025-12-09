@@ -1,6 +1,6 @@
 from robocute.scene import Scene, TransformComponent, RenderComponent, Entity
 from robocute.animation import AnimationKeyframe, AnimationSequence, AnimationClip
-from robocute.scene_context import SceneContext
+from robocute.context import SceneContext
 from robocute.api import set_scene
 from robocute.resource import (
     ResourceManager,

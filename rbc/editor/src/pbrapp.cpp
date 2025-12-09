@@ -8,6 +8,7 @@ using namespace luisa;
 using namespace luisa::compute;
 
 namespace rbc {
+
 void PBRApp::init(
     const char *program_path, const char *backend_name) {
     luisa::string_view backend = backend_name;

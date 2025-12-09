@@ -2,6 +2,30 @@
 
 这里是方便整个RBC代码开发的基础设施介绍
 
+- doc: 文档
+- custom_nodes
+- packages
+- rbc
+  - app
+  - core
+  - editor
+  - ext_c
+  - ipc
+  - oidn_plugin
+  - render_plugin
+  - runtime
+  - samples
+  - shader
+  - tests
+  - world
+  - world_v2
+- samples
+- src
+- test
+- thirdparty
+- xmake
+
+
 ## py-first标准工作流
 
 Robocute采用python-first的工作流，只在高性能，底层硬件封装和多线程层使用cpp进行加速，所以整体的开发流程也围绕python搭建。整体管理采用`uv`作为包管理工具，任何新增的python库采用`uv add <library>`添加，在新的工作区第一步采用`uv sync`同步基础的工作区组件

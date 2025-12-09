@@ -455,7 +455,10 @@ def generate():
     header_path = Path(
         "rbc/world/include/rbc_world/generated/resource_loader.hpp"
     ).resolve()
+
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
+
+    # rbc_ext_c
 
     # processes = []
     # for module_name, function_name, *args in GENERATION_TASKS:

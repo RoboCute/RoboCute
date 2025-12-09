@@ -5,8 +5,7 @@ Manages communication between Python Server and C++ Editor,
 including resource synchronization and command handling.
 """
 
-from typing import Optional, Dict, List, Any, Callable
-import json
+from typing import Optional, Dict, List, Any
 import threading
 import queue
 import time
@@ -14,11 +13,8 @@ from dataclasses import dataclass
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
-
-try:
-    from rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
-except ImportError:
-    from src.rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
+from rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
+from .scene import Scene
 
 
 @dataclass
@@ -73,7 +69,7 @@ class EditorService:
     """
 
     def __init__(
-        self, scene: "Scene", resource_manager: Optional[ResourceManager] = None
+        self, scene: Scene, resource_manager: Optional[ResourceManager] = None
     ):
         """
         Initialize EditorService
@@ -116,8 +112,6 @@ class EditorService:
             """Get current scene state"""
             try:
                 scene_data = self.scene._save_to_dict()
-                # Debug: print scene data
-                import json as json_lib
 
                 # print(f"[EditorService] Scene state: {json_lib.dumps(scene_data, indent=2)}")
                 return {"success": True, "scene": scene_data}
@@ -332,8 +326,6 @@ class EditorService:
 
     def push_simulation_state(self):
         """Push current simulation state (called every frame)"""
-        # TODO: Implement incremental state updates
-        # For now, just send entity transforms
 
         entities_state = []
         for entity in self.scene.get_all_entities():
