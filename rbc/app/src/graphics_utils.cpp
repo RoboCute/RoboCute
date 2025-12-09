@@ -30,8 +30,8 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
         _render_plugin->destroy_pipeline_context(_display_pipe_ctx);
     if (after_sync)
         after_sync();
-    if (_render_plugin)
-        _render_plugin->dispose();
+    delete _render_plugin;
+    _render_plugin = nullptr;
     if (_lights)
         _lights.destroy();
     AssetsManager::destroy_instance();

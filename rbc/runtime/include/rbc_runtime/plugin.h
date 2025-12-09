@@ -2,8 +2,7 @@
 #include <luisa/vstl/meta_lib.h>
 
 namespace rbc {
-struct Plugin {
-    virtual void dispose() = 0;
+struct Plugin : vstd::IOperatorNewBase {
     virtual ~Plugin() = default;
 };
 }// namespace rbc

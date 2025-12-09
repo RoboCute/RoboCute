@@ -7,20 +7,33 @@ concept RegistableWorldObject = std::is_base_of_v<BaseObject, T> && std::is_defa
 struct TypeRegisterBase;
 using CreateFunc = vstd::func_ptr_t<BaseObject *()>;
 struct TypeRegisterBase {
-    std::array<uint64_t, 2> type_id;
-    CreateFunc create_func;
     TypeRegisterBase *p_next{};
+    virtual std::array<uint64_t, 2> type_id() = 0;
+    virtual BaseObject *create() = 0;
 };
 void type_regist_init_mark(TypeRegisterBase *type_register);
 template<typename T, typename Impl>
     requires RegistableWorldObject<T, Impl>
 struct TypeRegister : TypeRegisterBase {
-    TypeRegister() {
-        type_id = rbc_rtti_detail::is_rtti_type<T>::get_md5();
-        create_func = +[]() -> BaseObject * {
-            return new Impl{};
-        };
+    vstd::spin_mutex _mtx;
+    vstd::Pool<Impl, true> _pool;
+    TypeRegister(size_t init_capa = 64)
+        : _pool(init_capa, false) {
         type_regist_init_mark(this);
     }
+    std::array<uint64_t, 2> type_id() override {
+        return rbc_rtti_detail::is_rtti_type<T>::get_md5();
+    }
+    BaseObject *create() override {
+        return _pool.create_lock(_mtx);
+    }
+    void destroy(Impl *ptr) {
+        _pool.destroy_lock(_mtx, ptr);
+    }
 };
+#define DECLARE_TYPE_REGISTER(type_name)                                   \
+    static TypeRegister<type_name, type_name##Impl> type_name##_register_; \
+    void type_name##Impl::dispose() {                                      \
+        type_name##_register_.destroy(this);                               \
+    }
 }// namespace rbc::world

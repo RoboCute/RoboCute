@@ -13,38 +13,27 @@ struct GuidHashEqual {
 };
 }// namespace detail
 
-struct TypeRegisterSingleton : vstd::IOperatorNewBase {
-    luisa::unordered_map<std::array<uint64_t, 2>, TypeRegisterBase *, detail::GuidHashEqual> _create_funcs;
-};
-static TypeRegisterSingleton *_type_reg_singleton{};
 static TypeRegisterBase *_type_register_header{};
 void type_regist_init_mark(TypeRegisterBase *type_register) {
     type_register->p_next = _type_register_header;
     _type_register_header = type_register;
 }
-
 struct WorldPluginImpl : WorldPlugin {
+    luisa::unordered_map<std::array<uint64_t, 2>, TypeRegisterBase *, detail::GuidHashEqual> _create_funcs;
     WorldPluginImpl() {
-        LUISA_DEBUG_ASSERT(!_type_reg_singleton, "World plugin can only be load once");
-        _type_reg_singleton = new TypeRegisterSingleton{};
         for (auto p = _type_register_header; p; p = p->p_next) {
-            _type_reg_singleton->_create_funcs.try_emplace(p->type_id, p);
+            _create_funcs.try_emplace(p->type_id(), p);
         }
     }
     ~WorldPluginImpl() {
-        delete _type_reg_singleton;
-        _type_reg_singleton = nullptr;
-    }
-    void dispose() override {
-        delete this;
     }
     BaseObject *create_object(vstd::Guid const &guid) {
-        auto iter = _type_reg_singleton->_create_funcs.find(
+        auto iter = _create_funcs.find(
             reinterpret_cast<std::array<uint64_t, 2> const &>(guid));
-        if (iter == _type_reg_singleton->_create_funcs.end()) {
+        if (iter == _create_funcs.end()) {
             return nullptr;
         }
-        return iter->second->create_func();
+        return iter->second->create();
     }
     BaseObject *create_object(rbc::TypeInfo const &type_info) override {
         auto md5 = type_info.md5();
@@ -59,6 +48,9 @@ struct WorldPluginImpl : WorldPlugin {
             return nullptr;
         ptr->rbc_objdeser(obj);
         return ptr;
+    }
+    BaseObject *get_object(InstanceID instance_id) const override {
+        return BaseObject::get_object(instance_id);
     }
 };
 LUISA_EXPORT_API WorldPlugin *create_world_plugin() {

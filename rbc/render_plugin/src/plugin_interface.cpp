@@ -34,7 +34,6 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
     vstd::HashMap<uint64, DenoiserStream> _denoisers;
     //////////////////////////////////////// pipeline
     luisa::unordered_map<luisa::string, luisa::unique_ptr<Pipeline>> pipelines;
-    virtual void dispose() override { delete this; }
     RenderPluginImpl() {
         pipelines.try_emplace("default", luisa::make_unique<PTPipeline>());
     }

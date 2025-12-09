@@ -1,9 +1,9 @@
 #include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/entity.h>
 #include "type_register.h"
 namespace rbc::world {
 struct TransformImpl : Transform {
     TransformImpl() {
-        LUISA_INFO("Create transform.");
     }
     void serialize(rbc::JsonSerializer &obj) const override {
         obj._store(_position, "position");
@@ -18,9 +18,12 @@ struct TransformImpl : Transform {
     double4x4 local_to_world_matrix() const override {
         return rbc::rotation(_position, _rotation, _local_scale);
     }
-    void dispose() {
-        delete this;
+    ~TransformImpl() {
+        for (auto &i : _children) {
+            // i->entity()->dispose();
+        }
     }
+    void dispose() override;
 };
-static TypeRegister<Transform, TransformImpl> trans_impl;
+DECLARE_TYPE_REGISTER(Transform)
 }// namespace rbc::world

@@ -10,11 +10,28 @@
 #include <rbc_core/state_map.h>
 #include <luisa/vstl/md5.h>
 #include <rbc_core/func_serializer.h>
-
+#include <rbc_runtime/plugin_manager.h>
+#include <rbc_world_v2/world_plugin.h>
+#include <rbc_world_v2/transform.h>
 
 using namespace rbc;
 using namespace luisa;
 int main() {
+    PluginManager::init();
+    {
+        auto world_module = PluginManager::instance().load_module("rbc_world_v2");
+        auto world_plugin = world_module->invoke<world::WorldPlugin *()>("create_world_plugin");
+        auto trans = world_plugin->create_object(TypeInfo::get<world::Transform>());
+        rbc::JsonSerializer writer;
+        trans->rbc_objser(writer);
+        auto json = writer.write_to();
+        LUISA_INFO(
+            "{}",
+            luisa::string_view{
+                (char const *)json.data(),
+                json.size()});
+        delete world_plugin;
+    }
     rbc::JsonSerializer writer;
     StateMap state_map;
     {
@@ -79,5 +96,4 @@ int main() {
         LUISA_INFO("test_enum {}", luisa::to_string(new_struct.test_enum));
         LUISA_INFO("guid {}", new_struct.guid.to_base64());
     }
-
 }

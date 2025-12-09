@@ -193,10 +193,12 @@ public:
         using PureT = std::remove_cvref_t<std::remove_pointer_t<T>>;
         using TT = is_lc_shader<PureT>;
         auto c1 = [&](string_view shader_path) -> ShaderType {
-            return reinterpret_cast<RasterShader<> &&>(TT::load_shader(_device, shader_path));
+            auto shader = TT::load_shader(_device, shader_path);
+            return reinterpret_cast<RasterShader<> &&>(shader);
         };
         auto c2 = [](Device &device, string_view name) -> ShaderType {
-            return reinterpret_cast<RasterShader<> &&>(TT::load_shader(device, name));
+            auto shader = TT::load_shader(device, name);
+            return reinterpret_cast<RasterShader<> &&>(shader);
         };
         shader_ptr = reinterpret_cast<T>(
             _load_shader(
