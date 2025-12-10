@@ -69,9 +69,7 @@ struct EntityImpl : Entity {
             }
             auto obj = get_object(obj_guid);
             LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
-            _components.try_emplace(
-                obj->type_id(),
-                obj->instance_id());
+            add_component(static_cast<Component*>(obj));
         }
         ser.end_scope();
     }
