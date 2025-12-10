@@ -72,12 +72,16 @@ void JsonWriter::add_last_scope_to_object(char const *name) {
         add_last_scope_to_object();
         return;
     }
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
     LUISA_DEBUG_ASSERT(_json_scope.size() > 1);
     auto obj = _json_scope.back();
     _json_scope.pop_back();
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, name, obj.first));
+    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, temp_ptr, obj.first));
 }
 
 void JsonWriter::add(bool bool_value) {

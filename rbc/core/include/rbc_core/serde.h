@@ -129,12 +129,11 @@ struct Serializer : public Base {
     vstd::VEngineMallocVisitor _alloc_callback;
     vstd::StackAllocator _alloc;
     template<typename... Args>
-        requires(luisa::is_constructible_v<Base, Args && ...>)
     Serializer(Args &&...args)
         : Base(std::forward<Args>(args)...),
           _alloc(4096, &_alloc_callback, 2) {
     }
-    void *allocate_temp_str(size_t size) {
+    void *allocate_temp_str(size_t size) override {
         auto c = _alloc.allocate(size);
         return reinterpret_cast<void *>(c.handle + c.offset);
     }
@@ -295,7 +294,6 @@ struct Serializer : public Base {
 template<concepts::SerReader Base>
 struct DeSerializer : public Base {
     template<typename... Args>
-        requires(luisa::is_constructible_v<Base, Args && ...>)
     DeSerializer(Args &&...args)
         : Base(std::forward<Args>(args)...) {
     }

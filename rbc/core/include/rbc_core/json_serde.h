@@ -18,7 +18,7 @@ struct RBC_CORE_API JsonWriter {
 
     JsonWriter(bool root_array = false);
     ~JsonWriter();
-
+    virtual void *allocate_temp_str(size_t size) = 0;
     void start_array();
     void start_object();
     void add_last_scope_to_object();

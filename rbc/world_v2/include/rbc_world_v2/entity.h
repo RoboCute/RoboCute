@@ -7,9 +7,10 @@ struct Entity : BaseObjectDerive<Entity, BaseObjectType::Entity> {
 protected:
     luisa::unordered_map<std::array<uint64_t, 2>, InstanceID> _components;
 public:
-    virtual bool add_component(Component* component) = 0;
-    virtual bool remove_component(TypeInfo const& type) = 0;
-    virtual Component* get_component(TypeInfo const& type) = 0;
+    auto const &components() const { return _components; }
+    virtual bool add_component(Component *component) = 0;
+    virtual bool remove_component(TypeInfo const &type) = 0;
+    virtual Component *get_component(TypeInfo const &type) = 0;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Entity);

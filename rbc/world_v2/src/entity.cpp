@@ -62,7 +62,7 @@ struct EntityImpl : Entity {
         uint64_t size;
         if (!ser.start_array(size, "components")) return;
         _components.reserve(size);
-        for (auto &i : _components) {
+        for (auto &i : vstd::range(size)) {
             vstd::Guid obj_guid;
             if (!ser._load(obj_guid)) {
                 break;

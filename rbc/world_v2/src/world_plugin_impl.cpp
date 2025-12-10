@@ -37,10 +37,28 @@ struct WorldPluginImpl : WorldPlugin {
         ptr->init_with_guid(guid);
         return ptr;
     }
+    BaseObject *create_object(vstd::Guid const &type_info) override {
+        auto iter = _create_funcs.find(reinterpret_cast<std::array<uint64_t, 2> const &>(type_info));
+        if (iter == _create_funcs.end()) {
+            return nullptr;
+        }
+        auto ptr = iter->second->create();
+        ptr->init();
+        return ptr;
+    }
+    BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid) override {
+        auto iter = _create_funcs.find(reinterpret_cast<std::array<uint64_t, 2> const &>(type_info));
+        if (iter == _create_funcs.end()) {
+            return nullptr;
+        }
+        auto ptr = iter->second->create();
+        ptr->init_with_guid(guid);
+        return ptr;
+    }
     BaseObject *get_object(InstanceID instance_id) const override {
         return BaseObject::get_object(instance_id);
     }
-    BaseObject *get_object(vstd::Guid const& guid) const override {
+    BaseObject *get_object(vstd::Guid const &guid) const override {
         return BaseObject::get_object(guid);
     }
     [[nodiscard]] luisa::span<InstanceID const> get_dirty_transforms() const override {

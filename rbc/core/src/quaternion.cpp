@@ -78,16 +78,23 @@ Quaternion quaternion(double3x3 const &m) noexcept {
 }
 
 double4x4 rotation(double3 pos, Quaternion rot, double3 local_scale) noexcept {
+    double4 quad{
+        rot.v.x,
+        rot.v.y,
+        rot.v.z,
+        rot.v.w
+    };
     rtm::qvvd qvv{
-        .rotation = reinterpret_cast<rtm::quatd const &>(rot),
+        .rotation = reinterpret_cast<rtm::quatd const &>(quad),
         .translation = reinterpret_cast<rtm::vector4d const &>(pos),
         .scale = reinterpret_cast<rtm::vector4d const &>(local_scale)};
+    reinterpret_cast<double*>(&qvv.translation)[3] = 0.0;
     auto result = rtm::matrix_from_qvv(qvv);
     return make_double4x4(
         reinterpret_cast<double4 const &>(result.x_axis),
         reinterpret_cast<double4 const &>(result.y_axis),
         reinterpret_cast<double4 const &>(result.z_axis),
-        double4(0, 0, 0, 1));
+        reinterpret_cast<double4 const &>(result.w_axis));
 }
 
 float4x4 rotation(float3 pos, Quaternion rot, float3 local_scale) noexcept {
@@ -95,12 +102,13 @@ float4x4 rotation(float3 pos, Quaternion rot, float3 local_scale) noexcept {
         .rotation = reinterpret_cast<rtm::quatf const &>(rot),
         .translation = reinterpret_cast<rtm::vector4f const &>(pos),
         .scale = reinterpret_cast<rtm::vector4f const &>(local_scale)};
+    reinterpret_cast<float*>(&qvv.translation)[3] = 0.0;
     auto result = rtm::matrix_from_qvv(qvv);
     return make_float4x4(
         reinterpret_cast<float4 const &>(result.x_axis),
         reinterpret_cast<float4 const &>(result.y_axis),
         reinterpret_cast<float4 const &>(result.z_axis),
-        float4(0, 0, 0, 1));
+        reinterpret_cast<float4 const &>(result.w_axis));
 }
 
 float angle_between(Quaternion q1, Quaternion q2) noexcept {
