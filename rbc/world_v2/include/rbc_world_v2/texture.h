@@ -21,7 +21,7 @@ public:
     [[nodiscard]] auto pixel_storage() const { return _pixel_storage; }
     [[nodiscard]] auto size() const { return _size; }
     [[nodiscard]] auto mip_level() const { return _mip_level; }
-    [[nodiscard]] virtual luisa::vector<std::byte> host_data() = 0;
+    [[nodiscard]] virtual luisa::vector<std::byte>* host_data() = 0;
     virtual uint64_t desire_size_bytes() = 0;
     virtual void create_empty(
         luisa::filesystem::path &&path,
@@ -35,6 +35,7 @@ public:
     }
     virtual bool async_load_from_file() = 0;
     virtual void wait_load() const = 0;
+    virtual void unload() = 0;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Texture)

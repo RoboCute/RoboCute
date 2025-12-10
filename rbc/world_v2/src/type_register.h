@@ -9,6 +9,7 @@ concept RegistableWorldObject = std::is_base_of_v<BaseObject, T> && std::is_defa
 struct TypeRegisterBase;
 using CreateFunc = vstd::func_ptr_t<BaseObject *()>;
 struct TypeRegisterBase {
+    BaseObjectType base_obj_type;
     TypeRegisterBase *p_next{};
     virtual std::array<uint64_t, 2> type_id() = 0;
     virtual BaseObject *create() = 0;
@@ -21,6 +22,7 @@ struct TypeRegister : TypeRegisterBase {
     vstd::Pool<Impl, true> _pool;
     TypeRegister(size_t init_capa = 64)
         : _pool(init_capa, false) {
+        TypeRegisterBase::base_obj_type = T::base_object_type_v;
         type_regist_init_mark(this);
     }
     std::array<uint64_t, 2> type_id() override {

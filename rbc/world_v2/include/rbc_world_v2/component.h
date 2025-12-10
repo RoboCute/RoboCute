@@ -8,6 +8,7 @@ struct Component : BaseObject {
 protected:
     Entity *_entity{};
 public:
+    static constexpr BaseObjectType base_object_type_v = BaseObjectType::Component;
     [[nodiscard]] Entity *entity() const {
         return _entity;
     }

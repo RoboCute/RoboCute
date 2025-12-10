@@ -1,3 +1,4 @@
+#pragma once
 #include <rbc_config.h>
 #include <atomic>
 namespace rbc {

@@ -6,10 +6,11 @@
 namespace rbc::world {
 struct TextureImpl : Texture {
     TextureImpl() {
-        _device_image = new DeviceImage{};
     }
-    [[nodiscard]] luisa::vector<std::byte> host_data() override {
-        return _device_image->host_data_ref();
+    [[nodiscard]] luisa::vector<std::byte> *host_data() override {
+        if (_device_image)
+            return &_device_image->host_data_ref();
+        return nullptr;
     }
     uint64_t desire_size_bytes() override {
         auto size = _size;
@@ -60,6 +61,10 @@ struct TextureImpl : Texture {
         _size = size;
         _pixel_storage = pixel_storage;
         _mip_level = mip_level;
+        if (!_device_image) {
+            _device_image = new DeviceImage();
+        }
+        LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
     }
     bool async_load_from_file() override {
         auto render_device = RenderDevice::instance_ptr();
@@ -68,7 +73,10 @@ struct TextureImpl : Texture {
         if (_path.empty()) {
             return false;
         }
-        LUISA_ASSERT(host_data().empty() || host_data().size() == file_size, "Invalid host data length.");
+        LUISA_ASSERT(host_data()->empty() || host_data()->size() == file_size, "Invalid host data length.");
+        if (!_device_image) {
+            _device_image = new DeviceImage();
+        }
         _device_image->async_load_from_file(
             _path,
             _file_offset,
@@ -81,7 +89,11 @@ struct TextureImpl : Texture {
         return true;
     }
     void wait_load() const override {
-        _device_image->wait_finished();
+        if (_device_image)
+            _device_image->wait_finished();
+    }
+    void unload() override {
+        _device_image.reset();
     }
     void dispose() override;
 };

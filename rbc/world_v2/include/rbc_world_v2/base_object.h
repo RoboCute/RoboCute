@@ -99,6 +99,7 @@ public:
 };
 template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive : BaseObject {
+    static constexpr BaseObjectType base_object_type_v = base_type_v;
     [[nodiscard]] const char *type_name() const override {
         return rbc_rtti_detail::is_rtti_type<T>::name;
     }

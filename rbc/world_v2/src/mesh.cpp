@@ -6,7 +6,6 @@
 namespace rbc::world {
 struct MeshImpl : Mesh {
     MeshImpl() {
-        _device_mesh = new DeviceMesh{};
     }
     void rbc_objser(JsonSerializer &ser) const override {
         if (!_path.empty()) {
@@ -57,10 +56,14 @@ struct MeshImpl : Mesh {
     }
     void dispose() override;
     void wait_load() const override {
-        _device_mesh->wait_finished();
+        if (_device_mesh)
+            _device_mesh->wait_finished();
     }
-    luisa::vector<std::byte> host_data() override {
-        return _device_mesh->host_data_ref();
+    luisa::vector<std::byte> *host_data() override {
+        if (_device_mesh)
+            return &_device_mesh->host_data_ref();
+        else
+            return nullptr;
     }
     uint64_t desire_size_bytes() override {
         return DeviceMesh::get_mesh_size(_vertex_count, _contained_normal, _contained_tangent, _uv_count, _triangle_count);
@@ -74,7 +77,11 @@ struct MeshImpl : Mesh {
         uint32_t uv_count,
         bool contained_normal,
         bool contained_tangent) override {
-        _device_mesh->wait_finished();
+        if (_device_mesh)
+            _device_mesh->wait_finished();
+        else {
+            _device_mesh = new DeviceMesh{};
+        }
         _submesh_offsets.clear();
         vstd::push_back_all(_submesh_offsets, submesh_offsets);
         _path = std::move(path);
@@ -84,7 +91,7 @@ struct MeshImpl : Mesh {
         _uv_count = uv_count;
         _contained_normal = contained_normal;
         _contained_tangent = contained_tangent;
-        LUISA_ASSERT(host_data().empty() || host_data().size() == desire_size_bytes(), "Invalid host data length.");
+        LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
 
         auto render_device = RenderDevice::instance_ptr();
         if (render_device) {
@@ -102,11 +109,14 @@ struct MeshImpl : Mesh {
     bool async_load_from_file() override {
         auto render_device = RenderDevice::instance_ptr();
         if (!render_device) return false;
+        if (!_device_mesh)
+            _device_mesh = new DeviceMesh{};
+
         auto file_size = desire_size_bytes();
         if (_path.empty()) {
             return false;
         }
-        LUISA_ASSERT(host_data().empty() || host_data().size() == file_size, "Invalid host data length.");
+        LUISA_ASSERT(host_data()->empty() || host_data()->size() == file_size, "Invalid host data length.");
         _device_mesh->async_load_from_file(
             _path,
             _vertex_count,
@@ -118,6 +128,9 @@ struct MeshImpl : Mesh {
             file_size, !_device_mesh->host_data_ref().empty());
 
         return true;
+    }
+    void unload() override {
+        _device_mesh.reset();
     }
 };
 DECLARE_TYPE_REGISTER(Mesh)

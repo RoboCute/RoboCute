@@ -56,15 +56,22 @@ struct WorldPluginImpl : WorldPlugin {
         return ptr;
     }
     BaseObject *get_object(InstanceID instance_id) const override {
-        return get_object(instance_id);
+        return rbc::world::get_object(instance_id);
     }
     BaseObject *get_object(vstd::Guid const &guid) const override {
-        return get_object(guid);
+        return rbc::world::get_object(guid);
     }
     [[nodiscard]] luisa::span<InstanceID const> get_dirty_transforms() const override {
         return dirty_transforms();
     }
-    void clear_dirty_transform() const override {
+    BaseObjectType base_type_of(vstd::Guid const &type_id) const override {
+        auto iter = _create_funcs.find(
+            reinterpret_cast<std::array<uint64_t, 2> const &>(type_id));
+        if (iter == _create_funcs.end())
+            return BaseObjectType::Custom;
+        return iter->second->base_obj_type;
+    }
+    void clear_dirty_transform() override {
         auto &v = dirty_transforms();
         for (auto &i : v) {
             auto obj = get_object(i);
