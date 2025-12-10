@@ -129,21 +129,23 @@ void MaterialStub::update_material(luisa::string_view json) {
             openpbr_json_deser(
                 deser,
                 t);
-            auto &sm = SceneManager::instance();
-            auto &render_device = RenderDevice::instance();
-            if (mat_code.value == ~0u) {
-                mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, material::OpenPBR>(
-                    t,
-                    render_device.lc_main_cmd_list(),
-                    sm.bindless_allocator(),
-                    sm.buffer_uploader(),
-                    sm.dispose_queue());
-            } else {
-                sm.mat_manager().set_mat_instance(
-                    mat_code,
-                    sm.buffer_uploader(),
-                    {(std::byte const *)&t,
-                     sizeof(t)});
+            auto render_device = RenderDevice::instance_ptr();
+            if (render_device) {
+                auto &sm = SceneManager::instance();
+                if (mat_code.value == ~0u) {
+                    mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, material::OpenPBR>(
+                        t,
+                        render_device->lc_main_cmd_list(),
+                        sm.bindless_allocator(),
+                        sm.buffer_uploader(),
+                        sm.dispose_queue());
+                } else {
+                    sm.mat_manager().set_mat_instance(
+                        mat_code,
+                        sm.buffer_uploader(),
+                        {(std::byte const *)&t,
+                         sizeof(t)});
+                }
             }
         } else {
             LUISA_ERROR("Material type not supported.");
@@ -161,7 +163,7 @@ ObjectStub::~ObjectStub() {
     if (mesh_ref) {
         mesh_ref->tlas_ref_count--;
     }
-    if (!sm) return;
+    if (!sm || mesh_tlas_idx == ~0u) return;
     switch (type) {
         case ObjectRenderType::Mesh:
             sm->accel_manager().remove_mesh_instance(
@@ -325,7 +327,7 @@ static bool material_is_emission(luisa::span<RC<MaterialStub> const> materials) 
     return contained_emission;
 };
 void ObjectStub::create_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::span<RC<RCBase> const> mats) {
-    auto &render_device = RenderDevice::instance();
+    auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
     LUISA_ASSERT(!mesh_ref || mesh_tlas_idx != ~0U, "object already created.");
     mesh_ref = mesh;
@@ -348,31 +350,35 @@ void ObjectStub::create_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
     if (!(materials.size() == submesh_size)) [[unlikely]] {
         LUISA_ERROR("Submesh size {} mismatch with material size {}", submesh_size, materials.size());
     }
-    if (material_is_emission(materials)) {
-        mesh_light_idx = Lights::instance()->add_mesh_light_sync(
-            render_device.lc_main_cmd_list(),
-            mesh_ref,
-            matrix,
-            material_codes);
-        type = ObjectRenderType::EmissionMesh;
+    if (render_device) {
+        if (material_is_emission(materials)) {
+            mesh_light_idx = Lights::instance()->add_mesh_light_sync(
+                render_device->lc_main_cmd_list(),
+                mesh_ref,
+                matrix,
+                material_codes);
+            type = ObjectRenderType::EmissionMesh;
+        } else {
+            mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
+                render_device->lc_main_cmd_list(),
+                sm.host_upload_buffer(),
+                sm.buffer_allocator(),
+                sm.buffer_uploader(),
+                sm.dispose_queue(),
+                mesh_ref->mesh_data(),
+                material_codes,
+                matrix);
+            type = ObjectRenderType::Mesh;
+        }
     } else {
-        mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
-            render_device.lc_main_cmd_list(),
-            sm.host_upload_buffer(),
-            sm.buffer_allocator(),
-            sm.buffer_uploader(),
-            sm.dispose_queue(),
-            mesh_ref->mesh_data(),
-            material_codes,
-            matrix);
-        type = ObjectRenderType::Mesh;
+        mesh_tlas_idx = ~0u;
     }
 }
 ObjectStub::ObjectStub() {
     mesh_light_idx = ~0u;
 }
 void ObjectStub::update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::span<RC<RCBase> const> mats) {
-    auto &render_device = RenderDevice::instance();
+    auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
     if (mesh_ref) {
         mesh_ref->tlas_ref_count--;
@@ -401,84 +407,88 @@ void ObjectStub::update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
     mesh_ref->wait_finished();
     // TODO: change light type
     bool is_emission = material_is_emission(materials);
-    switch (type) {
-        case ObjectRenderType::Mesh:
-            if (is_emission) {
-                sm.accel_manager().remove_mesh_instance(
-                    sm.buffer_allocator(),
-                    sm.buffer_uploader(),
-                    mesh_tlas_idx);
-                mesh_light_idx = Lights::instance()->add_mesh_light_sync(
-                    render_device.lc_main_cmd_list(),
-                    mesh_ref,
-                    matrix,
-                    material_codes);
-                type = ObjectRenderType::EmissionMesh;
-            } else {
-                sm.accel_manager().set_mesh_instance(
-                    mesh_tlas_idx,
-                    render_device.lc_main_cmd_list(),
-                    sm.host_upload_buffer(),
-                    sm.buffer_allocator(),
-                    sm.buffer_uploader(),
-                    sm.dispose_queue(),
-                    mesh_ref->mesh_data(),
-                    material_codes,
-                    matrix);
-            }
-            break;
-        case ObjectRenderType::EmissionMesh:
-            if (!is_emission) {
-                Lights::instance()->remove_mesh_light(mesh_light_idx);
-                mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
-                    render_device.lc_main_cmd_list(),
-                    sm.host_upload_buffer(),
-                    sm.buffer_allocator(),
-                    sm.buffer_uploader(),
-                    sm.dispose_queue(),
-                    mesh_ref->mesh_data(),
-                    material_codes,
-                    matrix);
-                type = ObjectRenderType::Mesh;
-            } else {
-                Lights::instance()->update_mesh_light_sync(
-                    render_device.lc_main_cmd_list(),
-                    mesh_light_idx,
-                    matrix,
-                    material_codes,
-                    &mesh_ref);
-            }
-            break;
-        case ObjectRenderType::Procedural: {
-            LUISA_ERROR("Procedural not supported.");
-        } break;
+    if (render_device) {
+        switch (type) {
+            case ObjectRenderType::Mesh:
+                if (is_emission) {
+                    sm.accel_manager().remove_mesh_instance(
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        mesh_tlas_idx);
+                    mesh_light_idx = Lights::instance()->add_mesh_light_sync(
+                        render_device->lc_main_cmd_list(),
+                        mesh_ref,
+                        matrix,
+                        material_codes);
+                    type = ObjectRenderType::EmissionMesh;
+                } else {
+                    sm.accel_manager().set_mesh_instance(
+                        mesh_tlas_idx,
+                        render_device->lc_main_cmd_list(),
+                        sm.host_upload_buffer(),
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        sm.dispose_queue(),
+                        mesh_ref->mesh_data(),
+                        material_codes,
+                        matrix);
+                }
+                break;
+            case ObjectRenderType::EmissionMesh:
+                if (!is_emission) {
+                    Lights::instance()->remove_mesh_light(mesh_light_idx);
+                    mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
+                        render_device->lc_main_cmd_list(),
+                        sm.host_upload_buffer(),
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        sm.dispose_queue(),
+                        mesh_ref->mesh_data(),
+                        material_codes,
+                        matrix);
+                    type = ObjectRenderType::Mesh;
+                } else {
+                    Lights::instance()->update_mesh_light_sync(
+                        render_device->lc_main_cmd_list(),
+                        mesh_light_idx,
+                        matrix,
+                        material_codes,
+                        &mesh_ref);
+                }
+                break;
+            case ObjectRenderType::Procedural: {
+                LUISA_ERROR("Procedural not supported.");
+            } break;
+        }
     }
 }
 void ObjectStub::update_object_pos(luisa::float4x4 matrix) {
-    auto &render_device = RenderDevice::instance();
+    auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
-    switch (type) {
-        case ObjectRenderType::Mesh: {
-            sm.accel_manager().set_mesh_instance(
-                render_device.lc_main_cmd_list(),
-                sm.buffer_uploader(),
-                mesh_tlas_idx,
-                matrix, 0xff, true);
-        } break;
-        case ObjectRenderType::EmissionMesh:
-            Lights::instance()->update_mesh_light_sync(
-                render_device.lc_main_cmd_list(),
-                mesh_light_idx,
-                matrix,
-                material_codes);
-            break;
-        case ObjectRenderType::Procedural:
-            sm.accel_manager().set_procedural_instance(
-                procedural_idx,
-                matrix,
-                0xffu,
-                true);
-            break;
+    if (render_device) {
+        switch (type) {
+            case ObjectRenderType::Mesh: {
+                sm.accel_manager().set_mesh_instance(
+                    render_device->lc_main_cmd_list(),
+                    sm.buffer_uploader(),
+                    mesh_tlas_idx,
+                    matrix, 0xff, true);
+            } break;
+            case ObjectRenderType::EmissionMesh:
+                Lights::instance()->update_mesh_light_sync(
+                    render_device->lc_main_cmd_list(),
+                    mesh_light_idx,
+                    matrix,
+                    material_codes);
+                break;
+            case ObjectRenderType::Procedural:
+                sm.accel_manager().set_procedural_instance(
+                    procedural_idx,
+                    matrix,
+                    0xffu,
+                    true);
+                break;
+        }
     }
 }
 

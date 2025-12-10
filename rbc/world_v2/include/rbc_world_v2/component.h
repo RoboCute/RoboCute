@@ -3,7 +3,7 @@
 namespace rbc::world {
 struct Entity;
 struct EntityImpl;
-struct Component : BaseObjectImpl {
+struct Component : BaseObject {
     friend struct EntityImpl;
 protected:
     Entity *_entity{};

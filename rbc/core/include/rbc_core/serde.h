@@ -12,6 +12,25 @@
 #include <rbc_core/json_serde.h>
 namespace rbc {
 namespace concepts {
+template<typename T, size_t N = 0u>
+struct is_matrix_impl : std::false_type {};
+
+template<size_t N>
+struct is_matrix_impl<luisa::Matrix<float, N>, N> : std::true_type {};
+
+template<size_t N>
+struct is_matrix_impl<luisa::Matrix<float, N>, 0u> : std::true_type {};
+
+template<size_t N>
+struct is_matrix_impl<luisa::Matrix<double, N>, N> : std::true_type {};
+
+template<size_t N>
+struct is_matrix_impl<luisa::Matrix<double, N>, 0u> : std::true_type {};
+
+template<typename T, size_t N = 0u>
+using is_matrix = is_matrix_impl<std::remove_cvref_t<T>, N>;
+template<typename T, size_t N = 0u>
+constexpr auto is_matrix_v = is_matrix<T, N>::value;
 
 template<typename T>
 concept SerWriter = requires(T t) {
@@ -89,7 +108,7 @@ struct is_vector<luisa::vector<Ele>> {
     static constexpr bool value = true;
 };
 template<typename T>
-static constexpr bool serializable_native_type_v = std::is_integral_v<T> || std::is_floating_point_v<T> || luisa::is_vector_v<T> || luisa::is_matrix_v<T> || detail::is_unordered_map<T>::value || std::is_same_v<std::decay_t<T>, luisa::string> || std::is_same_v<T, vstd::Guid> || std::is_same_v<std::decay_t<T>, luisa::string_view> || std::is_same_v<T, luisa::half> || std::is_same_v<T, bool> || is_vector<T>::value || std::is_enum_v<T>;
+static constexpr bool serializable_native_type_v = std::is_integral_v<T> || std::is_floating_point_v<T> || luisa::is_vector_v<T> || concepts::is_matrix_v<T> || detail::is_unordered_map<T>::value || std::is_same_v<std::decay_t<T>, luisa::string> || std::is_same_v<T, vstd::Guid> || std::is_same_v<std::decay_t<T>, luisa::string_view> || std::is_same_v<T, luisa::half> || std::is_same_v<T, bool> || is_vector<T>::value || std::is_enum_v<T>;
 template<typename T, typename Ser>
 static constexpr bool serializable_struct_type_v =
     requires { std::declval<T>().rbc_objser(lvalue_declval<Ser>()); } ||
@@ -193,7 +212,7 @@ struct Serializer : public Base {
             } else {
                 static_assert(luisa::always_false_v<T>, "Invalid vector type.");
             }
-        } else if constexpr (luisa::is_matrix_v<T>) {
+        } else if constexpr (concepts::is_matrix_v<T>) {
             constexpr size_t dim = luisa::matrix_dimension_v<T>;
             double arr[dim * dim];
             for (size_t y = 0; y < dim; ++y)
@@ -402,7 +421,7 @@ struct DeSerializer : public Base {
             } else {
                 static_assert(luisa::always_false_v<T>, "Invalid vector type.");
             }
-        } else if constexpr (luisa::is_matrix_v<T>) {
+        } else if constexpr (concepts::is_matrix_v<T>) {
             constexpr size_t dim = luisa::matrix_dimension_v<T>;
             uint64_t size;
             if (!Base::start_array(size, args...)) return false;

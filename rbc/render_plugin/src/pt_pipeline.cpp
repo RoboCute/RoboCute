@@ -51,16 +51,16 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // tms.aces.tone_mapping.hdr_display_multiplier = monitor_info->max_luminance / 80.0f;
 
     // get settings
-    auto &sky_settings = ctx.pipeline_settings->read_mut<SkySettings>();
-    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
-    auto &sky_heap = ctx.pipeline_settings->read_mut<SkyHeapIndices>();
+    auto &sky_settings = ctx.pipeline_settings.read_mut<SkySettings>();
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
+    auto &sky_heap = ctx.pipeline_settings.read_mut<SkyHeapIndices>();
     // update atom
     if (sky_settings.sky_atom) {
         auto &sky_atom = *sky_settings.sky_atom;
 
         // update sky matrix
         {
-            auto &camera_settings = ctx.pipeline_settings->read_mut<CameraData>();
+            auto &camera_settings = ctx.pipeline_settings.read_mut<CameraData>();
             luisa::float3x3 &sky_matrix = camera_settings.world_to_sky;
             auto sky_radians = radians(sky_settings.sky_angle);
             sky_matrix.cols[0] = float3(cos(sky_radians), 0.0f, sin(sky_radians));
@@ -110,7 +110,7 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
 
     // update camera settings
     ctx.cam.set_aspect_ratio_from_resolution(frame_settings.render_resolution.x, frame_settings.render_resolution.y);
-    auto &pt_pipe_settings = ctx.pipeline_settings->read_mut<PTPipelineSettings>();
+    auto &pt_pipe_settings = ctx.pipeline_settings.read_mut<PTPipelineSettings>();
     if(pt_pipe_settings.use_raster && pt_pipe_settings.use_raytracing) [[unlikely]] {
         LUISA_ERROR("Can not enable both raster and raytracing.");
     }

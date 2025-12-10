@@ -17,12 +17,18 @@ protected:
     double3 _position;
     double3 _scale{1, 1, 1};
     Quaternion _rotation;
-    bool _dirty{};
+    double4x4 _trs;
+    bool _dirty: 1{};
+    bool _decomposed: 1{true};
 
 public:
+    virtual double3 position() = 0;
+    virtual Quaternion rotation() = 0;
+    virtual double3 scale() = 0;
     virtual void set_pos(double3 const &position, bool recursive) = 0;
     virtual void set_rotation(Quaternion const &rotation, bool recursive) = 0;
     virtual void set_scale(double3 const &scale, bool recursive) = 0;
+    virtual void set_trs(double4x4 const &trs, bool recursive) = 0;
     virtual void set_trs(
         double3 const &position,
         Quaternion const &rotation,
@@ -35,7 +41,9 @@ public:
     [[nodiscard]] auto const &rotation() const { return _rotation; }
     [[nodiscard]] auto const &scale() const { return _scale; }
     [[nodiscard]] luisa::span<InstanceID const> children() const { return _children; }
-    [[nodiscard]] virtual double4x4 local_to_world_matrix() const = 0;
+    [[nodiscard]] double4x4 local_to_world_matrix() const {
+        return _trs;
+    }
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Transform);

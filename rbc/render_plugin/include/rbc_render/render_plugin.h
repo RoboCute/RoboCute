@@ -16,7 +16,8 @@ struct DenoisePack {
 };
 struct RenderPlugin : Plugin {
     struct PipeCtxStub {};
-    virtual PipeCtxStub *create_pipeline_context(StateMap &render_settings_map) = 0;
+    virtual PipeCtxStub *create_pipeline_context() = 0;
+    virtual StateMap *pipe_ctx_state_map(PipeCtxStub *ctx) = 0;
     virtual void destroy_pipeline_context(PipeCtxStub *ctx) = 0;
     virtual Camera &get_camera(PipeCtxStub *pipe_ctx) = 0;
 

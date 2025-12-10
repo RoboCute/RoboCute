@@ -61,8 +61,8 @@ void EditingPass::contour(PipelineContext const &ctx, luisa::span<uint const> dr
     auto &cmdlist = *ctx.cmdlist;
     cmdlist << elem_buffer.view(0, host_data.size()).copy_from(host_data.data());
     sm.dispose_after_commit(std::move(host_data));
-    const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
-    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto raster_ext = render_device.lc_device().extension<RasterExt>();
     auto origin_map = render_device.create_transient_image<float>(
         "contour_origin",
@@ -119,9 +119,9 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &sm = SceneManager::instance();
     auto &render_device = RenderDevice::instance();
     auto &cmdlist = *ctx.cmdlist;
-    auto const &frame_settings = ctx.pipeline_settings->read<FrameSettings>();
-    auto click_manager = ctx.pipeline_settings->read_if<ClickManager>();
-    const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
+    auto const &frame_settings = ctx.pipeline_settings.read<FrameSettings>();
+    auto click_manager = ctx.pipeline_settings.read_if<ClickManager>();
+    const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
     auto id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
     if (click_manager) {
         click_manager->_mtx.lock();
@@ -150,7 +150,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             cmdlist.add_callback([&ctx,
                                   reqs = std::move(reqs),
                                   result = std::move(result)]() mutable {
-                auto click_manager = ctx.pipeline_settings->read_if<ClickManager>();
+                auto click_manager = ctx.pipeline_settings.read_if<ClickManager>();
                 if (!click_manager) return;
                 std::lock_guard lck{click_manager->_mtx};
                 for (auto i : vstd::range(reqs.size())) {

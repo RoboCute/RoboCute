@@ -23,9 +23,9 @@ void AccumPass::wait_enable() {
     init_counter.wait();
 }
 void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    auto &jitter_data = ctx.pipeline_settings->read_mut<JitterData>();
+    auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
 
-    const auto &frame_settings = ctx.pipeline_settings->read<FrameSettings>();
+    const auto &frame_settings = ctx.pipeline_settings.read<FrameSettings>();
     pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
     pass_ctx->frame_index = std::min<size_t>(pass_ctx->frame_index, frame_settings.frame_index);
     if (any(frame_settings.render_resolution != frame_settings.display_resolution)) {
@@ -55,7 +55,7 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
 }
 void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &pt_pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
-    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();
     auto &scene = *ctx.scene;
     auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);

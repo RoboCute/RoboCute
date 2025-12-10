@@ -9,27 +9,57 @@ luisa::vector<InstanceID> &dirty_transforms() {
 struct TransformImpl : Transform {
     TransformImpl() {
     }
-    void serialize(rbc::JsonSerializer &ser_obj) const override {
+    void rbc_objser(rbc::JsonSerializer &ser_obj) const override {
         ser_obj.start_array();
         for (auto &i : _children) {
             auto obj = get_object(i);
             if (!obj) continue;
             LUISA_DEBUG_ASSERT(obj->is_type_of(TypeInfo::get<Transform>()));
             auto child = static_cast<Transform *>(obj);
-            static_cast<BaseObject *>(child)->rbc_objser(ser_obj);
+            auto &&child_guid = child->guid();
+            if (child_guid) {
+                ser_obj._store(child_guid);
+            }
         }
         ser_obj.add_last_scope_to_object("children");
-        ser_obj._store(_position, "position");
-        ser_obj._store(_scale, "scale");
-        ser_obj._store(_rotation.v, "rotation");
+        ser_obj._store(_trs, "trs");
     }
-    void deserialize(rbc::JsonDeSerializer &obj) override {
-        obj._load(_position, "position");
-        obj._load(_scale, "scale");
-        obj._load(_rotation.v, "rotation");
+    void rbc_objdeser(rbc::JsonDeSerializer &obj) override {
+        uint64_t size;
+        if (obj.start_array(size, "children")) {
+            _children.reserve(size);
+            vstd::Guid child_guid;
+            if (obj._load(child_guid)) {
+                auto obj = get_object(child_guid);
+                if (obj && obj->is_type_of(TypeInfo::get<Transform>())) {
+                    _children.emplace_back(obj->instance_id());
+                }
+            }
+            obj.end_scope();
+        }
+        obj._load(_trs, "trs");
+        _decomposed = false;
     }
-    double4x4 local_to_world_matrix() const override {
-        return rbc::rotation(_position, _rotation, _scale);
+    void try_decompose() {
+        if (_decomposed) [[likely]]
+            return;
+        _decomposed = true;
+        auto trs = decompose(_trs);
+        _position = trs.translation;
+        _rotation = trs.quaternion;
+        _scale = trs.scaling;
+    }
+    double3 position() override {
+        try_decompose();
+        return _position;
+    }
+    Quaternion rotation() override {
+        try_decompose();
+        return _rotation;
+    }
+    double3 scale() override {
+        try_decompose();
+        return _scale;
     }
     void mark_dirty() {
         if (_dirty) return;
@@ -43,10 +73,9 @@ struct TransformImpl : Transform {
             auto curr_l2w = tr->local_to_world_matrix();
             auto child_to_parent = curr_l2w * old_w2l;
             auto new_l2w = child_to_parent * new_trs;
-            auto trs = decompose(new_l2w);
-            tr->_position = trs.translation;
-            tr->_rotation = trs.quaternion;
-            tr->_scale = trs.scaling;
+            tr->_trs = new_l2w;
+            tr->_decomposed = false;
+            static_cast<TransformImpl *>(tr)->mark_dirty();
             for (size_t i = 0; i < tr->_children.size(); ++i) {
                 auto obj = get_object(tr->_children[i]);
                 if (!obj) {
@@ -68,27 +97,41 @@ struct TransformImpl : Transform {
         }
     }
     void set_pos(double3 const &position, bool recursive) override {
+        auto new_trs = rbc::rotation(position, _rotation, _scale);
         if (recursive) {
-            auto new_trs = rbc::rotation(position, _rotation, _scale);
             traversal(new_trs);
         }
         _position = position;
+        _trs = new_trs;
+        _decomposed = true;
         mark_dirty();
     }
     void set_rotation(Quaternion const &rotation, bool recursive) override {
+        auto new_trs = rbc::rotation(_position, rotation, _scale);
         if (recursive) {
-            auto new_trs = rbc::rotation(_position, rotation, _scale);
             traversal(new_trs);
         }
         _rotation = rotation;
+        _trs = new_trs;
+        _decomposed = true;
         mark_dirty();
     }
     void set_scale(double3 const &scale, bool recursive) override {
+        auto new_trs = rbc::rotation(_position, _rotation, scale);
         if (recursive) {
-            auto new_trs = rbc::rotation(_position, _rotation, scale);
             traversal(new_trs);
         }
         _scale = scale;
+        _trs = new_trs;
+        _decomposed = true;
+        mark_dirty();
+    }
+    void set_trs(double4x4 const &trs, bool recursive) override {
+        if (recursive) {
+            traversal(trs);
+        }
+        _trs = trs;
+        _decomposed = false;
         mark_dirty();
     }
     void set_trs(
@@ -96,13 +139,15 @@ struct TransformImpl : Transform {
         Quaternion const &rotation,
         double3 const &scale,
         bool recursive) override {
+        auto new_trs = rbc::rotation(position, rotation, scale);
         if (recursive) {
-            auto new_trs = rbc::rotation(position, rotation, scale);
             traversal(new_trs);
         }
         _position = position;
         _rotation = rotation;
         _scale = scale;
+        _trs = new_trs;
+        _decomposed = true;
         mark_dirty();
     }
     void add_children(Transform *tr) override {

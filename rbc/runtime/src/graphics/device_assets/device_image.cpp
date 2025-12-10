@@ -232,9 +232,13 @@ void DeviceImage::async_load_from_memory(
     ImageType image_type,
     bool copy_to_host) {
     if (copy_to_host) {
-        _host_data.clear();
-        _host_data.push_back_uninitialized(data.size());
-        std::memcpy(_host_data.data(), data.data(), data.size());
+        if (data.data()) {
+            if (_host_data.size() != data.size()) {
+                _host_data.clear();
+                _host_data.push_back_uninitialized(data.size());
+            }
+            std::memcpy(_host_data.data(), data.data(), data.size());
+        }
         data = BinaryBlob{
             _host_data.data(),
             _host_data.size(),

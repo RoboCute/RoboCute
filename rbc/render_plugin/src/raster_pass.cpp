@@ -29,8 +29,8 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto pass_ctx = ctx.mut.get_pass_context<RasterPassContext>();
     auto &sm = SceneManager::instance();
     auto &render_device = RenderDevice::instance();
-    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
-    const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
+    const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
     if (pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frame_settings.render_resolution)) {
         sm.dispose_after_sync(std::move(pass_ctx->depth_buffer));
     }

@@ -46,6 +46,35 @@ struct EntityImpl : Entity {
         LUISA_DEBUG_ASSERT(comp->_entity == this);
         return comp;
     }
+    void rbc_objser(rbc::JsonSerializer &ser) const override {
+        ser.start_array();
+        for (auto &i : _components) {
+            auto comp = get_object(i.second);
+            if (!comp) return;
+            auto guid = comp->guid();
+            if (guid) {
+                ser._store(guid);
+            }
+        }
+        ser.add_last_scope_to_object("components");
+    }
+    void rbc_objdeser(rbc::JsonDeSerializer &ser) override {
+        uint64_t size;
+        if (!ser.start_array(size, "components")) return;
+        _components.reserve(size);
+        for (auto &i : _components) {
+            vstd::Guid obj_guid;
+            if (!ser._load(obj_guid)) {
+                break;
+            }
+            auto obj = get_object(obj_guid);
+            LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
+            _components.try_emplace(
+                obj->type_id(),
+                obj->instance_id());
+        }
+        ser.end_scope();
+    }
     void dispose() override;
 };
 DECLARE_TYPE_REGISTER(Entity)

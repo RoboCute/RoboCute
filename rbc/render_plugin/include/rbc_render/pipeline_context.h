@@ -58,7 +58,7 @@ struct HDRI;
 struct SkyAtmosphere;
 struct PipelineContext : vstd::IOperatorNewBase {
     // settings
-    rbc::StateMap *pipeline_settings;
+    mutable rbc::StateMap pipeline_settings;
 
     // config
     Camera cam;
@@ -76,8 +76,7 @@ struct PipelineContext : vstd::IOperatorNewBase {
         Device &device,
         Stream &stream,
         SceneManager &scene,
-        CommandList &cmdlist,
-        rbc::StateMap *pipeline_settings);
+        CommandList &cmdlist);
     void clear();
     ~PipelineContext();
 

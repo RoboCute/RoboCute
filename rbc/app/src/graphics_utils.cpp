@@ -26,14 +26,13 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     }
     if (_compute_event.event)
         _compute_event.event.synchronize(_compute_event.fence_index);
-    if (_display_pipe_ctx)
-        _render_plugin->destroy_pipeline_context(_display_pipe_ctx);
     if (after_sync)
         after_sync();
+    if (_display_pipe_ctx)
+        _render_plugin->destroy_pipeline_context(_display_pipe_ctx);
+    _render_module.reset();
     if (_lights)
         _lights.destroy();
-    _render_settings.destroy();
-    _render_module.reset();
     AssetsManager::destroy_instance();
     if (_sm) {
         _sm.destroy();
@@ -101,8 +100,8 @@ void GraphicsUtils::init_render() {
     _render_module = PluginManager::instance().load_module("rbc_render_plugin");
     LUISA_ASSERT(_render_module, "Render module not found.");
     _render_plugin = _render_module->invoke<RenderPlugin *()>("get_render_plugin");
-    _render_settings.create();
-    _display_pipe_ctx = _render_plugin->create_pipeline_context(*_render_settings);
+    _display_pipe_ctx = _render_plugin->create_pipeline_context();
+    _render_settings = _render_plugin->pipe_ctx_state_map(_display_pipe_ctx);
     LUISA_ASSERT(_render_plugin->initialize_pipeline({}));
     _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, false);
     _sm->prepare_frame();
@@ -245,7 +244,7 @@ void GraphicsUtils::tick(
         auto io_fence = fence.exchange(0);
         // support direct-storage
         if (io_fence > 0) {
-            
+
             main_stream << service->wait(io_fence);
         }
     };
@@ -304,11 +303,12 @@ void GraphicsUtils::resize_swapchain(uint2 size) {
                 .back_buffer_count = 1});
 }
 void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
-    mesh->calculate_bounding_box();
     mesh->wait_finished();
+    mesh->calculate_bounding_box();
     auto mesh_data = mesh->mesh_data();
     LUISA_ASSERT(mesh_data, "Mesh not loaded.");
     auto host_data = mesh->host_data();
+    LUISA_ASSERT(host_data.size_bytes() == mesh_data->pack.data.size_bytes(), "Invalid host data length.");
     if (only_vertex) {
         _frame_mem_io_list << IOCommand{
             host_data.data(),

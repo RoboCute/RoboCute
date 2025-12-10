@@ -37,14 +37,16 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
     RenderPluginImpl() {
         pipelines.try_emplace("default", luisa::make_unique<PTPipeline>());
     }
-    PipeCtxStub *create_pipeline_context(StateMap &render_settings_map) override {
+    PipeCtxStub *create_pipeline_context() override {
         auto ctx = new PipelineContext{
             RenderDevice::instance().lc_device(),
             RenderDevice::instance().lc_main_stream(),
             SceneManager::instance(),
-            RenderDevice::instance().lc_main_cmd_list(),
-            &render_settings_map};
+            RenderDevice::instance().lc_main_cmd_list()};
         return reinterpret_cast<PipeCtxStub *>(ctx);
+    }
+    StateMap *pipe_ctx_state_map(PipeCtxStub *ctx) {
+        return &reinterpret_cast<PipelineContext *>(ctx)->pipeline_settings;
     }
     void destroy_pipeline_context(PipeCtxStub *ctx) override {
         delete reinterpret_cast<PipelineContext *>(ctx);
@@ -77,7 +79,7 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
         auto &ctx = *reinterpret_cast<PipelineContext *>(pipe_ctx);
         // set sky
         {
-            auto &sky_settings = ctx.pipeline_settings->read_mut<SkySettings>();
+            auto &sky_settings = ctx.pipeline_settings.read_mut<SkySettings>();
             sky_settings.sky_atom = sky_atom.has_value() ? sky_atom.ptr() : nullptr;
         }
         ptr->wait_enable();

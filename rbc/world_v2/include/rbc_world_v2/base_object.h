@@ -3,6 +3,7 @@
 #include <rbc_core/type_info.h>
 #include <luisa/vstl/common.h>
 #include <luisa/core/stl/hash.h>
+#include <rbc_core/rc.h>
 namespace rbc::world {
 enum struct BaseObjectType {
     Component,
@@ -15,24 +16,34 @@ struct InstanceID {
 };
 struct BaseObject {
     friend struct WorldPluginImpl;
+    RBC_RC_IMPL
 protected:
     vstd::Guid _guid;
-    uint64_t _instance_id;
+    uint64_t _instance_id{~0ull};
     BaseObject();
     virtual ~BaseObject();
     static BaseObject *get_object(InstanceID instance_id);
+    static BaseObject *get_object(vstd::Guid const &guid);
+    void init();
+    void init_with_guid(vstd::Guid const &guid);
 public:
     [[nodiscard]] InstanceID instance_id() const {
         return InstanceID{_instance_id};
     }
     [[nodiscard]] auto guid() const { return _guid; }
     [[nodiscard]] virtual BaseObjectType base_type() const = 0;
-    virtual void serialize(rbc::JsonSerializer &obj) const {}
-    virtual void deserialize(rbc::JsonDeSerializer &obj) {}
-    virtual void rbc_objser(rbc::JsonSerializer &obj) const = 0;
-    virtual void rbc_objdeser(rbc::JsonDeSerializer &obj) = 0;
-    [[nodiscard]] virtual bool is_type_of(TypeInfo const &type) const = 0;
+    virtual void rbc_objser(rbc::JsonSerializer &obj) const {}
+    virtual void rbc_objdeser(rbc::JsonDeSerializer &obj) {}
+
+    [[nodiscard]] bool is_type_of(TypeInfo const &type) const {
+        auto dst = type_id();
+        auto &&src = type.md5();
+        return src[0] == dst[0] && src[1] == dst[1];
+    }
     virtual void dispose() = 0;
+    inline void rbc_rc_delete() {
+        dispose();
+    }
     [[nodiscard]] virtual const char *type_name() const = 0;
     [[nodiscard]] virtual std::array<uint64_t, 2> type_id() const = 0;
     static void *operator new(
@@ -87,14 +98,8 @@ public:
         LUISA_ERROR("operator delete banned.");
     }
 };
-struct BaseObjectImpl : BaseObject {
-private:
-    void rbc_objser(rbc::JsonSerializer &obj) const override;
-    void rbc_objdeser(rbc::JsonDeSerializer &obj) override;
-    [[nodiscard]] bool is_type_of(TypeInfo const &type) const override;
-};
 template<typename T, BaseObjectType base_type_v>
-struct BaseObjectDerive : BaseObjectImpl {
+struct BaseObjectDerive : BaseObject {
     [[nodiscard]] const char *type_name() const override {
         return rbc_rtti_detail::is_rtti_type<T>::name;
     }

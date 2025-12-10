@@ -91,12 +91,12 @@ BufferView<float> PostPass::exposure_buffer() const {
 }
 
 void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    const auto &toneMappingSettings = ctx.pipeline_settings->read<ToneMappingSettings>();
-    const auto &displaySettings = ctx.pipeline_settings->read<DisplaySettings>();
-    const auto &frame_settings = ctx.pipeline_settings->read<FrameSettings>();
-    const auto &exposureSettings = ctx.pipeline_settings->read<ExposureSettings>();
+    const auto &toneMappingSettings = ctx.pipeline_settings.read<ToneMappingSettings>();
+    const auto &displaySettings = ctx.pipeline_settings.read<DisplaySettings>();
+    const auto &frame_settings = ctx.pipeline_settings.read<FrameSettings>();
+    const auto &exposureSettings = ctx.pipeline_settings.read<ExposureSettings>();
     init_counter.wait();
-    auto &pipeline_mode = ctx.pipeline_settings->read<PTPipelineSettings>();
+    auto &pipeline_mode = ctx.pipeline_settings.read<PTPipelineSettings>();
     if (!pipeline_mode.use_post_filter) {
         post_ctx = nullptr;
         return;
@@ -124,11 +124,11 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
 }
 
 void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    const auto &distortionSettings = ctx.pipeline_settings->read<DistortionSettings>();
-    auto &toneMappingSettings = ctx.pipeline_settings->read_mut<ToneMappingSettings>();
-    const auto &displaySettings = ctx.pipeline_settings->read<DisplaySettings>();
-    const auto &exposureSettings = ctx.pipeline_settings->read<ExposureSettings>();
-    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    const auto &distortionSettings = ctx.pipeline_settings.read<DistortionSettings>();
+    auto &toneMappingSettings = ctx.pipeline_settings.read_mut<ToneMappingSettings>();
+    const auto &displaySettings = ctx.pipeline_settings.read<DisplaySettings>();
+    const auto &exposureSettings = ctx.pipeline_settings.read<ExposureSettings>();
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();
 
     ///////////// recycle unused gbuffer
@@ -144,7 +144,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             return;
         }
     }
-    auto &pipeline_mode = ctx.pipeline_settings->read<PTPipelineSettings>();
+    auto &pipeline_mode = ctx.pipeline_settings.read<PTPipelineSettings>();
     if (!pipeline_mode.use_post_filter) {
         cmdlist << (*blit_shader)(*frame_settings.dst_img, *frame_settings.resolved_img, false).dispatch(frame_settings.dst_img->size());
         return;

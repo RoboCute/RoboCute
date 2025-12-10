@@ -92,18 +92,18 @@ void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const
 }
 void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
-    auto &frame_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &scene = *ctx.scene;
     auto &cmdlist = (*ctx.cmdlist);
     auto &accel = scene.accel();
     auto &render_device = RenderDevice::instance();
     auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);
 
-    const auto &jitter_data = ctx.pipeline_settings->read<JitterData>();
-    const auto &cam_data = ctx.pipeline_settings->read<CameraData>();
-    const auto &ptSettings = ctx.pipeline_settings->read<PathTracerSettings>();
+    const auto &jitter_data = ctx.pipeline_settings.read<JitterData>();
+    const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
+    const auto &ptSettings = ctx.pipeline_settings.read<PathTracerSettings>();
 
-    const auto &sky_heap = ctx.pipeline_settings->read<SkyHeapIndices>();
+    const auto &sky_heap = ctx.pipeline_settings.read<SkyHeapIndices>();
     if (!accel || accel.size() == 0) {
         cmdlist << (*draw_sky_shader)(
                        emission,

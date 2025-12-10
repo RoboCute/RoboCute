@@ -308,10 +308,10 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     _lut_load_cmds.clear();
     auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(ctx.cam);
 
-    auto &frane_settings = ctx.pipeline_settings->read_mut<FrameSettings>();
+    auto &frane_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &mut = ctx.mut;
-    auto &jitter_data = ctx.pipeline_settings->read_mut<JitterData>();
-    auto &cam_data = ctx.pipeline_settings->read_mut<CameraData>();
+    auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
+    auto &cam_data = ctx.pipeline_settings.read_mut<CameraData>();
     if (frane_settings.frame_index == 0) {
         pass_ctx->last_cam = ctx.cam;
     }
@@ -397,7 +397,7 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
 }
 void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(ctx.cam);
-    auto &jitter_data = ctx.pipeline_settings->read_mut<JitterData>();
+    auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
     pass_ctx->last_jitter = jitter_data.jitter;
 }
 void PreparePass::on_frame_end(

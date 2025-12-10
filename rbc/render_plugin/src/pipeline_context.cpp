@@ -21,10 +21,9 @@ PipelineContext::PipelineContext(
     Device &device,
     Stream &stream,
     SceneManager &scene,
-    CommandList &cmdlist,
-    rbc::StateMap *pipeline_settings)
-    : device{&device}, stream(&stream), scene{&scene}, cmdlist{&cmdlist}, pipeline_settings(pipeline_settings) {
-    auto &cam_data = pipeline_settings->read_mut<CameraData>();
+    CommandList &cmdlist)
+    : device{&device}, stream(&stream), scene{&scene}, cmdlist{&cmdlist}{
+    auto &cam_data = pipeline_settings.read_mut<CameraData>();
     cam_data.world_to_sky = make_float3x3(
         1, 0, 0,
         0, 1, 0,
@@ -32,7 +31,7 @@ PipelineContext::PipelineContext(
 }
 void PipelineContext::clear() {
     mut.clear();
-    auto click_mng = pipeline_settings->read_if<ClickManager>();
+    auto click_mng = pipeline_settings.read_if<ClickManager>();
     if (click_mng)
         click_mng->clear();
 }

@@ -88,11 +88,10 @@ struct ContextImpl : RBCContext {
             uv_count,
             std::move(vec),
             false,
-            false,
+            true,
             file_offset,
             ~0ull,
             true);
-        ptr->calculate_bounding_box();
         return ptr;
     }
 

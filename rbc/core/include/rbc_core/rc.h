@@ -161,7 +161,7 @@ inline static void rc_notify_weak_ref_counter_dead(
 
 // concept
 template<typename T>
-concept ObjectWithRC = requires(const T *const_obj, T *obj) {
+concept ObjectWithRC = requires(const T *const_obj) {
     { const_obj->rbc_rc_count() } -> std::same_as<rbc::RCCounterType>;
     { const_obj->rbc_rc_add_ref() } -> std::same_as<rbc::RCCounterType>;
     { const_obj->rbc_rc_weak_lock() } -> std::same_as<rbc::RCCounterType>;
@@ -170,7 +170,7 @@ concept ObjectWithRC = requires(const T *const_obj, T *obj) {
     { const_obj->rbc_rc_weak_ref_counter() } -> std::same_as<rbc::RCWeakRefCounter *>;
 };
 template<typename T>
-concept ObjectWithRCDeleter = requires(const T *const_obj, T *obj) {
+concept ObjectWithRCDeleter = requires(T *obj) {
     { obj->rbc_rc_delete() } -> std::same_as<void>;
 };
 template<typename From, typename To>
