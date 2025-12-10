@@ -6,7 +6,7 @@
 
 namespace rbc {
 
-ViewportWidget::ViewportWidget(IRenderer* renderer, QWidget *parent)
+ViewportWidget::ViewportWidget(IRenderer *renderer, QWidget *parent)
     : QWidget(parent), m_renderer(renderer) {
     setupUi();
     setFocusPolicy(Qt::StrongFocus);
@@ -27,32 +27,32 @@ ViewportWidget::~ViewportWidget() {
         delete m_container;
         m_container = nullptr;
     }
-    
+
     m_rhiWindow = nullptr;
 }
 
 void ViewportWidget::setupUi() {
     // Get API from Engine or default
     auto api = EditorEngine::instance().getGraphicsApi();
-    
+
     m_rhiWindow = new RhiWindow(api);
     m_rhiWindow->renderer = m_renderer;
     // Set workspace path if needed
     // m_rhiWindow->workspace_path = ...
-    
+
     m_container = QWidget::createWindowContainer(m_rhiWindow, this);
     m_container->setFocusPolicy(Qt::NoFocus);
-    
+
     // Match original behavior: Set minimum size and expanding policy
     // This helps avoid layout trashing/stuttering during initial show
-    m_container->setMinimumSize(400, 300);
+    // m_container->setMinimumSize(400, 300);
     m_container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    
+
     auto layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     layout->addWidget(m_container);
-    
+
     setLayout(layout);
 }
 
@@ -77,7 +77,7 @@ void ViewportWidget::keyReleaseEvent(QKeyEvent *event) {
 }
 
 void ViewportWidget::mousePressEvent(QMouseEvent *event) {
-    setFocus(); // Ensure we get focus on click
+    setFocus();// Ensure we get focus on click
     if (m_rhiWindow) {
         QCoreApplication::sendEvent(m_rhiWindow, event);
     }
@@ -105,4 +105,4 @@ void ViewportWidget::wheelEvent(QWheelEvent *event) {
     QWidget::wheelEvent(event);
 }
 
-} // namespace rbc
+}// namespace rbc

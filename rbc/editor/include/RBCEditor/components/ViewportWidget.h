@@ -1,9 +1,15 @@
 #pragma once
+/**
+ * Viewport Widget
+ * =======================================================
+ * Viewport组件是渲染窗口的核心组件，负责查看3D场景细节，预览渲染效果等
+ * RHIWindow的一层封装和消息转发
+*/
 
 #include <QWidget>
 #include <memory>
 #include "RBCEditor/components/RHIWindow.h"
-#include "RBCEditor/runtime/renderer.h"
+#include "RBCEditor/runtime/Renderer.h"
 
 namespace rbc {
 
@@ -13,7 +19,7 @@ public:
     explicit ViewportWidget(IRenderer *renderer, QWidget *parent = nullptr);
     ~ViewportWidget() override;
 
-    RhiWindow *getRhiWindow() const { return m_rhiWindow; }
+    [[nodiscard]] RhiWindow *getRhiWindow() const { return m_rhiWindow; }
 
 protected:
     // Event forwarding
@@ -23,7 +29,6 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
-
     void resizeEvent(QResizeEvent *event) override;
 
 private:

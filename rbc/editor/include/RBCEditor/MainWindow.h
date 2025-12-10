@@ -1,20 +1,22 @@
 #pragma once
 #include <QMainWindow>
+#include <QStatusBar>
+
 #include "RBCEditor/WorkflowManager.h"
+#include "RBCEditor/runtime/SceneSyncManager.h"
+#include "RBCEditor/components/AnimationPlayer.h"
+#include "RBCEditor/animation/AnimationPlaybackManager.h"
 
 namespace rbc {
 class HttpClient;
-class SceneSyncManager;
 class SceneHierarchyWidget;
 class DetailsPanel;
 class ViewportWidget;
 class ResultPanel;
-class AnimationPlayer;
-class AnimationPlaybackManager;
 class EditorScene;
 class NodeEditor;
 class WorkflowManager;
-}
+}// namespace rbc
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -35,13 +37,27 @@ private:
     void setupToolBar();
     void setupDocks();
     void switchWorkflow(rbc::WorkflowType workflow);
-    QDockWidget* createViewportDock();
+    QDockWidget *createViewportDock();
 
 private slots:
     void onSceneUpdated();
     void onConnectionStatusChanged(bool connected);
     void onEntitySelected(int entityId);
-    void onAnimationSelected(QString animName);
+
+    inline void onAnimationSelected(const QString &animName) {
+        if (!sceneSyncManager_) return;
+
+        const auto *sceneSync = sceneSyncManager_->sceneSync();
+        luisa::string anim_name{animName.toStdString()};
+        const auto *anim = sceneSync->getAnimation(anim_name);
+
+        if (anim && animationPlayer_ && playbackManager_) {
+            animationPlayer_->setAnimation(animName, anim->total_frames, anim->fps);
+            playbackManager_->setAnimation(anim);
+            statusBar()->showMessage(QString("Loaded animation: %1").arg(animName));
+        }
+    }
+
     void onAnimationFrameChanged(int frame);
     void onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow);
     void switchToSceneEditingWorkflow();
@@ -58,10 +74,11 @@ private:
     rbc::ResultPanel *resultPanel_;
     rbc::AnimationPlayer *animationPlayer_;
     rbc::AnimationPlaybackManager *playbackManager_;
+
     rbc::EditorScene *editorScene_;
     rbc::NodeEditor *nodeEditor_;
     QDockWidget *nodeDock_;
-    
+
     // Workflow actions (menu and toolbar share the same action group)
     QActionGroup *workflowActionGroup_;
     QAction *sceneEditingAction_;

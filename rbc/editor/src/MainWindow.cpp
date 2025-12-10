@@ -63,7 +63,9 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::setupUi() {
-    resize(1600, 900);
+    resize(1920, 1080);
+    // Set minimum size to ensure proper layout even when no central widget is set
+    setMinimumSize(800, 600);
     setWindowTitle("RoboCute Editor");
 
     setupMenuBar();
@@ -71,7 +73,7 @@ void MainWindow::setupUi() {
     setupDocks();
 
     // Set default workflow (SceneEditing)
-    switchWorkflow(rbc::WorkflowType::SceneEditing);
+    // switchWorkflow(rbc::WorkflowType::SceneEditing);
 
     statusBar()->showMessage("Ready");
 
@@ -148,24 +150,6 @@ void MainWindow::onEntitySelected(int entityId) {
     }
 }
 
-void MainWindow::onAnimationSelected(QString animName) {
-    if (!sceneSyncManager_) return;
-
-    const auto *sceneSync = sceneSyncManager_->sceneSync();
-    const auto *anim = sceneSync->getAnimation(
-        animName.toStdString().c_str());
-
-    if (anim && animationPlayer_ && playbackManager_) {
-        // Set animation in animation player UI
-        animationPlayer_->setAnimation(animName, anim->total_frames, anim->fps);
-
-        // Set animation in playback manager
-        playbackManager_->setAnimation(anim);
-
-        statusBar()->showMessage(QString("Loaded animation: %1").arg(animName));
-    }
-}
-
 void MainWindow::onAnimationFrameChanged(int frame) {
     // Update playback manager to apply transforms to scene
     if (playbackManager_) {
@@ -187,16 +171,29 @@ void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowT
         // SceneEditing: Viewport as central, NodeGraph as dock
         // Move NodeEditor back to dock if it was central
         if (centralWidget() == nodeEditor_) {
+            takeCentralWidget();
             nodeDock_->setWidget(nodeEditor_);
-            addDockWidget(Qt::BottomDockWidgetArea, nodeDock_);
         }
         nodeEditor_->setAsCentralWidget(false);
-
         // Set Viewport as central widget
+        // First, ensure viewportWidget_ is not in the dock
         if (viewportDock_->widget() == viewportWidget_) {
             viewportDock_->setWidget(nullptr);
         }
+        // Remove viewportDock_ if it was added as a dock widget
+        // This is safe to call even if the dock wasn't added - Qt will ignore it
+        removeDockWidget(viewportDock_);
+        // Ensure viewportWidget_ has MainWindow as parent (not dock)
+        // This is critical for setCentralWidget to work correctly
+        if (viewportWidget_->parent() != this) {
+            viewportWidget_->setParent(this);
+        }
+        // Set viewportWidget_ as central widget
+        if (centralWidget()) {
+            takeCentralWidget();
+        }
         setCentralWidget(viewportWidget_);
+
         viewportDock_->setVisible(false);// Hide dock since viewport is central
 
         // Show scene-related docks
@@ -218,13 +215,16 @@ void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowT
         // Text2Image: NodeGraph as central, Viewport minimized
         // Remove viewport from central if it's there
         if (centralWidget() == viewportWidget_) {
+            takeCentralWidget();
             viewportDock_->setWidget(viewportWidget_);
-            setCentralWidget(nullptr);
         }
 
         // Set NodeEditor as central widget
         if (nodeDock_->widget() == nodeEditor_) {
             nodeDock_->setWidget(nullptr);
+        }
+        if (centralWidget()) {
+            takeCentralWidget();
         }
         setCentralWidget(nodeEditor_);
         nodeEditor_->setAsCentralWidget(true);
@@ -354,8 +354,8 @@ void MainWindow::setupDocks() {
     addDockWidget(Qt::RightDockWidgetArea, detailsDock);
 
     // 3. Viewport as Dock (can be minimized)
-    // Note: Initially not added as dock, will be set as central widget
     viewportDock_ = createViewportDock();
+    addDockWidget(Qt::TopDockWidgetArea, viewportDock_);
 
     // 4. Node Editor (Bottom) - use shared HttpClient
     nodeDock_ = new QDockWidget("Node Graph", this);
@@ -398,12 +398,15 @@ void MainWindow::setupDocks() {
 }
 
 QDockWidget *MainWindow::createViewportDock() {
+
     viewportWidget_ = new rbc::ViewportWidget(&rbc::EditorEngine::instance(), this);
+    viewportWidget_->setMinimumSize(400, 300);
 
     auto *dock = new QDockWidget("Viewport", this);
     dock->setObjectName("ViewportDock");
     dock->setAllowedAreas(Qt::AllDockWidgetAreas);
     dock->setWidget(viewportWidget_);
+    dock->setVisible(true);
 
     return dock;
 }

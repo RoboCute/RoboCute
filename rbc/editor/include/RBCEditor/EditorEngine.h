@@ -4,7 +4,7 @@
 #include <luisa/luisa-compute.h>
 #include <QtGui/rhi/qrhi.h>
 #include "RBCEditor/app.h"
-#include "RBCEditor/runtime/renderer.h"
+#include "RBCEditor/runtime/Renderer.h"
 #include "RBCEditor/runtime/HttpClient.h"
 
 namespace rbc {
