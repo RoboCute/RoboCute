@@ -8,10 +8,7 @@ struct MeshImpl : Mesh {
     MeshImpl() {
     }
     void rbc_objser(JsonSerializer &ser) const override {
-        if (!_path.empty()) {
-            ser._store(luisa::to_string(_path), "path");
-            ser._store(_file_offset, "file_offset");
-        }
+        BaseType::rbc_objser(ser);
         ser._store(_contained_normal, "contained_normal");
         ser._store(_contained_tangent, "contained_tangent");
         ser._store(_vertex_count, "vertex_count");
@@ -24,11 +21,7 @@ struct MeshImpl : Mesh {
         ser.add_last_scope_to_object("submesh_offsets");
     }
     void rbc_objdeser(JsonDeSerializer &ser) override {
-        luisa::string path_str;
-        if (ser._load(path_str, "path")) {
-            _path = path_str;
-        }
-        ser._load(_file_offset, "file_offset");
+        BaseType::rbc_objdeser(ser);
 #define RBC_MESH_LOAD(m)        \
     {                           \
         decltype(_##m) m;       \
@@ -77,9 +70,13 @@ struct MeshImpl : Mesh {
         uint32_t uv_count,
         bool contained_normal,
         bool contained_tangent) override {
-        if (_device_mesh)
-            _device_mesh->wait_finished();
-        else {
+        auto render_device = RenderDevice::instance_ptr();
+        if (!render_device) return;
+        if (_device_mesh) {
+            if (_device_mesh->loaded()) [[unlikely]] {
+                LUISA_ERROR("Can not be create repeatly.");
+            }
+        } else {
             _device_mesh = new DeviceMesh{};
         }
         _submesh_offsets.clear();
@@ -92,25 +89,25 @@ struct MeshImpl : Mesh {
         _contained_normal = contained_normal;
         _contained_tangent = contained_tangent;
         LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
-
-        auto render_device = RenderDevice::instance_ptr();
-        if (render_device) {
-            LUISA_ASSERT(!_device_mesh->mesh_data(), "Mesh can not be re-load");
-            _device_mesh->create_mesh(
-                render_device->lc_main_cmd_list(),
-                _vertex_count,
-                _contained_normal,
-                _contained_tangent,
-                _uv_count,
-                _triangle_count,
-                vstd::vector<uint>(_submesh_offsets));
-        }
+        _device_mesh->create_mesh(
+            render_device->lc_main_cmd_list(),
+            _vertex_count,
+            _contained_normal,
+            _contained_tangent,
+            _uv_count,
+            _triangle_count,
+            vstd::vector<uint>(_submesh_offsets));
     }
     bool async_load_from_file() override {
         auto render_device = RenderDevice::instance_ptr();
         if (!render_device) return false;
-        if (!_device_mesh)
+        if (_device_mesh) {
+            if (_device_mesh->loaded()) [[unlikely]] {
+                LUISA_ERROR("Can not be create repeatly.");
+            }
+        } else {
             _device_mesh = new DeviceMesh{};
+        }
 
         auto file_size = desire_size_bytes();
         if (_path.empty()) {
@@ -128,6 +125,9 @@ struct MeshImpl : Mesh {
             file_size, !_device_mesh->host_data_ref().empty());
 
         return true;
+    }
+    bool loaded() const override {
+        return _device_mesh && _device_mesh->loaded();
     }
     void unload() override {
         _device_mesh.reset();

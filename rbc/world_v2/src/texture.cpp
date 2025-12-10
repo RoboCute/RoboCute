@@ -24,19 +24,13 @@ struct TextureImpl : Texture {
         return size_bytes;
     }
     void rbc_objser(JsonSerializer &ser) const override {
-        if (!_path.empty()) {
-            ser._store(luisa::to_string(_path), "path");
-            ser._store(_file_offset, "file_offset");
-        }
+        BaseType::rbc_objser(ser);
         ser._store(_pixel_storage, "pixel_storage");
         ser._store(_size, "size");
         ser._store(_mip_level, "mip_level");
     }
     void rbc_objdeser(JsonDeSerializer &ser) override {
-        luisa::string path_str;
-        if (ser._load(path_str, "path")) {
-            _path = path_str;
-        }
+        BaseType::rbc_objdeser(ser);
 #define RBC_MESH_LOAD(m)        \
     {                           \
         decltype(_##m) m;       \
@@ -45,7 +39,6 @@ struct TextureImpl : Texture {
         }                       \
     }
         RBC_MESH_LOAD(pixel_storage)
-        RBC_MESH_LOAD(file_offset)
         RBC_MESH_LOAD(mip_level)
         RBC_MESH_LOAD(size)
 #undef RBC_MESH_LOAD
@@ -56,6 +49,8 @@ struct TextureImpl : Texture {
         LCPixelStorage pixel_storage,
         luisa::uint2 size,
         uint32_t mip_level) override {
+        auto render_device = RenderDevice::instance_ptr();
+        if (!render_device) return;
         _path = std::move(path);
         _file_offset = file_offset;
         _size = size;
@@ -63,8 +58,17 @@ struct TextureImpl : Texture {
         _mip_level = mip_level;
         if (!_device_image) {
             _device_image = new DeviceImage();
+        } else {
+            if (_device_image->loaded()) [[unlikely]] {
+                LUISA_ERROR("Can not be create repeatly.");
+            }
         }
         LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
+        _device_image->create_texture<float>(
+            render_device->lc_device(),
+            (PixelStorage)pixel_storage,
+            size,
+            mip_level);
     }
     bool async_load_from_file() override {
         auto render_device = RenderDevice::instance_ptr();
@@ -76,6 +80,10 @@ struct TextureImpl : Texture {
         LUISA_ASSERT(host_data()->empty() || host_data()->size() == file_size, "Invalid host data length.");
         if (!_device_image) {
             _device_image = new DeviceImage();
+        } else {
+            if (_device_image->loaded()) [[unlikely]] {
+                LUISA_ERROR("Can not be create repeatly.");
+            }
         }
         _device_image->async_load_from_file(
             _path,
@@ -94,6 +102,14 @@ struct TextureImpl : Texture {
     }
     void unload() override {
         _device_image.reset();
+    }
+    uint32_t heap_index() const override {
+        if (!_device_image) return ~0u;
+        _device_image->wait_executed();
+        return _device_image->heap_idx();
+    }
+    bool loaded() const override {
+        return _device_image && _device_image->loaded();
     }
     void dispose() override;
 };
