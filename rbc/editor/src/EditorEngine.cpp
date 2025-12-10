@@ -2,8 +2,7 @@
 #include "QtGui/rhi/qrhi_platform.h"
 #include <QDebug>
 #include <luisa/core/logging.h>
-#include "RBCEditor/dummyapp.h"
-#include "RBCEditor/naiveapp.h"
+
 #include "RBCEditor/pbrapp.h"
 #include "RBCEditor/visapp.h"
 
@@ -68,13 +67,25 @@ void EditorEngine::resume() {
     m_isPaused = false;
 }
 
-void EditorEngine::handle_key(luisa::compute::Key key) {
+void EditorEngine::handle_key(luisa::compute::Key key, luisa::compute::Action action) {
     if (m_renderApp) {
-        m_renderApp->handle_key(key);
+        m_renderApp->handle_key(key, action);
+    }
+}
+
+void EditorEngine::handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy) {
+    if (m_renderApp) {
+        m_renderApp->handle_mouse(button, action, xy);
+    }
+}
+void EditorEngine::handle_cursor_position(luisa::float2 xy) {
+    if (m_renderApp) {
+        m_renderApp->handle_cursor_position(xy);
     }
 }
 
 uint64_t EditorEngine::get_present_texture(luisa::uint2 resolution) {
+
     if (m_renderApp) {
         return m_renderApp->create_texture(resolution.x, resolution.y);
     }

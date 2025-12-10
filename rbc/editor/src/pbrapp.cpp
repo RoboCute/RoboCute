@@ -49,7 +49,7 @@ uint64_t PBRApp::create_texture(uint width, uint height) {
     return (uint64_t)utils.dst_image().native_handle();
 }
 
-void PBRApp::handle_key(luisa::compute::Key key) {
+void PBRApp::handle_key(luisa::compute::Key key, luisa::compute::Action action) {
     frame_index = 0;
     reset = true;
     switch (key) {

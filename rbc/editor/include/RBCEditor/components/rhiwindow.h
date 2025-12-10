@@ -9,6 +9,7 @@
 #include <luisa/gui/input.h>
 
 namespace rbc {
+
 inline luisa::compute::Key key_map(int key) {
     switch (key) {
         case Qt::Key_W: return luisa::compute::KEY_W;
@@ -58,6 +59,32 @@ inline luisa::compute::Key key_map(int key) {
     }
 }
 
+inline luisa::compute::Action action_map(int action) {
+    using namespace luisa::compute;
+
+    switch (action) {
+        case QEvent::KeyPress: return Action::ACTION_PRESSED;
+        case QEvent::KeyRelease: return Action::ACTION_RELEASED;
+        case QEvent::MouseButtonPress: return Action::ACTION_PRESSED;
+        case QEvent::MouseButtonRelease: return Action::ACTION_RELEASED;
+        default: return Action::ACTION_UNKNOWN;
+    }
+}
+
+inline luisa::compute::MouseButton mouse_button_map(int mouse_button) {
+    using namespace luisa::compute;
+    switch (mouse_button) {
+        case Qt::LeftButton: return MOUSE_BUTTON_LEFT;
+        case Qt::RightButton: return MOUSE_BUTTON_RIGHT;
+        case Qt::MiddleButton: return MOUSE_BUTTON_MIDDLE;
+        default: return MOUSE_BUTTON_UNKNOWN;
+    }
+}
+
+inline luisa::float2 mouse_pos_map(float x, float y) {
+    return {x, y};
+}
+
 class RhiWindow : public QWindow {
     Q_OBJECT
 public:
@@ -80,6 +107,7 @@ protected:
     bool m_hasSwapChain = false;
     QRhi::Implementation m_graphicsApi = QRhi::D3D12;
     void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;

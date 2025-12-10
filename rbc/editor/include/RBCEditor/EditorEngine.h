@@ -3,7 +3,7 @@
 #include <memory>
 #include <luisa/luisa-compute.h>
 #include <QtGui/rhi/qrhi.h>
-#include "RBCEditor/dummyapp.h"
+#include "RBCEditor/app.h"
 #include "RBCEditor/runtime/renderer.h"
 #include "RBCEditor/runtime/HttpClient.h"
 
@@ -24,7 +24,10 @@ public:
     void update() override;
     void pause() override;
     void resume() override;
-    void handle_key(luisa::compute::Key key) override;
+    void handle_key(luisa::compute::Key key, luisa::compute::Action action) override;
+    void handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy) override;
+    void handle_cursor_position(luisa::float2 xy) override;
+
     uint64_t get_present_texture(luisa::uint2 resolution) override;
 
     // Accessors

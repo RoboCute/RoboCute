@@ -232,7 +232,7 @@ void RhiWindow::ensureFullscreenTexture(const QSize &pixelSize, QRhiResourceUpda
 void RhiWindow::keyPressEvent(QKeyEvent *event) {
     QString keyName;
     // Handle Key Event
-    renderer->handle_key(key_map(event->key()));
+    renderer->handle_key(key_map(event->key()), action_map(event->type()));
 
     // Debug Info handler
     switch (event->key()) {
@@ -263,8 +263,21 @@ void RhiWindow::keyPressEvent(QKeyEvent *event) {
     QWindow::keyPressEvent(event);
 }
 
+void RhiWindow::keyReleaseEvent(QKeyEvent *event) {
+    renderer->handle_key(key_map(event->key()), action_map(event->type()));
+    QWindow::keyReleaseEvent(event);
+}
+
 void RhiWindow::mousePressEvent(QMouseEvent *event) {
     QString buttonName;
+
+    renderer->handle_mouse(
+        mouse_button_map(event->button()),
+        action_map(event->type()),
+        mouse_pos_map(
+            (float)event->pos().x(),
+            (float)event->pos().y()));
+
     switch (event->button()) {
         case Qt::LeftButton: buttonName = "Left"; break;
         case Qt::RightButton: buttonName = "Right"; break;
@@ -283,13 +296,21 @@ void RhiWindow::mousePressEvent(QMouseEvent *event) {
 }
 
 void RhiWindow::mouseReleaseEvent(QMouseEvent *event) {
+    renderer->handle_mouse(
+        mouse_button_map(event->button()),
+        action_map(event->type()),
+        mouse_pos_map(
+            (float)event->pos().x(),
+            (float)event->pos().y()));
     qInfo() << "RhiWindow::mouseReleaseEvent - Button:" << event->button();
     QWindow::mouseReleaseEvent(event);
 }
 
 void RhiWindow::mouseMoveEvent(QMouseEvent *event) {
-    // 鼠标移动事件会很频繁，可以选择性输出
-    // qDebug() << "RhiWindow::mouseMoveEvent - Pos:" << event->pos();
+    renderer->handle_cursor_position(mouse_pos_map(
+        event->pos().x(),
+        event->pos().y()));
+
     QWindow::mouseMoveEvent(event);
 }
 }// namespace rbc

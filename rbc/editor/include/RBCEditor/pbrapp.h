@@ -32,7 +32,7 @@ public:
     void init(const char *program_path, const char *backend_name) override;
     uint64_t create_texture(uint width, uint height) override;
     void update() override;
-    void handle_key(luisa::compute::Key key) override;
+    void handle_key(luisa::compute::Key key, luisa::compute::Action action) override;
     [[nodiscard]] void *GetStreamNativeHandle() const override;
     [[nodiscard]] void *GetDeviceNativeHandle() const override { return RenderDevice::instance().lc_device().native_handle(); }
     ~PBRApp();
