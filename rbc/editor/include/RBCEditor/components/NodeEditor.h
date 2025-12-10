@@ -3,9 +3,8 @@
 #include <QListWidget>
 #include <QToolBar>
 #include <QLabel>
-#include <QSplitter>
+
 #include <memory>
-#include <unordered_set>
 
 #include <QtNodes/DataFlowGraphModel>
 #include <QtNodes/DataFlowGraphicsScene>
@@ -29,9 +28,6 @@ public:
 
     // Load nodes from backend (called after server is connected)
     void loadNodesDeferred();
-
-    // Set as central widget mode (adjusts layout for central widget usage)
-    void setAsCentralWidget(bool isCentral);
 
 private slots:
     void onConnectionStatusChanged(bool connected);
@@ -78,13 +74,10 @@ private:
     // Widgets
     QListWidget *m_nodePalette;
     ExecutionPanel *m_executionPanel;
-    QSplitter *m_mainSplitter;
-
     // State
     QString m_currentExecutionId;
     bool m_isExecuting;
     QString m_serverUrl;
-    bool m_isCentralWidget;
 };
 
 }// namespace rbc

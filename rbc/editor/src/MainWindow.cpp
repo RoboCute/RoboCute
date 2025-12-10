@@ -168,89 +168,8 @@ void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowT
 
     // Update UI based on workflow
     if (newWorkflow == rbc::WorkflowType::SceneEditing) {
-        // SceneEditing: Viewport as central, NodeGraph as dock
-        // Move NodeEditor back to dock if it was central
-        if (centralWidget() == nodeEditor_) {
-            takeCentralWidget();
-            nodeDock_->setWidget(nodeEditor_);
-        }
-        nodeEditor_->setAsCentralWidget(false);
-        // Set Viewport as central widget
-        // First, ensure viewportWidget_ is not in the dock
-        if (viewportDock_->widget() == viewportWidget_) {
-            viewportDock_->setWidget(nullptr);
-        }
-        // Remove viewportDock_ if it was added as a dock widget
-        // This is safe to call even if the dock wasn't added - Qt will ignore it
-        removeDockWidget(viewportDock_);
-        // Ensure viewportWidget_ has MainWindow as parent (not dock)
-        // This is critical for setCentralWidget to work correctly
-        if (viewportWidget_->parent() != this) {
-            viewportWidget_->setParent(this);
-        }
-        // Set viewportWidget_ as central widget
-        if (centralWidget()) {
-            takeCentralWidget();
-        }
-        setCentralWidget(viewportWidget_);
-
-        viewportDock_->setVisible(false);// Hide dock since viewport is central
-
-        // Show scene-related docks
-        auto *sceneDock = findChild<QDockWidget *>("SceneDock");
-        auto *detailsDock = findChild<QDockWidget *>("DetailsDock");
-        auto *resultDock = findChild<QDockWidget *>("ResultDock");
-
-        if (sceneDock) sceneDock->setVisible(true);
-        if (detailsDock) detailsDock->setVisible(true);
-        if (resultDock) resultDock->setVisible(true);
-
-        // Update action states
-        if (sceneEditingAction_) {
-            sceneEditingAction_->setChecked(true);
-        }
-
         statusBar()->showMessage("Switched to Scene Editing workflow");
     } else if (newWorkflow == rbc::WorkflowType::Text2Image) {
-        // Text2Image: NodeGraph as central, Viewport minimized
-        // Remove viewport from central if it's there
-        if (centralWidget() == viewportWidget_) {
-            takeCentralWidget();
-            viewportDock_->setWidget(viewportWidget_);
-        }
-
-        // Set NodeEditor as central widget
-        if (nodeDock_->widget() == nodeEditor_) {
-            nodeDock_->setWidget(nullptr);
-        }
-        if (centralWidget()) {
-            takeCentralWidget();
-        }
-        setCentralWidget(nodeEditor_);
-        nodeEditor_->setAsCentralWidget(true);
-
-        // Show viewport dock (can be minimized by user)
-        viewportDock_->setVisible(true);
-        viewportDock_->setFloating(false);
-        // Add dock if not already added
-        if (!viewportDock_->parent() || viewportDock_->parent() != this) {
-            addDockWidget(Qt::RightDockWidgetArea, viewportDock_);
-        }
-
-        // Keep scene-related docks visible (user can hide if needed)
-        // Optionally hide them:
-        // auto *sceneDock = findChild<QDockWidget*>("SceneDock");
-        // auto *detailsDock = findChild<QDockWidget*>("DetailsDock");
-        // auto *resultDock = findChild<QDockWidget*>("ResultDock");
-        // if (sceneDock) sceneDock->setVisible(false);
-        // if (detailsDock) detailsDock->setVisible(false);
-        // if (resultDock) resultDock->setVisible(false);
-
-        // Update action states
-        if (text2ImageAction_) {
-            text2ImageAction_->setChecked(true);
-        }
-
         statusBar()->showMessage("Switched to Text2Image workflow");
     }
 }

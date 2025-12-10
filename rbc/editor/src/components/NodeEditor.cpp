@@ -13,6 +13,7 @@
 #include <QDebug>
 #include <QFont>
 #include <QLineEdit>
+#include <QSplitter>
 
 #include <QtNodes/ConnectionStyle>
 #include "RBCEditor/components/ExecutionPanel.h"
@@ -20,23 +21,22 @@
 
 namespace rbc {
 
-NodeEditor::NodeEditor(QWidget *parent) : QWidget(parent),
-                                          m_httpClient(new HttpClient(this)),
-                                          m_nodeFactory(std::make_unique<NodeFactory>()),
-                                          m_isExecuting(false),
-                                          m_serverUrl("http://127.0.0.1:5555"),
-                                          m_isCentralWidget(false) {
+NodeEditor::NodeEditor(
+    QWidget *parent) : QWidget(parent),
+                       m_httpClient(new HttpClient(this)),
+                       m_nodeFactory(std::make_unique<NodeFactory>()),
+                       m_isExecuting(false),
+                       m_serverUrl("http://127.0.0.1:5555") {
     setupUI();
     setupConnections();
     // Do not load nodes immediately - wait for proper initialization
 }
 
 NodeEditor::NodeEditor(HttpClient *httpClient, QWidget *parent) : QWidget(parent),
-                                          m_httpClient(httpClient),
-                                          m_nodeFactory(std::make_unique<NodeFactory>()),
-                                          m_isExecuting(false),
-                                          m_serverUrl(httpClient->serverUrl()),
-                                          m_isCentralWidget(false) {
+                                                                  m_httpClient(httpClient),
+                                                                  m_nodeFactory(std::make_unique<NodeFactory>()),
+                                                                  m_isExecuting(false),
+                                                                  m_serverUrl(httpClient->serverUrl()) {
     setupUI();
     setupConnections();
     // Load nodes after server connection is established
@@ -116,28 +116,28 @@ void NodeEditor::setupUI() {
     mainLayout->addWidget(m_toolBar);
 
     // Create horizontal splitter for main content
-    m_mainSplitter = new QSplitter(Qt::Horizontal, this);
+    auto *mainSplitter = new QSplitter(Qt::Horizontal, this);
 
     // Left side: Node palette
     m_nodePalette = new QListWidget();
     m_nodePalette->setStyleSheet("QListWidget { font-size: 11pt; }");
     m_nodePalette->setMaximumWidth(250);
-    m_mainSplitter->addWidget(m_nodePalette);
+    mainSplitter->addWidget(m_nodePalette);
 
     // Center: Graph view
-    m_mainSplitter->addWidget(m_view);
+    mainSplitter->addWidget(m_view);
 
     // Right side: Execution panel
     m_executionPanel = new ExecutionPanel(this);
     m_executionPanel->setMaximumWidth(400);
-    m_mainSplitter->addWidget(m_executionPanel);
+    mainSplitter->addWidget(m_executionPanel);
 
     // Set splitter sizes
-    m_mainSplitter->setStretchFactor(0, 1);  // Node palette
-    m_mainSplitter->setStretchFactor(1, 3);  // Graph view
-    m_mainSplitter->setStretchFactor(2, 2);  // Execution panel
+    mainSplitter->setStretchFactor(0, 1);// Node palette
+    mainSplitter->setStretchFactor(1, 3);// Graph view
+    mainSplitter->setStretchFactor(2, 2);// Execution panel
 
-    mainLayout->addWidget(m_mainSplitter);
+    mainLayout->addWidget(mainSplitter);
 }
 
 void NodeEditor::setupConnections() {
@@ -258,12 +258,12 @@ void NodeEditor::onExecuteGraph() {
     m_executionPanel->logMessage(QString("Graph: %1 nodes, %2 connections")
                                      .arg(nodeCount)
                                      .arg(connectionCount));
-    
+
     // Debug: Log graph definition
     QJsonDocument debugDoc(graphDef);
     QString debugJson = debugDoc.toJson(QJsonDocument::Indented);
     m_executionPanel->logMessage("Graph Definition:");
-    m_executionPanel->logMessage(debugJson.left(500));  // First 500 chars
+    m_executionPanel->logMessage(debugJson.left(500));// First 500 chars
 
     // Execute
     m_httpClient->executeGraph(graphDef, [this](const QString &executionId, bool success) {
@@ -305,7 +305,7 @@ void NodeEditor::onOutputsReceived(const QJsonObject &outputs, bool success) {
 
     // Display results
     m_executionPanel->displayExecutionResults(outputs);
-    
+
     // Check for errors in execution
     if (status == "failed") {
         m_executionPanel->logError("Graph execution failed on server side");
@@ -345,20 +345,20 @@ void NodeEditor::onOutputsReceived(const QJsonObject &outputs, bool success) {
 void NodeEditor::onNewGraph() {
     if (isWindowModified()) {
         auto reply = QMessageBox::question(this, "New Graph",
-            "Current graph has unsaved changes. Continue?",
-            QMessageBox::Yes | QMessageBox::No);
-        
+                                           "Current graph has unsaved changes. Continue?",
+                                           QMessageBox::Yes | QMessageBox::No);
+
         if (reply != QMessageBox::Yes) {
             return;
         }
     }
-    
+
     // Clear all nodes from the graph
     auto nodeIds = m_graphModel->allNodeIds();
     for (const auto &nodeId : nodeIds) {
         m_graphModel->deleteNode(nodeId);
     }
-    
+
     m_executionPanel->clearConsole();
     m_executionPanel->clearResults();
     setWindowModified(false);
@@ -403,51 +403,51 @@ QJsonObject NodeEditor::serializeGraph() {
     QJsonObject graphDef;
     QJsonArray nodesArray;
     QJsonArray connectionsArray;
-    
+
     // Get all nodes from the graph model
     auto nodeIds = m_graphModel->allNodeIds();
-    
+
     for (const auto &nodeId : nodeIds) {
         // Get the node delegate model
         auto *delegateModel = m_graphModel->delegateModel<DynamicNodeModel>(nodeId);
         if (!delegateModel) continue;
-        
+
         QJsonObject nodeObj;
         nodeObj["node_id"] = QString::number(nodeId);
         nodeObj["node_type"] = delegateModel->nodeType();
         nodeObj["inputs"] = delegateModel->getInputValues();
-        
+
         nodesArray.append(nodeObj);
     }
-    
+
     // Get all connections by iterating through all nodes
     std::unordered_set<QtNodes::ConnectionId> allConnections;
     for (const auto &nodeId : nodeIds) {
         auto nodeConnections = m_graphModel->allConnectionIds(nodeId);
         allConnections.insert(nodeConnections.begin(), nodeConnections.end());
     }
-    
+
     for (const auto &connId : allConnections) {
         QJsonObject connObj;
         connObj["from_node"] = QString::number(connId.outNodeId);
         connObj["to_node"] = QString::number(connId.inNodeId);
-        
+
         // Get port names from the delegate models
         auto *outDelegate = m_graphModel->delegateModel<DynamicNodeModel>(connId.outNodeId);
         auto *inDelegate = m_graphModel->delegateModel<DynamicNodeModel>(connId.inNodeId);
-        
+
         if (outDelegate && inDelegate) {
             connObj["from_output"] = outDelegate->portCaption(QtNodes::PortType::Out, connId.outPortIndex);
             connObj["to_input"] = inDelegate->portCaption(QtNodes::PortType::In, connId.inPortIndex);
         }
-        
+
         connectionsArray.append(connObj);
     }
-    
+
     graphDef["nodes"] = nodesArray;
     graphDef["connections"] = connectionsArray;
     graphDef["metadata"] = QJsonObject();
-    
+
     return graphDef;
 }
 
@@ -457,28 +457,6 @@ void NodeEditor::highlightNodeAfterExecution(const QString &nodeId, bool success
     // based on execution status (green for success, red for error)
     Q_UNUSED(nodeId);
     Q_UNUSED(success);
-}
-
-void NodeEditor::setAsCentralWidget(bool isCentral) {
-    m_isCentralWidget = isCentral;
-
-    if (isCentral) {
-        // When as central widget, maximize graph view area
-        // Optionally hide or minimize side panels
-        m_nodePalette->setMaximumWidth(200);
-        m_executionPanel->setMaximumWidth(300);
-        // Adjust splitter to give more space to graph view
-        m_mainSplitter->setStretchFactor(0, 0);  // Node palette - less space
-        m_mainSplitter->setStretchFactor(1, 5);  // Graph view - more space
-        m_mainSplitter->setStretchFactor(2, 1);  // Execution panel - less space
-    } else {
-        // Restore default layout
-        m_nodePalette->setMaximumWidth(250);
-        m_executionPanel->setMaximumWidth(400);
-        m_mainSplitter->setStretchFactor(0, 1);  // Node palette
-        m_mainSplitter->setStretchFactor(1, 3);  // Graph view
-        m_mainSplitter->setStretchFactor(2, 2);  // Execution panel
-    }
 }
 
 }// namespace rbc
