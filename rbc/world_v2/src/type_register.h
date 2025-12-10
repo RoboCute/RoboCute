@@ -2,6 +2,8 @@
 #include <rbc_world_v2/base_object.h>
 #include <luisa/vstl/pool.h>
 namespace rbc::world {
+BaseObject *get_object(InstanceID instance_id);
+BaseObject *get_object(vstd::Guid const &guid);
 template<typename T, typename Impl>
 concept RegistableWorldObject = std::is_base_of_v<BaseObject, T> && std::is_default_constructible_v<Impl> && std::is_base_of_v<T, Impl>;
 struct TypeRegisterBase;

@@ -56,10 +56,10 @@ struct WorldPluginImpl : WorldPlugin {
         return ptr;
     }
     BaseObject *get_object(InstanceID instance_id) const override {
-        return BaseObject::get_object(instance_id);
+        return get_object(instance_id);
     }
     BaseObject *get_object(vstd::Guid const &guid) const override {
-        return BaseObject::get_object(guid);
+        return get_object(guid);
     }
     [[nodiscard]] luisa::span<InstanceID const> get_dirty_transforms() const override {
         return dirty_transforms();
@@ -75,8 +75,8 @@ struct WorldPluginImpl : WorldPlugin {
         v.clear();
     }
 };
-static WorldPluginImpl world_plugin_singleton{};
 LUISA_EXPORT_API WorldPlugin *get_world_plugin() {
+    static WorldPluginImpl world_plugin_singleton{};
     return &world_plugin_singleton;
 }
 }// namespace rbc::world

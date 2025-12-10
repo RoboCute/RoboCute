@@ -6,7 +6,7 @@ static luisa::spin_mutex _instance_mtx;
 static luisa::unordered_map<uint64_t, BaseObject *> _instance_ids;
 static luisa::unordered_map<std::array<uint64_t, 2>, BaseObject *> _obj_guids;
 
-BaseObject *BaseObject::get_object(InstanceID instance_id) {
+BaseObject *get_object(InstanceID instance_id) {
     BaseObject *ptr;
     _instance_mtx.lock();
     auto iter = _instance_ids.find(instance_id._placeholder);
@@ -14,7 +14,7 @@ BaseObject *BaseObject::get_object(InstanceID instance_id) {
     _instance_mtx.unlock();
     return ptr;
 }
-BaseObject *BaseObject::get_object(vstd::Guid const &guid) {
+BaseObject *get_object(vstd::Guid const &guid) {
     BaseObject *ptr;
     _instance_mtx.lock();
     auto iter = _obj_guids.find(reinterpret_cast<std::array<uint64_t, 2> const&>(guid));
