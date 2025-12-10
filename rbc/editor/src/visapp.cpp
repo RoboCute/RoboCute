@@ -39,6 +39,7 @@ void VisApp::init(
     auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
     cam.fov = radians(80.f);
     cam_controller.camera = &cam;
+
     last_frame_time = clk.toc();
 }
 
@@ -139,6 +140,8 @@ void VisApp::update() {
 
     dst_image_reseted = false;
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
+    camera_input.viewport_size = {(float)(resolution.x),
+                                  (float)(resolution.y)};
     auto time = clk.toc();
 
     auto delta_time = time - last_frame_time;
