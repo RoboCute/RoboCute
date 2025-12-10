@@ -1,18 +1,16 @@
 #pragma once
-/**
- * Viewport Widget
- * =======================================================
- * Viewport组件是渲染窗口的核心组件，负责查看3D场景细节，预览渲染效果等
- * RHIWindow的一层封装和消息转发
-*/
 
 #include <QWidget>
-#include <memory>
 #include "RBCEditor/components/RHIWindow.h"
 #include "RBCEditor/runtime/Renderer.h"
 
 namespace rbc {
 
+/**
+ * Viewport Widget
+ * =======================================================
+ * Viewport组件是渲染窗口的QWidget封装，负责转发窗口消息
+*/
 class ViewportWidget : public QWidget {
     Q_OBJECT
 public:

@@ -37,17 +37,11 @@ void ViewportWidget::setupUi() {
 
     m_rhiWindow = new RhiWindow(api);
     m_rhiWindow->renderer = m_renderer;
-    // Set workspace path if needed
-    // m_rhiWindow->workspace_path = ...
 
     m_container = QWidget::createWindowContainer(m_rhiWindow, this);
     m_container->setFocusPolicy(Qt::NoFocus);
-
-    // Match original behavior: Set minimum size and expanding policy
-    // This helps avoid layout trashing/stuttering during initial show
-    // m_container->setMinimumSize(400, 300);
+    m_container->setMinimumSize(400, 300);
     m_container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
     auto layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);

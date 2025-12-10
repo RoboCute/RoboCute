@@ -39,6 +39,7 @@ void VisApp::init(
     auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
     cam.fov = radians(80.f);
     cam_controller.camera = &cam;
+    last_frame_time = clk.toc();
 }
 
 uint64_t VisApp::create_texture(uint width, uint height) {
@@ -94,7 +95,7 @@ void VisApp::handle_key(luisa::compute::Key key, luisa::compute::Action action) 
 }
 
 void VisApp::handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy) {
-    if (button == MOUSE_BUTTON_1) {
+    if (button == MOUSE_BUTTON_LEFT) {
         if (action == Action::ACTION_PRESSED) {
             start_uv = clamp(xy / make_float2(resolution), float2(0.f), float2(1.f));
             end_uv = start_uv;
@@ -107,7 +108,7 @@ void VisApp::handle_mouse(luisa::compute::MouseButton button, luisa::compute::Ac
                 mouse_stage = MouseStage::Clicking;
             }
         }
-    } else if (button == MOUSE_BUTTON_2) {
+    } else if (button == MOUSE_BUTTON_RIGHT) {
         if (action == Action::ACTION_PRESSED) {
             camera_input.is_mouse_right_down = true;
         } else if (action == Action::ACTION_RELEASED) {
@@ -156,6 +157,7 @@ void VisApp::update() {
     else if (mouse_stage == MouseStage::Dragging) {
         click_mng.add_frame_selection("dragging", min(start_uv, end_uv) * 2.f - 1.f, max(start_uv, end_uv) * 2.f - 1.f, true);
     }
+
     if (mouse_stage == MouseStage::Clicking || mouse_stage == MouseStage::Dragging) {
         dragged_object_ids.clear();
     }

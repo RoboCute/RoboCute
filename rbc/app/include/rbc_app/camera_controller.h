@@ -28,9 +28,9 @@ struct RBC_APP_API CameraController {
     void grab_input_from_viewport(Input const &input, float delta_time);//! NOTE. just grad input, camera update won't trigger in this phase
 
     // move state
-    bool is_moving() const;
-    bool is_rotating() const;
-    bool any_changed() const;
+    [[nodiscard]] bool is_moving() const;
+    [[nodiscard]] bool is_rotating() const;
+    [[nodiscard]] bool any_changed() const;
 
 private:
     // update

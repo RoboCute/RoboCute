@@ -88,8 +88,8 @@ inline luisa::float2 mouse_pos_map(float x, float y) {
 class RhiWindow : public QWindow {
     Q_OBJECT
 public:
-    RhiWindow(QRhi::Implementation graphicsApi);
-    QString graphicsApiName() const;
+    explicit RhiWindow(QRhi::Implementation graphicsApi);
+    [[nodiscard]] QString graphicsApiName() const;
     void releaseSwapChain();
     std::string workspace_path;
     IRenderer *renderer{};
