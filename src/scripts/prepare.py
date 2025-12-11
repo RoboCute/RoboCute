@@ -143,7 +143,7 @@ RBC_SDK_ADDRESS = (
 )
 LC_DX_SDK = "dx_sdk_20250816.zip"
 RENDER_RESOURCE_NAME = "render_resources-v1.0.0.7z"
-XMAKE_GLOBAL_TOOLCHAIN = "msvc"
+XMAKE_GLOBAL_TOOLCHAIN = "clang-cl"
 PLATFORM = "windows"
 ARCH = "x64"
 
