@@ -42,11 +42,8 @@ int main() {
             }
         };
         {
-            for (auto &i : entity->components()) {
-                auto obj = world_plugin->get_object(i.second);
-                if (obj) {
-                    serialize_obj(obj);
-                }
+            for (auto i : *entity) {
+                serialize_obj(i);
             }
             serialize_obj(entity.get());
         }
@@ -87,20 +84,20 @@ int main() {
         }
         reader.end_scope();
         // deserialize content
-        world::Entity* entity{};
-        world::Transform* transform{};
+        world::Entity *entity{};
+        world::Transform *transform{};
         for (auto &obj : objs) {
             auto guid_str = obj->guid().to_base64();
             LUISA_ASSERT(reader.start_object(guid_str.c_str()));
             obj->rbc_objdeser(reader);
             reader.end_scope();
-            if(obj->base_type() == world::BaseObjectType::Entity) {
-                entity = static_cast<world::Entity*>(obj);
+            if (obj->base_type() == world::BaseObjectType::Entity) {
+                entity = static_cast<world::Entity *>(obj);
             } else {
-                transform = static_cast<world::Transform*>(obj);
+                transform = static_cast<world::Transform *>(obj);
             }
         }
-        LUISA_ASSERT(entity->components().size() == 1);
+        LUISA_ASSERT(entity->component_count() == 1);
         LUISA_INFO("{}", transform->position());
     }
     return 0;

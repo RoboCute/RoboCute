@@ -47,7 +47,7 @@ concept SerWriter = requires(T t) {
     t.add_arr(std::declval<luisa::span<uint64_t const>>());
     t.add_arr(std::declval<luisa::span<double const>>());
     t.add_arr(std::declval<luisa::span<bool const>>());
-    t.add(std::declval<char const *>());
+    t.add(std::declval<luisa::string_view>());
     // object
     t.add(std::declval<bool>(), std::declval<char const *>());
     t.add(std::declval<int64_t>(), std::declval<char const *>());
@@ -57,7 +57,7 @@ concept SerWriter = requires(T t) {
     t.add_arr(std::declval<luisa::span<uint64_t const>>(), std::declval<char const *>());
     t.add_arr(std::declval<luisa::span<double const>>(), std::declval<char const *>());
     t.add_arr(std::declval<luisa::span<bool const>>(), std::declval<char const *>());
-    t.add(std::declval<char const *>(), std::declval<char const *>());
+    t.add(std::declval<luisa::string_view>(), std::declval<char const *>());
 
     std::same_as<decltype(t.write_to()), luisa::BinaryBlob>;
 };
@@ -66,7 +66,6 @@ concept SerReader = requires(T t) {
     std::same_as<decltype(t.last_key()), luisa::string_view>;
     std::same_as<bool, decltype(t.start_array(lvalue_declval<uint64_t>()))>;
     std::same_as<bool, decltype(t.start_object())>;
-    t.end_scope();
     // array
     std::same_as<bool, decltype(t.read(lvalue_declval<bool>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<int64_t>()))>;
@@ -79,6 +78,7 @@ concept SerReader = requires(T t) {
     std::same_as<bool, decltype(t.read(lvalue_declval<uint64_t>(), std::declval<char const *>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<double>(), std::declval<char const *>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<luisa::string>(), std::declval<char const *>()))>;
+    t.end_scope();
 };
 
 }// namespace concepts
@@ -126,16 +126,10 @@ concept DeSerializableType = detail::serializable_native_type_v<T> || detail::de
 };// namespace concepts
 template<concepts::SerWriter Base>
 struct Serializer : public Base {
-    vstd::VEngineMallocVisitor _alloc_callback;
-    vstd::StackAllocator _alloc;
+
     template<typename... Args>
     Serializer(Args &&...args)
-        : Base(std::forward<Args>(args)...),
-          _alloc(4096, &_alloc_callback, 2) {
-    }
-    void *allocate_temp_str(size_t size) override {
-        auto c = _alloc.allocate(size);
-        return reinterpret_cast<void *>(c.handle + c.offset);
+        : Base(std::forward<Args>(args)...) {
     }
 
     template<concepts::SerializableType<Serializer> T, typename... Args>
@@ -144,10 +138,7 @@ struct Serializer : public Base {
         if constexpr (std::is_enum_v<T>) {
             static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
             auto strv = EnumSerializer::template get_enum_value_name<T>(luisa::to_underlying(t));
-            auto ptr = (char *)allocate_temp_str(strv.size());
-            std::memcpy(ptr, strv.data(), strv.size());
-            ptr[strv.size()] = 0;
-            Base::add(ptr, args...);
+            Base::add(strv, args...);
         } else if constexpr (requires { t.rbc_objser(*this); }) {
             Base::start_object();
             t.rbc_objser(*this);
@@ -221,29 +212,24 @@ struct Serializer : public Base {
             Base::add_arr(luisa::span<double const>{arr, dim * dim}, args...);
         }
         // string
-        else if constexpr (std::is_same_v<T, luisa::string>) {
-            auto len = t.size();
-            auto ptr = (char *)allocate_temp_str(len + 1);
-            ptr[len] = 0;
-            std::memcpy(ptr, t.data(), len);
-            Base::add(ptr, args...);
+        else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
+            Base::add(luisa::string_view{t}, args...);
         }
         // kv map
         else if constexpr (detail::is_unordered_map<T>::value) {
             Base::start_array();
             for (auto &&i : t) {
                 if constexpr (requires { i.first.c_str(); }) {
-                    this->_store(i.first);
+                    this->_store(luisa::string_view{i.first});
                     this->_store(i.second);
                 } else {
                     static_assert(luisa::always_false_v<T>, "Invalid HashMap key-value type.");
                 }
             }
             Base::add_last_scope_to_object(args...);
-        }
-        else if constexpr (detail::is_vector<T>::value) {
+        } else if constexpr (detail::is_vector<T>::value) {
             Base::start_array();
-            for(auto&& i : t) {
+            for (auto &&i : t) {
                 this->_store(i);
             }
             Base::add_last_scope_to_object(args...);
@@ -270,22 +256,18 @@ struct Serializer : public Base {
         //     Base::add_last_scope_to_object(args...);
         // }
         else if constexpr (std::is_same_v<T, vstd::Guid>) {
-            auto chunk = _alloc.allocate(23);
-            auto ptr = (char *)(chunk.handle + chunk.offset);
-            t.to_base64(ptr);
-            ptr[22] = 0;
-            // TODO
-            Base::add(ptr, args...);
+            auto str = t.to_base64();
+            Base::add(luisa::string_view{str}, args...);
         } else {
             static_assert(luisa::always_false_v<T>, "Invalid serialize type.");
         }
     }
     void clear() {
-        _alloc.clear();
+        Base::clear_alloc();
     }
     template<typename T>
     luisa::BinaryBlob serialize(char const *name, T const &t) {
-        _alloc.clear();
+        Base::clear_alloc();
         _store(t, name);
         return Base::write_to();
     }

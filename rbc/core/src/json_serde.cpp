@@ -32,7 +32,9 @@ namespace rbc {
     auto val = yyjson_obj_get(v.first, name);          \
     if (!val) return false;                            \
     auto type = yyjson_get_type(val);
-JsonWriter::JsonWriter(bool root_array) {
+JsonWriter::JsonWriter(bool root_array) 
+: _alloc(4096, &_alloc_callback, 2)
+{
     alc = yyjson_alc{
         .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
     json_doc = yyjson_mut_doc_new(&alc);
@@ -46,6 +48,11 @@ JsonWriter::JsonWriter(bool root_array) {
     }
     yyjson_mut_doc_set_root(json_doc, root);
 }
+    void *JsonWriter::allocate_temp_str(size_t size) {
+        auto c = _alloc.allocate(size);
+        return reinterpret_cast<void *>(c.handle + c.offset);
+    }
+
 BinaryBlob JsonWriter::write_to() const {
     size_t len{};
     auto json = yyjson_mut_write_opts(json_doc, 0, &alc, &len, nullptr);
@@ -132,12 +139,17 @@ void JsonWriter::add_arr(luisa::span<bool const> bool_values) {
     LUISA_DEBUG_ASSERT(v.second);
     LUISA_ASSERT(yyjson_mut_arr_add_val(v.first, yyjson_mut_arr_with_bool(json_doc, bool_values.data(), bool_values.size())));
 }
-
-void JsonWriter::add(char const *str) {
+void JsonWriter::clear_alloc() {
+    _alloc.clear();
+}
+void JsonWriter::add(luisa::string_view str) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(v.second);
-    LUISA_ASSERT(yyjson_mut_arr_add_str(json_doc, v.first, str));
+    auto ptr = (char*)allocate_temp_str(str.size() + 1);
+    ptr[str.size()] = 0;
+    std::memcpy(ptr, str.data(), str.size());
+    LUISA_ASSERT(yyjson_mut_arr_add_str(json_doc, v.first, ptr));
 }
 
 void JsonWriter::add(bool bool_value, char const *name) {
@@ -220,7 +232,7 @@ void JsonWriter::add_arr(luisa::span<bool const> bool_values, char const *name) 
     LUISA_DEBUG_ASSERT(!v.second);
     LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, name, yyjson_mut_arr_with_bool(json_doc, bool_values.data(), bool_values.size())));
 }
-void JsonWriter::add(char const *str, char const *name) {
+void JsonWriter::add(luisa::string_view str, char const *name) {
     if (!name) {
         add(str);
         return;
@@ -228,7 +240,10 @@ void JsonWriter::add(char const *str, char const *name) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_str(json_doc, v.first, name, str));
+    auto ptr = (char*)allocate_temp_str(str.size() + 1);
+    ptr[str.size()] = 0;
+    std::memcpy(ptr, str.data(), str.size());
+    LUISA_ASSERT(yyjson_mut_obj_add_str(json_doc, v.first, name, ptr));
 }
 
 JsonWriter::~JsonWriter() {

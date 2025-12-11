@@ -9,6 +9,8 @@
 namespace rbc {
 
 struct RBC_CORE_API JsonWriter {
+    vstd::VEngineMallocVisitor _alloc_callback;
+    vstd::StackAllocator _alloc;
     yyjson_alc alc;
     yyjson_mut_doc *json_doc;
     // bool: is_array
@@ -18,11 +20,14 @@ struct RBC_CORE_API JsonWriter {
 
     JsonWriter(bool root_array = false);
     ~JsonWriter();
-    virtual void *allocate_temp_str(size_t size) = 0;
     void start_array();
     void start_object();
     void add_last_scope_to_object();
     void add_last_scope_to_object(char const *name);
+protected:
+    void clear_alloc();
+    void *allocate_temp_str(size_t size);
+public:
     // array
     void add(bool bool_value);
     void add(int64_t int_value);
@@ -32,7 +37,7 @@ struct RBC_CORE_API JsonWriter {
     void add_arr(luisa::span<uint64_t const> uint_values);
     void add_arr(luisa::span<double const> double_values);
     void add_arr(luisa::span<bool const> bool_values);
-    void add(char const *str);
+    void add(luisa::string_view str);
     // object
     void add(bool bool_value, char const *name);
     void add(int64_t int_value, char const *name);
@@ -42,7 +47,8 @@ struct RBC_CORE_API JsonWriter {
     void add_arr(luisa::span<uint64_t const> uint_values, char const *name);
     void add_arr(luisa::span<double const> double_values, char const *name);
     void add_arr(luisa::span<bool const> bool_values, char const *name);
-    void add(char const *str, char const *name);
+    void add(luisa::string_view str, char const *name);
+public:
     luisa::BinaryBlob write_to() const;
 };
 struct ReadArray {

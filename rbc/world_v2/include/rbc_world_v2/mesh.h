@@ -1,16 +1,15 @@
 #pragma once
-#include <rbc_world_v2/base_object.h>
+#include <rbc_world_v2/resource_base.h>
 namespace rbc {
 struct DeviceMesh;
 }// namespace rbc
 namespace rbc::world {
-struct Mesh : BaseObjectDerive<Mesh, BaseObjectType::Resource> {
+struct Mesh : ResourceBaseImpl<Mesh> {
+    using BaseType = ResourceBaseImpl<Mesh>;
 protected:
     RC<DeviceMesh> _device_mesh;
     // meta
-    luisa::filesystem::path _path;
     vstd::vector<uint> _submesh_offsets;
-    uint64_t _file_offset{};
     uint32_t _vertex_count{};
     uint32_t _triangle_count{};
     uint32_t _uv_count{};
@@ -18,9 +17,7 @@ protected:
     bool _contained_tangent : 1 {};
 
 public:
-    [[nodiscard]] auto const &path() const { return _path; }
     [[nodiscard]] luisa::span<uint const> submesh_offsets() const { return _submesh_offsets; }
-    [[nodiscard]] auto file_offset() const { return _file_offset; }
     [[nodiscard]] auto vertex_count() const { return _vertex_count; }
     [[nodiscard]] auto triangle_count() const { return _triangle_count; }
     [[nodiscard]] auto uv_count() const { return _uv_count; }
@@ -40,9 +37,6 @@ public:
     [[nodiscard]] auto device_mesh() const {
         return _device_mesh.get();
     }
-    virtual bool async_load_from_file() = 0;
-    virtual void wait_load() const = 0;
-    virtual void unload() = 0;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Mesh)

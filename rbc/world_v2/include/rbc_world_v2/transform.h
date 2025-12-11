@@ -13,14 +13,13 @@ struct Transform : ComponentDerive<Transform> {
     friend struct WorldPluginImpl;
 protected:
     Transform *_parent{};
-    luisa::vector<InstanceID> _children;
+    luisa::unordered_set<Transform *> _children;
     double3 _position;
     double3 _scale{1, 1, 1};
     Quaternion _rotation;
     double4x4 _trs;
-    bool _dirty: 1{};
-    bool _decomposed: 1{true};
-
+    bool _dirty : 1 {};
+    bool _decomposed : 1 {true};
 public:
     virtual double3 position() = 0;
     virtual Quaternion rotation() = 0;
@@ -35,12 +34,11 @@ public:
         double3 const &scale,
         bool recursive) = 0;
     virtual void add_children(Transform *tr) = 0;
-    virtual void remove_children_at(uint64_t index) = 0;
     virtual bool remove_children(Transform *tr) = 0;
     [[nodiscard]] auto const &position() const { return _position; }
     [[nodiscard]] auto const &rotation() const { return _rotation; }
     [[nodiscard]] auto const &scale() const { return _scale; }
-    [[nodiscard]] luisa::span<InstanceID const> children() const { return _children; }
+    [[nodiscard]] auto const &children() const { return _children; }
     [[nodiscard]] double4x4 local_to_world_matrix() const {
         return _trs;
     }

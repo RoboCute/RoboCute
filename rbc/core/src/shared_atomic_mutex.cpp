@@ -31,16 +31,20 @@ void shared_atomic_mutex::lock_shared() {
     // Unlike the unique lock, don't immediately increment the shared count (wait until there are no unique lock requests before adding).
     bitfield_t oldval = _bitfield.load();
     bitfield_t newval = oldval;
+    auto cas = [&]() {
+        auto v = _bitfield.compare_exchange_weak(oldval, newval, std::memory_order::relaxed, std::memory_order::relaxed);
+        if (!v) [[unlikely]]
+            std::this_thread::yield();
+        return v;
+    };
     do {
         // Proceed if any number of shared locks and no unique locks are waiting or active.
         any_shared_no_unique(oldval);
         // New value is expected value with a new shared lock (increment the shared lock count).
         newval = oldval + one_shared_thread;
-        std::this_thread::yield();
         // If _bitfield==oldval (there are no unique locks) then store newval in _bitfield (add a shared lock).
         // Otherwise update oldval with the latest value of _bitfield and run the test loop again.
-    } while ((
-        !_bitfield.compare_exchange_weak(oldval, newval, std::memory_order::relaxed, std::memory_order::relaxed)));
+    } while (!cas());
 }
 
 void shared_atomic_mutex::unlock_shared() {
@@ -66,16 +70,20 @@ bool shared_atomic_mutex::is_unique_locked() {
 void shared_atomic_mutex::acquire_unique() {
     bitfield_t oldval = _bitfield;
     bitfield_t newval = oldval;
+    auto cas = [&]() {
+        auto v = _bitfield.compare_exchange_weak(oldval, newval, std::memory_order::relaxed, std::memory_order::relaxed);
+        if (!v) [[unlikely]]
+            std::this_thread::yield();
+        return v;
+    };
     do {
         // Proceed if there are no shared locks and the unique lock is available (unique lock flag is 0).
         no_shared_no_unique(oldval);
         // Set the unique lock flag to 1.
         newval = oldval + one_unique_flag;
-        std::this_thread::yield();
         // If _bitfield==oldval (there are no active shared locks and no thread has a unique lock) then store newval in _bitfield (get the unique lock).
         // Otherwise update oldval with the latest value of _bitfield and run the test loop again.
-    } while ((
-        !_bitfield.compare_exchange_weak(oldval, newval, std::memory_order::relaxed, std::memory_order::relaxed)));
+    } while (!cas());
 }
 
 }// namespace rbc

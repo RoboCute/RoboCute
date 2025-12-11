@@ -11,11 +11,7 @@ struct TransformImpl : Transform {
     }
     void rbc_objser(rbc::JsonSerializer &ser_obj) const override {
         ser_obj.start_array();
-        for (auto &i : _children) {
-            auto obj = get_object(i);
-            if (!obj) continue;
-            LUISA_DEBUG_ASSERT(obj->is_type_of(TypeInfo::get<Transform>()));
-            auto child = static_cast<Transform *>(obj);
+        for (auto &child : _children) {
             auto &&child_guid = child->guid();
             if (child_guid) {
                 ser_obj._store(child_guid);
@@ -32,7 +28,7 @@ struct TransformImpl : Transform {
             if (obj._load(child_guid)) {
                 auto obj = get_object(child_guid);
                 if (obj && obj->is_type_of(TypeInfo::get<Transform>())) {
-                    _children.emplace_back(obj->instance_id());
+                    add_children(static_cast<Transform *>(obj));
                 }
             }
             obj.end_scope();
@@ -76,24 +72,12 @@ struct TransformImpl : Transform {
             tr->_trs = new_l2w;
             tr->_decomposed = false;
             static_cast<TransformImpl *>(tr)->mark_dirty();
-            for (size_t i = 0; i < tr->_children.size(); ++i) {
-                auto obj = get_object(tr->_children[i]);
-                if (!obj) {
-                    tr->_children.erase(tr->_children.begin() + i);
-                    --i;
-                    continue;
-                }
-                transform(transform, static_cast<Transform *>(obj));
+            for (auto &i : tr->_children) {
+                transform(transform, i);
             }
         };
-        for (size_t i = 0; i < _children.size(); ++i) {
-            auto obj = get_object(_children[i]);
-            if (!obj) {
-                _children.erase(_children.begin() + i);
-                --i;
-                continue;
-            }
-            transform(transform, static_cast<Transform *>(obj));
+        for (auto &i : _children) {
+            transform(transform, i);
         }
     }
     void set_pos(double3 const &position, bool recursive) override {
@@ -151,36 +135,19 @@ struct TransformImpl : Transform {
         mark_dirty();
     }
     void add_children(Transform *tr) override {
-#ifndef NDEBUG
-        for (auto &i : _children) {
-            if (get_object(i) == tr) [[unlikely]] {
-                LUISA_ERROR("Transform already exists.");
-            }
-        }
-#endif
-    }
-    void remove_children_at(uint64_t index) override {
-        LUISA_DEBUG_ASSERT(index < _children.size());
-        _children.erase(_children.begin() + index);
+        _children.emplace(tr);
+        tr->_parent = this;
     }
     bool remove_children(Transform *tr) override {
-        for (uint64_t i = 0; i < _children.size(); ++i) {
-            auto obj = get_object(_children[i]);
-            if (obj == tr) {
-                _children.erase(_children.begin() + i);
-                return true;
-            }
-        }
-        return false;
+        _children.erase(tr);
     }
     ~TransformImpl() {
-        for (auto &i : _children) {
-            auto obj = get_object(i);
-            if (!obj) continue;
-            LUISA_DEBUG_ASSERT(obj->is_type_of(TypeInfo::get<Transform>()));
-            auto tr = static_cast<Transform *>(obj);
+        for (auto &tr : _children) {
             LUISA_DEBUG_ASSERT(tr->_parent = this);
-            tr->_parent = _parent;
+            tr->_parent = nullptr;
+        }
+        if (_parent) {
+            static_cast<TransformImpl *>(_parent)->remove_children(this);
         }
     }
     void dispose() override;
