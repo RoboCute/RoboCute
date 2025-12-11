@@ -116,6 +116,5 @@ object2.geometries().create(mesh2)
 world.init(scene)
 run = False
 
-
 world.advance()
 world.retrieve()
