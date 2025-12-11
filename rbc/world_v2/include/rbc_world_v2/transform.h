@@ -11,7 +11,7 @@ struct WorldPluginImpl;
 struct Transform : ComponentDerive<Transform> {
     friend struct TransformImpl;
     friend struct WorldPluginImpl;
-protected:
+private:
     Transform *_parent{};
     luisa::unordered_set<Transform *> _children;
     double3 _position;
@@ -20,6 +20,8 @@ protected:
     double4x4 _trs;
     bool _dirty : 1 {};
     bool _decomposed : 1 {true};
+    Transform() = default;
+    ~Transform() = default;
 public:
     virtual double3 position() = 0;
     virtual Quaternion rotation() = 0;

@@ -12,6 +12,7 @@
 #include <rbc_render/render_plugin.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
+#include <rbc_world_v2/world_plugin.h>
 namespace rbc {
 using namespace rbc;
 using namespace luisa;
@@ -36,7 +37,9 @@ private:
     DenoisePack _denoise_pack;
     // render
     luisa::shared_ptr<DynamicModule> _render_module;
+    luisa::shared_ptr<DynamicModule> _world_module;
     RenderPlugin *_render_plugin{};
+    world::WorldPlugin* _world_plugin{};
     StateMap* _render_settings;
     RenderPlugin::PipeCtxStub *_display_pipe_ctx{};
     vstd::optional<rbc::Lights> _lights;

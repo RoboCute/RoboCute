@@ -7,7 +7,7 @@ static shared_atomic_mutex _guid_mtx;
 static luisa::vector<uint64_t> _disposed_instance_ids;
 static luisa::vector<BaseObject *> _instance_ids;
 static luisa::unordered_map<std::array<uint64_t, 2>, BaseObject *> _obj_guids;
-
+void _collect_all_materials();
 BaseObject *get_object(InstanceID instance_id) {
     BaseObject *ptr;
     std::shared_lock lck{_instance_mtx};
@@ -148,6 +148,9 @@ struct WorldPluginImpl : WorldPlugin {
         _instance_ids.clear();
         _disposed_instance_ids.clear();
         _obj_guids.clear();
+    }
+    void on_before_rendering() override {
+        _collect_all_materials();
     }
 };
 LUISA_EXPORT_API WorldPlugin *get_world_plugin() {

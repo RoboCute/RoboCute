@@ -25,11 +25,13 @@ public:
 };
 struct Entity : BaseObjectDerive<Entity, BaseObjectType::Entity> {
     friend struct Component;
+    friend struct EntityImpl;
 
-protected:
-    luisa::unordered_map<std::array<uint64_t, 2>, Component *> _components;
 private:
+    luisa::unordered_map<std::array<uint64_t, 2>, Component *> _components;
     void _remove_component(Component *component);
+    Entity() = default;
+    ~Entity() = default;
 public:
     EntityCompIter begin() const {
         return EntityCompIter{_components.begin()};
@@ -43,6 +45,16 @@ public:
     virtual bool add_component(Component *component) = 0;
     virtual bool remove_component(TypeInfo const &type) = 0;
     virtual Component *get_component(TypeInfo const &type) = 0;
+    template<typename T>
+        requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
+    bool remove_component() {
+        return remove_component(TypeInfo::get<T>());
+    }
+    template<typename T>
+        requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
+    T *get_component() {
+        return static_cast<T *>(get_component(TypeInfo::get<T>()));
+    }
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Entity);

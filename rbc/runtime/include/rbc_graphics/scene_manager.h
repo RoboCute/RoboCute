@@ -30,7 +30,6 @@ private:
     // [MAIN]
     DisposeQueue _dsp_queue;
     DisposeQueue _after_commit_dsp_queue;
-    vstd::vector<vstd::function<void()>> _commit_callback;
 
     // [SINGLETON]
     MeshManager _mesh_mng;
@@ -117,7 +116,6 @@ public:
         Stream &stream,
         bool start_new_frame,
         bool sync);
-    void add_after_commit_callback(vstd::function<void()> &&callback);
     template<typename T>
         requires(!std::is_reference_v<T> && std::is_move_constructible_v<T> && !std::is_trivially_destructible_v<T>)
     void dispose_after_commit(T &&t) {

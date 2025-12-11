@@ -5,6 +5,7 @@
 #include "type_register.h"
 namespace rbc::world {
 struct TextureImpl : Texture {
+    luisa::spin_mutex _async_mtx;
     TextureImpl() {
     }
     [[nodiscard]] luisa::vector<std::byte> *host_data() override {
@@ -71,6 +72,7 @@ struct TextureImpl : Texture {
             mip_level);
     }
     bool async_load_from_file() override {
+        std::lock_guard lck{_async_mtx};
         auto render_device = RenderDevice::instance_ptr();
         if (!render_device) return false;
         auto file_size = desire_size_bytes();
@@ -82,7 +84,7 @@ struct TextureImpl : Texture {
             _device_image = new DeviceImage();
         } else {
             if (_device_image->loaded()) [[unlikely]] {
-                LUISA_ERROR("Can not be create repeatly.");
+                return false;
             }
         }
         _device_image->async_load_from_file(

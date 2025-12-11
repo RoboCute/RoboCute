@@ -5,6 +5,7 @@
 
 namespace rbc::world {
 struct MeshImpl : Mesh {
+    luisa::spin_mutex _async_mtx;
     MeshImpl() {
     }
     void rbc_objser(JsonSerializer &ser) const override {
@@ -99,11 +100,12 @@ struct MeshImpl : Mesh {
             vstd::vector<uint>(_submesh_offsets));
     }
     bool async_load_from_file() override {
+        std::lock_guard lck{_async_mtx};
         auto render_device = RenderDevice::instance_ptr();
         if (!render_device) return false;
         if (_device_mesh) {
             if (_device_mesh->loaded()) [[unlikely]] {
-                LUISA_ERROR("Can not be create repeatly.");
+                return false;
             }
         } else {
             _device_mesh = new DeviceMesh{};

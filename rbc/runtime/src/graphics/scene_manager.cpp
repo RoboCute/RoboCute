@@ -142,10 +142,6 @@ bool SceneManager::on_frame_end(
     // dispose after commit
     auto disp = vstd::scope_exit([&]() {
         _after_commit_dsp_queue.force_clear();
-        for (auto &i : _commit_callback) {
-            i();
-        }
-        _commit_callback.clear();
     });
 
     // commit command list
@@ -167,10 +163,6 @@ void SceneManager::load_shader(luisa::fiber::counter &init_counter) {
     _uploader.load_shader(init_counter);
     _tex_uploader.load_shader(init_counter);
     _light_accel.load_shader(init_counter);
-}
-
-void SceneManager::add_after_commit_callback(vstd::function<void()> &&callback) {
-    _commit_callback.emplace_back(std::move(callback));
 }
 namespace scene_mng_detail {
 static SceneManager *_inst = nullptr;

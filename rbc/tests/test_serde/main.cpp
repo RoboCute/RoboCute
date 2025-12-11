@@ -14,6 +14,7 @@
 #include <rbc_world_v2/world_plugin.h>
 #include <rbc_world_v2/transform.h>
 #include <rbc_world_v2/entity.h>
+#include <rbc_world_v2/material.h>
 
 using namespace rbc;
 using namespace luisa;
@@ -24,8 +25,8 @@ int main() {
     auto world_plugin = world_module->invoke<world::WorldPlugin *()>("get_world_plugin");
     luisa::BinaryBlob json;
     {
-        auto entity = static_cast<world::Entity*>(world_plugin->create_object_with_guid(TypeInfo::get<world::Entity>(), vstd::Guid(true)));
-        auto trans = static_cast<world::Transform *>(world_plugin->create_object_with_guid(TypeInfo::get<world::Transform>(), vstd::Guid(true)));
+        auto entity = world_plugin->create_object_with_guid<world::Entity>(vstd::Guid(true));
+        auto trans = world_plugin->create_object_with_guid<world::Transform>(vstd::Guid(true));
         entity->add_component(trans);
         trans->set_pos(double3(114, 514, 1919), false);
         rbc::JsonSerializer writer;

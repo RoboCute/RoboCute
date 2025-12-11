@@ -14,4 +14,13 @@ void Resource::_rbc_objdeser(JsonDeSerializer &ser) {
         ser._load(_file_offset, "file_offset");
     }
 }
+void Resource::_set_path(
+    luisa::filesystem::path const &path,
+    uint64_t const &file_offset) {
+    if (!_path.empty() || _file_offset != 0) [[unlikely]] {
+        LUISA_ERROR("Resource path already setted.");
+    }
+    _path = path;
+    _file_offset = file_offset;
+}
 }// namespace rbc::world

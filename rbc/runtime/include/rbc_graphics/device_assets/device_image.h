@@ -57,6 +57,7 @@ public:
     template<typename T>
     void create_texture(Device &device, PixelStorage storage, uint2 size, uint mip_level) {
         LUISA_ASSERT(_gpu_load_frame == 0, "Texture already loaded.");
+        _gpu_load_frame = std::numeric_limits<uint64_t>::max();
         _img = device.create_image<T>(storage, size, mip_level);
         if constexpr (std::is_same_v<T, float>) {
             _create_heap_idx();

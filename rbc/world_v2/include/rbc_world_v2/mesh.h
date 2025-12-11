@@ -5,8 +5,9 @@ struct DeviceMesh;
 }// namespace rbc
 namespace rbc::world {
 struct Mesh : ResourceBaseImpl<Mesh> {
+    friend struct MeshImpl;
     using BaseType = ResourceBaseImpl<Mesh>;
-protected:
+private:
     RC<DeviceMesh> _device_mesh;
     // meta
     vstd::vector<uint> _submesh_offsets;
@@ -15,6 +16,8 @@ protected:
     uint32_t _uv_count{};
     bool _contained_normal : 1 {};
     bool _contained_tangent : 1 {};
+    Mesh() = default;
+    ~Mesh() = default;
 
 public:
     [[nodiscard]] luisa::span<uint const> submesh_offsets() const { return _submesh_offsets; }

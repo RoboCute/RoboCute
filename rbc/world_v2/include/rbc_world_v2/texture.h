@@ -6,15 +6,17 @@ struct DeviceImage;
 }// namespace rbc
 namespace rbc::world {
 struct Texture : ResourceBaseImpl<Texture> {
+    friend struct TextureImpl;
     using BaseType = ResourceBaseImpl<Texture>;
 
-protected:
+private:
     RC<DeviceImage> _device_image;
     // meta
     LCPixelStorage _pixel_storage;
     luisa::uint2 _size;
     uint32_t _mip_level{};
-
+    Texture() = default;
+    ~Texture() = default;
 public:
     [[nodiscard]] auto pixel_storage() const { return _pixel_storage; }
     [[nodiscard]] auto size() const { return _size; }

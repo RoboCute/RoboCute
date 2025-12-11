@@ -14,6 +14,11 @@ enum struct BaseObjectType {
 struct InstanceID {
     uint64_t _placeholder;
 };
+template<typename T, BaseObjectType base_type_v>
+struct BaseObjectDerive;
+template<typename T>
+struct ComponentDerive;
+struct WorldPluginImpl;
 struct BaseObjectBase {
     template<typename T, BaseObjectType base_type_v>
     friend struct BaseObjectDerive;
@@ -105,6 +110,7 @@ private:
 template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive : BaseObject {
     static constexpr BaseObjectType base_object_type_v = base_type_v;
+private:
     [[nodiscard]] const char *type_name() const override {
         return rbc_rtti_detail::is_rtti_type<T>::name;
     }
@@ -114,6 +120,7 @@ struct BaseObjectDerive : BaseObject {
     [[nodiscard]] BaseObjectType base_type() const override {
         return base_type_v;
     }
+protected:
     ~BaseObjectDerive() {
         static_cast<BaseObjectBase *>(this)->_dispose_self();
     }
