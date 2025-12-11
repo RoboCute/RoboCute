@@ -2,7 +2,61 @@
 #include "type_register.h"
 #include <rbc_world_v2/transform.h>
 namespace rbc::world {
-struct Transform;
+static shared_atomic_mutex _instance_mtx;
+static shared_atomic_mutex _guid_mtx;
+static luisa::vector<uint64_t> _disposed_instance_ids;
+static luisa::vector<BaseObject *> _instance_ids;
+static luisa::unordered_map<std::array<uint64_t, 2>, BaseObject *> _obj_guids;
+
+BaseObject *get_object(InstanceID instance_id) {
+    BaseObject *ptr;
+    std::shared_lock lck{_instance_mtx};
+    return _instance_ids[instance_id._placeholder];
+}
+BaseObject *get_object(vstd::Guid const &guid) {
+    std::shared_lock lck{_guid_mtx};
+    auto iter = _obj_guids.find(reinterpret_cast<std::array<uint64_t, 2> const &>(guid));
+    if (iter == _obj_guids.end()) {
+        return nullptr;
+    }
+    return iter->second;
+}
+void BaseObjectBase::init() {
+    _guid.reset();
+    std::lock_guard lck{_instance_mtx};
+    if (_disposed_instance_ids.empty()) {
+        _instance_id = _instance_ids.size();
+        _instance_ids.push_back(static_cast<BaseObject *>(this));
+    } else {
+        _instance_id = _disposed_instance_ids.back();
+        _disposed_instance_ids.pop_back();
+        _instance_ids[_instance_id] = static_cast<BaseObject *>(this);
+    }
+}
+void BaseObjectBase::init_with_guid(vstd::Guid const &guid) {
+    LUISA_DEBUG_ASSERT(guid);
+    init();
+    _guid = guid;
+    {
+        std::lock_guard lck{_guid_mtx};
+        auto new_guid = _obj_guids.try_emplace(reinterpret_cast<std::array<uint64_t, 2> const &>(guid), static_cast<BaseObject *>(this)).second;
+        LUISA_DEBUG_ASSERT(new_guid);
+    }
+}
+void BaseObject::_dispose_self() {
+    if (_instance_id != ~0ull) {
+        std::lock_guard lck{_instance_mtx};
+        _disposed_instance_ids.push_back(_instance_id);
+        _instance_ids[_instance_id] = nullptr;
+    }
+    if (_guid) {
+        auto &guid = reinterpret_cast<std::array<uint64_t, 2> const &>(_guid);
+        std::lock_guard lck{_guid_mtx};
+        auto iter = _obj_guids.find(guid);
+        LUISA_DEBUG_ASSERT(iter->second == this);
+        _obj_guids.erase(iter);
+    }
+}
 static TypeRegisterBase *_type_register_header{};
 void type_regist_init_mark(TypeRegisterBase *type_register) {
     type_register->p_next = _type_register_header;
@@ -80,6 +134,20 @@ struct WorldPluginImpl : WorldPlugin {
             static_cast<Transform *>(obj)->_dirty = false;
         }
         v.clear();
+    }
+    uint64_t object_count() const override {
+        std::shared_lock lck{_instance_mtx};
+        return _instance_ids.size() - _disposed_instance_ids.size();
+    }
+    void dispose_all_object(vstd::Guid const &guid) override {
+        std::lock_guard lck{_guid_mtx};
+        std::lock_guard lck1{_instance_mtx};
+        for (auto &i : _instance_ids) {
+            if (i) i->dispose();
+        }
+        _instance_ids.clear();
+        _disposed_instance_ids.clear();
+        _obj_guids.clear();
     }
 };
 LUISA_EXPORT_API WorldPlugin *get_world_plugin() {

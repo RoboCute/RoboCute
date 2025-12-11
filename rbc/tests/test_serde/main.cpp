@@ -24,9 +24,9 @@ int main() {
     auto world_plugin = world_module->invoke<world::WorldPlugin *()>("get_world_plugin");
     luisa::BinaryBlob json;
     {
-        RC<world::Entity> entity = world_plugin->create_object_with_guid(TypeInfo::get<world::Entity>(), vstd::Guid(true));
-        RC<world::Transform> trans = world_plugin->create_object_with_guid(TypeInfo::get<world::Transform>(), vstd::Guid(true));
-        entity->add_component(trans.get());
+        auto entity = static_cast<world::Entity*>(world_plugin->create_object_with_guid(TypeInfo::get<world::Entity>(), vstd::Guid(true)));
+        auto trans = static_cast<world::Transform *>(world_plugin->create_object_with_guid(TypeInfo::get<world::Transform>(), vstd::Guid(true)));
+        entity->add_component(trans);
         trans->set_pos(double3(114, 514, 1919), false);
         rbc::JsonSerializer writer;
         // serialize entity and components
@@ -45,7 +45,7 @@ int main() {
             for (auto i : *entity) {
                 serialize_obj(i);
             }
-            serialize_obj(entity.get());
+            serialize_obj(entity);
         }
         writer.start_array();
         for (auto &i : type_meta) {
@@ -56,11 +56,12 @@ int main() {
         json = writer.write_to();
         auto trans_ptr = entity->get_component(TypeInfo::get<world::Transform>());
         // test life time
-        LUISA_ASSERT(trans_ptr == trans.get());
-        trans.reset();
+        LUISA_ASSERT(trans_ptr == trans);
+        trans->dispose();
         trans_ptr = entity->get_component(TypeInfo::get<world::Transform>());
         // tarnsform already destroyed
         LUISA_ASSERT(trans_ptr == nullptr);
+        entity->dispose();
     }
     // Try deserialize
     {

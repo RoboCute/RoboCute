@@ -135,6 +135,9 @@ struct TransformImpl : Transform {
         mark_dirty();
     }
     void add_children(Transform *tr) override {
+        if (tr->_parent) {
+            static_cast<TransformImpl *>(tr->_parent)->remove_children(tr);
+        }
         _children.emplace(tr);
         tr->_parent = this;
     }

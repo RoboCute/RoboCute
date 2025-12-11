@@ -3,7 +3,6 @@
 #include <rbc_core/type_info.h>
 #include <luisa/vstl/common.h>
 #include <luisa/core/stl/hash.h>
-#include <rbc_core/rc.h>
 #include <rbc_core/hash.h>
 namespace rbc::world {
 enum struct BaseObjectType {
@@ -15,16 +14,21 @@ enum struct BaseObjectType {
 struct InstanceID {
     uint64_t _placeholder;
 };
-struct BaseObject {
+struct BaseObjectBase {
+    template<typename T, BaseObjectType base_type_v>
+    friend struct BaseObjectDerive;
+    template<typename T>
+    friend struct ComponentDerive;
     friend struct WorldPluginImpl;
-    RBC_RC_IMPL
 protected:
     vstd::Guid _guid;
     uint64_t _instance_id{~0ull};
-    BaseObject();
-    virtual ~BaseObject();
+    BaseObjectBase() = default;
+    virtual ~BaseObjectBase() = default;
+private:
     void init();
     void init_with_guid(vstd::Guid const &guid);
+    virtual void _dispose_self() = 0;
 public:
     [[nodiscard]] InstanceID instance_id() const {
         return InstanceID{_instance_id};
@@ -40,9 +44,6 @@ public:
         return src[0] == dst[0] && src[1] == dst[1];
     }
     virtual void dispose() = 0;
-    inline void rbc_rc_delete() {
-        dispose();
-    }
     [[nodiscard]] virtual const char *type_name() const = 0;
     [[nodiscard]] virtual std::array<uint64_t, 2> type_id() const = 0;
     static void *operator new(
@@ -97,6 +98,10 @@ public:
         LUISA_ERROR("operator delete banned.");
     }
 };
+struct BaseObject : BaseObjectBase {
+private:
+    void _dispose_self() override;
+};
 template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive : BaseObject {
     static constexpr BaseObjectType base_object_type_v = base_type_v;
@@ -108,6 +113,9 @@ struct BaseObjectDerive : BaseObject {
     }
     [[nodiscard]] BaseObjectType base_type() const override {
         return base_type_v;
+    }
+    ~BaseObjectDerive() {
+        static_cast<BaseObjectBase *>(this)->_dispose_self();
     }
 };
 }// namespace rbc::world

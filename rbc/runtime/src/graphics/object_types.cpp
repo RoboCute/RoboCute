@@ -114,9 +114,18 @@ void MaterialStub::openpbr_json_ser(JsonSerializer &json_ser, material::Unlit co
 void MaterialStub::openpbr_json_deser(JsonDeSerializer &json_deser, material::Unlit &mat) {
     LUISA_NOT_IMPLEMENTED();
 }
-
+MaterialStub::MaterialStub() {
+    mat_code.value = ~0u;
+}
 void MaterialStub::craete_pbr_material() {
+    LUISA_DEBUG_ASSERT(mat_code.value == ~0u);
     mat_data.reset_as<material::OpenPBR>();
+}
+void MaterialStub::remove_material() {
+    if (mat_code.value == ~0u) return;
+    auto sm = SceneManager::instance_ptr();
+    if (sm && mat_code.value != ~0u)
+        sm->mat_manager().discard_mat_instance(mat_code);
     mat_code.value = ~0u;
 }
 void MaterialStub::update_material(luisa::string_view json) {
@@ -153,16 +162,17 @@ void MaterialStub::update_material(luisa::string_view json) {
     });
 }
 MaterialStub::~MaterialStub() {
-    auto sm = SceneManager::instance_ptr();
-    if (!sm) return;
-    if (mat_code.value != ~0u)
-        sm->mat_manager().discard_mat_instance(mat_code);
+    remove_material();
 }
-ObjectStub::~ObjectStub() {
+void ObjectStub::remove_object() {
     auto sm = SceneManager::instance_ptr();
     if (mesh_ref) {
         mesh_ref->tlas_ref_count--;
+        mesh_ref.reset();
     }
+    auto dsp = vstd::scope_exit([&]() {
+        mesh_tlas_idx = ~0u;
+    });
     if (!sm || mesh_tlas_idx == ~0u) return;
     switch (type) {
         case ObjectRenderType::Mesh:
@@ -184,6 +194,9 @@ ObjectStub::~ObjectStub() {
                 procedural_idx);
             break;
     }
+}
+ObjectStub::~ObjectStub() {
+    remove_object();
 }
 LightStub::~LightStub() {
     auto lights = Lights::instance();

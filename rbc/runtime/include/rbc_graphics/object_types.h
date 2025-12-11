@@ -32,7 +32,8 @@ struct RBC_RUNTIME_API MaterialStub : RCBase {
     MatDataType mat_data;
     void craete_pbr_material();
     void update_material(luisa::string_view json);
-    MaterialStub() = default;
+    void remove_material();
+    MaterialStub();
     ~MaterialStub();
     static void openpbr_json_ser(JsonSerializer &json_ser, material::OpenPBR const &mat);
     static void openpbr_json_deser(JsonDeSerializer &json_deser, material::OpenPBR &mat);
@@ -53,6 +54,7 @@ struct RBC_RUNTIME_API ObjectStub : RCBase {
     void update_object_pos(luisa::float4x4 matrix);
     void update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::span<RC<RCBase> const> materials);
     uint get_tlas_index() const;
+    void remove_object();
     ObjectStub();
     ~ObjectStub();
 };

@@ -12,8 +12,10 @@ struct WorldPlugin : Plugin {
     [[nodiscard]] virtual BaseObject *create_object(vstd::Guid const &type_info) = 0;
     [[nodiscard]] virtual BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid) = 0;
     [[nodiscard]] virtual BaseObject *get_object(InstanceID instance_id) const = 0;
-    [[nodiscard]] virtual BaseObject *get_object(vstd::Guid const& guid) const = 0;
-    [[nodiscard]] virtual BaseObjectType base_type_of(vstd::Guid const& type_id) const = 0;
+    [[nodiscard]] virtual BaseObject *get_object(vstd::Guid const &guid) const = 0;
+    [[nodiscard]] virtual uint64_t object_count() const = 0;
+    [[nodiscard]] virtual void dispose_all_object(vstd::Guid const &guid) = 0;
+    [[nodiscard]] virtual BaseObjectType base_type_of(vstd::Guid const &type_id) const = 0;
     [[nodiscard]] virtual luisa::span<InstanceID const> get_dirty_transforms() const = 0;
     virtual void clear_dirty_transform() = 0;
 protected:

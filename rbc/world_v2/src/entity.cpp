@@ -15,6 +15,7 @@ struct EntityImpl : Entity {
         }
     }
     bool add_component(Component *component) override {
+        component->_remove_self_from_entity();
         auto result = _components.try_emplace(component->type_id(), component).second;
         LUISA_DEBUG_ASSERT(component->_entity == nullptr);
         component->_entity = this;
@@ -80,7 +81,7 @@ void Entity::_remove_component(Component *component) {
 }
 void Component::_remove_self_from_entity() {
     if (_entity) {
-        _entity->_remove_component(static_cast<Component*>(this));
+        _entity->_remove_component(static_cast<Component *>(this));
     }
 }
 DECLARE_TYPE_REGISTER(Entity)
