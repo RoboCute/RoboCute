@@ -45,11 +45,11 @@ def main():
     mesh_id = scene.load_mesh(mesh_path, priority=rbc.LoadPriority.High)
     print(f"   Registered mesh: {mesh_id}: {1 << 32 + 1}")
     print("\n[2] Creating scene entities...")
-    robot = scene.create_entity("Robot")
-    print(f"    Created entity: {robot.name} (ID: {robot.id})")
+    robot1 = scene.create_entity("Robot")
+    print(f"    Created entity: {robot1.name} (ID: {robot1.id})")
     # Add transform component
     scene.add_component(
-        robot.id,
+        robot1.id,
         "transform",
         rbc.TransformComponent(
             position=[0.0, 0.0, 50.0],
@@ -64,10 +64,24 @@ def main():
         material_ids=[],
     )
     print(f"    Creating render component: mesh_id={render_comp.mesh_id}")
-    scene.add_component(robot.id, "render", render_comp)
+    scene.add_component(robot1.id, "render", render_comp)
     print("    Added render component")
     # Verify component was added
-    entity_check = scene.get_entity(robot.id)
+    entity_check = scene.get_entity(robot1.id)
+    # create a green smaller one
+    robot2 = scene.create_entity("Robot")
+    print(f"    Created entity: {robot2.name} (ID: {robot2.id})")
+    scene.add_component(robot2.id, "transform", rbc.TransformComponent(
+        position=[0.0, 20.0, 20.0],
+        rotation=[0.0, 0.0, 0.0, 1.0],
+        scale=[10.0, 10.0, 10.0],
+    ))
+    scene.add_component(robot2.id, "render", rbc.RenderComponent(
+        mesh_id=mesh_id,
+        material_ids=[],
+    ))
+    print("    Added render component")
+    entity_check = scene.get_entity(robot2.id)
     print(f"    Entity has components: {list(entity_check.components.keys())}")
     if "render" in entity_check.components:
         rc = entity_check.components["render"]

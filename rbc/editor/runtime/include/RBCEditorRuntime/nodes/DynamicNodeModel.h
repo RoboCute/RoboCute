@@ -18,6 +18,8 @@
 #include <QPixmap>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include "RBCEditorRuntime/nodes/EntityIdSpinBox.h"
+#include "RBCEditorRuntime/nodes/EntityGroupListWidget.h"
 #include <map>
 #include <memory>
 

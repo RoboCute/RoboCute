@@ -28,8 +28,8 @@ void AnimationPlaybackManager::setAnimation(const AnimationClip *clip) {
         int intervalMs = static_cast<int>(1000.0f / clip->fps);
         playbackTimer_->setInterval(intervalMs);
 
-        LUISA_INFO("AnimationPlaybackManager: Loaded animation '{}', {} frames at {} fps",
-                   clip->name.c_str(), clip->total_frames, clip->fps);
+        LUISA_INFO("AnimationPlaybackManager: Loaded animation '{}', {} frames at {} fps, {} sequence(s)",
+                   clip->name.c_str(), clip->total_frames, clip->fps, clip->sequences.size());
     }
 }
 

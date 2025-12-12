@@ -15,7 +15,7 @@ SceneHierarchyWidget::SceneHierarchyWidget(QWidget *parent)
 
     // Setup tree widget
     setHeaderLabel("Scene Hierarchy");
-    setSelectionMode(QAbstractItemView::SingleSelection);
+    setSelectionMode(QAbstractItemView::ExtendedSelection); // Support Ctrl+click multi-selection
     setAlternatingRowColors(true);
     
     // Enable drag and drop
@@ -97,51 +97,78 @@ void SceneHierarchyWidget::onItemSelectionChanged() {
 }
 
 void SceneHierarchyWidget::startDrag(Qt::DropActions supportedActions) {
-    QTreeWidgetItem *item = currentItem();
-    if (!item) {
+    // Get all selected items
+    QList<QTreeWidgetItem*> selectedItems = this->selectedItems();
+    if (selectedItems.isEmpty()) {
         QTreeWidget::startDrag(supportedActions);
         return;
     }
     
-    int entityId = item->data(0, Qt::UserRole).toInt();
-    if (entityId <= 0) {
-        // Not an entity item, don't allow drag
-        return;
+    // Filter to only entity items (entityId > 0)
+    QList<int> entityIds;
+    QList<QString> entityNames;
+    
+    for (QTreeWidgetItem *item : selectedItems) {
+        int entityId = item->data(0, Qt::UserRole).toInt();
+        if (entityId > 0) {
+            entityIds.append(entityId);
+            
+            // Get entity name
+            QString entityName;
+            if (currentScene_) {
+                const auto *entity = currentScene_->getEntity(entityId);
+                if (entity) {
+                    entityName = QString::fromStdString(entity->name.c_str());
+                }
+            }
+            entityNames.append(entityName.isEmpty() ? QString::number(entityId) : entityName);
+        }
     }
     
-    // Get entity name
-    QString entityName;
-    if (currentScene_) {
-        const auto *entity = currentScene_->getEntity(entityId);
-        if (entity) {
-            entityName = QString::fromStdString(entity->name.c_str());
-        }
+    if (entityIds.isEmpty()) {
+        // No valid entity items selected
+        return;
     }
     
     // Create drag object
     QDrag *drag = new QDrag(this);
     QMimeData *mimeData = new QMimeData();
     
-    // Create MIME data
-    QString mimeDataStr = EntityDragDropHelper::createMimeData(entityId, entityName);
+    QString mimeDataStr;
+    QString dragText;
+    
+    if (entityIds.size() == 1) {
+        // Single entity - use original format for backward compatibility
+        mimeDataStr = EntityDragDropHelper::createMimeData(entityIds[0], entityNames[0]);
+        dragText = QString("Entity %1: %2").arg(entityIds[0]).arg(entityNames[0]);
+    } else {
+        // Multiple entities - use group format
+        mimeDataStr = EntityDragDropHelper::createMimeDataForGroup(entityIds, entityNames);
+        dragText = QString("%1 entities").arg(entityIds.size());
+    }
+    
     mimeData->setData(EntityDragDropHelper::MIME_TYPE, mimeDataStr.toUtf8());
-    mimeData->setText(QString("Entity %1: %2").arg(entityId).arg(entityName.isEmpty() ? QString::number(entityId) : entityName));
+    mimeData->setText(dragText);
     
     drag->setMimeData(mimeData);
     
-    // Set drag pixmap (optional, can be improved with icon)
-    QPixmap pixmap(100, 30);
+    // Set drag pixmap
+    QPixmap pixmap(120, entityIds.size() == 1 ? 30 : 40);
     pixmap.fill(Qt::lightGray);
     QPainter painter(&pixmap);
     painter.setPen(Qt::black);
-    painter.drawText(pixmap.rect(), Qt::AlignCenter, QString("Entity %1").arg(entityId));
+    if (entityIds.size() == 1) {
+        painter.drawText(pixmap.rect(), Qt::AlignCenter, QString("Entity %1").arg(entityIds[0]));
+    } else {
+        painter.drawText(pixmap.rect(), Qt::AlignCenter, QString("%1 entities").arg(entityIds.size()));
+    }
     drag->setPixmap(pixmap);
-    drag->setHotSpot(QPoint(50, 15));
+    drag->setHotSpot(QPoint(60, entityIds.size() == 1 ? 15 : 20));
     
     // Execute drag
     Qt::DropAction dropAction = drag->exec(supportedActions);
     
-    qDebug() << "SceneHierarchyWidget: Dragged entity" << entityId << "with action" << dropAction;
+    qDebug() << "SceneHierarchyWidget: Dragged" << entityIds.size() << "entity(ies) with action" << dropAction;
 }
 
 }// namespace rbc

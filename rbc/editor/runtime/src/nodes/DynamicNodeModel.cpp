@@ -1,5 +1,6 @@
 #include "RBCEditorRuntime/nodes/DynamicNodeModel.h"
 #include "RBCEditorRuntime/nodes/EntityIdSpinBox.h"
+#include "RBCEditorRuntime/nodes/EntityGroupListWidget.h"
 #include <QFormLayout>
 #include <QJsonDocument>
 #include <QVBoxLayout>
@@ -153,6 +154,37 @@ QWidget *DynamicNodeModel::createWidgetForInput(const QJsonObject &inputDef) {
         checkBox->setChecked(defaultValue.toBool());
 
         return checkBox;
+    } else if (type == "entity_group") {
+        // Use EntityGroupListWidget for entity_group inputs to support drag and drop
+        auto groupWidget = new EntityGroupListWidget();
+        // Parse default value if provided as JSON array or comma-separated string
+        QString defaultStr = defaultValue.toString();
+        if (!defaultStr.isEmpty()) {
+            QList<int> entityIds;
+            try {
+                QJsonDocument doc = QJsonDocument::fromJson(defaultStr.toUtf8());
+                if (doc.isArray()) {
+                    QJsonArray arr = doc.array();
+                    for (const QJsonValue &val : arr) {
+                        entityIds.append(val.toInt());
+                    }
+                }
+            } catch (...) {
+                // Fall back to comma-separated parsing
+                QStringList parts = defaultStr.split(",");
+                for (const QString &part : parts) {
+                    bool ok;
+                    int id = part.trimmed().toInt(&ok);
+                    if (ok) {
+                        entityIds.append(id);
+                    }
+                }
+            }
+            if (!entityIds.isEmpty()) {
+                groupWidget->setEntityIds(entityIds);
+            }
+        }
+        return groupWidget;
     }
 
     return nullptr;
@@ -173,6 +205,15 @@ QJsonObject DynamicNodeModel::getInputValues() const {
             values[name] = lineEdit->text();
         } else if (auto checkBox = qobject_cast<QCheckBox *>(widget)) {
             values[name] = checkBox->isChecked();
+        } else if (auto groupWidget = qobject_cast<EntityGroupListWidget *>(widget)) {
+            // Convert entity IDs list to JSON array string
+            QList<int> entityIds = groupWidget->getEntityIds();
+            QJsonArray idsArray;
+            for (int id : entityIds) {
+                idsArray.append(id);
+            }
+            QJsonDocument doc(idsArray);
+            values[name] = QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
         }
     }
 

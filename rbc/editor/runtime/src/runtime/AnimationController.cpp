@@ -83,7 +83,8 @@ void AnimationController::handleAnimationSelected(const QString &animName) {
     }
 
     qDebug() << "AnimationController: Loaded animation:" << animName
-             << "frames:" << anim->total_frames << "fps:" << anim->fps;
+             << "frames:" << anim->total_frames << "fps:" << anim->fps
+             << "sequences:" << anim->sequences.size();
     emit animationLoaded(animName);
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QList>
 
 namespace rbc {
 
@@ -23,11 +24,23 @@ public:
     // Create MIME data for entity drag
     static QString createMimeData(int entityId, const QString &entityName = QString());
     
+    // Create MIME data for multiple entities drag
+    static QString createMimeDataForGroup(const QList<int> &entityIds, const QList<QString> &entityNames = QList<QString>());
+    
     // Parse entity ID from MIME data
     static int parseEntityId(const QString &mimeData);
     
     // Parse entity name from MIME data
     static QString parseEntityName(const QString &mimeData);
+    
+    // Parse multiple entity IDs from MIME data (for group drag)
+    static QList<int> parseEntityIds(const QString &mimeData);
+    
+    // Parse multiple entity names from MIME data (for group drag)
+    static QList<QString> parseEntityNames(const QString &mimeData);
+    
+    // Check if MIME data contains multiple entities
+    static bool isGroupMimeData(const QString &mimeData);
 };
 
 }  // namespace rbc
