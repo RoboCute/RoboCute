@@ -7,7 +7,9 @@
 #include "RBCEditorRuntime/EventBus.h"
 #include <QDebug>
 
-AnimationController::AnimationController(rbc::EditorContext *context, QObject *parent)
+namespace rbc {
+
+AnimationController::AnimationController(EditorContext *context, QObject *parent)
     : QObject(parent),
       context_(context),
       animationSelectedSubscriptionId_(-1),
@@ -18,29 +20,27 @@ AnimationController::AnimationController(rbc::EditorContext *context, QObject *p
 AnimationController::~AnimationController() {
     // 取消订阅事件总线
     if (animationSelectedSubscriptionId_ >= 0) {
-        rbc::EventBus::instance().unsubscribe(animationSelectedSubscriptionId_);
+        EventBus::instance().unsubscribe(animationSelectedSubscriptionId_);
     }
     if (animationFrameChangedSubscriptionId_ >= 0) {
-        rbc::EventBus::instance().unsubscribe(animationFrameChangedSubscriptionId_);
+        EventBus::instance().unsubscribe(animationFrameChangedSubscriptionId_);
     }
 }
 
 void AnimationController::initialize() {
     // 订阅动画选择事件
-    animationSelectedSubscriptionId_ = rbc::EventBus::instance().subscribe(
-        rbc::EventType::AnimationSelected,
-        [this](const rbc::Event &event) {
+    animationSelectedSubscriptionId_ = EventBus::instance().subscribe(
+        EventType::AnimationSelected,
+        [this](const Event &event) {
             onEvent(event);
-        }
-    );
+        });
 
     // 订阅动画帧变化事件
-    animationFrameChangedSubscriptionId_ = rbc::EventBus::instance().subscribe(
-        rbc::EventType::AnimationFrameChanged,
-        [this](const rbc::Event &event) {
+    animationFrameChangedSubscriptionId_ = EventBus::instance().subscribe(
+        EventType::AnimationFrameChanged,
+        [this](const Event &event) {
             onEvent(event);
-        }
-    );
+        });
 }
 
 void AnimationController::handleAnimationSelected(const QString &animName) {
@@ -91,13 +91,13 @@ void AnimationController::handleAnimationFrameChanged(int frame) {
     if (context_->playbackManager) {
         context_->playbackManager->setFrame(frame);
     }
-    
+
     qDebug() << "AnimationController: Frame changed to" << frame;
 }
 
-void AnimationController::onEvent(const rbc::Event &event) {
+void AnimationController::onEvent(const Event &event) {
     switch (event.type) {
-        case rbc::EventType::AnimationSelected: {
+        case EventType::AnimationSelected: {
             // 从事件数据中获取动画名称
             QString animName = event.data.toString();
             if (!animName.isEmpty()) {
@@ -105,7 +105,7 @@ void AnimationController::onEvent(const rbc::Event &event) {
             }
             break;
         }
-        case rbc::EventType::AnimationFrameChanged: {
+        case EventType::AnimationFrameChanged: {
             // 从事件数据中获取帧号
             bool ok = false;
             int frame = event.data.toInt(&ok);
@@ -118,3 +118,5 @@ void AnimationController::onEvent(const rbc::Event &event) {
             break;
     }
 }
+
+}// namespace rbc
