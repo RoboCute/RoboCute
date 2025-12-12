@@ -2,8 +2,8 @@
 
 #include <QObject>
 #include "RBCEditorRuntime/config.h"
-#include "RBCEditorRuntime/EventBus.h"
-#include "RBCEditorRuntime/WorkflowManager.h"
+#include "RBCEditorRuntime/runtime/EventBus.h"
+#include "RBCEditorRuntime/runtime/WorkflowManager.h"
 
 namespace rbc {
 

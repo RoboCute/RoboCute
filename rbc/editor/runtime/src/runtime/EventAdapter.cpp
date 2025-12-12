@@ -1,5 +1,5 @@
-#include "RBCEditorRuntime/EventAdapter.h"
-#include "RBCEditorRuntime/WorkflowManager.h"
+#include "RBCEditorRuntime/runtime/EventAdapter.h"
+#include "RBCEditorRuntime/runtime/WorkflowManager.h"
 
 namespace rbc {
 
@@ -16,7 +16,7 @@ void EventAdapter::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::Workflo
     QVariantMap data;
     data["newWorkflow"] = static_cast<int>(newWorkflow);
     data["oldWorkflow"] = static_cast<int>(oldWorkflow);
-    
+
     rbc::EventBus::instance().publish(rbc::EventType::WorkflowChanged, data, sender());
 }
 

@@ -5,7 +5,7 @@
 #include <luisa/gui/window.h>
 #include <luisa/runtime/rhi/resource.h>
 #include <luisa/backends/ext/native_resource_ext_interface.h>
-#include "RBCEditorRuntime/app.h"
+#include "RBCEditorRuntime/engine/app.h"
 // #include "RBCEditorRuntime/runtime/RenderUtils.h"
 #include <rbc_app/graphics_utils.h>
 #include "RBCEditorRuntime/runtime/RenderScene.h"

@@ -4,7 +4,7 @@
 #include <luisa/vstl/common.h>
 #include <luisa/core/stl/string.h>
 #include <rbc_core/json_serde.h>
-#include "RBCEditorRuntime/animation/AnimationClip.h"
+#include "RBCEditorRuntime/runtime/AnimationClip.h"
 
 namespace rbc {
 

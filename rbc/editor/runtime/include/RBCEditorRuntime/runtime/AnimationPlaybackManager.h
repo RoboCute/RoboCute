@@ -3,7 +3,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QString>
-#include "RBCEditorRuntime/animation/AnimationClip.h"
+#include "RBCEditorRuntime/runtime/AnimationClip.h"
 
 namespace rbc {
 

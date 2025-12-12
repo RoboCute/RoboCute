@@ -3,7 +3,7 @@
 #include <QObject>
 
 #include "RBCEditorRuntime/config.h"
-#include "RBCEditorRuntime/EventBus.h"
+#include "RBCEditorRuntime/runtime/EventBus.h"
 
 namespace rbc {
 

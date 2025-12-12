@@ -1,9 +1,9 @@
-#include "RBCEditorRuntime/EntitySelectionHandler.h"
-#include "RBCEditorRuntime/EditorContext.h"
+#include "RBCEditorRuntime/runtime/EntitySelectionHandler.h"
+#include "RBCEditorRuntime/runtime/EditorContext.h"
 #include "RBCEditorRuntime/components/DetailsPanel.h"
 #include "RBCEditorRuntime/runtime/SceneSyncManager.h"
 #include "RBCEditorRuntime/runtime/SceneSync.h"
-#include "RBCEditorRuntime/EventBus.h"
+#include "RBCEditorRuntime/runtime/EventBus.h"
 #include <QDebug>
 
 namespace rbc {

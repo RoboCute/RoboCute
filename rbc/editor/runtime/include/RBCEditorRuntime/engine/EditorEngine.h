@@ -3,8 +3,9 @@
 #include <memory>
 #include <luisa/luisa-compute.h>
 #include <QtGui/rhi/qrhi.h>
+
 #include "RBCEditorRuntime/config.h"
-#include "RBCEditorRuntime/app.h"
+#include "RBCEditorRuntime/engine/app.h"
 #include "RBCEditorRuntime/runtime/Renderer.h"
 #include "RBCEditorRuntime/runtime/HttpClient.h"
 

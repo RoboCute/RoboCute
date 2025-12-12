@@ -1,4 +1,4 @@
-#include "RBCEditorRuntime/EditorLayoutManager.h"
+#include "RBCEditorRuntime/runtime/EditorLayoutManager.h"
 
 // Qt Components
 #include <QMainWindow>
@@ -23,11 +23,11 @@
 #include "RBCEditorRuntime/components/AnimationPlayer.h"
 
 // Our Runtime
-#include "RBCEditorRuntime/animation/AnimationPlaybackManager.h"
+#include "RBCEditorRuntime/runtime/AnimationPlaybackManager.h"
 #include "RBCEditorRuntime/runtime/EditorScene.h"
 #include "RBCEditorRuntime/engine/EditorEngine.h"
-#include "RBCEditorRuntime/WorkflowManager.h"
-#include "RBCEditorRuntime/EditorContext.h"
+#include "RBCEditorRuntime/runtime/WorkflowManager.h"
+#include "RBCEditorRuntime/runtime/EditorContext.h"
 
 EditorLayoutManager::EditorLayoutManager(QMainWindow *mainWindow, rbc::EditorContext *context, QObject *parent)
     : QObject(parent),

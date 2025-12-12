@@ -4,7 +4,7 @@
 #include <QActionGroup>
 
 #include "RBCEditorRuntime/config.h"
-#include "RBCEditorRuntime/WorkflowManager.h"
+#include "RBCEditorRuntime/runtime/WorkflowManager.h"
 
 class QMainWindow;
 class QMenuBar;

@@ -3,12 +3,12 @@
 #include <QStatusBar>
 
 #include "RBCEditorRuntime/config.h"
-#include "RBCEditorRuntime/WorkflowManager.h"
+#include "RBCEditorRuntime/runtime/WorkflowManager.h"
 #include "RBCEditorRuntime/runtime/SceneSyncManager.h"
 #include "RBCEditorRuntime/components/AnimationPlayer.h"
-#include "RBCEditorRuntime/EditorContext.h"
-#include "RBCEditorRuntime/animation/AnimationPlaybackManager.h"
-#include "RBCEditorRuntime/EventBus.h"
+#include "RBCEditorRuntime/runtime/EditorContext.h"
+#include "RBCEditorRuntime/runtime/AnimationPlaybackManager.h"
+#include "RBCEditorRuntime/runtime/EventBus.h"
 
 namespace rbc {
 class HttpClient;
@@ -51,7 +51,7 @@ private slots:
     void onConnectionStatusChanged(bool connected);
     void onAnimationFrameChanged(int frame);
     void onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow);
-    
+
     /**
      * 处理动画加载完成（UI 更新）
      */

@@ -1,4 +1,4 @@
-#include "RBCEditorRuntime/WorkflowManager.h"
+#include "RBCEditorRuntime/runtime/WorkflowManager.h"
 #include <QDebug>
 
 namespace rbc {

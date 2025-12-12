@@ -1,4 +1,4 @@
-#include "RBCEditorRuntime/CommandBus.h"
+#include "RBCEditorRuntime/runtime/CommandBus.h"
 #include <QDebug>
 
 namespace rbc {
@@ -28,7 +28,7 @@ void CommandBus::execute(EditorCommand *command) {
         qWarning() << "CommandBus: Attempted to execute null command";
         return;
     }
-    
+
     undoStack_.push(command);
     emit commandExecuted(command->text());
 }

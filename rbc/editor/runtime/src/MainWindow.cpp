@@ -11,20 +11,21 @@
 #include "RBCEditorRuntime/components/NodeEditor.h"
 
 // Our Runtime
-#include "RBCEditorRuntime/animation/AnimationPlaybackManager.h"
+
+#include "RBCEditorRuntime/engine/EditorEngine.h"
 #include "RBCEditorRuntime/runtime/HttpClient.h"
+#include "RBCEditorRuntime/runtime/AnimationPlaybackManager.h"
 #include "RBCEditorRuntime/runtime/SceneSyncManager.h"
 #include "RBCEditorRuntime/runtime/EditorScene.h"
-#include "RBCEditorRuntime/engine/EditorEngine.h"
-#include "RBCEditorRuntime/WorkflowManager.h"
-#include "RBCEditorRuntime/EditorContext.h"
-#include "RBCEditorRuntime/EditorLayoutManager.h"
-#include "RBCEditorRuntime/EventBus.h"
-#include "RBCEditorRuntime/EventAdapter.h"
-#include "RBCEditorRuntime/CommandBus.h"
-#include "RBCEditorRuntime/AnimationController.h"
-#include "RBCEditorRuntime/SceneUpdater.h"
-#include "RBCEditorRuntime/EntitySelectionHandler.h"
+#include "RBCEditorRuntime/runtime/WorkflowManager.h"
+#include "RBCEditorRuntime/runtime/EditorContext.h"
+#include "RBCEditorRuntime/runtime/EditorLayoutManager.h"
+#include "RBCEditorRuntime/runtime/EventBus.h"
+#include "RBCEditorRuntime/runtime/EventAdapter.h"
+#include "RBCEditorRuntime/runtime/CommandBus.h"
+#include "RBCEditorRuntime/runtime/AnimationController.h"
+#include "RBCEditorRuntime/runtime/SceneUpdater.h"
+#include "RBCEditorRuntime/runtime/EntitySelectionHandler.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),

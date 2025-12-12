@@ -1,10 +1,10 @@
-#include "RBCEditorRuntime/SceneUpdater.h"
-#include "RBCEditorRuntime/EditorContext.h"
+#include "RBCEditorRuntime/runtime/SceneUpdater.h"
+#include "RBCEditorRuntime/runtime/EditorContext.h"
 #include "RBCEditorRuntime/components/SceneHierarchyWidget.h"
 #include "RBCEditorRuntime/components/ResultPanel.h"
 #include "RBCEditorRuntime/runtime/SceneSyncManager.h"
 #include "RBCEditorRuntime/runtime/EditorScene.h"
-#include "RBCEditorRuntime/EventBus.h"
+#include "RBCEditorRuntime/runtime/EventBus.h"
 #include <QDebug>
 
 namespace rbc {

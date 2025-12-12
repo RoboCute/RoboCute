@@ -6,6 +6,7 @@
 #include <rbc_world/mesh_loader.h>
 #include <rbc_world/gpu_resource.h>
 #include <luisa/vstl/common.h>
+
 #include "RBCEditorRuntime/runtime/SceneSync.h"
 
 namespace rbc {

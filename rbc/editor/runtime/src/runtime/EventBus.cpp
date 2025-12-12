@@ -1,4 +1,4 @@
-#include "RBCEditorRuntime/EventBus.h"
+#include "RBCEditorRuntime/runtime/EventBus.h"
 #include <QDateTime>
 #include <QDebug>
 
@@ -19,7 +19,7 @@ void EventBus::subscribe(EventType type, IEventSubscriber *subscriber) {
         qWarning() << "EventBus: Attempted to subscribe with null subscriber";
         return;
     }
-    
+
     objectSubscribers_[type].append(subscriber);
 }
 
@@ -28,7 +28,7 @@ int EventBus::subscribe(EventType type, std::function<void(const Event &)> callb
         qWarning() << "EventBus: Attempted to subscribe with null callback";
         return -1;
     }
-    
+
     int id = nextSubscriptionId_++;
     callbackSubscribers_[type][id] = callback;
     subscriptionIdToType_[id] = type;
@@ -39,10 +39,10 @@ void EventBus::unsubscribe(EventType type, IEventSubscriber *subscriber) {
     if (!subscriber) {
         return;
     }
-    
+
     auto &subscribers = objectSubscribers_[type];
     subscribers.removeAll(subscriber);
-    
+
     if (subscribers.isEmpty()) {
         objectSubscribers_.remove(type);
     }
@@ -52,11 +52,11 @@ void EventBus::unsubscribe(int subscriptionId) {
     if (!subscriptionIdToType_.contains(subscriptionId)) {
         return;
     }
-    
+
     EventType type = subscriptionIdToType_[subscriptionId];
     callbackSubscribers_[type].remove(subscriptionId);
     subscriptionIdToType_.remove(subscriptionId);
-    
+
     if (callbackSubscribers_[type].isEmpty()) {
         callbackSubscribers_.remove(type);
     }
@@ -72,7 +72,7 @@ void EventBus::publish(const Event &event) {
             }
         }
     }
-    
+
     // 通知回调订阅者
     if (callbackSubscribers_.contains(event.type)) {
         const auto &callbacks = callbackSubscribers_[event.type];
@@ -82,7 +82,7 @@ void EventBus::publish(const Event &event) {
             }
         }
     }
-    
+
     // 发出Qt信号（用于信号槽机制）
     emit eventPublished(event);
 }

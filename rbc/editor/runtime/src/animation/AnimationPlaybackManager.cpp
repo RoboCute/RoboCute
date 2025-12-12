@@ -1,4 +1,4 @@
-#include "RBCEditorRuntime/animation/AnimationPlaybackManager.h"
+#include "RBCEditorRuntime/runtime/AnimationPlaybackManager.h"
 #include "RBCEditorRuntime/runtime/EditorScene.h"
 #include <QTimer>
 #include <luisa/core/logging.h>
