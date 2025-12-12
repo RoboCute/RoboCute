@@ -1,3 +1,5 @@
+"""The Common Builtin Nodes"""
+
 from typing import Dict, Any, List
 from robocute.node_base import RBCNode, NodeInput, NodeOutput
 from robocute.node_registry import register_node

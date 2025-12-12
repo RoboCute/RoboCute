@@ -208,7 +208,9 @@ class AnimationOutputNode(rbc.RBCNode):
 
     def execute(self) -> Dict[str, Any]:
         animation_input = self.get_input("animation")
-        print(f"[AnimationOutputNode] Animation input received: {type(animation_input)}")
+        print(
+            f"[AnimationOutputNode] Animation input received: {type(animation_input)}"
+        )
 
         if animation_input is None:
             print("[AnimationOutputNode] ✗ No animation input provided")
@@ -235,8 +237,12 @@ class AnimationOutputNode(rbc.RBCNode):
             clip = rbc.AnimationClip(name=name, fps=fps)
             clip.add_sequence(animation_input)
         else:
-            print(f"[AnimationOutputNode] ✗ Unsupported animation input type: {type(animation_input)}")
-            raise ValueError(f"Unsupported animation input type: {type(animation_input)}")
+            print(
+                f"[AnimationOutputNode] ✗ Unsupported animation input type: {type(animation_input)}"
+            )
+            raise ValueError(
+                f"Unsupported animation input type: {type(animation_input)}"
+            )
 
         # Store in scene
         self.context.scene.add_animation(name, clip)
@@ -341,7 +347,11 @@ class GroupRotationAnimationNode(rbc.RBCNode):
         entity_group = self.get_input("entity_group")
         print(f"[GroupRotationAnimationNode] Entity group input: {entity_group}")
 
-        if not entity_group or not isinstance(entity_group, list) or len(entity_group) == 0:
+        if (
+            not entity_group
+            or not isinstance(entity_group, list)
+            or len(entity_group) == 0
+        ):
             print("[GroupRotationAnimationNode] ✗ No entity group input provided")
             raise ValueError("Entity group input is required and must be non-empty")
 
@@ -353,10 +363,13 @@ class GroupRotationAnimationNode(rbc.RBCNode):
         center_x = float(self.get_input("center_x", 0.0))
         center_y = float(self.get_input("center_y", 0.0))
         center_z = float(self.get_input("center_z", 0.0))
+
         radius = float(self.get_input("radius", 2.0))
+
         angular_velocity = float(self.get_input("angular_velocity", 1.0))
         duration_frames = int(self.get_input("duration_frames", 120))
         fps = float(self.get_input("fps", 30.0))
+
         spacing_angle = float(self.get_input("spacing_angle", 0.0))
 
         # Calculate angle spacing if not specified (evenly distribute entities)
@@ -370,12 +383,12 @@ class GroupRotationAnimationNode(rbc.RBCNode):
 
         # Create animation sequences for all entities
         all_sequences = []
-        
+
         for idx, entity_id in enumerate(entity_ids):
             # Get entity's initial transform if available
             initial_scale = [1.0, 1.0, 1.0]
             initial_offset = [0.0, 0.0, 0.0]
-            
+
             entity_obj = self.context.get_entity(entity_id)
             if entity_obj:
                 transform = entity_obj.get_component("transform")
@@ -407,7 +420,10 @@ class GroupRotationAnimationNode(rbc.RBCNode):
 
                 # Create keyframe
                 keyframe = rbc.AnimationKeyframe(
-                    frame=frame, position=[x, y, z], rotation=rotation, scale=initial_scale
+                    frame=frame,
+                    position=[x, y, z],
+                    rotation=rotation,
+                    scale=initial_scale,
                 )
 
                 animation_seq.add_keyframe(keyframe)
@@ -422,20 +438,19 @@ class GroupRotationAnimationNode(rbc.RBCNode):
         # a combined sequence or use AnimationClip
         # For now, we'll return the first sequence and note that we need to handle multiple sequences
         # In practice, AnimationOutputNode should handle multiple sequences
-        
+
         # Create a combined animation clip that contains all sequences
         # Since we're returning animation_sequence type, we'll return the first one
         # and the caller should handle combining them
         # Actually, let's check if AnimationSequence can handle multiple entities
-        
+
         print(
             f"[GroupRotationAnimationNode] ✓ Generated animations for {len(all_sequences)} entities"
         )
-        print(
-            f"[GroupRotationAnimationNode]   Total frames: {duration_frames + 1}"
-        )
+        print(f"[GroupRotationAnimationNode]   Total frames: {duration_frames + 1}")
 
         # Create AnimationClip containing all sequences
+
         clip = rbc.AnimationClip(name="group_rotation", fps=fps)
         for seq in all_sequences:
             clip.add_sequence(seq)

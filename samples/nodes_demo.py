@@ -5,7 +5,7 @@
 """
 
 # 导入必要的组件
-import example_nodes
+
 from robocute import (
     # 核心类
     RBCNode,
@@ -23,6 +23,7 @@ from robocute import (
     GraphExecutor,
     ExecutionStatus,
 )
+import robocute.builtin_nodes
 from typing import Dict, Any, List
 import time
 
