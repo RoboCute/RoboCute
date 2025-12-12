@@ -108,14 +108,15 @@ void ViewportInteractionManager::handle_cursor_position(luisa::float2 xy, luisa:
                 // 重新确定交互模式（因为拖动距离可能改变模式）
                 bool has_selection = !state_.selected_object_ids.empty();
                 if (state_.is_ctrl_down) {
-                    // Ctrl+拖动 = 框选模式
+                    // Ctrl+拖动 = 框选模式（无论是否有选择）
                     state_.mode = InteractionMode::DragSelect;
                 } else if (has_selection) {
                     // 有选择且拖动 = 拖动已选物体模式
                     state_.mode = InteractionMode::Dragging;
                 } else {
-                    // 无选择且拖动 = 框选模式（虽然没有Ctrl，但拖动应该框选）
-                    state_.mode = InteractionMode::DragSelect;
+                    // 无选择且拖动 = 保持点击选择模式（不进入框选，框选需要Ctrl）
+                    // 注意：这种情况下，拖动会被视为无效操作，不会进行框选
+                    state_.mode = InteractionMode::ClickSelect;
                 }
             }
         }
