@@ -6,19 +6,18 @@ namespace rbc::world {
 Entity::~Entity() {
     for (auto &i : _components) {
         auto obj = i.second;
-        if (!obj) continue;
         LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
         auto comp = static_cast<Component *>(obj);
         LUISA_DEBUG_ASSERT(comp->entity() == this);
         comp->dispose();
     }
 }
-bool Entity::add_component(Component *component) {
+void Entity::add_component(Component *component) {
     component->_remove_self_from_entity();
     auto result = _components.try_emplace(component->type_id(), component).second;
+    LUISA_ASSERT(result, "Component already exists.");
     LUISA_DEBUG_ASSERT(component->entity() == nullptr);
     component->set_entity(this);
-    return result;
 }
 
 bool Entity::remove_component(TypeInfo const &type) {
@@ -110,7 +109,7 @@ void Component::set_entity(Entity *entity) {
     if (_entity == entity) return;
     _entity = entity;
     if (entity) {
-        on_start();
+        on_awake();
     } else {
         on_destroy();
     }

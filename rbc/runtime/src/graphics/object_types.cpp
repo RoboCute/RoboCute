@@ -109,9 +109,12 @@ void MaterialStub::update_material(luisa::string_view json) {
 MaterialStub::~MaterialStub() {
     remove_material();
 }
-
-LightStub::~LightStub() {
+void LightStub::remove_light() {
+    if (id == ~0u) return;
     auto lights = Lights::instance();
+    auto dsp_id = vstd::scope_exit([&]() {
+        id = ~0u;
+    });
     if (!lights) return;
     auto type = light_type;
     switch (type) {
@@ -133,6 +136,9 @@ LightStub::~LightStub() {
         default:
             return;
     }
+}
+LightStub::~LightStub() {
+    remove_light();
 }
 void LightStub::add_area_light(luisa::float4x4 matrix, luisa::float3 luminance, bool visible) {
     auto &render_device = RenderDevice::instance();

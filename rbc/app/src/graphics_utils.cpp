@@ -348,6 +348,7 @@ void GraphicsUtils::create_mesh(
         std::move(offsets));
 }
 void GraphicsUtils::update_texture(DeviceImage *ptr) {
+    ptr->wait_finished();
     _frame_mem_io_list << IOCommand{
         ptr->host_data().data(),
         0,

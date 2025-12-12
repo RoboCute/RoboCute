@@ -13,9 +13,8 @@
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include "simple_scene.h"
+#include "world_scene.h"
 #include <rbc_app/graphics_utils.h>
-#include "generated/rbc_backend.h"
-#include "rbc_graphics/object_types.h"
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 #include <rbc_render/click_manager.h>
@@ -49,10 +48,11 @@ int main(int argc, char *argv[]) {
     // Present is ping-pong frame-buffer and compute is triple-buffer
     Clock clk;
     double last_frame_time = 0;
-    vstd::optional<SimpleScene> simple_scene;
-    simple_scene.create(*Lights::instance());
+    // vstd::optional<SimpleScene> simple_scene;
+    vstd::optional<WorldScene> world_scene;
+    world_scene.create(&utils);
+    // simple_scene.create(*Lights::instance());
     // Test FOV
-    vstd::optional<float3> cube_move, light_move;
     bool reset = false;
     auto &click_mng = utils.render_settings().read_mut<ClickManager>();
     uint2 window_size = utils.window()->size();
@@ -189,15 +189,7 @@ int main(int argc, char *argv[]) {
         if (cam_controller.any_changed())
             frame_index = 0;
         last_frame_time = time;
-        // scene logic
-        if (cube_move) {
-            simple_scene->move_cube(*cube_move);
-            cube_move.destroy();
-        }
-        if (light_move) {
-            simple_scene->move_light(*light_move);
-            light_move.destroy();
-        }
+
         // click
         if (stage == MouseStage::Clicking) {
             click_mng.add_require("click", ClickRequire{.screen_uv = start_uv});
@@ -240,6 +232,8 @@ int main(int argc, char *argv[]) {
         }
     }
     // rpc_hook.shutdown_remote();
+    world_scene.destroy();
+    world::destroy_world();
     utils.dispose([&]() {
         auto pipe_settings_json = utils.render_settings().serialize_to_json();
         if (pipe_settings_json.data()) {
@@ -248,7 +242,6 @@ int main(int argc, char *argv[]) {
                                  pipe_settings_json.size()});
         }
         // destroy render-pipeline
-        simple_scene.destroy();
     });
 }
 #endif

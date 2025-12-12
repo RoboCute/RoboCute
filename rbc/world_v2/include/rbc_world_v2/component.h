@@ -1,7 +1,11 @@
 #pragma once
 #include <rbc_world_v2/base_object.h>
-#include <rbc_world_v2/entity.h>
 namespace rbc::world {
+    enum struct WorldEventType : uint64_t {
+    OnTransformUpdate
+    // etc...
+    // can have custom events
+};
 // events from front to back
 struct Component : BaseObject {
     friend struct Entity;
@@ -17,7 +21,7 @@ private:
 protected:
     RBC_WORLD_API void remove_event(WorldEventType event);
 public:
-    virtual void on_start() {};
+    virtual void on_awake() {};
     virtual void on_destroy() {};
     static constexpr BaseObjectType base_object_type_v = BaseObjectType::Component;
     [[nodiscard]] Entity *entity() const {

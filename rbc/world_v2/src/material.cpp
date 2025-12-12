@@ -71,6 +71,7 @@ void Material::load_from_json(luisa::string_view json_vec) {
             _mat_data.force_get<material::OpenPBR>(),
             serde_func);
     } else {
+        LUISA_ERROR("Unknown material type.");
         //TODO: other types
     }
 }
@@ -103,15 +104,16 @@ luisa::BinaryBlob Material::write_content_to() {
                 json_ser._store(u, name);
             }
         };
-        LUISA_ASSERT(iter == _depended_resources.end());
         _mat_data.visit([&]<typename T>(T const &t) {
             if constexpr (std::is_same_v<T, material::OpenPBR>) {
                 json_ser._store("type"sv, "pbr");
                 detail::serde_openpbr<material::OpenPBR const &>(t, ser_pbr);
             } else {
+                LUISA_ERROR("Unknown material type.");
                 // TODO: serialize other type
             }
         });
+        LUISA_ASSERT(iter == _depended_resources.end(), "Material type mismatch.");
     }
     return json_ser.write_to();
 }
@@ -144,6 +146,8 @@ bool Material::async_load_from_file() {
     });
     return true;
 }
+Material::Material()
+    : _event(luisa::fiber::event::Mode::Manual, true) {}
 Material::~Material() {
     wait_load();
     unload();
@@ -193,7 +197,7 @@ void Material::prepare_material() {
     wait_load();
     auto iter = _depended_resources.begin();
     auto serde_func = [&]<typename U>(U &u, char const *name) {
-        if constexpr (std::is_same_v<U, MatImageHandle>) {
+        if constexpr (std::is_same_v<std::remove_cvref_t<U>, MatImageHandle>) {
             LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
             auto res = *iter;
             if (res) {
@@ -205,16 +209,17 @@ void Material::prepare_material() {
             ++iter;
         }
     };
-    LUISA_ASSERT(iter == _depended_resources.end(), "Material type mismatch.");
-    _mat_data.visit([&]<typename T>(T const &t) {
+    _mat_data.visit([&]<typename T>(T &t) {
         if constexpr (std::is_same_v<T, material::OpenPBR>) {
             rbc::detail::serde_openpbr(
                 t,
                 serde_func);
         } else {
+            LUISA_ERROR("Unknown material type.");
             //TODO
         }
     });
+    LUISA_ASSERT(iter == _depended_resources.end(), "Material type mismatch.");
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return;
     std::lock_guard lck{_mtx};

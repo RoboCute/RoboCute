@@ -1,17 +1,9 @@
 #pragma once
 #include <rbc_core/type_info.h>
-#include <rbc_world_v2/base_object.h>
+#include <rbc_world_v2/component.h>
 #include <luisa/vstl/ranges.h>
 namespace rbc::world {
 struct Component;
-enum struct WorldEventType : uint64_t {
-    BeforeSimulation,
-    BeforeRendering,
-    OnFrameEnd,
-    OnTransformUpdate
-    // etc...
-    // can have custom events
-};
 
 struct EntityCompIter {
     using IterType = luisa::unordered_map<std::array<uint64_t, 2>, Component *>::const_iterator;
@@ -58,7 +50,14 @@ public:
     uint64_t component_count() const {
         return _components.size();
     }
-    RBC_WORLD_API bool add_component(Component *component);
+    RBC_WORLD_API void add_component(Component *component);
+    template<typename T>
+        requires(std::is_base_of_v<Component, T>)
+    T* add_component() {
+        auto ptr = create_object<T>();
+        add_component(ptr);
+        return ptr;
+    }
     RBC_WORLD_API bool remove_component(TypeInfo const &type);
     RBC_WORLD_API Component *get_component(TypeInfo const &type);
     RBC_WORLD_API void rbc_objser(rbc::JsonSerializer &ser) const override;

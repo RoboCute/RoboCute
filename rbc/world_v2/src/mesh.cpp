@@ -4,6 +4,10 @@
 #include <rbc_graphics/device_assets/device_mesh.h>
 
 namespace rbc::world {
+Mesh::~Mesh() {
+    int x = 0;
+}
+
 void Mesh::rbc_objser(JsonSerializer &ser) const {
     BaseType::rbc_objser(ser);
     ser._store(_contained_normal, "contained_normal");
@@ -59,7 +63,7 @@ uint64_t Mesh::desire_size_bytes() {
 }
 void Mesh::create_empty(
     luisa::filesystem::path &&path,
-    luisa::span<uint const> submesh_offsets,
+    luisa::vector<uint> &&submesh_offsets,
     uint64_t file_offset,
     uint32_t vertex_count,
     uint32_t triangle_count,
@@ -75,8 +79,7 @@ void Mesh::create_empty(
     } else {
         _device_mesh = new DeviceMesh{};
     }
-    _submesh_offsets.clear();
-    vstd::push_back_all(_submesh_offsets, submesh_offsets);
+    _submesh_offsets = std::move(submesh_offsets);
     _path = std::move(path);
     _file_offset = file_offset;
     _vertex_count = vertex_count;
@@ -124,7 +127,7 @@ bool Mesh::async_load_from_file() {
     return true;
 }
 bool Mesh::loaded() const {
-    return _device_mesh && _device_mesh->loaded();
+    return _device_mesh && (_device_mesh->loaded() || _device_mesh->mesh_data());
 }
 void Mesh::unload() {
     _device_mesh.reset();

@@ -168,7 +168,6 @@ void DeviceMesh::create_mesh(
     CommandList &cmdlist,
     uint vertex_count, bool normal, bool tangent, uint uv_count, uint triangle_count, vstd::vector<uint> &&submesh_triangle_offset) {
     LUISA_ASSERT(_render_mesh_data == nullptr && _gpu_load_frame == 0, "Device mesh already loaded.");
-    _gpu_load_frame = std::numeric_limits<uint64_t>::max();
     auto &sm = SceneManager::instance();
     auto &render_device = RenderDevice::instance();
     _render_mesh_data = sm.mesh_manager().load_mesh(

@@ -1,5 +1,7 @@
 #include <rbc_world_v2/type_register.h>
 #include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/resource_base.h>
+#include <rbc_world_v2/entity.h>
 namespace rbc::world {
 static TypeRegisterBase *_type_register_header{};
 static RuntimeStaticBase *_runtime_static_header{};
@@ -48,6 +50,7 @@ void destroy_world() {
     _world_inst = nullptr;
 }
 BaseObject *get_object(InstanceID instance_id) {
+    if (instance_id._placeholder == ~0ull) return nullptr;
     BaseObject *ptr;
     std::shared_lock lck{_world_inst->_instance_mtx};
     return _world_inst->_instance_ids[instance_id._placeholder];
@@ -160,17 +163,17 @@ uint64_t object_count() {
     std::shared_lock lck{_world_inst->_instance_mtx};
     return _world_inst->_instance_ids.size() - _world_inst->_disposed_instance_ids.size();
 }
-void dispose_all_object(vstd::Guid const &guid) {
-    std::lock_guard lck{_world_inst->_guid_mtx};
-    std::lock_guard lck1{_world_inst->_instance_mtx};
-    for (auto &i : _world_inst->_instance_ids) {
-        if (i) i->dispose();
-    }
-    _world_inst->_instance_ids.clear();
-    _world_inst->_disposed_instance_ids.clear();
-    _world_inst->_obj_guids.clear();
-}
+
 void on_before_rendering() {
     _collect_all_materials();
+    for (auto &i : dirty_transforms()) {
+        auto tr_obj = get_object(i);
+        if (!tr_obj || !tr_obj->is_type_of(TypeInfo::get<Transform>())) {
+            continue;
+        }
+        auto tr = static_cast<Transform *>(tr_obj);
+        tr->entity()->broadcast_event(WorldEventType::OnTransformUpdate);
+    }
+    clear_dirty_transform();
 }
 }// namespace rbc::world

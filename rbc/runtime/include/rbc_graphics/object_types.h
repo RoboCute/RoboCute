@@ -7,9 +7,10 @@ namespace rbc {
 #include <material/mats.inl>
 struct RBC_RUNTIME_API LightStub : RCBase {
     LightType light_type{(LightType)-1};
-    uint32_t id;
+    uint32_t id{~0u};
     LightStub() = default;
     ~LightStub();
+    void remove_light();
     void add_area_light(luisa::float4x4 matrix, luisa::float3 luminance, bool visible);
     void add_disk_light(luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, bool visible);
     void add_point_light(luisa::float3 center, float radius, luisa::float3 luminance, bool visible);

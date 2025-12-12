@@ -3,7 +3,10 @@
 #include <rbc_core/type_info.h>
 #include <luisa/vstl/common.h>
 #include <luisa/core/stl/hash.h>
+#include <luisa/core/logging.h>
 #include <rbc_core/hash.h>
+#include <rbc_core/rc.h>
+#include <rbc_core/serde.h>
 namespace rbc::world {
 struct Transform;
 struct BaseObject;
@@ -35,18 +38,16 @@ T *create_object_with_guid(vstd::Guid const &guid) {
 [[nodiscard]] RBC_WORLD_API BaseObject *get_object(InstanceID instance_id);
 [[nodiscard]] RBC_WORLD_API BaseObject *get_object(vstd::Guid const &guid);
 [[nodiscard]] RBC_WORLD_API uint64_t object_count();
-[[nodiscard]] RBC_WORLD_API void dispose_all_object(vstd::Guid const &guid);
 [[nodiscard]] RBC_WORLD_API BaseObjectType base_type_of(vstd::Guid const &type_id);
 [[nodiscard]] RBC_WORLD_API luisa::span<InstanceID const> get_dirty_transforms();
 RBC_WORLD_API void clear_dirty_transform();
 RBC_WORLD_API void on_before_rendering();
 
-
 template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive;
 template<typename T>
 struct ComponentDerive;
-struct BaseObject {
+struct BaseObject : RCBase {
     template<typename T, BaseObjectType base_type_v>
     friend struct BaseObjectDerive;
     template<typename T>
@@ -55,6 +56,9 @@ struct BaseObject {
     friend BaseObject *create_object(vstd::Guid const &type_info);
     friend BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid);
     friend BaseObject *create_object(rbc::TypeInfo const &type_info);
+    inline void rbc_rc_delete() {
+        dispose();
+    }
 protected:
     vstd::Guid _guid;
     uint64_t _instance_id{~0ull};

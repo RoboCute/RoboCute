@@ -4,19 +4,22 @@
 #include <rbc_world_v2/material.h>
 #include <rbc_world_v2/mesh.h>
 #include <rbc_graphics/render_device.h>
+#include <rbc_world_v2/entity.h>
 
 namespace rbc::world {
 void Renderer::_on_transform_update() {
-    if(_mesh_tlas_idx != ~0u) {
+    if (_mesh_tlas_idx != ~0u) {
         auto tr = entity()->get_component<Transform>();
-        LUISA_DEBUG_ASSERT(tr);
-        update_object_pos(tr->trs_float());
+        if (!tr) return;
+        _update_object_pos(tr->trs_float());
     }
 }
-void Renderer::on_start() {
+void Renderer::on_awake() {
     add_event(WorldEventType::OnTransformUpdate, &Renderer::_on_transform_update);
 }
-void Renderer::on_destroy() {}
+void Renderer::on_destroy() {
+    remove_object();
+}
 void Renderer::rbc_objser(rbc::JsonSerializer &ser_obj) const {
     ser_obj.start_array();
     for (auto &i : _materials) {
@@ -116,7 +119,10 @@ void Renderer::remove_object() {
 Renderer::Renderer() {
     _mesh_light_idx = ~0u;
 }
-void Renderer::update_object(luisa::float4x4 matrix, luisa::span<RC<Material> const> mats, Mesh *mesh) {
+void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
+    auto tr = entity()->get_component<Transform>();
+    if (!tr) return;
+    float4x4 matrix = tr->trs_float();
     if (!mesh->loaded()) return;
 
     for (auto &i : mats) {
@@ -226,7 +232,7 @@ void Renderer::update_object(luisa::float4x4 matrix, luisa::span<RC<Material> co
         }
     }
 }
-void Renderer::update_object_pos(luisa::float4x4 matrix) {
+void Renderer::_update_object_pos(float4x4 matrix) {
     if (_mesh_tlas_idx == ~0u) [[unlikely]] {
         LUISA_ERROR("Object not initialized yet.");
     }

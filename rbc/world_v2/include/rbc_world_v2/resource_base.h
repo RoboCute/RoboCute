@@ -1,5 +1,4 @@
 #pragma once
-#include <rbc_core/rc.h>
 #include <rbc_world_v2/base_object.h>
 
 namespace rbc ::world {
@@ -9,10 +8,6 @@ struct ResourceBaseImpl;
 struct Resource : BaseObject {
     template<typename Derive>
     friend struct ResourceBaseImpl;
-    RBC_RC_IMPL
-    inline void rbc_rc_delete() {
-        unload();
-    }
 protected:
     luisa::filesystem::path _path;
     uint64_t _file_offset{};

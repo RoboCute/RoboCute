@@ -18,7 +18,7 @@ private:
     bool _contained_normal : 1 {};
     bool _contained_tangent : 1 {};
     Mesh() = default;
-    ~Mesh() = default;
+    ~Mesh();
 public:
     [[nodiscard]] luisa::span<uint const> submesh_offsets() const { return _submesh_offsets; }
     [[nodiscard]] auto vertex_count() const { return _vertex_count; }
@@ -30,16 +30,13 @@ public:
     uint64_t desire_size_bytes();
     void create_empty(
         luisa::filesystem::path &&path,
-        luisa::span<uint const> submesh_offsets,
+        luisa::vector<uint>&& submesh_offsets,
         uint64_t file_offset,
         uint32_t vertex_count,
         uint32_t triangle_count,
         uint32_t uv_count,
         bool contained_normal,
         bool contained_tangent);
-    [[nodiscard]] auto &device_mesh() {
-        return _device_mesh;
-    }
     [[nodiscard]] auto const &device_mesh() const {
         return _device_mesh;
     }
