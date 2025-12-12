@@ -1,4 +1,5 @@
 #include "RBCEditorRuntime/nodes/DynamicNodeModel.h"
+#include "RBCEditorRuntime/nodes/EntityIdSpinBox.h"
 #include <QFormLayout>
 #include <QJsonDocument>
 #include <QVBoxLayout>
@@ -114,6 +115,7 @@ void DynamicNodeModel::createInputWidgets() {
 
 QWidget *DynamicNodeModel::createWidgetForInput(const QJsonObject &inputDef) {
     QString type = inputDef["type"].toString();
+    QString name = inputDef["name"].toString();
     QVariant defaultValue = inputDef["default"].toVariant();
 
     if (type == "number" || type == "float") {
@@ -127,12 +129,19 @@ QWidget *DynamicNodeModel::createWidgetForInput(const QJsonObject &inputDef) {
 
         return spinBox;
     } else if (type == "int" || type == "integer") {
-        auto spinBox = new QSpinBox();
-        spinBox->setRange(-999999, 999999);
-        spinBox->setValue(defaultValue.toInt());
-        spinBox->setMinimumWidth(80);
-
-        return spinBox;
+        // Use EntityIdSpinBox for entity_id inputs to support drag and drop
+        if (name == "entity_id") {
+            auto spinBox = new EntityIdSpinBox();
+            spinBox->setValue(defaultValue.toInt());
+            spinBox->setMinimumWidth(80);
+            return spinBox;
+        } else {
+            auto spinBox = new QSpinBox();
+            spinBox->setRange(-999999, 999999);
+            spinBox->setValue(defaultValue.toInt());
+            spinBox->setMinimumWidth(80);
+            return spinBox;
+        }
     } else if (type == "string" || type == "text") {
         auto lineEdit = new QLineEdit();
         lineEdit->setText(defaultValue.toString());

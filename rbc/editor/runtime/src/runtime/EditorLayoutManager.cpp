@@ -189,6 +189,8 @@ void EditorLayoutManager::setupDocks() {
 QDockWidget *EditorLayoutManager::createViewportDock() {
     context_->viewportWidget = new rbc::ViewportWidget(&rbc::EditorEngine::instance(), mainWindow_);
     context_->viewportWidget->setMinimumSize(400, 300);
+    // Set EditorContext for drag and drop support
+    context_->viewportWidget->setEditorContext(context_);
 
     auto *dock = new QDockWidget("Viewport", mainWindow_);
     dock->setObjectName("ViewportDock");

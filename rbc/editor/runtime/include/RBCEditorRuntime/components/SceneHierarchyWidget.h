@@ -26,6 +26,10 @@ signals:
     // Emitted when an entity is selected in the tree
     void entitySelected(int entityId);
 
+protected:
+    // Override to enable drag
+    void startDrag(Qt::DropActions supportedActions) override;
+
 private slots:
     void onItemSelectionChanged();
 

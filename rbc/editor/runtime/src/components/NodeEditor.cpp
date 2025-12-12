@@ -66,6 +66,8 @@ void NodeEditor::setupUI() {
     m_graphModel = std::make_shared<DataFlowGraphModel>(m_nodeFactory->getRegistry());
     m_scene = new DataFlowGraphicsScene(*m_graphModel, this);
     m_view = new GraphicsView(m_scene);
+    // Enable drop events for entity drag and drop
+    m_view->setAcceptDrops(true);
 
     // Create main layout
     auto *mainLayout = new QVBoxLayout(this);

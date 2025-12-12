@@ -18,6 +18,9 @@ public:
     ~ViewportWidget() override;
 
     [[nodiscard]] RhiWindow *getRhiWindow() const { return m_rhiWindow; }
+    
+    // Set EditorContext for drag and drop support
+    void setEditorContext(class EditorContext *context) { m_editorContext = context; }
 
 protected:
     // Event forwarding
@@ -31,10 +34,13 @@ protected:
 
 private:
     void setupUi();
+    void startEntityDrag();
 
     IRenderer *m_renderer = nullptr;
     RhiWindow *m_rhiWindow = nullptr;
     QWidget *m_container = nullptr;
+    class EditorContext *m_editorContext = nullptr;
+    QPoint m_dragStartPos;
 };
 
 }// namespace rbc
