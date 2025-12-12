@@ -1,5 +1,5 @@
 #include "RBCEditorRuntime/components/ViewportWidget.h"
-#include "RBCEditorRuntime/EditorEngine.h"
+#include "RBCEditorRuntime/engine/EditorEngine.h"
 #include <QVBoxLayout>
 #include <QCoreApplication>
 #include <QDebug>

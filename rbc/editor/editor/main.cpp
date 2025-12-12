@@ -20,7 +20,7 @@
 #include <rbc_graphics/materials.h>
 
 #include "RBCEditorRuntime/MainWindow.h"
-#include "RBCEditorRuntime/EditorEngine.h"
+#include "RBCEditorRuntime/engine/EditorEngine.h"
 #include "RBCEditorRuntime/runtime/RenderScene.h"
 
 #ifdef _WIN32

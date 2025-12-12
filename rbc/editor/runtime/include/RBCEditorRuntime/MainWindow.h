@@ -8,6 +8,7 @@
 #include "RBCEditorRuntime/components/AnimationPlayer.h"
 #include "RBCEditorRuntime/EditorContext.h"
 #include "RBCEditorRuntime/animation/AnimationPlaybackManager.h"
+#include "RBCEditorRuntime/EventBus.h"
 
 namespace rbc {
 class HttpClient;
@@ -18,6 +19,7 @@ class ResultPanel;
 class EditorScene;
 class NodeEditor;
 class WorkflowManager;
+class EventAdapter;
 }// namespace rbc
 
 class EditorLayoutManager;
@@ -62,6 +64,19 @@ private slots:
     void onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow);
 
 private:
+    /**
+     * 订阅事件总线事件
+     */
+    void subscribeToEventBus();
+
+    /**
+     * 处理事件总线事件
+     */
+    static void onEventBusEvent(const rbc::Event &event);
+
+private:
     rbc::EditorContext *context_;
     EditorLayoutManager *layoutManager_;
+    rbc::EventAdapter *eventAdapter_;
+    int eventBusSubscriptionId_;// 用于取消订阅
 };

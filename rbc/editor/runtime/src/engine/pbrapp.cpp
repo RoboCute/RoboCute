@@ -1,4 +1,4 @@
-#include "RBCEditorRuntime/pbrapp.h"
+#include "RBCEditorRuntime/engine/pbrapp.h"
 #include "luisa/core/dynamic_module.h"
 #include "luisa/runtime/rhi/pixel.h"
 #include <rbc_graphics/make_device_config.h>

@@ -25,7 +25,7 @@
 // Our Runtime
 #include "RBCEditorRuntime/animation/AnimationPlaybackManager.h"
 #include "RBCEditorRuntime/runtime/EditorScene.h"
-#include "RBCEditorRuntime/EditorEngine.h"
+#include "RBCEditorRuntime/engine/EditorEngine.h"
 #include "RBCEditorRuntime/WorkflowManager.h"
 #include "RBCEditorRuntime/EditorContext.h"
 

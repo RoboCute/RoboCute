@@ -15,15 +15,20 @@
 #include "RBCEditorRuntime/runtime/HttpClient.h"
 #include "RBCEditorRuntime/runtime/SceneSyncManager.h"
 #include "RBCEditorRuntime/runtime/EditorScene.h"
-#include "RBCEditorRuntime/EditorEngine.h"
+#include "RBCEditorRuntime/engine/EditorEngine.h"
 #include "RBCEditorRuntime/WorkflowManager.h"
 #include "RBCEditorRuntime/EditorContext.h"
 #include "RBCEditorRuntime/EditorLayoutManager.h"
+#include "RBCEditorRuntime/EventBus.h"
+#include "RBCEditorRuntime/EventAdapter.h"
+#include "RBCEditorRuntime/CommandBus.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       context_(new rbc::EditorContext),
-      layoutManager_(nullptr) {
+      layoutManager_(nullptr),
+      eventAdapter_(nullptr),
+      eventBusSubscriptionId_(-1) {
     context_->httpClient = new rbc::HttpClient(this);
     context_->workflowManager = new rbc::WorkflowManager(this);
     // Create editor scene for animation playback
@@ -32,15 +37,23 @@ MainWindow::MainWindow(QWidget *parent)
     // Create layout manager
     layoutManager_ = new EditorLayoutManager(this, context_, this);
 
-    // Connect workflow manager signals
+    // Create event adapter
+    eventAdapter_ = new rbc::EventAdapter(this);
+
+    // Connect workflow manager signals (both to slots and event bus)
     connect(context_->workflowManager, &rbc::WorkflowManager::workflowChanged,
             this, &MainWindow::onWorkflowChanged);
     connect(context_->workflowManager, &rbc::WorkflowManager::workflowChanged,
             layoutManager_, &EditorLayoutManager::onWorkflowChanged);
+    connect(context_->workflowManager, &rbc::WorkflowManager::workflowChanged,
+            eventAdapter_, &rbc::EventAdapter::onWorkflowChanged);
 
     // Connect layout manager signals
     connect(layoutManager_, &EditorLayoutManager::workflowSwitchRequested,
             this, &MainWindow::switchWorkflow);
+
+    // Subscribe to event bus
+    subscribeToEventBus();
 }
 
 MainWindow::~MainWindow() {
@@ -60,19 +73,26 @@ void MainWindow::setupUi() {
     layoutManager_->setupUi();
 
     // Connect signals for components created by layout manager
+    // Also connect to event adapter for event bus integration
     if (context_->sceneHierarchy) {
         connect(context_->sceneHierarchy, &rbc::SceneHierarchyWidget::entitySelected,
                 this, &MainWindow::onEntitySelected);
+        connect(context_->sceneHierarchy, &rbc::SceneHierarchyWidget::entitySelected,
+                eventAdapter_, &rbc::EventAdapter::onEntitySelected);
     }
 
     if (context_->resultPanel) {
         connect(context_->resultPanel, &rbc::ResultPanel::animationSelected,
                 this, &MainWindow::onAnimationSelected);
+        connect(context_->resultPanel, &rbc::ResultPanel::animationSelected,
+                eventAdapter_, &rbc::EventAdapter::onAnimationSelected);
     }
 
     if (context_->animationPlayer) {
         connect(context_->animationPlayer, &rbc::AnimationPlayer::frameChanged,
                 this, &MainWindow::onAnimationFrameChanged);
+        connect(context_->animationPlayer, &rbc::AnimationPlayer::frameChanged,
+                eventAdapter_, &rbc::EventAdapter::onAnimationFrameChanged);
     }
 
     // Set default workflow (SceneEditing)
@@ -90,11 +110,15 @@ void MainWindow::startSceneSync(const QString &serverUrl) {
     // Create scene sync manager if not already created
     if (!context_->sceneSyncManager) {
         context_->sceneSyncManager = new rbc::SceneSyncManager(context_->httpClient, this);
-        // Connect signals
+        // Connect signals (both to slots and event bus)
         connect(context_->sceneSyncManager, &rbc::SceneSyncManager::sceneUpdated,
                 this, &MainWindow::onSceneUpdated);
+        connect(context_->sceneSyncManager, &rbc::SceneSyncManager::sceneUpdated,
+                eventAdapter_, &rbc::EventAdapter::onSceneUpdated);
         connect(context_->sceneSyncManager, &rbc::SceneSyncManager::connectionStatusChanged,
                 this, &MainWindow::onConnectionStatusChanged);
+        connect(context_->sceneSyncManager, &rbc::SceneSyncManager::connectionStatusChanged,
+                eventAdapter_, &rbc::EventAdapter::onConnectionStatusChanged);
     }
     // Start sync
     context_->sceneSyncManager->start(serverUrl);
@@ -164,6 +188,59 @@ void MainWindow::onAnimationFrameChanged(int frame) {
 
 void MainWindow::switchWorkflow(rbc::WorkflowType workflow) {
     context_->workflowManager->switchWorkflow(workflow);
+}
+
+void MainWindow::subscribeToEventBus() {
+    // Subscribe to event bus events using callback
+    eventBusSubscriptionId_ = rbc::EventBus::instance().subscribe(
+        rbc::EventType::WorkflowChanged,
+        [this](const rbc::Event &event) {
+            onEventBusEvent(event);
+        });
+
+    // Also subscribe to other important events
+    rbc::EventBus::instance().subscribe(
+        rbc::EventType::EntitySelected,
+        [this](const rbc::Event &event) {
+            onEventBusEvent(event);
+        });
+
+    rbc::EventBus::instance().subscribe(
+        rbc::EventType::SceneUpdated,
+        [this](const rbc::Event &event) {
+            onEventBusEvent(event);
+        });
+
+    rbc::EventBus::instance().subscribe(
+        rbc::EventType::AnimationFrameChanged,
+        [this](const rbc::Event &event) {
+            onEventBusEvent(event);
+        });
+
+    rbc::EventBus::instance().subscribe(
+        rbc::EventType::ConnectionStatusChanged,
+        [this](const rbc::Event &event) {
+            onEventBusEvent(event);
+        });
+}
+
+void MainWindow::onEventBusEvent(const rbc::Event &event) {
+    // 处理事件总线事件
+    // 这里可以实现基于事件的业务逻辑
+    // 目前保留原有的信号槽处理，事件总线作为补充
+    switch (event.type) {
+        case rbc::EventType::WorkflowChanged:
+            // 可以通过事件总线统一处理工作流变化
+            break;
+        case rbc::EventType::EntitySelected:
+            // 可以通过事件总线统一处理实体选择
+            break;
+        case rbc::EventType::SceneUpdated:
+            // 可以通过事件总线统一处理场景更新
+            break;
+        default:
+            break;
+    }
 }
 
 void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow) {

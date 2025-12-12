@@ -1,10 +1,10 @@
-#include "RBCEditorRuntime/EditorEngine.h"
+#include "RBCEditorRuntime/engine/EditorEngine.h"
 #include "QtGui/rhi/qrhi_platform.h"
 #include <QDebug>
 #include <luisa/core/logging.h>
 
-#include "RBCEditorRuntime/pbrapp.h"
-#include "RBCEditorRuntime/visapp.h"
+#include "RBCEditorRuntime/engine/pbrapp.h"
+#include "RBCEditorRuntime/engine/visapp.h"
 
 namespace rbc {
 
