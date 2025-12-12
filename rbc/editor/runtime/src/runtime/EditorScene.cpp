@@ -368,4 +368,28 @@ void EditorScene::convertMeshToBuilder(const luisa::shared_ptr<rbc::Mesh> &mesh,
     }
 }
 
+int EditorScene::getEntityIdFromInstanceId(uint32_t instance_id) const {
+    // Search through instances to find the one with matching tlas_index
+    for (const auto &instance : instances_) {
+        if (instance.tlas_index == instance_id) {
+            return instance.entity_id;
+        }
+    }
+    return -1; // Not found
+}
+
+luisa::vector<int> EditorScene::getEntityIdsFromInstanceIds(const luisa::vector<uint> &instance_ids) const {
+    luisa::vector<int> entity_ids;
+    entity_ids.reserve(instance_ids.size());
+    
+    for (uint instance_id : instance_ids) {
+        int entity_id = getEntityIdFromInstanceId(instance_id);
+        if (entity_id >= 0) {
+            entity_ids.push_back(entity_id);
+        }
+    }
+    
+    return entity_ids;
+}
+
 }// namespace rbc

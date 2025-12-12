@@ -5,7 +5,9 @@
 namespace rbc {
 
 DetailsPanel::DetailsPanel(QWidget *parent)
-    : QWidget(parent) {
+    : QWidget(parent),
+      currentEntityId_(-1),
+      isHighlighted_(false) {
     setupUI();
 }
 
@@ -19,8 +21,25 @@ void DetailsPanel::setupUI() {
     // Info label (shown when nothing selected)
     infoLabel_ = new QLabel("Select an entity to view its properties", this);
     infoLabel_->setAlignment(Qt::AlignCenter);
-    infoLabel_->setStyleSheet("QLabel { color: gray; font-style: italic; }");
+    // Use theme color #666666 (matching Viewport placeholder) for subtle text
+    infoLabel_->setStyleSheet("QLabel { color: #666666; font-style: italic; }");
     mainLayout_->addWidget(infoLabel_);
+
+    // Entity Info section (Entity ID display)
+    entityInfoGroup_ = new QGroupBox("Entity Info", this);
+    auto *entityInfoLayout = new QFormLayout(entityInfoGroup_);
+    entityInfoLayout->setContentsMargins(8, 8, 8, 8);
+    entityInfoLayout->setSpacing(5);
+    
+    entityIdLabel_ = new QLabel("", this);
+    QFont entityIdFont = entityIdLabel_->font();
+    entityIdFont.setBold(true);
+    entityIdFont.setPointSize(10);
+    entityIdLabel_->setFont(entityIdFont);
+    entityInfoLayout->addRow("Entity ID:", entityIdLabel_);
+    
+    entityInfoGroup_->setVisible(false);
+    mainLayout_->addWidget(entityInfoGroup_);
 
     // Transform section
     transformGroup_ = new QGroupBox("Transform Component", this);
@@ -67,9 +86,16 @@ void DetailsPanel::showEntity(const SceneEntity *entity, const EditorResourceMet
         return;
     }
 
+    // Update current entity ID
+    currentEntityId_ = entity->id;
+
     // Hide info label, show property groups
     infoLabel_->setVisible(false);
+    entityInfoGroup_->setVisible(true);
     transformGroup_->setVisible(true);
+
+    // Update entity ID display
+    entityIdLabel_->setText(QString::number(entity->id));
 
     // Update transform
     updateTransformSection(entity->transform);
@@ -81,12 +107,63 @@ void DetailsPanel::showEntity(const SceneEntity *entity, const EditorResourceMet
     } else {
         renderGroup_->setVisible(false);
     }
+    
+    // Apply highlighting if needed
+    highlight(isHighlighted_);
 }
 
 void DetailsPanel::clear() {
+    currentEntityId_ = -1;
     infoLabel_->setVisible(true);
+    entityInfoGroup_->setVisible(false);
     transformGroup_->setVisible(false);
     renderGroup_->setVisible(false);
+    highlight(false);
+}
+
+void DetailsPanel::highlight(bool highlight) {
+    isHighlighted_ = highlight;
+    
+    if (highlight && currentEntityId_ >= 0) {
+        // Apply highlight style matching dark theme (main.qss)
+        // Use #007acc (accent blue) for border and #094771 (selected background) for highlight
+        setStyleSheet(
+            "QGroupBox { "
+            "border: 2px solid #007acc; "
+            "border-radius: 4px; "
+            "background-color: #252526; "
+            "color: #cccccc; "
+            "}"
+            "QGroupBox::title { "
+            "color: #007acc; "
+            "font-weight: bold; "
+            "}"
+            "QLabel { "
+            "color: #cccccc; "
+            "}"
+        );
+        
+        // Also highlight entity ID label specifically with accent color
+        if (entityIdLabel_) {
+            entityIdLabel_->setStyleSheet(
+                "QLabel { "
+                "color: #ffffff; "
+                "font-weight: bold; "
+                "background-color: #094771; "
+                "padding: 3px 8px; "
+                "border-radius: 3px; "
+                "border: 1px solid #007acc; "
+                "}"
+            );
+        }
+    } else {
+        // Reset to default style (inherit from main.qss)
+        setStyleSheet("");
+        
+        if (entityIdLabel_) {
+            entityIdLabel_->setStyleSheet("");
+        }
+    }
 }
 
 void DetailsPanel::updateTransformSection(const Transform &transform) {

@@ -37,6 +37,7 @@ struct VisApp : public IApp {
     CameraController::Input camera_input;
     float2 start_uv, end_uv;
     CameraController cam_controller;
+
     luisa::vector<uint> dragged_object_ids;
 
 public:

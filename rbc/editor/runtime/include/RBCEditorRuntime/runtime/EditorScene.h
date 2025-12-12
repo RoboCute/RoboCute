@@ -32,6 +32,14 @@ public:
     void setAnimationTransform(int entity_id, const Transform &transform);
     void clearAnimationTransforms();
 
+    // Instance ID to Entity ID mapping
+    // Convert TLAS instance index to entity ID
+    // Returns -1 if instance index not found
+    [[nodiscard]] int getEntityIdFromInstanceId(uint32_t instance_id) const;
+    
+    // Convert multiple instance IDs to entity IDs
+    luisa::vector<int> getEntityIdsFromInstanceIds(const luisa::vector<uint> &instance_ids) const;
+
 private:
     struct EntityInstance {
         int entity_id = 0;

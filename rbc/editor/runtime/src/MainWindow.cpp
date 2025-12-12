@@ -28,6 +28,7 @@
 #include "RBCEditorRuntime/runtime/AnimationController.h"
 #include "RBCEditorRuntime/runtime/SceneUpdater.h"
 #include "RBCEditorRuntime/runtime/EntitySelectionHandler.h"
+#include "RBCEditorRuntime/runtime/ViewportSelectionSync.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -37,6 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
       animationController_(nullptr),
       sceneUpdater_(nullptr),
       entitySelectionHandler_(nullptr),
+      viewportSelectionSync_(nullptr),
       eventBusSubscriptionId_(-1) {
 
     context_->httpClient = new rbc::HttpClient(this);
@@ -51,6 +53,8 @@ MainWindow::MainWindow(QWidget *parent)
     sceneUpdater_->initialize();
     entitySelectionHandler_ = new rbc::EntitySelectionHandler(context_, this);
     entitySelectionHandler_->initialize();
+    viewportSelectionSync_ = new ViewportSelectionSync(context_, this);
+    viewportSelectionSync_->initialize();
 
     // Connect animation controller signals (for UI updates)
     connect(animationController_, &rbc::AnimationController::animationLoaded,

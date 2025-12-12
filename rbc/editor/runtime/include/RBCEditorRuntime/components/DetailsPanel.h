@@ -28,6 +28,9 @@ public:
 
     // Clear the panel
     void clear();
+    
+    // Highlight the panel to indicate selection
+    void highlight(bool highlight);
 
 private:
     void setupUI();
@@ -51,7 +54,17 @@ private:
     QLabel *materialsLabel_{};
 
     // Info label when nothing selected
-    QLabel *infoLabel_{};
+    QLabel *infoLabel_;
+    
+    // Entity ID display
+    QLabel *entityIdLabel_;
+    QGroupBox *entityInfoGroup_;
+    
+    // Current entity ID for highlighting
+    int currentEntityId_;
+    
+    // Highlight state
+    bool isHighlighted_;
 };
 
 }// namespace rbc

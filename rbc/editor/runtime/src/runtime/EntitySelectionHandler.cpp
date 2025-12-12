@@ -58,6 +58,8 @@ void EntitySelectionHandler::handleEntitySelected(int entityId) {
     // Update details panel
     if (context_->detailsPanel) {
         context_->detailsPanel->showEntity(entity, resource);
+        // Highlight the panel to indicate selection
+        context_->detailsPanel->highlight(true);
     } else {
         qWarning() << "EntitySelectionHandler: DetailsPanel is not available";
     }

@@ -26,6 +26,7 @@ class EntitySelectionHandler;
 }// namespace rbc
 
 class EditorLayoutManager;
+class ViewportSelectionSync;
 
 class RBC_EDITOR_RUNTIME_API MainWindow : public QMainWindow {
     Q_OBJECT
@@ -70,5 +71,6 @@ private:
     rbc::AnimationController *animationController_;
     rbc::SceneUpdater *sceneUpdater_;
     rbc::EntitySelectionHandler *entitySelectionHandler_;
+    ViewportSelectionSync *viewportSelectionSync_;
     int eventBusSubscriptionId_;// 用于取消订阅
 };
