@@ -14,6 +14,7 @@ class AnimationPlayer;
 class AnimationPlaybackManager;
 class EditorScene;
 class NodeEditor;
+class ConnectionStatusView;
 }// namespace rbc
 
 class QDockWidget;
@@ -33,5 +34,7 @@ struct EditorContext {
     EditorScene *editorScene = nullptr;
     NodeEditor *nodeEditor = nullptr;
     QDockWidget *nodeDock = nullptr;
+    ConnectionStatusView *connectionStatusView = nullptr;
+    QDockWidget *connectionStatusDock = nullptr;
 };
 }// namespace rbc

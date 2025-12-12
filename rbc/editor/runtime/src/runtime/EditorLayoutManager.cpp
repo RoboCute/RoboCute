@@ -21,6 +21,7 @@
 #include "RBCEditorRuntime/components/ViewportWidget.h"
 #include "RBCEditorRuntime/components/ResultPanel.h"
 #include "RBCEditorRuntime/components/AnimationPlayer.h"
+#include "RBCEditorRuntime/components/ConnectionStatusView.h"
 
 // Our Runtime
 #include "RBCEditorRuntime/runtime/AnimationPlaybackManager.h"
@@ -168,6 +169,18 @@ void EditorLayoutManager::setupDocks() {
 
     // Stack Result dock below Details dock
     mainWindow_->splitDockWidget(detailsDock, resultDock, Qt::Vertical);
+
+    // 6. Connection Status View (Left, below Scene Hierarchy)
+    context_->connectionStatusDock = new QDockWidget("Connection Status", mainWindow_);
+    context_->connectionStatusDock->setObjectName("ConnectionStatusDock");
+    context_->connectionStatusDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    
+    context_->connectionStatusView = new rbc::ConnectionStatusView(context_->connectionStatusDock);
+    context_->connectionStatusDock->setWidget(context_->connectionStatusView);
+    mainWindow_->addDockWidget(Qt::LeftDockWidgetArea, context_->connectionStatusDock);
+    
+    // Stack Connection Status dock below Scene Hierarchy dock
+    mainWindow_->splitDockWidget(sceneDock, context_->connectionStatusDock, Qt::Vertical);
 
     // Create animation playback manager
     context_->playbackManager = new rbc::AnimationPlaybackManager(context_->editorScene, mainWindow_);

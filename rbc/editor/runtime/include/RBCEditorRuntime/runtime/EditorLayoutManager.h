@@ -19,6 +19,7 @@ class ViewportWidget;
 class ResultPanel;
 class AnimationPlayer;
 class NodeEditor;
+class ConnectionStatusView;
 }// namespace rbc
 
 /**

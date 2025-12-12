@@ -1,17 +1,19 @@
 #include "RBCEditorRuntime/MainWindow.h"
+
 // Qt Components
 #include <QApplication>
 #include <QStatusBar>
 #include <QTimer>
+
 // Our Components
 #include "RBCEditorRuntime/components/SceneHierarchyWidget.h"
 #include "RBCEditorRuntime/components/DetailsPanel.h"
 #include "RBCEditorRuntime/components/ResultPanel.h"
 #include "RBCEditorRuntime/components/AnimationPlayer.h"
 #include "RBCEditorRuntime/components/NodeEditor.h"
+#include "RBCEditorRuntime/components/ConnectionStatusView.h"
 
 // Our Runtime
-
 #include "RBCEditorRuntime/engine/EditorEngine.h"
 #include "RBCEditorRuntime/runtime/HttpClient.h"
 #include "RBCEditorRuntime/runtime/AnimationPlaybackManager.h"
@@ -36,26 +38,17 @@ MainWindow::MainWindow(QWidget *parent)
       sceneUpdater_(nullptr),
       entitySelectionHandler_(nullptr),
       eventBusSubscriptionId_(-1) {
+
     context_->httpClient = new rbc::HttpClient(this);
     context_->workflowManager = new rbc::WorkflowManager(this);
-    // Create editor scene for animation playback
     context_->editorScene = new rbc::EditorScene();
 
-    // Create layout manager
     layoutManager_ = new EditorLayoutManager(this, context_, this);
-
-    // Create event adapter
     eventAdapter_ = new rbc::EventAdapter(this);
-
-    // Create animation controller
     animationController_ = new rbc::AnimationController(context_, this);
     animationController_->initialize();
-
-    // Create scene updater
     sceneUpdater_ = new rbc::SceneUpdater(context_, this);
     sceneUpdater_->initialize();
-
-    // Create entity selection handler
     entitySelectionHandler_ = new rbc::EntitySelectionHandler(context_, this);
     entitySelectionHandler_->initialize();
 
@@ -118,6 +111,22 @@ void MainWindow::setupUi() {
                 this, &MainWindow::onAnimationFrameChanged);
     }
 
+    // Setup ConnectionStatusView
+    if (context_->connectionStatusView) {
+        context_->connectionStatusView->setHttpClient(context_->httpClient);
+        // Connect reconnect request signal
+        connect(context_->connectionStatusView, &rbc::ConnectionStatusView::reconnectRequested,
+                this, &MainWindow::startSceneSync);
+        // Update initial connection status if SceneSyncManager already exists
+        if (context_->sceneSyncManager) {
+            context_->connectionStatusView->setSceneSyncManager(context_->sceneSyncManager);
+            context_->connectionStatusView->updateConnectionStatus(context_->sceneSyncManager->isConnected());
+            // Connect connection status changes to update the view
+            connect(context_->sceneSyncManager, &rbc::SceneSyncManager::connectionStatusChanged,
+                    context_->connectionStatusView, &rbc::ConnectionStatusView::updateConnectionStatus);
+        }
+    }
+
     // Set default workflow (SceneEditing)
     // switchWorkflow(rbc::WorkflowType::SceneEditing);
 
@@ -141,9 +150,24 @@ void MainWindow::startSceneSync(const QString &serverUrl) {
                 this, &MainWindow::onConnectionStatusChanged);
         connect(context_->sceneSyncManager, &rbc::SceneSyncManager::connectionStatusChanged,
                 eventAdapter_, &rbc::EventAdapter::onConnectionStatusChanged);
+        
+        // Connect to ConnectionStatusView if it exists
+        if (context_->connectionStatusView) {
+            context_->connectionStatusView->setSceneSyncManager(context_->sceneSyncManager);
+            connect(context_->sceneSyncManager, &rbc::SceneSyncManager::connectionStatusChanged,
+                    context_->connectionStatusView, &rbc::ConnectionStatusView::updateConnectionStatus);
+        }
+    } else {
+        // If already exists, stop and restart with new URL
+        context_->sceneSyncManager->stop();
     }
     // Start sync
     context_->sceneSyncManager->start(serverUrl);
+    
+    // Update ConnectionStatusView URL display if it exists
+    if (context_->connectionStatusView) {
+        context_->connectionStatusView->updateServerUrl(serverUrl);
+    }
 
     // Trigger node loading in NodeEditor after connection is established
     if (context_->nodeEditor) {
