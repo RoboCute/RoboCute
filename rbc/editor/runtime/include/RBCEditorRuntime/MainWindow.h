@@ -21,6 +21,8 @@ class NodeEditor;
 class WorkflowManager;
 class EventAdapter;
 class AnimationController;
+class SceneUpdater;
+class EntitySelectionHandler;
 }// namespace rbc
 
 class EditorLayoutManager;
@@ -43,32 +45,30 @@ private:
     void switchWorkflow(rbc::WorkflowType workflow);
 
 private slots:
-    void onSceneUpdated();
+    /**
+     * UI 更新相关的槽函数（仅用于状态栏等 UI 更新）
+     */
     void onConnectionStatusChanged(bool connected);
-    void onEntitySelected(int entityId);
     void onAnimationFrameChanged(int frame);
     void onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow);
     
     /**
-     * 处理动画加载完成
+     * 处理动画加载完成（UI 更新）
      */
     void onAnimationLoaded(const QString &animName);
 
 private:
     /**
-     * 订阅事件总线事件
+     * 订阅事件总线事件（目前主要用于 UI 更新相关的事件）
      */
     void subscribeToEventBus();
-
-    /**
-     * 处理事件总线事件
-     */
-    static void onEventBusEvent(const rbc::Event &event);
 
 private:
     rbc::EditorContext *context_;
     EditorLayoutManager *layoutManager_;
     rbc::EventAdapter *eventAdapter_;
     rbc::AnimationController *animationController_;
+    rbc::SceneUpdater *sceneUpdater_;
+    rbc::EntitySelectionHandler *entitySelectionHandler_;
     int eventBusSubscriptionId_;// 用于取消订阅
 };

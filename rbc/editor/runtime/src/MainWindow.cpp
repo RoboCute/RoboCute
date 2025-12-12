@@ -23,6 +23,8 @@
 #include "RBCEditorRuntime/EventAdapter.h"
 #include "RBCEditorRuntime/CommandBus.h"
 #include "RBCEditorRuntime/AnimationController.h"
+#include "RBCEditorRuntime/SceneUpdater.h"
+#include "RBCEditorRuntime/EntitySelectionHandler.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -30,6 +32,8 @@ MainWindow::MainWindow(QWidget *parent)
       layoutManager_(nullptr),
       eventAdapter_(nullptr),
       animationController_(nullptr),
+      sceneUpdater_(nullptr),
+      entitySelectionHandler_(nullptr),
       eventBusSubscriptionId_(-1) {
     context_->httpClient = new rbc::HttpClient(this);
     context_->workflowManager = new rbc::WorkflowManager(this);
@@ -46,7 +50,15 @@ MainWindow::MainWindow(QWidget *parent)
     animationController_ = new rbc::AnimationController(context_, this);
     animationController_->initialize();
 
-    // Connect animation controller signals
+    // Create scene updater
+    sceneUpdater_ = new rbc::SceneUpdater(context_, this);
+    sceneUpdater_->initialize();
+
+    // Create entity selection handler
+    entitySelectionHandler_ = new rbc::EntitySelectionHandler(context_, this);
+    entitySelectionHandler_->initialize();
+
+    // Connect animation controller signals (for UI updates)
     connect(animationController_, &rbc::AnimationController::animationLoaded,
             this, &MainWindow::onAnimationLoaded);
 
@@ -83,10 +95,9 @@ void MainWindow::setupUi() {
     layoutManager_->setupUi();
 
     // Connect signals for components created by layout manager
-    // Also connect to event adapter for event bus integration
+    // All business logic now goes through event bus via EventAdapter
     if (context_->sceneHierarchy) {
-        connect(context_->sceneHierarchy, &rbc::SceneHierarchyWidget::entitySelected,
-                this, &MainWindow::onEntitySelected);
+        // 实体选择通过事件总线处理，不再直接连接到 MainWindow
         connect(context_->sceneHierarchy, &rbc::SceneHierarchyWidget::entitySelected,
                 eventAdapter_, &rbc::EventAdapter::onEntitySelected);
     }
@@ -121,11 +132,10 @@ void MainWindow::startSceneSync(const QString &serverUrl) {
     // Create scene sync manager if not already created
     if (!context_->sceneSyncManager) {
         context_->sceneSyncManager = new rbc::SceneSyncManager(context_->httpClient, this);
-        // Connect signals (both to slots and event bus)
-        connect(context_->sceneSyncManager, &rbc::SceneSyncManager::sceneUpdated,
-                this, &MainWindow::onSceneUpdated);
+        // Connect signals to event bus via adapter
         connect(context_->sceneSyncManager, &rbc::SceneSyncManager::sceneUpdated,
                 eventAdapter_, &rbc::EventAdapter::onSceneUpdated);
+        // Connection status changes still go to MainWindow for UI updates
         connect(context_->sceneSyncManager, &rbc::SceneSyncManager::connectionStatusChanged,
                 this, &MainWindow::onConnectionStatusChanged);
         connect(context_->sceneSyncManager, &rbc::SceneSyncManager::connectionStatusChanged,
@@ -145,46 +155,11 @@ void MainWindow::startSceneSync(const QString &serverUrl) {
     }
 }
 
-void MainWindow::onSceneUpdated() {
-    // Update scene hierarchy
-    if (context_->sceneHierarchy && context_->sceneSyncManager) {
-        context_->sceneHierarchy->updateFromScene(context_->sceneSyncManager->sceneSync());
-    }
-
-    // Update result panel with animations
-    if (context_->resultPanel && context_->sceneSyncManager) {
-        context_->resultPanel->updateFromSync(context_->sceneSyncManager->sceneSync());
-    }
-    qDebug() << "Scene updated";
-    // update editor scene
-    if (context_->editorScene && context_->sceneSyncManager) {
-        context_->editorScene->updateFromSync(*context_->sceneSyncManager->sceneSync());
-    }
-}
-
 void MainWindow::onConnectionStatusChanged(bool connected) {
     if (connected) {
         statusBar()->showMessage("Connected to scene server");
     } else {
         statusBar()->showMessage("Disconnected from scene server");
-    }
-}
-
-void MainWindow::onEntitySelected(int entityId) {
-    // Get entity and resource data
-    if (context_->sceneSyncManager) {
-        const auto *sceneSync = context_->sceneSyncManager->sceneSync();
-        const auto *entity = sceneSync->getEntity(entityId);
-
-        const rbc::EditorResourceMetadata *resource = nullptr;
-        if (entity && entity->has_render_component) {
-            resource = sceneSync->getResource(entity->render_component.mesh_id);
-        }
-
-        // Update details panel
-        if (context_->detailsPanel) {
-            context_->detailsPanel->showEntity(entity, resource);
-        }
     }
 }
 
@@ -205,56 +180,14 @@ void MainWindow::switchWorkflow(rbc::WorkflowType workflow) {
 }
 
 void MainWindow::subscribeToEventBus() {
-    // Subscribe to event bus events using callback
+    // MainWindow 现在主要通过专门的 Manager 组件处理事件
+    // 这里只订阅需要 UI 更新的事件（如工作流变化）
     eventBusSubscriptionId_ = rbc::EventBus::instance().subscribe(
         rbc::EventType::WorkflowChanged,
         [this](const rbc::Event &event) {
-            onEventBusEvent(event);
+            // 工作流变化由 WorkflowManager 和 EditorLayoutManager 处理
+            // MainWindow 只负责 UI 更新（状态栏）
         });
-
-    // Also subscribe to other important events
-    rbc::EventBus::instance().subscribe(
-        rbc::EventType::EntitySelected,
-        [this](const rbc::Event &event) {
-            onEventBusEvent(event);
-        });
-
-    rbc::EventBus::instance().subscribe(
-        rbc::EventType::SceneUpdated,
-        [this](const rbc::Event &event) {
-            onEventBusEvent(event);
-        });
-
-    rbc::EventBus::instance().subscribe(
-        rbc::EventType::AnimationFrameChanged,
-        [this](const rbc::Event &event) {
-            onEventBusEvent(event);
-        });
-
-    rbc::EventBus::instance().subscribe(
-        rbc::EventType::ConnectionStatusChanged,
-        [this](const rbc::Event &event) {
-            onEventBusEvent(event);
-        });
-}
-
-void MainWindow::onEventBusEvent(const rbc::Event &event) {
-    // 处理事件总线事件
-    // 这里可以实现基于事件的业务逻辑
-    // 目前保留原有的信号槽处理，事件总线作为补充
-    switch (event.type) {
-        case rbc::EventType::WorkflowChanged:
-            // 可以通过事件总线统一处理工作流变化
-            break;
-        case rbc::EventType::EntitySelected:
-            // 可以通过事件总线统一处理实体选择
-            break;
-        case rbc::EventType::SceneUpdated:
-            // 可以通过事件总线统一处理场景更新
-            break;
-        default:
-            break;
-    }
 }
 
 void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow) {
