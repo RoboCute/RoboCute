@@ -25,10 +25,10 @@ int main() {
     auto world_plugin = world_module->invoke<world::WorldPlugin *()>("get_world_plugin");
     luisa::BinaryBlob json;
     {
-        RC<world::Entity> entity = world_plugin->create_object_with_guid(TypeInfo::get<world::Entity>(), vstd::Guid(true));
-        RC<world::Transform> trans = world_plugin->create_object_with_guid(TypeInfo::get<world::Transform>(), vstd::Guid(true));
+        auto entity = world_plugin->create_object_with_guid<world::Entity>(vstd::Guid(true));
+        auto trans = world_plugin->create_object_with_guid<world::Transform>(vstd::Guid(true));
 
-        entity->add_component(trans.get());
+        entity->add_component(trans);
         trans->set_pos(double3(114, 514, 1919), false);
         rbc::JsonSerializer writer;
         // serialize entity and components
