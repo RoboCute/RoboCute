@@ -10,15 +10,9 @@
 #include <rbc_app/graphics_utils.h>
 #include <rbc_app/camera_controller.h>
 #include "RBCEditorRuntime/runtime/RenderScene.h"
+#include "RBCEditorRuntime/engine/ViewportInteractionManager.h"
 
 namespace rbc {
-
-enum struct MouseStage {
-    None,
-    Dragging,
-    Clicking,
-    Clicked
-};
 
 struct VisApp : public IApp {
     luisa::uint2 resolution;
@@ -33,11 +27,13 @@ struct VisApp : public IApp {
     bool reset = false;
     bool dst_image_reseted = false;
 
-    MouseStage mouse_stage{MouseStage::None};
     CameraController::Input camera_input;
-    float2 start_uv, end_uv;
     CameraController cam_controller;
 
+    // 交互管理器：处理选择、拖动、框选逻辑
+    ViewportInteractionManager interaction_manager;
+
+    // 当前选择的对象ID列表（从interaction_manager同步）
     luisa::vector<uint> dragged_object_ids;
 
 public:

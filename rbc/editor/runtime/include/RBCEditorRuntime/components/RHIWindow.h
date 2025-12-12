@@ -42,6 +42,9 @@ inline luisa::compute::Key key_map(int key) {
         case Qt::Key_PageUp: return luisa::compute::KEY_PAGE_UP;
         case Qt::Key_PageDown: return luisa::compute::KEY_PAGE_DOWN;
         case Qt::Key_Insert: return luisa::compute::KEY_INSERT;
+        case Qt::Key_Control: return luisa::compute::KEY_LEFT_CONTROL;
+        case Qt::Key_Shift: return luisa::compute::KEY_LEFT_SHIFT;
+        case Qt::Key_Alt: return luisa::compute::KEY_LEFT_ALT;
         case Qt::Key_F1: return luisa::compute::KEY_F1;
         case Qt::Key_F2: return luisa::compute::KEY_F2;
         case Qt::Key_F3: return luisa::compute::KEY_F3;
