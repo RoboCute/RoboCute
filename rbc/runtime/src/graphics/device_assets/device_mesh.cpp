@@ -277,6 +277,7 @@ void DeviceMesh::calculate_bounding_box() {
             }
         }
     }
+    bbox_request->finished = true;
 }
 void DeviceMesh::set_bounding_box(luisa::span<AABB const> bounding_box) {
     LUISA_ASSERT(_render_mesh_data, "Mesh data not loaded.");

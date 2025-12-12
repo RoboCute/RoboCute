@@ -88,7 +88,8 @@ double4x4 rotation(double3 pos, Quaternion rot, double3 local_scale) noexcept {
         .rotation = reinterpret_cast<rtm::quatd const &>(quad),
         .translation = reinterpret_cast<rtm::vector4d const &>(pos),
         .scale = reinterpret_cast<rtm::vector4d const &>(local_scale)};
-    reinterpret_cast<double*>(&qvv.translation)[3] = 0.0;
+    reinterpret_cast<double*>(&qvv.scale)[3] = 0.0;
+    reinterpret_cast<double*>(&qvv.translation)[3] = 1.0;
     auto result = rtm::matrix_from_qvv(qvv);
     return make_double4x4(
         reinterpret_cast<double4 const &>(result.x_axis),
