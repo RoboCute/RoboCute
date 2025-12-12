@@ -93,6 +93,27 @@ void HttpClient::sendHeartbeat(const QString &editorId, std::function<void(bool)
     });
 }
 
+// Editor Command Methods
+
+void HttpClient::sendEditorCommand(const QString &editorId, const QString &commandType, const QJsonObject &params, std::function<void(bool)> callback) {
+    QJsonObject requestBody;
+    requestBody["editor_id"] = editorId;
+    requestBody["command_type"] = commandType;
+    requestBody["params"] = params;
+
+    qDebug() << "HttpClient: Sending editor command - type:" << commandType << "editorId:" << editorId;
+    qDebug() << "HttpClient: Request body:" << QJsonDocument(requestBody).toJson(QJsonDocument::Compact);
+
+    sendPostRequest("/editor/command", requestBody, [callback, commandType](const QJsonObject &response, bool success) {
+        qDebug() << "HttpClient: Received response for command" << commandType << "- success:" << success;
+        if (success) {
+            qDebug() << "HttpClient: Response data:" << QJsonDocument(response).toJson(QJsonDocument::Compact);
+        }
+        bool commandSuccess = success && response.contains("success") && response["success"].toBool();
+        callback(commandSuccess);
+    });
+}
+
 // Animation Methods
 
 void HttpClient::getAnimations(std::function<void(const QJsonObject &, bool)> callback) {
@@ -144,7 +165,7 @@ void HttpClient::sendPostRequest(const QString &endpoint, const QJsonObject &dat
 
     QNetworkReply *reply = m_networkManager->post(request, jsonData);
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply, callback]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, callback, endpoint]() {
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray responseData = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
@@ -152,10 +173,12 @@ void HttpClient::sendPostRequest(const QString &endpoint, const QJsonObject &dat
             if (jsonDoc.isObject()) {
                 callback(jsonDoc.object(), true);
             } else {
+                qWarning() << "HttpClient: Invalid JSON response for" << endpoint;
                 emit errorOccurred("Invalid JSON response");
                 callback(QJsonObject(), false);
             }
         } else {
+            qWarning() << "HttpClient: POST request failed for" << endpoint << "- error:" << reply->error() << reply->errorString();
             handleReplyError(reply);
             callback(QJsonObject(), false);
         }

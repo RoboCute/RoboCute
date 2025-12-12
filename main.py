@@ -113,6 +113,7 @@ def main():
     print("      - GET  http://127.0.0.1:5555/scene/state")
     print("      - GET  http://127.0.0.1:5555/resources/all")
     print("      - POST http://127.0.0.1:5555/editor/register")
+    print("      - POST http://127.0.0.1:5555/editor/command (Editor commands)")
     print("      - GET  http://127.0.0.1:5555/nodes (Node API)")
     print("      - GET  http://127.0.0.1:5555/docs (API Documentation)")
     print("\n[5] Server is running...")

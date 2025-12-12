@@ -138,12 +138,12 @@ void EditorScene::updateFromSync(const SceneSync &sync) {
         // Check if entity already exists
         auto it = entity_map_.find(entity.id);
         if (it != entity_map_.end()) {
-            // Update existing entity
-            // qDebug("  Updating entity {} transform", entity.id);
-            // updateEntityTransform(entity.id, entity.transform);
+            // Update existing entity transform
+            qDebug() << "EditorScene: Updating entity" << entity.id << "transform";
+            updateEntityTransform(entity.id, entity.transform);
         } else {
             // Add new entity
-            // qDebug("  Adding new entity {} with mesh {}", entity.id, mesh_path);
+            qDebug() << "EditorScene: Adding new entity" << entity.id << "with mesh" << QString::fromUtf8(mesh_path.c_str());
             addEntity(entity.id, mesh_path, entity.transform);
         }
     }

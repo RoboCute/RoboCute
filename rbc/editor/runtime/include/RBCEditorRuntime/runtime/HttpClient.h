@@ -38,6 +38,9 @@ public:
     void registerEditor(const QString &editorId, std::function<void(bool)> callback);
     void sendHeartbeat(const QString &editorId, std::function<void(bool)> callback);
     
+    // API methods - Editor Commands
+    void sendEditorCommand(const QString &editorId, const QString &commandType, const QJsonObject &params, std::function<void(bool)> callback);
+    
     // API methods - Animation
     void getAnimations(std::function<void(const QJsonObject &, bool)> callback);
     void getAnimationData(const QString &name, std::function<void(const QJsonObject &, bool)> callback);

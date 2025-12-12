@@ -4,14 +4,20 @@
 #include <QFormLayout>
 #include <QLabel>
 #include <QGroupBox>
+#include <QDoubleSpinBox>
+#include <QHBoxLayout>
+#include <QPushButton>
 #include "RBCEditorRuntime/runtime/SceneSync.h"
 
 namespace rbc {
+class HttpClient;
+class SceneSyncManager;
+class EditorContext;
 
 /**
  * Details Panel Widget
  * 
- * Displays properties of the selected entity, including:
+ * Displays and allows editing of properties of the selected entity, including:
  * - Transform component (position, rotation, scale)
  * - Render component (mesh ID, materials)
  * - Resource metadata (path, state)
@@ -20,7 +26,7 @@ class DetailsPanel : public QWidget {
     Q_OBJECT
 
 public:
-    explicit DetailsPanel(QWidget *parent = nullptr);
+    explicit DetailsPanel(HttpClient *httpClient, EditorContext *context, QWidget *parent = nullptr);
     ~DetailsPanel() override;
 
     // Show entity details
@@ -32,19 +38,47 @@ public:
     // Highlight the panel to indicate selection
     void highlight(bool highlight);
 
+private slots:
+    void onCommitClicked();
+
 private:
     void setupUI();
     void updateTransformSection(const Transform &transform);
     void updateRenderSection(const RenderComponent &render, const EditorResourceMetadata *resource);
+    void sendTransformUpdate();
+    void setTransformValues(const Transform &transform);
+    SceneSyncManager *getSceneSyncManager() const;
+
+    HttpClient *httpClient_{};
+    EditorContext *context_{};
 
     QVBoxLayout *mainLayout_{};
 
     // Transform section
     QGroupBox *transformGroup_{};
     QFormLayout *transformLayout_{};
-    QLabel *positionLabel_{};
-    QLabel *rotationLabel_{};
-    QLabel *scaleLabel_{};
+    
+    // Position controls
+    QWidget *positionWidget_{};
+    QHBoxLayout *positionLayout_{};
+    QDoubleSpinBox *positionX_{};
+    QDoubleSpinBox *positionY_{};
+    QDoubleSpinBox *positionZ_{};
+    
+    // Rotation controls (quaternion)
+    QWidget *rotationWidget_{};
+    QHBoxLayout *rotationLayout_{};
+    QDoubleSpinBox *rotationX_{};
+    QDoubleSpinBox *rotationY_{};
+    QDoubleSpinBox *rotationZ_{};
+    QDoubleSpinBox *rotationW_{};
+    
+    // Scale controls
+    QWidget *scaleWidget_{};
+    QHBoxLayout *scaleLayout_{};
+    QDoubleSpinBox *scaleX_{};
+    QDoubleSpinBox *scaleY_{};
+    QDoubleSpinBox *scaleZ_{};
 
     // Render section
     QGroupBox *renderGroup_{};
@@ -65,6 +99,12 @@ private:
     
     // Highlight state
     bool isHighlighted_;
+    
+    // Flag to prevent recursive updates
+    bool updatingFromServer_;
+    
+    // Commit button
+    QPushButton *commitButton_;
 };
 
 }// namespace rbc

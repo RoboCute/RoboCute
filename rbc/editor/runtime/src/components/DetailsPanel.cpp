@@ -1,13 +1,21 @@
 #include "RBCEditorRuntime/components/DetailsPanel.h"
+#include "RBCEditorRuntime/runtime/HttpClient.h"
+#include "RBCEditorRuntime/runtime/SceneSyncManager.h"
+#include "RBCEditorRuntime/runtime/EditorContext.h"
 #include <QVBoxLayout>
 #include <QScrollArea>
+#include <QJsonObject>
+#include <QJsonArray>
 
 namespace rbc {
 
-DetailsPanel::DetailsPanel(QWidget *parent)
+DetailsPanel::DetailsPanel(HttpClient *httpClient, EditorContext *context, QWidget *parent)
     : QWidget(parent),
+      httpClient_(httpClient),
+      context_(context),
       currentEntityId_(-1),
-      isHighlighted_(false) {
+      isHighlighted_(false),
+      updatingFromServer_(false) {
     setupUI();
 }
 
@@ -47,13 +55,180 @@ void DetailsPanel::setupUI() {
     transformLayout_->setContentsMargins(8, 8, 8, 8);
     transformLayout_->setSpacing(5);
 
-    positionLabel_ = new QLabel("", this);
-    rotationLabel_ = new QLabel("", this);
-    scaleLabel_ = new QLabel("", this);
+    // Position controls
+    positionWidget_ = new QWidget(this);
+    positionLayout_ = new QHBoxLayout(positionWidget_);
+    positionLayout_->setContentsMargins(0, 0, 0, 0);
+    positionLayout_->setSpacing(5);
+    
+    positionX_ = new QDoubleSpinBox(this);
+    positionX_->setRange(-10000.0, 10000.0);
+    positionX_->setDecimals(3);
+    positionX_->setSingleStep(0.1);
+    positionX_->setSuffix(" X");
+    
+    positionY_ = new QDoubleSpinBox(this);
+    positionY_->setRange(-10000.0, 10000.0);
+    positionY_->setDecimals(3);
+    positionY_->setSingleStep(0.1);
+    positionY_->setSuffix(" Y");
+    
+    positionZ_ = new QDoubleSpinBox(this);
+    positionZ_->setRange(-10000.0, 10000.0);
+    positionZ_->setDecimals(3);
+    positionZ_->setSingleStep(0.1);
+    positionZ_->setSuffix(" Z");
+    
+    positionLayout_->addWidget(positionX_);
+    positionLayout_->addWidget(positionY_);
+    positionLayout_->addWidget(positionZ_);
+    
+    connect(positionX_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+            qDebug() << "DetailsPanel: Position X changed, commit button enabled";
+        }
+    });
+    connect(positionY_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+        }
+    });
+    connect(positionZ_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+        }
+    });
+    
+    transformLayout_->addRow("Position:", positionWidget_);
 
-    transformLayout_->addRow("Position:", positionLabel_);
-    transformLayout_->addRow("Rotation:", rotationLabel_);
-    transformLayout_->addRow("Scale:", scaleLabel_);
+    // Rotation controls (quaternion)
+    rotationWidget_ = new QWidget(this);
+    rotationLayout_ = new QHBoxLayout(rotationWidget_);
+    rotationLayout_->setContentsMargins(0, 0, 0, 0);
+    rotationLayout_->setSpacing(5);
+    
+    rotationX_ = new QDoubleSpinBox(this);
+    rotationX_->setRange(-1.0, 1.0);
+    rotationX_->setDecimals(3);
+    rotationX_->setSingleStep(0.01);
+    rotationX_->setSuffix(" X");
+    
+    rotationY_ = new QDoubleSpinBox(this);
+    rotationY_->setRange(-1.0, 1.0);
+    rotationY_->setDecimals(3);
+    rotationY_->setSingleStep(0.01);
+    rotationY_->setSuffix(" Y");
+    
+    rotationZ_ = new QDoubleSpinBox(this);
+    rotationZ_->setRange(-1.0, 1.0);
+    rotationZ_->setDecimals(3);
+    rotationZ_->setSingleStep(0.01);
+    rotationZ_->setSuffix(" Z");
+    
+    rotationW_ = new QDoubleSpinBox(this);
+    rotationW_->setRange(-1.0, 1.0);
+    rotationW_->setDecimals(3);
+    rotationW_->setSingleStep(0.01);
+    rotationW_->setSuffix(" W");
+    
+    rotationLayout_->addWidget(rotationX_);
+    rotationLayout_->addWidget(rotationY_);
+    rotationLayout_->addWidget(rotationZ_);
+    rotationLayout_->addWidget(rotationW_);
+    
+    connect(rotationX_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+        }
+    });
+    connect(rotationY_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+        }
+    });
+    connect(rotationZ_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+        }
+    });
+    connect(rotationW_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+        }
+    });
+    
+    transformLayout_->addRow("Rotation:", rotationWidget_);
+
+    // Scale controls
+    scaleWidget_ = new QWidget(this);
+    scaleLayout_ = new QHBoxLayout(scaleWidget_);
+    scaleLayout_->setContentsMargins(0, 0, 0, 0);
+    scaleLayout_->setSpacing(5);
+    
+    scaleX_ = new QDoubleSpinBox(this);
+    scaleX_->setRange(0.001, 1000.0);
+    scaleX_->setDecimals(3);
+    scaleX_->setSingleStep(0.1);
+    scaleX_->setSuffix(" X");
+    
+    scaleY_ = new QDoubleSpinBox(this);
+    scaleY_->setRange(0.001, 1000.0);
+    scaleY_->setDecimals(3);
+    scaleY_->setSingleStep(0.1);
+    scaleY_->setSuffix(" Y");
+    
+    scaleZ_ = new QDoubleSpinBox(this);
+    scaleZ_->setRange(0.001, 1000.0);
+    scaleZ_->setDecimals(3);
+    scaleZ_->setSingleStep(0.1);
+    scaleZ_->setSuffix(" Z");
+    
+    scaleLayout_->addWidget(scaleX_);
+    scaleLayout_->addWidget(scaleY_);
+    scaleLayout_->addWidget(scaleZ_);
+    
+    connect(scaleX_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+        }
+    });
+    connect(scaleY_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+        }
+    });
+    connect(scaleZ_, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!updatingFromServer_ && commitButton_ && currentEntityId_ >= 0) {
+            commitButton_->setEnabled(true);
+        }
+    });
+    
+    transformLayout_->addRow("Scale:", scaleWidget_);
+    
+    // Commit button
+    commitButton_ = new QPushButton("Commit Changes", this);
+    commitButton_->setEnabled(false);
+    commitButton_->setMinimumHeight(30);
+    commitButton_->setStyleSheet(
+        "QPushButton { "
+        "background-color: #007acc; "
+        "color: white; "
+        "border: none; "
+        "border-radius: 4px; "
+        "padding: 6px 12px; "
+        "font-weight: bold; "
+        "}"
+        "QPushButton:hover:enabled { "
+        "background-color: #0098ff; "
+        "}"
+        "QPushButton:disabled { "
+        "background-color: #3c3c3c; "
+        "color: #666666; "
+        "}"
+    );
+    connect(commitButton_, &QPushButton::clicked, this, &DetailsPanel::onCommitClicked);
+    transformLayout_->addRow("", commitButton_);
 
     transformGroup_->setVisible(false);
     mainLayout_->addWidget(transformGroup_);
@@ -88,6 +263,11 @@ void DetailsPanel::showEntity(const SceneEntity *entity, const EditorResourceMet
 
     // Update current entity ID
     currentEntityId_ = entity->id;
+    
+    // Reset commit button state when showing a new entity
+    if (commitButton_) {
+        commitButton_->setEnabled(false);
+    }
 
     // Hide info label, show property groups
     infoLabel_->setVisible(false);
@@ -97,7 +277,7 @@ void DetailsPanel::showEntity(const SceneEntity *entity, const EditorResourceMet
     // Update entity ID display
     entityIdLabel_->setText(QString::number(entity->id));
 
-    // Update transform
+    // Update transform (this will set the spinbox values)
     updateTransformSection(entity->transform);
 
     // Update render component if present
@@ -119,6 +299,11 @@ void DetailsPanel::clear() {
     transformGroup_->setVisible(false);
     renderGroup_->setVisible(false);
     highlight(false);
+    
+    // Reset commit button state
+    if (commitButton_) {
+        commitButton_->setEnabled(false);
+    }
 }
 
 void DetailsPanel::highlight(bool highlight) {
@@ -167,27 +352,132 @@ void DetailsPanel::highlight(bool highlight) {
 }
 
 void DetailsPanel::updateTransformSection(const Transform &transform) {
-    // Format position
-    QString posStr = QString("[%1, %2, %3]")
-                         .arg(transform.position.x, 0, 'f', 3)
-                         .arg(transform.position.y, 0, 'f', 3)
-                         .arg(transform.position.z, 0, 'f', 3);
-    positionLabel_->setText(posStr);
+    updatingFromServer_ = true;
+    setTransformValues(transform);
+    updatingFromServer_ = false;
+}
 
-    // Format rotation (quaternion)
-    QString rotStr = QString("[%1, %2, %3, %4]")
-                         .arg(transform.rotation.x, 0, 'f', 3)
-                         .arg(transform.rotation.y, 0, 'f', 3)
-                         .arg(transform.rotation.z, 0, 'f', 3)
-                         .arg(transform.rotation.w, 0, 'f', 3);
-    rotationLabel_->setText(rotStr + " (Quaternion)");
+void DetailsPanel::setTransformValues(const Transform &transform) {
+    // Set position values
+    positionX_->setValue(transform.position.x);
+    positionY_->setValue(transform.position.y);
+    positionZ_->setValue(transform.position.z);
+    
+    // Set rotation values (quaternion)
+    rotationX_->setValue(transform.rotation.x);
+    rotationY_->setValue(transform.rotation.y);
+    rotationZ_->setValue(transform.rotation.z);
+    rotationW_->setValue(transform.rotation.w);
+    
+    // Set scale values
+    scaleX_->setValue(transform.scale.x);
+    scaleY_->setValue(transform.scale.y);
+    scaleZ_->setValue(transform.scale.z);
+}
 
-    // Format scale
-    QString scaleStr = QString("[%1, %2, %3]")
-                           .arg(transform.scale.x, 0, 'f', 3)
-                           .arg(transform.scale.y, 0, 'f', 3)
-                           .arg(transform.scale.z, 0, 'f', 3);
-    scaleLabel_->setText(scaleStr);
+SceneSyncManager *DetailsPanel::getSceneSyncManager() const {
+    return context_ ? context_->sceneSyncManager : nullptr;
+}
+
+void DetailsPanel::onCommitClicked() {
+    qDebug() << "DetailsPanel: Commit button clicked";
+    
+    if (currentEntityId_ < 0) {
+        qWarning() << "DetailsPanel: No entity selected (currentEntityId_ < 0)";
+        return;
+    }
+    
+    if (!httpClient_) {
+        qWarning() << "DetailsPanel: HttpClient is null";
+        return;
+    }
+    
+    SceneSyncManager *sceneSyncManager = getSceneSyncManager();
+    if (!sceneSyncManager) {
+        qWarning() << "DetailsPanel: SceneSyncManager is null (not connected to server yet?)";
+        return;
+    }
+    
+    qDebug() << "DetailsPanel: Sending transform update for entity" << currentEntityId_;
+    sendTransformUpdate();
+    
+    // Note: Don't disable button here - wait for server response
+}
+
+void DetailsPanel::sendTransformUpdate() {
+    if (!httpClient_ || currentEntityId_ < 0) {
+        qWarning() << "DetailsPanel: Cannot send update - missing dependencies";
+        return;
+    }
+    
+    SceneSyncManager *sceneSyncManager = getSceneSyncManager();
+    if (!sceneSyncManager) {
+        qWarning() << "DetailsPanel: SceneSyncManager is null";
+        return;
+    }
+    
+    QString editorId = sceneSyncManager->editorId();
+    if (editorId.isEmpty()) {
+        qWarning() << "DetailsPanel: Editor ID is empty";
+        return;
+    }
+    
+    qDebug() << "DetailsPanel: Editor ID:" << editorId;
+    
+    // Build component data
+    QJsonObject componentData;
+    
+    // Position array
+    QJsonArray positionArray;
+    positionArray.append(positionX_->value());
+    positionArray.append(positionY_->value());
+    positionArray.append(positionZ_->value());
+    componentData["position"] = positionArray;
+    
+    // Rotation array (quaternion)
+    QJsonArray rotationArray;
+    rotationArray.append(rotationX_->value());
+    rotationArray.append(rotationY_->value());
+    rotationArray.append(rotationZ_->value());
+    rotationArray.append(rotationW_->value());
+    componentData["rotation"] = rotationArray;
+    
+    // Scale array
+    QJsonArray scaleArray;
+    scaleArray.append(scaleX_->value());
+    scaleArray.append(scaleY_->value());
+    scaleArray.append(scaleZ_->value());
+    componentData["scale"] = scaleArray;
+    
+    qDebug() << "DetailsPanel: Component data - Position:" << positionArray
+             << "Rotation:" << rotationArray << "Scale:" << scaleArray;
+    
+    // Build command params
+    QJsonObject params;
+    params["entity_id"] = currentEntityId_;
+    params["component_type"] = "transform";
+    params["component_data"] = componentData;
+    
+    qDebug() << "DetailsPanel: Sending command - entity_id:" << currentEntityId_
+             << "component_type: transform";
+    
+    // Send command to server
+    httpClient_->sendEditorCommand(editorId, "modify_component", params, [this](bool success) {
+        qDebug() << "DetailsPanel: Server response - success:" << success;
+        if (success) {
+            qDebug() << "DetailsPanel: Transform component updated successfully";
+            // Disable commit button after successful commit
+            if (commitButton_) {
+                commitButton_->setEnabled(false);
+            }
+        } else {
+            // Re-enable commit button on failure so user can retry
+            if (commitButton_) {
+                commitButton_->setEnabled(true);
+            }
+            qWarning() << "DetailsPanel: Failed to update transform component";
+        }
+    });
 }
 
 void DetailsPanel::updateRenderSection(const RenderComponent &render,

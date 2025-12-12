@@ -39,6 +39,14 @@ class RegisterRequest(BaseModel):
     editor_id: str
 
 
+class EditorCommandRequest(BaseModel):
+    """Editor command request"""
+
+    editor_id: str
+    command_type: str
+    params: Dict[str, Any]
+
+
 class EditorConnection:
     """Represents a connected editor instance"""
 
@@ -178,6 +186,32 @@ class EditorService:
 
                 return {"success": True, "animations": result}
             except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self._app.post("/editor/command")
+        def editor_command(request: EditorCommandRequest):
+            """Handle editor command (for direct HTTP requests)"""
+            try:
+                print(f"[EditorService] Received command: {request.command_type} from editor {request.editor_id}")
+                print(f"[EditorService] Command params: {request.params}")
+                
+                command = EditorCommand(
+                    type=request.command_type,
+                    params=request.params,
+                    timestamp=time.time(),
+                    editor_id=request.editor_id,
+                )
+                self.submit_command(command)
+                
+                # Process command immediately
+                self.process_commands()
+                
+                print(f"[EditorService] Command {request.command_type} processed successfully")
+                return {"success": True, "command_type": request.command_type}
+            except Exception as e:
+                print(f"[EditorService] Error processing command {request.command_type}: {e}")
+                import traceback
+                traceback.print_exc()
                 raise HTTPException(status_code=500, detail=str(e))
 
     # === Service Lifecycle ===
@@ -441,8 +475,28 @@ class EditorService:
                 component_type = params["component_type"]
                 component_data = params["component_data"]
 
-                # TODO: Deserialize component properly
-                self.scene.add_component(entity_id, component_type, component_data)
+                print(f"[EditorService] modify_component: entity_id={entity_id}, component_type={component_type}")
+                print(f"[EditorService] component_data: {component_data}")
+
+                # Deserialize component based on type
+                if component_type == "transform":
+                    from .scene import TransformComponent
+                    component = TransformComponent(**component_data)
+                    print(f"[EditorService] Created TransformComponent: position={component.position}, rotation={component.rotation}, scale={component.scale}")
+                elif component_type == "render":
+                    from .scene import RenderComponent
+                    component = RenderComponent(**component_data)
+                else:
+                    component = component_data
+
+                # Check if entity exists
+                entity = self.scene.get_entity(entity_id)
+                if not entity:
+                    print(f"[EditorService] Error: Entity {entity_id} not found")
+                    raise ValueError(f"Entity {entity_id} not found")
+
+                self.scene.add_component(entity_id, component_type, component)
+                print(f"[EditorService] Component added successfully to entity {entity_id}")
 
                 self._send_to_editor(
                     command.editor_id,
@@ -452,6 +506,11 @@ class EditorService:
                         "success": True,
                     },
                 )
+
+                # Broadcast scene update to all editors
+                print("[EditorService] Broadcasting scene update...")
+                self.broadcast_scene_update()
+                print("[EditorService] Scene update broadcasted")
 
             elif cmd_type == "heartbeat":
                 # Update editor heartbeat

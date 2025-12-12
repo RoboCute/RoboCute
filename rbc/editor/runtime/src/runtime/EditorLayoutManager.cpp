@@ -132,7 +132,7 @@ void EditorLayoutManager::setupDocks() {
     detailsDock->setObjectName("DetailsDock");
     detailsDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
-    context_->detailsPanel = new rbc::DetailsPanel(detailsDock);
+    context_->detailsPanel = new rbc::DetailsPanel(context_->httpClient, context_, detailsDock);
     detailsDock->setWidget(context_->detailsPanel);
     mainWindow_->addDockWidget(Qt::RightDockWidgetArea, detailsDock);
 
