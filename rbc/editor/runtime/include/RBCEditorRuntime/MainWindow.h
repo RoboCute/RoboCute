@@ -20,6 +20,7 @@ class EditorScene;
 class NodeEditor;
 class WorkflowManager;
 class EventAdapter;
+class AnimationController;
 }// namespace rbc
 
 class EditorLayoutManager;
@@ -45,23 +46,13 @@ private slots:
     void onSceneUpdated();
     void onConnectionStatusChanged(bool connected);
     void onEntitySelected(int entityId);
-
-    inline void onAnimationSelected(const QString &animName) {
-        if (!context_->sceneSyncManager) return;
-
-        const auto *sceneSync = context_->sceneSyncManager->sceneSync();
-        luisa::string anim_name{animName.toStdString()};
-        const auto *anim = sceneSync->getAnimation(anim_name);
-
-        if (anim && context_->animationPlayer && context_->playbackManager) {
-            context_->animationPlayer->setAnimation(animName, anim->total_frames, anim->fps);
-            context_->playbackManager->setAnimation(anim);
-            statusBar()->showMessage(QString("Loaded animation: %1").arg(animName));
-        }
-    }
-
     void onAnimationFrameChanged(int frame);
     void onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow);
+    
+    /**
+     * 处理动画加载完成
+     */
+    void onAnimationLoaded(const QString &animName);
 
 private:
     /**
@@ -78,5 +69,6 @@ private:
     rbc::EditorContext *context_;
     EditorLayoutManager *layoutManager_;
     rbc::EventAdapter *eventAdapter_;
+    rbc::AnimationController *animationController_;
     int eventBusSubscriptionId_;// 用于取消订阅
 };

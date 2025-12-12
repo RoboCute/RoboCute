@@ -22,12 +22,14 @@
 #include "RBCEditorRuntime/EventBus.h"
 #include "RBCEditorRuntime/EventAdapter.h"
 #include "RBCEditorRuntime/CommandBus.h"
+#include "RBCEditorRuntime/AnimationController.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       context_(new rbc::EditorContext),
       layoutManager_(nullptr),
       eventAdapter_(nullptr),
+      animationController_(nullptr),
       eventBusSubscriptionId_(-1) {
     context_->httpClient = new rbc::HttpClient(this);
     context_->workflowManager = new rbc::WorkflowManager(this);
@@ -39,6 +41,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Create event adapter
     eventAdapter_ = new rbc::EventAdapter(this);
+
+    // Create animation controller
+    animationController_ = new rbc::AnimationController(context_, this);
+    animationController_->initialize();
+
+    // Connect animation controller signals
+    connect(animationController_, &rbc::AnimationController::animationLoaded,
+            this, &MainWindow::onAnimationLoaded);
 
     // Connect workflow manager signals (both to slots and event bus)
     connect(context_->workflowManager, &rbc::WorkflowManager::workflowChanged,
@@ -82,17 +92,18 @@ void MainWindow::setupUi() {
     }
 
     if (context_->resultPanel) {
-        connect(context_->resultPanel, &rbc::ResultPanel::animationSelected,
-                this, &MainWindow::onAnimationSelected);
+        // 动画选择通过事件总线处理，不再直接连接到 MainWindow
         connect(context_->resultPanel, &rbc::ResultPanel::animationSelected,
                 eventAdapter_, &rbc::EventAdapter::onAnimationSelected);
     }
 
     if (context_->animationPlayer) {
-        connect(context_->animationPlayer, &rbc::AnimationPlayer::frameChanged,
-                this, &MainWindow::onAnimationFrameChanged);
+        // 动画帧变化通过事件总线处理
         connect(context_->animationPlayer, &rbc::AnimationPlayer::frameChanged,
                 eventAdapter_, &rbc::EventAdapter::onAnimationFrameChanged);
+        // 同时保留到 MainWindow 的连接以更新状态栏
+        connect(context_->animationPlayer, &rbc::AnimationPlayer::frameChanged,
+                this, &MainWindow::onAnimationFrameChanged);
     }
 
     // Set default workflow (SceneEditing)
@@ -178,12 +189,15 @@ void MainWindow::onEntitySelected(int entityId) {
 }
 
 void MainWindow::onAnimationFrameChanged(int frame) {
-    // Update playback manager to apply transforms to scene
-    if (context_->playbackManager) {
-        context_->playbackManager->setFrame(frame);
-    }
-
+    // 动画帧变化现在通过事件总线处理
+    // AnimationController 会处理实际的逻辑
+    // 这里只更新状态栏显示
     statusBar()->showMessage(QString("Animation frame: %1").arg(frame));
+}
+
+void MainWindow::onAnimationLoaded(const QString &animName) {
+    // 动画加载完成，更新状态栏
+    statusBar()->showMessage(QString("Loaded animation: %1").arg(animName));
 }
 
 void MainWindow::switchWorkflow(rbc::WorkflowType workflow) {
