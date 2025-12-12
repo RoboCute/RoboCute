@@ -5,35 +5,44 @@ namespace rbc {
 struct DeviceImage;
 }// namespace rbc
 namespace rbc::world {
-struct Texture : ResourceBaseImpl<Texture> {
-    friend struct TextureImpl;
+struct RBC_WORLD_API Texture final : ResourceBaseImpl<Texture> {
+    DECLARE_WORLD_OBJECT_FRIEND(Texture)
     using BaseType = ResourceBaseImpl<Texture>;
 
 private:
+    luisa::spin_mutex _async_mtx;
     RC<DeviceImage> _device_image;
     // meta
     LCPixelStorage _pixel_storage;
     luisa::uint2 _size;
     uint32_t _mip_level{};
-    Texture() = default;
-    ~Texture() = default;
+    Texture();
+    ~Texture();
 public:
     [[nodiscard]] auto pixel_storage() const { return _pixel_storage; }
     [[nodiscard]] auto size() const { return _size; }
     [[nodiscard]] auto mip_level() const { return _mip_level; }
-    [[nodiscard]] virtual luisa::vector<std::byte> *host_data() = 0;
-    [[nodiscard]] virtual uint64_t desire_size_bytes() = 0;
-    [[nodiscard]] virtual uint32_t heap_index() const = 0;
-    virtual void create_empty(
+    [[nodiscard]] luisa::vector<std::byte> *host_data();
+    [[nodiscard]] uint64_t desire_size_bytes();
+    [[nodiscard]] uint32_t heap_index() const;
+    void create_empty(
         luisa::filesystem::path &&path,
         uint64_t file_offset,
         LCPixelStorage pixel_storage,
         luisa::uint2 size,
-        uint32_t mip_level) = 0;
+        uint32_t mip_level);
 
     [[nodiscard]] auto device_image() const {
         return _device_image.get();
     }
+
+    bool loaded() const override;
+    void rbc_objser(rbc::JsonSerializer &ser_obj) const override;
+    void rbc_objdeser(rbc::JsonDeSerializer &obj) override;
+    void dispose() override;
+    bool async_load_from_file() override;
+    void unload() override;
+    void wait_load() const override;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Texture)

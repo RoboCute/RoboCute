@@ -11,6 +11,10 @@ local function rbc_world_impl()
     add_deps('rbc_runtime')
     add_deps('rbc_ext_c_int__')
     add_files('src/**.cpp')
+    add_defines('RBC_WORLD_API=LUISA_DECLSPEC_DLL_EXPORT')
 end
 
-interface_target('rbc_world_v2', rbc_world_interface, rbc_world_impl, true)
+interface_target('rbc_world_v2', rbc_world_interface, rbc_world_impl)
+add_defines('RBC_WORLD_API=LUISA_DECLSPEC_DLL_IMPORT', {
+    public = true
+})

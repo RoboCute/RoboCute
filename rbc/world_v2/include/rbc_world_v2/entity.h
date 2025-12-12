@@ -23,16 +23,17 @@ public:
         return iter == _iter;
     }
 };
-struct Entity : BaseObjectDerive<Entity, BaseObjectType::Entity> {
+struct Entity final : BaseObjectDerive<Entity, BaseObjectType::Entity> {
+    DECLARE_WORLD_OBJECT_FRIEND(Entity)
     friend struct Component;
-    friend struct EntityImpl;
 
 private:
     luisa::unordered_map<std::array<uint64_t, 2>, Component *> _components;
-    void _remove_component(Component *component);
+    RBC_WORLD_API void _remove_component(Component *component);
     Entity() = default;
-    ~Entity() = default;
+    ~Entity();
 public:
+    RBC_WORLD_API void dispose() override;
     EntityCompIter begin() const {
         return EntityCompIter{_components.begin()};
     }
@@ -42,9 +43,11 @@ public:
     uint64_t component_count() const {
         return _components.size();
     }
-    virtual bool add_component(Component *component) = 0;
-    virtual bool remove_component(TypeInfo const &type) = 0;
-    virtual Component *get_component(TypeInfo const &type) = 0;
+    RBC_WORLD_API bool add_component(Component *component);
+    RBC_WORLD_API bool remove_component(TypeInfo const &type);
+    RBC_WORLD_API Component *get_component(TypeInfo const &type);
+    RBC_WORLD_API void rbc_objser(rbc::JsonSerializer &ser) const override;
+    RBC_WORLD_API void rbc_objdeser(rbc::JsonDeSerializer &ser) override;
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
     bool remove_component() {

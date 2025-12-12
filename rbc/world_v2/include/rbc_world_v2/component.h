@@ -2,7 +2,6 @@
 #include <rbc_world_v2/base_object.h>
 namespace rbc::world {
 struct Entity;
-struct EntityImpl;
 // events from front to back
 enum struct FrameTick {
     BeforeSimulation,
@@ -10,15 +9,16 @@ enum struct FrameTick {
     OnFrameEnd,
     NUM
 };
-struct ComponentBase : BaseObject {
+
+struct Component : BaseObject {
     friend struct Entity;
-    friend struct EntityImpl;
     template<typename T>
     friend struct ComponentDerive;
 protected:
     Entity *_entity{};
-private:
-    virtual void _remove_self_from_entity() = 0;
+    RBC_WORLD_API void _remove_self_from_entity();
+    Component() = default;
+    ~Component() = default;
 public:
     static constexpr BaseObjectType base_object_type_v = BaseObjectType::Component;
     [[nodiscard]] Entity *entity() const {
@@ -27,12 +27,6 @@ public:
     [[nodiscard]] BaseObjectType base_type() const override {
         return BaseObjectType::Component;
     }
-};
-struct Component : ComponentBase {
-    friend struct Entity;
-    friend struct EntityImpl;
-private:// for internal usage
-    void _remove_self_from_entity() override;
 };
 template<typename T>
 struct ComponentDerive : Component {
@@ -43,9 +37,9 @@ struct ComponentDerive : Component {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
 protected:
-    ~ComponentDerive() {
-        static_cast<ComponentBase *>(this)->_remove_self_from_entity();
-        static_cast<BaseObjectBase *>(this)->_dispose_self();    
+    ComponentDerive() = default;
+    virtual ~ComponentDerive() {
+        Component::_remove_self_from_entity();
     }
 };
 }// namespace rbc::world

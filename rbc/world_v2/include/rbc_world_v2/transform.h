@@ -6,11 +6,9 @@
 #include <rbc_core/quaternion.h>
 namespace rbc::world {
 struct Entity;
-struct TransformImpl;
-struct WorldPluginImpl;
-struct Transform : ComponentDerive<Transform> {
-    friend struct TransformImpl;
-    friend struct WorldPluginImpl;
+struct RBC_WORLD_API Transform final : ComponentDerive<Transform> {
+    DECLARE_WORLD_OBJECT_FRIEND(Transform)
+    friend void clear_dirty_transform();
 private:
     Transform *_parent{};
     luisa::unordered_set<Transform *> _children;
@@ -21,22 +19,28 @@ private:
     bool _dirty : 1 {};
     bool _decomposed : 1 {true};
     Transform() = default;
-    ~Transform() = default;
+    void mark_dirty();
+    void try_decompose();
+    void traversal(double4x4 const &new_trs);
+    ~Transform();
 public:
-    virtual double3 position() = 0;
-    virtual Quaternion rotation() = 0;
-    virtual double3 scale() = 0;
-    virtual void set_pos(double3 const &position, bool recursive) = 0;
-    virtual void set_rotation(Quaternion const &rotation, bool recursive) = 0;
-    virtual void set_scale(double3 const &scale, bool recursive) = 0;
-    virtual void set_trs(double4x4 const &trs, bool recursive) = 0;
-    virtual void set_trs(
+    double3 position();
+    Quaternion rotation();
+    double3 scale();
+    void rbc_objser(rbc::JsonSerializer &ser_obj) const override;
+    void rbc_objdeser(rbc::JsonDeSerializer &obj) override;
+    void dispose() override;
+    void set_pos(double3 const &position, bool recursive);
+    void set_rotation(Quaternion const &rotation, bool recursive);
+    void set_scale(double3 const &scale, bool recursive);
+    void set_trs(double4x4 const &trs, bool recursive);
+    void set_trs(
         double3 const &position,
         Quaternion const &rotation,
         double3 const &scale,
-        bool recursive) = 0;
-    virtual void add_children(Transform *tr) = 0;
-    virtual bool remove_children(Transform *tr) = 0;
+        bool recursive);
+    void add_children(Transform *tr);
+    bool remove_children(Transform *tr);
     [[nodiscard]] auto const &position() const { return _position; }
     [[nodiscard]] auto const &rotation() const { return _rotation; }
     [[nodiscard]] auto const &scale() const { return _scale; }

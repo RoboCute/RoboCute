@@ -11,7 +11,7 @@
 #include <luisa/vstl/md5.h>
 #include <rbc_core/func_serializer.h>
 #include <rbc_runtime/plugin_manager.h>
-#include <rbc_world_v2/world_plugin.h>
+#include <rbc_world_v2/base_object.h>
 #include <rbc_world_v2/transform.h>
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/material.h>
@@ -19,14 +19,14 @@
 using namespace rbc;
 using namespace luisa;
 int main() {
-    PluginManager::init();
-
-    auto world_module = PluginManager::instance().load_module("rbc_world_v2");
-    auto world_plugin = world_module->invoke<world::WorldPlugin *()>("get_world_plugin");
+    world::init_world();
+    auto dsp_world = vstd::scope_exit([&]() {
+        world::destroy_world();
+    });
     luisa::BinaryBlob json;
     {
-        auto entity = world_plugin->create_object_with_guid<world::Entity>(vstd::Guid(true));
-        auto trans = world_plugin->create_object_with_guid<world::Transform>(vstd::Guid(true));
+        auto entity = world::create_object_with_guid<world::Entity>(vstd::Guid(true));
+        auto trans = world::create_object_with_guid<world::Transform>(vstd::Guid(true));
 
         entity->add_component(trans);
         trans->set_pos(double3(114, 514, 1919), false);
@@ -81,7 +81,7 @@ int main() {
             vstd::Guid type_id, guid;
             LUISA_ASSERT(reader._load(type_id));
             LUISA_ASSERT(reader._load(guid));
-            auto obj = world_plugin->create_object_with_guid(type_id, guid);
+            auto obj = world::create_object_with_guid(type_id, guid);
             LUISA_ASSERT(obj);
             objs.emplace_back(obj);
         }

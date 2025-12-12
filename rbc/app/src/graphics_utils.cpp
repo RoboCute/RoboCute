@@ -8,6 +8,7 @@
 #include <rbc_runtime/plugin_manager.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_render/renderer_data.h>
+#include <rbc_world_v2/base_object.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -31,7 +32,6 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     if (_display_pipe_ctx)
         _render_plugin->destroy_pipeline_context(_display_pipe_ctx);
     _render_module.reset();
-    _world_module.reset();
     if (_lights)
         _lights.destroy();
     AssetsManager::destroy_instance();
@@ -45,6 +45,7 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
     PluginManager::init();
+    world::init_world();
     _render_device.init(program_path, backend_name);
     init_present_stream();
     _render_device.set_main_stream(&_present_stream);
@@ -99,10 +100,8 @@ void GraphicsUtils::init_render() {
         _sm->bindless_allocator(),
         65536);
     _render_module = PluginManager::instance().load_module("rbc_render_plugin");
-    _world_module = PluginManager::instance().load_module("rbc_world_v2");
     LUISA_ASSERT(_render_module, "Render module not found.");
     _render_plugin = _render_module->invoke<RenderPlugin *()>("get_render_plugin");
-    _world_plugin = _world_module->invoke<world::WorldPlugin*()>("get_world_plugin");
     _display_pipe_ctx = _render_plugin->create_pipeline_context();
     _render_settings = _render_plugin->pipe_ctx_state_map(_display_pipe_ctx);
     LUISA_ASSERT(_render_plugin->initialize_pipeline({}));
@@ -263,7 +262,7 @@ void GraphicsUtils::tick(
     _render_plugin->before_rendering({}, _display_pipe_ctx);
     auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
     managed_device->begin_managing(cmdlist);
-    _world_plugin->on_before_rendering();
+    rbc::world::on_before_rendering();
     _sm->before_rendering(
         cmdlist,
         main_stream);
