@@ -84,7 +84,7 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::setupUi() {
-    resize(1920, 1080);
+    resize(1920, 1200);
     // Set minimum size to ensure proper layout even when no central widget is set
     setMinimumSize(800, 600);
     setWindowTitle("RoboCute Editor");
@@ -154,7 +154,7 @@ void MainWindow::startSceneSync(const QString &serverUrl) {
                 this, &MainWindow::onConnectionStatusChanged);
         connect(context_->sceneSyncManager, &rbc::SceneSyncManager::connectionStatusChanged,
                 eventAdapter_, &rbc::EventAdapter::onConnectionStatusChanged);
-        
+
         // Connect to ConnectionStatusView if it exists
         if (context_->connectionStatusView) {
             context_->connectionStatusView->setSceneSyncManager(context_->sceneSyncManager);
@@ -167,7 +167,7 @@ void MainWindow::startSceneSync(const QString &serverUrl) {
     }
     // Start sync
     context_->sceneSyncManager->start(serverUrl);
-    
+
     // Update ConnectionStatusView URL display if it exists
     if (context_->connectionStatusView) {
         context_->connectionStatusView->updateServerUrl(serverUrl);

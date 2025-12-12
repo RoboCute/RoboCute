@@ -136,17 +136,17 @@ void EditorLayoutManager::setupDocks() {
     detailsDock->setWidget(context_->detailsPanel);
     mainWindow_->addDockWidget(Qt::RightDockWidgetArea, detailsDock);
 
-    // 3. Viewport as Dock (can be minimized)
+    // 3. Viewport - will be set as central widget in SceneEditing mode
     context_->viewportDock = createViewportDock();
-    mainWindow_->addDockWidget(Qt::TopDockWidgetArea, context_->viewportDock);
+    // Don't add as dock initially, will be set as central widget
 
     // 4. Node Editor (Bottom) - use shared HttpClient
     context_->nodeDock = new QDockWidget("Node Graph", mainWindow_);
     context_->nodeDock->setObjectName("NodeDock");
-    context_->nodeDock->setAllowedAreas(Qt::AllDockWidgetAreas);// Allow as central widget
+    context_->nodeDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
     context_->nodeEditor = new rbc::NodeEditor(context_->httpClient, context_->nodeDock);
     context_->nodeDock->setWidget(context_->nodeEditor);
-    mainWindow_->addDockWidget(Qt::BottomDockWidgetArea, context_->nodeDock);
+    // Don't add as dock initially, will be added in adjustLayoutForWorkflow
 
     // 5. Result Panel (Right, below Details)
     auto *resultDock = new QDockWidget("Results", mainWindow_);
@@ -184,6 +184,9 @@ void EditorLayoutManager::setupDocks() {
 
     // Create animation playback manager
     context_->playbackManager = new rbc::AnimationPlaybackManager(context_->editorScene, mainWindow_);
+
+    // Set default layout for SceneEditing workflow
+    adjustLayoutForWorkflow(rbc::WorkflowType::SceneEditing);
 }
 
 QDockWidget *EditorLayoutManager::createViewportDock() {
@@ -203,32 +206,93 @@ QDockWidget *EditorLayoutManager::createViewportDock() {
 
 void EditorLayoutManager::adjustLayoutForWorkflow(rbc::WorkflowType workflow) {
     // 根据工作流类型调整布局
-    // SceneEditing: Viewport 作为中央组件（通过 DockWidget）
-    // Text2Image: NodeEditor 作为中央组件（通过 DockWidget）
     switch (workflow) {
         case rbc::WorkflowType::SceneEditing:
-            // 显示 Viewport DockWidget，隐藏 NodeEditor DockWidget
-            if (context_->viewportDock) {
-                context_->viewportDock->setVisible(true);
-                context_->viewportDock->raise();
+            // SceneEditing: Viewport 作为中央组件，NodeEditor 在底部
+            // 首先移除所有dock（如果已添加）
+            if (context_->viewportDock && context_->viewportDock->parent() == mainWindow_) {
+                mainWindow_->removeDockWidget(context_->viewportDock);
             }
+            if (context_->nodeDock && context_->nodeDock->parent() == mainWindow_) {
+                mainWindow_->removeDockWidget(context_->nodeDock);
+            }
+
+            // 如果ViewportWidget还在dock中，需要先取出
+            if (context_->viewportDock && context_->viewportDock->widget() == context_->viewportWidget) {
+                context_->viewportDock->setWidget(nullptr);
+            }
+
+            // 将 Viewport 设置为中央组件，占据主要空间
+            if (context_->viewportWidget) {
+                // 显式设置parent为mainWindow（如果还没有设置）
+                // 这是关键修复：从dock中取出widget后，parent可能仍然是dock，
+                // 需要显式设置为mainWindow才能正确显示
+                if (context_->viewportWidget->parentWidget() != mainWindow_) {
+                    context_->viewportWidget->setParent(mainWindow_);
+                }
+                
+                mainWindow_->setCentralWidget(context_->viewportWidget);
+                
+                // 确保ViewportWidget可见并更新
+                context_->viewportWidget->show();
+                context_->viewportWidget->setVisible(true);
+                context_->viewportWidget->update();
+                context_->viewportWidget->repaint();
+            }
+
+            // 将 NodeEditor 添加到底部，设置合理的高度
             if (context_->nodeDock) {
-                context_->nodeDock->setVisible(false);
+                mainWindow_->addDockWidget(Qt::BottomDockWidgetArea, context_->nodeDock);
+                context_->nodeDock->setVisible(true);
+                // 设置NodeEditor的最小高度，确保有足够的空间
+                context_->nodeDock->setMinimumHeight(300);
+                // 使用窗口高度的30-35%作为NodeEditor的高度，确保Viewport有足够空间
+                // 计算可用高度（窗口高度减去菜单栏、工具栏、状态栏等）
+                int availableHeight = mainWindow_->height();
+                if (mainWindow_->menuBar()) {
+                    availableHeight -= mainWindow_->menuBar()->height();
+                }
+                if (mainWindow_->statusBar()) {
+                    availableHeight -= mainWindow_->statusBar()->height();
+                }
+                // 使用30%的高度给NodeEditor，剩余70%给Viewport
+                int nodeEditorHeight = qMax(300, static_cast<int>(availableHeight * 0.3));
+                // 使用resizeDocks来分配空间
+                QList<QDockWidget*> docks;
+                docks << context_->nodeDock;
+                QList<int> sizes;
+                sizes << nodeEditorHeight;
+                mainWindow_->resizeDocks(docks, sizes, Qt::Vertical);
             }
-            // 清除中央组件（使用 DockWidget 布局）
-            mainWindow_->setCentralWidget(nullptr);
             break;
         case rbc::WorkflowType::Text2Image:
-            // 显示 NodeEditor DockWidget，隐藏 Viewport DockWidget
-            if (context_->nodeDock) {
-                context_->nodeDock->setVisible(true);
-                context_->nodeDock->raise();
+            // Text2Image: NodeEditor 作为中央组件，隐藏 Viewport
+            // 移除Viewport（如果作为central widget）
+            if (mainWindow_->centralWidget() == context_->viewportWidget) {
+                mainWindow_->setCentralWidget(nullptr);
+                // 将ViewportWidget放回dock
+                if (context_->viewportDock && context_->viewportWidget) {
+                    context_->viewportDock->setWidget(context_->viewportWidget);
+                }
             }
-            if (context_->viewportDock) {
+            // 移除dock（如果已添加）
+            if (context_->viewportDock && context_->viewportDock->parent() == mainWindow_) {
+                mainWindow_->removeDockWidget(context_->viewportDock);
                 context_->viewportDock->setVisible(false);
             }
-            // 清除中央组件（使用 DockWidget 布局）
-            mainWindow_->setCentralWidget(nullptr);
+            if (context_->nodeDock && context_->nodeDock->parent() == mainWindow_) {
+                mainWindow_->removeDockWidget(context_->nodeDock);
+            }
+
+            // 如果NodeEditor还在dock中，需要先取出
+            if (context_->nodeDock && context_->nodeDock->widget() == context_->nodeEditor) {
+                context_->nodeDock->setWidget(nullptr);
+            }
+
+            // 将 NodeEditor 设置为中央组件
+            if (context_->nodeEditor) {
+                mainWindow_->setCentralWidget(context_->nodeEditor);
+            }
             break;
     }
 }
