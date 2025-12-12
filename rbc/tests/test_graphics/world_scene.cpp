@@ -85,8 +85,10 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     utils->update_mesh_data(mesh->device_mesh().get(), false);
     mat0 = world::create_object<world::Material>();
     mat1 = world::create_object<world::Material>();
-    mat0->load_from_json("{\"type\": \"pbr\"}"sv);
-    mat1->load_from_json("{\"type\": \"pbr\", \"base_albedo\": [1, 0.8, 0.6]}"sv);
+    auto mat_desc = R"({"type": "pbr", "specular_roughness": 0.2, "weight_metallic": 0.8})"sv;
+    auto mat1_desc = R"({"type": "pbr", "specular_roughness": 0.8, "base_albedo": [1, 0.8, 0.6]})"sv;
+    mat0->load_from_json(mat_desc);
+    mat1->load_from_json(mat1_desc);
     mat0->prepare_material();
     mat1->prepare_material();
     // object
