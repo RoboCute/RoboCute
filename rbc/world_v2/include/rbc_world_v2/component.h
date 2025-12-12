@@ -1,25 +1,24 @@
 #pragma once
 #include <rbc_world_v2/base_object.h>
+#include <rbc_world_v2/entity.h>
 namespace rbc::world {
-struct Entity;
 // events from front to back
-enum struct FrameTick {
-    BeforeSimulation,
-    BeforeRendering,
-    OnFrameEnd,
-    NUM
-};
-
 struct Component : BaseObject {
     friend struct Entity;
     template<typename T>
     friend struct ComponentDerive;
-protected:
+private:
     Entity *_entity{};
     RBC_WORLD_API void _remove_self_from_entity();
     Component() = default;
     ~Component() = default;
+    RBC_WORLD_API void add_event(WorldEventType event, void (Component::*func_ptr)());
+    RBC_WORLD_API void set_entity(Entity *entity);
+protected:
+    RBC_WORLD_API void remove_event(WorldEventType event);
 public:
+    virtual void on_start() {};
+    virtual void on_destroy() {};
     static constexpr BaseObjectType base_object_type_v = BaseObjectType::Component;
     [[nodiscard]] Entity *entity() const {
         return _entity;
@@ -40,6 +39,9 @@ protected:
     ComponentDerive() = default;
     virtual ~ComponentDerive() {
         Component::_remove_self_from_entity();
+    }
+    void add_event(WorldEventType event, void (T::*func_ptr)()) {
+        Component::add_event(event, static_cast<void (Component::*)()>(func_ptr));
     }
 };
 }// namespace rbc::world

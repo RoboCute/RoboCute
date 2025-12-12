@@ -4,6 +4,15 @@
 #include <luisa/vstl/ranges.h>
 namespace rbc::world {
 struct Component;
+enum struct WorldEventType : uint64_t {
+    BeforeSimulation,
+    BeforeRendering,
+    OnFrameEnd,
+    OnTransformUpdate
+    // etc...
+    // can have custom events
+};
+
 struct EntityCompIter {
     using IterType = luisa::unordered_map<std::array<uint64_t, 2>, Component *>::const_iterator;
 private:
@@ -29,6 +38,12 @@ struct Entity final : BaseObjectDerive<Entity, BaseObjectType::Entity> {
 
 private:
     luisa::unordered_map<std::array<uint64_t, 2>, Component *> _components;
+    luisa::unordered_map<
+        WorldEventType,
+        luisa::unordered_map<
+            Component *,
+            void (Component::*)()>>
+        _events;
     RBC_WORLD_API void _remove_component(Component *component);
     Entity() = default;
     ~Entity();
@@ -48,6 +63,7 @@ public:
     RBC_WORLD_API Component *get_component(TypeInfo const &type);
     RBC_WORLD_API void rbc_objser(rbc::JsonSerializer &ser) const override;
     RBC_WORLD_API void rbc_objdeser(rbc::JsonDeSerializer &ser) override;
+    RBC_WORLD_API void broadcast_event(WorldEventType frame_tick);
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
     bool remove_component() {

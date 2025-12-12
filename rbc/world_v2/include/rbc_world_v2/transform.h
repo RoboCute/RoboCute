@@ -45,9 +45,10 @@ public:
     [[nodiscard]] auto const &rotation() const { return _rotation; }
     [[nodiscard]] auto const &scale() const { return _scale; }
     [[nodiscard]] auto const &children() const { return _children; }
-    [[nodiscard]] double4x4 local_to_world_matrix() const {
+    [[nodiscard]] double4x4 trs() const {
         return _trs;
     }
+    [[nodiscard]] float4x4 trs_float() const;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Transform);

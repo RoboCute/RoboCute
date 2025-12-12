@@ -8,14 +8,84 @@ RBC_WORLD_API BaseObject *get_object(vstd::Guid const &guid);
 struct TypeRegisterBase;
 using CreateFunc = vstd::func_ptr_t<BaseObject *()>;
 struct TypeRegisterBase {
-    BaseObjectType base_obj_type;
-    TypeRegisterBase *p_next{};
-    RBC_WORLD_API TypeRegisterBase();
-    ~TypeRegisterBase() = default;
-    virtual std::array<uint64_t, 2> type_id() = 0;
+    friend struct BaseObjectStatics;
     virtual BaseObject *create() = 0;
+private:
+    TypeRegisterBase *p_next{};
+    virtual std::array<uint64_t, 2> type_id() = 0;
     virtual void init() = 0;
     virtual void destroy() = 0;
+protected:
+    BaseObjectType base_obj_type;
+    RBC_WORLD_API TypeRegisterBase();
+    ~TypeRegisterBase() = default;
+public:
+    BaseObjectType base_type() const { return base_obj_type; }
+};
+struct RuntimeStaticBase {
+    friend struct BaseObjectStatics;
+protected:
+    RuntimeStaticBase *p_next{};
+    RBC_WORLD_API RuntimeStaticBase();
+    RBC_WORLD_API ~RuntimeStaticBase();
+private:
+    virtual void init() = 0;
+    virtual void destroy() = 0;
+};
+template<typename T, typename... Args>
+    requires luisa::is_constructible_v<T, Args...>
+struct RuntimeStatic : RuntimeStaticBase {
+    vstd::optional<T> ptr;
+    std::tuple<Args...> _args;
+    RuntimeStatic(Args &&...args)
+        : _args(std::forward<Args>(args)...) {}
+    T const *operator->() const {
+        return ptr.ptr();
+    }
+    T *operator->() {
+        return ptr.ptr();
+    }
+    T const &operator*() const {
+        return *ptr;
+    }
+    T &operator*() {
+        return *ptr;
+    }
+protected:
+    void init() override {
+        std::apply(
+            [&](Args &&...args) {
+                ptr.create(std::forward<Args>(args)...);
+            },
+            std::move(_args));
+    }
+    void destroy() override {
+        ptr.destroy();
+    }
+};
+template<typename T>
+    requires std::is_default_constructible_v<T>
+struct RuntimeStatic<T> : RuntimeStaticBase {
+    vstd::optional<T> ptr;
+    T const *operator->() const {
+        return ptr.ptr();
+    }
+    T *operator->() {
+        return ptr.ptr();
+    }
+    T const &operator*() const {
+        return *ptr;
+    }
+    T &operator*() {
+        return *ptr;
+    }
+protected:
+    void init() override {
+        ptr.create();
+    }
+    void destroy() override {
+        ptr.destroy();
+    }
 };
 template<typename T>
     requires std::is_base_of_v<BaseObject, T>
@@ -24,28 +94,18 @@ struct TypeRegister : TypeRegisterBase {
     vstd::optional<vstd::Pool<vstd::Storage<T>, true>> _pool;
     vstd::func_ptr_t<void(T *)> _ctor_func;
     vstd::func_ptr_t<void(T *)> _dtor_func;
-    vstd::func_ptr_t<void()> _on_init;
-    vstd::func_ptr_t<void()> _on_destroy;
     TypeRegister(
         vstd::func_ptr_t<void(T *)> ctor_func,
-        vstd::func_ptr_t<void(T *)> dtor_func,
-        vstd::func_ptr_t<void()> on_init = nullptr,
-        vstd::func_ptr_t<void()> on_destroy = nullptr)
+        vstd::func_ptr_t<void(T *)> dtor_func)
         : _ctor_func(ctor_func),
-          _dtor_func(dtor_func),
-          _on_init(on_init),
-          _on_destroy(on_destroy) {
+          _dtor_func(dtor_func) {
         TypeRegisterBase::base_obj_type = T::base_object_type_v;
     }
     void init() override {
         _pool.create(64, false);
-        if (_on_init)
-            _on_init();
     }
     void destroy() override {
         _pool.destroy();
-        if (_on_destroy)
-            _on_destroy();
     }
     std::array<uint64_t, 2> type_id() override {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
@@ -61,7 +121,7 @@ struct TypeRegister : TypeRegisterBase {
     }
 };
 
-#define DECLARE_WORLD_TYPE_REGISTER(type_name, ...)       \
+#define DECLARE_WORLD_TYPE_REGISTER(type_name)            \
     void _create_##type_name(type_name *ptr) {            \
         new (std::launder(ptr)) type_name{};              \
     }                                                     \
@@ -70,8 +130,7 @@ struct TypeRegister : TypeRegisterBase {
     }                                                     \
     static TypeRegister<type_name> type_name##_register_{ \
         _create_##type_name,                              \
-        _destroy_##type_name,                             \
-        __VA_ARGS__};                                     \
+        _destroy_##type_name};                            \
     void type_name::dispose() {                           \
         type_name##_register_.destroy(this);              \
     }

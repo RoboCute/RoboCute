@@ -109,40 +109,7 @@ void MaterialStub::update_material(luisa::string_view json) {
 MaterialStub::~MaterialStub() {
     remove_material();
 }
-void ObjectStub::remove_object() {
-    auto sm = SceneManager::instance_ptr();
-    if (mesh_ref) {
-        mesh_ref->tlas_ref_count--;
-        mesh_ref.reset();
-    }
-    auto dsp = vstd::scope_exit([&]() {
-        mesh_tlas_idx = ~0u;
-    });
-    if (!sm || mesh_tlas_idx == ~0u) return;
-    switch (type) {
-        case ObjectRenderType::Mesh:
-            sm->accel_manager().remove_mesh_instance(
-                sm->buffer_allocator(),
-                sm->buffer_uploader(),
-                mesh_tlas_idx);
-            break;
-        case ObjectRenderType::EmissionMesh:
-            if (Lights::instance()) {
-                Lights::instance()->remove_mesh_light(mesh_light_idx);
-            }
-            break;
-        case ObjectRenderType::Procedural:
-            sm->accel_manager().remove_procedural_instance(
-                sm->buffer_allocator(),
-                sm->buffer_uploader(),
-                sm->dispose_queue(),
-                procedural_idx);
-            break;
-    }
-}
-ObjectStub::~ObjectStub() {
-    remove_object();
-}
+
 LightStub::~LightStub() {
     auto lights = Lights::instance();
     if (!lights) return;
@@ -284,12 +251,45 @@ static bool material_is_emission(luisa::span<RC<MaterialStub> const> materials) 
     }
     return contained_emission;
 };
+ObjectStub::~ObjectStub() {
+    remove_object();
+}
+void ObjectStub::remove_object() {
+    auto sm = SceneManager::instance_ptr();
+    if (mesh_ref) {
+        mesh_ref.reset();
+    }
+    auto dsp = vstd::scope_exit([&]() {
+        mesh_tlas_idx = ~0u;
+    });
+    if (!sm || mesh_tlas_idx == ~0u) return;
+    switch (type) {
+        case ObjectRenderType::Mesh:
+            sm->accel_manager().remove_mesh_instance(
+                sm->buffer_allocator(),
+                sm->buffer_uploader(),
+                mesh_tlas_idx);
+            break;
+        case ObjectRenderType::EmissionMesh:
+            if (Lights::instance()) {
+                Lights::instance()->remove_mesh_light(mesh_light_idx);
+            }
+            break;
+        case ObjectRenderType::Procedural:
+            sm->accel_manager().remove_procedural_instance(
+                sm->buffer_allocator(),
+                sm->buffer_uploader(),
+                sm->dispose_queue(),
+                procedural_idx);
+            break;
+    }
+}
+
 void ObjectStub::create_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::span<RC<RCBase> const> mats) {
     auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
     LUISA_ASSERT(!mesh_ref || mesh_tlas_idx != ~0U, "object already created.");
     mesh_ref = mesh;
-    mesh_ref->tlas_ref_count++;
 
     vstd::push_back_func(
         materials,
@@ -339,11 +339,9 @@ void ObjectStub::update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
     auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
     if (mesh_ref) {
-        mesh_ref->tlas_ref_count--;
         mesh_ref.reset();
     }
     mesh_ref = mesh;
-    mesh_ref->tlas_ref_count++;
     materials.clear();
     material_codes.clear();
     auto submesh_size = std::max<size_t>(1, mesh_ref->mesh_data()->submesh_offset.size());

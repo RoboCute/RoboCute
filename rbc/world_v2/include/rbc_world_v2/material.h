@@ -17,6 +17,7 @@ private:
     bool _loaded{false};
 public:
     auto &mat_code() const { return _mat_code; }
+    auto &mat_data() const { return _mat_data; }
     void prepare_material();
     void update_material();
     luisa::BinaryBlob write_content_to();

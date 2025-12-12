@@ -1,0 +1,275 @@
+#include <rbc_world_v2/renderer.h>
+#include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/type_register.h>
+#include <rbc_world_v2/material.h>
+#include <rbc_world_v2/mesh.h>
+#include <rbc_graphics/render_device.h>
+
+namespace rbc::world {
+void Renderer::_on_transform_update() {
+    if(_mesh_tlas_idx != ~0u) {
+        auto tr = entity()->get_component<Transform>();
+        LUISA_DEBUG_ASSERT(tr);
+        update_object_pos(tr->trs_float());
+    }
+}
+void Renderer::on_start() {
+    add_event(WorldEventType::OnTransformUpdate, &Renderer::_on_transform_update);
+}
+void Renderer::on_destroy() {}
+void Renderer::rbc_objser(rbc::JsonSerializer &ser_obj) const {
+    ser_obj.start_array();
+    for (auto &i : _materials) {
+        auto guid = i->guid();
+        ser_obj._store(guid);
+    }
+    ser_obj.add_last_scope_to_object("mats");
+    if (_mesh_ref) {
+        auto guid = _mesh_ref->guid();
+        if (guid) {
+            ser_obj._store(guid, "mesh");
+        }
+    }
+}
+void Renderer::rbc_objdeser(rbc::JsonDeSerializer &obj) {
+    uint64_t size;
+    if (obj.start_array(size, "mats")) {
+        _materials.reserve(size);
+        for (auto &i : vstd::range(size)) {
+            vstd::Guid guid;
+            if (!obj._load(guid)) {
+                _materials.emplace_back(nullptr);// TODO: deal with empty material
+            } else {
+                auto obj = get_object(guid);
+                if (obj && obj->is_type_of(TypeInfo::get<Material>()))
+                    _materials.emplace_back(static_cast<Material *>(obj));
+            }
+        }
+        obj.end_scope();
+    }
+    vstd::Guid guid;
+    if (obj._load(guid, "mesh")) {
+        auto obj = get_object(guid);
+        if (obj && obj->is_type_of(TypeInfo::get<Mesh>())) {
+            _mesh_ref = static_cast<Mesh *>(obj);
+        }
+    }
+}
+
+static bool material_is_emission(luisa::span<RC<Material> const> materials) {
+    bool contained_emission = false;
+    for (auto &i : materials) {
+        i->mat_data().visit([&]<typename T>(T const &t) {
+            if constexpr (std::is_same_v<T, material::OpenPBR>) {
+                for (auto &i : t.emission.luminance) {
+                    if (i > 1e-3f) {
+                        contained_emission = true;
+                        return;
+                    }
+                }
+            } else {
+                for (auto &i : t.color) {
+                    if (i > 1e-3f) {
+                        contained_emission = true;
+                        return;
+                    }
+                }
+            }
+        });
+    }
+    return contained_emission;
+};
+Renderer::~Renderer() {
+    remove_object();
+}
+void Renderer::remove_object() {
+    auto sm = SceneManager::instance_ptr();
+    if (_mesh_ref && _mesh_ref->device_mesh()) {
+        _mesh_ref.reset();
+    }
+    auto dsp = vstd::scope_exit([&]() {
+        _mesh_tlas_idx = ~0u;
+    });
+    if (!sm || _mesh_tlas_idx == ~0u) return;
+    switch (_type) {
+        case ObjectRenderType::Mesh:
+            sm->accel_manager().remove_mesh_instance(
+                sm->buffer_allocator(),
+                sm->buffer_uploader(),
+                _mesh_tlas_idx);
+            break;
+        case ObjectRenderType::EmissionMesh:
+            if (Lights::instance()) {
+                Lights::instance()->remove_mesh_light(_mesh_light_idx);
+            }
+            break;
+        case ObjectRenderType::Procedural:
+            sm->accel_manager().remove_procedural_instance(
+                sm->buffer_allocator(),
+                sm->buffer_uploader(),
+                sm->dispose_queue(),
+                _procedural_idx);
+            break;
+    }
+}
+
+Renderer::Renderer() {
+    _mesh_light_idx = ~0u;
+}
+void Renderer::update_object(luisa::float4x4 matrix, luisa::span<RC<Material> const> mats, Mesh *mesh) {
+    if (!mesh->loaded()) return;
+
+    for (auto &i : mats) {
+        if (!i->loaded()) return;
+        i->prepare_material();
+    }
+    auto render_device = RenderDevice::instance_ptr();
+    auto &sm = SceneManager::instance();
+    if (mesh) {
+        _mesh_ref.reset();
+        _mesh_ref = mesh;
+    }
+    mesh->wait_load();
+    _materials.clear();
+    _material_codes.clear();
+    auto submesh_size = std::max<size_t>(1, mesh->submesh_offsets().size());
+    if (!(mats.size() == submesh_size)) [[unlikely]] {
+        LUISA_ERROR("Submesh size {} mismatch with material size {}", submesh_size, mats.size());
+    }
+    vstd::push_back_all(
+        _materials,
+        mats);
+    vstd::push_back_func(
+        _material_codes,
+        _materials.size(),
+        [&](size_t i) {
+            return _materials[i]->mat_code();
+        });
+    // TODO: change light type
+    bool is_emission = material_is_emission(_materials);
+    if (!render_device) return;
+    // update
+    if (_mesh_tlas_idx != ~0u) {
+        switch (_type) {
+            case ObjectRenderType::Mesh:
+                if (is_emission) {
+                    sm.accel_manager().remove_mesh_instance(
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        _mesh_tlas_idx);
+                    _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
+                        render_device->lc_main_cmd_list(),
+                        mesh->device_mesh(),
+                        matrix,
+                        _material_codes);
+                    _type = ObjectRenderType::EmissionMesh;
+                } else {
+                    sm.accel_manager().set_mesh_instance(
+                        _mesh_tlas_idx,
+                        render_device->lc_main_cmd_list(),
+                        sm.host_upload_buffer(),
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        sm.dispose_queue(),
+                        mesh->device_mesh()->mesh_data(),
+                        _material_codes,
+                        matrix);
+                }
+                break;
+            case ObjectRenderType::EmissionMesh:
+                if (!is_emission) {
+                    Lights::instance()->remove_mesh_light(_mesh_light_idx);
+                    _mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
+                        render_device->lc_main_cmd_list(),
+                        sm.host_upload_buffer(),
+                        sm.buffer_allocator(),
+                        sm.buffer_uploader(),
+                        sm.dispose_queue(),
+                        mesh->device_mesh()->mesh_data(),
+                        _material_codes,
+                        matrix);
+                    _type = ObjectRenderType::Mesh;
+                } else {
+                    Lights::instance()->update_mesh_light_sync(
+                        render_device->lc_main_cmd_list(),
+                        _mesh_light_idx,
+                        matrix,
+                        _material_codes,
+                        &mesh->device_mesh());
+                }
+                break;
+            case ObjectRenderType::Procedural: {
+                LUISA_ERROR("Procedural not supported.");
+            } break;
+        }
+    }
+    // create
+    else {
+        if (material_is_emission(_materials)) {
+            _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
+                render_device->lc_main_cmd_list(),
+                mesh->device_mesh(),
+                matrix,
+                _material_codes);
+            _type = ObjectRenderType::EmissionMesh;
+        } else {
+            _mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
+                render_device->lc_main_cmd_list(),
+                sm.host_upload_buffer(),
+                sm.buffer_allocator(),
+                sm.buffer_uploader(),
+                sm.dispose_queue(),
+                mesh->device_mesh()->mesh_data(),
+                _material_codes,
+                matrix);
+            _type = ObjectRenderType::Mesh;
+        }
+    }
+}
+void Renderer::update_object_pos(luisa::float4x4 matrix) {
+    if (_mesh_tlas_idx == ~0u) [[unlikely]] {
+        LUISA_ERROR("Object not initialized yet.");
+    }
+    auto render_device = RenderDevice::instance_ptr();
+    auto &sm = SceneManager::instance();
+    if (!render_device) return;
+    switch (_type) {
+        case ObjectRenderType::Mesh: {
+            sm.accel_manager().set_mesh_instance(
+                render_device->lc_main_cmd_list(),
+                sm.buffer_uploader(),
+                _mesh_tlas_idx,
+                matrix, 0xff, true);
+        } break;
+        case ObjectRenderType::EmissionMesh:
+            Lights::instance()->update_mesh_light_sync(
+                render_device->lc_main_cmd_list(),
+                _mesh_light_idx,
+                matrix,
+                _material_codes);
+            break;
+        case ObjectRenderType::Procedural:
+            sm.accel_manager().set_procedural_instance(
+                _procedural_idx,
+                matrix,
+                0xffu,
+                true);
+            break;
+    }
+}
+
+uint Renderer::get_tlas_index() const {
+    switch (_type) {
+        case ObjectRenderType::Mesh:
+            return _mesh_tlas_idx;
+        case ObjectRenderType::EmissionMesh:
+            return Lights::instance()->mesh_lights.light_data[_mesh_light_idx].tlas_id;
+        case ObjectRenderType::Procedural:
+            return _procedural_idx;
+        default:
+            return ~0u;
+    }
+}
+
+DECLARE_WORLD_TYPE_REGISTER(Renderer);
+}// namespace rbc::world

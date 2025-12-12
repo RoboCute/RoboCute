@@ -2,9 +2,12 @@
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/type_register.h>
 namespace rbc::world {
+struct TransformStatic : vstd::IOperatorNewBase {
+    luisa::vector<InstanceID> dirty_trans;
+};
+static RuntimeStatic<TransformStatic> _trans_inst;
 luisa::vector<InstanceID> &dirty_transforms() {
-    static luisa::vector<InstanceID> _singleton;
-    return _singleton;
+    return _trans_inst->dirty_trans;
 }
 void Transform::rbc_objser(rbc::JsonSerializer &ser_obj) const {
     ser_obj.start_array();
@@ -16,6 +19,14 @@ void Transform::rbc_objser(rbc::JsonSerializer &ser_obj) const {
     }
     ser_obj.add_last_scope_to_object("children");
     ser_obj._store(_trs, "trs");
+}
+float4x4 Transform::trs_float() const{
+    return make_float4x4(
+        make_float4(_trs[0]),
+        make_float4(_trs[1]),
+        make_float4(_trs[2]),
+        make_float4(_trs[3])
+    );
 }
 void Transform::rbc_objdeser(rbc::JsonDeSerializer &obj) {
     uint64_t size;
@@ -60,10 +71,10 @@ void Transform::mark_dirty() {
     dirty_transforms().emplace_back(_instance_id);
 }
 void Transform::traversal(double4x4 const &new_trs) {
-    auto old_l2w = local_to_world_matrix();
+    auto old_l2w = _trs;
     auto old_w2l = inverse(old_l2w);
     auto transform = [&](auto &transform, Transform *tr) -> void {
-        auto curr_l2w = tr->local_to_world_matrix();
+        auto curr_l2w = tr->_trs;
         auto child_to_parent = curr_l2w * old_w2l;
         auto new_l2w = child_to_parent * new_trs;
         tr->_trs = new_l2w;
@@ -155,5 +166,7 @@ Transform::~Transform() {
     }
 }
 void dispose();
+// clang-format off
 DECLARE_WORLD_TYPE_REGISTER(Transform)
+// clang-format on
 }// namespace rbc::world

@@ -325,8 +325,7 @@ void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
     }
     _frame_mem_io_list.add_callback([m = RC<DeviceMesh>(mesh)] {});
     auto &sm = SceneManager::instance();
-    if (mesh->tlas_ref_count > 0)
-        sm.accel_manager().mark_dirty();
+    sm.accel_manager().mark_dirty();
     if (mesh_data->pack.mesh) {
         _build_meshes.emplace(mesh);
     }

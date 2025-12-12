@@ -2,6 +2,7 @@
 #include <rbc_world_v2/transform.h>
 namespace rbc::world {
 static TypeRegisterBase *_type_register_header{};
+static RuntimeStaticBase *_runtime_static_header{};
 struct BaseObjectStatics : vstd::IOperatorNewBase {
     shared_atomic_mutex _instance_mtx;
     shared_atomic_mutex _guid_mtx;
@@ -14,14 +15,25 @@ struct BaseObjectStatics : vstd::IOperatorNewBase {
             p->init();
             _create_funcs.try_emplace(p->type_id(), p);
         }
+        for (auto p = _runtime_static_header; p; p = p->p_next) {
+            p->init();
+        }
     }
     ~BaseObjectStatics() {
         for (auto p = _type_register_header; p; p = p->p_next) {
             p->destroy();
         }
+        for (auto p = _runtime_static_header; p; p = p->p_next) {
+            p->destroy();
+        }
     }
 };
 static BaseObjectStatics *_world_inst = nullptr;
+RuntimeStaticBase::RuntimeStaticBase() {
+    p_next = _runtime_static_header;
+    _runtime_static_header = this;
+}
+RuntimeStaticBase::~RuntimeStaticBase() = default;
 TypeRegisterBase::TypeRegisterBase() {
     p_next = _type_register_header;
     _type_register_header = this;
@@ -132,7 +144,7 @@ BaseObjectType base_type_of(vstd::Guid const &type_id) {
         reinterpret_cast<std::array<uint64_t, 2> const &>(type_id));
     if (iter == _world_inst->_create_funcs.end())
         return BaseObjectType::Custom;
-    return iter->second->base_obj_type;
+    return iter->second->base_type();
 }
 void clear_dirty_transform() {
     auto &v = dirty_transforms();

@@ -19,7 +19,6 @@ private:
         uint64_t file_size = ~0ull, bool copy_to_host = false);
 
 public:
-    std::atomic_uint tlas_ref_count{};
     Type resource_type() const override { return Type::Mesh; }
     [[nodiscard]] auto mesh_data() const { return _render_mesh_data; }
     [[nodiscard]] luisa::span<std::byte const> host_data() const override { return _host_data; }

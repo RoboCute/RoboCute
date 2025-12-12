@@ -37,8 +37,11 @@ public:
         uint32_t uv_count,
         bool contained_normal,
         bool contained_tangent);
-    [[nodiscard]] auto device_mesh() const {
-        return _device_mesh.get();
+    [[nodiscard]] auto &device_mesh() {
+        return _device_mesh;
+    }
+    [[nodiscard]] auto const &device_mesh() const {
+        return _device_mesh;
     }
     bool loaded() const override;
     void rbc_objser(rbc::JsonSerializer &ser_obj) const override;

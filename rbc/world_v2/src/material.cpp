@@ -12,7 +12,7 @@ struct MaterialInst : vstd::IOperatorNewBase {
     luisa::spin_mutex _mat_mtx;
     luisa::vector<uint> _disposed_mat;
 };
-static MaterialInst *_mat_inst{};
+static RuntimeStatic<MaterialInst> _mat_inst;
 
 void _collect_all_materials() {
     auto sm = SceneManager::instance_ptr();
@@ -34,6 +34,8 @@ void Material::load_from_json(luisa::string_view json_vec) {
     luisa::string mat_type;
     if (!deser._load(mat_type, "type")) return;
     std::lock_guard lck{_mtx};
+    _depended_resources.clear();
+    _loaded = true;
     if (mat_type == "pbr") {
         _mat_data.reset_as<material::OpenPBR>();
         auto serde_func = [&]<typename U>(U &u, char const *name) {
@@ -152,7 +154,7 @@ void Material::unload() {
     _loaded = false;
     if (_mat_code.value == ~0u) return;
     auto value = _mat_code.value;
-    _mat_code.value = 0u;
+    _mat_code.value = ~0u;
     std::lock_guard lck1{_mat_inst->_mat_mtx};
     _mat_inst->_disposed_mat.emplace_back(value);
 }
@@ -186,6 +188,8 @@ void Material::update_material() {
     });
 }
 void Material::prepare_material() {
+    if (_mat_code.value != ~0u)
+        return;
     wait_load();
     auto iter = _depended_resources.begin();
     auto serde_func = [&]<typename U>(U &u, char const *name) {
@@ -217,8 +221,7 @@ void Material::prepare_material() {
     if (!loaded()) [[unlikely]] {
         LUISA_ERROR("Material not loaded yet.");
     }
-    if (_mat_code.value != ~0u)
-        return;
+
     auto &sm = SceneManager::instance();
     _mat_data.visit([&]<typename T>(T &t) {
         _mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, T>(
@@ -229,9 +232,7 @@ void Material::prepare_material() {
             sm.dispose_queue());
     });
 }
-DECLARE_WORLD_TYPE_REGISTER(Material, []() {
-     if (!_mat_inst)
-        _mat_inst = new MaterialInst{}; }, []() {
-    delete _mat_inst;
-    _mat_inst = nullptr; });
+// clang-format off
+DECLARE_WORLD_TYPE_REGISTER(Material);
+// clang-format on
 }// namespace rbc::world
