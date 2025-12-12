@@ -150,12 +150,14 @@ void VisApp::update() {
     last_frame_time = time;
 
     // handle camera control
-    // 只有在非交互模式或拖动模式下才允许相机控制
-    // 注意：在点击选择或框选模式下，禁用相机控制以避免冲突
+    // 只有在非交互模式或右键拖动时才允许相机控制
+    // 注意：在点击选择、框选模式或左键拖动已选物体时，禁用相机控制以避免冲突
+    // 左键拖动已选物体时，应该让ViewportWidget处理拖放到NodeEditor
     auto interaction_mode = interaction_manager.get_interaction_mode();
-    bool allow_camera_control = (interaction_mode == ViewportInteractionManager::InteractionMode::None ||
-                                 interaction_mode == ViewportInteractionManager::InteractionMode::Dragging);
+    bool allow_camera_control = (interaction_mode == ViewportInteractionManager::InteractionMode::None);
     
+    // 只有在非交互模式时才允许相机控制
+    // Dragging模式（左键拖动已选物体）应该禁用相机控制，以便ViewportWidget可以处理拖放
     if (allow_camera_control) {
         cam_controller.grab_input_from_viewport(camera_input, static_cast<float>(delta_time));
         if (cam_controller.any_changed())
