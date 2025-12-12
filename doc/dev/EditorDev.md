@@ -13,6 +13,10 @@ Editor拆分为Runtimeh和Editor两部分，其中Runtime为具体的功能实�
 
 ### 重构计划
 
+#### 0. 集中Context提取
+
+将Editor上方提取一个EditorContext类，用来管理当前Editor的全部状态，让UI表现与工作流分离
+
 #### 1. UI逻辑拆分 - EditorLayoutManager
 - **职责**：负责管理所有UI组件的创建、布局和显示/隐藏
 - **具体内容**：
@@ -22,6 +26,7 @@ Editor拆分为Runtimeh和Editor两部分，其中Runtime为具体的功能实�
 - **关联类**：MainWindow(使用)、WorkflowController(通知)
 
 #### 2. 消息管线独立 - CentralEvent/Command Bus
+
 - **职责**：作为消息中枢，处理组件间的通信
 - **具体内容**：
   - 实现发布-订阅模式，允许组件间解耦通信
@@ -39,6 +44,7 @@ Editor拆分为Runtimeh和Editor两部分，其中Runtime为具体的功能实�
 - **关联类**：MainWindow(使用)、EditorLayoutManager(协调UI)
 
 #### 4. 业务逻辑拆分：实现专门的业务管理类
+
 - **SceneUpdater**：
   - **职责**：处理场景更新相关的逻辑
   - **功能**：响应场景变化事件，更新场景层次结构和相关视图
