@@ -71,15 +71,23 @@ def main():
     # create a green smaller one
     robot2 = scene.create_entity("Robot")
     print(f"    Created entity: {robot2.name} (ID: {robot2.id})")
-    scene.add_component(robot2.id, "transform", rbc.TransformComponent(
-        position=[0.0, 20.0, 20.0],
-        rotation=[0.0, 0.0, 0.0, 1.0],
-        scale=[10.0, 10.0, 10.0],
-    ))
-    scene.add_component(robot2.id, "render", rbc.RenderComponent(
-        mesh_id=mesh_id,
-        material_ids=[],
-    ))
+    scene.add_component(
+        robot2.id,
+        "transform",
+        rbc.TransformComponent(
+            position=[0.0, 20.0, 20.0],
+            rotation=[0.0, 0.0, 0.0, 1.0],
+            scale=[10.0, 10.0, 10.0],
+        ),
+    )
+    scene.add_component(
+        robot2.id,
+        "render",
+        rbc.RenderComponent(
+            mesh_id=mesh_id,
+            material_ids=[],
+        ),
+    )
     print("    Added render component")
     entity_check = scene.get_entity(robot2.id)
     print(f"    Entity has components: {list(entity_check.components.keys())}")

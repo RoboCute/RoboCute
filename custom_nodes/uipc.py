@@ -64,6 +64,10 @@ class UIPCSimNode(rbc.RBCNode):
     def execute(self) -> Dict[str, Any]:
         entity_group = self.get_input("entity_group")
         print(f"[{self.DISPLAY_NAME}] Entity group input: {entity_group}")
+        # Validate scene context
+        if self.context is None:
+            print("[AnimationOutputNode] ✗ No scene context available!")
+            raise RuntimeError("AnimationOutputNode requires a scene context")
 
         if (
             not entity_group
@@ -79,15 +83,22 @@ class UIPCSimNode(rbc.RBCNode):
             f"[{self.DISPLAY_NAME}] Generating rotation animation for {len(entity_ids)} entities: {entity_ids}"
         )
         duration_frames = int(self.get_input("duration_frames", 120))
-        dt = float(self.get_input("dt"), 0.01)
+        dt = float(self.get_input("dt", 0.01))
 
         # Create animation sequences for all entities
         all_sequences = []
 
         # TODO: do uipc sim here
 
-        # Dispatch Result
+        # Dispatch Result into Animation Sequence
         for idx, entity_id in enumerate(entity_ids):
+            entity_obj = self.context.get_entity(entity_id)
+            transform = entity_obj.get_component("transform")
+            if transform:
+                initial_scale = transform.scale
+                print("initial_scale: ", initial_scale)
+
+            print()
             # Generate animation sequence for this entity
             animation_seq = rbc.AnimationSequence(entity_id=entity_id)
             for frame in range(duration_frames + 1):

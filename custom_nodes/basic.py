@@ -8,37 +8,6 @@ import robocute as rbc
 
 
 @rbc.register_node
-class PrintNode(rbc.RBCNode):
-    """Print Out Given Data Node"""
-
-    NODE_TYPE = "BASIC:OUTPUT"
-    DISPLAY_NAME = "Print To Console"
-    CATEGORY = "BASIC"
-    DESCRIPTION = "Print a given value to console"
-
-    @classmethod
-    def get_inputs(cls) -> List[rbc.NodeInput]:
-        return [
-            rbc.NodeInput(
-                name="input_string",
-                type="string",
-                require=False,
-                default="",
-                description="Input String to Print",
-            )
-        ]
-
-    @classmethod
-    def get_outputs(cls) -> List[rbc.NodeOutput]:
-        return []
-
-    def execute(self) -> Dict[str, Any]:
-        input_string = str(self.get_input("input_string", ""))
-        print(f"[Basic::PrintNode] {input_string}")
-        return {}
-
-
-@rbc.register_node
 class EntityInputNode(rbc.RBCNode):
     """Entity Input Node - Reference scene entities"""
 
@@ -131,7 +100,7 @@ class EntityGroupInputNode(rbc.RBCNode):
 
     def execute(self) -> Dict[str, Any]:
         entity_ids_input = self.get_input("entity_ids", "[]")
-        
+
         # Parse entity IDs - can be string (JSON array) or already a list
         entity_ids = []
         if isinstance(entity_ids_input, list):
@@ -139,13 +108,15 @@ class EntityGroupInputNode(rbc.RBCNode):
             entity_ids = entity_ids_input
         elif isinstance(entity_ids_input, str):
             entity_ids_str = entity_ids_input.strip()
+
             if not entity_ids_str or entity_ids_str == "" or entity_ids_str == "[]":
                 print("[EntityGroupInputNode] No entity IDs provided")
                 return {"entity_group": []}
-            
+
             # Try parsing as JSON array first
             try:
                 import json
+
                 parsed = json.loads(entity_ids_str)
                 if isinstance(parsed, list):
                     entity_ids = parsed
@@ -156,7 +127,9 @@ class EntityGroupInputNode(rbc.RBCNode):
                 parts = entity_ids_str.split(",")
                 entity_ids = [int(p.strip()) for p in parts if p.strip()]
         else:
-            print(f"[EntityGroupInputNode] Unexpected input type: {type(entity_ids_input)}")
+            print(
+                f"[EntityGroupInputNode] Unexpected input type: {type(entity_ids_input)}"
+            )
             return {"entity_group": []}
 
         if not entity_ids:
@@ -181,8 +154,10 @@ class EntityGroupInputNode(rbc.RBCNode):
             if entity is None:
                 print(f"[EntityGroupInputNode] ✗ Entity {entity_id} not found")
                 continue
-            
-            print(f"[EntityGroupInputNode] ✓ Found entity: {entity.name} (ID: {entity.id})")
+
+            print(
+                f"[EntityGroupInputNode] ✓ Found entity: {entity.name} (ID: {entity.id})"
+            )
             entity_group.append({"id": entity.id, "name": entity.name})
 
         if not entity_group:
