@@ -167,6 +167,6 @@ Transform::~Transform() {
 }
 void dispose();
 // clang-format off
-DECLARE_WORLD_TYPE_REGISTER(Transform)
+DECLARE_WORLD_COMPONENT_REGISTER(Transform)
 // clang-format on
 }// namespace rbc::world

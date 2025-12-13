@@ -1,11 +1,12 @@
 #pragma once
 #include <rbc_world_v2/base_object.h>
 namespace rbc::world {
-    enum struct WorldEventType : uint64_t {
+enum struct WorldEventType : uint64_t {
     OnTransformUpdate
     // etc...
     // can have custom events
 };
+struct Entity;
 // events from front to back
 struct Component : BaseObject {
     friend struct Entity;
@@ -14,10 +15,10 @@ struct Component : BaseObject {
 private:
     Entity *_entity{};
     RBC_WORLD_API void _remove_self_from_entity();
-    Component() = default;
-    ~Component() = default;
+    Component(Entity *entity);
+    ~Component();
     RBC_WORLD_API void add_event(WorldEventType event, void (Component::*func_ptr)());
-    RBC_WORLD_API void set_entity(Entity *entity);
+    RBC_WORLD_API void _clear_entity();
 protected:
     RBC_WORLD_API void remove_event(WorldEventType event);
 public:
@@ -40,8 +41,8 @@ struct ComponentDerive : Component {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
 protected:
-    ComponentDerive() = default;
-    virtual ~ComponentDerive() {
+    ComponentDerive(Entity *entity) : Component(entity) {}
+    ~ComponentDerive() {
         Component::_remove_self_from_entity();
     }
     void add_event(WorldEventType event, void (T::*func_ptr)()) {

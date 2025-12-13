@@ -2,20 +2,25 @@
 #include <rbc_world_v2/resource_base.h>
 #include <rbc_runtime/generated/resource_meta.hpp>
 namespace rbc {
-struct DeviceImage;
+struct DeviceResource;
 }// namespace rbc
 namespace rbc::world {
+struct VTLoadFlag : RCBase {
+    std::atomic_bool finished{false};
+};
 struct RBC_WORLD_API Texture final : ResourceBaseImpl<Texture> {
     DECLARE_WORLD_OBJECT_FRIEND(Texture)
     using BaseType = ResourceBaseImpl<Texture>;
 
 private:
     luisa::spin_mutex _async_mtx;
-    RC<DeviceImage> _device_image;
+    RC<DeviceResource> _tex;
     // meta
     LCPixelStorage _pixel_storage;
     luisa::uint2 _size;
     uint32_t _mip_level{};
+    RC<VTLoadFlag> _vt_finished{};
+    bool _is_vt{};
     Texture();
     ~Texture();
 public:
@@ -30,11 +35,8 @@ public:
         uint64_t file_offset,
         LCPixelStorage pixel_storage,
         luisa::uint2 size,
-        uint32_t mip_level);
-
-    [[nodiscard]] auto device_image() const {
-        return _device_image.get();
-    }
+        uint32_t mip_level,
+        bool is_virtual_texture);
 
     bool loaded() const override;
     void rbc_objser(rbc::JsonSerializer &ser_obj) const override;

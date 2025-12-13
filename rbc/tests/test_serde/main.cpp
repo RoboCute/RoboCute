@@ -26,35 +26,19 @@ int main() {
     luisa::BinaryBlob json;
     {
         auto entity = world::create_object_with_guid<world::Entity>(vstd::Guid(true));
-        auto trans = world::create_object_with_guid<world::Transform>(vstd::Guid(true));
 
-        entity->add_component(trans);
+        auto trans = entity->add_component<world::Transform>();
         trans->set_pos(double3(114, 514, 1919), false);
-        rbc::JsonSerializer writer;
+        rbc::JsonSerializer writer(true);
         // serialize entity and components
-        luisa::vector<std::pair<vstd::Guid, vstd::Guid>> type_meta;
-        auto serialize_obj = [&](world::BaseObject *obj) {
-            auto guid = obj->guid();
-            auto type_id = obj->type_id();
-            if (guid) {
-                writer.start_object();
-                obj->rbc_objser(writer);
-                writer.add_last_scope_to_object(guid.to_base64().c_str());
-                type_meta.emplace_back(reinterpret_cast<vstd::Guid &>(type_id), guid);
-            }
-        };
-        {
-            for (auto i : *entity) {
-                serialize_obj(i);
-            }
-            serialize_obj(entity);
+        auto guid = entity->guid();
+        auto type_id = entity->type_id();
+        writer.start_object();
+        if (guid) {
+            writer._store(guid, "__guid__");
+            entity->rbc_objser(writer);
         }
-        writer.start_array();
-        for (auto &i : type_meta) {
-            writer._store(i.first);
-            writer._store(i.second);
-        }
-        writer.add_last_scope_to_object("meta");
+        writer.add_last_scope_to_object();
         json = writer.write_to();
         auto trans_ptr = entity->get_component(TypeInfo::get<world::Transform>());
         // test life time
@@ -66,42 +50,27 @@ int main() {
         entity->dispose();
     }
     // Try deserialize
-    {
-        auto json_str = luisa::string_view{
-            (char const *)json.data(),
-            json.size()};
-        LUISA_INFO("{}", json_str);
-        rbc::JsonDeSerializer reader{json_str};
-        uint64_t meta_array_size;
-        LUISA_ASSERT(reader.start_array(meta_array_size, "meta"));
-        LUISA_ASSERT(meta_array_size % 2 == 0);
-        luisa::vector<world::BaseObject *> objs;
-        // create objects
-        for (auto i : vstd::range(meta_array_size / 2)) {
-            vstd::Guid type_id, guid;
-            LUISA_ASSERT(reader._load(type_id));
-            LUISA_ASSERT(reader._load(guid));
-            auto obj = world::create_object_with_guid(type_id, guid);
-            LUISA_ASSERT(obj);
-            objs.emplace_back(obj);
-        }
+    auto json_str = luisa::string_view{
+        (char const *)json.data(),
+        json.size()};
+    LUISA_INFO("{}", json_str);
+    // // {
+
+    rbc::JsonDeSerializer reader{json_str};
+    auto entity_size = reader.last_array_size();
+    luisa::vector<world::Entity*> entities;
+    entities.reserve(entity_size);
+    for (auto i : vstd::range(entity_size)) {
+        reader.start_object();
+        vstd::Guid guid;
+        LUISA_ASSERT(reader._load(guid, "__guid__"));
+        auto entity = entities.emplace_back(world::create_object_with_guid<world::Entity>(guid));
+        entity->rbc_objdeser(reader);
         reader.end_scope();
-        // deserialize content
-        world::Entity *entity{};
-        world::Transform *transform{};
-        for (auto &obj : objs) {
-            auto guid_str = obj->guid().to_base64();
-            LUISA_ASSERT(reader.start_object(guid_str.c_str()));
-            obj->rbc_objdeser(reader);
-            reader.end_scope();
-            if (obj->base_type() == world::BaseObjectType::Entity) {
-                entity = static_cast<world::Entity *>(obj);
-            } else {
-                transform = static_cast<world::Transform *>(obj);
-            }
-        }
-        LUISA_ASSERT(entity->component_count() == 1);
-        LUISA_INFO("{}", transform->position());
+    }
+    for(auto& i : entities) {
+        auto trans = i->get_component<world::Transform>();
+        LUISA_INFO("{}", trans->position());
     }
     return 0;
     //     rbc::JsonSerializer writer;

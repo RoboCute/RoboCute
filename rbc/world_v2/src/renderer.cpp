@@ -116,7 +116,7 @@ void Renderer::remove_object() {
     }
 }
 
-Renderer::Renderer() {
+Renderer::Renderer(Entity *entity) : ComponentDerive<Renderer>(entity) {
     _mesh_light_idx = ~0u;
 }
 void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
@@ -277,5 +277,5 @@ uint Renderer::get_tlas_index() const {
     }
 }
 
-DECLARE_WORLD_TYPE_REGISTER(Renderer);
+DECLARE_WORLD_COMPONENT_REGISTER(Renderer);
 }// namespace rbc::world

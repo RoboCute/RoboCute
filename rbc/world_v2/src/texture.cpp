@@ -1,14 +1,17 @@
 #pragma once
 #include <rbc_world_v2/texture.h>
 #include <rbc_graphics/device_assets/device_image.h>
+#include <rbc_graphics/device_assets/device_sparse_image.h>
 #include <rbc_graphics/render_device.h>
+#include <rbc_graphics/texture/tex_stream_manager.h>
 #include <rbc_world_v2/type_register.h>
 namespace rbc::world {
 Texture::Texture() = default;
 Texture::~Texture() = default;
 luisa::vector<std::byte> *Texture::host_data() {
-    if (_device_image)
-        return &_device_image->host_data_ref();
+    if (_tex && _tex->resource_type() == DeviceResource::Type::Image) {
+        return &static_cast<DeviceImage *>(_tex.get())->host_data_ref();
+    }
     return nullptr;
 }
 uint64_t Texture::desire_size_bytes() {
@@ -27,6 +30,7 @@ void Texture::rbc_objser(JsonSerializer &ser) const {
     ser._store(_pixel_storage, "pixel_storage");
     ser._store(_size, "size");
     ser._store(_mip_level, "mip_level");
+    ser._store(_is_vt, "is_vt");
 }
 void Texture::rbc_objdeser(JsonDeSerializer &ser) {
     BaseType::rbc_objdeser(ser);
@@ -40,6 +44,7 @@ void Texture::rbc_objdeser(JsonDeSerializer &ser) {
     RBC_MESH_LOAD(pixel_storage)
     RBC_MESH_LOAD(mip_level)
     RBC_MESH_LOAD(size)
+    RBC_MESH_LOAD(is_vt)
 #undef RBC_MESH_LOAD
 }
 void Texture::create_empty(
@@ -47,27 +52,49 @@ void Texture::create_empty(
     uint64_t file_offset,
     LCPixelStorage pixel_storage,
     luisa::uint2 size,
-    uint32_t mip_level) {
+    uint32_t mip_level,
+    bool is_vt) {
     auto render_device = RenderDevice::instance_ptr();
-    if (!render_device) return;
     _path = std::move(path);
     _file_offset = file_offset;
     _size = size;
     _pixel_storage = pixel_storage;
     _mip_level = mip_level;
-    if (!_device_image) {
-        _device_image = new DeviceImage();
-    } else {
-        if (_device_image->loaded()) [[unlikely]] {
-            LUISA_ERROR("Can not be create repeatly.");
-        }
+    _is_vt = is_vt;
+    if (!render_device) return;
+    if (_tex) {
+        LUISA_ERROR("Can not be create repeatly.");
     }
-    LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
-    _device_image->create_texture<float>(
-        render_device->lc_device(),
-        (PixelStorage)pixel_storage,
-        size,
-        mip_level);
+    if (is_vt) {
+        if (_path.empty()) {
+            LUISA_ERROR("Virtual texture must have path.");
+        }
+        auto tex = new DeviceSparseImage();
+        if (!_vt_finished) {
+            _vt_finished = new VTLoadFlag{};
+        }
+        tex->load(
+            TexStreamManager::instance(),
+            [vt_finished = this->_vt_finished]() {
+                vt_finished->finished = true;
+            },
+            _path,
+            _file_offset,
+            {},
+            (PixelStorage)_pixel_storage,
+            _size,
+            _mip_level);
+        _tex = tex;
+    } else {
+        auto tex = new DeviceImage();
+        tex->create_texture<float>(
+            render_device->lc_device(),
+            (PixelStorage)pixel_storage,
+            size,
+            mip_level);
+        _tex = tex;
+    }
+    LUISA_ASSERT(!host_data() || host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
 }
 bool Texture::async_load_from_file() {
     std::lock_guard lck{_async_mtx};
@@ -77,40 +104,67 @@ bool Texture::async_load_from_file() {
     if (_path.empty()) {
         return false;
     }
-    LUISA_ASSERT(host_data()->empty() || host_data()->size() == file_size, "Invalid host data length.");
-    if (!_device_image) {
-        _device_image = new DeviceImage();
-    } else {
-        if (_device_image->loaded()) [[unlikely]] {
-            return false;
-        }
+    LUISA_ASSERT(!host_data() || host_data()->empty() || host_data()->size() == file_size, "Invalid host data length.");
+    if (_tex) {
+        return false;
     }
-    _device_image->async_load_from_file(
-        _path,
-        _file_offset,
-        {},
-        (PixelStorage)_pixel_storage,
-        _size,
-        _mip_level,
-        DeviceImage::ImageType::Float,
-        !_device_image->host_data_ref().empty());
+    if (_is_vt) {
+        auto tex = static_cast<DeviceSparseImage *>(_tex.get());
+        if (!_vt_finished) {
+            _vt_finished = new VTLoadFlag{};
+        }
+        tex->load(
+            TexStreamManager::instance(),
+            [vt_finished = this->_vt_finished]() {
+                vt_finished->finished = true;
+            },
+            _path,
+            _file_offset,
+            {},
+            (PixelStorage)_pixel_storage,
+            _size,
+            _mip_level);
+    } else {
+        auto tex = static_cast<DeviceImage *>(_tex.get());
+        tex->async_load_from_file(
+            _path,
+            _file_offset,
+            {},
+            (PixelStorage)_pixel_storage,
+            _size,
+            _mip_level,
+            DeviceImage::ImageType::Float,
+            !tex->host_data_ref().empty());
+    }
     return true;
 }
 void Texture::wait_load() const {
-    if (_device_image)
-        _device_image->wait_finished();
+    if (!_tex) return;
+    _tex->wait_finished();
+    if (_vt_finished) {
+        while (!_vt_finished->finished) {
+            std::this_thread::yield();
+        }
+    }
 }
 void Texture::unload() {
-    _device_image.reset();
+    _tex.reset();
 }
 uint32_t Texture::heap_index() const {
-    if (!_device_image) return ~0u;
-    _device_image->wait_executed();
-    return _device_image->heap_idx();
+    if (_is_vt) {
+        return static_cast<DeviceSparseImage *>(_tex.get())->heap_idx();
+    } else {
+        return static_cast<DeviceImage *>(_tex.get())->heap_idx();
+    }
 }
 bool Texture::loaded() const {
-    return _device_image && _device_image->loaded();
+    if (!_tex) return false;
+    if (_is_vt) {
+        return static_cast<DeviceSparseImage *>(_tex.get())->loaded() && _vt_finished->finished;
+    } else {
+        return static_cast<DeviceImage *>(_tex.get())->loaded();
+    }
 }
-DECLARE_WORLD_TYPE_REGISTER(Texture)
+DECLARE_WORLD_OBJECT_REGISTER(Texture)
 
 }// namespace rbc::world

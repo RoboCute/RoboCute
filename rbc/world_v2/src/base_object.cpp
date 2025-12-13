@@ -108,7 +108,16 @@ BaseObject *create_object(rbc::TypeInfo const &type_info) {
         return nullptr;
     }
     auto ptr = iter->second->create();
-    ptr->init();
+    ptr->init_with_guid(vstd::Guid(true));
+    return ptr;
+}
+Component *Entity::_create_component(std::array<uint64_t, 2> const &type) {
+    auto iter = _world_inst->_create_funcs.find(type);
+    if (iter == _world_inst->_create_funcs.end()) {
+        return nullptr;
+    }
+    auto ptr = iter->second->create_component(this);
+    ptr->init_with_guid(vstd::Guid(true));
     return ptr;
 }
 BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid) {
@@ -126,7 +135,7 @@ BaseObject *create_object(vstd::Guid const &type_info) {
         return nullptr;
     }
     auto ptr = iter->second->create();
-    ptr->init();
+    ptr->init_with_guid(vstd::Guid(true));
     return ptr;
 }
 BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid) {

@@ -71,14 +71,6 @@ void Mesh::create_empty(
     bool contained_normal,
     bool contained_tangent) {
     auto render_device = RenderDevice::instance_ptr();
-    if (!render_device) return;
-    if (_device_mesh) {
-        if (_device_mesh->loaded()) [[unlikely]] {
-            LUISA_ERROR("Can not be create repeatly.");
-        }
-    } else {
-        _device_mesh = new DeviceMesh{};
-    }
     _submesh_offsets = std::move(submesh_offsets);
     _path = std::move(path);
     _file_offset = file_offset;
@@ -87,7 +79,15 @@ void Mesh::create_empty(
     _uv_count = uv_count;
     _contained_normal = contained_normal;
     _contained_tangent = contained_tangent;
+    if (_device_mesh) {
+        if (_device_mesh->loaded()) [[unlikely]] {
+            LUISA_ERROR("Can not be create repeatly.");
+        }
+    } else {
+        _device_mesh = new DeviceMesh{};
+    }
     LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
+    if (!render_device) return;
     _device_mesh->create_mesh(
         render_device->lc_main_cmd_list(),
         _vertex_count,
@@ -132,5 +132,5 @@ bool Mesh::loaded() const {
 void Mesh::unload() {
     _device_mesh.reset();
 }
-DECLARE_WORLD_TYPE_REGISTER(Mesh)
+DECLARE_WORLD_OBJECT_REGISTER(Mesh)
 }// namespace rbc::world

@@ -6,9 +6,9 @@ namespace rbc::world {
 struct Mesh;
 struct Material;
 struct RBC_WORLD_API Renderer final : ComponentDerive<Renderer> {
-    DECLARE_WORLD_OBJECT_FRIEND(Renderer)
+    DECLARE_WORLD_COMPONENT_FRIEND(Renderer)
 private:
-    Renderer();
+    Renderer(Entity *entity);
     ~Renderer();
     ObjectRenderType _type{};
     luisa::vector<MatCode> _material_codes;

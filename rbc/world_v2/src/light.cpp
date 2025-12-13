@@ -5,7 +5,7 @@
 #include <rbc_graphics/render_device.h>
 
 namespace rbc::world {
-Light::Light() {}
+Light::Light(Entity *entity) : ComponentDerive<Light>(entity) {}
 Light::~Light() {}
 void Light::_update_light() {
     auto tr = entity()->get_component<Transform>();
@@ -148,5 +148,5 @@ void Light::add_spot_light(luisa::float3 luminance, float angle_radians, float s
     _light_stub.light_type = LightType::Spot;
     _update_light();
 }
-DECLARE_WORLD_TYPE_REGISTER(Light);
+DECLARE_WORLD_COMPONENT_REGISTER(Light);
 }// namespace rbc::world

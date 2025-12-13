@@ -3,6 +3,7 @@
 #include <rbc_world_v2/type_register.h>
 
 namespace rbc::world {
+
 Entity::~Entity() {
     for (auto &i : _components) {
         auto obj = i.second;
@@ -12,12 +13,13 @@ Entity::~Entity() {
         comp->dispose();
     }
 }
-void Entity::add_component(Component *component) {
+void Entity::_add_component(Component *component) {
     component->_remove_self_from_entity();
     auto result = _components.try_emplace(component->type_id(), component).second;
     LUISA_ASSERT(result, "Component already exists.");
     LUISA_DEBUG_ASSERT(component->entity() == nullptr);
-    component->set_entity(this);
+    component->_entity = this;
+    component->on_awake();
 }
 
 bool Entity::remove_component(TypeInfo const &type) {
@@ -28,7 +30,7 @@ bool Entity::remove_component(TypeInfo const &type) {
     LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
     auto comp = static_cast<Component *>(obj);
     LUISA_DEBUG_ASSERT(comp->entity() == this);
-    comp->set_entity(nullptr);
+    comp->_clear_entity();
     for (auto &i : _events) {
         i.second.erase(comp);
     }
@@ -49,10 +51,13 @@ void Entity::rbc_objser(rbc::JsonSerializer &ser) const {
     for (auto &i : _components) {
         auto comp = i.second;
         if (!comp) return;
-        auto guid = comp->guid();
-        if (guid) {
-            ser._store(guid);
-        }
+        ser.start_object();
+        auto type_id = comp->type_id();
+        ser._store(
+            reinterpret_cast<vstd::Guid &>(type_id),
+            "__typeid__");
+        comp->rbc_objser(ser);
+        ser.add_last_scope_to_object();
     }
     ser.add_last_scope_to_object("components");
 }
@@ -61,13 +66,17 @@ void Entity::rbc_objdeser(rbc::JsonDeSerializer &ser) {
     if (!ser.start_array(size, "components")) return;
     _components.reserve(size);
     for (auto &i : vstd::range(size)) {
-        vstd::Guid obj_guid;
-        if (!ser._load(obj_guid)) {
-            break;
+        if (!ser.start_object()) break;
+        auto d = vstd::scope_exit([&] {
+            ser.end_scope();
+        });
+        vstd::Guid type_id;
+        if (!ser._load(type_id, "__typeid__")) {
+            continue;
         }
-        auto obj = get_object(obj_guid);
-        LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
-        add_component(static_cast<Component *>(obj));
+        auto comp = _create_component(reinterpret_cast<std::array<uint64_t, 2> const &>(type_id));
+        _add_component(comp);
+        comp->rbc_objdeser(ser);
     }
     ser.end_scope();
 }
@@ -76,7 +85,7 @@ void Entity::_remove_component(Component *component) {
     auto iter = _components.find(component->type_id());
     LUISA_DEBUG_ASSERT(iter != _components.end());
     _components.erase(iter);
-    component->set_entity(nullptr);
+    component->_clear_entity();
     for (auto &i : _events) {
         i.second.erase(component);
     }
@@ -105,14 +114,13 @@ void Component::remove_event(WorldEventType event) {
     if (iter == _entity->_events.end()) return;
     iter->second.erase(this);
 }
-void Component::set_entity(Entity *entity) {
-    if (_entity == entity) return;
-    _entity = entity;
-    if (entity) {
-        on_awake();
-    } else {
-        on_destroy();
-    }
+void Component::_clear_entity() {
+    if (!_entity) [[unlikely]]
+        return;
+    on_destroy();
+    _entity = nullptr;
 }
-DECLARE_WORLD_TYPE_REGISTER(Entity)
+Component::Component(Entity *entity) {}
+Component::~Component() {}
+DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world

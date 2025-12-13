@@ -4,10 +4,10 @@
 
 namespace rbc::world {
 struct RBC_WORLD_API Light final : ComponentDerive<Light> {
-    DECLARE_WORLD_OBJECT_FRIEND(Light)
+    DECLARE_WORLD_COMPONENT_FRIEND(Light)
 private:
     LightStub _light_stub;
-    Light();
+    Light(Entity* entity);
     ~Light();
     float3 _luminance{1, 1, 1};
     float _angle_radians{1.04719755119659f};       // 60

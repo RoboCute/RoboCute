@@ -238,6 +238,6 @@ void Material::prepare_material() {
     });
 }
 // clang-format off
-DECLARE_WORLD_TYPE_REGISTER(Material);
+DECLARE_WORLD_OBJECT_REGISTER(Material);
 // clang-format on
 }// namespace rbc::world

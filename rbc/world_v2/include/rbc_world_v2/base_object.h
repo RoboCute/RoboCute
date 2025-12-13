@@ -8,8 +8,8 @@
 #include <rbc_core/rc.h>
 #include <rbc_core/serde.h>
 namespace rbc::world {
-struct Transform;
 struct BaseObject;
+struct Entity;
 enum struct BaseObjectType {
     Component,
     Entity,
@@ -52,6 +52,7 @@ struct BaseObject : RCBase {
     friend struct BaseObjectDerive;
     template<typename T>
     friend struct ComponentDerive;
+    friend struct Entity;
     friend BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
     friend BaseObject *create_object(vstd::Guid const &type_info);
     friend BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid);
@@ -139,7 +140,7 @@ public:
 template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive : BaseObject {
     static constexpr BaseObjectType base_object_type_v = base_type_v;
-private:
+public:
     [[nodiscard]] const char *type_name() const override {
         return rbc_rtti_detail::is_rtti_type<T>::name;
     }
@@ -155,6 +156,10 @@ protected:
 }// namespace rbc::world
 RBC_RTTI(rbc::world::BaseObject);
 
-#define DECLARE_WORLD_OBJECT_FRIEND(type_name)       \
-    friend void _create_##type_name(type_name *ptr); \
-    friend void _destroy_##type_name(type_name *ptr);
+#define DECLARE_WORLD_OBJECT_FRIEND(type_name)               \
+    friend void ea525e13_create_##type_name(type_name *); \
+    friend void ea525e13_destroy_##type_name(type_name *);
+
+#define DECLARE_WORLD_COMPONENT_FRIEND(type_name)                      \
+    friend void ea525e13_create_##type_name(type_name *, Entity *); \
+    friend void ea525e13_destroy_##type_name(type_name *);

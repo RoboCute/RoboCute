@@ -4,7 +4,8 @@
 #include <luisa/vstl/ranges.h>
 namespace rbc::world {
 struct Component;
-
+namespace detail {
+}
 struct EntityCompIter {
     using IterType = luisa::unordered_map<std::array<uint64_t, 2>, Component *>::const_iterator;
 private:
@@ -39,6 +40,8 @@ private:
     RBC_WORLD_API void _remove_component(Component *component);
     Entity() = default;
     ~Entity();
+    RBC_WORLD_API Component *_create_component(std::array<uint64_t, 2> const& type);
+    RBC_WORLD_API void _add_component(Component *component);
 public:
     RBC_WORLD_API void dispose() override;
     EntityCompIter begin() const {
@@ -50,13 +53,12 @@ public:
     uint64_t component_count() const {
         return _components.size();
     }
-    RBC_WORLD_API void add_component(Component *component);
     template<typename T>
         requires(std::is_base_of_v<Component, T>)
-    T* add_component() {
-        auto ptr = create_object<T>();
-        add_component(ptr);
-        return ptr;
+    T *add_component() {
+        auto ptr = _create_component(rbc_rtti_detail::is_rtti_type<T>::get_md5());
+        _add_component(ptr);
+        return static_cast<T*>(ptr);
     }
     RBC_WORLD_API bool remove_component(TypeInfo const &type);
     RBC_WORLD_API Component *get_component(TypeInfo const &type);

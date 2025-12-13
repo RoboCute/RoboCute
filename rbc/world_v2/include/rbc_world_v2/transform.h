@@ -7,7 +7,7 @@
 namespace rbc::world {
 struct Entity;
 struct RBC_WORLD_API Transform final : ComponentDerive<Transform> {
-    DECLARE_WORLD_OBJECT_FRIEND(Transform)
+    DECLARE_WORLD_COMPONENT_FRIEND(Transform)
     friend void clear_dirty_transform();
 private:
     Transform *_parent{};
@@ -18,7 +18,7 @@ private:
     double4x4 _trs;
     bool _dirty : 1 {};
     bool _decomposed : 1 {true};
-    Transform() = default;
+    Transform(Entity *entity) : ComponentDerive<Transform>(entity) {}
     void mark_dirty();
     void try_decompose();
     void traversal(double4x4 const &new_trs);
