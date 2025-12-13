@@ -47,6 +47,14 @@ template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive;
 template<typename T>
 struct ComponentDerive;
+struct ObjSerialize {
+    rbc::JsonSerializer &ser;
+    // TODO: may need more arguments
+};
+struct ObjDeSerialize {
+    rbc::JsonDeSerializer &ser;
+    // TODO: may need more arguments
+};
 struct BaseObject : RCBase {
     template<typename T, BaseObjectType base_type_v>
     friend struct BaseObjectDerive;
@@ -73,8 +81,8 @@ public:
     }
     [[nodiscard]] auto guid() const { return _guid; }
     [[nodiscard]] virtual BaseObjectType base_type() const = 0;
-    virtual void rbc_objser(rbc::JsonSerializer &obj) const {}
-    virtual void rbc_objdeser(rbc::JsonDeSerializer &obj) {}
+    virtual void serialize(ObjSerialize const &obj) const {}
+    virtual void deserialize(ObjDeSerialize const &obj) {}
 
     [[nodiscard]] bool is_type_of(TypeInfo const &type) const {
         auto dst = type_id();
@@ -156,10 +164,10 @@ protected:
 }// namespace rbc::world
 RBC_RTTI(rbc::world::BaseObject);
 
-#define DECLARE_WORLD_OBJECT_FRIEND(type_name)               \
+#define DECLARE_WORLD_OBJECT_FRIEND(type_name)            \
     friend void ea525e13_create_##type_name(type_name *); \
     friend void ea525e13_destroy_##type_name(type_name *);
 
-#define DECLARE_WORLD_COMPONENT_FRIEND(type_name)                      \
+#define DECLARE_WORLD_COMPONENT_FRIEND(type_name)                   \
     friend void ea525e13_create_##type_name(type_name *, Entity *); \
     friend void ea525e13_destroy_##type_name(type_name *);

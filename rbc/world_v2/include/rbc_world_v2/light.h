@@ -7,7 +7,7 @@ struct RBC_WORLD_API Light final : ComponentDerive<Light> {
     DECLARE_WORLD_COMPONENT_FRIEND(Light)
 private:
     LightStub _light_stub;
-    Light(Entity* entity);
+    Light(Entity *entity);
     ~Light();
     float3 _luminance{1, 1, 1};
     float _angle_radians{1.04719755119659f};       // 60
@@ -22,8 +22,8 @@ public:
     void add_spot_light(luisa::float3 luminance, float angle_radians, float small_angle_radians, float angle_atten_pow, bool visible);
     void on_awake() override;
     void on_destroy() override;
-    void rbc_objser(rbc::JsonSerializer &ser_obj) const override;
-    void rbc_objdeser(rbc::JsonDeSerializer &obj) override;
+    void serialize(ObjSerialize const&obj) const override;
+    void deserialize(ObjDeSerialize const&obj) override;
     void dispose() override;
 };
 }// namespace rbc::world

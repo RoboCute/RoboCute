@@ -3,7 +3,9 @@
 #include <rbc_world_v2/type_register.h>
 
 namespace rbc::world {
+Entity::Entity() {
 
+}
 Entity::~Entity() {
     for (auto &i : _components) {
         auto obj = i.second;
@@ -46,39 +48,39 @@ Component *Entity::get_component(TypeInfo const &type) {
     LUISA_DEBUG_ASSERT(comp->entity() == this);
     return comp;
 }
-void Entity::rbc_objser(rbc::JsonSerializer &ser) const {
-    ser.start_array();
+void Entity::serialize(ObjSerialize const&ser) const {
+    ser.ser.start_array();
     for (auto &i : _components) {
         auto comp = i.second;
         if (!comp) return;
-        ser.start_object();
+        ser.ser.start_object();
         auto type_id = comp->type_id();
-        ser._store(
+        ser.ser._store(
             reinterpret_cast<vstd::Guid &>(type_id),
             "__typeid__");
-        comp->rbc_objser(ser);
-        ser.add_last_scope_to_object();
+        comp->serialize(ser);
+        ser.ser.add_last_scope_to_object();
     }
-    ser.add_last_scope_to_object("components");
+    ser.ser.add_last_scope_to_object("components");
 }
-void Entity::rbc_objdeser(rbc::JsonDeSerializer &ser) {
+void Entity::deserialize(ObjDeSerialize const&ser) {
     uint64_t size;
-    if (!ser.start_array(size, "components")) return;
+    if (!ser.ser.start_array(size, "components")) return;
     _components.reserve(size);
     for (auto &i : vstd::range(size)) {
-        if (!ser.start_object()) break;
+        if (!ser.ser.start_object()) break;
         auto d = vstd::scope_exit([&] {
-            ser.end_scope();
+            ser.ser.end_scope();
         });
         vstd::Guid type_id;
-        if (!ser._load(type_id, "__typeid__")) {
+        if (!ser.ser._load(type_id, "__typeid__")) {
             continue;
         }
         auto comp = _create_component(reinterpret_cast<std::array<uint64_t, 2> const &>(type_id));
         _add_component(comp);
-        comp->rbc_objdeser(ser);
+        comp->deserialize(ser);
     }
-    ser.end_scope();
+    ser.ser.end_scope();
 }
 void Entity::_remove_component(Component *component) {
     LUISA_DEBUG_ASSERT(component->entity() == this);

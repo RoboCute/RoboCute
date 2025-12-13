@@ -25,8 +25,9 @@ public:
     RBC_WORLD_API void set_path(
         luisa::filesystem::path const &path,
         uint64_t const &file_offset);
-    RBC_WORLD_API virtual void rbc_objser(JsonSerializer &ser) const;
-    RBC_WORLD_API virtual void rbc_objdeser(JsonDeSerializer &ser);
+    RBC_WORLD_API virtual void serialize(ObjSerialize const&obj) const;
+    RBC_WORLD_API virtual void deserialize(ObjDeSerialize const&obj);
+    // RBC_WORLD_API virtual void (ObjDeSerialize const&obj);
 };
 
 template<typename Derive>
@@ -43,11 +44,11 @@ private:
         return base_object_type_v;
     }
 protected:
-    virtual void rbc_objser(JsonSerializer &ser) const {
-        Resource::rbc_objser(ser);
+    virtual void serialize(ObjSerialize const&obj) const override {
+        Resource::serialize(obj);
     }
-    virtual void rbc_objdeser(JsonDeSerializer &ser) {
-        Resource::rbc_objdeser(ser);
+    virtual void deserialize(ObjDeSerialize const&obj) override {
+        Resource::deserialize(obj);
     }
     ResourceBaseImpl() = default;
     ~ResourceBaseImpl() = default;

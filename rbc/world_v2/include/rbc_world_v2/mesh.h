@@ -30,7 +30,7 @@ public:
     uint64_t desire_size_bytes();
     void create_empty(
         luisa::filesystem::path &&path,
-        luisa::vector<uint>&& submesh_offsets,
+        luisa::vector<uint> &&submesh_offsets,
         uint64_t file_offset,
         uint32_t vertex_count,
         uint32_t triangle_count,
@@ -41,8 +41,8 @@ public:
         return _device_mesh;
     }
     bool loaded() const override;
-    void rbc_objser(rbc::JsonSerializer &ser_obj) const override;
-    void rbc_objdeser(rbc::JsonDeSerializer &obj) override;
+    void serialize(ObjSerialize const&obj) const override;
+    void deserialize(ObjDeSerialize const&obj) override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;

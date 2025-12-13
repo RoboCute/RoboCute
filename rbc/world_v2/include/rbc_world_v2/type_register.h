@@ -69,16 +69,22 @@ template<typename T>
 struct RuntimeStatic<T> : RuntimeStaticBase {
     vstd::optional<T> ptr;
     T const *operator->() const {
+#ifndef NDEBUG
+        if (!ptr) {
+            LUISA_ERROR("Static object already disposed.");
+            return nullptr;
+        }
+#endif
         return ptr.ptr();
     }
     T *operator->() {
+#ifndef NDEBUG
+        if (!ptr) {
+            LUISA_ERROR("Static object already disposed.");
+            return nullptr;
+        }
+#endif
         return ptr.ptr();
-    }
-    T const &operator*() const {
-        return *ptr;
-    }
-    T &operator*() {
-        return *ptr;
     }
 protected:
     void init() override {

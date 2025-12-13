@@ -20,21 +20,30 @@ void Renderer::on_awake() {
 void Renderer::on_destroy() {
     remove_object();
 }
-void Renderer::rbc_objser(rbc::JsonSerializer &ser_obj) const {
+void Renderer::serialize(ObjSerialize const&ser) const {
+    auto &ser_obj = ser.ser;
     ser_obj.start_array();
     for (auto &i : _materials) {
         auto guid = i->guid();
-        ser_obj._store(guid);
+        if (guid) {
+            ser_obj._store(guid);
+            // TODO: mark dependencies
+            // ser.depended_resources.emplace(guid);
+        }
     }
     ser_obj.add_last_scope_to_object("mats");
     if (_mesh_ref) {
         auto guid = _mesh_ref->guid();
         if (guid) {
             ser_obj._store(guid, "mesh");
+            // TODO: mark dependencies
+            // ser.depended_resources.emplace(guid);
+            // ser.depended_resources.emplace(guid);
         }
     }
 }
-void Renderer::rbc_objdeser(rbc::JsonDeSerializer &obj) {
+void Renderer::deserialize(ObjDeSerialize const&ser) {
+    auto &obj = ser.ser;
     uint64_t size;
     if (obj.start_array(size, "mats")) {
         _materials.reserve(size);

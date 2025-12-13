@@ -9,7 +9,8 @@ static RuntimeStatic<TransformStatic> _trans_inst;
 luisa::vector<InstanceID> &dirty_transforms() {
     return _trans_inst->dirty_trans;
 }
-void Transform::rbc_objser(rbc::JsonSerializer &ser_obj) const {
+void Transform::serialize(ObjSerialize const&obj) const {
+    auto &ser_obj = obj.ser;
     ser_obj.start_array();
     for (auto &child : _children) {
         auto &&child_guid = child->guid();
@@ -20,28 +21,27 @@ void Transform::rbc_objser(rbc::JsonSerializer &ser_obj) const {
     ser_obj.add_last_scope_to_object("children");
     ser_obj._store(_trs, "trs");
 }
-float4x4 Transform::trs_float() const{
+float4x4 Transform::trs_float() const {
     return make_float4x4(
         make_float4(_trs[0]),
         make_float4(_trs[1]),
         make_float4(_trs[2]),
-        make_float4(_trs[3])
-    );
+        make_float4(_trs[3]));
 }
-void Transform::rbc_objdeser(rbc::JsonDeSerializer &obj) {
+void Transform::deserialize(ObjDeSerialize const&obj) {
     uint64_t size;
-    if (obj.start_array(size, "children")) {
+    if (obj.ser.start_array(size, "children")) {
         _children.reserve(size);
         vstd::Guid child_guid;
-        if (obj._load(child_guid)) {
+        if (obj.ser._load(child_guid)) {
             auto obj = get_object(child_guid);
             if (obj && obj->is_type_of(TypeInfo::get<Transform>())) {
                 add_children(static_cast<Transform *>(obj));
             }
         }
-        obj.end_scope();
+        obj.ser.end_scope();
     }
-    obj._load(_trs, "trs");
+    obj.ser._load(_trs, "trs");
     _decomposed = false;
 }
 void Transform::try_decompose() {

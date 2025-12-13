@@ -39,8 +39,8 @@ public:
         bool is_virtual_texture);
 
     bool loaded() const override;
-    void rbc_objser(rbc::JsonSerializer &ser_obj) const override;
-    void rbc_objdeser(rbc::JsonDeSerializer &obj) override;
+    void serialize(ObjSerialize const&obj) const override;
+    void deserialize(ObjDeSerialize const&obj) override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;

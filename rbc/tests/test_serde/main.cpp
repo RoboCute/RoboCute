@@ -29,14 +29,15 @@ int main() {
 
         auto trans = entity->add_component<world::Transform>();
         trans->set_pos(double3(114, 514, 1919), false);
-        rbc::JsonSerializer writer(true);
+        JsonSerializer writer(true);
+        world::ObjSerialize writer_args(writer);
         // serialize entity and components
         auto guid = entity->guid();
         auto type_id = entity->type_id();
         writer.start_object();
         if (guid) {
             writer._store(guid, "__guid__");
-            entity->rbc_objser(writer);
+            entity->serialize(writer_args);
         }
         writer.add_last_scope_to_object();
         json = writer.write_to();
@@ -55,7 +56,6 @@ int main() {
         json.size()};
     LUISA_INFO("{}", json_str);
     // // {
-
     rbc::JsonDeSerializer reader{json_str};
     auto entity_size = reader.last_array_size();
     luisa::vector<world::Entity*> entities;
@@ -65,7 +65,8 @@ int main() {
         vstd::Guid guid;
         LUISA_ASSERT(reader._load(guid, "__guid__"));
         auto entity = entities.emplace_back(world::create_object_with_guid<world::Entity>(guid));
-        entity->rbc_objdeser(reader);
+        auto deser_obj = world::ObjDeSerialize{.ser = reader};
+        entity->deserialize(deser_obj);
         reader.end_scope();
     }
     for(auto& i : entities) {

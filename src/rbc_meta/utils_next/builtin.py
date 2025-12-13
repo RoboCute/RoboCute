@@ -44,14 +44,14 @@ class ubyte:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "int8_t"
-    _py_type_name = "ctypes.ubyte"
+    _py_type_name = "int"
 
 
 class ulong:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "uint64_t"
-    _py_type_name = "ctypes.ulong"
+    _py_type_name = "int"
 
 
 class GUID:
@@ -129,6 +129,7 @@ class string:
 class VoidPtr:
     _reflected_ = True
     _cpp_type_name = "void*"
+    _py_type_name = ""
 
 
 T = TypeVar("T")

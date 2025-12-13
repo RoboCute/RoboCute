@@ -28,8 +28,9 @@ void MaterialStub::openpbr_json_ser(JsonSerializer &t, material::OpenPBR const &
 }
 void MaterialStub::openpbr_json_deser(JsonDeSerializer &t, material::OpenPBR &mat) {
     luisa::string type;
-    if (!t._load(type, "type")) return;
-    if (type != "pbr") return;
+    if (t._load(type, "type")) {
+        if (type != "pbr") return;
+    }
     auto serde_func = [&]<typename U>(U &u, char const *name) {
         using PureU = std::remove_cvref_t<U>;
         constexpr bool is_index = requires { u.index; };

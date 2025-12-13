@@ -27,8 +27,8 @@ public:
     double3 position();
     Quaternion rotation();
     double3 scale();
-    void rbc_objser(rbc::JsonSerializer &ser_obj) const override;
-    void rbc_objdeser(rbc::JsonDeSerializer &obj) override;
+    void serialize(ObjSerialize const&obj) const override;
+    void deserialize(ObjDeSerialize const&obj) override;
     void dispose() override;
     void set_pos(double3 const &position, bool recursive);
     void set_rotation(Quaternion const &rotation, bool recursive);

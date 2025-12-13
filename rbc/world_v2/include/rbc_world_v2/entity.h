@@ -38,7 +38,7 @@ private:
             void (Component::*)()>>
         _events;
     RBC_WORLD_API void _remove_component(Component *component);
-    Entity() = default;
+    Entity();
     ~Entity();
     RBC_WORLD_API Component *_create_component(std::array<uint64_t, 2> const& type);
     RBC_WORLD_API void _add_component(Component *component);
@@ -62,8 +62,8 @@ public:
     }
     RBC_WORLD_API bool remove_component(TypeInfo const &type);
     RBC_WORLD_API Component *get_component(TypeInfo const &type);
-    RBC_WORLD_API void rbc_objser(rbc::JsonSerializer &ser) const override;
-    RBC_WORLD_API void rbc_objdeser(rbc::JsonDeSerializer &ser) override;
+    RBC_WORLD_API void serialize(ObjSerialize const&ser) const override;
+    RBC_WORLD_API void deserialize(ObjDeSerialize const&ser) override;
     RBC_WORLD_API void broadcast_event(WorldEventType frame_tick);
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)

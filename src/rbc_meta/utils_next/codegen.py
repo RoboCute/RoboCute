@@ -238,7 +238,11 @@ def _get_py_type(type_hint: Any) -> Optional[str]:
     f = _PY_NAMES.get(type_hint)
     if f is not None:
         return f
-
+    if hasattr(type_hint, "_py_type_name"):
+        if len(type_hint._py_type_name) > 0:
+            return type_hint._py_type_name
+        return None
+        
     # For class types (not instances), return the class name
     if isinstance(type_hint, type):
         if hasattr(type_hint, "__name__"):

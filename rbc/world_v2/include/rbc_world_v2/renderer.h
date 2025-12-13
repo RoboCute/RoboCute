@@ -24,8 +24,8 @@ private:
 public:
     void on_awake() override;
     void on_destroy() override;
-    void rbc_objser(rbc::JsonSerializer &ser_obj) const override;
-    void rbc_objdeser(rbc::JsonDeSerializer &obj) override;
+    void serialize(ObjSerialize const&obj) const override;
+    void deserialize(ObjDeSerialize const&obj) override;
     void dispose() override;
     // draw
     void update_object(luisa::span<RC<Material> const> materials, Mesh *mesh = nullptr);

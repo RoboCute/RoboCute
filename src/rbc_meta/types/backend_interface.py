@@ -12,19 +12,19 @@ class ExternalType:
         self,
         cpp_type_name: str,
         is_trivial_type: bool = False,
-        py_type_name: str = None,
+        py_codegen_name: str = None,
     ):
         self._cpp_type_name = cpp_type_name
-        if py_type_name:
-            self._py_type_name = py_type_name
+        if py_codegen_name:
+            self._py_codegen_name = py_codegen_name
         else:
-            self._py_type_name = cpp_type_name
+            self._py_codegen_name = cpp_type_name
         self._reflected_ = True
         self._is_trivial_type = is_trivial_type
 
     def cpp_type_name(self, py_interface: bool = False, is_view: bool = True):
         if py_interface:
-            name = self._py_type_name
+            name = self._py_codegen_name
         else:
             name = self._cpp_type_name
         if not self._is_trivial_type and is_view:

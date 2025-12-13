@@ -117,11 +117,14 @@ luisa::BinaryBlob Material::write_content_to() {
     }
     return json_ser.write_to();
 }
-void Material::rbc_objser(JsonSerializer &ser) const {
-    BaseType::rbc_objser(ser);
-}
-void Material::rbc_objdeser(JsonDeSerializer &ser) {
-    BaseType::rbc_objdeser(ser);
+void Material::serialize(ObjSerialize const&ser) const {
+    BaseType::serialize(ser);
+    // TODO: mark dependencies
+    // for (auto &i : _depended_resources) {
+    //     auto guid = i->guid();
+    //     if (guid)
+    //         ser.depended_resources.emplace(guid);
+    // }
 }
 bool Material::async_load_from_file() {
     if (_path.empty()) return false;

@@ -1,17 +1,17 @@
 #include <rbc_world_v2/resource_base.h>
 
 namespace rbc ::world {
-void Resource::rbc_objser(JsonSerializer &ser) const {
+void Resource::serialize(ObjSerialize const&obj) const {
     if (!_path.empty()) {
-        ser._store(luisa::to_string(_path), "path");
-        ser._store(_file_offset, "file_offset");
+        obj.ser._store(luisa::to_string(_path), "path");
+        obj.ser._store(_file_offset, "file_offset");
     }
 }
-void Resource::rbc_objdeser(JsonDeSerializer &ser) {
+void Resource::deserialize(ObjDeSerialize const&obj) {
     luisa::string path_str;
-    if (ser._load(path_str, "path")) {
+    if (obj.ser._load(path_str, "path")) {
         _path = path_str;
-        ser._load(_file_offset, "file_offset");
+        obj.ser._load(_file_offset, "file_offset");
     }
 }
 void Resource::set_path(

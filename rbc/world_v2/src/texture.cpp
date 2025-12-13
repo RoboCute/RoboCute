@@ -25,19 +25,19 @@ uint64_t Texture::desire_size_bytes() {
     }
     return size_bytes;
 }
-void Texture::rbc_objser(JsonSerializer &ser) const {
-    BaseType::rbc_objser(ser);
-    ser._store(_pixel_storage, "pixel_storage");
-    ser._store(_size, "size");
-    ser._store(_mip_level, "mip_level");
-    ser._store(_is_vt, "is_vt");
+void Texture::serialize(ObjSerialize const&obj)const {
+    BaseType::serialize(obj);
+    obj.ser._store(_pixel_storage, "pixel_storage");
+    obj.ser._store(_size, "size");
+    obj.ser._store(_mip_level, "mip_level");
+    obj.ser._store(_is_vt, "is_vt");
 }
-void Texture::rbc_objdeser(JsonDeSerializer &ser) {
-    BaseType::rbc_objdeser(ser);
+void Texture::deserialize(ObjDeSerialize const&obj){
+    BaseType::deserialize(obj);
 #define RBC_MESH_LOAD(m)        \
     {                           \
         decltype(_##m) m;       \
-        if (ser._load(m, #m)) { \
+        if (obj.ser._load(m, #m)) { \
             _##m = m;           \
         }                       \
     }

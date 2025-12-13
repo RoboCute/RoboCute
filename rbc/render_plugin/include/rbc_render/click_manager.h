@@ -66,7 +66,10 @@ struct ClickManager {
         std::lock_guard lck{_mtx};
         _contour_objects.emplace_back(obj_id);
     }
-
+    ClickManager() = default;
+    ClickManager(ClickManager &&) = delete;
+    ClickManager(ClickManager const &) = delete;
+    ~ClickManager() = default;
 private:
     void clear_requires();
     void clear();

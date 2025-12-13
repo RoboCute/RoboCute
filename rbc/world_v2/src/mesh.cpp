@@ -8,27 +8,27 @@ Mesh::~Mesh() {
     int x = 0;
 }
 
-void Mesh::rbc_objser(JsonSerializer &ser) const {
-    BaseType::rbc_objser(ser);
-    ser._store(_contained_normal, "contained_normal");
-    ser._store(_contained_tangent, "contained_tangent");
-    ser._store(_vertex_count, "vertex_count");
-    ser._store(_triangle_count, "triangle_count");
-    ser._store(_uv_count, "uv_count");
-    ser.start_array();
+void Mesh::serialize(ObjSerialize const&ser) const {
+    BaseType::serialize(ser);
+    ser.ser._store(_contained_normal, "contained_normal");
+    ser.ser._store(_contained_tangent, "contained_tangent");
+    ser.ser._store(_vertex_count, "vertex_count");
+    ser.ser._store(_triangle_count, "triangle_count");
+    ser.ser._store(_uv_count, "uv_count");
+    ser.ser.start_array();
     for (auto &i : _submesh_offsets) {
-        ser._store(i);
+        ser.ser._store(i);
     }
-    ser.add_last_scope_to_object("submesh_offsets");
+    ser.ser.add_last_scope_to_object("submesh_offsets");
 }
-void Mesh::rbc_objdeser(JsonDeSerializer &ser) {
-    BaseType::rbc_objdeser(ser);
-#define RBC_MESH_LOAD(m)        \
-    {                           \
-        decltype(_##m) m;       \
-        if (ser._load(m, #m)) { \
-            _##m = m;           \
-        }                       \
+void Mesh::deserialize(ObjDeSerialize const&ser) {
+    BaseType::deserialize(ser);
+#define RBC_MESH_LOAD(m)            \
+    {                               \
+        decltype(_##m) m;           \
+        if (ser.ser._load(m, #m)) { \
+            _##m = m;               \
+        }                           \
     }
     RBC_MESH_LOAD(file_offset)
     RBC_MESH_LOAD(contained_normal)
@@ -38,11 +38,11 @@ void Mesh::rbc_objdeser(JsonDeSerializer &ser) {
     RBC_MESH_LOAD(uv_count)
 #undef RBC_MESH_LOAD
     uint64_t size;
-    if (ser.start_array(size, "submesh_offsets")) {
+    if (ser.ser.start_array(size, "submesh_offsets")) {
         _submesh_offsets.reserve(size);
         for (auto i : vstd::range(size)) {
             uint v;
-            if (ser._load(v)) {
+            if (ser.ser._load(v)) {
                 _submesh_offsets.push_back(v);
             }
         }
