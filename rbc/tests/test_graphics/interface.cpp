@@ -82,7 +82,8 @@ struct ContextImpl : RBCContext {
         manually_add_ref(ptr);
         ptr->async_load_from_file(
             file_path,
-            file_offset,
+            vertex_count,
+            triangle_count,
             contained_normal,
             contained_tangent,
             uv_count,
@@ -90,7 +91,6 @@ struct ContextImpl : RBCContext {
             false,
             true,
             file_offset,
-            ~0ull,
             true);
         return ptr;
     }

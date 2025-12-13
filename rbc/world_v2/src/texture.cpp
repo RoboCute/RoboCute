@@ -25,21 +25,21 @@ uint64_t Texture::desire_size_bytes() {
     }
     return size_bytes;
 }
-void Texture::serialize(ObjSerialize const&obj)const {
+void Texture::serialize(ObjSerialize const &obj) const {
     BaseType::serialize(obj);
     obj.ser._store(_pixel_storage, "pixel_storage");
     obj.ser._store(_size, "size");
     obj.ser._store(_mip_level, "mip_level");
     obj.ser._store(_is_vt, "is_vt");
 }
-void Texture::deserialize(ObjDeSerialize const&obj){
+void Texture::deserialize(ObjDeSerialize const &obj) {
     BaseType::deserialize(obj);
-#define RBC_MESH_LOAD(m)        \
-    {                           \
-        decltype(_##m) m;       \
+#define RBC_MESH_LOAD(m)            \
+    {                               \
+        decltype(_##m) m;           \
         if (obj.ser._load(m, #m)) { \
-            _##m = m;           \
-        }                       \
+            _##m = m;               \
+        }                           \
     }
     RBC_MESH_LOAD(pixel_storage)
     RBC_MESH_LOAD(mip_level)
@@ -54,18 +54,26 @@ void Texture::create_empty(
     luisa::uint2 size,
     uint32_t mip_level,
     bool is_vt) {
-    auto render_device = RenderDevice::instance_ptr();
+    std::lock_guard lck{_async_mtx};
+    wait_load();
+    if (loaded()) [[unlikely]] {
+        LUISA_ERROR("Can not create on exists mesh.");
+    }
     _path = std::move(path);
     _file_offset = file_offset;
     _size = size;
     _pixel_storage = pixel_storage;
     _mip_level = mip_level;
     _is_vt = is_vt;
-    if (!render_device) return;
+}
+bool Texture::init_device_resource() {
+    std::lock_guard lck{_async_mtx};
+    auto render_device = RenderDevice::instance_ptr();
+    if (!render_device) return false;
     if (_tex) {
-        LUISA_ERROR("Can not be create repeatly.");
+        return false;
     }
-    if (is_vt) {
+    if (_is_vt) {
         if (_path.empty()) {
             LUISA_ERROR("Virtual texture must have path.");
         }
@@ -89,12 +97,13 @@ void Texture::create_empty(
         auto tex = new DeviceImage();
         tex->create_texture<float>(
             render_device->lc_device(),
-            (PixelStorage)pixel_storage,
-            size,
-            mip_level);
+            (PixelStorage)_pixel_storage,
+            _size,
+            _mip_level);
         _tex = tex;
     }
-    LUISA_ASSERT(!host_data() || host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
+    LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
+    return true;
 }
 bool Texture::async_load_from_file() {
     std::lock_guard lck{_async_mtx};
@@ -151,6 +160,7 @@ void Texture::unload() {
     _tex.reset();
 }
 uint32_t Texture::heap_index() const {
+    if (!_tex) return ~0u;
     if (_is_vt) {
         return static_cast<DeviceSparseImage *>(_tex.get())->heap_idx();
     } else {

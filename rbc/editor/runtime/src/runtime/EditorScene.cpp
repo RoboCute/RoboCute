@@ -334,6 +334,7 @@ RC<DeviceMesh> EditorScene::loadMeshFromFile(const luisa::string &path) {
     device_mesh->async_load_from_memory(
         std::move(blob),
         mesh_builder.vertex_count(),
+        mesh_builder.indices_count() / 3,
         mesh_builder.contained_normal(),
         mesh_builder.contained_tangent(),
         mesh_builder.uv_count(),

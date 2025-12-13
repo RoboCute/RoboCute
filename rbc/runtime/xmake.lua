@@ -20,7 +20,6 @@ local function rbc_runtime_impl()
     })
     -- add_interface_deps('rbc_render_plugin')
     add_deps('lc-volk')
-    add_deps('tinyexr', 'tiny_obj_loader', 'stb-image', 'open_fbx', 'tinytiff') -- thirdparty
     add_defines('RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT')
     on_load(function(target)
         if target:is_plat('windows') then

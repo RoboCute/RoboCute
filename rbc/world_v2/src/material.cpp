@@ -27,16 +27,19 @@ void _collect_all_materials() {
     }
 }
 bool Material::loaded() const {
-    return _loaded;
+    return _loaded && _mat_code.value != ~0u;
 }
 void Material::load_from_json(luisa::string_view json_vec) {
     JsonDeSerializer deser{json_vec};
     luisa::string mat_type;
-    if (!deser._load(mat_type, "type")) return;
+    bool is_default{false};
+    if (!deser._load(mat_type, "type")) {
+        is_default = true;
+    }
     std::lock_guard lck{_mtx};
     _depended_resources.clear();
     _loaded = true;
-    if (mat_type == "pbr") {
+    if (is_default || mat_type == "pbr") {
         _mat_data.reset_as<material::OpenPBR>();
         auto serde_func = [&]<typename U>(U &u, char const *name) {
             using PureU = std::remove_cvref_t<U>;
@@ -117,7 +120,7 @@ luisa::BinaryBlob Material::write_content_to() {
     }
     return json_ser.write_to();
 }
-void Material::serialize(ObjSerialize const&ser) const {
+void Material::serialize(ObjSerialize const &ser) const {
     BaseType::serialize(ser);
     // TODO: mark dependencies
     // for (auto &i : _depended_resources) {
@@ -168,36 +171,14 @@ void Material::unload() {
 void Material::wait_load() const {
     _event.wait();
 }
-void Material::update_material() {
-    wait_load();
-    auto render_device = RenderDevice::instance_ptr();
-    if (!render_device) return;
+bool Material::init_device_resource() {
     std::lock_guard lck{_mtx};
-    if (!loaded()) [[unlikely]] {
-        LUISA_ERROR("Material not loaded yet.");
-    }
-    auto &sm = SceneManager::instance();
-    _mat_data.visit([&]<typename T>(T &t) {
-        if (_mat_code.value == ~0u) {
-            _mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, T>(
-                t,
-                render_device->lc_main_cmd_list(),
-                sm.bindless_allocator(),
-                sm.buffer_uploader(),
-                sm.dispose_queue());
-        } else {
-            sm.mat_manager().set_mat_instance(
-                _mat_code,
-                sm.buffer_uploader(),
-                {(std::byte const *)&t,
-                 sizeof(t)});
-        }
-    });
-}
-void Material::prepare_material() {
-    if (_mat_code.value != ~0u)
-        return;
+    auto render_device = RenderDevice::instance_ptr();
+    if (!render_device) return false;
     wait_load();
+    if (!_loaded) [[unlikely]] {
+        return false;
+    }
     auto iter = _depended_resources.begin();
     auto serde_func = [&]<typename U>(U &u, char const *name) {
         if constexpr (std::is_same_v<std::remove_cvref_t<U>, MatImageHandle>) {
@@ -223,22 +204,25 @@ void Material::prepare_material() {
         }
     });
     LUISA_ASSERT(iter == _depended_resources.end(), "Material type mismatch.");
-    auto render_device = RenderDevice::instance_ptr();
-    if (!render_device) return;
-    std::lock_guard lck{_mtx};
-    if (!loaded()) [[unlikely]] {
-        LUISA_ERROR("Material not loaded yet.");
-    }
 
     auto &sm = SceneManager::instance();
     _mat_data.visit([&]<typename T>(T &t) {
-        _mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, T>(
-            t,
-            render_device->lc_main_cmd_list(),
-            sm.bindless_allocator(),
-            sm.buffer_uploader(),
-            sm.dispose_queue());
+        if (_mat_code.value == ~0u) {
+            _mat_code = sm.mat_manager().emplace_mat_instance<material::PolymorphicMaterial, T>(
+                t,
+                render_device->lc_main_cmd_list(),
+                sm.bindless_allocator(),
+                sm.buffer_uploader(),
+                sm.dispose_queue());
+        } else {
+            sm.mat_manager().set_mat_instance(
+                _mat_code,
+                sm.buffer_uploader(),
+                {(std::byte const *)&t,
+                 sizeof(t)});
+        }
     });
+    return true;
 }
 // clang-format off
 DECLARE_WORLD_OBJECT_REGISTER(Material);

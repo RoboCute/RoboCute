@@ -20,7 +20,7 @@ void Renderer::on_awake() {
 void Renderer::on_destroy() {
     remove_object();
 }
-void Renderer::serialize(ObjSerialize const&ser) const {
+void Renderer::serialize(ObjSerialize const &ser) const {
     auto &ser_obj = ser.ser;
     ser_obj.start_array();
     for (auto &i : _materials) {
@@ -42,7 +42,7 @@ void Renderer::serialize(ObjSerialize const&ser) const {
         }
     }
 }
-void Renderer::deserialize(ObjDeSerialize const&ser) {
+void Renderer::deserialize(ObjDeSerialize const &ser) {
     auto &obj = ser.ser;
     uint64_t size;
     if (obj.start_array(size, "mats")) {
@@ -132,34 +132,42 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
     auto tr = entity()->get_component<Transform>();
     if (!tr) return;
     float4x4 matrix = tr->trs_float();
-    if (!mesh->loaded()) return;
-
-    for (auto &i : mats) {
-        if (!i->loaded()) return;
-        i->prepare_material();
-    }
     auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
     if (mesh) {
+        mesh->wait_load();
+        if (!mesh->loaded()) [[unlikely]] {
+            LUISA_WARNING("Mesh not loaded, renderer update failed.");
+            return;
+        }
         _mesh_ref.reset();
         _mesh_ref = mesh;
     }
-    mesh->wait_load();
-    _materials.clear();
-    _material_codes.clear();
-    auto submesh_size = std::max<size_t>(1, mesh->submesh_offsets().size());
-    if (!(mats.size() == submesh_size)) [[unlikely]] {
-        LUISA_ERROR("Submesh size {} mismatch with material size {}", submesh_size, mats.size());
+    if (!mats.empty()) {
+        auto submesh_size = std::max<size_t>(1, mesh->submesh_offsets().size());
+        if (!(mats.size() == submesh_size)) [[unlikely]] {
+            LUISA_WARNING("Submesh size {} mismatch with material size {}", submesh_size, mats.size());
+            return;
+        }
+        for (auto &i : mats) {
+            if (!i->loaded()) [[unlikely]] {
+                LUISA_WARNING("Material not loaded, renderer update failed.");
+                return;
+            }
+        }
+        _materials.clear();
+        _material_codes.clear();
+        vstd::push_back_all(
+            _materials,
+            mats);
+        vstd::push_back_func(
+            _material_codes,
+            _materials.size(),
+            [&](size_t i) {
+                _materials[i]->wait_load();
+                return _materials[i]->mat_code();
+            });
     }
-    vstd::push_back_all(
-        _materials,
-        mats);
-    vstd::push_back_func(
-        _material_codes,
-        _materials.size(),
-        [&](size_t i) {
-            return _materials[i]->mat_code();
-        });
     // TODO: change light type
     bool is_emission = material_is_emission(_materials);
     if (!render_device) return;

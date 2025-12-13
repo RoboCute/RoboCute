@@ -14,14 +14,12 @@ private:
     MaterialStub::MatDataType _mat_data;
     MatCode _mat_code;
     luisa::spin_mutex _mtx;
-    bool _loaded{false};
+    bool _loaded: 1{false};
 public:
     auto &mat_code() const { return _mat_code; }
     auto &mat_data() const { return _mat_data; }
     // prepare host data and emplace
-    void prepare_material();
-    // update data to device (without prepare)
-    void update_material();
+    bool init_device_resource() override;
     luisa::BinaryBlob write_content_to();
     void load_from_json(luisa::string_view json_vec);
     bool loaded() const override;

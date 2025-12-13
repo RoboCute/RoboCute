@@ -81,7 +81,9 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         mesh_builder.uv_count(),
         mesh_builder.contained_normal(),
         mesh_builder.contained_tangent());
+    mesh_data.pop_back();
     *mesh->host_data() = std::move(mesh_data);
+    mesh->init_device_resource();
     utils->update_mesh_data(mesh->device_mesh().get(), false);
     mat0 = world::create_object<world::Material>();
     mat1 = world::create_object<world::Material>();
@@ -89,8 +91,8 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     auto mat1_desc = R"({"type": "pbr", "specular_roughness": 0.8, "base_albedo": [1, 0.8, 0.6]})"sv;
     mat0->load_from_json(mat_desc);
     mat1->load_from_json(mat1_desc);
-    mat0->prepare_material();
-    mat1->prepare_material();
+    mat0->init_device_resource();
+    mat1->init_device_resource();
     // object
     {
         auto entity = _entities.emplace_back(world::create_object<world::Entity>());

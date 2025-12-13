@@ -8,7 +8,7 @@ Mesh::~Mesh() {
     int x = 0;
 }
 
-void Mesh::serialize(ObjSerialize const&ser) const {
+void Mesh::serialize(ObjSerialize const &ser) const {
     BaseType::serialize(ser);
     ser.ser._store(_contained_normal, "contained_normal");
     ser.ser._store(_contained_tangent, "contained_tangent");
@@ -21,7 +21,7 @@ void Mesh::serialize(ObjSerialize const&ser) const {
     }
     ser.ser.add_last_scope_to_object("submesh_offsets");
 }
-void Mesh::deserialize(ObjDeSerialize const&ser) {
+void Mesh::deserialize(ObjDeSerialize const &ser) {
     BaseType::deserialize(ser);
 #define RBC_MESH_LOAD(m)            \
     {                               \
@@ -61,6 +61,14 @@ luisa::vector<std::byte> *Mesh::host_data() {
 uint64_t Mesh::desire_size_bytes() {
     return DeviceMesh::get_mesh_size(_vertex_count, _contained_normal, _contained_tangent, _uv_count, _triangle_count);
 }
+void Mesh::decode(luisa::filesystem::path const &path) {
+    std::lock_guard lck{_async_mtx};
+    wait_load();
+    if (loaded()) [[unlikely]] {
+        LUISA_ERROR("Can not create on exists mesh.");
+    }
+    
+}
 void Mesh::create_empty(
     luisa::filesystem::path &&path,
     luisa::vector<uint> &&submesh_offsets,
@@ -70,7 +78,11 @@ void Mesh::create_empty(
     uint32_t uv_count,
     bool contained_normal,
     bool contained_tangent) {
-    auto render_device = RenderDevice::instance_ptr();
+    std::lock_guard lck{_async_mtx};
+    wait_load();
+    if (loaded()) [[unlikely]] {
+        LUISA_ERROR("Can not create on exists mesh.");
+    }
     _submesh_offsets = std::move(submesh_offsets);
     _path = std::move(path);
     _file_offset = file_offset;
@@ -87,7 +99,11 @@ void Mesh::create_empty(
         _device_mesh = new DeviceMesh{};
     }
     LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
-    if (!render_device) return;
+}
+bool Mesh::init_device_resource() {
+    std::lock_guard lck{_async_mtx};
+    auto render_device = RenderDevice::instance_ptr();
+    if (!render_device || !_device_mesh || loaded()) return false;
     _device_mesh->create_mesh(
         render_device->lc_main_cmd_list(),
         _vertex_count,
@@ -96,6 +112,7 @@ void Mesh::create_empty(
         _uv_count,
         _triangle_count,
         vstd::vector<uint>(_submesh_offsets));
+    return true;
 }
 bool Mesh::async_load_from_file() {
     std::lock_guard lck{_async_mtx};
@@ -117,12 +134,13 @@ bool Mesh::async_load_from_file() {
     _device_mesh->async_load_from_file(
         _path,
         _vertex_count,
+        _triangle_count,
         _contained_normal,
         _contained_tangent,
         _uv_count, vstd::vector<uint>{_submesh_offsets},
         false, true,
         _file_offset,
-        file_size, !_device_mesh->host_data_ref().empty());
+        !_device_mesh->host_data_ref().empty());
 
     return true;
 }

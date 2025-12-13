@@ -85,7 +85,10 @@ void SimpleScene::_init_mesh() {
         mesh_data.data(),
         mesh_data.size_bytes(),
         [mesh_data = std::move(mesh_data)](void *ptr) {}};
-    cube_mesh->async_load_from_memory(std::move(blob), mesh_builder.vertex_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent(), mesh_builder.uv_count(), std::move(submesh_triangle_offset), false /*No need to build BLAS for origin mesh*/, true);
+    cube_mesh->async_load_from_memory(
+        std::move(blob), mesh_builder.vertex_count(),
+        mesh_builder.indices_count() / 3,
+        mesh_builder.contained_normal(), mesh_builder.contained_tangent(), mesh_builder.uv_count(), std::move(submesh_triangle_offset), false /*No need to build BLAS for origin mesh*/, true);
     device_meshes.emplace_back(std::move(cube_mesh));
     LUISA_INFO("Cube mesh loaded");
 }
@@ -138,6 +141,7 @@ void SimpleScene::_init_tlas() {
             vstd::array_byte_size(quad_data),
             {}},
         4,
+        2,
         false,
         false,
         1,

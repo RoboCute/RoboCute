@@ -39,6 +39,7 @@ public:
         bool is_virtual_texture);
 
     bool loaded() const override;
+    bool init_device_resource()  override;
     void serialize(ObjSerialize const&obj) const override;
     void deserialize(ObjDeSerialize const&obj) override;
     void dispose() override;

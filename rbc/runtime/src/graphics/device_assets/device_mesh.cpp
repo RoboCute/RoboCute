@@ -24,7 +24,7 @@ void DeviceMesh::_async_load(
     LoadType &&load_type,
     uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
     bool build_mesh, bool calculate_bound,
-    uint64_t file_size,
+    uint32_t triangle_size,
     bool copy_to_host) {
     auto inst = AssetsManager::instance();
     if (_gpu_load_frame != 0) [[unlikely]] {
@@ -32,7 +32,7 @@ void DeviceMesh::_async_load(
     }
     _gpu_load_frame = std::numeric_limits<uint64_t>::max();
     inst->load_thd_queue.push(
-        [vertex_count, build_mesh, calculate_bound, copy_to_host, file_size, normal, tangent, uv_count, this_shared = RC{this}, submesh_triangle_offset = std::move(submesh_triangle_offset), load_type = std::move(load_type)](LoadTaskArgs const &args) mutable {
+        [vertex_count, build_mesh, calculate_bound, copy_to_host, triangle_size, normal, tangent, uv_count, this_shared = RC{this}, submesh_triangle_offset = std::move(submesh_triangle_offset), load_type = std::move(load_type)](LoadTaskArgs const &args) mutable {
             auto ptr = static_cast<DeviceMesh *>(this_shared.get());
             if (ptr->_gpu_load_frame != std::numeric_limits<uint64_t>::max()) return;
             ptr->_gpu_load_frame = args.load_frame;
@@ -41,6 +41,7 @@ void DeviceMesh::_async_load(
             if (build_mesh)
                 opt.create(AccelOption{.allow_compaction = false});
             /////////// Load as file
+            uint64_t desired_size = get_mesh_size(vertex_count, normal, tangent, uv_count, triangle_size);
             if constexpr (std::is_same_v<LoadType, FileLoad>) {
                 luisa::filesystem::path const &path = load_type.path;
                 uint64_t file_offset = load_type.file_offset;
@@ -49,8 +50,11 @@ void DeviceMesh::_async_load(
                     LUISA_ERROR("DeviceMesh path {} not found.", luisa::to_string(path));
                 }
                 uint64_t size = (file.length() - file_offset) + sizeof(uint) - 1;
-                size = std::min(size, file_size);
-                auto data_buffer = inst->lc_device().create_buffer<uint>(size / sizeof(uint));
+                if (size < desired_size) [[unlikely]] {
+                    LUISA_ERROR("Mesh file size {} less than required size {}", size, desired_size);
+                }
+
+                auto data_buffer = inst->lc_device().create_buffer<uint>(desired_size / sizeof(uint));
                 if (copy_to_host) {
                     *args.require_disk_io_sync = true;
                     auto &host_data = this_shared->_host_data;
@@ -87,7 +91,10 @@ void DeviceMesh::_async_load(
             /////////// Load as memory
             else if constexpr (std::is_same_v<LoadType, MemoryLoad>) {
                 BinaryBlob const &data = load_type.blob;
-                auto data_buffer = inst->lc_device().create_buffer<uint>((data.size() + sizeof(uint) - 1) / sizeof(uint));
+                if (data.size() < desired_size) [[unlikely]] {
+                    LUISA_ERROR("Mesh memory size {} less than required size {}", data.size(), desired_size);
+                }
+                auto data_buffer = inst->lc_device().create_buffer<uint>(desired_size / sizeof(uint));
                 args.mem_io_cmdlist << IOCommand(
                     data.data(),
                     0,
@@ -125,14 +132,18 @@ void DeviceMesh::_async_load(
 
 void DeviceMesh::async_load_from_buffer(
     Buffer<uint> &&data,
-    uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
+    uint vertex_count,
+    uint32_t triangle_size,
+    bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
     bool calculate_bound) {
-    _async_load(BufferLoad{std::move(data)}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), true, calculate_bound);
+    _async_load(BufferLoad{std::move(data)}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), true, calculate_bound, triangle_size);
 }
 
 void DeviceMesh::async_load_from_memory(
     BinaryBlob &&data,
-    uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
+    uint vertex_count,
+    uint32_t triangle_size,
+    bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
     bool build_mesh,
     bool calculate_bound,
     bool copy_to_host) {
@@ -149,19 +160,20 @@ void DeviceMesh::async_load_from_memory(
             _host_data.size(),
             {}};
     }
-    _async_load(MemoryLoad{std::move(data)}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, ~0ull);
+    _async_load(MemoryLoad{std::move(data)}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, triangle_size);
 }
 
 void DeviceMesh::async_load_from_file(
     luisa::filesystem::path const &path,
-    uint vertex_count, bool normal, bool tangent,
+    uint vertex_count,
+    uint32_t triangle_size,
+    bool normal, bool tangent,
     uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
     bool build_mesh,
     bool calculate_bound,
     uint64_t file_offset,
-    uint64_t file_max_size,
     bool copy_to_host) {
-    _async_load(FileLoad{path, file_offset}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, file_max_size, copy_to_host);
+    _async_load(FileLoad{path, file_offset}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, triangle_size, copy_to_host);
 }
 
 void DeviceMesh::create_mesh(

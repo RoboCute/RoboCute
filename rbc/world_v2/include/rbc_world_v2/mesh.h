@@ -20,6 +20,8 @@ private:
     Mesh() = default;
     ~Mesh();
 public:
+    void decode(luisa::filesystem::path const &path);
+
     [[nodiscard]] luisa::span<uint const> submesh_offsets() const { return _submesh_offsets; }
     [[nodiscard]] auto vertex_count() const { return _vertex_count; }
     [[nodiscard]] auto triangle_count() const { return _triangle_count; }
@@ -37,12 +39,13 @@ public:
         uint32_t uv_count,
         bool contained_normal,
         bool contained_tangent);
+    bool init_device_resource() override;
     [[nodiscard]] auto const &device_mesh() const {
         return _device_mesh;
     }
     bool loaded() const override;
-    void serialize(ObjSerialize const&obj) const override;
-    void deserialize(ObjDeSerialize const&obj) override;
+    void serialize(ObjSerialize const &obj) const override;
+    void deserialize(ObjDeSerialize const &obj) override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;

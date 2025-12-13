@@ -20,6 +20,7 @@ public:
     [[nodiscard]] uint64_t file_offset() const { return _file_offset; }
     virtual bool loaded() const = 0;
     virtual bool async_load_from_file() = 0;
+    virtual bool init_device_resource() = 0;
     virtual void unload() = 0;
     virtual void wait_load() const = 0;
     RBC_WORLD_API void set_path(

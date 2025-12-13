@@ -307,11 +307,17 @@ void GraphicsUtils::resize_swapchain(uint2 size) {
 }
 void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
     mesh->wait_finished();
+    if (!mesh->mesh_data()) {
+        LUISA_WARNING("Mesh not initialized, can not update data.");
+        return;
+    }
     mesh->calculate_bounding_box();
     auto mesh_data = mesh->mesh_data();
     LUISA_ASSERT(mesh_data, "Mesh not loaded.");
     auto host_data = mesh->host_data();
-    LUISA_ASSERT(host_data.size_bytes() == mesh_data->pack.data.size_bytes(), "Invalid host data length.");
+    if (!host_data.size_bytes() == mesh_data->pack.data.size_bytes()) {
+        LUISA_ERROR("Invalid host data length.");
+    }
     if (only_vertex) {
         _frame_mem_io_list << IOCommand{
             host_data.data(),
@@ -334,6 +340,10 @@ void GraphicsUtils::create_mesh(
     DeviceMesh *ptr,
     uint32_t vertex_count, bool contained_normal, bool contained_tangent,
     uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets) {
+    if (ptr->mesh_data()) {
+        LUISA_WARNING("Mesh already initialized, can not inited twice.");
+        return;
+    }
     auto mesh_size = DeviceMesh::get_mesh_size(vertex_count, contained_normal, contained_tangent, uv_count, triangle_count);
     auto &host_data = ptr->host_data_ref();
     host_data.push_back_uninitialized(mesh_size);
