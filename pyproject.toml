@@ -18,7 +18,7 @@ dependencies = [
     "diffusers>=0.35.2",
     "transformers>=4.57.3",
     "accelerate>=1.12.0",
-    "pyuipc"
+    "pyuipc",
 ]
 
 
