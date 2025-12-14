@@ -12,8 +12,15 @@ static void calculate_tangent(
     luisa::span<float4> tangents,
     luisa::span<Triangle const> triangles,
     float tangent_w) {
-    luisa::vector<std::array<std::atomic<float>, 3>> atomic_tangents;
-    atomic_tangents.resize(tangents.size());
+    auto atomic_tangents = (std::array<std::atomic<float>, 3> *)vengine_malloc(sizeof(std::array<std::atomic<float>, 3>) * tangents.size());
+    auto dsp = vstd::scope_exit([&] {
+        vengine_free(atomic_tangents);
+    });
+    for (size_t i = 0; i < tangents.size(); ++i) {
+        for (auto &j : atomic_tangents[i]) {
+            j = 0;
+        }
+    }
     luisa::fiber::parallel(
         triangles.size(),
         [&](size_t i) {
