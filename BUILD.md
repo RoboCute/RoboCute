@@ -16,7 +16,10 @@
 ### Python环境配置
 
 - 安装uv
-- `uv sync --extra cu128/cu130`同步所有包
+- `uv sync`同步所有包
+  - 如果希望支持torch相关AIGC功能，增加`--extra cu128/cu130`
+  - 如果希望支持uipc物理模拟，增加`--extra uipc`
+  - 如果希望支持Robotics相关，增加`--extra robotics`
 - (Optional) Pylance Select Interpreter `.venv/Scripts/python.exe`
 
 ### RBC环境启动
