@@ -1,13 +1,13 @@
 #include <rbc_world_v2/resource_base.h>
 
 namespace rbc ::world {
-void Resource::serialize(ObjSerialize const&obj) const {
+void Resource::serialize(ObjSerialize const &obj) const {
     if (!_path.empty()) {
         obj.ser._store(luisa::to_string(_path), "path");
         obj.ser._store(_file_offset, "file_offset");
     }
 }
-void Resource::deserialize(ObjDeSerialize const&obj) {
+void Resource::deserialize(ObjDeSerialize const &obj) {
     luisa::string path_str;
     if (obj.ser._load(path_str, "path")) {
         _path = path_str;
@@ -23,4 +23,6 @@ void Resource::set_path(
     _path = path;
     _file_offset = file_offset;
 }
+Resource::Resource() = default;
+Resource::~Resource() = default;
 }// namespace rbc::world

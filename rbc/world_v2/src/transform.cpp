@@ -5,6 +5,7 @@ namespace rbc::world {
 struct TransformStatic : vstd::IOperatorNewBase {
     luisa::vector<InstanceID> dirty_trans;
 };
+Transform::Transform(Entity *entity) : ComponentDerive<Transform>(entity) {}
 static RuntimeStatic<TransformStatic> _trans_inst;
 luisa::vector<InstanceID> &dirty_transforms() {
     return _trans_inst->dirty_trans;

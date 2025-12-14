@@ -105,7 +105,7 @@ public:
     [[nodiscard]] auto& lc_device() const { return _render_device.lc_device(); }
     [[nodiscard]] auto& scene_mng() const { return _scene_mng; }
     [[nodiscard]] auto& render_device() const { return _render_device; }
-    [[nodiscard]] auto& render_stream_disqueue() { return _render_stream_disqueue; }
+    // [[nodiscard]] auto& render_stream_disqueue() { return _render_stream_disqueue; }
     [[nodiscard]] auto& load_tex_uploader() { return _load_tex_uploader; }
     [[nodiscard]] auto& load_stream_disqueue() { return _load_stream_disqueue; }
     template <typename T>

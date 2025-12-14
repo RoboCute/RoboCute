@@ -25,14 +25,17 @@ void DeviceMesh::_async_load(
     uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
     bool build_mesh, bool calculate_bound,
     uint32_t triangle_size,
-    bool copy_to_host) {
+    bool copy_to_host, uint64_t extra_data_size) {
+    if ((extra_data_size & 3) > 0) [[unlikely]] {
+        LUISA_ERROR("Extra size must be aligned as 4-byte.");
+    }
     auto inst = AssetsManager::instance();
     if (_gpu_load_frame != 0) [[unlikely]] {
         return;
     }
     _gpu_load_frame = std::numeric_limits<uint64_t>::max();
     inst->load_thd_queue.push(
-        [vertex_count, build_mesh, calculate_bound, copy_to_host, triangle_size, normal, tangent, uv_count, this_shared = RC{this}, submesh_triangle_offset = std::move(submesh_triangle_offset), load_type = std::move(load_type)](LoadTaskArgs const &args) mutable {
+        [vertex_count, build_mesh, calculate_bound, copy_to_host, extra_data_size, triangle_size, normal, tangent, uv_count, this_shared = RC{this}, submesh_triangle_offset = std::move(submesh_triangle_offset), load_type = std::move(load_type)](LoadTaskArgs const &args) mutable {
             auto ptr = static_cast<DeviceMesh *>(this_shared.get());
             if (ptr->_gpu_load_frame != std::numeric_limits<uint64_t>::max()) return;
             ptr->_gpu_load_frame = args.load_frame;
@@ -50,29 +53,43 @@ void DeviceMesh::_async_load(
                     LUISA_ERROR("DeviceMesh path {} not found.", luisa::to_string(path));
                 }
                 uint64_t size = (file.length() - file_offset) + sizeof(uint) - 1;
-                if (size < desired_size) [[unlikely]] {
-                    LUISA_ERROR("Mesh file size {} less than required size {}", size, desired_size);
+                if (size < desired_size + extra_data_size) [[unlikely]] {
+                    LUISA_ERROR("Mesh file size {} less than required size {}", size, desired_size + extra_data_size);
                 }
 
                 auto data_buffer = inst->lc_device().create_buffer<uint>(desired_size / sizeof(uint));
+                if (extra_data_size > 0)
+                    this_shared->_extra_data = inst->lc_device().create_buffer<uint>((extra_data_size + sizeof(uint) - 1) / sizeof(uint));
                 if (copy_to_host) {
                     *args.require_disk_io_sync = true;
                     auto &host_data = this_shared->_host_data;
                     host_data.clear();
-                    host_data.push_back_uninitialized(data_buffer.size_bytes());
-                    args.io_cmdlist << IOCommand(
+                    host_data.push_back_uninitialized(desired_size + extra_data_size);
+                    args.io_cmdlist << IOCommand{
                         file,
                         file_offset,
-                        luisa::span{host_data});
+                        host_data};
                     args.mem_io_cmdlist << IOCommand{
                         IOCommand::SrcType{host_data.data()},
                         0,
                         IOBufferSubView(data_buffer)};
+                    if (extra_data_size > 0) {
+                        args.mem_io_cmdlist << IOCommand{
+                            IOCommand::SrcType{host_data.data() + desired_size},
+                            0,
+                            IOBufferSubView(this_shared->_extra_data)};
+                    }
                 } else {
                     args.io_cmdlist << IOCommand(
                         file,
                         file_offset,
                         IOBufferSubView(data_buffer));
+                    if (extra_data_size > 0) {
+                        args.io_cmdlist << IOCommand{
+                            file,
+                            file_offset + desired_size,
+                            IOBufferSubView(this_shared->_extra_data)};
+                    }
                 }
 
                 ptr->_render_mesh_data = inst->scene_mng()->mesh_manager().load_mesh(
@@ -91,14 +108,21 @@ void DeviceMesh::_async_load(
             /////////// Load as memory
             else if constexpr (std::is_same_v<LoadType, MemoryLoad>) {
                 BinaryBlob const &data = load_type.blob;
-                if (data.size() < desired_size) [[unlikely]] {
-                    LUISA_ERROR("Mesh memory size {} less than required size {}", data.size(), desired_size);
+                if (data.size() < desired_size + extra_data_size) [[unlikely]] {
+                    LUISA_ERROR("Mesh memory size {} less than required size {}", data.size(), desired_size + extra_data_size);
                 }
                 auto data_buffer = inst->lc_device().create_buffer<uint>(desired_size / sizeof(uint));
                 args.mem_io_cmdlist << IOCommand(
                     data.data(),
                     0,
                     IOBufferSubView(data_buffer));
+                if (extra_data_size > 0) {
+                    this_shared->_extra_data = inst->lc_device().create_buffer<uint>((extra_data_size + sizeof(uint) - 1) / sizeof(uint));
+                    args.mem_io_cmdlist << IOCommand(
+                        data.data() + desired_size,
+                        0,
+                        IOBufferSubView(this_shared->_extra_data));
+                }
                 ptr->_render_mesh_data = inst->scene_mng()->mesh_manager().load_mesh(
                     inst->scene_mng()->bindless_allocator(),
                     args.cmdlist,
@@ -146,7 +170,8 @@ void DeviceMesh::async_load_from_memory(
     bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
     bool build_mesh,
     bool calculate_bound,
-    bool copy_to_host) {
+    bool copy_to_host,
+    uint64_t extra_data_size) {
     if (copy_to_host) {
         if (data.data()) {
             if (_host_data.size() != data.size()) {
@@ -160,7 +185,7 @@ void DeviceMesh::async_load_from_memory(
             _host_data.size(),
             {}};
     }
-    _async_load(MemoryLoad{std::move(data)}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, triangle_size);
+    _async_load(MemoryLoad{std::move(data)}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, triangle_size, extra_data_size);
 }
 
 void DeviceMesh::async_load_from_file(
@@ -172,8 +197,9 @@ void DeviceMesh::async_load_from_file(
     bool build_mesh,
     bool calculate_bound,
     uint64_t file_offset,
-    bool copy_to_host) {
-    _async_load(FileLoad{path, file_offset}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, triangle_size, copy_to_host);
+    bool copy_to_host,
+    uint64_t extra_data_size) {
+    _async_load(FileLoad{path, file_offset}, vertex_count, normal, tangent, uv_count, std::move(submesh_triangle_offset), build_mesh, calculate_bound, triangle_size, copy_to_host, extra_data_size);
 }
 
 void DeviceMesh::create_mesh(

@@ -2,10 +2,9 @@
 #include <rbc_world_v2/type_register.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
-
 namespace rbc::world {
+Mesh::Mesh() = default;
 Mesh::~Mesh() {
-    int x = 0;
 }
 
 void Mesh::serialize(ObjSerialize const &ser) const {
@@ -61,14 +60,7 @@ luisa::vector<std::byte> *Mesh::host_data() {
 uint64_t Mesh::desire_size_bytes() {
     return DeviceMesh::get_mesh_size(_vertex_count, _contained_normal, _contained_tangent, _uv_count, _triangle_count);
 }
-void Mesh::decode(luisa::filesystem::path const &path) {
-    std::lock_guard lck{_async_mtx};
-    wait_load();
-    if (loaded()) [[unlikely]] {
-        LUISA_ERROR("Can not create on exists mesh.");
-    }
-    
-}
+
 void Mesh::create_empty(
     luisa::filesystem::path &&path,
     luisa::vector<uint> &&submesh_offsets,

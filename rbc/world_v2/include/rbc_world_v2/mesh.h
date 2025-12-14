@@ -17,10 +17,10 @@ private:
     uint32_t _uv_count{};
     bool _contained_normal : 1 {};
     bool _contained_tangent : 1 {};
-    Mesh() = default;
+    Mesh();
     ~Mesh();
 public:
-    void decode(luisa::filesystem::path const &path);
+    bool decode(luisa::filesystem::path const &path);
 
     [[nodiscard]] luisa::span<uint const> submesh_offsets() const { return _submesh_offsets; }
     [[nodiscard]] auto vertex_count() const { return _vertex_count; }
@@ -39,10 +39,10 @@ public:
         uint32_t uv_count,
         bool contained_normal,
         bool contained_tangent);
-    bool init_device_resource() override;
     [[nodiscard]] auto const &device_mesh() const {
         return _device_mesh;
     }
+    bool init_device_resource() override;
     bool loaded() const override;
     void serialize(ObjSerialize const &obj) const override;
     void deserialize(ObjDeSerialize const &obj) override;

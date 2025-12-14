@@ -10,16 +10,20 @@ namespace rbc {
 struct RBC_RUNTIME_API DeviceMesh : DeviceResource {
 private:
     luisa::vector<std::byte> _host_data;
+    Buffer<uint> _extra_data;
     MeshManager::MeshData *_render_mesh_data{};
     template<typename LoadType>
     void _async_load(
         LoadType &&load_type,
         uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
         bool build_mesh, bool calculate_bound,
-        uint32_t triangle_size, bool copy_to_host = false);
+        uint32_t triangle_size, bool copy_to_host = false, uint64_t extra_data_size = 0);
 
 public:
     Type resource_type() const override { return Type::Mesh; }
+    // extra data not for rendering but for computing (skin_weights, vertex_color, etc..)
+    // split from data buffer
+    [[nodiscard]] auto const &extra_data() const { return _extra_data; }
     [[nodiscard]] auto mesh_data() const { return _render_mesh_data; }
     [[nodiscard]] luisa::span<std::byte const> host_data() const override { return _host_data; }
     [[nodiscard]] luisa::span<std::byte> host_data() override { return _host_data; }
@@ -41,12 +45,15 @@ public:
         bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
         bool build_mesh = true, bool calculate_bound = false,
         uint64_t file_offset = 0,
-        bool copy_to_host = false);
+        bool copy_to_host = false,
+        uint64_t extra_data_size = 0);
     void async_load_from_memory(
         BinaryBlob &&data,
         uint vertex_count,
         uint32_t triangle_size, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
-        bool build_mesh = true, bool calculate_bound = false, bool copy_to_host = false);
+        bool build_mesh = true, bool calculate_bound = false,
+        bool copy_to_host = false,
+        uint64_t extra_data_size = 0);
     void async_load_from_buffer(
         Buffer<uint> &&data,
         uint vertex_count,

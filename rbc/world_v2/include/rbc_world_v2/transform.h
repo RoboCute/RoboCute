@@ -18,7 +18,7 @@ private:
     double4x4 _trs;
     bool _dirty : 1 {};
     bool _decomposed : 1 {true};
-    Transform(Entity *entity) : ComponentDerive<Transform>(entity) {}
+    Transform(Entity *entity);
     void mark_dirty();
     void try_decompose();
     void traversal(double4x4 const &new_trs);

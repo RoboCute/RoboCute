@@ -11,8 +11,8 @@ struct Resource : BaseObject {
 protected:
     luisa::filesystem::path _path;
     uint64_t _file_offset{};
-    Resource() = default;
-    ~Resource() = default;
+    Resource();
+    ~Resource();
 public:
     [[nodiscard]] luisa::filesystem::path const &path() const {
         return _path;
