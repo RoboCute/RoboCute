@@ -39,6 +39,7 @@ void Material::load_from_json(luisa::string_view json_vec) {
     std::lock_guard lck{_mtx};
     _depended_resources.clear();
     _loaded = true;
+    _dirty = true;
     if (is_default || mat_type == "pbr") {
         _mat_data.reset_as<material::OpenPBR>();
         auto serde_func = [&]<typename U>(U &u, char const *name) {
@@ -175,10 +176,15 @@ bool Material::init_device_resource() {
     std::lock_guard lck{_mtx};
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
+    if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
+        LUISA_ERROR("Material::init_device_resource can only be called in render-thread.");
+    }
     wait_load();
     if (!_loaded) [[unlikely]] {
         return false;
     }
+    if (!_dirty) return false;
+    _dirty = false;
     auto iter = _depended_resources.begin();
     auto serde_func = [&]<typename U>(U &u, char const *name) {
         if constexpr (std::is_same_v<std::remove_cvref_t<U>, MatImageHandle>) {

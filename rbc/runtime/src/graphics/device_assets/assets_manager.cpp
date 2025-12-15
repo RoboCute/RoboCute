@@ -73,6 +73,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
         i.temp_buffer.create(render_device.lc_device());
     }
     _load_thd = std::thread([this]() {
+        RenderDevice::set_rendering_thread(false);
         uint64_t executed_frame = 0;
         auto sync_frame_res = [&](AsyncFrameResource &frame_res) {
             auto wait_executive_thread = [&](auto &v) {
@@ -209,6 +210,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
         }
     });
     _load_executive_thd = std::thread([this] {
+        RenderDevice::set_rendering_thread(false);
         uint64_t executed_frame = 0;
         while (true) {
             {

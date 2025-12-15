@@ -26,10 +26,6 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     left_wall_mat->load_from_json(mat1);
     right_wall_mat->load_from_json(mat2);
     light_mat->load_from_json(light_mat_desc);
-    basic_mat->init_device_resource();
-    left_wall_mat->init_device_resource();
-    right_wall_mat->init_device_resource();
-    light_mat->init_device_resource();
     _mats[0] = basic_mat;
     _mats[1] = basic_mat;
     _mats[2] = basic_mat;
@@ -38,15 +34,19 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     _mats[5] = basic_mat;
     _mats[6] = basic_mat;
     _mats[7] = std::move(light_mat);
+    for (auto &i : _mats) {
+        i->init_device_resource();
+    }
     {
         auto entity = _entities.emplace_back(world::create_object<world::Entity>());
         auto transform = entity->add_component<world::Transform>();
         transform->set_pos(double3(0, -1, 2), true);
         transform->set_rotation(quaternion(
-            make_float3x3(
-                -1, 0, 0,
-                0, 1, 0,
-                0, 0, -1)), true);
+                                    make_float3x3(
+                                        -1, 0, 0,
+                                        0, 1, 0,
+                                        0, 0, -1)),
+                                true);
         auto render = entity->add_component<world::Renderer>();
         render->update_object(_mats, mesh);
     }

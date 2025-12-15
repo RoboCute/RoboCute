@@ -31,6 +31,7 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
         after_sync();
     if (_display_pipe_ctx)
         _render_plugin->destroy_pipeline_context(_display_pipe_ctx);
+    _denoise_pack.denoise_callback = {};
     _render_module.reset();
     if (_lights)
         _lights.destroy();
@@ -191,6 +192,7 @@ void GraphicsUtils::tick(
     });
     _denoise_pack = {};
     switch (tick_stage) {
+        case TickStage::PathTracingPreview:
         case TickStage::OffineCapturing:
         case TickStage::PresentOfflineResult:
             if (_denoiser_inited) {
@@ -200,6 +202,13 @@ void GraphicsUtils::tick(
             }
             break;
     }
+    auto set_denoise_pack = [&]() {
+        if (_denoiser_inited) {
+            frame_settings.albedo_buffer = &_denoise_pack.external_albedo;
+            frame_settings.normal_buffer = &_denoise_pack.external_normal;
+            frame_settings.radiance_buffer = &_denoise_pack.external_input;
+        }
+    };
     switch (tick_stage) {
         case TickStage::RasterPreview:
             pipe_settings.use_raster = true;
@@ -208,17 +217,14 @@ void GraphicsUtils::tick(
             pipe_settings.use_post_filter = false;
             break;
         case TickStage::PathTracingPreview:
+            set_denoise_pack();
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
             pipe_settings.use_editing = true;
             pipe_settings.use_post_filter = true;
             break;
         case TickStage::OffineCapturing:
-            if (_denoiser_inited) {
-                frame_settings.albedo_buffer = &_denoise_pack.external_albedo;
-                frame_settings.normal_buffer = &_denoise_pack.external_normal;
-                frame_settings.radiance_buffer = &_denoise_pack.external_input;
-            }
+            set_denoise_pack();
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
             pipe_settings.use_post_filter = true;

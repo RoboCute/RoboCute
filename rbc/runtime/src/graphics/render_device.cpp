@@ -6,6 +6,13 @@
 
 namespace rbc
 {
+static thread_local bool _is_rendering_thread{false};
+bool RenderDevice::is_rendering_thread() {
+    return _is_rendering_thread;
+}
+void RenderDevice::set_rendering_thread(bool is_rendering_thread){
+    _is_rendering_thread = is_rendering_thread;
+}
 namespace render_device_detail
 {
 static RenderDevice* _inst = nullptr;
@@ -35,6 +42,7 @@ void RenderDevice::init(
     bool require_async_stream, bool require_io_service, bool gpu_dump, void* external_device
 )
 {
+    set_rendering_thread(true);
     set_instance(this);
     _backend = backend;
     _headless = headless;
@@ -91,6 +99,7 @@ void RenderDevice::init(
 }
 RenderDevice::~RenderDevice()
 {
+    set_rendering_thread(false);
     if (!_headless)
     {
         if (_mem_io_service)

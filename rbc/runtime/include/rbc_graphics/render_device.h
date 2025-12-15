@@ -68,6 +68,8 @@ struct RBC_RUNTIME_API RenderDevice {
     inline auto io_service() { return _io_service; }
     inline auto mem_io_service() { return _mem_io_service; }
     inline auto &lc_main_cmd_list() { return _main_cmd_list; }
+    static bool is_rendering_thread();
+    static void set_rendering_thread(bool is_rendering_thread);
     static RenderDevice &instance();
     static RenderDevice *instance_ptr();
     static void set_instance(RenderDevice *device);

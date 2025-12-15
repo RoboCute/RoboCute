@@ -24,6 +24,7 @@ private:
     Texture();
     ~Texture();
 public:
+    bool decode(luisa::filesystem::path const &path);
     [[nodiscard]] auto pixel_storage() const { return _pixel_storage; }
     [[nodiscard]] auto size() const { return _size; }
     [[nodiscard]] auto mip_level() const { return _mip_level; }

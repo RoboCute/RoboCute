@@ -10,6 +10,9 @@ Light::~Light() {}
 void Light::_update_light() {
     auto tr = entity()->get_component<Transform>();
     if (!tr) return;
+    if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
+        LUISA_ERROR("Light::_update_light can only be called in render-thread.");
+    }
     auto matrix = tr->trs_float();
     auto scale_vec = tr->scale();
     auto scale = max(scale_vec.x, max(scale_vec.y, scale_vec.z));

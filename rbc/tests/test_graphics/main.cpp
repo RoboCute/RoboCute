@@ -213,6 +213,10 @@ int main(int argc, char *argv[]) {
         }
 
         auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
+        constexpr uint sample = 256;
+        if (frame_index > sample) {
+            tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
+        }
         click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
 
         utils.tick(
@@ -220,10 +224,10 @@ int main(int argc, char *argv[]) {
             frame_index,
             window_size,
             tick_stage);
-        // if (frame_index == sample) {
-        //     LUISA_INFO("Denoising..");
-        //     utils.denoise();
-        // }
+        if (frame_index == sample) {
+            LUISA_INFO("Denoising..");
+            utils.denoise();
+        }
         ++frame_index;
         switch (stage) {
             case MouseStage::Clicking:

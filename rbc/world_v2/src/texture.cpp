@@ -70,7 +70,8 @@ bool Texture::init_device_resource() {
     std::lock_guard lck{_async_mtx};
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
-    if (_tex) {
+    wait_load();
+    if (loaded()) {
         return false;
     }
     if (_is_vt) {

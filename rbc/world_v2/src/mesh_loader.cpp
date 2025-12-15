@@ -65,7 +65,8 @@ bool Mesh::decode(luisa::filesystem::path const &path) {
     std::lock_guard lck{_async_mtx};
     wait_load();
     if (loaded()) [[unlikely]] {
-        LUISA_ERROR("Can not create on exists mesh.");
+        LUISA_WARNING("Can not create on exists mesh.");
+        return false;
     }
     auto ext = luisa::to_string(path.extension());
     for (auto &i : ext) {

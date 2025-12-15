@@ -4,6 +4,7 @@
 #include <luisa/core/stl/algorithm.h>
 #include <rbc_io/io_service.h>
 #include <rbc_graphics/shader_manager.h>
+#include <rbc_graphics/render_device.h>
 #include <rbc_core/binary_file_writer.h>
 namespace rbc::detail
 {
@@ -70,6 +71,7 @@ TexStreamManager::TexStreamManager(
     , _lru_frame(lru_frame)
     , _lru_frame_memoryless(lru_frame_memoryless)
     , _copy_stream_thd([this]() {
+        RenderDevice::set_rendering_thread(false);
         auto clear_all = vstd::scope_exit([&]() {
             while (auto p = _copy_stream_callbacks.pop())
             {

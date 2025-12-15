@@ -171,6 +171,9 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
     // TODO: change light type
     bool is_emission = material_is_emission(_materials);
     if (!render_device) return;
+    if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
+        LUISA_ERROR("Renderer::update_object can only be called in render-thread.");
+    }
     // update
     if (_mesh_tlas_idx != ~0u) {
         switch (_type) {

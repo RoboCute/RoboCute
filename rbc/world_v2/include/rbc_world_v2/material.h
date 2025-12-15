@@ -15,6 +15,7 @@ private:
     MatCode _mat_code;
     luisa::spin_mutex _mtx;
     bool _loaded: 1{false};
+    bool _dirty: 1{true};
 public:
     auto &mat_code() const { return _mat_code; }
     auto &mat_data() const { return _mat_data; }
