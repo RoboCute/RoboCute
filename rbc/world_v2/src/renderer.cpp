@@ -228,7 +228,7 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
     }
     // create
     else {
-        if (material_is_emission(_materials)) {
+        if (is_emission) {
             _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                 render_device->lc_main_cmd_list(),
                 mesh->device_mesh(),

@@ -28,7 +28,7 @@ public:
     [[nodiscard]] auto size() const { return _size; }
     [[nodiscard]] auto mip_level() const { return _mip_level; }
     [[nodiscard]] luisa::vector<std::byte> *host_data();
-    [[nodiscard]] uint64_t desire_size_bytes();
+    [[nodiscard]] uint64_t desire_size_bytes() const;
     [[nodiscard]] uint32_t heap_index() const;
     void create_empty(
         luisa::filesystem::path &&path,

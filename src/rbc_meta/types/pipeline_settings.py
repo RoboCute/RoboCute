@@ -254,7 +254,7 @@ class PathTracerSettings:
     resource_color_space: ResourceColorSpace
 
     _cpp_init = {
-        "offline_spp": "2",
+        "offline_spp": "1",
         "offline_origin_bounce": "2",
         "offline_indirect_bounce": "4",
     }

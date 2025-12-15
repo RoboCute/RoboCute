@@ -7,111 +7,48 @@
 
 namespace rbc {
 WorldScene::WorldScene(GraphicsUtils *utils) {
-    MeshBuilder mesh_builder;
-    auto emplace = [&] {
-        mesh_builder.position.push_back(float3(-0.5f, -0.5f, -0.5f));// 0: Left Bottom Back
-        mesh_builder.position.push_back(float3(-0.5f, -0.5f, 0.5f)); // 1: Left Bottom Front
-        mesh_builder.position.push_back(float3(0.5f, -0.5f, -0.5f)); // 2: Right Buttom Back
-        mesh_builder.position.push_back(float3(0.5f, -0.5f, 0.5f));  // 3: Right Buttom Front
-        mesh_builder.position.push_back(float3(-0.5f, 0.5f, -0.5f)); // 4: Left Up Back
-        mesh_builder.position.push_back(float3(-0.5f, 0.5f, 0.5f));  // 5: Left Up Front
-        mesh_builder.position.push_back(float3(0.5f, 0.5f, -0.5f));  // 6: Right Up Back
-        mesh_builder.position.push_back(float3(0.5f, 0.5f, 0.5f));   // 7: Right Up Front
-        auto &triangle = mesh_builder.triangle_indices.emplace_back();
-        // Buttom face
-        triangle.emplace_back(0);
-        triangle.emplace_back(1);
-        triangle.emplace_back(2);
-        triangle.emplace_back(1);
-        triangle.emplace_back(3);
-        triangle.emplace_back(2);
-        // Up face
-        triangle.emplace_back(4);
-        triangle.emplace_back(5);
-        triangle.emplace_back(6);
-        triangle.emplace_back(5);
-        triangle.emplace_back(7);
-        triangle.emplace_back(6);
-        // Left face
-        triangle.emplace_back(0);
-        triangle.emplace_back(1);
-        triangle.emplace_back(4);
-        triangle.emplace_back(1);
-        triangle.emplace_back(5);
-        triangle.emplace_back(4);
-        // Right face
-        triangle.emplace_back(2);
-        triangle.emplace_back(3);
-        triangle.emplace_back(6);
-        triangle.emplace_back(3);
-        triangle.emplace_back(7);
-        triangle.emplace_back(6);
-        // Back face
-        triangle.emplace_back(0);
-        triangle.emplace_back(2);
-        triangle.emplace_back(4);
-        triangle.emplace_back(2);
-        triangle.emplace_back(6);
-        triangle.emplace_back(4);
-        // Front face
-        triangle.emplace_back(1);
-        triangle.emplace_back(3);
-        triangle.emplace_back(5);
-        triangle.emplace_back(3);
-        triangle.emplace_back(7);
-        triangle.emplace_back(5);
-    };
-    emplace();
-    auto vert_start = mesh_builder.position.size();
-    emplace();
-    for (auto &i : mesh_builder.triangle_indices.back()) {
-        i += vert_start;
-    }
-    for (auto &i : luisa::span{mesh_builder.position}.subspan(vert_start)) {
-        i += make_float3(0, 1.1f, 0);
-    }
-
-    luisa::vector<std::byte> mesh_data;
-    vstd::vector<uint> submesh_triangle_offset;// not used
-    mesh_builder.write_to(mesh_data, submesh_triangle_offset);
     mesh = world::create_object<world::Mesh>();
-    mesh->create_empty(
-        {}, std::move(submesh_triangle_offset),
-        0, mesh_builder.vertex_count(), mesh_builder.indices_count() / 3,
-        mesh_builder.uv_count(),
-        mesh_builder.contained_normal(),
-        mesh_builder.contained_tangent());
-    mesh_data.pop_back();
-    *mesh->host_data() = std::move(mesh_data);
+    mesh->decode("cornell_box.obj");
     mesh->init_device_resource();
     utils->update_mesh_data(mesh->device_mesh().get(), false);
-    mat0 = world::create_object<world::Material>();
-    mat1 = world::create_object<world::Material>();
-    auto mat_desc = R"({"type": "pbr", "specular_roughness": 0.2, "weight_metallic": 0.8})"sv;
-    auto mat1_desc = R"({"type": "pbr", "specular_roughness": 0.8, "base_albedo": [1, 0.8, 0.6]})"sv;
-    mat0->load_from_json(mat_desc);
-    mat1->load_from_json(mat1_desc);
-    mat0->init_device_resource();
-    mat1->init_device_resource();
-    // object
+    _mats.resize(mesh->submesh_count());
+    LUISA_ASSERT(mesh->submesh_count() == 8);
+    auto mat0 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]})"sv;
+    auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
+    auto mat2 = R"({"type": "pbr", "specular_roughness": 0.2, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]})"sv;
+    auto light_mat_desc = R"({"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]})"sv;
+
+    auto basic_mat = RC<world::Material>{world::create_object<world::Material>()};
+    auto left_wall_mat = RC<world::Material>{world::create_object<world::Material>()};
+    auto right_wall_mat = RC<world::Material>{world::create_object<world::Material>()};
+    auto light_mat = RC<world::Material>{world::create_object<world::Material>()};
+    basic_mat->load_from_json(mat0);
+    left_wall_mat->load_from_json(mat1);
+    right_wall_mat->load_from_json(mat2);
+    light_mat->load_from_json(light_mat_desc);
+    basic_mat->init_device_resource();
+    left_wall_mat->init_device_resource();
+    right_wall_mat->init_device_resource();
+    light_mat->init_device_resource();
+    _mats[0] = basic_mat;
+    _mats[1] = basic_mat;
+    _mats[2] = basic_mat;
+    _mats[3] = std::move(left_wall_mat);
+    _mats[4] = std::move(right_wall_mat);
+    _mats[5] = basic_mat;
+    _mats[6] = basic_mat;
+    _mats[7] = std::move(light_mat);
     {
         auto entity = _entities.emplace_back(world::create_object<world::Entity>());
         auto transform = entity->add_component<world::Transform>();
+        transform->set_pos(double3(0, -1, 2), true);
+        transform->set_rotation(quaternion(
+            make_float3x3(
+                -1, 0, 0,
+                0, 1, 0,
+                0, 0, -1)), true);
         auto render = entity->add_component<world::Renderer>();
-        transform->set_pos(make_double3(0, 0, 3), true);
-        RC<world::Material> mats[] = {
-            RC<world::Material>(mat0),
-            RC<world::Material>(mat1)};
-        render->update_object(mats, mesh);
-    }
-    // light
-    {
-        auto entity = _entities.emplace_back(world::create_object<world::Entity>());
-        auto transform = entity->add_component<world::Transform>();
-        auto light = entity->add_component<world::Light>();
-        transform->set_pos(make_double3(0.5, 0.5, 2), true);
-        transform->set_scale(double3(0.1), true);
-        light->add_area_light(float3(100, 100, 100), true);
+        render->update_object(_mats, mesh);
     }
 }
 WorldScene::~WorldScene() {

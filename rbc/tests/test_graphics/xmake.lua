@@ -29,7 +29,7 @@ for target_name, is_standalone in pairs(targets) do
                 end
                 target:set('kind', 'shared')
             end
-            target:add('deps', 'rbc_render_plugin', 'rbc_ipc', 'lc-gui', 'rbc_world_v2')
+            target:add('deps', 'rbc_render_plugin', 'rbc_ipc', 'lc-gui', 'rbc_world_v2', 'compile_shaders')
             target:add('defines', 'TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
         end)
     end
@@ -38,5 +38,11 @@ for target_name, is_standalone in pairs(targets) do
     add_defines('TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_IMPORT', {
         public = true
     })
-
+    after_build(function(target)
+        os.cp(path.join(os.scriptdir(), "cornell_box.obj"), path.join(target:targetdir(), "cornell_box.obj"), {
+            async = true,
+            detach = true,
+            copy_if_different = true
+        })
+    end)
 end

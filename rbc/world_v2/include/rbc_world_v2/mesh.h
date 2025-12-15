@@ -4,6 +4,10 @@ namespace rbc {
 struct DeviceMesh;
 }// namespace rbc
 namespace rbc::world {
+struct SkinWeight {
+    int32_t joint_id;
+    float weight;
+};
 struct RBC_WORLD_API Mesh final : ResourceBaseImpl<Mesh> {
     DECLARE_WORLD_OBJECT_FRIEND(Mesh)
     using BaseType = ResourceBaseImpl<Mesh>;
@@ -17,19 +21,27 @@ private:
     uint32_t _uv_count{};
     bool _contained_normal : 1 {};
     bool _contained_tangent : 1 {};
+    uint _vertex_color_channels{};
+    uint _skinning_weight_count{};
     Mesh();
     ~Mesh();
+    // extra_data:
+    // array<struct SkinWeight { int32_t joint_id; float weight; }, vertex_size>
+    // array<float * _vertex_color_channels, vertex_size>
 public:
     bool decode(luisa::filesystem::path const &path);
-
+    [[nodiscard]] luisa::span<SkinWeight const> skin_weights() const;
+    [[nodiscard]] luisa::span<float const> vertex_colors() const;
     [[nodiscard]] luisa::span<uint const> submesh_offsets() const { return _submesh_offsets; }
     [[nodiscard]] auto vertex_count() const { return _vertex_count; }
     [[nodiscard]] auto triangle_count() const { return _triangle_count; }
     [[nodiscard]] auto uv_count() const { return _uv_count; }
     [[nodiscard]] auto contained_normal() const { return _contained_normal; }
     [[nodiscard]] auto contained_tangent() const { return _contained_tangent; }
+    [[nodiscard]] auto submesh_count() const { return std::max<size_t>(_submesh_offsets.size(), 1); }
     [[nodiscard]] luisa::vector<std::byte> *host_data();
-    uint64_t desire_size_bytes();
+    uint64_t basic_size_bytes() const;
+    uint64_t desire_size_bytes() const;
     void create_empty(
         luisa::filesystem::path &&path,
         luisa::vector<uint> &&submesh_offsets,
@@ -38,7 +50,9 @@ public:
         uint32_t triangle_count,
         uint32_t uv_count,
         bool contained_normal,
-        bool contained_tangent);
+        bool contained_tangent,
+        uint vertex_color_channels,
+        uint skinning_weight_count);
     [[nodiscard]] auto const &device_mesh() const {
         return _device_mesh;
     }

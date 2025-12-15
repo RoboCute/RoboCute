@@ -14,7 +14,7 @@ luisa::vector<std::byte> *Texture::host_data() {
     }
     return nullptr;
 }
-uint64_t Texture::desire_size_bytes() {
+uint64_t Texture::desire_size_bytes() const {
     auto size = _size;
     uint64_t size_bytes{};
     for (auto i : vstd::range(_mip_level)) {

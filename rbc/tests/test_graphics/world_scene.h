@@ -8,6 +8,7 @@ struct WorldScene {
     world::Mesh *mesh;
     world::Material *mat0, *mat1;
     luisa::vector<world::Entity *> _entities;
+    luisa::vector<RC<world::Material>> _mats;
     WorldScene(GraphicsUtils *utils);
     ~WorldScene();
 };
