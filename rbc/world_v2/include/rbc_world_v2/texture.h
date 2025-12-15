@@ -3,6 +3,8 @@
 #include <rbc_runtime/generated/resource_meta.hpp>
 namespace rbc {
 struct DeviceResource;
+struct DeviceImage;
+struct DeviceSparseImage;
 }// namespace rbc
 namespace rbc::world {
 struct VTLoadFlag : RCBase {
@@ -25,6 +27,8 @@ private:
     ~Texture();
 public:
     bool decode(luisa::filesystem::path const &path);
+    [[nodiscard]] DeviceImage* get_image() const;
+    [[nodiscard]] DeviceSparseImage* get_sparse_image() const;
     [[nodiscard]] auto pixel_storage() const { return _pixel_storage; }
     [[nodiscard]] auto size() const { return _size; }
     [[nodiscard]] auto mip_level() const { return _mip_level; }

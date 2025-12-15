@@ -4,32 +4,32 @@ from enum import Enum
 
 @reflect(cpp_namespace="rbc", module_name="runtime", pybind=True)
 class LCPixelStorage(Enum):
-    BYTE1 = 1
-    BYTE2 = 2
-    BYTE4 = 3
-    SHORT1 = 4
-    SHORT2 = 5
-    SHORT4 = 6
-    INT1 = 7
-    INT2 = 8
-    INT4 = 9
-    HALF1 = 10
-    HALF2 = 11
-    HALF4 = 12
-    FLOAT1 = 13
-    FLOAT2 = 14
-    FLOAT4 = 15
-    R10G10B10A2 = 16
-    R11G11B10 = 17
-    BC1 = 18
-    BC2 = 19
-    BC3 = 20
-    BC4 = 21
-    BC5 = 22
-    BC6 = 23
-    BC7 = 24
-    BC7_SRGB = 25
-    BYTE4_SRGB = 26
+    BYTE1 = 0
+    BYTE2 = 1
+    BYTE4 = 2
+    SHORT1 = 3
+    SHORT2 = 4
+    SHORT4 = 5
+    INT1 = 6
+    INT2 = 7
+    INT4 = 8
+    HALF1 = 9
+    HALF2 = 10
+    HALF4 = 11
+    FLOAT1 = 12
+    FLOAT2 = 13
+    FLOAT4 = 14
+    R10G10B10A2 = 15
+    R11G11B10 = 16
+    BC1 = 17
+    BC2 = 18
+    BC3 = 19
+    BC4 = 20
+    BC5 = 21
+    BC6 = 22
+    BC7 = 23
+    BC7_SRGB = 24
+    BYTE4_SRGB = 25
 
 
 @reflect(cpp_namespace="rbc", module_name="runtime", pybind=True)

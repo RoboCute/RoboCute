@@ -14,6 +14,18 @@ luisa::vector<std::byte> *Texture::host_data() {
     }
     return nullptr;
 }
+DeviceImage *Texture::get_image() const {
+    if (_tex && !_is_vt) {
+        return static_cast<DeviceImage *>(_tex.get());
+    }
+    return nullptr;
+}
+DeviceSparseImage *Texture::get_sparse_image() const {
+    if (_tex && _is_vt) {
+        return static_cast<DeviceSparseImage *>(_tex.get());
+    }
+    return nullptr;
+}
 uint64_t Texture::desire_size_bytes() const {
     auto size = _size;
     uint64_t size_bytes{};
@@ -74,11 +86,18 @@ bool Texture::init_device_resource() {
     if (loaded()) {
         return false;
     }
+    auto file_size = desire_size_bytes();
+    LUISA_ASSERT(host_data()->empty() || host_data()->size() == file_size, "Invalid host data length {}, requires {}.", host_data()->size(), file_size);
     if (_is_vt) {
         if (_path.empty()) {
             LUISA_ERROR("Virtual texture must have path.");
         }
-        auto tex = new DeviceSparseImage();
+        DeviceSparseImage *tex{};
+        if (_is_vt && _tex) {
+            tex = static_cast<DeviceSparseImage *>(_tex.get());
+        }
+        if (!tex)
+            tex = new DeviceSparseImage();
         if (!_vt_finished) {
             _vt_finished = new VTLoadFlag{};
         }
@@ -95,7 +114,12 @@ bool Texture::init_device_resource() {
             _mip_level);
         _tex = tex;
     } else {
-        auto tex = new DeviceImage();
+        DeviceImage *tex{};
+        if (!_is_vt && _tex) {
+            tex = static_cast<DeviceImage *>(_tex.get());
+        }
+        if (!tex)
+            tex = new DeviceImage();
         tex->create_texture<float>(
             render_device->lc_device(),
             (PixelStorage)_pixel_storage,
@@ -103,7 +127,6 @@ bool Texture::init_device_resource() {
             _mip_level);
         _tex = tex;
     }
-    LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
     return true;
 }
 bool Texture::async_load_from_file() {
