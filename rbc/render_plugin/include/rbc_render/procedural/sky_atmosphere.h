@@ -1,5 +1,6 @@
 #pragma once
 #include <rbc_graphics/texture/hdri.h>
+#include <rbc_graphics/device_assets/device_image.h>
 #include <luisa/core/fiber.h>
 #include <rbc_graphics/scene_manager.h>
 namespace rbc {
@@ -31,7 +32,7 @@ private:
     // 	Image<float>,//src_img,
     // 	Image<float> //dst_img,
     // 	> const* _calc_lum;
-    Image<float> _src_img;
+    RC<DeviceImage> _src_img;
     Image<float> _img;
     // Image<float> _lum_img;
     Image<float> _temp_img;
@@ -55,7 +56,7 @@ public:
     [[nodiscard]] uint sky_alias_id() const { return _img_initialized.load() ? _sky_alias_id : ~0u; }
     [[nodiscard]] uint sky_pdf_id() const { return _img_initialized.load() ? _sky_pdf_id : ~0u; }
     [[nodiscard]] uint sky_lum_id() const { return _img_initialized.load() ? _sky_lum_id : ~0u; }
-    SkyAtmosphere(Device &device, HDRI &hdri, Image<float> &&src_img);
+    SkyAtmosphere(Device &device, HDRI &hdri, RC<DeviceImage> src_img);
     ~SkyAtmosphere();
     void mark_dirty() {
         _atmosphere_dirty = true;

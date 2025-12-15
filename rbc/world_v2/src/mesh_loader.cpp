@@ -199,11 +199,8 @@ bool Mesh::decode(luisa::filesystem::path const &path) {
                 luisa::span{
                     (std::byte *)attri.colors.data(),
                     attri.colors.size() * sizeof(tinyobj::real_t)});
-
-        // TODO
-        // [join_id:int , weight: float] array
         return true;
     }
-    return true;
+    return false;
 }
 }// namespace rbc::world

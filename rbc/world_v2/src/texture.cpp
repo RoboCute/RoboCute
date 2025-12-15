@@ -90,14 +90,16 @@ bool Texture::init_device_resource() {
     LUISA_ASSERT(host_data()->empty() || host_data()->size() == file_size, "Invalid host data length {}, requires {}.", host_data()->size(), file_size);
     if (_is_vt) {
         if (_path.empty()) {
-            LUISA_ERROR("Virtual texture must have path.");
+            LUISA_WARNING("Virtual texture must have path.");
+            return false;
         }
         DeviceSparseImage *tex{};
         if (_is_vt && _tex) {
             tex = static_cast<DeviceSparseImage *>(_tex.get());
-        }
-        if (!tex)
+        } else {
             tex = new DeviceSparseImage();
+            _tex = tex;
+        }
         if (!_vt_finished) {
             _vt_finished = new VTLoadFlag{};
         }
@@ -112,20 +114,19 @@ bool Texture::init_device_resource() {
             (PixelStorage)_pixel_storage,
             _size,
             _mip_level);
-        _tex = tex;
     } else {
         DeviceImage *tex{};
         if (!_is_vt && _tex) {
             tex = static_cast<DeviceImage *>(_tex.get());
-        }
-        if (!tex)
+        } else {
             tex = new DeviceImage();
+            _tex = tex;
+        }
         tex->create_texture<float>(
             render_device->lc_device(),
             (PixelStorage)_pixel_storage,
             _size,
             _mip_level);
-        _tex = tex;
     }
     return true;
 }

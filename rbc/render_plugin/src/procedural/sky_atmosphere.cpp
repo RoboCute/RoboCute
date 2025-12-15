@@ -3,10 +3,10 @@
 #include <luisa/runtime/image.h>
 #include <luisa/runtime/buffer.h>
 namespace rbc {
-SkyAtmosphere::SkyAtmosphere(Device &device, HDRI &hdri, Image<float> &&src_img)
+SkyAtmosphere::SkyAtmosphere(Device &device, HDRI &hdri, RC<DeviceImage> src_img)
     : _device(device), _hdri(hdri), _src_img(std::move(src_img)),
       //   _lum_img(device.create_image<float>(PixelStorage::FLOAT1, _src_img.size())),
-      _weight_buffer(device.create_buffer<float>(_src_img.size().x * _src_img.size().y)), _size(_src_img.size()), _event() {
+      _weight_buffer(device.create_buffer<float>(_src_img->get_float_image().size().x * _src_img->get_float_image().size().y)), _size(_src_img->get_float_image().size()), _event() {
     luisa::fiber::counter shader_init_counter;
     ShaderManager::instance()->async_load(shader_init_counter, "hdri/clamp_lum.bin", _blur_radius);
     ShaderManager::instance()->async_load(shader_init_counter, "hdri/color_sky.bin", _color_sky);
@@ -17,13 +17,13 @@ SkyAtmosphere::SkyAtmosphere(Device &device, HDRI &hdri, Image<float> &&src_img)
 
 void SkyAtmosphere::copy_img(CommandList &cmdlist) {
     if (!_img)
-        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img.size());
-    cmdlist << _img.copy_from(_src_img);
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img->get_float_image().size());
+    cmdlist << _img.copy_from(_src_img->get_float_image());
 }
 
 void SkyAtmosphere::colored(CommandList &cmdlist, float3 color) {
     if (!_img)
-        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img.size());
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img->get_float_image().size());
     cmdlist << (*_color_sky)(
                    _img,
                    color)
@@ -32,7 +32,7 @@ void SkyAtmosphere::colored(CommandList &cmdlist, float3 color) {
 
 void SkyAtmosphere::make_sun(CommandList &cmdlist, float angle_degree, float3 sun_color, float3 sun_dir) {
     if (!_img)
-        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img.size());
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img->get_float_image().size());
     cmdlist << (*_make_sun)(
                    _img,
                    sun_color,
@@ -43,9 +43,9 @@ void SkyAtmosphere::make_sun(CommandList &cmdlist, float angle_degree, float3 su
 
 void SkyAtmosphere::clamp_light(CommandList &cmdlist, float max_lum, uint blur_pixel) {
     if (!_temp_img)
-        _temp_img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img.size());
+        _temp_img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img->get_float_image().size());
     cmdlist << (*_blur_radius)(
-                   _src_img,
+                   _src_img->get_float_image(),
                    _temp_img,
                    max_lum,
                    uint2(1, 0),
@@ -82,9 +82,9 @@ void SkyAtmosphere::deallocate(BindlessAllocator &bdls_alloc) {
 bool SkyAtmosphere::update(CommandList &cmdlist, Stream &stream, BindlessAllocator &bdls_alloc, bool force_sync) {
     if (!_atmosphere_dirty.load())
         return false;
-    auto &img_view = [&]() -> Image<float> & {
+    auto &img_view = [&]() -> Image<float> const & {
         if (!_img)
-            return _src_img;
+            return _src_img->get_float_image();
         return _img;
     }();
     _hdri.compute_scalemap(_device, cmdlist, img_view, _size, _weight_buffer, [this](luisa::vector<float> &&data) {

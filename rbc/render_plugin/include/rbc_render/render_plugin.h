@@ -3,6 +3,7 @@
 #include <rbc_graphics/camera.h>
 #include <rbc_core/state_map.h>
 #include <rbc_runtime/plugin.h>
+#include <rbc_graphics/device_assets/device_image.h>
 #include <luisa/runtime/buffer.h>
 #include <luisa/runtime/stream.h>
 namespace rbc {
@@ -27,8 +28,10 @@ struct RenderPlugin : Plugin {
     virtual bool before_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) = 0;
     virtual bool on_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) = 0;
     // skybox
+    virtual void update_skybox(RC<DeviceImage> image) = 0;
     virtual bool update_skybox(
         luisa::filesystem::path const &path,
+        compute::PixelStorage pixel_storage,
         uint2 resolution,
         uint64_t file_offset_bytes = 0) = 0;
     virtual void dispose_skybox() = 0;

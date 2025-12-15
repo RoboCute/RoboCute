@@ -53,7 +53,7 @@ struct ContextImpl : RBCContext {
         utils.init_render();
     }
     void load_skybox(luisa::string_view path, uint2 size) override {
-        utils.render_plugin()->update_skybox(path, size);
+        utils.render_plugin()->update_skybox(path, PixelStorage::FLOAT4, size);
     }
     void create_window(luisa::string_view name, uint2 size, bool resiable) override {
         utils.init_display_with_window(name, size, resiable);

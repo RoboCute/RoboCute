@@ -92,8 +92,23 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
         ptr->update(*reinterpret_cast<PipelineContext *>(pipe_ctx));
         return true;
     }
+    void update_skybox(RC<DeviceImage> image) override {
+        auto &device = RenderDevice::instance();
+        if (!hdri) {
+            hdri.create();
+        }
+        if (sky_atom) {
+            device.lc_main_stream().synchronize();
+            sky_atom.destroy();
+        }
+        sky_atom.create(
+            device.lc_device(),
+            *hdri,
+            std::move(image));
+    }
     bool update_skybox(
         luisa::filesystem::path const &path,
+        compute::PixelStorage pixel_storage,
         uint2 resolution,
         uint64_t file_offset_bytes) override {
         auto &device = RenderDevice::instance();
@@ -104,15 +119,20 @@ struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
             return false;
         }
         IOFile file_stream(luisa::to_string(path));
-        if (file_stream.length() != resolution.x * resolution.y * sizeof(float4)) {
+        if (file_stream.length() - file_offset_bytes < pixel_storage_size(pixel_storage, make_uint3(resolution, 1u))) {
             return false;
         }
-        Image<float> img = device.lc_device().create_image<float>(PixelStorage::FLOAT4, resolution.x, resolution.y);
+        RC<DeviceImage> img = new DeviceImage();
+        img->create_texture<float>(
+            device.lc_device(),
+            pixel_storage, resolution,
+            1);
         IOCommandList io_cmdlist;
+
         io_cmdlist << IOCommand{
             file_stream,
             file_offset_bytes,
-            img.view()};
+            img->get_float_image()};
         io_cmdlist.dispose_file(std::move(file_stream));
         auto load_fence = device.io_service()->execute(std::move(io_cmdlist));
         if (sky_atom) {

@@ -32,7 +32,7 @@ void PBRApp::init(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
 
-    utils.render_plugin()->update_skybox("../sky.bytes", uint2(4096, 2048));
+    utils.render_plugin()->update_skybox("../sky.bytes", PixelStorage::FLOAT4, uint2(4096, 2048));
     simple_scene.create(*Lights::instance());
     auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
     cam.fov = radians(80.f);
