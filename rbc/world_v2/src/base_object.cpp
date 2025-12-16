@@ -50,12 +50,14 @@ void destroy_world() {
     _world_inst = nullptr;
 }
 BaseObject *get_object(InstanceID instance_id) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     if (instance_id._placeholder == ~0ull) return nullptr;
     BaseObject *ptr;
     std::shared_lock lck{_world_inst->_instance_mtx};
     return _world_inst->_instance_ids[instance_id._placeholder];
 }
 BaseObject *get_object(vstd::Guid const &guid) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     std::shared_lock lck{_world_inst->_guid_mtx};
     auto iter = _world_inst->_obj_guids.find(reinterpret_cast<std::array<uint64_t, 2> const &>(guid));
     if (iter == _world_inst->_obj_guids.end()) {
@@ -64,6 +66,7 @@ BaseObject *get_object(vstd::Guid const &guid) {
     return iter->second;
 }
 void BaseObject::init() {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     _guid.reset();
     std::lock_guard lck{_world_inst->_instance_mtx};
     if (_world_inst->_disposed_instance_ids.empty()) {
@@ -76,6 +79,7 @@ void BaseObject::init() {
     }
 }
 void BaseObject::init_with_guid(vstd::Guid const &guid) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     LUISA_DEBUG_ASSERT(guid);
     init();
     _guid = guid;
@@ -86,6 +90,7 @@ void BaseObject::init_with_guid(vstd::Guid const &guid) {
     }
 }
 BaseObject::~BaseObject() {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     if (_instance_id != ~0ull) {
         std::lock_guard lck{_world_inst->_instance_mtx};
         _world_inst->_disposed_instance_ids.push_back(_instance_id);
@@ -102,7 +107,16 @@ BaseObject::~BaseObject() {
 
 luisa::spin_mutex &dirty_trans_mtx();
 luisa::vector<InstanceID> &dirty_transforms();
+BaseObjectType get_base_object_type(vstd::Guid const &type_id) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
+    auto iter = _world_inst->_create_funcs.find((std::array<uint64_t, 2> const &)type_id);
+    if (iter == _world_inst->_create_funcs.end()) {
+        return BaseObjectType::None;
+    }
+    return iter->second->base_type();
+}
 BaseObject *create_object(rbc::TypeInfo const &type_info) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(type_info.md5());
     if (iter == _world_inst->_create_funcs.end()) {
         return nullptr;
@@ -112,6 +126,7 @@ BaseObject *create_object(rbc::TypeInfo const &type_info) {
     return ptr;
 }
 Component *Entity::_create_component(std::array<uint64_t, 2> const &type) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(type);
     if (iter == _world_inst->_create_funcs.end()) {
         return nullptr;
@@ -121,6 +136,7 @@ Component *Entity::_create_component(std::array<uint64_t, 2> const &type) {
     return ptr;
 }
 BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(type_info.md5());
     if (iter == _world_inst->_create_funcs.end()) {
         return nullptr;
@@ -130,6 +146,7 @@ BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid c
     return ptr;
 }
 BaseObject *create_object(vstd::Guid const &type_info) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(reinterpret_cast<std::array<uint64_t, 2> const &>(type_info));
     if (iter == _world_inst->_create_funcs.end()) {
         return nullptr;
@@ -139,6 +156,7 @@ BaseObject *create_object(vstd::Guid const &type_info) {
     return ptr;
 }
 BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(reinterpret_cast<std::array<uint64_t, 2> const &>(type_info));
     if (iter == _world_inst->_create_funcs.end()) {
         return nullptr;
@@ -148,10 +166,23 @@ BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid cons
     return ptr;
 }
 
+BaseObject *create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
+    auto iter = _world_inst->_create_funcs.find(reinterpret_cast<std::array<uint64_t, 2> const &>(type_info));
+    if (iter == _world_inst->_create_funcs.end()) {
+        return nullptr;
+    }
+    if (iter->second->base_type() != desire_type) return nullptr;
+    auto ptr = iter->second->create();
+    ptr->init_with_guid(guid);
+    return ptr;
+}
+
 [[nodiscard]] luisa::span<InstanceID const> get_dirty_transforms() {
     return dirty_transforms();
 }
 BaseObjectType base_type_of(vstd::Guid const &type_id) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(
         reinterpret_cast<std::array<uint64_t, 2> const &>(type_id));
     if (iter == _world_inst->_create_funcs.end())
@@ -169,6 +200,7 @@ void clear_dirty_transform() {
     v.clear();
 }
 uint64_t object_count() {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     std::shared_lock lck{_world_inst->_instance_mtx};
     return _world_inst->_instance_ids.size() - _world_inst->_disposed_instance_ids.size();
 }

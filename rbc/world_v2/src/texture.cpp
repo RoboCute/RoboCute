@@ -1,5 +1,6 @@
 #pragma once
 #include <rbc_world_v2/texture.h>
+#include <rbc_core/binary_file_writer.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <rbc_graphics/device_assets/device_sparse_image.h>
 #include <rbc_graphics/render_device.h>
@@ -66,7 +67,6 @@ void Texture::create_empty(
     luisa::uint2 size,
     uint32_t mip_level,
     bool is_vt) {
-    std::lock_guard lck{_async_mtx};
     wait_load();
     if (loaded()) [[unlikely]] {
         LUISA_ERROR("Can not create on exists mesh.");
@@ -78,8 +78,16 @@ void Texture::create_empty(
     _mip_level = mip_level;
     _is_vt = is_vt;
 }
+bool Texture::unsafe_save_to_path() const {
+    if (!_tex || _tex->host_data().empty()) return false;
+    BinaryFileWriter writer{luisa::to_string(_path)};
+    if (!writer._file) [[unlikely]] {
+        return false;
+    }
+    writer.write(_tex->host_data());
+    return true;
+}
 bool Texture::init_device_resource() {
-    std::lock_guard lck{_async_mtx};
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     wait_load();
@@ -131,7 +139,6 @@ bool Texture::init_device_resource() {
     return true;
 }
 bool Texture::async_load_from_file() {
-    std::lock_guard lck{_async_mtx};
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     auto file_size = desire_size_bytes();

@@ -15,7 +15,6 @@ struct RBC_WORLD_API Texture final : ResourceBaseImpl<Texture> {
     using BaseType = ResourceBaseImpl<Texture>;
 
 private:
-    luisa::spin_mutex _async_mtx;
     RC<DeviceResource> _tex;
     // meta
     LCPixelStorage _pixel_storage;
@@ -27,8 +26,8 @@ private:
     ~Texture();
 public:
     bool decode(luisa::filesystem::path const &path);
-    [[nodiscard]] DeviceImage* get_image() const;
-    [[nodiscard]] DeviceSparseImage* get_sparse_image() const;
+    [[nodiscard]] DeviceImage *get_image() const;
+    [[nodiscard]] DeviceSparseImage *get_sparse_image() const;
     [[nodiscard]] auto pixel_storage() const { return _pixel_storage; }
     [[nodiscard]] auto size() const { return _size; }
     [[nodiscard]] auto mip_level() const { return _mip_level; }
@@ -44,13 +43,15 @@ public:
         bool is_virtual_texture);
 
     bool loaded() const override;
-    bool init_device_resource()  override;
-    void serialize(ObjSerialize const&obj) const override;
-    void deserialize(ObjDeSerialize const&obj) override;
+    bool init_device_resource() override;
+    void serialize(ObjSerialize const &obj) const override;
+    void deserialize(ObjDeSerialize const &obj) override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;
     void wait_load() const override;
+protected:
+    bool unsafe_save_to_path() const override;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Texture)

@@ -11,6 +11,7 @@ namespace rbc::world {
 struct BaseObject;
 struct Entity;
 enum struct BaseObjectType {
+    None,
     Component,
     Entity,
     Resource,
@@ -22,6 +23,7 @@ struct InstanceID {
 RBC_WORLD_API void init_world();
 RBC_WORLD_API void destroy_world();
 [[nodiscard]] RBC_WORLD_API BaseObject *create_object(rbc::TypeInfo const &type_info);
+[[nodiscard]] RBC_WORLD_API BaseObjectType get_base_object_type(vstd::Guid const &type_id);
 [[nodiscard]] RBC_WORLD_API BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid);
 template<typename T>
     requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<BaseObject, T>)
@@ -35,6 +37,7 @@ T *create_object_with_guid(vstd::Guid const &guid) {
 }
 [[nodiscard]] RBC_WORLD_API BaseObject *create_object(vstd::Guid const &type_info);
 [[nodiscard]] RBC_WORLD_API BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
+[[nodiscard]] RBC_WORLD_API BaseObject *create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
 [[nodiscard]] RBC_WORLD_API BaseObject *get_object(InstanceID instance_id);
 [[nodiscard]] RBC_WORLD_API BaseObject *get_object(vstd::Guid const &guid);
 [[nodiscard]] RBC_WORLD_API uint64_t object_count();
@@ -65,6 +68,7 @@ struct BaseObject : RCBase {
     friend BaseObject *create_object(vstd::Guid const &type_info);
     friend BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid);
     friend BaseObject *create_object(rbc::TypeInfo const &type_info);
+    friend BaseObject *create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
     inline void rbc_rc_delete() {
         dispose();
     }

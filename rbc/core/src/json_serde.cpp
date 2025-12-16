@@ -32,9 +32,8 @@ namespace rbc {
     auto val = yyjson_obj_get(v.first, name);          \
     if (!val) return false;                            \
     auto type = yyjson_get_type(val);
-JsonWriter::JsonWriter(bool root_array) 
-: _alloc(4096, &_alloc_callback, 2)
-{
+JsonWriter::JsonWriter(bool root_array)
+    : _alloc(4096, &_alloc_callback, 2) {
     alc = yyjson_alc{
         .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
     json_doc = yyjson_mut_doc_new(&alc);
@@ -48,10 +47,10 @@ JsonWriter::JsonWriter(bool root_array)
     }
     yyjson_mut_doc_set_root(json_doc, root);
 }
-    void *JsonWriter::allocate_temp_str(size_t size) {
-        auto c = _alloc.allocate(size);
-        return reinterpret_cast<void *>(c.handle + c.offset);
-    }
+void *JsonWriter::allocate_temp_str(size_t size) {
+    auto c = _alloc.allocate(size);
+    return reinterpret_cast<void *>(c.handle + c.offset);
+}
 
 BinaryBlob JsonWriter::write_to() const {
     size_t len{};
@@ -146,7 +145,7 @@ void JsonWriter::add(luisa::string_view str) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(v.second);
-    auto ptr = (char*)allocate_temp_str(str.size() + 1);
+    auto ptr = (char *)allocate_temp_str(str.size() + 1);
     ptr[str.size()] = 0;
     std::memcpy(ptr, str.data(), str.size());
     LUISA_ASSERT(yyjson_mut_arr_add_str(json_doc, v.first, ptr));
@@ -240,7 +239,7 @@ void JsonWriter::add(luisa::string_view str, char const *name) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    auto ptr = (char*)allocate_temp_str(str.size() + 1);
+    auto ptr = (char *)allocate_temp_str(str.size() + 1);
     ptr[str.size()] = 0;
     std::memcpy(ptr, str.data(), str.size());
     LUISA_ASSERT(yyjson_mut_obj_add_str(json_doc, v.first, name, ptr));
@@ -250,17 +249,24 @@ JsonWriter::~JsonWriter() {
     LUISA_ASSERT(_json_scope.size() == 1);
     yyjson_mut_doc_free(json_doc);
 }
+bool JsonReader::valid() const {
+    return json_doc != nullptr;
+}
 JsonReader::JsonReader(luisa::string_view str) {
     alc = yyjson_alc{
         .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
     json_doc = yyjson_read_opts(const_cast<char *>(str.data()), str.size(), 0, &alc, nullptr);
     if (!json_doc) [[unlikely]] {
-        LUISA_ERROR("Bad json doc.");
+        return;
     }
     auto root_val = json_doc->root;
     auto root_type = yyjson_get_type(root_val);
     if (root_type != YYJSON_TYPE_OBJ && root_type != YYJSON_TYPE_ARR) [[unlikely]] {
-        LUISA_ERROR("Bad json format.");
+        if (json_doc) {
+            yyjson_doc_free(json_doc);
+            json_doc = nullptr;
+        }
+        return;
     }
     if (root_type == YYJSON_TYPE_ARR) {
         _json_scope.emplace_back(root_val, ReadArray{unsafe_yyjson_get_first(root_val), unsafe_yyjson_get_len(root_val), 0});
@@ -313,7 +319,8 @@ void JsonReader::end_scope() {
 }
 JsonReader::~JsonReader() {
     LUISA_ASSERT(_json_scope.size() == 1);
-    yyjson_doc_free(json_doc);
+    if (json_doc)
+        yyjson_doc_free(json_doc);
 }
 bool JsonReader::read(bool &value, char const *name) {
     if (!name) {

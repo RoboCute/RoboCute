@@ -13,7 +13,6 @@ struct RBC_WORLD_API Mesh final : ResourceBaseImpl<Mesh> {
     using BaseType = ResourceBaseImpl<Mesh>;
 private:
     RC<DeviceMesh> _device_mesh;
-    luisa::spin_mutex _async_mtx;
     // meta
     vstd::vector<uint> _submesh_offsets;
     uint32_t _vertex_count{};
@@ -64,6 +63,8 @@ public:
     bool async_load_from_file() override;
     void unload() override;
     void wait_load() const override;
+protected:
+    bool unsafe_save_to_path() const override;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Mesh)

@@ -86,5 +86,6 @@ struct RBC_CORE_API JsonReader {
     bool read(uint64_t &value, char const *name);
     bool read(double &value, char const *name);
     bool read(luisa::string &value, char const *name);
+    bool valid() const;
 };
 }// namespace rbc

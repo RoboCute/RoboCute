@@ -2,6 +2,10 @@
 
 namespace rbc ::world {
 void Resource::serialize(ObjSerialize const &obj) const {
+    auto type_id = this->type_id();
+    obj.ser._store(
+        reinterpret_cast<vstd::Guid &>(type_id),
+        "__typeid__");
     if (!_path.empty()) {
         obj.ser._store(luisa::to_string(_path), "path");
         obj.ser._store(_file_offset, "file_offset");
@@ -22,6 +26,10 @@ void Resource::set_path(
     }
     _path = path;
     _file_offset = file_offset;
+}
+bool Resource::save_to_path() {
+    if (_path.empty()) return false;
+    return unsafe_save_to_path();
 }
 Resource::Resource() = default;
 Resource::~Resource() = default;

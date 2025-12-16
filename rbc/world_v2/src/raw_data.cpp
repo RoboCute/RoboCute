@@ -1,3 +1,4 @@
+#include <rbc_core/binary_file_writer.h>
 #include <rbc_world_v2/raw_data.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
@@ -75,5 +76,15 @@ void RawData::wait_load() const {
         _device_buffer->wait_finished();
     }
 }
+bool RawData::unsafe_save_to_path() const {
+    if (!_device_buffer || _device_buffer->host_data().empty()) return false;
+    BinaryFileWriter writer{luisa::to_string(_path)};
+    if (!writer._file) [[unlikely]] {
+        return false;
+    }
+    writer.write(_device_buffer->host_data());
+    return true;
+}
+
 DECLARE_WORLD_OBJECT_REGISTER(RawData)
 }// namespace rbc::world

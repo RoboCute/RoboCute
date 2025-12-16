@@ -6,6 +6,7 @@
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_graphics/mat_serde.h>
 #include <rbc_core/json_serde.h>
+#include <rbc_core/binary_file_writer.h>
 #include <rbc_world_v2/texture.h>
 namespace rbc::world {
 struct MaterialInst : vstd::IOperatorNewBase {
@@ -229,6 +230,46 @@ bool Material::init_device_resource() {
         }
     });
     return true;
+}
+
+bool Material::unsafe_save_to_path() const {
+    std::shared_lock lck{_mtx};
+    if (!_mat_data.valid()) return false;
+    JsonSerializer t;
+    return _mat_data.visit_or(false, [&]<typename T>(T const &mat) {
+        if constexpr (std::is_same_v<T, material::OpenPBR>) {
+            t._store("type"sv, "pbr");
+            auto serde_func = [&]<typename U>(U &u, char const *name) {
+                using PureU = std::remove_cvref_t<U>;
+                constexpr bool is_index = requires { u.index; };
+                constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
+                if constexpr (is_index) {
+                    t._store(u.index, name);
+                } else if constexpr (is_array) {
+                    t.start_array();
+                    for (auto &i : u) {
+                        t._store(i);
+                    }
+                    t.add_last_scope_to_object(name);
+                } else {
+                    t._store(u, name);
+                }
+            };
+            detail::serde_openpbr<material::OpenPBR const &>(mat, serde_func);
+            auto blob = t.write_to();
+            if (blob.empty()) [[unlikely]]
+                return false;
+            BinaryFileWriter writer(luisa::to_string(_path));
+            if (!writer._file) [[unlikely]]
+                return false;
+            writer.write({blob.data(),
+                          blob.size()});
+            return true;
+        } else {
+            // TODO
+            return false;
+        }
+    });
 }
 // clang-format off
 DECLARE_WORLD_OBJECT_REGISTER(Material);

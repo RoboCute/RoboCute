@@ -1,5 +1,6 @@
 #include <rbc_world_v2/renderer.h>
 #include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/resource_loader.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_world_v2/material.h>
 #include <rbc_world_v2/mesh.h>
@@ -52,18 +53,18 @@ void Renderer::deserialize(ObjDeSerialize const &ser) {
             if (!obj._load(guid)) {
                 _materials.emplace_back(nullptr);// TODO: deal with empty material
             } else {
-                auto obj = get_object(guid);
+                auto obj = load_resource(guid);
                 if (obj && obj->is_type_of(TypeInfo::get<Material>()))
-                    _materials.emplace_back(static_cast<Material *>(obj));
+                    _materials.emplace_back(static_cast<RC<Material>&&>(obj));
             }
         }
         obj.end_scope();
     }
     vstd::Guid guid;
     if (obj._load(guid, "mesh")) {
-        auto obj = get_object(guid);
+        auto obj = load_resource(guid);
         if (obj && obj->is_type_of(TypeInfo::get<Mesh>())) {
-            _mesh_ref = static_cast<Mesh *>(obj);
+            _mesh_ref = static_cast<RC<Mesh>&&>(obj.get());
         }
     }
 }

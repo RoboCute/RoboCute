@@ -2,11 +2,13 @@
 #include <rbc_world_v2/transform.h>
 #include <rbc_world_v2/renderer.h>
 #include <rbc_world_v2/light.h>
+#include <rbc_world_v2/resource_loader.h>
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_app/graphics_utils.h>
+#include <rbc_core/binary_file_writer.h>
 
 namespace rbc {
-WorldScene::WorldScene(GraphicsUtils *utils) {
+void WorldScene::_init_scene(GraphicsUtils *utils) {
     mesh = world::create_object<world::Mesh>();
     mesh->decode("cornell_box.obj");
     mesh->init_device_resource();
@@ -56,6 +58,50 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         auto render = entity->add_component<world::Renderer>();
         render->update_object(_mats, mesh);
     }
+}
+WorldScene::WorldScene(GraphicsUtils *utils) {
+    auto &render_device = RenderDevice::instance();
+    auto runtime_dir = render_device.lc_ctx().runtime_directory();
+    luisa::filesystem::path meta_dir{"test_scene"};
+    auto scene_root_dir = runtime_dir / meta_dir;
+    vstd::HashMap<vstd::Guid> saved;
+    auto write_file = [&](world::Resource *res) {
+        if (!saved.try_emplace(res->guid()).second) return;
+        res->set_path(
+            scene_root_dir / (res->guid().to_string() + ".rbcb"),
+            0);
+        res->save_to_path();
+        JsonSerializer js;
+        res->serialize(world::ObjSerialize{
+            js});
+        auto blob = js.write_to();
+        LUISA_ASSERT(!blob.empty());
+        BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / (res->guid().to_string() + ".rbcmt")));
+        file_writer.write(blob);
+    };
+    if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
+        luisa::filesystem::create_directories(scene_root_dir);
+        world::init_resource_loader(runtime_dir, meta_dir);
+        _init_scene(utils);
+        // save scene
+
+        // write_file(mesh);
+        // for (auto &i : _mats) {
+        //     write_file(i.get());
+        // }
+        // // write_scene
+        // JsonSerializer scene_ser{true};
+        // world::ObjSerialize ser{scene_ser};
+        // for (auto &i : _entities) {
+        //     scene_ser.start_object();
+        //     i->serialize(ser);
+        //     scene_ser.add_last_scope_to_object();
+        // }
+        // BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / "scene.rbcmt"));
+        // file_writer.write(scene_ser.write_to());
+        return;
+    }
+    world::init_resource_loader(runtime_dir, meta_dir);
 }
 WorldScene::~WorldScene() {
     for (auto &i : _entities) {

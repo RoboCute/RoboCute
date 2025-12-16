@@ -52,6 +52,10 @@ struct RuntimeStatic : RuntimeStaticBase {
     T &operator*() {
         return *ptr;
     }
+
+    operator bool() const {
+        return ptr.has_value();
+    }
 protected:
     void init() override {
         std::apply(
@@ -85,6 +89,9 @@ struct RuntimeStatic<T> : RuntimeStaticBase {
         }
 #endif
         return ptr.ptr();
+    }
+    operator bool() const {
+        return ptr.has_value();
     }
 protected:
     void init() override {

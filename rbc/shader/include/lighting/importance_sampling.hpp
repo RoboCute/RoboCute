@@ -348,8 +348,11 @@ LightSample light_importance_sampling(
             auto inst_info = g_buffer_heap.uniform_idx_buffer_read<geometry::InstanceInfo>(heap_indices::inst_buffer_heap_idx, mesh_light.instance_user_id);
             result.mis_weight = mesh_light.mis_weight;
             auto vertices = geometry::read_vert_pos_uv(g_buffer_heap, light_idx, inst_info.mesh);
-            auto rand = sampler.next2f() * 0.5f;
-            float3 light_uvw = float3(rand, 1.f - rand.x - rand.y);
+            float2 rand = sampler.next2f();
+            if (rand.x + rand.y > 1) {
+                rand = 1.f - rand;
+            }
+            float3 light_uvw(rand, 1.f - rand.x - rand.y);
             for (uint vv = 0; vv < 3; ++vv) {
                 vertices[vv].pos = (mesh_light.transform * float4(vertices[vv].pos, 1.)).xyz;
             }

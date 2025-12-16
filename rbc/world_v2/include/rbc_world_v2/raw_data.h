@@ -24,6 +24,8 @@ public:
     bool async_load_from_file() override;
     void unload() override;
     void wait_load() const override;
+protected:
+    bool unsafe_save_to_path() const override;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::RawData)

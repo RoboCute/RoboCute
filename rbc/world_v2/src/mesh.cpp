@@ -1,4 +1,5 @@
 #include <rbc_world_v2/mesh.h>
+#include <rbc_core/binary_file_writer.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
@@ -22,6 +23,7 @@ void Mesh::serialize(ObjSerialize const &ser) const {
     }
     ser.ser.add_last_scope_to_object("submesh_offsets");
 }
+
 void Mesh::deserialize(ObjDeSerialize const &ser) {
     BaseType::deserialize(ser);
 #define RBC_MESH_LOAD(m)            \
@@ -79,7 +81,6 @@ void Mesh::create_empty(
     bool contained_tangent,
     uint vertex_color_channels,
     uint skinning_weight_count) {
-    std::lock_guard lck{_async_mtx};
     wait_load();
     if (loaded()) [[unlikely]] {
         LUISA_ERROR("Can not create on exists mesh.");
@@ -103,7 +104,6 @@ void Mesh::create_empty(
     }
 }
 bool Mesh::init_device_resource() {
-    std::lock_guard lck{_async_mtx};
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_device_mesh || loaded()) return false;
     LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
@@ -118,7 +118,6 @@ bool Mesh::init_device_resource() {
     return true;
 }
 bool Mesh::async_load_from_file() {
-    std::lock_guard lck{_async_mtx};
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     if (_device_mesh) {
@@ -145,6 +144,15 @@ bool Mesh::async_load_from_file() {
         _file_offset,
         !_device_mesh->host_data_ref().empty());
 
+    return true;
+}
+bool Mesh::unsafe_save_to_path() const {
+    if (!_device_mesh || _device_mesh->host_data().empty()) return false;
+    BinaryFileWriter writer{luisa::to_string(_path)};
+    if (!writer._file) [[unlikely]] {
+        return false;
+    }
+    writer.write(_device_mesh->host_data());
     return true;
 }
 bool Mesh::loaded() const {
