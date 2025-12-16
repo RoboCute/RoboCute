@@ -16,6 +16,7 @@ struct RBC_WORLD_API Texture final : ResourceBaseImpl<Texture> {
 
 private:
     RC<DeviceResource> _tex;
+    mutable rbc::shared_atomic_mutex _async_mtx;
     // meta
     LCPixelStorage _pixel_storage;
     luisa::uint2 _size;

@@ -79,29 +79,52 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / (res->guid().to_string() + ".rbcmt")));
         file_writer.write(blob);
     };
+    auto entities_path = scene_root_dir / "scene.rbcmt";
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
         luisa::filesystem::create_directories(scene_root_dir);
         world::init_resource_loader(runtime_dir, meta_dir);
         _init_scene(utils);
         // save scene
 
-        // write_file(mesh);
-        // for (auto &i : _mats) {
-        //     write_file(i.get());
-        // }
-        // // write_scene
-        // JsonSerializer scene_ser{true};
-        // world::ObjSerialize ser{scene_ser};
-        // for (auto &i : _entities) {
-        //     scene_ser.start_object();
-        //     i->serialize(ser);
-        //     scene_ser.add_last_scope_to_object();
-        // }
-        // BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / "scene.rbcmt"));
-        // file_writer.write(scene_ser.write_to());
+        write_file(mesh);
+        for (auto &i : _mats) {
+            write_file(i.get());
+        }
+        // write_scene
+        JsonSerializer scene_ser{true};
+        world::ObjSerialize ser{scene_ser};
+        for (auto &i : _entities) {
+            scene_ser.start_object();
+            i->serialize(ser);
+            scene_ser.add_last_scope_to_object();
+        }
+        BinaryFileWriter file_writer(luisa::to_string(entities_path));
+        file_writer.write(scene_ser.write_to());
         return;
     }
     world::init_resource_loader(runtime_dir, meta_dir);
+    luisa::vector<std::byte> data;
+    {
+        BinaryFileStream file_stream(luisa::to_string(entities_path));
+        LUISA_ASSERT(file_stream.valid());
+        data.push_back_uninitialized(file_stream.length());
+        file_stream.read(data);
+    }
+    JsonDeSerializer entitie_deser(luisa::string_view((char const *)data.data(), data.size()));
+    LUISA_ASSERT(entitie_deser.valid());
+    uint64_t size = entitie_deser.last_array_size();
+    _entities.reserve(size);
+    for (auto i : vstd::range(size)) {
+        auto e = _entities.emplace_back(world::create_object<world::Entity>());
+        entitie_deser.start_object();
+        e->deserialize(world::ObjDeSerialize{entitie_deser});
+        entitie_deser.end_scope();
+    }
+
+    for(auto& i : _entities){
+        auto render = i->get_component<world::Renderer>();
+        if(render) render->update_object();
+    }
 }
 WorldScene::~WorldScene() {
     for (auto &i : _entities) {

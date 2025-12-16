@@ -7,6 +7,7 @@ struct RBC_WORLD_API RawData final : ResourceBaseImpl<RawData> {
     DECLARE_WORLD_OBJECT_FRIEND(RawData)
 private:
     RC<DeviceBuffer> _device_buffer;
+    mutable rbc::shared_atomic_mutex _async_mtx;
     bool _upload_device{false};
     RawData();
     ~RawData();

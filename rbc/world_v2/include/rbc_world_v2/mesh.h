@@ -13,6 +13,7 @@ struct RBC_WORLD_API Mesh final : ResourceBaseImpl<Mesh> {
     using BaseType = ResourceBaseImpl<Mesh>;
 private:
     RC<DeviceMesh> _device_mesh;
+    mutable rbc::shared_atomic_mutex _async_mtx;
     // meta
     vstd::vector<uint> _submesh_offsets;
     uint32_t _vertex_count{};

@@ -9,6 +9,7 @@ Mesh::~Mesh() {
 }
 
 void Mesh::serialize(ObjSerialize const &ser) const {
+    std::shared_lock lck{_async_mtx};
     BaseType::serialize(ser);
     ser.ser._store(_contained_normal, "contained_normal");
     ser.ser._store(_contained_tangent, "contained_tangent");
@@ -25,6 +26,7 @@ void Mesh::serialize(ObjSerialize const &ser) const {
 }
 
 void Mesh::deserialize(ObjDeSerialize const &ser) {
+    std::shared_lock lck{_async_mtx};
     BaseType::deserialize(ser);
 #define RBC_MESH_LOAD(m)            \
     {                               \
@@ -51,13 +53,16 @@ void Mesh::deserialize(ObjDeSerialize const &ser) {
                 _submesh_offsets.push_back(v);
             }
         }
+        ser.ser.end_scope();
     }
 }
 void Mesh::wait_load() const {
+    std::shared_lock lck{_async_mtx};
     if (_device_mesh)
         _device_mesh->wait_finished();
 }
 luisa::vector<std::byte> *Mesh::host_data() {
+    std::shared_lock lck{_async_mtx};
     if (_device_mesh)
         return &_device_mesh->host_data_ref();
     else
@@ -82,9 +87,10 @@ void Mesh::create_empty(
     uint vertex_color_channels,
     uint skinning_weight_count) {
     wait_load();
-    if (loaded()) [[unlikely]] {
+    if (_device_mesh) [[unlikely]] {
         LUISA_ERROR("Can not create on exists mesh.");
     }
+    std::lock_guard lck{_async_mtx};
     _submesh_offsets = std::move(submesh_offsets);
     _path = std::move(path);
     _file_offset = file_offset;
@@ -95,44 +101,39 @@ void Mesh::create_empty(
     _contained_tangent = contained_tangent;
     _skinning_weight_count = skinning_weight_count;
     _vertex_color_channels = vertex_color_channels;
-    if (_device_mesh) {
-        if (_device_mesh->loaded()) [[unlikely]] {
-            LUISA_ERROR("Can not be create repeatly.");
-        }
-    } else {
-        _device_mesh = new DeviceMesh{};
-    }
+    _device_mesh = new DeviceMesh{};
 }
 bool Mesh::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_device_mesh || loaded()) return false;
-    LUISA_ASSERT(host_data()->empty() || host_data()->size() == desire_size_bytes(), "Invalid host data length.");
-    _device_mesh->create_mesh(
-        render_device->lc_main_cmd_list(),
-        _vertex_count,
-        _contained_normal,
-        _contained_tangent,
-        _uv_count,
-        _triangle_count,
-        vstd::vector<uint>(_submesh_offsets));
+    wait_load();
+    auto host_data_ = host_data();
+    LUISA_ASSERT(host_data_->empty() || host_data_->size() == desire_size_bytes(), "Invalid host data length.");
+    {
+        std::lock_guard lck{_async_mtx};
+        _device_mesh->create_mesh(
+            render_device->lc_main_cmd_list(),
+            _vertex_count,
+            _contained_normal,
+            _contained_tangent,
+            _uv_count,
+            _triangle_count,
+            vstd::vector<uint>(_submesh_offsets));
+    }
     return true;
 }
 bool Mesh::async_load_from_file() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
-    if (_device_mesh) {
-        if (_device_mesh->loaded()) [[unlikely]] {
-            return false;
-        }
-    } else {
-        _device_mesh = new DeviceMesh{};
-    }
-
     auto file_size = desire_size_bytes();
     if (_path.empty()) {
         return false;
     }
-    LUISA_ASSERT(host_data()->empty() || host_data()->size() == file_size, "Invalid host data length.");
+    std::lock_guard lck{_async_mtx};
+    if (_device_mesh) {
+        return false;
+    }
+    _device_mesh = new DeviceMesh{};
     _device_mesh->async_load_from_file(
         _path,
         _vertex_count,
@@ -142,11 +143,12 @@ bool Mesh::async_load_from_file() {
         _uv_count, vstd::vector<uint>{_submesh_offsets},
         false, true,
         _file_offset,
-        !_device_mesh->host_data_ref().empty());
+        true, desire_size_bytes() - basic_size_bytes());
 
     return true;
 }
 bool Mesh::unsafe_save_to_path() const {
+    std::shared_lock lck{_async_mtx};
     if (!_device_mesh || _device_mesh->host_data().empty()) return false;
     BinaryFileWriter writer{luisa::to_string(_path)};
     if (!writer._file) [[unlikely]] {
@@ -156,9 +158,11 @@ bool Mesh::unsafe_save_to_path() const {
     return true;
 }
 bool Mesh::loaded() const {
+    std::shared_lock lck{_async_mtx};
     return _device_mesh && (_device_mesh->loaded() || _device_mesh->mesh_data());
 }
 void Mesh::unload() {
+    std::lock_guard lck{_async_mtx};
     _device_mesh.reset();
 }
 luisa::span<SkinWeight const> Mesh::skin_weights() const {

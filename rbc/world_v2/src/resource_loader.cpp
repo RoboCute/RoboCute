@@ -29,7 +29,7 @@ struct ResourceLoader {
             auto file_name = path.filename();
             auto base_path = luisa::to_string(file_name.replace_extension());
             if (auto guid_result = vstd::Guid::TryParseGuid(base_path)) {
-                resource_types.force_emplace(*guid_result);
+                resource_types.emplace(*guid_result);
             }
         }
     }
@@ -43,14 +43,24 @@ void init_resource_loader(luisa::filesystem::path const &root_path, luisa::files
     _res_loader->_meta_path = root_path / meta_path;
     _res_loader->load_all_resources();
 }
-RC<Resource> load_resource(vstd::Guid const &guid) {
+RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
+    auto obj = get_object(guid);
+    if (obj) return obj;
     LUISA_DEBUG_ASSERT(_res_loader && !_res_loader->_root_path.empty());
     std::shared_lock lck{_res_loader->_resmap_mtx};
     auto iter = _res_loader->resource_types.find(guid);
-    if (!iter) return {};
+    if (!iter) {
+        return {};
+    }
     auto &v = iter.value();
     RC<Resource> res = v.res.lock();
-    if (res) return res;
+    if (res) {
+        if (async_load_from_file) {
+            if (!res->loaded())
+                res->async_load_from_file();
+        }
+        return res;
+    }
     auto guid_str = guid.to_string();
     luisa::BinaryFileStream file_stream(luisa::to_string(_res_loader->_meta_path / (guid_str + ".rbcmt")));
     auto remove_value = [&]() {
@@ -81,7 +91,9 @@ RC<Resource> load_resource(vstd::Guid const &guid) {
         return {};
     }
     ObjDeSerialize obj_deser{.ser = deser};
+    v.res = res;
     res->deserialize(obj_deser);
+    if (async_load_from_file) res->async_load_from_file();
     return res;
 }
 }// namespace rbc::world

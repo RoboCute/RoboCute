@@ -1,6 +1,7 @@
 #pragma once
 #include <rbc_config.h>
 #include <rbc_core/type_info.h>
+#include <rbc_core/shared_atomic_mutex.h>
 #include <luisa/vstl/common.h>
 #include <luisa/core/stl/hash.h>
 #include <luisa/core/logging.h>

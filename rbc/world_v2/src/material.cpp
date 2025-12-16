@@ -8,6 +8,7 @@
 #include <rbc_core/json_serde.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_world_v2/texture.h>
+#include <rbc_world_v2/resource_loader.h>
 namespace rbc::world {
 struct MaterialInst : vstd::IOperatorNewBase {
     luisa::spin_mutex _mat_mtx;
@@ -28,6 +29,7 @@ void _collect_all_materials() {
     }
 }
 bool Material::loaded() const {
+    std::shared_lock lck{_async_mtx};
     return _loaded && _mat_code.value != ~0u;
 }
 void Material::load_from_json(luisa::string_view json_vec) {
@@ -37,7 +39,7 @@ void Material::load_from_json(luisa::string_view json_vec) {
     if (!deser._load(mat_type, "type")) {
         is_default = true;
     }
-    std::lock_guard lck{_mtx};
+    std::lock_guard lck{_async_mtx};
     _depended_resources.clear();
     _loaded = true;
     _dirty = true;
@@ -49,16 +51,16 @@ void Material::load_from_json(luisa::string_view json_vec) {
             constexpr bool is_index = requires { u.index; };
             if constexpr (is_index) {
                 vstd::Guid resource_guid;
-                BaseObject *res{};
+                RC<Resource> res;
                 auto set_res = vstd::scope_exit([&]() {
-                    _depended_resources.emplace_back(static_cast<Resource *>(res));
+                    _depended_resources.emplace_back(std::move(res));
                 });
                 if (!deser._load(resource_guid, name)) return;
-                res = get_object(resource_guid);
-                if (!res || res->base_type() != BaseObjectType::Resource) {
+                res = load_resource(resource_guid, true);
+                if (!res) {
                     return;
                 }
-                static_cast<Resource *>(res)->async_load_from_file();
+                res->async_load_from_file();
             } else if constexpr (is_array) {
                 uint64_t size;
                 if (!deser.start_array(size, name))
@@ -83,7 +85,7 @@ void Material::load_from_json(luisa::string_view json_vec) {
 luisa::BinaryBlob Material::write_content_to() {
     JsonSerializer json_ser;
     {
-        std::lock_guard lck{_mtx};
+        std::lock_guard lck{_async_mtx};
         auto iter = _depended_resources.begin();
         auto ser_pbr = [&]<typename U>(U &u, char const *name) {
             using PureU = std::remove_cvref_t<U>;
@@ -133,14 +135,13 @@ void Material::serialize(ObjSerialize const &ser) const {
 }
 bool Material::async_load_from_file() {
     if (_path.empty()) return false;
-    std::lock_guard lck{_mtx};
+    std::lock_guard lck{_async_mtx};
     if (_loaded) {
         return false;
     }
     _loaded = true;
     _event.clear();
     luisa::fiber::schedule([evt = _event, this]() {
-        evt.signal();
         BinaryFileStream file_stream(luisa::to_string(_path));
         if (!file_stream.valid()) return;
         if (_file_offset >= file_stream.length()) return;
@@ -151,6 +152,7 @@ bool Material::async_load_from_file() {
             {reinterpret_cast<std::byte *>(json_vec.data()),
              json_vec.size()});
         load_from_json({json_vec.data(), json_vec.size()});
+        evt.signal();
     });
     return true;
 }
@@ -161,7 +163,7 @@ Material::~Material() {
     unload();
 }
 void Material::unload() {
-    std::lock_guard lck{_mtx};
+    std::lock_guard lck{_async_mtx};
     _depended_resources.clear();
     _loaded = false;
     if (_mat_code.value == ~0u) return;
@@ -171,16 +173,20 @@ void Material::unload() {
     _mat_inst->_disposed_mat.emplace_back(value);
 }
 void Material::wait_load() const {
+    std::shared_lock lck{_async_mtx};
     _event.wait();
+    for (auto &i : _depended_resources) {
+        if (i) i->wait_load();
+    }
 }
 bool Material::init_device_resource() {
-    std::lock_guard lck{_mtx};
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
         LUISA_ERROR("Material::init_device_resource can only be called in render-thread.");
     }
     wait_load();
+    std::lock_guard lck{_async_mtx};
     if (!_loaded) [[unlikely]] {
         return false;
     }
@@ -233,7 +239,7 @@ bool Material::init_device_resource() {
 }
 
 bool Material::unsafe_save_to_path() const {
-    std::shared_lock lck{_mtx};
+    std::shared_lock lck{_async_mtx};
     if (!_mat_data.valid()) return false;
     JsonSerializer t;
     return _mat_data.visit_or(false, [&]<typename T>(T const &mat) {

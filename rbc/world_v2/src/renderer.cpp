@@ -53,18 +53,18 @@ void Renderer::deserialize(ObjDeSerialize const &ser) {
             if (!obj._load(guid)) {
                 _materials.emplace_back(nullptr);// TODO: deal with empty material
             } else {
-                auto obj = load_resource(guid);
+                auto obj = load_resource(guid, true);
                 if (obj && obj->is_type_of(TypeInfo::get<Material>()))
-                    _materials.emplace_back(static_cast<RC<Material>&&>(obj));
+                    _materials.emplace_back(static_cast<RC<Material> &&>(obj));
             }
         }
         obj.end_scope();
     }
     vstd::Guid guid;
     if (obj._load(guid, "mesh")) {
-        auto obj = load_resource(guid);
+        auto obj = load_resource(guid, true);
         if (obj && obj->is_type_of(TypeInfo::get<Mesh>())) {
-            _mesh_ref = static_cast<RC<Mesh>&&>(obj.get());
+            _mesh_ref = static_cast<RC<Mesh> &&>(obj.get());
         }
     }
 }
@@ -136,14 +136,17 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
     auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
     if (mesh) {
-        mesh->wait_load();
         if (!mesh->loaded()) [[unlikely]] {
             LUISA_WARNING("Mesh not loaded, renderer update failed.");
             return;
         }
         _mesh_ref.reset();
         _mesh_ref = mesh;
+    } else {
+        mesh = _mesh_ref.get();
     }
+    if (!mesh) return;
+    mesh->wait_load();
     if (!mats.empty()) {
         auto submesh_size = std::max<size_t>(1, mesh->submesh_offsets().size());
         if (!(mats.size() == submesh_size)) [[unlikely]] {
@@ -157,18 +160,20 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
             }
         }
         _materials.clear();
-        _material_codes.clear();
         vstd::push_back_all(
             _materials,
             mats);
-        vstd::push_back_func(
-            _material_codes,
-            _materials.size(),
-            [&](size_t i) {
-                _materials[i]->wait_load();
-                return _materials[i]->mat_code();
-            });
     }
+    if (_materials.size() != mesh->submesh_count()) return;
+    _material_codes.clear();
+    vstd::push_back_func(
+        _material_codes,
+        _materials.size(),
+        [&](size_t i) {
+            auto&& mat = _materials[i];
+            mat->init_device_resource();
+            return mat->mat_code();
+        });
     // TODO: change light type
     bool is_emission = material_is_emission(_materials);
     if (!render_device) return;

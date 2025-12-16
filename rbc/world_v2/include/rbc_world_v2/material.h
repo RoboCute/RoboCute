@@ -7,6 +7,7 @@ struct RBC_WORLD_API Material final : ResourceBaseImpl<Material> {
     DECLARE_WORLD_OBJECT_FRIEND(Material)
 private:
     using BaseType = ResourceBaseImpl<Material>;
+    mutable rbc::shared_atomic_mutex _async_mtx;
     luisa::fiber::event _event;
     luisa::vector<RC<Resource>> _depended_resources;
 
@@ -14,7 +15,6 @@ private:
     ~Material();
     MaterialStub::MatDataType _mat_data;
     MatCode _mat_code;
-    mutable rbc::shared_atomic_mutex  _mtx;
     bool _loaded : 1 {false};
     bool _dirty : 1 {true};
 public:

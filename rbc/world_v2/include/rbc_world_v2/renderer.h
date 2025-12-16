@@ -28,7 +28,7 @@ public:
     void deserialize(ObjDeSerialize const&obj) override;
     void dispose() override;
     // draw
-    void update_object(luisa::span<RC<Material> const> materials, Mesh *mesh = nullptr);
+    void update_object(luisa::span<RC<Material> const> materials = {}, Mesh *mesh = nullptr);
     uint get_tlas_index() const;
     void remove_object();
 private:

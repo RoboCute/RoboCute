@@ -10,18 +10,21 @@ namespace rbc::world {
 Texture::Texture() = default;
 Texture::~Texture() = default;
 luisa::vector<std::byte> *Texture::host_data() {
+    std::shared_lock lck{_async_mtx};
     if (_tex && _tex->resource_type() == DeviceResource::Type::Image) {
         return &static_cast<DeviceImage *>(_tex.get())->host_data_ref();
     }
     return nullptr;
 }
 DeviceImage *Texture::get_image() const {
+    std::shared_lock lck{_async_mtx};
     if (_tex && !_is_vt) {
         return static_cast<DeviceImage *>(_tex.get());
     }
     return nullptr;
 }
 DeviceSparseImage *Texture::get_sparse_image() const {
+    std::shared_lock lck{_async_mtx};
     if (_tex && _is_vt) {
         return static_cast<DeviceSparseImage *>(_tex.get());
     }
@@ -39,6 +42,7 @@ uint64_t Texture::desire_size_bytes() const {
     return size_bytes;
 }
 void Texture::serialize(ObjSerialize const &obj) const {
+    std::shared_lock lck{_async_mtx};
     BaseType::serialize(obj);
     obj.ser._store(_pixel_storage, "pixel_storage");
     obj.ser._store(_size, "size");
@@ -46,6 +50,7 @@ void Texture::serialize(ObjSerialize const &obj) const {
     obj.ser._store(_is_vt, "is_vt");
 }
 void Texture::deserialize(ObjDeSerialize const &obj) {
+    std::lock_guard lck{_async_mtx};
     BaseType::deserialize(obj);
 #define RBC_MESH_LOAD(m)            \
     {                               \
@@ -68,17 +73,24 @@ void Texture::create_empty(
     uint32_t mip_level,
     bool is_vt) {
     wait_load();
-    if (loaded()) [[unlikely]] {
-        LUISA_ERROR("Can not create on exists mesh.");
+    if (_tex) [[unlikely]] {
+        LUISA_ERROR("Can not create on exists texture.");
     }
+    std::lock_guard lck{_async_mtx};
     _path = std::move(path);
     _file_offset = file_offset;
     _size = size;
     _pixel_storage = pixel_storage;
     _mip_level = mip_level;
     _is_vt = is_vt;
+    if (is_vt) {
+        _tex = new DeviceSparseImage();
+    } else {
+        _tex = new DeviceImage();
+    }
 }
 bool Texture::unsafe_save_to_path() const {
+    std::shared_lock lck{_async_mtx};
     if (!_tex || _tex->host_data().empty()) return false;
     BinaryFileWriter writer{luisa::to_string(_path)};
     if (!writer._file) [[unlikely]] {
@@ -89,67 +101,19 @@ bool Texture::unsafe_save_to_path() const {
 }
 bool Texture::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
-    if (!render_device) return false;
-    wait_load();
-    if (loaded()) {
+    if (!render_device || !_tex || loaded()) {
         return false;
     }
+    wait_load();
     auto file_size = desire_size_bytes();
-    LUISA_ASSERT(host_data()->empty() || host_data()->size() == file_size, "Invalid host data length {}, requires {}.", host_data()->size(), file_size);
+    auto host_data_ = host_data();
+    LUISA_ASSERT(!host_data_ || host_data_->empty() || host_data_->size() == file_size, "Invalid host data length {}, requires {}.", host_data_->size(), file_size);
+    std::lock_guard lck{_async_mtx};
     if (_is_vt) {
         if (_path.empty()) {
             LUISA_WARNING("Virtual texture must have path.");
             return false;
         }
-        DeviceSparseImage *tex{};
-        if (_is_vt && _tex) {
-            tex = static_cast<DeviceSparseImage *>(_tex.get());
-        } else {
-            tex = new DeviceSparseImage();
-            _tex = tex;
-        }
-        if (!_vt_finished) {
-            _vt_finished = new VTLoadFlag{};
-        }
-        tex->load(
-            TexStreamManager::instance(),
-            [vt_finished = this->_vt_finished]() {
-                vt_finished->finished = true;
-            },
-            _path,
-            _file_offset,
-            {},
-            (PixelStorage)_pixel_storage,
-            _size,
-            _mip_level);
-    } else {
-        DeviceImage *tex{};
-        if (!_is_vt && _tex) {
-            tex = static_cast<DeviceImage *>(_tex.get());
-        } else {
-            tex = new DeviceImage();
-            _tex = tex;
-        }
-        tex->create_texture<float>(
-            render_device->lc_device(),
-            (PixelStorage)_pixel_storage,
-            _size,
-            _mip_level);
-    }
-    return true;
-}
-bool Texture::async_load_from_file() {
-    auto render_device = RenderDevice::instance_ptr();
-    if (!render_device) return false;
-    auto file_size = desire_size_bytes();
-    if (_path.empty()) {
-        return false;
-    }
-    LUISA_ASSERT(!host_data() || host_data()->empty() || host_data()->size() == file_size, "Invalid host data length.");
-    if (_tex) {
-        return false;
-    }
-    if (_is_vt) {
         auto tex = static_cast<DeviceSparseImage *>(_tex.get());
         if (!_vt_finished) {
             _vt_finished = new VTLoadFlag{};
@@ -167,6 +131,45 @@ bool Texture::async_load_from_file() {
             _mip_level);
     } else {
         auto tex = static_cast<DeviceImage *>(_tex.get());
+        tex->create_texture<float>(
+            render_device->lc_device(),
+            (PixelStorage)_pixel_storage,
+            _size,
+            _mip_level);
+    }
+    return true;
+}
+bool Texture::async_load_from_file() {
+    auto render_device = RenderDevice::instance_ptr();
+    if (!render_device) return false;
+    auto file_size = desire_size_bytes();
+    if (_path.empty()) {
+        return false;
+    }
+    std::lock_guard lck{_async_mtx};
+    if (_tex) {
+        return false;
+    }
+    if (_is_vt) {
+        auto tex = new DeviceSparseImage();
+        _tex = tex;
+        if (!_vt_finished) {
+            _vt_finished = new VTLoadFlag{};
+        }
+        tex->load(
+            TexStreamManager::instance(),
+            [vt_finished = this->_vt_finished]() {
+                vt_finished->finished = true;
+            },
+            _path,
+            _file_offset,
+            {},
+            (PixelStorage)_pixel_storage,
+            _size,
+            _mip_level);
+    } else {
+        auto tex = new DeviceImage();
+        _tex = tex;
         tex->async_load_from_file(
             _path,
             _file_offset,
@@ -180,6 +183,7 @@ bool Texture::async_load_from_file() {
     return true;
 }
 void Texture::wait_load() const {
+    std::shared_lock lck{_async_mtx};
     if (!_tex) return;
     _tex->wait_finished();
     if (_vt_finished) {
@@ -189,9 +193,11 @@ void Texture::wait_load() const {
     }
 }
 void Texture::unload() {
+    std::lock_guard lck{_async_mtx};
     _tex.reset();
 }
 uint32_t Texture::heap_index() const {
+    std::shared_lock lck{_async_mtx};
     if (!_tex) return ~0u;
     if (_is_vt) {
         return static_cast<DeviceSparseImage *>(_tex.get())->heap_idx();
@@ -200,11 +206,12 @@ uint32_t Texture::heap_index() const {
     }
 }
 bool Texture::loaded() const {
+    std::shared_lock lck{_async_mtx};
     if (!_tex) return false;
     if (_is_vt) {
         return static_cast<DeviceSparseImage *>(_tex.get())->loaded() && _vt_finished->finished;
     } else {
-        return static_cast<DeviceImage *>(_tex.get())->loaded();
+        return static_cast<DeviceImage *>(_tex.get())->loaded() || static_cast<DeviceImage *>(_tex.get())->type() != DeviceImage::ImageType::None;
     }
 }
 DECLARE_WORLD_OBJECT_REGISTER(Texture)
