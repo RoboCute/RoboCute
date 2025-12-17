@@ -6,8 +6,9 @@
 namespace rbc {
 struct GraphicsUtils;
 struct WorldScene {
-    world::Mesh* mesh{};
-    RC<world::Texture> tex;
+    world::Mesh* cbox_mesh{};
+    world::Mesh* quad_mesh{};
+    world::Texture* tex{};
     luisa::vector<world::Entity *> _entities;
     luisa::vector<RC<world::Material>> _mats;
     WorldScene(GraphicsUtils *utils);

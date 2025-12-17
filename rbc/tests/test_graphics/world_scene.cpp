@@ -9,21 +9,15 @@
 
 namespace rbc {
 void WorldScene::_init_scene(GraphicsUtils *utils) {
-    mesh = world::create_object<world::Mesh>();
-    mesh->decode("cornell_box.obj");
-    mesh->init_device_resource();
-    utils->update_mesh_data(mesh->device_mesh().get(), false);// update through render-thread
-    _mats.resize(mesh->submesh_count());
-    LUISA_ASSERT(mesh->submesh_count() == 8);
+    cbox_mesh = world::create_object<world::Mesh>();
+    cbox_mesh->decode("cornell_box.obj");
+    cbox_mesh->init_device_resource();
+    utils->update_mesh_data(cbox_mesh->device_mesh().get(), false);// update through render-thread
+    _mats.resize(cbox_mesh->submesh_count());
+    LUISA_ASSERT(cbox_mesh->submesh_count() == 8);
     auto mat0 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]})"sv;
     auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
     auto mat2 = R"({"type": "pbr", "specular_roughness": 0.2, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]})"sv;
-    if (luisa::filesystem::exists("logo.png")) {
-        tex = world::create_object<world::Texture>();
-        tex->decode("logo.png");
-        tex->init_device_resource();
-        utils->update_texture(tex->get_image());// update through render-thread
-    }
     auto light_mat_desc = R"({"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]})"sv;
 
     auto basic_mat = RC<world::Material>{world::create_object<world::Material>()};
@@ -56,8 +50,54 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
                                         0, 0, -1)),
                                 true);
         auto render = entity->add_component<world::Renderer>();
-        render->update_object(_mats, mesh);
+        render->update_object(_mats, cbox_mesh);
     }
+    MeshBuilder mesh_builder;
+    mesh_builder.position.emplace_back(make_float3(-0.5f, -0.5f, 0));
+    mesh_builder.position.emplace_back(make_float3(-0.5f, 0.5f, 0));
+    mesh_builder.position.emplace_back(make_float3(0.5f, -0.5f, 0));
+    mesh_builder.position.emplace_back(make_float3(0.5f, 0.5f, 0));
+    auto &uv = mesh_builder.uvs.emplace_back();
+    uv.emplace_back(make_float2(0, 0));
+    uv.emplace_back(make_float2(0, 1));
+    uv.emplace_back(make_float2(1, 0));
+    uv.emplace_back(make_float2(1, 1));
+    auto &tris = mesh_builder.triangle_indices.emplace_back();
+    tris.emplace_back(0);
+    tris.emplace_back(1);
+    tris.emplace_back(2);
+    tris.emplace_back(1);
+    tris.emplace_back(3);
+    tris.emplace_back(2);
+    quad_mesh = world::create_object<world::Mesh>();
+    luisa::vector<uint> submesh_offsets;
+    luisa::vector<std::byte> quad_bytes;
+    mesh_builder.write_to(quad_bytes, submesh_offsets);
+    quad_mesh->create_empty({}, std::move(submesh_offsets), 0, mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent(), 0, 0);
+    auto s = quad_bytes.size_bytes();
+    *quad_mesh->host_data() = std::move(quad_bytes);
+    quad_mesh->init_device_resource();
+    utils->update_mesh_data(quad_mesh->device_mesh().get(), false);// update through render-thread
+
+    tex = world::create_object<world::Texture>();
+    tex->decode("test_grid.png");
+    tex->init_device_resource();
+    utils->update_texture(tex->get_image());// update through render-thread
+
+    auto quad_entity = _entities.emplace_back(world::create_object<world::Entity>());
+    auto quad_trans = quad_entity->add_component<world::Transform>();
+    auto quad_render = quad_entity->add_component<world::Renderer>();
+    quad_trans->set_pos(make_double3(0, 0, 4), true);
+    quad_trans->set_scale(double3(10, 10, 10), true);
+    auto quad_mat = world::create_object<world::Material>();
+    auto quad_mat_str = luisa::format(R"({{"type": "pbr", "base_albedo_tex": "{}"}})", tex->guid().to_base64());
+    quad_mat->load_from_json(quad_mat_str);
+    quad_mat->init_device_resource();
+    auto mat_start_idx = _mats.size();
+    _mats.emplace_back(quad_mat);
+    quad_render->update_object(
+        luisa::span{_mats}.subspan(mat_start_idx, 1),
+        quad_mesh);
 }
 WorldScene::WorldScene(GraphicsUtils *utils) {
     auto &render_device = RenderDevice::instance();
@@ -86,7 +126,9 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
             BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / (res->guid().to_string() + ".rbcmt")));
             file_writer.write(blob);
         };
-        write_file(mesh);
+        write_file(cbox_mesh);
+        write_file(quad_mesh);
+        write_file(tex);
         for (auto &i : _mats) {
             write_file(i.get());
         }
@@ -103,7 +145,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         return;
     }
     // load demo scene
-    world::init_resource_loader(runtime_dir, meta_dir); // open project folder
+    world::init_resource_loader(runtime_dir, meta_dir);// open project folder
     luisa::vector<std::byte> data;
     {
         BinaryFileStream file_stream(luisa::to_string(entities_path));

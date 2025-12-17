@@ -63,8 +63,9 @@ void Mesh::wait_load() const {
 }
 luisa::vector<std::byte> *Mesh::host_data() {
     std::shared_lock lck{_async_mtx};
-    if (_device_mesh)
+    if (_device_mesh){
         return &_device_mesh->host_data_ref();
+    }
     else
         return nullptr;
 }
@@ -108,7 +109,7 @@ bool Mesh::init_device_resource() {
     if (!render_device || !_device_mesh || loaded()) return false;
     wait_load();
     auto host_data_ = host_data();
-    LUISA_ASSERT(host_data_->empty() || host_data_->size() == desire_size_bytes(), "Invalid host data length.");
+    LUISA_ASSERT(host_data_->empty() || host_data_->size() == desire_size_bytes(), "Host data length {} mismatch with required length {}.", host_data_->size(), desire_size_bytes());
     {
         std::lock_guard lck{_async_mtx};
         _device_mesh->create_mesh(

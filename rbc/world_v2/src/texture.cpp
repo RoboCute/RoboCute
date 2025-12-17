@@ -85,6 +85,7 @@ void Texture::create_empty(
     _is_vt = is_vt;
     if (is_vt) {
         _tex = new DeviceSparseImage();
+        _vt_finished = new VTLoadFlag{};
     } else {
         _tex = new DeviceImage();
     }
@@ -115,9 +116,6 @@ bool Texture::init_device_resource() {
             return false;
         }
         auto tex = static_cast<DeviceSparseImage *>(_tex.get());
-        if (!_vt_finished) {
-            _vt_finished = new VTLoadFlag{};
-        }
         tex->load(
             TexStreamManager::instance(),
             [vt_finished = this->_vt_finished]() {
@@ -153,9 +151,7 @@ bool Texture::async_load_from_file() {
     if (_is_vt) {
         auto tex = new DeviceSparseImage();
         _tex = tex;
-        if (!_vt_finished) {
-            _vt_finished = new VTLoadFlag{};
-        }
+        _vt_finished = new VTLoadFlag{};
         tex->load(
             TexStreamManager::instance(),
             [vt_finished = this->_vt_finished]() {

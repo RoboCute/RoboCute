@@ -245,12 +245,20 @@ bool Material::unsafe_save_to_path() const {
     return _mat_data.visit_or(false, [&]<typename T>(T const &mat) {
         if constexpr (std::is_same_v<T, material::OpenPBR>) {
             t._store("type"sv, "pbr");
+            auto iter = _depended_resources.begin();
             auto serde_func = [&]<typename U>(U &u, char const *name) {
                 using PureU = std::remove_cvref_t<U>;
                 constexpr bool is_index = requires { u.index; };
                 constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
                 if constexpr (is_index) {
-                    t._store(u.index, name);
+                    if (*iter) {
+                        t._store((*iter)->guid(), name);
+                    } else {
+                        vstd::Guid guid;
+                        guid.reset();
+                        t._store(guid, name);
+                    }
+                    ++iter;
                 } else if constexpr (is_array) {
                     t.start_array();
                     for (auto &i : u) {
@@ -262,6 +270,7 @@ bool Material::unsafe_save_to_path() const {
                 }
             };
             detail::serde_openpbr<material::OpenPBR const &>(mat, serde_func);
+            LUISA_ASSERT(iter == _depended_resources.end(), "Material type mismatch.");
             auto blob = t.write_to();
             if (blob.empty()) [[unlikely]]
                 return false;

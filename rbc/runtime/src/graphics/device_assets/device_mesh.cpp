@@ -233,7 +233,7 @@ void DeviceMesh::calculate_bounding_box() {
             1024,
             [&](uint64_t begin, uint64_t end) {
                 auto &submesh_offset = _render_mesh_data->submesh_offset;
-                uint submesh_index = 0;
+                uint submesh_index = 1;
                 if (!submesh_offset.empty()) {
                     submesh_index =
                         binary_search(
@@ -337,7 +337,7 @@ uint64_t DeviceMesh::get_mesh_size(uint32_t vertex_count, bool contained_normal,
     if (contained_tangent) {
         size += vertex_count * sizeof(float4);
     }
-    size += uv_count * sizeof(float2);
+    size += uv_count * vertex_count * sizeof(float2);
     size += triangle_count * sizeof(Triangle);
     return size;
 }
