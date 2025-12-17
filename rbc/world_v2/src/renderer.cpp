@@ -136,7 +136,7 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
     auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
     if (mesh) {
-        if (!mesh->loaded()) [[unlikely]] {
+        if (mesh->empty()) [[unlikely]] {
             LUISA_WARNING("Mesh not loaded, renderer update failed.");
             return;
         }
@@ -146,7 +146,7 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
         mesh = _mesh_ref.get();
     }
     if (!mesh) return;
-    mesh->wait_load();
+    mesh->wait_load_finished();
     if (!mats.empty()) {
         auto submesh_size = std::max<size_t>(1, mesh->submesh_offsets().size());
         if (!(mats.size() == submesh_size)) [[unlikely]] {
@@ -154,7 +154,7 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
             return;
         }
         for (auto &i : mats) {
-            if (!i->loaded()) [[unlikely]] {
+            if (i->empty()) [[unlikely]] {
                 LUISA_WARNING("Material not loaded, renderer update failed.");
                 return;
             }

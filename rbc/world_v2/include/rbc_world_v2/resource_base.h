@@ -18,16 +18,32 @@ public:
         return _path;
     }
     [[nodiscard]] uint64_t file_offset() const { return _file_offset; }
-    virtual bool loaded() const = 0;
+    ///////// Function call must be atomic
+    // return true if this resource is never created, loaded or updated
+    virtual bool empty() const = 0;
+    // return true if this resource is executed or finished by loading-thread
+    virtual bool load_executed() const = 0;
+    // return true if this resource is finished by loading-thread
+    virtual bool load_finished() const = 0;
+    // require this resource load from Resource::_path, return false if the resource is non-empty, loading, loaded or destination file is invalid.
     virtual bool async_load_from_file() = 0;
+    // init device side resource, return true if it's non-empty but not loaded.
     virtual bool init_device_resource() = 0;
+    // unload this resource and make it as empty
     virtual void unload() = 0;
-    virtual void wait_load() const = 0;
+    // wait until the loading logic finished in host-side
+    virtual void wait_load_executed() const = 0;
+    // wait until the loading logic finished in both host-side and device-side
+    virtual void wait_load_finished() const = 0;
+    // save host_data to Resource::_path
     RBC_WORLD_API bool save_to_path();
+    // set Resource::_path, valid only if this resource is empty
     RBC_WORLD_API void set_path(
         luisa::filesystem::path const &path,
         uint64_t const &file_offset);
+    // serialize meta information
     RBC_WORLD_API virtual void serialize(ObjSerialize const &obj) const;
+    // deserialize meta information
     RBC_WORLD_API virtual void deserialize(ObjDeSerialize const &obj);
     // RBC_WORLD_API virtual void (ObjDeSerialize const&obj);
 protected:

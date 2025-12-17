@@ -18,18 +18,21 @@ private:
     bool _loaded : 1 {false};
     bool _dirty : 1 {true};
 public:
+    [[nodiscard]] bool empty() const override;
     auto &mat_code() const { return _mat_code; }
     auto &mat_data() const { return _mat_data; }
     // prepare host data and emplace
     bool init_device_resource() override;
     luisa::BinaryBlob write_content_to();
     void load_from_json(luisa::string_view json_vec);
-    bool loaded() const override;
+    bool load_executed() const override;
+    bool load_finished() const override;
     void serialize(ObjSerialize const &obj) const override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;
-    void wait_load() const override;
+    void wait_load_executed() const override;
+    void wait_load_finished() const override;
 protected:
     bool unsafe_save_to_path() const override;
 };

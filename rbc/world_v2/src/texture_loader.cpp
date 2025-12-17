@@ -11,8 +11,7 @@
 
 namespace rbc::world {
 bool Texture::decode(luisa::filesystem::path const &path) {
-    wait_load();
-    if (loaded()) [[unlikely]] {
+    if (!empty()) [[unlikely]] {
         LUISA_WARNING("Can not create on exists texture.");
         return false;
     }

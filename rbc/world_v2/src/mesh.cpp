@@ -25,6 +25,11 @@ void Mesh::serialize(ObjSerialize const &ser) const {
     ser.ser.add_last_scope_to_object("submesh_offsets");
 }
 
+bool Mesh::empty() const {
+    std::shared_lock lck{_async_mtx};
+    return !_device_mesh;
+}
+
 void Mesh::deserialize(ObjDeSerialize const &ser) {
     std::shared_lock lck{_async_mtx};
     BaseType::deserialize(ser);
@@ -56,17 +61,21 @@ void Mesh::deserialize(ObjDeSerialize const &ser) {
         ser.ser.end_scope();
     }
 }
-void Mesh::wait_load() const {
+void Mesh::wait_load_executed() const {
+    std::shared_lock lck{_async_mtx};
+    if (_device_mesh)
+        _device_mesh->wait_executed();
+}
+void Mesh::wait_load_finished() const {
     std::shared_lock lck{_async_mtx};
     if (_device_mesh)
         _device_mesh->wait_finished();
 }
 luisa::vector<std::byte> *Mesh::host_data() {
     std::shared_lock lck{_async_mtx};
-    if (_device_mesh){
+    if (_device_mesh) {
         return &_device_mesh->host_data_ref();
-    }
-    else
+    } else
         return nullptr;
 }
 uint64_t Mesh::basic_size_bytes() const {
@@ -87,7 +96,6 @@ void Mesh::create_empty(
     bool contained_tangent,
     uint vertex_color_channels,
     uint skinning_weight_count) {
-    wait_load();
     if (_device_mesh) [[unlikely]] {
         LUISA_ERROR("Can not create on exists mesh.");
     }
@@ -106,8 +114,7 @@ void Mesh::create_empty(
 }
 bool Mesh::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
-    if (!render_device || !_device_mesh || loaded()) return false;
-    wait_load();
+    if (!render_device || !_device_mesh || load_executed()) return false;
     auto host_data_ = host_data();
     LUISA_ASSERT(host_data_->empty() || host_data_->size() == desire_size_bytes(), "Host data length {} mismatch with required length {}.", host_data_->size(), desire_size_bytes());
     {
@@ -158,9 +165,13 @@ bool Mesh::unsafe_save_to_path() const {
     writer.write(_device_mesh->host_data());
     return true;
 }
-bool Mesh::loaded() const {
+bool Mesh::load_executed() const {
     std::shared_lock lck{_async_mtx};
-    return _device_mesh && (_device_mesh->loaded() || _device_mesh->mesh_data());
+    return _device_mesh && (_device_mesh->load_executed() || _device_mesh->mesh_data());
+}
+bool Mesh::load_finished() const {
+    std::shared_lock lck{_async_mtx};
+    return _device_mesh && (_device_mesh->load_finished() || _device_mesh->mesh_data());
 }
 void Mesh::unload() {
     std::lock_guard lck{_async_mtx};

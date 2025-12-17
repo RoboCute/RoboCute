@@ -27,6 +27,7 @@ private:
     ~Texture();
 public:
     bool decode(luisa::filesystem::path const &path);
+    [[nodiscard]] bool empty() const override;
     [[nodiscard]] DeviceImage *get_image() const;
     [[nodiscard]] DeviceSparseImage *get_sparse_image() const;
     [[nodiscard]] auto pixel_storage() const { return _pixel_storage; }
@@ -43,14 +44,16 @@ public:
         uint32_t mip_level,
         bool is_virtual_texture);
 
-    bool loaded() const override;
+    bool load_finished() const override;
+    bool load_executed() const override;
     bool init_device_resource() override;
     void serialize(ObjSerialize const &obj) const override;
     void deserialize(ObjDeSerialize const &obj) override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;
-    void wait_load() const override;
+    void wait_load_executed() const override;
+    void wait_load_finished() const override;
 protected:
     bool unsafe_save_to_path() const override;
 };

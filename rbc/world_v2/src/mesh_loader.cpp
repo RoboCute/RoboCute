@@ -62,8 +62,7 @@ static void calculate_tangent(
 }
 bool Mesh::decode(luisa::filesystem::path const &path) {
     // TODO: init mesh
-    wait_load();
-    if (loaded()) [[unlikely]] {
+    if (!empty()) [[unlikely]] {
         LUISA_WARNING("Can not create on exists mesh.");
         return false;
     }

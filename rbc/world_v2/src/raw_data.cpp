@@ -16,9 +16,17 @@ bool RawData::init_device_resource() {
     _device_buffer->_buffer = render_device->lc_device().create_buffer<uint>(_device_buffer->_host_data.size() / sizeof(uint));
     return true;
 }
-bool RawData::loaded() const {
+bool RawData::empty() const {
     std::shared_lock lck{_async_mtx};
-    return _device_buffer && _device_buffer->loaded();
+    return !_device_buffer;
+}
+bool RawData::load_executed() const {
+    std::shared_lock lck{_async_mtx};
+    return _device_buffer && _device_buffer->load_executed();
+}
+bool RawData::load_finished() const {
+    std::shared_lock lck{_async_mtx};
+    return _device_buffer && _device_buffer->load_finished();
 }
 luisa::vector<std::byte> *RawData::host_data() const {
     std::shared_lock lck{_async_mtx};
@@ -61,10 +69,6 @@ void RawData::deserialize(ObjDeSerialize const &obj) {
     _device_buffer->_host_data.push_back_uninitialized(size);
 }
 bool RawData::async_load_from_file() {
-    wait_load();
-    if (loaded()) {
-        return false;
-    }
     if (_path.empty()) return false;
     std::lock_guard lck{_async_mtx};
     if (_device_buffer)
@@ -81,10 +85,16 @@ void RawData::unload() {
     std::lock_guard lck{_async_mtx};
     _device_buffer.reset();
 }
-void RawData::wait_load() const {
+void RawData::wait_load_finished() const {
     std::shared_lock lck{_async_mtx};
     if (_device_buffer) {
         _device_buffer->wait_finished();
+    }
+}
+void RawData::wait_load_executed() const {
+    std::shared_lock lck{_async_mtx};
+    if (_device_buffer) {
+        _device_buffer->wait_executed();
     }
 }
 bool RawData::unsafe_save_to_path() const {

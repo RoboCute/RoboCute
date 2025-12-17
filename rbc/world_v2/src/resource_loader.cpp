@@ -56,7 +56,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     RC<Resource> res = v.res.lock();
     if (res) {
         if (async_load_from_file) {
-            if (!res->loaded())
+            if (!res->empty())
                 res->async_load_from_file();
         }
         return res;

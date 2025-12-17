@@ -28,7 +28,15 @@ void _collect_all_materials() {
         sm->mat_manager().discard_mat_instance(MatCode{i});
     }
 }
-bool Material::loaded() const {
+bool Material::empty() const {
+    std::shared_lock lck{_async_mtx};
+    return !_loaded;
+}
+bool Material::load_executed() const {
+    std::shared_lock lck{_async_mtx};
+    return _loaded;
+}
+bool Material::load_finished() const {
     std::shared_lock lck{_async_mtx};
     return _loaded && _mat_code.value != ~0u;
 }
@@ -159,7 +167,7 @@ bool Material::async_load_from_file() {
 Material::Material()
     : _event(luisa::fiber::event::Mode::Manual, true) {}
 Material::~Material() {
-    wait_load();
+    wait_load_finished();
     unload();
 }
 void Material::unload() {
@@ -172,11 +180,18 @@ void Material::unload() {
     std::lock_guard lck1{_mat_inst->_mat_mtx};
     _mat_inst->_disposed_mat.emplace_back(value);
 }
-void Material::wait_load() const {
+void Material::wait_load_executed() const {
     std::shared_lock lck{_async_mtx};
     _event.wait();
     for (auto &i : _depended_resources) {
-        if (i) i->wait_load();
+        i->wait_load_executed();
+    }
+}
+void Material::wait_load_finished() const {
+    std::shared_lock lck{_async_mtx};
+    _event.wait();
+    for (auto &i : _depended_resources) {
+        if (i) i->wait_load_finished();
     }
 }
 bool Material::init_device_resource() {
@@ -185,7 +200,6 @@ bool Material::init_device_resource() {
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
         LUISA_ERROR("Material::init_device_resource can only be called in render-thread.");
     }
-    wait_load();
     std::lock_guard lck{_async_mtx};
     if (!_loaded) [[unlikely]] {
         return false;
@@ -198,7 +212,7 @@ bool Material::init_device_resource() {
             LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
             auto res = *iter;
             if (res) {
-                res->wait_load();
+                res->wait_load_executed();
                 u.index = static_cast<Texture *>(res.get())->heap_index();
             } else {
                 u.index = ~0u;
