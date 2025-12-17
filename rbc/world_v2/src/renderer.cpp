@@ -131,7 +131,10 @@ Renderer::Renderer(Entity *entity) : ComponentDerive<Renderer>(entity) {
 }
 void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
     auto tr = entity()->get_component<Transform>();
-    if (!tr) return;
+    if (!tr) {
+        LUISA_WARNING("Transform component not found, renderer update failed.");
+        return;
+    }
     float4x4 matrix = tr->trs_float();
     auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
@@ -145,7 +148,10 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
     } else {
         mesh = _mesh_ref.get();
     }
-    if (!mesh) return;
+    if (!mesh) {
+        LUISA_WARNING("Mesh not loaded, renderer update failed.");
+        return;
+    }
     mesh->wait_load_finished();
     if (!mats.empty()) {
         auto submesh_size = std::max<size_t>(1, mesh->submesh_offsets().size());
@@ -164,13 +170,16 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
             _materials,
             mats);
     }
-    if (_materials.size() != mesh->submesh_count()) return;
+    if (_materials.size() != mesh->submesh_count()) {
+        LUISA_WARNING("Material count {} mismatch with submesh count {}", _materials.size(), mesh->submesh_count());
+        return;
+    }
     _material_codes.clear();
     vstd::push_back_func(
         _material_codes,
         _materials.size(),
         [&](size_t i) {
-            auto&& mat = _materials[i];
+            auto &&mat = _materials[i];
             mat->init_device_resource();
             return mat->mat_code();
         });

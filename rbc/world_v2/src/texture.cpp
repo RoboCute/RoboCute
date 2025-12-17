@@ -22,14 +22,14 @@ bool Texture::empty() const {
 }
 DeviceImage *Texture::get_image() const {
     std::shared_lock lck{_async_mtx};
-    if (_tex && !_is_vt) {
+    if (_tex && !is_vt()) {
         return static_cast<DeviceImage *>(_tex.get());
     }
     return nullptr;
 }
 DeviceSparseImage *Texture::get_sparse_image() const {
     std::shared_lock lck{_async_mtx};
-    if (_tex && _is_vt) {
+    if (_tex && is_vt()) {
         return static_cast<DeviceSparseImage *>(_tex.get());
     }
     return nullptr;
@@ -103,16 +103,26 @@ bool Texture::unsafe_save_to_path() const {
     writer.write(_tex->host_data());
     return true;
 }
+bool Texture::is_vt() const {
+    if (_tex) {
+        return _tex->resource_type() == DeviceResource::Type::SparseImage;
+    } else {
+        return _is_vt;
+    }
+}
 bool Texture::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_tex || load_executed()) {
+        return false;
+    }
+    if (_is_vt != is_vt()) {
         return false;
     }
     auto file_size = desire_size_bytes();
     auto host_data_ = host_data();
     LUISA_ASSERT(!host_data_ || host_data_->empty() || host_data_->size() == file_size, "Invalid host data length {}, requires {}.", host_data_->size(), file_size);
     std::lock_guard lck{_async_mtx};
-    if (_is_vt) {
+    if (is_vt()) {
         if (_path.empty()) {
             LUISA_WARNING("Virtual texture must have path.");
             return false;
@@ -150,7 +160,7 @@ bool Texture::async_load_from_file() {
     if (_tex) {
         return false;
     }
-    if (_is_vt) {
+    if (is_vt()) {
         auto tex = new DeviceSparseImage();
         _tex = tex;
         _vt_finished = new VTLoadFlag{};
@@ -203,7 +213,7 @@ void Texture::unload() {
 uint32_t Texture::heap_index() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return ~0u;
-    if (_is_vt) {
+    if (is_vt()) {
         return static_cast<DeviceSparseImage *>(_tex.get())->heap_idx();
     } else {
         return static_cast<DeviceImage *>(_tex.get())->heap_idx();
@@ -212,7 +222,7 @@ uint32_t Texture::heap_index() const {
 bool Texture::load_executed() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return false;
-    if (_is_vt) {
+    if (is_vt()) {
         return static_cast<DeviceSparseImage *>(_tex.get())->load_executed();
     } else {
         return static_cast<DeviceImage *>(_tex.get())->load_executed() || static_cast<DeviceImage *>(_tex.get())->type() != DeviceImage::ImageType::None;
@@ -221,7 +231,7 @@ bool Texture::load_executed() const {
 bool Texture::load_finished() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return false;
-    if (_is_vt) {
+    if (is_vt()) {
         auto vt = static_cast<DeviceSparseImage *>(_tex.get());
         return vt->load_finished() && _vt_finished->finished;
     } else {

@@ -25,8 +25,11 @@ private:
     bool _is_vt{};
     Texture();
     ~Texture();
+    void _pack_to_tile_level(uint level, luisa::span<std::byte const> src, luisa::span<std::byte> dst);
 public:
+    bool is_vt() const;
     bool decode(luisa::filesystem::path const &path);
+    bool pack_to_tile();
     [[nodiscard]] bool empty() const override;
     [[nodiscard]] DeviceImage *get_image() const;
     [[nodiscard]] DeviceSparseImage *get_sparse_image() const;

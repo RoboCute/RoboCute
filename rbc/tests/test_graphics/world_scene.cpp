@@ -81,8 +81,10 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
 
     tex = world::create_object<world::Texture>();
     tex->decode("test_grid.png");
+    // TODO: transform from regular tex to vt need reload device-image
+    // tex->pack_to_tile(); 
     tex->init_device_resource();
-    utils->update_texture(tex->get_image());// update through render-thread
+    // utils->update_texture(tex->get_image());// update through render-thread
 
     auto quad_entity = _entities.emplace_back(world::create_object<world::Entity>());
     auto quad_trans = quad_entity->add_component<world::Transform>();
