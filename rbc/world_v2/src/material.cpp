@@ -13,9 +13,27 @@ namespace rbc::world {
 struct MaterialInst : vstd::IOperatorNewBase {
     luisa::spin_mutex _mat_mtx;
     luisa::vector<uint> _disposed_mat;
+    MatCode _default_mat_code{};
 };
 static RuntimeStatic<MaterialInst> _mat_inst;
-
+MatCode Material::default_mat_code() {
+    if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
+        LUISA_ERROR("Renderer::update_object can only be called in render-thread.");
+    }
+    if (_mat_inst->_default_mat_code.value == ~0u) {
+        material::OpenPBR mat{};
+        mat.base.albedo = {1, 0, 1};
+        auto &sm = SceneManager::instance();
+        _mat_inst->_default_mat_code = sm.mat_manager().emplace_mat_instance(
+            mat,
+            RenderDevice::instance().lc_main_cmd_list(),
+            sm.bindless_allocator(),
+            sm.buffer_uploader(),
+            sm.dispose_queue(),
+            material::PolymorphicMaterial::index<material::OpenPBR>);
+    }
+    return _mat_inst->_default_mat_code;
+}
 void _collect_all_materials() {
     auto sm = SceneManager::instance_ptr();
     _mat_inst->_mat_mtx.lock();
@@ -125,15 +143,15 @@ luisa::BinaryBlob Material::write_content_to() {
                 detail::serde_openpbr<material::OpenPBR const &>(t, ser_pbr);
             } else {
                 LUISA_ERROR("Unknown material type.");
-                // TODO: serialize other type
+                // TODO: serialize_meta other type
             }
         });
         LUISA_ASSERT(iter == _depended_resources.end(), "Material type mismatch.");
     }
     return json_ser.write_to();
 }
-void Material::serialize(ObjSerialize const &ser) const {
-    BaseType::serialize(ser);
+void Material::serialize_meta(ObjSerialize const &ser) const {
+    BaseType::serialize_meta(ser);
     // TODO: mark dependencies
     // for (auto &i : _depended_resources) {
     //     auto guid = i->guid();

@@ -21,16 +21,17 @@ void Renderer::on_awake() {
 void Renderer::on_destroy() {
     remove_object();
 }
-void Renderer::serialize(ObjSerialize const &ser) const {
+void Renderer::serialize_meta(ObjSerialize const &ser) const {
     auto &ser_obj = ser.ser;
     ser_obj.start_array();
     for (auto &i : _materials) {
-        auto guid = i->guid();
-        if (guid) {
-            ser_obj._store(guid);
-            // TODO: mark dependencies
-            // ser.depended_resources.emplace(guid);
+        vstd::Guid guid;
+        if (i) {
+            guid = i->guid();
+        } else {
+            guid.reset();
         }
+        ser_obj._store(guid);
     }
     ser_obj.add_last_scope_to_object("mats");
     if (_mesh_ref) {
@@ -43,7 +44,7 @@ void Renderer::serialize(ObjSerialize const &ser) const {
         }
     }
 }
-void Renderer::deserialize(ObjDeSerialize const &ser) {
+void Renderer::deserialize_meta(ObjDeSerialize const &ser) {
     auto &obj = ser.ser;
     uint64_t size;
     if (obj.start_array(size, "mats")) {
@@ -51,11 +52,13 @@ void Renderer::deserialize(ObjDeSerialize const &ser) {
         for (auto &i : vstd::range(size)) {
             vstd::Guid guid;
             if (!obj._load(guid)) {
-                _materials.emplace_back(nullptr);// TODO: deal with empty material
+                _materials.emplace_back(nullptr);
             } else {
                 auto obj = load_resource(guid, true);
                 if (obj && obj->is_type_of(TypeInfo::get<Material>()))
                     _materials.emplace_back(static_cast<RC<Material> &&>(obj));
+                else
+                    _materials.emplace_back(nullptr);
             }
         }
         obj.end_scope();
@@ -72,6 +75,8 @@ void Renderer::deserialize(ObjDeSerialize const &ser) {
 static bool material_is_emission(luisa::span<RC<Material> const> materials) {
     bool contained_emission = false;
     for (auto &i : materials) {
+        if (!i) [[unlikely]]
+            continue;
         i->mat_data().visit([&]<typename T>(T const &t) {
             if constexpr (std::is_same_v<T, material::OpenPBR>) {
                 for (auto &i : t.emission.luminance) {
@@ -153,36 +158,34 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
         return;
     }
     mesh->wait_load_finished();
+    auto submesh_size = mesh->submesh_count();
     if (!mats.empty()) {
-        auto submesh_size = std::max<size_t>(1, mesh->submesh_offsets().size());
-        if (!(mats.size() == submesh_size)) [[unlikely]] {
-            LUISA_WARNING("Submesh size {} mismatch with material size {}", submesh_size, mats.size());
-            return;
-        }
-        for (auto &i : mats) {
-            if (i->empty()) [[unlikely]] {
-                LUISA_WARNING("Material not loaded, renderer update failed.");
-                return;
-            }
-        }
         _materials.clear();
+        auto setted_size = std::min(mats.size(), submesh_size);
         vstd::push_back_all(
             _materials,
-            mats);
-    }
-    if (_materials.size() != mesh->submesh_count()) {
-        LUISA_WARNING("Material count {} mismatch with submesh count {}", _materials.size(), mesh->submesh_count());
-        return;
+            mats.subspan(0, setted_size));
     }
     _material_codes.clear();
+    _material_codes.reserve(submesh_size);
     vstd::push_back_func(
         _material_codes,
-        _materials.size(),
+        std::min(submesh_size, _materials.size()),
         [&](size_t i) {
             auto &&mat = _materials[i];
-            mat->init_device_resource();
-            return mat->mat_code();
+            if (!mat || mat->empty()) {
+                return Material::default_mat_code();
+            } else {
+                mat->init_device_resource();
+                return mat->mat_code();
+            }
         });
+    if (_material_codes.size() < submesh_size) {
+        auto default_mat = Material::default_mat_code();
+        do {
+            _material_codes.emplace_back(default_mat);
+        } while (_material_codes.size() < submesh_size);
+    }
     // TODO: change light type
     bool is_emission = material_is_emission(_materials);
     if (!render_device) return;

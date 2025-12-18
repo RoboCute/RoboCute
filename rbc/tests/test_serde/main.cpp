@@ -37,7 +37,7 @@ int main() {
         writer.start_object();
         if (guid) {
             writer._store(guid, "__guid__");
-            entity->serialize(writer_args);
+            entity->serialize_meta(writer_args);
         }
         writer.add_last_scope_to_object();
         json = writer.write_to();
@@ -66,7 +66,7 @@ int main() {
         LUISA_ASSERT(reader._load(guid, "__guid__"));
         auto entity = entities.emplace_back(world::create_object_with_guid<world::Entity>(guid));
         auto deser_obj = world::ObjDeSerialize{.ser = reader};
-        entity->deserialize(deser_obj);
+        entity->deserialize_meta(deser_obj);
         reader.end_scope();
     }
     for(auto& i : entities) {

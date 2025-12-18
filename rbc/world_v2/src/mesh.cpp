@@ -8,9 +8,9 @@ Mesh::Mesh() = default;
 Mesh::~Mesh() {
 }
 
-void Mesh::serialize(ObjSerialize const &ser) const {
+void Mesh::serialize_meta(ObjSerialize const &ser) const {
     std::shared_lock lck{_async_mtx};
-    BaseType::serialize(ser);
+    BaseType::serialize_meta(ser);
     ser.ser._store(_contained_normal, "contained_normal");
     ser.ser._store(_contained_tangent, "contained_tangent");
     ser.ser._store(_vertex_count, "vertex_count");
@@ -30,9 +30,9 @@ bool Mesh::empty() const {
     return !_device_mesh;
 }
 
-void Mesh::deserialize(ObjDeSerialize const &ser) {
+void Mesh::deserialize_meta(ObjDeSerialize const &ser) {
     std::shared_lock lck{_async_mtx};
-    BaseType::deserialize(ser);
+    BaseType::deserialize_meta(ser);
 #define RBC_MESH_LOAD(m)            \
     {                               \
         decltype(_##m) m;           \

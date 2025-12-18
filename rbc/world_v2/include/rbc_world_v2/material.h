@@ -18,6 +18,7 @@ private:
     bool _loaded : 1 {false};
     bool _dirty : 1 {true};
 public:
+    static MatCode default_mat_code();
     [[nodiscard]] bool empty() const override;
     auto &mat_code() const { return _mat_code; }
     auto &mat_data() const { return _mat_data; }
@@ -27,7 +28,7 @@ public:
     void load_from_json(luisa::string_view json_vec);
     bool load_executed() const override;
     bool load_finished() const override;
-    void serialize(ObjSerialize const &obj) const override;
+    void serialize_meta(ObjSerialize const &obj) const override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;

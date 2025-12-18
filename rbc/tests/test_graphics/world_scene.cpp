@@ -36,10 +36,11 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     _mats[4] = std::move(right_wall_mat);
     _mats[5] = basic_mat;
     _mats[6] = basic_mat;
-    _mats[7] = std::move(light_mat);
+    _mats[7] = light_mat;
     for (auto &i : _mats) {
         i->init_device_resource();
     }
+    _mats[5] = nullptr;
     {
         auto entity = _entities.emplace_back(world::create_object<world::Entity>());
         auto transform = entity->add_component<world::Transform>();
@@ -126,7 +127,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
                 0);
             res->save_to_path();
             JsonSerializer js;
-            res->serialize(world::ObjSerialize{
+            res->serialize_meta(world::ObjSerialize{
                 js});
             auto blob = js.write_to();
             LUISA_ASSERT(!blob.empty());
@@ -137,14 +138,15 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         write_file(quad_mesh);
         write_file(tex.get());
         for (auto &i : _mats) {
-            write_file(i.get());
+            if (i)
+                write_file(i.get());
         }
         // write_scene
         JsonSerializer scene_ser{true};
         world::ObjSerialize ser{scene_ser};
         for (auto &i : _entities) {
             scene_ser.start_object();
-            i->serialize(ser);
+            i->serialize_meta(ser);
             scene_ser.add_last_scope_to_object();
         }
         BinaryFileWriter file_writer(luisa::to_string(entities_path));
@@ -168,7 +170,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     for (auto i : vstd::range(size)) {
         auto e = _entities.emplace_back(world::create_object<world::Entity>());
         entitie_deser.start_object();
-        e->deserialize(world::ObjDeSerialize{entitie_deser});
+        e->deserialize_meta(world::ObjDeSerialize{entitie_deser});
         entitie_deser.end_scope();
     }
     for (auto &i : _entities) {

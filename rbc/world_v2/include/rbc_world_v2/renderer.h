@@ -24,8 +24,8 @@ private:
 public:
     void on_awake() override;
     void on_destroy() override;
-    void serialize(ObjSerialize const&obj) const override;
-    void deserialize(ObjDeSerialize const&obj) override;
+    void serialize_meta(ObjSerialize const&obj) const override;
+    void deserialize_meta(ObjDeSerialize const&obj) override;
     void dispose() override;
     // draw
     void update_object(luisa::span<RC<Material> const> materials = {}, Mesh *mesh = nullptr);

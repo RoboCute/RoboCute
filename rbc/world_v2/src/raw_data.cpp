@@ -48,18 +48,18 @@ void RawData::create_empty(
         _device_buffer->_buffer = render_device->lc_device().create_buffer<uint>(size_bytes / sizeof(uint));
     }
 }
-void RawData::serialize(ObjSerialize const &obj) const {
+void RawData::serialize_meta(ObjSerialize const &obj) const {
     std::shared_lock lck{_async_mtx};
-    ResourceBaseImpl<RawData>::serialize(obj);
+    ResourceBaseImpl<RawData>::serialize_meta(obj);
     auto host_data_ = host_data();
     uint64_t size = host_data_ ? host_data_->size_bytes() : 0;
 
     obj.ser._store(size, "size_bytes");
     obj.ser._store(_upload_device, "upload_device");
 }
-void RawData::deserialize(ObjDeSerialize const &obj) {
+void RawData::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
-    ResourceBaseImpl<RawData>::deserialize(obj);
+    ResourceBaseImpl<RawData>::deserialize_meta(obj);
     uint64_t size;
     obj.ser._load(size, "size_bytes");
     obj.ser._load(_upload_device, "upload_device");

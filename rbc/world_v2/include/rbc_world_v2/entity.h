@@ -62,8 +62,8 @@ public:
     }
     RBC_WORLD_API bool remove_component(TypeInfo const &type);
     RBC_WORLD_API Component *get_component(TypeInfo const &type);
-    RBC_WORLD_API void serialize(ObjSerialize const&ser) const override;
-    RBC_WORLD_API void deserialize(ObjDeSerialize const&ser) override;
+    RBC_WORLD_API void serialize_meta(ObjSerialize const&ser) const override;
+    RBC_WORLD_API void deserialize_meta(ObjDeSerialize const&ser) override;
     RBC_WORLD_API void broadcast_event(WorldEventType frame_tick);
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)

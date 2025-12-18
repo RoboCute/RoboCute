@@ -21,8 +21,8 @@ public:
     bool load_executed() const override;
     bool load_finished() const override;
     bool empty() const override;
-    void serialize(ObjSerialize const &obj) const override;
-    void deserialize(ObjDeSerialize const &obj) override;
+    void serialize_meta(ObjSerialize const &obj) const override;
+    void deserialize_meta(ObjDeSerialize const &obj) override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;

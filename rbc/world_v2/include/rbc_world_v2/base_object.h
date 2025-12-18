@@ -86,8 +86,8 @@ public:
     }
     [[nodiscard]] auto guid() const { return _guid; }
     [[nodiscard]] virtual BaseObjectType base_type() const = 0;
-    virtual void serialize(ObjSerialize const &obj) const {}
-    virtual void deserialize(ObjDeSerialize const &obj) {}
+    virtual void serialize_meta(ObjSerialize const &obj) const {}
+    virtual void deserialize_meta(ObjDeSerialize const &obj) {}
 
     [[nodiscard]] bool is_type_of(TypeInfo const &type) const {
         auto dst = type_id();

@@ -48,7 +48,7 @@ Component *Entity::get_component(TypeInfo const &type) {
     LUISA_DEBUG_ASSERT(comp->entity() == this);
     return comp;
 }
-void Entity::serialize(ObjSerialize const&ser) const {
+void Entity::serialize_meta(ObjSerialize const&ser) const {
     ser.ser.start_array();
     for (auto &i : _components) {
         auto comp = i.second;
@@ -58,12 +58,12 @@ void Entity::serialize(ObjSerialize const&ser) const {
         ser.ser._store(
             reinterpret_cast<vstd::Guid &>(type_id),
             "__typeid__");
-        comp->serialize(ser);
+        comp->serialize_meta(ser);
         ser.ser.add_last_scope_to_object();
     }
     ser.ser.add_last_scope_to_object("components");
 }
-void Entity::deserialize(ObjDeSerialize const&ser) {
+void Entity::deserialize_meta(ObjDeSerialize const&ser) {
     uint64_t size;
     if (!ser.ser.start_array(size, "components")) return;
     _components.reserve(size);
@@ -78,7 +78,7 @@ void Entity::deserialize(ObjDeSerialize const&ser) {
         }
         auto comp = _create_component(reinterpret_cast<std::array<uint64_t, 2> const &>(type_id));
         _add_component(comp);
-        comp->deserialize(ser);
+        comp->deserialize_meta(ser);
     }
     ser.ser.end_scope();
 }

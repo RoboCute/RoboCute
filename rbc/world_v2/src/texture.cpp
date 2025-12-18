@@ -45,17 +45,17 @@ uint64_t Texture::desire_size_bytes() const {
     }
     return size_bytes;
 }
-void Texture::serialize(ObjSerialize const &obj) const {
+void Texture::serialize_meta(ObjSerialize const &obj) const {
     std::shared_lock lck{_async_mtx};
-    BaseType::serialize(obj);
+    BaseType::serialize_meta(obj);
     obj.ser._store(_pixel_storage, "pixel_storage");
     obj.ser._store(_size, "size");
     obj.ser._store(_mip_level, "mip_level");
     obj.ser._store(_is_vt, "is_vt");
 }
-void Texture::deserialize(ObjDeSerialize const &obj) {
+void Texture::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
-    BaseType::deserialize(obj);
+    BaseType::deserialize_meta(obj);
 #define RBC_MESH_LOAD(m)            \
     {                               \
         decltype(_##m) m;           \

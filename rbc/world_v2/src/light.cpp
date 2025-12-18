@@ -93,7 +93,7 @@ void Light::on_awake() {
 void Light::on_destroy() {
     _light_stub.remove_light();
 }
-void Light::serialize(ObjSerialize const&ser) const {
+void Light::serialize_meta(ObjSerialize const&ser) const {
     auto & ser_obj = ser.ser;
     ser_obj._store(_luminance, "luminance");
     ser_obj._store(_angle_radians, "angle_radians");
@@ -102,7 +102,7 @@ void Light::serialize(ObjSerialize const&ser) const {
     ser_obj._store(_visible, "visible");
     ser_obj._store((uint)_light_stub.light_type, "light_type");
 }
-void Light::deserialize(ObjDeSerialize const&ser) {
+void Light::deserialize_meta(ObjDeSerialize const&ser) {
     auto & obj = ser.ser;
     obj._load(_luminance, "luminance");
     obj._load(_angle_radians, "angle_radians");

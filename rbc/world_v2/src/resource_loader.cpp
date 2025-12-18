@@ -92,7 +92,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     }
     ObjDeSerialize obj_deser{.ser = deser};
     v.res = res;
-    res->deserialize(obj_deser);
+    res->deserialize_meta(obj_deser);
     if (async_load_from_file) res->async_load_from_file();
     return res;
 }

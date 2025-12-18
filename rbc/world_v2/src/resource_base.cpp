@@ -1,7 +1,7 @@
 #include <rbc_world_v2/resource_base.h>
 
 namespace rbc ::world {
-void Resource::serialize(ObjSerialize const &obj) const {
+void Resource::serialize_meta(ObjSerialize const &obj) const {
     auto type_id = this->type_id();
     obj.ser._store(
         reinterpret_cast<vstd::Guid &>(type_id),
@@ -11,7 +11,7 @@ void Resource::serialize(ObjSerialize const &obj) const {
         obj.ser._store(_file_offset, "file_offset");
     }
 }
-void Resource::deserialize(ObjDeSerialize const &obj) {
+void Resource::deserialize_meta(ObjDeSerialize const &obj) {
     luisa::string path_str;
     if (obj.ser._load(path_str, "path")) {
         _path = path_str;

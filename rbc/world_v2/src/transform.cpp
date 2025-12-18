@@ -10,7 +10,7 @@ static RuntimeStatic<TransformStatic> _trans_inst;
 luisa::vector<InstanceID> &dirty_transforms() {
     return _trans_inst->dirty_trans;
 }
-void Transform::serialize(ObjSerialize const&obj) const {
+void Transform::serialize_meta(ObjSerialize const&obj) const {
     auto &ser_obj = obj.ser;
     ser_obj.start_array();
     for (auto &child : _children) {
@@ -29,7 +29,7 @@ float4x4 Transform::trs_float() const {
         make_float4(_trs[2]),
         make_float4(_trs[3]));
 }
-void Transform::deserialize(ObjDeSerialize const&obj) {
+void Transform::deserialize_meta(ObjDeSerialize const&obj) {
     uint64_t size;
     if (obj.ser.start_array(size, "children")) {
         _children.reserve(size);
