@@ -84,12 +84,7 @@ inline bool OpenPBR::transform_to_params(
 	uv = uv * float2(uvs.uv_scale) + float2(uvs.uv_offset);
 	float2 ddx = ddxy.xy * float2(uvs.uv_scale);
 	float2 ddy = ddxy.zw * float2(uvs.uv_scale);
-#ifdef OFFLINE_MODE
-#define REJECT_EARLY_RETURN \
-	if (reject) return false;
-#else
-#define REJECT_EARLY_RETURN
-#endif
+
 	auto read_tex = [&](MatImageHandle const& tex) {
 		uint min_level;
 		uint dst_level;
@@ -116,7 +111,6 @@ inline bool OpenPBR::transform_to_params(
 		params.weight.metalness = weight.metallic;
 		if (weight.metallic_roughness_tex.valid()) {
 			auto tex_val = read_tex(weight.metallic_roughness_tex);
-			REJECT_EARLY_RETURN
 			params.weight.metalness *= tex_val.x;
 			if constexpr (requires { params.specular; })
 				params.specular.roughness *= tex_val.y;
@@ -136,7 +130,6 @@ inline bool OpenPBR::transform_to_params(
 		params.geometry.thickness = mat.thickness * 1e-2f;
 		if (mat.normal_tex.valid()) {
 			auto tan_normal = read_tex(mat.normal_tex).xyz;
-			REJECT_EARLY_RETURN
 			tan_normal.xy = (tan_normal.xy * 2.f - 1.f) * mat.bump_scale;
 			tan_normal = normalize(tan_normal);
 			params.geometry.onb.replace_normal(tan_normal, -input_dir);
@@ -157,7 +150,6 @@ inline bool OpenPBR::transform_to_params(
 		params.geometry.onb.rotate_tangent(mat.roughness_anisotropy_angle);
 		if (mat.specular_anisotropy_angle_tex.valid()) {
 			auto tex_val = read_tex(mat.specular_anisotropy_angle_tex).xy;
-			REJECT_EARLY_RETURN
 			auto ls = length_squared(tex_val);
 			flatten();
 			if (ls == 0.0f) {
@@ -175,7 +167,6 @@ inline bool OpenPBR::transform_to_params(
 		params.emission.luminance = float3(mat.luminance);
 		if (mat.emission_tex.valid()) {
 			params.emission.luminance *= read_tex(mat.emission_tex).xyz;
-			REJECT_EARLY_RETURN
 		}
 	}
 
@@ -186,7 +177,6 @@ inline bool OpenPBR::transform_to_params(
 			params.base.color = float3(mat.albedo);
 			if (mat.albedo_tex.valid()) {
 				auto tex_val = read_tex(mat.albedo_tex);
-				REJECT_EARLY_RETURN
 				params.base.color *= tex_val.xyz;
 			}
 		}

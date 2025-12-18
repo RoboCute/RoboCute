@@ -3,6 +3,7 @@
 #include <rbc_world_v2/renderer.h>
 #include <rbc_world_v2/light.h>
 #include <rbc_world_v2/resource_loader.h>
+#include <rbc_world_v2/texture_loader.h>
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_app/graphics_utils.h>
 #include <rbc_core/binary_file_writer.h>
@@ -79,10 +80,14 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     quad_mesh->init_device_resource();
     utils->update_mesh_data(quad_mesh->device_mesh().get(), false);// update through render-thread
 
-    tex = world::create_object<world::Texture>();
-    tex->decode("test_grid.png");
+    world::TextureLoader tex_loader;
+    tex = tex_loader.decode_texture(
+        "test_grid.png",
+        16,
+        true);
+    tex_loader.finish_task();
     // TODO: transform from regular tex to vt need reload device-image
-    // tex->pack_to_tile(); 
+    // tex->pack_to_tile();
     tex->init_device_resource();
     // utils->update_texture(tex->get_image());// update through render-thread
 
@@ -130,7 +135,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         };
         write_file(cbox_mesh);
         write_file(quad_mesh);
-        write_file(tex);
+        write_file(tex.get());
         for (auto &i : _mats) {
             write_file(i.get());
         }

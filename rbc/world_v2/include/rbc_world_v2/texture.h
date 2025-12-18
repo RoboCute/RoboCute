@@ -10,7 +10,9 @@ namespace rbc::world {
 struct VTLoadFlag : RCBase {
     std::atomic_bool finished{false};
 };
+struct TextureLoader;
 struct RBC_WORLD_API Texture final : ResourceBaseImpl<Texture> {
+    friend struct TextureLoader;
     DECLARE_WORLD_OBJECT_FRIEND(Texture)
     using BaseType = ResourceBaseImpl<Texture>;
 
@@ -28,7 +30,6 @@ private:
     void _pack_to_tile_level(uint level, luisa::span<std::byte const> src, luisa::span<std::byte> dst);
 public:
     bool is_vt() const;
-    bool decode(luisa::filesystem::path const &path);
     bool pack_to_tile();
     [[nodiscard]] bool empty() const override;
     [[nodiscard]] DeviceImage *get_image() const;

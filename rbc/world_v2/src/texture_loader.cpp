@@ -9,21 +9,145 @@
 #include <stb/stb_image.h>
 #include <tinytiffreader.h>
 #include <tinyexr.h>
+#include <rbc_world_v2/texture_loader.h>
 
 namespace rbc::world {
-bool Texture::decode(luisa::filesystem::path const &path) {
-    if (!empty()) [[unlikely]] {
-        LUISA_WARNING("Can not create on exists texture.");
-        return false;
+void TextureLoader::_try_execute() {
+    std::lock_guard lck{_mtx};
+    while (true) {
+        auto v = _after_device_task.front();
+        if (v && _event.is_completed(v->second)) {
+            luisa::fiber::schedule([counter = _counter, func = std::move(v->first)]() {
+                func();
+                counter.done();
+            });
+            _after_device_task.pop_discard();
+            continue;
+        }
+        break;
     }
+}
+RC<Texture> TextureLoader::decode_texture(
+    luisa::filesystem::path const &path,
+    uint mip_level,
+    bool to_vt) {
+
     auto ext = luisa::to_string(path.extension());
     for (auto &i : ext) {
         i = std::tolower(i);
     }
-    if (!luisa::filesystem::exists(path)) return false;
+    if (!luisa::filesystem::exists(path)) return {};
+    uint64_t gpu_fence = 0;
+    auto to_vt_func = [&](RC<Texture> const &tex, uint chunk_size) {
+        if (!to_vt) return;
+        if (all((tex->size() & (chunk_size - 1u)) != 0u)) {
+            LUISA_WARNING("Texture size {} is not aligned as {}", tex->size(), chunk_size);
+            return;
+        }
+        if (gpu_fence > 0) {
+            _counter.add();
+            std::lock_guard lck{_mtx};
+            _after_device_task.push(
+                [tex]() {
+                    tex->pack_to_tile();
+                },
+                gpu_fence);
+        } else {
+            tex->pack_to_tile();
+        }
+    };
+    auto process_tex = [&](RC<Texture> const &tex) {
+        auto render_device = RenderDevice::instance_ptr();
+        LUISA_ASSERT(render_device, "Render device must be initialized.");
+        {
+            std::lock_guard lck{_mtx};
+            if (!_pack_tex) {
+                _pack_tex.create(render_device->lc_device());
+            }
+            if (!_event) {
+                _event = render_device->lc_device().create_timeline_event();
+            }
+        }
+        uint chunk_size = TexStreamManager::chunk_resolution;
+        if (is_block_compressed((PixelStorage)tex->pixel_storage())) {
+            chunk_size /= 4;
+        }
+        if (mip_level > 1) {
+            auto mip_size = tex->size();
+            auto desire_mip_level = 0;
+            if (!to_vt) {
+                for (auto i : vstd::range(mip_level)) {
+                    desire_mip_level++;
+                    if (any(mip_size <= 64u)) {
+                        break;
+                    }
+                    mip_size >>= 1u;
+                }
+            } else {
+                for (auto i : vstd::range(mip_level)) {
+                    if (any((mip_size & (chunk_size - 1u)) != 0u)) {
+                        break;
+                    }
+                    desire_mip_level++;
+                    if (any(mip_size <= chunk_size)) {
+                        break;
+                    }
+                    mip_size >>= 1u;
+                }
+            }
+            mip_level = desire_mip_level;
+        }
+        mip_level = std::max<uint>(mip_level, 1);
+        tex->_mip_level = mip_level;
+        if (mip_level > 1) {
+            std::unique_lock lck{_mtx};
+            if (_cmdlist.commands().size() > 64) {
+                auto fence = _finished_fence++;
+                render_device->lc_main_stream()
+                    << _cmdlist.commit()
+                    << _event.signal(fence);
+                lck.unlock();
+                if (fence > 2) {
+                    _event.synchronize(fence - 2);
+                    _try_execute();
+                }
+                lck.lock();
+            }
+            lck.unlock();
+            uint64_t size = 0;
+            for (auto i : vstd::range(mip_level)) {
+                size += pixel_storage_size((PixelStorage)tex->pixel_storage(), make_uint3(tex->size() >> (uint)i, 1));
+            }
+            auto &host_data = *tex->host_data();
+            host_data.resize_uninitialized(size);
+            tex->init_device_resource();
+            auto &&img = tex->get_image()->get_float_image();
+            lck.lock();
+            gpu_fence = _finished_fence.load();
+            uint64_t offset = 0;
+            {
+                auto view = img.view(0);
+                auto level_size = view.size_bytes();
+                _cmdlist << view.copy_from(host_data.data());
+                offset += level_size;
+            }
+            _pack_tex->generate_mip(
+                _cmdlist,
+                img);
+
+            for (auto i : vstd::range(1, mip_level)) {
+                auto view = img.view(i);
+                auto level_size = view.size_bytes();
+                _cmdlist << view.copy_to(host_data.data() + offset);
+                offset += level_size;
+            }
+        }
+
+        to_vt_func(tex, chunk_size);
+    };
     if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".gif" || ext == ".psd" || ext == ".pnm" || ext == ".tga") {
         BinaryFileStream file_stream(luisa::to_string(path));
-        if (!file_stream.valid()) return false;
+        if (!file_stream.valid()) return {};
         luisa::vector<std::byte> data;
         data.push_back_uninitialized(file_stream.length());
         file_stream.read(data);
@@ -33,20 +157,22 @@ bool Texture::decode(luisa::filesystem::path const &path) {
         auto ptr = stbi_load_from_memory(
             (const stbi_uc *)data.data(), data.size(), &x, &y, &channels_in_file, 4);
         auto tex = new DeviceImage();
-        _tex = tex;
+        RC<Texture> result = world::create_object<Texture>();
+        result->_tex = tex;
         auto &img = tex->host_data_ref();
-        _size = uint2(x, y);
+        result->_size = uint2(x, y);
         img.push_back_uninitialized(x * y * sizeof(stbi_uc) * 4);
         std::memcpy(img.data(), ptr, img.size_bytes());
         stbi_image_free(ptr);
-        _pixel_storage = LCPixelStorage::BYTE4;
-        _mip_level = 1;// TODO: generate mip
-        _is_vt = false;// TODO: support virtual texture
-        return true;
+        result->_pixel_storage = LCPixelStorage::BYTE4;
+        result->_mip_level = 1;// TODO: generate mip
+        result->_is_vt = false;// TODO: support virtual texture
+        process_tex(result);
+        return result;
     }
     if (ext == ".hdr") {
         BinaryFileStream file_stream(luisa::to_string(path));
-        if (!file_stream.valid()) return false;
+        if (!file_stream.valid()) return {};
         luisa::vector<std::byte> data;
         data.push_back_uninitialized(file_stream.length());
         file_stream.read(data);
@@ -56,26 +182,28 @@ bool Texture::decode(luisa::filesystem::path const &path) {
         auto ptr = stbi_loadf_from_memory(
             (const stbi_uc *)data.data(), data.size(), &x, &y, &channels_in_file, 4);
         auto tex = new DeviceImage();
-        _tex = tex;
+        RC<Texture> result = world::create_object<Texture>();
+        result->_tex = tex;
         auto &img = tex->host_data_ref();
-        _size = uint2(x, y);
+        result->_size = uint2(x, y);
         img.push_back_uninitialized(x * y * sizeof(float) * 4);
         std::memcpy(img.data(), ptr, img.size_bytes());
         stbi_image_free(ptr);
-        _pixel_storage = LCPixelStorage::FLOAT4;
-        _mip_level = 1;// TODO: generate mip
-        _is_vt = false;// TODO: support virtual texture
-        return true;
+        result->_pixel_storage = LCPixelStorage::FLOAT4;
+        result->_mip_level = 1;// TODO: generate mip
+        result->_is_vt = false;// TODO: support virtual texture
+        process_tex(result);
+        return result;
     }
     if (ext == ".tiff") {
         auto tiffr = TinyTIFFReader_open(luisa::to_string(path).c_str());
-        if (!tiffr) return false;
+        if (!tiffr) return {};
         auto dsp = vstd::scope_exit([&] {
             TinyTIFFReader_close(tiffr);
         });
         if (TinyTIFFReader_wasError(tiffr)) {
             LUISA_WARNING("{}", TinyTIFFReader_getLastError(tiffr));
-            return false;
+            return {};
         }
         const uint16_t samples = TinyTIFFReader_getSamplesPerPixel(tiffr);
         const uint16_t bitspersample = TinyTIFFReader_getBitsPerSample(tiffr, 0);
@@ -94,7 +222,7 @@ bool Texture::decode(luisa::filesystem::path const &path) {
                 break;
             default:
                 LUISA_WARNING("Unsupported bits-per-sample");
-                return false;
+                return {};
         }
         uint channel_rate = 1;
         switch (samples) {
@@ -111,36 +239,38 @@ bool Texture::decode(luisa::filesystem::path const &path) {
                 break;
             default:
                 LUISA_WARNING("Unsupported sample count");
-                return false;
+                return {};
         }
-        _pixel_storage = (LCPixelStorage)pixel_storage;
-        _size = uint2(width, height);
-        _mip_level = 1;// TODO: mipmap generate
-        _is_vt = false;
+        RC<Texture> result = world::create_object<Texture>();
+        result->_pixel_storage = (LCPixelStorage)pixel_storage;
+        result->_size = uint2(width, height);
+        result->_mip_level = 1;// TODO: mipmap generate
+        result->_is_vt = false;
         luisa::vector<std::byte> image;
         image.push_back_uninitialized(width * height * bitspersample / 8);
         if (samples == 1) {
             TinyTIFFReader_getSampleData(tiffr, image.data(), 0);
             if (TinyTIFFReader_wasError(tiffr)) {
                 LUISA_WARNING("{}", TinyTIFFReader_getLastError(tiffr));
-                return false;
+                return {};
             }
             auto tex = new DeviceImage();
-            _tex = tex;
+            result->_tex = tex;
             tex->host_data_ref() = std::move(image);
-            return true;
+            process_tex(result);
+            return result;
         }
         auto tex = new DeviceImage();
-        _tex = tex;
-        tex->host_data_ref().resize_uninitialized(pixel_storage_size(pixel_storage, make_uint3(_size, 1)));
+        result->_tex = tex;
+        tex->host_data_ref().resize_uninitialized(pixel_storage_size(pixel_storage, make_uint3(result->_size, 1)));
         auto pixel_count = width * height;
         for (uint16_t sample = 0; sample < samples; sample++) {
             // read the sample
             TinyTIFFReader_getSampleData(tiffr, image.data(), sample);
             if (TinyTIFFReader_wasError(tiffr)) {
                 LUISA_WARNING("{}", TinyTIFFReader_getLastError(tiffr));
-                _tex.reset();
-                return false;
+                result->_tex.reset();
+                return {};
             }
             switch (bitspersample) {
                 case 8: {
@@ -190,7 +320,8 @@ bool Texture::decode(luisa::filesystem::path const &path) {
                 } break;
             }
         }
-        return true;
+        process_tex(result);
+        return result;
     }
     if (ext == ".exr") {
         float *out;// width * height * RGBA
@@ -202,22 +333,24 @@ bool Texture::decode(luisa::filesystem::path const &path) {
             if (err) {
                 LUISA_WARNING("{}", err);
                 FreeEXRErrorMessage(err);// release memory of error message.
-                return false;
+                return {};
             }
         }
         auto tex = new DeviceImage();
-        _tex = tex;
+        RC<Texture> result = world::create_object<Texture>();
+        result->_tex = tex;
         auto &img = tex->host_data_ref();
-        _size = make_uint2(width, height);
+        result->_size = make_uint2(width, height);
         img.push_back_uninitialized(width * height * sizeof(float) * 4);
         std::memcpy(img.data(), out, img.size_bytes());
         free(out);
-        _pixel_storage = LCPixelStorage::FLOAT4;
-        _mip_level = 1;// TODO: generate mip
-        _is_vt = false;// TODO: support virtual texture
-        return true;
+        result->_pixel_storage = LCPixelStorage::FLOAT4;
+        result->_mip_level = 1;// TODO: generate mip
+        result->_is_vt = false;// TODO: support virtual texture
+        process_tex(result);
+        return result;
     }
-    return false;
+    return {};
 }
 
 void Texture::_pack_to_tile_level(uint level, luisa::span<std::byte const> src, luisa::span<std::byte> dst) {
@@ -256,9 +389,9 @@ void Texture::_pack_to_tile_level(uint level, luisa::span<std::byte const> src, 
         }
 }
 bool Texture::pack_to_tile() {
-    if (_is_vt) return false;
+    if (_is_vt) return {};
     auto host_data_ = host_data();
-    if (!host_data_ || host_data_->empty()) return false;
+    if (!host_data_ || host_data_->empty()) return {};
     luisa::vector<std::byte> data;
     data.push_back_uninitialized(host_data_->size());
     auto size = _size;
@@ -276,4 +409,27 @@ bool Texture::pack_to_tile() {
     _is_vt = true;
     return true;
 }
+void TextureLoader::finish_task() {
+    {
+        std::lock_guard lck{_mtx};
+        if (!_cmdlist.empty()) {
+            RenderDevice::instance().lc_main_stream() << _cmdlist.commit() << _event.signal(_finished_fence++);
+        }
+        while (auto v = _after_device_task.pop()) {
+            while (!_event.is_completed(v->second)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            luisa::fiber::schedule([counter = _counter, func = std::move(v->first)]() {
+                func();
+                counter.done();
+            });
+        }
+    }
+    if (_finished_fence > 1)
+        while (!_event.is_completed(_finished_fence - 1)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    _counter.wait();
+}
+
 }// namespace rbc::world
