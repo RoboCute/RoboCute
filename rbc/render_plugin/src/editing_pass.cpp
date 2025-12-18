@@ -4,6 +4,7 @@
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_render/renderer_data.h>
 #include <rbc_graphics/render_device.h>
+#include <rbc_render/raster_pass.h>
 #include <luisa/backends/ext/raster_ext.hpp>
 
 namespace rbc {
@@ -16,6 +17,13 @@ void EditingPass::on_enable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
+    VertexAttribute attrs[2] = {
+        VertexAttribute{.type = VertexAttributeType::Position, .format = PixelFormat::RGBA32F},
+        VertexAttribute{.type = VertexAttributeType::Color, .format = PixelFormat::RGBA32F}};
+    _gizmos_mesh_format = {};
+    _gizmos_mesh_format.emplace_vertex_stream({attrs, 1});
+    _gizmos_mesh_format.emplace_vertex_stream({attrs + 1, 1});
+
 #define RBC_LOAD_SHADER(SHADER_NAME, NAME_SPACE, PATH) \
     _init_counter.add();                               \
     luisa::fiber::schedule([this]() {                  \
@@ -24,7 +32,9 @@ void EditingPass::on_enable(
     })
     RBC_LOAD_SHADER(_click_pick, click_pick, "raster/click_pick.bin");
     ShaderManager::instance()->async_load_raster_shader(_init_counter, "raster/contour_draw.bin", _contour_draw);
+    ShaderManager::instance()->async_load_raster_shader(_init_counter, "raster/draw_gizmos.bin", _draw_gizmos);
     ShaderManager::instance()->async_load(_init_counter, "raster/contour_flood.bin", _contour_flood);
+    ShaderManager::instance()->async_load(_init_counter, "path_tracer/clear_buffer.bin", _clear_buffer);
     ShaderManager::instance()->async_load(_init_counter, "raster/contour_reduce.bin", _contour_reduce);
     ShaderManager::instance()->async_load(_init_counter, "raster/draw_frame_selection.bin", _draw_frame_selection);
 }
@@ -122,7 +132,11 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto const &frame_settings = ctx.pipeline_settings.read<FrameSettings>();
     auto click_manager = ctx.pipeline_settings.read_if<ClickManager>();
     const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
-    auto id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
+    auto id_map = render_device.get_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
+    if (!id_map) {
+        LUISA_ERROR("ID map is missing, must disable editing pass");
+        return;
+    }
     if (click_manager) {
         click_manager->_mtx.lock();
         auto contour_objects = std::move(click_manager->_contour_objects);
@@ -130,6 +144,58 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         click_manager->_mtx.unlock();
         if (!contour_objects.empty()) {
             contour(ctx, contour_objects);
+        }
+        if (!click_manager->_gizmos_requires.empty()) {
+            auto reqs = std::move(click_manager->_gizmos_requires);
+            auto result_buffer = render_device.create_transient_buffer<uint>("gizmos_result", reqs.size());
+            cmdlist << (*_clear_buffer)(result_buffer, ~0u).dispatch(result_buffer.size());
+            RasterState raster_state{
+                .cull_mode = CullMode::None,
+                .depth_state = DepthState{.enable_depth = true, .comparison = Comparison::Greater, .write = true}
+            };
+
+            uint obj_id = 0;
+            auto pass_ctx = ctx.mut.get_pass_context<RasterPassContext>();
+            if (pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frame_settings.render_resolution)) {
+                sm.dispose_after_sync(std::move(pass_ctx->depth_buffer));
+            }
+            if (!pass_ctx->depth_buffer) {
+                pass_ctx->depth_buffer = render_device.lc_device().create_depth_buffer(DepthFormat::D32, frame_settings.render_resolution);
+            }
+
+            cmdlist << pass_ctx->depth_buffer.clear(0.0f);
+            for (auto &i : reqs) {
+                VertexBufferView vbv[2] = {
+                    VertexBufferView{i.pos_buffer},
+                    VertexBufferView{i.color_buffer},
+                };
+                luisa::vector<RasterMesh> raster_mesh;
+                raster_mesh.emplace_back(
+                    luisa::span{vbv},
+                    i.triangle_buffer.as<uint>(),
+                    1,
+                    obj_id);
+                obj_id++;
+                cmdlist << (*_draw_gizmos)(cam_data.vp * i.transform, i.clicked_pos, result_buffer)
+                               .draw(std::move(raster_mesh),
+                                     _gizmos_mesh_format,
+                                     Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer,
+                                     *frame_settings.dst_img);
+            }
+
+            luisa::vector<uint> results;
+            results.push_back_uninitialized(result_buffer.size());
+            cmdlist << result_buffer.view().copy_to(results.data());
+            cmdlist.add_callback([&ctx,
+                                  reqs = std::move(reqs),
+                                  results = std::move(results)]() mutable {
+                auto click_manager = ctx.pipeline_settings.read_if<ClickManager>();
+                if (!click_manager) return;
+                std::lock_guard lck{click_manager->_mtx};
+                for (auto i : vstd::range(reqs.size())) {
+                    click_manager->_gizmos_clicked_result.force_emplace(std::move(reqs[i].name), results[i]);
+                }
+            });
         }
         if (!click_manager->_requires.empty()) {
             // click

@@ -7,6 +7,7 @@
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_app/graphics_utils.h>
 #include <rbc_core/binary_file_writer.h>
+#include <rbc_render/click_manager.h>
 
 namespace rbc {
 void WorldScene::_init_scene(GraphicsUtils *utils) {
@@ -176,6 +177,103 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     for (auto &i : _entities) {
         auto render = i->get_component<world::Renderer>();
         if (render) render->update_object();
+    }
+    _set_gizmos();
+}
+void WorldScene::_set_gizmos() {
+    MeshBuilder mesh_builder;
+    auto emplace = [&](float3 scale, float3 offset, float3 color) {
+        auto idx = mesh_builder.position.size();
+        mesh_builder.position.push_back(float3(0.0f, 0.0f, 0.0f));// 0: Left Bottom Back
+        mesh_builder.position.push_back(float3(0.0f, 0.0f, 1.0f));// 1: Left Bottom Front
+        mesh_builder.position.push_back(float3(1.0f, 0.0f, 0.0f));// 2: Right Buttom Back
+        mesh_builder.position.push_back(float3(1.0f, 0.0f, 1.0f));// 3: Right Buttom Front
+        mesh_builder.position.push_back(float3(0.0f, 1.0f, 0.0f));// 4: Left Up Back
+        mesh_builder.position.push_back(float3(0.0f, 1.0f, 1.0f));// 5: Left Up Front
+        mesh_builder.position.push_back(float3(1.0f, 1.0f, 0.0f));// 6: Right Up Back
+        mesh_builder.position.push_back(float3(1.0f, 1.0f, 1.0f));// 7: Right Up Front
+        for (auto i : vstd::range(8)) {
+            mesh_builder.normal.emplace_back(color);
+        }
+        for (auto &i : luisa::span{mesh_builder.position}.subspan(idx)) {
+            i *= scale;
+            i += offset;
+        }
+        auto &triangle = mesh_builder.triangle_indices[0];
+        auto tri_start = triangle.size();
+        // Buttom face
+        triangle.emplace_back(0);
+        triangle.emplace_back(1);
+        triangle.emplace_back(2);
+        triangle.emplace_back(1);
+        triangle.emplace_back(3);
+        triangle.emplace_back(2);
+        // Up face
+        triangle.emplace_back(4);
+        triangle.emplace_back(5);
+        triangle.emplace_back(6);
+        triangle.emplace_back(5);
+        triangle.emplace_back(7);
+        triangle.emplace_back(6);
+        // Left face
+        triangle.emplace_back(0);
+        triangle.emplace_back(1);
+        triangle.emplace_back(4);
+        triangle.emplace_back(1);
+        triangle.emplace_back(5);
+        triangle.emplace_back(4);
+        // Right face
+        triangle.emplace_back(2);
+        triangle.emplace_back(3);
+        triangle.emplace_back(6);
+        triangle.emplace_back(3);
+        triangle.emplace_back(7);
+        triangle.emplace_back(6);
+        // Back face
+        triangle.emplace_back(0);
+        triangle.emplace_back(2);
+        triangle.emplace_back(4);
+        triangle.emplace_back(2);
+        triangle.emplace_back(6);
+        triangle.emplace_back(4);
+        // Front face
+        triangle.emplace_back(1);
+        triangle.emplace_back(3);
+        triangle.emplace_back(5);
+        triangle.emplace_back(3);
+        triangle.emplace_back(7);
+        triangle.emplace_back(5);
+        for (auto &i : luisa::span{triangle}.subspan(tri_start)) {
+            i += idx;
+        }
+    };
+    mesh_builder.triangle_indices.emplace_back();
+    emplace(float3(1, 0.05, 0.05), float3(0.05, 0, 0), float3(1, 0, 0));
+    emplace(float3(0.05, 1, 0.05), float3(0, 0.05, 0), float3(0, 1, 0));
+    emplace(float3(0.05, 0.05, 1), float3(0, 0, 0.05), float3(0, 0, 1));
+    luisa::vector<std::byte> gizmos_mesh;
+    luisa::vector<uint> submesh_offset;
+    mesh_builder.write_to(gizmos_mesh, submesh_offset);
+    auto &render_device = RenderDevice::instance();
+    _gizmos = new Gizmos{};
+    _gizmos->data = render_device.lc_device().create_buffer<uint>(gizmos_mesh.size() / sizeof(uint));
+    _gizmos->vertex_size = mesh_builder.vertex_count();
+    render_device.lc_main_stream() << _gizmos->data.view().copy_from(gizmos_mesh.data());
+}
+void WorldScene::draw_gizmos(GraphicsUtils *utils, uint2 click_pixel_pos) {
+    auto &click_mng = utils->render_settings().read_mut<ClickManager>();
+    auto vertex_offset = _gizmos->vertex_size * sizeof(float3) / sizeof(uint);
+    auto index_size = _gizmos->data.size() - vertex_offset * 2;
+    click_mng.add_gizmos_requires(ClickManager::GizmosRequires{
+        .name = "test_gizmos",
+        translation(float3(0, 0, 2)) * scaling(0.5f),
+        .pos_buffer = _gizmos->data.view(0, vertex_offset).as<float3>(),
+        .color_buffer = _gizmos->data.view(vertex_offset, vertex_offset).as<float3>(),
+        .triangle_buffer = _gizmos->data.view(vertex_offset * 2, index_size).as<Triangle>(),
+        .clicked_pos = click_pixel_pos});
+    auto clicked_result = click_mng.query_gizmos_result("test_gizmos");
+    if (clicked_result) {
+        LUISA_INFO("Clicking gizmos primitive id {}", clicked_result.value());
     }
 }
 WorldScene::~WorldScene() {

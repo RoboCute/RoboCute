@@ -11,8 +11,11 @@
 namespace rbc {
 struct EditingPass : Pass {
 private:
+    MeshFormat _gizmos_mesh_format{};
     luisa::fiber::counter _init_counter;
     RasterShader<Buffer<geometry::RasterElement>, float4x4> const *_contour_draw;
+    RasterShader<float4x4, uint2, Buffer<uint>> const *_draw_gizmos;
+    Shader1D<Buffer<uint>, uint> const *_clear_buffer;
     Shader2D<Image<float>, Image<float>, int2, int, float> const *_contour_flood;
     Shader2D<Image<float>, Image<float>, Image<float>, float3> const *_contour_reduce;
     Shader2D<Image<float>, float4, int2> const *_draw_frame_selection;
@@ -32,7 +35,6 @@ public:
         SceneManager &scene) override;
     EditingPass();
     ~EditingPass();
-    Image<float> emission;
     void wait_enable() override;
     void contour(PipelineContext const &ctx, luisa::span<uint const> draw_indices);
 };

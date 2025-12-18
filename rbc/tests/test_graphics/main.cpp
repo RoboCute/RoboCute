@@ -176,6 +176,7 @@ int main(int argc, char *argv[]) {
         }
         if (utils.window())
             utils.window()->poll_events();
+        world_scene->draw_gizmos(&utils, stage == MouseStage::Clicking ? make_uint2(end_uv * make_float2(window_size)) : make_uint2(-1));
         auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
         if (any(window_size != utils.dst_image().size())) {
             utils.resize_swapchain(window_size);
@@ -214,9 +215,9 @@ int main(int argc, char *argv[]) {
 
         auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
         constexpr uint sample = 256;
-        if (frame_index > sample) {
-            tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
-        }
+        // if (frame_index > sample) {
+        //     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
+        // }
         click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
 
         utils.tick(
@@ -224,10 +225,10 @@ int main(int argc, char *argv[]) {
             frame_index,
             window_size,
             tick_stage);
-        if (frame_index == sample) {
-            LUISA_INFO("Denoising..");
-            utils.denoise();
-        }
+        // if (frame_index == sample) {
+        //     LUISA_INFO("Denoising..");
+        //     utils.denoise();
+        // }
         ++frame_index;
         switch (stage) {
             case MouseStage::Clicking:
@@ -236,9 +237,10 @@ int main(int argc, char *argv[]) {
         }
     }
     // rpc_hook.shutdown_remote();
-    world_scene.destroy();
-    world::destroy_world();
+
     utils.dispose([&]() {
+        world_scene.destroy();
+        world::destroy_world();
         auto pipe_settings_json = utils.render_settings().serialize_to_json();
         if (pipe_settings_json.data()) {
             LUISA_INFO("{}", luisa::string_view{

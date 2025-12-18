@@ -58,7 +58,8 @@ void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();
     auto &scene = *ctx.scene;
-    auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);
+    auto emission = render_device.get_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);
+    if (!emission) return;
     temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frame_settings.display_resolution);
     if (frame_settings.radiance_buffer) {
         (*ctx.cmdlist) << (*accum_buffer)(emission, pass_ctx->hdr, temp_img, *frame_settings.radiance_buffer, frame_settings.render_resolution, pass_ctx->frame_index).dispatch(frame_settings.display_resolution);

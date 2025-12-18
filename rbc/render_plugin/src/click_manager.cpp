@@ -5,6 +5,7 @@ void ClickManager::clear_requires() {
     std::lock_guard lck{_mtx};
     _requires.clear();
     _frame_selection_requires.clear();
+    _gizmos_requires.clear();
 }
 void ClickManager::clear() {
     std::lock_guard lck{_mtx};

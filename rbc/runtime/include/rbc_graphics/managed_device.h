@@ -79,6 +79,7 @@ private:
     DeviceInterface* _impl;
     bool _is_managing{ false };
     bool _is_committing{ false };
+    bool _next_is_only_get{ false };
     vstd::Pool<ManagedTexDesc, true> _tex_meta_pool;
     vstd::Pool<size_t, true> _buffer_meta_pool;
     vstd::Pool<TexResourceHandle, true> _tex_handle_pool;
@@ -118,9 +119,10 @@ private:
 public:
     void* get_native_handle(uint64_t handle);
 
-    void set_next_res_name(vstd::string&& name)
+    void set_next_res_name(vstd::string&& name, bool next_is_only_get = false)
     {
         _temp_name = std::move(name);
+        _next_is_only_get = next_is_only_get;
     }
     void begin_managing(CommandList const& cmdlist)
     {

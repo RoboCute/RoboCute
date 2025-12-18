@@ -134,7 +134,7 @@ void GraphicsUtils::init_display(uint2 resolution) {
                     .wants_vsync = false,
                     .back_buffer_count = 2});
         }
-        _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, true);
+        _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, true, true);
         _dst_image.set_name("Dest image");
     }
 }
@@ -192,7 +192,6 @@ void GraphicsUtils::tick(
     });
     _denoise_pack = {};
     switch (tick_stage) {
-        case TickStage::PathTracingPreview:
         case TickStage::OffineCapturing:
         case TickStage::PresentOfflineResult:
             if (_denoiser_inited) {
@@ -217,7 +216,6 @@ void GraphicsUtils::tick(
             pipe_settings.use_post_filter = false;
             break;
         case TickStage::PathTracingPreview:
-            set_denoise_pack();
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
             pipe_settings.use_editing = true;

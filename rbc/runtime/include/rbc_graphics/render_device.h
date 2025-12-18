@@ -29,9 +29,21 @@ struct RBC_RUNTIME_API RenderDevice {
         return _managed_device.create_buffer<T>(element_count);
     }
     template<typename T>
+    Buffer<T> get_transient_buffer(vstd::string name, size_t element_count) {
+        auto d = static_cast<ManagedDevice *>(_managed_device.impl());
+        d->set_next_res_name(std::move(name), true);
+        return _managed_device.create_buffer<T>(element_count);
+    }
+    template<typename T>
     Image<T> create_transient_image(vstd::string name, PixelStorage pixel, uint width, uint height, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) {
         auto d = static_cast<ManagedDevice *>(_managed_device.impl());
         d->set_next_res_name(std::move(name));
+        return _managed_device.create_image<T>(pixel, width, height, mip_levels, simultaneous_access, allow_raster_target);
+    }
+    template<typename T>
+    Image<T> get_transient_image(vstd::string name, PixelStorage pixel, uint width, uint height, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) {
+        auto d = static_cast<ManagedDevice *>(_managed_device.impl());
+        d->set_next_res_name(std::move(name), true);
         return _managed_device.create_image<T>(pixel, width, height, mip_levels, simultaneous_access, allow_raster_target);
     }
     template<typename T>
@@ -41,15 +53,33 @@ struct RBC_RUNTIME_API RenderDevice {
         return _managed_device.create_volume<T>(pixel, width, height, depth, mip_levels, simultaneous_access, false);
     }
     template<typename T>
+    Volume<T> get_transient_volume(vstd::string name, PixelStorage pixel, uint width, uint height, uint depth, uint mip_levels = 1u, bool simultaneous_access = false) {
+        auto d = static_cast<ManagedDevice *>(_managed_device.impl());
+        d->set_next_res_name(std::move(name), true);
+        return _managed_device.create_volume<T>(pixel, width, height, depth, mip_levels, simultaneous_access, false);
+    }
+    template<typename T>
     Image<T> create_transient_image(vstd::string name, PixelStorage pixel, uint2 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) {
         auto d = static_cast<ManagedDevice *>(_managed_device.impl());
         d->set_next_res_name(std::move(name));
         return _managed_device.create_image<T>(pixel, size, mip_levels, simultaneous_access, allow_raster_target);
     }
     template<typename T>
+    Image<T> get_transient_image(vstd::string name, PixelStorage pixel, uint2 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) {
+        auto d = static_cast<ManagedDevice *>(_managed_device.impl());
+        d->set_next_res_name(std::move(name), true);
+        return _managed_device.create_image<T>(pixel, size, mip_levels, simultaneous_access, allow_raster_target);
+    }
+    template<typename T>
     Volume<T> create_transient_volume(vstd::string name, PixelStorage pixel, uint3 size, uint mip_levels = 1u, bool simultaneous_access = false) {
         auto d = static_cast<ManagedDevice *>(_managed_device.impl());
         d->set_next_res_name(std::move(name));
+        return _managed_device.create_volume<T>(pixel, size, mip_levels, simultaneous_access, false);
+    }
+    template<typename T>
+    Volume<T> get_transient_volume(vstd::string name, PixelStorage pixel, uint3 size, uint mip_levels = 1u, bool simultaneous_access = false) {
+        auto d = static_cast<ManagedDevice *>(_managed_device.impl());
+        d->set_next_res_name(std::move(name), true);
         return _managed_device.create_volume<T>(pixel, size, mip_levels, simultaneous_access, false);
     }
 
