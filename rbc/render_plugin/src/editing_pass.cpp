@@ -175,7 +175,11 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                     1,
                     obj_id);
                 obj_id++;
-                cmdlist << (*_draw_gizmos)(cam_data.vp * i.transform, i.clicked_pos, result_buffer)
+                PixelArgs pixel_args{
+                    .clicked_pixel = i.clicked_pos,
+                    .from_mapped_color = i.from_color,
+                    .to_mapped_color = i.to_color};
+                cmdlist << (*_draw_gizmos)(cam_data.vp * i.transform, result_buffer, pixel_args)
                                .draw(std::move(raster_mesh),
                                      _gizmos_mesh_format,
                                      Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer,

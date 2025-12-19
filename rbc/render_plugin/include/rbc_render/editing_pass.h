@@ -11,10 +11,15 @@
 namespace rbc {
 struct EditingPass : Pass {
 private:
+    struct PixelArgs {
+        uint2 clicked_pixel;
+        float3 from_mapped_color;
+        float3 to_mapped_color;
+    };
     MeshFormat _gizmos_mesh_format{};
     luisa::fiber::counter _init_counter;
     RasterShader<Buffer<geometry::RasterElement>, float4x4> const *_contour_draw;
-    RasterShader<float4x4, uint2, Buffer<float4>> const *_draw_gizmos;
+    RasterShader<float4x4, Buffer<float4>, PixelArgs> const *_draw_gizmos;
     Shader1D<Buffer<uint>, uint> const *_clear_buffer;
     Shader2D<Image<float>, Image<float>, int2, int, float> const *_contour_flood;
     Shader2D<Image<float>, Image<float>, Image<float>, float3> const *_contour_reduce;

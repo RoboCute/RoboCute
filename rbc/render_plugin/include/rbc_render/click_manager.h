@@ -21,6 +21,8 @@ struct GizmosRequire {
     luisa::compute::BufferView<luisa::float3> color_buffer;
     luisa::compute::BufferView<luisa::compute::Triangle> triangle_buffer;
     luisa::uint2 clicked_pos;
+    luisa::float3 from_color;
+    luisa::float3 to_color;
 };
 struct GizmosResult {
     luisa::float3 local_pos;

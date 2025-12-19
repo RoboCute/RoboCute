@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
         if (utils.window())
             utils.window()->poll_events();
         // reuse drag logic
-        auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(end_uv * make_float2(window_size)), window_size, cam.position, cam.far_plane, cam);
+        auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam.position, cam.far_plane, cam);
         auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
         if (any(window_size != utils.dst_image().size())) {
             utils.resize_swapchain(window_size);

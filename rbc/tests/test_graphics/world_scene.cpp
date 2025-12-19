@@ -263,13 +263,40 @@ void WorldScene::_set_gizmos() {
 }
 bool WorldScene::draw_gizmos(
     bool dragging,
-    GraphicsUtils *utils, uint2 click_pixel_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, Camera const &cam) {
+    GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, Camera const &cam) {
     auto &click_mng = utils->render_settings().read_mut<ClickManager>();
     auto tr = _entities[0]->get_component<world::Transform>();
 
     auto transform_matrix = tr->trs();
     auto vertex_offset = _gizmos->vertex_size * sizeof(float3) / sizeof(uint);
     auto index_size = _gizmos->data.size() - vertex_offset * 2;
+    auto clicked_result = click_mng.query_gizmos_result("test_gizmos");
+    const float3 to_color{1, 0.84f, 0.0f};
+
+    if (!dragging) {
+        _gizmos->picked_face = uint(-1);
+        if (clicked_result) {
+            if (clicked_result->primitive_id < 12) {
+                _gizmos->picked_face = 0;
+            } else if (clicked_result->primitive_id < 24) {
+                _gizmos->picked_face = 1;
+            } else {
+                _gizmos->picked_face = 2;
+            }
+        }
+    }
+    float3 from_color(-1);
+    switch (_gizmos->picked_face) {
+        case 0:
+            from_color = float3(1, 0, 0);
+            break;
+        case 1:
+            from_color = float3(0, 1, 0);
+            break;
+        case 2:
+            from_color = float3(0, 0, 1);
+            break;
+    }
     click_mng.add_gizmos_requires(GizmosRequire{
         .name = "test_gizmos",
         .transform = make_float4x4(
@@ -280,15 +307,16 @@ bool WorldScene::draw_gizmos(
         .pos_buffer = _gizmos->data.view(0, vertex_offset).as<float3>(),
         .color_buffer = _gizmos->data.view(vertex_offset, vertex_offset).as<float3>(),
         .triangle_buffer = _gizmos->data.view(vertex_offset * 2, index_size).as<Triangle>(),
-        .clicked_pos = dragging ? click_pixel_pos : uint2(-1)});
+        .clicked_pos = dragging ? uint2(-1) : mouse_pos,
+        .from_color = from_color,
+        .to_color = to_color});
     if (!dragging) {
         _gizmos->picking = false;
         return false;
     }
-    _gizmos->picked_uv = (make_float2(click_pixel_pos) + 0.5f) / make_float2(window_size);
+    _gizmos->picked_uv = (make_float2(mouse_pos) + 0.5f) / make_float2(window_size);
     _gizmos->picked_uv = clamp(_gizmos->picked_uv, float2(0), float2(1));
     if (!_gizmos->picking) {
-        auto clicked_result = click_mng.query_gizmos_result("test_gizmos");
         if (clicked_result) {
             LUISA_INFO("Clicking gizmos primitive id {}", clicked_result.value().primitive_id);
             auto global_pos = (transform_matrix * make_double4(make_double3(clicked_result->local_pos), 1.0));
@@ -302,13 +330,26 @@ bool WorldScene::draw_gizmos(
 
     auto vp = cam.projection_matrix() * inverse(cam.local_to_world_matrix());
     auto inv_vp = inverse(vp);
-    float2 uv = (make_float2(click_pixel_pos) + 0.5f) / make_float2(window_size);
+    float2 uv = (make_float2(mouse_pos) + 0.5f) / make_float2(window_size);
     float4 proj_pos = make_float4(uv * 2.f - 1.f, 0.5f /*dummy depth*/, 1.f);
     auto dummy_world_pos = inv_vp * proj_pos;
     dummy_world_pos /= dummy_world_pos.w;
     auto ray_dir = normalize(dummy_world_pos.xyz() - make_float3(cam.position));
     auto target_pos = ray_dir * _gizmos->to_cam_distance + make_float3(cam.position);
-    tr->set_pos(make_double3(target_pos - _gizmos->relative_pos), true);
+    auto dest_pos = make_double3(target_pos - _gizmos->relative_pos);
+    auto src_pos = tr->position();
+    switch (_gizmos->picked_face) {
+        case 0:
+            src_pos.x = dest_pos.x;
+            break;
+        case 1:
+            src_pos.y = dest_pos.y;
+            break;
+        case 2:
+            src_pos.z = dest_pos.z;
+            break;
+    }
+    tr->set_pos(src_pos, true);
     return true;
 }
 WorldScene::~WorldScene() {
