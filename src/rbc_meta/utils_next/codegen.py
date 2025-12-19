@@ -114,7 +114,7 @@ _PY_NAMES = {
     float: "float",
     str: "str",
     bool: "bool",
-    BuiltinDataBuffer: ""
+    BuiltinDataBuffer: "",
 }
 
 
@@ -181,7 +181,7 @@ def _get_cpp_type(
     # Handle basic types mapped in builtin.py or standard python types
     if hasattr(type_hint, "cpp_type_name"):
         return type_hint.cpp_type_name(py_interface, is_view)
-    
+
     if hasattr(type_hint, "_cpp_type_name"):
         return type_hint._cpp_type_name
 
@@ -242,7 +242,7 @@ def _get_py_type(type_hint: Any) -> Optional[str]:
         if len(type_hint._py_type_name) > 0:
             return type_hint._py_type_name
         return None
-        
+
     # For class types (not instances), return the class name
     if isinstance(type_hint, type):
         if hasattr(type_hint, "__name__"):
@@ -300,7 +300,12 @@ def _print_py_args_decl(
     return r
 
 
-def _print_py_args(parameters: Dict[str, inspect.Parameter], is_first: bool, is_cpp: bool, registry: ReflectionRegistry = None) -> str:
+def _print_py_args(
+    parameters: Dict[str, inspect.Parameter],
+    is_first: bool,
+    is_cpp: bool,
+    registry: ReflectionRegistry | None = None,
+) -> str:
     """Print Python argument names for function calls."""
     r = ""
     for param_name, param in parameters.items():
@@ -316,10 +321,10 @@ def _print_py_args(parameters: Dict[str, inspect.Parameter], is_first: bool, is_
                 else None,
                 registry,
             )
-            if type_name == 'luisa::span<std::byte>':
+            if type_name == "luisa::span<std::byte>":
                 arg_open = "to_span_5d4636ab("
                 arg_close = ")"
-                
+
         # type_str = _get_py_type(param_type) if param_type else None
         r += arg_open + param_name + arg_close
     return r
@@ -371,8 +376,7 @@ def _print_rpc_serializer(struct_type: ClassInfo, registry: ReflectionRegistry) 
             ).hexdigest()
 
             # Filter out 'self' parameter for RPC arg struct
-            rpc_params = {k: v for k,
-                          v in method.parameters.items() if k != "self"}
+            rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
 
             arg_struct_name = "void"
             if len(rpc_params) > 0:
@@ -435,8 +439,7 @@ def _print_rpc_serializer(struct_type: ClassInfo, registry: ReflectionRegistry) 
             if len(rpc_params) > 0:
                 args_cast = f"{INDENT}{INDENT}auto args_ptr = static_cast<{arg_struct_name} *>(args);\n"
 
-            is_ret_void = not (
-                method.return_type and method.return_type != type(None))
+            is_ret_void = not (method.return_type and method.return_type != type(None))
             ret_type_name = _get_full_cpp_type(method.return_type, registry)
 
             ret_construct = ""
@@ -449,8 +452,7 @@ def _print_rpc_serializer(struct_type: ClassInfo, registry: ReflectionRegistry) 
                 else f"static_cast<{full_name} *>(self)->{func_name}("
             )
             args_call = (
-                ", ".join(
-                    [f"args_ptr->{param_name}" for param_name in rpc_params])
+                ", ".join([f"args_ptr->{param_name}" for param_name in rpc_params])
                 if len(rpc_params) > 0
                 else ""
             )
@@ -468,10 +470,8 @@ def _print_rpc_serializer(struct_type: ClassInfo, registry: ReflectionRegistry) 
             )
             call_exprs_list.append(call_expr)
 
-            arg_metas_list.append(
-                f"rbc::HeapObjectMeta::create<{arg_struct_name}>()")
-            ret_metas_list.append(
-                f"rbc::HeapObjectMeta::create<{ret_type_name}>()")
+            arg_metas_list.append(f"rbc::HeapObjectMeta::create<{arg_struct_name}>()")
+            ret_metas_list.append(f"rbc::HeapObjectMeta::create<{ret_type_name}>()")
 
     hash_name = hashlib.md5(full_name.encode("ascii")).hexdigest()
 
@@ -491,7 +491,7 @@ def _print_rpc_serializer(struct_type: ClassInfo, registry: ReflectionRegistry) 
     return "\n".join(result_parts)
 
 
-def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
+def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
 
@@ -505,7 +505,7 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
 
     for key, info in all_classes:
         # Filter by module
-        if module_filter and info.module not in module_filter:
+        if len(module_filter) == 0 and info.module not in module_filter:
             continue
         # print(f"Generating Interface for {key} with {module_filter}")
 
@@ -564,8 +564,7 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
                         )
                     else:
                         # Fallback to using the type directly
-                        var_type_name = _get_full_cpp_type(
-                            field.type, registry)
+                        var_type_name = _get_full_cpp_type(field.type, registry)
                 else:
                     var_type_name = _get_full_cpp_type(field.type, registry)
             else:
@@ -620,10 +619,8 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
                 else "void"
             )
             # Filter out 'self' parameter for C++ method declarations
-            method_params = {k: v for k,
-                             v in method.parameters.items() if k != "self"}
-            args_expr = _print_arg_vars_decl(
-                method_params, True, False, True, registry)
+            method_params = {k: v for k, v in method.parameters.items() if k != "self"}
+            args_expr = _print_arg_vars_decl(method_params, True, False, True, registry)
             method_expr = CPP_STRUCT_METHOD_DECL_TEMPLATE.substitute(
                 INDENT=INDENT,
                 RET_TYPE=ret_type,
@@ -641,10 +638,8 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
             for method in method_list:
                 is_static = method.is_static
                 # Filter out 'self' parameter for RPC declarations
-                rpc_params = {k: v for k,
-                              v in method.parameters.items() if k != "self"}
-                args = _print_arg_vars_decl(
-                    rpc_params, True, False, False, registry)
+                rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
+                args = _print_arg_vars_decl(rpc_params, True, False, False, registry)
                 static = "static " if is_static else ""
                 ret_type = (
                     _get_full_cpp_type(method.return_type, registry)
@@ -702,7 +697,7 @@ def cpp_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
     )
 
 
-def cpp_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
+def cpp_impl_gen(module_filter: List[str] = [], *extra_includes) -> str:
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
 
@@ -716,7 +711,7 @@ def cpp_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
 
     for key, info in all_classes:
         # print(f"Registering {key}")
-        if module_filter and info.module not in module_filter:
+        if len(module_filter) == 0 and info.module not in module_filter:
             continue
 
         namespace_name = info.cpp_namespace or ""
@@ -730,8 +725,7 @@ def cpp_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
             m = hashlib.md5(full_name.encode("ascii"))
             digest = m.hexdigest()
 
-            enum_names = ", ".join(
-                [f'"{field.name}"' for field in info.fields])
+            enum_names = ", ".join([f'"{field.name}"' for field in info.fields])
             # For enum values, use the default value or index
             enum_values = ", ".join(
                 [
@@ -768,10 +762,10 @@ def cpp_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
 
                 if should_serde:
                     store_stmts_list.append(
-                        f"{INDENT}{INDENT}obj._store(this->{field.name}, \"{field.name}\");"
+                        f'{INDENT}{INDENT}obj._store(this->{field.name}, "{field.name}");'
                     )
                     load_stmts_list.append(
-                        f"{INDENT}{INDENT}obj._load(this->{field.name}, \"{field.name}\");"
+                        f'{INDENT}{INDENT}obj._load(this->{field.name}, "{field.name}");'
                     )
 
             store_stmts = "\n".join(store_stmts_list)
@@ -812,7 +806,7 @@ JSON_SER_NAME = "b839f6ccb4b74"
 SELF_NAME = "d6922fb0e4bd44549"
 
 
-def py_interface_gen(module_name: str, module_filter: List[str] = None) -> str:
+def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
     """Generate Python interface code."""
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
@@ -864,8 +858,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = None) -> str:
 
         def get_method_expr(method: MethodInfo):
             # Filter out 'self' parameter for Python method declarations
-            method_params = {k: v for k,
-                             v in method.parameters.items() if k != "self"}
+            method_params = {k: v for k, v in method.parameters.items() if k != "self"}
             args_decl = _print_py_args_decl(method_params, False)
             args_call = _print_py_args(method_params, False, False)
             return_expr = "return " if method.return_type else ""
@@ -905,7 +898,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = None) -> str:
     # Use original order from registry to preserve module-defined order
     all_classes = registry.get_all_classes().items()
     for key, info in all_classes:
-        if module_filter and info.module not in module_filter:
+        if len(module_filter) == 0 and info.module not in module_filter:
             continue
 
         if not info.pybind:  # filter out classes marked pybind
@@ -944,8 +937,7 @@ def _print_client_code(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
 
     def get_method_decl(method: MethodInfo):
         # Filter out 'self' parameter for client method declarations
-        rpc_params = {k: v for k, v in method.parameters.items()
-                      if k != "self"}
+        rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
         args_decl = ", ".join(
             [
                 f"{_get_full_cpp_type(param.annotation if param.annotation != inspect.Signature.empty else None, registry)} {param_name}"
@@ -1016,8 +1008,7 @@ def _print_client_impl(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
             ).hexdigest()
 
             # Filter out 'self' parameter for client method declarations
-            rpc_params = {k: v for k,
-                          v in method.parameters.items() if k != "self"}
+            rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
             args_decl = ", ".join(
                 [
                     f"{_get_full_cpp_type(param.annotation if param.annotation != inspect.Signature.empty else None, registry)} {param_name}"
@@ -1074,7 +1065,7 @@ def _print_client_impl(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
     return "\n".join(method_impls)
 
 
-def cpp_client_interface_gen(module_filter: List[str] = None, *extra_includes) -> str:
+def cpp_client_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
     """Generate C++ client interface header."""
     registry = ReflectionRegistry()
     extra_includes_expr = "\n".join(extra_includes)
@@ -1082,7 +1073,7 @@ def cpp_client_interface_gen(module_filter: List[str] = None, *extra_includes) -
     # Check if any struct has RPC methods
     use_rpc = False
     for key, info in registry.get_all_classes().items():
-        if module_filter and info.module not in module_filter:
+        if len(module_filter) == 0 and info.module not in module_filter:
             continue
         if len(_get_rpc_methods(info)) > 0:
             use_rpc = True
@@ -1109,7 +1100,7 @@ def cpp_client_interface_gen(module_filter: List[str] = None, *extra_includes) -
     )
 
 
-def cpp_client_impl_gen(module_filter: List[str] = None, *extra_includes) -> str:
+def cpp_client_impl_gen(module_filter: List[str] = [], *extra_includes) -> str:
     """Generate C++ client implementation."""
     registry = ReflectionRegistry()
     extra_includes_expr = "\n".join(extra_includes)
@@ -1119,7 +1110,7 @@ def cpp_client_impl_gen(module_filter: List[str] = None, *extra_includes) -> str
     all_classes = registry.get_all_classes().items()
 
     for key, info in all_classes:
-        if module_filter and info.module not in module_filter:
+        if len(module_filter) == 0 and info.module not in module_filter:
             continue
         client_impl = _print_client_impl(info, registry)
         if client_impl:
@@ -1134,7 +1125,7 @@ def cpp_client_impl_gen(module_filter: List[str] = None, *extra_includes) -> str
 
 
 def pybind_codegen(
-    module_name: str, module_filter: List[str] = None, *extra_includes
+    module_name: str, module_filter: List[str] = [], *extra_includes
 ) -> str:
     """Generate Pybind11 binding code."""
     registry = ReflectionRegistry()
@@ -1233,19 +1224,15 @@ def pybind_codegen(
                 #     # return_close = ")"
                 #     pass
                 # if C++ method returns DataBuffer
-                if (
-                    pybind_ret_type == "py::memoryview"
-                ):
+                if pybind_ret_type == "py::memoryview":
                     return_expr += "to_memoryview_5d4636ab("
                     return_close = ")"
                 else:
                     return_close = ""
 
             # Filter out 'self' parameter for pybind method bindings
-            method_params = {k: v for k,
-                             v in method.parameters.items() if k != "self"}
-            args_decl = _print_arg_vars_decl(
-                method_params, False, True, True, registry)
+            method_params = {k: v for k, v in method.parameters.items() if k != "self"}
+            args_decl = _print_arg_vars_decl(method_params, False, True, True, registry)
             args_call = _print_py_args(method_params, True, True, registry)
 
             method_func = PYBIND_METHOD_FUNC_TEMPLATE.substitute(
@@ -1267,7 +1254,7 @@ def pybind_codegen(
     # Use original order from registry to preserve module-defined order
     all_classes = registry.get_all_classes().items()
     for key, info in all_classes:
-        if module_filter and info.module not in module_filter:
+        if len(module_filter) == 0 and info.module not in module_filter:
             continue
 
         enum_binding = get_enum_binding(key, info)
@@ -1299,8 +1286,7 @@ def pybind_codegen(
             m = hashlib.md5(full_name.encode("ascii"))
             digest = m.hexdigest()
 
-            enum_names = ", ".join(
-                [f'"{field.name}"' for field in info.fields])
+            enum_names = ", ".join([f'"{field.name}"' for field in info.fields])
             enum_values = ", ".join(
                 [
                     f"(uint64_t){field.default}"

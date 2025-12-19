@@ -1,12 +1,11 @@
 from pathlib import Path
 import os
 import re
-
 import hashlib
 
 
 # Write Result String To
-def _write_string_to(s: str, path: str):
+def _write_string_to(s: str, path: Path):
     data = s.encode("utf-8")
     new_md5 = hashlib.md5(data).hexdigest()
     print(f"Writing to {path}")
@@ -25,10 +24,10 @@ def _write_string_to(s: str, path: str):
     return True
 
 
-def codegen_to(out_path: str):
+def codegen_to(out_path: Path):
     def _(callback, *args):
         s = callback(*args)
-        _write_string_to(s, str(out_path))
+        _write_string_to(s, out_path)
 
     return _
 

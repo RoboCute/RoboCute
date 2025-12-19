@@ -8,8 +8,6 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
 import importlib
-from multiprocessing import Process
-from scripts.generate import GENERATION_TASKS
 from scripts.prepare import (
     GIT_TASKS,
     CLANGCXX_NAME,
@@ -28,6 +26,7 @@ from scripts.prepare import (
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder
 from mypy import stubgen
+
 import rbc_meta.utils_next.codegen_util as ut
 
 from rbc_meta.utils_next.codegen import (
@@ -40,7 +39,7 @@ from rbc_meta.utils_next.codegen import (
 )
 
 
-def get_project_root():
+def get_project_root() -> Path:
     # Assumes this script is located in <root>/src/srcripts/scripts.py
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = Path(script_dir).parent.parent
@@ -365,8 +364,6 @@ def generate():
     Main execution function. Sets up paths and spawns parallel processes for generation.
     """
     start_time = time.time()
-    print(f"Starting code generation for {len(GENERATION_TASKS)} modules...")
-
     import rbc_meta.types
 
     target_modules = ["runtime"]
