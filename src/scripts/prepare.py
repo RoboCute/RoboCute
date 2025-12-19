@@ -95,12 +95,12 @@ GIT_TASKS = {
         "branch": None,
         "deps": [],
     },
-    "acl": {
-        "subdir": "thirdparty/acl",
-        "url": "https://github.com/RoboCute/acl.git",
-        "branch": None,
-        "deps": [],
-    },
+    # "acl": {
+    #     "subdir": "thirdparty/acl",
+    #     "url": "https://github.com/RoboCute/acl.git",
+    #     "branch": None,
+    #     "deps": [],
+    # },
     # "cpptrace": {
     #     "subdir": "thirdparty/cpptrace",
     #     "url": "https://github.com/RoboCute/cpptrace.git",

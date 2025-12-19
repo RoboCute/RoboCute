@@ -178,6 +178,10 @@ render_resources = "{RENDER_RESOURCE_NAME}"
         print(f"Downloading '{dst_path}'...")
         response = requests.get(map["address"] + file)
         response.raise_for_status()
+        # check if parent directory exists, else mkdir -p
+        if not os.path.exists(os.path.dirname(dst_path)):
+            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+
         with open(dst_path, "wb") as f:
             f.write(response.content)
         print(f"Download '{dst_path}' successfully!")
