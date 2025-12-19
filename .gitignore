@@ -55,6 +55,10 @@ compile_commands.json
 *.ps1
 *.sh
 
+# resource file
+*.7z
+*.zip
+
 # engine
 
 # render
