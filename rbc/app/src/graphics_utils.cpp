@@ -295,7 +295,7 @@ void GraphicsUtils::resize_swapchain(uint2 size) {
     _compute_event.event.synchronize(_compute_event.fence_index);
     _present_stream.synchronize();
     _dst_image.reset();
-    _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, size, true);
+    _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, size, 1, true, true);
     _dst_image.set_name("Dest image");
     _swapchain.reset();
     if (_window)

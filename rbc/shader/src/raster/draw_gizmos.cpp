@@ -11,6 +11,7 @@ struct AppData {
 struct v2p {
     [[POSITION]] float4 proj_pos;
     float4 color;
+    float4 local_pos;
 };
 [[VERTEX_SHADER]] v2p vert(
     AppData appdata,
@@ -18,6 +19,7 @@ struct v2p {
     v2p o;
     o.proj_pos = vp * float4(appdata.pos.xyz, 1.f);
     o.color = appdata.color;
+    o.local_pos = appdata.pos;
     raster::transform_projection(o.proj_pos);
     return o;
 }
@@ -25,11 +27,14 @@ struct v2p {
 [[PIXEL_SHADER]] float4 pixel(
     v2p i,
     uint2 clicked_pixel,
-    Buffer<uint> &clicked_id) {
+    Buffer<float4> &clicked_id) {
     auto curr_id = uint2(i.proj_pos.xy);
     if (all(curr_id == clicked_pixel)) {
         auto inst_id = object_id();
-        clicked_id.write(inst_id, primitive_id());
+        float4 result;
+        result.xyz = i.local_pos.xyz;
+        result.w = bit_cast<float>(primitive_id());
+        clicked_id.write(inst_id, result);
     }
     return i.color;
 }

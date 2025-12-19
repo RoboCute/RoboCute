@@ -121,61 +121,17 @@ luisa::vector<T> generate_quantiles(
 }
 
 float4x4 inverse_double(float4x4 const &m_flt) noexcept {// from GLM
-    struct Double4x4 {
-        double4 c[4];
-        double4 &operator[](size_t i) {
-            return c[i];
-        }
-    };
-    Double4x4 m;
-    for (auto i : vstd::range(4)) {
-        m.c[i] = make_double4(m_flt.cols[i]);
-    }
-    const auto coef00 = m[2].z * m[3].w - m[3].z * m[2].w;
-    const auto coef02 = m[1].z * m[3].w - m[3].z * m[1].w;
-    const auto coef03 = m[1].z * m[2].w - m[2].z * m[1].w;
-    const auto coef04 = m[2].y * m[3].w - m[3].y * m[2].w;
-    const auto coef06 = m[1].y * m[3].w - m[3].y * m[1].w;
-    const auto coef07 = m[1].y * m[2].w - m[2].y * m[1].w;
-    const auto coef08 = m[2].y * m[3].z - m[3].y * m[2].z;
-    const auto coef10 = m[1].y * m[3].z - m[3].y * m[1].z;
-    const auto coef11 = m[1].y * m[2].z - m[2].y * m[1].z;
-    const auto coef12 = m[2].x * m[3].w - m[3].x * m[2].w;
-    const auto coef14 = m[1].x * m[3].w - m[3].x * m[1].w;
-    const auto coef15 = m[1].x * m[2].w - m[2].x * m[1].w;
-    const auto coef16 = m[2].x * m[3].z - m[3].x * m[2].z;
-    const auto coef18 = m[1].x * m[3].z - m[3].x * m[1].z;
-    const auto coef19 = m[1].x * m[2].z - m[2].x * m[1].z;
-    const auto coef20 = m[2].x * m[3].y - m[3].x * m[2].y;
-    const auto coef22 = m[1].x * m[3].y - m[3].x * m[1].y;
-    const auto coef23 = m[1].x * m[2].y - m[2].x * m[1].y;
-    const auto fac0 = double4{coef00, coef00, coef02, coef03};
-    const auto fac1 = double4{coef04, coef04, coef06, coef07};
-    const auto fac2 = double4{coef08, coef08, coef10, coef11};
-    const auto fac3 = double4{coef12, coef12, coef14, coef15};
-    const auto fac4 = double4{coef16, coef16, coef18, coef19};
-    const auto fac5 = double4{coef20, coef20, coef22, coef23};
-    const auto Vec0 = double4{m[1].x, m[0].x, m[0].x, m[0].x};
-    const auto Vec1 = double4{m[1].y, m[0].y, m[0].y, m[0].y};
-    const auto Vec2 = double4{m[1].z, m[0].z, m[0].z, m[0].z};
-    const auto Vec3 = double4{m[1].w, m[0].w, m[0].w, m[0].w};
-    const auto inv0 = Vec1 * fac0 - Vec2 * fac1 + Vec3 * fac2;
-    const auto inv1 = Vec0 * fac0 - Vec2 * fac3 + Vec3 * fac4;
-    const auto inv2 = Vec0 * fac1 - Vec1 * fac3 + Vec3 * fac5;
-    const auto inv3 = Vec0 * fac2 - Vec1 * fac4 + Vec2 * fac5;
-    constexpr auto sign_a = double4{+1.0, -1.0, +1.0, -1.0};
-    constexpr auto sign_b = double4{-1.0, +1.0, -1.0, +1.0};
-    const auto inv_0 = inv0 * sign_a;
-    const auto inv_1 = inv1 * sign_b;
-    const auto inv_2 = inv2 * sign_a;
-    const auto inv_3 = inv3 * sign_b;
-    const auto dot0 = m[0] * double4{inv_0.x, inv_1.x, inv_2.x, inv_3.x};
-    const auto dot1 = dot0.x + dot0.y + dot0.z + dot0.w;
-    const auto one_over_determinant = 1.0 / dot1;
-    return float4x4{make_float4(inv_0 * one_over_determinant),
-                    make_float4(inv_1 * one_over_determinant),
-                    make_float4(inv_2 * one_over_determinant),
-                    make_float4(inv_3 * one_over_determinant)};
+    auto f{make_double4x4(
+        make_double4(m_flt[0]),
+        make_double4(m_flt[1]),
+        make_double4(m_flt[2]),
+        make_double4(m_flt[3]))};
+    f = inverse(f);
+    return make_float4x4(
+        make_float4(f[0]),
+        make_float4(f[1]),
+        make_float4(f[2]),
+        make_float4(f[3]));
 }
 }// namespace preparepass_detail
 void PreparePass::on_enable(

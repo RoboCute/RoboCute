@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
     utils.render_plugin()->update_skybox("../sky.bytes", PixelStorage::FLOAT4, uint2(4096, 2048));
-    utils.init_display_with_window("test_graphics", uint2(1024), true);
+    utils.init_display_with_window(luisa::string{"test_graphics_"} + utils.backend_name(), uint2(1024), true);
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer
     Clock clk;
@@ -176,10 +176,14 @@ int main(int argc, char *argv[]) {
         }
         if (utils.window())
             utils.window()->poll_events();
-        world_scene->draw_gizmos(&utils, stage == MouseStage::Clicking ? make_uint2(end_uv * make_float2(window_size)) : make_uint2(-1));
+        // reuse drag logic
+        auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(end_uv * make_float2(window_size)), window_size, cam.position, cam.far_plane, cam);
         auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
         if (any(window_size != utils.dst_image().size())) {
             utils.resize_swapchain(window_size);
+            frame_index = 0;
+        }
+        if (reset) {
             frame_index = 0;
         }
         camera_input.viewport_size = make_float2(window_size);

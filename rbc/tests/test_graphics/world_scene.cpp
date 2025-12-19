@@ -46,12 +46,12 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         auto entity = _entities.emplace_back(world::create_object<world::Entity>());
         auto transform = entity->add_component<world::Transform>();
         transform->set_pos(double3(0, -1, 2), true);
-        transform->set_rotation(quaternion(
-                                    make_float3x3(
-                                        -1, 0, 0,
-                                        0, 1, 0,
-                                        0, 0, -1)),
-                                true);
+        auto rot = quaternion(
+            make_float3x3(
+                -1, 0, 0,
+                0, 1, 0,
+                0, 0, -1));
+        transform->set_rotation(rot, true);
         auto render = entity->add_component<world::Renderer>();
         render->update_object(_mats, cbox_mesh);
     }
@@ -114,6 +114,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     luisa::filesystem::path meta_dir{"test_scene"};
     auto scene_root_dir = runtime_dir / meta_dir;
     auto entities_path = scene_root_dir / "scene.rbcmt";
+
     // write a demo scene
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
         luisa::filesystem::create_directories(scene_root_dir);
@@ -152,31 +153,31 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         }
         BinaryFileWriter file_writer(luisa::to_string(entities_path));
         file_writer.write(scene_ser.write_to());
-        return;
-    }
-    // load demo scene
-    world::init_resource_loader(runtime_dir, meta_dir);// open project folder
-    luisa::vector<std::byte> data;
-    {
-        BinaryFileStream file_stream(luisa::to_string(entities_path));
-        LUISA_ASSERT(file_stream.valid());
-        data.push_back_uninitialized(file_stream.length());
-        file_stream.read(data);
-    }
-    // load test_scene/scene.rbcmt
-    JsonDeSerializer entitie_deser(luisa::string_view((char const *)data.data(), data.size()));
-    LUISA_ASSERT(entitie_deser.valid());
-    uint64_t size = entitie_deser.last_array_size();
-    _entities.reserve(size);
-    for (auto i : vstd::range(size)) {
-        auto e = _entities.emplace_back(world::create_object<world::Entity>());
-        entitie_deser.start_object();
-        e->deserialize_meta(world::ObjDeSerialize{entitie_deser});
-        entitie_deser.end_scope();
-    }
-    for (auto &i : _entities) {
-        auto render = i->get_component<world::Renderer>();
-        if (render) render->update_object();
+    } else {
+        // load demo scene
+        world::init_resource_loader(runtime_dir, meta_dir);// open project folder
+        luisa::vector<std::byte> data;
+        {
+            BinaryFileStream file_stream(luisa::to_string(entities_path));
+            LUISA_ASSERT(file_stream.valid());
+            data.push_back_uninitialized(file_stream.length());
+            file_stream.read(data);
+        }
+        // load test_scene/scene.rbcmt
+        JsonDeSerializer entitie_deser(luisa::string_view((char const *)data.data(), data.size()));
+        LUISA_ASSERT(entitie_deser.valid());
+        uint64_t size = entitie_deser.last_array_size();
+        _entities.reserve(size);
+        for (auto i : vstd::range(size)) {
+            auto e = _entities.emplace_back(world::create_object<world::Entity>());
+            entitie_deser.start_object();
+            e->deserialize_meta(world::ObjDeSerialize{entitie_deser});
+            entitie_deser.end_scope();
+        }
+        for (auto &i : _entities) {
+            auto render = i->get_component<world::Renderer>();
+            if (render) render->update_object();
+        }
     }
     _set_gizmos();
 }
@@ -260,21 +261,55 @@ void WorldScene::_set_gizmos() {
     _gizmos->vertex_size = mesh_builder.vertex_count();
     render_device.lc_main_stream() << _gizmos->data.view().copy_from(gizmos_mesh.data());
 }
-void WorldScene::draw_gizmos(GraphicsUtils *utils, uint2 click_pixel_pos) {
+bool WorldScene::draw_gizmos(
+    bool dragging,
+    GraphicsUtils *utils, uint2 click_pixel_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, Camera const &cam) {
     auto &click_mng = utils->render_settings().read_mut<ClickManager>();
+    auto tr = _entities[0]->get_component<world::Transform>();
+
+    auto transform_matrix = tr->trs();
     auto vertex_offset = _gizmos->vertex_size * sizeof(float3) / sizeof(uint);
     auto index_size = _gizmos->data.size() - vertex_offset * 2;
-    click_mng.add_gizmos_requires(ClickManager::GizmosRequires{
+    click_mng.add_gizmos_requires(GizmosRequire{
         .name = "test_gizmos",
-        translation(float3(0, 0, 2)) * scaling(0.5f),
+        .transform = make_float4x4(
+            make_float4(transform_matrix[0]),
+            make_float4(transform_matrix[1]),
+            make_float4(transform_matrix[2]),
+            make_float4(transform_matrix[3])),
         .pos_buffer = _gizmos->data.view(0, vertex_offset).as<float3>(),
         .color_buffer = _gizmos->data.view(vertex_offset, vertex_offset).as<float3>(),
         .triangle_buffer = _gizmos->data.view(vertex_offset * 2, index_size).as<Triangle>(),
-        .clicked_pos = click_pixel_pos});
-    auto clicked_result = click_mng.query_gizmos_result("test_gizmos");
-    if (clicked_result) {
-        LUISA_INFO("Clicking gizmos primitive id {}", clicked_result.value());
+        .clicked_pos = dragging ? click_pixel_pos : uint2(-1)});
+    if (!dragging) {
+        _gizmos->picking = false;
+        return false;
     }
+    _gizmos->picked_uv = (make_float2(click_pixel_pos) + 0.5f) / make_float2(window_size);
+    _gizmos->picked_uv = clamp(_gizmos->picked_uv, float2(0), float2(1));
+    if (!_gizmos->picking) {
+        auto clicked_result = click_mng.query_gizmos_result("test_gizmos");
+        if (clicked_result) {
+            LUISA_INFO("Clicking gizmos primitive id {}", clicked_result.value().primitive_id);
+            auto global_pos = (transform_matrix * make_double4(make_double3(clicked_result->local_pos), 1.0));
+            global_pos /= global_pos.w;
+            _gizmos->to_cam_distance = static_cast<float>(std::min<double>(cam_far_plane, distance(global_pos.xyz(), cam_pos)));
+            _gizmos->relative_pos = make_float3(global_pos.xyz() - transform_matrix[3].xyz());
+            _gizmos->picking = true;
+        }
+    }
+    if (!_gizmos->picking) return false;
+
+    auto vp = cam.projection_matrix() * inverse(cam.local_to_world_matrix());
+    auto inv_vp = inverse(vp);
+    float2 uv = (make_float2(click_pixel_pos) + 0.5f) / make_float2(window_size);
+    float4 proj_pos = make_float4(uv * 2.f - 1.f, 0.5f /*dummy depth*/, 1.f);
+    auto dummy_world_pos = inv_vp * proj_pos;
+    dummy_world_pos /= dummy_world_pos.w;
+    auto ray_dir = normalize(dummy_world_pos.xyz() - make_float3(cam.position));
+    auto target_pos = ray_dir * _gizmos->to_cam_distance + make_float3(cam.position);
+    tr->set_pos(make_double3(target_pos - _gizmos->relative_pos), true);
+    return true;
 }
 WorldScene::~WorldScene() {
     for (auto &i : _entities) {

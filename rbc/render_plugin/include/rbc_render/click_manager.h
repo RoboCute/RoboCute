@@ -14,16 +14,20 @@ struct RayCastResult {
     uint mat_code;
     uint submesh_index{};
 };
+struct GizmosRequire {
+    luisa::string name;
+    luisa::float4x4 transform;
+    luisa::compute::BufferView<luisa::float3> pos_buffer;
+    luisa::compute::BufferView<luisa::float3> color_buffer;
+    luisa::compute::BufferView<luisa::compute::Triangle> triangle_buffer;
+    luisa::uint2 clicked_pos;
+};
+struct GizmosResult {
+    luisa::float3 local_pos;
+    uint32_t primitive_id;
+};
 struct EditingPass;
 struct ClickManager {
-    struct GizmosRequires {
-        luisa::string name;
-        luisa::float4x4 transform;
-        luisa::compute::BufferView<luisa::float3> pos_buffer;
-        luisa::compute::BufferView<luisa::float3> color_buffer;
-        luisa::compute::BufferView<luisa::compute::Triangle> triangle_buffer;
-        luisa::uint2 clicked_pos;
-    };
     friend struct PipelineContext;
     friend struct EditingPass;
     inline void add_require(
@@ -33,7 +37,7 @@ struct ClickManager {
         _requires.emplace_back(std::move(key), require);
     }
     inline void add_gizmos_requires(
-        GizmosRequires &&require) {
+        GizmosRequire &&require) {
         std::lock_guard lck{_mtx};
         _gizmos_requires.emplace_back(std::move(require));
     }
@@ -63,13 +67,13 @@ struct ClickManager {
         }
         return {};
     }
-    inline luisa::optional<uint> query_gizmos_result(luisa::string_view key) {
+    inline luisa::optional<GizmosResult> query_gizmos_result(luisa::string_view key) {
         std::lock_guard lck{_mtx};
         if (auto kvp = _gizmos_clicked_result.find(key)) {
             auto disp = vstd::scope_exit([&]() {
                 _gizmos_clicked_result.remove(kvp);
             });
-            if (kvp.value() == ~0u) {
+            if (kvp.value().primitive_id == ~0u) {
                 return {};
             }
             return kvp.value();
@@ -110,11 +114,11 @@ private:
         bool draw_rectangle;
     };
     luisa::vector<std::pair<luisa::string, ClickRequire>> _requires;
-    luisa::vector<GizmosRequires> _gizmos_requires;
+    luisa::vector<GizmosRequire> _gizmos_requires;
     luisa::vector<FrameSelectionRequires> _frame_selection_requires;
     vstd::HashMap<luisa::string, RayCastResult> _results;
     vstd::HashMap<luisa::string, luisa::vector<uint>> _frame_selection_results;
-    vstd::HashMap<luisa::string, uint> _gizmos_clicked_result;
+    vstd::HashMap<luisa::string, GizmosResult> _gizmos_clicked_result;
     luisa::spin_mutex _mtx;
 };
 }// namespace rbc

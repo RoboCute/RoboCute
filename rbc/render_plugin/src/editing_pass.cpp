@@ -147,12 +147,11 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         }
         if (!click_manager->_gizmos_requires.empty()) {
             auto reqs = std::move(click_manager->_gizmos_requires);
-            auto result_buffer = render_device.create_transient_buffer<uint>("gizmos_result", reqs.size());
-            cmdlist << (*_clear_buffer)(result_buffer, ~0u).dispatch(result_buffer.size());
+            auto result_buffer = render_device.create_transient_buffer<float4>("gizmos_result", reqs.size());
+            cmdlist << (*_clear_buffer)(result_buffer.view().as<uint>(), ~0u).dispatch(result_buffer.size_bytes() / sizeof(uint));
             RasterState raster_state{
                 .cull_mode = CullMode::None,
-                .depth_state = DepthState{.enable_depth = true, .comparison = Comparison::Greater, .write = true}
-            };
+                .depth_state = DepthState{.enable_depth = true, .comparison = Comparison::Greater, .write = true}};
 
             uint obj_id = 0;
             auto pass_ctx = ctx.mut.get_pass_context<RasterPassContext>();
@@ -183,7 +182,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                                      *frame_settings.dst_img);
             }
 
-            luisa::vector<uint> results;
+            luisa::vector<float4> results;
             results.push_back_uninitialized(result_buffer.size());
             cmdlist << result_buffer.view().copy_to(results.data());
             cmdlist.add_callback([&ctx,
@@ -193,7 +192,11 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 if (!click_manager) return;
                 std::lock_guard lck{click_manager->_mtx};
                 for (auto i : vstd::range(reqs.size())) {
-                    click_manager->_gizmos_clicked_result.force_emplace(std::move(reqs[i].name), results[i]);
+                    auto r = results[i];
+                    GizmosResult result{
+                        .local_pos = r.xyz(),
+                        .primitive_id = reinterpret_cast<uint &>(r.w)};
+                    click_manager->_gizmos_clicked_result.force_emplace(std::move(reqs[i].name), result);
                 }
             });
         }

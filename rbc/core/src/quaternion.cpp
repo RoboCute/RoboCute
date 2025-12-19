@@ -74,7 +74,8 @@ Quaternion quaternion(float3x3 m) noexcept {
 }
 Quaternion quaternion(double3x3 const &m) noexcept {
     auto quad = rtm::quat_from_matrix(reinterpret_cast<rtm::matrix3x3d const &>(m));
-    return reinterpret_cast<Quaternion const &>(quad);
+    auto quadd = reinterpret_cast<double4 const &>(quad);
+    return {make_float4(quadd)};
 }
 
 double4x4 rotation(double3 pos, Quaternion rot, double3 local_scale) noexcept {
@@ -82,14 +83,13 @@ double4x4 rotation(double3 pos, Quaternion rot, double3 local_scale) noexcept {
         rot.v.x,
         rot.v.y,
         rot.v.z,
-        rot.v.w
-    };
+        rot.v.w};
     rtm::qvvd qvv{
         .rotation = reinterpret_cast<rtm::quatd const &>(quad),
         .translation = reinterpret_cast<rtm::vector4d const &>(pos),
         .scale = reinterpret_cast<rtm::vector4d const &>(local_scale)};
-    reinterpret_cast<double*>(&qvv.scale)[3] = 0.0;
-    reinterpret_cast<double*>(&qvv.translation)[3] = 1.0;
+    reinterpret_cast<double *>(&qvv.scale)[3] = 0.0;
+    reinterpret_cast<double *>(&qvv.translation)[3] = 1.0;
     auto result = rtm::matrix_from_qvv(qvv);
     return make_double4x4(
         reinterpret_cast<double4 const &>(result.x_axis),
@@ -103,7 +103,7 @@ float4x4 rotation(float3 pos, Quaternion rot, float3 local_scale) noexcept {
         .rotation = reinterpret_cast<rtm::quatf const &>(rot),
         .translation = reinterpret_cast<rtm::vector4f const &>(pos),
         .scale = reinterpret_cast<rtm::vector4f const &>(local_scale)};
-    reinterpret_cast<float*>(&qvv.translation)[3] = 0.0;
+    reinterpret_cast<float *>(&qvv.translation)[3] = 0.0;
     auto result = rtm::matrix_from_qvv(qvv);
     return make_float4x4(
         reinterpret_cast<float4 const &>(result.x_axis),
@@ -127,7 +127,7 @@ Quaternion slerp(Quaternion q1, Quaternion q2, float t) noexcept {
 }
 
 float dot(Quaternion q1, Quaternion q2) noexcept {
-    return dot(q1.v, q2.v) + q1.v[3] * q2.v[3];
+    return dot(q1.v.xyz(), q2.v.xyz()) + q1.v[3] * q2.v[3];
 }
 
 float length(Quaternion q) noexcept {

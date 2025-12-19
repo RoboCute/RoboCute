@@ -21,6 +21,7 @@ void Transform::serialize_meta(ObjSerialize const&obj) const {
     }
     ser_obj.add_last_scope_to_object("children");
     ser_obj._store(_trs, "trs");
+    
 }
 float4x4 Transform::trs_float() const {
     return make_float4x4(
@@ -51,7 +52,7 @@ void Transform::try_decompose() {
     _decomposed = true;
     auto trs = decompose(_trs);
     _position = trs.translation;
-    _rotation = trs.quaternion;
+    _rotation = normalize(trs.quaternion);
     _scale = trs.scaling;
 }
 double3 Transform::position() {
@@ -90,6 +91,7 @@ void Transform::traversal(double4x4 const &new_trs) {
     }
 }
 void Transform::set_pos(double3 const &position, bool recursive) {
+    try_decompose();
     auto new_trs = rbc::rotation(position, _rotation, _scale);
     if (recursive) {
         traversal(new_trs);
@@ -100,6 +102,7 @@ void Transform::set_pos(double3 const &position, bool recursive) {
     mark_dirty();
 }
 void Transform::set_rotation(Quaternion const &rotation, bool recursive) {
+    try_decompose();
     auto new_trs = rbc::rotation(_position, rotation, _scale);
     if (recursive) {
         traversal(new_trs);
@@ -110,6 +113,7 @@ void Transform::set_rotation(Quaternion const &rotation, bool recursive) {
     mark_dirty();
 }
 void Transform::set_scale(double3 const &scale, bool recursive) {
+    try_decompose();
     auto new_trs = rbc::rotation(_position, _rotation, scale);
     if (recursive) {
         traversal(new_trs);
