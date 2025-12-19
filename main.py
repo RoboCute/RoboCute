@@ -91,6 +91,7 @@ def main():
     print("    Added render component")
     entity_check = scene.get_entity(robot2.id)
     print(f"    Entity has components: {list(entity_check.components.keys())}")
+
     if "render" in entity_check.components:
         rc = entity_check.components["render"]
         print(f"    Render component mesh_id: {rc.mesh_id}")

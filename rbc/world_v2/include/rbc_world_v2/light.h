@@ -22,8 +22,8 @@ public:
     void add_spot_light(luisa::float3 luminance, float angle_radians, float small_angle_radians, float angle_atten_pow, bool visible);
     void on_awake() override;
     void on_destroy() override;
-    void serialize_meta(ObjSerialize const&obj) const override;
-    void deserialize_meta(ObjDeSerialize const&obj) override;
+    void serialize_meta(ObjSerialize const &obj) const override;
+    void deserialize_meta(ObjDeSerialize const &obj) override;
     void dispose() override;
 };
 }// namespace rbc::world

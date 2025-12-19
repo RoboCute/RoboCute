@@ -8,6 +8,7 @@ add_rules('lc_install_sdk', {
     }
 })
 target_end()
+
 local targets = {
     test_graphics = false,
     test_graphics_bin = true
