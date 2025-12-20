@@ -32,14 +32,53 @@ struct [[builtin("bindless_array")]] BindlessArray {
     [[callop("BINDLESS_TEXTURE3D_READ_LEVEL")]] float4 volume_load_level(uint32 volume_index, uint3 coord, uint32 mip_level);
     [[callop("BINDLESS_TEXTURE3D_SIZE")]] uint3 volume_size(uint32 volume_index);
     [[callop("BINDLESS_TEXTURE3D_SIZE_LEVEL")]] uint3 volume_size_level(uint32 volume_index, uint32 mip_level);
-    template <typename T>
+    template<typename T>
     [[callop("BINDLESS_BUFFER_READ")]] T buffer_read(uint32 buffer_index, uint32 elem_index);
-    template <typename T>
+    template<typename T>
     [[callop("BINDLESS_BYTE_BUFFER_READ")]] T byte_buffer_read(uint32 buffer_index, uint32 byte_offset);
     [[callop("BINDLESS_BUFFER_SIZE")]] uint32 _buffer_size(uint32 buffer_index, uint32 stride);
-    template <typename T>
+    template<typename T>
     [[noignore]] uint32 buffer_size(uint32 buffer_index) {
         return _buffer_size(buffer_index, sizeof(T));
+    }
+
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SAMPLE")]] float4 uniform_image_sample(uint32 image_index, float2 uv);
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SAMPLE_LEVEL")]] float4 uniform_image_sample_level(uint32 image_index, float2 uv, float mip_level);
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SAMPLE_GRAD")]] float4 uniform_image_sample_grad(uint32 image_index, float2 uv, float2 ddx, float2 ddy);
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SAMPLE_GRAD_LEVEL")]] float4 uniform_image_sample_grad(uint32 image_index, float2 uv, float2 ddx, float2 ddy, float min_mip_level);
+
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SAMPLE_SAMPLER")]] float4 uniform_image_sample(uint32 image_index, float2 uv, uint filter, uint address);
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SAMPLE_LEVEL_SAMPLER")]] float4 uniform_image_sample_level(uint32 image_index, float2 uv, float mip_level, uint filter, uint address);
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SAMPLE_GRAD_SAMPLER")]] float4 uniform_image_sample_grad(uint32 image_index, float2 uv, float2 ddx, float2 ddy, uint filter, uint address);
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SAMPLE_GRAD_LEVEL_SAMPLER")]] float4 uniform_image_sample_grad(uint32 image_index, float2 uv, float2 ddx, float2 ddy, float min_mip_level, uint filter, uint address);
+
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_READ")]] float4 uniform_image_load(uint32 image_index, uint2 coord);
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_READ_LEVEL")]] float4 uniform_image_load_level(uint32 image_index, uint2 coord, uint32 mip_level);
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SIZE")]] uint2 uniform_image_size(uint32 image_index);
+    [[callop("UNIFORM_BINDLESS_TEXTURE2D_SIZE_LEVEL")]] uint2 uniform_image_size_level(uint32 image_index, uint32 mip_level);
+
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SAMPLE")]] float4 uniform_volume_sample(uint32 volume_index, float3 uv);
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SAMPLE_LEVEL")]] float4 uniform_volume_sample_level(uint32 volume_index, float3 uv, float mip_level);
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SAMPLE_GRAD")]] float4 uniform_volume_sample_grad(uint32 volume_index, float3 uv, float3 ddx, float3 ddy);
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SAMPLE_GRAD_LEVEL")]] float4 uniform_volume_sample_grad(uint32 volume_index, float3 uv, float3 ddx, float3 ddy, float min_mip_level);
+
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SAMPLE_SAMPLER")]] float4 uniform_volume_sample(uint32 volume_index, float3 uv, uint filter, uint address);
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SAMPLE_LEVEL_SAMPLER")]] float4 uniform_volume_sample_level(uint32 volume_index, float3 uv, float mip_level, uint filter, uint address);
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SAMPLE_GRAD_SAMPLER")]] float4 uniform_volume_sample_grad(uint32 volume_index, float3 uv, float3 ddx, float3 ddy, uint filter, uint address);
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SAMPLE_GRAD_LEVEL_SAMPLER")]] float4 uniform_volume_sample_grad(uint32 volume_index, float3 uv, float3 ddx, float3 ddy, float min_mip_level, uint filter, uint address);
+
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_READ")]] float4 uniform_volume_load(uint32 volume_index, uint3 coord);
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_READ_LEVEL")]] float4 uniform_volume_load_level(uint32 volume_index, uint3 coord, uint32 mip_level);
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SIZE")]] uint3 uniform_volume_size(uint32 volume_index);
+    [[callop("UNIFORM_BINDLESS_TEXTURE3D_SIZE_LEVEL")]] uint3 uniform_volume_size_level(uint32 volume_index, uint32 mip_level);
+    template<typename T>
+    [[callop("UNIFORM_BINDLESS_BUFFER_READ")]] T uniform_buffer_read(uint32 buffer_index, uint32 elem_index);
+    template<typename T>
+    [[callop("UNIFORM_BINDLESS_BYTE_BUFFER_READ")]] T uniform_byte_buffer_read(uint32 buffer_index, uint32 byte_offset);
+    [[callop("UNIFORM_BINDLESS_BUFFER_SIZE")]] uint32 _uniform_buffer_size(uint32 buffer_index, uint32 stride);
+    template<typename T>
+    [[noignore]] uint32 uniform_buffer_size(uint32 buffer_index) {
+        return _uniform_buffer_size(buffer_index, sizeof(T));
     }
 };
 }// namespace luisa::shader

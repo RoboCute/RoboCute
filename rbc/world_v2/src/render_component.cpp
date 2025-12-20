@@ -1,4 +1,4 @@
-#include <rbc_world_v2/renderer.h>
+#include <rbc_world_v2/render_component.h>
 #include <rbc_world_v2/transform.h>
 #include <rbc_world_v2/resource_loader.h>
 #include <rbc_world_v2/type_register.h>
@@ -8,20 +8,20 @@
 #include <rbc_world_v2/entity.h>
 
 namespace rbc::world {
-void Renderer::_on_transform_update() {
+void RenderComponent::_on_transform_update() {
     if (_mesh_tlas_idx != ~0u) {
         auto tr = entity()->get_component<Transform>();
         if (!tr) return;
         _update_object_pos(tr->trs_float());
     }
 }
-void Renderer::on_awake() {
-    add_event(WorldEventType::OnTransformUpdate, &Renderer::_on_transform_update);
+void RenderComponent::on_awake() {
+    add_event(WorldEventType::OnTransformUpdate, &RenderComponent::_on_transform_update);
 }
-void Renderer::on_destroy() {
+void RenderComponent::on_destroy() {
     remove_object();
 }
-void Renderer::serialize_meta(ObjSerialize const &ser) const {
+void RenderComponent::serialize_meta(ObjSerialize const &ser) const {
     auto &ser_obj = ser.ser;
     ser_obj.start_array();
     for (auto &i : _materials) {
@@ -44,7 +44,7 @@ void Renderer::serialize_meta(ObjSerialize const &ser) const {
         }
     }
 }
-void Renderer::deserialize_meta(ObjDeSerialize const &ser) {
+void RenderComponent::deserialize_meta(ObjDeSerialize const &ser) {
     auto &obj = ser.ser;
     uint64_t size;
     if (obj.start_array(size, "mats")) {
@@ -97,10 +97,10 @@ static bool material_is_emission(luisa::span<RC<Material> const> materials) {
     }
     return contained_emission;
 };
-Renderer::~Renderer() {
+RenderComponent::~RenderComponent() {
     remove_object();
 }
-void Renderer::remove_object() {
+void RenderComponent::remove_object() {
     auto sm = SceneManager::instance_ptr();
     if (_mesh_ref && _mesh_ref->device_mesh()) {
         _mesh_ref.reset();
@@ -131,10 +131,10 @@ void Renderer::remove_object() {
     }
 }
 
-Renderer::Renderer(Entity *entity) : ComponentDerive<Renderer>(entity) {
+RenderComponent::RenderComponent(Entity *entity) : ComponentDerive<RenderComponent>(entity) {
     _mesh_light_idx = ~0u;
 }
-void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
+void RenderComponent::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
     auto tr = entity()->get_component<Transform>();
     if (!tr) {
         LUISA_WARNING("Transform component not found, renderer update failed.");
@@ -190,7 +190,7 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
     bool is_emission = material_is_emission(_materials);
     if (!render_device) return;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
-        LUISA_ERROR("Renderer::update_object can only be called in render-thread.");
+        LUISA_ERROR("RenderComponent::update_object can only be called in render-thread.");
     }
     // update
     if (_mesh_tlas_idx != ~0u) {
@@ -270,7 +270,7 @@ void Renderer::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
         }
     }
 }
-void Renderer::_update_object_pos(float4x4 matrix) {
+void RenderComponent::_update_object_pos(float4x4 matrix) {
     if (_mesh_tlas_idx == ~0u) [[unlikely]] {
         LUISA_ERROR("Object not initialized yet.");
     }
@@ -302,7 +302,7 @@ void Renderer::_update_object_pos(float4x4 matrix) {
     }
 }
 
-uint Renderer::get_tlas_index() const {
+uint RenderComponent::get_tlas_index() const {
     switch (_type) {
         case ObjectRenderType::Mesh:
             return _mesh_tlas_idx;
@@ -315,5 +315,5 @@ uint Renderer::get_tlas_index() const {
     }
 }
 
-DECLARE_WORLD_COMPONENT_REGISTER(Renderer);
+DECLARE_WORLD_COMPONENT_REGISTER(RenderComponent);
 }// namespace rbc::world

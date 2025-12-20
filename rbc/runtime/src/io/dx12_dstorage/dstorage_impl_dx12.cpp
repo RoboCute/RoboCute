@@ -154,13 +154,13 @@ public:
     ~DStorageStreamDX12Impl();
     void enqueue_request(
         IOFile::Handle const& file,
-        size_t file_offset,
+        size_t offset_bytes,
         void* ptr,
         size_t len
     );
     void enqueue_request(
         IOFile::Handle const& file,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t buffer_handle,
         void* buffer_ptr,
         size_t buffer_offset,
@@ -168,7 +168,7 @@ public:
     );
     void enqueue_request(
         IOFile::Handle const& file,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t tex_handle,
         void* tex_ptr,
         PixelStorage storage,
@@ -178,7 +178,7 @@ public:
     );
     void enqueue_request(
         void const* mem_ptr,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t buffer_handle,
         void* buffer_ptr,
         size_t buffer_offset,
@@ -186,13 +186,13 @@ public:
     );
     void enqueue_request(
         void const* mem_ptr,
-        size_t file_offset,
+        size_t offset_bytes,
         void* ptr,
         size_t len
     );
     void enqueue_request(
         void const* mem_ptr,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t tex_handle,
         void* tex_ptr,
         PixelStorage storage,
@@ -333,7 +333,7 @@ void IOFile::_dispose_dx12(IOFile::Handle& handle)
 }
 void DStorageStreamDX12Impl::enqueue_request(
     IOFile::Handle const& file,
-    size_t file_offset,
+    size_t offset_bytes,
     void* ptr,
     size_t len
 )
@@ -344,12 +344,12 @@ void DStorageStreamDX12Impl::enqueue_request(
     request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
     request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MEMORY;
     request.Source.File.Source = reinterpret_cast<IDStorageFile*>(file.file);
-    request.Source.File.Offset = file_offset;
-    if (file_offset >= file.len) [[unlikely]]
+    request.Source.File.Offset = offset_bytes;
+    if (offset_bytes >= file.len) [[unlikely]]
     {
         LUISA_ERROR("Invalid offset");
     }
-    if (len > file.len - file_offset) [[unlikely]]
+    if (len > file.len - offset_bytes) [[unlikely]]
     {
         LUISA_ERROR("Size out of range.");
     }
@@ -361,7 +361,7 @@ void DStorageStreamDX12Impl::enqueue_request(
 
 void DStorageStreamDX12Impl::enqueue_request(
     IOFile::Handle const& file,
-    size_t file_offset,
+    size_t offset_bytes,
     uint64_t buffer_handle,
     void* buffer_ptr,
     size_t buffer_offset,
@@ -374,12 +374,12 @@ void DStorageStreamDX12Impl::enqueue_request(
     request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
     request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_BUFFER;
     request.Source.File.Source = reinterpret_cast<IDStorageFile*>(file.file);
-    request.Source.File.Offset = file_offset;
-    if (file_offset >= file.len) [[unlikely]]
+    request.Source.File.Offset = offset_bytes;
+    if (offset_bytes >= file.len) [[unlikely]]
     {
         LUISA_ERROR("Invalid offset");
     }
-    if (len > file.len - file_offset) [[unlikely]]
+    if (len > file.len - offset_bytes) [[unlikely]]
     {
         LUISA_ERROR("Size out of range.");
     }
@@ -391,7 +391,7 @@ void DStorageStreamDX12Impl::enqueue_request(
 }
 void DStorageStreamDX12Impl::enqueue_request(
     IOFile::Handle const& file,
-    size_t file_offset,
+    size_t offset_bytes,
     uint64_t tex_handle,
     void* tex_ptr,
     PixelStorage storage,
@@ -406,13 +406,13 @@ void DStorageStreamDX12Impl::enqueue_request(
     request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
     request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_TEXTURE_REGION;
     request.Source.File.Source = reinterpret_cast<IDStorageFile*>(file.file);
-    request.Source.File.Offset = file_offset;
-    if (file_offset >= file.len) [[unlikely]]
+    request.Source.File.Offset = offset_bytes;
+    if (offset_bytes >= file.len) [[unlikely]]
     {
         LUISA_ERROR("Invalid offset");
     }
     auto len = pixel_storage_size(storage, size);
-    if (len > file.len - file_offset) [[unlikely]]
+    if (len > file.len - offset_bytes) [[unlikely]]
     {
         LUISA_ERROR("Size out of range.");
     }
@@ -432,7 +432,7 @@ void DStorageStreamDX12Impl::enqueue_request(
 }
 void DStorageStreamDX12Impl::enqueue_request(
     void const* mem_ptr,
-    size_t file_offset,
+    size_t offset_bytes,
     uint64_t buffer_handle,
     void* buffer_ptr,
     size_t buffer_offset,
@@ -444,7 +444,7 @@ void DStorageStreamDX12Impl::enqueue_request(
     request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
     request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
     request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_BUFFER;
-    request.Source.Memory.Source = static_cast<std::byte const*>(mem_ptr) + file_offset;
+    request.Source.Memory.Source = static_cast<std::byte const*>(mem_ptr) + offset_bytes;
     request.Source.Memory.Size = len;
     request.Destination.Buffer.Resource = reinterpret_cast<ID3D12Resource*>(buffer_ptr);
     request.Destination.Buffer.Offset = buffer_offset;
@@ -453,7 +453,7 @@ void DStorageStreamDX12Impl::enqueue_request(
 }
 void DStorageStreamDX12Impl::enqueue_request(
     void const* mem_ptr,
-    size_t file_offset,
+    size_t offset_bytes,
     uint64_t tex_handle,
     void* tex_ptr,
     PixelStorage storage,
@@ -468,7 +468,7 @@ void DStorageStreamDX12Impl::enqueue_request(
     request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
     request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_TEXTURE_REGION;
     auto len = pixel_storage_size(storage, size);
-    request.Source.Memory.Source = static_cast<std::byte const*>(mem_ptr) + file_offset;
+    request.Source.Memory.Source = static_cast<std::byte const*>(mem_ptr) + offset_bytes;
     request.Source.Memory.Size = len;
     request.Destination.Texture.Resource = reinterpret_cast<ID3D12Resource*>(tex_ptr);
     request.Destination.Texture.SubresourceIndex = level;
@@ -485,7 +485,7 @@ void DStorageStreamDX12Impl::enqueue_request(
 }
 void DStorageStreamDX12Impl::enqueue_request(
     void const* mem_ptr,
-    size_t file_offset,
+    size_t offset_bytes,
     void* ptr,
     size_t len
 )
@@ -495,7 +495,7 @@ void DStorageStreamDX12Impl::enqueue_request(
     request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
     request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
     request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MEMORY;
-    request.Source.Memory.Source = static_cast<std::byte const*>(mem_ptr) + file_offset;
+    request.Source.Memory.Source = static_cast<std::byte const*>(mem_ptr) + offset_bytes;
     request.Source.Memory.Size = len;
     request.Destination.Memory.Buffer = ptr;
     request.Destination.Memory.Size = len;

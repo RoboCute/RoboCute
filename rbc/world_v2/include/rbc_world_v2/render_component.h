@@ -5,11 +5,11 @@
 namespace rbc::world {
 struct Mesh;
 struct Material;
-struct RBC_WORLD_API Renderer final : ComponentDerive<Renderer> {
-    DECLARE_WORLD_COMPONENT_FRIEND(Renderer)
+struct RBC_WORLD_API RenderComponent final : ComponentDerive<RenderComponent> {
+    DECLARE_WORLD_COMPONENT_FRIEND(RenderComponent)
 private:
-    Renderer(Entity *entity);
-    ~Renderer();
+    RenderComponent(Entity *entity);
+    ~RenderComponent();
     ObjectRenderType _type{};
     luisa::vector<MatCode> _material_codes;
     luisa::vector<RC<Material>> _materials;
@@ -35,4 +35,4 @@ private:
     void _update_object_pos(float4x4 matrix);
 };
 }// namespace rbc::world
-RBC_RTTI(rbc::world::Renderer)
+RBC_RTTI(rbc::world::RenderComponent)

@@ -24,13 +24,13 @@ public:
     ~DStorageStreamFallbackImpl();
     void enqueue_request(
         IOFile::Handle const& file,
-        size_t file_offset,
+        size_t offset_bytes,
         void* ptr,
         size_t len
     );
     void enqueue_request(
         IOFile::Handle const& file,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t buffer_handle,
         void* buffer_ptr,
         size_t buffer_offset,
@@ -38,7 +38,7 @@ public:
     );
     void enqueue_request(
         IOFile::Handle const& file,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t tex_handle,
         void* tex_ptr,
         PixelStorage storage,
@@ -48,7 +48,7 @@ public:
     );
     void enqueue_request(
         void const* mem_ptr,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t buffer_handle,
         void* buffer_ptr,
         size_t buffer_offset,
@@ -56,13 +56,13 @@ public:
     );
     void enqueue_request(
         void const* mem_ptr,
-        size_t file_offset,
+        size_t offset_bytes,
         void* ptr,
         size_t len
     );
     void enqueue_request(
         void const* mem_ptr,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t tex_handle,
         void* tex_ptr,
         PixelStorage storage,
@@ -307,15 +307,15 @@ void IOFile::_dispose_fallback(IOFile::Handle& handle)
 }
 void DStorageStreamFallbackImpl::enqueue_request(
     IOFile::Handle const& file,
-    size_t file_offset,
+    size_t offset_bytes,
     void* ptr,
     size_t len
 )
 {
     LUISA_ASSERT(src_type == DStorageSrcType::File, "Source type and queue mismatch.");
     auto queue_impl = static_cast<detail::IOQueue*>(queue);
-    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [f = file.file, file_offset, ptr, len](detail::IOQueue* queue) {
-        RBC_FSEEK(static_cast<::FILE*>(f), file_offset, SEEK_SET);
+    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [f = file.file, offset_bytes, ptr, len](detail::IOQueue* queue) {
+        RBC_FSEEK(static_cast<::FILE*>(f), offset_bytes, SEEK_SET);
         fread(ptr, len, 1, static_cast<::FILE*>(f));
     } };
     queue_impl->work_thd.lock();
@@ -325,7 +325,7 @@ void DStorageStreamFallbackImpl::enqueue_request(
 
 void DStorageStreamFallbackImpl::enqueue_request(
     IOFile::Handle const& file,
-    size_t file_offset,
+    size_t offset_bytes,
     uint64_t buffer_handle,
     void* buffer_ptr,
     size_t buffer_offset,
@@ -334,7 +334,7 @@ void DStorageStreamFallbackImpl::enqueue_request(
 {
     LUISA_ASSERT(src_type == DStorageSrcType::File, "Source type and queue mismatch.");
     auto queue_impl = static_cast<detail::IOQueue*>(queue);
-    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [f = file.file, file_offset, buffer_handle, buffer_offset, len](detail::IOQueue* queue) {
+    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [f = file.file, offset_bytes, buffer_handle, buffer_offset, len](detail::IOQueue* queue) {
         if (queue->alloc && queue->alloc->get_next_size(len, 256) > queue->alloc->upload_buffer.size_bytes())
         {
             queue->commit();
@@ -344,7 +344,7 @@ void DStorageStreamFallbackImpl::enqueue_request(
         auto ptr = reinterpret_cast<void*>(chunk.handle + chunk.offset);
         auto upload_buffer = queue->alloc->allocate(len, 256);
         auto upload_mapped_ptr = static_cast<std::byte*>(upload_buffer.native_handle()) + upload_buffer.offset_bytes();
-        RBC_FSEEK(static_cast<::FILE*>(f), file_offset, SEEK_SET);
+        RBC_FSEEK(static_cast<::FILE*>(f), offset_bytes, SEEK_SET);
         fread(ptr, len, 1, static_cast<::FILE*>(f));
         std::memcpy(
             upload_mapped_ptr,
@@ -365,7 +365,7 @@ void DStorageStreamFallbackImpl::enqueue_request(
 }
 void DStorageStreamFallbackImpl::enqueue_request(
     IOFile::Handle const& file,
-    size_t file_offset,
+    size_t offset_bytes,
     uint64_t tex_handle,
     void* tex_ptr,
     PixelStorage storage,
@@ -377,7 +377,7 @@ void DStorageStreamFallbackImpl::enqueue_request(
     LUISA_ASSERT(src_type == DStorageSrcType::File, "Source type and queue mismatch.");
     auto queue_impl = static_cast<detail::IOQueue*>(queue);
     luisa::move_only_function<void(detail::IOQueue*)> io_queue{
-        [f = file.file, file_offset, tex_handle, storage, offset, size, level](detail::IOQueue* queue) {
+        [f = file.file, offset_bytes, tex_handle, storage, offset, size, level](detail::IOQueue* queue) {
             auto size_bytes = pixel_storage_size(storage, size);
             if (queue->alloc && queue->alloc->get_next_size(size_bytes, 256) > queue->alloc->upload_buffer.size_bytes())
             {
@@ -388,7 +388,7 @@ void DStorageStreamFallbackImpl::enqueue_request(
             auto ptr = reinterpret_cast<void*>(chunk.handle + chunk.offset);
             auto upload_buffer = queue->alloc->allocate(size_bytes, 256);
             auto upload_mapped_ptr = static_cast<std::byte*>(upload_buffer.native_handle()) + upload_buffer.offset_bytes();
-            RBC_FSEEK(static_cast<::FILE*>(f), file_offset, SEEK_SET);
+            RBC_FSEEK(static_cast<::FILE*>(f), offset_bytes, SEEK_SET);
             fread(ptr, size_bytes, 1, static_cast<::FILE*>(f));
             std::memcpy(
                 upload_mapped_ptr,
@@ -412,7 +412,7 @@ void DStorageStreamFallbackImpl::enqueue_request(
 }
 void DStorageStreamFallbackImpl::enqueue_request(
     void const* mem_ptr,
-    size_t file_offset,
+    size_t offset_bytes,
     uint64_t buffer_handle,
     void* buffer_ptr,
     size_t buffer_offset,
@@ -421,13 +421,13 @@ void DStorageStreamFallbackImpl::enqueue_request(
 {
     LUISA_ASSERT(src_type == DStorageSrcType::Memory, "Source type and queue mismatch.");
     auto queue_impl = static_cast<detail::IOQueue*>(queue);
-    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [mem_ptr, file_offset, buffer_handle, buffer_offset, len](detail::IOQueue* queue) {
+    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [mem_ptr, offset_bytes, buffer_handle, buffer_offset, len](detail::IOQueue* queue) {
         if (queue->alloc && queue->alloc->get_next_size(len, 256) > queue->alloc->upload_buffer.size_bytes())
         {
             queue->commit();
         }
         queue->init_alloc();
-        auto ptr = reinterpret_cast<std::byte const*>(mem_ptr) + file_offset;
+        auto ptr = reinterpret_cast<std::byte const*>(mem_ptr) + offset_bytes;
         auto upload_buffer = queue->alloc->allocate(len, 256);
         auto upload_mapped_ptr = static_cast<std::byte*>(upload_buffer.native_handle()) + upload_buffer.offset_bytes();
         std::memcpy(
@@ -449,7 +449,7 @@ void DStorageStreamFallbackImpl::enqueue_request(
 }
 void DStorageStreamFallbackImpl::enqueue_request(
     void const* mem_ptr,
-    size_t file_offset,
+    size_t offset_bytes,
     uint64_t tex_handle,
     void* tex_ptr,
     PixelStorage storage,
@@ -460,14 +460,14 @@ void DStorageStreamFallbackImpl::enqueue_request(
 {
     LUISA_ASSERT(src_type == DStorageSrcType::Memory, "Source type and queue mismatch.");
     auto queue_impl = static_cast<detail::IOQueue*>(queue);
-    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [mem_ptr, tex_handle, file_offset, storage, offset, size, level](detail::IOQueue* queue) {
+    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [mem_ptr, tex_handle, offset_bytes, storage, offset, size, level](detail::IOQueue* queue) {
         auto size_bytes = pixel_storage_size(storage, size);
         if (queue->alloc && queue->alloc->get_next_size(size_bytes, 256) > queue->alloc->upload_buffer.size_bytes())
         {
             queue->commit();
         }
         queue->init_alloc();
-        auto ptr = reinterpret_cast<std::byte const*>(mem_ptr) + file_offset;
+        auto ptr = reinterpret_cast<std::byte const*>(mem_ptr) + offset_bytes;
         auto upload_buffer = queue->alloc->allocate(size_bytes, 256);
         std::memcpy(
             static_cast<std::byte*>(upload_buffer.native_handle()) + upload_buffer.offset_bytes(),
@@ -490,15 +490,15 @@ void DStorageStreamFallbackImpl::enqueue_request(
 }
 void DStorageStreamFallbackImpl::enqueue_request(
     void const* mem_ptr,
-    size_t file_offset,
+    size_t offset_bytes,
     void* ptr,
     size_t len
 )
 {
     LUISA_ASSERT(src_type == DStorageSrcType::Memory, "Source type and queue mismatch.");
     auto queue_impl = static_cast<detail::IOQueue*>(queue);
-    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [mem_ptr, file_offset, ptr, len](detail::IOQueue* queue) {
-        auto curr_ptr = reinterpret_cast<std::byte const*>(mem_ptr) + file_offset;
+    luisa::move_only_function<void(detail::IOQueue*)> io_queue{ [mem_ptr, offset_bytes, ptr, len](detail::IOQueue* queue) {
+        auto curr_ptr = reinterpret_cast<std::byte const*>(mem_ptr) + offset_bytes;
         std::memcpy(ptr, curr_ptr, len);
     } };
     queue_impl->work_thd.lock();

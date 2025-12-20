@@ -3,7 +3,7 @@ set_kind('phony')
 add_rules('lc_install_sdk', {
     sdk_dir = 'build/download',
     libnames = {
-        name = 'test_scene.7z',
+        name = 'test_scene_v1.0.1.7z',
         address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/',
     }
 })
@@ -50,11 +50,4 @@ for target_name, is_standalone in pairs(targets) do
     add_defines('TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_IMPORT', {
         public = true
     })
-    after_build(function(target)
-        os.cp(path.join(os.scriptdir(), "cornell_box.obj"), path.join(target:targetdir(), "cornell_box.obj"), {
-            async = true,
-            detach = true,
-            copy_if_different = true
-        })
-    end)
 end

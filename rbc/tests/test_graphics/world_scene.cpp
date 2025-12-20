@@ -1,6 +1,6 @@
 #include "world_scene.h"
 #include <rbc_world_v2/transform.h>
-#include <rbc_world_v2/renderer.h>
+#include <rbc_world_v2/render_component.h>
 #include <rbc_world_v2/light.h>
 #include <rbc_world_v2/resource_loader.h>
 #include <rbc_world_v2/texture_loader.h>
@@ -52,7 +52,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
                 0, 1, 0,
                 0, 0, -1));
         transform->set_rotation(rot, true);
-        auto render = entity->add_component<world::Renderer>();
+        auto render = entity->add_component<world::RenderComponent>();
         render->update_object(_mats, cbox_mesh);
     }
     MeshBuilder mesh_builder;
@@ -87,15 +87,30 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         "test_grid.png",
         16,
         true);
+    skybox = tex_loader.decode_texture(
+        "sky.exr",
+        1,
+        false);
+    // write guid
+    auto sky_guid = skybox->guid();
+    {
+        BinaryFileWriter file_writer{"test_scene/sky_guid.txt"};
+        auto sky_str = sky_guid.to_string();
+        file_writer.write({(std::byte *)sky_str.data(),
+                           sky_str.size()});
+    }
+
     tex_loader.finish_task();
     // TODO: transform from regular tex to vt need reload device-image
     // tex->pack_to_tile();
     tex->init_device_resource();
-    // utils->update_texture(tex->get_image());// update through render-thread
+    skybox->init_device_resource();
+    utils->render_plugin()->update_skybox(skybox->get_image());
+    utils->update_texture(skybox->get_image());// update through render-thread
 
     auto quad_entity = _entities.emplace_back(world::create_object<world::Entity>());
     auto quad_trans = quad_entity->add_component<world::Transform>();
-    auto quad_render = quad_entity->add_component<world::Renderer>();
+    auto quad_render = quad_entity->add_component<world::RenderComponent>();
     quad_trans->set_pos(make_double3(0, 0, 4), true);
     quad_trans->set_scale(double3(10, 10, 10), true);
     auto quad_mat = world::create_object<world::Material>();
@@ -139,6 +154,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         write_file(cbox_mesh);
         write_file(quad_mesh);
         write_file(tex.get());
+        write_file(skybox.get());
         for (auto &i : _mats) {
             if (i)
                 write_file(i.get());
@@ -156,6 +172,24 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     } else {
         // load demo scene
         world::init_resource_loader(runtime_dir, meta_dir);// open project folder
+
+        // load skybox
+        {
+            BinaryFileStream file_stream{"test_scene/sky_guid.txt"};
+            luisa::string sky_str;
+            if (file_stream.length() != 32) {
+                LUISA_ERROR("test_scene/sky_guid.txt is bad.");
+            }
+            sky_str.resize(32);
+            file_stream.read({(std::byte *)sky_str.data(),
+                              sky_str.size()});
+            auto sky_guid = vstd::Guid::TryParseGuid(sky_str);
+            LUISA_ASSERT(sky_guid);
+            skybox = world::load_resource(*sky_guid, true);
+        }
+        skybox->wait_load_finished();
+        utils->render_plugin()->update_skybox(skybox->get_image());
+        
         luisa::vector<std::byte> data;
         {
             BinaryFileStream file_stream(luisa::to_string(entities_path));
@@ -175,7 +209,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
             entitie_deser.end_scope();
         }
         for (auto &i : _entities) {
-            auto render = i->get_component<world::Renderer>();
+            auto render = i->get_component<world::RenderComponent>();
             if (render) render->update_object();
         }
     }

@@ -101,7 +101,7 @@ struct IOCommand {
 		IOFile::Handle,
 		void const*>;
 	SrcType file_data;
-	size_t file_offset;
+	size_t offset_bytes;
 	using DestType = luisa::variant<
 		IOBufferSubView,
 		IOTextureSubView,
@@ -110,50 +110,50 @@ struct IOCommand {
 	DestType dst;
 	IOCommand(
 		IOFile const& file,
-		size_t file_offset,
+		size_t offset_bytes,
 		IOBufferSubView const& buffer_view)
 		: file_data(file.handle()),
-		  file_offset(file_offset),
+		  offset_bytes(offset_bytes),
 		  dst(std::move(buffer_view)) {
 	}
 	IOCommand(
 		IOFile const& file,
-		size_t file_offset,
+		size_t offset_bytes,
 		IOTextureSubView const& tex_view)
 		: file_data(file.handle()),
-		  file_offset(file_offset),
+		  offset_bytes(offset_bytes),
 		  dst(std::move(tex_view)) {
 	}
 	IOCommand(
 		IOFile const& file,
-		size_t file_offset,
+		size_t offset_bytes,
 		vstd::span<std::byte> dst)
 		: file_data(file.handle()),
-		  file_offset(file_offset),
+		  offset_bytes(offset_bytes),
 		  dst(std::move(dst)) {
 	}
 	IOCommand(
 		SrcType const& file,
-		size_t file_offset,
+		size_t offset_bytes,
 		IOBufferSubView const& buffer_view)
 		: file_data(file),
-		  file_offset(file_offset),
+		  offset_bytes(offset_bytes),
 		  dst(std::move(buffer_view)) {
 	}
 	IOCommand(
 		SrcType const& file,
-		size_t file_offset,
+		size_t offset_bytes,
 		IOTextureSubView const& tex_view)
 		: file_data(file),
-		  file_offset(file_offset),
+		  offset_bytes(offset_bytes),
 		  dst(std::move(tex_view)) {
 	}
 	IOCommand(
 		SrcType const& file,
-		size_t file_offset,
+		size_t offset_bytes,
 		vstd::span<std::byte> dst)
 		: file_data(file),
-		  file_offset(file_offset),
+		  offset_bytes(offset_bytes),
 		  dst(std::move(dst)) {
 	}
 	size_t size_bytes() const {

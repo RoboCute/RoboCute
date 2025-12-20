@@ -9,6 +9,7 @@ struct GraphicsUtils;
 struct WorldScene {
     world::Mesh *cbox_mesh{};
     world::Mesh *quad_mesh{};
+    RC<world::Texture> skybox{};
     RC<world::Texture> tex{};
     luisa::vector<world::Entity *> _entities;
     luisa::vector<RC<world::Material>> _mats;

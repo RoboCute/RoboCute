@@ -42,7 +42,6 @@ int main(int argc, char *argv[]) {
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
-    utils.render_plugin()->update_skybox("../sky.bytes", PixelStorage::FLOAT4, uint2(4096, 2048));
     utils.init_display_with_window(luisa::string{"test_graphics_"} + utils.backend_name(), uint2(1024), true);
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer

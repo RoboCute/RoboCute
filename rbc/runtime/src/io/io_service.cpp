@@ -301,7 +301,7 @@ void IOService::_execute_cmdlist(IOCommandList& cmd, uint64_t timeline)
                     {
                         dstorage_stream->enqueue_request(
                             src,
-                            cmd->file_offset,
+                            cmd->offset_bytes,
                             dst.handle,
                             dst.native_handle,
                             dst.offset_bytes,
@@ -312,7 +312,7 @@ void IOService::_execute_cmdlist(IOCommandList& cmd, uint64_t timeline)
                     {
                         dstorage_stream->enqueue_request(
                             src,
-                            cmd->file_offset,
+                            cmd->offset_bytes,
                             dst.data(),
                             dst.size_bytes()
                         );
@@ -321,7 +321,7 @@ void IOService::_execute_cmdlist(IOCommandList& cmd, uint64_t timeline)
                     {
                         dstorage_stream->enqueue_request(
                             src,
-                            cmd->file_offset,
+                            cmd->offset_bytes,
                             dst.handle,
                             dst.native_handle,
                             dst.storage,
@@ -351,7 +351,7 @@ void IOService::_execute_cmdlist(IOCommandList& cmd, uint64_t timeline)
                     {
                         dstorage_stream->enqueue_request(
                             src,
-                            cmd->file_offset,
+                            cmd->offset_bytes,
                             dst.handle,
                             dst.native_handle,
                             dst.offset_bytes,
@@ -362,7 +362,7 @@ void IOService::_execute_cmdlist(IOCommandList& cmd, uint64_t timeline)
                     {
                         dstorage_stream->enqueue_request(
                             src,
-                            cmd->file_offset,
+                            cmd->offset_bytes,
                             dst.data(),
                             dst.size_bytes()
                         );
@@ -371,7 +371,7 @@ void IOService::_execute_cmdlist(IOCommandList& cmd, uint64_t timeline)
                     {
                         dstorage_stream->enqueue_request(
                             src,
-                            cmd->file_offset,
+                            cmd->offset_bytes,
                             dst.handle,
                             dst.native_handle,
                             dst.storage,
@@ -416,10 +416,10 @@ void IOService::split_commands(vector<IOCommand>& commands, vector<IOCommand>& e
                         size_t sub_buffer_size = std::min<size_t>(t.size_bytes, staging_size);
                         auto sub_buffer = t;
                         sub_buffer.size_bytes = sub_buffer_size;
-                        extra_commands.emplace_back(cmd.file_data, cmd.file_offset, std::move(sub_buffer));
+                        extra_commands.emplace_back(cmd.file_data, cmd.offset_bytes, std::move(sub_buffer));
                         if (t.size_bytes - sub_buffer_size > 0)
                         {
-                            cmd.file_offset += sub_buffer_size;
+                            cmd.offset_bytes += sub_buffer_size;
                             t.offset_bytes += sub_buffer_size;
                             t.size_bytes -= sub_buffer_size;
                         }
@@ -435,10 +435,10 @@ void IOService::split_commands(vector<IOCommand>& commands, vector<IOCommand>& e
                     {
                         size_t sub_buffer_size = std::min<size_t>(t.size_bytes(), staging_size);
                         auto sub_buffer = t.subspan(0, sub_buffer_size);
-                        extra_commands.emplace_back(cmd.file_data, cmd.file_offset, sub_buffer);
+                        extra_commands.emplace_back(cmd.file_data, cmd.offset_bytes, sub_buffer);
                         if (t.size_bytes() - sub_buffer_size > 0)
                         {
-                            cmd.file_offset += sub_buffer_size;
+                            cmd.offset_bytes += sub_buffer_size;
                             t = t.subspan(sub_buffer_size);
                         }
                         else
@@ -453,7 +453,7 @@ void IOService::split_commands(vector<IOCommand>& commands, vector<IOCommand>& e
                     if (volume_size < staging_size)
                     {
                         extra_commands.emplace_back(
-                            cmd.file_data, cmd.file_offset,
+                            cmd.file_data, cmd.offset_bytes,
                             IOTextureSubView{
                                 t.handle,
                                 t.native_handle,
@@ -473,7 +473,7 @@ void IOService::split_commands(vector<IOCommand>& commands, vector<IOCommand>& e
                         {
                             auto copy_size = std::min<uint>(copy_plane_size, t.size[2] - depth);
                             extra_commands.emplace_back(
-                                cmd.file_data, cmd.file_offset,
+                                cmd.file_data, cmd.offset_bytes,
                                 IOTextureSubView{
                                     t.handle,
                                     t.native_handle,
@@ -482,7 +482,7 @@ void IOService::split_commands(vector<IOCommand>& commands, vector<IOCommand>& e
                                     { t.size[0], t.size[1], copy_size },
                                     t.level }
                             );
-                            cmd.file_offset += copy_size * plane_size;
+                            cmd.offset_bytes += copy_size * plane_size;
                         }
                         return;
                     }
@@ -503,7 +503,7 @@ void IOService::split_commands(vector<IOCommand>& commands, vector<IOCommand>& e
                         {
                             auto copy_size = std::min<uint>(copy_col_size, t.size[1] - col);
                             extra_commands.emplace_back(
-                                cmd.file_data, cmd.file_offset,
+                                cmd.file_data, cmd.offset_bytes,
                                 IOTextureSubView{
                                     t.handle,
                                     t.native_handle,
@@ -512,7 +512,7 @@ void IOService::split_commands(vector<IOCommand>& commands, vector<IOCommand>& e
                                     { t.size[0], copy_size, 1u },
                                     t.level }
                             );
-                            cmd.file_offset += pixel_storage_size(t.storage, uint3(t.size[0], copy_size, 1));
+                            cmd.offset_bytes += pixel_storage_size(t.storage, uint3(t.size[0], copy_size, 1));
                         }
                 }
             },

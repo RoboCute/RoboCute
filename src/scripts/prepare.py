@@ -133,7 +133,7 @@ GIT_TASKS = {
     # },
 }
 OIDN_NAME = "oidn-2.3.3"
-CLANGCXX_NAME = "clangcxx_compiler-v2.0.5"
+CLANGCXX_NAME = "clangcxx_compiler-v2.0.6"
 CLANGCXX_PATH = "build/tool/clangcxx_compiler/clangcxx_compiler.exe"
 SHADER_PATH = "rbc/shader"
 CLANGD_NAME = "clangd-v19.1.7"

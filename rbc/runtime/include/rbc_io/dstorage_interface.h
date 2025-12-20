@@ -80,19 +80,19 @@ public:
     DStorageStream(DStorageStream const &) = delete;
     virtual void enqueue_request(
         IOFile::Handle const &file,
-        size_t file_offset,
+        size_t offset_bytes,
         void *ptr,
         size_t len) = 0;
     virtual void enqueue_request(
         IOFile::Handle const &file,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t buffer_handle,
         void *buffer_ptr,
         size_t buffer_offset,
         size_t len) = 0;
     virtual void enqueue_request(
         IOFile::Handle const &file,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t tex_handle,
         void *tex_ptr,
         PixelStorage storage,
@@ -101,19 +101,19 @@ public:
         uint level) = 0;
     virtual void enqueue_request(
         void const *mem_ptr,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t buffer_handle,
         void *buffer_ptr,
         size_t buffer_offset,
         size_t len) = 0;
     virtual void enqueue_request(
         void const *mem_ptr,
-        size_t file_offset,
+        size_t offset_bytes,
         void *ptr,
         size_t len) = 0;
     virtual void enqueue_request(
         void const *mem_ptr,
-        size_t file_offset,
+        size_t offset_bytes,
         uint64_t tex_handle,
         void *tex_ptr,
         PixelStorage storage,
