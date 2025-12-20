@@ -505,7 +505,7 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
 
     for key, info in all_classes:
         # Filter by module
-        if len(module_filter) == 0 and info.module not in module_filter:
+        if len(module_filter) > 0 and info.module not in module_filter:
             continue
         # print(f"Generating Interface for {key} with {module_filter}")
 
@@ -711,7 +711,7 @@ def cpp_impl_gen(module_filter: List[str] = [], *extra_includes) -> str:
 
     for key, info in all_classes:
         # print(f"Registering {key}")
-        if len(module_filter) == 0 and info.module not in module_filter:
+        if len(module_filter) > 0 and info.module not in module_filter:
             continue
 
         namespace_name = info.cpp_namespace or ""
@@ -898,7 +898,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
     # Use original order from registry to preserve module-defined order
     all_classes = registry.get_all_classes().items()
     for key, info in all_classes:
-        if len(module_filter) == 0 and info.module not in module_filter:
+        if len(module_filter) > 0 and info.module not in module_filter:
             continue
 
         if not info.pybind:  # filter out classes marked pybind
@@ -1073,7 +1073,7 @@ def cpp_client_interface_gen(module_filter: List[str] = [], *extra_includes) -> 
     # Check if any struct has RPC methods
     use_rpc = False
     for key, info in registry.get_all_classes().items():
-        if len(module_filter) == 0 and info.module not in module_filter:
+        if len(module_filter) > 0 and info.module not in module_filter:
             continue
         if len(_get_rpc_methods(info)) > 0:
             use_rpc = True
@@ -1110,7 +1110,7 @@ def cpp_client_impl_gen(module_filter: List[str] = [], *extra_includes) -> str:
     all_classes = registry.get_all_classes().items()
 
     for key, info in all_classes:
-        if len(module_filter) == 0 and info.module not in module_filter:
+        if len(module_filter) > 0 and info.module not in module_filter:
             continue
         client_impl = _print_client_impl(info, registry)
         if client_impl:
@@ -1254,7 +1254,7 @@ def pybind_codegen(
     # Use original order from registry to preserve module-defined order
     all_classes = registry.get_all_classes().items()
     for key, info in all_classes:
-        if len(module_filter) == 0 and info.module not in module_filter:
+        if len(module_filter) > 0 and info.module not in module_filter:
             continue
 
         enum_binding = get_enum_binding(key, info)
