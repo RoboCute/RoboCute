@@ -6,4 +6,7 @@ constexpr ResourceID INVALID_RESOURCE = 0;
 
 struct RenderMesh {};
 
+template<typename T>
+struct AsyncResource {};
+
 }// namespace rbc

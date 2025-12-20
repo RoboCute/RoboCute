@@ -153,7 +153,6 @@ def _get_cpp_type(
             and origin._is_container
         ):
             cpp_name = origin._cpp_type_name
-
             if len(args) == 1:
                 inner_type = _get_cpp_type(args[0], py_interface, is_view)
                 return f"{cpp_name}<{inner_type}>"
@@ -174,18 +173,8 @@ def _get_cpp_type(
             return (
                 f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
             )
-        elif isinstance(origin, tuple):
-            return f"luisa::tuple<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in args])}>"
-        elif isinstance(origin, frozenset):
-            assert len(args) == 1
-            return (
-                f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
-            )
-        elif isinstance(origin, Optional):
-            assert len(args) == 1
-            return f"std::optional<{_get_cpp_type(args[0], py_interface, is_view)}>"
-        elif isinstance(origin, Union):
-            return f"std::variant<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in args])}>"
+        else:
+            print(f"unsupported generic type: {origin}")
 
     # Handle basic types mapped in builtin.py or standard python types
     if hasattr(type_hint, "cpp_type_name"):

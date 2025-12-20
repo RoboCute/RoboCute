@@ -1,6 +1,12 @@
 from rbc_meta.utils.reflect import reflect
 from enum import Enum
-from rbc_meta.utils.builtin import IRTTRBasic, Pointer, RenderMesh
+from rbc_meta.utils.builtin import (
+    IRTTRBasic,
+    Pointer,
+    RenderMesh,
+    Vector,
+    AsyncResource,
+)
 
 
 @reflect(cpp_namespace="rbc", module_name="resource_type", pybind=True)
@@ -34,5 +40,11 @@ class IResource(IRTTRBasic):
 
 
 @reflect(cpp_namespace="rbc", module_name="resource_type")
+class MaterialResource(IRTTRBasic):
+    pass
+
+
+@reflect(cpp_namespace="rbc", module_name="resource_type")
 class MeshResource(IResource):
     render_mesh: Pointer[RenderMesh]
+    ref_materials: Vector[AsyncResource[MaterialResource]]

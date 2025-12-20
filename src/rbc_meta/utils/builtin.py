@@ -153,6 +153,13 @@ class UnorderedMap(Generic[K, V]):
     _py_type_name = "dict"
 
 
+class AsyncResource(Generic[V]):
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "rbc::AsyncResource"
+    _is_container = True
+
+
 # Special Class to generate V*
 class Pointer(Generic[V]):
     __slot__ = {}
