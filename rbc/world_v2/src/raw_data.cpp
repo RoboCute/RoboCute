@@ -5,6 +5,7 @@
 #include <rbc_graphics/render_device.h>
 
 namespace rbc::world {
+
 RawData::RawData() = default;
 RawData::~RawData() {}
 bool RawData::init_device_resource() {

@@ -21,7 +21,7 @@ protected:
     RBC_WORLD_API TypeRegisterBase();
     ~TypeRegisterBase() = default;
 public:
-    BaseObjectType base_type() const { return base_obj_type; }
+    [[nodiscard]] BaseObjectType base_type() const { return base_obj_type; }
 };
 struct RuntimeStaticBase {
     friend struct BaseObjectStatics;
@@ -38,7 +38,7 @@ template<typename T, typename... Args>
 struct RuntimeStatic : RuntimeStaticBase {
     vstd::optional<T> ptr;
     std::tuple<Args...> _args;
-    RuntimeStatic(Args &&...args)
+    explicit RuntimeStatic(Args &&...args)
         : _args(std::forward<Args>(args)...) {}
     T const *operator->() const {
         return ptr.ptr();
@@ -53,7 +53,7 @@ struct RuntimeStatic : RuntimeStaticBase {
         return *ptr;
     }
 
-    operator bool() const {
+    explicit operator bool() const {
         return ptr.has_value();
     }
 protected:

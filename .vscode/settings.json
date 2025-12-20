@@ -18,5 +18,8 @@
   "files.eol": "\n",
   "python.analysis.extraPaths": [
     "packages/pyuipc/src/"
+  ],
+  "cursorpyright.analysis.extraPaths": [
+    "packages/pyuipc/src/"
   ]
 }

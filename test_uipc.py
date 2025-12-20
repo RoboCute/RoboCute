@@ -107,7 +107,10 @@ def main():
 
     if is_valid:
         execution_order = graph.topological_sort()
-        print(f"\n执行顺序: {' → '.join(execution_order)}")
+        if execution_order is None:
+            print("\n 图存在循环")
+        else:
+            print(f"\n执行顺序: {' → '.join(execution_order)}")
     else:
         print(f"\n✗ 图验证失败: {error}")
         return

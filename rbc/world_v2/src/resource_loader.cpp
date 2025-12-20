@@ -9,14 +9,14 @@ struct ResourceLoader {
     struct ResourceHandle {
         RCWeak<Resource> res;
         rbc::shared_atomic_mutex mtx;
-        ResourceHandle() {}
-        ResourceHandle(ResourceHandle &&rhs) : res(std::move(rhs.res)) {
-        }
+        ResourceHandle() = default;
+        ResourceHandle(ResourceHandle &&rhs) noexcept : res(std::move(rhs.res)) {}
     };
+
     rbc::shared_atomic_mutex _resmap_mtx;
     vstd::HashMap<vstd::Guid, ResourceHandle> resource_types;
-    ResourceLoader() {
-    }
+    ResourceLoader() = default;
+
     void load_all_resources() {
         // iterate all files
         for (auto &i : std::filesystem::recursive_directory_iterator(_meta_path)) {
@@ -36,6 +36,7 @@ struct ResourceLoader {
     ~ResourceLoader() {
     }
 };
+
 RuntimeStatic<ResourceLoader> _res_loader;
 void init_resource_loader(luisa::filesystem::path const &root_path, luisa::filesystem::path const &meta_path) {
     LUISA_ASSERT(_res_loader && _res_loader->_root_path.empty());

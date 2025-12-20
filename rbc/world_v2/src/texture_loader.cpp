@@ -157,6 +157,7 @@ RC<Texture> TextureLoader::decode_texture(
         auto ptr = stbi_load_from_memory(
             (const stbi_uc *)data.data(), data.size(), &x, &y, &channels_in_file, 4);
         auto tex = new DeviceImage();
+
         RC<Texture> result = world::create_object<Texture>();
         result->_tex = tex;
         auto &img = tex->host_data_ref();

@@ -42,9 +42,9 @@ public:
         luisa::filesystem::path const &path,
         uint64_t const &file_offset);
     // serialize_meta meta information
-    RBC_WORLD_API virtual void serialize_meta(ObjSerialize const &obj) const;
+    RBC_WORLD_API void serialize_meta(ObjSerialize const &obj) const override;
     // deserialize_meta meta information
-    RBC_WORLD_API virtual void deserialize_meta(ObjDeSerialize const &obj);
+    RBC_WORLD_API void deserialize_meta(ObjDeSerialize const &obj) override;
     // RBC_WORLD_API virtual void (ObjDeSerialize const&obj);
 protected:
     virtual bool unsafe_save_to_path() const = 0;
@@ -64,10 +64,10 @@ private:
         return base_object_type_v;
     }
 protected:
-    virtual void serialize_meta(ObjSerialize const &obj) const override {
+    void serialize_meta(ObjSerialize const &obj) const override {
         Resource::serialize_meta(obj);
     }
-    virtual void deserialize_meta(ObjDeSerialize const &obj) override {
+    void deserialize_meta(ObjDeSerialize const &obj) override {
         Resource::deserialize_meta(obj);
     }
     ResourceBaseImpl() = default;
