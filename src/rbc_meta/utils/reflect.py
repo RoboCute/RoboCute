@@ -11,6 +11,8 @@ from typing import Dict, List, Optional, Any, Type, get_type_hints, get_origin, 
 from enum import Enum as PyEnum
 from dataclasses import dataclass
 
+from rbc_meta.utils.builtin import IRTTRBasic
+
 # Annotated is available from Python 3.9+
 if sys.version_info >= (3, 9):
     from typing import Annotated
@@ -79,14 +81,14 @@ class ClassInfo:
 
     name: str
     cls: Type
-    module: str
+    module: Optional[str]
     is_enum: bool
     methods: List[MethodInfo]
     fields: List[FieldInfo]
-    base_classes: List[str]
+    base_classes: List[Optional["ClassInfo"]]
     doc: Optional[str] = None
-    cpp_namespace: str = ""
-    cpp_prefix: str = ""
+    cpp_namespace: Optional[str] = ""
+    cpp_prefix: Optional[str] = ""
     serde = False
     pybind = False
 
@@ -115,31 +117,31 @@ class ReflectionRegistry:
     def register(
         self,
         cls: Type,
-        module_name: str | None = None,
-        cpp_namespace: str | None = None,
-        serde=False,
-        pybind=False,
-        cpp_prefix="",
+        module_name: Optional[str] = None,
+        cpp_namespace: Optional[str] = None,
+        serde: bool = False,
+        pybind: bool = False,
+        cpp_prefix: Optional[str] = "",
     ) -> Type:
         """注册类"""
         # print(f"registering {cls} with module name {module_name}")
-        if module_name is None:
-            module_name = cls.__module__
-
         class_info = self._extract_class_info(cls, module_name)
-
         class_info.cpp_namespace = cpp_namespace
         class_info.serde = serde
         class_info.pybind = pybind
         class_info.cpp_prefix = cpp_prefix
 
-        key = f"{module_name}.{cls.__name__}"
+        key = (
+            f"{module_name}.{cls.__name__}" if module_name is not None else cls.__name__
+        )
+
         self._registered_classes[key] = class_info
+        print(f"Registering {key} : {class_info.name}")
 
         # 返回原始类，不修改它
         return cls
 
-    def _extract_class_info(self, cls: Type, module_name: str) -> ClassInfo:
+    def _extract_class_info(self, cls: Type, module_name: Optional[str]) -> ClassInfo:
         """提取类信息"""
         is_enum = issubclass(cls, PyEnum)
 
@@ -303,7 +305,12 @@ class ReflectionRegistry:
                 pass
 
         # 提取基类
-        base_classes = [base.__name__ for base in cls.__bases__ if base is not object]
+        print(f"extracting basics for {cls.__name__}: {cls.__bases__}")
+        base_classes = [
+            self.get_class_info(base.__name__)
+            for base in cls.__bases__
+            if issubclass(base, IRTTRBasic)
+        ]
 
         return ClassInfo(
             name=cls.__name__,
@@ -402,7 +409,7 @@ class ReflectionRegistry:
         return generic_info
 
     def get_class_info(
-        self, class_name: str, module_name: str | None = None
+        self, class_name: str, module_name: Optional[str] = None
     ) -> Optional[ClassInfo]:
         """获取类信息"""
         if module_name:
@@ -426,10 +433,10 @@ class ReflectionRegistry:
         try:
             module = importlib.import_module(module_name)
             for name, obj in inspect.getmembers(module, predicate=inspect.isclass):
-                # print(f"Scanning {name}")
-                # 检查是否有标记属性
+                # 如果标记有reflected，则自动注册
                 if hasattr(obj, "_reflected_"):
-                    self.register(obj, module_name)
+                    self.register(obj)
+
         except ImportError as e:
             import warnings
 
@@ -437,13 +444,13 @@ class ReflectionRegistry:
 
 
 def reflect(
-    cls: Type = None,
+    cls: Optional[Type] = None,
     *,
-    module_name: str = None,
-    cpp_namespace: str = None,
-    serde=False,
-    pybind=False,
-    cpp_prefix="",
+    module_name: Optional[str] = None,
+    cpp_namespace: Optional[str] = None,
+    serde: bool = False,
+    pybind: bool = False,
+    cpp_prefix: Optional[str] = "",
 ) -> Type:
     """
     反射装饰器，用于标记需要反射的类
@@ -474,6 +481,7 @@ def reflect(
         )
         # 添加标记属性
         cls._reflected_ = True
+        cls._cpp_type_name = f"{cpp_namespace}::{cls.__name__}"
         return cls
 
     # 支持 @reflect 和 @reflect(...) 两种用法

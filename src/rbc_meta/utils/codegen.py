@@ -105,6 +105,7 @@ try:
 
     _TYPE_NAME_FUNCTIONS[BuiltinGUID] = _print_guid
     _TYPE_NAME_FUNCTIONS[BuiltinDataBuffer] = _print_data_buffer
+
 except ImportError:
     pass
 
@@ -126,13 +127,13 @@ _PY_NAMES = {
 
 
 def _get_cpp_type(
-    type_hint: Any, py_interface: bool = False, is_view: bool = True
+    type_hint: Type, py_interface: bool = False, is_view: bool = True
 ) -> str:
     """Map Python type to C++ type string."""
     if type_hint is None:
         return "void"
 
-    # Check type name functions first (for special types like string)
+    # The Override Type Name Function
     f = _TYPE_NAME_FUNCTIONS.get(type_hint)
     if f:
         return f(type_hint, py_interface, is_view)
@@ -150,6 +151,7 @@ def _get_cpp_type(
             and origin._is_container
         ):
             cpp_name = origin._cpp_type_name
+
             if len(args) == 1:
                 inner_type = _get_cpp_type(args[0], py_interface, is_view)
                 return f"{cpp_name}<{inner_type}>"
@@ -160,20 +162,25 @@ def _get_cpp_type(
 
         # Handle standard Python generic types
         if isinstance(origin, list):
+            assert len(args) == 1  # vector should have 1 arg
             return f"luisa::vector<{_get_cpp_type(args[0], py_interface, is_view)}>"
         elif isinstance(origin, dict):
+            assert len(args) == 2  # dict should have key/value pair
             return f"luisa::unordered_map<{_get_cpp_type(args[0], py_interface, is_view)}, {_get_cpp_type(args[1], py_interface, is_view)}>"
         elif isinstance(origin, set):
+            assert len(args) == 1
             return (
                 f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
             )
         elif isinstance(origin, tuple):
             return f"luisa::tuple<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in args])}>"
         elif isinstance(origin, frozenset):
+            assert len(args) == 1
             return (
                 f"luisa::unordered_set<{_get_cpp_type(args[0], py_interface, is_view)}>"
             )
         elif isinstance(origin, Optional):
+            assert len(args) == 1
             return f"std::optional<{_get_cpp_type(args[0], py_interface, is_view)}>"
         elif isinstance(origin, Union):
             return f"std::variant<{', '.join([_get_cpp_type(arg, py_interface, is_view) for arg in args])}>"
@@ -504,10 +511,13 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
     all_classes = registry.get_all_classes().items()
 
     for key, info in all_classes:
-        # Filter by module
+        # Filter Builtin
+        if info.module == "builtin":
+            continue
+
+        # Filter out module not selected
         if len(module_filter) > 0 and info.module not in module_filter:
             continue
-        # print(f"Generating Interface for {key} with {module_filter}")
 
         namespace_name = info.cpp_namespace
         class_name = info.name
@@ -672,10 +682,24 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
                 INDENT=INDENT, FUNC_API=func_api, STRUCT_NAME=class_name
             )
         )
+        struct_base_expr = ": vstd::IOperatorNewBase"
+
+        if len(info.base_classes) == 1:
+            base_class = info.base_classes[0]
+            assert base_class is not None
+            base_expr = _get_cpp_type(base_class.cls)
+            struct_base_expr = f": public {base_expr}"
+            # only on rttr type, valid
+        elif len(info.base_classes) > 1:
+            # should not happen
+            print(f"{class_name} has more than 1 base classes")
+
+        print(f"{class_name}: {info.base_classes}")
 
         struct_expr = CPP_STRUCT_TEMPLATE.substitute(
             NAMESPACE_NAME=namespace_name or "",
             STRUCT_NAME=class_name,
+            STRUCT_BASE_EXPR=struct_base_expr,
             INDENT=INDENT,
             BUILT_IN_METHODS_EXPR=built_in_methods_decl,
             MEMBERS_EXPR=members_expr,
@@ -972,6 +996,7 @@ def _print_client_code(struct_type: ClassInfo, registry: ReflectionRegistry) -> 
     methods_decl = "\n".join(method_decls)
 
     namespace_name = struct_type.cpp_namespace or ""
+
     return CPP_CLIENT_CLASS_TEMPLATE.substitute(
         NAMESPACE_NAME=namespace_name,
         CLASS_NAME=struct_type.name,

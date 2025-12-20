@@ -19,6 +19,7 @@ CPP_INTERFACE_TEMPLATE = Template("""
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/func_serializer.h>
 #include <rbc_core/serde.h>
+#include <rbc_core/rttr.h>
 
 // ========================================
 // GENRAL_INCLUDE CONTENT END
@@ -104,7 +105,7 @@ ${INDENT}virtual ~${STRUCT_NAME}() = default;
 CPP_STRUCT_TEMPLATE = Template("""
 namespace ${NAMESPACE_NAME} {
                                
-struct ${STRUCT_NAME} : vstd::IOperatorNewBase {
+struct ${STRUCT_NAME} ${STRUCT_BASE_EXPR} {
 // MEMBERS
 ${MEMBERS_EXPR}
                     

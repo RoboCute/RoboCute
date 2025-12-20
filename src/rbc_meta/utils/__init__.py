@@ -28,6 +28,7 @@ from .generator import CodeGenerator, PythonGenerator, CppGenerator, TypeMapper
 
 # Builtin Types
 _registry = ReflectionRegistry()
+# 默认首先将Builtin扫一遍
 _registry.scan_module("rbc_meta.utils.builtin")
 
 __all__ = [

@@ -1,10 +1,5 @@
 # RBC Builtin CLass
-
-
 from typing import NewType, TypeVar, Generic
-
-
-# uint = NewType("uint", int)
 
 
 class size_t:
@@ -156,3 +151,9 @@ class UnorderedMap(Generic[K, V]):
     _cpp_type_name = "luisa::unordered_map"
     _is_container = True
     _py_type_name = "dict"
+
+
+class IRTTRBasic:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "rbc::IRTTRBasic"
