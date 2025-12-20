@@ -12,9 +12,9 @@ import time
 from dataclasses import dataclass
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import uvicorn
 from rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
 from .scene import Scene
+from .service import Service
 
 
 @dataclass
@@ -65,7 +65,7 @@ class EditorConnection:
         return (time.time() - self.last_heartbeat) < timeout
 
 
-class EditorService:
+class EditorService(Service):
     """
     Editor Service for Python Server
 
@@ -86,6 +86,7 @@ class EditorService:
             scene: The scene to manage
             resource_manager: Resource manager (uses scene's if None)
         """
+        super().__init__("EditorService")
         self.scene = scene
         self.resource_manager = resource_manager or scene.resource_manager
 
@@ -99,34 +100,25 @@ class EditorService:
         # Service thread
         self._running = False
         self._service_thread: Optional[threading.Thread] = None
-        self._http_server_thread: Optional[threading.Thread] = None
 
         # Configuration
-        self.port = 5555
         self.update_rate_hz = 30  # State push frequency
 
-        # HTTP Server
-        self._app: Optional[FastAPI] = None
-        self._setup_http_server()
+    # === Service Interface Implementation ===
 
-    # === HTTP Server Setup ===
-
-    def _setup_http_server(self):
-        """Setup FastAPI HTTP server"""
-        self._app = FastAPI(title="RoboCute Editor Service")
-
-        @self._app.get("/scene/state")
+    def register_routes(self, app: FastAPI) -> None:
+        """Register Editor Service routes with the FastAPI application"""
+        
+        @app.get("/scene/state")
         def get_scene_state():
             """Get current scene state"""
             try:
                 scene_data = self.scene._save_to_dict()
-
-                # print(f"[EditorService] Scene state: {json_lib.dumps(scene_data, indent=2)}")
                 return {"success": True, "scene": scene_data}
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self._app.get("/resources/all")
+        @app.get("/resources/all")
         def get_all_resources():
             """Get all resource metadata"""
             try:
@@ -139,7 +131,7 @@ class EditorService:
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self._app.get("/resources/{resource_id}")
+        @app.get("/resources/{resource_id}")
         def get_resource(resource_id: int):
             """Get specific resource metadata"""
             try:
@@ -150,7 +142,7 @@ class EditorService:
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self._app.post("/editor/register")
+        @app.post("/editor/register")
         def register_editor(request: RegisterRequest):
             """Register a new editor"""
             try:
@@ -159,7 +151,7 @@ class EditorService:
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self._app.post("/editor/heartbeat")
+        @app.post("/editor/heartbeat")
         def editor_heartbeat(request: HeartbeatRequest):
             """Editor heartbeat"""
             try:
@@ -174,7 +166,7 @@ class EditorService:
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self._app.get("/animations/all")
+        @app.get("/animations/all")
         def get_all_animations():
             """Get all animations in the scene"""
             try:
@@ -188,7 +180,7 @@ class EditorService:
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self._app.post("/editor/command")
+        @app.post("/editor/command")
         def editor_command(request: EditorCommandRequest):
             """Handle editor command (for direct HTTP requests)"""
             try:
@@ -214,21 +206,14 @@ class EditorService:
                 traceback.print_exc()
                 raise HTTPException(status_code=500, detail=str(e))
 
-    # === Service Lifecycle ===
+    # === Service Interface Implementation ===
 
-    def start(self, port: int = 5555):
-        """Start the editor service"""
+    def on_start(self) -> None:
+        """Start the editor service (called by Server)"""
         if self._running:
             return
 
-        self.port = port
         self._running = True
-
-        # Start HTTP server in separate thread
-        self._http_server_thread = threading.Thread(
-            target=self._run_http_server, name="EditorHTTPServer", daemon=True
-        )
-        self._http_server_thread.start()
 
         # Start service thread
         self._service_thread = threading.Thread(
@@ -236,22 +221,10 @@ class EditorService:
         )
         self._service_thread.start()
 
-        print(f"[EditorService] Started on port {port}")
+        print(f"[EditorService] Started")
 
-    def _run_http_server(self):
-        """Run the HTTP server"""
-        config = uvicorn.Config(
-            self._app,
-            host="127.0.0.1",
-            port=self.port,
-            log_level="info",
-            access_log=False,
-        )
-        server = uvicorn.Server(config)
-        server.run()
-
-    def stop(self):
-        """Stop the editor service"""
+    def on_stop(self) -> None:
+        """Stop the editor service (called by Server)"""
         if not self._running:
             return
 
@@ -266,9 +239,6 @@ class EditorService:
         # Join service thread
         if self._service_thread and self._service_thread.is_alive():
             self._service_thread.join(timeout=2.0)
-
-        # Note: HTTP server runs in daemon thread and will stop automatically
-        # when main thread exits
 
         print("[EditorService] Stopped")
 

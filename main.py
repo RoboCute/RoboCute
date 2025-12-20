@@ -2,7 +2,6 @@ import robocute as rbc
 from typing import Dict, Any, List
 import time
 
-from robocute.api import app
 import custom_nodes.animation_nodes as animation_nodes
 
 
@@ -89,43 +88,47 @@ def main():
         ),
     )
     print("    Added render component")
-    entity_check = scene.get_entity(robot2.id)
-    print(f"    Entity has components: {list(entity_check.components.keys())}")
 
-    if "render" in entity_check.components:
-        rc = entity_check.components["render"]
-        print(f"    Render component mesh_id: {rc.mesh_id}")
+    entity_check = scene.get_entity(robot2.id)
+
+    if entity_check is not None:
+        print(f"    Entity has components: {list(entity_check.components.keys())}")
+
+        if "render" in entity_check.components:
+            rc = entity_check.components["render"]
+            print(f"    Render component mesh_id: {rc.mesh_id}")
+    else:
+        print(f"Entity {entity_check} register failed")
 
     init_nodes()  # 初始化注册的节点系统
 
-    # Start editor service
-    print("\n[4] Starting Editor Service...")
+    # Create server with dependency injection
+    print("\n[4] Creating Server...")
+    server = rbc.Server(title="RoboCute Server", version="0.1.0")
+    
+    # Create and register Editor Service (dependency injection: scene)
+    print("    Creating Editor Service...")
     editor_service = rbc.EditorService(scene)
-
-    # Set scene in API for animation endpoints
-    print("    Setting scene in API...")
-    rbc.set_scene(scene)
-
-    # Merge Node API
-    try:
-        from robocute.api import app as node_api_app
-
-        print("    Merging Node API into Editor Service...")
-        editor_service._app.include_router(node_api_app.router)
-        print("    Node API merged successfully")
-    except ImportError as e:
-        print(f"    Warning: Could not import Node API: {e}")
-
-    editor_service.start(port=5555)
-    print("    Editor Service started on port 5555")
+    server.register_service(editor_service)
+    
+    # Create and register Node Graph Service (dependency injection: scene)
+    print("    Creating Node Graph Service...")
+    node_graph_service = rbc.NodeGraphService(scene)
+    server.register_service(node_graph_service)
+    
+    # Start server
+    print("\n[5] Starting Server...")
+    server.start(port=5555)
+    print("    Server started on port 5555")
     print("    Endpoints available:")
     print("      - GET  http://127.0.0.1:5555/scene/state")
     print("      - GET  http://127.0.0.1:5555/resources/all")
     print("      - POST http://127.0.0.1:5555/editor/register")
     print("      - POST http://127.0.0.1:5555/editor/command (Editor commands)")
     print("      - GET  http://127.0.0.1:5555/nodes (Node API)")
+    print("      - GET  http://127.0.0.1:5555/graph/create (Node Graph API)")
     print("      - GET  http://127.0.0.1:5555/docs (API Documentation)")
-    print("\n[5] Server is running...")
+    print("\n[6] Server is running...")
     print("    You can now start the C++ editor (editor.exe)")
     print("    The editor will connect and display the scene")
     print("    Press Ctrl+C to stop the server")
@@ -149,7 +152,7 @@ def main():
 
     except KeyboardInterrupt:
         print("\n\n[Shutdown] Stopping server...")
-        editor_service.stop()
+        server.stop()
         scene.stop()
         print("[Shutdown] Server stopped")
         print()

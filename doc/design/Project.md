@@ -9,7 +9,6 @@
     - <uipc_execute_hash>
 - logs.db: The Sqlite database for executing log
 
-
 - systems.json
 - scene.json
 - Cube.obj

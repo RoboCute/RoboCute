@@ -1,7 +1,10 @@
 """
-FastAPI Web 接口
+FastAPI Web 接口 (Legacy Compatibility Layer)
 
 提供 HTTP API 用于节点管理、图创建和执行。
+此模块保持向后兼容，内部使用 NodeGraphService。
+
+注意：推荐使用 NodeGraphService 和 Server 进行依赖注入。
 """
 
 from typing import Dict, Any, List, Optional
@@ -15,18 +18,37 @@ from .node_registry import get_registry
 from .graph import NodeGraph, GraphDefinition
 from .executor import GraphExecutor, ExecutionStatus, GraphExecutionResult
 from .context import SceneContext
+from .node_graph_service import NodeGraphService
 
-
-# 创建 FastAPI 应用
+# 创建 FastAPI 应用（向后兼容）
 app = FastAPI(
     title="RBCNode API", description="类似 ComfyUI 的节点系统后端 API", version="0.1.0"
 )
 
+# 创建默认的 NodeGraphService 实例用于向后兼容
+_default_service: Optional[NodeGraphService] = None
+_scene: Optional[Any] = None  # Global scene reference for backward compatibility
 
-# 内存存储
-_graphs: Dict[str, NodeGraph] = {}
-_execution_results: Dict[str, GraphExecutionResult] = {}
-_scene: Optional[Any] = None  # Global scene reference for animation storage
+
+def _get_service() -> NodeGraphService:
+    """Get or create the default NodeGraphService instance"""
+    global _default_service
+    if _default_service is None:
+        _default_service = NodeGraphService(_scene)
+        # Register routes with the legacy app
+        _default_service.register_routes(app)
+    return _default_service
+
+
+# 向后兼容：提供访问服务内部状态的辅助函数
+def _get_graphs() -> Dict[str, NodeGraph]:
+    """Get graphs from service instance"""
+    return _get_service()._graphs
+
+
+def _get_execution_results() -> Dict[str, GraphExecutionResult]:
+    """Get execution results from service instance"""
+    return _get_service()._execution_results
 
 
 # API 数据模型
@@ -73,20 +95,19 @@ class StatusResponse(BaseModel):
     result: Optional[Dict[str, Any]] = None
 
 
-# API 路由
-@app.get("/")
-async def root():
-    """根路径"""
-    return {
-        "name": "RBCNode API",
-        "version": "0.1.0",
-        "endpoints": {
-            "nodes": "/nodes",
-            "graph_create": "/graph/create",
-            "graph_execute": "/graph/execute",
-            "graph_status": "/graph/{graph_id}/status",
-        },
-    }
+# 初始化服务并注册路由（延迟初始化，在第一次使用时注册）
+def _ensure_routes_registered():
+    """Ensure routes are registered with the legacy app"""
+    service = _get_service()
+    # Routes will be registered when service is created via register_routes
+
+
+# API 路由（向后兼容，内部使用 NodeGraphService）
+# 注意：这些路由会与 NodeGraphService 的路由重复，但保持向后兼容
+# 推荐使用 NodeGraphService 和 Server 进行依赖注入
+
+# 在导入时自动注册路由到服务
+_get_service().register_routes(app)
 
 
 @app.get("/nodes", response_model=NodeListResponse)
@@ -159,8 +180,9 @@ async def create_graph(request: GraphCreateRequest):
         # 生成或使用提供的图ID
         graph_id = request.graph_id or str(uuid.uuid4())
 
+        graphs = _get_graphs()
         # 检查图ID是否已存在
-        if graph_id in _graphs:
+        if graph_id in graphs:
             raise HTTPException(
                 status_code=400, detail=f"Graph with id '{graph_id}' already exists"
             )
@@ -174,7 +196,7 @@ async def create_graph(request: GraphCreateRequest):
             raise HTTPException(status_code=400, detail=f"Invalid graph: {error}")
 
         # 存储图
-        _graphs[graph_id] = graph
+        graphs[graph_id] = graph
 
         return GraphCreateResponse(
             graph_id=graph_id,
@@ -208,14 +230,15 @@ async def execute_graph(request: GraphExecuteRequest):
         graph = None
         execution_id = None
 
+        graphs = _get_graphs()
         if request.graph_id:
             # 执行已创建的图
-            if request.graph_id not in _graphs:
+            if request.graph_id not in graphs:
                 raise HTTPException(
                     status_code=404, detail=f"Graph '{request.graph_id}' not found"
                 )
 
-            graph = _graphs[request.graph_id]
+            graph = graphs[request.graph_id]
             execution_id = request.graph_id
 
         elif request.graph_definition:
@@ -285,7 +308,8 @@ async def execute_graph(request: GraphExecuteRequest):
             print(f"[API] Error: {result.error}")
 
         # 存储执行结果
-        _execution_results[execution_id] = result
+        execution_results = _get_execution_results()
+        execution_results[execution_id] = result
 
         # Log node results
         for node_id, node_result in result.node_results.items():
@@ -329,12 +353,13 @@ async def get_graph_status(graph_id: str):
     Returns:
         执行状态
     """
-    if graph_id not in _execution_results:
+    execution_results = _get_execution_results()
+    if graph_id not in execution_results:
         raise HTTPException(
             status_code=404, detail=f"Execution result for '{graph_id}' not found"
         )
 
-    result = _execution_results[graph_id]
+    result = execution_results[graph_id]
 
     return StatusResponse(status=result.status.value, result=result.model_dump())
 
@@ -350,12 +375,13 @@ async def get_graph_outputs(graph_id: str):
     Returns:
         输出结果
     """
-    if graph_id not in _execution_results:
+    execution_results = _get_execution_results()
+    if graph_id not in execution_results:
         raise HTTPException(
             status_code=404, detail=f"Execution result for '{graph_id}' not found"
         )
 
-    result = _execution_results[graph_id]
+    result = execution_results[graph_id]
 
     # 提取所有节点的输出
     outputs = {}
@@ -376,14 +402,16 @@ async def delete_graph(graph_id: str):
     Returns:
         删除结果
     """
-    if graph_id not in _graphs:
+    graphs = _get_graphs()
+    execution_results = _get_execution_results()
+    if graph_id not in graphs:
         raise HTTPException(status_code=404, detail=f"Graph '{graph_id}' not found")
 
-    del _graphs[graph_id]
+    del graphs[graph_id]
 
     # 同时删除执行结果
-    if graph_id in _execution_results:
-        del _execution_results[graph_id]
+    if graph_id in execution_results:
+        del execution_results[graph_id]
 
     return {"message": f"Graph '{graph_id}' deleted successfully"}
 
@@ -396,8 +424,9 @@ async def list_graphs():
     Returns:
         图列表
     """
+    graphs = _get_graphs()
     graphs_info = []
-    for graph_id, graph in _graphs.items():
+    for graph_id, graph in graphs.items():
         graphs_info.append(
             {
                 "graph_id": graph_id,
@@ -417,8 +446,9 @@ async def list_executions():
     Returns:
         执行结果列表
     """
+    execution_results = _get_execution_results()
     executions = []
-    for exec_id, result in _execution_results.items():
+    for exec_id, result in execution_results.items():
         executions.append(
             {
                 "execution_id": exec_id,
@@ -442,8 +472,10 @@ async def clear_all():
     Returns:
         清空结果
     """
-    _graphs.clear()
-    _execution_results.clear()
+    graphs = _get_graphs()
+    execution_results = _get_execution_results()
+    graphs.clear()
+    execution_results.clear()
 
     return {"message": "All graphs and execution results cleared"}
 
@@ -455,8 +487,8 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "graphs_count": len(_graphs),
-        "executions_count": len(_execution_results),
+                "graphs_count": len(_get_graphs()),
+                "executions_count": len(_get_execution_results()),
         "registered_nodes": len(get_registry()),
     }
 
@@ -465,9 +497,16 @@ async def health_check():
 
 
 def set_scene(scene):
-    """Set the global scene reference for API access"""
-    global _scene
+    """
+    Set the global scene reference for API access (Legacy compatibility)
+    
+    Note: For new code, use NodeGraphService(scene) directly for dependency injection.
+    """
+    global _scene, _default_service
     _scene = scene
+    # Update the default service if it exists
+    if _default_service is not None:
+        _default_service.set_scene(scene)
 
 
 @app.get("/animations")

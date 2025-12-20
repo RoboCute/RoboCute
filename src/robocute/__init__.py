@@ -1,7 +1,6 @@
 from robocute.scene import Scene, TransformComponent, RenderComponent, Entity
 from robocute.animation import AnimationKeyframe, AnimationSequence, AnimationClip
 from robocute.context import SceneContext
-from robocute.api import set_scene
 from robocute.resource import (
     ResourceManager,
     ResourceHandle,
@@ -18,6 +17,8 @@ from robocute.resource import (
     wait_for_resources,
 )
 from robocute.editor_service import EditorService, EditorCommand
+from robocute.service import Service, Server
+from robocute.node_graph_service import NodeGraphService
 from .node_base import RBCNode, NodeInput, NodeOutput, NodeMetadata
 from .node_registry import NodeRegistry, register_node, get_registry
 from .graph import NodeGraph, NodeConnection, NodeDefinition, GraphDefinition
@@ -44,8 +45,10 @@ __all__ = [
     "AnimationClip",
     # Scene Context
     "SceneContext",
-    # API Utilities
-    "set_scene",
+    # Service & Server
+    "Service",
+    "Server",
+    "NodeGraphService",
     # Resource Management
     "ResourceManager",
     "ResourceHandle",
