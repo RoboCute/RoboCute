@@ -1,6 +1,6 @@
-from rbc_meta.utils_next.reflect import reflect
-from rbc_meta.utils_next.builtin import DataBuffer
-from rbc_meta.utils_next.builtin import uint, uint2, ulong, float3, float4x4, VoidPtr
+from rbc_meta.utils.reflect import reflect
+from rbc_meta.utils.builtin import DataBuffer
+from rbc_meta.utils.builtin import uint, uint2, ulong, float3, float4x4, VoidPtr
 from rbc_meta.types.resource_enums import LCPixelStorage
 
 

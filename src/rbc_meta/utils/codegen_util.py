@@ -1,18 +1,14 @@
-import rbc_meta.utils.type_register as tr
-import rbc_meta.utils.codegen as codegen
-
 from pathlib import Path
 import os
 import re
-
 import hashlib
 
 
 # Write Result String To
-def _write_string_to(s: str, path: str):
+def _write_string_to(s: str, path: Path):
     data = s.encode("utf-8")
     new_md5 = hashlib.md5(data).hexdigest()
-
+    print(f"Writing to {path}")
     if os.path.exists(path):
         with open(path, "rb") as f:
             old_data = f.read()
@@ -22,43 +18,23 @@ def _write_string_to(s: str, path: str):
             return False
 
     Path(path).parent.mkdir(parents=True, exist_ok=True)
+
     with open(path, "wb") as f:
         f.write(data)
     return True
 
 
-def codegen_to(out_path: str):
+def codegen_to(out_path: Path):
     def _(callback, *args):
         s = callback(*args)
-
-        if not isinstance(s, str):
-            tr.log_err("codegen require callback return string.")
-        _write_string_to(s, str(out_path))
+        _write_string_to(s, out_path)
 
     return _
 
 
-def codegen_pyd_module(
-    pyd_name: str,
-    file_name: str,
-    cpp_root_path: Path,
-    hpp_root_path: Path,
-    py_root_path: Path,
-):
-    codegen_to(hpp_root_path / f"{file_name}.h")(codegen.cpp_interface_gen)
-    codegen_to(cpp_root_path / f"{file_name}.cpp")(
-        codegen.pybind_codegen,
-        file_name,
-        f'#include "{file_name}.h"',
+def re_translate(text: str, replacements: dict):
+    pattern = re.compile(
+        "|".join(re.escape(k) for k in sorted(replacements, key=len, reverse=True))
     )
-    codegen_to(py_root_path / f"{file_name}.py")(codegen.py_interface_gen, pyd_name)
-
-
-def re_translate(
-    text:str,
-    replacements:dict
-):
-    pattern = re.compile("|".join(re.escape(k) for k in sorted(replacements, key=len, reverse=True)))
     updated_text = pattern.sub(lambda match: replacements[match.group(0)], text)
     return updated_text
-    

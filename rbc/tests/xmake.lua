@@ -23,4 +23,4 @@ function add_test(name, deps)
     target_end()
 end
 
-add_test("core")
+add_test("core", { "rbc_core" })

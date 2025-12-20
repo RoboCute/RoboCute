@@ -1,4 +1,4 @@
-from rbc_meta.utils_next.reflect import reflect
+from rbc_meta.utils.reflect import reflect
 from enum import Enum
 
 

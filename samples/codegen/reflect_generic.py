@@ -4,7 +4,7 @@
 """
 
 from typing import List, Dict, Optional
-from rbc_meta.utils_next import reflect, ReflectionRegistry, GenericInfo
+from rbc_meta.utils import reflect, ReflectionRegistry, GenericInfo
 
 
 # 测试类：包含各种泛型字段
@@ -94,7 +94,7 @@ def test_generic_collection():
 
 def test_builtin_generic_types():
     """测试内置泛型类型"""
-    from rbc_meta.utils_next.builtin import Vector
+    from rbc_meta.utils.builtin import Vector
 
     registry = ReflectionRegistry()
     registry.register(Vector)

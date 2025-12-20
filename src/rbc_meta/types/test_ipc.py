@@ -1,4 +1,4 @@
-from rbc_meta.utils_next.reflect import reflect, rpc
+from rbc_meta.utils.reflect import reflect, rpc
 
 
 @reflect(cpp_namespace="rbc", module_name="test_ipc")

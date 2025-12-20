@@ -1,5 +1,5 @@
-from rbc_meta.utils_next.reflect import reflect
-from rbc_meta.utils_next.builtin import size_t, u64, u32, u8, VoidPtr
+from rbc_meta.utils.reflect import reflect
+from rbc_meta.utils.builtin import size_t, u64, u32, u8, VoidPtr
 
 
 @reflect(

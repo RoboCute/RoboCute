@@ -15,7 +15,7 @@ struct Component : BaseObject {
 private:
     Entity *_entity{};
     RBC_WORLD_API void _remove_self_from_entity();
-    Component(Entity *entity);
+    explicit Component(Entity *entity);
     ~Component();
     RBC_WORLD_API void add_event(WorldEventType event, void (Component::*func_ptr)());
     RBC_WORLD_API void _clear_entity();
@@ -41,7 +41,7 @@ struct ComponentDerive : Component {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
 protected:
-    ComponentDerive(Entity *entity) : Component(entity) {}
+    explicit ComponentDerive(Entity *entity) : Component(entity) {}
     ~ComponentDerive() {
         Component::_remove_self_from_entity();
     }

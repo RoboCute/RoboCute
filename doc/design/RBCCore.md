@@ -20,3 +20,57 @@
 - state_map
 - transform
 - type_info
+  - md5 - string
+
+## RTTI
+
+Runtime Type Identification 运行时类型识别，C++中自带的一个简单宏，可以在运行时获取类型名称和信息
+
+`RTTI(ClassName)`
+
+宏会注册以下方法
+- `struct is_rtti_type<ClassName>`
+  - `value`: true
+  - `name`: ClassName
+
+IRTTRBasic
+- new
+- StaticType
+- rttr_get_type
+- rttr_get_typeid
+- rttr_serde_read
+- rttr_serde_write
+- rttr_cast
+  - get_from_type
+  - reinterpret_cast
+  - `const_cast<IRTTRBasic*>(this)->rttr_cast<TO>()`
+- rttr_is
+
+## RTTR 
+
+Runtime Type Reflection 运行时类型反射
+
+C++当前反射还没有支持完全，大部分的反射都需要构建系统支持，在Robocute中我们采用python作为反射方案，通过Python实现一个RTTRBasic来和代码生成，来获得一些运行时的类型反射能力，这在资源系统和场景中非常有用
+
+
+暂时不考虑虚继承\多基类的情况
+
+record_data: class info
+- comment
+- file_name
+- line
+- name
+- attrs
+- name
+- access
+- is_virtual
+- bases
+
+### is_based_on
+
+- RTTR最重要的一点就是在运行时依然保留类型的继承关系
+- 分type_category讨论
+- ERTTRTypeCategory::Primitive
+- ERTTRTypeCategory::Record
+    - _record_data.type_id
+- RTTRTypeCategory::Enum

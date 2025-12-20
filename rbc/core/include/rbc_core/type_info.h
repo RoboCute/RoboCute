@@ -3,9 +3,11 @@
 #include <luisa/core//stl/string.h>
 #include <luisa/core//stl/hash.h>
 #include <luisa/vstl/hash.h>
+#include <luisa/vstl/md5.h>
 #include <luisa/vstl/compare.h>
 #include <type_traits>
 #include <cstdint>
+
 namespace rbc_rtti_detail {
 template<typename T>
 struct is_rtti_type {

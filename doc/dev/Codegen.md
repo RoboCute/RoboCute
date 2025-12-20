@@ -192,7 +192,7 @@ class MyService:
 
 ```python
 from typing import Annotated
-from rbc_meta.utils_next import serde_field, no_serde_field
+from rbc_meta.utils import serde_field, no_serde_field
 
 @reflect(serde=True)
 class MyClass:
@@ -348,8 +348,8 @@ string -> luisa::string
 ### 基本用法
 
 ```python
-from rbc_meta.utils_next import reflect, rpc
-from rbc_meta.utils_next.builtin import Vector, float3
+from rbc_meta.utils import reflect, rpc
+from rbc_meta.utils.builtin import Vector, float3
 
 @reflect(
     cpp_namespace="rbc",
@@ -375,7 +375,7 @@ class Transform:
 
 ```python
 from enum import Enum
-from rbc_meta.utils_next import reflect
+from rbc_meta.utils import reflect
 
 @reflect(cpp_namespace="rbc")
 class RenderMode(Enum):
@@ -388,7 +388,7 @@ class RenderMode(Enum):
 
 ```python
 from typing import Annotated
-from rbc_meta.utils_next import reflect, serde_field, no_serde_field
+from rbc_meta.utils import reflect, serde_field, no_serde_field
 
 @reflect(serde=True)
 class Config:
@@ -406,7 +406,7 @@ class Config:
 ### 代码生成
 
 ```python
-from rbc_meta.utils_next.codegen import (
+from rbc_meta.utils.codegen import (
     cpp_interface_gen,
     cpp_impl_gen,
     py_interface_gen,
@@ -449,7 +449,7 @@ pybind_code = pybind_codegen(
 ## 文件结构
 
 ```
-rbc_meta/utils_next/
+rbc_meta/utils/
 ├── __init__.py          # 模块导出
 ├── reflect.py           # 反射核心（ReflectionRegistry, ClassInfo等）
 ├── codegen.py           # 代码生成函数（C++, Python, Pybind）

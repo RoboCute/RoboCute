@@ -27,9 +27,9 @@ from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder
 from mypy import stubgen
 
-import rbc_meta.utils_next.codegen_util as ut
+import rbc_meta.utils.codegen_util as ut
 
-from rbc_meta.utils_next.codegen import (
+from rbc_meta.utils.codegen import (
     cpp_interface_gen,
     cpp_impl_gen,
     pybind_codegen,

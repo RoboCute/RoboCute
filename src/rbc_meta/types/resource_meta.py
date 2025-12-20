@@ -1,5 +1,5 @@
-from rbc_meta.utils_next.reflect import reflect
-from rbc_meta.utils_next.builtin import uint, Vector
+from rbc_meta.utils.reflect import reflect
+from rbc_meta.utils.builtin import uint, Vector
 from rbc_meta.types.resource_enums import LCPixelStorage
 
 

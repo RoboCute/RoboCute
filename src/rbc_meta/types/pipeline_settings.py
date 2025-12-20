@@ -1,6 +1,6 @@
 from typing import Annotated
-from rbc_meta.utils_next.reflect import reflect, serde_field, no_serde_field
-from rbc_meta.utils_next.builtin import (
+from rbc_meta.utils.reflect import reflect, serde_field, no_serde_field
+from rbc_meta.utils.builtin import (
     uint,
     uint2,
     ulong,
