@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rbc_world/resource.h"
+#include "rbc_world/generated/resource_type.hpp"
 #include <memory>
 #include <unordered_map>
 #include <shared_mutex>

@@ -2,6 +2,7 @@
 #include "rbc_config.h"
 #include "rbc_world/resource.h"
 #include "rbc_world/resource_request.h"
+#include "rbc_world/generated/resource_type.hpp"
 #include <unordered_map>
 #include <thread>
 #include <mutex>

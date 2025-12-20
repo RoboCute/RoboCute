@@ -1,5 +1,6 @@
 #pragma once
 #include "rbc_world/resource.h"
+#include "rbc_world/generated/resource_type.hpp"
 #include <functional>
 #include <chrono>
 
