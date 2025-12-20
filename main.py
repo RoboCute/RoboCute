@@ -105,20 +105,21 @@ def main():
     # Create server with dependency injection
     print("\n[4] Creating Server...")
     server = rbc.Server(title="RoboCute Server", version="0.1.0")
-    
+
     # Create and register Editor Service (dependency injection: scene)
     print("    Creating Editor Service...")
     editor_service = rbc.EditorService(scene)
     server.register_service(editor_service)
-    
+
     # Create and register Node Graph Service (dependency injection: scene)
     print("    Creating Node Graph Service...")
     node_graph_service = rbc.NodeGraphService(scene)
     server.register_service(node_graph_service)
-    
+
     # Start server
     print("\n[5] Starting Server...")
     server.start(port=5555)
+
     print("    Server started on port 5555")
     print("    Endpoints available:")
     print("      - GET  http://127.0.0.1:5555/scene/state")

@@ -271,12 +271,15 @@ void RhiWindow::keyReleaseEvent(QKeyEvent *event) {
 void RhiWindow::mousePressEvent(QMouseEvent *event) {
     QString buttonName;
 
+    // Convert logical coordinates to physical pixel coordinates for high-DPI displays
+    qreal dpr = devicePixelRatio();
+    float physicalX = (float)(event->pos().x() * dpr);
+    float physicalY = (float)(event->pos().y() * dpr);
+
     renderer->handle_mouse(
         mouse_button_map(event->button()),
         action_map(event->type()),
-        mouse_pos_map(
-            (float)event->pos().x(),
-            (float)event->pos().y()));
+        mouse_pos_map(physicalX, physicalY));
 
     switch (event->button()) {
         case Qt::LeftButton: buttonName = "Left"; break;
@@ -296,20 +299,26 @@ void RhiWindow::mousePressEvent(QMouseEvent *event) {
 }
 
 void RhiWindow::mouseReleaseEvent(QMouseEvent *event) {
+    // Convert logical coordinates to physical pixel coordinates for high-DPI displays
+    qreal dpr = devicePixelRatio();
+    float physicalX = (float)(event->pos().x() * dpr);
+    float physicalY = (float)(event->pos().y() * dpr);
+
     renderer->handle_mouse(
         mouse_button_map(event->button()),
         action_map(event->type()),
-        mouse_pos_map(
-            (float)event->pos().x(),
-            (float)event->pos().y()));
+        mouse_pos_map(physicalX, physicalY));
     qInfo() << "RhiWindow::mouseReleaseEvent - Button:" << event->button();
     QWindow::mouseReleaseEvent(event);
 }
 
 void RhiWindow::mouseMoveEvent(QMouseEvent *event) {
-    renderer->handle_cursor_position(mouse_pos_map(
-        event->pos().x(),
-        event->pos().y()));
+    // Convert logical coordinates to physical pixel coordinates for high-DPI displays
+    qreal dpr = devicePixelRatio();
+    float physicalX = (float)(event->pos().x() * dpr);
+    float physicalY = (float)(event->pos().y() * dpr);
+
+    renderer->handle_cursor_position(mouse_pos_map(physicalX, physicalY));
 
     QWindow::mouseMoveEvent(event);
 }
