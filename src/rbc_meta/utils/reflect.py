@@ -32,6 +32,7 @@ class GenericInfo:
     )
     is_container: bool = False  # 是否为容器类型
     is_optional: bool = False  # 是否为Optional类型
+    is_pointer: bool = False  # 是否为裸指针
 
     def __post_init__(self):
         """后处理，确保args不为None"""
@@ -124,7 +125,6 @@ class ReflectionRegistry:
         cpp_prefix: Optional[str] = "",
     ) -> Type:
         """注册类"""
-        # print(f"registering {cls} with module name {module_name}")
         class_info = self._extract_class_info(cls, module_name)
         class_info.cpp_namespace = cpp_namespace
         class_info.serde = serde
@@ -136,7 +136,7 @@ class ReflectionRegistry:
         )
 
         self._registered_classes[key] = class_info
-        print(f"Registering {key} : {class_info.name}")
+        # print(f"Registering {key} : {class_info.name}")
 
         # 返回原始类，不修改它
         return cls
@@ -305,7 +305,7 @@ class ReflectionRegistry:
                 pass
 
         # 提取基类
-        print(f"extracting basics for {cls.__name__}: {cls.__bases__}")
+        # print(f"extracting basics for {cls.__name__}: {cls.__bases__}")
         base_classes = [
             self.get_class_info(base.__name__)
             for base in cls.__bases__
@@ -355,6 +355,7 @@ class ReflectionRegistry:
         generic_info = GenericInfo(origin=origin, args=args)
 
         # 识别常见的泛型容器类型
+
         # List / list -> std::vector
         if origin is list or (hasattr(typing, "List") and origin is typing.List):
             generic_info.cpp_name = "std::vector"
@@ -380,7 +381,6 @@ class ReflectionRegistry:
                 return generic_info
 
         # 检查是否是自定义的Generic容器
-        # 例如：Vector[T], UnorderedMap[K, V] 等
         if hasattr(origin, "__name__"):
             origin_name = origin.__name__.lower()
 
@@ -392,6 +392,10 @@ class ReflectionRegistry:
                 return generic_info
 
             # 通过名称识别常见的容器类型
+            if "pointer" in origin_name:
+                # special case for pointer
+                generic_info.is_pointer = True
+
             if "vector" in origin_name or "list" in origin_name:
                 generic_info.cpp_name = "std::vector"
                 generic_info.is_container = True

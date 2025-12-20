@@ -446,11 +446,13 @@ def generate():
     ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["backend_interface", "runtime"])
 
     target_modules = ["resource_type"]
+    include = "#include <rbc_world/resource.h>"
+
     header_path = Path(
         "rbc/world/include/rbc_world/generated/resource_type.hpp"
     ).resolve()
     cpp_path = Path("rbc/world/src/generated/resource_type.cpp").resolve()
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules)
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules)
 
     include = "#include <rbc_core/rc.h>"

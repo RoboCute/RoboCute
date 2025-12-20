@@ -144,6 +144,8 @@ def _get_cpp_type(
         origin = type_hint.__origin__
         args = getattr(type_hint, "__args__", ())
 
+        # Check if is pointer
+
         # Check if origin is a custom container type (Vector, UnorderedMap, etc.)
         if (
             hasattr(origin, "_cpp_type_name")
@@ -553,7 +555,15 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
 
             # Use generic info if available
             if field.generic_info:
-                if field.generic_info.cpp_name:
+                # if is pure pointer
+                if field.generic_info.is_pointer:
+                    assert len(field.generic_info.args) == 1
+                    inner_type = _get_full_cpp_type(
+                        field.generic_info.args[0], registry
+                    )
+                    var_type_name = f"{inner_type}*"
+                # if is custom generic type
+                elif field.generic_info.cpp_name:
                     # Handle different container types
                     if len(field.generic_info.args) == 1:
                         # Single parameter containers (Vector, etc.)
@@ -694,7 +704,7 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
             # should not happen
             print(f"{class_name} has more than 1 base classes")
 
-        print(f"{class_name}: {info.base_classes}")
+        # print(f"{class_name}: {info.base_classes}")
 
         struct_expr = CPP_STRUCT_TEMPLATE.substitute(
             NAMESPACE_NAME=namespace_name or "",

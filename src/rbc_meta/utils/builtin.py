@@ -153,7 +153,20 @@ class UnorderedMap(Generic[K, V]):
     _py_type_name = "dict"
 
 
+# Special Class to generate V*
+class Pointer(Generic[V]):
+    __slot__ = {}
+    _reflected_ = True
+    _is_container = True
+
+
 class IRTTRBasic:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "rbc::IRTTRBasic"
+
+
+class RenderMesh:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "rbc::RenderMesh"
