@@ -8,6 +8,12 @@ RBC_RUNTIME_API luisa::float4x4 perspective_lh(
     float near_z,
     float far_z
 );
+RBC_RUNTIME_API luisa::double4x4 perspective_lh(
+    double fov_angle_y,
+    double aspect_ratio,
+    double near_z,
+    double far_z
+);
 RBC_RUNTIME_API luisa::float4 combine_cone(luisa::float4 cone_0, luisa::float4 cone_1);
 
 template <typename T>

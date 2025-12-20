@@ -87,23 +87,23 @@ void CameraController::_update(float delta_time) {
     LUISA_ASSERT(camera != nullptr);
 
     // camera dirs
-    float3 forward = camera->dir_forward();
-    float3 right = camera->dir_right();
-    float3 up = camera->dir_up();
+    double3 forward = camera->dir_forward();
+    double3 right = camera->dir_right();
+    double3 up = camera->dir_up();
 
     // rotate & pan
     if (_is_rotating) {
         camera->rotation_yaw -= _mouse_delta.x / _viewport_size.x * rotation_speed;
         camera->rotation_pitch -= _mouse_delta.y / _viewport_size.y * rotation_speed;
-        camera->rotation_pitch = clamp(camera->rotation_pitch, -pi * 0.48f, pi * 0.48f);
+        camera->rotation_pitch = clamp(camera->rotation_pitch, -pi * 0.48, pi * 0.48);
     } else if (_is_panning) {
-        camera->position -= make_double3(_mouse_delta.x / _viewport_size.x * move_speed * right);
-        camera->position -= make_double3(_mouse_delta.y / _viewport_size.y * move_speed * up);
+        camera->position -= make_double3(_mouse_delta.x / _viewport_size.x * (double)move_speed * right);
+        camera->position -= make_double3(_mouse_delta.y / _viewport_size.y * (double)move_speed * up);
     }
 
     // wsad control
-    float move_speed_real = _shift_down ? move_speed_fast : (_space_down ? move_speed_slow : move_speed);
-    float move_delta = move_speed_real * delta_time;
+    double move_speed_real = _shift_down ? move_speed_fast : (_space_down ? move_speed_slow : move_speed);
+    double move_delta = move_speed_real * delta_time;
     if (_move_forward) {
         camera->position += make_double3(forward * move_delta);
     }
@@ -125,7 +125,7 @@ void CameraController::_update(float delta_time) {
 
     // zoom
     if (_mouse_wheel) {
-        camera->position += make_double3(forward * _mouse_wheel * move_speed_real * wheel_move_scale / 100.0f);
+        camera->position += make_double3(forward * (double)_mouse_wheel * move_speed_real * (double)wheel_move_scale / 100.0);
     }
 }
 }// namespace rbc

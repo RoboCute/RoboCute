@@ -364,13 +364,13 @@ bool WorldScene::draw_gizmos(
 
     auto vp = cam.projection_matrix() * inverse(cam.local_to_world_matrix());
     auto inv_vp = inverse(vp);
-    float2 uv = (make_float2(mouse_pos) + 0.5f) / make_float2(window_size);
-    float4 proj_pos = make_float4(uv * 2.f - 1.f, 0.5f /*dummy depth*/, 1.f);
+    double2 uv = (make_double2(mouse_pos) + 0.5) / make_double2(window_size);
+    auto proj_pos = make_double4(uv * 2. - 1., 0.5 /*dummy depth*/, 1.);
     auto dummy_world_pos = inv_vp * proj_pos;
     dummy_world_pos /= dummy_world_pos.w;
-    auto ray_dir = normalize(dummy_world_pos.xyz() - make_float3(cam.position));
-    auto target_pos = ray_dir * _gizmos->to_cam_distance + make_float3(cam.position);
-    auto dest_pos = make_double3(target_pos - _gizmos->relative_pos);
+    auto ray_dir = normalize(dummy_world_pos.xyz() - make_double3(cam.position));
+    auto target_pos = ray_dir * (double)_gizmos->to_cam_distance + make_double3(cam.position);
+    auto dest_pos = make_double3(target_pos - make_double3(_gizmos->relative_pos));
     auto src_pos = tr->position();
     switch (_gizmos->picked_face) {
         case 0:

@@ -50,7 +50,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     }
     static bool bb = false;
     auto frustum_cull_callback = [&](float4x4 const &transform, AABB const &bounding) {
-        return frustum_cull(transform, bounding, frustum_planes, frustum_min_point, frustum_max_point, ctx.cam.dir_forward(), make_float3(ctx.cam.position));
+        return frustum_cull(make_double4x4(transform), bounding, frustum_planes, frustum_min_point, frustum_max_point, ctx.cam.dir_forward(), ctx.cam.position);
     };
     sm.accel_manager().make_draw_list(
         cmdlist,

@@ -120,19 +120,6 @@ luisa::vector<T> generate_quantiles(
     return quantiles;
 }
 
-float4x4 inverse_double(float4x4 const &m_flt) noexcept {// from GLM
-    auto f{make_double4x4(
-        make_double4(m_flt[0]),
-        make_double4(m_flt[1]),
-        make_double4(m_flt[2]),
-        make_double4(m_flt[3]))};
-    f = inverse(f);
-    return make_float4x4(
-        make_float4(f[0]),
-        make_float4(f[1]),
-        make_float4(f[2]),
-        make_float4(f[3]));
-}
 }// namespace preparepass_detail
 void PreparePass::on_enable(
     Pipeline const &pipeline,
@@ -274,12 +261,12 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     // pass_ctx->last_cam.position += make_double3(frane_settings.global_offset);
 
     jitter_data.last_jitter = pass_ctx->last_jitter;
-    cam_data.last_proj = pass_ctx->last_cam.projection_matrix();
-    cam_data.last_view = preparepass_detail::inverse_double(pass_ctx->last_cam.local_to_world_matrix());
-    cam_data.last_sky_view = preparepass_detail::inverse_double(pass_ctx->last_cam.rotation_matrix());
+    cam_data.last_proj = make_float4x4(pass_ctx->last_cam.projection_matrix());
+    cam_data.last_view = make_float4x4(inverse(pass_ctx->last_cam.local_to_world_matrix()));
+    cam_data.last_sky_view = make_float4x4(inverse(pass_ctx->last_cam.rotation_matrix()));
     cam_data.last_vp = cam_data.last_proj * cam_data.last_view;
     cam_data.last_sky_vp = cam_data.last_proj * cam_data.last_sky_view;
-    cam_data.last_inv_vp = preparepass_detail::inverse_double(cam_data.last_vp);
+    cam_data.last_inv_vp = inverse(cam_data.last_vp);
     switch (frane_settings.resource_color_space) {
         case ResourceColorSpace::Rec709:
             frane_settings.to_rec2020_matrix = make_float3x3(0.627404, 0.329283, 0.043313, 0.069097, 0.919540, 0.011362, 0.016391, 0.088013, 0.895595);
@@ -338,13 +325,13 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     emplace_tex2d(heap_indices::cie_xyz_cdfinv_idx, cie_xyz_cdfinv, Sampler::linear_point_mirror());
 
     jitter_data.jitter = float2(0.f);
-    cam_data.inv_view = ctx.cam.local_to_world_matrix();
-    cam_data.inv_sky_view = ctx.cam.rotation_matrix();
-    cam_data.view = preparepass_detail::inverse_double(cam_data.inv_view);
-    cam_data.proj = ctx.cam.projection_matrix();
+    cam_data.inv_view = make_float4x4(ctx.cam.local_to_world_matrix());
+    cam_data.inv_sky_view = make_float4x4(ctx.cam.rotation_matrix());
+    cam_data.view = inverse(cam_data.inv_view);
+    cam_data.proj = make_float4x4(ctx.cam.projection_matrix());
     cam_data.vp = cam_data.proj * cam_data.view;
-    cam_data.inv_proj = preparepass_detail::inverse_double(cam_data.proj);
-    cam_data.inv_vp = preparepass_detail::inverse_double(cam_data.vp);
+    cam_data.inv_proj = inverse(cam_data.proj);
+    cam_data.inv_vp = inverse(cam_data.vp);
     if (frane_settings.frame_index != 0) {
         pass_ctx->last_cam = ctx.cam;
     } else {
