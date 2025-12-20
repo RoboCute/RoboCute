@@ -22,4 +22,76 @@ MaterialResource
 
 MaterialTypeResource
 
+## ResourceHandle
+
+- load()
+- install()
+- reset()
+- get_loaded()
+- get_installed()
+- is_null()
+- is_guid()
+- is_loaded()
+- is_installed()
+- get_guid()
+- get_type()
+- get_record()
+  - if is_null() return nullptr
+  - if is_guid() FindResourceRecord(guid)
+
+## ResourceRequest
+
+- guid的封装
+- GetGuid
+- GetData
+- GetDependencies
+
 ## ResourceSystem
+
+- resourceRecords 记录了全局的Resource
+- failedRequests
+- toUpdateRequests
+- serdeBatch
+- resourceRecords
+- resourceToRecord
+- resourceFactories
+- ConcurrentQueue of ResourceRequest*: requestsQueue
+- ResourceRegistry
+- ioService
+
+- RegisterResource
+- LoadResource
+- FindResourceRecord
+- EnqueueResource
+- UnloadResource
+- FlushResource
+
+- FindFactory
+- RegisterFactory
+- UnregisterFactory
+- GetRegistry
+
+## ResourceRegistry
+
+封装了一套加载Resource的方法，可以处理ResourceRequest按guid查找，后期可以添加单独的数据库
+
+- RequestResourceFile
+- CanceRequestFile
+- FillRequest
+  - fill header
+  - vfs
+  - resourceUri
+  - system
+  - factory
+
+## ResourceHeader
+
+- type
+- version
+- dependencies
+
+- function
+- guid
+- version
+- type
+- dependencies

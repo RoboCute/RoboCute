@@ -66,6 +66,84 @@ record_data: class info
 - is_virtual
 - bases
 
+### RTTRType
+
+基础组件，记录了RTTRType的信息
+
+- module
+- type_category
+- name
+- name_space
+- name_space_str
+- full_name
+- type_id
+- size
+- alignment
+- each_name_space
+- memory_traits_data
+- is_primitive
+- is_record
+- is_enum
+- build_primitive
+- build_record
+- build_enum
+- is_based_on
+- cast_to_base
+- caster_to_base
+- has_multiple_bases
+- has_virtual_bases
+- enum_underlying_type_id
+- each_enum_items
+- dtor_data
+- dtor_invoker
+- invoke_dtor
+- each_bases
+- each_ctor
+- each_method
+- each_field
+- each_static_method
+- each_static_field
+
+ExportMethodInvoker
+```cpp
+template <typename... Args>
+struct ExportCtorInvoker<void(Args...)> {
+  inline void invoke(void* p_obj, Args... args) const 
+  {
+    ASSERT(_ctor_data->native_invoke);
+    auto invoker = reinterpret_cast<void(*)(void*, Args...)>(_ctor_data->native_invoke);
+    invoker(p_obj, args...);
+  }
+}
+```
+
+```cpp
+struct RTTRExportHelper {
+  template<typename T, typename... Args>
+  inline static void* export_ctor()
+  {
+    auto result = +[](void* p, Args... args) {
+      new (p) T(std::forward<Args>(args)...);
+    }
+    return reinterpret_cast<void*>(result);
+  }
+};
+```
+
+### RTTRRecordBuilder
+
+
+
+
+### IRTTRBasic
+
+- placement new
+- StaticType: `return ::skr::type_of<Decl>();`
+- rttr_get_type
+- rttr_get_type_id
+- rttr_get_head_ptr: `return const_cast<void*>((const void*)this)`
+
+
 ### is_based_on
 
 - RTTR最重要的一点就是在运行时依然保留类型的继承关系
