@@ -9,7 +9,7 @@ struct ResourceLoader {
     luisa::filesystem::path _meta_path;
     struct ResourceHandle {
         RCWeak<Resource> res;
-        rbc::shared_atomic_mutex mtx;
+        luisa::spin_mutex mtx;
         ResourceHandle() = default;
         ResourceHandle(ResourceHandle &&rhs) noexcept : res(std::move(rhs.res)) {}
     };
@@ -49,13 +49,17 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     auto obj = get_object(guid);
     if (obj) return obj;
     LUISA_DEBUG_ASSERT(_res_loader && !_res_loader->_root_path.empty());
-    std::shared_lock lck{_res_loader->_resmap_mtx};
-    auto iter = _res_loader->resource_types.find(guid);
-    if (!iter) {
-        return {};
+    ResourceLoader::ResourceHandle *v{};
+    {
+        std::shared_lock lck{_res_loader->_resmap_mtx};
+        auto iter = _res_loader->resource_types.find(guid);
+        if (!iter) {
+            return {};
+        }
+        v = &iter.value();
     }
-    auto &v = iter.value();
-    RC<Resource> res = v.res.lock();
+    std::lock_guard lck{v->mtx};
+    RC<Resource> res = v->res.lock();
     if (res) {
         if (async_load_from_file) {
             if (!res->empty())
@@ -66,7 +70,6 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     auto guid_str = guid.to_string();
     luisa::BinaryFileStream file_stream(luisa::to_string(_res_loader->_meta_path / (guid_str + ".rbcmt")));
     auto remove_value = [&]() {
-        lck.unlock();
         std::lock_guard lck{_res_loader->_resmap_mtx};
         _res_loader->resource_types.remove(guid);
     };
@@ -93,7 +96,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         return {};
     }
     ObjDeSerialize obj_deser{.ser = deser};
-    v.res = res;
+    v->res = res;
     res->deserialize_meta(obj_deser);
     if (async_load_from_file) res->async_load_from_file();
     return res;

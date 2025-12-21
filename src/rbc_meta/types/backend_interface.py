@@ -35,8 +35,6 @@ class ExternalType:
 MaterialsVector = ExternalType(
     "luisa::vector<rbc::RC<rbc::RCBase>>", False, "Vec<rbc::RC<rbc::RCBase>>"
 )
-
-
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
