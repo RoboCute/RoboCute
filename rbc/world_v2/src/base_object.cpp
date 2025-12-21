@@ -7,8 +7,8 @@ static TypeRegisterBase *_type_register_header{};
 struct BaseObjectStatics : vstd::IOperatorNewBase {
     shared_atomic_mutex _instance_mtx;
     shared_atomic_mutex _guid_mtx;
-    luisa::vector<uint64_t> _disposed_instance_ids;
-    luisa::vector<BaseObject *> _instance_ids;
+    std::atomic_uint64_t _instance_id_counter{};
+    luisa::unordered_map<uint64_t, BaseObject *> _instance_ids;
     luisa::unordered_map<std::array<uint64_t, 2>, BaseObject *> _obj_guids;
     luisa::unordered_map<std::array<uint64_t, 2>, TypeRegisterBase *> _create_funcs;
     BaseObjectStatics() {
@@ -18,6 +18,9 @@ struct BaseObjectStatics : vstd::IOperatorNewBase {
         }
     }
     ~BaseObjectStatics() {
+        if (!_instance_ids.empty()) {
+            LUISA_ERROR("World object is leaking.");
+        }
         for (auto p = _type_register_header; p; p = p->p_next) {
             p->destroy();
         }
@@ -43,7 +46,11 @@ BaseObject *get_object(InstanceID instance_id) {
     if (instance_id._placeholder == ~0ull) return nullptr;
     BaseObject *ptr;
     std::shared_lock lck{_world_inst->_instance_mtx};
-    return _world_inst->_instance_ids[instance_id._placeholder];
+    auto iter = _world_inst->_instance_ids.find(instance_id._placeholder);
+    if (iter != _world_inst->_instance_ids.end()) {
+        return iter->second;
+    }
+    return nullptr;
 }
 BaseObject *get_object(vstd::Guid const &guid) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
@@ -57,15 +64,9 @@ BaseObject *get_object(vstd::Guid const &guid) {
 void BaseObject::init() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     _guid.reset();
+    _instance_id = ++_world_inst->_instance_id_counter;
     std::lock_guard lck{_world_inst->_instance_mtx};
-    if (_world_inst->_disposed_instance_ids.empty()) {
-        _instance_id = _world_inst->_instance_ids.size();
-        _world_inst->_instance_ids.push_back(static_cast<BaseObject *>(this));
-    } else {
-        _instance_id = _world_inst->_disposed_instance_ids.back();
-        _world_inst->_disposed_instance_ids.pop_back();
-        _world_inst->_instance_ids[_instance_id] = static_cast<BaseObject *>(this);
-    }
+    _world_inst->_instance_ids.force_emplace(_instance_id, this);
 }
 void BaseObject::init_with_guid(vstd::Guid const &guid) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
@@ -82,8 +83,7 @@ BaseObject::~BaseObject() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     if (_instance_id != ~0ull) {
         std::lock_guard lck{_world_inst->_instance_mtx};
-        _world_inst->_disposed_instance_ids.push_back(_instance_id);
-        _world_inst->_instance_ids[_instance_id] = nullptr;
+        _world_inst->_instance_ids.erase(_instance_id);
     }
     if (_guid) {
         auto &guid = reinterpret_cast<std::array<uint64_t, 2> const &>(_guid);
@@ -191,7 +191,7 @@ void clear_dirty_transform() {
 uint64_t object_count() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     std::shared_lock lck{_world_inst->_instance_mtx};
-    return _world_inst->_instance_ids.size() - _world_inst->_disposed_instance_ids.size();
+    return _world_inst->_instance_ids.size();
 }
 
 void on_before_rendering() {

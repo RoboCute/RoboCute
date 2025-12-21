@@ -464,7 +464,6 @@ uint Lights::add_mesh_light_sync(
     float4x4 local_to_world,
     luisa::span<float const> material_emissions,
     luisa::span<MatCode const> material_codes) {
-    auto &stream = RenderDevice::instance().lc_main_stream();
     auto &scene = SceneManager::instance();
     uint data_index = 0;
     if (mesh_lights.removed_list.empty()) {
