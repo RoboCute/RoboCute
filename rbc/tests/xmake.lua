@@ -1,6 +1,6 @@
 includes('test_py_codegen')
 includes('test_serde', 'test_graphics', 'test_ipc')
-
+includes("test_rttr")
 
 function add_test(name, deps)
     deps = deps or {}

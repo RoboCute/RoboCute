@@ -75,6 +75,11 @@ public:
             static_assert(luisa::always_false_v<T>, "Type MD5 is missing, must define is_rtti_type<T>::md5 or is_rtti_type<T>::get_md5()");
         }
     }
+
+    static TypeInfo invalid() {
+        return TypeInfo{"invalid type", ~0ull, ~0ull};
+    }
+
     bool operator==(TypeInfo const &t) const {
         return _md5[0] == t._md5[0] && _md5[1] == t._md5[1];
     }
@@ -84,12 +89,6 @@ public:
         return _md5[1] < t._md5[1];
     }
 };
-
-// fast get
-template<concepts::RTTIType T>
-vstd::Guid type_id_of() {
-    return TypeInfo::get<T>().md5();
-}
 
 }// namespace rbc
 namespace luisa {

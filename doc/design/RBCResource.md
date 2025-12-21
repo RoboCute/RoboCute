@@ -6,6 +6,31 @@
 
 IResource构建在IRTTRBasic的基础上，所有资产都会从IResource中继承，从而可以被ResourceSystem以一种统一的方式进行加载，安装，探索依赖和卸载。
 
+```cpp
+ConfigResource::~ConfigResource() {
+  if (configType.is_zero()) return;
+  auto type = rttr_get_type_from_guid(configType);
+  type->find_default_ctor().invoke(configData);
+  free_aligned(configData, type->alignement());
+}
+
+void ConfigResource::SetType(GUID type) {
+  if (!configType.is_zero()) {
+    assert configData;
+    auto oldType = rttr_get_type_from_guid(configType);
+    oldType->invoke_dtor(configData);
+    free_aligned(configData, oldType->alignment);
+  }
+  configType = type;
+  auto newType = rttr_get_type_from_guid(configType);
+  configData = malloc_aligned(newType->size(), newType->alignment());
+  newType->find_default_ctor().invoke(configData);
+}
+```
+
+`auto resource = skr::IResource::SerdeReadWithTypeAs<IResource>(reader)`
+
+
 ### MeshResource
 
 - string name

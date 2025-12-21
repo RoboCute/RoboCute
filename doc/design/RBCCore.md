@@ -24,7 +24,7 @@
 
 ## RTTI
 
-Runtime Type Identification 运行时类型识别，C++中自带的一个简单宏，可以在运行时获取类型名称和信息
+Runtime Type Identification 运行时类型识别，C++中自带的一个简单宏，可以在运行时获取类型名称和信息。RTTI整体是静态注册的，当代码生成偏特化模板之后，不需要运行时做任何额外工作，类型就已经嵌入在代码中了。
 
 `RTTI(ClassName)`
 
@@ -45,6 +45,13 @@ IRTTRBasic
   - reinterpret_cast
   - `const_cast<IRTTRBasic*>(this)->rttr_cast<TO>()`
 - rttr_is
+
+
+## RuntimeStatic
+
+RuntimeStatic的作用是用一个统一的入口`RuntimeStaticBase::init_all()`和出口`RuntimeStaticBase::dispose_all()`来初始化和释放无法显示声明的初始化和析构。比如RTTR中，对于RTTR类型的注册过程是由代码生成实现的，正式代码中无法统计到底有多少RTTR类型需要析构，这时候就需要RuntimeStatic来帮助自动注册。
+
+RuntimeStatic是通过一个静态全局链表和Optional协作实现的
 
 ## RTTR 
 
