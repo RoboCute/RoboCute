@@ -5,6 +5,7 @@ namespace rbc ::world {
 struct Resource;
 template<typename Derive>
 struct ResourceBaseImpl;
+
 struct Resource : BaseObject {
     template<typename Derive>
     friend struct ResourceBaseImpl;
@@ -73,4 +74,5 @@ protected:
     ResourceBaseImpl() = default;
     ~ResourceBaseImpl() = default;
 };
+
 }// namespace rbc::world

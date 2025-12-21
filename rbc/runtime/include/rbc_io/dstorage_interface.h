@@ -24,10 +24,10 @@ struct RBC_RUNTIME_API IOFile {
         size_t len{0};
 
     public:
-        operator bool() const {
+        explicit operator bool() const {
             return file != nullptr;
         }
-        size_t length() const { return len; }
+        [[nodiscard]] size_t length() const { return len; }
     };
 
 private:
@@ -38,18 +38,19 @@ private:
     static void _dispose_fallback(IOFile::Handle &);
 
 public:
-    auto const &handle() const { return _handle; }
-    auto file() const { return _handle.file; }
-    auto length() const { return _handle.len; }
+    [[nodiscard]] auto const &handle() const { return _handle; }
+    [[nodiscard]] auto file() const { return _handle.file; }
+    [[nodiscard]] auto length() const { return _handle.len; }
     IOFile() = default;
-    IOFile(luisa::string_view file);
+    explicit IOFile(luisa::string_view file);
     IOFile(IOFile const &) = delete;
-    IOFile(IOFile &&);
-    operator bool() const {
-        return _handle;
+    IOFile(IOFile &&rhs) noexcept : _handle(std::exchange(rhs._handle, {})) {
+    }
+    explicit operator bool() const {
+        return static_cast<bool>(_handle);
     }
     IOFile &operator=(IOFile const &) = delete;
-    IOFile &operator=(IOFile &&rhs) {
+    IOFile &operator=(IOFile &&rhs) noexcept {
         std::destroy_at(this);
         std::construct_at(this, std::move(rhs));
         return *this;
@@ -64,7 +65,7 @@ protected:
 public:
     void *queue{nullptr};
     DStorageSrcType src_type;
-    DStorageStream(DStorageSrcType src_type)
+    explicit DStorageStream(DStorageSrcType src_type)
         : src_type(src_type) {
     }
     static void init_fallback(uint64_t staging_size);
@@ -126,7 +127,7 @@ public:
         uint64_t fence_index) = 0;
     virtual void submit() = 0;
     virtual void free_queue() = 0;
-    virtual bool timeline_signaled(uint64_t timeline) const = 0;
+    [[nodiscard]] virtual bool timeline_signaled(uint64_t timeline) const = 0;
     virtual void sync_event(
         DeviceInterface *device_interface,
         uint64_t event_handle,

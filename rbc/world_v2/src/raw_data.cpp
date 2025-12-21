@@ -74,12 +74,14 @@ bool RawData::async_load_from_file() {
     std::lock_guard lck{_async_mtx};
     if (_device_buffer)
         return false;
+
     _device_buffer = new DeviceBuffer{};
     _device_buffer->async_load_from_file(
         _path,
         _file_offset,
         _device_buffer->_host_data.size(),
         DeviceBuffer::FileLoadType::All);
+
     return true;
 }
 void RawData::unload() {

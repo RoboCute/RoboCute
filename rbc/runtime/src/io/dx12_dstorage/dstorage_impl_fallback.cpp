@@ -226,7 +226,7 @@ IOFile::Handle IOFile::_init_fallback(luisa::string_view path) {
     handle.len = length;
     return handle;
 }
-IOFile::IOFile(IOFile &&rhs) {
+IOFile::IOFile(IOFile &&rhs) noexcept {
     _handle = rhs._handle;
     rhs._handle.file = nullptr;
     rhs._handle.len = 0;
