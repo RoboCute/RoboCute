@@ -4,7 +4,7 @@
 #include <rbc_world_v2/entity.h>
 namespace rbc::world {
 static TypeRegisterBase *_type_register_header{};
-struct BaseObjectStatics : vstd::IOperatorNewBase {
+struct BaseObjectStatics : RBCStruct {
     shared_atomic_mutex _instance_mtx;
     shared_atomic_mutex _guid_mtx;
     std::atomic_uint64_t _instance_id_counter{};

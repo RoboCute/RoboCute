@@ -10,8 +10,7 @@ import sys
 from typing import Dict, List, Optional, Any, Type, get_type_hints, get_origin, get_args
 from enum import Enum as PyEnum
 from dataclasses import dataclass
-
-from rbc_meta.utils.builtin import IRTTRBasic
+from rbc_meta.utils.builtin import RBCStruct
 
 # Annotated is available from Python 3.9+
 if sys.version_info >= (3, 9):
@@ -306,10 +305,11 @@ class ReflectionRegistry:
 
         # 提取基类
         # print(f"extracting basics for {cls.__name__}: {cls.__bases__}")
+
         base_classes = [
             self.get_class_info(base.__name__)
             for base in cls.__bases__
-            if issubclass(base, IRTTRBasic)
+            if issubclass(base, RBCStruct)
         ]
 
         return ClassInfo(

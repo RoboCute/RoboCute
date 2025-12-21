@@ -2,10 +2,14 @@
 #include <mutex>
 #include <shared_mutex>
 #include <atomic>
-#include <rbc_core/shared_atomic_mutex.h>
+
 #include <luisa/vstl/meta_lib.h>
 #include <luisa/core/spin_mutex.h>
 #include <luisa/core/logging.h>
+
+#include <rbc_core/base.h>
+#include <rbc_core/shared_atomic_mutex.h>
+
 namespace rbc {
 using RCCounterType = uint64_t;
 struct RCBase;
@@ -269,7 +273,7 @@ template<typename T>
 struct RCWeak;
 template<typename T>
 struct RCWeakLocker;
-struct RCBase : vstd::IOperatorNewBase {
+struct RCBase : RBCStruct {
     template<typename T>
     friend struct RC;
     template<typename T>

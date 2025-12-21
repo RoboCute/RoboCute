@@ -1,6 +1,7 @@
 #pragma once
 #include <luisa/vstl/v_guid.h>
 #include <pybind11/pybind11.h>
+
 struct GuidData : vstd::IOperatorNewBase {
     uint64_t data0;
     uint64_t data1;

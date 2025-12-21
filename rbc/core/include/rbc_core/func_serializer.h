@@ -3,15 +3,18 @@
 #include <luisa/core/stl/optional.h>
 #include <luisa/vstl/common.h>
 #include <luisa/vstl/v_guid.h>
+
 #include <rbc_config.h>
+
 #include <rbc_core/serde.h>
 #include <rbc_core/heap_object.h>
+
 namespace rbc {
 struct RBC_CORE_API FuncSerializer {
     using AnyFuncPtr = vstd::func_ptr_t<void()>;
     using StaticFuncType = vstd::func_ptr_t<void(void *args, void *ret_value)>;
     using ClousureType = vstd::func_ptr_t<void(void *self, void *args, void *ret_value)>;
-    struct FuncCall : vstd::IOperatorNewBase {
+    struct FuncCall : RBCStruct {
         AnyFuncPtr func;
         HeapObjectMeta args_meta;
         HeapObjectMeta ret_value_meta;

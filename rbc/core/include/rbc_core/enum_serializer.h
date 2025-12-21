@@ -4,7 +4,9 @@
 #include <luisa/vstl/meta_lib.h>
 #include <initializer_list>
 #include <rbc_config.h>
+#include <rbc_core/base.h>
 #include <rbc_core//type_info.h>
+
 namespace rbc {
 struct EnumReflectionType {
     luisa::string enum_name;

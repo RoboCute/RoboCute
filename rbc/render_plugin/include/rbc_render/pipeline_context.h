@@ -56,7 +56,7 @@ public:
 };
 struct HDRI;
 struct SkyAtmosphere;
-struct PipelineContext : vstd::IOperatorNewBase {
+struct PipelineContext : RBCStruct {
     // settings
     mutable rbc::StateMap pipeline_settings;
 

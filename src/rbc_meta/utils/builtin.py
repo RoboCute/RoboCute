@@ -1,6 +1,10 @@
 # RBC Builtin CLass
 from typing import NewType, TypeVar, Generic
 
+# ===================================================
+# ================== PRIMITIVE =====================
+# ===================================================
+
 
 class size_t:
     __slot__ = {}
@@ -120,6 +124,17 @@ class string:
 
 
 # ===================================================
+# ================== STRUCT =====================
+# ===================================================
+
+
+class RBCStruct:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "rbc::RBCStruct"
+
+
+# ===================================================
 # ================== CONTAINERS =====================
 # ===================================================
 
@@ -165,12 +180,6 @@ class Pointer(Generic[V]):
     __slot__ = {}
     _reflected_ = True
     _is_container = True
-
-
-class IRTTRBasic:
-    __slot__ = {}
-    _reflected_ = True
-    _cpp_type_name = "rbc::IRTTRBasic"
 
 
 class RenderMesh:

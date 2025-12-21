@@ -25,7 +25,6 @@ from scripts.prepare import (
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder
-from mypy import stubgen
 
 import rbc_meta.utils.codegen_util as ut
 
@@ -500,6 +499,7 @@ def generate_stub_impl(module_name: str, pyd_dir: Path, output_dir: Path):
         pyd_dir: Directory containing the .pyd file
         output_dir: Directory where .pyi file should be generated
     """
+    from mypy import stubgen
 
     # Add pyd directory to Python path
     pyd_dir_abs = pyd_dir.resolve()

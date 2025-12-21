@@ -10,16 +10,11 @@ CPP_INTERFACE_TEMPLATE = Template("""
 #pragma once
 
 // GENERAL_INCLUDE BEGIN
-// ========================================
-#include <luisa/core/basic_types.h>
-#include <luisa/core/basic_traits.h>
-#include <luisa/core/stl.h>
-#include <luisa/vstl/meta_lib.h>
-#include <luisa/vstl/v_guid.h>
+// ========================================           
+#include <rbc_core/base.h>
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/func_serializer.h>
 #include <rbc_core/serde.h>
-#include <rbc_core/rttr.h>
 
 // ========================================
 // GENRAL_INCLUDE CONTENT END

@@ -2,7 +2,7 @@
 #include <luisa/vstl/meta_lib.h>
 
 namespace rbc {
-struct Plugin : vstd::IOperatorNewBase {
+struct Plugin : RBCStruct {
 protected:
     ~Plugin() = default;
 };

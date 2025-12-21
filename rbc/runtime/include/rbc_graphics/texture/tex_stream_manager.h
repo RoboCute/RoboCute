@@ -17,8 +17,7 @@
 #include "tile_streamer.h"
 #include <luisa/runtime/sparse_command_list.h>
 
-namespace rbc
-{
+namespace rbc {
 using namespace luisa;
 using namespace luisa::compute;
 struct RBC_RUNTIME_API TexStreamManager {
@@ -26,30 +25,26 @@ public:
     // WARNING:+  This function will be called currently
     using RuntimeVTCallback = vstd::function<void(
         ImageView<float> img,
-        luisa::span<const uint2> update_tiles
-    )>;
+        luisa::span<const uint2> update_tiles)>;
     using FilePath = std::pair<luisa::string, uint64_t>;
     using TexPath = vstd::variant<FilePath, RuntimeVTCallback>;
     struct RBC_RUNTIME_API SparseHeap {
-        TexStreamManager* self{ nullptr };
+        TexStreamManager *self{nullptr};
         SparseTextureHeap heap;
         size_t size;
         SparseHeap() {}
         SparseHeap(
-            TexStreamManager* self,
-            size_t size
-        );
-        SparseHeap(SparseHeap const&) = delete;
-        SparseHeap(SparseHeap&& rhs);
+            TexStreamManager *self,
+            size_t size);
+        SparseHeap(SparseHeap const &) = delete;
+        SparseHeap(SparseHeap &&rhs);
         ~SparseHeap();
-        SparseHeap& operator=(SparseHeap&& rhs)
-        {
+        SparseHeap &operator=(SparseHeap &&rhs) {
             this->~SparseHeap();
             new (std::launder(this)) SparseHeap(std::move(rhs));
             return *this;
         }
-        operator bool() const
-        {
+        operator bool() const {
             return heap.operator bool();
         }
     };
@@ -59,32 +54,24 @@ public:
         uint level;
         Coord(
             std::array<uint, 2> tile_idx,
-            uint level
-        )
-            : tile_idx(tile_idx)
-            , level(level)
-        {
+            uint level)
+            : tile_idx(tile_idx), level(level) {
         }
         Coord(
             uint2 tile_idx,
-            uint level
-        )
-            : tile_idx({ tile_idx.x, tile_idx.y })
-            , level(level)
-        {
+            uint level)
+            : tile_idx({tile_idx.x, tile_idx.y}), level(level) {
         }
-        bool operator==(Coord const& rhs) const
-        {
+        bool operator==(Coord const &rhs) const {
             return memcmp(this, &rhs, sizeof(Coord)) == 0;
         }
     };
     struct CoordHash {
-        size_t operator()(Coord const& c) const
-        {
+        size_t operator()(Coord const &c) const {
             return luisa::hash64(&c, sizeof(Coord), luisa::hash64_default_seed);
         }
     };
-    struct TexIndex : public luisa::enable_shared_from_this<TexIndex>, vstd::IOperatorNewBase {
+    struct TexIndex : public luisa::enable_shared_from_this<TexIndex>, RBCStruct {
         BufferAllocator::Node node;
         SparseImage<float> img;
         TexPath path;
@@ -93,14 +80,12 @@ public:
         TileStreamer streamer;
         uint bindless_idx;
         uint loaded_countdown;
-        uint vector_idx{ std::numeric_limits<uint>::max() };
+        uint vector_idx{std::numeric_limits<uint>::max()};
         luisa::move_only_function<void()> init_callback;
-        SparseHeap& get_heap(uint2 tile_idx, uint level)
-        {
+        SparseHeap &get_heap(uint2 tile_idx, uint level) {
             uint2 res = streamer.resolution();
-            uint sz{ 0 };
-            for (auto i : vstd::range(level))
-            {
+            uint sz{0};
+            for (auto i : vstd::range(level)) {
                 LUISA_ASSERT(res.x >= 1 && res.y >= 1, "Resolution must be larger than 0.");
                 sz += res.x * res.y;
                 res >>= 1u;
@@ -109,23 +94,21 @@ public:
             return heaps[sz];
         }
         size_t get_byte_offset(uint2 tile_idx, uint level);
-        template <typename... Args>
-        requires(luisa::is_constructible_v<TileStreamer, Args && ...>)
-        TexIndex(Args&&... args)
-            : streamer(std::forward<Args>(args)...)
-        {
+        template<typename... Args>
+            requires(luisa::is_constructible_v<TileStreamer, Args && ...>)
+        TexIndex(Args &&...args)
+            : streamer(std::forward<Args>(args)...) {
         }
     };
-    enum struct Op : uint32_t
-    {
+    enum struct Op : uint32_t {
         Load,
         UnLoad
     };
-    template <template <typename> typename Ptr>
+    template<template<typename> typename Ptr>
     struct LoadCommand {
         Ptr<TexIndex> tex_idx;
         vector<std::pair<uint2, uint>> tiles;
-        LoadCommand(weak_ptr<TexIndex> const& t)
+        LoadCommand(weak_ptr<TexIndex> const &t)
             : tex_idx(t) {};
     };
     struct SetLevelCommand {
@@ -133,19 +116,19 @@ public:
         uint value;
     };
 private:
-    Device& _device;
-    Stream& _async_stream;
-    IOService& _io_service;
-    BindlessManager& _bdls_mng;
+    Device &_device;
+    Stream &_async_stream;
+    IOService &_io_service;
+    BindlessManager &_bdls_mng;
     BufferUploader _uploader;
     Buffer<uint> _min_level_buffer;
     Buffer<uint> _chunk_offset_buffer;
     BufferAllocator _level_buffer;
     vstd::HashMap<uint64, shared_ptr<TexIndex>> _loaded_texs;
     vstd::HashMap<uint> _dispose_map;
-    Shader1D<Buffer<uint>, uint> const* set_shader;
-    Shader1D<Buffer<uint>, uint, uint> const* clear_shader;
-    uint _countdown{ (1u << 28u) - 2u };
+    Shader1D<Buffer<uint>, uint> const *set_shader;
+    Shader1D<Buffer<uint>, uint, uint> const *clear_shader;
+    uint _countdown{(1u << 28u) - 2u};
     ////////////// callback thread	struct
     struct FrameResource {
         vector<SetLevelCommand> set_level_cmds;
@@ -155,46 +138,45 @@ private:
     vstd::LockFreeArrayQueue<FrameResource> _frame_res;
     vstd::LockFreeArrayQueue<vstd::vector<uint>> _frame_datas;
     struct UInt3Equal {
-        bool operator()(uint3 const& a, uint3 const& b) const
-        {
+        bool operator()(uint3 const &a, uint3 const &b) const {
             return all(a == b);
         }
     };
-    vstd::vector<TexIndex*> _remove_list;
+    vstd::vector<TexIndex *> _remove_list;
     struct UnmapCmd {
         vstd::unordered_set<uint3, luisa::hash<uint3>, UInt3Equal> map;
         luisa::spin_mutex _mtx;
     };
-    vstd::HashMap<TexIndex*, UnmapCmd> _unmap_lists;
-    uint inqueue_frame{ 0 };
+    vstd::HashMap<TexIndex *, UnmapCmd> _unmap_lists;
+    uint inqueue_frame{0};
 
-    vector<TexIndex*> _tex_indices;
+    vector<TexIndex *> _tex_indices;
 
     ////////////// callback thread
     size_t _readback_size{};
-    mutable std::atomic_size_t _allocated_size{ 0 };
+    mutable std::atomic_size_t _allocated_size{0};
     // Make sure readback processor serial with load & unload
     luisa::spin_mutex _uploader_mtx;
     size_t _allocate_size_limits;
     size_t _memoryless_threshold;
     const uint8_t _lru_frame;
     const uint8_t _lru_frame_memoryless;
-    IOCommandList _process_readback(vstd::span<uint const> readback, SparseCommandList& map_cmdlist);
+    IOCommandList _process_readback(vstd::span<uint const> readback, SparseCommandList &map_cmdlist);
     luisa::compute::TimelineEvent _main_stream_event;
 
     struct CopyStreamCallback {
-        TexStreamManager* self;
-        Stream& stream;
+        TexStreamManager *self;
+        Stream &stream;
         IOCommandList io_cmdlist;
         SparseCommandList sparse_cmdlist;
-        TimelineEvent* event;
+        TimelineEvent *event;
         uint64_t fence;
         luisa::vector<SparseTextureHeap> disposed_heap;
         void operator()();
     };
     vstd::LockFreeArrayQueue<CopyStreamCallback> _copy_stream_callbacks;
     std::thread _copy_stream_thd;
-    std::atomic_bool _enabled{ true };
+    std::atomic_bool _enabled{true};
     std::mutex _copy_stream_mtx;
     std::condition_variable _copy_stream_cv;
     CommandList async_cmdlist;
@@ -205,50 +187,46 @@ private:
     uint64_t _last_io_fence = 0;
 
 public:
-    [[nodiscard]] auto const& min_level_buffer() const { return _min_level_buffer; }
-    [[nodiscard]] auto const& offset_buffer() const { return _chunk_offset_buffer; }
-    [[nodiscard]] auto const& level_buffer() const { return _level_buffer.buffer(); }
+    [[nodiscard]] auto const &min_level_buffer() const { return _min_level_buffer; }
+    [[nodiscard]] auto const &offset_buffer() const { return _chunk_offset_buffer; }
+    [[nodiscard]] auto const &level_buffer() const { return _level_buffer.buffer(); }
     [[nodiscard]] auto countdown() const { return _countdown; }
-    [[nodiscard]] auto& io_service() { return _io_service; }
+    [[nodiscard]] auto &io_service() { return _io_service; }
 
     static const uint chunk_resolution;
-    static TexStreamManager* instance();
+    static TexStreamManager *instance();
     struct LoadResult {
-        SparseImage<float> const* img_ptr;
+        SparseImage<float> const *img_ptr;
         uint bindless_index;
-        TexIndex* tex_idx;
+        TexIndex *tex_idx;
     };
     TexStreamManager(
-        Device& device,
-        Stream& async_stream,
-        IOService& io_service,
-        CommandList& cmdlist,
-        BindlessManager& bdls_mng,
+        Device &device,
+        Stream &async_stream,
+        IOService &io_service,
+        CommandList &cmdlist,
+        BindlessManager &bdls_mng,
         // unload texture's one level after <lru_frame> frame
         uint8_t lru_frame = 16,
         uint8_t lru_frame_memoryless = 4,
         size_t memoryless_threshold = 1024ull * 1024ull * 8ull,
         // default 4 GB
-        size_t memory_limit = 4ull * 1024ull * 1024ull * 1024ull
-    );
+        size_t memory_limit = 4ull * 1024ull * 1024ull * 1024ull);
     ~TexStreamManager();
     LoadResult load_sparse_img(
-        SparseImage<float>&& img,
-        TexPath&& path,
+        SparseImage<float> &&img,
+        TexPath &&path,
         Sampler sampler,
-        DisposeQueue& disp_queue,
-        CommandList& cmdlist,
-        luisa::move_only_function<void()>&& init_callback
-    );
+        DisposeQueue &disp_queue,
+        CommandList &cmdlist,
+        luisa::move_only_function<void()> &&init_callback);
     void unload_sparse_img(
         uint64 img_uid,
-        DisposeQueue& disp_queue
-    );
+        DisposeQueue &disp_queue);
     void before_rendering(
-        Stream& main_stream,
-        HostBufferManager& temp_buffer,
-        CommandList& cmdlist
-    );
+        Stream &main_stream,
+        HostBufferManager &temp_buffer,
+        CommandList &cmdlist);
     void force_sync();
 };
-} // namespace rbc
+}// namespace rbc

@@ -17,7 +17,7 @@ struct DenoiserStream {
     }
 };
 
-struct RenderPluginImpl : RenderPlugin, vstd::IOperatorNewBase {
+struct RenderPluginImpl : RenderPlugin, RBCStruct {
     ////////////////////////////////////////  HDRI
     vstd::optional<HDRI> hdri;
     vstd::optional<SkyAtmosphere> sky_atom;

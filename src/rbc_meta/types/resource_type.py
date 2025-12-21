@@ -1,7 +1,6 @@
 from rbc_meta.utils.reflect import reflect
 from enum import Enum
 from rbc_meta.utils.builtin import (
-    IRTTRBasic,
     Pointer,
     RenderMesh,
     Vector,
@@ -32,19 +31,3 @@ class ResourceState(Enum):
     Installed = 5  # 安装完成（上传GPU，依赖处理等完成，可以被其他组件直接使用）
     Failed = 6  # 加载失败
     Unloading = 7  # 正在卸载
-
-
-@reflect(cpp_namespace="rbc", module_name="resource_type")
-class IResource(IRTTRBasic):
-    pass
-
-
-@reflect(cpp_namespace="rbc", module_name="resource_type")
-class MaterialResource(IRTTRBasic):
-    pass
-
-
-@reflect(cpp_namespace="rbc", module_name="resource_type")
-class MeshResource(IResource):
-    render_mesh: Pointer[RenderMesh]
-    ref_materials: Vector[AsyncResource[MaterialResource]]

@@ -6,6 +6,7 @@
 #include <luisa/vstl/md5.h>
 #include <luisa/vstl/compare.h>
 #include <type_traits>
+#include <rbc_core/base.h>
 #include <cstdint>
 
 namespace rbc_rtti_detail {

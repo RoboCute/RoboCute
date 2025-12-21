@@ -57,7 +57,7 @@ public:
     ~IOFile();
 };
 
-struct RBC_RUNTIME_API DStorageStream : vstd::IOperatorNewBase {
+struct RBC_RUNTIME_API DStorageStream : RBCStruct {
 protected:
     ~DStorageStream() = default;
 

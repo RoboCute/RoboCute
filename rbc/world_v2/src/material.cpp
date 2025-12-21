@@ -11,7 +11,7 @@
 #include <rbc_core/runtime_static.h>
 #include <rbc_world_v2/resource_loader.h>
 namespace rbc::world {
-struct MaterialInst : vstd::IOperatorNewBase {
+struct MaterialInst : RBCStruct {
     luisa::spin_mutex _mat_mtx;
     luisa::vector<uint> _disposed_mat;
     MatCode _default_mat_code{};

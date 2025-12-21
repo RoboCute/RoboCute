@@ -681,7 +681,7 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
                 INDENT=INDENT, FUNC_API=func_api, STRUCT_NAME=class_name
             )
         )
-        struct_base_expr = ": vstd::IOperatorNewBase"
+        struct_base_expr = ": RBCStruct"
 
         if len(info.base_classes) == 1:
             base_class = info.base_classes[0]

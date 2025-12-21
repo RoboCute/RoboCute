@@ -24,7 +24,7 @@ void atomic_max(std::atomic<T> &a, T b) {
         std::this_thread::yield();
     }
 };
-struct FinishCallback : vstd::IOperatorNewBase {
+struct FinishCallback : RBCStruct {
     std::atomic_uint64_t *finish_frame;
     uint64_t frame;
     using Vec = vstd::vector<vstd::function<AssetsManager::LoadTaskType>>;

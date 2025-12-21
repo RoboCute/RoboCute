@@ -7,6 +7,8 @@
 #include <luisa/core/binary_io.h>
 #include <luisa/core/stl/functional.h>
 
+#include <rbc_core/base.h>
+
 namespace rbc::ipc {
 struct TypedHeader {
     uint32_t custom_id : 8;
@@ -17,7 +19,7 @@ enum struct EMessageQueueBackend {
     Network
 };
 
-struct IMessageSender : vstd::IOperatorNewBase {
+struct IMessageSender : RBCStruct {
     // interfaces
     virtual uint64_t max_size() const = 0;
     virtual bool push(const luisa::span<const std::byte> data) = 0;
@@ -44,7 +46,7 @@ private:
     uint step{};
 };
 
-struct IMessageReceiver : vstd::IOperatorNewBase {
+struct IMessageReceiver : RBCStruct {
     friend struct AsyncTypedMessagePop;
     // interfaces
     virtual luisa::BinaryBlob try_pop() = 0;

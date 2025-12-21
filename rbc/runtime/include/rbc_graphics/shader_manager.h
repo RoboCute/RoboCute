@@ -9,6 +9,9 @@
 #include <luisa/vstl/common.h>
 #include <luisa/vstl/spin_mutex.h>
 #include <luisa/core/fiber.h>
+
+#include <rbc_core/base.h>
+
 namespace rbc {
 using namespace luisa;
 using namespace luisa::compute;
@@ -47,8 +50,8 @@ struct is_lc_shader<RasterShader<Args...>> {
 };
 using ShaderType = vstd::variant<ShaderBase, RasterShader<>>;
 ;
-struct RBC_RUNTIME_API ShaderManager : vstd::IOperatorNewBase {
-    using ReloadFunc = vstd::func_ptr_t<ShaderType(Device &device, string_view name, luisa::span<Type const* const> arg_types)>;
+struct RBC_RUNTIME_API ShaderManager : RBCStruct {
+    using ReloadFunc = vstd::func_ptr_t<ShaderType(Device &device, string_view name, luisa::span<Type const *const> arg_types)>;
     struct ShaderVariant {
         ShaderType shader;
         vstd::vector<Type const *> arg_types;
@@ -138,7 +141,7 @@ public:
         auto c1 = [&](string_view shader_path) -> ShaderType {
             return TT::load_shader(_device, shader_path);
         };
-        auto c2 = [](Device &device, string_view name, luisa::span<Type const* const> arg_types) -> ShaderType {
+        auto c2 = [](Device &device, string_view name, luisa::span<Type const *const> arg_types) -> ShaderType {
             return TT::load_shader(device, name);
         };
         shader_ptr = static_cast<T>(
@@ -171,7 +174,7 @@ public:
             auto shader = TT::load_shader(_device, shader_path);
             return reinterpret_cast<RasterShader<> &&>(shader);
         };
-        auto c2 = [](Device &device, string_view name, luisa::span<Type const* const> arg_types) -> ShaderType {
+        auto c2 = [](Device &device, string_view name, luisa::span<Type const *const> arg_types) -> ShaderType {
             auto shader = TT::load_shader(device, name);
             return reinterpret_cast<RasterShader<> &&>(shader);
         };

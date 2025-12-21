@@ -8,6 +8,8 @@
 #include <luisa/vstl/v_guid.h>
 #include <luisa/core/stl/memory.h>
 #include <luisa/core/stl/vector.h>
+
+#include <rbc_core/base.h>
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/json_serde.h>
 namespace rbc {
