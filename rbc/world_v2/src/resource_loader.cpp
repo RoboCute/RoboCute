@@ -4,6 +4,7 @@
 #include <rbc_core/shared_atomic_mutex.h>
 
 namespace rbc::world {
+
 struct ResourceLoader {
     luisa::filesystem::path _root_path;
     luisa::filesystem::path _meta_path;

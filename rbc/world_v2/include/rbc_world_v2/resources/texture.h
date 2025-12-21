@@ -1,20 +1,23 @@
 #pragma once
 #include <rbc_world_v2/resource_base.h>
 #include <rbc_runtime/generated/resource_meta.hpp>
+
 namespace rbc {
 struct DeviceResource;
 struct DeviceImage;
 struct DeviceSparseImage;
 }// namespace rbc
+
 namespace rbc::world {
 struct VTLoadFlag : RCBase {
     std::atomic_bool finished{false};
 };
 struct TextureLoader;
-struct RBC_WORLD_API Texture final : ResourceBaseImpl<Texture> {
+
+struct RBC_WORLD_API TextureResource final : ResourceBaseImpl<TextureResource> {
     friend struct TextureLoader;
-    DECLARE_WORLD_OBJECT_FRIEND(Texture)
-    using BaseType = ResourceBaseImpl<Texture>;
+    DECLARE_WORLD_OBJECT_FRIEND(TextureResource)
+    using BaseType = ResourceBaseImpl<TextureResource>;
 
 private:
     RC<DeviceResource> _tex;
@@ -25,8 +28,8 @@ private:
     uint32_t _mip_level{};
     RC<VTLoadFlag> _vt_finished{};
     bool _is_vt{};
-    Texture();
-    ~Texture();
+    TextureResource();
+    ~TextureResource();
     void _pack_to_tile_level(uint level, luisa::span<std::byte const> src, luisa::span<std::byte> dst);
 public:
     bool is_vt() const;
@@ -62,4 +65,4 @@ protected:
     bool unsafe_save_to_path() const override;
 };
 }// namespace rbc::world
-RBC_RTTI(rbc::world::Texture)
+RBC_RTTI(rbc::world::TextureResource)

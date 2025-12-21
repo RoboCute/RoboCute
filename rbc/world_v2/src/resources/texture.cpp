@@ -1,5 +1,5 @@
 #pragma once
-#include <rbc_world_v2/texture.h>
+#include <rbc_world_v2/resources/texture.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <rbc_graphics/device_assets/device_sparse_image.h>
@@ -7,34 +7,35 @@
 #include <rbc_graphics/texture/tex_stream_manager.h>
 #include <rbc_world_v2/type_register.h>
 namespace rbc::world {
-Texture::Texture() = default;
-Texture::~Texture() = default;
-luisa::vector<std::byte> *Texture::host_data() {
+
+TextureResource::TextureResource() = default;
+TextureResource::~TextureResource() = default;
+luisa::vector<std::byte> *TextureResource::host_data() {
     std::shared_lock lck{_async_mtx};
     if (_tex && _tex->resource_type() == DeviceResource::Type::Image) {
         return &static_cast<DeviceImage *>(_tex.get())->host_data_ref();
     }
     return nullptr;
 }
-bool Texture::empty() const {
+bool TextureResource::empty() const {
     std::shared_lock lck{_async_mtx};
     return !_tex;
 }
-DeviceImage *Texture::get_image() const {
+DeviceImage *TextureResource::get_image() const {
     std::shared_lock lck{_async_mtx};
     if (_tex && !is_vt()) {
         return static_cast<DeviceImage *>(_tex.get());
     }
     return nullptr;
 }
-DeviceSparseImage *Texture::get_sparse_image() const {
+DeviceSparseImage *TextureResource::get_sparse_image() const {
     std::shared_lock lck{_async_mtx};
     if (_tex && is_vt()) {
         return static_cast<DeviceSparseImage *>(_tex.get());
     }
     return nullptr;
 }
-uint64_t Texture::desire_size_bytes() const {
+uint64_t TextureResource::desire_size_bytes() const {
     auto size = _size;
     uint64_t size_bytes{};
     for (auto i : vstd::range(_mip_level)) {
@@ -45,7 +46,7 @@ uint64_t Texture::desire_size_bytes() const {
     }
     return size_bytes;
 }
-void Texture::serialize_meta(ObjSerialize const &obj) const {
+void TextureResource::serialize_meta(ObjSerialize const &obj) const {
     std::shared_lock lck{_async_mtx};
     BaseType::serialize_meta(obj);
     obj.ser._store(_pixel_storage, "pixel_storage");
@@ -53,7 +54,7 @@ void Texture::serialize_meta(ObjSerialize const &obj) const {
     obj.ser._store(_mip_level, "mip_level");
     obj.ser._store(_is_vt, "is_vt");
 }
-void Texture::deserialize_meta(ObjDeSerialize const &obj) {
+void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
     BaseType::deserialize_meta(obj);
 #define RBC_MESH_LOAD(m)            \
@@ -69,7 +70,7 @@ void Texture::deserialize_meta(ObjDeSerialize const &obj) {
     RBC_MESH_LOAD(is_vt)
 #undef RBC_MESH_LOAD
 }
-void Texture::create_empty(
+void TextureResource::create_empty(
     luisa::filesystem::path &&path,
     uint64_t file_offset,
     LCPixelStorage pixel_storage,
@@ -93,7 +94,7 @@ void Texture::create_empty(
         _tex = new DeviceImage();
     }
 }
-bool Texture::unsafe_save_to_path() const {
+bool TextureResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex || _tex->host_data().empty()) return false;
     BinaryFileWriter writer{luisa::to_string(_path)};
@@ -103,14 +104,14 @@ bool Texture::unsafe_save_to_path() const {
     writer.write(_tex->host_data());
     return true;
 }
-bool Texture::is_vt() const {
+bool TextureResource::is_vt() const {
     if (_tex) {
         return _tex->resource_type() == DeviceResource::Type::SparseImage;
     } else {
         return _is_vt;
     }
 }
-bool Texture::init_device_resource() {
+bool TextureResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_tex || load_executed()) {
         return false;
@@ -149,7 +150,7 @@ bool Texture::init_device_resource() {
     }
     return true;
 }
-bool Texture::async_load_from_file() {
+bool TextureResource::async_load_from_file() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     auto file_size = desire_size_bytes();
@@ -190,12 +191,12 @@ bool Texture::async_load_from_file() {
     }
     return true;
 }
-void Texture::wait_load_executed() const {
+void TextureResource::wait_load_executed() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return;
     _tex->wait_executed();
 }
-void Texture::wait_load_finished() const {
+void TextureResource::wait_load_finished() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return;
     _tex->wait_finished();
@@ -206,11 +207,11 @@ void Texture::wait_load_finished() const {
     }
 }
 
-void Texture::unload() {
+void TextureResource::unload() {
     std::lock_guard lck{_async_mtx};
     _tex.reset();
 }
-uint32_t Texture::heap_index() const {
+uint32_t TextureResource::heap_index() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return ~0u;
     if (is_vt()) {
@@ -219,7 +220,7 @@ uint32_t Texture::heap_index() const {
         return static_cast<DeviceImage *>(_tex.get())->heap_idx();
     }
 }
-bool Texture::load_executed() const {
+bool TextureResource::load_executed() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return false;
     if (is_vt()) {
@@ -228,7 +229,7 @@ bool Texture::load_executed() const {
         return static_cast<DeviceImage *>(_tex.get())->load_executed() || static_cast<DeviceImage *>(_tex.get())->type() != DeviceImage::ImageType::None;
     }
 }
-bool Texture::load_finished() const {
+bool TextureResource::load_finished() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return false;
     if (is_vt()) {
@@ -238,6 +239,6 @@ bool Texture::load_finished() const {
         return static_cast<DeviceImage *>(_tex.get())->load_executed() || static_cast<DeviceImage *>(_tex.get())->type() != DeviceImage::ImageType::None;
     }
 }
-DECLARE_WORLD_OBJECT_REGISTER(Texture)
+DECLARE_WORLD_OBJECT_REGISTER(TextureResource)
 
 }// namespace rbc::world

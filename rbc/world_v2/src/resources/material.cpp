@@ -7,9 +7,10 @@
 #include <rbc_graphics/mat_serde.h>
 #include <rbc_core/json_serde.h>
 #include <rbc_core/binary_file_writer.h>
-#include <rbc_world_v2/texture.h>
+#include <rbc_world_v2/resources/texture.h>
 #include <rbc_core/runtime_static.h>
 #include <rbc_world_v2/resource_loader.h>
+
 namespace rbc::world {
 struct MaterialInst : RBCStruct {
     luisa::spin_mutex _mat_mtx;
@@ -233,7 +234,7 @@ bool MaterialResource::init_device_resource() {
             auto res = *iter;
             if (res) {
                 res->wait_load_executed();
-                u.index = static_cast<Texture *>(res.get())->heap_index();
+                u.index = static_cast<TextureResource *>(res.get())->heap_index();
             } else {
                 u.index = ~0u;
             }

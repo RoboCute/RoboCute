@@ -1,5 +1,5 @@
 #pragma once
-#include <rbc_world_v2/texture.h>
+#include <rbc_world_v2/resources/texture.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <rbc_graphics/device_assets/device_sparse_image.h>
 #include <rbc_graphics/render_device.h>
@@ -27,7 +27,7 @@ void TextureLoader::_try_execute() {
         break;
     }
 }
-RC<Texture> TextureLoader::decode_texture(
+RC<TextureResource> TextureLoader::decode_texture(
     luisa::filesystem::path const &path,
     uint mip_level,
     bool to_vt) {
@@ -38,7 +38,7 @@ RC<Texture> TextureLoader::decode_texture(
     }
     if (!luisa::filesystem::exists(path)) return {};
     uint64_t gpu_fence = 0;
-    auto to_vt_func = [&](RC<Texture> const &tex, uint chunk_size) {
+    auto to_vt_func = [&](RC<TextureResource> const &tex, uint chunk_size) {
         if (!to_vt) return;
         if (all((tex->size() & (chunk_size - 1u)) != 0u)) {
             LUISA_WARNING("Texture size {} is not aligned as {}", tex->size(), chunk_size);
@@ -56,7 +56,7 @@ RC<Texture> TextureLoader::decode_texture(
             tex->pack_to_tile();
         }
     };
-    auto process_tex = [&](RC<Texture> const &tex) {
+    auto process_tex = [&](RC<TextureResource> const &tex) {
         auto render_device = RenderDevice::instance_ptr();
         LUISA_ASSERT(render_device, "Render device must be initialized.");
         {
@@ -158,7 +158,7 @@ RC<Texture> TextureLoader::decode_texture(
             (const stbi_uc *)data.data(), data.size(), &x, &y, &channels_in_file, 4);
         auto tex = new DeviceImage();
 
-        RC<Texture> result{world::create_object<Texture>()};
+        RC<TextureResource> result{world::create_object<TextureResource>()};
 
         result->_tex = tex;
         auto &img = tex->host_data_ref();
@@ -184,7 +184,7 @@ RC<Texture> TextureLoader::decode_texture(
         auto ptr = stbi_loadf_from_memory(
             (const stbi_uc *)data.data(), data.size(), &x, &y, &channels_in_file, 4);
         auto tex = new DeviceImage();
-        RC<Texture> result{world::create_object<Texture>()};
+        RC<TextureResource> result{world::create_object<TextureResource>()};
         result->_tex = tex;
         auto &img = tex->host_data_ref();
         result->_size = uint2(x, y);
@@ -243,7 +243,7 @@ RC<Texture> TextureLoader::decode_texture(
                 LUISA_WARNING("Unsupported sample count");
                 return {};
         }
-        RC<Texture> result{world::create_object<Texture>()};
+        RC<TextureResource> result{world::create_object<TextureResource>()};
         result->_pixel_storage = (LCPixelStorage)pixel_storage;
         result->_size = uint2(width, height);
         result->_mip_level = 1;// TODO: mipmap generate
@@ -339,7 +339,7 @@ RC<Texture> TextureLoader::decode_texture(
             }
         }
         auto tex = new DeviceImage();
-        RC<Texture> result{world::create_object<Texture>()};
+        RC<TextureResource> result{world::create_object<TextureResource>()};
         result->_tex = tex;
         auto &img = tex->host_data_ref();
         result->_size = make_uint2(width, height);
@@ -355,7 +355,7 @@ RC<Texture> TextureLoader::decode_texture(
     return {};
 }
 
-void Texture::_pack_to_tile_level(uint level, luisa::span<std::byte const> src, luisa::span<std::byte> dst) {
+void TextureResource::_pack_to_tile_level(uint level, luisa::span<std::byte const> src, luisa::span<std::byte> dst) {
     auto size = _size >> level;
     uint64_t pixel_size_bytes;
     uint64_t raw_size_bytes;
@@ -390,7 +390,7 @@ void Texture::_pack_to_tile_level(uint level, luisa::span<std::byte const> src, 
             }
         }
 }
-bool Texture::pack_to_tile() {
+bool TextureResource::pack_to_tile() {
     if (_is_vt) return {};
     auto host_data_ = host_data();
     if (!host_data_ || host_data_->empty()) return {};

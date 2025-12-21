@@ -1,4 +1,4 @@
-#include <rbc_world_v2/render_component.h>
+#include <rbc_world_v2/components/render_component.h>
 #include <rbc_world_v2/components/transform.h>
 #include <rbc_world_v2/resource_loader.h>
 #include <rbc_world_v2/type_register.h>

@@ -1,5 +1,5 @@
 #pragma once
-#include <rbc_world_v2/texture.h>
+#include <rbc_world_v2/resources/texture.h>
 #include <rbc_graphics/texture/pack_texture.h>
 namespace rbc::world {
 struct RBC_WORLD_API TextureLoader {
@@ -14,7 +14,7 @@ private:
     void _try_execute();
 
 public:
-    RC<Texture> decode_texture(
+    RC<TextureResource> decode_texture(
         luisa::filesystem::path const &path,
         uint mip_level,
         bool to_vt);

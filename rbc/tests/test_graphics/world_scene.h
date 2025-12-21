@@ -1,7 +1,7 @@
 #pragma once
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/resources/mesh.h>
-#include <rbc_world_v2/texture.h>
+#include <rbc_world_v2/resources/texture.h>
 #include <rbc_world_v2/resources/material.h>
 #include <rbc_graphics/camera.h>
 
@@ -10,8 +10,8 @@ struct GraphicsUtils;
 struct WorldScene {
     world::MeshResource *cbox_mesh{};
     world::MeshResource *quad_mesh{};
-    RC<world::Texture> skybox{};
-    RC<world::Texture> tex{};
+    RC<world::TextureResource> skybox{};
+    RC<world::TextureResource> tex{};
     luisa::vector<world::Entity *> _entities;
     luisa::vector<RC<world::MaterialResource>> _mats;
 
