@@ -42,7 +42,7 @@ public:
     [[nodiscard]] auto file() const { return _handle.file; }
     [[nodiscard]] auto length() const { return _handle.len; }
     IOFile() = default;
-    explicit IOFile(luisa::string_view file);
+    explicit IOFile(luisa::string_view path);
     IOFile(IOFile const &) = delete;
     IOFile(IOFile &&rhs) noexcept;
     explicit operator bool() const {

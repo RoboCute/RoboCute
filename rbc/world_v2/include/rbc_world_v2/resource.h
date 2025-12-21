@@ -18,12 +18,6 @@ enum class EResourceInstallStatus {
     Failed
 };
 
-struct RBC_WORLD_API LocalResourceRegistry {
-};
-
-struct RBC_WORLD_API ResourceRecord {
-};
-
 struct RBC_WORLD_API ResourceHandle {
 public:
     ResourceHandle();
@@ -69,8 +63,55 @@ protected:
     // };
 };
 
+struct RBC_WORLD_API ResourceHeader {
+    uint32_t version = ~0ull;
+    vstd::Guid guid;
+    vstd::Guid type;
+    luisa::vector<ResourceHandle> dependencies;
+};
+
+struct RBC_WORLD_API ResourceRequest {
+    virtual ~ResourceRequest() = default;
+public:
+    [[nodiscard]] virtual vstd::Guid GetGuid() const = 0;
+    [[nodiscard]] virtual luisa::span<const uint8_t> GetData() const = 0;
+    [[nodiscard]] virtual luisa::span<const ResourceHandle> GetDependencies() const = 0;
+
+    virtual void Update() = 0;
+    virtual void Okey() = 0;
+    virtual void Failed() = 0;
+};
+
+struct RBC_WORLD_API ResourceRegistry {
+public:
+    virtual bool RequestResourceFile(ResourceRequest *request) = 0;
+    virtual bool CancelRequestFile(ResourceRequest *request) = 0;
+
+    void FillRequest(ResourceRequest *request, ResourceHeader header, luisa::string_view base_path, luisa::string_view uri);
+};
+
+struct RBC_WORLD_API LocalResourceRegistry {
+public:
+    explicit LocalResourceRegistry(luisa::string_view base_path);
+    virtual ~LocalResourceRegistry() = default;
+    bool RequestResourceFile(ResourceRequest *request);
+    bool CancelRequestFile(ResourceRequest *request);
+private:
+    luisa::string_view _base_path;
+};
+
+struct RBC_WORLD_API ResourceRecord {
+};
+
 struct RBC_WORLD_API ResourceFactory {
     virtual float AsyncSerdeLoadFactor() { return 1.0f; }
+};
+
+struct RBC_WORLD_API ResourceSystem {
+    friend struct rbc::ResourceHandle;
+
+public:
+    virtual ~ResourceSystem();
 };
 
 }// namespace rbc
