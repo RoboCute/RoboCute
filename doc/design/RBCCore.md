@@ -104,6 +104,15 @@ record_data: class info
 - each_static_method
 - each_static_field
 
+### RTTRRecordData
+
+- name 
+- namespace
+- type_id
+- size
+- alignment
+- memory_traits_data
+
 ExportMethodInvoker
 ```cpp
 template <typename... Args>

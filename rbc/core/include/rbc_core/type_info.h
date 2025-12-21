@@ -84,6 +84,13 @@ public:
         return _md5[1] < t._md5[1];
     }
 };
+
+// fast get
+template<concepts::RTTIType T>
+vstd::Guid type_id_of() {
+    return TypeInfo::get<T>().md5();
+}
+
 }// namespace rbc
 namespace luisa {
 template<>
