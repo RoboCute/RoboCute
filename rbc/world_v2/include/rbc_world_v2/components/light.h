@@ -3,12 +3,12 @@
 #include <rbc_graphics/object_types.h>
 
 namespace rbc::world {
-struct RBC_WORLD_API Light final : ComponentDerive<Light> {
-    DECLARE_WORLD_COMPONENT_FRIEND(Light)
+struct RBC_WORLD_API LightComponent final : ComponentDerive<LightComponent> {
+    DECLARE_WORLD_COMPONENT_FRIEND(LightComponent)
 private:
     LightStub _light_stub;
-    Light(Entity *entity);
-    ~Light();
+    LightComponent(Entity *entity);
+    ~LightComponent();
     float3 _luminance{1, 1, 1};
     float _angle_radians{1.04719755119659f};       // 60
     float _small_angle_radians{0.349065850398865f};// 20
@@ -27,4 +27,4 @@ public:
     void dispose() override;
 };
 }// namespace rbc::world
-RBC_RTTI(rbc::world::Light)
+RBC_RTTI(rbc::world::LightComponent)

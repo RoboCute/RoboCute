@@ -1,13 +1,14 @@
-#include <rbc_world_v2/light.h>
+#include <rbc_world_v2/components/light.h>
 #include <rbc_world_v2/transform.h>
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_graphics/render_device.h>
 
 namespace rbc::world {
-Light::Light(Entity *entity) : ComponentDerive<Light>(entity) {}
-Light::~Light() {}
-void Light::_update_light() {
+
+LightComponent::LightComponent(Entity *entity) : ComponentDerive<LightComponent>(entity) {}
+LightComponent::~LightComponent() {}
+void LightComponent::_update_light() {
     auto tr = entity()->get_component<Transform>();
     if (!tr) return;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
@@ -87,14 +88,14 @@ void Light::_update_light() {
         }
     }
 }
-void Light::on_awake() {
-    add_event(WorldEventType::OnTransformUpdate, &Light::_update_light);
+void LightComponent::on_awake() {
+    add_event(WorldEventType::OnTransformUpdate, &LightComponent::_update_light);
 }
-void Light::on_destroy() {
+void LightComponent::on_destroy() {
     _light_stub.remove_light();
 }
-void Light::serialize_meta(ObjSerialize const&ser) const {
-    auto & ser_obj = ser.ser;
+void LightComponent::serialize_meta(ObjSerialize const &ser) const {
+    auto &ser_obj = ser.ser;
     ser_obj._store(_luminance, "luminance");
     ser_obj._store(_angle_radians, "angle_radians");
     ser_obj._store(_small_angle_radians, "small_angle_radians");
@@ -102,8 +103,8 @@ void Light::serialize_meta(ObjSerialize const&ser) const {
     ser_obj._store(_visible, "visible");
     ser_obj._store((uint)_light_stub.light_type, "light_type");
 }
-void Light::deserialize_meta(ObjDeSerialize const&ser) {
-    auto & obj = ser.ser;
+void LightComponent::deserialize_meta(ObjDeSerialize const &ser) {
+    auto &obj = ser.ser;
     obj._load(_luminance, "luminance");
     obj._load(_angle_radians, "angle_radians");
     obj._load(_small_angle_radians, "small_angle_radians");
@@ -114,7 +115,7 @@ void Light::deserialize_meta(ObjDeSerialize const&ser) {
         _light_stub.light_type = (LightType)light_type;
     }
 }
-void Light::add_area_light(luisa::float3 luminance, bool visible) {
+void LightComponent::add_area_light(luisa::float3 luminance, bool visible) {
     _luminance = luminance;
     _visible = visible;
     if (_light_stub.light_type != LightType::Area) {
@@ -123,7 +124,7 @@ void Light::add_area_light(luisa::float3 luminance, bool visible) {
     _light_stub.light_type = LightType::Area;
     _update_light();
 }
-void Light::add_disk_light(luisa::float3 luminance, bool visible) {
+void LightComponent::add_disk_light(luisa::float3 luminance, bool visible) {
     _luminance = luminance;
     _visible = visible;
     if (_light_stub.light_type != LightType::Disk) {
@@ -132,7 +133,7 @@ void Light::add_disk_light(luisa::float3 luminance, bool visible) {
     _light_stub.light_type = LightType::Disk;
     _update_light();
 }
-void Light::add_point_light(luisa::float3 luminance, bool visible) {
+void LightComponent::add_point_light(luisa::float3 luminance, bool visible) {
     _luminance = luminance;
     _visible = visible;
     if (_light_stub.light_type != LightType::Sphere) {
@@ -141,7 +142,7 @@ void Light::add_point_light(luisa::float3 luminance, bool visible) {
     _light_stub.light_type = LightType::Sphere;
     _update_light();
 }
-void Light::add_spot_light(luisa::float3 luminance, float angle_radians, float small_angle_radians, float angle_atten_pow, bool visible) {
+void LightComponent::add_spot_light(luisa::float3 luminance, float angle_radians, float small_angle_radians, float angle_atten_pow, bool visible) {
     _luminance = luminance;
     _visible = visible;
     _angle_atten_pow = angle_atten_pow;
@@ -153,5 +154,6 @@ void Light::add_spot_light(luisa::float3 luminance, float angle_radians, float s
     _light_stub.light_type = LightType::Spot;
     _update_light();
 }
-DECLARE_WORLD_COMPONENT_REGISTER(Light);
+DECLARE_WORLD_COMPONENT_REGISTER(LightComponent);
+
 }// namespace rbc::world
