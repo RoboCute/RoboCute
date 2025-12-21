@@ -107,7 +107,7 @@ inline static RCWeakRefCounter *rc_get_or_new_weak_ref_counter(
     if (weak_counter) {
         return rc_is_weak_ref_released(weak_counter) ? nullptr : weak_counter;
     } else {
-        RCWeakRefCounter *new_counter = luisa::new_with_allocator<RCWeakRefCounter>();
+        auto *new_counter = luisa::new_with_allocator<RCWeakRefCounter>();
         if (counter.compare_exchange_weak(
                 weak_counter,
                 new_counter,
@@ -300,25 +300,25 @@ struct RC {
 
     // ctor & dtor
     RC();
-    RC(std::nullptr_t);
-    RC(T *ptr);
+    explicit RC(std::nullptr_t);
+    explicit RC(T *ptr);
     template<RCLegalType<T> U>
-    RC(U *ptr);
+    explicit RC(U *ptr);
     ~RC();
 
     // copy & move
     RC(const RC &rhs);
-    RC(RC &&rhs);
+    RC(RC &&rhs) noexcept;
     template<RCLegalType<T> U>
-    RC(const RC<U> &rhs);
+    explicit RC(const RC<U> &rhs);
     template<RCLegalType<T> U>
-    RC(RC<U> &&rhs);
+    explicit RC(RC<U> &&rhs);
 
     // assign & move assign
     RC &operator=(std::nullptr_t);
     RC &operator=(T *ptr);
     RC &operator=(const RC &rhs);
-    RC &operator=(RC &&rhs);
+    RC &operator=(RC &&rhs) noexcept;
     template<RCLegalType<T> U>
     RC &operator=(U *ptr);
     template<RCLegalType<T> U>
@@ -335,12 +335,12 @@ struct RC {
     T *get() const;
 
     // count getter
-    RCCounterType ref_count() const;
-    RCCounterType ref_count_weak() const;
+    [[nodiscard]] RCCounterType ref_count() const;
+    [[nodiscard]] RCCounterType ref_count_weak() const;
 
     // empty
-    bool is_empty() const;
-    operator bool() const;
+    [[nodiscard]] bool is_empty() const;
+    explicit operator bool() const;
 
     // ops
     void reset();
@@ -383,15 +383,15 @@ struct RCWeakLocker {
 
     // copy & move
     RCWeakLocker(const RCWeakLocker &rhs) = delete;
-    RCWeakLocker(RCWeakLocker &&rhs);
+    RCWeakLocker(RCWeakLocker &&rhs) noexcept;
 
     // assign & move assign
     RCWeakLocker &operator=(const RCWeakLocker &rhs) = delete;
-    RCWeakLocker &operator=(RCWeakLocker &&rhs);
+    RCWeakLocker &operator=(RCWeakLocker &&rhs) noexcept;
 
     // is empty
-    bool is_empty() const;
-    operator bool() const;
+    [[nodiscard]] bool is_empty() const;
+    explicit operator bool() const;
 
     // getter
     T *get() const;
@@ -402,7 +402,7 @@ struct RCWeakLocker {
 
     // lock to RC
     RC<T> rc() const;
-    operator RC<T>() const;
+    explicit operator RC<T>() const;
 
 private:
     T *_ptr;
@@ -413,29 +413,29 @@ template<typename T>
 struct RCWeak {
     // ctor & dtor
     RCWeak();
-    RCWeak(std::nullptr_t);
-    RCWeak(T *ptr);
+    explicit RCWeak(std::nullptr_t);
+    explicit RCWeak(T *ptr);
     template<RCLegalType<T> U>
-    RCWeak(U *ptr);
+    explicit RCWeak(U *ptr);
     template<RCLegalType<T> U>
-    RCWeak(const RC<U> &ptr);
+    explicit RCWeak(const RC<U> &ptr);
     ~RCWeak();
 
     // copy & move
     RCWeak(const RCWeak &rhs);
-    RCWeak(RCWeak &&rhs);
+    RCWeak(RCWeak &&rhs) noexcept;
     template<RCLegalType<T> U>
-    RCWeak(const RCWeak<U> &rhs);
+    explicit RCWeak(const RCWeak<U> &rhs) noexcept;
     template<RCLegalType<T> U>
-    RCWeak(RCWeak<U> &&rhs);
+    explicit RCWeak(RCWeak<U> &&rhs);
 
     // assign & move assign
     RCWeak &operator=(std::nullptr_t);
     RCWeak &operator=(T *ptr);
     RCWeak &operator=(const RCWeak &rhs);
-    RCWeak &operator=(RCWeak &&rhs);
+    RCWeak &operator=(RCWeak &&rhs) noexcept;
     template<RCLegalType<T> U>
-    RCWeak &operator=(U *ptr);
+    RCWeak &operator=(U *ptr) noexcept;
     template<RCLegalType<T> U>
     RCWeak &operator=(const RCWeak<U> &rhs);
     template<RCLegalType<T> U>
@@ -448,15 +448,15 @@ struct RCWeak {
     RCWeakRefCounter *get_counter() const;
 
     // count getter
-    RCCounterType ref_count_weak() const;
+    [[nodiscard]] RCCounterType ref_count_weak() const;
 
     // lock
     RCWeakLocker<T> lock() const;
 
     // empty
-    bool is_empty() const;
-    bool is_expired() const;
-    bool is_alive() const;
+    [[nodiscard]] bool is_empty() const;
+    [[nodiscard]] bool is_expired() const;
+    [[nodiscard]] bool is_alive() const;
     operator bool() const;
 
     // ops
@@ -531,7 +531,7 @@ inline RC<T>::RC(const RC &rhs)
     }
 }
 template<typename T>
-inline RC<T>::RC(RC &&rhs)
+inline RC<T>::RC(RC &&rhs) noexcept
     : _ptr(rhs._ptr) {
     rhs._ptr = nullptr;
 }
@@ -579,7 +579,7 @@ inline RC<T> &RC<T>::operator=(U *ptr) {
     return *this;
 }
 template<typename T>
-inline RC<T> &RC<T>::operator=(RC &&rhs) {
+inline RC<T> &RC<T>::operator=(RC &&rhs) noexcept {
     if (this != &rhs) {
         reset();
         _ptr = rhs._ptr;
@@ -616,7 +616,7 @@ template<typename T>
 template<typename... Args>
     requires(luisa::is_constructible_v<T, Args...>)
 inline RC<T> RC<T>::New(Args &&...args) {
-    return {luisa::new_with_allocator<T>(std::forward<Args>(args)...)};
+    return RC<T>{luisa::new_with_allocator<T>(std::forward<Args>(args)...)};
 }
 
 // getter
@@ -736,7 +736,7 @@ inline RCWeakLocker<T>::~RCWeakLocker() {
 
 // copy & move
 template<typename T>
-inline RCWeakLocker<T>::RCWeakLocker(RCWeakLocker &&rhs)
+inline RCWeakLocker<T>::RCWeakLocker(RCWeakLocker &&rhs) noexcept
     : _ptr(rhs._ptr), _counter(rhs._counter) {
     rhs._ptr = nullptr;
     rhs._counter = nullptr;
@@ -744,7 +744,7 @@ inline RCWeakLocker<T>::RCWeakLocker(RCWeakLocker &&rhs)
 
 // assign & move assign
 template<typename T>
-inline RCWeakLocker<T> &RCWeakLocker<T>::operator=(RCWeakLocker &&rhs) {
+inline RCWeakLocker<T> &RCWeakLocker<T>::operator=(RCWeakLocker &&rhs) noexcept {
     if (this != &rhs) {
         if (_ptr) {
             _counter->unlock_for_use();
@@ -866,14 +866,14 @@ inline RCWeak<T>::RCWeak(const RCWeak &rhs)
     }
 }
 template<typename T>
-inline RCWeak<T>::RCWeak(RCWeak &&rhs)
+inline RCWeak<T>::RCWeak(RCWeak &&rhs) noexcept
     : _ptr(rhs._ptr), _counter(rhs._counter) {
     rhs._ptr = nullptr;
     rhs._counter = nullptr;
 }
 template<typename T>
 template<RCLegalType<T> U>
-inline RCWeak<T>::RCWeak(const RCWeak<U> &rhs) {
+inline RCWeak<T>::RCWeak(const RCWeak<U> &rhs) noexcept {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
     if (rhs.is_alive()) {
         _ptr = static_cast<T *>(rhs.get_unsafe());
@@ -912,7 +912,7 @@ inline RCWeak<T> &RCWeak<T>::operator=(const RCWeak &rhs) {
     return *this;
 }
 template<typename T>
-inline RCWeak<T> &RCWeak<T>::operator=(RCWeak &&rhs) {
+inline RCWeak<T> &RCWeak<T>::operator=(RCWeak &&rhs) noexcept {
     if (this != &rhs) {
         reset();
         _ptr = rhs._ptr;
@@ -924,7 +924,7 @@ inline RCWeak<T> &RCWeak<T>::operator=(RCWeak &&rhs) {
 }
 template<typename T>
 template<RCLegalType<T> U>
-inline RCWeak<T> &RCWeak<T>::operator=(U *ptr) {
+inline RCWeak<T> &RCWeak<T>::operator=(U *ptr) noexcept {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
     reset(ptr);
     return *this;

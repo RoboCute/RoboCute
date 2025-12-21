@@ -150,9 +150,6 @@ struct RTTRExportHelper {
 
 ### RTTRRecordBuilder
 
-
-
-
 ### IRTTRBasic
 
 - placement new
@@ -170,3 +167,24 @@ struct RTTRExportHelper {
 - ERTTRTypeCategory::Record
     - _record_data.type_id
 - RTTRTypeCategory::Enum
+
+## RC
+
+RefCounted
+
+RBC_RC_INTERFACE
+- rbc_rc_count
+- rbc_rc_add_ref
+- rbc_rc_weak_lock
+- rbc_rc_release
+- rbc_rc_weak_ref_count
+- rbc_rc_weak_ref_counter
+- rbc_rc_weak_ref_counter_notify_dead
+- rbc_rc_delete
+
+RBC_RC_IMPL
+
+- RC
+- RCWeak
+- RCWeakLocker
+- RCBase
