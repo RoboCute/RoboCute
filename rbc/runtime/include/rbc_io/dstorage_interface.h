@@ -44,8 +44,7 @@ public:
     IOFile() = default;
     explicit IOFile(luisa::string_view file);
     IOFile(IOFile const &) = delete;
-    IOFile(IOFile &&rhs) noexcept : _handle(std::exchange(rhs._handle, {})) {
-    }
+    IOFile(IOFile &&rhs) noexcept;
     explicit operator bool() const {
         return static_cast<bool>(_handle);
     }

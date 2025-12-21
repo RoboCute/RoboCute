@@ -9,7 +9,7 @@
  */
 #include <rbc_config.h>
 
-namespace rbc::world {
+namespace rbc {
 
 enum class EResourceLoadingStatus : uint32_t;
 enum class EResourceInstallStatus {
@@ -18,13 +18,13 @@ enum class EResourceInstallStatus {
     Failed
 };
 
-struct SKR_WORLD_API LocalResourceRegistry {
+struct RBC_WORLD_API LocalResourceRegistry {
 };
 
-struct SKR_WORLD_API ResourceRecord {
+struct RBC_WORLD_API ResourceRecord {
 };
 
-struct SKR_WORLD_API ResourceHandle {
+struct RBC_WORLD_API ResourceHandle {
 public:
     ResourceHandle();
     // ResourceHandle(const ResourceHandle &other);
@@ -69,8 +69,8 @@ protected:
     // };
 };
 
-struct SKR_WORLD_API ResourceFactory {
+struct RBC_WORLD_API ResourceFactory {
     virtual float AsyncSerdeLoadFactor() { return 1.0f; }
 };
 
-}// namespace rbc::world
+}// namespace rbc
