@@ -47,7 +47,9 @@ void init_resource_loader(luisa::filesystem::path const &root_path, luisa::files
 }
 RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     auto obj = get_object(guid);
-    if (obj) return obj;
+
+    if (obj) return RC<Resource>{obj};
+
     LUISA_DEBUG_ASSERT(_res_loader && !_res_loader->_root_path.empty());
     ResourceLoader::ResourceHandle *v{};
     {
@@ -59,7 +61,9 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         v = &iter.value();
     }
     std::lock_guard lck{v->mtx};
-    RC<Resource> res = v->res.lock();
+
+    RC<Resource> res{v->res.lock().get()};
+
     if (res) {
         if (async_load_from_file) {
             if (!res->empty())
@@ -67,6 +71,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         }
         return res;
     }
+
     auto guid_str = guid.to_string();
     luisa::BinaryFileStream file_stream(luisa::to_string(_res_loader->_meta_path / (guid_str + ".rbcmt")));
     auto remove_value = [&]() {

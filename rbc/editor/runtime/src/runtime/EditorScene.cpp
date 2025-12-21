@@ -294,14 +294,14 @@ RC<DeviceMesh> EditorScene::loadMeshFromFile(const luisa::string &path) {
     MeshLoader loader;
     if (!loader.can_load(path.c_str())) {
         LUISA_ERROR("MeshLoader cannot load file: {}", path);
-        return nullptr;
+        return RC<DeviceMesh>{};
     }
 
     auto mesh_ptr = loader.load(path.c_str(), "{}");
     auto mesh = luisa::static_pointer_cast<rbc::Mesh>(mesh_ptr);
     if (!mesh) {
         LUISA_ERROR("Failed to load mesh: {}", path);
-        return nullptr;
+        return RC<DeviceMesh>{};
     }
 
     // Compute normals if not present

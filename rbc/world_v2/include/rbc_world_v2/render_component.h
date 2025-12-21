@@ -4,7 +4,8 @@
 
 namespace rbc::world {
 struct Mesh;
-struct Material;
+struct MaterialResource;
+
 struct RBC_WORLD_API RenderComponent final : ComponentDerive<RenderComponent> {
     DECLARE_WORLD_COMPONENT_FRIEND(RenderComponent)
 private:
@@ -12,7 +13,7 @@ private:
     ~RenderComponent();
     ObjectRenderType _type{};
     luisa::vector<MatCode> _material_codes;
-    luisa::vector<RC<Material>> _materials;
+    luisa::vector<RC<MaterialResource>> _materials;
     union {
         uint _mesh_tlas_idx;
         uint _mesh_light_idx;
@@ -28,7 +29,7 @@ public:
     void deserialize_meta(ObjDeSerialize const &ser) override;
     void dispose() override;
     // draw
-    void update_object(luisa::span<RC<Material> const> materials = {}, Mesh *mesh = nullptr);
+    void update_object(luisa::span<RC<MaterialResource> const> materials = {}, Mesh *mesh = nullptr);
     uint get_tlas_index() const;
     void remove_object();
 private:

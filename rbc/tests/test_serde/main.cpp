@@ -14,7 +14,7 @@
 #include <rbc_world_v2/base_object.h>
 #include <rbc_world_v2/transform.h>
 #include <rbc_world_v2/entity.h>
-#include <rbc_world_v2/material.h>
+#include <rbc_world_v2/resources/material.h>
 #include <rbc_core/runtime_static.h>
 
 using namespace rbc;

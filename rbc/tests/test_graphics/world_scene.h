@@ -2,7 +2,7 @@
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/mesh.h>
 #include <rbc_world_v2/texture.h>
-#include <rbc_world_v2/material.h>
+#include <rbc_world_v2/resources/material.h>
 #include <rbc_graphics/camera.h>
 namespace rbc {
 struct GraphicsUtils;
@@ -12,7 +12,8 @@ struct WorldScene {
     RC<world::Texture> skybox{};
     RC<world::Texture> tex{};
     luisa::vector<world::Entity *> _entities;
-    luisa::vector<RC<world::Material>> _mats;
+    luisa::vector<RC<world::MaterialResource>> _mats;
+
     struct Gizmos : RCBase {
         Buffer<uint> data;
         float3 relative_pos;

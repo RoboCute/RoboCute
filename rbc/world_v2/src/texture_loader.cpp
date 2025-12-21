@@ -158,7 +158,8 @@ RC<Texture> TextureLoader::decode_texture(
             (const stbi_uc *)data.data(), data.size(), &x, &y, &channels_in_file, 4);
         auto tex = new DeviceImage();
 
-        RC<Texture> result = world::create_object<Texture>();
+        RC<Texture> result{world::create_object<Texture>()};
+
         result->_tex = tex;
         auto &img = tex->host_data_ref();
         result->_size = uint2(x, y);
@@ -183,7 +184,7 @@ RC<Texture> TextureLoader::decode_texture(
         auto ptr = stbi_loadf_from_memory(
             (const stbi_uc *)data.data(), data.size(), &x, &y, &channels_in_file, 4);
         auto tex = new DeviceImage();
-        RC<Texture> result = world::create_object<Texture>();
+        RC<Texture> result{world::create_object<Texture>()};
         result->_tex = tex;
         auto &img = tex->host_data_ref();
         result->_size = uint2(x, y);
@@ -242,7 +243,7 @@ RC<Texture> TextureLoader::decode_texture(
                 LUISA_WARNING("Unsupported sample count");
                 return {};
         }
-        RC<Texture> result = world::create_object<Texture>();
+        RC<Texture> result{world::create_object<Texture>()};
         result->_pixel_storage = (LCPixelStorage)pixel_storage;
         result->_size = uint2(width, height);
         result->_mip_level = 1;// TODO: mipmap generate
@@ -338,7 +339,7 @@ RC<Texture> TextureLoader::decode_texture(
             }
         }
         auto tex = new DeviceImage();
-        RC<Texture> result = world::create_object<Texture>();
+        RC<Texture> result{world::create_object<Texture>()};
         result->_tex = tex;
         auto &img = tex->host_data_ref();
         result->_size = make_uint2(width, height);

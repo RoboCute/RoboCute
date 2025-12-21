@@ -1,4 +1,4 @@
-#include <rbc_world_v2/material.h>
+#include <rbc_world_v2/resources/material.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/render_device.h>
@@ -17,7 +17,7 @@ struct MaterialInst : RBCStruct {
     MatCode _default_mat_code{};
 };
 static RuntimeStatic<MaterialInst> _mat_inst;
-MatCode Material::default_mat_code() {
+MatCode MaterialResource::default_mat_code() {
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
         LUISA_ERROR("Renderer::update_object can only be called in render-thread.");
     }
@@ -47,19 +47,19 @@ void _collect_all_materials() {
         sm->mat_manager().discard_mat_instance(MatCode{i});
     }
 }
-bool Material::empty() const {
+bool MaterialResource::empty() const {
     std::shared_lock lck{_async_mtx};
     return !_loaded;
 }
-bool Material::load_executed() const {
+bool MaterialResource::load_executed() const {
     std::shared_lock lck{_async_mtx};
     return _loaded;
 }
-bool Material::load_finished() const {
+bool MaterialResource::load_finished() const {
     std::shared_lock lck{_async_mtx};
     return _loaded && _mat_code.value != ~0u;
 }
-void Material::load_from_json(luisa::string_view json_vec) {
+void MaterialResource::load_from_json(luisa::string_view json_vec) {
     JsonDeSerializer deser{json_vec};
     luisa::string mat_type;
     bool is_default{false};
@@ -109,7 +109,7 @@ void Material::load_from_json(luisa::string_view json_vec) {
         //TODO: other types
     }
 }
-luisa::BinaryBlob Material::write_content_to() {
+luisa::BinaryBlob MaterialResource::write_content_to() {
     JsonSerializer json_ser;
     {
         std::lock_guard lck{_async_mtx};
@@ -151,7 +151,7 @@ luisa::BinaryBlob Material::write_content_to() {
     }
     return json_ser.write_to();
 }
-void Material::serialize_meta(ObjSerialize const &ser) const {
+void MaterialResource::serialize_meta(ObjSerialize const &ser) const {
     BaseType::serialize_meta(ser);
     // TODO: mark dependencies
     // for (auto &i : _depended_resources) {
@@ -160,7 +160,7 @@ void Material::serialize_meta(ObjSerialize const &ser) const {
     //         ser.depended_resources.emplace(guid);
     // }
 }
-bool Material::async_load_from_file() {
+bool MaterialResource::async_load_from_file() {
     if (_path.empty()) return false;
     std::lock_guard lck{_async_mtx};
     if (_loaded) {
@@ -183,13 +183,14 @@ bool Material::async_load_from_file() {
     });
     return true;
 }
-Material::Material()
+MaterialResource::MaterialResource()
     : _event(luisa::fiber::event::Mode::Manual, true) {}
-Material::~Material() {
+
+MaterialResource::~MaterialResource() {
     wait_load_finished();
     unload();
 }
-void Material::unload() {
+void MaterialResource::unload() {
     std::lock_guard lck{_async_mtx};
     _depended_resources.clear();
     _loaded = false;
@@ -199,21 +200,21 @@ void Material::unload() {
     std::lock_guard lck1{_mat_inst->_mat_mtx};
     _mat_inst->_disposed_mat.emplace_back(value);
 }
-void Material::wait_load_executed() const {
+void MaterialResource::wait_load_executed() const {
     std::shared_lock lck{_async_mtx};
     _event.wait();
     for (auto &i : _depended_resources) {
         i->wait_load_executed();
     }
 }
-void Material::wait_load_finished() const {
+void MaterialResource::wait_load_finished() const {
     std::shared_lock lck{_async_mtx};
     _event.wait();
     for (auto &i : _depended_resources) {
         if (i) i->wait_load_finished();
     }
 }
-bool Material::init_device_resource() {
+bool MaterialResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
@@ -271,7 +272,7 @@ bool Material::init_device_resource() {
     return true;
 }
 
-bool Material::unsafe_save_to_path() const {
+bool MaterialResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     if (!_mat_data.valid()) return false;
     JsonSerializer t;
@@ -320,6 +321,6 @@ bool Material::unsafe_save_to_path() const {
     });
 }
 // clang-format off
-DECLARE_WORLD_OBJECT_REGISTER(Material);
+DECLARE_WORLD_OBJECT_REGISTER(MaterialResource);
 // clang-format on
 }// namespace rbc::world

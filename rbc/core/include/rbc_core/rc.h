@@ -302,6 +302,7 @@ struct RC {
     RC();
     explicit RC(std::nullptr_t);
     explicit RC(T *ptr);
+
     template<RCLegalType<T> U>
     explicit RC(U *ptr);
     ~RC();

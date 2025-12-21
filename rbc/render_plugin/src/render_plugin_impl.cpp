@@ -45,7 +45,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             RenderDevice::instance().lc_main_cmd_list()};
         return reinterpret_cast<PipeCtxStub *>(ctx);
     }
-    StateMap *pipe_ctx_state_map(PipeCtxStub *ctx) {
+    StateMap *pipe_ctx_state_map(PipeCtxStub *ctx) override {
         return &reinterpret_cast<PipelineContext *>(ctx)->pipeline_settings;
     }
     void destroy_pipeline_context(PipeCtxStub *ctx) override {
@@ -122,7 +122,8 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         if (file_stream.length() - file_offset_bytes < pixel_storage_size(pixel_storage, make_uint3(resolution, 1u))) {
             return false;
         }
-        RC<DeviceImage> img = new DeviceImage();
+
+        auto img = RC<DeviceImage>::New();
         img->create_texture<float>(
             device.lc_device(),
             pixel_storage, resolution,

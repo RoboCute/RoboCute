@@ -22,10 +22,10 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     auto mat2 = R"({"type": "pbr", "specular_roughness": 0.2, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]})"sv;
     auto light_mat_desc = R"({"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]})"sv;
 
-    auto basic_mat = RC<world::Material>{world::create_object<world::Material>()};
-    auto left_wall_mat = RC<world::Material>{world::create_object<world::Material>()};
-    auto right_wall_mat = RC<world::Material>{world::create_object<world::Material>()};
-    auto light_mat = RC<world::Material>{world::create_object<world::Material>()};
+    auto basic_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+    auto left_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+    auto right_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+    auto light_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
     basic_mat->load_from_json(mat0);
     left_wall_mat->load_from_json(mat1);
     right_wall_mat->load_from_json(mat2);
@@ -105,7 +105,10 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     // tex->pack_to_tile();
     tex->init_device_resource();
     skybox->init_device_resource();
-    utils->render_plugin()->update_skybox(skybox->get_image());
+
+    rbc::RC<DeviceImage> image{skybox->get_image()};
+    utils->render_plugin()->update_skybox(image);
+
     utils->update_texture(skybox->get_image());// update through render-thread
 
     auto quad_entity = _entities.emplace_back(world::create_object<world::Entity>());
@@ -113,7 +116,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     auto quad_render = quad_entity->add_component<world::RenderComponent>();
     quad_trans->set_pos(make_double3(0, 0, 4), true);
     quad_trans->set_scale(double3(10, 10, 10), true);
-    auto quad_mat = world::create_object<world::Material>();
+    auto quad_mat = world::create_object<world::MaterialResource>();
     auto quad_mat_str = luisa::format(R"({{"type": "pbr", "base_albedo_tex": "{}"}})", tex->guid().to_base64());
     quad_mat->load_from_json(quad_mat_str);
     quad_mat->init_device_resource();
@@ -188,8 +191,9 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
             skybox = world::load_resource(*sky_guid, true);
         }
         skybox->wait_load_finished();
-        utils->render_plugin()->update_skybox(skybox->get_image());
-        
+        rbc::RC<DeviceImage> image{skybox->get_image()};
+        utils->render_plugin()->update_skybox(image);
+
         luisa::vector<std::byte> data;
         {
             BinaryFileStream file_stream(luisa::to_string(entities_path));

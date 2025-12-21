@@ -3,16 +3,16 @@
 #include <rbc_graphics/object_types.h>
 #include <rbc_world_v2/resource_base.h>
 namespace rbc::world {
-struct RBC_WORLD_API Material final : ResourceBaseImpl<Material> {
-    DECLARE_WORLD_OBJECT_FRIEND(Material)
+struct RBC_WORLD_API MaterialResource final : ResourceBaseImpl<MaterialResource> {
+    DECLARE_WORLD_OBJECT_FRIEND(MaterialResource)
 private:
-    using BaseType = ResourceBaseImpl<Material>;
+    using BaseType = ResourceBaseImpl<MaterialResource>;
     mutable rbc::shared_atomic_mutex _async_mtx;
     luisa::fiber::event _event;
     luisa::vector<RC<Resource>> _depended_resources;
 
-    Material();
-    ~Material();
+    MaterialResource();
+    ~MaterialResource();
     MaterialStub::MatDataType _mat_data;
     MatCode _mat_code;
     bool _loaded : 1 {false};
@@ -38,4 +38,4 @@ protected:
     bool unsafe_save_to_path() const override;
 };
 };// namespace rbc::world
-RBC_RTTI(rbc::world::Material)
+RBC_RTTI(rbc::world::MaterialResource)

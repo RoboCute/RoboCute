@@ -2,7 +2,7 @@
 #include <rbc_world_v2/transform.h>
 #include <rbc_world_v2/resource_loader.h>
 #include <rbc_world_v2/type_register.h>
-#include <rbc_world_v2/material.h>
+#include <rbc_world_v2/resources/material.h>
 #include <rbc_world_v2/mesh.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_world_v2/entity.h>
@@ -57,10 +57,11 @@ void RenderComponent::deserialize_meta(ObjDeSerialize const &ser) {
                 _materials.emplace_back(nullptr);
             } else {
                 auto obj = load_resource(guid, true);
-                if (obj && obj->is_type_of(TypeInfo::get<Material>()))
-                    _materials.emplace_back(static_cast<RC<Material> &&>(obj));
-                else
+                if (obj && obj->is_type_of(TypeInfo::get<MaterialResource>())) {
+                    _materials.emplace_back(std::move(obj));
+                } else {
                     _materials.emplace_back(nullptr);
+                }
             }
         }
         obj.end_scope();
@@ -69,12 +70,12 @@ void RenderComponent::deserialize_meta(ObjDeSerialize const &ser) {
     if (obj._load(guid, "mesh")) {
         auto obj = load_resource(guid, true);
         if (obj && obj->is_type_of(TypeInfo::get<Mesh>())) {
-            _mesh_ref = static_cast<RC<Mesh> &&>(obj.get());
+            _mesh_ref = RC<Mesh>(std::move(obj));
         }
     }
 }
 
-static bool material_is_emission(luisa::span<RC<Material> const> materials) {
+static bool material_is_emission(luisa::span<RC<MaterialResource> const> materials) {
     bool contained_emission = false;
     for (auto &i : materials) {
         if (!i) [[unlikely]]
@@ -99,7 +100,7 @@ static bool material_is_emission(luisa::span<RC<Material> const> materials) {
     }
     return contained_emission;
 };
-static luisa::vector<float> material_emissions(luisa::span<RC<Material> const> materials) {
+static luisa::vector<float> material_emissions(luisa::span<RC<MaterialResource> const> materials) {
     luisa::vector<float> vec;
     vec.resize(materials.size());
     size_t mat_index = 0;
@@ -165,7 +166,7 @@ void RenderComponent::remove_object() {
 RenderComponent::RenderComponent(Entity *entity) : ComponentDerive<RenderComponent>(entity) {
     _mesh_light_idx = ~0u;
 }
-void RenderComponent::update_object(luisa::span<RC<Material> const> mats, Mesh *mesh) {
+void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats, Mesh *mesh) {
     auto tr = entity()->get_component<Transform>();
     if (!tr) {
         LUISA_WARNING("Transform component not found, renderer update failed.");
@@ -205,14 +206,14 @@ void RenderComponent::update_object(luisa::span<RC<Material> const> mats, Mesh *
         [&](size_t i) {
             auto &&mat = _materials[i];
             if (!mat || mat->empty()) {
-                return Material::default_mat_code();
+                return MaterialResource::default_mat_code();
             } else {
                 mat->init_device_resource();
                 return mat->mat_code();
             }
         });
     if (_material_codes.size() < submesh_size) {
-        auto default_mat = Material::default_mat_code();
+        auto default_mat = MaterialResource::default_mat_code();
         do {
             _material_codes.emplace_back(default_mat);
         } while (_material_codes.size() < submesh_size);
