@@ -57,8 +57,7 @@ void RenderDevice::init(
         ext = rbc::make_vk_device_config(external_device, gpu_dump);
 
     DeviceConfig config{
-        .extension = std::move(ext),
-        .inqueue_buffer_limit = false
+        .extension = std::move(ext)
     };
     _device_ext = config.extension.get();
     _device = _context.value().create_device(

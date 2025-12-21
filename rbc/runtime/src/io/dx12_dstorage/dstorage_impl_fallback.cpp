@@ -126,8 +126,6 @@ struct IOQueue : RBCStruct {
     luisa::spin_mutex work_thd;
     CommandList cmdlist;
     Stream stream;
-    TimelineEvent evt;
-    uint64_t evt_fence{};
     std::thread thd;
     std::atomic_uint64_t thd_fence_idx = 0;
     bool enabled = true;
@@ -158,7 +156,6 @@ struct IOQueue : RBCStruct {
               }
           }) {
         stream = device.create_stream(StreamTag::COPY);
-        evt = device.create_timeline_event();
         alloc = vstd::make_unique<FrameBuffer>(staging_size, _pinnedmem_ext, &visitor);
     }
     void init_alloc() {
@@ -175,16 +172,11 @@ struct IOQueue : RBCStruct {
         if (!alloc) return;
         _pinnedmem_ext->flush_range(alloc->upload_buffer.handle(), 0, alloc->buffer_offset);
         if (!cmdlist.empty()) {
-
-            if (evt_fence > 1) [[likely]] {
-                evt.synchronize(evt_fence - 1);
-            }
             cmdlist.add_callback([this, alloc = std::move(this->alloc)]() mutable {
                 alloc->reset();
                 _waiting_allocs.push(std::move(alloc));
             });
-            stream << cmdlist.commit()
-                   << evt.signal(++evt_fence);
+            stream << cmdlist.commit();
         } else {
             alloc->reset();
             _waiting_allocs.push(std::move(alloc));
@@ -198,8 +190,6 @@ struct IOQueue : RBCStruct {
         cv.notify_one();
         thd.join();
         stream.synchronize();
-        if (evt_fence > 0) [[likely]]
-            evt.synchronize(evt_fence);
     }
 };
 }// namespace detail

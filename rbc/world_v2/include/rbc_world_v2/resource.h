@@ -92,7 +92,7 @@ protected:
 };
 
 struct RBC_WORLD_API ResourceHeader {
-    uint32_t version = ~0ull;
+    uint32_t version{~0u};
     vstd::Guid guid;
     vstd::Guid type;
     luisa::vector<ResourceHandle> dependencies;

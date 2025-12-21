@@ -72,7 +72,7 @@ ResourceHandle &ResourceHandle::operator=(const vstd::Guid &other) {
     return *this;
 }
 
-ResourceHandle::ResourceHandle(ResourceHandle &&other) noexcept {
+ResourceHandle::ResourceHandle(ResourceHandle &&other) {
     // TODO: 实现移动构造函数
     // 直接移动内部数据，将 other 置为空状态
     guid = other.guid;
@@ -81,7 +81,7 @@ ResourceHandle::ResourceHandle(ResourceHandle &&other) noexcept {
     std::memset((void *)&other, 0, sizeof(ResourceHandle));
 }
 
-ResourceHandle &ResourceHandle::operator=(ResourceHandle &&other) noexcept {
+ResourceHandle &ResourceHandle::operator=(ResourceHandle &&other) {
     // TODO: 实现移动赋值运算符
     // 先释放当前资源引用，再移动 other
     reset();
@@ -198,7 +198,7 @@ rbc::TypeInfo ResourceHandle::get_type() const {
     // 从 header.type 获取类型信息
     // 需要根据 type guid 查找对应的 TypeInfo
     // 这里需要实现从 Guid 到 TypeInfo 的映射
-    return rbc::TypeInfo::invalid(); // 占位符
+    return rbc::TypeInfo::invalid();// 占位符
 }
 
 EResourceLoadingStatus ResourceHandle::get_status() const {
@@ -224,7 +224,7 @@ void *ResourceHandle::load(bool requireInstalled) {
     // 如果当前是 guid 模式，需要先解析为 record
     // 调用 ResourceSystem::LoadResource
     // 根据 requireInstalled 决定是否等待安装完成
-    return nullptr; // 占位符
+    return nullptr;// 占位符
 }
 
 ResourceRecord *ResourceHandle::get_record() const {
@@ -245,7 +245,7 @@ void ResourceHandle::acquire_record(ResourceRecord *record) const {
     // 增加引用计数
     if (record) {
         pointer = record;
-        padding = 1; // 非 0 表示已解析
+        padding = 1;// 非 0 表示已解析
         record->AddReference();
     }
 }
@@ -330,13 +330,13 @@ bool LocalResourceRegistry::RequestResourceFile(ResourceRequest *request) {
     // TODO: 请求资源文件
     // 根据 base_path 和 request 的 guid/uri 构建文件路径
     // 启动异步文件读取，填充 request->blob
-    return false; // 占位符
+    return false;// 占位符
 }
 
 bool LocalResourceRegistry::CancelRequestFile(ResourceRequest *request) {
     // TODO: 取消资源文件请求
     // 停止正在进行的文件读取操作
-    return false; // 占位符
+    return false;// 占位符
 }
 
 // =====================================================
@@ -403,23 +403,23 @@ void ResourceSystem::Update() {
     // 处理序列化批次
     // 清理失败的请求
     std::lock_guard<std::mutex> lock(queue_mtx);
-    
+
     // 处理新请求
     ResourceRequest *request = nullptr;
     while (auto opt = request_queue.pop()) {
         request = *opt;
         to_update_requests.push_back(request);
     }
-    
+
     // 更新进行中的请求
     for (auto *req : to_update_requests) {
         req->Update();
     }
-    
+
     // 处理序列化批次
     // 根据 factory 的 AsyncSerdeLoadFactor 决定批次大小
     // 执行序列化操作
-    
+
     // 清理失败的请求
     ClearFinishRequestsInternal();
 }
@@ -447,7 +447,7 @@ ResourceRecord *ResourceSystem::RegisterResource(const vstd::Guid &guid) {
         resource_records_mtx.unlock();
         return result;
     }
-    
+
     auto *record = new ResourceRecord{};
     record->header.guid = guid;
     resource_records.emplace(guid, record);
@@ -463,11 +463,11 @@ ResourceRecord *ResourceSystem::LoadResource(const ResourceHandle handle, bool r
     // 返回 ResourceRecord 指针
     auto guid = handle.get_guid();
     auto *record = RegisterResource(guid);
-    
+
     // 创建请求并加入队列
     // 这里需要创建 ResourceRequest 的具体实现类
     // request_queue.push(request);
-    
+
     return record;
 }
 
@@ -481,14 +481,14 @@ ResourceHandle ResourceSystem::EnqueueResource(vstd::Guid guid, vstd::Guid type,
     record->header.dependencies = std::move(dependencies);
     record->resource = resource;
     record->SetStatus(status);
-    
+
     if (resource) {
         resource_to_update_mtx.lock();
         // resource_to_record 的 key 是 vstd::Guid，需要从 record->header.guid 获取
         resource_to_record.emplace(record->header.guid, record);
         resource_to_update_mtx.unlock();
     }
-    
+
     // TODO: 创建 ResourceHandle 并关联 record
     // 需要通过 ResourceHandle 的构造函数或特殊方法来设置 record
     // 当前实现：创建一个 guid 模式的 handle，后续在 load 时会解析为 record
@@ -514,7 +514,7 @@ void ResourceSystem::FlushResource(const ResourceHandle handle) {
     auto guid = handle.get_guid();
     auto *record = FindResourceRecord(guid);
     if (!record) return;
-    
+
     // 等待加载完成
     while (record->loading_status.load() < EResourceLoadingStatus::Installed) {
         Update();
@@ -574,21 +574,21 @@ void ResourceSystem::UnloadResourceInternal(ResourceRecord *record) {
     // 清理资源数据
     // 设置状态为 Unloaded
     if (!record) return;
-    
+
     record->SetStatus(EResourceLoadingStatus::Unloading);
-    
+
     if (record->resource) {
         record->resource->OnUninstall();
         resource_to_update_mtx.lock();
         resource_to_record.remove(record->header.guid);
         resource_to_update_mtx.unlock();
     }
-    
+
     // 卸载依赖
     for (auto &dep : record->header.dependencies) {
         UnloadResource(dep);
     }
-    
+
     record->SetStatus(EResourceLoadingStatus::Unloaded);
 }
 
@@ -600,7 +600,7 @@ void ResourceSystem::DestroyRecordInternal(ResourceRecord *record) {
     }
     resource_records.remove(record->header.guid);
     resource_records_mtx.unlock();
-    
+
     if (record->resource) {
         resource_to_update_mtx.lock();
         resource_to_record.remove(record->header.guid);
