@@ -10,6 +10,7 @@ protected:
     RuntimeStaticBase *p_next{};
     RBC_CORE_API RuntimeStaticBase();
     RBC_CORE_API ~RuntimeStaticBase();
+    static RBC_CORE_API void check_ptr(bool ptr);
 private:
     virtual void init() = 0;
     virtual void destroy() = 0;
@@ -55,19 +56,13 @@ struct RuntimeStatic<T> : RuntimeStaticBase {
     vstd::optional<T> ptr;
     T const *operator->() const {
 #ifndef NDEBUG
-        if (!ptr) {
-            LUISA_ERROR("Static object already disposed.");
-            return nullptr;
-        }
+        RuntimeStaticBase::check_ptr(ptr);
 #endif
         return ptr.ptr();
     }
     T *operator->() {
 #ifndef NDEBUG
-        if (!ptr) {
-            LUISA_ERROR("Static object already disposed.");
-            return nullptr;
-        }
+        RuntimeStaticBase::check_ptr(ptr);
 #endif
         return ptr.ptr();
     }

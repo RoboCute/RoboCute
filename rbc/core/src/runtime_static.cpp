@@ -18,4 +18,9 @@ void RuntimeStaticBase::dispose_all() {
         p->destroy();
     }
 }
+void RuntimeStaticBase::check_ptr(bool ptr) {
+    if (!ptr) {
+        LUISA_ERROR("Static object already disposed.");
+    }
+}
 }// namespace rbc
