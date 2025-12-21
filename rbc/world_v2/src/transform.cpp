@@ -1,6 +1,7 @@
 #include <rbc_world_v2/transform.h>
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/type_register.h>
+#include <rbc_core/runtime_static.h>
 namespace rbc::world {
 struct TransformStatic : vstd::IOperatorNewBase {
     luisa::vector<InstanceID> dirty_trans;

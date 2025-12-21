@@ -15,10 +15,15 @@
 #include <rbc_world_v2/transform.h>
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/material.h>
+#include <rbc_core/runtime_static.h>
 
 using namespace rbc;
 using namespace luisa;
 int main() {
+    RuntimeStaticBase::init_all();
+    auto dispose_runtime_static = vstd::scope_exit([] {
+        RuntimeStaticBase::dispose_all();
+    });
     world::init_world();
     auto dsp_world = vstd::scope_exit([&]() {
         world::destroy_world();
@@ -58,7 +63,7 @@ int main() {
     // // {
     rbc::JsonDeSerializer reader{json_str};
     auto entity_size = reader.last_array_size();
-    luisa::vector<world::Entity*> entities;
+    luisa::vector<world::Entity *> entities;
     entities.reserve(entity_size);
     for (auto i : vstd::range(entity_size)) {
         reader.start_object();
@@ -69,7 +74,7 @@ int main() {
         entity->deserialize_meta(deser_obj);
         reader.end_scope();
     }
-    for(auto& i : entities) {
+    for (auto &i : entities) {
         auto trans = i->get_component<world::Transform>();
         LUISA_INFO("{}", trans->position());
     }

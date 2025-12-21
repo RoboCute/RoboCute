@@ -6,7 +6,9 @@
 #include <rbc_world_v2/mesh.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_world_v2/entity.h>
-
+/*
+TODO: only should update light bvh while in ray-tracing mode
+*/
 namespace rbc::world {
 void RenderComponent::_on_transform_update() {
     if (_mesh_tlas_idx != ~0u) {
@@ -96,6 +98,35 @@ static bool material_is_emission(luisa::span<RC<Material> const> materials) {
         });
     }
     return contained_emission;
+};
+static luisa::vector<float> material_emissions(luisa::span<RC<Material> const> materials) {
+    luisa::vector<float> vec;
+    vec.resize(materials.size());
+    size_t mat_index = 0;
+    for (auto &i : materials) {
+        if (i) [[likely]] {
+            float3 emission{};
+            i->mat_data().visit([&]<typename T>(T const &t) {
+                if constexpr (std::is_same_v<T, material::OpenPBR>) {
+                    emission = float3{
+                        t.emission.luminance[0],
+                        t.emission.luminance[1],
+                        t.emission.luminance[2]};
+
+                } else {
+                    emission = float3{
+                        t.color[0],
+                        t.color[1],
+                        t.color[2]};
+                }
+            });
+
+            float lum = dot(emission, float3(0.2126729, 0.7151522, 0.0721750));
+            vec[mat_index] = lum;
+        }
+        ++mat_index;
+    }
+    return vec;
 };
 RenderComponent::~RenderComponent() {
     remove_object();
@@ -201,10 +232,12 @@ void RenderComponent::update_object(luisa::span<RC<Material> const> mats, Mesh *
                         sm.buffer_allocator(),
                         sm.buffer_uploader(),
                         _mesh_tlas_idx);
+                    auto emissions = material_emissions(_materials);
                     _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                         render_device->lc_main_cmd_list(),
                         mesh->device_mesh(),
                         matrix,
+                        emissions,
                         _material_codes);
                     _type = ObjectRenderType::EmissionMesh;
                 } else {
@@ -234,10 +267,12 @@ void RenderComponent::update_object(luisa::span<RC<Material> const> mats, Mesh *
                         matrix);
                     _type = ObjectRenderType::Mesh;
                 } else {
+                    auto emissions = material_emissions(_materials);
                     Lights::instance()->update_mesh_light_sync(
                         render_device->lc_main_cmd_list(),
                         _mesh_light_idx,
                         matrix,
+                        emissions,
                         _material_codes,
                         &mesh->device_mesh());
                 }
@@ -250,10 +285,12 @@ void RenderComponent::update_object(luisa::span<RC<Material> const> mats, Mesh *
     // create
     else {
         if (is_emission) {
+            auto emissions = material_emissions(_materials);
             _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                 render_device->lc_main_cmd_list(),
                 mesh->device_mesh(),
                 matrix,
+                emissions,
                 _material_codes);
             _type = ObjectRenderType::EmissionMesh;
         } else {
@@ -285,13 +322,15 @@ void RenderComponent::_update_object_pos(float4x4 matrix) {
                 _mesh_tlas_idx,
                 matrix, 0xff, true);
         } break;
-        case ObjectRenderType::EmissionMesh:
+        case ObjectRenderType::EmissionMesh: {
+            auto emissions = material_emissions(_materials);
             Lights::instance()->update_mesh_light_sync(
                 render_device->lc_main_cmd_list(),
                 _mesh_light_idx,
                 matrix,
+                emissions,
                 _material_codes);
-            break;
+        } break;
         case ObjectRenderType::Procedural:
             sm.accel_manager().set_procedural_instance(
                 _procedural_idx,

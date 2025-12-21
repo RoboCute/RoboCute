@@ -33,7 +33,6 @@ public:
         uint instance_size;
         vstd::spin_mutex mtx;
         vector<uint> alloc_pool;
-        vector<std::byte> host_data;
         MatType() = default;
         ~MatType() = default;
         MatType(MatType const &) = delete;
@@ -43,7 +42,6 @@ public:
 private:
     Device &_device;
     vstd::HashMap<uint, MatType> _mats;
-    bool _record_host_data;
     [[nodiscard]] uint _emplace_mat_type(
         BindlessAllocator &alloc,
         uint init_capacity,
@@ -61,7 +59,7 @@ private:
         span<const std::byte> mat_data);
 
 public:
-    MatManager(Device &device, bool record_host_data);
+    MatManager(Device &device);
     MatManager(MatManager const &) = delete;
     using ImagePtr = vstd::variant<Image<float> const *, SparseImage<float> const *>;
     using VolumePtr = vstd::variant<Volume<float> const *, SparseVolume<float> const *>;
@@ -74,10 +72,6 @@ public:
     [[nodiscard]] size_t get_mat_type_size(uint mat_type);
     void discard_mat_instance(
         MatCode mat_code);
-    // must be host aware
-    bool get_mat_instance(
-        MatCode mat_code,
-        luisa::span<std::byte> result);
 
     void set_mat_instance(
         MatCode mat_code,

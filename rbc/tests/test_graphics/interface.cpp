@@ -12,7 +12,6 @@
 #include <rbc_graphics/device_assets/device_sparse_image.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/device_assets/device_image.h>
-#include "simple_scene.h"
 #include <rbc_app/graphics_utils.h>
 #include "generated/rbc_backend.h"
 #include "rbc_graphics/object_types.h"

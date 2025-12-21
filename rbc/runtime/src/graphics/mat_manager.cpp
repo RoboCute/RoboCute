@@ -4,9 +4,8 @@
 #include <luisa/core/logging.h>
 namespace rbc
 {
-MatManager::MatManager(Device& device, bool record_host_data)
+MatManager::MatManager(Device& device)
     : _device(device)
-    , _record_host_data(record_host_data)
 {
     _mats.reserve(256);
 }
@@ -36,26 +35,7 @@ size_t MatManager::get_mat_type_size(uint mat_type_idx)
     LUISA_DEBUG_ASSERT(mat_type_iter);
     return mat_type_iter.value().size;
 }
-bool MatManager::get_mat_instance(
-    MatCode mat_code,
-    luisa::span<std::byte> result
-)
-{
-    uint mat_type_idx = mat_code.get_type();
-    auto mat_type_iter = _mats.find(mat_type_idx);
-    LUISA_DEBUG_ASSERT(mat_type_iter);
-    auto& mat_type = mat_type_iter.value();
-    const auto struct_stride = mat_type.size;
-    LUISA_DEBUG_ASSERT(result.size_bytes() == struct_stride);
-    auto offset = static_cast<size_t>(mat_code.get_inst_id()) * struct_stride;
-    std::lock_guard lck{ mat_type.mtx };
-    if (mat_type.host_data.size() < offset + result.size_bytes())
-    {
-        return false;
-    }
-    std::memcpy(result.data(), mat_type.host_data.data() + offset, result.size_bytes());
-    return true;
-}
+
 void MatManager::set_mat_instance(
     MatCode mat_code,
     BufferUploader& uploader,
@@ -78,10 +58,6 @@ void MatManager::set_mat_instance(
         1
     ));
     std::memcpy(ptr, mat_data.data(), struct_stride);
-    auto offset = static_cast<size_t>(mat_code.get_inst_id()) * struct_stride;
-    std::lock_guard lck{ mat_type.mtx };
-    if (mat_type.host_data.size() >= offset + struct_stride)
-        std::memcpy(mat_type.host_data.data() + offset, mat_data.data(), struct_stride);
 }
 
 auto MatManager::_emplace_mat_instance(
@@ -103,10 +79,6 @@ auto MatManager::_emplace_mat_instance(
         {
             id = mat_type.alloc_pool.back();
             mat_type.alloc_pool.pop_back();
-        }
-        else if (_record_host_data)
-        {
-            mat_type.host_data.push_back_uninitialized(struct_stride);
         }
     }
     if (id == ~0u)

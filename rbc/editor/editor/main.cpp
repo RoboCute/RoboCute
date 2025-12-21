@@ -23,6 +23,7 @@
 
 #include "RBCEditorRuntime/MainWindow.h"
 #include "RBCEditorRuntime/engine/EditorEngine.h"
+#include <rbc_core/runtime_static.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -36,9 +37,9 @@ using namespace luisa::compute;
 #include <material/mats.inl>
 
 struct AppConfig {
-    bool enable_console = true;  // 默认打开 console
-    bool enable_debug = true;    // 默认开启 debug 日志
-    int server_port = 5555;      // 默认端口 5555
+    bool enable_console = true;// 默认打开 console
+    bool enable_debug = true;  // 默认开启 debug 日志
+    int server_port = 5555;    // 默认端口 5555
 };
 
 void print_usage(const char *program_name) {
@@ -54,10 +55,10 @@ void print_usage(const char *program_name) {
 
 AppConfig parse_arguments(int argc, char **argv) {
     AppConfig config;
-    
+
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
-        
+
         if (arg == "-h" || arg == "--help") {
             print_usage(argv[0]);
             exit(0);
@@ -91,14 +92,17 @@ AppConfig parse_arguments(int argc, char **argv) {
             exit(1);
         }
     }
-    
+
     return config;
 }
 
 int main(int argc, char **argv) {
     // Parse command line arguments
+    RuntimeStaticBase::init_all();
+    auto dispose_runtime_static = vstd::scope_exit([] {
+        RuntimeStaticBase::dispose_all();
+    });
     AppConfig config = parse_arguments(argc, argv);
-
 #ifdef _WIN32
     // Allocate console window for debug output on Windows (if enabled)
     if (config.enable_console) {
@@ -118,7 +122,7 @@ int main(int argc, char **argv) {
 #endif
 
     int ret = 0;
-    
+
     // Set log level based on debug flag
     if (config.enable_debug) {
         log_level_info();
@@ -137,7 +141,7 @@ int main(int argc, char **argv) {
     {
         MainWindow window;
         window.setupUi();
-        
+
         // Build server URL with configured port
         std::string server_url = "http://127.0.0.1:" + std::to_string(config.server_port);
         window.startSceneSync(QString::fromStdString(server_url));
@@ -145,6 +149,6 @@ int main(int argc, char **argv) {
         ret = QApplication::exec();
     }
     rbc::EditorEngine::instance().shutdown();
-    
+
     return ret;
 }

@@ -1,5 +1,6 @@
 #include <rbc_world_v2/resource_loader.h>
 #include <rbc_world_v2/type_register.h>
+#include <rbc_core/runtime_static.h>
 #include <rbc_core/shared_atomic_mutex.h>
 
 namespace rbc::world {

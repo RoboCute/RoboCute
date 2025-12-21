@@ -29,7 +29,6 @@ void Lights::scene_manager_tick() {
             _before_render_mtx.unlock();
         }
     }
-    mesh_light_accel.update();
 }
 
 Lights::Lights()
@@ -463,6 +462,7 @@ uint Lights::add_mesh_light_sync(
     CommandList &cmdlist,
     RC<DeviceMesh> const &device_mesh,
     float4x4 local_to_world,
+    luisa::span<float const> material_emissions,
     luisa::span<MatCode const> material_codes) {
     auto &stream = RenderDevice::instance().lc_main_stream();
     auto &scene = SceneManager::instance();
@@ -476,7 +476,6 @@ uint Lights::add_mesh_light_sync(
     }
     auto &v = mesh_lights.light_data[data_index];
     v.device_mesh = device_mesh;
-    v._load_flag = luisa::make_unique<std::atomic<MeshLightLoadState>>(MeshLightLoadState::Unloaded);
     device_mesh->wait_finished();
     v.tlas_light_id = scene.light_accel()._get_next_meshlight_index();
     v.tlas_id = scene.accel_manager().emplace_mesh_instance(
@@ -489,28 +488,15 @@ uint Lights::add_mesh_light_sync(
         true,
         v.tlas_light_id,
         LightAccel::t_MeshLight);
-    uint mat_index;
-    auto mat_node = scene.accel_manager().instance_data(v.tlas_id).material_node;
-    if (mat_node) {
-        mat_index = mat_node.offset_bytes() / sizeof(uint);
-    } else {
-        mat_index = material_codes[0].value;
-    }
-    scene.buffer_uploader().commit(cmdlist, scene.host_upload_buffer());
-    scene.sync_bindless_heap(cmdlist, stream);
-    v.host_result = mesh_light_accel.build_bvh(
-        RenderDevice::instance().lc_device(),
-        cmdlist,
-        scene.buffer_heap(),
-        scene.image_heap(),
-        device_mesh,
-        mat_index,
-        heap_indices::buffer_allocator_heap_index,
-        TexStreamManager::instance(),
-        local_to_world);
-    stream << cmdlist.commit() << synchronize();
-    mesh_light_accel.update();
-    auto &host_result = v.host_result->wait();
+    auto &&mesh_data = v.device_mesh->mesh_data();
+    auto mesh_host_data = v.device_mesh->host_data();
+    auto host_result = mesh_light_accel.build_bvh(
+        local_to_world,
+        span{(float3 *)mesh_host_data.data(), mesh_data->meta.vertex_count},
+        span{(Triangle *)(mesh_host_data.data() + mesh_data->meta.tri_byte_offset), mesh_data->triangle_size},
+        mesh_data->submesh_offset,
+        material_emissions);
+
     if (host_result.nodes.empty()) {
         v.light_id = ~0u;
         v.blas_heap_idx = ~0u;
@@ -530,7 +516,6 @@ uint Lights::add_mesh_light_sync(
             1.f};
         v.light_id = scene.light_accel().emplace(cmdlist, scene, mesh_light, data_index);
     }
-    v._load_flag->store(MeshLightLoadState::Loaded);
     return data_index;
 }
 
@@ -608,39 +593,26 @@ void Lights::update_mesh_light_sync(
     CommandList &cmdlist,
     uint data_index,
     float4x4 local_to_world,
+    luisa::span<float const> material_emissions,
     luisa::span<MatCode const> material_codes,
     RC<DeviceMesh> const *new_mesh) {
     auto &scene = SceneManager::instance();
-    scene.buffer_uploader().commit(cmdlist, scene.host_upload_buffer());
     auto &v = mesh_lights.light_data[data_index];
-    if (!v._load_flag || v._load_flag->load() != MeshLightLoadState::Loaded) [[unlikely]] {
-        LUISA_ERROR("Mesh light unloaded.");
-    }
     if (new_mesh) {
         v.device_mesh = *new_mesh;
     }
     v.device_mesh->wait_finished();
-    uint mat_index;
-    auto mat_node = scene.accel_manager().instance_data(v.tlas_id).material_node;
-    if (mat_node) {
-        mat_index = mat_node.offset_bytes() / sizeof(uint);
-    } else {
-        mat_index = material_codes[0].value;
+    auto mesh_host_data = v.device_mesh->host_data();
+    if (mesh_host_data.empty()) [[unlikely]] {
+        LUISA_ERROR("Mesh light must have host data.");
     }
-    v.host_result = mesh_light_accel.build_bvh(
-        RenderDevice::instance().lc_device(),
-        cmdlist,
-        scene.buffer_heap(),
-        scene.image_heap(),
-        v.device_mesh,
-        mat_index,
-        heap_indices::buffer_allocator_heap_index,
-        TexStreamManager::instance(),
-        local_to_world);
-    auto &stream = RenderDevice::instance().lc_main_stream();
-    stream << cmdlist.commit() << synchronize();
-    mesh_light_accel.update();
-    auto &host_result = v.host_result->wait();
+    auto &&mesh_data = v.device_mesh->mesh_data();
+    auto host_result = mesh_light_accel.build_bvh(
+        local_to_world,
+        span{(float3 *)mesh_host_data.data(), mesh_data->meta.vertex_count},
+        span{(Triangle *)(mesh_host_data.data() + mesh_data->meta.tri_byte_offset), mesh_data->triangle_size},
+        mesh_data->submesh_offset,
+        material_emissions);
     if (v.blas_heap_idx != ~0u) {
         scene.bindless_allocator().deallocate_buffer(v.blas_heap_idx);
     }
@@ -977,16 +949,11 @@ void Lights::remove_mesh_light(uint light_index) {
     auto &data = mesh_lights.light_data[light_index];
     scene.dispose_after_sync(std::move(data.blas_buffer));
     data.device_mesh.reset();
-    data.host_result.reset();
     if (data.tlas_id != ~0u)
         scene.accel_manager().remove_mesh_instance(
             scene.buffer_allocator(),
             scene.buffer_uploader(),
             data.tlas_id);
-    if (data._load_flag) {
-        data._load_flag->store(MeshLightLoadState::Disposed);
-        data._load_flag.reset();
-    }
     if (data.blas_heap_idx != uint(-1))
         scene.bindless_allocator().deallocate_buffer(data.blas_heap_idx);
 

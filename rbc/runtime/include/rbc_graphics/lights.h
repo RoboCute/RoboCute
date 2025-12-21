@@ -21,8 +21,6 @@ struct RBC_RUNTIME_API Lights : public SceneManagerEvent {
     struct MeshLightData {
         Buffer<BVH::PackedNode> blas_buffer;
         RC<DeviceMesh> device_mesh;
-        vstd::optional<luisa::fiber::future<MeshLightAccel::HostResult>> host_result;
-        luisa::shared_ptr<std::atomic<MeshLightLoadState>> _load_flag;
         uint blas_heap_idx;
         uint tlas_id;
         uint light_id;
@@ -83,12 +81,14 @@ struct RBC_RUNTIME_API Lights : public SceneManagerEvent {
         CommandList &cmdlist,
         RC<DeviceMesh> const &device_mesh,
         float4x4 local_to_world,
+        luisa::span<float const> material_emissions,
         luisa::span<MatCode const> material_codes);
 
     void update_mesh_light_sync(
         CommandList &cmdlist,
         uint light_index,
         float4x4 local_to_world,
+        luisa::span<float const> material_emissions,
         luisa::span<MatCode const> material_codes,
         RC<DeviceMesh> const *new_mesh = nullptr);
 

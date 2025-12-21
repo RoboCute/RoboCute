@@ -21,29 +21,6 @@ public:
         float contribute;
     };
 
-private:
-    Shader1D<
-        Buffer<uint>, // global level buffer
-        BindlessArray,// &heap,
-        ByteBuffer, // &mesh_buffer,
-        BindlessArray,//&image_heap,
-        // mesh meta
-        uint,//submesh_heap_idx,
-        uint,//vertex_count,
-        uint,//tri_byte_offset,
-        uint,//ele_mask,
-
-        uint,//mat_index,
-        uint,//mat_idx_buffer_heap_idx,
-        Buffer<float>> const *_estimate_mesh;
-    struct Task {
-        float4x4 transform;
-        RC<DeviceMesh> mesh;
-        vector<float> lums;
-        luisa::fiber::future<HostResult> result;
-    };
-    vstd::LockFreeArrayQueue<Task> _tasks;
-
 public:
     MeshLightAccel();
     void create_or_update_blas(
@@ -54,18 +31,7 @@ public:
         float4x4 matrix,
         span<float3 const> vertices,
         span<Triangle const> triangles,
-        span<float const> triangle_lum);
-    fiber::future<HostResult> build_bvh(
-        Device &device,
-        CommandList &cmdlist,
-        BindlessArray &heap,
-        BindlessArray &image_heap,
-        RC<DeviceMesh> const &mesh,
-        uint mat_index,
-        uint mat_idx_buffer_heap_idx,
-        TexStreamManager *tex_stream_mng,
-        float4x4 transform);
-
-    void update();
+        span<uint const> submesh_offset,
+        span<float const> submesh_lum);
 };
 }// namespace rbc

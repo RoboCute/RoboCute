@@ -17,7 +17,7 @@ SceneManager::SceneManager(
       _bdls_mng(device),
       _uploader(),
       _bf_alloc(device),
-      _mat_mng(device, true),
+      _mat_mng(device),
       _light_accel(device),
       light_accel_event(luisa::fiber::event::Mode::Auto, false) {
     ShaderManager::create_instance(device, shader_path);

@@ -8,6 +8,7 @@
 #include <rbc_core/json_serde.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_world_v2/texture.h>
+#include <rbc_core/runtime_static.h>
 #include <rbc_world_v2/resource_loader.h>
 namespace rbc::world {
 struct MaterialInst : vstd::IOperatorNewBase {

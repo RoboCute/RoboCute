@@ -258,6 +258,32 @@ static bool material_is_emission(luisa::span<RC<MaterialStub> const> materials) 
     }
     return contained_emission;
 };
+static luisa::vector<float> material_emissions(luisa::span<RC<MaterialStub> const> materials) {
+    luisa::vector<float> vec;
+    vec.resize(materials.size());
+    size_t mat_index = 0;
+    for (auto &i : materials) {
+        static_cast<MaterialStub *>(i.get())->mat_data.visit([&]<typename T>(T const &t) {
+            float3 emission;
+            if constexpr (std::is_same_v<T, material::OpenPBR>) {
+                emission = float3{
+                    t.emission.luminance[0],
+                    t.emission.luminance[1],
+                    t.emission.luminance[2]};
+
+            } else {
+                emission = float3{
+                    t.color[0],
+                    t.color[1],
+                    t.color[2]};
+            }
+            float lum = dot(emission, float3(0.2126729, 0.7151522, 0.0721750));
+            vec[mat_index] = lum;
+        });
+        ++mat_index;
+    }
+    return vec;
+};
 ObjectStub::~ObjectStub() {
     remove_object();
 }
@@ -317,10 +343,12 @@ void ObjectStub::create_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
     }
     if (render_device) {
         if (material_is_emission(materials)) {
+            auto emissions = material_emissions(materials);
             mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                 render_device->lc_main_cmd_list(),
                 mesh_ref,
                 matrix,
+                emissions,
                 material_codes);
             type = ObjectRenderType::EmissionMesh;
         } else {
@@ -378,10 +406,12 @@ void ObjectStub::update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
                         sm.buffer_allocator(),
                         sm.buffer_uploader(),
                         mesh_tlas_idx);
+                    auto emissions = material_emissions(materials);
                     mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                         render_device->lc_main_cmd_list(),
                         mesh_ref,
                         matrix,
+                        emissions,
                         material_codes);
                     type = ObjectRenderType::EmissionMesh;
                 } else {
@@ -411,10 +441,12 @@ void ObjectStub::update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
                         matrix);
                     type = ObjectRenderType::Mesh;
                 } else {
+                    auto emissions = material_emissions(materials);
                     Lights::instance()->update_mesh_light_sync(
                         render_device->lc_main_cmd_list(),
                         mesh_light_idx,
                         matrix,
+                        emissions,
                         material_codes,
                         &mesh_ref);
                 }
@@ -437,13 +469,15 @@ void ObjectStub::update_object_pos(luisa::float4x4 matrix) {
                     mesh_tlas_idx,
                     matrix, 0xff, true);
             } break;
-            case ObjectRenderType::EmissionMesh:
+            case ObjectRenderType::EmissionMesh: {
+                auto emissions = material_emissions(materials);
                 Lights::instance()->update_mesh_light_sync(
                     render_device->lc_main_cmd_list(),
                     mesh_light_idx,
                     matrix,
+                    emissions,
                     material_codes);
-                break;
+            } break;
             case ObjectRenderType::Procedural:
                 sm.accel_manager().set_procedural_instance(
                     procedural_idx,
