@@ -1,14 +1,15 @@
 #pragma once
 #include <rbc_world_v2/entity.h>
-#include <rbc_world_v2/mesh.h>
+#include <rbc_world_v2/resources/mesh.h>
 #include <rbc_world_v2/texture.h>
 #include <rbc_world_v2/resources/material.h>
 #include <rbc_graphics/camera.h>
+
 namespace rbc {
 struct GraphicsUtils;
 struct WorldScene {
-    world::Mesh *cbox_mesh{};
-    world::Mesh *quad_mesh{};
+    world::MeshResource *cbox_mesh{};
+    world::MeshResource *quad_mesh{};
     RC<world::Texture> skybox{};
     RC<world::Texture> tex{};
     luisa::vector<world::Entity *> _entities;

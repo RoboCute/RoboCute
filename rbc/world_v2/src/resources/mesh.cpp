@@ -1,14 +1,14 @@
-#include <rbc_world_v2/mesh.h>
+#include <rbc_world_v2/resources/mesh.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
 namespace rbc::world {
-Mesh::Mesh() = default;
-Mesh::~Mesh() {
+MeshResource::MeshResource() = default;
+MeshResource::~MeshResource() {
 }
 
-void Mesh::serialize_meta(ObjSerialize const &ser) const {
+void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     std::shared_lock lck{_async_mtx};
     BaseType::serialize_meta(ser);
     ser.ser._store(_contained_normal, "contained_normal");
@@ -25,12 +25,12 @@ void Mesh::serialize_meta(ObjSerialize const &ser) const {
     ser.ser.add_last_scope_to_object("submesh_offsets");
 }
 
-bool Mesh::empty() const {
+bool MeshResource::empty() const {
     std::shared_lock lck{_async_mtx};
     return !_device_mesh;
 }
 
-void Mesh::deserialize_meta(ObjDeSerialize const &ser) {
+void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     std::shared_lock lck{_async_mtx};
     BaseType::deserialize_meta(ser);
 #define RBC_MESH_LOAD(m)            \
@@ -61,31 +61,31 @@ void Mesh::deserialize_meta(ObjDeSerialize const &ser) {
         ser.ser.end_scope();
     }
 }
-void Mesh::wait_load_executed() const {
+void MeshResource::wait_load_executed() const {
     std::shared_lock lck{_async_mtx};
     if (_device_mesh)
         _device_mesh->wait_executed();
 }
-void Mesh::wait_load_finished() const {
+void MeshResource::wait_load_finished() const {
     std::shared_lock lck{_async_mtx};
     if (_device_mesh)
         _device_mesh->wait_finished();
 }
-luisa::vector<std::byte> *Mesh::host_data() {
+luisa::vector<std::byte> *MeshResource::host_data() {
     std::shared_lock lck{_async_mtx};
     if (_device_mesh) {
         return &_device_mesh->host_data_ref();
     } else
         return nullptr;
 }
-uint64_t Mesh::basic_size_bytes() const {
+uint64_t MeshResource::basic_size_bytes() const {
     return DeviceMesh::get_mesh_size(_vertex_count, _contained_normal, _contained_tangent, _uv_count, _triangle_count);
 }
-uint64_t Mesh::desire_size_bytes() const {
+uint64_t MeshResource::desire_size_bytes() const {
     return basic_size_bytes() + _vertex_count * _skinning_weight_count * sizeof(float) + _vertex_count * _vertex_color_channels;
 }
 
-void Mesh::create_empty(
+void MeshResource::create_empty(
     luisa::filesystem::path &&path,
     luisa::vector<uint> &&submesh_offsets,
     uint64_t file_offset,
@@ -112,7 +112,7 @@ void Mesh::create_empty(
     _vertex_color_channels = vertex_color_channels;
     _device_mesh = new DeviceMesh{};
 }
-bool Mesh::init_device_resource() {
+bool MeshResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_device_mesh || load_executed()) return false;
     auto host_data_ = host_data();
@@ -130,7 +130,7 @@ bool Mesh::init_device_resource() {
     }
     return true;
 }
-bool Mesh::async_load_from_file() {
+bool MeshResource::async_load_from_file() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     auto file_size = desire_size_bytes();
@@ -155,7 +155,7 @@ bool Mesh::async_load_from_file() {
 
     return true;
 }
-bool Mesh::unsafe_save_to_path() const {
+bool MeshResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     if (!_device_mesh || _device_mesh->host_data().empty()) return false;
     BinaryFileWriter writer{luisa::to_string(_path)};
@@ -165,29 +165,29 @@ bool Mesh::unsafe_save_to_path() const {
     writer.write(_device_mesh->host_data());
     return true;
 }
-bool Mesh::load_executed() const {
+bool MeshResource::load_executed() const {
     std::shared_lock lck{_async_mtx};
     return _device_mesh && (_device_mesh->load_executed() || _device_mesh->mesh_data());
 }
-bool Mesh::load_finished() const {
+bool MeshResource::load_finished() const {
     std::shared_lock lck{_async_mtx};
     return _device_mesh && (_device_mesh->load_finished() || _device_mesh->mesh_data());
 }
-void Mesh::unload() {
+void MeshResource::unload() {
     std::lock_guard lck{_async_mtx};
     _device_mesh.reset();
 }
-luisa::span<SkinWeight const> Mesh::skin_weights() const {
+luisa::span<SkinWeight const> MeshResource::skin_weights() const {
     if (!_device_mesh || _device_mesh->host_data_ref().empty() || _skinning_weight_count == 0) return {};
     return luisa::span{
         (SkinWeight *)(_device_mesh->host_data_ref().data() + basic_size_bytes()),
         _skinning_weight_count * _vertex_count};
 }
-luisa::span<float const> Mesh::vertex_colors() const {
+luisa::span<float const> MeshResource::vertex_colors() const {
     if (!_device_mesh || _device_mesh->host_data_ref().empty() || _vertex_color_channels == 0) return {};
     return luisa::span{
         (float *)(skin_weights().data() + skin_weights().size()),
         _vertex_color_channels * _vertex_count};
 }
-DECLARE_WORLD_OBJECT_REGISTER(Mesh)
+DECLARE_WORLD_OBJECT_REGISTER(MeshResource)
 }// namespace rbc::world

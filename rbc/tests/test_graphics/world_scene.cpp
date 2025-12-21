@@ -11,7 +11,7 @@
 
 namespace rbc {
 void WorldScene::_init_scene(GraphicsUtils *utils) {
-    cbox_mesh = world::create_object<world::Mesh>();
+    cbox_mesh = world::create_object<world::MeshResource>();
     cbox_mesh->decode("cornell_box.obj");
     cbox_mesh->init_device_resource();
     utils->update_mesh_data(cbox_mesh->device_mesh().get(), false);// update through render-thread
@@ -72,7 +72,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     tris.emplace_back(1);
     tris.emplace_back(3);
     tris.emplace_back(2);
-    quad_mesh = world::create_object<world::Mesh>();
+    quad_mesh = world::create_object<world::MeshResource>();
     luisa::vector<uint> submesh_offsets;
     luisa::vector<std::byte> quad_bytes;
     mesh_builder.write_to(quad_bytes, submesh_offsets);

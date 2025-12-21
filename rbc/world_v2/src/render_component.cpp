@@ -3,7 +3,7 @@
 #include <rbc_world_v2/resource_loader.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_world_v2/resources/material.h>
-#include <rbc_world_v2/mesh.h>
+#include <rbc_world_v2/resources/mesh.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_world_v2/entity.h>
 /*
@@ -69,8 +69,8 @@ void RenderComponent::deserialize_meta(ObjDeSerialize const &ser) {
     vstd::Guid guid;
     if (obj._load(guid, "mesh")) {
         auto obj = load_resource(guid, true);
-        if (obj && obj->is_type_of(TypeInfo::get<Mesh>())) {
-            _mesh_ref = RC<Mesh>(std::move(obj));
+        if (obj && obj->is_type_of(TypeInfo::get<MeshResource>())) {
+            _mesh_ref = RC<MeshResource>(std::move(obj));
         }
     }
 }
@@ -166,7 +166,7 @@ void RenderComponent::remove_object() {
 RenderComponent::RenderComponent(Entity *entity) : ComponentDerive<RenderComponent>(entity) {
     _mesh_light_idx = ~0u;
 }
-void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats, Mesh *mesh) {
+void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
     auto tr = entity()->get_component<TransformComponent>();
     if (!tr) {
         LUISA_WARNING("Transform component not found, renderer update failed.");

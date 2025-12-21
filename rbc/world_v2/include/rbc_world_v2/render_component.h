@@ -3,7 +3,7 @@
 #include <rbc_graphics/object_types.h>
 
 namespace rbc::world {
-struct Mesh;
+struct MeshResource;
 struct MaterialResource;
 
 struct RBC_WORLD_API RenderComponent final : ComponentDerive<RenderComponent> {
@@ -20,7 +20,7 @@ private:
         uint _procedural_idx;
     };
 
-    RC<Mesh> _mesh_ref;
+    RC<MeshResource> _mesh_ref;
     void _on_transform_update();
 public:
     void on_awake() override;
@@ -29,7 +29,7 @@ public:
     void deserialize_meta(ObjDeSerialize const &ser) override;
     void dispose() override;
     // draw
-    void update_object(luisa::span<RC<MaterialResource> const> materials = {}, Mesh *mesh = nullptr);
+    void update_object(luisa::span<RC<MaterialResource> const> materials = {}, MeshResource *mesh = nullptr);
     uint get_tlas_index() const;
     void remove_object();
 private:

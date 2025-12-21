@@ -1,4 +1,4 @@
-#include <rbc_world_v2/mesh.h>
+#include <rbc_world_v2/resources/mesh.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <tiny_obj_loader.h>
 #include <luisa/core/fiber.h>
@@ -60,7 +60,7 @@ static void calculate_tangent(
         },
         2048);
 }
-bool Mesh::decode(luisa::filesystem::path const &path) {
+bool MeshResource::decode(luisa::filesystem::path const &path) {
     // TODO: init mesh
     if (!empty()) [[unlikely]] {
         LUISA_WARNING("Can not create on exists mesh.");

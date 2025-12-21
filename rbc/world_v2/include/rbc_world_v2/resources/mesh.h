@@ -8,9 +8,9 @@ struct SkinWeight {
     int32_t joint_id;
     float weight;
 };
-struct RBC_WORLD_API Mesh final : ResourceBaseImpl<Mesh> {
-    DECLARE_WORLD_OBJECT_FRIEND(Mesh)
-    using BaseType = ResourceBaseImpl<Mesh>;
+struct RBC_WORLD_API MeshResource final : ResourceBaseImpl<MeshResource> {
+    DECLARE_WORLD_OBJECT_FRIEND(MeshResource)
+    using BaseType = ResourceBaseImpl<MeshResource>;
 private:
     RC<DeviceMesh> _device_mesh;
     mutable rbc::shared_atomic_mutex _async_mtx;
@@ -23,8 +23,8 @@ private:
     bool _contained_tangent : 1 {};
     uint _vertex_color_channels{};
     uint _skinning_weight_count{};
-    Mesh();
-    ~Mesh();
+    MeshResource();
+    ~MeshResource();
     // extra_data:
     // array<struct SkinWeight { int32_t joint_id; float weight; }, vertex_size>
     // array<float * _vertex_color_channels, vertex_size>
@@ -71,4 +71,4 @@ protected:
     bool unsafe_save_to_path() const override;
 };
 }// namespace rbc::world
-RBC_RTTI(rbc::world::Mesh)
+RBC_RTTI(rbc::world::MeshResource)
