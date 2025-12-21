@@ -8,6 +8,7 @@
  * ResourceHeader
  */
 #include <rbc_config.h>
+#include <rbc_world_v2/base_object.h>
 
 namespace rbc {
 
@@ -16,6 +17,24 @@ enum class EResourceInstallStatus {
     InProgress,
     Succeed,
     Failed
+};
+enum class EResourceLoadingStatus : uint32_t {
+    Unloaded,
+    Loading,
+    Loaded,
+    WaitingDependencies,
+    Installing,
+    Installed,
+    Uninstalling,
+    Unloading,
+    Error,
+    Count
+};
+
+struct RBC_WORLD_API IResource : world::BaseObject {
+    virtual ~IResource();
+    virtual void OnInstall() {}
+    virtual void OnUninstall() {}
 };
 
 struct RBC_WORLD_API ResourceHandle {
@@ -82,6 +101,19 @@ public:
     virtual void Failed() = 0;
 };
 
+struct RBC_WORLD_API ResourceRecord {
+    ResourceHeader header;
+    std::atomic<uint32_t> reference_count = 0;
+    IResource *resource = nullptr;
+    std::atomic<EResourceLoadingStatus> loading_status = EResourceLoadingStatus::Unloaded;
+    ResourceRequest *active_request;
+
+    void SetStatus(EResourceLoadingStatus InStatus);
+    uint32_t AddReference();
+    void RemoveReference();
+    bool isReferenced() const;
+};
+
 struct RBC_WORLD_API ResourceRegistry {
 public:
     virtual bool RequestResourceFile(ResourceRequest *request) = 0;
@@ -100,9 +132,6 @@ private:
     luisa::string_view _base_path;
 };
 
-struct RBC_WORLD_API ResourceRecord {
-};
-
 struct RBC_WORLD_API ResourceFactory {
     virtual float AsyncSerdeLoadFactor() { return 1.0f; }
 };
@@ -113,5 +142,7 @@ struct RBC_WORLD_API ResourceSystem {
 public:
     virtual ~ResourceSystem();
 };
+
+// serde for header
 
 }// namespace rbc
