@@ -6,29 +6,29 @@
 #include <rbc_core/quaternion.h>
 namespace rbc::world {
 struct Entity;
-struct RBC_WORLD_API Transform final : ComponentDerive<Transform> {
-    DECLARE_WORLD_COMPONENT_FRIEND(Transform)
+struct RBC_WORLD_API TransformComponent final : ComponentDerive<TransformComponent> {
+    DECLARE_WORLD_COMPONENT_FRIEND(TransformComponent)
     friend void clear_dirty_transform();
 private:
-    Transform *_parent{};
-    luisa::unordered_set<Transform *> _children;
+    TransformComponent *_parent{};
+    luisa::unordered_set<TransformComponent *> _children;
     double3 _position;
     double3 _scale{1, 1, 1};
     Quaternion _rotation;
     double4x4 _trs;
     bool _dirty : 1 {};
     bool _decomposed : 1 {true};
-    Transform(Entity *entity);
+    TransformComponent(Entity *entity);
     void mark_dirty();
     void try_decompose();
     void traversal(double4x4 const &new_trs);
-    ~Transform();
+    ~TransformComponent();
 public:
     double3 position();
     Quaternion rotation();
     double3 scale();
-    void serialize_meta(ObjSerialize const&obj) const override;
-    void deserialize_meta(ObjDeSerialize const&obj) override;
+    void serialize_meta(ObjSerialize const &obj) const override;
+    void deserialize_meta(ObjDeSerialize const &obj) override;
     void dispose() override;
     void set_pos(double3 const &position, bool recursive);
     void set_rotation(Quaternion const &rotation, bool recursive);
@@ -39,8 +39,8 @@ public:
         Quaternion const &rotation,
         double3 const &scale,
         bool recursive);
-    void add_children(Transform *tr);
-    bool remove_children(Transform *tr);
+    void add_children(TransformComponent *tr);
+    bool remove_children(TransformComponent *tr);
     [[nodiscard]] auto const &position() const { return _position; }
     [[nodiscard]] auto const &rotation() const { return _rotation; }
     [[nodiscard]] auto const &scale() const { return _scale; }
@@ -51,4 +51,4 @@ public:
     [[nodiscard]] float4x4 trs_float() const;
 };
 }// namespace rbc::world
-RBC_RTTI(rbc::world::Transform);
+RBC_RTTI(rbc::world::TransformComponent);

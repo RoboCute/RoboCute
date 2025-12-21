@@ -1,5 +1,5 @@
 #include "world_scene.h"
-#include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/components/transform.h>
 #include <rbc_world_v2/render_component.h>
 #include <rbc_world_v2/components/light.h>
 #include <rbc_world_v2/resource_loader.h>
@@ -44,7 +44,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     _mats[5] = nullptr;
     {
         auto entity = _entities.emplace_back(world::create_object<world::Entity>());
-        auto transform = entity->add_component<world::Transform>();
+        auto transform = entity->add_component<world::TransformComponent>();
         transform->set_pos(double3(0, -1, 2), true);
         auto rot = quaternion(
             make_float3x3(
@@ -112,7 +112,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     utils->update_texture(skybox->get_image());// update through render-thread
 
     auto quad_entity = _entities.emplace_back(world::create_object<world::Entity>());
-    auto quad_trans = quad_entity->add_component<world::Transform>();
+    auto quad_trans = quad_entity->add_component<world::TransformComponent>();
     auto quad_render = quad_entity->add_component<world::RenderComponent>();
     quad_trans->set_pos(make_double3(0, 0, 4), true);
     quad_trans->set_scale(double3(10, 10, 10), true);
@@ -303,7 +303,7 @@ bool WorldScene::draw_gizmos(
     bool dragging,
     GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, Camera const &cam) {
     auto &click_mng = utils->render_settings().read_mut<ClickManager>();
-    auto tr = _entities[0]->get_component<world::Transform>();
+    auto tr = _entities[0]->get_component<world::TransformComponent>();
 
     auto transform_matrix = tr->trs();
     auto vertex_offset = _gizmos->vertex_size * sizeof(float3) / sizeof(uint);

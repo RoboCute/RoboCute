@@ -1,5 +1,5 @@
 #include <rbc_world_v2/type_register.h>
-#include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/components/transform.h>
 #include <rbc_world_v2/resource_base.h>
 #include <rbc_world_v2/entity.h>
 namespace rbc::world {
@@ -183,8 +183,8 @@ void clear_dirty_transform() {
     for (auto &i : v) {
         auto obj = get_object(i);
         if (!obj) continue;
-        LUISA_DEBUG_ASSERT(obj->is_type_of(TypeInfo::get<Transform>()));
-        static_cast<Transform *>(obj)->_dirty = false;
+        LUISA_DEBUG_ASSERT(obj->is_type_of(TypeInfo::get<TransformComponent>()));
+        static_cast<TransformComponent *>(obj)->_dirty = false;
     }
     v.clear();
 }
@@ -198,10 +198,10 @@ void on_before_rendering() {
     _collect_all_materials();
     for (auto &i : dirty_transforms()) {
         auto tr_obj = get_object(i);
-        if (!tr_obj || !tr_obj->is_type_of(TypeInfo::get<Transform>())) {
+        if (!tr_obj || !tr_obj->is_type_of(TypeInfo::get<TransformComponent>())) {
             continue;
         }
-        auto tr = static_cast<Transform *>(tr_obj);
+        auto tr = static_cast<TransformComponent *>(tr_obj);
         tr->entity()->broadcast_event(WorldEventType::OnTransformUpdate);
     }
     clear_dirty_transform();

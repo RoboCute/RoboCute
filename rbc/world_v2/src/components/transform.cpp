@@ -1,4 +1,4 @@
-#include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/components/transform.h>
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_core/runtime_static.h>
@@ -6,12 +6,12 @@ namespace rbc::world {
 struct TransformStatic : RBCStruct {
     luisa::vector<InstanceID> dirty_trans;
 };
-Transform::Transform(Entity *entity) : ComponentDerive<Transform>(entity) {}
+TransformComponent::TransformComponent(Entity *entity) : ComponentDerive<TransformComponent>(entity) {}
 static RuntimeStatic<TransformStatic> _trans_inst;
 luisa::vector<InstanceID> &dirty_transforms() {
     return _trans_inst->dirty_trans;
 }
-void Transform::serialize_meta(ObjSerialize const &obj) const {
+void TransformComponent::serialize_meta(ObjSerialize const &obj) const {
     auto &ser_obj = obj.ser;
     ser_obj.start_array();
     for (auto &child : _children) {
@@ -23,22 +23,22 @@ void Transform::serialize_meta(ObjSerialize const &obj) const {
     ser_obj.add_last_scope_to_object("children");
     ser_obj._store(_trs, "trs");
 }
-float4x4 Transform::trs_float() const {
+float4x4 TransformComponent::trs_float() const {
     return make_float4x4(
         make_float4(_trs[0]),
         make_float4(_trs[1]),
         make_float4(_trs[2]),
         make_float4(_trs[3]));
 }
-void Transform::deserialize_meta(ObjDeSerialize const &obj) {
+void TransformComponent::deserialize_meta(ObjDeSerialize const &obj) {
     uint64_t size;
     if (obj.ser.start_array(size, "children")) {
         _children.reserve(size);
         vstd::Guid child_guid;
         if (obj.ser._load(child_guid)) {
             auto obj = get_object(child_guid);
-            if (obj && obj->is_type_of(TypeInfo::get<Transform>())) {
-                add_children(static_cast<Transform *>(obj));
+            if (obj && obj->is_type_of(TypeInfo::get<TransformComponent>())) {
+                add_children(static_cast<TransformComponent *>(obj));
             }
         }
         obj.ser.end_scope();
@@ -46,7 +46,7 @@ void Transform::deserialize_meta(ObjDeSerialize const &obj) {
     obj.ser._load(_trs, "trs");
     _decomposed = false;
 }
-void Transform::try_decompose() {
+void TransformComponent::try_decompose() {
     if (_decomposed) [[likely]]
         return;
     _decomposed = true;
@@ -55,27 +55,27 @@ void Transform::try_decompose() {
     _rotation = normalize(trs.quaternion);
     _scale = trs.scaling;
 }
-double3 Transform::position() {
+double3 TransformComponent::position() {
     try_decompose();
     return _position;
 }
-Quaternion Transform::rotation() {
+Quaternion TransformComponent::rotation() {
     try_decompose();
     return _rotation;
 }
-double3 Transform::scale() {
+double3 TransformComponent::scale() {
     try_decompose();
     return _scale;
 }
-void Transform::mark_dirty() {
+void TransformComponent::mark_dirty() {
     if (_dirty) return;
     _dirty = true;
     dirty_transforms().emplace_back(_instance_id);
 }
-void Transform::traversal(double4x4 const &new_trs) {
+void TransformComponent::traversal(double4x4 const &new_trs) {
     auto old_l2w = _trs;
     auto old_w2l = inverse(old_l2w);
-    auto transform = [&](auto &transform, Transform *tr) -> void {
+    auto transform = [&](auto &transform, TransformComponent *tr) -> void {
         auto curr_l2w = tr->_trs;
         auto child_to_parent = curr_l2w * old_w2l;
         auto new_l2w = child_to_parent * new_trs;
@@ -90,7 +90,7 @@ void Transform::traversal(double4x4 const &new_trs) {
         transform(transform, i);
     }
 }
-void Transform::set_pos(double3 const &position, bool recursive) {
+void TransformComponent::set_pos(double3 const &position, bool recursive) {
     try_decompose();
     auto new_trs = rbc::rotation(position, _rotation, _scale);
     if (recursive) {
@@ -101,7 +101,7 @@ void Transform::set_pos(double3 const &position, bool recursive) {
     _decomposed = true;
     mark_dirty();
 }
-void Transform::set_rotation(Quaternion const &rotation, bool recursive) {
+void TransformComponent::set_rotation(Quaternion const &rotation, bool recursive) {
     try_decompose();
     auto new_trs = rbc::rotation(_position, rotation, _scale);
     if (recursive) {
@@ -112,7 +112,7 @@ void Transform::set_rotation(Quaternion const &rotation, bool recursive) {
     _decomposed = true;
     mark_dirty();
 }
-void Transform::set_scale(double3 const &scale, bool recursive) {
+void TransformComponent::set_scale(double3 const &scale, bool recursive) {
     try_decompose();
     auto new_trs = rbc::rotation(_position, _rotation, scale);
     if (recursive) {
@@ -123,7 +123,7 @@ void Transform::set_scale(double3 const &scale, bool recursive) {
     _decomposed = true;
     mark_dirty();
 }
-void Transform::set_trs(double4x4 const &trs, bool recursive) {
+void TransformComponent::set_trs(double4x4 const &trs, bool recursive) {
     if (recursive) {
         traversal(trs);
     }
@@ -131,7 +131,7 @@ void Transform::set_trs(double4x4 const &trs, bool recursive) {
     _decomposed = false;
     mark_dirty();
 }
-void Transform::set_trs(
+void TransformComponent::set_trs(
     double3 const &position,
     Quaternion const &rotation,
     double3 const &scale,
@@ -147,21 +147,21 @@ void Transform::set_trs(
     _decomposed = true;
     mark_dirty();
 }
-void Transform::add_children(Transform *tr) {
+void TransformComponent::add_children(TransformComponent *tr) {
     if (tr->_parent) {
         remove_children(tr);
     }
     _children.emplace(tr);
     tr->_parent = this;
 }
-bool Transform::remove_children(Transform *tr) {
+bool TransformComponent::remove_children(TransformComponent *tr) {
     auto iter = _children.find(tr);
     if (iter == _children.end()) return false;
     _children.erase(iter);
     tr->_parent = nullptr;
     return true;
 }
-Transform::~Transform() {
+TransformComponent::~TransformComponent() {
     for (auto &tr : _children) {
         LUISA_DEBUG_ASSERT(tr->_parent = this);
         tr->_parent = nullptr;
@@ -172,6 +172,6 @@ Transform::~Transform() {
 }
 void dispose();
 // clang-format off
-DECLARE_WORLD_COMPONENT_REGISTER(Transform)
+DECLARE_WORLD_COMPONENT_REGISTER(TransformComponent)
 // clang-format on
 }// namespace rbc::world

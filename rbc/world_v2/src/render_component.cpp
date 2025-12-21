@@ -1,5 +1,5 @@
 #include <rbc_world_v2/render_component.h>
-#include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/components/transform.h>
 #include <rbc_world_v2/resource_loader.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_world_v2/resources/material.h>
@@ -12,7 +12,7 @@ TODO: only should update light bvh while in ray-tracing mode
 namespace rbc::world {
 void RenderComponent::_on_transform_update() {
     if (_mesh_tlas_idx != ~0u) {
-        auto tr = entity()->get_component<Transform>();
+        auto tr = entity()->get_component<TransformComponent>();
         if (!tr) return;
         _update_object_pos(tr->trs_float());
     }
@@ -167,7 +167,7 @@ RenderComponent::RenderComponent(Entity *entity) : ComponentDerive<RenderCompone
     _mesh_light_idx = ~0u;
 }
 void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats, Mesh *mesh) {
-    auto tr = entity()->get_component<Transform>();
+    auto tr = entity()->get_component<TransformComponent>();
     if (!tr) {
         LUISA_WARNING("Transform component not found, renderer update failed.");
         return;

@@ -1,5 +1,5 @@
 #include <rbc_world_v2/components/light.h>
-#include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/components/transform.h>
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_graphics/render_device.h>
@@ -9,7 +9,7 @@ namespace rbc::world {
 LightComponent::LightComponent(Entity *entity) : ComponentDerive<LightComponent>(entity) {}
 LightComponent::~LightComponent() {}
 void LightComponent::_update_light() {
-    auto tr = entity()->get_component<Transform>();
+    auto tr = entity()->get_component<TransformComponent>();
     if (!tr) return;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
         LUISA_ERROR("Light::_update_light can only be called in render-thread.");

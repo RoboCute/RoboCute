@@ -12,7 +12,7 @@
 #include <rbc_core/func_serializer.h>
 #include <rbc_runtime/plugin_manager.h>
 #include <rbc_world_v2/base_object.h>
-#include <rbc_world_v2/transform.h>
+#include <rbc_world_v2/components/transform.h>
 #include <rbc_world_v2/entity.h>
 #include <rbc_world_v2/resources/material.h>
 #include <rbc_core/runtime_static.h>
@@ -32,7 +32,7 @@ int main() {
     {
         auto entity = world::create_object_with_guid<world::Entity>(vstd::Guid(true));
 
-        auto trans = entity->add_component<world::Transform>();
+        auto trans = entity->add_component<world::TransformComponent>();
         trans->set_pos(double3(114, 514, 1919), false);
         JsonSerializer writer(true);
         world::ObjSerialize writer_args(writer);
@@ -46,11 +46,11 @@ int main() {
         }
         writer.add_last_scope_to_object();
         json = writer.write_to();
-        auto trans_ptr = entity->get_component(TypeInfo::get<world::Transform>());
+        auto trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
         // test life time
         LUISA_ASSERT(trans_ptr == trans);
         trans->dispose();
-        trans_ptr = entity->get_component(TypeInfo::get<world::Transform>());
+        trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
         // tarnsform already destroyed
         LUISA_ASSERT(trans_ptr == nullptr);
         entity->dispose();
@@ -75,7 +75,7 @@ int main() {
         reader.end_scope();
     }
     for (auto &i : entities) {
-        auto trans = i->get_component<world::Transform>();
+        auto trans = i->get_component<world::TransformComponent>();
         LUISA_INFO("{}", trans->position());
     }
     return 0;
