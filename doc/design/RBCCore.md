@@ -55,6 +55,8 @@ RuntimeStatic是通过一个静态全局链表和Optional协作实现的
 
 ## RTTR 
 
+- 2025-12-21 似乎暂时不太需要，rbc的需求是比较封闭的，直接switch即可
+
 Runtime Type Reflection 运行时类型反射
 
 C++当前反射还没有支持完全，大部分的反射都需要构建系统支持，在Robocute中我们采用python作为反射方案，通过Python实现一个RTTRBasic来和代码生成，来获得一些运行时的类型反射能力，这在资源系统和场景中非常有用
