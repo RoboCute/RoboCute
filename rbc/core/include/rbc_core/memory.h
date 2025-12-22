@@ -28,93 +28,6 @@ RBC_EXTERN_C RBC_CORE_API void *traced_os_realloc_aligned(void *p, size_t newsiz
 RBC_EXTERN_C RBC_CORE_API void *containers_malloc_aligned(size_t size, size_t alignment);
 RBC_EXTERN_C RBC_CORE_API void containers_free_aligned(void *p, size_t alignment);
 
-//=======================RBCNew and RBCDelete=======================
-// Template functions for type-safe new/delete operations
-template<typename T, typename... Args>
-RBC_FORCEINLINE T *RBCNew(Args &&...args) {
-    void *ptr = rbc_new_aligned(sizeof(T), alignof(T));
-    if constexpr (std::is_trivially_constructible_v<T> && sizeof...(Args) == 0) {
-        // Trivially constructible, no constructor call needed
-        return static_cast<T *>(ptr);
-    } else {
-        return new (ptr) T(std::forward<Args>(args)...);
-    }
-}
-
-template<typename T>
-RBC_FORCEINLINE void RBCDelete(T *ptr) RBC_NOEXCEPT {
-    if (ptr != nullptr) {
-        if constexpr (!std::is_trivially_destructible_v<T>) {
-            ptr->~T();
-        }
-        rbc_free_aligned(ptr, alignof(T));
-    }
-}
-
-template<typename T, typename... Args>
-RBC_FORCEINLINE T *RBCNewAligned(size_t alignment, Args &&...args) {
-    void *ptr = rbc_new_aligned(sizeof(T), alignment);
-    if constexpr (std::is_trivially_constructible_v<T> && sizeof...(Args) == 0) {
-        // Trivially constructible, no constructor call needed
-        return static_cast<T *>(ptr);
-    } else {
-        return new (ptr) T(std::forward<Args>(args)...);
-    }
-}
-
-template<typename T>
-RBC_FORCEINLINE void RBCDeleteAligned(T *ptr, size_t alignment) RBC_NOEXCEPT {
-    if (ptr != nullptr) {
-        if constexpr (!std::is_trivially_destructible_v<T>) {
-            ptr->~T();
-        }
-        rbc_free_aligned(ptr, alignment);
-    }
-}
-
-// Versions with pool name support
-template<typename T, typename... Args>
-RBC_FORCEINLINE T *RBCNewN(const char *pool_name, Args &&...args) {
-    void *ptr = rbc_new_alignedN(sizeof(T), alignof(T), pool_name);
-    if constexpr (std::is_trivially_constructible_v<T> && sizeof...(Args) == 0) {
-        // Trivially constructible, no constructor call needed
-        return static_cast<T *>(ptr);
-    } else {
-        return new (ptr) T(std::forward<Args>(args)...);
-    }
-}
-
-template<typename T>
-RBC_FORCEINLINE void RBCDeleteN(T *ptr, const char *pool_name) RBC_NOEXCEPT {
-    if (ptr != nullptr) {
-        if constexpr (!std::is_trivially_destructible_v<T>) {
-            ptr->~T();
-        }
-        rbc_free_alignedN(ptr, alignof(T), pool_name);
-    }
-}
-
-template<typename T, typename... Args>
-RBC_FORCEINLINE T *RBCNewAlignedN(size_t alignment, const char *pool_name, Args &&...args) {
-    void *ptr = rbc_new_alignedN(sizeof(T), alignment, pool_name);
-    if constexpr (std::is_trivially_constructible_v<T> && sizeof...(Args) == 0) {
-        // Trivially constructible, no constructor call needed
-        return static_cast<T *>(ptr);
-    } else {
-        return new (ptr) T(std::forward<Args>(args)...);
-    }
-}
-
-template<typename T>
-RBC_FORCEINLINE void RBCDeleteAlignedN(T *ptr, size_t alignment, const char *pool_name) RBC_NOEXCEPT {
-    if (ptr != nullptr) {
-        if constexpr (!std::is_trivially_destructible_v<T>) {
-            ptr->~T();
-        }
-        rbc_free_alignedN(ptr, alignment, pool_name);
-    }
-}
-
 //=======================alloc with trace=======================
 #if defined(RBC_PROFILE_ENABLE) && defined(TRACY_TRACE_ALLOCATION)
 #define RBC_ALLOC_TRACY_MARKER_COLOR 0xff0000
@@ -253,3 +166,91 @@ RBC_FORCEINLINE void *RBCReallocAlignedWithCZone(void *p, size_t newsize, size_t
 #define rbc_freeN(p, ...) internal_rbc_free((p), __VA_ARGS__)
 #define rbc_free_alignedN(p, alignment, ...) internal_rbc_free_aligned((p), (alignment), __VA_ARGS__)
 #endif
+
+//=======================RBCNew and RBCDelete=======================
+// Template functions for type-safe new/delete operations
+// These must be defined after the macro definitions above
+template<typename T, typename... Args>
+RBC_FORCEINLINE T *RBCNew(Args &&...args) {
+    void *ptr = rbc_new_aligned(sizeof(T), alignof(T));
+    if constexpr (std::is_trivially_constructible_v<T> && sizeof...(Args) == 0) {
+        // Trivially constructible, no constructor call needed
+        return static_cast<T *>(ptr);
+    } else {
+        return new (ptr) T(std::forward<Args>(args)...);
+    }
+}
+
+template<typename T>
+RBC_FORCEINLINE void RBCDelete(T *ptr) RBC_NOEXCEPT {
+    if (ptr != nullptr) {
+        if constexpr (!std::is_trivially_destructible_v<T>) {
+            ptr->~T();
+        }
+        rbc_free_aligned(ptr, alignof(T));
+    }
+}
+
+template<typename T, typename... Args>
+RBC_FORCEINLINE T *RBCNewAligned(size_t alignment, Args &&...args) {
+    void *ptr = rbc_new_aligned(sizeof(T), alignment);
+    if constexpr (std::is_trivially_constructible_v<T> && sizeof...(Args) == 0) {
+        // Trivially constructible, no constructor call needed
+        return static_cast<T *>(ptr);
+    } else {
+        return new (ptr) T(std::forward<Args>(args)...);
+    }
+}
+
+template<typename T>
+RBC_FORCEINLINE void RBCDeleteAligned(T *ptr, size_t alignment) RBC_NOEXCEPT {
+    if (ptr != nullptr) {
+        if constexpr (!std::is_trivially_destructible_v<T>) {
+            ptr->~T();
+        }
+        rbc_free_aligned(ptr, alignment);
+    }
+}
+
+// Versions with pool name support
+template<typename T, typename... Args>
+RBC_FORCEINLINE T *RBCNewN(const char *pool_name, Args &&...args) {
+    void *ptr = rbc_new_alignedN(sizeof(T), alignof(T), pool_name);
+    if constexpr (std::is_trivially_constructible_v<T> && sizeof...(Args) == 0) {
+        // Trivially constructible, no constructor call needed
+        return static_cast<T *>(ptr);
+    } else {
+        return new (ptr) T(std::forward<Args>(args)...);
+    }
+}
+
+template<typename T>
+RBC_FORCEINLINE void RBCDeleteN(T *ptr, const char *pool_name) RBC_NOEXCEPT {
+    if (ptr != nullptr) {
+        if constexpr (!std::is_trivially_destructible_v<T>) {
+            ptr->~T();
+        }
+        rbc_free_alignedN(ptr, alignof(T), pool_name);
+    }
+}
+
+template<typename T, typename... Args>
+RBC_FORCEINLINE T *RBCNewAlignedN(size_t alignment, const char *pool_name, Args &&...args) {
+    void *ptr = rbc_new_alignedN(sizeof(T), alignment, pool_name);
+    if constexpr (std::is_trivially_constructible_v<T> && sizeof...(Args) == 0) {
+        // Trivially constructible, no constructor call needed
+        return static_cast<T *>(ptr);
+    } else {
+        return new (ptr) T(std::forward<Args>(args)...);
+    }
+}
+
+template<typename T>
+RBC_FORCEINLINE void RBCDeleteAlignedN(T *ptr, size_t alignment, const char *pool_name) RBC_NOEXCEPT {
+    if (ptr != nullptr) {
+        if constexpr (!std::is_trivially_destructible_v<T>) {
+            ptr->~T();
+        }
+        rbc_free_alignedN(ptr, alignment, pool_name);
+    }
+}

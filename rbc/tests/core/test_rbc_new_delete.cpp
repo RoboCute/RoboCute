@@ -44,7 +44,9 @@ struct AlignedStruct {
     }
 
     explicit AlignedStruct(int v) : value(v) {
-        std::memset(data, v, sizeof(data));
+        for (int i = 0; i < 16; i++) {
+            data[i] = v;
+        }
     }
 };
 
@@ -266,7 +268,7 @@ TEST_SUITE("core") {
     TEST_CASE("rbc_new_delete_large_object") {
         // Test with larger object
         struct LargeStruct {
-            char data[1024];
+            unsigned char data[1024];
             int value;
             
             LargeStruct() : value(0) {
@@ -274,7 +276,7 @@ TEST_SUITE("core") {
             }
             
             explicit LargeStruct(int v) : value(v) {
-                std::memset(data, static_cast<char>(v), sizeof(data));
+                std::memset(data, static_cast<unsigned char>(v), sizeof(data));
             }
         };
         
