@@ -21,10 +21,6 @@ bool RawData::empty() const {
     std::shared_lock lck{_async_mtx};
     return !_device_buffer;
 }
-bool RawData::load_executed() const {
-    std::shared_lock lck{_async_mtx};
-    return _device_buffer && _device_buffer->load_executed();
-}
 bool RawData::load_finished() const {
     std::shared_lock lck{_async_mtx};
     return _device_buffer && _device_buffer->load_finished();
@@ -94,12 +90,7 @@ void RawData::wait_load_finished() const {
         _device_buffer->wait_finished();
     }
 }
-void RawData::wait_load_executed() const {
-    std::shared_lock lck{_async_mtx};
-    if (_device_buffer) {
-        _device_buffer->wait_executed();
-    }
-}
+
 bool RawData::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     if (!_device_buffer || _device_buffer->host_data().empty()) return false;

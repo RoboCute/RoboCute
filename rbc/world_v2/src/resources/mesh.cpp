@@ -61,11 +61,6 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
         ser.ser.end_scope();
     }
 }
-void MeshResource::wait_load_executed() const {
-    std::shared_lock lck{_async_mtx};
-    if (_device_mesh)
-        _device_mesh->wait_executed();
-}
 void MeshResource::wait_load_finished() const {
     std::shared_lock lck{_async_mtx};
     if (_device_mesh)
@@ -114,7 +109,7 @@ void MeshResource::create_empty(
 }
 bool MeshResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
-    if (!render_device || !_device_mesh || load_executed()) return false;
+    if (!render_device || !_device_mesh || _device_mesh->mesh_data()) return false;
     auto host_data_ = host_data();
     LUISA_ASSERT(host_data_->empty() || host_data_->size() == desire_size_bytes(), "Host data length {} mismatch with required length {}.", host_data_->size(), desire_size_bytes());
     {
@@ -164,10 +159,6 @@ bool MeshResource::unsafe_save_to_path() const {
     }
     writer.write(_device_mesh->host_data());
     return true;
-}
-bool MeshResource::load_executed() const {
-    std::shared_lock lck{_async_mtx};
-    return _device_mesh && (_device_mesh->load_executed() || _device_mesh->mesh_data());
 }
 bool MeshResource::load_finished() const {
     std::shared_lock lck{_async_mtx};

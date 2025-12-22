@@ -57,15 +57,13 @@ public:
     [[nodiscard]] auto const &device_mesh() const {
         return _device_mesh;
     }
-    bool init_device_resource() override;
-    bool load_executed() const override;
+    bool init_device_resource();
     bool load_finished() const override;
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;
-    void wait_load_executed() const override;
     void wait_load_finished() const override;
 protected:
     bool unsafe_save_to_path() const override;
