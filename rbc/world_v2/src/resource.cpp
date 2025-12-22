@@ -307,10 +307,29 @@ void ResourceRequest::Update() {
         }
         case rbc::EResourceLoadingStatus::Loaded: {
             // SEND DEPENDENCIES REQUEST
+            auto &deps = resource_record->header.dependencies;
+            if (!deps.empty()) {
+                auto &dependencies = resource_record->header.dependencies;
+                for (auto &dep : deps) {
+                    dep.install();
+                }
+            }
 
-            // DESERIALIZE
-            LUISA_INFO("Resource Loaded");
-            resource_record->SetStatus(EResourceLoadingStatus::WaitingDependencies);
+            if (resource_record->resource != nullptr) {
+                resource_record->SetStatus(EResourceLoadingStatus::WaitingDependencies);
+            } else if (bool async_serde = false && factory->AsyncSerdeLoadFactor() != 0.0f) {
+                LUISA_ERROR("AsyncIO should have valid Factor");
+            } else {
+                // Serde
+                // resource_record->resource = ... else error
+                serde_event.signal();
+                blob.reset();
+                if (!requireInstall) {
+                    UnloadDependenciesInternal();
+                    return;
+                }
+                resource_record->SetStatus(EResourceLoadingStatus::WaitingDependencies);
+            }
 
             break;
         }
@@ -329,24 +348,41 @@ void ResourceRequest::Update() {
                 }
             }
             // call Install method for factory
-
-            resource_record->SetStatus(EResourceLoadingStatus::Installing);
+            if (deps_ready) {
+                auto install_status = factory->Install(resource_record);
+                if (install_status == EResourceInstallStatus::Failed) {
+                    LUISA_ERROR("Resource failed to install");
+                } else if (install_status == EResourceInstallStatus::InProgress) {
+                    resource_record->SetStatus(EResourceLoadingStatus::Installing);
+                } else if (install_status == EResourceInstallStatus::Succeed) {
+                    resource_record->SetStatus(EResourceLoadingStatus::Installed);
+                }
+            }
             break;
         }
         case rbc::EResourceLoadingStatus::Installing: {
-            // call UpdateInstall for factory
-            LUISA_INFO("Resource Installing");
-            resource_record->SetStatus(EResourceLoadingStatus::Installed);
+            auto status = factory->UpdateInstall(resource_record);
+
+            if (status == EResourceInstallStatus::Failed) {
+                LUISA_ERROR("Resource {} failed to install.", resource_record->header.guid.to_string());
+                resource_record->SetStatus(EResourceLoadingStatus::Error);
+            } else if (status == EResourceInstallStatus::Succeed) {
+                resource_record->SetStatus(EResourceLoadingStatus::Installed);
+            }
             break;
         }
         case rbc::EResourceLoadingStatus::Uninstalling: {
             // call Uninstall for factory
             LUISA_INFO("Resource Uninstalling");
+            factory->Uninstall(resource_record);
             resource_record->SetStatus(EResourceLoadingStatus::Unloading);
             break;
         }
         case rbc::EResourceLoadingStatus::Unloading: {
             LUISA_INFO("Resource Unloading");
+            UnloadDependenciesInternal();
+            RBCDelete(resource_record->resource);
+            resource_record->resource = nullptr;
             resource_record->SetStatus(EResourceLoadingStatus::Unloaded);
             // clear blob
             break;
@@ -391,12 +427,6 @@ bool LocalResourceRegistry::RequestResourceFile(ResourceRequest *request) {
     return false;// 占位符
 }
 
-bool LocalResourceRegistry::CancelRequestFile(ResourceRequest *request) {
-    // TODO: 取消资源文件请求
-    // 停止正在进行的文件读取操作
-    return false;// 占位符
-}
-
 // =====================================================
 // Resource Record
 // =====================================================
@@ -424,7 +454,7 @@ void ResourceRecord::SetStatus(EResourceLoadingStatus InStatus) {
 // =====================================================
 // Resource System
 // =====================================================
-ResourceSystem::ResourceSystem() : counter(true) {}
+ResourceSystem::ResourceSystem() {}
 
 ResourceSystem::~ResourceSystem() {
     Shutdown();
@@ -475,7 +505,6 @@ void ResourceSystem::Update() {
         }
         ClearFinishedRequestsInternal();
     }
-    // TODO: time limit
     {
         for (auto req : to_update_requests) {
             auto record = req->resource_record;
@@ -493,16 +522,8 @@ void ResourceSystem::Update() {
     }
 }
 
-bool ResourceSystem::WaitRequest() {
-    if (quit)
-        return false;
-    counter.wait();
-    return !quit;
-}
-
 void ResourceSystem::Quit() {
     quit = true;
-    counter.add(1);
 }
 
 ResourceRecord *ResourceSystem::RegisterResource(const vstd::Guid &guid) {
@@ -547,8 +568,6 @@ ResourceRecord *ResourceSystem::LoadResource(const ResourceHandle handle, bool r
         record->active_request = request;
         record->loading_status = EResourceLoadingStatus::Loading;
 
-        // enqueue
-        counter.add(1);
         request_queue.enqueue(request);
     }
     return record;
@@ -576,7 +595,6 @@ ResourceHandle ResourceSystem::EnqueueResource(vstd::Guid guid, rbc::TypeInfo ty
         request->resource_record = record;
         request->system = this;
         request->factory = FindFactory(type);
-        counter.add(1);
         request_queue.enqueue(request);
 
         record->active_request = request;
@@ -665,7 +683,6 @@ void ResourceSystem::UnloadResourceInternal(ResourceRecord *record) {
 
         request->factory = this->FindFactory(record->header.type);
         record->active_request = request;
-        counter.add(1);
         request_queue.enqueue(request);
     }
 }
@@ -695,12 +712,10 @@ void ResourceSystem::ClearFinishedRequestsInternal() {
                     req->resource_record->active_request = nullptr;
                 }
                 RBCDelete(req);
-                counter.done();
                 return true;
             }
             if (req->Failed()) {
                 failed_requests.push_back(req);
-                counter.done();
                 return true;
             }
             return false;
