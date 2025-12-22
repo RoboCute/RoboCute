@@ -100,6 +100,9 @@ struct RBC_WORLD_API ResourceHeader {
     vstd::Guid guid;
     rbc::TypeInfo type{rbc::TypeInfo::invalid()};
     luisa::vector<ResourceHandle> dependencies;
+
+    void serialize(rbc::JsonSerializer &obj) const;
+    void deserialize(rbc::JsonDeSerializer &obj);
 };
 
 struct RBC_WORLD_API ResourceRequest {

@@ -216,6 +216,39 @@ void ResourceHandle::acquire_record(ResourceRecord *record) const {
 }
 
 // =====================================================
+// ResourceHeader
+// =====================================================
+void ResourceHeader::serialize(rbc::JsonSerializer &obj) const {
+    obj._store(guid, "guid");
+    auto md5_array = type.md5();
+    vstd::Guid type_guid = *reinterpret_cast<vstd::Guid const *>(md5_array.data());
+    obj._store(type_guid, "type");
+    obj._store(version, "version");
+    luisa::vector<vstd::Guid> dep_guids;
+    dep_guids.reserve(dependencies.size());
+    for (auto const &dep : dependencies) {
+        dep_guids.push_back(dep.get_guid());
+    }
+    obj._store(dep_guids, "dependencies");
+}
+void ResourceHeader::deserialize(rbc::JsonDeSerializer &obj) {
+    obj._load(guid, "guid");
+    vstd::Guid type_guid{};
+    obj._load(type_guid, "type");
+    auto md5_data = reinterpret_cast<std::array<uint64_t, 2> const &>(type_guid);
+    type = rbc::TypeInfo{"", md5_data[0], md5_data[1]};
+    obj._load(version, "version");
+    luisa::vector<vstd::Guid> dep_guids;
+    obj._load(dep_guids, "dependencies");
+    dependencies.clear();
+    dependencies.reserve(dep_guids.size());
+    for (auto const &dep_guid : dep_guids) {
+        dependencies.emplace_back(dep_guid);
+    }
+}
+// =====================================================
+
+// =====================================================
 // ResourceRegistry
 // =====================================================
 void ResourceRegistry::FillRequest(ResourceRequest *request, ResourceHeader header, luisa::string_view base_path, luisa::string_view uri) {
