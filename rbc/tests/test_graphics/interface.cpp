@@ -19,6 +19,7 @@
 #include <rbc_graphics/materials.h>
 #include <rbc_render/click_manager.h>
 #include <tracy_wrapper.h>
+#include <rbc_core/runtime_static.h>
 
 using namespace rbc;
 using namespace luisa;
@@ -34,12 +35,14 @@ struct ContextImpl : RBCContext {
     uint64_t frame_index{};
     ContextImpl() {
         log_level_info();
+        RuntimeStaticBase::init_all();
     }
     void dispose() override {
         delete this;
     }
     ~ContextImpl() {
         utils.dispose();
+        RuntimeStaticBase::dispose_all();
     }
     void init_device(luisa::string_view rhi_backend, luisa::string_view program_path, luisa::string_view shader_path) override {
         backend = rhi_backend;
@@ -62,7 +65,6 @@ struct ContextImpl : RBCContext {
             window_size = size;
         });
     }
-
     void *create_mesh(uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) override {
         auto ptr = new DeviceMesh();
         manually_add_ref(ptr);
@@ -258,16 +260,16 @@ struct ContextImpl : RBCContext {
         return utils.should_close();
     }
     void tick() override {
-        RBCFrameMark; // Mark frame boundary
-        
+        RBCFrameMark;// Mark frame boundary
+
         RBCZoneScopedN("ContextImpl::tick");
-        
+
         {
             RBCZoneScopedN("Poll Events");
             if (utils.window())
                 utils.window()->poll_events();
         }
-        
+
         {
             RBCZoneScopedN("Update Camera");
             auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
@@ -287,7 +289,7 @@ struct ContextImpl : RBCContext {
                     frame_index,
                     window_size);
             }
-            
+
             ++frame_index;
             RBCPlot("Frame Index", static_cast<float>(frame_index));
         }

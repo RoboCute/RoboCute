@@ -216,6 +216,8 @@ def _get_full_cpp_type(
 
     # Check if the type itself is registered
     info = None
+    if hasattr(type_hint, '_pybind_type_') and type_hint._pybind_type_ and not type_hint._is_enum_:
+        return 'void*'
     if hasattr(type_hint, "__name__"):
         # Try to find by name in registry
         for key, cls_info in registry.get_all_classes().items():
@@ -836,28 +838,28 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
 
     import_names = []
 
-    def get_enum_expr(key: str, info: ClassInfo):
-        print(f"Generating Enum for {info.name}")
-        if not info.is_enum:
-            return ""
+    # def get_enum_expr(key: str, info: ClassInfo):
+    #     print(f"Generating Enum for {info.name}")
+    #     if not info.is_enum:
+    #         return ""
 
-        enum_name = info.name
-        enum_values = "\n".join(
-            [
-                PY_ENUM_VALUE_TEMPLATE.substitute(
-                    INDENT=INDENT,
-                    VALUE_NAME=info.fields[i].name,
-                    VALUE_EXPR=f"= {info.fields[i].default}"
-                    if info.fields[i].default is not None
-                    else "",
-                )
-                for i in range(len(info.fields))
-            ]
-        )
+    #     enum_name = info.name
+    #     enum_values = "\n".join(
+    #         [
+    #             PY_ENUM_VALUE_TEMPLATE.substitute(
+    #                 INDENT=INDENT,
+    #                 VALUE_NAME=info.fields[i].name,
+    #                 VALUE_EXPR=f"= {info.fields[i].default}"
+    #                 if info.fields[i].default is not None
+    #                 else "",
+    #             )
+    #             for i in range(len(info.fields))
+    #         ]
+    #     )
 
-        return PY_ENUM_EXPR_TEMPLATE.substitute(
-            ENUM_NAME=enum_name, ENUM_VALUES=enum_values
-        )
+    #     return PY_ENUM_EXPR_TEMPLATE.substitute(
+    #         ENUM_NAME=enum_name, ENUM_VALUES=enum_values
+    #     )
 
     def get_class_expr(key: str, info: ClassInfo):
         if info.is_enum:
@@ -885,6 +887,11 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
             args_decl = _print_py_args_decl(method_params, False)
             args_call = _print_py_args(method_params, False, False)
             return_expr = "return " if method.return_type else ""
+            return_end = ''
+            if method.return_type and hasattr(method.return_type, '_pybind_type_') and method.return_type._pybind_type_ and not method.return_type._is_enum_:
+                return_expr += _get_py_type(method.return_type) + '('
+                return_end = ')'
+                
             pybind_method_name = PYBIND_METHOD_NAME_TEMPLATE.substitute(
                 STRUCT_NAME=struct_name,
                 METHOD_NAME=method.name,
@@ -898,6 +905,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
                 RETURN_EXPR=return_expr,
                 PYBIND_METHOD_NAME=pybind_method_name,
                 ARGS_CALL=args_call,
+                RETURN_END = return_end
             )
 
         methods_list = []
@@ -1232,9 +1240,6 @@ def pybind_codegen(
                     method.return_type, registry, True, False
                 )
                 # Get the actual C++ method return type (is_view=True for interface methods)
-                cpp_ret_type = _get_full_cpp_type(
-                    method.return_type, registry, False, True
-                )
 
                 ret_type = f" -> {pybind_ret_type}"
                 return_expr = "return "

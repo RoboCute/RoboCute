@@ -17,8 +17,7 @@ public:
     void create_empty(
         size_t size_bytes,
         bool upload_device);
-    bool init_device_resource() override;
-    bool load_executed() const override;
+    bool init_device_resource();
     bool load_finished() const override;
     bool empty() const override;
     void serialize_meta(ObjSerialize const &obj) const override;
@@ -26,7 +25,6 @@ public:
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;
-    void wait_load_executed() const override;
     void wait_load_finished() const override;
 protected:
     bool unsafe_save_to_path() const override;

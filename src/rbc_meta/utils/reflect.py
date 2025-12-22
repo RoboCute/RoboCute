@@ -138,7 +138,7 @@ class ReflectionRegistry:
         # print(f"Registering {key} : {class_info.name}")
 
         # 返回原始类，不修改它
-        return cls
+        return class_info
 
     def _extract_class_info(self, cls: Type, module_name: Optional[str]) -> ClassInfo:
         """提取类信息"""
@@ -475,7 +475,7 @@ def reflect(
 
     def decorator(cls: Type) -> Type:
         registry = ReflectionRegistry()
-        registry.register(
+        class_info = registry.register(
             cls,
             module_name=module_name,
             cpp_namespace=cpp_namespace,
@@ -485,6 +485,10 @@ def reflect(
         )
         # 添加标记属性
         cls._reflected_ = True
+        cls._is_enum_ = class_info.is_enum
+        # 添加自定义属性
+        cls._pybind_type_ = pybind
+        
         cls._cpp_type_name = f"{cpp_namespace}::{cls.__name__}"
         return cls
 

@@ -52,14 +52,14 @@ public:
         bool is_virtual_texture);
 
     bool load_finished() const override;
-    bool load_executed() const override;
-    bool init_device_resource() override;
+    bool load_executed() const;
+    bool init_device_resource();
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
     void dispose() override;
     bool async_load_from_file() override;
     void unload() override;
-    void wait_load_executed() const override;
+    void wait_load_executed() const;
     void wait_load_finished() const override;
 protected:
     bool unsafe_save_to_path() const override;

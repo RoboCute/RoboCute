@@ -52,10 +52,6 @@ bool MaterialResource::empty() const {
     std::shared_lock lck{_async_mtx};
     return !_loaded;
 }
-bool MaterialResource::load_executed() const {
-    std::shared_lock lck{_async_mtx};
-    return _loaded;
-}
 bool MaterialResource::load_finished() const {
     std::shared_lock lck{_async_mtx};
     return _loaded && _mat_code.value != ~0u;
@@ -88,7 +84,6 @@ void MaterialResource::load_from_json(luisa::string_view json_vec) {
                 if (!res) {
                     return;
                 }
-                res->async_load_from_file();
             } else if constexpr (is_array) {
                 uint64_t size;
                 if (!deser.start_array(size, name))
@@ -201,13 +196,6 @@ void MaterialResource::unload() {
     std::lock_guard lck1{_mat_inst->_mat_mtx};
     _mat_inst->_disposed_mat.emplace_back(value);
 }
-void MaterialResource::wait_load_executed() const {
-    std::shared_lock lck{_async_mtx};
-    _event.wait();
-    for (auto &i : _depended_resources) {
-        i->wait_load_executed();
-    }
-}
 void MaterialResource::wait_load_finished() const {
     std::shared_lock lck{_async_mtx};
     _event.wait();
@@ -233,8 +221,9 @@ bool MaterialResource::init_device_resource() {
             LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
             auto res = *iter;
             if (res) {
-                res->wait_load_executed();
-                u.index = static_cast<TextureResource *>(res.get())->heap_index();
+                auto tex = static_cast<TextureResource *>(res.get());
+                tex->wait_load_executed();
+                u.index = tex->heap_index();
             } else {
                 u.index = ~0u;
             }
