@@ -10,6 +10,7 @@
 #include <rbc_config.h>
 #include "rbc_core/blob.h"
 #include <rbc_core/hash.h>
+#include <rbc_core/containers/rbc_concurrent_queue.h>
 #include <rbc_world_v2/base_object.h>
 #include <luisa/core/fiber.h>
 
@@ -79,6 +80,8 @@ public:
     ResourceHandle clone();
 
 protected:
+    friend struct ResourceSystem;
+
     [[nodiscard]] void *load(bool requireInstalled);
     ResourceRecord *get_record() const;
     void acquire_record(ResourceRecord *record) const;
@@ -107,8 +110,8 @@ public:
     [[nodiscard]] luisa::span<const ResourceHandle> GetDependencies() const;
 
     void Update();
-    void Okey();
-    void Failed();
+    bool Okay();
+    bool Failed();
 
 protected:
     friend class ResourceSystem;
@@ -199,18 +202,17 @@ public:
     [[nodiscard]] ResourceRegistry *GetRegistry() const;
 
 protected:
-    ResourceRecord *GetRecordInternal(void *resource);
     void UnloadResourceInternal(ResourceRecord *record);
     void DestroyRecordInternal(ResourceRecord *record);
-    void ClearFinishRequestsInternal();
+    void ClearFinishedRequestsInternal();
 
     ResourceRegistry *resource_registry = nullptr;
 
     // concurrent queue
-    vstd::LockFreeArrayQueue<ResourceRequest *> request_queue;
-    std::mutex queue_mtx;
+    rbc::ConcurrentQueue<ResourceRequest *> request_queue;
 
-    luisa::vector<ResourceRequest *> faield_requests;
+    std::mutex requests_mtx;
+    luisa::vector<ResourceRequest *> failed_requests;
     luisa::vector<ResourceRequest *> to_update_requests;
     luisa::vector<ResourceRequest *> serde_batch;
 

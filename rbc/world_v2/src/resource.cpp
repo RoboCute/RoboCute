@@ -259,27 +259,12 @@ void ResourceRequest::Update() {
     RBCZoneScopedN("ResourceRequest::Update");
 }
 
-void ResourceRequest::Okey() {
-    // TODO: 标记请求成功完成
-    // 设置 resource_record 的状态为 Loaded/Installed
-    // 通知等待的 fiber
-    if (resource_record) {
-        resource_record->SetStatus(EResourceLoadingStatus::Loaded);
-        if (requireInstall) {
-            resource_record->SetStatus(EResourceLoadingStatus::Installed);
-        }
-    }
-    serde_event.signal();
+bool ResourceRequest::Okay() {
+    return true;
 }
 
-void ResourceRequest::Failed() {
-    // TODO: 标记请求失败
-    // 设置 resource_record 的状态为 Error
-    // 通知等待的 fiber
-    if (resource_record) {
-        resource_record->SetStatus(EResourceLoadingStatus::Error);
-    }
-    serde_event.signal();
+bool ResourceRequest::Failed() {
+    return true;
 }
 
 void ResourceRequest::UnloadDependenciesInternal() {
@@ -339,71 +324,82 @@ void ResourceRecord::SetStatus(EResourceLoadingStatus InStatus) {
 ResourceSystem::ResourceSystem() : counter(true) {}
 
 ResourceSystem::~ResourceSystem() {
-    // TODO: 清理所有资源
-    // 卸载所有资源，清理所有 record，等待所有请求完成
     Shutdown();
 }
 
 void ResourceSystem::Initialize(ResourceRegistry *provider) {
-    // TODO: 初始化资源系统
-    // 设置 resource_registry
-    // 初始化各种数据结构
+    LUISA_ASSERT(provider);
     resource_registry = provider;
 }
 
 bool ResourceSystem::IsInitialized() {
-    // TODO: 检查系统是否已初始化
     return resource_registry != nullptr;
 }
 
 void ResourceSystem::Shutdown() {
-    // TODO: 关闭资源系统
-    // 设置 quit 标志
-    // 等待所有请求完成
-    // 清理所有资源记录
+    // unload already unloaded and error records
+    for (auto &pair : resource_records) {
+        auto record = pair.second;
+        if (record->loading_status == EResourceLoadingStatus::Unloaded || record->loading_status == EResourceLoadingStatus::Error) {
+            continue;
+        }
+        UnloadResourceInternal(record);
+    }
+    // clear all finished requests
+    ClearFinishedRequestsInternal();
+    // mark quit and last update for ongoing requests
     quit = true;
-    WaitRequest();
-    // 清理所有 records
+    Update();
+    // spin until all requests uninstalled
+    while (!to_update_requests.empty()) {
+        Update();
+    }
+    // now delete all records
+    for (auto &pair : resource_records) {
+        auto record = pair.second;
+        RBCDelete(record);
+    }
+    resource_records.clear();
+
+    resource_registry = nullptr;
 }
 
 void ResourceSystem::Update() {
-    // TODO: 更新资源系统
-    // 处理请求队列中的新请求
-    // 更新进行中的请求
-    // 处理序列化批次
-    // 清理失败的请求
-    std::lock_guard<std::mutex> lock(queue_mtx);
-
-    // 处理新请求
-    ResourceRequest *request = nullptr;
-    while (auto opt = request_queue.pop()) {
-        request = *opt;
-        to_update_requests.push_back(request);
+    {
+        ResourceRequest *request = nullptr;
+        while (request_queue.try_dequeue(request)) {
+            to_update_requests.emplace_back(request);
+        }
+        ClearFinishedRequestsInternal();
     }
-
-    // 更新进行中的请求
-    for (auto *req : to_update_requests) {
-        req->Update();
+    // TODO: time limit
+    {
+        for (auto req : to_update_requests) {
+            auto record = req->resource_record;
+            uint32_t spinCounter = 0;
+            EResourceLoadingStatus last_phase;
+            while (!req->Okay() && spinCounter < 16) {
+                last_phase = record->loading_status;
+                req->Update();
+                if (last_phase == record->loading_status)
+                    spinCounter++;
+                else
+                    spinCounter = 0;
+            };
+        }
     }
-
-    // 处理序列化批次
-    // 根据 factory 的 AsyncSerdeLoadFactor 决定批次大小
-    // 执行序列化操作
-
-    // 清理失败的请求
-    ClearFinishRequestsInternal();
 }
 
 bool ResourceSystem::WaitRequest() {
-    // TODO: 等待所有请求完成
-    // 使用 counter 等待所有异步操作完成
+    if (quit)
+        return false;
     counter.wait();
-    return true;
+    return !quit;
 }
 
 void ResourceSystem::Quit() {
-    // TODO: 设置退出标志
     quit = true;
+    counter.add(1);
 }
 
 ResourceRecord *ResourceSystem::RegisterResource(const vstd::Guid &guid) {
@@ -447,65 +443,63 @@ ResourceRecord *ResourceSystem::LoadResource(const ResourceHandle handle, bool r
         // append to record
         record->active_request = request;
         record->loading_status = EResourceLoadingStatus::Loading;
+
+        // enqueue
         counter.add(1);
+        request_queue.enqueue(request);
     }
-
-    // 创建请求并加入队列
-    // 这里需要创建 ResourceRequest 的具体实现类
-    // request_queue.push(request);
-
     return record;
 }
 
 ResourceHandle ResourceSystem::EnqueueResource(vstd::Guid guid, rbc::TypeInfo type, rbc::IResource *resource, bool requireInstall, luisa::vector<ResourceHandle> dependencies, EResourceLoadingStatus status) {
-    // TODO: 将资源加入队列
-    // 注册或获取 ResourceRecord
-    // 设置 header、resource、状态等
-    // 创建 ResourceHandle 并返回
-    auto *record = RegisterResource(guid);
-    record->header.type = type;
-    record->header.dependencies = std::move(dependencies);
-    record->resource = resource;
-    record->SetStatus(status);
+    // 运行时手动注册Resource，常用于PCG或者测试Resource
+    ResourceHandle handle = guid;
+    auto *record = FindResourceRecord(guid);
+    if (record == nullptr) {
+        record = RegisterResource(guid);
+    }
+    handle.acquire_record(record);
 
-    if (resource) {
-        resource_to_update_mtx.lock();
-        // resource_to_record 的 key 是 vstd::Guid，需要从 record->header.guid 获取
-        resource_to_record.emplace(record->header.guid, record);
-        resource_to_update_mtx.unlock();
+    // check dependencies
+    for (auto dependency : dependencies) {
+        LUISA_ASSERT(!dependency.is_null());
     }
 
-    // TODO: 创建 ResourceHandle 并关联 record
-    // 需要通过 ResourceHandle 的构造函数或特殊方法来设置 record
-    // 当前实现：创建一个 guid 模式的 handle，后续在 load 时会解析为 record
-    ResourceHandle handle(guid);
-    // 注意：这里需要一种方式将 record 关联到 handle
-    // 可能需要修改 ResourceHandle 的设计，或者通过其他机制实现
+    if (auto request = record->active_request) {
+        request->requireInstall = requireInstall;
+    } else {
+        request = RBCNew<ResourceRequest>();
+        request->requireInstall = requireInstall;
+        request->resource_record = record;
+        request->system = this;
+        request->factory = FindFactory(type);
+        counter.add(1);
+        request_queue.enqueue(request);
+
+        record->active_request = request;
+        record->loading_status = status;
+        record->resource = resource;
+        record->header.guid = guid;
+        record->header.type = type;
+        record->header.dependencies = dependencies;
+    }
+
     return handle;
 }
 
 void ResourceSystem::UnloadResource(const ResourceHandle handle) {
-    // TODO: 卸载资源
-    // 通过 guid 查找 ResourceRecord，调用 UnloadResourceInternal
-    auto guid = handle.get_guid();
-    auto *record = FindResourceRecord(guid);
-    if (record) {
+    if (quit) return;
+    LUISA_ASSERT(!handle.is_null());
+    if (auto record = handle.get_record()) {
+        LUISA_ASSERT(record->loading_status != EResourceLoadingStatus::Unloaded);
+        record->RemoveReference();
+        memset((void *)&handle, 0, sizeof(ResourceHandle));
         UnloadResourceInternal(record);
     }
 }
 
 void ResourceSystem::FlushResource(const ResourceHandle handle) {
-    // TODO: 刷新资源
-    // 等待资源加载完成，确保资源已安装
-    auto guid = handle.get_guid();
-    auto *record = FindResourceRecord(guid);
-    if (!record) return;
-
-    // 等待加载完成
-    while (record->loading_status.load() < EResourceLoadingStatus::Installed) {
-        Update();
-        // 可能需要等待 fiber event
-    }
+    LUISA_ERROR("NOT IMPLEMENTED");
 }
 
 ResourceFactory *ResourceSystem::FindFactory(rbc::TypeInfo type) const {
@@ -544,38 +538,33 @@ ResourceRecord *ResourceSystem::FindResourceRecord(const vstd::Guid &guid) {
     return result;
 }
 
-ResourceRecord *ResourceSystem::GetRecordInternal(void *resource) {
-    // TODO: 从 resource 指针查找 ResourceRecord
-    // resource_to_record 的 key 是 vstd::Guid，但这里需要从 void* 查找
-    // 可能需要通过其他方式获取 resource 的 guid，或者需要修改 map 的设计
-    // 当前实现：返回 nullptr，需要后续实现
-    return nullptr;
-}
-
 void ResourceSystem::UnloadResourceInternal(ResourceRecord *record) {
-    // TODO: 卸载资源（内部实现）
-    // 设置状态为 Unloading
-    // 调用 resource->OnUninstall()
-    // 卸载依赖资源
-    // 清理资源数据
-    // 设置状态为 Unloaded
-    if (!record) return;
+    LUISA_ASSERT(!quit);
 
-    record->SetStatus(EResourceLoadingStatus::Unloading);
-
-    if (record->resource) {
-        record->resource->OnUninstall();
-        resource_to_update_mtx.lock();
-        resource_to_record.remove(record->header.guid);
-        resource_to_update_mtx.unlock();
+    if (record->loading_status == EResourceLoadingStatus::Error || record->loading_status == EResourceLoadingStatus::Unloading) {
+        DestroyRecordInternal(record);
+        return;
     }
+    if (auto request = record->active_request) {
+    } else {
+        request = RBCNew<ResourceRequest>();
+        request->requireInstall = false;
+        request->resource_record = record;
+        request->system = this;
 
-    // 卸载依赖
-    for (auto &dep : record->header.dependencies) {
-        UnloadResource(dep);
+        if (record->loading_status == EResourceLoadingStatus::Installed) {
+            record->loading_status = EResourceLoadingStatus::Uninstalling;
+        } else if (record->loading_status == EResourceLoadingStatus::Loaded) {
+            record->loading_status = EResourceLoadingStatus::Unloading;
+        } else [[unlikely]] {
+            LUISA_ERROR("Unreachable!");
+        }
+
+        request->factory = this->FindFactory(record->header.type);
+        record->active_request = request;
+        counter.add(1);
+        request_queue.enqueue(request);
     }
-
-    record->SetStatus(EResourceLoadingStatus::Unloaded);
 }
 
 void ResourceSystem::DestroyRecordInternal(ResourceRecord *record) {
@@ -595,12 +584,35 @@ void ResourceSystem::DestroyRecordInternal(ResourceRecord *record) {
     rbc_free(record);
 }
 
-void ResourceSystem::ClearFinishRequestsInternal() {
-    // TODO: 清理完成的请求（内部方法）
-    // 移除已完成的请求（成功或失败）
-    // 清理 failed_requests 和 to_update_requests
-    faield_requests.clear();
-    to_update_requests.clear();
+void ResourceSystem::ClearFinishedRequestsInternal() {
+    to_update_requests.erase(
+        std::remove_if(to_update_requests.begin(), to_update_requests.end(), [&](ResourceRequest *req) {
+            if (req->Okay()) {
+                if (req->resource_record) {
+                    req->resource_record->active_request = nullptr;
+                }
+                RBCDelete(req);
+                counter.done();
+                return true;
+            }
+            if (req->Failed()) {
+                failed_requests.push_back(req);
+                counter.done();
+                return true;
+            }
+            return false;
+        }),
+        to_update_requests.end());
+
+    failed_requests.erase(
+        std::remove_if(failed_requests.begin(), failed_requests.end(), [&](ResourceRequest *req) {
+            if (!req->resource_record) {
+                RBCDelete(req);
+                return true;
+            }
+            return false;
+        }),
+        failed_requests.end());
 }
 
 ResourceSystem *GetResourceSystem() {
