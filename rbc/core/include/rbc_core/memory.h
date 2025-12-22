@@ -3,16 +3,16 @@
 #include <tracy_wrapper.h>
 
 //=======================basic alloc=======================
-RBC_EXTERN_C RBC_CORE_API void *_rbc_malloc(size_t size, const char *pool_name);
-RBC_EXTERN_C RBC_CORE_API void *_rbc_calloc(size_t count, size_t size, const char *pool_name);
-RBC_EXTERN_C RBC_CORE_API void *_rbc_malloc_aligned(size_t size, size_t alignment, const char *pool_name);
-RBC_EXTERN_C RBC_CORE_API void *_rbc_calloc_aligned(size_t count, size_t size, size_t alignment, const char *pool_name);
-RBC_EXTERN_C RBC_CORE_API void *_rbc_new_n(size_t count, size_t size, const char *pool_name);
-RBC_EXTERN_C RBC_CORE_API void *_rbc_new_aligned(size_t size, size_t alignment, const char *pool_name);
-RBC_EXTERN_C RBC_CORE_API void _rbc_free(void *p, const char *pool_name) RBC_NOEXCEPT;
-RBC_EXTERN_C RBC_CORE_API void _rbc_free_aligned(void *p, size_t alignment, const char *pool_name);
-RBC_EXTERN_C RBC_CORE_API void *_rbc_realloc(void *p, size_t newsize, const char *pool_name);
-RBC_EXTERN_C RBC_CORE_API void *_rbc_realloc_aligned(void *p, size_t newsize, size_t alignment, const char *pool_name);
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_malloc(size_t size, const char *pool_name);
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_calloc(size_t count, size_t size, const char *pool_name);
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_malloc_aligned(size_t size, size_t alignment, const char *pool_name);
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_calloc_aligned(size_t count, size_t size, size_t alignment, const char *pool_name);
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_new_n(size_t count, size_t size, const char *pool_name);
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_new_aligned(size_t size, size_t alignment, const char *pool_name);
+RBC_EXTERN_C RBC_CORE_API void internal_rbc_free(void *p, const char *pool_name) RBC_NOEXCEPT;
+RBC_EXTERN_C RBC_CORE_API void internal_rbc_free_aligned(void *p, size_t alignment, const char *pool_name);
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_realloc(void *p, size_t newsize, const char *pool_name);
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_realloc_aligned(void *p, size_t newsize, size_t alignment, const char *pool_name);
 
 RBC_EXTERN_C RBC_CORE_API void *traced_os_malloc(size_t size, const char *pool_name);
 RBC_EXTERN_C RBC_CORE_API void *traced_os_calloc(size_t count, size_t size, const char *pool_name);
@@ -35,7 +35,7 @@ RBC_FORCEINLINE void *RBCMallocWithCZone(size_t size, const char *line, const ch
     RBCCZoneC(z, RBC_ALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    void *ptr = _rbc_malloc(size, pool_name);
+    void *ptr = internal_rbc_malloc(size, pool_name);
     RBCCZoneEnd(z);
     return ptr;
 }
@@ -43,7 +43,7 @@ RBC_FORCEINLINE void *RBCCallocWithCZone(size_t count, size_t size, const char *
     RBCCZoneC(z, RBC_ALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    void *ptr = _rbc_calloc(count, size, pool_name);
+    void *ptr = internal_rbc_calloc(count, size, pool_name);
     RBCCZoneEnd(z);
     return ptr;
 }
@@ -52,7 +52,7 @@ RBC_FORCEINLINE void *RBCMallocAlignedWithCZone(size_t size, size_t alignment, c
     RBCCZoneC(z, RBC_ALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    void *ptr = _rbc_malloc_aligned(size, alignment, pool_name);
+    void *ptr = internal_rbc_malloc_aligned(size, alignment, pool_name);
     RBCCZoneEnd(z);
     return ptr;
 }
@@ -61,7 +61,7 @@ RBC_FORCEINLINE void *RBCCallocAlignedWithCZone(size_t count, size_t size, size_
     RBCCZoneC(z, RBC_ALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    void *ptr = _rbc_calloc_aligned(count, size, alignment, pool_name);
+    void *ptr = internal_rbc_calloc_aligned(count, size, alignment, pool_name);
     RBCCZoneEnd(z);
     return ptr;
 }
@@ -69,7 +69,7 @@ RBC_FORCEINLINE void *RBCNewNWithCZone(size_t count, size_t size, const char *li
     RBCCZoneC(z, RBC_ALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    void *ptr = _rbc_new_n(count, size, pool_name);
+    void *ptr = internal_rbc_new_n(count, size, pool_name);
     RBCCZoneEnd(z);
     return ptr;
 }
@@ -77,7 +77,7 @@ RBC_FORCEINLINE void *RBCNewAlignedWithCZone(size_t size, size_t alignment, cons
     RBCCZoneC(z, RBC_ALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    void *ptr = _rbc_new_aligned(size, alignment, pool_name);
+    void *ptr = internal_rbc_new_aligned(size, alignment, pool_name);
     RBCCZoneEnd(z);
     return ptr;
 }
@@ -85,21 +85,21 @@ RBC_FORCEINLINE void RBCFreeWithCZone(void *p, const char *line, const char *poo
     RBCCZoneC(z, RBC_DEALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    _rbc_free(p, pool_name);
+    internal_rbc_free(p, pool_name);
     RBCCZoneEnd(z);
 }
 RBC_FORCEINLINE void RBCFreeAlignedWithCZone(void *p, size_t alignment, const char *line, const char *pool_name) {
     RBCCZoneC(z, RBC_DEALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    _rbc_free_aligned(p, alignment, pool_name);
+    internal_rbc_free_aligned(p, alignment, pool_name);
     RBCCZoneEnd(z);
 }
 RBC_FORCEINLINE void *RBCReallocWithCZone(void *p, size_t newsize, const char *line, const char *pool_name) {
     RBCCZoneC(z, RBC_ALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    void *ptr = _rbc_realloc(p, newsize, pool_name);
+    void *ptr = internal_rbc_realloc(p, newsize, pool_name);
     RBCCZoneEnd(z);
     return ptr;
 }
@@ -107,7 +107,7 @@ RBC_FORCEINLINE void *RBCReallocAlignedWithCZone(void *p, size_t newsize, size_t
     RBCCZoneC(z, RBC_ALLOC_TRACY_MARKER_COLOR, 1);
     RBCCZoneText(z, line, strlen(line));
     RBCCZoneName(z, line, strlen(line));
-    void *ptr = _rbc_realloc_aligned(p, newsize, alignment, pool_name);
+    void *ptr = internal_rbc_realloc_aligned(p, newsize, alignment, pool_name);
     RBCCZoneEnd(z);
     return ptr;
 }
@@ -142,25 +142,25 @@ RBC_FORCEINLINE void *RBCReallocAlignedWithCZone(void *p, size_t newsize, size_t
 #define rbc_freeN(p, ...) RBCFreeWithCZone((p), RBC_ALLOC_CAT(RBC_ALLOC_STRINGFY(__FILE__), RBC_ALLOC_STRINGFY(__LINE__)), __VA_ARGS__)
 #define rbc_free_alignedN(p, alignment, ...) RBCFreeAlignedWithCZone((p), (alignment), RBC_ALLOC_CAT(RBC_ALLOC_STRINGFY(__FILE__), RBC_ALLOC_STRINGFY(__LINE__)), __VA_ARGS__)
 #else
-#define rbc_malloc(size) _rbc_malloc((size), NULL)
-#define rbc_calloc(count, size) _rbc_calloc((count), (size), NULL)
-#define rbc_malloc_aligned(size, alignment) _rbc_malloc_aligned((size), (alignment), NULL)
-#define rbc_calloc_aligned(count, size, alignment) _rbc_calloc_aligned((count), (size), (alignment), NULL)
-#define rbc_new_n(count, size) _rbc_new_n((count), (size), NULL)
-#define rbc_new_aligned(size, alignment) _rbc_new_aligned((size), (alignment), NULL)
-#define rbc_realloc(p, newsize) _rbc_realloc((p), (newsize), NULL)
-#define rbc_realloc_aligned(p, newsize, align) _rbc_realloc_aligned((p), (newsize), (align), NULL)
-#define rbc_free(p) _rbc_free((p), NULL)
-#define rbc_free_aligned(p, alignment) _rbc_free_aligned((p), (alignment), NULL)
+#define rbc_malloc(size) internal_rbc_malloc((size), NULL)
+#define rbc_calloc(count, size) internal_rbc_calloc((count), (size), NULL)
+#define rbc_malloc_aligned(size, alignment) internal_rbc_malloc_aligned((size), (alignment), NULL)
+#define rbc_calloc_aligned(count, size, alignment) internal_rbc_calloc_aligned((count), (size), (alignment), NULL)
+#define rbc_new_n(count, size) internal_rbc_new_n((count), (size), NULL)
+#define rbc_new_aligned(size, alignment) internal_rbc_new_aligned((size), (alignment), NULL)
+#define rbc_realloc(p, newsize) internal_rbc_realloc((p), (newsize), NULL)
+#define rbc_realloc_aligned(p, newsize, align) internal_rbc_realloc_aligned((p), (newsize), (align), NULL)
+#define rbc_free(p) internal_rbc_free((p), NULL)
+#define rbc_free_aligned(p, alignment) internal_rbc_free_aligned((p), (alignment), NULL)
 
-#define rbc_mallocN(size, ...) _rbc_malloc((size), __VA_ARGS__)
-#define rbc_callocN(count, size, ...) _rbc_calloc((count), (size), __VA_ARGS__)
-#define rbc_malloc_alignedN(size, alignment, ...) _rbc_malloc_aligned((size), (alignment), __VA_ARGS__)
-#define rbc_calloc_alignedN(count, size, alignment, ...) _rbc_calloc_aligned((count), (size), (alignment), __VA_ARGS__)
-#define rbc_new_nN(count, size, ...) _rbc_new_n((count), (size), __VA_ARGS__)
-#define rbc_new_alignedN(size, alignment, ...) _rbc_new_aligned((size), (alignment), __VA_ARGS__)
-#define rbc_reallocN(p, newsize, ...) _rbc_realloc((p), (newsize), __VA_ARGS__)
-#define rbc_realloc_alignedN(p, newsize, align, ...) _rbc_realloc_aligned((p), (newsize), (align), __VA_ARGS__)
-#define rbc_freeN(p, ...) _rbc_free((p), __VA_ARGS__)
-#define rbc_free_alignedN(p, alignment, ...) _rbc_free_aligned((p), (alignment), __VA_ARGS__)
+#define rbc_mallocN(size, ...) internal_rbc_malloc((size), __VA_ARGS__)
+#define rbc_callocN(count, size, ...) internal_rbc_calloc((count), (size), __VA_ARGS__)
+#define rbc_malloc_alignedN(size, alignment, ...) internal_rbc_malloc_aligned((size), (alignment), __VA_ARGS__)
+#define rbc_calloc_alignedN(count, size, alignment, ...) internal_rbc_calloc_aligned((count), (size), (alignment), __VA_ARGS__)
+#define rbc_new_nN(count, size, ...) internal_rbc_new_n((count), (size), __VA_ARGS__)
+#define rbc_new_alignedN(size, alignment, ...) internal_rbc_new_aligned((size), (alignment), __VA_ARGS__)
+#define rbc_reallocN(p, newsize, ...) internal_rbc_realloc((p), (newsize), __VA_ARGS__)
+#define rbc_realloc_alignedN(p, newsize, align, ...) internal_rbc_realloc_aligned((p), (newsize), (align), __VA_ARGS__)
+#define rbc_freeN(p, ...) internal_rbc_free((p), __VA_ARGS__)
+#define rbc_free_alignedN(p, alignment, ...) internal_rbc_free_aligned((p), (alignment), __VA_ARGS__)
 #endif

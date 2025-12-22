@@ -105,10 +105,10 @@ RBC_EXTERN_C RBC_CORE_API void *traced_os_realloc_aligned(void *p, size_t newsiz
     return new_allocation;
 }
 
-// _rbc_alloc
+// internal_rbc_alloc
 
 #if defined(RBC_RUNTIME_USE_MIMALLOC)
-RBC_CORE_API void *_rbc_malloc(size_t size, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_malloc(size_t size, const char *pool_name) {
     void *p = mi_malloc(size);
     if (pool_name) {
         RBCCAllocN(p, size, pool_name);
@@ -118,7 +118,7 @@ RBC_CORE_API void *_rbc_malloc(size_t size, const char *pool_name) {
     return p;
 }
 
-RBC_CORE_API void *_rbc_calloc(size_t count, size_t size, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_calloc(size_t count, size_t size, const char *pool_name) {
     void *p = mi_calloc(count, size);
     if (pool_name) {
         RBCCAllocN(p, size, pool_name);
@@ -128,7 +128,7 @@ RBC_CORE_API void *_rbc_calloc(size_t count, size_t size, const char *pool_name)
     return p;
 }
 
-RBC_CORE_API void *_rbc_calloc_aligned(size_t count, size_t size, size_t alignment, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_calloc_aligned(size_t count, size_t size, size_t alignment, const char *pool_name) {
     void *p = mi_calloc_aligned(count, size, alignment);
     if (pool_name) {
         RBCCAllocN(p, size, pool_name);
@@ -138,7 +138,7 @@ RBC_CORE_API void *_rbc_calloc_aligned(size_t count, size_t size, size_t alignme
     return p;
 }
 
-RBC_CORE_API void *_rbc_malloc_aligned(size_t size, size_t alignment, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_malloc_aligned(size_t size, size_t alignment, const char *pool_name) {
     void *p = mi_malloc_aligned(size, alignment);
     if (pool_name) {
         RBCCAllocN(p, size, pool_name);
@@ -148,7 +148,7 @@ RBC_CORE_API void *_rbc_malloc_aligned(size_t size, size_t alignment, const char
     return p;
 }
 
-RBC_EXTERN_C RBC_CORE_API void *_rbc_new_n(size_t count, size_t size, const char *pool_name) {
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_new_n(size_t count, size_t size, const char *pool_name) {
     void *p = mi_new_n(count, size);
     if (pool_name) {
         RBCCAllocN(p, size * count, pool_name);
@@ -158,7 +158,7 @@ RBC_EXTERN_C RBC_CORE_API void *_rbc_new_n(size_t count, size_t size, const char
     return p;
 }
 
-RBC_CORE_API void *_rbc_new_aligned(size_t size, size_t alignment, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_new_aligned(size_t size, size_t alignment, const char *pool_name) {
     void *p = mi_new_aligned(size, alignment);
     if (pool_name) {
         RBCCAllocN(p, size, pool_name);
@@ -168,7 +168,7 @@ RBC_CORE_API void *_rbc_new_aligned(size_t size, size_t alignment, const char *p
     return p;
 }
 
-RBC_CORE_API void _rbc_free(void *p, const char *pool_name) RBC_NOEXCEPT {
+RBC_CORE_API void internal_rbc_free(void *p, const char *pool_name) RBC_NOEXCEPT {
     if (pool_name) {
         RBCCFreeN(p, pool_name);
     } else {
@@ -177,7 +177,7 @@ RBC_CORE_API void _rbc_free(void *p, const char *pool_name) RBC_NOEXCEPT {
     mi_free(p);
 }
 
-RBC_CORE_API void _rbc_free_aligned(void *p, size_t alignment, const char *pool_name) {
+RBC_CORE_API void internal_rbc_free_aligned(void *p, size_t alignment, const char *pool_name) {
     if (pool_name) {
         RBCCFreeN(p, pool_name);
     } else {
@@ -186,7 +186,7 @@ RBC_CORE_API void _rbc_free_aligned(void *p, size_t alignment, const char *pool_
     mi_free_aligned(p, alignment);
 }
 
-RBC_CORE_API void *_rbc_realloc(void *p, size_t newsize, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_realloc(void *p, size_t newsize, const char *pool_name) {
     if (pool_name) {
         RBCCFreeN(p, pool_name);
     } else {
@@ -201,7 +201,7 @@ RBC_CORE_API void *_rbc_realloc(void *p, size_t newsize, const char *pool_name) 
     return np;
 }
 
-RBC_CORE_API void *_rbc_realloc_aligned(void *p, size_t newsize, size_t alignment, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_realloc_aligned(void *p, size_t newsize, size_t alignment, const char *pool_name) {
     if (pool_name) {
         RBCCFreeN(p, pool_name);
     } else {
@@ -220,44 +220,44 @@ RBC_CORE_API void *_rbc_realloc_aligned(void *p, size_t newsize, size_t alignmen
 
 #else
 
-RBC_CORE_API void *_rbc_malloc(size_t size, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_malloc(size_t size, const char *pool_name) {
     return traced_os_malloc(size, pool_name);
 }
 
-RBC_CORE_API void *_rbc_calloc(size_t count, size_t size, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_calloc(size_t count, size_t size, const char *pool_name) {
     return traced_os_calloc(count, size, pool_name);
 }
 
-RBC_EXTERN_C RBC_CORE_API void *_rbc_new_n(size_t count, size_t size, const char *pool_name) {
+RBC_EXTERN_C RBC_CORE_API void *internal_rbc_new_n(size_t count, size_t size, const char *pool_name) {
     void *p = malloc(count * size);
     return p;
 }
 
-RBC_CORE_API void *_rbc_calloc_aligned(size_t count, size_t size, size_t alignment, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_calloc_aligned(size_t count, size_t size, size_t alignment, const char *pool_name) {
     return traced_os_calloc_aligned(count, size, alignment, pool_name);
 }
 
-RBC_CORE_API void *_rbc_malloc_aligned(size_t size, size_t alignment, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_malloc_aligned(size_t size, size_t alignment, const char *pool_name) {
     return traced_os_malloc_aligned(size, alignment, pool_name);
 }
 
-RBC_CORE_API void *_rbc_new_aligned(size_t size, size_t alignment, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_new_aligned(size_t size, size_t alignment, const char *pool_name) {
     return traced_os_malloc_aligned(size, alignment, pool_name);
 }
 
-RBC_CORE_API void _rbc_free(void *p, const char *pool_name) {
+RBC_CORE_API void internal_rbc_free(void *p, const char *pool_name) {
     return traced_os_free(p, pool_name);
 }
 
-RBC_CORE_API void _rbc_free_aligned(void *p, size_t alignment, const char *pool_name) {
+RBC_CORE_API void internal_rbc_free_aligned(void *p, size_t alignment, const char *pool_name) {
     traced_os_free_aligned(p, alignment, pool_name);
 }
 
-RBC_CORE_API void *_rbc_realloc(void *p, size_t newsize, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_realloc(void *p, size_t newsize, const char *pool_name) {
     return traced_os_realloc(p, newsize, pool_name);
 }
 
-RBC_CORE_API void *_rbc_realloc_aligned(void *p, size_t newsize, size_t align, const char *pool_name) {
+RBC_CORE_API void *internal_rbc_realloc_aligned(void *p, size_t newsize, size_t align, const char *pool_name) {
     return traced_os_realloc_aligned(p, newsize, align, pool_name);
 }
 
@@ -268,7 +268,7 @@ const char *kContainersDefaultPoolName = "rbc::containers";
 void *containers_malloc_aligned(size_t size, size_t alignment) {
 #if defined(TRACY_TRACE_ALLOCATION)
     RBCCZoneNCS(z, "containers::allocate", RBC_ALLOC_TRACY_MARKER_COLOR, 16, 1);
-    void *p = _rbc_malloc_aligned(size, alignment, kContainersDefaultPoolName);
+    void *p = internal_rbc_malloc_aligned(size, alignment, kContainersDefaultPoolName);
     RBCCZoneEnd(z);
     return p;
 #else
@@ -279,7 +279,7 @@ void *containers_malloc_aligned(size_t size, size_t alignment) {
 void containers_free_aligned(void *p, size_t alignment) {
 #if defined(TRACY_TRACE_ALLOCATION)
     RBCCZoneNCS(z, "containers::free", RBC_DEALLOC_TRACY_MARKER_COLOR, 16, 1);
-    _rbc_free_aligned(p, alignment, kContainersDefaultPoolName);
+    internal_rbc_free_aligned(p, alignment, kContainersDefaultPoolName);
     RBCCZoneEnd(z);
 #else
     rbc_free_aligned(p, alignment);
