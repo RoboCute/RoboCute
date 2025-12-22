@@ -8,6 +8,7 @@
  * ResourceHeader
  */
 #include <rbc_config.h>
+#include "rbc_core/blob.h"
 #include <rbc_core/hash.h>
 #include <rbc_world_v2/base_object.h>
 #include <luisa/core/fiber.h>
@@ -94,7 +95,7 @@ protected:
 struct RBC_WORLD_API ResourceHeader {
     uint32_t version{~0u};
     vstd::Guid guid;
-    vstd::Guid type;
+    rbc::TypeInfo type{rbc::TypeInfo::invalid()};
     luisa::vector<ResourceHandle> dependencies;
 };
 
@@ -120,8 +121,10 @@ protected:
 
     // vfs
     // io_future
-    luisa::string resource_url;
-    luisa::BinaryFileStream blob;
+    luisa::string resource_url;                // resource url
+    luisa::BinaryFileStream binary_file_stream;// the file stream
+    rbc::BlobId blob;                          // the actual binary data
+
     luisa::fiber::event serde_event;
     std::mutex update_mtx;
 };
@@ -177,7 +180,8 @@ public:
     ResourceRecord *RegisterResource(const vstd::Guid &guid);
     ResourceRecord *LoadResource(const ResourceHandle handle, bool requireInstall);
     ResourceRecord *FindResourceRecord(const vstd::Guid &guid);
-    ResourceHandle EnqueueResource(vstd::Guid guid, vstd::Guid type, rbc::IResource *resource, bool requireInstall, luisa::vector<ResourceHandle> dependencies, EResourceLoadingStatus status);
+    ResourceHandle EnqueueResource(vstd::Guid guid, rbc::TypeInfo type, rbc::IResource *resource, bool requireInstall, luisa::vector<ResourceHandle> dependencies, EResourceLoadingStatus status);
+
     void UnloadResource(const ResourceHandle handle);
     void FlushResource(const ResourceHandle handle);
 
@@ -215,6 +219,9 @@ protected:
     luisa::spin_mutex resource_factories_mtx;
     vstd::HashMap<vstd::Guid, ResourceFactory *, luisa::hash<vstd::Guid>> resource_factories;
 };
+
+// global singleton get
+RBC_WORLD_API ResourceSystem *GetResourceSystem();
 
 // serde for header
 

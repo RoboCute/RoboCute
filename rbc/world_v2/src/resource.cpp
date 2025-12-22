@@ -15,22 +15,16 @@ ResourceHandle::ResourceHandle() {
     std::memset((void *)this, 0, sizeof(ResourceHandle));
 }
 
-ResourceHandle::ResourceHandle(const ResourceHandle &other) {
-    // TODO: 实现拷贝构造函数
-    // 如果 other 是 guid 模式，直接拷贝 guid
-    // 如果 other 是 record 模式，需要增加引用计数并拷贝指针
-    if (other.is_guid()) {
+ResourceHandle::ResourceHandle(const ResourceHandle &other) : padding(0), pointer(0) {
+    if (get_guid() != other.get_guid())
+        reset();
+
+    if (other.is_null()) {
+        std::memset((void *)this, 0, sizeof(ResourceHandle));
+    } else if (other.is_guid()) {
         guid = other.guid;
-        padding = 0;
-    } else {
-        pointer = other.pointer;
-        padding = other.padding;
-        if (pointer) {
-            auto *record = get_record();
-            if (record) {
-                record->AddReference();
-            }
-        }
+    } else if (auto record = other.get_record()) {
+        acquire_record(record);
     }
 }
 
@@ -56,45 +50,41 @@ ResourceHandle &ResourceHandle::operator=(const ResourceHandle &other) {
     return *this;
 }
 
-ResourceHandle::ResourceHandle(const vstd::Guid &other) {
-    // TODO: 从 Guid 构造 ResourceHandle
-    // 设置为 guid 模式，padding 为 0
+ResourceHandle::ResourceHandle(const vstd::Guid &other) : padding(0), pointer(0) {
+    if (get_guid() != other)
+        reset();
+
     guid = other;
-    padding = 0;
+    LUISA_ASSERT(is_guid() || is_null());
 }
 
 ResourceHandle &ResourceHandle::operator=(const vstd::Guid &other) {
-    // TODO: 从 Guid 赋值
-    // 先释放当前资源引用，再设置为 guid 模式
-    reset();
+    if (get_guid() != other)
+        reset();
+
     guid = other;
-    padding = 0;
+    LUISA_ASSERT(is_guid() || is_null());
     return *this;
 }
 
-ResourceHandle::ResourceHandle(ResourceHandle &&other) {
-    // TODO: 实现移动构造函数
-    // 直接移动内部数据，将 other 置为空状态
-    guid = other.guid;
-    pointer = other.pointer;
-    padding = other.padding;
-    std::memset((void *)&other, 0, sizeof(ResourceHandle));
+ResourceHandle::ResourceHandle(ResourceHandle &&other) : padding(0), pointer(0) {
+    if (get_guid() != other.get_guid())
+        reset();
+
+    memcpy((void *)this, &other, sizeof(ResourceHandle));
+    memset((void *)&other, 0, sizeof(ResourceHandle));
 }
 
 ResourceHandle &ResourceHandle::operator=(ResourceHandle &&other) {
-    // TODO: 实现移动赋值运算符
-    // 先释放当前资源引用，再移动 other
-    reset();
-    guid = other.guid;
-    pointer = other.pointer;
-    padding = other.padding;
-    std::memset((void *)&other, 0, sizeof(ResourceHandle));
+    if (get_guid() != other.get_guid())
+        reset();
+
+    memcpy((void *)this, &other, sizeof(ResourceHandle));
+    memset((void *)&other, 0, sizeof(ResourceHandle));
     return *this;
 }
 
 ResourceHandle::~ResourceHandle() {
-    // TODO: 实现析构函数
-    // 如果是指向 record 的模式，减少引用计数
     reset();
 }
 
@@ -103,15 +93,7 @@ ResourceHandle::operator bool() const {
 }
 
 bool ResourceHandle::operator==(const ResourceHandle &other) const {
-    // TODO: 实现相等比较
-    // 比较 guid 或 record 指针
-    if (is_guid() && other.is_guid()) {
-        return guid == other.guid;
-    }
-    if (!is_guid() && !other.is_guid()) {
-        return pointer == other.pointer;
-    }
-    return false;
+    return get_guid() == other.get_guid();
 }
 
 void *ResourceHandle::load() {
@@ -123,12 +105,8 @@ void *ResourceHandle::install() {
 }
 
 void ResourceHandle::reset() {
-    // TODO: 实现重置
-    // 如果是指向 record 的模式，减少引用计数
-    // 将 handle 置为空状态
-    if (!is_guid() && pointer) {
-        auto *record = get_record();
-        if (record) {
+    if (padding == 0 && pointer != 0) {
+        if (auto record = get_record()) {
             record->RemoveReference();
         }
     }
@@ -136,117 +114,110 @@ void ResourceHandle::reset() {
 }
 
 void *ResourceHandle::get_loaded() const {
-    // TODO: 返回已加载的资源指针（不要求已安装）
-    // 如果资源状态为 Loaded 或更高，返回 resource 指针
-    auto *record = get_record();
-    if (!record) return nullptr;
-    auto status = record->loading_status.load();
-    if (status >= EResourceLoadingStatus::Loaded) {
-        return record->resource;
+    if (auto record = get_record()) {
+        if (record->loading_status >= EResourceLoadingStatus::Loaded)
+            return record->resource;
     }
     return nullptr;
 }
 
 void *ResourceHandle::get_installed() const {
-    // TODO: 返回已安装的资源指针
-    // 如果资源状态为 Installed，返回 resource 指针
-    auto *record = get_record();
-    if (!record) return nullptr;
-    if (record->loading_status.load() == EResourceLoadingStatus::Installed) {
-        return record->resource;
+    if (auto record = get_record()) {
+        if (record->loading_status >= EResourceLoadingStatus::Installed)
+            return record->resource;
     }
     return nullptr;
 }
 
 bool ResourceHandle::is_null() const {
-    // padding 为 0 表示是 guid 模式且 guid 为空，或者未初始化
-    return padding == 0 && guid == vstd::Guid{};
+    return padding == 0 && pointer == 0;
 }
 
 bool ResourceHandle::is_guid() const {
-    // padding 为 0 表示是 guid 模式
-    return padding == 0;
+    return padding != 0;
 }
 
 bool ResourceHandle::is_loaded() const {
-    // TODO: 检查资源是否已加载
-    auto *record = get_record();
-    if (!record) return false;
-    auto status = record->loading_status.load();
-    return status >= EResourceLoadingStatus::Loaded;
+    return get_status() == EResourceLoadingStatus::Loaded;
 }
 
 bool ResourceHandle::is_installed() const {
-    // TODO: 检查资源是否已安装
-    auto *record = get_record();
-    if (!record) return false;
-    return record->loading_status.load() == EResourceLoadingStatus::Installed;
+    return get_status() == EResourceLoadingStatus::Installed;
 }
 
 vstd::Guid ResourceHandle::get_guid() const {
     if (is_guid()) {
         return guid;
+    } else if (const auto record = get_record()) {
+        return record->header.guid;
     }
-    auto *record = get_record();
-    return record ? record->header.guid : vstd::Guid{};
+    return {};
 }
 
 rbc::TypeInfo ResourceHandle::get_type() const {
-    // TODO: 返回资源的类型信息
-    auto *record = get_record();
-    if (!record) return rbc::TypeInfo::invalid();
-    // 从 header.type 获取类型信息
-    // 需要根据 type guid 查找对应的 TypeInfo
-    // 这里需要实现从 Guid 到 TypeInfo 的映射
-    return rbc::TypeInfo::invalid();// 占位符
+    LUISA_ASSERT(padding == 0);
+    if (const auto record = get_record()) {
+        return record != nullptr ? record->header.type : rbc::TypeInfo::invalid();
+    }
+    return rbc::TypeInfo::invalid();
 }
 
 EResourceLoadingStatus ResourceHandle::get_status() const {
-    auto *record = get_record();
-    if (!record) return EResourceLoadingStatus::Unloaded;
-    return record->loading_status.load();
+    if (is_null()) {
+        return EResourceLoadingStatus::Unloaded;
+    } else if (auto record = get_record()) {
+        return record->loading_status;
+    }
+    return EResourceLoadingStatus::Unloaded;
 }
 
 ResourceHandle ResourceHandle::clone() {
-    // TODO: 克隆当前 handle，增加引用计数
-    ResourceHandle result = *this;
-    if (!is_guid() && pointer) {
-        auto *record = get_record();
-        if (record) {
-            record->AddReference();
-        }
-    }
-    return result;
+    return *this;
 }
 
 void *ResourceHandle::load(bool requireInstalled) {
-    // TODO: 加载资源（内部实现）
-    // 如果当前是 guid 模式，需要先解析为 record
-    // 调用 ResourceSystem::LoadResource
-    // 根据 requireInstalled 决定是否等待安装完成
-    return nullptr;// 占位符
+    auto system = GetResourceSystem();
+
+    if (is_null()) {
+        return nullptr;
+    } else if (is_guid())// new acquire
+    {
+        auto record = system->FindResourceRecord(guid);
+        if (record == nullptr) {
+            record = system->LoadResource(*this, requireInstalled);
+        }
+        if (record != nullptr) {
+            acquire_record(record);
+            if (record->loading_status >= EResourceLoadingStatus::Loaded) {
+                return record->resource;
+            }
+        }
+    } else if (auto record = get_record()) {
+        if (record->loading_status >= EResourceLoadingStatus::Loaded)
+            return record->resource;
+    }
+    return nullptr;
 }
 
 ResourceRecord *ResourceHandle::get_record() const {
-    // TODO: 获取关联的 ResourceRecord
-    // 如果当前是 guid 模式，需要通过 ResourceSystem 查找
-    // 如果是指针模式，直接返回（需要处理指针的低位标志）
-    if (is_guid()) {
-        // 需要通过 system 查找
+    if (is_null()) {
         return nullptr;
+    } else if (is_guid()) {
+        auto system = GetResourceSystem();
+        return system->FindResourceRecord(guid);
     }
-    // 清除指针的低位标志位（如果有的话）
     return pointer;
 }
 
 void ResourceHandle::acquire_record(ResourceRecord *record) const {
-    // TODO: 获取 record 的所有权
-    // 设置 pointer，padding 设为非 0 值表示已解析
-    // 增加引用计数
-    if (record) {
-        pointer = record;
-        padding = 1;// 非 0 表示已解析
+    if (pointer != record) {
+        if (padding == 0 && pointer != 0) {
+            get_record()->RemoveReference();
+            pointer = 0;
+        }
         record->AddReference();
+        padding = 0;
+        pointer = record;
     }
 }
 
@@ -262,12 +233,13 @@ void ResourceRegistry::FillRequest(ResourceRequest *request, ResourceHeader head
 // ResourceRequest
 // =====================================================
 vstd::Guid ResourceRequest::GetGuid() const {
-    // TODO: 返回资源的 GUID
-    // 从 header 或 resource_record 中获取
     return resource_record ? resource_record->header.guid : vstd::Guid{};
 }
 
 luisa::span<const uint8_t> ResourceRequest::GetData() const {
+    if (!blob) {
+        return {};
+    }
     // TODO: 返回资源数据
     // 从 blob 中获取数据
     return luisa::span<const uint8_t>{};
@@ -349,8 +321,8 @@ uint32_t ResourceRecord::AddReference() {
 void ResourceRecord::RemoveReference() {
     --reference_count;
     if (reference_count == 0) {
-        // auto system = GetResourceSystemInstance(); // get global system
-        // system->UnloadResource(header.guid);
+        auto system = GetResourceSystem();// get global system
+        system->UnloadResource(header.guid);
     }
 }
 bool ResourceRecord::isReferenced() const {
@@ -471,7 +443,7 @@ ResourceRecord *ResourceSystem::LoadResource(const ResourceHandle handle, bool r
     return record;
 }
 
-ResourceHandle ResourceSystem::EnqueueResource(vstd::Guid guid, vstd::Guid type, rbc::IResource *resource, bool requireInstall, luisa::vector<ResourceHandle> dependencies, EResourceLoadingStatus status) {
+ResourceHandle ResourceSystem::EnqueueResource(vstd::Guid guid, rbc::TypeInfo type, rbc::IResource *resource, bool requireInstall, luisa::vector<ResourceHandle> dependencies, EResourceLoadingStatus status) {
     // TODO: 将资源加入队列
     // 注册或获取 ResourceRecord
     // 设置 header、resource、状态等
@@ -616,6 +588,12 @@ void ResourceSystem::ClearFinishRequestsInternal() {
     faield_requests.clear();
     to_update_requests.clear();
 }
+
+ResourceSystem *GetResourceSystem() {
+    static ResourceSystem system;
+    return &system;
+}
+
 // =====================================================
 
 }// namespace rbc

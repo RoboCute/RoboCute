@@ -20,6 +20,7 @@
 #include <rbc_app/camera_controller.h>
 #include <rbc_core/runtime_static.h>
 #include <rbc_runtime/plugin_manager.h>
+#include <tracy_wrapper.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -174,74 +175,105 @@ int main(int argc, char *argv[]) {
     });
     cam.fov = radians(80.f);
     while (!utils.should_close()) {
-        if (reset) {
-            reset = false;
-            utils.reset_frame();
-        }
-        if (utils.window())
-            utils.window()->poll_events();
-        // reuse drag logic
-        auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam.position, cam.far_plane, cam);
-        auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
-        if (any(window_size != utils.dst_image().size())) {
-            utils.resize_swapchain(window_size);
-            frame_index = 0;
-        }
-        if (reset) {
-            frame_index = 0;
-        }
-        camera_input.viewport_size = make_float2(window_size);
-        cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
-        auto time = clk.toc();
-        auto delta_time = (time - last_frame_time) * 1e-3f;
-        cam_controller.grab_input_from_viewport(camera_input, delta_time);
-        if (cam_controller.any_changed())
-            frame_index = 0;
-        last_frame_time = time;
-
-        // click
-        if (stage == MouseStage::Clicking) {
-            click_mng.add_require("click", ClickRequire{.screen_uv = start_uv});
-        }
-        // set drag
-        else if (stage == MouseStage::Dragging) {
-            click_mng.add_frame_selection("dragging", min(start_uv, end_uv) * 2.f - 1.f, max(start_uv, end_uv) * 2.f - 1.f, true);
-        }
-        if (stage == MouseStage::Clicking || stage == MouseStage::Dragging) {
-            dragged_object_ids.clear();
-        }
-        if (stage == MouseStage::Clicked) {
-            auto click_result = click_mng.query_result("click");
-            if (click_result) {
-                dragged_object_ids.push_back(click_result->inst_id);
+        RBCFrameMark; // Mark frame boundary
+        
+        {
+            RBCZoneScopedN("Main Loop");
+            
+            if (reset) {
+                reset = false;
+                utils.reset_frame();
             }
-        } else if (stage == MouseStage::Dragging) {
-            auto dragging_result = click_mng.query_frame_selection("dragging");
-            if (!dragging_result.empty())
-                dragged_object_ids = std::move(dragging_result);
-        }
+            
+            {
+                RBCZoneScopedN("Poll Events");
+                if (utils.window())
+                    utils.window()->poll_events();
+            }
+            
+            // reuse drag logic
+            {
+                RBCZoneScopedN("Draw Gizmos");
+                auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam.position, cam.far_plane, cam);
+            }
+            
+            auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+            if (any(window_size != utils.dst_image().size())) {
+                RBCZoneScopedN("Resize Swapchain");
+                utils.resize_swapchain(window_size);
+                frame_index = 0;
+            }
+            if (reset) {
+                frame_index = 0;
+            }
+            
+            float delta_time = 0.0f;
+            {
+                RBCZoneScopedN("Update Camera");
+                camera_input.viewport_size = make_float2(window_size);
+                cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
+                auto time = clk.toc();
+                delta_time = (time - last_frame_time) * 1e-3f;
+                RBCPlot("Frame Time (ms)", delta_time * 1000.0f);
+                cam_controller.grab_input_from_viewport(camera_input, delta_time);
+                if (cam_controller.any_changed())
+                    frame_index = 0;
+                last_frame_time = time;
+            }
 
-        auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
-        constexpr uint sample = 256;
-        // if (frame_index > sample) {
-        //     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
-        // }
-        click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
+            // click
+            {
+                RBCZoneScopedN("Handle Input");
+                if (stage == MouseStage::Clicking) {
+                    click_mng.add_require("click", ClickRequire{.screen_uv = start_uv});
+                }
+                // set drag
+                else if (stage == MouseStage::Dragging) {
+                    click_mng.add_frame_selection("dragging", min(start_uv, end_uv) * 2.f - 1.f, max(start_uv, end_uv) * 2.f - 1.f, true);
+                }
+                if (stage == MouseStage::Clicking || stage == MouseStage::Dragging) {
+                    dragged_object_ids.clear();
+                }
+                if (stage == MouseStage::Clicked) {
+                    auto click_result = click_mng.query_result("click");
+                    if (click_result) {
+                        dragged_object_ids.push_back(click_result->inst_id);
+                    }
+                } else if (stage == MouseStage::Dragging) {
+                    auto dragging_result = click_mng.query_frame_selection("dragging");
+                    if (!dragging_result.empty())
+                        dragged_object_ids = std::move(dragging_result);
+                }
+            }
 
-        utils.tick(
-            static_cast<float>(delta_time),
-            frame_index,
-            window_size,
-            tick_stage);
-        // if (frame_index == sample) {
-        //     LUISA_INFO("Denoising..");
-        //     utils.denoise();
-        // }
-        ++frame_index;
-        switch (stage) {
-            case MouseStage::Clicking:
-                stage = MouseStage::Clicked;
-                break;
+            {
+                RBCZoneScopedN("Render Tick");
+                auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
+                constexpr uint sample = 256;
+                // if (frame_index > sample) {
+                //     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
+                // }
+                click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
+
+                utils.tick(
+                    static_cast<float>(delta_time),
+                    frame_index,
+                    window_size,
+                    tick_stage);
+                // if (frame_index == sample) {
+                //     LUISA_INFO("Denoising..");
+                //     utils.denoise();
+                // }
+            }
+            
+            ++frame_index;
+            RBCPlot("Frame Index", static_cast<float>(frame_index));
+            
+            switch (stage) {
+                case MouseStage::Clicking:
+                    stage = MouseStage::Clicked;
+                    break;
+            }
         }
     }
     // rpc_hook.shutdown_remote();

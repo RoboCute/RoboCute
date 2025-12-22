@@ -18,6 +18,7 @@
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 #include <rbc_render/click_manager.h>
+#include <tracy_wrapper.h>
 
 using namespace rbc;
 using namespace luisa;
@@ -257,22 +258,39 @@ struct ContextImpl : RBCContext {
         return utils.should_close();
     }
     void tick() override {
-        if (utils.window())
-            utils.window()->poll_events();
-        auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
-        if (any(window_size != utils.dst_image().size())) {
-            utils.resize_swapchain(window_size);
+        RBCFrameMark; // Mark frame boundary
+        
+        RBCZoneScopedN("ContextImpl::tick");
+        
+        {
+            RBCZoneScopedN("Poll Events");
+            if (utils.window())
+                utils.window()->poll_events();
         }
-        cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
-        auto time = clk.toc();
-        auto delta_time = time - last_frame_time;
-        last_frame_time = time;
+        
+        {
+            RBCZoneScopedN("Update Camera");
+            auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+            if (any(window_size != utils.dst_image().size())) {
+                utils.resize_swapchain(window_size);
+            }
+            cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
+            auto time = clk.toc();
+            auto delta_time = time - last_frame_time;
+            RBCPlot("Frame Time (ms)", delta_time * 1000.0);
+            last_frame_time = time;
 
-        utils.tick(
-            static_cast<float>(delta_time),
-            frame_index,
-            window_size);
-        ++frame_index;
+            {
+                RBCZoneScopedN("Render Tick");
+                utils.tick(
+                    static_cast<float>(delta_time),
+                    frame_index,
+                    window_size);
+            }
+            
+            ++frame_index;
+            RBCPlot("Frame Index", static_cast<float>(frame_index));
+        }
     }
 };
 RBCContext *RBCContext::_create_() {
