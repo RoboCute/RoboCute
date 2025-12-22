@@ -49,3 +49,14 @@ C++主要的编译对象是`rbc_ext_c.pyd`（一个C++和pybind11写成的python
 `xmake l xmake/install.lua`
 
 
+
+## 标准库
+
+### HashMap
+
+其实有个更高效的写法
+`auto is_new_elem = resource_factories.try_emplace(type, factory).second;`
+
+如果你不希望在已经有了元素的情况下构建新的元素，那还可以
+`resource_factories.try_emplace(type, vstd::lazy_eval([&] { return make_factory(); }))`;
+这样 make_factory 只有在需要添加的时候才会调用

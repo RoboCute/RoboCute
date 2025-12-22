@@ -1,5 +1,7 @@
 #include <rbc_world_v2/resource.h>
 #include <rbc_core/type_info.h>
+#include <rbc_core/memory.h>
+#include <tracy_wrapper.h>
 
 namespace rbc {
 
@@ -29,23 +31,15 @@ ResourceHandle::ResourceHandle(const ResourceHandle &other) : padding(0), pointe
 }
 
 ResourceHandle &ResourceHandle::operator=(const ResourceHandle &other) {
-    // TODO: 实现拷贝赋值运算符
-    // 先释放当前资源引用，再拷贝 other
-    if (this != &other) {
+    if (get_guid() != other.get_guid())
         reset();
-        if (other.is_guid()) {
-            guid = other.guid;
-            padding = 0;
-        } else {
-            pointer = other.pointer;
-            padding = other.padding;
-            if (pointer) {
-                auto *record = get_record();
-                if (record) {
-                    record->AddReference();
-                }
-            }
-        }
+
+    if (other.is_null()) {
+        std::memset((void *)this, 0, sizeof(ResourceHandle));
+    } else if (other.is_guid()) {
+        guid = other.guid;
+    } else if (auto record = other.get_record()) {
+        acquire_record(record);
     }
     return *this;
 }
@@ -225,8 +219,21 @@ void ResourceHandle::acquire_record(ResourceRecord *record) const {
 // ResourceRegistry
 // =====================================================
 void ResourceRegistry::FillRequest(ResourceRequest *request, ResourceHeader header, luisa::string_view base_path, luisa::string_view uri) {
-    // TODO: 填充请求信息
-    // 设置 request 的 header、resource_url 等字段
+
+    if (request) {
+        // fill meta and dependencies with header
+        request->resource_record->header.type = header.type;
+        request->resource_record->header.version = header.version;
+        request->resource_record->header.dependencies = header.dependencies;
+
+        // fill local registry
+        // TODO: concat base path
+        request->resource_url = uri;
+        request->system = request->system;
+
+        // find factory
+        request->factory = request->system->FindFactory(request->resource_record->header.type);
+    }
 }
 
 // =====================================================
@@ -240,27 +247,16 @@ luisa::span<const uint8_t> ResourceRequest::GetData() const {
     if (!blob) {
         return {};
     }
-    // TODO: 返回资源数据
-    // 从 blob 中获取数据
-    return luisa::span<const uint8_t>{};
+    return {blob->get_data(), blob->get_size()};
 }
 
 luisa::span<const ResourceHandle> ResourceRequest::GetDependencies() const {
-    // TODO: 返回依赖资源列表
-    // 从 header 或 resource_record 中获取
-    if (resource_record) {
-        return luisa::span<const ResourceHandle>(resource_record->header.dependencies);
-    }
-    return luisa::span<const ResourceHandle>{};
+    auto &dependencies = resource_record->header.dependencies;
+    return {dependencies.data(), dependencies.size()};
 }
 
 void ResourceRequest::Update() {
-    // TODO: 更新请求状态
-    // 检查 IO 完成状态，更新加载进度等
-    std::lock_guard<std::mutex> lock(update_mtx);
-    // 检查 blob 读取状态
-    // 检查依赖资源加载状态
-    // 更新 resource_record 的状态
+    RBCZoneScopedN("ResourceRequest::Update");
 }
 
 void ResourceRequest::Okey() {
@@ -269,7 +265,7 @@ void ResourceRequest::Okey() {
     // 通知等待的 fiber
     if (resource_record) {
         resource_record->SetStatus(EResourceLoadingStatus::Loaded);
-        if (requestInstall) {
+        if (requireInstall) {
             resource_record->SetStatus(EResourceLoadingStatus::Installed);
         }
     }
@@ -287,8 +283,10 @@ void ResourceRequest::Failed() {
 }
 
 void ResourceRequest::UnloadDependenciesInternal() {
-    // TODO: 卸载依赖资源（内部方法）
-    // 遍历依赖列表，调用 system->UnloadResource
+    auto &dependencies = resource_record->header.dependencies;
+    for (auto &dep : dependencies) {
+        dep.reset();
+    }
 }
 
 // =====================================================
@@ -409,32 +407,48 @@ void ResourceSystem::Quit() {
 }
 
 ResourceRecord *ResourceSystem::RegisterResource(const vstd::Guid &guid) {
-    // TODO: 注册资源记录
-    // 检查是否已存在，如果不存在则创建新的 ResourceRecord
-    // 添加到 resource_records map
-    resource_records_mtx.lock();
-    auto iter = resource_records.find(guid);
-    if (iter) {
-        auto *result = iter.value();
-        resource_records_mtx.unlock();
-        return result;
+    auto record = FindResourceRecord(guid);
+    if (!record) {
+        record = RBCNew<ResourceRecord>();
+        record->header.guid = guid;
+        record->loading_status = EResourceLoadingStatus::Unloaded;
+        {
+            resource_records_mtx.lock();
+            resource_records.emplace(guid, record);
+            resource_records_mtx.unlock();
+        }
     }
-
-    auto *record = new ResourceRecord{};
-    record->header.guid = guid;
-    resource_records.emplace(guid, record);
-    resource_records_mtx.unlock();
     return record;
 }
 
 ResourceRecord *ResourceSystem::LoadResource(const ResourceHandle handle, bool requireInstall) {
-    // TODO: 加载资源
-    // 如果 handle 是 guid 模式，先注册 record
-    // 创建 ResourceRequest，加入请求队列
-    // 如果 requireInstall，等待安装完成
-    // 返回 ResourceRecord 指针
+    LUISA_ASSERT(!quit);
+    LUISA_ASSERT(handle.is_guid());
     auto guid = handle.get_guid();
     auto *record = RegisterResource(guid);
+    if (record->loading_status >= EResourceLoadingStatus::Loading) {
+        // already loaded
+        return record;
+    }
+    if (record->loading_status == EResourceLoadingStatus::Unloaded) {
+        record->loading_status = EResourceLoadingStatus::Loading;
+    }
+
+    if (auto request = record->active_request) {
+        request->requireInstall = requireInstall;
+    } else {
+        // new request
+        request = RBCNew<ResourceRequest>();
+        request->requireInstall = requireInstall;
+        request->resource_record = record;
+        request->system = this;
+        request->factory = nullptr;
+
+        // append to record
+        record->active_request = request;
+        record->loading_status = EResourceLoadingStatus::Loading;
+        counter.add(1);
+    }
 
     // 创建请求并加入队列
     // 这里需要创建 ResourceRequest 的具体实现类
@@ -494,9 +508,8 @@ void ResourceSystem::FlushResource(const ResourceHandle handle) {
     }
 }
 
-ResourceFactory *ResourceSystem::FindFactory(vstd::Guid type) const {
-    // TODO: 查找资源工厂
-    // const 方法中需要将 mutex 声明为 mutable，或者使用 const_cast
+ResourceFactory *ResourceSystem::FindFactory(rbc::TypeInfo type) const {
+
     const_cast<luisa::spin_mutex &>(resource_factories_mtx).lock();
     auto iter = resource_factories.find(type);
     auto *result = iter ? iter.value() : nullptr;
@@ -505,14 +518,15 @@ ResourceFactory *ResourceSystem::FindFactory(vstd::Guid type) const {
 }
 
 void ResourceSystem::RegisterFactory(ResourceFactory *factory) {
-    // TODO: 注册资源工厂
-    // 需要从 factory 获取类型 GUID（可能需要虚函数）
-    // 添加到 resource_factories map
-    // 这里需要知道如何获取 factory 对应的类型 GUID
+    auto type = factory->GetResourceType();
+    resource_factories_mtx.lock();
+    auto iter = resource_factories.find(type);
+    LUISA_ASSERT(!iter, "Duplicate Registration for ResourceFactory");
+    resource_factories.emplace(type, factory);
+    resource_factories_mtx.unlock();
 }
 
-void ResourceSystem::UnregisterFactory(vstd::Guid type) {
-    // TODO: 注销资源工厂
+void ResourceSystem::UnregisterFactory(rbc::TypeInfo type) {
     resource_factories_mtx.lock();
     resource_factories.remove(type);
     resource_factories_mtx.unlock();
@@ -578,7 +592,7 @@ void ResourceSystem::DestroyRecordInternal(ResourceRecord *record) {
         resource_to_record.remove(record->header.guid);
         resource_to_update_mtx.unlock();
     }
-    delete record;
+    rbc_free(record);
 }
 
 void ResourceSystem::ClearFinishRequestsInternal() {
