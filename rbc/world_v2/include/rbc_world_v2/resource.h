@@ -112,18 +112,18 @@ public:
 
 protected:
     friend class ResourceSystem;
+    friend class ResourceRegistry;
 
     void UnloadDependenciesInternal();
-    std::atomic_bool requestInstall = false;
+    std::atomic_bool requireInstall = false;
     ResourceSystem *system;
     ResourceFactory *factory;
     ResourceRecord *resource_record;
 
     // vfs
     // io_future
-    luisa::string resource_url;                // resource url
-    luisa::BinaryFileStream binary_file_stream;// the file stream
-    rbc::BlobId blob;                          // the actual binary data
+    luisa::string resource_url;// resource url
+    rbc::BlobId blob;          // the actual binary data
 
     luisa::fiber::event serde_event;
     std::mutex update_mtx;
@@ -161,7 +161,14 @@ private:
 };
 
 struct RBC_WORLD_API ResourceFactory {
+    virtual rbc::TypeInfo GetResourceType() = 0;
+    virtual bool AsyncIO() { return true; }
     virtual float AsyncSerdeLoadFactor() { return 1.0f; }
+    virtual EResourceInstallStatus Install(ResourceRecord *record) { return EResourceInstallStatus::Succeed; }
+    virtual bool Uninstall(ResourceRecord *record) { return true; }
+    virtual EResourceInstallStatus UpdateInstall(ResourceRecord *record) {
+        return EResourceInstallStatus::Succeed;
+    }
 };
 
 struct RBC_WORLD_API ResourceSystem {
@@ -185,9 +192,9 @@ public:
     void UnloadResource(const ResourceHandle handle);
     void FlushResource(const ResourceHandle handle);
 
-    [[nodiscard]] ResourceFactory *FindFactory(vstd::Guid type) const;
+    [[nodiscard]] ResourceFactory *FindFactory(rbc::TypeInfo type) const;
     void RegisterFactory(ResourceFactory *factory);
-    void UnregisterFactory(vstd::Guid type);
+    void UnregisterFactory(rbc::TypeInfo type);
 
     [[nodiscard]] ResourceRegistry *GetRegistry() const;
 
@@ -217,7 +224,7 @@ protected:
     vstd::HashMap<vstd::Guid, ResourceRecord *, luisa::hash<vstd::Guid>> resource_to_record;
 
     luisa::spin_mutex resource_factories_mtx;
-    vstd::HashMap<vstd::Guid, ResourceFactory *, luisa::hash<vstd::Guid>> resource_factories;
+    vstd::HashMap<rbc::TypeInfo, ResourceFactory *, luisa::hash<rbc::TypeInfo>> resource_factories;
 };
 
 // global singleton get
