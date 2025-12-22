@@ -290,14 +290,74 @@ luisa::span<const ResourceHandle> ResourceRequest::GetDependencies() const {
 
 void ResourceRequest::Update() {
     RBCZoneScopedN("ResourceRequest::Update");
+
+    std::lock_guard<std::mutex> lock(update_mtx);
+    auto resource_registry = system->GetRegistry();
+    auto current_status = resource_record->loading_status.load();
+    // if unloaded, return
+    if (current_status == EResourceLoadingStatus::Unloaded) {
+        return;
+    }
+    switch (current_status) {
+        case rbc::EResourceLoadingStatus::Loading: {
+            // DO OPEN FILE AND LOAD
+            LUISA_INFO("Resource Loading");
+            resource_record->SetStatus(EResourceLoadingStatus::Loaded);
+            break;
+        }
+        case rbc::EResourceLoadingStatus::Loaded: {
+            // SEND DEPENDENCIES REQUEST
+
+            // DESERIALIZE
+            LUISA_INFO("Resource Waiting Loaded");
+            resource_record->SetStatus(EResourceLoadingStatus::WaitingDependencies);
+
+            break;
+        }
+        case rbc::EResourceLoadingStatus::WaitingDependencies: {
+            // wait dependencies and start install
+
+            // call Install method for factory
+
+            LUISA_INFO("Resource Waiting Dependencies");
+            resource_record->SetStatus(EResourceLoadingStatus::Installing);
+            break;
+        }
+        case rbc::EResourceLoadingStatus::Installing: {
+            // call UpdateInstall for factory
+            LUISA_INFO("Resource Installing");
+            resource_record->SetStatus(EResourceLoadingStatus::Installed);
+            break;
+        }
+        case rbc::EResourceLoadingStatus::Uninstalling: {
+            // call Uninstall for factory
+            LUISA_INFO("Resource Uninstalling");
+            resource_record->SetStatus(EResourceLoadingStatus::Unloading);
+            break;
+        }
+        case rbc::EResourceLoadingStatus::Unloading: {
+            LUISA_INFO("Resource Unloading");
+            resource_record->SetStatus(EResourceLoadingStatus::Unloaded);
+            // clear blob
+            break;
+        }
+        default: {
+            LUISA_ERROR("UNEXPECTED RESOURCE STATUS");
+        }
+    }
 }
 
 bool ResourceRequest::Okay() {
-    return true;
+    if (requireInstall) {
+        return resource_record->loading_status == EResourceLoadingStatus::Installed;
+    }
+    const bool bLoaded = resource_record->loading_status == EResourceLoadingStatus::Loaded;
+    const bool bUnloaded = resource_record->loading_status == EResourceLoadingStatus::Unloaded;
+    return bLoaded || bUnloaded;
 }
 
 bool ResourceRequest::Failed() {
-    return true;
+    return !resource_record || (resource_record->loading_status == EResourceLoadingStatus::Error);
 }
 
 void ResourceRequest::UnloadDependenciesInternal() {
