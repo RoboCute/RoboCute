@@ -32,9 +32,11 @@
 #define TRACY_ON_DEMAND
 #endif
 
-#ifndef TRACY_FIBERS
-#define TRACY_FIBERS
-#endif
+// TRACY_FIBERS 被禁用，因为我们没有使用 Fiber 功能
+// 如果启用 TRACY_FIBERS，某些队列类型可能没有被正确处理，导致断言失败
+// #ifndef TRACY_FIBERS
+// #define TRACY_FIBERS
+// #endif
 
 #ifndef TRACY_TRACE_ALLOCATION
 #define TRACY_TRACE_ALLOCATION

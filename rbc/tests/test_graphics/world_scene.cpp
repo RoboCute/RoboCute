@@ -8,38 +8,47 @@
 #include <rbc_app/graphics_utils.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_render/click_manager.h>
+#include <tracy_wrapper.h>
 
 namespace rbc {
 void WorldScene::_init_scene(GraphicsUtils *utils) {
-    cbox_mesh = world::create_object<world::MeshResource>();
-    cbox_mesh->decode("cornell_box.obj");
-    cbox_mesh->init_device_resource();
-    utils->update_mesh_data(cbox_mesh->device_mesh().get(), false);// update through render-thread
-    _mats.resize(cbox_mesh->submesh_count());
-    LUISA_ASSERT(cbox_mesh->submesh_count() == 8);
-    auto mat0 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]})"sv;
-    auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
-    auto mat2 = R"({"type": "pbr", "specular_roughness": 0.2, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]})"sv;
-    auto light_mat_desc = R"({"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]})"sv;
+    RBCZoneScopedN("WorldScene::_init_scene");
+    
+    {
+        RBCZoneScopedN("Load Cornell Box Mesh");
+        cbox_mesh = world::create_object<world::MeshResource>();
+        cbox_mesh->decode("cornell_box.obj");
+        cbox_mesh->init_device_resource();
+        utils->update_mesh_data(cbox_mesh->device_mesh().get(), false);// update through render-thread
+    }
+    {
+        RBCZoneScopedN("Create Materials");
+        _mats.resize(cbox_mesh->submesh_count());
+        LUISA_ASSERT(cbox_mesh->submesh_count() == 8);
+        auto mat0 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]})"sv;
+        auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
+        auto mat2 = R"({"type": "pbr", "specular_roughness": 0.2, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]})"sv;
+        auto light_mat_desc = R"({"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]})"sv;
 
-    auto basic_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
-    auto left_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
-    auto right_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
-    auto light_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
-    basic_mat->load_from_json(mat0);
-    left_wall_mat->load_from_json(mat1);
-    right_wall_mat->load_from_json(mat2);
-    light_mat->load_from_json(light_mat_desc);
-    _mats[0] = basic_mat;
-    _mats[1] = basic_mat;
-    _mats[2] = basic_mat;
-    _mats[3] = std::move(left_wall_mat);
-    _mats[4] = std::move(right_wall_mat);
-    _mats[5] = basic_mat;
-    _mats[6] = basic_mat;
-    _mats[7] = light_mat;
-    for (auto &i : _mats) {
-        i->init_device_resource();
+        auto basic_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+        auto left_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+        auto right_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+        auto light_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+        basic_mat->load_from_json(mat0);
+        left_wall_mat->load_from_json(mat1);
+        right_wall_mat->load_from_json(mat2);
+        light_mat->load_from_json(light_mat_desc);
+        _mats[0] = basic_mat;
+        _mats[1] = basic_mat;
+        _mats[2] = basic_mat;
+        _mats[3] = std::move(left_wall_mat);
+        _mats[4] = std::move(right_wall_mat);
+        _mats[5] = basic_mat;
+        _mats[6] = basic_mat;
+        _mats[7] = light_mat;
+        for (auto &i : _mats) {
+            i->init_device_resource();
+        }
     }
     _mats[5] = nullptr;
     {
@@ -82,29 +91,33 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     quad_mesh->init_device_resource();
     utils->update_mesh_data(quad_mesh->device_mesh().get(), false);// update through render-thread
 
-    world::TextureLoader tex_loader;
-    tex = tex_loader.decode_texture(
-        "test_grid.png",
-        16,
-        true);
-    skybox = tex_loader.decode_texture(
-        "sky.exr",
-        1,
-        false);
-    // write guid
-    auto sky_guid = skybox->guid();
     {
-        BinaryFileWriter file_writer{"test_scene/sky_guid.txt"};
-        auto sky_str = sky_guid.to_string();
-        file_writer.write({(std::byte *)sky_str.data(),
-                           sky_str.size()});
-    }
+        RBCZoneScopedN("Load Textures");
+        world::TextureLoader tex_loader;
+        tex = tex_loader.decode_texture(
+            "test_grid.png",
+            16,
+            true);
+        skybox = tex_loader.decode_texture(
+            "sky.exr",
+            1,
+            false);
+        // write guid
+        {
+            RBCZoneScopedN("Write Sky GUID");
+            auto sky_guid = skybox->guid();
+            BinaryFileWriter file_writer{"test_scene/sky_guid.txt"};
+            auto sky_str = sky_guid.to_string();
+            file_writer.write({(std::byte *)sky_str.data(),
+                               sky_str.size()});
+        }
 
-    tex_loader.finish_task();
-    // TODO: transform from regular tex to vt need reload device-image
-    // tex->pack_to_tile();
-    tex->init_device_resource();
-    skybox->init_device_resource();
+        tex_loader.finish_task();
+        // TODO: transform from regular tex to vt need reload device-image
+        // tex->pack_to_tile();
+        tex->init_device_resource();
+        skybox->init_device_resource();
+    }
 
     rbc::RC<DeviceImage> image{skybox->get_image()};
     utils->render_plugin()->update_skybox(image);
@@ -302,6 +315,8 @@ void WorldScene::_set_gizmos() {
 bool WorldScene::draw_gizmos(
     bool dragging,
     GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, Camera const &cam) {
+    RBCZoneScopedN("WorldScene::draw_gizmos");
+    
     auto &click_mng = utils->render_settings().read_mut<ClickManager>();
     auto tr = _entities[0]->get_component<world::TransformComponent>();
 
