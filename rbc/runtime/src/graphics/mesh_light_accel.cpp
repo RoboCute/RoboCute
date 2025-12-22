@@ -123,6 +123,7 @@ bool MeshLightAccel::create_or_update_blas(
         new_buffer = true;
     }
     _upload_task.push(std::move(nodes), buffer.view());
+    return new_buffer;
 }
 
 void MeshLightAccel::update_frame(IOCommandList &io_cmdlist) {
