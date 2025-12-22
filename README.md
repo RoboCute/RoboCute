@@ -30,6 +30,10 @@
 
 - `uv run main.py` start the python server
 - `xmake run rbc_editor` start the editor
+- `xmake run test_graphics_bin #backend_name#` start the graphics test, backend currently support "dx" "vk"
+
+![test_graphics_bin](doc/images/test_graphics_bin.png)
+
 - find the registered node
 - connect and execute
 - fetch the result from python side
