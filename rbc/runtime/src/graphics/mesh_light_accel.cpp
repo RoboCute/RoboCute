@@ -76,22 +76,19 @@ auto MeshLightAccel::build_bvh(
     return r;
 }
 
-void MeshLightAccel::create_or_update_blas(
-    CommandList& cmdlist,
+bool MeshLightAccel::create_or_update_blas(
+    CommandList &cmdlist,
     Buffer<BVH::PackedNode> &buffer,
     vector<BVH::PackedNode> &&nodes) {
+    bool new_buffer{false};
     LUISA_ASSERT(!nodes.empty());
     if (buffer && buffer.size() != nodes.size()) {
         SceneManager::instance().dispose_after_sync(std::move(buffer));
     }
     if (!buffer) {
         buffer = RenderDevice::instance().lc_device().create_buffer<BVH::PackedNode>(nodes.size());
+        new_buffer = true;
     }
-    auto to_float3 = [](std::array<float, 3> a) {
-        return float3(a[0], a[1], a[2]);
-    };
-    // cmdlist << buffer.view().copy_from(nodes.data());
-    // SceneManager::instance().dispose_after_commit(std::move(nodes));
     _upload_task.push(std::move(nodes), buffer.view());
 }
 

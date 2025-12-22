@@ -489,7 +489,7 @@ uint Lights::add_mesh_light_sync(
         LightAccel::t_MeshLight);
     auto &&mesh_data = v.device_mesh->mesh_data();
     auto mesh_host_data = v.device_mesh->host_data();
-    auto host_result = mesh_light_accel.build_bvh(
+    auto host_result = MeshLightAccel::build_bvh(
         local_to_world,
         span{(float3 *)mesh_host_data.data(), mesh_data->meta.vertex_count},
         span{(Triangle *)(mesh_host_data.data() + mesh_data->meta.tri_byte_offset), mesh_data->triangle_size},
@@ -606,20 +606,25 @@ void Lights::update_mesh_light_sync(
         LUISA_ERROR("Mesh light must have host data.");
     }
     auto &&mesh_data = v.device_mesh->mesh_data();
-    auto host_result = mesh_light_accel.build_bvh(
+    auto host_result = MeshLightAccel::build_bvh(
         local_to_world,
         span{(float3 *)mesh_host_data.data(), mesh_data->meta.vertex_count},
         span{(Triangle *)(mesh_host_data.data() + mesh_data->meta.tri_byte_offset), mesh_data->triangle_size},
         mesh_data->submesh_offset,
         material_emissions);
-    if (v.blas_heap_idx != ~0u) {
-        scene.bindless_allocator().deallocate_buffer(v.blas_heap_idx);
-    }
     if (host_result.nodes.empty()) {
-        v.blas_heap_idx = ~0u;
+        if (v.blas_heap_idx != ~0u) {
+            scene.bindless_allocator().deallocate_buffer(v.blas_heap_idx);
+            v.blas_heap_idx = ~0u;
+        }
     } else {
-        mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
-        v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
+        auto new_buffer = mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
+        if (new_buffer) {
+            if (v.blas_heap_idx != ~0u) {
+                scene.bindless_allocator().deallocate_buffer(v.blas_heap_idx);
+            }
+            v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
+        }
     }
     if (new_mesh) {
         scene.accel_manager().set_mesh_instance(

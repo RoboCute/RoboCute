@@ -28,11 +28,11 @@ public:
 
 public:
     MeshLightAccel();
-    void create_or_update_blas(
+    bool create_or_update_blas(
         CommandList& cmdlist,
         Buffer<BVH::PackedNode> &buffer,
         vector<BVH::PackedNode> &&nodes);
-    HostResult build_bvh(
+    static HostResult build_bvh(
         float4x4 matrix,
         span<float3 const> vertices,
         span<Triangle const> triangles,
