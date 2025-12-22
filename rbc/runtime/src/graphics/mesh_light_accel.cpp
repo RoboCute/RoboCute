@@ -76,22 +76,31 @@ auto MeshLightAccel::build_bvh(
     return r;
 }
 
-void MeshLightAccel::create_or_update_blas(
+bool MeshLightAccel::create_or_update_blas(
     CommandList &cmdlist,
     Buffer<BVH::PackedNode> &buffer,
     vector<BVH::PackedNode> &&nodes) {
+    bool new_buffer{false};
     LUISA_ASSERT(!nodes.empty());
     if (buffer && buffer.size() != nodes.size()) {
-        SceneManager::instance().dispose_queue().dispose_after_queue(std::move(buffer));
+        SceneManager::instance().dispose_after_sync(std::move(buffer));
     }
     if (!buffer) {
         buffer = RenderDevice::instance().lc_device().create_buffer<BVH::PackedNode>(nodes.size());
+        new_buffer = true;
     }
-    auto to_float3 = [](std::array<float, 3> a) {
-        return float3(a[0], a[1], a[2]);
-    };
-    cmdlist << buffer.view(0, nodes.size()).copy_from(nodes.data());
-    SceneManager::instance().dispose_after_commit(std::move(nodes));
+    _upload_task.push(std::move(nodes), buffer.view());
+}
+
+void MeshLightAccel::update_frame(IOCommandList &io_cmdlist) {
+    while (auto p = _upload_task.pop()) {
+        auto buffer_size = p->buffer.size_bytes();
+        io_cmdlist << IOCommand{
+            p->nodes.data(),
+            0,
+            IOBufferSubView{p->buffer}};
+        io_cmdlist.add_callback([n = std::move(p->nodes)] {});
+    }
 }
 
 MeshLightAccel::MeshLightAccel() {

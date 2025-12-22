@@ -229,11 +229,12 @@ IOService::~IOService()
 void IOService::_execute_cmdlist(IOCommandList& cmd, uint64_t timeline)
 {
     extra_cmds.clear();
-    auto&& cmds = std::move(cmd).steal_commands();
-    auto&& files = std::move(cmd).steal_files();
-    auto&& callbacks = std::move(cmd).steal_callbacks();
+    auto &&cmds = std::move(cmd).steal_commands();
+    auto &&files = std::move(cmd).steal_files();
+    auto &&callbacks = std::move(cmd).steal_callbacks();
     bool require_signal = false;
     auto add_callback = vstd::scope_exit([&]() {
+        cmds.clear();
         if (require_signal)
         {
             dstorage_stream->enqueue_signal(_evt.handle(), _evt.native_handle(), timeline);

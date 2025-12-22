@@ -20,18 +20,24 @@ public:
         BVH::Bounding bounding;
         float contribute;
     };
+    struct Task {
+        vector<BVH::PackedNode> nodes;
+        BufferView<BVH::PackedNode> buffer;
+    };
+    vstd::LockFreeArrayQueue<Task> _upload_task;
 
 public:
     MeshLightAccel();
-    void create_or_update_blas(
-        CommandList &cmdlist,
+    bool create_or_update_blas(
+        CommandList& cmdlist,
         Buffer<BVH::PackedNode> &buffer,
         vector<BVH::PackedNode> &&nodes);
-    HostResult build_bvh(
+    static HostResult build_bvh(
         float4x4 matrix,
         span<float3 const> vertices,
         span<Triangle const> triangles,
         span<uint const> submesh_offset,
         span<float const> submesh_lum);
+    void update_frame(IOCommandList &io_cmdlist);
 };
 }// namespace rbc

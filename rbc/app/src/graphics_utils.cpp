@@ -239,6 +239,7 @@ void GraphicsUtils::tick(
             break;
     }
     auto &cmdlist = _render_device.lc_main_cmd_list();
+    _lights->mesh_light_accel.update_frame(_frame_mem_io_list);
     if (!_frame_mem_io_list.empty()) {
         _mem_io_fence = _render_device.mem_io_service()->execute(std::move(_frame_mem_io_list));
     }
@@ -250,7 +251,6 @@ void GraphicsUtils::tick(
         auto io_fence = fence.exchange(0);
         // support direct-storage
         if (io_fence > 0) {
-
             main_stream << service->wait(io_fence);
         }
     };
