@@ -34,10 +34,10 @@ private:
     uint8_t *bytes = nullptr;
 };
 
-BlobId Create(const uint8_t *data, uint64_t size, bool move, const char *name = nullptr) noexcept {
+BlobId IBlob::Create(const uint8_t *data, uint64_t size, bool move, const char *name) noexcept {
     return BlobId(rbc::RC<SimpleBlob>::New(data, size, alignof(uint8_t), move, name));
 }
-BlobId CreateAligned(const uint8_t *data, uint64_t size, uint64_t alignment, bool move, const char *name = nullptr) noexcept {
+BlobId IBlob::CreateAligned(const uint8_t *data, uint64_t size, uint64_t alignment, bool move, const char *name) noexcept {
     return BlobId(rbc::RC<SimpleBlob>::New(data, size, alignment, move, name));
 }
 
