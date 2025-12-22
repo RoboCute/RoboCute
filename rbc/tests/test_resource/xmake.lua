@@ -1,4 +1,4 @@
-target('test_rttr')
+target('test_resource')
 add_rules('lc_basic_settings', {
     project_kind = 'binary'
 })
