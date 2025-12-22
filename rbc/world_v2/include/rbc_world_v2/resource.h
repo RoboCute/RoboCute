@@ -235,6 +235,40 @@ protected:
 // global singleton get
 RBC_WORLD_API ResourceSystem *GetResourceSystem();
 
-// serde for header
+template<class T>
+struct AsyncResource : public ResourceHandle {
+public:
+    AsyncResource() RBC_NOEXCEPT;
+    AsyncResource(const vstd::Guid &guid) RBC_NOEXCEPT;
+    AsyncResource(const ResourceHandle &hdl) RBC_NOEXCEPT;
+    AsyncResource(const AsyncResource &hdl) RBC_NOEXCEPT;
+
+    inline T *load() { return (T *)ResourceHandle::load(); }
+    inline T *install() { return (T *)ResourceHandle::install(); }
+    inline T *get_loaded() { return (T *)ResourceHandle::get_loaded(); }
+    inline T *get_installed() { return (T *)ResourceHandle::get_installed(); }
+
+    inline AsyncResource clone() { return *this; }
+};
+
+template<class T>
+inline AsyncResource<T>::AsyncResource() RBC_NOEXCEPT
+    : ResourceHandle() {
+}
+
+template<class T>
+inline AsyncResource<T>::AsyncResource(const vstd::Guid &guid) RBC_NOEXCEPT
+    : ResourceHandle(guid) {
+}
+
+template<class T>
+inline AsyncResource<T>::AsyncResource(const ResourceHandle &hdl) RBC_NOEXCEPT
+    : ResourceHandle(hdl) {
+}
+
+template<class T>
+inline AsyncResource<T>::AsyncResource(const AsyncResource &hdl) RBC_NOEXCEPT
+    : ResourceHandle(hdl) {
+}
 
 }// namespace rbc
