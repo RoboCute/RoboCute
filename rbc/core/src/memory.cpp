@@ -92,7 +92,7 @@ RBC_EXTERN_C RBC_CORE_API void *traced_os_realloc_aligned(void *p, size_t newsiz
     // allocated with enough alignment for most `align` values we will use. So we try to realloc first
     // plainly. If the returned address is not aligned adequately, we will revert to
     // posix_memalign'ing a new block, copying old data, deallocating old memory.
-    alignment = alignment < _Alignof(void *) ? _Alignof(void *) : alignment;
+    alignment = alignment < alignof(void *) ? alignof(void *) : alignment;
     void *new_allocation = traced_os_realloc(p, newsize, pool_name);
     if ((uint64_t)(new_allocation) % alignment != 0) {
         //log_warn("This is slow. realloc did not allocate with an alignment of %lu, requires double copy",
