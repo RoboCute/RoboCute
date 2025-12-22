@@ -335,7 +335,8 @@ void ResourceRequest::Update() {
         }
         case rbc::EResourceLoadingStatus::WaitingDependencies: {
             // wait dependencies and start install
-            LUISA_INFO("Resource Waiting Dependencies");
+
+            LUISA_INFO("Resource {} Waiting Dependencies", resource_record->header.guid.to_string());
             bool deps_ready = true;
             for (auto &dep : resource_record->header.dependencies) {
                 if (dep.get_status() == EResourceLoadingStatus::Error) {

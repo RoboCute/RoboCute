@@ -188,7 +188,7 @@ void EnqueueResource(int resource_id, vstd::Guid guid, luisa::vector<ResourceHan
         resource,
         true,        // requireInstall
         dependencies,// dependencies
-        EResourceLoadingStatus::Installing);
+        EResourceLoadingStatus::Loaded);
 }
 
 // =====================================================
@@ -229,11 +229,17 @@ int main() {
         auto guid = GetResourceGuid(i + 1);
         resources[i] = guid;
         // set guid
+        LUISA_INFO("Fetched Resource {} with GUID {}", i, guid.to_string());
     }
 
     EnqueueResource(1, GetResourceGuid(1), {});
     EnqueueResource(2, GetResourceGuid(2), {resources[2]});
-    EnqueueResource(3, GetResourceGuid(3), {resources[1]});
+    EnqueueResource(3, GetResourceGuid(3), {resources[0]});
+
+    // trigger install
+    for (auto i = 0; i < 3; ++i) {
+        resources[i].install();
+    }
 
     // Wait for all resources to be loaded
     LUISA_INFO("[Main] Waiting for all resources to be loaded...");
@@ -285,6 +291,7 @@ int main() {
             void *installed_ptr = resource.install();
             // Wait a bit for installation to complete
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
             if (resource.is_installed()) {
                 LUISA_INFO("[Main] Resource {} installed successfully! (status: {})",
                            resource_id, static_cast<uint32_t>(resource.get_status()));
