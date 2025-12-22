@@ -309,17 +309,27 @@ void ResourceRequest::Update() {
             // SEND DEPENDENCIES REQUEST
 
             // DESERIALIZE
-            LUISA_INFO("Resource Waiting Loaded");
+            LUISA_INFO("Resource Loaded");
             resource_record->SetStatus(EResourceLoadingStatus::WaitingDependencies);
 
             break;
         }
         case rbc::EResourceLoadingStatus::WaitingDependencies: {
             // wait dependencies and start install
-
+            LUISA_INFO("Resource Waiting Dependencies");
+            bool deps_ready = true;
+            for (auto &dep : resource_record->header.dependencies) {
+                if (dep.get_status() == EResourceLoadingStatus::Error) {
+                    resource_record->SetStatus(EResourceLoadingStatus::Error);
+                    LUISA_ERROR("Resource Failed to Load Dependencies");
+                    break;
+                } else if (dep.get_status() != EResourceLoadingStatus::Installed) {
+                    deps_ready = false;
+                    break;
+                }
+            }
             // call Install method for factory
 
-            LUISA_INFO("Resource Waiting Dependencies");
             resource_record->SetStatus(EResourceLoadingStatus::Installing);
             break;
         }
