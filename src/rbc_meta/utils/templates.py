@@ -192,8 +192,11 @@ ${DISPOSE_METHOD}
 ${METHODS_EXPR}
 """)
 
-PY_INIT_METHOD_TEMPLATE = Template("""${INDENT}def __init__(self):
-${INDENT}${INDENT}self._handle = create__${STRUCT_NAME}__()
+PY_INIT_METHOD_TEMPLATE = Template("""${INDENT}def __init__(self, handle = None):
+${INDENT}${INDENT}if handle:
+${INDENT}${INDENT}${INDENT}self._handle = handle
+${INDENT}${INDENT}else:
+${INDENT}${INDENT}${INDENT}self._handle = create__${STRUCT_NAME}__()
 """)
 
 PY_DISPOSE_METHOD_TEMPLATE = Template("""${INDENT}def __del__(self):
@@ -201,7 +204,7 @@ ${INDENT}${INDENT}dispose__${STRUCT_NAME}__(self._handle)
 """)
 
 PY_METHOD_TEMPLATE = Template("""${INDENT}def ${METHOD_NAME}(self${ARGS_DECL}):
-${INDENT}${INDENT}${RETURN_EXPR}${PYBIND_METHOD_NAME}(self._handle${ARGS_CALL})
+${INDENT}${INDENT}${RETURN_EXPR}${PYBIND_METHOD_NAME}(self._handle${ARGS_CALL})${RETURN_END}
 """)
 
 PYBIND_METHOD_NAME_TEMPLATE = Template("${STRUCT_NAME}__${METHOD_NAME}__")
