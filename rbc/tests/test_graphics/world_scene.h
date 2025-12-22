@@ -8,6 +8,8 @@
 namespace rbc {
 struct GraphicsUtils;
 struct WorldScene {
+    luisa::filesystem::path scene_root_dir;
+    luisa::filesystem::path entities_path;
     world::MeshResource *cbox_mesh{};
     world::MeshResource *quad_mesh{};
     RC<world::TextureResource> skybox{};
@@ -39,5 +41,6 @@ private:
     RC<Gizmos> _gizmos;
     void _init_scene(GraphicsUtils *utils);
     void _set_gizmos();
+    void _write_scene();
 };
 }// namespace rbc

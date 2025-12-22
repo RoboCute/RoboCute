@@ -13,7 +13,7 @@
 namespace rbc {
 void WorldScene::_init_scene(GraphicsUtils *utils) {
     RBCZoneScopedN("WorldScene::_init_scene");
-    
+
     {
         RBCZoneScopedN("Load Cornell Box Mesh");
         cbox_mesh = world::create_object<world::MeshResource>();
@@ -139,52 +139,56 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         luisa::span{_mats}.subspan(mat_start_idx, 1),
         quad_mesh);
 }
+void WorldScene::_write_scene() {
+    // save scene
+    vstd::HashMap<vstd::Guid> saved;
+    auto write_file = [&](world::Resource *res) {
+        if (!res || !saved.try_emplace(res->guid()).second) return;
+        if (res->path().empty())
+            res->set_path(
+                scene_root_dir / (res->guid().to_string() + ".rbcb"),
+                0);
+        res->save_to_path();
+        JsonSerializer js;
+        res->serialize_meta(world::ObjSerialize{
+            js});
+        auto blob = js.write_to();
+        LUISA_ASSERT(!blob.empty());
+        BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / (res->guid().to_string() + ".rbcmt")));
+        file_writer.write(blob);
+    };
+    write_file(cbox_mesh);
+    write_file(quad_mesh);
+    write_file(tex.get());
+    write_file(skybox.get());
+    for (auto &i : _mats) {
+        if (i)
+            write_file(i.get());
+    }
+    // write_scene
+    JsonSerializer scene_ser{true};
+    world::ObjSerialize ser{scene_ser};
+    for (auto &i : _entities) {
+        scene_ser.start_object();
+        i->serialize_meta(ser);
+        scene_ser.add_last_scope_to_object();
+    }
+    BinaryFileWriter file_writer(luisa::to_string(entities_path));
+    file_writer.write(scene_ser.write_to());
+}
 WorldScene::WorldScene(GraphicsUtils *utils) {
     auto &render_device = RenderDevice::instance();
     auto runtime_dir = render_device.lc_ctx().runtime_directory();
     luisa::filesystem::path meta_dir{"test_scene"};
-    auto scene_root_dir = runtime_dir / meta_dir;
-    auto entities_path = scene_root_dir / "scene.rbcmt";
+    scene_root_dir = runtime_dir / meta_dir;
+    entities_path = scene_root_dir / "scene.rbcmt";
 
     // write a demo scene
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
         luisa::filesystem::create_directories(scene_root_dir);
         world::init_resource_loader(runtime_dir, meta_dir);
         _init_scene(utils);
-        // save scene
-        vstd::HashMap<vstd::Guid> saved;
-        auto write_file = [&](world::Resource *res) {
-            if (!saved.try_emplace(res->guid()).second) return;
-            res->set_path(
-                scene_root_dir / (res->guid().to_string() + ".rbcb"),
-                0);
-            res->save_to_path();
-            JsonSerializer js;
-            res->serialize_meta(world::ObjSerialize{
-                js});
-            auto blob = js.write_to();
-            LUISA_ASSERT(!blob.empty());
-            BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / (res->guid().to_string() + ".rbcmt")));
-            file_writer.write(blob);
-        };
-        write_file(cbox_mesh);
-        write_file(quad_mesh);
-        write_file(tex.get());
-        write_file(skybox.get());
-        for (auto &i : _mats) {
-            if (i)
-                write_file(i.get());
-        }
-        // write_scene
-        JsonSerializer scene_ser{true};
-        world::ObjSerialize ser{scene_ser};
-        for (auto &i : _entities) {
-            scene_ser.start_object();
-            i->serialize_meta(ser);
-            scene_ser.add_last_scope_to_object();
-        }
-        BinaryFileWriter file_writer(luisa::to_string(entities_path));
-        file_writer.write(scene_ser.write_to());
+
     } else {
         // load demo scene
         world::init_resource_loader(runtime_dir, meta_dir);// open project folder
@@ -316,7 +320,7 @@ bool WorldScene::draw_gizmos(
     bool dragging,
     GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, Camera const &cam) {
     RBCZoneScopedN("WorldScene::draw_gizmos");
-    
+
     auto &click_mng = utils->render_settings().read_mut<ClickManager>();
     auto tr = _entities[0]->get_component<world::TransformComponent>();
 
@@ -406,6 +410,7 @@ bool WorldScene::draw_gizmos(
     return true;
 }
 WorldScene::~WorldScene() {
+    _write_scene();
     for (auto &i : _entities) {
         i->dispose();
     }
