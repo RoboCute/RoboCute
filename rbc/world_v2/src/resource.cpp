@@ -265,7 +265,7 @@ void ResourceRequest::Okey() {
     // 通知等待的 fiber
     if (resource_record) {
         resource_record->SetStatus(EResourceLoadingStatus::Loaded);
-        if (requestInstall) {
+        if (requireInstall) {
             resource_record->SetStatus(EResourceLoadingStatus::Installed);
         }
     }
@@ -407,32 +407,48 @@ void ResourceSystem::Quit() {
 }
 
 ResourceRecord *ResourceSystem::RegisterResource(const vstd::Guid &guid) {
-    // TODO: 注册资源记录
-    // 检查是否已存在，如果不存在则创建新的 ResourceRecord
-    // 添加到 resource_records map
-    resource_records_mtx.lock();
-    auto iter = resource_records.find(guid);
-    if (iter) {
-        auto *result = iter.value();
-        resource_records_mtx.unlock();
-        return result;
+    auto record = FindResourceRecord(guid);
+    if (!record) {
+        record = RBCNew<ResourceRecord>();
+        record->header.guid = guid;
+        record->loading_status = EResourceLoadingStatus::Unloaded;
+        {
+            resource_records_mtx.lock();
+            resource_records.emplace(guid, record);
+            resource_records_mtx.unlock();
+        }
     }
-
-    auto *record = new ResourceRecord{};
-    record->header.guid = guid;
-    resource_records.emplace(guid, record);
-    resource_records_mtx.unlock();
     return record;
 }
 
 ResourceRecord *ResourceSystem::LoadResource(const ResourceHandle handle, bool requireInstall) {
-    // TODO: 加载资源
-    // 如果 handle 是 guid 模式，先注册 record
-    // 创建 ResourceRequest，加入请求队列
-    // 如果 requireInstall，等待安装完成
-    // 返回 ResourceRecord 指针
+    LUISA_ASSERT(!quit);
+    LUISA_ASSERT(handle.is_guid());
     auto guid = handle.get_guid();
     auto *record = RegisterResource(guid);
+    if (record->loading_status >= EResourceLoadingStatus::Loading) {
+        // already loaded
+        return record;
+    }
+    if (record->loading_status == EResourceLoadingStatus::Unloaded) {
+        record->loading_status = EResourceLoadingStatus::Loading;
+    }
+
+    if (auto request = record->active_request) {
+        request->requireInstall = requireInstall;
+    } else {
+        // new request
+        request = RBCNew<ResourceRequest>();
+        request->requireInstall = requireInstall;
+        request->resource_record = record;
+        request->system = this;
+        request->factory = nullptr;
+
+        // append to record
+        record->active_request = request;
+        record->loading_status = EResourceLoadingStatus::Loading;
+        counter.add(1);
+    }
 
     // 创建请求并加入队列
     // 这里需要创建 ResourceRequest 的具体实现类
@@ -502,10 +518,12 @@ ResourceFactory *ResourceSystem::FindFactory(rbc::TypeInfo type) const {
 }
 
 void ResourceSystem::RegisterFactory(ResourceFactory *factory) {
-    // TODO: 注册资源工厂
-    // 需要从 factory 获取类型 GUID（可能需要虚函数）
-    // 添加到 resource_factories map
-    // 这里需要知道如何获取 factory 对应的类型 GUID
+    auto type = factory->GetResourceType();
+    resource_factories_mtx.lock();
+    auto iter = resource_factories.find(type);
+    LUISA_ASSERT(!iter, "Duplicate Registration for ResourceFactory");
+    resource_factories.emplace(type, factory);
+    resource_factories_mtx.unlock();
 }
 
 void ResourceSystem::UnregisterFactory(rbc::TypeInfo type) {

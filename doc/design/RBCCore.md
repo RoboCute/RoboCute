@@ -9,6 +9,8 @@
   - mathematics_double
 - atomic
 - binary_file_writer
+- containers
+  - concurrent_queue - 多生产者多消费者无锁队列
 - func_serializer
 - hash
 - heap_object
@@ -373,3 +375,154 @@ xmake run test_core
 3. **边界测试**: 测试边界情况（零大小、大内存、对齐等）
 4. **配对检查**: 确保每个 `malloc` 都有对应的 `free`，每个 `RBCNew` 都有对应的 `RBCDelete`
 5. **文档记录**: 在代码注释中说明内存所有权和生命周期
+
+## ConcurrentQueue
+
+RBC 提供了一个基于 moodycamel 实现的多生产者、多消费者无锁队列（lock-free queue）。该队列使用 RBC 的内存分配系统，确保所有内存操作都通过 RBC 的内存管理接口。
+
+### 特性
+
+- **无锁设计**: 使用原子操作实现，无需互斥锁
+- **多生产者多消费者**: 支持多个线程同时进行入队和出队操作
+- **高性能**: 针对高并发场景优化
+- **内存管理**: 使用 RBC 的内存分配函数，与 RBC 内存系统集成
+- **类型安全**: 模板化设计，支持任意类型
+
+### 基本使用
+
+```cpp
+#include <rbc_core/containers/rbc_concurrent_queue.h>
+
+// 创建队列
+rbc::ConcurrentQueue<int> queue;
+
+// 入队
+queue.enqueue(42);
+queue.enqueue(100);
+
+// 出队
+int value;
+if (queue.try_dequeue(value)) {
+    // 处理 value
+}
+```
+
+### Producer Token 和 Consumer Token
+
+为了提高性能，可以使用 producer token 和 consumer token：
+
+```cpp
+rbc::ConcurrentQueue<int> queue;
+
+// 创建 producer token（每个线程一个）
+rbc::ConcurrentQueue<int>::producer_token_t producer(queue);
+
+// 使用 token 入队（性能更好）
+queue.enqueue(producer, 42);
+
+// 创建 consumer token（每个线程一个）
+rbc::ConcurrentQueue<int>::consumer_token_t consumer(queue);
+
+// 使用 token 出队（性能更好）
+int value;
+queue.try_dequeue(consumer, value);
+```
+
+### 批量操作
+
+支持批量入队和出队，提高吞吐量：
+
+```cpp
+// 批量入队
+std::vector<int> items = {1, 2, 3, 4, 5};
+queue.enqueue_bulk(items.begin(), items.size());
+
+// 批量出队
+std::vector<int> results(5);
+size_t dequeued = queue.try_dequeue_bulk(results.begin(), 5);
+```
+
+### 多线程示例
+
+```cpp
+rbc::ConcurrentQueue<int> queue;
+const int num_producers = 4;
+const int num_consumers = 2;
+
+// 生产者线程
+std::vector<std::thread> producers;
+for (int i = 0; i < num_producers; ++i) {
+    producers.emplace_back([&queue, i]() {
+        for (int j = 0; j < 100; ++j) {
+            queue.enqueue(i * 100 + j);
+        }
+    });
+}
+
+// 消费者线程
+std::vector<std::thread> consumers;
+for (int i = 0; i < num_consumers; ++i) {
+    consumers.emplace_back([&queue]() {
+        int value;
+        while (queue.try_dequeue(value)) {
+            // 处理 value
+        }
+    });
+}
+
+// 等待所有线程完成
+for (auto &t : producers) t.join();
+for (auto &t : consumers) t.join();
+```
+
+### API 参考
+
+#### 构造和析构
+
+- `ConcurrentQueue(size_t capacity = 32 * BLOCK_SIZE)` - 创建队列，可选指定初始容量
+- `ConcurrentQueue(size_t minCapacity, size_t maxExplicitProducers, size_t maxImplicitProducers)` - 根据预期使用情况创建队列
+
+#### 入队操作
+
+- `bool enqueue(T const &item)` - 入队（复制）
+- `bool enqueue(T &&item)` - 入队（移动）
+- `bool enqueue(producer_token_t const &token, T const &item)` - 使用 token 入队
+- `bool try_enqueue(T const &item)` - 尝试入队（不分配内存）
+- `bool enqueue_bulk(It itemFirst, size_t count)` - 批量入队
+- `bool enqueue_bulk(producer_token_t const &token, It itemFirst, size_t count)` - 使用 token 批量入队
+
+#### 出队操作
+
+- `bool try_dequeue(U &item)` - 尝试出队
+- `bool try_dequeue(consumer_token_t &token, U &item)` - 使用 token 尝试出队
+- `size_t try_dequeue_bulk(It itemFirst, size_t max)` - 批量出队
+- `size_t try_dequeue_bulk(consumer_token_t &token, It itemFirst, size_t max)` - 使用 token 批量出队
+
+#### 其他操作
+
+- `size_t size_approx() const` - 获取队列大小的近似值
+- `static constexpr bool is_lock_free()` - 检查底层原子操作是否无锁
+
+### Traits 配置
+
+`RBCConcurrentQueueTraits` 提供了以下可配置参数：
+
+- `BLOCK_SIZE` - 块大小（默认 32，必须是 2 的幂）
+- `EXPLICIT_INITIAL_INDEX_SIZE` - 显式生产者的初始索引大小（默认 32）
+- `IMPLICIT_INITIAL_INDEX_SIZE` - 隐式生产者的初始索引大小（默认 32）
+- `INITIAL_IMPLICIT_PRODUCER_HASH_SIZE` - 隐式生产者哈希表初始大小（默认 32）
+- `RECYCLE_ALLOCATED_BLOCKS` - 是否回收动态分配的块（默认 false）
+
+### 性能建议
+
+1. **使用 Token**: 对于频繁操作的线程，使用 producer/consumer token 可以提高性能
+2. **批量操作**: 当需要处理多个元素时，使用批量操作减少开销
+3. **避免频繁查询大小**: `size_approx()` 是近似值，频繁调用可能影响性能
+4. **合理设置容量**: 根据预期使用情况设置初始容量，减少动态分配
+
+### 内存管理
+
+ConcurrentQueue 使用 RBC 的内存分配函数（`rbc_malloc`/`rbc_free`），确保：
+- 所有内存分配都通过 RBC 的内存管理系统
+- 支持内存池和追踪
+- 与 RBC 的其他组件一致的内存管理策略
