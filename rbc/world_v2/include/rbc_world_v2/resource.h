@@ -151,7 +151,6 @@ struct RBC_WORLD_API ResourceRecord {
 struct RBC_WORLD_API ResourceRegistry {
 public:
     virtual bool RequestResourceFile(ResourceRequest *request) = 0;
-    virtual bool CancelRequestFile(ResourceRequest *request) = 0;
 
     void FillRequest(ResourceRequest *request, ResourceHeader header, luisa::string_view base_path, luisa::string_view uri);
 };
@@ -161,7 +160,6 @@ public:
     explicit LocalResourceRegistry(luisa::string_view base_path);
     virtual ~LocalResourceRegistry() = default;
     bool RequestResourceFile(ResourceRequest *request);
-    bool CancelRequestFile(ResourceRequest *request);
 private:
     luisa::string_view _base_path;
 };
@@ -187,7 +185,6 @@ public:
     bool IsInitialized();
     void Shutdown();
     void Update();
-    bool WaitRequest();
     void Quit();
 
     ResourceRecord *RegisterResource(const vstd::Guid &guid);
@@ -220,7 +217,6 @@ protected:
     luisa::vector<ResourceRequest *> serde_batch;
 
     bool quit = false;
-    luisa::fiber::counter counter;
 
     luisa::spin_mutex resource_records_mtx;
     vstd::HashMap<vstd::Guid, ResourceRecord *, luisa::hash<vstd::Guid>> resource_records;

@@ -70,9 +70,16 @@ struct TestResourceFactory : ResourceFactory {
     EResourceInstallStatus Install(ResourceRecord *record) override {
         auto guid_str = record->header.guid.to_string();
         LUISA_INFO("[TestResourceFactory] Install resource: {}", guid_str);
+
         if (record->resource) {
             static_cast<TestResource *>(record->resource)->OnInstall();
         }
+        return EResourceInstallStatus::InProgress;
+    }
+
+    EResourceInstallStatus UpdateInstall(ResourceRecord *record) override {
+        auto guid_str = record->header.guid.to_string();
+        LUISA_INFO("[TestResourceFactory] UpdateInstall resource: {}", guid_str);
         return EResourceInstallStatus::Succeed;
     }
 
@@ -129,16 +136,6 @@ struct TestResourceRegistry : ResourceRegistry {
         // Note: Status transitions are handled by ResourceSystem
         return true;
     }
-
-    bool CancelRequestFile(ResourceRequest *request) override {
-        if (!request) {
-            return false;
-        }
-        auto guid = request->GetGuid();
-        auto guid_str = guid.to_string();
-        LUISA_INFO("[TestResourceRegistry] CancelRequestFile: {}", guid_str);
-        return true;
-    }
 };
 
 // =====================================================
@@ -177,18 +174,41 @@ vstd::Guid GetResourceGuid(int resource_id) {
             guid_seed = luisa::format("TestResource_{:08x}_FixedGuid", resource_id);
             break;
     }
-    
+
     // Generate GUID from fixed string using MD5
     // This ensures the same string always produces the same GUID
     vstd::MD5 md5{guid_seed};
     auto bin = md5.to_binary();
-    
+
     // Convert MD5 binary to GUID format
     // GUID is essentially a 128-bit value, same as MD5 hash
     std::array<uint64_t, 2> guid_data = {bin.data0, bin.data1};
-    vstd::Guid guid = *reinterpret_cast<vstd::Guid*>(&guid_data);
-    
+    vstd::Guid guid = *reinterpret_cast<vstd::Guid *>(&guid_data);
+
     return guid;
+}
+
+void EnqueueResource(int resource_id, vstd::Guid guid, luisa::vector<ResourceHandle> dependencies) {
+    auto *system = GetResourceSystem();
+    if (!system->IsInitialized()) {
+        LUISA_ERROR("[Main] ResourceSystem not initialized!");
+        return;
+    }
+    luisa::string resource_name = luisa::format("TestResource_{}", resource_id);
+    int resource_value = resource_id * 100;
+
+    auto guid_str = guid.to_string();
+    // Create resource instance
+    auto *resource = RBCNew<TestResource>(luisa::format("TestResource_{}", resource_id), resource_id * 100);
+
+    // Enqueue resource with Loading status (will be processed by Update thread)
+    auto handle = system->EnqueueResource(
+        guid,
+        rbc::TypeInfo::get<TestResource>(),
+        resource,
+        true,        // requireInstall
+        dependencies,// dependencies
+        EResourceLoadingStatus::Installing);
 }
 
 // =====================================================
@@ -198,41 +218,11 @@ rbc::AsyncResource<TestResource> LoadTestResource(int resource_id, luisa::vector
     auto *system = GetResourceSystem();
     if (!system->IsInitialized()) {
         LUISA_ERROR("[Main] ResourceSystem not initialized!");
-        return rbc::AsyncResource<TestResource>();
+        return {};
     }
 
     // Create unique GUID for each resource using a deterministic approach
     vstd::Guid guid = GetResourceGuid(resource_id);
-
-    luisa::string resource_name = luisa::format("TestResource_{}", resource_id);
-    int resource_value = resource_id * 100;
-
-    auto guid_str = guid.to_string();
-    if (dependencies.empty()) {
-        LUISA_INFO("[Main] Enqueuing resource {}: {} (value: {}, no dependencies)", 
-            resource_id, guid_str, resource_value);
-    } else {
-        LUISA_INFO("[Main] Enqueuing resource {}: {} (value: {}, {} dependencies)", 
-            resource_id, guid_str, resource_value, dependencies.size());
-        for (size_t i = 0; i < dependencies.size(); ++i) {
-            auto dep_guid = dependencies[i].get_guid();
-            LUISA_INFO("[Main]   Dependency {}: {}", i, dep_guid.to_string());
-        }
-    }
-
-    // Create resource instance
-    auto *resource = RBCNew<TestResource>(resource_name, resource_value);
-
-    // Enqueue resource with Loading status (will be processed by Update thread)
-    auto handle = system->EnqueueResource(
-        guid,
-        rbc::TypeInfo::get<TestResource>(),
-        resource,
-        true,// requireInstall
-        std::move(dependencies),  // dependencies
-        EResourceLoadingStatus::Loading);
-
-    return rbc::AsyncResource<TestResource>(handle);
 }
 
 // =====================================================
@@ -263,99 +253,106 @@ int main() {
     std::thread update_thread(ResourceSystemUpdateThread, std::ref(running));
 
     LUISA_INFO("[Main] ResourceSystem initialized");
+
+    // Pre-load all resources at startup
+    LUISA_INFO("[Main] Pre-loading all resources...");
+    luisa::vector<rbc::AsyncResource<TestResource>> resources;
+    resources.resize_uninitialized(3);
+
+    for (auto i = 0; i < 3; ++i) {
+        auto guid = GetResourceGuid(i + 1);
+        resources[i] = guid;
+        // set guid
+    }
+
+    EnqueueResource(1, GetResourceGuid(1), {});
+    EnqueueResource(2, GetResourceGuid(2), {resources[2]});
+    EnqueueResource(3, GetResourceGuid(3), {resources[1]});
+
+    // Load resources in dependency order: 3 -> 2 -> 1
+    // Resource 3 has no dependencies
+    LUISA_INFO("[Main] Pre-loading Resource 3...");
+    resources[2] = LoadTestResource(3, {});
+
+    // Resource 2 depends on Resource 3
+    LUISA_INFO("[Main] Pre-loading Resource 2 (depends on Resource 3)...");
+    luisa::vector<ResourceHandle> dep2;
+    dep2.emplace_back(resources[2]);
+    resources[1] = LoadTestResource(2, std::move(dep2));
+
+    // Resource 1 depends on Resource 2
+    LUISA_INFO("[Main] Pre-loading Resource 1 (depends on Resource 2)...");
+    luisa::vector<ResourceHandle> dep1;
+    dep1.emplace_back(resources[1]);
+    resources[0] = LoadTestResource(1, std::move(dep1));
+
+    // Wait for all resources to be loaded
+    LUISA_INFO("[Main] Waiting for all resources to be loaded...");
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // Verify all resources are loaded
+    for (int i = 0; i < 3; ++i) {
+        int resource_id = i + 1;
+        auto status = resources[i].get_status();
+        void *loaded_ptr = resources[i].load();
+        if (loaded_ptr) {
+            LUISA_INFO("[Main] Resource {} pre-loaded successfully! (status: {})",
+                       resource_id, static_cast<uint32_t>(status));
+        } else {
+            LUISA_WARNING("[Main] Resource {} pre-loading in progress... (status: {})",
+                          resource_id, static_cast<uint32_t>(status));
+        }
+    }
+
     LUISA_INFO("[Main] Commands:");
-    LUISA_INFO("  1 - TestResource_1 (1st press: Load, 2nd press: Install, 3rd press: Unload)");
+    LUISA_INFO("  1 - TestResource_1 (1st press: Install, 2nd press: Unload)");
     LUISA_INFO("     Dependencies: TestResource_2");
-    LUISA_INFO("  2 - TestResource_2 (1st press: Load, 2nd press: Install, 3rd press: Unload)");
+    LUISA_INFO("  2 - TestResource_2 (1st press: Install, 2nd press: Unload)");
     LUISA_INFO("     Dependencies: TestResource_3");
-    LUISA_INFO("  3 - TestResource_3 (1st press: Load, 2nd press: Install, 3rd press: Unload)");
+    LUISA_INFO("  3 - TestResource_3 (1st press: Install, 2nd press: Unload)");
     LUISA_INFO("     Dependencies: None");
     LUISA_INFO("  exit - Exit program");
     LUISA_INFO("========================================");
 
     // Main loop: listen for keyboard input
     std::string input;
-    luisa::vector<rbc::AsyncResource<TestResource>> resources;
-    resources.resize_uninitialized(3);
 
     // Helper function to handle resource operations based on current state
     auto HandleResource = [&](int resource_id, int index) {
         auto &resource = resources[index];
         auto status = resource.get_status();
-        
+
         LUISA_INFO("[Main] Resource {} - Current status: {}", resource_id, static_cast<uint32_t>(status));
-        
+
         if (resource.is_null() || status == EResourceLoadingStatus::Unloaded) {
-            // 第一次按下：加载资源
-            LUISA_INFO("[Main] Resource {} - Step 1: Loading resource...", resource_id);
-            
-            // Setup dependencies based on resource_id
-            luisa::vector<ResourceHandle> dependencies;
-            if (resource_id == 1) {
-                // Resource 1 depends on Resource 2
-                if (resources[1].is_null()) {
-                    // Create a handle for resource 2 using its GUID
-                    vstd::Guid dep_guid = GetResourceGuid(2);
-                    dependencies.emplace_back(dep_guid);
-                    LUISA_INFO("[Main] Resource {} - Adding dependency on Resource 2 (GUID: {})", 
-                        resource_id, dep_guid.to_string());
-                } else {
-                    // Use existing resource 2 handle
-                    dependencies.emplace_back(resources[1]);
-                    LUISA_INFO("[Main] Resource {} - Adding dependency on Resource 2 (existing handle)", resource_id);
-                }
-            } else if (resource_id == 2) {
-                // Resource 2 depends on Resource 3
-                // Resource 3 is at index 2 in the resources array
-                if (resources[2].is_null()) {
-                    // Create a handle for resource 3 using its GUID
-                    vstd::Guid dep_guid = GetResourceGuid(3);
-                    dependencies.emplace_back(dep_guid);
-                    LUISA_INFO("[Main] Resource {} - Adding dependency on Resource 3 (GUID: {})", 
-                        resource_id, dep_guid.to_string());
-                } else {
-                    // Use existing resource 3 handle
-                    dependencies.emplace_back(resources[2]);
-                    LUISA_INFO("[Main] Resource {} - Adding dependency on Resource 3 (existing handle)", resource_id);
-                }
-            }
-            // Resource 3 has no dependencies
-            
-            resource = LoadTestResource(resource_id, std::move(dependencies));
-            // Wait a bit for the update thread to process the loading request
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            // Try to load (this will trigger the loading process if not already loaded)
-            void *loaded_ptr = resource.load();
-            if (loaded_ptr) {
-                LUISA_INFO("[Main] Resource {} loaded successfully! (status: {})", 
-                    resource_id, static_cast<uint32_t>(resource.get_status()));
-            } else {
-                LUISA_WARNING("[Main] Resource {} loading in progress... (status: {})", 
-                    resource_id, static_cast<uint32_t>(resource.get_status()));
-            }
-        } else if (resource.is_loaded() && !resource.is_installed()) {
-            // 第二次按下：安装资源
-            LUISA_INFO("[Main] Resource {} - Step 2: Installing resource...", resource_id);
+            // 第一次按下：将AsyncResource重新赋值为对应位置的guid并触发install安装
+            LUISA_INFO("[Main] Resource {} - Step 1: Installing resource from pre-loaded state...", resource_id);
+
+            // Reassign AsyncResource to the GUID of the pre-loaded resource
+            vstd::Guid guid = GetResourceGuid(resource_id);
+            resource = rbc::AsyncResource<TestResource>(guid);
+
+            // Trigger install
             void *installed_ptr = resource.install();
             // Wait a bit for installation to complete
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             if (resource.is_installed()) {
-                LUISA_INFO("[Main] Resource {} installed successfully! (status: {})", 
-                    resource_id, static_cast<uint32_t>(resource.get_status()));
+                LUISA_INFO("[Main] Resource {} installed successfully! (status: {})",
+                           resource_id, static_cast<uint32_t>(resource.get_status()));
             } else {
-                LUISA_WARNING("[Main] Resource {} installation in progress... (status: {})", 
-                    resource_id, static_cast<uint32_t>(resource.get_status()));
+                LUISA_WARNING("[Main] Resource {} installation in progress... (status: {})",
+                              resource_id, static_cast<uint32_t>(resource.get_status()));
             }
         } else if (resource.is_installed()) {
-            // 第三次按下：卸载资源
-            LUISA_INFO("[Main] Resource {} - Step 3: Unloading resource...", resource_id);
+            // 第二次按下：卸载资源
+            LUISA_INFO("[Main] Resource {} - Step 2: Unloading resource...", resource_id);
             resource.reset();
-            LUISA_INFO("[Main] Resource {} unloaded successfully! (status: {})", 
-                resource_id, static_cast<uint32_t>(resource.get_status()));
+            LUISA_INFO("[Main] Resource {} unloaded successfully! (status: {})",
+                       resource_id, static_cast<uint32_t>(resource.get_status()));
         } else {
             // 其他状态（如 Loading, WaitingDependencies, Installing 等）
-            LUISA_INFO("[Main] Resource {} is in intermediate state: {} (waiting for completion...)", 
-                resource_id, static_cast<uint32_t>(status));
+            LUISA_INFO("[Main] Resource {} is in intermediate state: {} (waiting for completion...)",
+                       resource_id, static_cast<uint32_t>(status));
         }
     };
 
