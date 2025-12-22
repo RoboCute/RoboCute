@@ -16,12 +16,13 @@ using namespace luisa::compute;
 struct RBC_RUNTIME_API MeshLightAccel {
 public:
     struct HostResult {
-        vector<BVH::PackedNode> nodes;
+        luisa::fiber::future<vector<BVH::PackedNode>> nodes;
         BVH::Bounding bounding;
+        uint buffer_size;
         float contribute;
     };
     struct Task {
-        vector<BVH::PackedNode> nodes;
+        luisa::fiber::future<vector<BVH::PackedNode>> nodes;
         BufferView<BVH::PackedNode> buffer;
     };
     vstd::LockFreeArrayQueue<Task> _upload_task;
@@ -29,9 +30,10 @@ public:
 public:
     MeshLightAccel();
     bool create_or_update_blas(
-        CommandList& cmdlist,
+        CommandList &cmdlist,
         Buffer<BVH::PackedNode> &buffer,
-        vector<BVH::PackedNode> &&nodes);
+        uint desired_buffer_size,
+        luisa::fiber::future<vector<BVH::PackedNode>> &&nodes);
     static HostResult build_bvh(
         float4x4 matrix,
         span<float3 const> vertices,

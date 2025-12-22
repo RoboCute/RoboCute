@@ -496,12 +496,11 @@ uint Lights::add_mesh_light_sync(
         mesh_data->submesh_offset,
         material_emissions);
 
-    if (host_result.nodes.empty()) {
+    if (host_result.buffer_size == 0) {
         v.light_id = ~0u;
         v.blas_heap_idx = ~0u;
     } else {
-        auto blas_node_count = host_result.nodes.size();
-        mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
+        mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, host_result.buffer_size, std::move(host_result.nodes));
         v.blas_heap_idx = scene.bindless_allocator().allocate_buffer(v.blas_buffer);
 
         // TODO: blas_heap_idx
@@ -612,13 +611,13 @@ void Lights::update_mesh_light_sync(
         span{(Triangle *)(mesh_host_data.data() + mesh_data->meta.tri_byte_offset), mesh_data->triangle_size},
         mesh_data->submesh_offset,
         material_emissions);
-    if (host_result.nodes.empty()) {
+    if (host_result.buffer_size == 0) {
         if (v.blas_heap_idx != ~0u) {
             scene.bindless_allocator().deallocate_buffer(v.blas_heap_idx);
             v.blas_heap_idx = ~0u;
         }
     } else {
-        auto new_buffer = mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, std::move(host_result.nodes));
+        auto new_buffer = mesh_light_accel.create_or_update_blas(cmdlist, v.blas_buffer, host_result.buffer_size, std::move(host_result.nodes));
         if (new_buffer) {
             if (v.blas_heap_idx != ~0u) {
                 scene.bindless_allocator().deallocate_buffer(v.blas_heap_idx);

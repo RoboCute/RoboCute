@@ -239,6 +239,7 @@ void GraphicsUtils::tick(
             break;
     }
     auto &cmdlist = _render_device.lc_main_cmd_list();
+    rbc::world::on_before_rendering();
     _lights->mesh_light_accel.update_frame(_frame_mem_io_list);
     if (!_frame_mem_io_list.empty()) {
         _mem_io_fence = _render_device.mem_io_service()->execute(std::move(_frame_mem_io_list));
@@ -266,7 +267,6 @@ void GraphicsUtils::tick(
     _render_plugin->before_rendering({}, _display_pipe_ctx);
     auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
     managed_device->begin_managing(cmdlist);
-    rbc::world::on_before_rendering();
     _sm->before_rendering(
         cmdlist,
         main_stream);
