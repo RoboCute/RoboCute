@@ -112,6 +112,7 @@ public:
 
 protected:
     friend class ResourceSystem;
+    friend class ResourceRegistry;
 
     void UnloadDependenciesInternal();
     std::atomic_bool requestInstall = false;
@@ -185,9 +186,9 @@ public:
     void UnloadResource(const ResourceHandle handle);
     void FlushResource(const ResourceHandle handle);
 
-    [[nodiscard]] ResourceFactory *FindFactory(vstd::Guid type) const;
+    [[nodiscard]] ResourceFactory *FindFactory(rbc::TypeInfo type) const;
     void RegisterFactory(ResourceFactory *factory);
-    void UnregisterFactory(vstd::Guid type);
+    void UnregisterFactory(rbc::TypeInfo type);
 
     [[nodiscard]] ResourceRegistry *GetRegistry() const;
 
@@ -217,7 +218,7 @@ protected:
     vstd::HashMap<vstd::Guid, ResourceRecord *, luisa::hash<vstd::Guid>> resource_to_record;
 
     luisa::spin_mutex resource_factories_mtx;
-    vstd::HashMap<vstd::Guid, ResourceFactory *, luisa::hash<vstd::Guid>> resource_factories;
+    vstd::HashMap<rbc::TypeInfo, ResourceFactory *, luisa::hash<rbc::TypeInfo>> resource_factories;
 };
 
 // global singleton get
