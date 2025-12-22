@@ -42,7 +42,7 @@ enum class EResourceLoadingStatus : uint32_t {
     Count
 };
 
-struct RBC_WORLD_API IResource : world::BaseObject {
+struct RBC_WORLD_API IResource {
     virtual ~IResource();
     virtual void OnInstall() {}
     virtual void OnUninstall() {}
@@ -181,11 +181,11 @@ struct RBC_WORLD_API ResourceSystem {
 public:
     ResourceSystem();
     virtual ~ResourceSystem();
+
     void Initialize(ResourceRegistry *provider);
     bool IsInitialized();
     void Shutdown();
     void Update();
-    void Quit();
 
     ResourceRecord *RegisterResource(const vstd::Guid &guid);
     ResourceRecord *LoadResource(const ResourceHandle handle, bool requireInstall);

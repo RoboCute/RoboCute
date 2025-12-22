@@ -455,10 +455,7 @@ void ResourceRecord::SetStatus(EResourceLoadingStatus InStatus) {
 // Resource System
 // =====================================================
 ResourceSystem::ResourceSystem() {}
-
-ResourceSystem::~ResourceSystem() {
-    Shutdown();
-}
+ResourceSystem::~ResourceSystem() {}
 
 void ResourceSystem::Initialize(ResourceRegistry *provider) {
     LUISA_ASSERT(provider);
@@ -470,6 +467,7 @@ bool ResourceSystem::IsInitialized() {
 }
 
 void ResourceSystem::Shutdown() {
+
     // unload already unloaded and error records
     for (auto &pair : resource_records) {
         auto record = pair.second;
@@ -522,10 +520,6 @@ void ResourceSystem::Update() {
     }
 }
 
-void ResourceSystem::Quit() {
-    quit = true;
-}
-
 ResourceRecord *ResourceSystem::RegisterResource(const vstd::Guid &guid) {
     auto record = FindResourceRecord(guid);
     if (!record) {
@@ -542,6 +536,7 @@ ResourceRecord *ResourceSystem::RegisterResource(const vstd::Guid &guid) {
 }
 
 ResourceRecord *ResourceSystem::LoadResource(const ResourceHandle handle, bool requireInstall) {
+
     LUISA_ASSERT(!quit);
     LUISA_ASSERT(handle.is_guid());
     auto guid = handle.get_guid();

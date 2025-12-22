@@ -35,26 +35,6 @@ struct TestResource : IResource {
     void OnUninstall() override {
         LUISA_INFO("[TestResource] OnUninstall: {}", name);
     }
-
-    // Implement BaseObject pure virtual functions
-    void dispose() override {
-        LUISA_INFO("[TestResource] dispose: {}", name);
-        // Resource cleanup handled by ResourceSystem
-    }
-
-    [[nodiscard]] world::BaseObjectType base_type() const override {
-        return world::BaseObjectType::Resource;
-    }
-
-    [[nodiscard]] const char *type_name() const override {
-        return "TestResource";
-    }
-
-    [[nodiscard]] std::array<uint64_t, 2> type_id() const override {
-        static vstd::MD5 md5{luisa::string_view{"TestResource"}};
-        auto bin = md5.to_binary();
-        return {bin.data0, bin.data1};
-    }
 };
 
 RBC_RTTI(TestResource);
@@ -212,20 +192,6 @@ void EnqueueResource(int resource_id, vstd::Guid guid, luisa::vector<ResourceHan
 }
 
 // =====================================================
-// Helper function to create test resources
-// =====================================================
-rbc::AsyncResource<TestResource> LoadTestResource(int resource_id, luisa::vector<ResourceHandle> dependencies = {}) {
-    auto *system = GetResourceSystem();
-    if (!system->IsInitialized()) {
-        LUISA_ERROR("[Main] ResourceSystem not initialized!");
-        return {};
-    }
-
-    // Create unique GUID for each resource using a deterministic approach
-    vstd::Guid guid = GetResourceGuid(resource_id);
-}
-
-// =====================================================
 // Main Function
 // =====================================================
 int main() {
@@ -268,23 +234,6 @@ int main() {
     EnqueueResource(1, GetResourceGuid(1), {});
     EnqueueResource(2, GetResourceGuid(2), {resources[2]});
     EnqueueResource(3, GetResourceGuid(3), {resources[1]});
-
-    // Load resources in dependency order: 3 -> 2 -> 1
-    // Resource 3 has no dependencies
-    LUISA_INFO("[Main] Pre-loading Resource 3...");
-    resources[2] = LoadTestResource(3, {});
-
-    // Resource 2 depends on Resource 3
-    LUISA_INFO("[Main] Pre-loading Resource 2 (depends on Resource 3)...");
-    luisa::vector<ResourceHandle> dep2;
-    dep2.emplace_back(resources[2]);
-    resources[1] = LoadTestResource(2, std::move(dep2));
-
-    // Resource 1 depends on Resource 2
-    LUISA_INFO("[Main] Pre-loading Resource 1 (depends on Resource 2)...");
-    luisa::vector<ResourceHandle> dep1;
-    dep1.emplace_back(resources[1]);
-    resources[0] = LoadTestResource(1, std::move(dep1));
 
     // Wait for all resources to be loaded
     LUISA_INFO("[Main] Waiting for all resources to be loaded...");
@@ -375,16 +324,13 @@ int main() {
         }
     }
 
-    // Shutdown
     LUISA_INFO("[Main] Shutting down ResourceSystem...");
     running.store(false);
-    system->Quit();
 
     // Wait for update thread to finish
     if (update_thread.joinable()) {
         update_thread.join();
     }
-
     system->Shutdown();
     LUISA_INFO("[Main] ResourceSystem shutdown complete");
 
