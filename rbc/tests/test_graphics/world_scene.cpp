@@ -46,9 +46,6 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         _mats[5] = basic_mat;
         _mats[6] = basic_mat;
         _mats[7] = light_mat;
-        for (auto &i : _mats) {
-            i->init_device_resource();
-        }
     }
     _mats[5] = nullptr;
     {
@@ -62,7 +59,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
                 0, 0, -1));
         transform->set_rotation(rot, true);
         auto render = entity->add_component<world::RenderComponent>();
-        _add_task(render->update_object(_mats, cbox_mesh));
+        _add_task(render->update_object(_mats, cbox_mesh), render);
     }
     MeshBuilder mesh_builder;
     mesh_builder.position.emplace_back(make_float3(-0.5f, -0.5f, 0));
@@ -132,13 +129,12 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     auto quad_mat = world::create_object<world::MaterialResource>();
     auto quad_mat_str = luisa::format(R"({{"type": "pbr", "base_albedo_tex": "{}"}})", tex->guid().to_base64());
     quad_mat->load_from_json(quad_mat_str);
-    quad_mat->init_device_resource();
     auto mat_start_idx = _mats.size();
     _mats.emplace_back(quad_mat);
     auto mats = luisa::span{_mats}.subspan(mat_start_idx, 1);
     _add_task(quad_render->update_object(
         mats,
-        quad_mesh));
+        quad_mesh), quad_render);
 }
 void WorldScene::_write_scene() {
     // save scene
@@ -233,7 +229,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         for (auto &i : _entities) {
             auto render = i->get_component<world::RenderComponent>();
             if (render) {
-                _add_task(render->update_object());
+                _add_task(render->update_object(), render);
             }
         }
     }
@@ -413,22 +409,22 @@ bool WorldScene::draw_gizmos(
     return true;
 }
 void WorldScene::tick() {
-    coro::coroutine c;
+    std::pair<coro::coroutine, RCWeak<world::Component>> c;
     auto prox_size = _render_thread_coroutines.size_approx();
     for (auto i : vstd::range(prox_size)) {
         if (!_render_thread_coroutines.try_dequeue(c)) {
             break;
         }
-        c.resume();
-        if (!c.done()) {
+        c.first.resume();
+        if (!c.first.done()) {
             _render_thread_coroutines.enqueue(c);
         }
     }
 }
-void WorldScene::_add_task(coro::coroutine const &c) {
+void WorldScene::_add_task(coro::coroutine const &c, world::Component *comp) {
     c.resume();
     if (c.done()) return;
-    _render_thread_coroutines.enqueue(c);
+    _render_thread_coroutines.enqueue(std::pair<coro::coroutine, RCWeak<world::Component>>{c, RCWeak<world::Component>{comp}});
 }
 WorldScene::~WorldScene() {
     _write_scene();

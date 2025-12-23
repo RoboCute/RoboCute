@@ -49,6 +49,9 @@ void _collect_all_materials() {
     }
 }
 void MaterialResource::load_from_json(luisa::string_view json_vec) {
+    _load_from_json(json_vec, true);
+}
+void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_loaded) {
     _status = EResourceLoadingStatus::Loading;
     JsonDeSerializer deser{json_vec};
     luisa::string mat_type;
@@ -96,6 +99,9 @@ void MaterialResource::load_from_json(luisa::string_view json_vec) {
     } else {
         LUISA_ERROR("Unknown material type.");
         //TODO: other types
+    }
+    if (set_to_loaded) {
+        _status = EResourceLoadingStatus::Loaded;
     }
 }
 luisa::BinaryBlob MaterialResource::write_content_to() {
@@ -164,7 +170,7 @@ bool MaterialResource::_async_load_from_file() {
     file_stream.read(
         {reinterpret_cast<std::byte *>(json_vec.data()),
          json_vec.size()});
-    load_from_json({json_vec.data(), json_vec.size()});
+    _load_from_json({json_vec.data(), json_vec.size()}, false);
     return true;
 }
 MaterialResource::MaterialResource() {}

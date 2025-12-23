@@ -227,8 +227,6 @@ bool TextureResource::_load_finished() const {
     if (is_vt()) {
         auto vt = static_cast<DeviceSparseImage *>(_tex.get());
         auto result = vt->load_executed() && _vt_finished->finished;
-        if (result)
-            LUISA_INFO("{}", result);
         return result;
     } else {
         return static_cast<DeviceImage *>(_tex.get())->load_finished();

@@ -23,11 +23,12 @@ public:
     // prepare host data and emplace
     bool init_device_resource();
     luisa::BinaryBlob write_content_to();
-    void load_from_json(luisa::string_view json_vec);
     void serialize_meta(ObjSerialize const &obj) const override;
     void dispose() override;
     rbc::coro::coroutine _async_load() override;
+    void load_from_json(luisa::string_view json_vec);
 protected:
+    void _load_from_json(luisa::string_view json_vec, bool set_to_loaded);
     bool _async_load_from_file();
     void _unload() override;
     bool unsafe_save_to_path() const override;
