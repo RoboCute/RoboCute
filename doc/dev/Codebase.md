@@ -60,3 +60,9 @@ C++主要的编译对象是`rbc_ext_c.pyd`（一个C++和pybind11写成的python
 如果你不希望在已经有了元素的情况下构建新的元素，那还可以
 `resource_factories.try_emplace(type, vstd::lazy_eval([&] { return make_factory(); }))`;
 这样 make_factory 只有在需要添加的时候才会调用
+
+
+
+## 文档
+
+文档包含对外的
