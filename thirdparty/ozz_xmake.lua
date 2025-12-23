@@ -1,16 +1,18 @@
 target("ozz_animation_base")
-    add_rules('lc_basic_settings', {
-        project_kind = 'static'
-    })
+    set_kind("static")
     add_headerfiles("ozz_animation/include/**.h")
     add_includedirs("ozz_animation/include", { public = true})
     add_files("ozz_animation/src/base/**.cc")
 target_end()
 
 target("ozz_animation_static")
+<<<<<<< HEAD
     add_rules('lc_basic_settings', {
         project_kind = 'static'
     })
+=======
+    set_kind("static")
+>>>>>>> 4c57b42 (basic anim)
     add_deps("ozz_animation_base")
     add_includedirs("ozz_animation/src", { private = true})
     add_files("ozz_animation/src/animation/runtime/*.cc")

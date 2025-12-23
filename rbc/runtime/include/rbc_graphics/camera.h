@@ -23,24 +23,24 @@ struct RBC_RUNTIME_API Camera {
     void set_aspect_ratio_from_resolution(double width, double height);
 
     // matrix getter
-    std::array<double3, 8> frustum_corners(double2 min_projection = double2(-1, -1), double2 max_projection = double2(1, 1)) const;
-    std::array<double3, 4> frustum_plane_points(double z_depth, double2 min_projection = double2(-1, -1), double2 max_projection = double2(1, 1)) const;
-    std::array<double4, 6> frustum_plane(double2 min_projection = double2(-1, -1), double2 max_projection = double2(1, 1)) const;
-    double4x4 rotation_matrix() const;
-    double4x4 projection_matrix() const;
-    double4x4 local_to_world_matrix() const;
-    double4x4 world_to_local_matrix() const;
+    [[nodiscard]] std::array<double3, 8> frustum_corners(double2 min_projection = double2(-1, -1), double2 max_projection = double2(1, 1)) const;
+    [[nodiscard]] std::array<double3, 4> frustum_plane_points(double z_depth, double2 min_projection = double2(-1, -1), double2 max_projection = double2(1, 1)) const;
+    [[nodiscard]] std::array<double4, 6> frustum_plane(double2 min_projection = double2(-1, -1), double2 max_projection = double2(1, 1)) const;
+    [[nodiscard]] double4x4 rotation_matrix() const;
+    [[nodiscard]] double4x4 projection_matrix() const;
+    [[nodiscard]] double4x4 local_to_world_matrix() const;
+    [[nodiscard]] double4x4 world_to_local_matrix() const;
 
     // coordinate transform
-    double3 local_to_world_position(double3 local_pos) const;
-    double3 world_to_local_position(double3 world_pos) const;
-    double3 local_to_world_direction(double3 local_dir) const;
-    double3 world_to_local_direction(double3 world_dir) const;
+    [[nodiscard]] double3 local_to_world_position(double3 local_pos) const;
+    [[nodiscard]] double3 world_to_local_position(double3 world_pos) const;
+    [[nodiscard]] double3 local_to_world_direction(double3 local_dir) const;
+    [[nodiscard]] double3 world_to_local_direction(double3 world_dir) const;
 
     // direction getter
-    double3 dir_forward() const;
-    double3 dir_right() const;
-    double3 dir_up() const;
+    [[nodiscard]] double3 dir_forward() const;
+    [[nodiscard]] double3 dir_right() const;
+    [[nodiscard]] double3 dir_up() const;
 
     ////////// Legacy two point perspective
     // shift & pitch

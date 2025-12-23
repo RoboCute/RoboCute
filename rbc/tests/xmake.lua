@@ -29,4 +29,4 @@ add_test("world", { "rbc_runtime", "rbc_core" })
 
 -- 一些第三方库的测试用例，用来检测第三方库是否稳定
 includes("calculator") -- for qt_node_editor
-
+includes("test_ozz")
