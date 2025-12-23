@@ -2,6 +2,10 @@
 
 通用的Mesh/Texture/Physics等资源很难达到最优和最灵活的存取，运行和同步效率，所以RBC引入了自定义资源类型，并支持将多种资源通过懒加载和预烘培引入到RBC Project中
 
+## 外界期待的使用方法
+
+对我这个Component来说，刚拿出来的时候只知道我会持有一个Resource的guid，然后我拿着这个guid去问ResourceSystem拿到了一个Future或者Handle啥的，之后我自己Update的时候就不停地拿这个Handle来查它有没有installed/loaded，一旦资源加载完就正式进入流程，在流程内部就不再检查这个资源是否valid，默认都是加载完毕的状态。
+
 ## IResource
 
 IResource构建在IRTTRBasic的基础上，所有资产都会从IResource中继承，从而可以被ResourceSystem以一种统一的方式进行加载，安装，探索依赖和卸载。

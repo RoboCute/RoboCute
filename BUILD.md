@@ -2,6 +2,8 @@
 
 robocute是一个python-first，带GUI和cpp runtime的大型库，所以整体构建流程会比较复杂
 
+整体架构可以参考[[doc/design/Architecture.md]]
+
 ## 准备环境
 
 1. 能够访问 github 的网络环境
@@ -38,6 +40,18 @@ Python在robocute中扮演双重角色：首先robocute最终会形成一个pyth
   - 启动editor `xmake run rbc-editor`
 - Graphics特性测试`xmake run test_graphics_bin`
 - Serde特性测试`xmake run test_serde`
+
+### Server-Editor
+
+- find the registered node
+- connect and execute
+- fetch the result from python side
+- playback in editor
+
+
+### Test Graphics
+
+![test_graphics_bin](doc/images/test_graphics_bin.png)
 
 ## 发布运行
 
