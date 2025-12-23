@@ -7,9 +7,9 @@ target("ozz_animation_base")
     add_files("ozz_animation/src/base/**.cc")
 target_end()
 
-target("ozz_animation_runtime")
+target("ozz_animation_static")
     add_rules('lc_basic_settings', {
-        project_kind = 'shared'
+        project_kind = 'static'
     })
     add_deps("ozz_animation_base")
     add_includedirs("ozz_animation/src", { private = true})

@@ -19,6 +19,8 @@ local function rbc_runtime_impl()
         links = false
     })
     add_deps('tinyexr', 'tiny_obj_loader', 'stb-image', 'open_fbx', 'tinytiff') -- thirdparty
+    add_deps("ozz_animation_static")
+
     -- add_interface_deps('rbc_render_plugin')
     add_deps('lc-volk')
     add_defines('RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT')

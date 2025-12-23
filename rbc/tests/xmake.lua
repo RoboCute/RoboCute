@@ -25,7 +25,7 @@ function add_test(name, deps)
 end
 
 add_test("core", { "rbc_core" })
-add_test("world", { "rbc_world_v2", "rbc_core" })
+add_test("world", { "rbc_runtime", "rbc_core" })
 
 -- 一些第三方库的测试用例，用来检测第三方库是否稳定
 includes("calculator") -- for qt_node_editor
