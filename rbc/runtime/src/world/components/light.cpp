@@ -89,7 +89,10 @@ void LightComponent::_update_light() {
     }
 }
 void LightComponent::on_awake() {
-    add_event(WorldEventType::OnTransformUpdate, &LightComponent::_update_light);
+    auto tr = entity()->get_component<TransformComponent>();
+    if (tr) {
+        tr->add_on_update_event(this, &LightComponent::_update_light);
+    }
 }
 void LightComponent::on_destroy() {
     _light_stub.remove_light();

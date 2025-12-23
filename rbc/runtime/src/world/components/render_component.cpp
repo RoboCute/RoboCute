@@ -1,6 +1,6 @@
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/transform.h>
-#include <rbc_world/resource_loader.h>
+#include <rbc_world/resource_base.h>
 #include <rbc_world/type_register.h>
 #include <rbc_world/resources/material.h>
 #include <rbc_world/resources/mesh.h>
@@ -18,7 +18,10 @@ void RenderComponent::_on_transform_update() {
     }
 }
 void RenderComponent::on_awake() {
-    add_event(WorldEventType::OnTransformUpdate, &RenderComponent::_on_transform_update);
+    auto tr = entity()->get_component<TransformComponent>();
+    if (tr) {
+        tr->add_on_update_event(this, &RenderComponent::_on_transform_update);
+    }
 }
 void RenderComponent::on_destroy() {
     remove_object();

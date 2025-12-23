@@ -1,6 +1,5 @@
 #include "dummy_resource.h"
 #include <rbc_core/runtime_static.h>
-#include <rbc_world/resource_loader.h>
 #include <luisa/core/fiber.h>
 using namespace rbc;
 int main(int argc, char *argv[]) {
@@ -11,6 +10,7 @@ int main(int argc, char *argv[]) {
     luisa::filesystem::remove_all(meta_path);
     world::init_resource_loader(meta_path);
     auto dispose_runtime_static = vstd::scope_exit([] {
+        world::dispose_resource_loader();
         world::destroy_world();
         RuntimeStaticBase::dispose_all();
     });

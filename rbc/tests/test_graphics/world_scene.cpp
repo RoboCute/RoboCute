@@ -2,7 +2,6 @@
 #include <rbc_world/components/transform.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/light.h>
-#include <rbc_world/resource_loader.h>
 #include <rbc_world/texture_loader.h>
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_app/graphics_utils.h>
@@ -427,6 +426,7 @@ void WorldScene::_add_task(coro::coroutine const &c, world::Component *comp) {
     _render_thread_coroutines.enqueue(std::pair<coro::coroutine, RCWeak<world::Component>>{c, RCWeak<world::Component>{comp}});
 }
 WorldScene::~WorldScene() {
+    world::dispose_resource_loader();
     _write_scene();
     for (auto &i : _entities) {
         i->dispose();

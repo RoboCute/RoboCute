@@ -33,9 +33,6 @@ bool Entity::remove_component(TypeInfo const &type) {
     auto comp = static_cast<Component *>(obj);
     LUISA_DEBUG_ASSERT(comp->entity() == this);
     comp->_clear_entity();
-    for (auto &i : _events) {
-        i.second.erase(comp);
-    }
     comp->dispose();
     return true;
 }
@@ -88,34 +85,15 @@ void Entity::_remove_component(Component *component) {
     LUISA_DEBUG_ASSERT(iter != _components.end());
     _components.erase(iter);
     component->_clear_entity();
-    for (auto &i : _events) {
-        i.second.erase(component);
-    }
-}
-void Component::add_event(WorldEventType event, void (Component::*func_ptr)()) {
-    auto iter = entity()->_events.try_emplace(event);
-    iter.first->second.try_emplace(this, func_ptr);
+
 }
 
-void Entity::broadcast_event(WorldEventType frame_tick) {
-    auto iter = _events.find(frame_tick);
-    if (iter == _events.end()) {
-        return;
-    }
-    for (auto &i : iter->second) {
-        (i.first->*i.second)();
-    }
-}
 void Component::_remove_self_from_entity() {
     if (_entity) {
         _entity->_remove_component(static_cast<Component *>(this));
     }
 }
-void Component::remove_event(WorldEventType event) {
-    auto iter = _entity->_events.find(event);
-    if (iter == _entity->_events.end()) return;
-    iter->second.erase(this);
-}
+
 void Component::_clear_entity() {
     if (!_entity) [[unlikely]]
         return;

@@ -356,7 +356,9 @@ struct RC {
 
     // cast
     template<typename U>
-    RC<U> cast_static() const;
+    RC<U> cast_static() const &;
+    template<typename U>
+    RC<U> cast_static() &&;
 
 private:
     // helper
@@ -698,13 +700,19 @@ inline T &RC<T>::operator*() const {
 // cast
 template<typename T>
 template<typename U>
-inline RC<U> RC<T>::cast_static() const {
+inline RC<U> RC<T>::cast_static() const & {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<U>, "when use covariance, T must have virtual destructor for safe delete");
     if (_ptr) {
         return RC<U>(static_cast<U *>(_ptr));
     } else {
         return nullptr;
     }
+}
+template<typename T>
+template<typename U>
+inline RC<U> RC<T>::cast_static() && {
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<U>, "when use covariance, T must have virtual destructor for safe delete");
+    return RC<U>(reinterpret_cast<RC<U> &&>(*this));
 }
 
 }// namespace rbc

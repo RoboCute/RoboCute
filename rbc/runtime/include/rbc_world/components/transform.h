@@ -6,9 +6,11 @@
 #include <rbc_core/quaternion.h>
 namespace rbc::world {
 struct Entity;
+
 struct RBC_RUNTIME_API TransformComponent final : ComponentDerive<TransformComponent> {
     DECLARE_WORLD_COMPONENT_FRIEND(TransformComponent)
     friend void clear_dirty_transform();
+    friend void on_before_rendering();
 private:
     TransformComponent *_parent{};
     luisa::unordered_set<TransformComponent *> _children;
@@ -19,14 +21,27 @@ private:
     bool _dirty : 1 {};
     bool _decomposed : 1 {true};
     TransformComponent(Entity *entity);
+    vstd::HashMap<
+        InstanceID,
+        void (Component::*)()>
+        _on_update_events;
+
     void mark_dirty();
     void try_decompose();
     void traversal(double4x4 const &new_trs);
+    void _execute_on_update_event();
     ~TransformComponent();
 public:
     double3 position();
     Quaternion rotation();
     double3 scale();
+    void add_on_update_event(Component *ptr, void (Component::*func_ptr)());
+    template<typename T>
+        requires std::is_base_of_v<Component, T>
+    void add_on_update_event(T *ptr, void (T::*func_ptr)()) {
+        this->add_on_update_event(ptr, static_cast<void (Component::*)()>(func_ptr));
+    }
+    void remove_on_update_event(Component *ptr);
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
     void dispose() override;

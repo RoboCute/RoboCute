@@ -9,7 +9,6 @@
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_world/resources/texture.h>
 #include <rbc_core/runtime_static.h>
-#include <rbc_world/resource_loader.h>
 
 namespace rbc::world {
 struct MaterialInst : RBCStruct {

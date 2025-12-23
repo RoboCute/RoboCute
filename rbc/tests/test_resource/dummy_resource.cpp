@@ -1,7 +1,6 @@
 #include "dummy_resource.h"
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_world/type_register.h>
-#include <rbc_world/resource_loader.h>
 #include <luisa/core/binary_file_stream.h>
 namespace rbc {
 void DummyResource::serialize_meta(world::ObjSerialize const &ser) const {

@@ -170,7 +170,28 @@ TransformComponent::~TransformComponent() {
         remove_children(this);
     }
 }
-void dispose();
+void TransformComponent::add_on_update_event(Component *ptr, void (Component::*func_ptr)()) {
+    _on_update_events.force_emplace(ptr->instance_id(), func_ptr);
+}
+
+void TransformComponent::_execute_on_update_event() {
+    luisa::vector<InstanceID> invalid_components;
+    for (auto &i : _on_update_events) {
+        auto obj = get_object(i.first);
+        if (!obj || obj->base_type() != BaseObjectType::Component) [[unlikely]] {
+            invalid_components.emplace_back(i.first);
+        }
+        auto ptr = static_cast<Component *>(obj);
+        (ptr->*i.second)();
+    }
+    for (auto &i : invalid_components) {
+        _on_update_events.remove(i);
+    }
+}
+
+void TransformComponent::remove_on_update_event(Component *ptr) {
+    _on_update_events.remove(ptr->instance_id());
+}
 // clang-format off
 DECLARE_WORLD_COMPONENT_REGISTER(TransformComponent)
 // clang-format on

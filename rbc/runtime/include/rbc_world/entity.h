@@ -31,12 +31,6 @@ struct Entity final : BaseObjectDerive<Entity, BaseObjectType::Entity> {
 
 private:
     luisa::unordered_map<std::array<uint64_t, 2>, Component *> _components;
-    luisa::unordered_map<
-        WorldEventType,
-        luisa::unordered_map<
-            Component *,
-            void (Component::*)()>>
-        _events;
     RBC_RUNTIME_API void _remove_component(Component *component);
     Entity();
     ~Entity();
@@ -64,7 +58,6 @@ public:
     RBC_RUNTIME_API Component *get_component(TypeInfo const &type);
     RBC_RUNTIME_API void serialize_meta(ObjSerialize const&ser) const override;
     RBC_RUNTIME_API void deserialize_meta(ObjDeSerialize const&ser) override;
-    RBC_RUNTIME_API void broadcast_event(WorldEventType frame_tick);
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
     bool remove_component() {

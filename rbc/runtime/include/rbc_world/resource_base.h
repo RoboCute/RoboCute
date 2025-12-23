@@ -78,5 +78,9 @@ protected:
     ResourceBaseImpl() = default;
     ~ResourceBaseImpl() = default;
 };
+RBC_RUNTIME_API void init_resource_loader(luisa::filesystem::path const &meta_path);
+RBC_RUNTIME_API void dispose_resource_loader();
+RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file = true);
+RBC_RUNTIME_API void register_resource(Resource* res);
 
 }// namespace rbc::world

@@ -61,6 +61,26 @@ BaseObject *get_object(vstd::Guid const &guid) {
     }
     return iter->second;
 }
+RC<BaseObject> get_object_ref(InstanceID instance_id) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
+    if (instance_id._placeholder == ~0ull) return {};
+    BaseObject *ptr;
+    std::shared_lock lck{_world_inst->_instance_mtx};
+    auto iter = _world_inst->_instance_ids.find(instance_id._placeholder);
+    if (iter != _world_inst->_instance_ids.end()) {
+        return RC<BaseObject>{iter->second};
+    }
+    return {};
+}
+RC<BaseObject> get_object_ref(vstd::Guid const &guid) {
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
+    std::shared_lock lck{_world_inst->_guid_mtx};
+    auto iter = _world_inst->_obj_guids.find(reinterpret_cast<std::array<uint64_t, 2> const &>(guid));
+    if (iter == _world_inst->_obj_guids.end()) {
+        return {};
+    }
+    return RC<BaseObject>{iter->second};
+}
 void BaseObject::init() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     _guid.reset();
@@ -202,7 +222,7 @@ void on_before_rendering() {
             continue;
         }
         auto tr = static_cast<TransformComponent *>(tr_obj);
-        tr->entity()->broadcast_event(WorldEventType::OnTransformUpdate);
+        tr->_execute_on_update_event();
     }
     clear_dirty_transform();
 }

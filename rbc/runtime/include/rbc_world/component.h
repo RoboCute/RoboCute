@@ -1,11 +1,6 @@
 #pragma once
 #include <rbc_world/base_object.h>
 namespace rbc::world {
-enum struct WorldEventType : uint64_t {
-    OnTransformUpdate
-    // etc...
-    // can have custom events
-};
 struct Entity;
 // events from front to back
 struct Component : BaseObject {
@@ -17,10 +12,9 @@ private:
     RBC_RUNTIME_API void _remove_self_from_entity();
     explicit Component(Entity *entity);
     ~Component();
-    RBC_RUNTIME_API void add_event(WorldEventType event, void (Component::*func_ptr)());
+    
     RBC_RUNTIME_API void _clear_entity();
 protected:
-    RBC_RUNTIME_API void remove_event(WorldEventType event);
 public:
     virtual void on_awake() {};
     virtual void on_destroy() {};
@@ -45,8 +39,6 @@ protected:
     ~ComponentDerive() {
         Component::_remove_self_from_entity();
     }
-    void add_event(WorldEventType event, void (T::*func_ptr)()) {
-        Component::add_event(event, static_cast<void (Component::*)()>(func_ptr));
-    }
+
 };
 }// namespace rbc::world

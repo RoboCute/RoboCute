@@ -41,6 +41,8 @@ T *create_object_with_guid(vstd::Guid const &guid) {
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
 [[nodiscard]] RBC_RUNTIME_API BaseObject *get_object(InstanceID instance_id);
 [[nodiscard]] RBC_RUNTIME_API BaseObject *get_object(vstd::Guid const &guid);
+[[nodiscard]] RBC_RUNTIME_API RC<BaseObject> get_object_ref(InstanceID instance_id);
+[[nodiscard]] RBC_RUNTIME_API RC<BaseObject> get_object_ref(vstd::Guid const &guid);
 [[nodiscard]] RBC_RUNTIME_API uint64_t object_count();
 [[nodiscard]] RBC_RUNTIME_API BaseObjectType base_type_of(vstd::Guid const &type_id);
 [[nodiscard]] RBC_RUNTIME_API luisa::span<InstanceID const> get_dirty_transforms();
