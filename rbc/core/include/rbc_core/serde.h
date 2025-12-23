@@ -110,7 +110,7 @@ struct is_vector<luisa::vector<Ele>> {
     static constexpr bool value = true;
 };
 template<typename T>
-static constexpr bool serializable_native_type_v = std::is_integral_v<T> || std::is_floating_point_v<T> || luisa::is_vector_v<T> || concepts::is_matrix_v<T> || detail::is_unordered_map<T>::value || std::is_same_v<std::decay_t<T>, luisa::string> || std::is_same_v<T, vstd::Guid> || std::is_same_v<std::decay_t<T>, luisa::string_view> || std::is_same_v<T, luisa::half> || std::is_same_v<T, bool> || is_vector<T>::value || std::is_enum_v<T>;
+static constexpr bool serializable_native_type_v = std::is_integral_v<T> || std::is_floating_point_v<T> || luisa::is_vector_v<T> || concepts::is_matrix_v<T> || rbc::detail::is_unordered_map<T>::value || std::is_same_v<std::decay_t<T>, luisa::string> || std::is_same_v<T, vstd::Guid> || std::is_same_v<std::decay_t<T>, luisa::string_view> || std::is_same_v<T, luisa::half> || std::is_same_v<T, bool> || is_vector<T>::value || std::is_enum_v<T>;
 template<typename T, typename Ser>
 static constexpr bool serializable_struct_type_v =
     requires { std::declval<T>().rbc_objser(lvalue_declval<Ser>()); } ||
@@ -122,9 +122,9 @@ static constexpr bool deserializable_struct_type_v =
 }// namespace detail
 namespace concepts {
 template<typename T, typename Ser>
-concept SerializableType = detail::serializable_native_type_v<T> || detail::serializable_struct_type_v<T, Ser>;
+concept SerializableType = rbc::detail::serializable_native_type_v<T> || rbc::detail::serializable_struct_type_v<T, Ser>;
 template<typename T, typename DeSer>
-concept DeSerializableType = detail::serializable_native_type_v<T> || detail::deserializable_struct_type_v<T, DeSer>;
+concept DeSerializableType = rbc::detail::serializable_native_type_v<T> || rbc::detail::deserializable_struct_type_v<T, DeSer>;
 };// namespace concepts
 template<concepts::SerWriter Base>
 struct Serializer : public Base {
@@ -218,7 +218,7 @@ struct Serializer : public Base {
             Base::add(luisa::string_view{t}, args...);
         }
         // kv map
-        else if constexpr (detail::is_unordered_map<T>::value) {
+        else if constexpr (rbc::detail::is_unordered_map<T>::value) {
             Base::start_array();
             for (auto &&i : t) {
                 if constexpr (requires { i.first.c_str(); }) {
@@ -229,7 +229,7 @@ struct Serializer : public Base {
                 }
             }
             Base::add_last_scope_to_object(args...);
-        } else if constexpr (detail::is_vector<T>::value) {
+        } else if constexpr (rbc::detail::is_vector<T>::value) {
             Base::start_array();
             for (auto &&i : t) {
                 this->_store(i);
@@ -429,7 +429,7 @@ struct DeSerializer : public Base {
             return Base::read(t, args...);
         }
         // kv map
-        else if constexpr (detail::is_unordered_map<T>::value) {
+        else if constexpr (rbc::detail::is_unordered_map<T>::value) {
             uint64_t size;
             if (!Base::start_array(size, args...)) return false;
             auto end_scope = vstd::scope_exit([&] {
@@ -437,12 +437,12 @@ struct DeSerializer : public Base {
             });
 
             if constexpr (requires {
-                              t.try_emplace(std::declval<luisa::string>(), std::declval<typename detail::is_unordered_map<T>::ValueType>());
+                              t.try_emplace(std::declval<luisa::string>(), std::declval<typename rbc::detail::is_unordered_map<T>::ValueType>());
                           })
 
             {
                 t.reserve(size);
-                typename detail::is_unordered_map<T>::ValueType value;
+                typename rbc::detail::is_unordered_map<T>::ValueType value;
                 luisa::string key;
                 if (!this->_load(key)) return false;
                 if (!this->_load(value)) return false;
@@ -455,7 +455,7 @@ struct DeSerializer : public Base {
             return true;
         }
         // duck type
-        else if constexpr (detail::is_vector<T>::value) {
+        else if constexpr (rbc::detail::is_vector<T>::value) {
             uint64_t size{};
             if (!Base::start_array(size, args...)) return false;
             auto end_scope = vstd::scope_exit([&] {

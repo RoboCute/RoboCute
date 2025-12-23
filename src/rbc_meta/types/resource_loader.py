@@ -4,7 +4,7 @@ from rbc_meta.utils.builtin import size_t, u64, u32, u8, VoidPtr
 
 @reflect(
     pybind=True,
-    cpp_prefix="RBC_WORLD_API",
+    cpp_prefix="RBC_RUNTIME_API",
     cpp_namespace="rbc",
     module_name="resource_loader",
 )

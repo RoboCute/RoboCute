@@ -1,6 +1,6 @@
 #include <rbc_core/type_info.h>
 #include <rbc_core/runtime_static.h>
-#include <rbc_world_v2/resource.h>
+#include <rbc_world/resource.h>
 #include <rbc_core/blob.h>
 #include <rbc_core/memory.h>
 #include <luisa/vstl/v_guid.h>

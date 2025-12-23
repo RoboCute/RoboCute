@@ -11,10 +11,10 @@
 #include <luisa/vstl/md5.h>
 #include <rbc_core/func_serializer.h>
 #include <rbc_runtime/plugin_manager.h>
-#include <rbc_world_v2/base_object.h>
-#include <rbc_world_v2/components/transform.h>
-#include <rbc_world_v2/entity.h>
-#include <rbc_world_v2/resources/material.h>
+#include <rbc_world/base_object.h>
+#include <rbc_world/components/transform.h>
+#include <rbc_world/entity.h>
+#include <rbc_world/resources/material.h>
 #include <rbc_core/runtime_static.h>
 
 using namespace rbc;

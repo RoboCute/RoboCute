@@ -1,6 +1,6 @@
 #include "dummy_resource.h"
 #include <rbc_core/runtime_static.h>
-#include <rbc_world_v2/resource_loader.h>
+#include <rbc_world/resource_loader.h>
 #include <luisa/core/fiber.h>
 using namespace rbc;
 int main(int argc, char *argv[]) {

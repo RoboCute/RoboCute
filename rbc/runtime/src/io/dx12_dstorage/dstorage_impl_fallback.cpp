@@ -197,12 +197,12 @@ DStorageStreamFallbackImpl::DStorageStreamFallbackImpl(
     Device &device,
     DStorageSrcType src_type)
     : DStorageStream(src_type) {
-    queue = new detail::IOQueue(device, src_type, staging_size);
+    queue = new rbc::detail::IOQueue(device, src_type, staging_size);
 }
 
 DStorageStreamFallbackImpl::~DStorageStreamFallbackImpl() {
     if (queue) {
-        delete static_cast<detail::IOQueue *>(queue);
+        delete static_cast<rbc::detail::IOQueue *>(queue);
     }
 }
 IOFile::Handle IOFile::_init_fallback(luisa::string_view path) {
@@ -251,8 +251,8 @@ void DStorageStreamFallbackImpl::enqueue_request(
     void *ptr,
     size_t len) {
     LUISA_ASSERT(src_type == DStorageSrcType::File, "Source type and queue mismatch.");
-    auto queue_impl = static_cast<detail::IOQueue *>(queue);
-    luisa::move_only_function<void(detail::IOQueue *)> io_queue{[f = file.file, offset_bytes, ptr, len](detail::IOQueue *queue) {
+    auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
+    luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[f = file.file, offset_bytes, ptr, len](rbc::detail::IOQueue *queue) {
         RBC_FSEEK(static_cast<::FILE *>(f), offset_bytes, SEEK_SET);
         fread(ptr, len, 1, static_cast<::FILE *>(f));
     }};
@@ -269,8 +269,8 @@ void DStorageStreamFallbackImpl::enqueue_request(
     size_t buffer_offset,
     size_t len) {
     LUISA_ASSERT(src_type == DStorageSrcType::File, "Source type and queue mismatch.");
-    auto queue_impl = static_cast<detail::IOQueue *>(queue);
-    luisa::move_only_function<void(detail::IOQueue *)> io_queue{[f = file.file, offset_bytes, buffer_handle, buffer_offset, len](detail::IOQueue *queue) {
+    auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
+    luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[f = file.file, offset_bytes, buffer_handle, buffer_offset, len](rbc::detail::IOQueue *queue) {
         if (queue->alloc && queue->alloc->get_next_size(len, 256) > queue->alloc->upload_buffer.size_bytes()) {
             queue->commit();
         }
@@ -306,9 +306,9 @@ void DStorageStreamFallbackImpl::enqueue_request(
     uint3 size,
     uint level) {
     LUISA_ASSERT(src_type == DStorageSrcType::File, "Source type and queue mismatch.");
-    auto queue_impl = static_cast<detail::IOQueue *>(queue);
-    luisa::move_only_function<void(detail::IOQueue *)> io_queue{
-        [f = file.file, offset_bytes, tex_handle, storage, offset, size, level](detail::IOQueue *queue) {
+    auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
+    luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{
+        [f = file.file, offset_bytes, tex_handle, storage, offset, size, level](rbc::detail::IOQueue *queue) {
             auto size_bytes = pixel_storage_size(storage, size);
             if (queue->alloc && queue->alloc->get_next_size(size_bytes, 256) > queue->alloc->upload_buffer.size_bytes()) {
                 queue->commit();
@@ -345,8 +345,8 @@ void DStorageStreamFallbackImpl::enqueue_request(
     size_t buffer_offset,
     size_t len) {
     LUISA_ASSERT(src_type == DStorageSrcType::Memory, "Source type and queue mismatch.");
-    auto queue_impl = static_cast<detail::IOQueue *>(queue);
-    luisa::move_only_function<void(detail::IOQueue *)> io_queue{[mem_ptr, offset_bytes, buffer_handle, buffer_offset, len](detail::IOQueue *queue) {
+    auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
+    luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[mem_ptr, offset_bytes, buffer_handle, buffer_offset, len](rbc::detail::IOQueue *queue) {
         if (queue->alloc && queue->alloc->get_next_size(len, 256) > queue->alloc->upload_buffer.size_bytes()) {
             queue->commit();
         }
@@ -379,8 +379,8 @@ void DStorageStreamFallbackImpl::enqueue_request(
     uint3 size,
     uint level) {
     LUISA_ASSERT(src_type == DStorageSrcType::Memory, "Source type and queue mismatch.");
-    auto queue_impl = static_cast<detail::IOQueue *>(queue);
-    luisa::move_only_function<void(detail::IOQueue *)> io_queue{[mem_ptr, tex_handle, offset_bytes, storage, offset, size, level](detail::IOQueue *queue) {
+    auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
+    luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[mem_ptr, tex_handle, offset_bytes, storage, offset, size, level](rbc::detail::IOQueue *queue) {
         auto size_bytes = pixel_storage_size(storage, size);
         if (queue->alloc && queue->alloc->get_next_size(size_bytes, 256) > queue->alloc->upload_buffer.size_bytes()) {
             queue->commit();
@@ -411,8 +411,8 @@ void DStorageStreamFallbackImpl::enqueue_request(
     void *ptr,
     size_t len) {
     LUISA_ASSERT(src_type == DStorageSrcType::Memory, "Source type and queue mismatch.");
-    auto queue_impl = static_cast<detail::IOQueue *>(queue);
-    luisa::move_only_function<void(detail::IOQueue *)> io_queue{[mem_ptr, offset_bytes, ptr, len](detail::IOQueue *queue) {
+    auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
+    luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[mem_ptr, offset_bytes, ptr, len](rbc::detail::IOQueue *queue) {
         auto curr_ptr = reinterpret_cast<std::byte const *>(mem_ptr) + offset_bytes;
         std::memcpy(ptr, curr_ptr, len);
     }};
@@ -424,8 +424,8 @@ void DStorageStreamFallbackImpl::enqueue_signal(
     uint64_t event_handle,
     void *event,
     uint64 fence_index) {
-    auto queue_impl = static_cast<detail::IOQueue *>(queue);
-    luisa::move_only_function<void(detail::IOQueue *)> io_queue{[event_handle, fence_index, this](detail::IOQueue *queue) {
+    auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
+    luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[event_handle, fence_index, this](rbc::detail::IOQueue *queue) {
         queue->commit();
         queue->stream << Event::Signal{event_handle, fence_index};
         signaled_fence_idx = fence_index;
@@ -435,7 +435,7 @@ void DStorageStreamFallbackImpl::enqueue_signal(
     queue_impl->work_thd.unlock();
 }
 void DStorageStreamFallbackImpl::submit() {
-    auto queue_impl = static_cast<detail::IOQueue *>(queue);
+    auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
     {
         std::lock_guard lck{queue_impl->mtx};
         queue_impl->thd_fence_idx++;
@@ -444,7 +444,7 @@ void DStorageStreamFallbackImpl::submit() {
 }
 void DStorageStreamFallbackImpl::free_queue() {
     if (queue) {
-        delete static_cast<detail::IOQueue *>(queue);
+        delete static_cast<rbc::detail::IOQueue *>(queue);
         queue = nullptr;
     }
 }

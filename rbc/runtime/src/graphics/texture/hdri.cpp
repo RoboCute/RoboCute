@@ -163,7 +163,7 @@ auto HDRI::compute_alias_table(luisa::span<float> scale_map, uint2 size) -> Alia
                 sum += v;
             }
             row_averages[i] = static_cast<float>(sum * (1.0 / size.x));
-            detail::create_alias_table(
+            rbc::detail::create_alias_table(
                 values,
                 luisa::span{ aliases }.subspan(size.y + i * size.x, size.x),
                 luisa::span{ pdfs }.subspan(i * size.x, size.x), false
@@ -172,7 +172,7 @@ auto HDRI::compute_alias_table(luisa::span<float> scale_map, uint2 size) -> Alia
     });
     luisa::vector<float> pdf_table;
     pdf_table.push_back_uninitialized(row_averages.size());
-    detail::create_alias_table(row_averages, luisa::span{ aliases }.subspan(0, size.y), pdf_table, true);
+    rbc::detail::create_alias_table(row_averages, luisa::span{ aliases }.subspan(0, size.y), pdf_table, true);
     luisa::fiber::parallel(0u, size.y, 32, [&](auto beg, auto end) {
         for (auto y = beg; y < end; ++y)
         {

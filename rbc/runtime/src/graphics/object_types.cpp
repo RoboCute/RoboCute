@@ -24,7 +24,7 @@ void MaterialStub::openpbr_json_ser(JsonSerializer &t, material::OpenPBR const &
         }
     };
 
-    detail::serde_openpbr<material::OpenPBR const &>(mat, serde_func);
+    rbc::detail::serde_openpbr(mat, serde_func);
 }
 void MaterialStub::openpbr_json_deser(JsonDeSerializer &t, material::OpenPBR &mat) {
     luisa::string type;
@@ -50,7 +50,7 @@ void MaterialStub::openpbr_json_deser(JsonDeSerializer &t, material::OpenPBR &ma
             t._load(u, name);
         }
     };
-    detail::serde_openpbr<material::OpenPBR &>(mat, serde_func);
+    rbc::detail::serde_openpbr(mat, serde_func);
 }
 void MaterialStub::openpbr_json_ser(JsonSerializer &json_ser, material::Unlit const &mat) {
     LUISA_NOT_IMPLEMENTED();

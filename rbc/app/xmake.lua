@@ -2,7 +2,7 @@ local function rbc_app_interface()
     add_includedirs('include', {
         public = true
     })
-    add_deps('rbc_runtime', 'rbc_core', 'rbc_render_plugin', 'rbc_world_v2')
+    add_deps('rbc_runtime', 'rbc_core', 'rbc_render_plugin')
 end
 
 local function rbc_app_impl()

@@ -4,5 +4,5 @@ add_rules('lc_basic_settings', {
 })
 set_group("03.samples")
 add_files('**.cpp')
-add_deps('rbc_runtime', 'rbc_world_v2')
+add_deps('rbc_runtime')
 target_end()

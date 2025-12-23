@@ -1,8 +1,8 @@
 #pragma once
-#include <rbc_world_v2/entity.h>
-#include <rbc_world_v2/resources/mesh.h>
-#include <rbc_world_v2/resources/texture.h>
-#include <rbc_world_v2/resources/material.h>
+#include <rbc_world/entity.h>
+#include <rbc_world/resources/mesh.h>
+#include <rbc_world/resources/texture.h>
+#include <rbc_world/resources/material.h>
 #include <rbc_graphics/camera.h>
 #include <rbc_core/coroutine.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>

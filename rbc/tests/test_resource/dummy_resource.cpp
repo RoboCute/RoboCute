@@ -1,7 +1,7 @@
 #include "dummy_resource.h"
 #include <rbc_core/binary_file_writer.h>
-#include <rbc_world_v2/type_register.h>
-#include <rbc_world_v2/resource_loader.h>
+#include <rbc_world/type_register.h>
+#include <rbc_world/resource_loader.h>
 #include <luisa/core/binary_file_stream.h>
 namespace rbc {
 void DummyResource::serialize_meta(world::ObjSerialize const &ser) const {
@@ -34,6 +34,8 @@ void DummyResource::create_empty(std::initializer_list<RC<DummyResource>> depend
         _depended.emplace_back(i);
     }
     vstd::push_back_all(_value, luisa::span{name.data(), name.size()});
+    // mark as loaded
+    _status = world::EResourceLoadingStatus::Loaded;
 }
 rbc::coro::coroutine DummyResource::_async_load() {
     // load current binary
@@ -54,6 +56,8 @@ rbc::coro::coroutine DummyResource::_async_load() {
         }
     }
     LUISA_INFO("Value: {}", print_result);
+    // we DO NOT need this, status will be setted automatically
+    // _status = world::EResourceLoadingStatus::Loaded;
     co_return;
 }
 bool DummyResource::unsafe_save_to_path() const {

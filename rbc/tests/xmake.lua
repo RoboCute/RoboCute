@@ -25,4 +25,4 @@ function add_test(name, deps)
 end
 
 add_test("core", { "rbc_core" })
-add_test("world", { "rbc_world_v2", "rbc_core" })
+add_test("world", { "rbc_runtime", "rbc_core" })

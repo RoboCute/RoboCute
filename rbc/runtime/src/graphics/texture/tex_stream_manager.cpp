@@ -36,7 +36,7 @@ static TexStreamManager *_tex_mng_inst = nullptr;
 }// namespace rbc::detail
 namespace rbc {
 TexStreamManager *TexStreamManager::instance() {
-    return detail::_tex_mng_inst;
+    return rbc::detail::_tex_mng_inst;
 }
 const uint TexStreamManager::chunk_resolution = 256;
 TexStreamManager::TexStreamManager(
@@ -75,8 +75,8 @@ TexStreamManager::TexStreamManager(
           }
       }),
       _async_load_evt(luisa::fiber::event::Mode::Manual, true) {
-    if (!detail::_tex_mng_inst)
-        detail::_tex_mng_inst = this;
+    if (!rbc::detail::_tex_mng_inst)
+        rbc::detail::_tex_mng_inst = this;
     if (lru_frame < 3 || lru_frame_memoryless < 3) [[unlikely]] {
         LUISA_ERROR("LRU frame can not be less than 3 frame, this may cause flicking or false unload.");
     }
@@ -261,8 +261,8 @@ void TexStreamManager::_async_logic() {
 }
 
 TexStreamManager::~TexStreamManager() {
-    if (detail::_tex_mng_inst == this)
-        detail::_tex_mng_inst = nullptr;
+    if (rbc::detail::_tex_mng_inst == this)
+        rbc::detail::_tex_mng_inst = nullptr;
     _copy_stream_mtx.lock();
     _enabled = false;
     signalled_fence = last_fence.load();

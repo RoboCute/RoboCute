@@ -94,8 +94,8 @@ auto BVH::split(
 			right_volume_size = std::max(right_volume_size, 1e-6);
 			auto& left_volume = volume_mem[i];
 			auto& right_volume = volume_mem[volume_size - 1 - i];
-			left_volume.left_max_and_score = make_float4(left_max, detail::evaluate_cost(left_cone.w, left_weight, Bounding{bounding.min, left_max}));
-			right_volume.right_min_and_score = make_float4(right_min, detail::evaluate_cost(right_cone.w, right_weight, Bounding{right_min, bounding.max}));
+			left_volume.left_max_and_score = make_float4(left_max, rbc::detail::evaluate_cost(left_cone.w, left_weight, Bounding{bounding.min, left_max}));
+			right_volume.right_min_and_score = make_float4(right_min, rbc::detail::evaluate_cost(right_cone.w, right_weight, Bounding{right_min, bounding.max}));
 
 			// left_volume.left_size = left_volume_size * double(i + 1);
 			// right_volume.right_size = right_volume_size * double(i + 1);

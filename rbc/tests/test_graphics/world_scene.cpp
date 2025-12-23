@@ -1,9 +1,9 @@
 #include "world_scene.h"
-#include <rbc_world_v2/components/transform.h>
-#include <rbc_world_v2/components/render_component.h>
-#include <rbc_world_v2/components/light.h>
-#include <rbc_world_v2/resource_loader.h>
-#include <rbc_world_v2/texture_loader.h>
+#include <rbc_world/components/transform.h>
+#include <rbc_world/components/render_component.h>
+#include <rbc_world/components/light.h>
+#include <rbc_world/resource_loader.h>
+#include <rbc_world/texture_loader.h>
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_app/graphics_utils.h>
 #include <rbc_core/binary_file_writer.h>

@@ -1,5 +1,5 @@
 #pragma once
-#include <rbc_world_v2/resource_base.h>
+#include <rbc_world/resource_base.h>
 namespace rbc {
 struct DummyResource : world::ResourceBaseImpl<DummyResource> {
     using BaseType = ResourceBaseImpl<DummyResource>;

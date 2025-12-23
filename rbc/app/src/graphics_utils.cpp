@@ -8,7 +8,7 @@
 #include <rbc_runtime/plugin_manager.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_render/renderer_data.h>
-#include <rbc_world_v2/base_object.h>
+#include <rbc_world/base_object.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
