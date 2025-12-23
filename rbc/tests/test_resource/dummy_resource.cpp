@@ -1,10 +1,10 @@
-#include "dummy_json_resource.h"
+#include "dummy_resource.h"
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_world_v2/type_register.h>
 #include <rbc_world_v2/resource_loader.h>
 #include <luisa/core/binary_file_stream.h>
 namespace rbc {
-void DummyJsonResource::serialize_meta(world::ObjSerialize const &ser) const {
+void DummyResource::serialize_meta(world::ObjSerialize const &ser) const {
     // write basic informations: type_id, file_path, etc...
     BaseType::serialize_meta(ser);
     // write dependencies
@@ -14,7 +14,7 @@ void DummyJsonResource::serialize_meta(world::ObjSerialize const &ser) const {
     }
     ser.ser.add_last_scope_to_object("depend");
 }
-void DummyJsonResource::deserialize_meta(world::ObjDeSerialize const &ser) {
+void DummyResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     BaseType::deserialize_meta(ser);
     size_t size;
     LUISA_ASSERT(ser.ser.start_array(size, "depend"), "Bad meta");
@@ -27,7 +27,7 @@ void DummyJsonResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     }
     ser.ser.end_scope();
 }
-void DummyJsonResource::create_empty(std::initializer_list<RC<DummyJsonResource>> depended, luisa::string_view name) {
+void DummyResource::create_empty(std::initializer_list<RC<DummyResource>> depended, luisa::string_view name) {
     _depended.clear();
     _value.clear();
     for (auto &i : depended) {
@@ -35,7 +35,7 @@ void DummyJsonResource::create_empty(std::initializer_list<RC<DummyJsonResource>
     }
     vstd::push_back_all(_value, luisa::span{name.data(), name.size()});
 }
-rbc::coro::coroutine DummyJsonResource::_async_load() {
+rbc::coro::coroutine DummyResource::_async_load() {
     // load current binary
     luisa::BinaryFileStream fs(luisa::to_string(path()));
     LUISA_ASSERT(fs.valid());
@@ -56,19 +56,19 @@ rbc::coro::coroutine DummyJsonResource::_async_load() {
     LUISA_INFO("Value: {}", print_result);
     co_return;
 }
-bool DummyJsonResource::unsafe_save_to_path() const {
+bool DummyResource::unsafe_save_to_path() const {
     BinaryFileWriter writer{luisa::to_string(path())};
     writer.write({(std::byte *)_value.data(),
                   _value.size_bytes()});
     return true;
 }
-void DummyJsonResource::_unload() {
+void DummyResource::_unload() {
     _value.clear();
     _depended.clear();
 }
-luisa::string_view DummyJsonResource::value() const {
+luisa::string_view DummyResource::value() const {
     return {_value.data(), _value.size()};
 }
 
-DECLARE_WORLD_OBJECT_REGISTER(DummyJsonResource)
+DECLARE_WORLD_OBJECT_REGISTER(DummyResource)
 }// namespace rbc

@@ -1,4 +1,4 @@
-#include "dummy_json_resource.h"
+#include "dummy_resource.h"
 #include <rbc_core/runtime_static.h>
 #include <rbc_world_v2/resource_loader.h>
 #include <luisa/core/fiber.h>
@@ -19,10 +19,10 @@ int main(int argc, char *argv[]) {
     // write
     {
         // // create dummy
-        RC<DummyJsonResource> a{world::create_object<DummyJsonResource>()};
-        RC<DummyJsonResource> b{world::create_object<DummyJsonResource>()};
-        RC<DummyJsonResource> c{world::create_object<DummyJsonResource>()};
-        RC<DummyJsonResource> d{world::create_object<DummyJsonResource>()};
+        RC<DummyResource> a{world::create_object<DummyResource>()};
+        RC<DummyResource> b{world::create_object<DummyResource>()};
+        RC<DummyResource> c{world::create_object<DummyResource>()};
+        RC<DummyResource> d{world::create_object<DummyResource>()};
 
         d->create_empty({}, "D");
         c->create_empty({d}, "C");
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
         a->create_empty({b, c}, "A");
         root_guid = a->guid();
 
-        auto write_to = [&](RC<DummyJsonResource> &res) {
+        auto write_to = [&](RC<DummyResource> &res) {
             // write binary
             auto bin = meta_path / (luisa::string{res->value()} + ".dummy");
             res->set_path(bin, 0);
@@ -47,8 +47,8 @@ int main(int argc, char *argv[]) {
     // read
     {
         auto dummy_ref = world::load_resource(root_guid);
-        LUISA_ASSERT(dummy_ref->is_type_of(TypeInfo::get<DummyJsonResource>()));
-        auto dummy_ptr = static_cast<DummyJsonResource *>(dummy_ref.get());
+        LUISA_ASSERT(dummy_ref->is_type_of(TypeInfo::get<DummyResource>()));
+        auto dummy_ptr = static_cast<DummyResource *>(dummy_ref.get());
         dummy_ptr->wait_load_finished();
     }
 }
