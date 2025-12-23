@@ -183,12 +183,12 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     // write a demo scene
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
         luisa::filesystem::create_directories(scene_root_dir);
-        world::init_resource_loader(runtime_dir, meta_dir);
+        world::init_resource_loader(scene_root_dir);
         _init_scene(utils);
 
     } else {
         // load demo scene
-        world::init_resource_loader(runtime_dir, meta_dir);// open project folder
+        world::init_resource_loader(scene_root_dir);// open project folder
 
         // load skybox
         {

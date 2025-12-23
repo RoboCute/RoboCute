@@ -20,8 +20,8 @@ protected:
     std::atomic<EResourceLoadingStatus> _status{EResourceLoadingStatus::Unloaded};
     luisa::filesystem::path _path;
     uint64_t _file_offset{};
-    Resource();
-    ~Resource();
+    RBC_WORLD_API Resource();
+    RBC_WORLD_API ~Resource();
     virtual rbc::coro::coroutine _async_load() = 0;
     virtual void _unload() = 0;
 

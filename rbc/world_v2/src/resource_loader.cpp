@@ -4,6 +4,7 @@
 #include <rbc_core/shared_atomic_mutex.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
+#include <rbc_core/binary_file_writer.h>
 
 namespace rbc::world {
 struct LoadingResource {
@@ -13,12 +14,11 @@ struct LoadingResource {
 };
 static thread_local LoadingResource *_current_loading_res{};
 struct ResourceLoader {
-    luisa::filesystem::path _root_path;
     luisa::filesystem::path _meta_path;
 
     struct ResourceHandle {
         RCWeak<Resource> res;
-        luisa::vector<char> json;
+        luisa::BinaryBlob json;
         luisa::spin_mutex mtx;
         ResourceHandle() = default;
         ResourceHandle(ResourceHandle &&rhs) noexcept : res(std::move(rhs.res)) {}
@@ -31,6 +31,19 @@ struct ResourceLoader {
     std::atomic_bool _enabled = true;
     std::condition_variable _async_cv;
     std::mutex _async_mtx;
+    void register_resource(Resource *res) {
+        JsonSerializer js;
+        res->serialize_meta(world::ObjSerialize{
+            js});
+        _resmap_mtx.lock();
+        auto &v = resource_types.force_emplace(res->guid()).value();
+        _resmap_mtx.unlock();
+        v.json = js.write_to();
+        LUISA_ASSERT(v.json.size() > 0);
+
+        BinaryFileWriter file_writer(luisa::to_string(_meta_path / (res->guid().to_string() + ".rbcmt")));
+        file_writer.write(v.json);
+    }
     void _loading_thread() {
         while (_enabled) {
             while (auto res = loading_queue.pop()) {
@@ -72,18 +85,22 @@ struct ResourceLoader {
 
     void load_all_resources() {
         // iterate all files
-        for (auto &i : std::filesystem::recursive_directory_iterator(_meta_path)) {
-            if (!i.is_regular_file()) {
-                continue;
+        if (std::filesystem::exists(_meta_path)) {
+            for (auto &i : std::filesystem::recursive_directory_iterator(_meta_path)) {
+                if (!i.is_regular_file()) {
+                    continue;
+                }
+                auto &path = i.path();
+                if (path.extension() != ".rbcmt")
+                    continue;
+                auto file_name = path.filename();
+                auto base_path = luisa::to_string(file_name.replace_extension());
+                if (auto guid_result = vstd::Guid::TryParseGuid(base_path)) {
+                    resource_types.emplace(*guid_result);
+                }
             }
-            auto &path = i.path();
-            if (path.extension() != ".rbcmt")
-                continue;
-            auto file_name = path.filename();
-            auto base_path = luisa::to_string(file_name.replace_extension());
-            if (auto guid_result = vstd::Guid::TryParseGuid(base_path)) {
-                resource_types.emplace(*guid_result);
-            }
+        } else {
+            std::filesystem::create_directory(_meta_path);
         }
         auto iter = resource_types.begin();
         luisa::spin_mutex _iter_mtx;
@@ -105,7 +122,10 @@ struct ResourceLoader {
                 _resmap_mtx.unlock();
                 return;
             }
-            v->json.push_back_uninitialized(file_stream.length());
+            v->json = luisa::BinaryBlob{
+                (std::byte *)vengine_malloc(file_stream.length()),
+                file_stream.length(),
+                +[](void *ptr) { vengine_free(ptr); }};
             file_stream.read(
                 {reinterpret_cast<std::byte *>(v->json.data()),
                  v->json.size()});
@@ -157,10 +177,12 @@ struct ResourceLoader {
 };
 
 RuntimeStatic<ResourceLoader> _res_loader;
-void init_resource_loader(luisa::filesystem::path const &root_path, luisa::filesystem::path const &meta_path) {
-    LUISA_ASSERT(_res_loader && _res_loader->_root_path.empty());
-    _res_loader->_root_path = root_path;
-    _res_loader->_meta_path = root_path / meta_path;
+void register_resource(Resource *res) {
+    _res_loader->register_resource(res);
+}
+void init_resource_loader(luisa::filesystem::path const &meta_path) {
+    LUISA_ASSERT(_res_loader);
+    _res_loader->_meta_path = meta_path;
     _res_loader->load_all_resources();
 }
 RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
@@ -168,7 +190,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
 
     if (obj) return RC<Resource>{obj};
 
-    LUISA_DEBUG_ASSERT(_res_loader && !_res_loader->_root_path.empty());
+    LUISA_DEBUG_ASSERT(_res_loader && !_res_loader->_meta_path.empty());
     ResourceLoader::ResourceHandle *v{};
     {
         std::shared_lock lck{_res_loader->_resmap_mtx};
@@ -193,7 +215,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         std::lock_guard lck{_res_loader->_resmap_mtx};
         _res_loader->resource_types.remove(guid);
     };
-    JsonDeSerializer deser{luisa::string_view{v->json.data(), v->json.size()}};
+    JsonDeSerializer deser{luisa::string_view{(char const *)v->json.data(), v->json.size()}};
     if (!deser.valid()) [[unlikely]] {
         remove_value();
         return {};

@@ -2,6 +2,7 @@
 #include <rbc_world_v2/component.h>
 #include <luisa/vstl/meta_lib.h>
 #include <luisa/vstl/pool.h>
+#include <luisa/vstl/spin_mutex.h>
 namespace rbc::world {
 RBC_WORLD_API BaseObject *get_object(InstanceID instance_id);
 RBC_WORLD_API BaseObject *get_object(vstd::Guid const &guid);
@@ -97,30 +98,30 @@ struct TypeComponentRegister : TypeRegisterBase {
     }
 };
 
-#define DECLARE_WORLD_OBJECT_REGISTER(type_name)                \
-    void ea525e13_create_##type_name(type_name *ptr) {          \
-        new (std::launder(ptr)) type_name{};                    \
-    }                                                           \
-    void ea525e13_destroy_##type_name(type_name *ptr) {         \
-        reinterpret_cast<type_name *>(ptr)->~type_name();       \
-    }                                                           \
-    static TypeObjectRegister<type_name> type_name##_register_{ \
-        ea525e13_create_##type_name,                            \
-        ea525e13_destroy_##type_name};                          \
-    void type_name::dispose() {                                 \
-        type_name##_register_.destroy(this);                    \
+#define DECLARE_WORLD_OBJECT_REGISTER(type_name)                              \
+    void ea525e13_create_##type_name(type_name *ptr) {                        \
+        new (std::launder(ptr)) type_name{};                                  \
+    }                                                                         \
+    void ea525e13_destroy_##type_name(type_name *ptr) {                       \
+        reinterpret_cast<type_name *>(ptr)->~type_name();                     \
+    }                                                                         \
+    static ::rbc::world::TypeObjectRegister<type_name> type_name##_register_{ \
+        ea525e13_create_##type_name,                                          \
+        ea525e13_destroy_##type_name};                                        \
+    void type_name::dispose() {                                               \
+        type_name##_register_.destroy(this);                                  \
     }
-#define DECLARE_WORLD_COMPONENT_REGISTER(type_name)                \
-    void ea525e13_create_##type_name(type_name *ptr, Entity *e) {  \
-        new (std::launder(ptr)) type_name{e};                      \
-    }                                                              \
-    void ea525e13_destroy_##type_name(type_name *ptr) {            \
-        reinterpret_cast<type_name *>(ptr)->~type_name();          \
-    }                                                              \
-    static TypeComponentRegister<type_name> type_name##_register_{ \
-        ea525e13_create_##type_name,                               \
-        ea525e13_destroy_##type_name};                             \
-    void type_name::dispose() {                                    \
-        type_name##_register_.destroy(this);                       \
+#define DECLARE_WORLD_COMPONENT_REGISTER(type_name)                              \
+    void ea525e13_create_##type_name(type_name *ptr, Entity *e) {                \
+        new (std::launder(ptr)) type_name{e};                                    \
+    }                                                                            \
+    void ea525e13_destroy_##type_name(type_name *ptr) {                          \
+        reinterpret_cast<type_name *>(ptr)->~type_name();                        \
+    }                                                                            \
+    static ::rbc::world::TypeComponentRegister<type_name> type_name##_register_{ \
+        ea525e13_create_##type_name,                                             \
+        ea525e13_destroy_##type_name};                                           \
+    void type_name::dispose() {                                                  \
+        type_name##_register_.destroy(this);                                     \
     }
 }// namespace rbc::world
