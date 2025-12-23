@@ -10,7 +10,46 @@ import queue
 from pathlib import Path
 import weakref
 
-import rbc_ext._C.rbc_ext_c as _C
+
+class AsyncResourceLoaderImpl:
+    def __init__(self) -> None:
+        pass
+
+    def clear_unused_resources(self) -> None:
+        pass
+
+    def get_cache_budget(self) -> int:
+        return 0
+
+    def get_memory_usage(self) -> int:
+        return 0
+
+    def get_resource_data(self, id):
+        return None
+
+    def get_resource_size(self, id) -> int:
+        return 0
+
+    def get_state(self, id) -> int:
+        return 0
+
+    def initialize(self, num_threads) -> None:
+        pass
+
+    def is_loaded(self, id) -> bool:
+        return True
+
+    def load_resource(self, arg0, arg1, arg2: str, arg3: str) -> bool:
+        return True
+
+    def set_cache_budget(self, bytes) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def unload_resource(self, id) -> None:
+        pass
 
 
 class ResourceType(IntEnum):
@@ -141,7 +180,7 @@ class ResourceManager:
         self._request_queue = queue.PriorityQueue()
 
         # C++ 异步加载器
-        self._cpp_loader = _C.AsyncResourceLoader()
+        self._cpp_loader = AsyncResourceLoaderImpl()
         self._cpp_loader.set_cache_budget(cache_budget_mb * 1024 * 1024)
 
         # 加载线程

@@ -3,13 +3,31 @@
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/lights.h>
 #include <rbc_graphics/mat_code.h>
-#include <rbc_world/mesh_loader.h>
-#include <rbc_world/gpu_resource.h>
 #include <luisa/vstl/common.h>
 
 #include "RBCEditorRuntime/runtime/SceneSync.h"
 
 namespace rbc {
+
+struct Vertex {
+    float position[3];
+    float normal[3];
+    float texcoord[2];
+    float tangent[4];// xyz = tangent, w = bitangent sign
+};
+struct Mesh {
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+
+    // GPU buffers (opaque handles, can be device pointers or buffer IDs)
+    void *vertex_buffer = nullptr;
+    void *index_buffer = nullptr;
+
+    // Metadata
+    std::string name;
+
+    void compute_normals();
+};
 
 /**
  * Editor scene that synchronizes with Python server
@@ -36,7 +54,7 @@ public:
     // Convert TLAS instance index to entity ID
     // Returns -1 if instance index not found
     [[nodiscard]] int getEntityIdFromInstanceId(uint32_t instance_id) const;
-    
+
     // Convert multiple instance IDs to entity IDs
     luisa::vector<int> getEntityIdsFromInstanceIds(const luisa::vector<uint> &instance_ids) const;
 

@@ -444,47 +444,7 @@ def generate():
     )  # TODO: 对pybind特殊处理，指定所有导出的module_filter，不太优雅
     ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["backend_interface", "runtime"])
 
-    target_modules = ["resource_type"]
-    include = "#include <rbc_world/resource.h>"
-
-    header_path = Path(
-        "rbc/world/include/rbc_world/generated/resource_type.hpp"
-    ).resolve()
-    cpp_path = Path("rbc/world/src/generated/resource_type.cpp").resolve()
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
-    ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules)
-
-    include = "#include <rbc_core/rc.h>"
-    target_modules = ["resource_loader"]
-    header_path = Path(
-        "rbc/world/include/rbc_world/generated/resource_loader.hpp"
-    ).resolve()
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
-
-    # rbc_ext_c
-    pyd_name = "rbc_ext_c"
-    pybind_cpp_path = Path("rbc/ext_c/generated/resource_loader.cpp").resolve()
-    includes = "#include <rbc_world/generated/resource_type.hpp>\n#include <rbc_world/generated/resource_loader.hpp>"
-    ut.codegen_to(pybind_cpp_path)(
-        pybind_codegen, pyd_name, ["resource_loader", "resource_type"], includes
-    )
-
-    # processes = []
-    # for module_name, function_name, *args in GENERATION_TASKS:
-    #     p = Process(
-    #         target=run_generation_task, args=(module_name, function_name, *args)
-    #     )
-    #     p.start()
-    #     processes.append(p)
-
-    # # Wait for all processes to complete
     exit_code = 0
-    # for p in processes:
-    #     p.join()
-    #     if p.exitcode != 0:
-    #         exit_code = 1
-    #         print(f"Process for task {p.name} failed with exit code {p.exitcode}")
-
     duration = time.time() - start_time
     print(f"Code generation finished in {duration:.2f} seconds.")
     sys.exit(exit_code)

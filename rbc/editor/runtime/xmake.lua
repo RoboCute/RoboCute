@@ -24,7 +24,6 @@ add_defines('RBC_EDITOR_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT')
 
 -- Dependencies
 add_deps("rbc_core") -- For json_serde (yyjson)
-add_deps("rbc_world")
 add_deps('rbc_runtime', 'rbc_render_plugin', 'rbc_app')
 add_deps("lc-volk")
 add_deps("qt_node_editor")
