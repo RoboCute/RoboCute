@@ -1,35 +1,45 @@
 #pragma once
 #include <rbc_world_v2/base_object.h>
+#include <rbc_core/coroutine.h>
 
 namespace rbc ::world {
 struct Resource;
+struct ResourceLoader;
 template<typename Derive>
 struct ResourceBaseImpl;
-
+enum struct EResourceLoadingStatus : uint8_t {
+    Unloaded,
+    Loading,
+    Loaded
+};
 struct Resource : BaseObject {
+    friend struct ResourceLoader;
     template<typename Derive>
     friend struct ResourceBaseImpl;
 protected:
+    std::atomic<EResourceLoadingStatus> _status{EResourceLoadingStatus::Unloaded};
     luisa::filesystem::path _path;
     uint64_t _file_offset{};
     Resource();
     ~Resource();
+    virtual rbc::coro::coroutine _async_load() = 0;
+    virtual void _unload() = 0;
+
 public:
     [[nodiscard]] luisa::filesystem::path const &path() const {
         return _path;
     }
     [[nodiscard]] uint64_t file_offset() const { return _file_offset; }
+
     ///////// Function call must be atomic
-    // return true if this resource is never created, loaded or updated
-    virtual bool empty() const = 0;
-    // return true if this resource is finished by loading-thread
-    virtual bool load_finished() const = 0;
-    // require this resource load from Resource::_path, return false if the resource is non-empty, loading, loaded or destination file is invalid.
-    virtual bool async_load_from_file() = 0;
-    // unload this resource and make it as empty
-    virtual void unload() = 0;
+    EResourceLoadingStatus loading_status() const { return _status.load(std::memory_order_relaxed); }
+
+    // called in coroutine
+    RBC_WORLD_API void unload();
+    RBC_WORLD_API coro::awaitable await_loading();
     // wait until the loading logic finished in both host-side and device-side
-    virtual void wait_load_finished() const = 0;
+
+    RBC_WORLD_API void wait_load_finished() const;
     // save host_data to Resource::_path
     RBC_WORLD_API bool save_to_path();
     // set Resource::_path, valid only if this resource is empty

@@ -13,6 +13,7 @@
 #include <rbc_graphics/buffer_allocator.h>
 #include <rbc_graphics/buffer_uploader.h>
 #include <rbc_graphics/host_buffer_manager.h>
+#include <rbc_core/shared_atomic_mutex.h>
 #include "luisa/core/logging.h"
 #include "tile_streamer.h"
 #include <luisa/runtime/sparse_command_list.h>
@@ -124,7 +125,9 @@ private:
     Buffer<uint> _min_level_buffer;
     Buffer<uint> _chunk_offset_buffer;
     BufferAllocator _level_buffer;
+    std::mutex _async_mtx;
     vstd::HashMap<uint64, shared_ptr<TexIndex>> _loaded_texs;
+    luisa::spin_mutex _dispose_map_mtx;
     vstd::HashMap<uint> _dispose_map;
     Shader1D<Buffer<uint>, uint> const *set_shader;
     Shader1D<Buffer<uint>, uint, uint> const *clear_shader;
@@ -149,7 +152,6 @@ private:
     };
     vstd::HashMap<TexIndex *, UnmapCmd> _unmap_lists;
     uint inqueue_frame{0};
-
     vector<TexIndex *> _tex_indices;
 
     ////////////// callback thread
@@ -197,7 +199,6 @@ public:
     static TexStreamManager *instance();
     struct LoadResult {
         SparseImage<float> const *img_ptr;
-        uint bindless_index;
         TexIndex *tex_idx;
     };
     TexStreamManager(
@@ -216,7 +217,7 @@ public:
     LoadResult load_sparse_img(
         SparseImage<float> &&img,
         TexPath &&path,
-        Sampler sampler,
+        uint bindless_mng_index,
         DisposeQueue &disp_queue,
         CommandList &cmdlist,
         luisa::move_only_function<void()> &&init_callback);

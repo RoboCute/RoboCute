@@ -4,6 +4,8 @@
 #include <rbc_world_v2/resources/texture.h>
 #include <rbc_world_v2/resources/material.h>
 #include <rbc_graphics/camera.h>
+#include <rbc_core/coroutine.h>
+#include <rbc_core/containers/rbc_concurrent_queue.h>
 
 namespace rbc {
 struct GraphicsUtils;
@@ -16,6 +18,7 @@ struct WorldScene {
     RC<world::TextureResource> tex{};
     luisa::vector<world::Entity *> _entities;
     luisa::vector<RC<world::MaterialResource>> _mats;
+    ConcurrentQueue<coro::coroutine> _render_thread_coroutines;
 
     struct Gizmos : RCBase {
         Buffer<uint> data;
@@ -37,7 +40,9 @@ struct WorldScene {
         double3 const &cam_pos,
         float cam_far_plane,
         Camera const &cam);
+    void tick();
 private:
+    void _add_task(coro::coroutine const& c);
     RC<Gizmos> _gizmos;
     void _init_scene(GraphicsUtils *utils);
     void _set_gizmos();

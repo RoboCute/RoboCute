@@ -118,6 +118,11 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
             decltype(load_thd_queue)::FuncVectorType vec;
             vec.reserve(16);
             auto funcs = std::move(load_thd_queue)._get_funcs(std::move(vec));
+            auto add_executive = vstd::scope_exit([&] {
+                _load_executive_thd_mtx.lock();
+                ++_load_executive_thd_frame_index;
+                _load_executive_thd_mtx.unlock();
+            });
             if (funcs.empty()) {
                 continue;
             }
@@ -195,9 +200,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                     frame_res.compute_fence = executed_frame;
                 }
             });
-            _load_executive_thd_mtx.lock();
-            ++_load_executive_thd_frame_index;
-            _load_executive_thd_mtx.unlock();
+
             _load_executive_thd_cv.notify_all();
         }
         _load_executive_thd_cv.notify_all();

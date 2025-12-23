@@ -61,11 +61,6 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
         ser.ser.end_scope();
     }
 }
-void MeshResource::wait_load_finished() const {
-    std::shared_lock lck{_async_mtx};
-    if (_device_mesh)
-        _device_mesh->wait_finished();
-}
 luisa::vector<std::byte> *MeshResource::host_data() {
     std::shared_lock lck{_async_mtx};
     if (_device_mesh) {
@@ -91,6 +86,7 @@ void MeshResource::create_empty(
     bool contained_tangent,
     uint vertex_color_channels,
     uint skinning_weight_count) {
+    _status = EResourceLoadingStatus::Loading;
     if (_device_mesh) [[unlikely]] {
         LUISA_ERROR("Can not create on exists mesh.");
     }
@@ -123,9 +119,11 @@ bool MeshResource::init_device_resource() {
             _triangle_count,
             vstd::vector<uint>(_submesh_offsets));
     }
+    _status = EResourceLoadingStatus::Loaded;
     return true;
 }
-bool MeshResource::async_load_from_file() {
+bool MeshResource::_async_load_from_file() {
+    _status = EResourceLoadingStatus::Loading;
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     auto file_size = desire_size_bytes();
@@ -147,7 +145,6 @@ bool MeshResource::async_load_from_file() {
         false, true,
         _file_offset,
         true, desire_size_bytes() - basic_size_bytes());
-
     return true;
 }
 bool MeshResource::unsafe_save_to_path() const {
@@ -160,11 +157,15 @@ bool MeshResource::unsafe_save_to_path() const {
     writer.write(_device_mesh->host_data());
     return true;
 }
-bool MeshResource::load_finished() const {
-    std::shared_lock lck{_async_mtx};
-    return _device_mesh && (_device_mesh->load_finished() || _device_mesh->mesh_data());
+rbc::coro::coroutine MeshResource::_async_load() {
+    if (!_async_load_from_file()) co_return;
+    while (!_device_mesh->load_finished()) {
+        co_await coro::awaitable{};
+    }
+    _status = EResourceLoadingStatus::Loaded;
+    co_return;
 }
-void MeshResource::unload() {
+void MeshResource::_unload() {
     std::lock_guard lck{_async_mtx};
     _device_mesh.reset();
 }

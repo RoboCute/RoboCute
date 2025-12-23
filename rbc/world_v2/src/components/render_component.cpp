@@ -166,11 +166,11 @@ void RenderComponent::remove_object() {
 RenderComponent::RenderComponent(Entity *entity) : ComponentDerive<RenderComponent>(entity) {
     _mesh_light_idx = ~0u;
 }
-void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
+coro::coroutine RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
     auto tr = entity()->get_component<TransformComponent>();
     if (!tr) {
         LUISA_WARNING("Transform component not found, renderer update failed.");
-        return;
+        co_return;
     }
     float4x4 matrix = tr->trs_float();
     auto render_device = RenderDevice::instance_ptr();
@@ -178,7 +178,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
     if (mesh) {
         if (mesh->empty()) [[unlikely]] {
             LUISA_WARNING("Mesh not loaded, renderer update failed.");
-            return;
+            co_return;
         }
         _mesh_ref.reset();
         _mesh_ref = mesh;
@@ -187,9 +187,8 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
     }
     if (!mesh) {
         LUISA_WARNING("Mesh not loaded, renderer update failed.");
-        return;
+        co_return;
     }
-    mesh->wait_load_finished();
     auto submesh_size = mesh->submesh_count();
     if (!mats.empty()) {
         _materials.clear();
@@ -198,6 +197,18 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
             _materials,
             mats.subspan(0, setted_size));
     }
+    // synchronize
+    if (mesh->loading_status() != EResourceLoadingStatus::Loaded) {
+        co_await coro::awaitable{};
+    }
+    for (auto iter = _materials.begin(); iter != _materials.end();) {
+        auto &i = *iter;
+        if (i && i->loading_status() != EResourceLoadingStatus::Loaded) {
+            co_await coro::awaitable{};
+        } else {
+            ++iter;
+        }
+    }
     _material_codes.clear();
     _material_codes.reserve(submesh_size);
     vstd::push_back_func(
@@ -205,7 +216,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
         std::min(submesh_size, _materials.size()),
         [&](size_t i) {
             auto &&mat = _materials[i];
-            if (!mat || mat->empty()) {
+            if (!mat || mat->loading_status() == EResourceLoadingStatus::Unloaded) {
                 return MaterialResource::default_mat_code();
             } else {
                 mat->init_device_resource();
@@ -220,7 +231,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
     }
     // TODO: change light type
     bool is_emission = material_is_emission(_materials);
-    if (!render_device) return;
+    if (!render_device) co_return;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
         LUISA_ERROR("RenderComponent::update_object can only be called in render-thread.");
     }
@@ -310,7 +321,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
 }
 void RenderComponent::_update_object_pos(float4x4 matrix) {
     if (_mesh_tlas_idx == ~0u) [[unlikely]] {
-        LUISA_ERROR("Object not initialized yet.");
+        return;
     }
     auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();

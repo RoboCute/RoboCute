@@ -33,7 +33,7 @@ public:
     [[nodiscard]] luisa::span<SkinWeight const> skin_weights() const;
     [[nodiscard]] luisa::span<float const> vertex_colors() const;
     [[nodiscard]] luisa::span<uint const> submesh_offsets() const { return _submesh_offsets; }
-    [[nodiscard]] bool empty() const override;
+    [[nodiscard]] bool empty() const;
     [[nodiscard]] auto vertex_count() const { return _vertex_count; }
     [[nodiscard]] auto triangle_count() const { return _triangle_count; }
     [[nodiscard]] auto uv_count() const { return _uv_count; }
@@ -58,15 +58,14 @@ public:
         return _device_mesh;
     }
     bool init_device_resource();
-    bool load_finished() const override;
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
     void dispose() override;
-    bool async_load_from_file() override;
-    void unload() override;
-    void wait_load_finished() const override;
+    rbc::coro::coroutine _async_load() override;
 protected:
+    bool _async_load_from_file();
     bool unsafe_save_to_path() const override;
+    void _unload() override;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::MeshResource)

@@ -175,28 +175,28 @@ int main(int argc, char *argv[]) {
     });
     cam.fov = radians(80.f);
     while (!utils.should_close()) {
-        RBCFrameMark; // Mark frame boundary
-        
+        RBCFrameMark;// Mark frame boundary
+
         {
             RBCZoneScopedN("Main Loop");
-            
+
             if (reset) {
                 reset = false;
                 utils.reset_frame();
             }
-            
+
             {
                 RBCZoneScopedN("Poll Events");
                 if (utils.window())
                     utils.window()->poll_events();
             }
-            
+
             // reuse drag logic
             {
                 RBCZoneScopedN("Draw Gizmos");
                 auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam.position, cam.far_plane, cam);
             }
-            
+
             auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
             if (any(window_size != utils.dst_image().size())) {
                 RBCZoneScopedN("Resize Swapchain");
@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
             if (reset) {
                 frame_index = 0;
             }
-            
+
             float delta_time = 0.0f;
             {
                 RBCZoneScopedN("Update Camera");
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
                 //     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
                 // }
                 click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
-
+                world_scene->tick();
                 utils.tick(
                     static_cast<float>(delta_time),
                     frame_index,
@@ -265,10 +265,10 @@ int main(int argc, char *argv[]) {
                 //     utils.denoise();
                 // }
             }
-            
+
             ++frame_index;
             RBCPlot("Frame Index", static_cast<float>(frame_index));
-            
+
             switch (stage) {
                 case MouseStage::Clicking:
                     stage = MouseStage::Clicked;

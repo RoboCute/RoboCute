@@ -48,15 +48,8 @@ void _collect_all_materials() {
         sm->mat_manager().discard_mat_instance(MatCode{i});
     }
 }
-bool MaterialResource::empty() const {
-    std::shared_lock lck{_async_mtx};
-    return !_loaded;
-}
-bool MaterialResource::load_finished() const {
-    std::shared_lock lck{_async_mtx};
-    return _loaded && _mat_code.value != ~0u;
-}
 void MaterialResource::load_from_json(luisa::string_view json_vec) {
+    _status = EResourceLoadingStatus::Loading;
     JsonDeSerializer deser{json_vec};
     luisa::string mat_type;
     bool is_default{false};
@@ -156,37 +149,30 @@ void MaterialResource::serialize_meta(ObjSerialize const &ser) const {
     //         ser.depended_resources.emplace(guid);
     // }
 }
-bool MaterialResource::async_load_from_file() {
+bool MaterialResource::_async_load_from_file() {
     if (_path.empty()) return false;
-    std::lock_guard lck{_async_mtx};
     if (_loaded) {
         return false;
     }
     _loaded = true;
-    _event.clear();
-    luisa::fiber::schedule([evt = _event, this]() {
-        BinaryFileStream file_stream(luisa::to_string(_path));
-        if (!file_stream.valid()) return;
-        if (_file_offset >= file_stream.length()) return;
-        file_stream.set_pos(_file_offset);
-        luisa::vector<char> json_vec;
-        json_vec.push_back_uninitialized(file_stream.length() - _file_offset);
-        file_stream.read(
-            {reinterpret_cast<std::byte *>(json_vec.data()),
-             json_vec.size()});
-        load_from_json({json_vec.data(), json_vec.size()});
-        evt.signal();
-    });
+    BinaryFileStream file_stream(luisa::to_string(_path));
+    if (!file_stream.valid()) return false;
+    if (_file_offset >= file_stream.length()) return false;
+    file_stream.set_pos(_file_offset);
+    luisa::vector<char> json_vec;
+    json_vec.push_back_uninitialized(file_stream.length() - _file_offset);
+    file_stream.read(
+        {reinterpret_cast<std::byte *>(json_vec.data()),
+         json_vec.size()});
+    load_from_json({json_vec.data(), json_vec.size()});
     return true;
 }
-MaterialResource::MaterialResource()
-    : _event(luisa::fiber::event::Mode::Manual, true) {}
+MaterialResource::MaterialResource() {}
 
 MaterialResource::~MaterialResource() {
-    wait_load_finished();
-    unload();
+    _unload();
 }
-void MaterialResource::unload() {
+void MaterialResource::_unload() {
     std::lock_guard lck{_async_mtx};
     _depended_resources.clear();
     _loaded = false;
@@ -196,14 +182,15 @@ void MaterialResource::unload() {
     std::lock_guard lck1{_mat_inst->_mat_mtx};
     _mat_inst->_disposed_mat.emplace_back(value);
 }
-void MaterialResource::wait_load_finished() const {
-    std::shared_lock lck{_async_mtx};
-    _event.wait();
-    for (auto &i : _depended_resources) {
-        if (i) i->wait_load_finished();
-    }
-}
+// void MaterialResource::wait_load_finished() const {
+//     std::shared_lock lck{_async_mtx};
+//     _event.wait();
+//     for (auto &i : _depended_resources) {
+//         if (i) i->wait_load_finished();
+//     }
+// }
 bool MaterialResource::init_device_resource() {
+    wait_load_finished();
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
@@ -221,9 +208,7 @@ bool MaterialResource::init_device_resource() {
             LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
             auto res = *iter;
             if (res) {
-                auto tex = static_cast<TextureResource *>(res.get());
-                tex->wait_load_executed();
-                u.index = tex->heap_index();
+                u.index = static_cast<TextureResource *>(res.get())->heap_index();
             } else {
                 u.index = ~0u;
             }
@@ -260,6 +245,18 @@ bool MaterialResource::init_device_resource() {
         }
     });
     return true;
+}
+
+rbc::coro::coroutine MaterialResource::_async_load() {
+    if (!_async_load_from_file()) {
+        co_return;
+    }
+    for (auto &i : _depended_resources) {
+        if (i)
+            co_await i->await_loading();
+    }
+    _status = EResourceLoadingStatus::Loaded;
+    co_return;
 }
 
 bool MaterialResource::unsafe_save_to_path() const {

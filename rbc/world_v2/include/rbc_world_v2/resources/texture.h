@@ -34,7 +34,6 @@ private:
 public:
     bool is_vt() const;
     bool pack_to_tile();
-    [[nodiscard]] bool empty() const override;
     [[nodiscard]] DeviceImage *get_image() const;
     [[nodiscard]] DeviceSparseImage *get_sparse_image() const;
     [[nodiscard]] auto pixel_storage() const { return _pixel_storage; }
@@ -50,18 +49,16 @@ public:
         luisa::uint2 size,
         uint32_t mip_level,
         bool is_virtual_texture);
-
-    bool load_finished() const override;
+    rbc::coro::coroutine _async_load() override;
     bool load_executed() const;
     bool init_device_resource();
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
     void dispose() override;
-    bool async_load_from_file() override;
-    void unload() override;
-    void wait_load_executed() const;
-    void wait_load_finished() const override;
 protected:
+    bool _async_load_from_file();
+    bool _load_finished() const;
+    void _unload() override;
     bool unsafe_save_to_path() const override;
 };
 }// namespace rbc::world

@@ -26,9 +26,9 @@ private:
         Image<uint>>
         _img;
     uint _heap_idx{~0u};
-    static uint _check_size(PixelStorage storage, uint2 size, uint desire_mip, uint64_t file_size);
+    static uint _check_size(PixelStorage storage, uint2 size, uint desire_mip);
     template<typename T, typename ErrFunc>
-    void _create_img(Image<T> &img, PixelStorage storage, uint2 size, uint mip_level, size_t size_bytes, uint &dst_mip_level, ErrFunc &&err_func);
+    void _create_img(Image<T> &img, PixelStorage storage, uint2 size, uint mip_level, uint &dst_mip_level, ErrFunc &&err_func);
     void _create_heap_idx();
     template<typename LoadType>
     void _async_load(

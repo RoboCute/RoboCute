@@ -17,10 +17,6 @@ luisa::vector<std::byte> *TextureResource::host_data() {
     }
     return nullptr;
 }
-bool TextureResource::empty() const {
-    std::shared_lock lck{_async_mtx};
-    return !_tex;
-}
 DeviceImage *TextureResource::get_image() const {
     std::shared_lock lck{_async_mtx};
     if (_tex && !is_vt()) {
@@ -77,6 +73,7 @@ void TextureResource::create_empty(
     luisa::uint2 size,
     uint32_t mip_level,
     bool is_vt) {
+    _status = EResourceLoadingStatus::Loading;
     if (_tex) [[unlikely]] {
         LUISA_ERROR("Can not create on exists texture.");
     }
@@ -148,9 +145,10 @@ bool TextureResource::init_device_resource() {
             _size,
             _mip_level);
     }
+    _status = EResourceLoadingStatus::Loaded;
     return true;
 }
-bool TextureResource::async_load_from_file() {
+bool TextureResource::_async_load_from_file() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     auto file_size = desire_size_bytes();
@@ -191,23 +189,8 @@ bool TextureResource::async_load_from_file() {
     }
     return true;
 }
-void TextureResource::wait_load_executed() const {
-    std::shared_lock lck{_async_mtx};
-    if (!_tex) return;
-    _tex->wait_executed();
-}
-void TextureResource::wait_load_finished() const {
-    std::shared_lock lck{_async_mtx};
-    if (!_tex) return;
-    _tex->wait_finished();
-    if (_vt_finished) {
-        while (!_vt_finished->finished) {
-            std::this_thread::yield();
-        }
-    }
-}
 
-void TextureResource::unload() {
+void TextureResource::_unload() {
     std::lock_guard lck{_async_mtx};
     _tex.reset();
 }
@@ -220,6 +203,14 @@ uint32_t TextureResource::heap_index() const {
         return static_cast<DeviceImage *>(_tex.get())->heap_idx();
     }
 }
+rbc::coro::coroutine TextureResource::_async_load() {
+    if (!_async_load_from_file()) co_return;
+    while (!_load_finished()) {
+        co_await coro::awaitable{};
+    }
+    _status = EResourceLoadingStatus::Loaded;
+    co_return;
+}
 bool TextureResource::load_executed() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return false;
@@ -229,14 +220,18 @@ bool TextureResource::load_executed() const {
         return static_cast<DeviceImage *>(_tex.get())->load_executed() || static_cast<DeviceImage *>(_tex.get())->type() != DeviceImage::ImageType::None;
     }
 }
-bool TextureResource::load_finished() const {
+bool TextureResource::_load_finished() const {
     std::shared_lock lck{_async_mtx};
-    if (!_tex) return false;
+    if (!_tex)
+        return false;
     if (is_vt()) {
         auto vt = static_cast<DeviceSparseImage *>(_tex.get());
-        return vt->load_finished() && _vt_finished->finished;
+        auto result = vt->load_executed() && _vt_finished->finished;
+        if (result)
+            LUISA_INFO("{}", result);
+        return result;
     } else {
-        return static_cast<DeviceImage *>(_tex.get())->load_executed() || static_cast<DeviceImage *>(_tex.get())->type() != DeviceImage::ImageType::None;
+        return static_cast<DeviceImage *>(_tex.get())->load_finished();
     }
 }
 DECLARE_WORLD_OBJECT_REGISTER(TextureResource)

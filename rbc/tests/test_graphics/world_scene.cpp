@@ -62,7 +62,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
                 0, 0, -1));
         transform->set_rotation(rot, true);
         auto render = entity->add_component<world::RenderComponent>();
-        render->update_object(_mats, cbox_mesh);
+        _add_task(render->update_object(_mats, cbox_mesh));
     }
     MeshBuilder mesh_builder;
     mesh_builder.position.emplace_back(make_float3(-0.5f, -0.5f, 0));
@@ -135,9 +135,10 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     quad_mat->init_device_resource();
     auto mat_start_idx = _mats.size();
     _mats.emplace_back(quad_mat);
-    quad_render->update_object(
-        luisa::span{_mats}.subspan(mat_start_idx, 1),
-        quad_mesh);
+    auto mats = luisa::span{_mats}.subspan(mat_start_idx, 1);
+    _add_task(quad_render->update_object(
+        mats,
+        quad_mesh));
 }
 void WorldScene::_write_scene() {
     // save scene
@@ -231,7 +232,9 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         }
         for (auto &i : _entities) {
             auto render = i->get_component<world::RenderComponent>();
-            if (render) render->update_object();
+            if (render) {
+                _add_task(render->update_object());
+            }
         }
     }
     _set_gizmos();
@@ -408,6 +411,24 @@ bool WorldScene::draw_gizmos(
     }
     tr->set_pos(src_pos, true);
     return true;
+}
+void WorldScene::tick() {
+    coro::coroutine c;
+    auto prox_size = _render_thread_coroutines.size_approx();
+    for (auto i : vstd::range(prox_size)) {
+        if (!_render_thread_coroutines.try_dequeue(c)) {
+            break;
+        }
+        c.resume();
+        if (!c.done()) {
+            _render_thread_coroutines.enqueue(c);
+        }
+    }
+}
+void WorldScene::_add_task(coro::coroutine const &c) {
+    c.resume();
+    if (c.done()) return;
+    _render_thread_coroutines.enqueue(c);
 }
 WorldScene::~WorldScene() {
     _write_scene();

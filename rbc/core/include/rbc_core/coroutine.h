@@ -19,7 +19,9 @@ struct promise {
 };
 
 struct awaitable {
+private:
     bool _ready;
+public:
     awaitable(bool ready = false) : _ready{ready} {}
     bool await_ready() { return _ready; }
     void await_suspend(std::coroutine_handle<> h) {

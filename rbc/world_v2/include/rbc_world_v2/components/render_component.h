@@ -1,6 +1,7 @@
 #pragma once
 #include <rbc_world_v2/component.h>
 #include <rbc_graphics/object_types.h>
+#include <rbc_core/coroutine.h>
 
 namespace rbc::world {
 struct MeshResource;
@@ -29,7 +30,7 @@ public:
     void deserialize_meta(ObjDeSerialize const &ser) override;
     void dispose() override;
     // draw
-    void update_object(luisa::span<RC<MaterialResource> const> materials = {}, MeshResource *mesh = nullptr);
+    coro::coroutine update_object(luisa::span<RC<MaterialResource> const> materials = {}, MeshResource *mesh = nullptr);
     uint get_tlas_index() const;
     void remove_object();
 private:

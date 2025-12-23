@@ -49,6 +49,7 @@ private:
         >;
     using DrawSkyShader = Shader2D<
         Image<float>, // _emission,
+        Image<uint>, // _emission,
         BindlessArray,//& image_heap,
         BindlessArray,//& volume_heap,
         uint,         //sky_idx,

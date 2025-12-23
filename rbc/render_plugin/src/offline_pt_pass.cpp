@@ -104,9 +104,11 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     const auto &ptSettings = ctx.pipeline_settings.read<PathTracerSettings>();
 
     const auto &sky_heap = ctx.pipeline_settings.read<SkyHeapIndices>();
+    Image<uint> id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
     if (!accel || accel.size() == 0) {
         cmdlist << (*draw_sky_shader)(
                        emission,
+                       id_map,
                        scene.image_heap(),
                        scene.volume_heap(),
                        sky_heap.sky_heap_idx,
@@ -180,7 +182,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     }
     if (frame_settings.frame_index == 0)
         pass_ctx->gbuffer_accumed_frame = 0;
-    Image<uint> id_map;
     for (auto i : vstd::range(ptSettings.offline_spp)) {
         pt_args.bounce = ptSettings.offline_origin_bounce;
         pt_args.gbuffer_temporal_weight = 1.0f - (1.0f / float(pass_ctx->gbuffer_accumed_frame + 1));
@@ -219,9 +220,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 frame_settings.render_resolution);
             pass_ctx->gbuffer_accumed_frame++;
         } else {
-            if(!id_map) {
-                id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
-            }
+
             cmdlist << offline_pt_shader::dispatch_shader(
                 pt_shader, ((frame_settings.render_resolution + 1u) / 2u) * 2u,
                 scene.tex_streamer().level_buffer(),

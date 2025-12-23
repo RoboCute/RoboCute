@@ -26,28 +26,27 @@ DeviceImage::~DeviceImage() {
         }
     }
 }
-uint DeviceImage::_check_size(PixelStorage storage, uint2 size, uint desire_mip, uint64_t file_size) {
+uint DeviceImage::_check_size(PixelStorage storage, uint2 size, uint desire_mip) {
     auto dst_mip_level = 0;
     auto mip_size = size;
     uint64_t offset = 0;
+    auto min_size = is_block_compressed(storage) ? 4 : 1;
     for (auto i : vstd::range(desire_mip)) {
+        if (any(mip_size < 1u)) {
+            break;
+        }
         offset += pixel_storage_size(storage, make_uint3(mip_size, 1));
-        if (offset > file_size) break;
         dst_mip_level = i + 1;
         mip_size >>= 1u;
         mip_size = max(mip_size, uint2(1));
     }
     return dst_mip_level;
-
-    if (dst_mip_level == 0) [[unlikely]] {
-        return ~0u;
-    }
 }
 template<typename T, typename ErrFunc>
-void DeviceImage::_create_img(Image<T> &img, PixelStorage storage, uint2 size, uint mip_level, size_t size_bytes, uint &dst_mip_level, ErrFunc &&err_func) {
+void DeviceImage::_create_img(Image<T> &img, PixelStorage storage, uint2 size, uint mip_level, uint &dst_mip_level, ErrFunc &&err_func) {
     auto inst = AssetsManager::instance();
     // file.length() - file_offset
-    dst_mip_level = _check_size(storage, size, mip_level, size_bytes);
+    dst_mip_level = _check_size(storage, size, mip_level);
     if (dst_mip_level == 0) {
         err_func();
     }
@@ -74,8 +73,37 @@ void DeviceImage::_async_load(
         return;
     }
     _gpu_load_frame = std::numeric_limits<uint64_t>::max();
+    uint dst_mip_level = 0;
+    auto create_func = [&]<typename T>(Image<T> &img) {
+        _create_img(img, storage, size, mip_level, dst_mip_level, [&]() {
+            LUISA_ERROR("Texture format invalid.");
+        });
+    };
+    switch (image_type) {
+        case ImageType::Float: {
+            if (_img.index() != 0) {
+                _img = Image<float>();
+            }
+            create_func(_img.force_get<Image<float>>());
+            _create_heap_idx();
+        } break;
+        case ImageType::Int: {
+            if (_img.index() != 1) {
+                _img = Image<int>();
+            }
+            create_func(_img.force_get<Image<int>>());
+        } break;
+        case ImageType::UInt: {
+            if (_img.index() != 2) {
+                _img = Image<uint>();
+            }
+            create_func(_img.force_get<Image<uint>>());
+        } break;
+        default:
+            break;
+    }
     inst->load_thd_queue.push(
-        [this_shared = RC{this}, storage, copy_to_memory, load_type = std::move(load_type), size, image_type, mip_level, sampler](
+        [this_shared = RC{this}, copy_to_memory, load_type = std::move(load_type), image_type, dst_mip_level](
             LoadTaskArgs const &args) mutable {
             auto ptr = static_cast<DeviceImage *>(this_shared.get());
             if (ptr->_gpu_load_frame != std::numeric_limits<uint64_t>::max()) return;
@@ -87,10 +115,8 @@ void DeviceImage::_async_load(
                     luisa::filesystem::path const &path = load_type.path;
                     size_t file_offset = load_type.file_offset;
                     auto file = args.io_cmdlist.retrieve(luisa::to_string(path));
-                    uint dst_mip_level = 0;
-                    ptr->_create_img(img, storage, size, mip_level, file.length() - file_offset, dst_mip_level, [&]() {
-                        LUISA_ERROR("File {} size {} less than image first-level size {}", luisa::to_string(path), file.length(), pixel_storage_size(storage, make_uint3(size, 1)));
-                    });
+                    auto file_end = file.length();
+
                     size_t offset = file_offset;
                     for (auto i : vstd::range(dst_mip_level)) {
                         auto img_view = img.view(i);
@@ -117,15 +143,14 @@ void DeviceImage::_async_load(
                                 offset);
                         }
                         offset += img_view.size_bytes();
+                        if (offset > file_end) [[unlikely]] {
+                            LUISA_ERROR("File less than texture desire size.");
+                        }
                     }
                 }
                 /////////// Load as memory
                 else if constexpr (std::is_same_v<LoadType, MemoryLoad>) {
                     BinaryBlob &data = load_type.blob;
-                    uint dst_mip_level = 0;
-                    ptr->_create_img(img, storage, size, mip_level, data.size(), dst_mip_level, [&]() {
-                        LUISA_ERROR("Binary-data size {} less than image first-level size {}", data.size(), pixel_storage_size(storage, make_uint3(size, 1)));
-                    });
                     size_t offset = 0;
                     for (auto i : vstd::range(dst_mip_level)) {
                         auto img_view = img.view(i);
@@ -143,10 +168,6 @@ void DeviceImage::_async_load(
                 /////////// Load as Buffer
                 else if constexpr (std::is_same_v<LoadType, BufferViewLoad>) {
                     BufferView<uint> buffer = load_type.buffer;
-                    uint dst_mip_level = 0;
-                    ptr->_create_img(img, storage, size, mip_level, buffer.size_bytes(), dst_mip_level, [&]() {
-                        LUISA_ERROR("Buffer size {} less than image first-level size {}", buffer.size_bytes(), pixel_storage_size(storage, make_uint3(size, 1)));
-                    });
                     size_t offset = 0;
                     for (auto i : vstd::range(dst_mip_level)) {
                         auto img_view = img.view(i);
@@ -163,29 +184,14 @@ void DeviceImage::_async_load(
             };
             switch (image_type) {
                 case ImageType::Float: {
-                    if (ptr->_img.index() != 0) {
-                        ptr->_img = Image<float>();
-                    }
                     auto &img = ptr->_img.template get<0>();
                     func.template operator()<float>(img);
-                    if (ptr->_heap_idx == ~0u) {
-                        ptr->_heap_idx = inst->scene_mng()->bindless_allocator().allocate_tex2d(img, sampler);
-                    } else {
-                        inst->scene_mng()->bindless_allocator().deallocate_tex2d(ptr->_heap_idx);
-                        ptr->_heap_idx = inst->scene_mng()->bindless_allocator().allocate_tex2d(ptr->_img.template get<0>(), sampler);
-                    }
                 } break;
                 case ImageType::Int: {
-                    if (ptr->_img.index() != 1) {
-                        ptr->_img = Image<int>();
-                    }
                     auto &img = ptr->_img.template get<1>();
                     func.template operator()<int>(img);
                 } break;
                 case ImageType::UInt: {
-                    if (ptr->_img.index() != 2) {
-                        ptr->_img = Image<uint>();
-                    }
                     auto &img = ptr->_img.template get<2>();
                     func.template operator()<uint>(img);
                 } break;

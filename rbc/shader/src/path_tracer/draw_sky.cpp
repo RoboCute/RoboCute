@@ -7,6 +7,7 @@ using namespace luisa::shader;
 
 [[kernel_2d(16, 8)]] int kernel(
     Image<float> _emission,
+    Image<uint> _id,
     BindlessImage &image_heap,
     BindlessVolume &volume_heap,
     uint sky_idx,
@@ -35,5 +36,6 @@ using namespace luisa::shader;
     col.xyz = resource_to_rec2020_mat * col.xyz;
 	col.xyz = spectrum::emission_to_spectrum(image_heap, volume_heap, spectrum_arg, col.xyz);
     _emission.write(coord, col);
+    _id.write(coord, uint4(max_uint32));
     return 0;
 }
