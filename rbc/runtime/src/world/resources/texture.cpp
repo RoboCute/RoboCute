@@ -206,7 +206,7 @@ uint32_t TextureResource::heap_index() const {
 rbc::coro::coroutine TextureResource::_async_load() {
     if (!_async_load_from_file()) co_return;
     while (!_load_finished()) {
-        co_await coro::awaitable{};
+        co_await std::suspend_always{};
     }
     _status = EResourceLoadingStatus::Loaded;
     co_return;

@@ -10,7 +10,6 @@ namespace rbc {
 struct RBC_RUNTIME_API DeviceMesh : DeviceResource {
 private:
     luisa::vector<std::byte> _host_data;
-    Buffer<uint> _extra_data;
     MeshManager::MeshData *_render_mesh_data{};
     template<typename LoadType>
     void _async_load(
@@ -23,7 +22,6 @@ public:
     Type resource_type() const override { return Type::Mesh; }
     // extra data not for rendering but for computing (skin_weights, vertex_color, etc..)
     // split from data buffer
-    [[nodiscard]] auto const &extra_data() const { return _extra_data; }
     [[nodiscard]] auto mesh_data() const { return _render_mesh_data; }
     [[nodiscard]] luisa::span<std::byte const> host_data() const override { return _host_data; }
     [[nodiscard]] luisa::span<std::byte> host_data() override { return _host_data; }

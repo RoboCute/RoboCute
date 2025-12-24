@@ -238,7 +238,7 @@ struct ResourceLoader {
                     static_cast<Resource *>(res_ptr.get())->unload();
                     co_return;
                 }
-                co_await coro::awaitable{};
+                co_await std::suspend_always{};
             }
         }(res->instance_id())};
         loading_queue.enqueue(LoadingResource{res->instance_id(), std::move(c)});
@@ -351,7 +351,7 @@ void Resource::wait_load_finished_sync() const {
 }
 rbc::coro::coroutine Resource::wait_load_finished_coro() const {
     while (_status.load(std::memory_order_relaxed) != EResourceLoadingStatus::Loaded) {
-        co_await coro::awaitable{};
+        co_await std::suspend_always{};
     }
     co_return;
 }

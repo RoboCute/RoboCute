@@ -188,7 +188,7 @@ void MaterialResource::_unload() {
     _mat_inst->_disposed_mat.emplace_back(value);
 }
 bool MaterialResource::init_device_resource() {
-    LUISA_ASSERT(_status.load(std::memory_order_relaxed) == EResourceLoadingStatus::Loaded, "Material must be loaded.");
+    if (_status.load(std::memory_order_relaxed) != EResourceLoadingStatus::Loaded) return false;
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {

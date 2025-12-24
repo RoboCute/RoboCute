@@ -199,6 +199,10 @@ ${INDENT}${INDENT}else:
 ${INDENT}${INDENT}${INDENT}self._handle = create__${STRUCT_NAME}__()
 """)
 
+PY_INIT_METHOD_TEMPLATE_EXTERNAL = Template("""${INDENT}def __init__(self, handle):
+${INDENT}${INDENT}self._handle = handle
+""")
+
 PY_DISPOSE_METHOD_TEMPLATE = Template("""${INDENT}def __del__(self):
 ${INDENT}${INDENT}dispose__${STRUCT_NAME}__(self._handle)
 """)
