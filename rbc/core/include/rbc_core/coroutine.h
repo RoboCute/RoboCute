@@ -78,6 +78,8 @@ public:
 #define RBC_AwaitCoroutine(coro_expr)          \
     {                                          \
         auto &&cc = (coro_expr);               \
+        if (!cc.done()) [[likely]]             \
+            cc.resume();                       \
         while (!cc.done()) {                   \
             co_await ::rbc::coro::awaitable{}; \
             cc.resume();                       \

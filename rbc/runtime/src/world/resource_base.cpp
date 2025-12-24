@@ -340,10 +340,16 @@ void Resource::unload() {
     }
     _res_loader->try_unload_resource(this);
 }
-void Resource::wait_load_finished() const {
+void Resource::wait_load_finished_sync() const {
     while (_status.load(std::memory_order_relaxed) != EResourceLoadingStatus::Loaded) {
         std::this_thread::yield();
     }
+}
+rbc::coro::coroutine Resource::wait_load_finished_coro() const {
+    while (_status.load(std::memory_order_relaxed) != EResourceLoadingStatus::Loaded) {
+        co_await coro::awaitable{};
+    }
+    co_return;
 }
 void dispose_resource_loader() {
     if (_res_loader)

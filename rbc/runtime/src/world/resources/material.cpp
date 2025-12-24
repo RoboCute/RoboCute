@@ -187,15 +187,8 @@ void MaterialResource::_unload() {
     std::lock_guard lck1{_mat_inst->_mat_mtx};
     _mat_inst->_disposed_mat.emplace_back(value);
 }
-// void MaterialResource::wait_load_finished() const {
-//     std::shared_lock lck{_async_mtx};
-//     _event.wait();
-//     for (auto &i : _depended_resources) {
-//         if (i) i->wait_load_finished();
-//     }
-// }
 bool MaterialResource::init_device_resource() {
-    wait_load_finished();
+    LUISA_ASSERT(_status.load(std::memory_order_relaxed) == EResourceLoadingStatus::Loaded, "Material must be loaded.");
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {

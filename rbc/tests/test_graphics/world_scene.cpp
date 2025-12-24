@@ -201,9 +201,6 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
             LUISA_ASSERT(sky_guid);
             skybox = world::load_resource(*sky_guid, true);
         }
-        skybox->wait_load_finished();
-        rbc::RC<DeviceImage> image{skybox->get_image()};
-        utils->render_plugin()->update_skybox(image);
 
         luisa::vector<std::byte> data;
         {
@@ -229,6 +226,9 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
                 render->start_update_object();
             }
         }
+        skybox->wait_load_finished_sync();
+        rbc::RC<DeviceImage> image{skybox->get_image()};
+        utils->render_plugin()->update_skybox(image);
     }
     _set_gizmos();
 }

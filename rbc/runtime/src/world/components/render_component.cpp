@@ -208,16 +208,15 @@ coro::coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource>
             mats.subspan(0, setted_size));
     }
     // synchronize
-    if (mesh->loading_status() != EResourceLoadingStatus::Loaded) {
-        co_await coro::awaitable{};
-    }
+    // wait mesh load
+    RBC_AwaitCoroutine(mesh->wait_load_finished_coro());
     for (auto iter = _materials.begin(); iter != _materials.end();) {
         auto &i = *iter;
-        if (i && i->loading_status() != EResourceLoadingStatus::Loaded) {
-            co_await coro::awaitable{};
-        } else {
-            ++iter;
+        if (i) {
+            // wait material load
+            RBC_AwaitCoroutine(i->wait_load_finished_coro());
         }
+        ++iter;
     }
     _material_codes.clear();
     _material_codes.reserve(submesh_size);

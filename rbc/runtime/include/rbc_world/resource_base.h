@@ -39,7 +39,8 @@ public:
     RBC_RUNTIME_API coro::awaitable await_loading();
     // wait until the loading logic finished in both host-side and device-side
 
-    RBC_RUNTIME_API void wait_load_finished() const;
+    RBC_RUNTIME_API void wait_load_finished_sync() const;
+    RBC_RUNTIME_API rbc::coro::coroutine wait_load_finished_coro() const;
     // save host_data to Resource::_path
     RBC_RUNTIME_API bool save_to_path();
     // set Resource::_path, valid only if this resource is empty
