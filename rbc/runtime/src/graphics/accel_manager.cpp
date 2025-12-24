@@ -80,8 +80,24 @@ void AccelManager::_init_default_procedural_blas(
     }
 }
 
+void AccelManager::dispose_accel(CommandList &cmdlist, DisposeQueue &disp_queue) {
+    if (!_accel) return;
+    update_last_transform(cmdlist);
+    disp_queue.dispose_after_queue(std::move(_accel));
+    _dirty = true;
+    for (auto &i : _accel_elements) {
+        i.mesh_data.visit([&]<typename T>(T &t) {
+            if constexpr (std::is_same_v<T, MeshManager::MeshData *>) {
+                disp_queue.dispose_after_queue(std::move(t->pack.mesh));
+            } else {
+                // Procedural
+            }
+        });
+    }
+}
+
 void AccelManager::init_accel(CommandList &cmdlist) {
-    if (_accel_elements.empty()) return;
+    if (_accel_elements.empty() || _accel) return;
     _dirty = true;
     _accel = _device.create_accel(accel_detail::tlas_option);
     for (auto &i : _accel_elements) {
@@ -270,7 +286,7 @@ void AccelManager::_update_mesh_instance(
         .last_vertex_heap_idx = last_vert_buffer_id// TODO: vertex animation
     };
     uploader.emplace_copy_cmd(_inst_buffer.view(inst_id, 1), &inst_info);
-    if (reset_last) {
+    if (reset_last || (!_accel) /* never consider motion-vector in non-raytracing mode */) {
         uploader.emplace_copy_cmd(_last_trans_buffer.view(inst_id, 1), &transform);
     }
     if (!opaque) {
@@ -612,7 +628,7 @@ void AccelManager::make_draw_list(
     vstd::function<bool(float4x4 const &, AABB const &)> const &cull_func,
     DrawListMap &out_draw_meshes,
     BufferView<RasterElement> &out_data_buffer) {
-    auto mesh_map = _cache_maps.try_pop();
+    auto mesh_map = _cache_maps.dequeue();
     if (!mesh_map) {
         mesh_map.create();
     } else {
@@ -699,7 +715,7 @@ void AccelManager::make_draw_list(
     cmdlist << out_data_buffer.copy_from(elem_host.data());
     after_commit_dispqueue.dispose_after_queue(std::move(elem_host));
     mesh_map->clear();
-    _cache_maps.push(std::move(*mesh_map));
+    _cache_maps.enqueue(std::move(*mesh_map));
 }
 
 void AccelManager::iterate_scene(

@@ -6,11 +6,21 @@
 #include <rbc_graphics/render_device.h>
 #include <luisa/backends/ext/raster_ext.hpp>
 namespace rbc {
+namespace draw_raster {
+#include <raster/draw_raster.inl>
+}// namespace draw_raster
 void RasterPass::on_enable(
     Pipeline const &pipeline,
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
+#define RBC_LOAD_SHADER(SHADER_NAME, NAME_SPACE, PATH) \
+    _init_counter.add();                               \
+    luisa::fiber::schedule([this]() {                  \
+        SHADER_NAME = NAME_SPACE::load_shader(PATH);   \
+        _init_counter.done();                          \
+    })
+
     ShaderManager::instance()->async_load_raster_shader(_init_counter, "raster/accel_id.bin", _draw_id_shader);
     ShaderManager::instance()->async_load(
         _init_counter,
@@ -20,11 +30,16 @@ void RasterPass::on_enable(
         _init_counter,
         "raster/shading_id.bin",
         _shading_id);
+    RBC_LOAD_SHADER(_shading, draw_raster, "raster/draw_raster.bin");
 }
+#undef RBC_LOAD_SHADER
 void RasterPass::wait_enable() {
     _init_counter.wait();
 }
-
+void RasterPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
+    auto &sm = SceneManager::instance();
+    ctx.scene->accel_manager().dispose_accel(*ctx.cmdlist, sm.dispose_queue());
+}
 void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto pass_ctx = ctx.mut.get_pass_context<RasterPassContext>();
     auto &sm = SceneManager::instance();
@@ -80,8 +95,11 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         cmdlist << (*_draw_id_shader)(data_buffer, vert_args)
                        .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, id_map);
     }
-    cmdlist << (*_shading_id)(id_map, emission).dispatch(frame_settings.render_resolution);
- 
+    // cmdlist << (*_shading_id)(id_map, emission).dispatch(frame_settings.render_resolution);
+    const auto &sky_heap = ctx.pipeline_settings.read<SkyHeapIndices>();
+    float3 light_dir = make_float3(ctx.cam.dir_forward());
+    float3 light_color{1};
+    cmdlist << draw_raster::dispatch_shader(_shading, frame_settings.render_resolution, sm.tex_streamer().level_buffer(), sm.buffer_heap(), sm.image_heap(), id_map, emission, sm.accel_manager().last_trans_buffer(), cam_data.inv_vp, frame_settings.to_rec2020_matrix, cam_data.world_to_sky, make_float3(ctx.cam.position), sky_heap.sky_heap_idx, sm.tex_streamer().countdown(), light_dir, light_color);
 }
 void RasterPass::on_disable(
     Pipeline const &pipeline,

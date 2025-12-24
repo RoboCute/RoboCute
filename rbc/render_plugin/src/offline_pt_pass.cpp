@@ -86,9 +86,7 @@ void OfflinePTPass::on_enable(
     // click_buffer = device.create_buffer<uint2>(1);
 }
 void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    if (!ctx.scene->accel()) {
-        ctx.scene->accel_manager().init_accel(*ctx.cmdlist);
-    }
+    ctx.scene->accel_manager().init_accel(*ctx.cmdlist);
 }
 void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
