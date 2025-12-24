@@ -7,7 +7,7 @@
 A Python-first 3D AIGC/Robotics development tool with node-based workflow
 
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-LGPLv3-green.svg)](../Licenses/LGPLv3.txt)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../Licenses/Apache-2.0.txt)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-orange.svg)](devlog/README.md)
 
 </div>

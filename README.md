@@ -7,7 +7,7 @@
 A Python-first 3D AIGC/Robotics development tool with node-based workflow
 
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-LGPLv3-green.svg)](LICenses/LGPLv3.txt)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](Licenses/Apache-2.0.txt)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-orange.svg)](doc/devlog/)
 
 </div>
@@ -213,21 +213,21 @@ For building from source, see [BUILD.md](BUILD.md).
 
 **English:**
 
-RoboCute is licensed under LGPLv3. See [Licenses/LGPLv3.txt](Licenses/LGPLv3.txt) for details.
+RoboCute is licensed under Apache License 2.0. See [Licenses/Apache-2.0.txt](Licenses/Apache-2.0.txt) for details.
 
 ### Third-Party Dependencies / 第三方依赖
 
 - **Tracy v0.13.0**: Included as source code, 3-clause BSD license
-- **Qt v6.9.3**: LGPLv3 license, see [Licenses/LGPLv3.txt](Licenses/LGPLv3.txt)
+- **Qt v6.9.3**: LGPLv3 license (third-party dependency)
 
 **中文:**
 
-RoboCute 采用 LGPLv3 许可证。详情请参阅 [Licenses/LGPLv3.txt](Licenses/LGPLv3.txt)。
+RoboCute 采用 Apache License 2.0 许可证。详情请参阅 [Licenses/Apache-2.0.txt](Licenses/Apache-2.0.txt)。
 
 ### 第三方依赖
 
 - **Tracy v0.13.0**: 以源码形式引入，3-clause BSD 许可证
-- **Qt v6.9.3**: LGPLv3 许可证，参见 [Licenses/LGPLv3.txt](Licenses/LGPLv3.txt)
+- **Qt v6.9.3**: LGPLv3 许可证（第三方依赖）
 
 ## 🔗 Links / 链接
 
@@ -235,15 +235,15 @@ RoboCute 采用 LGPLv3 许可证。详情请参阅 [Licenses/LGPLv3.txt](License
 
 - 📦 [PyPI Package](https://pypi.org/project/robocute/) (Coming soon)
 - 📖 [Full Documentation](doc/DOC.md)
-- 🐛 [Issue Tracker](https://github.com/your-org/robocute/issues)
-- 💬 [Discussions](https://github.com/your-org/robocute/discussions)
+- 🐛 [Issue Tracker](https://github.com/robocute/robocute/issues)
+- 💬 [Discussions](https://github.com/robocute/robocute/discussions)
 
 **中文:**
 
 - 📦 [PyPI 包](https://pypi.org/project/robocute/)（即将推出）
 - 📖 [完整文档](doc/DOC.md)
-- 🐛 [问题追踪](https://github.com/your-org/robocute/issues)
-- 💬 [讨论区](https://github.com/your-org/robocute/discussions)
+- 🐛 [问题追踪](https://github.com/robocute/robocute/issues)
+- 💬 [讨论区](https://github.com/robocute/robocute/discussions)
 
 ---
 
