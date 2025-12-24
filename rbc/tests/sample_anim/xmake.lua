@@ -4,4 +4,5 @@ add_rules('lc_basic_settings', {
 })
 add_files('**.cpp')
 add_deps('rbc_runtime')
+
 target_end()
