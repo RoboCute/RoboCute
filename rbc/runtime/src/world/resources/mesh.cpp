@@ -160,7 +160,7 @@ bool MeshResource::unsafe_save_to_path() const {
 rbc::coro::coroutine MeshResource::_async_load() {
     if (!_async_load_from_file()) co_return;
     while (!_device_mesh->load_finished()) {
-        co_await coro::awaitable{};
+        co_await std::suspend_always{};
     }
     _status = EResourceLoadingStatus::Loaded;
     co_return;

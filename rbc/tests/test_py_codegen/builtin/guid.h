@@ -7,6 +7,7 @@ struct GuidData : vstd::IOperatorNewBase {
     uint64_t data1;
     GuidData() : data0(0), data1(0) {}
     GuidData(luisa::string_view str);
+    GuidData(vstd::Guid const &guid) : data0{guid.to_binary().data0}, data1{guid.to_binary().data1} {}
     operator vstd::Guid &() {
         return *reinterpret_cast<vstd::Guid *>(this);
     }

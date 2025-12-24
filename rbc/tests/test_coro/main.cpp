@@ -11,18 +11,18 @@ struct TestLifeTime {
 };
 coro::coroutine my_internal_coro() {
     LUISA_INFO("Internal 1");
-    co_await coro::awaitable{};
+    co_await std::suspend_always{};
     LUISA_INFO("Internal 2");
-    co_await coro::awaitable{};
+    co_await std::suspend_always{};
     LUISA_INFO("Internal 3");
 }
 coro::coroutine my_coro() {
     TestLifeTime t;
     LUISA_INFO("1");
     RBC_AwaitCoroutine(my_internal_coro());
-    co_await coro::awaitable{};
+    co_await std::suspend_always{};
     LUISA_INFO("2");
-    co_await coro::awaitable{};
+    co_await std::suspend_always{};
     LUISA_INFO("3");
 }
 

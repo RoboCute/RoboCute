@@ -91,6 +91,7 @@ class ClassInfo:
     cpp_prefix: Optional[str] = ""
     serde = False
     pybind = False
+    create_instance = True
 
     def __post_init__(self):
         """后处理，确保列表不为None"""
@@ -122,12 +123,14 @@ class ReflectionRegistry:
         serde: bool = False,
         pybind: bool = False,
         cpp_prefix: Optional[str] = "",
+        create_instance: bool = True,
     ) -> Type:
         """注册类"""
         class_info = self._extract_class_info(cls, module_name)
         class_info.cpp_namespace = cpp_namespace
         class_info.serde = serde
         class_info.pybind = pybind
+        class_info.create_instance = create_instance
         class_info.cpp_prefix = cpp_prefix
 
         key = (
@@ -454,6 +457,7 @@ def reflect(
     cpp_namespace: Optional[str] = None,
     serde: bool = False,
     pybind: bool = False,
+    create_instance: bool = True,
     cpp_prefix: Optional[str] = "",
 ) -> Type:
     """
@@ -482,6 +486,7 @@ def reflect(
             serde=serde,
             pybind=pybind,
             cpp_prefix=cpp_prefix,
+            create_instance=create_instance,
         )
         # 添加标记属性
         cls._reflected_ = True

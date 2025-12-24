@@ -1,36 +1,7 @@
 from rbc_meta.utils.reflect import reflect
-from rbc_meta.utils.builtin import DataBuffer
+from rbc_meta.utils.builtin import DataBuffer, ExternalType
 from rbc_meta.utils.builtin import uint, uint2, ulong, float3, float4x4, VoidPtr
 from rbc_meta.types.resource_enums import LCPixelStorage
-
-
-# External type helper
-class ExternalType:
-    """Helper class for external C++ types"""
-
-    def __init__(
-        self,
-        cpp_type_name: str,
-        is_trivial_type: bool = False,
-        py_codegen_name: str = None,
-    ):
-        self._cpp_type_name = cpp_type_name
-        if py_codegen_name:
-            self._py_codegen_name = py_codegen_name
-        else:
-            self._py_codegen_name = cpp_type_name
-        self._reflected_ = True
-        self._is_trivial_type = is_trivial_type
-
-    def cpp_type_name(self, py_interface: bool = False, is_view: bool = True):
-        if py_interface:
-            name = self._py_codegen_name
-        else:
-            name = self._cpp_type_name
-        if not self._is_trivial_type and is_view:
-            name += " const&"
-        return name
-
 
 MaterialsVector = ExternalType(
     "luisa::vector<rbc::RC<rbc::RCBase>>", False, "Vec<rbc::RC<rbc::RCBase>>"
