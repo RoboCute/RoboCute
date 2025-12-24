@@ -50,6 +50,8 @@ public:
     void add(luisa::string_view str, char const *name);
 public:
     luisa::BinaryBlob write_to() const;
+    // Check if current scope is an object (false) or array (true)
+    bool is_current_scope_array() const;
 };
 struct ReadArray {
     yyjson_val *arr_iter;

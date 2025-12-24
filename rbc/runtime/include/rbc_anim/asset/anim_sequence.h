@@ -3,6 +3,7 @@
 
 namespace rbc {
 
+// The Runtime AnimSequence Asset
 struct AnimSequence final {
 public:
     AnimSequence();
