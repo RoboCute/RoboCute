@@ -16,6 +16,9 @@ Testing
 # idea
 /.idea
 
+# cursor
+/.cursor
+
 # macos
 .DS_Store
 stressTest

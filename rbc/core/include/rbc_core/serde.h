@@ -13,6 +13,9 @@
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/json_serde.h>
 namespace rbc {
+// Forward declaration for Serialize template
+template<typename T>
+struct Serialize;
 namespace concepts {
 template<typename T, size_t N = 0u>
 struct is_matrix_impl : std::false_type {};
@@ -83,7 +86,234 @@ concept SerReader = requires(T t) {
     t.end_scope();
 };
 
+// Concepts for detecting Serialize<T> specializations
+template<typename T, typename ArchiveWriter>
+concept HasSerializeWrite = requires(ArchiveWriter &w, const T &v) {
+    { Serialize<T>::write(w, v) } -> std::same_as<void>;
+};
+
+template<typename T, typename ArchiveReader>
+concept HasSerializeRead = requires(ArchiveReader &r, T &v) {
+    { Serialize<T>::read(r, v) } -> std::same_as<bool>;
+};
+
 }// namespace concepts
+
+// Forward declarations
+template<concepts::SerWriter Base>
+struct Serializer;
+template<concepts::SerReader Base>
+struct DeSerializer;
+
+// Helper traits to extract underlying Writer/Reader types
+namespace detail {
+template<typename T>
+struct extract_writer_type {
+    using type = T;
+};
+template<concepts::SerWriter Base>
+struct extract_writer_type<Serializer<Base>> {
+    using type = Base;
+};
+template<typename T>
+using extract_writer_type_t = typename extract_writer_type<T>::type;
+
+template<typename T>
+struct extract_reader_type {
+    using type = T;
+};
+template<concepts::SerReader Base>
+struct extract_reader_type<DeSerializer<Base>> {
+    using type = Base;
+};
+template<typename T>
+using extract_reader_type_t = typename extract_reader_type<T>::type;
+
+}// namespace detail
+
+// Archive adapters for Serialize<T> pattern
+namespace detail {
+// ArchiveWriteAdapter wraps a Serializer to provide value<T>() interface compatible with Serialize<T>
+template<concepts::SerWriter Writer>
+struct ArchiveWriteAdapter {
+    Serializer<Writer> &serializer;
+    Writer &writer;
+
+    explicit ArchiveWriteAdapter(Serializer<Writer> &s) : serializer(s), writer(static_cast<Writer &>(s)) {}
+
+    // Forward all writer methods
+    void start_array() { writer.start_array(); }
+    void start_object() { writer.start_object(); }
+    void add_last_scope_to_object() { writer.add_last_scope_to_object(); }
+    void add_last_scope_to_object(char const *name) { writer.add_last_scope_to_object(name); }
+
+    // value<T>() method that uses Serialize<T> specialization
+    template<typename T>
+    void value(const T &v) {
+        if constexpr (requires { Serialize<T>::write(*this, v); }) {
+            Serialize<T>::write(*this, v);
+        } else if constexpr (std::is_same_v<T, bool>) {
+            writer.add(v);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_unsigned_v<T>) {
+                writer.add((uint64_t)v);
+            } else {
+                writer.add((int64_t)v);
+            }
+        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+            writer.add((double)v);
+        } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
+            writer.add(luisa::string_view{v});
+        } else {
+            // For other types without Serialize<T>, fall back to serializer's _store method
+            serializer._store(v);
+        }
+    }
+
+    // value<T>(name) method for named values
+    template<typename T>
+    void value(const T &v, char const *name) {
+        if constexpr (requires { Serialize<T>::write(*this, v); }) {
+            // Custom type with Serialize<T> specialization
+            writer.start_object();
+            Serialize<T>::write(*this, v);
+            writer.add_last_scope_to_object(name);
+        } else if constexpr (std::is_same_v<T, bool>) {
+            writer.add(v, name);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_unsigned_v<T>) {
+                writer.add((uint64_t)v, name);
+            } else {
+                writer.add((int64_t)v, name);
+            }
+        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+            writer.add((double)v, name);
+        } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
+            writer.add(luisa::string_view{v}, name);
+        } else {
+            // For other types without Serialize<T>, fall back to serializer's _store method
+            serializer._store(v, name);
+        }
+    }
+
+    // Direct access to underlying writer for primitive types
+    void add(bool bool_value) { writer.add(bool_value); }
+    void add(int64_t int_value) { writer.add(int_value); }
+    void add(uint64_t uint_value) { writer.add(uint_value); }
+    void add(double float_value) { writer.add(float_value); }
+    void add(luisa::string_view str) { writer.add(str); }
+    void add(bool bool_value, char const *name) { writer.add(bool_value, name); }
+    void add(int64_t int_value, char const *name) { writer.add(int_value, name); }
+    void add(uint64_t uint_value, char const *name) { writer.add(uint_value, name); }
+    void add(double float_value, char const *name) { writer.add(float_value, name); }
+    void add(luisa::string_view str, char const *name) { writer.add(str, name); }
+    void add_arr(luisa::span<int64_t const> int_values) { writer.add_arr(int_values); }
+    void add_arr(luisa::span<uint64_t const> uint_values) { writer.add_arr(uint_values); }
+    void add_arr(luisa::span<double const> double_values) { writer.add_arr(double_values); }
+    void add_arr(luisa::span<bool const> bool_values) { writer.add_arr(bool_values); }
+    void add_arr(luisa::span<int64_t const> int_values, char const *name) { writer.add_arr(int_values, name); }
+    void add_arr(luisa::span<uint64_t const> uint_values, char const *name) { writer.add_arr(uint_values, name); }
+    void add_arr(luisa::span<double const> double_values, char const *name) { writer.add_arr(double_values, name); }
+    void add_arr(luisa::span<bool const> bool_values, char const *name) { writer.add_arr(bool_values, name); }
+};
+
+// ArchiveReadAdapter wraps a DeSerializer to provide value<T>() interface compatible with Serialize<T>
+template<concepts::SerReader Reader>
+struct ArchiveReadAdapter {
+    DeSerializer<Reader> &deserializer;
+    Reader &reader;
+
+    explicit ArchiveReadAdapter(DeSerializer<Reader> &d) : deserializer(d), reader(static_cast<Reader &>(d)) {}
+
+    // Forward all reader methods
+    bool start_array(uint64_t &size) { return reader.start_array(size); }
+    bool start_array(uint64_t &size, char const *name) { return reader.start_array(size, name); }
+    bool start_object() { return reader.start_object(); }
+    bool start_object(char const *name) { return reader.start_object(name); }
+    void end_scope() { reader.end_scope(); }
+
+    // value<T>() method that uses Serialize<T> specialization
+    template<typename T>
+    bool value(T &v) {
+        if constexpr (requires { Serialize<T>::read(*this, v); }) {
+            return Serialize<T>::read(*this, v);
+        } else if constexpr (std::is_same_v<T, bool>) {
+            return reader.read(v);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_unsigned_v<T>) {
+                uint64_t temp;
+                bool result = reader.read(temp);
+                if (result) v = (T)temp;
+                return result;
+            } else {
+                int64_t temp;
+                bool result = reader.read(temp);
+                if (result) v = (T)temp;
+                return result;
+            }
+        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+            double temp;
+            bool result = reader.read(temp);
+            if (result) v = (T)temp;
+            return result;
+        } else if constexpr (std::is_same_v<T, luisa::string>) {
+            return reader.read(v);
+        } else {
+            // For other types without Serialize<T>, fall back to deserializer's _load method
+            return deserializer._load(v);
+        }
+    }
+
+    // value<T>(name) method for named values
+    template<typename T>
+    bool value(T &v, char const *name) {
+        if constexpr (requires { Serialize<T>::read(*this, v); }) {
+            // Custom type with Serialize<T> specialization
+            if (!reader.start_object(name)) return false;
+            bool result = Serialize<T>::read(*this, v);
+            reader.end_scope();
+            return result;
+        } else if constexpr (std::is_same_v<T, bool>) {
+            return reader.read(v, name);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_unsigned_v<T>) {
+                uint64_t temp;
+                bool result = reader.read(temp, name);
+                if (result) v = (T)temp;
+                return result;
+            } else {
+                int64_t temp;
+                bool result = reader.read(temp, name);
+                if (result) v = (T)temp;
+                return result;
+            }
+        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+            double temp;
+            bool result = reader.read(temp, name);
+            if (result) v = (T)temp;
+            return result;
+        } else if constexpr (std::is_same_v<T, luisa::string>) {
+            return reader.read(v, name);
+        } else {
+            // For other types without Serialize<T>, fall back to deserializer's _load method
+            return deserializer._load(v, name);
+        }
+    }
+
+    // Direct access to underlying reader for primitive types
+    bool read(bool &value) { return reader.read(value); }
+    bool read(int64_t &value) { return reader.read(value); }
+    bool read(uint64_t &value) { return reader.read(value); }
+    bool read(double &value) { return reader.read(value); }
+    bool read(luisa::string &value) { return reader.read(value); }
+    bool read(bool &value, char const *name) { return reader.read(value, name); }
+    bool read(int64_t &value, char const *name) { return reader.read(value, name); }
+    bool read(uint64_t &value, char const *name) { return reader.read(value, name); }
+    bool read(double &value, char const *name) { return reader.read(value, name); }
+    bool read(luisa::string &value, char const *name) { return reader.read(value, name); }
+};
+
+}// namespace detail
 namespace detail {
 template<typename T>
 struct is_unordered_map {
@@ -113,10 +343,12 @@ template<typename T>
 static constexpr bool serializable_native_type_v = std::is_integral_v<T> || std::is_floating_point_v<T> || luisa::is_vector_v<T> || concepts::is_matrix_v<T> || rbc::detail::is_unordered_map<T>::value || std::is_same_v<std::decay_t<T>, luisa::string> || std::is_same_v<T, vstd::Guid> || std::is_same_v<std::decay_t<T>, luisa::string_view> || std::is_same_v<T, luisa::half> || std::is_same_v<T, bool> || is_vector<T>::value || std::is_enum_v<T>;
 template<typename T, typename Ser>
 static constexpr bool serializable_struct_type_v =
+    requires(detail::ArchiveWriteAdapter<detail::extract_writer_type_t<Ser>> &w, T const &v) { Serialize<T>::write(w, v); } ||
     requires { std::declval<T>().rbc_objser(lvalue_declval<Ser>()); } ||
     requires { std::declval<T>().rbc_arrser(lvalue_declval<Ser>()); };
 template<typename T, typename DeSer>
 static constexpr bool deserializable_struct_type_v =
+    requires(detail::ArchiveReadAdapter<detail::extract_reader_type_t<DeSer>> &r, T &v) { Serialize<T>::read(r, v); } ||
     requires { std::declval<T>().rbc_objdeser(lvalue_declval<DeSer>()); } ||
     requires { std::declval<T>().rbc_arrdeser(lvalue_declval<DeSer>()); };
 }// namespace detail
@@ -141,11 +373,28 @@ struct Serializer : public Base {
             static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
             auto strv = EnumSerializer::template get_enum_value_name<T>(luisa::to_underlying(t));
             Base::add(strv, args...);
+        } else if constexpr (requires { Serialize<T>::write(std::declval<detail::ArchiveWriteAdapter<Base> &>(), std::declval<T const &>()); }) {
+            // Use Serialize<T> specialization (new system)
+            detail::ArchiveWriteAdapter<Base> adapter(*static_cast<Serializer<Base> *>(this));
+            if constexpr (sizeof...(args) == 0) {
+                // No name argument: Serialize<T>::write expects an object context (it calls value() with names),
+                // so we need to create an object scope, write to it, then add it to the current scope (array)
+                Base::start_object();
+                Serialize<T>::write(adapter, t);
+                Base::add_last_scope_to_object();
+            } else {
+                // Has name argument, create object scope and add to parent
+                Base::start_object();
+                Serialize<T>::write(adapter, t);
+                Base::add_last_scope_to_object(args...);
+            }
         } else if constexpr (requires { t.rbc_objser(*this); }) {
+            // Fall back to legacy rbc_objser method
             Base::start_object();
             t.rbc_objser(*this);
             Base::add_last_scope_to_object(args...);
         } else if constexpr (requires { t.rbc_arrser(*this); }) {
+            // Fall back to legacy rbc_arrser method
             Base::start_array();
             t.rbc_arrser(*this);
             Base::add_last_scope_to_object(args...);
@@ -294,12 +543,30 @@ struct DeSerializer : public Base {
             }
             t = (T)*value;
             return true;
+        } else if constexpr (requires { Serialize<T>::read(std::declval<detail::ArchiveReadAdapter<Base> &>(), std::declval<T &>()); }) {
+            // Use Serialize<T> specialization (new system)
+            detail::ArchiveReadAdapter<Base> adapter(*static_cast<DeSerializer<Base> *>(this));
+            if constexpr (sizeof...(args) == 0) {
+                // No name argument: Serialize<T>::read expects an object context (it calls value() with names),
+                // so if we're reading from an array, we need to enter the object first
+                if (!Base::start_object()) return false;
+                bool result = Serialize<T>::read(adapter, t);
+                Base::end_scope();
+                return result;
+            } else {
+                if (!Base::start_object(args...)) return false;
+                bool result = Serialize<T>::read(adapter, t);
+                Base::end_scope();
+                return result;
+            }
         } else if constexpr (requires { t.rbc_objdeser(*this); }) {
+            // Fall back to legacy rbc_objdeser method
             if (!Base::start_object(args...)) return false;
             t.rbc_objdeser(*this);
             Base::end_scope();
             return true;
         } else if constexpr (requires { t.rbc_arrdeser(*this); }) {
+            // Fall back to legacy rbc_arrdeser method
             uint64_t size;
             if (!Base::start_array(size, args...)) return false;
             t.rbc_arrdeser(*this);
@@ -484,6 +751,8 @@ struct DeSerializer : public Base {
 };
 using JsonSerializer = Serializer<JsonWriter>;
 using JsonDeSerializer = DeSerializer<JsonReader>;
+using ArchiveWrite = detail::ArchiveWriteAdapter<JsonWriter>;
+using ArchiveRead = detail::ArchiveReadAdapter<JsonReader>;
 template<typename T>
 struct is_serializer {
     static constexpr bool value = false;
@@ -504,4 +773,71 @@ template<typename T>
 static constexpr bool is_serializer_v = is_serializer<T>::value;
 template<typename T>
 static constexpr bool is_deserializer_v = is_deserializer<T>::value;
+
+// Default Serialize<T> implementations that delegate to rbc_objser/rbc_arrser for backward compatibility
+// These are provided as a convenience - users can still specialize Serialize<T> to override them
+namespace detail {
+// Helper to create default Serialize<T> for types with rbc_objser
+template<typename T>
+struct DefaultSerializeImpl {
+    // Check if type has rbc_objser/rbc_arrser methods
+    template<typename Writer>
+    static constexpr bool has_objser() {
+        return requires(T const &t, Writer &w) { t.rbc_objser(w); };
+    }
+
+    template<typename Writer>
+    static constexpr bool has_arrser() {
+        return requires(T const &t, Writer &w) { t.rbc_arrser(w); };
+    }
+
+    template<typename Reader>
+    static constexpr bool has_objdeser() {
+        return requires(T &t, Reader &r) { t.rbc_objdeser(r); };
+    }
+
+    template<typename Reader>
+    static constexpr bool has_arrdeser() {
+        return requires(T &t, Reader &r) { t.rbc_arrdeser(r); };
+    }
+};
+
+}// namespace detail
+
+// Macro to help users create default Serialize<T> specializations that delegate to rbc_objser
+
+// Usage: RBC_DEFAULT_SERIALIZE(MyType, JsonSerializer, JsonDeSerializer)
+#define RBC_DEFAULT_SERIALIZE(Type, WriterType, ReaderType)                                                 \
+    namespace rbc {                                                                                         \
+    template<>                                                                                              \
+    struct Serialize<Type> {                                                                                \
+        static void write(detail::ArchiveWriteAdapter<WriterType> &w, const Type &v) {                      \
+            if constexpr (detail::DefaultSerializeImpl<Type>::template has_objser<WriterType>()) {          \
+                w.writer.start_object();                                                                    \
+                v.rbc_objser(w.writer);                                                                     \
+                w.writer.add_last_scope_to_object();                                                        \
+            } else if constexpr (detail::DefaultSerializeImpl<Type>::template has_arrser<WriterType>()) {   \
+                w.writer.start_array();                                                                     \
+                v.rbc_arrser(w.writer);                                                                     \
+                w.writer.add_last_scope_to_object();                                                        \
+            }                                                                                               \
+        }                                                                                                   \
+        static bool read(detail::ArchiveReadAdapter<ReaderType> &r, Type &v) {                              \
+            if constexpr (detail::DefaultSerializeImpl<Type>::template has_objdeser<ReaderType>()) {        \
+                if (!r.reader.start_object()) return false;                                                 \
+                v.rbc_objdeser(r.reader);                                                                   \
+                r.reader.end_scope();                                                                       \
+                return true;                                                                                \
+            } else if constexpr (detail::DefaultSerializeImpl<Type>::template has_arrdeser<ReaderType>()) { \
+                uint64_t size;                                                                              \
+                if (!r.reader.start_array(size)) return false;                                              \
+                v.rbc_arrdeser(r.reader);                                                                   \
+                r.reader.end_scope();                                                                       \
+                return true;                                                                                \
+            }                                                                                               \
+            return false;                                                                                   \
+        }                                                                                                   \
+    };                                                                                                      \
+    }
+
 }// namespace rbc

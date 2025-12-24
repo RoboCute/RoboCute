@@ -1,6 +1,5 @@
 #include "rbc_anim/resource/anim_sequence_resource.h"
 #include "rbc_world/type_register.h"
-#include "rbc_world/resource_loader.h"
 
 namespace rbc {
 
