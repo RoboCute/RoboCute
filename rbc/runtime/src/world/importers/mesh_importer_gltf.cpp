@@ -10,6 +10,7 @@
 #include <cstring>
 #include <map>
 #include <algorithm>
+#include "rbc_world/importers/gltf_scene_loader.h"
 
 namespace rbc::world {
 using namespace luisa;
@@ -169,7 +170,7 @@ static bool read_accessor_raw(
 // Returns MeshBuilder and additional data (skin weights, vertex colors)
 struct GltfImportData {
     MeshBuilder mesh_builder;
-    size_t max_weight_count = 0;
+    size_t max_weight_count = 0;// joint weight suite
     luisa::vector<SkinWeight> all_skin_weights;
     luisa::vector<float> all_vertex_colors;
     size_t vertex_color_channels = 0;
@@ -329,7 +330,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                 1);
         }
     }
-    
+
     // Ensure tangent array size matches position array size
     // If tangents exist but are incomplete, recalculate all tangents to ensure consistency
     if (!mesh_builder.tangent.empty() && mesh_builder.tangent.size() != mesh_builder.vertex_count()) {
@@ -370,13 +371,16 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
             if (primitive.mode != TINYGLTF_MODE_TRIANGLES && primitive.mode != -1) {
                 continue;
             }
+
             auto joints_it = primitive.attributes.find("JOINTS_0");
             auto weights_it = primitive.attributes.find("WEIGHTS_0");
+
             if (joints_it != primitive.attributes.end() && weights_it != primitive.attributes.end()) {
                 auto const &joints_accessor = model.accessors[joints_it->second];
                 auto const &weights_accessor = model.accessors[weights_it->second];
                 int joint_num_components = tinygltf::GetNumComponentsInType(joints_accessor.type);
                 int weight_num_components = tinygltf::GetNumComponentsInType(weights_accessor.type);
+
                 size_t weight_count = std::min(joint_num_components, weight_num_components);
                 max_weight_count = std::max(max_weight_count, static_cast<size_t>(weight_count));
             }
@@ -385,7 +389,9 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
 
     // Second pass: process skinning weights and vertex colors
     luisa::vector<SkinWeight> all_skin_weights;
+
     luisa::vector<float> all_vertex_colors;
+
     size_t vertex_color_channels = 0;
 
     size_t current_vertex_offset = 0;
@@ -411,6 +417,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
             // Read skinning weights
             auto joints_it = primitive.attributes.find("JOINTS_0");
             auto weights_it = primitive.attributes.find("WEIGHTS_0");
+
             if (joints_it != primitive.attributes.end() && weights_it != primitive.attributes.end()) {
                 luisa::vector<std::byte> joints_data;
                 luisa::vector<std::byte> weights_data;
@@ -429,6 +436,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
 
                     // Resize skin weights array if needed (store max_weight_count per vertex)
                     size_t total_weights_needed = (current_vertex_offset + primitive_vertex_count) * max_weight_count;
+
                     if (all_skin_weights.size() < total_weights_needed) {
                         all_skin_weights.resize(total_weights_needed);
                     }
@@ -541,8 +549,8 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
     if (!load_gltf_model(model, path, false)) {
         return false;
     }
-
     GltfImportData import_data = process_gltf_model(model);
+
     MeshBuilder &mesh_builder = import_data.mesh_builder;
 
     if (mesh_builder.position.empty()) {
@@ -550,24 +558,24 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
     }
 
     // Setup device mesh - access protected members from member function
-    auto &device_mesh = IMeshImporter::device_mesh_ref(resource);
+    auto &device_mesh = device_mesh_ref(resource);
     if (!device_mesh)
         device_mesh = RC<DeviceMesh>(new DeviceMesh());
 
-    IMeshImporter::vertex_count_ref(resource) = mesh_builder.vertex_count();
-    IMeshImporter::triangle_count_ref(resource) = 0;
+    vertex_count_ref(resource) = mesh_builder.vertex_count();
+    triangle_count_ref(resource) = 0;
     for (auto &i : mesh_builder.triangle_indices) {
-        IMeshImporter::triangle_count_ref(resource) += i.size() / 3;
+        triangle_count_ref(resource) += i.size() / 3;
     }
-    IMeshImporter::uv_count_ref(resource) = mesh_builder.uv_count();
-    IMeshImporter::set_contained_normal(resource, mesh_builder.contained_normal());
-    IMeshImporter::set_contained_tangent(resource, mesh_builder.contained_tangent());
-    mesh_builder.write_to(device_mesh->host_data_ref(), IMeshImporter::submesh_offsets_ref(resource));
+    uv_count_ref(resource) = mesh_builder.uv_count();
+    set_contained_normal(resource, mesh_builder.contained_normal());
+    set_contained_tangent(resource, mesh_builder.contained_tangent());
+    mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
 
     // Write skinning weights
-    IMeshImporter::skinning_weight_count_ref(resource) = import_data.max_weight_count;
+    skinning_weight_count_ref(resource) = import_data.max_weight_count;
     if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
-        size_t total_weight_size = IMeshImporter::vertex_count_ref(resource) * import_data.max_weight_count;
+        size_t total_weight_size = vertex_count_ref(resource) * import_data.max_weight_count;
         auto start_index = device_mesh->host_data_ref().size();
         device_mesh->host_data_ref().push_back_uninitialized(total_weight_size * sizeof(SkinWeight));
         luisa::span<SkinWeight> skin_weights{
@@ -581,7 +589,7 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
     }
 
     // Write vertex colors
-    IMeshImporter::vertex_color_channels_ref(resource) = import_data.vertex_color_channels;
+    vertex_color_channels_ref(resource) = import_data.vertex_color_channels;
     if (import_data.vertex_color_channels > 0 && !import_data.all_vertex_colors.empty()) {
         vstd::push_back_all(
             device_mesh->host_data_ref(),
@@ -612,25 +620,27 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
     }
 
     // Setup device mesh - access protected members from member function
-    auto &device_mesh = IMeshImporter::device_mesh_ref(resource);
+    auto &device_mesh = device_mesh_ref(resource);
     if (!device_mesh)
         device_mesh = RC<DeviceMesh>(new DeviceMesh());
 
-    IMeshImporter::vertex_count_ref(resource) = mesh_builder.vertex_count();
-    IMeshImporter::triangle_count_ref(resource) = 0;
+    vertex_count_ref(resource) = mesh_builder.vertex_count();
+    triangle_count_ref(resource) = 0;
     for (auto &i : mesh_builder.triangle_indices) {
-        IMeshImporter::triangle_count_ref(resource) += i.size() / 3;
+        triangle_count_ref(resource) += i.size() / 3;
     }
-    IMeshImporter::uv_count_ref(resource) = mesh_builder.uv_count();
-    IMeshImporter::set_contained_normal(resource, mesh_builder.contained_normal());
-    IMeshImporter::set_contained_tangent(resource, mesh_builder.contained_tangent());
-    mesh_builder.write_to(device_mesh->host_data_ref(), IMeshImporter::submesh_offsets_ref(resource));
+    uv_count_ref(resource) = mesh_builder.uv_count();
+    set_contained_normal(resource, mesh_builder.contained_normal());
+    set_contained_tangent(resource, mesh_builder.contained_tangent());
+    mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
 
     // Write skinning weights
-    IMeshImporter::skinning_weight_count_ref(resource) = import_data.max_weight_count;
+    skinning_weight_count_ref(resource) = import_data.max_weight_count;
+
     if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
-        size_t total_weight_size = IMeshImporter::vertex_count_ref(resource) * import_data.max_weight_count;
+        size_t total_weight_size = vertex_count_ref(resource) * import_data.max_weight_count;
         auto start_index = device_mesh->host_data_ref().size();
+
         device_mesh->host_data_ref().push_back_uninitialized(total_weight_size * sizeof(SkinWeight));
         luisa::span<SkinWeight> skin_weights{
             (SkinWeight *)(device_mesh->host_data_ref().data() + start_index),
@@ -643,7 +653,7 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
     }
 
     // Write vertex colors
-    IMeshImporter::vertex_color_channels_ref(resource) = import_data.vertex_color_channels;
+    vertex_color_channels_ref(resource) = import_data.vertex_color_channels;
     if (import_data.vertex_color_channels > 0 && !import_data.all_vertex_colors.empty()) {
         vstd::push_back_all(
             device_mesh->host_data_ref(),

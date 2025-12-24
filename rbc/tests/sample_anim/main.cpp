@@ -103,7 +103,8 @@ int main(int argc, char *argv[]) {
     }
 
     // Load GLTF model using runtime loader
-    luisa::filesystem::path gltf_path = "d:/ws/data/assets/models/Cube/Cube.gltf";
+    // luisa::filesystem::path gltf_path = "d:/ws/data/assets/models/Cube/Cube.gltf";
+    luisa::filesystem::path gltf_path = "d:/ws/data/assets/anim_test/test_anim.gltf";
     // luisa::filesystem::path gltf_path = "d:/ws/data/assets/models/sponza/scene.gltf";
     if (argc >= 3) {
         gltf_path = argv[2];

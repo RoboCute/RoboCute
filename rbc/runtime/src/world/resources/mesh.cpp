@@ -72,7 +72,7 @@ uint64_t MeshResource::basic_size_bytes() const {
     return DeviceMesh::get_mesh_size(_vertex_count, _contained_normal, _contained_tangent, _uv_count, _triangle_count);
 }
 uint64_t MeshResource::desire_size_bytes() const {
-    return basic_size_bytes() + _vertex_count * _skinning_weight_count * sizeof(float) + _vertex_count * _vertex_color_channels;
+    return basic_size_bytes() + _vertex_count * _skinning_weight_count * sizeof(SkinWeight) + _vertex_count * _vertex_color_channels;
 }
 
 void MeshResource::create_empty(

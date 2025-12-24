@@ -16,10 +16,10 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         LUISA_WARNING("Can not create on exists mesh.");
         return false;
     }
-    
+
     luisa::BinaryFileStream file_stream(luisa::to_string(path));
     if (!file_stream.valid()) return false;
-    
+
     tinyobj::ObjReaderConfig obj_reader_config;
     obj_reader_config.triangulate = true;
     obj_reader_config.vertex_color = false;
@@ -104,32 +104,34 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
                 1);
         }
     }
-    
-    auto &device_mesh = IMeshImporter::device_mesh_ref(resource);
+
+    auto &device_mesh = device_mesh_ref(resource);
     if (!device_mesh)
         device_mesh = RC<DeviceMesh>(new DeviceMesh());
-    
-    IMeshImporter::vertex_count_ref(resource) = mesh_builder.vertex_count();
-    IMeshImporter::triangle_count_ref(resource) = 0;
+
+    vertex_count_ref(resource) = mesh_builder.vertex_count();
+    triangle_count_ref(resource) = 0;
     for (auto &i : mesh_builder.triangle_indices) {
-        IMeshImporter::triangle_count_ref(resource) += i.size() / 3;
+        triangle_count_ref(resource) += i.size() / 3;
     }
-    IMeshImporter::uv_count_ref(resource) = mesh_builder.uv_count();
-    IMeshImporter::set_contained_normal(resource, mesh_builder.contained_normal());
-    IMeshImporter::set_contained_tangent(resource, mesh_builder.contained_tangent());
-    mesh_builder.write_to(device_mesh->host_data_ref(), IMeshImporter::submesh_offsets_ref(resource));
-    
+    uv_count_ref(resource) = mesh_builder.uv_count();
+    set_contained_normal(resource, mesh_builder.contained_normal());
+    set_contained_tangent(resource, mesh_builder.contained_tangent());
+    mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
+
     // skinning
-    IMeshImporter::skinning_weight_count_ref(resource) = attri.skin_weights.size() / mesh_builder.position.size();
+    skinning_weight_count_ref(resource) = attri.skin_weights.size() / mesh_builder.position.size();
     size_t weight_size = 0;
     for (auto &i : attri.skin_weights) {
         weight_size = std::max<size_t>(weight_size, i.weightValues.size());
     }
     auto start_index = device_mesh->host_data_ref().size();
-    device_mesh->host_data_ref().push_back_uninitialized(weight_size * IMeshImporter::vertex_count_ref(resource) * sizeof(SkinWeight));
+    device_mesh->host_data_ref().push_back_uninitialized(weight_size * vertex_count_ref(resource) * sizeof(SkinWeight));
+
     luisa::span<SkinWeight> skin_weights{
         (SkinWeight *)device_mesh->host_data_ref().data() + start_index,
-        weight_size * IMeshImporter::vertex_count_ref(resource)};
+        weight_size * vertex_count_ref(resource)};
+
     std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
     for (auto &i : attri.skin_weights) {
         auto skin_ptr = &skin_weights[i.vertex_id * weight_size];
@@ -140,8 +142,8 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         }
     }
     // vertex_color
-    IMeshImporter::vertex_color_channels_ref(resource) = attri.colors.size() / mesh_builder.position.size();
-    if (IMeshImporter::vertex_color_channels_ref(resource) > 0)
+    vertex_color_channels_ref(resource) = attri.colors.size() / mesh_builder.position.size();
+    if (vertex_color_channels_ref(resource) > 0)
         vstd::push_back_all(
             device_mesh->host_data_ref(),
             luisa::span{
@@ -151,4 +153,3 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
 }
 
 }// namespace rbc::world
-

@@ -91,7 +91,7 @@ GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_pa
             }
 
             // Load texture
-            auto tex_res = tex_loader.decode_texture(tex_path, 16, true);
+            auto tex_res = tex_loader.decode_texture(tex_path, 4, false);
             if (tex_res) {
                 image_to_texture[img_idx] = std::move(tex_res);
             } else {
