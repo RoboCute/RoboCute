@@ -132,8 +132,9 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     _mats.emplace_back(quad_mat);
     auto mats = luisa::span{_mats}.subspan(mat_start_idx, 1);
     _add_task(quad_render->update_object(
-        mats,
-        quad_mesh), quad_render);
+                  mats,
+                  quad_mesh),
+              quad_render);
 }
 void WorldScene::_write_scene() {
     // save scene
@@ -408,22 +409,26 @@ bool WorldScene::draw_gizmos(
     return true;
 }
 void WorldScene::tick() {
-    std::pair<coro::coroutine, RCWeak<world::Component>> c;
     auto prox_size = _render_thread_coroutines.size_approx();
     for (auto i : vstd::range(prox_size)) {
+        std::pair<coro::coroutine, world::InstanceID> c;
         if (!_render_thread_coroutines.try_dequeue(c)) {
             break;
         }
+        if (world::get_object(c.second) == nullptr || c.first.done()) {
+            continue;
+        }
         c.first.resume();
         if (!c.first.done()) {
-            _render_thread_coroutines.enqueue(c);
+            _render_thread_coroutines.enqueue(std::move(c));
         }
     }
 }
-void WorldScene::_add_task(coro::coroutine const &c, world::Component *comp) {
+void WorldScene::_add_task(coro::coroutine &&c, world::Component *comp) {
     c.resume();
     if (c.done()) return;
-    _render_thread_coroutines.enqueue(std::pair<coro::coroutine, RCWeak<world::Component>>{c, RCWeak<world::Component>{comp}});
+    std::pair<coro::coroutine, world::InstanceID> v{std::move(c), comp->instance_id()};
+    _render_thread_coroutines.enqueue(std::move(v));
 }
 WorldScene::~WorldScene() {
     world::dispose_resource_loader();

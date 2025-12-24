@@ -2,12 +2,58 @@
 #include <rbc_config.h>
 #include <coroutine>
 #include <luisa/vstl/meta_lib.h>
+#include <luisa/core/logging.h>
 
 namespace rbc::coro {
 struct promise;
 // Coro from cppref
-struct coroutine : std::coroutine_handle<rbc::coro::promise> {
+struct coroutine {
     using promise_type = rbc::coro::promise;
+    using base_type = std::coroutine_handle<rbc::coro::promise>;
+private:
+    base_type _base;
+    bool _own{};
+public:
+    coroutine() = default;
+    coroutine(base_type &&rhs) : _base(rhs), _own{true} {}
+    coroutine(coroutine const &) = delete;
+    coroutine(coroutine &&rhs)
+        : _base(rhs._base),
+          _own(rhs._own) {
+        rhs._own = false;
+        rhs._base = {};
+    }
+    static auto from_promise(promise &prom) {
+        return base_type::from_promise(prom);
+    }
+    coroutine &operator=(coroutine const &rhs) = delete;
+    coroutine &operator=(coroutine &&rhs) {
+        vstd::reset(*this, std::move(rhs));
+        return *this;
+    }
+    promise &promise() {
+        LUISA_DEBUG_ASSERT(_own, "Coroutine already disposed.");
+        return _base.promise();
+    }
+    void resume() {
+        LUISA_DEBUG_ASSERT(_own, "Coroutine already disposed.");
+        _base.resume();
+    }
+    bool done() {
+        LUISA_DEBUG_ASSERT(_own, "Coroutine already disposed.");
+        return _base.done();
+    }
+    void destroy() {
+        if (!_own) return;
+        _base.destroy();
+        _own = false;
+        _base = {};
+    }
+    ~coroutine() {
+        if (_own) {
+            _base.destroy();
+        }
+    }
 };
 
 struct promise {
@@ -28,84 +74,12 @@ public:
     }
     void await_resume() {}
 };
-// generator from cppref
-RBC_CORE_API void throw_coro_exception();
-template<typename T>
-struct generator {
-    // The class name 'generator' is our choice and it is not required for coroutine
-    // magic. Compiler recognizes coroutine by the presence of 'co_yield' keyword.
-    // You can use name 'MyGenerator' (or any other name) instead as long as you include
-    // nested struct promise_type with 'MyGenerator get_return_object()' method.
-    // (Note: It is necessary to adjust the declarations of constructors and destructors
-    //  when renaming.)
-
-    struct promise_type;
-    using handle_type = std::coroutine_handle<promise_type>;
-
-    struct promise_type// required
-    {
-        vstd::optional<T> value_{};
-
-        generator get_return_object() {
-            return generator(handle_type::from_promise(*this));
-        }
-        std::suspend_always initial_suspend() { return {}; }
-        std::suspend_always final_suspend() noexcept { return {}; }
-        void unhandled_exception() {
-            throw_coro_exception();
-        }// saving
-        // exception
-
-        template<std::convertible_to<T> From>// C++20 concept
-        std::suspend_always yield_value(From &&from) {
-            value_ = std::forward<From>(from);// caching the result in promise
-            return {};
-        }
-        void return_void() {}
-    };
-
-    handle_type h_;
-
-    generator(handle_type h) : h_(h) {}
-    ~generator() { h_.destroy(); }
-    vstd::optional<T> operator()() {
-        fill();
-        full_ = false;// we are going to move out previously cached
-        // result to make promise empty again
-        auto &&v = h_.promise().value_;
-        if (!v) return {};
-        auto dsp = vstd::scope_exit([&] {
-            v.destroy();
-        });
-        return {std::move(*v)};
-    }
-    [[nodiscard]] void *address() const {
-        return h_.address();
-    }
-    void destroy() const {
-        h_.destroy();
-    }
-    [[nodiscard]] bool done() {
-        fill();// The only way to reliably find out whether or not we finished coroutine,
-               // whether or not there is going to be a next value generated (co_yield)
-               // in coroutine via C++ getter (operator () below) is to execute/resume
-               // coroutine until the next co_yield point (or let it fall off end).
-               // Then we store/cache result in promise to allow getter (operator() below
-               // to grab it without executing coroutine).
-        return h_.done();
-    }
-    void resume() const {
-        h_.resume();
-    }
-private:
-    bool full_ = false;
-
-    void fill() {
-        if (!full_) {
-            h_();
-            full_ = true;
-        }
-    }
-};
-
 }// namespace rbc::coro
+#define RBC_AwaitCoroutine(coro_expr)          \
+    {                                          \
+        auto &&cc = (coro_expr);               \
+        while (!cc.done()) {                   \
+            co_await ::rbc::coro::awaitable{}; \
+            cc.resume();                       \
+        }                                      \
+    }

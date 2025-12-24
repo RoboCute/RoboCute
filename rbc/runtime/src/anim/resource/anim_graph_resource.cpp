@@ -12,9 +12,11 @@ void AnimGraphResource::deserialize_meta(world::ObjDeSerialize const &ser) {
 }
 
 rbc::coro::coroutine AnimGraphResource::_async_load() {
+    co_return;
 }
 
 bool AnimGraphResource::unsafe_save_to_path() const {
+    return {};//TODO
 }
 
 void AnimGraphResource::_unload() {

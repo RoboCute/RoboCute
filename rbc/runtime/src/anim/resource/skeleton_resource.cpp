@@ -12,9 +12,11 @@ void SkeletonResource::deserialize_meta(world::ObjDeSerialize const &ser) {
 }
 
 rbc::coro::coroutine SkeletonResource::_async_load() {
+    co_return;
 }
 
 bool SkeletonResource::unsafe_save_to_path() const {
+    return {}; // TODO
 }
 
 void SkeletonResource::_unload() {

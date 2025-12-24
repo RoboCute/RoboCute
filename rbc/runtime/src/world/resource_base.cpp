@@ -2,9 +2,9 @@
 #include <rbc_world/type_register.h>
 #include <rbc_core/runtime_static.h>
 #include <rbc_core/shared_atomic_mutex.h>
-#include <rbc_core/containers/rbc_concurrent_queue.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <rbc_core/binary_file_writer.h>
+#include <rbc_core/containers/rbc_concurrent_queue.h>
 
 namespace rbc ::world {
 void Resource::serialize_meta(ObjSerialize const &obj) const {
@@ -61,8 +61,8 @@ struct ResourceLoader {
 
     rbc::shared_atomic_mutex _resmap_mtx;
     vstd::HashMap<vstd::Guid, ResourceHandle> resource_types;
-    vstd::LockFreeArrayQueue<LoadingResource> loading_queue;
-    std::thread _loading_thd;
+    rbc::ConcurrentQueue<LoadingResource> loading_queue;
+    luisa::vector<std::thread> _loading_thds;
     std::atomic_bool _enabled = true;
     std::condition_variable _async_cv;
     std::mutex _async_mtx;
@@ -80,66 +80,69 @@ struct ResourceLoader {
         file_writer.write(v.json);
     }
     void _loading_thread() {
-        auto execute = [&](vstd::optional<LoadingResource> &res) {
-            auto self_ptr_base = get_object_ref(res->res_inst_id);
+        auto execute = [&](LoadingResource &res) {
+            auto self_ptr_base = get_object_ref(res.res_inst_id);
             // already disposed
             if (!self_ptr_base || self_ptr_base->base_type() != BaseObjectType::Resource) [[unlikely]] {
-                res->loading_coro.destroy();
+                res.loading_coro.destroy();
                 return;
             }
             auto ptr = std::move(self_ptr_base).cast_static<Resource>();
-            while (!res->depended_res.empty()) {
-                auto obj = get_object_ref(res->depended_res.back());
+            while (!res.depended_res.empty()) {
+                auto obj = get_object_ref(res.depended_res.back());
                 if (!obj || obj->base_type() != BaseObjectType::Resource) [[unlikely]] {
-                    res->depended_res.pop_back();
+                    res.depended_res.pop_back();
                     continue;
                 }
                 auto dep = static_cast<Resource *>(obj.get());
                 if (dep->_status == EResourceLoadingStatus::Loaded) {
-                    res->depended_res.pop_back();
+                    res.depended_res.pop_back();
                 } else {
                     break;
                 }
             }
             bool done = false;
-            if (res->depended_res.empty()) {
-                _current_loading_res = res.ptr();
+            if (res.depended_res.empty()) {
+                _current_loading_res = &res;
 #ifndef NDEBUG
                 _current_res = ptr.get();
 #endif
-                res->loading_coro.resume();
+                res.loading_coro.resume();
                 _current_loading_res = nullptr;
 #ifndef NDEBUG
                 _current_res = nullptr;
 #endif
-                done = res->loading_coro.done();
+                done = res.loading_coro.done();
             }
             auto asset_mng = AssetsManager::instance();
             if (asset_mng) {
                 asset_mng->wake_load_thread();
             }
             if (!done) {
-                loading_queue.push(std::move(*res));
+                loading_queue.enqueue(std::move(res));
             } else {
                 ptr->_status = EResourceLoadingStatus::Loaded;
             }
         };
         while (_enabled) {
-            while (auto res = loading_queue.pop()) {
+            while (true) {
+                LoadingResource loading_res;
+                if (!loading_queue.try_dequeue(loading_res))
+                    break;
                 std::this_thread::yield();// do not make loading thread too busy
-                execute(res);
+                execute(loading_res);
             }
             std::unique_lock lck{_async_mtx};
-            auto size = loading_queue.length();
-            while (_enabled && loading_queue.length() == 0) {
-                size = loading_queue.length();
+            while (_enabled && loading_queue.size_approx() == 0) {
                 _async_cv.wait(lck);
-                size = loading_queue.length();
             }
         }
-        while (auto res = loading_queue.pop()) {
+        while (true) {
+            LoadingResource loading_res;
+            if (!loading_queue.try_dequeue(loading_res))
+                break;
             std::this_thread::yield();// do not make loading thread too busy
-            execute(res);
+            execute(loading_res);
         }
     }
 
@@ -194,8 +197,12 @@ struct ResourceLoader {
             resource_types.remove(i);
         }
     }
-    ResourceLoader()
-        : _loading_thd([this] { _loading_thread(); }) {
+    ResourceLoader() {
+        auto loading_thread_count = std::clamp<uint>(std::thread::hardware_concurrency() / 4, 1, 4);
+        _loading_thds.reserve(loading_thread_count);
+        for (auto i : vstd::range(loading_thread_count)) {
+            _loading_thds.emplace_back([this] { _loading_thread(); });
+        }
     }
     void dispose() {
         if (!_enabled) return;
@@ -203,7 +210,9 @@ struct ResourceLoader {
         _enabled = false;
         _async_mtx.unlock();
         _async_cv.notify_all();
-        _loading_thd.join();
+        for (auto &i : _loading_thds) {
+            i.join();
+        }
     }
     ~ResourceLoader() {
         LUISA_ASSERT(!_enabled, "Resource loader not disabled.");
@@ -212,7 +221,7 @@ struct ResourceLoader {
         if (res->_status.exchange(EResourceLoadingStatus::Loading) != EResourceLoadingStatus::Unloaded) {
             return;
         }
-        loading_queue.push(res->instance_id(), res->_async_load());
+        loading_queue.enqueue(LoadingResource{res->instance_id(), res->_async_load()});
         _async_mtx.lock();
         _async_mtx.unlock();
         _async_cv.notify_one();
@@ -231,7 +240,7 @@ struct ResourceLoader {
                 co_await coro::awaitable{};
             }
         }(res->instance_id())};
-        loading_queue.push(res->instance_id(), c);
+        loading_queue.enqueue(LoadingResource{res->instance_id(), std::move(c)});
         _async_mtx.lock();
         _async_mtx.unlock();
         _async_cv.notify_one();

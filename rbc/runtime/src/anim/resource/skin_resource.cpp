@@ -12,9 +12,11 @@ void SkinResource::deserialize_meta(world::ObjDeSerialize const &ser) {
 }
 
 rbc::coro::coroutine SkinResource::_async_load() {
+    co_return;
 }
 
 bool SkinResource::unsafe_save_to_path() const {
+    return {};//TODO
 }
 
 void SkinResource::_unload() {

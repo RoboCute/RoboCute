@@ -12,9 +12,11 @@ void SkelmeshResource::deserialize_meta(world::ObjDeSerialize const &ser) {
 }
 
 rbc::coro::coroutine SkelmeshResource::_async_load() {
+    co_return;
 }
 
 bool SkelmeshResource::unsafe_save_to_path() const {
+    return {};
 }
 
 void SkelmeshResource::_unload() {

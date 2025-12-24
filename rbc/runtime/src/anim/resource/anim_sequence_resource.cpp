@@ -12,9 +12,11 @@ void AnimSequenceResource::deserialize_meta(world::ObjDeSerialize const &ser) {
 }
 
 rbc::coro::coroutine AnimSequenceResource::_async_load() {
+    co_return;
 }
 
 bool AnimSequenceResource::unsafe_save_to_path() const {
+    return {};
 }
 
 void AnimSequenceResource::_unload() {
