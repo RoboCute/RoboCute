@@ -54,22 +54,13 @@ RoboCute 是一个 Python-first 的 3D AIGC（AI生成内容）和机器人开�
 
 ### Installation / 安装
 
-**English:**
-
-```bash
-pip install robocute
-```
-
-**中文:**
+WIP (当前还不能使用)
 
 ```bash
 pip install robocute
 ```
 
 ### Basic Usage / 基本使用
-
-**English:**
-
 ```python
 import robocute as rbc
 
@@ -100,41 +91,8 @@ print("Server started on port 5555")
 print("Start the editor to connect and visualize the scene")
 ```
 
-**中文:**
-
-```python
-import robocute as rbc
-
-# 创建场景
-scene = rbc.Scene()
-scene.start()
-
-# 创建实体
-robot = scene.create_entity("Robot")
-scene.add_component(
-    robot.id,
-    "transform",
-    rbc.TransformComponent(
-        position=[0.0, 0.0, 0.0],
-        rotation=[0.0, 0.0, 0.0, 1.0],
-        scale=[1.0, 1.0, 1.0],
-    ),
-)
-
-# 启动带编辑器服务的服务器
-server = rbc.Server(title="RoboCute Server", version="0.1.0")
-editor_service = rbc.EditorService(scene)
-server.register_service(editor_service)
-server.start(port=5555)
-
-# 现在可以使用 C++ 编辑器连接
-print("服务器已启动在端口 5555")
-print("启动编辑器以连接并可视化场景")
-```
-
 ### Example: Creating Animation Nodes / 示例：创建动画节点
 
-**English:**
 
 ```python
 import robocute as rbc
@@ -181,59 +139,6 @@ graph_def = rbc.GraphDefinition(
 )
 
 # Execute the graph
-scene_context = rbc.SceneContext(scene)
-graph = rbc.NodeGraph.from_definition(graph_def, "test_graph", scene_context)
-executor = rbc.GraphExecutor(graph, scene_context)
-result = executor.execute()
-```
-
-**中文:**
-
-```python
-import robocute as rbc
-import custom_nodes.animation_nodes as animation_nodes
-
-# 构建旋转动画图
-graph_def = rbc.GraphDefinition(
-    nodes=[
-        rbc.NodeDefinition(
-            node_id="entity_input",
-            node_type="entity_input",
-            inputs={"entity_id": robot.id},
-        ),
-        rbc.NodeDefinition(
-            node_id="rotation_anim",
-            node_type="rotation_animation",
-            inputs={
-                "radius": 2.0,
-                "angular_velocity": 1.0,
-                "duration_frames": 120,
-                "fps": 30.0,
-            },
-        ),
-        rbc.NodeDefinition(
-            node_id="anim_output",
-            node_type="animation_output",
-            inputs={"name": "rotation_test", "fps": 30.0},
-        ),
-    ],
-    connections=[
-        rbc.NodeConnection(
-            from_node="entity_input",
-            from_output="entity",
-            to_node="rotation_anim",
-            to_input="entity",
-        ),
-        rbc.NodeConnection(
-            from_node="rotation_anim",
-            from_output="animation",
-            to_node="anim_output",
-            to_input="animation",
-        ),
-    ],
-)
-
-# 执行图
 scene_context = rbc.SceneContext(scene)
 graph = rbc.NodeGraph.from_definition(graph_def, "test_graph", scene_context)
 executor = rbc.GraphExecutor(graph, scene_context)
