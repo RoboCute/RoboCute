@@ -153,11 +153,14 @@ RC<TextureResource> TextureLoader::decode_texture(
         return {};
     }
 
-    auto *texture_importer = dynamic_cast<ITextureImporter *>(importer);
-    if (!texture_importer) {
+    // Avoid dynamic_cast across DLL boundaries - use resource_type() check instead
+    if (importer->resource_type() != ResourceType::Texture) {
         LUISA_WARNING("Invalid importer type for texture file: {}", luisa::to_string(path));
         return {};
     }
+    
+    // Safe to use static_cast after type check
+    auto *texture_importer = static_cast<ITextureImporter *>(importer);
     auto result = texture_importer->import(this, path, mip_level, to_vt);
     if (result) {
         process_texture(result, mip_level, to_vt);

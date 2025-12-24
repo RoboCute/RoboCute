@@ -24,42 +24,42 @@ static bool read_accessor_data(
     if (accessor_index < 0 || accessor_index >= static_cast<int>(model.accessors.size())) {
         return false;
     }
-    
+
     auto const &accessor = model.accessors[accessor_index];
     if (accessor.bufferView < 0 || accessor.bufferView >= static_cast<int>(model.bufferViews.size())) {
         return false;
     }
-    
+
     auto const &buffer_view = model.bufferViews[accessor.bufferView];
     if (buffer_view.buffer < 0 || buffer_view.buffer >= static_cast<int>(model.buffers.size())) {
         return false;
     }
-    
+
     auto const &buffer = model.buffers[buffer_view.buffer];
-    
+
     size_t component_size = tinygltf::GetComponentSizeInBytes(accessor.componentType);
     int num_components = tinygltf::GetNumComponentsInType(accessor.type);
     if (component_size <= 0 || num_components <= 0) {
         return false;
     }
-    
+
     size_t element_size = component_size * num_components;
     size_t byte_stride = buffer_view.byteStride > 0 ? buffer_view.byteStride : element_size;
-    
+
     size_t data_offset = buffer_view.byteOffset + accessor.byteOffset;
     size_t data_size = accessor.count * element_size;
-    
+
     if (data_offset + data_size > buffer.data.size()) {
         return false;
     }
-    
+
     out_data.reserve(accessor.count);
-    
+
     // Read and convert data
     for (size_t i = 0; i < accessor.count; ++i) {
         size_t byte_offset = data_offset + i * byte_stride;
         uint8_t const *data_ptr = buffer.data.data() + byte_offset;
-        
+
         if constexpr (std::is_same_v<T, float3>) {
             if (num_components == 3 && accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
                 float const *float_ptr = reinterpret_cast<float const *>(data_ptr);
@@ -105,7 +105,7 @@ static bool read_accessor_data(
             return false;
         }
     }
-    
+
     return true;
 }
 
@@ -117,37 +117,37 @@ static bool read_accessor_raw(
     if (accessor_index < 0 || accessor_index >= static_cast<int>(model.accessors.size())) {
         return false;
     }
-    
+
     auto const &accessor = model.accessors[accessor_index];
     if (accessor.bufferView < 0 || accessor.bufferView >= static_cast<int>(model.bufferViews.size())) {
         return false;
     }
-    
+
     auto const &buffer_view = model.bufferViews[accessor.bufferView];
     if (buffer_view.buffer < 0 || buffer_view.buffer >= static_cast<int>(model.buffers.size())) {
         return false;
     }
-    
+
     auto const &buffer = model.buffers[buffer_view.buffer];
-    
+
     size_t component_size = tinygltf::GetComponentSizeInBytes(accessor.componentType);
     int num_components = tinygltf::GetNumComponentsInType(accessor.type);
     if (component_size <= 0 || num_components <= 0) {
         return false;
     }
-    
+
     size_t element_size = component_size * num_components;
     size_t byte_stride = buffer_view.byteStride > 0 ? buffer_view.byteStride : element_size;
-    
+
     size_t data_offset = buffer_view.byteOffset + accessor.byteOffset;
     size_t data_size = accessor.count * element_size;
-    
+
     if (data_offset + data_size > buffer.data.size()) {
         return false;
     }
-    
+
     out_data.resize(data_size);
-    
+
     // Copy data from unsigned char buffer to std::byte vector
     if (byte_stride == element_size) {
         // Tightly packed - single memcpy
@@ -161,33 +161,8 @@ static bool read_accessor_raw(
             out_ptr += element_size;
         }
     }
-    
-    return true;
-}
 
-static bool load_gltf_model(tinygltf::Model &model, luisa::filesystem::path const &path, bool is_binary) {
-    tinygltf::TinyGLTF loader;
-    std::string err;
-    std::string warn;
-    luisa::string luisa_path_str = luisa::to_string(path);
-    std::string path_str(luisa_path_str.c_str(), luisa_path_str.size());
-    
-    bool ret = false;
-    if (is_binary) {
-        ret = loader.LoadBinaryFromFile(&model, &err, &warn, path_str);
-    } else {
-        ret = loader.LoadASCIIFromFile(&model, &err, &warn, path_str);
-    }
-    
-    if (!warn.empty()) {
-        LUISA_WARNING_WITH_LOCATION("GLTF warning: {}", warn);
-    }
-    
-    if (!err.empty()) {
-        LUISA_WARNING_WITH_LOCATION("GLTF error: {}", err);
-    }
-    
-    return ret;
+    return true;
 }
 
 // Helper function to process GLTF model and build MeshBuilder
@@ -203,7 +178,7 @@ struct GltfImportData {
 static GltfImportData process_gltf_model(tinygltf::Model const &model) {
     GltfImportData result;
     MeshBuilder &mesh_builder = result.mesh_builder;
-    
+
     // Process all meshes and primitives
     for (auto const &mesh : model.meshes) {
         for (auto const &primitive : mesh.primitives) {
@@ -211,35 +186,35 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
             if (primitive.mode != TINYGLTF_MODE_TRIANGLES && primitive.mode != -1) {
                 continue;
             }
-            
+
             // Read positions (required)
             auto pos_it = primitive.attributes.find("POSITION");
             if (pos_it == primitive.attributes.end()) {
-                continue; // Skip primitives without positions
+                continue;// Skip primitives without positions
             }
-            
+
             luisa::vector<float3> positions;
             if (!read_accessor_data(model, pos_it->second, positions)) {
                 continue;
             }
-            
+
             size_t vertex_count = positions.size();
             if (vertex_count == 0) {
                 continue;
             }
-            
+
             // Read normals (optional)
             luisa::vector<float3> normals;
             auto normal_it = primitive.attributes.find("NORMAL");
             if (normal_it != primitive.attributes.end()) {
                 read_accessor_data(model, normal_it->second, normals);
             }
-            
+
             // Read UVs (optional, support multiple UV sets)
             std::map<int, luisa::vector<float2>> uv_sets;
             for (int uv_idx = 0; uv_idx < 8; ++uv_idx) {
-                std::string uv_name = uv_idx == 0 ? "TEXCOORD_0" : 
-                                     "TEXCOORD_" + std::to_string(uv_idx);
+                std::string uv_name = uv_idx == 0 ? "TEXCOORD_0" :
+                                                    "TEXCOORD_" + std::to_string(uv_idx);
                 auto uv_it = primitive.attributes.find(uv_name);
                 if (uv_it != primitive.attributes.end()) {
                     luisa::vector<float2> uvs;
@@ -248,7 +223,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     }
                 }
             }
-            
+
             // Read tangents (optional)
             luisa::vector<float4> tangents;
             auto tangent_it = primitive.attributes.find("TANGENT");
@@ -258,7 +233,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     tangents = std::move(tangent_data);
                 }
             }
-            
+
             // Read indices
             luisa::vector<uint> indices;
             if (primitive.indices >= 0) {
@@ -270,18 +245,18 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     indices.push_back(i);
                 }
             }
-            
+
             // Ensure indices are triangles (should be already, but check)
             if (indices.size() % 3 != 0) {
                 continue;
             }
-            
+
             // Determine vertex offset for this primitive
             size_t vertex_offset = mesh_builder.position.size();
-            
+
             // Add positions
             mesh_builder.position.insert(mesh_builder.position.end(), positions.begin(), positions.end());
-            
+
             // Add normals
             if (!normals.empty() && normals.size() == vertex_count) {
                 if (mesh_builder.normal.empty()) {
@@ -289,7 +264,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                 }
                 mesh_builder.normal.insert(mesh_builder.normal.end(), normals.begin(), normals.end());
             }
-            
+
             // Add UVs
             for (auto const &[uv_idx, uvs] : uv_sets) {
                 if (uvs.size() == vertex_count) {
@@ -303,7 +278,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                         mesh_builder.uvs[uv_idx].end(), uvs.begin(), uvs.end());
                 }
             }
-            
+
             // Add tangents
             if (!tangents.empty() && tangents.size() == vertex_count) {
                 if (mesh_builder.tangent.empty()) {
@@ -311,7 +286,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                 }
                 mesh_builder.tangent.insert(mesh_builder.tangent.end(), tangents.begin(), tangents.end());
             }
-            
+
             // Add indices (with vertex offset)
             auto &triangle_indices = mesh_builder.triangle_indices.emplace_back();
             triangle_indices.reserve(indices.size());
@@ -320,11 +295,11 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
             }
         }
     }
-    
+
     if (mesh_builder.position.empty()) {
-        return result; // Return empty result
+        return result;// Return empty result
     }
-    
+
     // Calculate tangents if we have UVs and normals but no tangents
     if (mesh_builder.tangent.empty() && mesh_builder.uv_count() > 0 && !mesh_builder.normal.empty()) {
         mesh_builder.tangent.resize(mesh_builder.vertex_count());
@@ -350,7 +325,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                 1);
         }
     }
-    
+
     // First pass: determine max weight count
     size_t max_weight_count = 0;
     for (auto const &mesh : model.meshes) {
@@ -370,66 +345,66 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
             }
         }
     }
-    
+
     // Second pass: process skinning weights and vertex colors
     luisa::vector<SkinWeight> all_skin_weights;
     luisa::vector<float> all_vertex_colors;
     size_t vertex_color_channels = 0;
-    
+
     size_t current_vertex_offset = 0;
     for (auto const &mesh : model.meshes) {
         for (auto const &primitive : mesh.primitives) {
             if (primitive.mode != TINYGLTF_MODE_TRIANGLES && primitive.mode != -1) {
                 continue;
             }
-            
+
             auto pos_it = primitive.attributes.find("POSITION");
             if (pos_it == primitive.attributes.end()) {
                 continue;
             }
-            
+
             auto const &pos_accessor = model.accessors[pos_it->second];
             size_t primitive_vertex_count = pos_accessor.count;
-            
+
             // Verify that this matches the vertex count we added to mesh_builder
             if (current_vertex_offset + primitive_vertex_count > mesh_builder.position.size()) {
-                continue; // Skip if mismatch
+                continue;// Skip if mismatch
             }
-            
+
             // Read skinning weights
             auto joints_it = primitive.attributes.find("JOINTS_0");
             auto weights_it = primitive.attributes.find("WEIGHTS_0");
             if (joints_it != primitive.attributes.end() && weights_it != primitive.attributes.end()) {
                 luisa::vector<std::byte> joints_data;
                 luisa::vector<std::byte> weights_data;
-                
+
                 if (read_accessor_raw(model, joints_it->second, joints_data) &&
                     read_accessor_raw(model, weights_it->second, weights_data)) {
                     auto const &joints_accessor = model.accessors[joints_it->second];
                     auto const &weights_accessor = model.accessors[weights_it->second];
-                    
+
                     size_t joint_component_size = tinygltf::GetComponentSizeInBytes(joints_accessor.componentType);
                     int joint_num_components = tinygltf::GetNumComponentsInType(joints_accessor.type);
                     size_t weight_component_size = tinygltf::GetComponentSizeInBytes(weights_accessor.componentType);
                     int weight_num_components = tinygltf::GetNumComponentsInType(weights_accessor.type);
-                    
+
                     size_t weight_count = std::min(joint_num_components, weight_num_components);
-                    
+
                     // Resize skin weights array if needed (store max_weight_count per vertex)
                     size_t total_weights_needed = (current_vertex_offset + primitive_vertex_count) * max_weight_count;
                     if (all_skin_weights.size() < total_weights_needed) {
                         all_skin_weights.resize(total_weights_needed);
                     }
-                    
+
                     for (size_t v = 0; v < primitive_vertex_count; ++v) {
                         size_t joint_offset = v * joint_num_components * joint_component_size;
                         size_t weight_offset = v * weight_num_components * weight_component_size;
                         size_t base_idx = (current_vertex_offset + v) * max_weight_count;
-                        
+
                         for (size_t w = 0; w < weight_count && w < max_weight_count; ++w) {
                             int32_t joint_id = 0;
                             float weight = 0.0f;
-                            
+
                             // Read joint ID
                             if (joints_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
                                 joint_id = static_cast<int32_t>(joints_data[joint_offset + w * joint_component_size]);
@@ -440,7 +415,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                                 joint_id = static_cast<int32_t>(*reinterpret_cast<uint32_t const *>(
                                     joints_data.data() + joint_offset + w * joint_component_size));
                             }
-                            
+
                             // Read weight
                             if (weights_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
                                 weight = *reinterpret_cast<float const *>(
@@ -451,10 +426,11 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                                     weight = static_cast<float>(weights_data[weight_offset + w * weight_component_size]) / 255.0f;
                                 } else if (weights_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
                                     weight = static_cast<float>(*reinterpret_cast<uint16_t const *>(
-                                        weights_data.data() + weight_offset + w * weight_component_size)) / 65535.0f;
+                                                 weights_data.data() + weight_offset + w * weight_component_size)) /
+                                             65535.0f;
                                 }
                             }
-                            
+
                             if (base_idx + w < all_skin_weights.size()) {
                                 all_skin_weights[base_idx + w].joint_id = joint_id;
                                 all_skin_weights[base_idx + w].weight = weight;
@@ -463,7 +439,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     }
                 }
             }
-            
+
             // Read vertex colors
             auto color_it = primitive.attributes.find("COLOR_0");
             if (color_it != primitive.attributes.end()) {
@@ -472,19 +448,19 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     auto const &color_accessor = model.accessors[color_it->second];
                     int color_num_components = tinygltf::GetNumComponentsInType(color_accessor.type);
                     size_t color_component_size = tinygltf::GetComponentSizeInBytes(color_accessor.componentType);
-                    
+
                     vertex_color_channels = std::max(vertex_color_channels, static_cast<size_t>(color_num_components));
-                    
+
                     // Convert color data to float array
                     size_t color_data_size = primitive_vertex_count * color_num_components * sizeof(float);
                     if (all_vertex_colors.size() < (current_vertex_offset + primitive_vertex_count) * color_num_components) {
                         all_vertex_colors.resize((current_vertex_offset + primitive_vertex_count) * color_num_components);
                     }
-                    
+
                     for (size_t v = 0; v < primitive_vertex_count; ++v) {
                         size_t color_offset = v * color_num_components * color_component_size;
                         size_t output_offset = (current_vertex_offset + v) * color_num_components;
-                        
+
                         for (int c = 0; c < color_num_components; ++c) {
                             float color_value = 0.0f;
                             if (color_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
@@ -495,7 +471,8 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                                     color_value = static_cast<float>(color_data[color_offset + c * color_component_size]) / 255.0f;
                                 } else if (color_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
                                     color_value = static_cast<float>(*reinterpret_cast<uint16_t const *>(
-                                        color_data.data() + color_offset + c * color_component_size)) / 65535.0f;
+                                                      color_data.data() + color_offset + c * color_component_size)) /
+                                                  65535.0f;
                                 }
                             }
                             all_vertex_colors[output_offset + c] = color_value;
@@ -503,17 +480,17 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     }
                 }
             }
-            
+
             current_vertex_offset += primitive_vertex_count;
         }
     }
-    
+
     // Store the processed data
     result.max_weight_count = max_weight_count;
     result.all_skin_weights = std::move(all_skin_weights);
     result.all_vertex_colors = std::move(all_vertex_colors);
     result.vertex_color_channels = vertex_color_channels;
-    
+
     return result;
 }
 
@@ -522,24 +499,24 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
         LUISA_WARNING("Can not create on exists mesh.");
         return false;
     }
-    
+
     tinygltf::Model model;
     if (!load_gltf_model(model, path, false)) {
         return false;
     }
-    
+
     GltfImportData import_data = process_gltf_model(model);
     MeshBuilder &mesh_builder = import_data.mesh_builder;
-    
+
     if (mesh_builder.position.empty()) {
         return false;
     }
-    
+
     // Setup device mesh - access protected members from member function
     auto &device_mesh = IMeshImporter::device_mesh_ref(resource);
     if (!device_mesh)
         device_mesh = RC<DeviceMesh>(new DeviceMesh());
-    
+
     IMeshImporter::vertex_count_ref(resource) = mesh_builder.vertex_count();
     IMeshImporter::triangle_count_ref(resource) = 0;
     for (auto &i : mesh_builder.triangle_indices) {
@@ -549,7 +526,7 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
     IMeshImporter::set_contained_normal(resource, mesh_builder.contained_normal());
     IMeshImporter::set_contained_tangent(resource, mesh_builder.contained_tangent());
     mesh_builder.write_to(device_mesh->host_data_ref(), IMeshImporter::submesh_offsets_ref(resource));
-    
+
     // Write skinning weights
     IMeshImporter::skinning_weight_count_ref(resource) = import_data.max_weight_count;
     if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
@@ -560,12 +537,12 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
             (SkinWeight *)(device_mesh->host_data_ref().data() + start_index),
             total_weight_size};
         std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
-        
+
         // Copy skin weights (already in the correct format)
         size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
         std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinWeight));
     }
-    
+
     // Write vertex colors
     IMeshImporter::vertex_color_channels_ref(resource) = import_data.vertex_color_channels;
     if (import_data.vertex_color_channels > 0 && !import_data.all_vertex_colors.empty()) {
@@ -575,7 +552,7 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
                 (std::byte *)import_data.all_vertex_colors.data(),
                 import_data.all_vertex_colors.size() * sizeof(float)});
     }
-    
+
     return true;
 }
 
@@ -584,24 +561,24 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         LUISA_WARNING("Can not create on exists mesh.");
         return false;
     }
-    
+
     tinygltf::Model model;
     if (!load_gltf_model(model, path, true)) {
         return false;
     }
-    
+
     GltfImportData import_data = process_gltf_model(model);
     MeshBuilder &mesh_builder = import_data.mesh_builder;
-    
+
     if (mesh_builder.position.empty()) {
         return false;
     }
-    
+
     // Setup device mesh - access protected members from member function
     auto &device_mesh = IMeshImporter::device_mesh_ref(resource);
     if (!device_mesh)
         device_mesh = RC<DeviceMesh>(new DeviceMesh());
-    
+
     IMeshImporter::vertex_count_ref(resource) = mesh_builder.vertex_count();
     IMeshImporter::triangle_count_ref(resource) = 0;
     for (auto &i : mesh_builder.triangle_indices) {
@@ -611,7 +588,7 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
     IMeshImporter::set_contained_normal(resource, mesh_builder.contained_normal());
     IMeshImporter::set_contained_tangent(resource, mesh_builder.contained_tangent());
     mesh_builder.write_to(device_mesh->host_data_ref(), IMeshImporter::submesh_offsets_ref(resource));
-    
+
     // Write skinning weights
     IMeshImporter::skinning_weight_count_ref(resource) = import_data.max_weight_count;
     if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
@@ -622,12 +599,12 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
             (SkinWeight *)(device_mesh->host_data_ref().data() + start_index),
             total_weight_size};
         std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
-        
+
         // Copy skin weights (already in the correct format)
         size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
         std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinWeight));
     }
-    
+
     // Write vertex colors
     IMeshImporter::vertex_color_channels_ref(resource) = import_data.vertex_color_channels;
     if (import_data.vertex_color_channels > 0 && !import_data.all_vertex_colors.empty()) {
@@ -637,9 +614,8 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
                 (std::byte *)import_data.all_vertex_colors.data(),
                 import_data.all_vertex_colors.size() * sizeof(float)});
     }
-    
+
     return true;
 }
 
 }// namespace rbc::world
-

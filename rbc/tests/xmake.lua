@@ -3,6 +3,7 @@ includes('test_serde', 'test_graphics', 'test_ipc')
 includes("test_resource")
 includes("test_coro")
 includes("sample_anim")
+includes("model_viewer")
 
 function add_test(name, deps)
     deps = deps or {}

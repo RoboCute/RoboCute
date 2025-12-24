@@ -197,11 +197,13 @@ bool MeshResource::decode(luisa::filesystem::path const &path) {
         return false;
     }
 
-    auto *mesh_importer = dynamic_cast<IMeshImporter *>(importer);
-    if (!mesh_importer) {
+    // Avoid dynamic_cast across DLL boundaries - use resource_type() check instead
+    if (importer->resource_type() != ResourceType::Mesh) {
         LUISA_WARNING("Invalid importer type for mesh file: {}", luisa::to_string(path));
         return false;
     }
+    // Safe to use static_cast after type check
+    auto *mesh_importer = static_cast<IMeshImporter *>(importer);
 
     return mesh_importer->import(this, path);
 }
