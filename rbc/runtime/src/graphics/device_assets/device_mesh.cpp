@@ -58,8 +58,6 @@ void DeviceMesh::_async_load(
                 }
 
                 auto data_buffer = inst->lc_device().create_buffer<uint>(desired_size / sizeof(uint));
-                if (extra_data_size > 0)
-                    this_shared->_extra_data = inst->lc_device().create_buffer<uint>((extra_data_size + sizeof(uint) - 1) / sizeof(uint));
                 if (copy_to_host) {
                     *args.require_disk_io_sync = true;
                     auto &host_data = this_shared->_host_data;
@@ -73,23 +71,11 @@ void DeviceMesh::_async_load(
                         IOCommand::SrcType{host_data.data()},
                         0,
                         IOBufferSubView(data_buffer)};
-                    if (extra_data_size > 0) {
-                        args.mem_io_cmdlist << IOCommand{
-                            IOCommand::SrcType{host_data.data() + desired_size},
-                            0,
-                            IOBufferSubView(this_shared->_extra_data)};
-                    }
                 } else {
                     args.io_cmdlist << IOCommand(
                         file,
                         file_offset,
                         IOBufferSubView(data_buffer));
-                    if (extra_data_size > 0) {
-                        args.io_cmdlist << IOCommand{
-                            file,
-                            file_offset + desired_size,
-                            IOBufferSubView(this_shared->_extra_data)};
-                    }
                 }
 
                 ptr->_render_mesh_data = inst->scene_mng()->mesh_manager().load_mesh(
@@ -116,13 +102,6 @@ void DeviceMesh::_async_load(
                     data.data(),
                     0,
                     IOBufferSubView(data_buffer));
-                if (extra_data_size > 0) {
-                    this_shared->_extra_data = inst->lc_device().create_buffer<uint>((extra_data_size + sizeof(uint) - 1) / sizeof(uint));
-                    args.mem_io_cmdlist << IOCommand(
-                        data.data() + desired_size,
-                        0,
-                        IOBufferSubView(this_shared->_extra_data));
-                }
                 ptr->_render_mesh_data = inst->scene_mng()->mesh_manager().load_mesh(
                     inst->scene_mng()->bindless_allocator(),
                     args.cmdlist,
