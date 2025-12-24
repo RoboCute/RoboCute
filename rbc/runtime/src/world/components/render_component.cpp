@@ -169,7 +169,14 @@ void RenderComponent::remove_object() {
 RenderComponent::RenderComponent(Entity *entity) : ComponentDerive<RenderComponent>(entity) {
     _mesh_light_idx = ~0u;
 }
-coro::coroutine RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
+void RenderComponent::start_update_object(luisa::span<RC<MaterialResource> const> materials, MeshResource *mesh) {
+    auto c = _update_object(materials, mesh);
+    c.resume();
+    if (!c.done()) {
+        add_world_event(world::WorldEventType::BeforeFrame, std::move(c));
+    }
+}
+coro::coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
     auto tr = entity()->get_component<TransformComponent>();
     if (!tr) {
         LUISA_WARNING("Transform component not found, renderer update failed.");

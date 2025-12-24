@@ -9,8 +9,8 @@ struct Entity;
 
 struct RBC_RUNTIME_API TransformComponent final : ComponentDerive<TransformComponent> {
     DECLARE_WORLD_COMPONENT_FRIEND(TransformComponent)
-    friend void clear_dirty_transform();
-    friend void on_before_rendering();
+    RBC_RUNTIME_API friend void _zz_clear_dirty_transform();
+    RBC_RUNTIME_API friend void _zz_on_before_rendering();
 private:
     TransformComponent *_parent{};
     luisa::unordered_set<TransformComponent *> _children;

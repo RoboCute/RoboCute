@@ -58,7 +58,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
                 0, 0, -1));
         transform->set_rotation(rot, true);
         auto render = entity->add_component<world::RenderComponent>();
-        _add_task(render->update_object(_mats, cbox_mesh), render);
+        render->start_update_object(_mats, cbox_mesh);
     }
     MeshBuilder mesh_builder;
     mesh_builder.position.emplace_back(make_float3(-0.5f, -0.5f, 0));
@@ -131,10 +131,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     auto mat_start_idx = _mats.size();
     _mats.emplace_back(quad_mat);
     auto mats = luisa::span{_mats}.subspan(mat_start_idx, 1);
-    _add_task(quad_render->update_object(
-                  mats,
-                  quad_mesh),
-              quad_render);
+    quad_render->start_update_object(mats, quad_mesh);
 }
 void WorldScene::_write_scene() {
     // save scene
@@ -229,7 +226,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         for (auto &i : _entities) {
             auto render = i->get_component<world::RenderComponent>();
             if (render) {
-                _add_task(render->update_object(), render);
+                render->start_update_object();
             }
         }
     }
@@ -408,28 +405,7 @@ bool WorldScene::draw_gizmos(
     tr->set_pos(src_pos, true);
     return true;
 }
-void WorldScene::tick() {
-    auto prox_size = _render_thread_coroutines.size_approx();
-    for (auto i : vstd::range(prox_size)) {
-        std::pair<coro::coroutine, world::InstanceID> c;
-        if (!_render_thread_coroutines.try_dequeue(c)) {
-            break;
-        }
-        if (world::get_object(c.second) == nullptr || c.first.done()) {
-            continue;
-        }
-        c.first.resume();
-        if (!c.first.done()) {
-            _render_thread_coroutines.enqueue(std::move(c));
-        }
-    }
-}
-void WorldScene::_add_task(coro::coroutine &&c, world::Component *comp) {
-    c.resume();
-    if (c.done()) return;
-    std::pair<coro::coroutine, world::InstanceID> v{std::move(c), comp->instance_id()};
-    _render_thread_coroutines.enqueue(std::move(v));
-}
+
 WorldScene::~WorldScene() {
     world::dispose_resource_loader();
     _write_scene();

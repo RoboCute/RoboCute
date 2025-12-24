@@ -254,7 +254,6 @@ int main(int argc, char *argv[]) {
                 //     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
                 // }
                 click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
-                world_scene->tick();
                 utils.tick(
                     static_cast<float>(delta_time),
                     frame_index,

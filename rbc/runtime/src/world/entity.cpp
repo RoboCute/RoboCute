@@ -1,10 +1,49 @@
 #include <rbc_world/entity.h>
 #include <rbc_world/component.h>
 #include <rbc_world/type_register.h>
+#include <rbc_core/runtime_static.h>
 
 namespace rbc::world {
+struct GlobalEvents {
+    struct Event {
+        rbc::shared_atomic_mutex mtx;
+        luisa::unordered_map<uint64_t, coro::coroutine> map;
+    };
+    std::array<Event, world_event_count> _events;
+};
+static RuntimeStatic<GlobalEvents> _entity_events;
+void Component::_zz_invoke_world_event(WorldEventType event_type) {
+    auto &evt = _entity_events->_events;
+    auto &map = evt[luisa::to_underlying(event_type)];
+    std::shared_lock lck{map.mtx};
+    for (auto iter = map.map.begin(); iter != map.map.end();) {
+        InstanceID inst_id{iter->first};
+        auto &coro = iter->second;
+        if (!get_object(inst_id)) {
+            iter = map.map.erase(iter);
+            continue;
+        }
+        coro.resume();
+        if (coro.done()) {
+            iter = map.map.erase(iter);
+            continue;
+        }
+        ++iter;
+    }
+}
+void Component::add_world_event(WorldEventType event_type, rbc::coro::coroutine &&coro) {
+    auto &evt = _entity_events->_events;
+    auto &map = evt[luisa::to_underlying(event_type)];
+    std::lock_guard lck{map.mtx};
+    map.map.force_emplace(instance_id()._placeholder, std::move(coro));
+}
+void Component::remove_world_event(WorldEventType event_type) {
+    auto &evt = _entity_events->_events;
+    auto &map = evt[luisa::to_underlying(event_type)];
+    std::lock_guard lck{map.mtx};
+    map.map.erase(instance_id()._placeholder);
+}
 Entity::Entity() {
-
 }
 Entity::~Entity() {
     for (auto &i : _components) {
@@ -45,7 +84,7 @@ Component *Entity::get_component(TypeInfo const &type) {
     LUISA_DEBUG_ASSERT(comp->entity() == this);
     return comp;
 }
-void Entity::serialize_meta(ObjSerialize const&ser) const {
+void Entity::serialize_meta(ObjSerialize const &ser) const {
     ser.ser.start_array();
     for (auto &i : _components) {
         auto comp = i.second;
@@ -60,7 +99,7 @@ void Entity::serialize_meta(ObjSerialize const&ser) const {
     }
     ser.ser.add_last_scope_to_object("components");
 }
-void Entity::deserialize_meta(ObjDeSerialize const&ser) {
+void Entity::deserialize_meta(ObjDeSerialize const &ser) {
     uint64_t size;
     if (!ser.ser.start_array(size, "components")) return;
     _components.reserve(size);
@@ -85,7 +124,6 @@ void Entity::_remove_component(Component *component) {
     LUISA_DEBUG_ASSERT(iter != _components.end());
     _components.erase(iter);
     component->_clear_entity();
-
 }
 
 void Component::_remove_self_from_entity() {

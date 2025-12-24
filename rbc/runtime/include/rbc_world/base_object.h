@@ -38,16 +38,15 @@ T *create_object_with_guid(vstd::Guid const &guid) {
 }
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object(vstd::Guid const &type_info);
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
-[[nodiscard]] RBC_RUNTIME_API BaseObject *create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
+[[nodiscard]] RBC_RUNTIME_API BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
 [[nodiscard]] RBC_RUNTIME_API BaseObject *get_object(InstanceID instance_id);
 [[nodiscard]] RBC_RUNTIME_API BaseObject *get_object(vstd::Guid const &guid);
 [[nodiscard]] RBC_RUNTIME_API RC<BaseObject> get_object_ref(InstanceID instance_id);
 [[nodiscard]] RBC_RUNTIME_API RC<BaseObject> get_object_ref(vstd::Guid const &guid);
 [[nodiscard]] RBC_RUNTIME_API uint64_t object_count();
 [[nodiscard]] RBC_RUNTIME_API BaseObjectType base_type_of(vstd::Guid const &type_id);
-[[nodiscard]] RBC_RUNTIME_API luisa::span<InstanceID const> get_dirty_transforms();
-RBC_RUNTIME_API void clear_dirty_transform();
-RBC_RUNTIME_API void on_before_rendering();
+RBC_RUNTIME_API void _zz_clear_dirty_transform();
+RBC_RUNTIME_API void _zz_on_before_rendering();
 
 template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive;
@@ -67,11 +66,11 @@ struct BaseObject : RCBase {
     template<typename T>
     friend struct ComponentDerive;
     friend struct Entity;
-    friend BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
-    friend BaseObject *create_object(vstd::Guid const &type_info);
-    friend BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid);
-    friend BaseObject *create_object(rbc::TypeInfo const &type_info);
-    friend BaseObject *create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
+    RBC_RUNTIME_API friend BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
+    RBC_RUNTIME_API friend BaseObject *create_object(vstd::Guid const &type_info);
+    RBC_RUNTIME_API friend BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid);
+    RBC_RUNTIME_API friend BaseObject *create_object(rbc::TypeInfo const &type_info);
+    RBC_RUNTIME_API friend BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
     inline void rbc_rc_delete() {
         dispose();
     }

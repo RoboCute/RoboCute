@@ -18,7 +18,6 @@ struct WorldScene {
     RC<world::TextureResource> tex{};
     luisa::vector<world::Entity *> _entities;
     luisa::vector<RC<world::MaterialResource>> _mats;
-    ConcurrentQueue<std::pair<coro::coroutine, world::InstanceID>> _render_thread_coroutines;
 
     struct Gizmos : RCBase {
         Buffer<uint> data;
@@ -40,9 +39,7 @@ struct WorldScene {
         double3 const &cam_pos,
         float cam_far_plane,
         Camera const &cam);
-    void tick();
 private:
-    void _add_task(coro::coroutine &&c, world::Component *comp);
     RC<Gizmos> _gizmos;
     void _init_scene(GraphicsUtils *utils);
     void _set_gizmos();

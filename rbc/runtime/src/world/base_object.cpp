@@ -175,7 +175,7 @@ BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid cons
     return ptr;
 }
 
-BaseObject *create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type) {
+BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(reinterpret_cast<std::array<uint64_t, 2> const &>(type_info));
     if (iter == _world_inst->_create_funcs.end()) {
@@ -186,10 +186,6 @@ BaseObject *create_object_with_guid_test_base(vstd::Guid const &type_info, vstd:
     ptr->init_with_guid(guid);
     return ptr;
 }
-
-[[nodiscard]] luisa::span<InstanceID const> get_dirty_transforms() {
-    return dirty_transforms();
-}
 BaseObjectType base_type_of(vstd::Guid const &type_id) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(
@@ -198,7 +194,7 @@ BaseObjectType base_type_of(vstd::Guid const &type_id) {
         return BaseObjectType::Custom;
     return iter->second->base_type();
 }
-void clear_dirty_transform() {
+void _zz_clear_dirty_transform() {
     auto &v = dirty_transforms();
     for (auto &i : v) {
         auto obj = get_object(i);
@@ -214,7 +210,7 @@ uint64_t object_count() {
     return _world_inst->_instance_ids.size();
 }
 
-void on_before_rendering() {
+void _zz_on_before_rendering() {
     _collect_all_materials();
     for (auto &i : dirty_transforms()) {
         auto tr_obj = get_object(i);
@@ -224,6 +220,6 @@ void on_before_rendering() {
         auto tr = static_cast<TransformComponent *>(tr_obj);
         tr->_execute_on_update_event();
     }
-    clear_dirty_transform();
+    _zz_clear_dirty_transform();
 }
 }// namespace rbc::world

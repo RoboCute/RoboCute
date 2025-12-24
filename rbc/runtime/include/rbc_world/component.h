@@ -1,7 +1,14 @@
 #pragma once
 #include <rbc_world/base_object.h>
+#include <rbc_core/coroutine.h>
 namespace rbc::world {
 struct Entity;
+enum struct WorldEventType {
+    BeforeFrame,
+    BeforeRender,
+    AfterFrame,
+};
+static constexpr size_t world_event_count = luisa::to_underlying(WorldEventType::AfterFrame) + 1;
 // events from front to back
 struct Component : BaseObject {
     friend struct Entity;
@@ -12,10 +19,13 @@ private:
     RBC_RUNTIME_API void _remove_self_from_entity();
     explicit Component(Entity *entity);
     ~Component();
-    
+
     RBC_RUNTIME_API void _clear_entity();
-protected:
 public:
+    // should only be called internally
+    RBC_RUNTIME_API static void _zz_invoke_world_event(WorldEventType event_type);
+    RBC_RUNTIME_API void add_world_event(WorldEventType event_type, rbc::coro::coroutine &&coro);
+    RBC_RUNTIME_API void remove_world_event(WorldEventType event_type);
     virtual void on_awake() {};
     virtual void on_destroy() {};
     static constexpr BaseObjectType base_object_type_v = BaseObjectType::Component;
@@ -39,6 +49,5 @@ protected:
     ~ComponentDerive() {
         Component::_remove_self_from_entity();
     }
-
 };
 }// namespace rbc::world

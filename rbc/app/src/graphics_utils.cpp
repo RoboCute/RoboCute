@@ -9,6 +9,7 @@
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_render/renderer_data.h>
 #include <rbc_world/base_object.h>
+#include <rbc_world/component.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -157,6 +158,7 @@ void GraphicsUtils::tick(
     uint2 resolution,
     TickStage tick_stage) {
     AssetsManager::instance()->wake_load_thread();
+    world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeFrame);
     std::unique_lock render_lck{_render_device.render_loop_mtx()};
     _sm->prepare_frame();
     if (_require_reset) {
@@ -239,7 +241,8 @@ void GraphicsUtils::tick(
             break;
     }
     auto &cmdlist = _render_device.lc_main_cmd_list();
-    rbc::world::on_before_rendering();
+    rbc::world::_zz_on_before_rendering();
+    world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeRender);
     _lights->mesh_light_accel.update_frame(_frame_mem_io_list);
     if (!_frame_mem_io_list.empty()) {
         _mem_io_fence = _render_device.mem_io_service()->execute(std::move(_frame_mem_io_list));
@@ -286,6 +289,7 @@ void GraphicsUtils::tick(
     if (_swapchain)
         _present_stream << _swapchain.present(_dst_image);
     render_lck.unlock();
+    world::Component::_zz_invoke_world_event(world::WorldEventType::AfterFrame);
     // for (auto &i : rpc_hook.shared_window.swapchains) {
     //     _present_stream << i.second.present(dst_img);
     // }

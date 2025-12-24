@@ -300,7 +300,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         remove_value();
         return {};
     }
-    res = static_cast<Resource *>(create_object_with_guid_test_base(type_id, guid, BaseObjectType::Resource));
+    res = static_cast<Resource *>(_zz_create_object_with_guid_test_base(type_id, guid, BaseObjectType::Resource));
     if (!res) [[unlikely]] {
         remove_value();
         return {};
