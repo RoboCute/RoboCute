@@ -8,12 +8,19 @@ struct SkinWeight {
     int32_t joint_id;
     float weight;
 };
+// Forward declarations for friend classes
+struct IMeshImporter;
+
 struct RBC_RUNTIME_API MeshResource final : ResourceBaseImpl<MeshResource> {
     DECLARE_WORLD_OBJECT_FRIEND(MeshResource)
     using BaseType = ResourceBaseImpl<MeshResource>;
+
+    friend struct IMeshImporter;
+
 private:
     RC<DeviceMesh> _device_mesh;
     mutable rbc::shared_atomic_mutex _async_mtx;
+
     // meta
     vstd::vector<uint> _submesh_offsets;
     uint32_t _vertex_count{};
@@ -23,6 +30,7 @@ private:
     bool _contained_tangent : 1 {};
     uint _vertex_color_channels{};
     uint _skinning_weight_count{};
+
     MeshResource();
     ~MeshResource();
     // extra_data:
@@ -62,10 +70,16 @@ public:
     void deserialize_meta(ObjDeSerialize const &ser) override;
     void dispose() override;
     rbc::coro::coroutine _async_load() override;
+
 protected:
     bool _async_load_from_file();
     bool unsafe_save_to_path() const override;
     void _unload() override;
 };
 }// namespace rbc::world
+
+// Include importer header after MeshResource definition
+// This ensures ObjMeshImporter is fully defined when used
+#include <rbc_world/importers/mesh_importer_obj.h>
+
 RBC_RTTI(rbc::world::MeshResource)

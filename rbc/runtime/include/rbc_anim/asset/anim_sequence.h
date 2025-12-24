@@ -3,6 +3,8 @@
 
 namespace rbc {
 
+struct AnimOptimizationOverride {};
+
 // The Runtime AnimSequence Asset
 struct AnimSequence final {
 public:
