@@ -64,7 +64,7 @@ void TextureLoader::process_texture(RC<TextureResource> const &tex, uint mip_lev
             tex->pack_to_tile();
         }
     };
-    
+
     if (mip_level > 1) {
         auto mip_size = tex->size();
         auto desire_mip_level = 0;
@@ -145,21 +145,21 @@ RC<TextureResource> TextureLoader::decode_texture(
     bool to_vt) {
 
     if (!luisa::filesystem::exists(path)) return {};
-    
+
     auto &registry = ResourceImporterRegistry::instance();
     auto *importer = registry.find_importer(path, ResourceType::Texture);
-    
+
     if (!importer) {
         LUISA_WARNING("No importer found for texture file: {}", luisa::to_string(path));
         return {};
     }
-    
-    auto *texture_importer = dynamic_cast<ITextureImporter*>(importer);
+
+    auto *texture_importer = dynamic_cast<ITextureImporter *>(importer);
     if (!texture_importer) {
         LUISA_WARNING("Invalid importer type for texture file: {}", luisa::to_string(path));
         return {};
     }
-    
+
     auto result = texture_importer->import(this, path, mip_level, to_vt);
     if (result) {
         process_texture(result, mip_level, to_vt);
@@ -226,6 +226,7 @@ bool TextureResource::pack_to_tile() {
     _is_vt = true;
     return true;
 }
+
 void TextureLoader::finish_task() {
     {
         std::lock_guard lck{_mtx};

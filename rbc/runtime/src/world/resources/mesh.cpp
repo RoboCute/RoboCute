@@ -181,5 +181,30 @@ luisa::span<float const> MeshResource::vertex_colors() const {
         (float *)(skin_weights().data() + skin_weights().size()),
         _vertex_color_channels * _vertex_count};
 }
+
+// import
+bool MeshResource::decode(luisa::filesystem::path const &path) {
+    if (!empty()) [[unlikely]] {
+        LUISA_WARNING("Can not create on exists mesh.");
+        return false;
+    }
+
+    auto &registry = ResourceImporterRegistry::instance();
+    auto *importer = registry.find_importer(path, ResourceType::Mesh);
+
+    if (!importer) {
+        LUISA_WARNING("No importer found for mesh file: {}", luisa::to_string(path));
+        return false;
+    }
+
+    auto *mesh_importer = dynamic_cast<IMeshImporter *>(importer);
+    if (!mesh_importer) {
+        LUISA_WARNING("Invalid importer type for mesh file: {}", luisa::to_string(path));
+        return false;
+    }
+
+    return mesh_importer->import(this, path);
+}
+
 DECLARE_WORLD_OBJECT_REGISTER(MeshResource)
 }// namespace rbc::world
