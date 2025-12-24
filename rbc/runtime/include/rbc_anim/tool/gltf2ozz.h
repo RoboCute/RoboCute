@@ -5,7 +5,7 @@
 #include "ozz/animation/offline/tools/import2ozz.h"
 #include "tiny_gltf.h"
 
-namespace skr {
+namespace rbc {
 
 class GltfOzzImporter : public ozz::animation::offline::OzzImporter {
 public:
@@ -58,4 +58,4 @@ private:
     tinygltf::Model m_model;
 };
 
-}// namespace skr
+}// namespace rbc

@@ -11,13 +11,14 @@
  */
 
 #include "rbc_world/resource_base.h"
+#include "rbc_world/resource_importer.h"
 
 namespace rbc {
 
-struct SkelmeshResource : world::ResourceBaseImpl<SkelmeshResource> {
+struct SkelMeshResource : world::ResourceBaseImpl<SkelMeshResource> {
 
-    using BaseType = world::ResourceBaseImpl<SkelmeshResource>;
-    DECLARE_WORLD_OBJECT_FRIEND(SkelmeshResource)
+    using BaseType = world::ResourceBaseImpl<SkelMeshResource>;
+    DECLARE_WORLD_OBJECT_FRIEND(SkelMeshResource)
     void dispose() override;
 
     void serialize_meta(world::ObjSerialize const &ser) const override;
@@ -31,4 +32,15 @@ protected:
 };
 
 }// namespace rbc
-RBC_RTTI(rbc::SkelmeshResource)
+RBC_RTTI(rbc::SkelMeshResource)
+
+namespace rbc {
+
+struct RBC_RUNTIME_API ISkelMeshImporter : world::IResourceImporter {
+    [[nodiscard]] world::ResourceType resource_type() const override { return world::ResourceType::SkelMesh; }
+    virtual bool import(SkelMeshResource *resource, luisa::filesystem::path const &path) = 0;
+
+protected:
+};
+
+}// namespace rbc

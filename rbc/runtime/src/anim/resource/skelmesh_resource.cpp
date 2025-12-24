@@ -3,26 +3,26 @@
 
 namespace rbc {
 
-void SkelmeshResource::serialize_meta(world::ObjSerialize const &ser) const {
+void SkelMeshResource::serialize_meta(world::ObjSerialize const &ser) const {
     BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
 }
 
-void SkelmeshResource::deserialize_meta(world::ObjDeSerialize const &ser) {
+void SkelMeshResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     BaseType::deserialize_meta(ser);
 }
 
-rbc::coro::coroutine SkelmeshResource::_async_load() {
+rbc::coro::coroutine SkelMeshResource::_async_load() {
     co_return;
 }
 
-bool SkelmeshResource::unsafe_save_to_path() const {
+bool SkelMeshResource::unsafe_save_to_path() const {
     return {};
 }
 
-void SkelmeshResource::_unload() {
+void SkelMeshResource::_unload() {
 }
 
 // dispose declared here
-DECLARE_WORLD_OBJECT_REGISTER(SkelmeshResource)
+DECLARE_WORLD_OBJECT_REGISTER(SkelMeshResource)
 
 }// namespace rbc

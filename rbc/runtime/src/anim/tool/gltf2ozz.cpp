@@ -405,7 +405,7 @@ bool CreateNodeTransform(const tinygltf::Node &_node, ozz::math::Transform *_tra
 }
 }// namespace
 
-namespace skr {
+namespace rbc {
 
 GltfOzzImporter::GltfOzzImporter() {
     // We don't care about image data but we have to provide this callback
@@ -805,7 +805,7 @@ const tinygltf::Node *GltfOzzImporter::FindNodeByName(const std::string &_name) 
     return nullptr;
 }
 
-}// namespace skr
+}// namespace rbc
 
 // use case
 // int main(int _argc, const char** _argv) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rbc_world/resource_base.h"
+#include "rbc_world/resource_importer.h"
 
 namespace rbc {
 
@@ -22,3 +23,13 @@ protected:
 
 }// namespace rbc
 RBC_RTTI(rbc::AnimGraphResource)
+
+namespace rbc {
+
+struct RBC_RUNTIME_API IAnimGraphImporter : world::IResourceImporter {
+    [[nodiscard]] world::ResourceType resource_type() const override { return world::ResourceType::AnimGraph; }
+    virtual bool import(AnimGraphResource *resource, luisa::filesystem::path const &path) = 0;
+protected:
+};
+
+}// namespace rbc
