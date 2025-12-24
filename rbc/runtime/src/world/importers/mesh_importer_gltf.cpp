@@ -285,6 +285,10 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     mesh_builder.tangent.resize(vertex_offset);
                 }
                 mesh_builder.tangent.insert(mesh_builder.tangent.end(), tangents.begin(), tangents.end());
+            } else if (!mesh_builder.tangent.empty()) {
+                // If tangent array already exists but this primitive has no tangents,
+                // add default tangents to maintain array size consistency
+                mesh_builder.tangent.insert(mesh_builder.tangent.end(), vertex_count, float4(0, 0, 0, 1));
             }
 
             // Add indices (with vertex offset)
@@ -323,6 +327,39 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     (Triangle const *)(mesh_builder.triangle_indices[0].data()),
                     mesh_builder.triangle_indices[0].size() / 3},
                 1);
+        }
+    }
+    
+    // Ensure tangent array size matches position array size
+    // If tangents exist but are incomplete, recalculate all tangents to ensure consistency
+    if (!mesh_builder.tangent.empty() && mesh_builder.tangent.size() != mesh_builder.vertex_count()) {
+        if (mesh_builder.uv_count() > 0 && !mesh_builder.normal.empty()) {
+            // Recalculate all tangents if we have UVs and normals
+            mesh_builder.tangent.resize(mesh_builder.vertex_count());
+            if (mesh_builder.triangle_indices.size() > 1) {
+                luisa::vector<Triangle> triangles;
+                uint64_t size = 0;
+                for (auto &i : mesh_builder.triangle_indices) {
+                    size += i.size() / 3;
+                }
+                triangles.reserve(size);
+                for (auto &i : mesh_builder.triangle_indices) {
+                    vstd::push_back_all(triangles, luisa::span{(Triangle *)i.data(), i.size() / 3});
+                }
+                calculate_tangent(mesh_builder.position, mesh_builder.uvs[0], mesh_builder.tangent, triangles, 1);
+            } else if (!mesh_builder.triangle_indices.empty()) {
+                calculate_tangent(
+                    mesh_builder.position,
+                    mesh_builder.uvs[0],
+                    mesh_builder.tangent,
+                    luisa::span{
+                        (Triangle const *)(mesh_builder.triangle_indices[0].data()),
+                        mesh_builder.triangle_indices[0].size() / 3},
+                    1);
+            }
+        } else {
+            // Fill missing tangents with default values if we can't calculate them
+            mesh_builder.tangent.resize(mesh_builder.vertex_count(), float4(0, 0, 0, 1));
         }
     }
 

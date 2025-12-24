@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;
-    
+
     luisa::fiber::scheduler scheduler;
     RuntimeStaticBase::init_all();
     auto dispose_runtime_static = vstd::scope_exit([] {
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     if (argc >= 2) {
         backend = argv[1];
     }
-    
+
     GraphicsUtils utils;
     PluginManager::init();
     utils.init_device(
@@ -61,11 +61,11 @@ int main(int argc, char *argv[]) {
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
     utils.init_display_with_window(luisa::string{"model_viewer_"} + utils.backend_name(), uint2(1024), true);
-    
+
     uint64_t frame_index = 0;
     Clock clk;
     double last_frame_time = 0;
-    
+
     // Initialize world resource loader
     auto &render_device = RenderDevice::instance();
     auto runtime_dir = render_device.lc_ctx().runtime_directory();
@@ -73,8 +73,9 @@ int main(int argc, char *argv[]) {
     if (!luisa::filesystem::exists(resource_dir)) {
         luisa::filesystem::create_directories(resource_dir);
     }
+
     world::init_resource_loader(resource_dir);
-    
+
     // Load skybox
     RC<world::TextureResource> skybox;
     {
@@ -100,73 +101,80 @@ int main(int argc, char *argv[]) {
             LUISA_WARNING("Skybox file not found at: {}, rendering without skybox", luisa::to_string(sky_path));
         }
     }
-    
+
     // Load GLTF model using runtime loader
-    luisa::filesystem::path gltf_path = "d:/ws/data/assets/models/Cube/Cube.gltf";
+    // luisa::filesystem::path gltf_path = "d:/ws/data/assets/models/Cube/Cube.gltf";
+    luisa::filesystem::path gltf_path = "d:/ws/data/assets/models/sponza/scene.gltf";
     if (argc >= 3) {
         gltf_path = argv[2];
     }
-    
+
     RC<world::Entity> entity;
+    RC<world::MeshResource> loaded_mesh;
+    luisa::vector<RC<world::MaterialResource>> loaded_materials;
     {
         RBCZoneScopedN("Load GLTF Scene");
         auto scene_data = world::GltfSceneLoader::load_scene(gltf_path);
-        
+
         if (!scene_data.mesh || scene_data.mesh->empty()) {
             LUISA_ERROR("Failed to load GLTF model from: {}", luisa::to_string(gltf_path));
             return 1;
         }
-        
+
+        // Store resources for cleanup
+        loaded_mesh = scene_data.mesh;
+        loaded_materials = std::move(scene_data.materials);
+
         // Initialize mesh device resource
-        scene_data.mesh->init_device_resource();
-        utils.update_mesh_data(scene_data.mesh->device_mesh().get(), false);
-        
+        loaded_mesh->init_device_resource();
+        utils.update_mesh_data(loaded_mesh->device_mesh().get(), false);
+
         // Initialize texture device resources
         for (auto &tex : scene_data.textures) {
             if (tex) {
                 utils.update_texture(tex->get_image());
             }
         }
-        
+
         // Ensure we have enough materials for all submeshes
-        size_t submesh_count = scene_data.mesh->submesh_count();
-        while (scene_data.materials.size() < submesh_count) {
+        size_t submesh_count = loaded_mesh->submesh_count();
+        while (loaded_materials.size() < submesh_count) {
             // Use the first material or create a default one
-            if (!scene_data.materials.empty()) {
-                scene_data.materials.push_back(scene_data.materials[0]);
+            if (!loaded_materials.empty()) {
+                loaded_materials.push_back(loaded_materials[0]);
             } else {
                 auto default_mat = RC<world::MaterialResource>(world::create_object<world::MaterialResource>());
                 default_mat->load_from_json(R"({"type": "pbr", "base_albedo": [0.8, 0.8, 0.8]})");
-                scene_data.materials.push_back(std::move(default_mat));
+                loaded_materials.push_back(std::move(default_mat));
             }
         }
-        
+
         // Initialize materials
-        for (auto &mat : scene_data.materials) {
+        for (auto &mat : loaded_materials) {
             if (mat) {
                 mat->init_device_resource();
             }
         }
-        
+
         // Create entity with the loaded mesh
         entity = world::create_object<world::Entity>();
         auto transform = entity->add_component<world::TransformComponent>();
         transform->set_pos(double3(0, 0, 0), true);
-        
+
         auto render = entity->add_component<world::RenderComponent>();
-        render->start_update_object(scene_data.materials, scene_data.mesh.get());
+        render->start_update_object(loaded_materials, loaded_mesh.get());
     }
-    
+
     // Camera setup
     auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
     CameraController cam_controller;
     cam_controller.camera = &cam;
     cam.fov = radians(80.f);
     cam.position = double3(0, 0, 5);
-    
+
     CameraController::Input camera_input;
     uint2 window_size = utils.window()->size();
-    
+
     utils.window()->set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
         if (button == MOUSE_BUTTON_2) {
             if (action == Action::ACTION_PRESSED) {
@@ -176,11 +184,11 @@ int main(int argc, char *argv[]) {
             }
         }
     });
-    
+
     utils.window()->set_cursor_position_callback([&](float2 xy) {
         camera_input.mouse_cursor_pos = xy;
     });
-    
+
     utils.window()->set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
         bool pressed = (action == Action::ACTION_PRESSED);
         switch (key) {
@@ -211,30 +219,30 @@ int main(int argc, char *argv[]) {
                 break;
         }
     });
-    
+
     utils.window()->set_window_size_callback([&](uint2 size) {
         window_size = size;
     });
-    
+
     while (!utils.should_close()) {
         RBCFrameMark;
-        
+
         {
             RBCZoneScopedN("Main Loop");
-            
+
             {
                 RBCZoneScopedN("Poll Events");
                 if (utils.window())
                     utils.window()->poll_events();
             }
-            
+
             auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
             if (any(window_size != utils.dst_image().size())) {
                 RBCZoneScopedN("Resize Swapchain");
                 utils.resize_swapchain(window_size);
                 frame_index = 0;
             }
-            
+
             float delta_time = 0.0f;
             {
                 RBCZoneScopedN("Update Camera");
@@ -248,7 +256,7 @@ int main(int argc, char *argv[]) {
                     frame_index = 0;
                 last_frame_time = time;
             }
-            
+
             {
                 RBCZoneScopedN("Render Tick");
                 auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
@@ -258,19 +266,27 @@ int main(int argc, char *argv[]) {
                     window_size,
                     tick_stage);
             }
-            
+
             ++frame_index;
             RBCPlot("Frame Index", static_cast<float>(frame_index));
         }
     }
-    
-    utils.dispose([&]() {
-        world::dispose_resource_loader();
-        entity->dispose();
 
+    utils.dispose([&]() {
+        // remove ref-counted resources
+        loaded_materials.clear();
+        loaded_mesh.reset();
+        skybox.reset();
+        // Dispose entity first
+        if (entity) {
+            entity->dispose();
+            entity.reset();
+        }
+        // Dispose resource loader
+        world::dispose_resource_loader();
+        // Destroy world (this will check for leaks)
         world::destroy_world();
     });
-    
+
     return 0;
 }
-
