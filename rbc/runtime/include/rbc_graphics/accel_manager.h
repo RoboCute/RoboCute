@@ -48,7 +48,6 @@ public:
         AccelElement &operator=(AccelElement &&) = default;
         ~AccelElement() = default;
     };
-
 private:
     Shader1D<Accel, Buffer<float4x4>> const *_update_last_transform{nullptr};
     Shader1D<Accel, Buffer<float4x4>, float3> const *_move_the_world{nullptr};
@@ -198,6 +197,7 @@ public:
         float4x4 const &transform,
         uint8_t visibility_mask = 0xffu);
     void init_accel(CommandList &cmdlist);
+    void dispose_accel(CommandList &cmdlist, DisposeQueue& disp_queue);
 
     void move_the_world(
         CommandList &cmdlist,

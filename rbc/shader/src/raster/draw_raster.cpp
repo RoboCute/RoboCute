@@ -1,3 +1,5 @@
+#define DEBUG
+#include <luisa/printer.hpp>
 #include <luisa/std.hpp>
 #include <material/mats.hpp>
 #include <sampling/sample_funcs.hpp>
@@ -46,6 +48,7 @@ struct RasterBasicParameter {
     auto user_id = id.x;
     auto prim_id = id.y;
     auto bary = bit_cast<float2>(id.zw);
+
     auto inst_info = g_buffer_heap.uniform_idx_buffer_read<geometry::InstanceInfo>(heap_indices::inst_buffer_heap_idx, user_id);
     geometry::Triangle triangle;
     bool contained_normal;
@@ -54,7 +57,7 @@ struct RasterBasicParameter {
     auto vertices = geometry::read_vertices(g_buffer_heap, prim_id, inst_info.mesh, contained_normal, contained_tangent, contained_uv, triangle);
     auto mat_meta = material::mat_meta(g_buffer_heap, heap_indices::mat_idx_buffer_heap_idx, inst_info.mesh.submesh_heap_idx, inst_info.mat_index, prim_id);
     auto inst_transform = transform_buffer.read(user_id);
-    auto local_pos = interpolate(bary, vertices[0].pos, vertices[1].pos, vertices[2].pos);
+    auto local_pos = interpolate(bary, vertices[2].pos, vertices[0].pos, vertices[1].pos);
     std::array<float3, 3> vert_poses;
     std::array<float3, 3> vert_normals;
     float3 world_pos;
@@ -68,10 +71,9 @@ struct RasterBasicParameter {
     plane_normal = cross(vert_poses[0] - vert_poses[1], vert_poses[0] - vert_poses[2]);
     plane_normal = normalize(plane_normal);
     world_pos = (inst_transform * float4(local_pos, 1)).xyz;
-    uv = interpolate(bary, vertices[0].uvs[0], vertices[1].uvs[0], vertices[2].uvs[0]);
-
+    uv = interpolate(bary, vertices[2].uvs[0], vertices[0].uvs[0], vertices[1].uvs[0]);
     if (contained_normal) {
-        vertices_normal = interpolate(bary, vertices[0].normal, vertices[1].normal, vertices[2].normal);
+        vertices_normal = interpolate(bary, vertices[2].normal, vertices[0].normal, vertices[1].normal);
         vertices_normal = normalize((inst_transform * float4(vertices_normal, 0)).xyz);
         if (dot(ray_dir, plane_normal) * dot(ray_dir, vertices_normal) < 0.0f) {
             vertices_normal = plane_normal;
@@ -82,7 +84,7 @@ struct RasterBasicParameter {
     RasterBasicParameter basic_param;
 
     if (contained_tangent) {
-        auto tangent = interpolate(bary, vertices[0].tangent, vertices[1].tangent, vertices[2].tangent);
+        auto tangent = interpolate(bary, vertices[2].tangent, vertices[0].tangent, vertices[1].tangent);
         basic_param.geometry.onb.tangent = normalize(inst_transform * float4(tangent.xyz, 0)).xyz;
         basic_param.geometry.onb.bitangent = normalize(cross(vertices_normal, tangent.xyz));
         basic_param.geometry.onb.normal = vertices_normal;
@@ -108,11 +110,10 @@ struct RasterBasicParameter {
         ray_dir,
         world_pos,
         reject);
-    if (basic_param.geometry.thin_walled && dot(ray_dir, vertices_normal) >= 0.0f) {
+    if (dot(basic_param.geometry.onb.normal, ray_dir) <= 0) {
         basic_param.geometry.onb.normal = -basic_param.geometry.onb.normal;
     }
-
-    float3 diffuse_color = light_color * dot(basic_param.geometry.onb.normal, light_dir) * basic_param.base.color.origin();
+    float3 diffuse_color = light_color * sqrt(saturate(dot(basic_param.geometry.onb.normal, light_dir))) * basic_param.base.color.origin();
     float3 color = diffuse_color + basic_param.emission.luminance.origin();
     img.write(coord, float4(color, 1));
     return 0;

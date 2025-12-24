@@ -15,12 +15,15 @@ private:
     RasterShader<Buffer<geometry::RasterElement>, raster::VertArgs> const *_draw_id_shader;
     Shader2D<Image<uint>, uint4> const *_clear_id;
     Shader2D<Image<uint>, Image<float>> const *_shading_id;
+    ShaderBase const *_shading{};
+
 public:
     void on_enable(
         Pipeline const &pipeline,
         Device &device,
         CommandList &cmdlist,
         SceneManager &scene) override;
+    void early_update(Pipeline const &pipeline, PipelineContext const &ctx) override;
     void update(Pipeline const &pipeline, PipelineContext const &ctx) override;
     void on_disable(
         Pipeline const &pipeline,
