@@ -21,7 +21,7 @@ local function rbc_runtime_impl()
         inherit = false,
         links = false
     })
-    add_deps('tinyexr', 'tiny_obj_loader', 'stb-image', 'open_fbx', 'tinytiff') -- thirdparty
+    add_deps('tinyexr', 'tiny_obj_loader', 'stb-image', 'open_fbx', 'tinytiff', "tinygltf") -- thirdparty
 
     -- add_interface_deps('rbc_render_plugin')
     add_deps('lc-volk')

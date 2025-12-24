@@ -5,9 +5,11 @@
 #include <luisa/core/stl/filesystem.h>
 #include <luisa/vstl/common.h>
 #include <luisa/core/stl/string.h>
+#include <luisa/runtime/rtx/triangle.h>
 #include <rbc_config.h>
 namespace rbc {
 using namespace luisa;
+using namespace luisa::compute;
 template<typename Derive>
 struct MeshBuilderBase {
     [[nodiscard]] uint vertex_count() const;
@@ -96,4 +98,20 @@ struct RBC_RUNTIME_API MeshBuilderSpan : MeshBuilderBase<MeshBuilderSpan> {
 private:
     void _gen_submesh_offsets(luisa::vector<uint> &submesh_offsets) const;
 };
+
+/**
+ * @brief Calculate tangent vectors for mesh vertices
+ * @param positions Vertex positions
+ * @param uvs Texture coordinates
+ * @param tangents Output tangent vectors (will be resized to match positions size)
+ * @param triangles Triangle indices
+ * @param tangent_w Tangent W component (handedness)
+ */
+RBC_RUNTIME_API void calculate_tangent(
+    luisa::span<float3 const> positions,
+    luisa::span<float2 const> uvs,
+    luisa::span<float4> tangents,
+    luisa::span<Triangle const> triangles,
+    float tangent_w);
+
 }// namespace rbc

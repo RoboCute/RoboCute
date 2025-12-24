@@ -1,5 +1,6 @@
 #include <rbc_world/resource_importer.h>
 #include <rbc_world/importers/mesh_importer_obj.h>
+#include <rbc_world/importers/mesh_importer_gltf.h>
 #include <rbc_world/importers/texture_importer_stb.h>
 
 namespace rbc::world {
@@ -14,6 +15,12 @@ RBC_RUNTIME_API void register_builtin_importers() {
     // Register mesh importers
     static ObjMeshImporter obj_mesh_importer;
     registry.register_importer(&obj_mesh_importer);
+    
+    static GltfMeshImporter gltf_mesh_importer;
+    registry.register_importer(&gltf_mesh_importer);
+    
+    static GlbMeshImporter glb_mesh_importer;
+    registry.register_importer(&glb_mesh_importer);
 
     // Register texture importers
     // StbTextureImporter handles multiple formats (.png, .jpg, .jpeg, .bmp, .gif, .psd, .pnm, .tga)

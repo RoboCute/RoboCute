@@ -7,7 +7,7 @@ includes("open_fbx")
 includes("cpp-ipc")
 
 -- includes('cppitertools_xmake.lua')
--- includes('tinygltf_xmake.lua')
+includes('tinygltf_xmake.lua')
 -- includes('dylib_xmake.lua')
 -- includes('libigl_xmake.lua')
 -- includes('eigen_xmake.lua')
