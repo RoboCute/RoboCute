@@ -5,6 +5,7 @@
 namespace rbc ::world {
 struct Resource;
 struct ResourceLoader;
+struct IResourceImporter;
 template<typename Derive>
 struct ResourceBaseImpl;
 enum struct EResourceLoadingStatus : uint8_t {
@@ -14,6 +15,7 @@ enum struct EResourceLoadingStatus : uint8_t {
 };
 struct Resource : BaseObject {
     friend struct ResourceLoader;
+    friend struct IResourceImporter;
     template<typename Derive>
     friend struct ResourceBaseImpl;
 protected:
@@ -52,6 +54,13 @@ public:
     // deserialize_meta meta information
     RBC_RUNTIME_API void deserialize_meta(ObjDeSerialize const &obj) override;
     // RBC_RUNTIME_API virtual void (ObjDeSerialize const&obj);
+    
+    /**
+     * @brief Decode resource from file using registered importers
+     * @param path Path to the resource file
+     * @return true if decode succeeded, false otherwise
+     */
+    RBC_RUNTIME_API bool decode(luisa::filesystem::path const &path);
 protected:
     virtual bool unsafe_save_to_path() const = 0;
 };

@@ -5,6 +5,7 @@
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>
+#include <rbc_world/importers/register_importers.h>
 
 namespace rbc ::world {
 void Resource::serialize_meta(ObjSerialize const &obj) const {
@@ -252,6 +253,9 @@ void register_resource(Resource *res) {
     _res_loader->register_resource(res);
 }
 void init_resource_loader(luisa::filesystem::path const &meta_path) {
+    // Register all built-in resource importers
+    register_builtin_importers();
+    
     LUISA_ASSERT(_res_loader);
     _res_loader->_meta_path = meta_path;
     _res_loader->load_all_resources();

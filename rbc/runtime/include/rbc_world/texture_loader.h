@@ -18,6 +18,13 @@ public:
         luisa::filesystem::path const &path,
         uint mip_level,
         bool to_vt);
+    
+    /**
+     * @brief Process texture after import (mip generation, VT conversion, etc.)
+     * This method is called by texture importers after loading the raw data
+     */
+    void process_texture(RC<TextureResource> const &tex, uint mip_level, bool to_vt);
+    
     void finish_task();
 };
 }// namespace rbc::world
