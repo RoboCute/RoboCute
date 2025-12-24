@@ -7,8 +7,8 @@ namespace rbc::world {
  * @brief GLTF/GLB file importer for MeshResource
  */
 struct RBC_RUNTIME_API GltfMeshImporter final : IMeshImporter {
-    luisa::string_view extension() const override { return ".gltf"; }
-    
+    [[nodiscard]] luisa::string_view extension() const override { return ".gltf"; }
+
     bool import(MeshResource *resource, luisa::filesystem::path const &path) override;
 };
 
@@ -17,9 +17,8 @@ struct RBC_RUNTIME_API GltfMeshImporter final : IMeshImporter {
  */
 struct RBC_RUNTIME_API GlbMeshImporter final : IMeshImporter {
     luisa::string_view extension() const override { return ".glb"; }
-    
+
     bool import(MeshResource *resource, luisa::filesystem::path const &path) override;
 };
 
 }// namespace rbc::world
-

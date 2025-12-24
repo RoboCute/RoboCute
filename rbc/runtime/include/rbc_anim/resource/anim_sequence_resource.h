@@ -1,11 +1,14 @@
 #pragma once
 #include "rbc_world/resource_base.h"
+#include "rbc_world/resource_importer.h"
 #include "rbc_anim/types.h"
 
 namespace rbc {
 
 struct AnimSequenceResource : world::ResourceBaseImpl<AnimSequenceResource> {
 
+
+public:
     using BaseType = world::ResourceBaseImpl<AnimSequenceResource>;
     DECLARE_WORLD_OBJECT_FRIEND(AnimSequenceResource)
     void dispose() override;
@@ -23,17 +26,13 @@ protected:
 }// namespace rbc
 RBC_RTTI(rbc::AnimSequenceResource)
 
-// helper classes
 namespace rbc {
 
-// import animation resource from gltf
-struct GLTFAnimImporter {
-    luisa::string asset_path;
-    luisa::string anim_name;
-    float sampling_rate = 30.0f;
+struct RBC_RUNTIME_API IAnimSequenceImporter : world::IResourceImporter {
+    [[nodiscard]] world::ResourceType resource_type() const override { return world::ResourceType::AnimSequence; }
+    virtual bool import(AnimSequenceResource *resource, luisa::filesystem::path const &path) = 0;
 
-    void Import();//path -> RawAnimation
-    void Cook();  // RawAnimation -> AnimSequenceResource
+protected:
 };
 
 }// namespace rbc

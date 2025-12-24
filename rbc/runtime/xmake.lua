@@ -4,7 +4,7 @@ local function rbc_runtime_interface()
     })
     add_deps('lc-runtime', 'rbc_core')
     -- third-party usage
-    add_deps("ozz_animation_static")
+    add_deps("ozz_animation_runtime_static", "ozz_animation_offline_static")
 
 end
 
