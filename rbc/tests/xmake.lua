@@ -2,6 +2,7 @@ includes('test_py_codegen')
 includes('test_serde', 'test_graphics', 'test_ipc')
 includes("test_resource")
 includes("test_coro")
+includes("sample_anim")
 
 function add_test(name, deps)
     deps = deps or {}
@@ -26,7 +27,8 @@ end
 
 add_test("core", { "rbc_core" })
 add_test("world", { "rbc_runtime", "rbc_core" })
+add_test("anim", { "rbc_runtime", "rbc_core" })
+
 
 -- 一些第三方库的测试用例，用来检测第三方库是否稳定
 includes("calculator") -- for qt_node_editor
-includes("test_ozz")

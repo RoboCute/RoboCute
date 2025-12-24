@@ -159,7 +159,11 @@ void JsonWriter::add(bool bool_value, char const *name) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_bool(json_doc, v.first, name, bool_value));
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
+    LUISA_ASSERT(yyjson_mut_obj_add_bool(json_doc, v.first, temp_ptr, bool_value));
 }
 void JsonWriter::add(int64_t int_value, char const *name) {
     if (!name) {
@@ -169,7 +173,11 @@ void JsonWriter::add(int64_t int_value, char const *name) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_sint(json_doc, v.first, name, int_value));
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
+    LUISA_ASSERT(yyjson_mut_obj_add_sint(json_doc, v.first, temp_ptr, int_value));
 }
 void JsonWriter::add(uint64_t uint_value, char const *name) {
     if (!name) {
@@ -179,7 +187,11 @@ void JsonWriter::add(uint64_t uint_value, char const *name) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_uint(json_doc, v.first, name, uint_value));
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
+    LUISA_ASSERT(yyjson_mut_obj_add_uint(json_doc, v.first, temp_ptr, uint_value));
 }
 void JsonWriter::add(double float_value, char const *name) {
     if (!name) {
@@ -189,7 +201,11 @@ void JsonWriter::add(double float_value, char const *name) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_double(json_doc, v.first, name, float_value));
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
+    LUISA_ASSERT(yyjson_mut_obj_add_double(json_doc, v.first, temp_ptr, float_value));
 }
 void JsonWriter::add_arr(luisa::span<int64_t const> int_values, char const *name) {
     if (!name) {
@@ -199,7 +215,11 @@ void JsonWriter::add_arr(luisa::span<int64_t const> int_values, char const *name
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, name, yyjson_mut_arr_with_sint64(json_doc, int_values.data(), int_values.size())));
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
+    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, temp_ptr, yyjson_mut_arr_with_sint64(json_doc, int_values.data(), int_values.size())));
 }
 void JsonWriter::add_arr(luisa::span<uint64_t const> uint_values, char const *name) {
     if (!name) {
@@ -209,7 +229,11 @@ void JsonWriter::add_arr(luisa::span<uint64_t const> uint_values, char const *na
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, name, yyjson_mut_arr_with_uint64(json_doc, uint_values.data(), uint_values.size())));
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
+    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, temp_ptr, yyjson_mut_arr_with_uint64(json_doc, uint_values.data(), uint_values.size())));
 }
 void JsonWriter::add_arr(luisa::span<double const> double_values, char const *name) {
     if (!name) {
@@ -219,7 +243,11 @@ void JsonWriter::add_arr(luisa::span<double const> double_values, char const *na
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, name, yyjson_mut_arr_with_double(json_doc, double_values.data(), double_values.size())));
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
+    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, temp_ptr, yyjson_mut_arr_with_double(json_doc, double_values.data(), double_values.size())));
 }
 void JsonWriter::add_arr(luisa::span<bool const> bool_values, char const *name) {
     if (!name) {
@@ -229,7 +257,11 @@ void JsonWriter::add_arr(luisa::span<bool const> bool_values, char const *name) 
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
-    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, name, yyjson_mut_arr_with_bool(json_doc, bool_values.data(), bool_values.size())));
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
+    LUISA_ASSERT(yyjson_mut_obj_add_val(json_doc, v.first, temp_ptr, yyjson_mut_arr_with_bool(json_doc, bool_values.data(), bool_values.size())));
 }
 void JsonWriter::add(luisa::string_view str, char const *name) {
     if (!name) {
@@ -397,6 +429,11 @@ bool JsonReader::read(luisa::string &value) {
     if (type != YYJSON_TYPE_STR) return false;
     value = unsafe_yyjson_get_str(val);
     return true;
+}
+
+bool JsonWriter::is_current_scope_array() const {
+    LUISA_DEBUG_ASSERT(!_json_scope.empty());
+    return _json_scope.back().second;
 }
 
 luisa::string_view JsonReader::last_key() const {
