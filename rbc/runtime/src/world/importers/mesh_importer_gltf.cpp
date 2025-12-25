@@ -171,7 +171,7 @@ static bool read_accessor_raw(
 struct GltfImportData {
     MeshBuilder mesh_builder;
     size_t max_weight_count = 0;// joint weight suite
-    luisa::vector<SkinWeight> all_skin_weights;
+    luisa::vector<SkinAttrib> all_skin_weights;
     luisa::vector<float> all_vertex_colors;
     size_t vertex_color_channels = 0;
 };
@@ -388,7 +388,7 @@ static GltfImportData process_gltf_model(tinygltf::Model const &model) {
     }
 
     // Second pass: process skinning weights and vertex colors
-    luisa::vector<SkinWeight> all_skin_weights;
+    luisa::vector<SkinAttrib> all_skin_weights;
 
     luisa::vector<float> all_vertex_colors;
 
@@ -574,15 +574,22 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
 
     // Write skinning weights
     if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
-        // skinning_weight_count_ref(resource) = import_data.max_weight_count;
+        // skin_attrib_count_ref(resource) = import_data.max_weight_count;
         size_t total_weight_size = vertex_count_ref(resource) * import_data.max_weight_count;
-        auto property = resource->add_property("skinning_weight", total_weight_size * sizeof(SkinWeight));
-        auto skin_weights = property.second;
+
+        auto property = resource->add_property(
+            "skin_attrib",
+            total_weight_size * sizeof(SkinAttrib));
+
+        auto skin_weights = luisa::span{
+            (SkinAttrib *)property.second.data(),
+            property.second.size()};
+
         std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
 
         // Copy skin weights (already in the correct format)
         size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
-        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinWeight));
+        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinAttrib));
     }
 
     return true;
@@ -625,13 +632,13 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
 
     if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
         size_t total_weight_size = vertex_count_ref(resource) * import_data.max_weight_count;
-        auto property = resource->add_property("skinning_weight", total_weight_size * sizeof(SkinWeight));
+        auto property = resource->add_property("skin_attrib", total_weight_size * sizeof(SkinAttrib));
         auto skin_weights = property.second;
         std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
 
         // Copy skin weights (already in the correct format)
         size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
-        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinWeight));
+        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinAttrib));
     }
 
     return true;

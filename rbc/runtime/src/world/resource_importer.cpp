@@ -76,14 +76,12 @@ IResourceImporter *ResourceImporterRegistry::find_importer(luisa::filesystem::pa
             return importer;
         }
     }
-
-    // Try common alternative extensions for STB formats
-    // Since vstd::HashMap doesn't support iteration, we check known alternatives
     if (type == ResourceType::Texture) {
         if (ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".gif" || ext == ".psd" || ext == ".pnm" || ext == ".tga") {
-            auto alt_ext = "png";
+            auto alt_ext = ".png";
             auto alt_key = std::make_pair(alt_ext, type);
             auto alt_iter = _importers.find(alt_key);
+
             if (alt_iter) {
                 auto *importer = alt_iter.value();
                 if (importer->can_import(path)) {

@@ -125,10 +125,14 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         for (auto &i : attri.skin_weights) {
             weight_size = std::max<size_t>(weight_size, i.weightValues.size());
         }
-        auto property = resource->add_property("skinning_weight", weight_size * vertex_count_ref(resource) * sizeof(SkinWeight));
+        auto property = resource->add_property(
+            "skin_attrib",
+            weight_size * vertex_count_ref(resource) * sizeof(SkinAttrib));
+
         auto skin_weights = luisa::span{
-            (SkinWeight *)property.second.data(),
+            (SkinAttrib *)property.second.data(),
             property.second.size()};
+
         std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
         for (auto &i : attri.skin_weights) {
             auto skin_ptr = &skin_weights[i.vertex_id * weight_size];

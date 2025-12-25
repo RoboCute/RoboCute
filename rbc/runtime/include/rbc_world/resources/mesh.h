@@ -5,10 +5,12 @@ namespace rbc {
 struct DeviceMesh;
 }// namespace rbc
 namespace rbc::world {
-struct SkinWeight {
-    int32_t joint_id;
+
+struct SkinAttrib {
+    int16_t joint_id;
     float weight;
 };
+
 // Forward declarations for friend classes
 struct IMeshImporter;
 
@@ -40,7 +42,7 @@ private:
     MeshResource();
     ~MeshResource();
     // extra_data:
-    // array<struct SkinWeight { int32_t joint_id; float weight; }, vertex_size>
+    // array<struct SkinAttrib { int16_t joint_id; float weight; }, vertex_size>
     // array<float * _vertex_color_channels, vertex_size>
 public:
     bool decode(luisa::filesystem::path const &path);
