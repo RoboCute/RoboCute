@@ -199,7 +199,7 @@ bool MeshResource::unsafe_save_to_path() const {
     writer.write(_device_mesh->host_data());
     return true;
 }
-rbc::coro::coroutine MeshResource::_async_load() {
+rbc::coroutine MeshResource::_async_load() {
     if (!_async_load_from_file()) co_return;
     while (!_device_mesh->load_finished()) {
         co_await std::suspend_always{};

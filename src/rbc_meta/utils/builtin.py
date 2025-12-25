@@ -78,9 +78,34 @@ class float4x4:
     _cpp_type_name = "luisa::float4x4"
 
 
+class double3:
+    _reflected_ = True
+    _cpp_type_name = "luisa::double3"
+
+
+class double4:
+    _reflected_ = True
+    _cpp_type_name = "luisa::double4"
+
+
 class double2:
     _reflected_ = True
     _cpp_type_name = "luisa::double2"
+
+
+class double2x2:
+    _reflected_ = True
+    _cpp_type_name = "luisa::double2x2"
+
+
+class double3x3:
+    _reflected_ = True
+    _cpp_type_name = "luisa::double3x3"
+
+
+class double4x4:
+    _reflected_ = True
+    _cpp_type_name = "luisa::double4x4"
 
 
 class double:
@@ -188,6 +213,8 @@ class RenderMesh:
     _cpp_type_name = "rbc::RenderMesh"
 
 # External type helper
+
+
 class ExternalType:
     """Helper class for external C++ types"""
 

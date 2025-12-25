@@ -78,7 +78,7 @@ public:
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
 
-    rbc::coro::coroutine _async_load() override;
+    rbc::coroutine _async_load() override;
 
 protected:
     bool _async_load_from_file();

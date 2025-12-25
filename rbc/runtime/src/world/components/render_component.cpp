@@ -176,7 +176,7 @@ void RenderComponent::start_update_object(luisa::span<RC<MaterialResource> const
         add_world_event(world::WorldEventType::BeforeFrame, std::move(c));
     }
 }
-coro::coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
+coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
     auto tr = entity()->get_component<TransformComponent>();
     if (!tr) {
         LUISA_WARNING("Transform component not found, renderer update failed.");
@@ -209,12 +209,12 @@ coro::coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource>
     }
     // synchronize
     // wait mesh load
-    RBC_AwaitCoroutine(mesh->wait_load_finished_coro());
+    co_await mesh->await_loading();
     for (auto iter = _materials.begin(); iter != _materials.end();) {
         auto &i = *iter;
         if (i) {
             // wait material load
-            RBC_AwaitCoroutine(i->wait_load_finished_coro());
+            co_await i->await_loading();
         }
         ++iter;
     }

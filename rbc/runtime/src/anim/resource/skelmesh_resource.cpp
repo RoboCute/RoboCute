@@ -11,7 +11,7 @@ void SkelMeshResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     BaseType::deserialize_meta(ser);
 }
 
-rbc::coro::coroutine SkelMeshResource::_async_load() {
+rbc::coroutine SkelMeshResource::_async_load() {
     co_return;
 }
 

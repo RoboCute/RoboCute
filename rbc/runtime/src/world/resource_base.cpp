@@ -42,13 +42,8 @@ Resource::Resource() = default;
 Resource::~Resource() = default;
 struct LoadingResource {
     InstanceID res_inst_id;
-    coro::coroutine loading_coro;
-    luisa::vector<InstanceID> depended_res;
+    coroutine loading_coro;
 };
-static thread_local LoadingResource *_current_loading_res{};
-#ifndef NDEBUG
-static thread_local Resource *_current_res{};
-#endif
 struct ResourceLoader {
     luisa::filesystem::path _meta_path;
 
@@ -89,48 +84,23 @@ struct ResourceLoader {
                 return;
             }
             auto ptr = std::move(self_ptr_base).cast_static<Resource>();
-            while (!res.depended_res.empty()) {
-                auto obj = get_object_ref(res.depended_res.back());
-                if (!obj || obj->base_type() != BaseObjectType::Resource) [[unlikely]] {
-                    res.depended_res.pop_back();
-                    continue;
-                }
-                auto dep = static_cast<Resource *>(obj.get());
-                if (dep->_status == EResourceLoadingStatus::Loaded) {
-                    res.depended_res.pop_back();
-                } else {
-                    break;
-                }
-            }
-            bool done = false;
-            if (res.depended_res.empty()) {
-                _current_loading_res = &res;
-#ifndef NDEBUG
-                _current_res = ptr.get();
-#endif
-                res.loading_coro.resume();
-                _current_loading_res = nullptr;
-#ifndef NDEBUG
-                _current_res = nullptr;
-#endif
-                done = res.loading_coro.done();
+            res.loading_coro.resume();
+            if (!res.loading_coro.done()) {
+                loading_queue.enqueue(std::move(res));
+            } else {
+                ptr->_status = EResourceLoadingStatus::Loaded;
             }
             auto asset_mng = AssetsManager::instance();
             if (asset_mng) {
                 asset_mng->wake_load_thread();
             }
-            if (!done) {
-                loading_queue.enqueue(std::move(res));
-            } else {
-                ptr->_status = EResourceLoadingStatus::Loaded;
-            }
         };
         while (_enabled) {
             while (true) {
                 LoadingResource loading_res;
+                std::this_thread::yield();// do not make loading thread too busy
                 if (!loading_queue.try_dequeue(loading_res))
                     break;
-                std::this_thread::yield();// do not make loading thread too busy
                 execute(loading_res);
             }
             std::unique_lock lck{_async_mtx};
@@ -140,9 +110,9 @@ struct ResourceLoader {
         }
         while (true) {
             LoadingResource loading_res;
+            std::this_thread::yield();// do not make loading thread too busy
             if (!loading_queue.try_dequeue(loading_res))
                 break;
-            std::this_thread::yield();// do not make loading thread too busy
             execute(loading_res);
         }
     }
@@ -228,7 +198,7 @@ struct ResourceLoader {
         _async_cv.notify_one();
     }
     void try_unload_resource(Resource *res) {
-        coro::coroutine c{[](InstanceID res) -> coro::coroutine {
+        coroutine c{[](InstanceID res) -> coroutine {
             while (true) {
                 {
                     auto res_ptr = get_object_ref(res);
@@ -255,7 +225,7 @@ void register_resource(Resource *res) {
 void init_resource_loader(luisa::filesystem::path const &meta_path) {
     // Register all built-in resource importers
     register_builtin_importers();
-    
+
     LUISA_ASSERT(_res_loader);
     _res_loader->_meta_path = meta_path;
     _res_loader->load_all_resources();
@@ -317,22 +287,21 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         _res_loader->try_load_resource(res.get());
     return res;
 }
-coro::awaitable Resource::await_loading() {
-    if (!_current_loading_res) [[unlikely]] {
-        LUISA_ERROR("Currently not in loading thread's coroutine.");
-    }
-#ifndef NDEBUG
-    if (_current_res == this) [[unlikely]] {
-        LUISA_ERROR("Should never wait on self.");
-    }
-#endif
+bool ResourceAwait::await_ready() {
+    if (!_inst_id) [[unlikely]]
+        return true;
+    auto obj = get_object_ref(_inst_id);
+    if (!obj || obj->base_type() != BaseObjectType::Resource) [[unlikely]]
+        return true;
+    return static_cast<Resource *>(obj.get())->loading_status() == EResourceLoadingStatus::Loaded;
+}
+ResourceAwait Resource::await_loading() {
     auto st = _status.load(std::memory_order_relaxed);
     if (st == EResourceLoadingStatus::Loaded) {
-        return {true};
+        return {InstanceID::invalid_resource_handle()};
     }
     _res_loader->try_load_resource(this);
-    _current_loading_res->depended_res.emplace_back(instance_id());
-    return {};
+    return {instance_id()};
 }
 void Resource::unload() {
     EResourceLoadingStatus old = EResourceLoadingStatus::Loaded;
@@ -343,17 +312,6 @@ void Resource::unload() {
         return;
     }
     _res_loader->try_unload_resource(this);
-}
-void Resource::wait_load_finished_sync() const {
-    while (_status.load(std::memory_order_relaxed) != EResourceLoadingStatus::Loaded) {
-        std::this_thread::yield();
-    }
-}
-rbc::coro::coroutine Resource::wait_load_finished_coro() const {
-    while (_status.load(std::memory_order_relaxed) != EResourceLoadingStatus::Loaded) {
-        co_await std::suspend_always{};
-    }
-    co_return;
 }
 void dispose_resource_loader() {
     if (_res_loader)

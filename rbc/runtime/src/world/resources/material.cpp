@@ -245,7 +245,7 @@ bool MaterialResource::init_device_resource() {
     return true;
 }
 
-rbc::coro::coroutine MaterialResource::_async_load() {
+rbc::coroutine MaterialResource::_async_load() {
     if (!_async_load_from_file()) {
         co_return;
     }

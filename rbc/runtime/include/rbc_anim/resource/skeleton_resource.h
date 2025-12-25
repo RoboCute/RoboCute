@@ -15,7 +15,7 @@ struct SkeletonResource : world::ResourceBaseImpl<SkeletonResource> {
     void serialize_meta(world::ObjSerialize const &ser) const override;
     void deserialize_meta(world::ObjDeSerialize const &ser) override;
 
-    rbc::coro::coroutine _async_load() override;
+    rbc::coroutine _async_load() override;
     luisa::string_view value() const;
 
 public:

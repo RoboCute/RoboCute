@@ -20,6 +20,21 @@ enum struct BaseObjectType {
 };
 struct InstanceID {
     uint64_t _placeholder;
+    constexpr void set_invalid() {
+        _placeholder = ~0ull;
+    }
+    [[nodiscard]] constexpr bool is_invalid() const {
+        return _placeholder == ~0ull;
+    }
+    [[nodiscard]] constexpr operator bool() const {
+        return _placeholder != ~0ull;
+    }
+    [[nodiscard]] constexpr bool operator==(InstanceID i) const {
+        return _placeholder == i._placeholder;
+    }
+    constexpr static InstanceID invalid_resource_handle() {
+        return {~0ull};
+    }
 };
 RBC_RUNTIME_API void init_world(
     luisa::filesystem::path const &meta_path);
@@ -76,10 +91,10 @@ struct BaseObject : RCBase {
         delete_this();
     }
 protected:
-    vstd::Guid _guid;
-    uint64_t _instance_id{~0ull};
     BaseObject() = default;
 private:
+    vstd::Guid _guid;
+    uint64_t _instance_id{~0ull};
     void init();
     void init_with_guid(vstd::Guid const &guid);
 public:
@@ -180,3 +195,37 @@ RBC_RTTI(rbc::world::BaseObject);
     friend void ea525e13_create_##type_name(type_name *, Entity *); \
     friend void ea525e13_destroy_##type_name(type_name *);          \
     void delete_this() override;
+
+namespace luisa {
+template<>
+struct hash<rbc::world::InstanceID> {
+    size_t operator()(rbc::world::InstanceID const &inst, uint64_t seed = luisa::hash64_default_seed) const {
+        return luisa::hash64(&inst, sizeof(rbc::world::InstanceID), seed);
+    }
+};
+}// namespace luisa
+namespace std {
+template<>
+struct hash<rbc::world::InstanceID> {
+    size_t operator()(rbc::world::InstanceID const &inst) const {
+        return luisa::hash64(&inst, sizeof(rbc::world::InstanceID), luisa::hash64_default_seed);
+    }
+};
+}// namespace std
+namespace vstd {
+template<>
+struct hash<rbc::world::InstanceID> {
+    size_t operator()(rbc::world::InstanceID const &inst) const {
+        return luisa::hash64(&inst, sizeof(rbc::world::InstanceID), luisa::hash64_default_seed);
+    }
+};
+template<>
+struct compare<rbc::world::InstanceID> {
+    int operator()(rbc::world::InstanceID const &a, rbc::world::InstanceID const &b) const {
+        if (a._placeholder < b._placeholder) return -1;
+        if (a._placeholder > b._placeholder) return 1;
+        return 0;
+    }
+};
+
+}// namespace vstd

@@ -1,15 +1,16 @@
 #pragma once
 #include <rbc_config.h>
 #include <coroutine>
-#include <luisa/vstl/meta_lib.h>
-#include <luisa/core/logging.h>
+#include <memory>
+#include <luisa/core/stl/type_traits.h>
 
-namespace rbc::coro {
+namespace rbc {
 struct promise;
 // Coro from cppref
 struct coroutine {
-    using promise_type = rbc::coro::promise;
-    using base_type = std::coroutine_handle<rbc::coro::promise>;
+    friend struct promise;
+    using promise_type = rbc::promise;
+    using base_type = std::coroutine_handle<rbc::promise>;
 private:
     base_type _base;
     bool _own{};
@@ -17,71 +18,67 @@ public:
     coroutine() = default;
     coroutine(base_type &&rhs) : _base(rhs), _own{true} {}
     coroutine(coroutine const &) = delete;
-    coroutine(coroutine &&rhs)
-        : _base(rhs._base),
-          _own(rhs._own) {
-        rhs._own = false;
-        rhs._base = {};
-    }
+    RBC_CORE_API coroutine(coroutine &&rhs);
     static auto from_promise(promise &prom) {
         return base_type::from_promise(prom);
     }
     coroutine &operator=(coroutine const &rhs) = delete;
     coroutine &operator=(coroutine &&rhs) {
-        vstd::reset(*this, std::move(rhs));
+        std::destroy_at(this);
+        std::construct_at(this, std::move(rhs));
         return *this;
     }
-    promise &promise() {
-        LUISA_DEBUG_ASSERT(_own, "Coroutine already disposed.");
-        return _base.promise();
-    }
-    void resume() {
-        LUISA_DEBUG_ASSERT(_own, "Coroutine already disposed.");
-        _base.resume();
-    }
-    bool done() {
-        LUISA_DEBUG_ASSERT(_own, "Coroutine already disposed.");
-        return _base.done();
-    }
-    void destroy() {
-        if (!_own) return;
-        _base.destroy();
-        _own = false;
-        _base = {};
-    }
-    ~coroutine() {
-        if (_own) {
-            _base.destroy();
-        }
-    }
+    RBC_CORE_API void resume();
+    RBC_CORE_API bool done();
+    RBC_CORE_API void destroy();
+    RBC_CORE_API ~coroutine();
 };
-
+struct i_awaitable;
 struct promise {
-    coroutine get_return_object() { return {coroutine::from_promise(*this)}; }
-    std::suspend_always initial_suspend() noexcept { return {}; }
-    std::suspend_always final_suspend() noexcept { return {}; }
-    void return_void() {}
+    i_awaitable *_awaitable{};
+    promise() {
+    }
+    ~promise() {
+    }
+    coroutine get_return_object() {
+        return {coroutine::from_promise(*this)};
+    }
+    std::suspend_always initial_suspend() noexcept {
+        return {};
+    }
+    std::suspend_always final_suspend() noexcept {
+        return {};
+    }
+    void return_void() {
+    }
     void unhandled_exception() {}
 };
-
-struct awaitable {
+struct i_awaitable {
 private:
-    bool _ready;
+    promise *_promise{};
 public:
-    awaitable(bool ready = false) : _ready{ready} {}
-    bool await_ready() { return _ready; }
-    void await_suspend(std::coroutine_handle<> h) {
+    virtual bool await_ready() = 0;
+    i_awaitable() = default;
+    i_awaitable(i_awaitable const &) = delete;
+    i_awaitable(i_awaitable &&) = delete;
+    void await_suspend(std::coroutine_handle<rbc::promise> h) {
+        _promise = &h.promise();
+        _promise->_awaitable = this;
     }
     void await_resume() {}
+protected:
+    ~i_awaitable() = default;
 };
-}// namespace rbc::coro
-#define RBC_AwaitCoroutine(coro_expr)       \
-    {                                       \
-        auto &&cc = (coro_expr);            \
-        if (!cc.done()) [[likely]]          \
-            cc.resume();                    \
-        while (!cc.done()) {                \
-            co_await std::suspend_always{}; \
-            cc.resume();                    \
-        }                                   \
+template<typename FuncType>
+    requires((std::is_invocable_r_v<bool, FuncType>) && (!std::is_reference_v<FuncType>))
+struct awaitable final : i_awaitable {
+    FuncType func_type;
+    template<typename... Args>
+        requires(luisa::is_constructible_v<FuncType, Args && ...>)
+    awaitable(Args &&...args)
+        : func_type(std::forward<Args>(args)...) {}
+    bool await_ready() override {
+        return func_type();
     }
+};
+}// namespace rbc

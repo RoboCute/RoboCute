@@ -11,7 +11,7 @@ void SkinResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     BaseType::deserialize_meta(ser);
 }
 
-rbc::coro::coroutine SkinResource::_async_load() {
+rbc::coroutine SkinResource::_async_load() {
     co_return;
 }
 

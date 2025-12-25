@@ -205,7 +205,7 @@ uint32_t TextureResource::heap_index() const {
         return static_cast<DeviceImage *>(_tex.get())->heap_idx();
     }
 }
-rbc::coro::coroutine TextureResource::_async_load() {
+rbc::coroutine TextureResource::_async_load() {
     if (!_async_load_from_file()) co_return;
     while (!_load_finished()) {
         co_await std::suspend_always{};
