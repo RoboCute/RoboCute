@@ -5,6 +5,7 @@
 namespace rbc {
 
 bool GltfAnimSequenceImporter::import(AnimSequenceResource *resource, luisa::filesystem::path const &path) {
+    LUISA_ASSERT(ref_skel.get());// RefSkeleton Should be valid
     GltfOzzImporter impl;
     ozz::animation::offline::OzzImporter &importer = impl;
     // TODO: static dependencies for SkeletonResource
