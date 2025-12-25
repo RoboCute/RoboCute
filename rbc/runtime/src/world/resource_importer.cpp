@@ -1,6 +1,7 @@
 #include <rbc_world/resource_importer.h>
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/texture.h>
+#include <rbc_core/runtime_static.h>
 #include <algorithm>
 #include <cctype>
 
@@ -14,26 +15,26 @@ bool IResourceImporter::can_import(luisa::filesystem::path const &path) const {
 luisa::string normalize_extension(luisa::string_view ext) {
     luisa::string result;
     if (ext.empty()) return result;
-    
+
     result = luisa::to_string(ext);
     for (auto &c : result) {
         c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
-    
+
     // Ensure it starts with a dot
     if (!result.empty() && result[0] != '.') {
         result.insert(result.begin(), '.');
     }
-    
+
     return result;
 }
 
 void ResourceImporterRegistry::register_importer(IResourceImporter *importer) {
     if (!importer) return;
-    
+
     auto ext = normalize_extension(importer->extension());
     auto key = std::make_pair(ext, importer->resource_type());
-    
+
     std::lock_guard lock(_mtx);
     auto iter = _importers.try_emplace(key);
     iter.first.value() = importer;
@@ -42,7 +43,7 @@ void ResourceImporterRegistry::register_importer(IResourceImporter *importer) {
 void ResourceImporterRegistry::unregister_importer(luisa::string_view extension, ResourceType type) {
     auto ext = normalize_extension(extension);
     auto key = std::make_pair(ext, type);
-    
+
     std::lock_guard lock(_mtx);
     auto iter = _importers.find(key);
     if (iter) {
@@ -55,7 +56,7 @@ void ResourceImporterRegistry::unregister_importer(luisa::string_view extension,
 IResourceImporter *ResourceImporterRegistry::find_importer(luisa::string_view extension, ResourceType type) const {
     auto ext = normalize_extension(extension);
     auto key = std::make_pair(ext, type);
-    
+
     std::lock_guard lock(_mtx);
     auto iter = _importers.find(key);
     return iter ? iter.value() : nullptr;
@@ -65,7 +66,7 @@ IResourceImporter *ResourceImporterRegistry::find_importer(luisa::filesystem::pa
     // First try exact match
     auto ext = normalize_extension(path.extension().string());
     auto key = std::make_pair(ext, type);
-    
+
     std::lock_guard lock(_mtx);
     auto iter = _importers.find(key);
     if (iter) {
@@ -75,16 +76,12 @@ IResourceImporter *ResourceImporterRegistry::find_importer(luisa::filesystem::pa
             return importer;
         }
     }
-    
+
     // Try common alternative extensions for STB formats
     // Since vstd::HashMap doesn't support iteration, we check known alternatives
     if (type == ResourceType::Texture) {
-        luisa::vector<luisa::string> alternatives;
         if (ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".gif" || ext == ".psd" || ext == ".pnm" || ext == ".tga") {
-            alternatives.push_back(".png"); // Try .png importer (StbTextureImporter)
-        }
-        
-        for (auto &alt_ext : alternatives) {
+            auto alt_ext = "png";
             auto alt_key = std::make_pair(alt_ext, type);
             auto alt_iter = _importers.find(alt_key);
             if (alt_iter) {
@@ -95,13 +92,12 @@ IResourceImporter *ResourceImporterRegistry::find_importer(luisa::filesystem::pa
             }
         }
     }
-    
+
     return nullptr;
 }
-
+RuntimeStatic<ResourceImporterRegistry> _resource_importer_registry;
 ResourceImporterRegistry &ResourceImporterRegistry::instance() {
-    static ResourceImporterRegistry registry;
-    return registry;
+    return *_resource_importer_registry.ptr;
 }
 
 // IMeshImporter accessor method implementations
@@ -141,14 +137,6 @@ vstd::vector<uint> &IMeshImporter::submesh_offsets_ref(MeshResource *resource) {
     return resource->_submesh_offsets;
 }
 
-uint &IMeshImporter::skinning_weight_count_ref(MeshResource *resource) {
-    return resource->_skinning_weight_count;
-}
-
-uint &IMeshImporter::vertex_color_channels_ref(MeshResource *resource) {
-    return resource->_vertex_color_channels;
-}
-
 // ITextureImporter accessor method implementations
 RC<rbc::DeviceResource> &ITextureImporter::tex_ref(TextureResource *resource) {
     return resource->_tex;
@@ -171,4 +159,3 @@ bool &ITextureImporter::is_vt_ref(TextureResource *resource) {
 }
 
 }// namespace rbc::world
-

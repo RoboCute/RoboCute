@@ -573,29 +573,16 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
     mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
 
     // Write skinning weights
-    skinning_weight_count_ref(resource) = import_data.max_weight_count;
     if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
+        // skinning_weight_count_ref(resource) = import_data.max_weight_count;
         size_t total_weight_size = vertex_count_ref(resource) * import_data.max_weight_count;
-        auto start_index = device_mesh->host_data_ref().size();
-        device_mesh->host_data_ref().push_back_uninitialized(total_weight_size * sizeof(SkinWeight));
-        luisa::span<SkinWeight> skin_weights{
-            (SkinWeight *)(device_mesh->host_data_ref().data() + start_index),
-            total_weight_size};
+        auto property = resource->add_property("skinning_weight", total_weight_size * sizeof(SkinWeight));
+        auto skin_weights = property.second;
         std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
 
         // Copy skin weights (already in the correct format)
         size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
         std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinWeight));
-    }
-
-    // Write vertex colors
-    vertex_color_channels_ref(resource) = import_data.vertex_color_channels;
-    if (import_data.vertex_color_channels > 0 && !import_data.all_vertex_colors.empty()) {
-        vstd::push_back_all(
-            device_mesh->host_data_ref(),
-            luisa::span{
-                (std::byte *)import_data.all_vertex_colors.data(),
-                import_data.all_vertex_colors.size() * sizeof(float)});
     }
 
     return true;
@@ -635,31 +622,16 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
     mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
 
     // Write skinning weights
-    skinning_weight_count_ref(resource) = import_data.max_weight_count;
 
     if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
         size_t total_weight_size = vertex_count_ref(resource) * import_data.max_weight_count;
-        auto start_index = device_mesh->host_data_ref().size();
-
-        device_mesh->host_data_ref().push_back_uninitialized(total_weight_size * sizeof(SkinWeight));
-        luisa::span<SkinWeight> skin_weights{
-            (SkinWeight *)(device_mesh->host_data_ref().data() + start_index),
-            total_weight_size};
+        auto property = resource->add_property("skinning_weight", total_weight_size * sizeof(SkinWeight));
+        auto skin_weights = property.second;
         std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
 
         // Copy skin weights (already in the correct format)
         size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
         std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinWeight));
-    }
-
-    // Write vertex colors
-    vertex_color_channels_ref(resource) = import_data.vertex_color_channels;
-    if (import_data.vertex_color_channels > 0 && !import_data.all_vertex_colors.empty()) {
-        vstd::push_back_all(
-            device_mesh->host_data_ref(),
-            luisa::span{
-                (std::byte *)import_data.all_vertex_colors.data(),
-                import_data.all_vertex_colors.size() * sizeof(float)});
     }
 
     return true;

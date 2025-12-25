@@ -89,8 +89,6 @@ protected:
     static bool contained_tangent(MeshResource *resource);
     static void set_contained_tangent(MeshResource *resource, bool value);
     static vstd::vector<uint> &submesh_offsets_ref(MeshResource *resource);
-    static uint &skinning_weight_count_ref(MeshResource *resource);
-    static uint &vertex_color_channels_ref(MeshResource *resource);
 };
 
 /**

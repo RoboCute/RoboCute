@@ -40,7 +40,7 @@ struct TypeObjectRegister : TypeRegisterBase {
         TypeRegisterBase::base_obj_type = T::base_object_type_v;
     }
     void init() override {
-        _pool.create(64, false);
+        _pool.create(2, false);
     }
     void destroy() override {
         _pool.destroy();

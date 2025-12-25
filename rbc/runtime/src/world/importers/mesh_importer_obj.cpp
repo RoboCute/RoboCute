@@ -120,35 +120,25 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
     mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
 
     // skinning
-    skinning_weight_count_ref(resource) = attri.skin_weights.size() / mesh_builder.position.size();
-    size_t weight_size = 0;
-    for (auto &i : attri.skin_weights) {
-        weight_size = std::max<size_t>(weight_size, i.weightValues.size());
-    }
-    auto start_index = device_mesh->host_data_ref().size();
-    device_mesh->host_data_ref().push_back_uninitialized(weight_size * vertex_count_ref(resource) * sizeof(SkinWeight));
-
-    luisa::span<SkinWeight> skin_weights{
-        (SkinWeight *)device_mesh->host_data_ref().data() + start_index,
-        weight_size * vertex_count_ref(resource)};
-
-    std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
-    for (auto &i : attri.skin_weights) {
-        auto skin_ptr = &skin_weights[i.vertex_id * weight_size];
-        for (auto &j : i.weightValues) {
-            skin_ptr->weight = j.weight;
-            skin_ptr->joint_id = j.joint_id;
-            ++skin_ptr;
+    if (!attri.skin_weights.empty()) {
+        size_t weight_size = 0;
+        for (auto &i : attri.skin_weights) {
+            weight_size = std::max<size_t>(weight_size, i.weightValues.size());
+        }
+        auto property = resource->add_property("skinning_weight", weight_size * vertex_count_ref(resource) * sizeof(SkinWeight));
+        auto skin_weights = luisa::span{
+            (SkinWeight *)property.second.data(),
+            property.second.size()};
+        std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
+        for (auto &i : attri.skin_weights) {
+            auto skin_ptr = &skin_weights[i.vertex_id * weight_size];
+            for (auto &j : i.weightValues) {
+                skin_ptr->weight = j.weight;
+                skin_ptr->joint_id = j.joint_id;
+                ++skin_ptr;
+            }
         }
     }
-    // vertex_color
-    vertex_color_channels_ref(resource) = attri.colors.size() / mesh_builder.position.size();
-    if (vertex_color_channels_ref(resource) > 0)
-        vstd::push_back_all(
-            device_mesh->host_data_ref(),
-            luisa::span{
-                (std::byte *)attri.colors.data(),
-                attri.colors.size() * sizeof(tinyobj::real_t)});
     return true;
 }
 

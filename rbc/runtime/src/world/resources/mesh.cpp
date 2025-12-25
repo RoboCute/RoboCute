@@ -3,9 +3,17 @@
 #include <rbc_world/type_register.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
+#include <rbc_graphics/device_assets/assets_manager.h>
 namespace rbc::world {
 MeshResource::MeshResource() = default;
 MeshResource::~MeshResource() {
+    auto inst = AssetsManager::instance();
+    if (!inst) return;
+    for (auto &i : _custom_properties) {
+        if (i.second.device_buffer) {
+            inst->dispose_after_render_frame(std::move(i.second.device_buffer));
+        }
+    }
 }
 
 void MeshResource::serialize_meta(ObjSerialize const &ser) const {
@@ -16,8 +24,16 @@ void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     ser.ser._store(_vertex_count, "vertex_count");
     ser.ser._store(_triangle_count, "triangle_count");
     ser.ser._store(_uv_count, "uv_count");
-    ser.ser._store(_vertex_color_channels, "vertex_color_channels");
-    ser.ser._store(_skinning_weight_count, "skinning_weight_count");
+    ser.ser.start_array();
+    for (auto &i : _custom_properties) {
+        ser.ser._store(i.first);
+        ser.ser.start_object();
+        auto &v = i.second;
+        ser.ser._store(v.offset_bytes, "offset_bytes");
+        ser.ser._store(v.size_bytes, "size_bytes");
+        ser.ser.add_last_scope_to_object();
+    }
+    ser.ser.add_last_scope_to_object("properties");
     ser.ser.start_array();
     for (auto &i : _submesh_offsets) {
         ser.ser._store(i);
@@ -46,8 +62,6 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     RBC_MESH_LOAD(vertex_count)
     RBC_MESH_LOAD(triangle_count)
     RBC_MESH_LOAD(uv_count)
-    RBC_MESH_LOAD(vertex_color_channels)
-    RBC_MESH_LOAD(skinning_weight_count)
 #undef RBC_MESH_LOAD
     uint64_t size;
     if (ser.ser.start_array(size, "submesh_offsets")) {
@@ -60,6 +74,28 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
         }
         ser.ser.end_scope();
     }
+
+    if (ser.ser.start_array(size, "properties")) {
+        auto dsp = vstd::scope_exit([&] {
+            ser.ser.end_scope();
+        });
+        if ((size & 1) != 0) {
+            return;
+        }
+        _custom_properties.reserve(size / 2);
+        for (auto i : vstd::range(size)) {
+            luisa::string s;
+            if (!ser.ser._load(s)) return;
+            if (!ser.ser.start_object()) return;
+            auto dsp = vstd::scope_exit([&] {
+                ser.ser.end_scope();
+            });
+            CustomProperty property;
+            if (!ser.ser._load(property.offset_bytes, "offset_bytes")) continue;
+            if (!ser.ser._load(property.size_bytes, "size_bytes")) continue;
+            _custom_properties.try_emplace(std::move(s), std::move(property));
+        }
+    }
 }
 luisa::vector<std::byte> *MeshResource::host_data() {
     std::shared_lock lck{_async_mtx};
@@ -71,8 +107,15 @@ luisa::vector<std::byte> *MeshResource::host_data() {
 uint64_t MeshResource::basic_size_bytes() const {
     return DeviceMesh::get_mesh_size(_vertex_count, _contained_normal, _contained_tangent, _uv_count, _triangle_count);
 }
+uint64_t MeshResource::extra_size_bytes() const {
+    uint64_t size = 0;
+    for (auto &i : _custom_properties) {
+        size += i.second.size_bytes;
+    }
+    return size;
+}
 uint64_t MeshResource::desire_size_bytes() const {
-    return basic_size_bytes() + _vertex_count * _skinning_weight_count * sizeof(SkinWeight) + _vertex_count * _vertex_color_channels;
+    return basic_size_bytes() + extra_size_bytes();
 }
 
 void MeshResource::create_empty(
@@ -83,9 +126,7 @@ void MeshResource::create_empty(
     uint32_t triangle_count,
     uint32_t uv_count,
     bool contained_normal,
-    bool contained_tangent,
-    uint vertex_color_channels,
-    uint skinning_weight_count) {
+    bool contained_tangent) {
     _status = EResourceLoadingStatus::Loading;
     if (_device_mesh) [[unlikely]] {
         LUISA_ERROR("Can not create on exists mesh.");
@@ -99,15 +140,14 @@ void MeshResource::create_empty(
     _uv_count = uv_count;
     _contained_normal = contained_normal;
     _contained_tangent = contained_tangent;
-    _skinning_weight_count = skinning_weight_count;
-    _vertex_color_channels = vertex_color_channels;
     _device_mesh = new DeviceMesh{};
 }
 bool MeshResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_device_mesh || _device_mesh->mesh_data()) return false;
     auto host_data_ = host_data();
-    LUISA_ASSERT(host_data_->empty() || host_data_->size() == desire_size_bytes(), "Host data length {} mismatch with required length {}.", host_data_->size(), desire_size_bytes());
+    auto file_size = desire_size_bytes();
+    LUISA_ASSERT(host_data_->empty() || host_data_->size() == file_size, "Host data length {} mismatch with required length {}.", host_data_->size(), file_size);
     {
         std::lock_guard lck{_async_mtx};
         _device_mesh->create_mesh(
@@ -144,7 +184,7 @@ bool MeshResource::_async_load_from_file() {
         _uv_count, vstd::vector<uint>{_submesh_offsets},
         false, true,
         _file_offset,
-        true, desire_size_bytes() - basic_size_bytes());
+        true, extra_size_bytes());
     return true;
 }
 bool MeshResource::unsafe_save_to_path() const {
@@ -168,18 +208,6 @@ rbc::coro::coroutine MeshResource::_async_load() {
 void MeshResource::_unload() {
     std::lock_guard lck{_async_mtx};
     _device_mesh.reset();
-}
-luisa::span<SkinWeight const> MeshResource::skin_weights() const {
-    if (!_device_mesh || _device_mesh->host_data_ref().empty() || _skinning_weight_count == 0) return {};
-    return luisa::span{
-        (SkinWeight *)(_device_mesh->host_data_ref().data() + basic_size_bytes()),
-        _skinning_weight_count * _vertex_count};
-}
-luisa::span<float const> MeshResource::vertex_colors() const {
-    if (!_device_mesh || _device_mesh->host_data_ref().empty() || _vertex_color_channels == 0) return {};
-    return luisa::span{
-        (float *)(skin_weights().data() + skin_weights().size()),
-        _vertex_color_channels * _vertex_count};
 }
 
 // import
@@ -206,6 +234,49 @@ bool MeshResource::decode(luisa::filesystem::path const &path) {
     auto *mesh_importer = static_cast<IMeshImporter *>(importer);
 
     return mesh_importer->import(this, path);
+}
+
+auto MeshResource::add_property(luisa::string &&name, size_t size_bytes) -> std::pair<CustomProperty &, luisa::span<std::byte>> {
+    auto h = host_data();
+    LUISA_ASSERT(h, "Can not add property to empty mesh");
+    auto offset = desire_size_bytes();
+    offset = (offset + 15ull) & (~15ull);
+    auto iter = _custom_properties.try_emplace(std::move(name));
+    auto &v = iter.first.value();
+    if (!iter.second) {
+        LUISA_WARNING("Try to add property {} multiple times, ignored.", iter.first.key());
+        return {v, {}};
+    }
+    v.offset_bytes = offset;
+    v.size_bytes = size_bytes;
+    offset += size_bytes;
+    h->resize_uninitialized(offset);
+    return {v, luisa::span{*h}.subspan(v.offset_bytes, v.size_bytes)};
+}
+
+luisa::span<std::byte> MeshResource::get_property_host(luisa::string_view name) {
+    auto iter = _custom_properties.find(name);
+    if (!iter) return {};
+    auto h = host_data();
+    if (!h) return {};
+    auto &v = iter.value();
+    return luisa::span{*h}.subspan(v.offset_bytes, v.size_bytes);
+}
+
+luisa::compute::ByteBufferView MeshResource::get_property_buffer(luisa::string_view name) {
+    auto iter = _custom_properties.find(name);
+    if (!iter) return {};
+    return iter.value().device_buffer;
+}
+luisa::compute::ByteBufferView MeshResource::get_or_create_property_buffer(luisa::string_view name) {
+    auto iter = _custom_properties.find(name);
+    if (!iter) return {};
+    auto &b = iter.value().device_buffer;
+    if (!b) {
+        b = RenderDevice::instance().lc_device().create_byte_buffer(
+            (iter.value().size_bytes + 15ull) & (~15ull));
+    }
+    return b;
 }
 
 DECLARE_WORLD_OBJECT_REGISTER(MeshResource)
