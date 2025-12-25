@@ -18,7 +18,8 @@ bool GltfSkeletonImporter::import(SkeletonResource *resource, luisa::filesystem:
         resource = nullptr;
         return false;
     }
-    auto *raw_skel = RBCNew<RawSkeletonAsset>();
+    auto raw_skel = RBCNew<RawSkeletonAsset>();
+
     importer.Import(raw_skel, types);
 
     // Cook: Raw Skeleton Asset -> Runtime Skeleton Asset
@@ -33,7 +34,8 @@ bool GltfSkeletonImporter::import(SkeletonResource *resource, luisa::filesystem:
         ref_skel(resource) = std::move(*skeleton);
     }
 
-    // destroy allocated raw_skel
     RBCDelete(raw_skel);
+    return true;
 }
+
 }// namespace rbc

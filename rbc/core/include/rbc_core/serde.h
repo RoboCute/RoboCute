@@ -194,7 +194,7 @@ struct ArchiveWriteAdapter {
         // Check if we're in an object context and should use sequential keys
         bool use_sequential_key = _is_current_scope_object();
         char const *key_name = nullptr;
-        
+
         luisa::string sequential_key_str;
         if (use_sequential_key && !_scope_counters.empty()) {
             // Generate sequential key from counter
@@ -204,7 +204,7 @@ struct ArchiveWriteAdapter {
             // Advance counter for next value
             _scope_counters.back().second++;
         }
-        
+
         if constexpr (requires { Serialize<T>::write(*this, v); }) {
             if (use_sequential_key && key_name) {
                 // Custom type with Serialize<T> specialization in object context
@@ -377,7 +377,7 @@ struct ArchiveReadAdapter {
         bool use_sequential_key = _is_current_scope_object();
         char const *key_name = nullptr;
         luisa::string sequential_key;
-        
+
         if (use_sequential_key && !_scope_counters.empty()) {
             // Generate sequential key from counter
             uint64_t index = _scope_counters.back().second;
@@ -386,7 +386,7 @@ struct ArchiveReadAdapter {
             // Advance counter for next value
             _scope_counters.back().second++;
         }
-        
+
         if constexpr (requires { Serialize<T>::read(*this, v); }) {
             // Serialize<T>::read expects to be called in an object context
             // If we're in an object context with sequential keys, we need to enter the nested object first
@@ -951,6 +951,7 @@ using JsonSerializer = Serializer<JsonWriter>;
 using JsonDeSerializer = DeSerializer<JsonReader>;
 using ArchiveWrite = detail::ArchiveWriteAdapter<JsonWriter>;
 using ArchiveRead = detail::ArchiveReadAdapter<JsonReader>;
+
 template<typename T>
 struct is_serializer {
     static constexpr bool value = false;

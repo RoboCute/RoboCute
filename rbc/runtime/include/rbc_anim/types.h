@@ -21,6 +21,7 @@ namespace rbc {
 
 using IndexType = int32_t;
 constexpr IndexType INVALID_INDEX = -1;
+using BoneIndexType = int16_t;
 
 using AnimSOATransform = ozz::math::SoaTransform;
 using AnimSOAFloat3 = ozz::math::SoaFloat3;

@@ -1,12 +1,12 @@
 #include <rbc_anim/asset/reference_skeleton.h>
 
 namespace rbc {
-ReferenceSkeleton::ReferenceSkeleton() {}
+ReferenceSkeleton::ReferenceSkeleton() = default;
 ReferenceSkeleton::~ReferenceSkeleton() {}
-ReferenceSkeleton::ReferenceSkeleton(ReferenceSkeleton &&Other) {
+ReferenceSkeleton::ReferenceSkeleton(ReferenceSkeleton &&Other) noexcept {
     skeleton = std::move(Other.skeleton);
 }
-ReferenceSkeleton &ReferenceSkeleton::operator=(ReferenceSkeleton &&Other) {
+ReferenceSkeleton &ReferenceSkeleton::operator=(ReferenceSkeleton &&Other) noexcept {
     skeleton = std::move(Other.skeleton);
     return *this;
 }
@@ -19,4 +19,70 @@ ReferenceSkeleton &ReferenceSkeleton::operator=(SkeletonRuntimeAsset &&InSkeleto
     return *this;
 }
 
+luisa::span<const char *const> ReferenceSkeleton::RawJointNames() const {
+    auto raw_joint_names = skeleton.joint_names();
+    return {raw_joint_names.data(), raw_joint_names.size()};
+}
+luisa::span<const BoneIndexType> ReferenceSkeleton::RawJointParents() const {
+    auto raw_joint_parents = skeleton.joint_parents();
+    return {raw_joint_parents.data(), raw_joint_parents.size()};
+}
+luisa::span<const AnimSOATransform> ReferenceSkeleton::JointRestPoses() const {
+    auto joint_rest_pose = skeleton.joint_rest_poses();
+    return {joint_rest_pose.data(), joint_rest_pose.size()};
+}
+
+BoneIndexType ReferenceSkeleton::GetParentIndex(BoneIndexType InBoneIndex) const {
+    return RawJointParents()[InBoneIndex];
+}
+
+void ReferenceSkeleton::EnsureParentsExist(luisa::vector<BoneIndexType> &InOutBoneSortedIndices) const {
+    // 保证bone indices是排序过的，这样从前向后轮询不会出错
+    // TODO: 考虑采用ThreadSingleton
+    const int32_t num_bones = GetNumBones();
+    int32_t i = 0;
+    luisa::vector<bool> bone_exists;
+    bone_exists.resize(num_bones);
+    while (i < InOutBoneSortedIndices.size()) {
+        const BoneIndexType bone_index = InOutBoneSortedIndices[i];
+        // For RootBone, Just move on
+        if (bone_index == 0) {
+            bone_exists[0] = true;
+            i++;
+            continue;
+        }
+
+        // bad data, warn and continue
+        if (bone_index >= num_bones) {
+            LUISA_ERROR("Bad Data for Skeleton Bone Index");
+            i++;
+            continue;
+        }
+        bone_exists[bone_index] = true;// make itself true
+        const BoneIndexType parent_index = GetParentIndex(bone_index);    
+
+        if (!bone_exists[parent_index]) {
+            // 由于BoneIndices经过排序，所以parent必然在children之前出现，如果没有存在，则说明出现异常
+            InOutBoneSortedIndices.insert(InOutBoneSortedIndices.begin() + i, parent_index);
+            bone_exists[parent_index] = true;
+        } else {
+            i++;
+        }
+    }
+}
+
+void ReferenceSkeleton::EnsureParentsExistAndSort(luisa::vector<BoneIndexType> &InOutBoneUnsortedIndices) const {
+    std::sort(InOutBoneUnsortedIndices.begin(), InOutBoneUnsortedIndices.end());
+    EnsureParentsExist(InOutBoneUnsortedIndices);
+    std::sort(InOutBoneUnsortedIndices.begin(), InOutBoneUnsortedIndices.end());
+}
+
 }// namespace rbc
+
+bool rbc::Serialize<rbc::ReferenceSkeleton>::write(rbc::ArchiveWrite &w, const rbc::ReferenceSkeleton &v) {
+
+    return true;
+}
+bool rbc::Serialize<rbc::ReferenceSkeleton>::read(rbc::ArchiveRead &r, rbc::ReferenceSkeleton &v) {
+    return true;
+}
