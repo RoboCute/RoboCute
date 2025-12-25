@@ -155,11 +155,11 @@ int main(int argc, char *argv[]) {
         auto trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
         // test life time
         LUISA_ASSERT(trans_ptr == trans);
-        trans->dispose();
+        trans->delete_this();
         trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
         // tarnsform already destroyed
         LUISA_ASSERT(trans_ptr == nullptr);
-        entity->dispose();
+        entity->delete_this();
     }
     // Try deserialize
     auto json_str = luisa::string_view{
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
     }
     // Dispose all entities created during deserialization to prevent leaks
     for (auto &i : entities) {
-        i->dispose();
+        i->delete_this();
     }
     LUISA_INFO("=== Testing Raw API Done ===");
 

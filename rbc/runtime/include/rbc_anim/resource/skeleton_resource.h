@@ -11,7 +11,7 @@ struct SkeletonResource : world::ResourceBaseImpl<SkeletonResource> {
 
     using BaseType = world::ResourceBaseImpl<SkeletonResource>;
     DECLARE_WORLD_OBJECT_FRIEND(SkeletonResource)
-    void dispose() override;
+    
 
     void serialize_meta(world::ObjSerialize const &ser) const override;
     void deserialize_meta(world::ObjDeSerialize const &ser) override;

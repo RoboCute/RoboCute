@@ -13,7 +13,7 @@ struct AnimSequenceResource : world::ResourceBaseImpl<AnimSequenceResource> {
 public:
     using BaseType = world::ResourceBaseImpl<AnimSequenceResource>;
     DECLARE_WORLD_OBJECT_FRIEND(AnimSequenceResource)
-    void dispose() override;
+    
 
     void serialize_meta(world::ObjSerialize const &ser) const override;
     void deserialize_meta(world::ObjDeSerialize const &ser) override;

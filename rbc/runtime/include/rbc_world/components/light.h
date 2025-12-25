@@ -24,7 +24,7 @@ public:
     void on_destroy() override;
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
-    void dispose() override;
+    
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::LightComponent)

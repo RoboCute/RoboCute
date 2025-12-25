@@ -25,19 +25,19 @@ public:
         return iter == _iter;
     }
 };
-struct Entity final : BaseObjectDerive<Entity, BaseObjectType::Entity> {
+struct RBC_RUNTIME_API Entity final : BaseObjectDerive<Entity, BaseObjectType::Entity> {
     DECLARE_WORLD_OBJECT_FRIEND(Entity)
     friend struct Component;
 
 private:
     luisa::unordered_map<std::array<uint64_t, 2>, Component *> _components;
-    RBC_RUNTIME_API void _remove_component(Component *component);
+    void _remove_component(Component *component);
     Entity();
     ~Entity();
-    RBC_RUNTIME_API Component *_create_component(std::array<uint64_t, 2> const& type);
-    RBC_RUNTIME_API void _add_component(Component *component);
+    Component *_create_component(std::array<uint64_t, 2> const& type);
+    void _add_component(Component *component);
 public:
-    RBC_RUNTIME_API void dispose() override;
+    
     EntityCompIter begin() const {
         return EntityCompIter{_components.begin()};
     }
@@ -54,10 +54,10 @@ public:
         _add_component(ptr);
         return static_cast<T*>(ptr);
     }
-    RBC_RUNTIME_API bool remove_component(TypeInfo const &type);
-    RBC_RUNTIME_API Component *get_component(TypeInfo const &type);
-    RBC_RUNTIME_API void serialize_meta(ObjSerialize const&ser) const override;
-    RBC_RUNTIME_API void deserialize_meta(ObjDeSerialize const&ser) override;
+    bool remove_component(TypeInfo const &type);
+    Component *get_component(TypeInfo const &type);
+    void serialize_meta(ObjSerialize const&ser) const override;
+    void deserialize_meta(ObjDeSerialize const&ser) override;
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
     bool remove_component() {

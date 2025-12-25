@@ -28,7 +28,7 @@ public:
     void on_destroy() override;
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
-    void dispose() override;
+    
     // draw
     uint get_tlas_index() const;
     void remove_object();

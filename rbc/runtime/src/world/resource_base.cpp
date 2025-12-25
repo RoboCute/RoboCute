@@ -205,7 +205,7 @@ struct ResourceLoader {
             _loading_thds.emplace_back([this] { _loading_thread(); });
         }
     }
-    void dispose() {
+    void delete_this() {
         if (!_enabled) return;
         _async_mtx.lock();
         _enabled = false;
@@ -357,6 +357,6 @@ rbc::coro::coroutine Resource::wait_load_finished_coro() const {
 }
 void dispose_resource_loader() {
     if (_res_loader)
-        _res_loader->dispose();
+        _res_loader->delete_this();
 }
 }// namespace rbc::world

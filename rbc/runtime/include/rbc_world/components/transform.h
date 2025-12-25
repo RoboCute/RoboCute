@@ -44,7 +44,7 @@ public:
     void remove_on_update_event(Component *ptr);
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
-    void dispose() override;
+    
     void set_pos(double3 const &position, bool recursive);
     void set_rotation(Quaternion const &rotation, bool recursive);
     void set_scale(double3 const &scale, bool recursive);

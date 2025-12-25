@@ -412,7 +412,7 @@ WorldScene::~WorldScene() {
     tex.reset();
     _mats.clear();
     for (auto &i : _entities) {
-        i->dispose();
+        i->delete_this();
     }
     world::destroy_world();
 }

@@ -7,7 +7,7 @@ struct DummyResource : world::ResourceBaseImpl<DummyResource> {
     DECLARE_WORLD_OBJECT_FRIEND(DummyResource)
     void serialize_meta(world::ObjSerialize const &ser) const override;
     void deserialize_meta(world::ObjDeSerialize const &ser) override;
-    void dispose() override;
+    
     rbc::coro::coroutine _async_load() override;
     luisa::string_view value() const;
     void create_empty(std::initializer_list<RC<DummyResource>> depended, luisa::string_view name);

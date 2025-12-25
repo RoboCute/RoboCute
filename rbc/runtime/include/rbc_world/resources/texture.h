@@ -55,7 +55,7 @@ public:
     bool init_device_resource();
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
-    void dispose() override;
+    
 protected:
     bool _async_load_from_file();
     bool _load_finished() const;

@@ -280,7 +280,6 @@ int main(int argc, char *argv[]) {
         skybox.reset();
         // Dispose entity first
         if (entity) {
-            entity->dispose();
             entity.reset();
         }
         // Destroy world (this will check for leaks)

@@ -22,8 +22,7 @@ struct InstanceID {
     uint64_t _placeholder;
 };
 RBC_RUNTIME_API void init_world(
-    luisa::filesystem::path const &meta_path
-);
+    luisa::filesystem::path const &meta_path);
 RBC_RUNTIME_API void destroy_world();
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object(rbc::TypeInfo const &type_info);
 [[nodiscard]] RBC_RUNTIME_API BaseObjectType get_base_object_type(vstd::Guid const &type_id);
@@ -74,7 +73,7 @@ struct BaseObject : RCBase {
     RBC_RUNTIME_API friend BaseObject *create_object(rbc::TypeInfo const &type_info);
     RBC_RUNTIME_API friend BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
     inline void rbc_rc_delete() {
-        dispose();
+        delete_this();
     }
 protected:
     vstd::Guid _guid;
@@ -97,7 +96,7 @@ public:
         auto &&src = type.md5();
         return src[0] == dst[0] && src[1] == dst[1];
     }
-    virtual void dispose() = 0;
+    virtual void delete_this() = 0;
     [[nodiscard]] virtual const char *type_name() const = 0;
     [[nodiscard]] virtual std::array<uint64_t, 2> type_id() const = 0;
     static void *operator new(
@@ -172,10 +171,12 @@ protected:
 }// namespace rbc::world
 RBC_RTTI(rbc::world::BaseObject);
 
-#define DECLARE_WORLD_OBJECT_FRIEND(type_name)            \
-    friend void ea525e13_create_##type_name(type_name *); \
-    friend void ea525e13_destroy_##type_name(type_name *);
+#define DECLARE_WORLD_OBJECT_FRIEND(type_name)             \
+    friend void ea525e13_create_##type_name(type_name *);  \
+    friend void ea525e13_destroy_##type_name(type_name *); \
+    void delete_this() override;
 
 #define DECLARE_WORLD_COMPONENT_FRIEND(type_name)                   \
     friend void ea525e13_create_##type_name(type_name *, Entity *); \
-    friend void ea525e13_destroy_##type_name(type_name *);
+    friend void ea525e13_destroy_##type_name(type_name *);          \
+    void delete_this() override;

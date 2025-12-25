@@ -51,7 +51,7 @@ Entity::~Entity() {
         LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
         auto comp = static_cast<Component *>(obj);
         LUISA_DEBUG_ASSERT(comp->entity() == this);
-        comp->dispose();
+        comp->delete_this();
     }
 }
 void Entity::_add_component(Component *component) {
@@ -72,7 +72,7 @@ bool Entity::remove_component(TypeInfo const &type) {
     auto comp = static_cast<Component *>(obj);
     LUISA_DEBUG_ASSERT(comp->entity() == this);
     comp->_clear_entity();
-    comp->dispose();
+    comp->delete_this();
     return true;
 }
 Component *Entity::get_component(TypeInfo const &type) {
