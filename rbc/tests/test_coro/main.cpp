@@ -9,20 +9,25 @@ struct TestLifeTime {
         LUISA_INFO("coroutine life-time end.\n");
     }
 };
-coro::coroutine my_internal_coro() {
-    LUISA_INFO("Internal 1");
-    co_await std::suspend_always{};
-    LUISA_INFO("Internal 2");
-    co_await std::suspend_always{};
-    LUISA_INFO("Internal 3");
-}
+struct WaitThreeTimes : rbc::coro::i_awaitable {
+    bool exists = true;
+    int time = 0;
+    ~WaitThreeTimes(){
+        exists = false;
+    }
+    bool await_ready() override {
+        time++;
+        return time > 3;
+    }
+};
+
+
 coro::coroutine my_coro() {
     TestLifeTime t;
     LUISA_INFO("1");
-    RBC_AwaitCoroutine(my_internal_coro());
     co_await std::suspend_always{};
     LUISA_INFO("2");
-    co_await std::suspend_always{};
+    co_await WaitThreeTimes{};
     LUISA_INFO("3");
 }
 

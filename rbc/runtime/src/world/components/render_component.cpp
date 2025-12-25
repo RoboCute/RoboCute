@@ -209,12 +209,12 @@ coro::coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource>
     }
     // synchronize
     // wait mesh load
-    RBC_AwaitCoroutine(mesh->wait_load_finished_coro());
+    co_await mesh->await_loading();
     for (auto iter = _materials.begin(); iter != _materials.end();) {
         auto &i = *iter;
         if (i) {
             // wait material load
-            RBC_AwaitCoroutine(i->wait_load_finished_coro());
+            co_await i->await_loading();
         }
         ++iter;
     }

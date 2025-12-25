@@ -13,6 +13,13 @@ enum struct EResourceLoadingStatus : uint8_t {
     Loading,
     Loaded
 };
+struct ResourceAwait : rbc::coro::i_awaitable {
+    friend struct Resource;
+    RBC_RUNTIME_API bool await_ready() override;
+private:
+    InstanceID _inst_id;
+    ResourceAwait(InstanceID inst_id) : _inst_id(inst_id) {}
+};
 struct Resource : BaseObject {
     friend struct ResourceLoader;
     friend struct IResourceImporter;
@@ -38,11 +45,10 @@ public:
 
     // called in coroutine
     RBC_RUNTIME_API void unload();
-    RBC_RUNTIME_API coro::awaitable await_loading();
+    RBC_RUNTIME_API ResourceAwait await_loading();
     // wait until the loading logic finished in both host-side and device-side
 
-    RBC_RUNTIME_API void wait_load_finished_sync() const;
-    RBC_RUNTIME_API rbc::coro::coroutine wait_load_finished_coro() const;
+    RBC_RUNTIME_API void wait_load_finished() const;
     // save host_data to Resource::_path
     RBC_RUNTIME_API bool save_to_path();
     // set Resource::_path, valid only if this resource is empty
@@ -54,7 +60,7 @@ public:
     // deserialize_meta meta information
     RBC_RUNTIME_API void deserialize_meta(ObjDeSerialize const &obj) override;
     // RBC_RUNTIME_API virtual void (ObjDeSerialize const&obj);
-    
+
     /**
      * @brief Decode resource from file using registered importers
      * @param path Path to the resource file
@@ -89,6 +95,6 @@ protected:
     ~ResourceBaseImpl() = default;
 };
 RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file = true);
-RBC_RUNTIME_API void register_resource(Resource* res);
+RBC_RUNTIME_API void register_resource(Resource *res);
 
 }// namespace rbc::world

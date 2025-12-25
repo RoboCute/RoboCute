@@ -70,7 +70,7 @@ double3 TransformComponent::scale() {
 void TransformComponent::mark_dirty() {
     if (_dirty) return;
     _dirty = true;
-    dirty_transforms().emplace_back(_instance_id);
+    dirty_transforms().emplace_back(instance_id());
 }
 void TransformComponent::traversal(double4x4 const &new_trs) {
     auto old_l2w = _trs;

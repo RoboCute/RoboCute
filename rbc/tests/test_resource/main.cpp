@@ -47,6 +47,6 @@ int main(int argc, char *argv[]) {
         auto dummy_ref = world::load_resource(root_guid);
         LUISA_ASSERT(dummy_ref->is_type_of(TypeInfo::get<DummyResource>()));
         auto dummy_ptr = static_cast<DummyResource *>(dummy_ref.get());
-        dummy_ptr->wait_load_finished_sync();
+        dummy_ptr->wait_load_finished();
     }
 }

@@ -1,1 +1,0 @@
-#include <rbc_resource/mesh_decoder.h>

@@ -226,7 +226,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
                 render->start_update_object();
             }
         }
-        skybox->wait_load_finished_sync();
+        skybox->wait_load_finished();
         rbc::RC<DeviceImage> image{skybox->get_image()};
         utils->render_plugin()->update_skybox(image);
     }

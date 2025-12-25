@@ -16,6 +16,11 @@ private:
     bool _visible{true};
     void _update_light();
 public:
+    [[nodiscard]] auto luminance() const { return _luminance; }
+    [[nodiscard]] auto angle_radians() const { return _angle_radians; }
+    [[nodiscard]] auto small_angle_radians() const { return _small_angle_radians; }
+    [[nodiscard]] auto angle_atten_pow() const { return _angle_atten_pow; }
+    [[nodiscard]] auto visible() const { return _visible; }
     void add_area_light(luisa::float3 luminance, bool visible);
     void add_disk_light(luisa::float3 luminance, bool visible);
     void add_point_light(luisa::float3 luminance, bool visible);
@@ -24,7 +29,6 @@ public:
     void on_destroy() override;
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
-    
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::LightComponent)
