@@ -25,7 +25,7 @@ public:
     luisa::BinaryBlob write_content_to();
     void serialize_meta(ObjSerialize const &obj) const override;
     
-    rbc::coro::coroutine _async_load() override;
+    rbc::coroutine _async_load() override;
     void load_from_json(luisa::string_view json_vec);
 protected:
     void _load_from_json(luisa::string_view json_vec, bool set_to_loaded);

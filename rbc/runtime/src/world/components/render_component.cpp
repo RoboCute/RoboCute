@@ -176,7 +176,7 @@ void RenderComponent::start_update_object(luisa::span<RC<MaterialResource> const
         add_world_event(world::WorldEventType::BeforeFrame, std::move(c));
     }
 }
-coro::coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
+coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
     auto tr = entity()->get_component<TransformComponent>();
     if (!tr) {
         LUISA_WARNING("Transform component not found, renderer update failed.");

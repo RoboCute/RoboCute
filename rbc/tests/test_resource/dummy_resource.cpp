@@ -36,7 +36,7 @@ void DummyResource::create_empty(std::initializer_list<RC<DummyResource>> depend
     // mark as loaded
     _status = world::EResourceLoadingStatus::Loaded;
 }
-rbc::coro::coroutine DummyResource::_async_load() {
+rbc::coroutine DummyResource::_async_load() {
     // load current binary
     luisa::BinaryFileStream fs(luisa::to_string(path()));
     LUISA_ASSERT(fs.valid());

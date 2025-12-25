@@ -42,7 +42,7 @@ Resource::Resource() = default;
 Resource::~Resource() = default;
 struct LoadingResource {
     InstanceID res_inst_id;
-    coro::coroutine loading_coro;
+    coroutine loading_coro;
 };
 struct ResourceLoader {
     luisa::filesystem::path _meta_path;
@@ -198,7 +198,7 @@ struct ResourceLoader {
         _async_cv.notify_one();
     }
     void try_unload_resource(Resource *res) {
-        coro::coroutine c{[](InstanceID res) -> coro::coroutine {
+        coroutine c{[](InstanceID res) -> coroutine {
             while (true) {
                 {
                     auto res_ptr = get_object_ref(res);
@@ -312,11 +312,6 @@ void Resource::unload() {
         return;
     }
     _res_loader->try_unload_resource(this);
-}
-void Resource::wait_load_finished() const {
-    while (_status.load(std::memory_order_relaxed) != EResourceLoadingStatus::Loaded) {
-        std::this_thread::yield();
-    }
 }
 void dispose_resource_loader() {
     if (_res_loader)

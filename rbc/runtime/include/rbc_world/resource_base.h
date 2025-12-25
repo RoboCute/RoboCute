@@ -13,7 +13,7 @@ enum struct EResourceLoadingStatus : uint8_t {
     Loading,
     Loaded
 };
-struct ResourceAwait : rbc::coro::i_awaitable {
+struct ResourceAwait : rbc::i_awaitable {
     friend struct Resource;
     RBC_RUNTIME_API bool await_ready() override;
 private:
@@ -31,7 +31,7 @@ protected:
     uint64_t _file_offset{};
     RBC_RUNTIME_API Resource();
     RBC_RUNTIME_API ~Resource();
-    virtual rbc::coro::coroutine _async_load() = 0;
+    virtual rbc::coroutine _async_load() = 0;
     virtual void _unload() = 0;
 
 public:
@@ -45,10 +45,8 @@ public:
 
     // called in coroutine
     RBC_RUNTIME_API void unload();
+    // await until the loading logic finished in both host-side and device-side
     RBC_RUNTIME_API ResourceAwait await_loading();
-    // wait until the loading logic finished in both host-side and device-side
-
-    RBC_RUNTIME_API void wait_load_finished() const;
     // save host_data to Resource::_path
     RBC_RUNTIME_API bool save_to_path();
     // set Resource::_path, valid only if this resource is empty

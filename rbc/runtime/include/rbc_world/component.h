@@ -24,7 +24,7 @@ private:
 public:
     // should only be called internally
     static void _zz_invoke_world_event(WorldEventType event_type);
-    void add_world_event(WorldEventType event_type, rbc::coro::coroutine &&coro);
+    void add_world_event(WorldEventType event_type, rbc::coroutine &&coro);
     void remove_world_event(WorldEventType event_type);
     virtual void on_awake() {};
     virtual void on_destroy() {};

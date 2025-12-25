@@ -9,7 +9,7 @@ struct TestLifeTime {
         LUISA_INFO("coroutine life-time end.\n");
     }
 };
-struct WaitThreeTimes : rbc::coro::i_awaitable {
+struct WaitThreeTimes : rbc::i_awaitable {
     bool exists = true;
     int time = 0;
     ~WaitThreeTimes(){
@@ -22,7 +22,7 @@ struct WaitThreeTimes : rbc::coro::i_awaitable {
 };
 
 
-coro::coroutine my_coro() {
+coroutine my_coro() {
     TestLifeTime t;
     LUISA_INFO("1");
     co_await std::suspend_always{};

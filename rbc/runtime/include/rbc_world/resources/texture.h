@@ -50,7 +50,7 @@ public:
         luisa::uint2 size,
         uint32_t mip_level,
         bool is_virtual_texture);
-    rbc::coro::coroutine _async_load() override;
+    rbc::coroutine _async_load() override;
     bool load_executed() const;
     bool init_device_resource();
     void serialize_meta(ObjSerialize const &obj) const override;

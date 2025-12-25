@@ -1,7 +1,7 @@
 #include <rbc_core/coroutine.h>
 #include <luisa/core/logging.h>
 
-namespace rbc::coro {
+namespace rbc {
 coroutine::coroutine(coroutine &&rhs)
     : _base(rhs._base),
       _own(rhs._own) {
@@ -38,4 +38,4 @@ coroutine::~coroutine() {
         _base.destroy();
     }
 }
-}// namespace rbc::coro
+}// namespace rbc

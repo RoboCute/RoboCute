@@ -7,7 +7,7 @@ namespace rbc::world {
 struct GlobalEvents {
     struct Event {
         rbc::shared_atomic_mutex mtx;
-        luisa::unordered_map<uint64_t, coro::coroutine> map;
+        luisa::unordered_map<uint64_t, coroutine> map;
     };
     std::array<Event, world_event_count> _events;
 };
@@ -31,7 +31,7 @@ void Component::_zz_invoke_world_event(WorldEventType event_type) {
         ++iter;
     }
 }
-void Component::add_world_event(WorldEventType event_type, rbc::coro::coroutine &&coro) {
+void Component::add_world_event(WorldEventType event_type, rbc::coroutine &&coro) {
     auto &evt = _entity_events->_events;
     auto &map = evt[luisa::to_underlying(event_type)];
     std::lock_guard lck{map.mtx};

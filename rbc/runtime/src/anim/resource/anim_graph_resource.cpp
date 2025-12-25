@@ -11,7 +11,7 @@ void AnimGraphResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     BaseType::deserialize_meta(ser);
 }
 
-rbc::coro::coroutine AnimGraphResource::_async_load() {
+rbc::coroutine AnimGraphResource::_async_load() {
     co_return;
 }
 

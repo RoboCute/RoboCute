@@ -11,7 +11,7 @@ void AnimSequenceResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     BaseType::deserialize_meta(ser);
 }
 
-rbc::coro::coroutine AnimSequenceResource::_async_load() {
+rbc::coroutine AnimSequenceResource::_async_load() {
     co_return;
 }
 

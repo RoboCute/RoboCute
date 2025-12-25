@@ -4,13 +4,13 @@
 #include <memory>
 #include <luisa/core/stl/type_traits.h>
 
-namespace rbc::coro {
+namespace rbc {
 struct promise;
 // Coro from cppref
 struct coroutine {
     friend struct promise;
-    using promise_type = rbc::coro::promise;
-    using base_type = std::coroutine_handle<rbc::coro::promise>;
+    using promise_type = rbc::promise;
+    using base_type = std::coroutine_handle<rbc::promise>;
 private:
     base_type _base;
     bool _own{};
@@ -61,7 +61,7 @@ public:
     i_awaitable() = default;
     i_awaitable(i_awaitable const &) = delete;
     i_awaitable(i_awaitable &&) = delete;
-    void await_suspend(std::coroutine_handle<rbc::coro::promise> h) {
+    void await_suspend(std::coroutine_handle<rbc::promise> h) {
         _promise = &h.promise();
         _promise->_awaitable = this;
     }
@@ -81,4 +81,4 @@ struct awaitable final : i_awaitable {
         return func_type();
     }
 };
-}// namespace rbc::coro
+}// namespace rbc
