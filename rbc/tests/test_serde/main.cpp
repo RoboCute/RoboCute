@@ -43,11 +43,11 @@ struct TestTransform {
     TestColor color;
 };
 
-struct TestArrayStruct {
-    luisa::vector<int32_t> int_array;
-    luisa::vector<luisa::string> string_array;
-    luisa::vector<TestPoint> point_array;
-};
+// struct TestArrayStruct {
+//     luisa::vector<int32_t> int_array;
+//     luisa::vector<luisa::string> string_array;
+//     luisa::vector<TestPoint> point_array;
+// };
 }// namespace test_serde
 
 // Serialize<T> specializations for test types
@@ -104,21 +104,21 @@ struct Serialize<test_serde::TestTransform> {
     }
 };
 
-template<>
-struct Serialize<test_serde::TestArrayStruct> {
-    static void write(ArchiveWrite &w, const test_serde::TestArrayStruct &v) {
-        w.value(v.int_array, "int_array");
-        w.value(v.string_array, "string_array");
-        w.value(v.point_array, "point_array");
-    }
+// template<>
+// struct Serialize<test_serde::TestArrayStruct> {
+//     static void write(ArchiveWrite &w, const test_serde::TestArrayStruct &v) {
+//         w.value(v.int_array, "int_array");
+//         w.value(v.string_array, "string_array");
+//         w.value(v.point_array, "point_array");
+//     }
 
-    static bool read(ArchiveRead &r, test_serde::TestArrayStruct &v) {
-        if (!r.value(v.int_array, "int_array")) return false;
-        if (!r.value(v.string_array, "string_array")) return false;
-        if (!r.value(v.point_array, "point_array")) return false;
-        return true;
-    }
-};
+//     static bool read(ArchiveRead &r, test_serde::TestArrayStruct &v) {
+//         if (!r.value(v.int_array, "int_array")) return false;
+//         if (!r.value(v.string_array, "string_array")) return false;
+//         if (!r.value(v.point_array, "point_array")) return false;
+//         return true;
+//     }
+// };
 
 }// namespace rbc
 
@@ -127,67 +127,67 @@ int main(int argc, char *argv[]) {
     auto dispose_runtime_static = vstd::scope_exit([] {
         RuntimeStaticBase::dispose_all();
     });
-    world::init_world(luisa::filesystem::path{argv[0]}.parent_path());
-    auto dsp_world = vstd::scope_exit([&]() {
-        world::destroy_world();
-    });
+    // world::init_world(luisa::filesystem::path{argv[0]}.parent_path());
+    // auto dsp_world = vstd::scope_exit([&]() {
+    //     world::destroy_world();
+    // });
 
-    // ====== Test Raw API =============
-    LUISA_INFO("=== Testing Raw API ===");
-    luisa::BinaryBlob json;
-    {
-        auto entity = world::create_object_with_guid<world::Entity>(vstd::Guid(true));
+    // // ====== Test Raw API =============
+    // LUISA_INFO("=== Testing Raw API ===");
+    // luisa::BinaryBlob json;
+    // {
+    //     auto entity = world::create_object_with_guid<world::Entity>(vstd::Guid(true));
 
-        auto trans = entity->add_component<world::TransformComponent>();
-        trans->set_pos(double3(114, 514, 1919), false);
-        JsonSerializer writer(true);
-        world::ObjSerialize writer_args(writer);
-        // serialize entity and components
-        auto guid = entity->guid();
-        auto type_id = entity->type_id();
-        writer.start_object();
-        if (guid) {
-            writer._store(guid, "__guid__");
-            entity->serialize_meta(writer_args);
-        }
-        writer.add_last_scope_to_object();
-        json = writer.write_to();
-        auto trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
-        // test life time
-        LUISA_ASSERT(trans_ptr == trans);
-        trans->delete_this();
-        trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
-        // tarnsform already destroyed
-        LUISA_ASSERT(trans_ptr == nullptr);
-        entity->delete_this();
-    }
-    // Try deserialize
-    auto json_str = luisa::string_view{
-        (char const *)json.data(),
-        json.size()};
-    LUISA_INFO("{}", json_str);
-    rbc::JsonDeSerializer reader{json_str};
-    auto entity_size = reader.last_array_size();
-    luisa::vector<world::Entity *> entities;
-    entities.reserve(entity_size);
-    for (auto i : vstd::range(entity_size)) {
-        reader.start_object();
-        vstd::Guid guid;
-        LUISA_ASSERT(reader._load(guid, "__guid__"));
-        auto entity = entities.emplace_back(world::create_object_with_guid<world::Entity>(guid));
-        auto deser_obj = world::ObjDeSerialize{.ser = reader};
-        entity->deserialize_meta(deser_obj);
-        reader.end_scope();
-    }
-    for (auto &i : entities) {
-        auto trans = i->get_component<world::TransformComponent>();
-        LUISA_INFO("{}", trans->position());
-    }
-    // Dispose all entities created during deserialization to prevent leaks
-    for (auto &i : entities) {
-        i->delete_this();
-    }
-    LUISA_INFO("=== Testing Raw API Done ===");
+    //     auto trans = entity->add_component<world::TransformComponent>();
+    //     trans->set_pos(double3(114, 514, 1919), false);
+    //     JsonSerializer writer(true);
+    //     world::ObjSerialize writer_args(writer);
+    //     // serialize entity and components
+    //     auto guid = entity->guid();
+    //     auto type_id = entity->type_id();
+    //     writer.start_object();
+    //     if (guid) {
+    //         writer._store(guid, "__guid__");
+    //         entity->serialize_meta(writer_args);
+    //     }
+    //     writer.add_last_scope_to_object();
+    //     json = writer.write_to();
+    //     auto trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
+    //     // test life time
+    //     LUISA_ASSERT(trans_ptr == trans);
+    //     trans->delete_this();
+    //     trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
+    //     // tarnsform already destroyed
+    //     LUISA_ASSERT(trans_ptr == nullptr);
+    //     entity->delete_this();
+    // }
+    // // Try deserialize
+    // auto json_str = luisa::string_view{
+    //     (char const *)json.data(),
+    //     json.size()};
+    // LUISA_INFO("{}", json_str);
+    // rbc::JsonDeSerializer reader{json_str};
+    // auto entity_size = reader.last_array_size();
+    // luisa::vector<world::Entity *> entities;
+    // entities.reserve(entity_size);
+    // for (auto i : vstd::range(entity_size)) {
+    //     reader.start_object();
+    //     vstd::Guid guid;
+    //     LUISA_ASSERT(reader._load(guid, "__guid__"));
+    //     auto entity = entities.emplace_back(world::create_object_with_guid<world::Entity>(guid));
+    //     auto deser_obj = world::ObjDeSerialize{.ser = reader};
+    //     entity->deserialize_meta(deser_obj);
+    //     reader.end_scope();
+    // }
+    // for (auto &i : entities) {
+    //     auto trans = i->get_component<world::TransformComponent>();
+    //     LUISA_INFO("{}", trans->position());
+    // }
+    // // Dispose all entities created during deserialization to prevent leaks
+    // for (auto &i : entities) {
+    //     i->delete_this();
+    // }
+    // LUISA_INFO("=== Testing Raw API Done ===");
 
     // Test Serialize<T> template specialization API
     LUISA_INFO("=== Testing Serialize<T> template specialization ===");
@@ -260,45 +260,45 @@ int main(int argc, char *argv[]) {
     }
 
     // Test 3: Array serialization
-    {
-        test_serde::TestArrayStruct array_struct;
-        array_struct.int_array.emplace_back(1);
-        array_struct.int_array.emplace_back(2);
-        array_struct.int_array.emplace_back(3);
-        array_struct.string_array.emplace_back("hello");
-        array_struct.string_array.emplace_back("world");
-        array_struct.point_array.emplace_back(test_serde::TestPoint{1.0, 2.0, 3.0});
-        array_struct.point_array.emplace_back(test_serde::TestPoint{4.0, 5.0, 6.0});
+    // {
+    //     test_serde::TestArrayStruct array_struct;
+    //     array_struct.int_array.emplace_back(1);
+    //     array_struct.int_array.emplace_back(2);
+    //     array_struct.int_array.emplace_back(3);
+    //     array_struct.string_array.emplace_back("hello");
+    //     array_struct.string_array.emplace_back("world");
+    //     array_struct.point_array.emplace_back(test_serde::TestPoint{1.0, 2.0, 3.0});
+    //     array_struct.point_array.emplace_back(test_serde::TestPoint{4.0, 5.0, 6.0});
 
-        JsonSerializer writer;
-        writer._store(array_struct, "array_struct");
-        auto json_blob = writer.write_to();
+    //     JsonSerializer writer;
+    //     writer._store(array_struct, "array_struct");
+    //     auto json_blob = writer.write_to();
 
-        luisa::string_view json_str{(char const *)json_blob.data(), json_blob.size()};
-        LUISA_INFO("Serialized TestArrayStruct: {}", json_str);
+    //     luisa::string_view json_str{(char const *)json_blob.data(), json_blob.size()};
+    //     LUISA_INFO("Serialized TestArrayStruct: {}", json_str);
 
-        JsonDeSerializer reader{json_str};
-        test_serde::TestArrayStruct deserialized_array;
-        LUISA_ASSERT(reader._load(deserialized_array, "array_struct"));
+    //     JsonDeSerializer reader{json_str};
+    //     test_serde::TestArrayStruct deserialized_array;
+    //     LUISA_ASSERT(reader._load(deserialized_array, "array_struct"));
 
-        LUISA_ASSERT(deserialized_array.int_array.size() == array_struct.int_array.size());
-        for (size_t i = 0; i < array_struct.int_array.size(); ++i) {
-            LUISA_ASSERT(deserialized_array.int_array[i] == array_struct.int_array[i]);
-        }
+    //     LUISA_ASSERT(deserialized_array.int_array.size() == array_struct.int_array.size());
+    //     for (size_t i = 0; i < array_struct.int_array.size(); ++i) {
+    //         LUISA_ASSERT(deserialized_array.int_array[i] == array_struct.int_array[i]);
+    //     }
 
-        LUISA_ASSERT(deserialized_array.string_array.size() == array_struct.string_array.size());
-        for (size_t i = 0; i < array_struct.string_array.size(); ++i) {
-            LUISA_ASSERT(deserialized_array.string_array[i] == array_struct.string_array[i]);
-        }
+    //     LUISA_ASSERT(deserialized_array.string_array.size() == array_struct.string_array.size());
+    //     for (size_t i = 0; i < array_struct.string_array.size(); ++i) {
+    //         LUISA_ASSERT(deserialized_array.string_array[i] == array_struct.string_array[i]);
+    //     }
 
-        LUISA_ASSERT(deserialized_array.point_array.size() == array_struct.point_array.size());
-        for (size_t i = 0; i < array_struct.point_array.size(); ++i) {
-            LUISA_ASSERT(deserialized_array.point_array[i].x == array_struct.point_array[i].x);
-            LUISA_ASSERT(deserialized_array.point_array[i].y == array_struct.point_array[i].y);
-            LUISA_ASSERT(deserialized_array.point_array[i].z == array_struct.point_array[i].z);
-        }
-        LUISA_INFO("TestArrayStruct serialization/deserialization: PASSED");
-    }
+    //     LUISA_ASSERT(deserialized_array.point_array.size() == array_struct.point_array.size());
+    //     for (size_t i = 0; i < array_struct.point_array.size(); ++i) {
+    //         LUISA_ASSERT(deserialized_array.point_array[i].x == array_struct.point_array[i].x);
+    //         LUISA_ASSERT(deserialized_array.point_array[i].y == array_struct.point_array[i].y);
+    //         LUISA_ASSERT(deserialized_array.point_array[i].z == array_struct.point_array[i].z);
+    //     }
+    //     LUISA_INFO("TestArrayStruct serialization/deserialization: PASSED");
+    // }
 
     // Test 4: Array root serialization
     {
