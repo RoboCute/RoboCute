@@ -17,6 +17,7 @@ public:
     ReferenceSkeleton &operator=(SkeletonRuntimeAsset &&InSkeleton);
 
 public:
+    [[nodiscard]] const SkeletonRuntimeAsset &GetRawSkeleton() const { return skeleton; }
 private:
     SkeletonRuntimeAsset skeleton;
 };

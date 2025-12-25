@@ -11,6 +11,8 @@ struct RBC_RUNTIME_API GltfAnimSequenceImporter final : IAnimSequenceImporter {
 
     // dependencies
     RC<SkeletonResource> ref_skel;
+    luisa::string chosen_anim_name;
+    float sampling_rate = 30.0f;
 };
 
 }// namespace rbc

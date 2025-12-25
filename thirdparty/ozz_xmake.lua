@@ -33,5 +33,5 @@ target("ozz_animation_offline_static")
     -- general offline animation tools
     add_files("ozz_animation/src/animation/offline/*.cc")
     add_files("ozz_animation/src/animation/offline/tools/*.cc")
-    add_includedirs("ozz_animation/src/animation/offline/tools/", { public = true})
+    add_includedirs("ozz_animation/src/animation/offline/tools/", { private = true})
 target_end()

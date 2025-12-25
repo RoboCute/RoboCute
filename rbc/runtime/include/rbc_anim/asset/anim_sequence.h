@@ -18,6 +18,9 @@ public:
     explicit AnimSequence(AnimSequenceRuntimeAsset &&InAnim);
     AnimSequence &operator=(AnimSequenceRuntimeAsset &&InAnim);
 
+public:
+    [[nodiscard]] const AnimSequenceRuntimeAsset &GetRawAnim() const { return animation; }
+
 private:
     AnimSequenceRuntimeAsset animation;
     float rate_scale = 1.0f;

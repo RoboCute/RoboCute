@@ -19,6 +19,9 @@ struct SkeletonResource : world::ResourceBaseImpl<SkeletonResource> {
     rbc::coro::coroutine _async_load() override;
     luisa::string_view value() const;
 
+public:
+    const ReferenceSkeleton &ref_skel() const { return skeleton; }
+
 protected:
     bool unsafe_save_to_path() const override;
     void _unload() override;

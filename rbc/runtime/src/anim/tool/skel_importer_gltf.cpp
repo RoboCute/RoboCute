@@ -3,7 +3,6 @@
 #include "rbc_anim/tool/gltf2ozz.h"
 #include "ozz/animation/offline/tools/import2ozz.h"
 #include "ozz/animation/offline/skeleton_builder.h"
-#include "import2ozz_skel.h"
 #include "rbc_anim/types.h"
 #include <tracy_wrapper.h>
 
