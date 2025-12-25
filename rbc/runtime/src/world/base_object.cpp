@@ -33,11 +33,21 @@ TypeRegisterBase::TypeRegisterBase() {
     _type_register_header = this;
 }
 void _collect_all_materials();
-void init_world() {
-    if (_world_inst) return;
+void init_resource_loader(luisa::filesystem::path const &meta_path);// in resource_base.cpp
+void dispose_resource_loader();                                     // in resource_base.cpp
+void init_world(
+    luisa::filesystem::path const &meta_path) {
+    if (_world_inst) [[unlikely]] {
+        LUISA_ERROR("World already initialized.");
+    }
     _world_inst = new BaseObjectStatics{};
+    init_resource_loader(meta_path);
 }
 void destroy_world() {
+    if (!_world_inst) [[unlikely]] {
+        LUISA_ERROR("World already destroyed.");
+    }
+    dispose_resource_loader();
     delete _world_inst;
     _world_inst = nullptr;
 }

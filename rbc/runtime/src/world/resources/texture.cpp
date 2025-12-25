@@ -22,6 +22,7 @@ DeviceImage *TextureResource::get_image() const {
     if (_tex && !is_vt()) {
         return static_cast<DeviceImage *>(_tex.get());
     }
+    LUISA_ERROR("Getting non-sparse image from virtual texture");
     return nullptr;
 }
 DeviceSparseImage *TextureResource::get_sparse_image() const {
@@ -29,6 +30,7 @@ DeviceSparseImage *TextureResource::get_sparse_image() const {
     if (_tex && is_vt()) {
         return static_cast<DeviceSparseImage *>(_tex.get());
     }
+    LUISA_ERROR("Getting sparse image from non-virtual texture");
     return nullptr;
 }
 uint64_t TextureResource::desire_size_bytes() const {

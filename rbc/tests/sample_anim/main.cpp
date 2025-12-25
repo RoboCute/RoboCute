@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
         luisa::filesystem::create_directories(resource_dir);
     }
 
-    world::init_resource_loader(resource_dir);
+    world::init_world(resource_dir);
 
     // Load skybox
     RC<world::TextureResource> skybox;
@@ -283,8 +283,6 @@ int main(int argc, char *argv[]) {
             entity->dispose();
             entity.reset();
         }
-        // Dispose resource loader
-        world::dispose_resource_loader();
         // Destroy world (this will check for leaks)
         world::destroy_world();
     });

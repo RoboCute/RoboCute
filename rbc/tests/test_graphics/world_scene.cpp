@@ -180,12 +180,12 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     // write a demo scene
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
         luisa::filesystem::create_directories(scene_root_dir);
-        world::init_resource_loader(scene_root_dir);
+        world::init_world(scene_root_dir);
         _init_scene(utils);
 
     } else {
         // load demo scene
-        world::init_resource_loader(scene_root_dir);// open project folder
+        world::init_world(scene_root_dir);// open project folder
 
         // load skybox
         {
@@ -407,10 +407,13 @@ bool WorldScene::draw_gizmos(
 }
 
 WorldScene::~WorldScene() {
-    world::dispose_resource_loader();
     _write_scene();
+    skybox.reset();
+    tex.reset();
+    _mats.clear();
     for (auto &i : _entities) {
         i->dispose();
     }
+    world::destroy_world();
 }
 }// namespace rbc

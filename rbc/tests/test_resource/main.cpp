@@ -5,12 +5,10 @@ using namespace rbc;
 int main(int argc, char *argv[]) {
     luisa::fiber::scheduler scheduler;
     RuntimeStaticBase::init_all();
-    world::init_world();
     auto meta_path = luisa::filesystem::path{argv[0]}.parent_path() / "dummy_scene";
     luisa::filesystem::remove_all(meta_path);
-    world::init_resource_loader(meta_path);
+    world::init_world(meta_path);
     auto dispose_runtime_static = vstd::scope_exit([] {
-        world::dispose_resource_loader();
         world::destroy_world();
         RuntimeStaticBase::dispose_all();
     });

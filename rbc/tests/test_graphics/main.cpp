@@ -279,7 +279,6 @@ int main(int argc, char *argv[]) {
 
     utils.dispose([&]() {
         world_scene.destroy();
-        world::destroy_world();
         auto pipe_settings_json = utils.render_settings().serialize_to_json();
         if (pipe_settings_json.data()) {
             LUISA_INFO("{}", luisa::string_view{

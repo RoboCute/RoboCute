@@ -47,7 +47,6 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
     PluginManager::init();
-    world::init_world();
     _render_device.init(program_path, backend_name);
     init_present_stream();
     _render_device.set_main_stream(&_present_stream);

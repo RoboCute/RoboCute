@@ -122,13 +122,12 @@ struct Serialize<test_serde::TestArrayStruct> {
 
 }// namespace rbc
 
-int main() {
+int main(int argc, char *argv[]) {
     RuntimeStaticBase::init_all();
     auto dispose_runtime_static = vstd::scope_exit([] {
-        world::dispose_resource_loader();
         RuntimeStaticBase::dispose_all();
     });
-    world::init_world();
+    world::init_world(luisa::filesystem::path{argv[0]}.parent_path());
     auto dsp_world = vstd::scope_exit([&]() {
         world::destroy_world();
     });
