@@ -9,7 +9,9 @@ public:
 
     shared_atomic_mutex();
     shared_atomic_mutex(const shared_atomic_mutex &) = delete;
+    shared_atomic_mutex(shared_atomic_mutex &&) = delete;
     shared_atomic_mutex &operator=(const shared_atomic_mutex &) = delete;
+    shared_atomic_mutex &operator=(shared_atomic_mutex &&) = delete;
 
     // Acquire the unique lock, first waiting until all shared locks are unlocked.
     void lock();

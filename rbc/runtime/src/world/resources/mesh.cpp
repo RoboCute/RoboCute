@@ -90,10 +90,12 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
             auto dsp = vstd::scope_exit([&] {
                 ser.ser.end_scope();
             });
-            CustomProperty property;
-            if (!ser.ser._load(property.offset_bytes, "offset_bytes")) continue;
-            if (!ser.ser._load(property.size_bytes, "size_bytes")) continue;
-            _custom_properties.try_emplace(std::move(s), std::move(property));
+            uint64_t offset_bytes, size_bytes;
+            if (!ser.ser._load(offset_bytes, "offset_bytes")) continue;
+            if (!ser.ser._load(size_bytes, "size_bytes")) continue;
+            auto &v = _custom_properties.emplace(std::move(s)).value();
+            v.offset_bytes = offset_bytes;
+            v.size_bytes = size_bytes;
         }
     }
 }
@@ -266,15 +268,21 @@ luisa::span<std::byte> MeshResource::get_property_host(luisa::string_view name) 
 luisa::compute::ByteBufferView MeshResource::get_property_buffer(luisa::string_view name) {
     auto iter = _custom_properties.find(name);
     if (!iter) return {};
-    return iter.value().device_buffer;
+    auto &v = iter.value();
+    std::shared_lock lck{v.mtx};
+    return v.device_buffer;
 }
 luisa::compute::ByteBufferView MeshResource::get_or_create_property_buffer(luisa::string_view name) {
     auto iter = _custom_properties.find(name);
     if (!iter) return {};
-    auto &b = iter.value().device_buffer;
+    auto &v = iter.value();
+    std::shared_lock lck{v.mtx};
+    auto &b = v.device_buffer;
     if (!b) {
+        lck.unlock();
+        std::lock_guard lck{v.mtx};
         b = RenderDevice::instance().lc_device().create_byte_buffer(
-            (iter.value().size_bytes + 15ull) & (~15ull));
+            (v.size_bytes + 15ull) & (~15ull));
     }
     return b;
 }

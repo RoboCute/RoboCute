@@ -20,6 +20,7 @@ struct RBC_RUNTIME_API MeshResource final : ResourceBaseImpl<MeshResource> {
     struct CustomProperty {
         size_t offset_bytes;
         size_t size_bytes;
+        rbc::shared_atomic_mutex mtx;
         luisa::compute::ByteBuffer device_buffer;
     };
 
