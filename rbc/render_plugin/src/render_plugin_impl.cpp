@@ -1,7 +1,7 @@
 #include <rbc_render/render_plugin.h>
 #include <rbc_render/pipeline_context.h>
 #include <rbc_render/pt_pipeline.h>
-#include <rbc_runtime/plugin_manager.h>
+#include <rbc_plugin/plugin_manager.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
 #include <oidn_denoiser.h>

@@ -1,6 +1,6 @@
 #pragma once
 #include <luisa/core/shared_function.h>
-#include <rbc_runtime/plugin_manager.h>
+#include <rbc_plugin/plugin_manager.h>
 namespace rbc {
 namespace plugin_mng_detail {
 vstd::optional<PluginManager> inst_;

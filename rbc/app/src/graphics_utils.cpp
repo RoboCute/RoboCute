@@ -5,7 +5,7 @@
 #include <luisa/runtime/rtx/mesh.h>
 #include <luisa/runtime/rtx/triangle.h>
 #include <rbc_app/graphics_utils.h>
-#include <rbc_runtime/plugin_manager.h>
+#include <rbc_plugin/plugin_manager.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_render/renderer_data.h>
 #include <rbc_world/base_object.h>

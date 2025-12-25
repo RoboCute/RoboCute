@@ -368,11 +368,11 @@ def generate():
     target_modules = ["runtime"]
     include = """#include<luisa/runtime/rhi/pixel.h>"""
     header_path = Path(
-        "rbc/runtime/include/rbc_runtime/generated/resource_meta.hpp"
+        "rbc/runtime/include/rbc_plugin/generated/resource_meta.hpp"
     ).resolve()
-    cpp_path = Path("rbc/runtime/src/runtime/generated/resource_meta.cpp").resolve()
+    cpp_path = Path("rbc/runtime/src/generated/resource_meta.cpp").resolve()
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
-    include = "#include <rbc_runtime/generated/resource_meta.hpp>"
+    include = "#include <rbc_plugin/generated/resource_meta.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
     target_modules = ["test_ipc"]
@@ -433,7 +433,7 @@ def generate():
         (py_root_path / "__init__.py").touch()
     py_path = py_root_path / f"{file_name}.py"
 
-    include = """#include <rbc_runtime/generated/resource_meta.hpp>
+    include = """#include <rbc_plugin/generated/resource_meta.hpp>
 #include <rbc_core/rc.h>"""
 
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)

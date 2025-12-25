@@ -17,7 +17,7 @@
 #include <rbc_graphics/materials.h>
 #include <rbc_app/camera_controller.h>
 #include <rbc_core/runtime_static.h>
-#include <rbc_runtime/plugin_manager.h>
+#include <rbc_plugin/plugin_manager.h>
 #include <tracy_wrapper.h>
 #include <rbc_world/entity.h>
 #include <rbc_world/resources/mesh.h>

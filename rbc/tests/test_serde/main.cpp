@@ -10,7 +10,7 @@
 #include <rbc_core/state_map.h>
 #include <luisa/vstl/md5.h>
 #include <rbc_core/func_serializer.h>
-#include <rbc_runtime/plugin_manager.h>
+#include <rbc_plugin/plugin_manager.h>
 #include <rbc_world/base_object.h>
 #include <rbc_world/components/transform.h>
 #include <rbc_world/entity.h>

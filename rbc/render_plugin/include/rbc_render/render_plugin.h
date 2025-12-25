@@ -2,7 +2,7 @@
 #include <luisa/vstl/common.h>
 #include <rbc_graphics/camera.h>
 #include <rbc_core/state_map.h>
-#include <rbc_runtime/plugin.h>
+#include <rbc_plugin/plugin.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <luisa/runtime/buffer.h>
 #include <luisa/runtime/stream.h>
