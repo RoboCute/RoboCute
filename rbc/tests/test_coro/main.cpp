@@ -9,18 +9,15 @@ struct TestLifeTime {
         LUISA_INFO("coroutine life-time end.\n");
     }
 };
-struct WaitThreeTimes : rbc::i_awaitable {
-    bool exists = true;
+struct WaitThreeTimes : rbc::i_awaitable<WaitThreeTimes> {
     int time = 0;
-    ~WaitThreeTimes(){
-        exists = false;
+    ~WaitThreeTimes() {
     }
-    bool await_ready() override {
+    bool await_ready() {
         time++;
         return time > 3;
     }
 };
-
 
 coroutine my_coro() {
     TestLifeTime t;

@@ -7,6 +7,7 @@
 #include <luisa/core/binary_io.h>
 #include <luisa/vstl/hash_map.h>
 #include <luisa/vstl/v_guid.h>
+#include <luisa/core/logging.h>
 #include <luisa/core/stl/memory.h>
 #include <luisa/core/stl/vector.h>
 

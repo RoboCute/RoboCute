@@ -13,9 +13,9 @@ enum struct EResourceLoadingStatus : uint8_t {
     Loading,
     Loaded
 };
-struct ResourceAwait : rbc::i_awaitable {
+struct ResourceAwait : rbc::i_awaitable<ResourceAwait> {
     friend struct Resource;
-    RBC_RUNTIME_API bool await_ready() override;
+    RBC_RUNTIME_API bool await_ready();
 private:
     InstanceID _inst_id;
     ResourceAwait(InstanceID inst_id) : _inst_id(inst_id) {}
