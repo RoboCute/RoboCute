@@ -12,6 +12,7 @@
 #include <rbc_core/base.h>
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/json_serde.h>
+#include <rbc_core/bin_serde.h>
 
 namespace rbc {
 // Forward declaration for Serialize template
@@ -633,29 +634,7 @@ struct Serializer : public Base {
                 this->_store(i);
             }
             Base::add_last_scope_to_object(args...);
-        }
-        // duck type (this is no good)
-        // else if constexpr (requires {t.data(); t. size(); }) {
-        //     auto i = t.data();
-        //     auto end = i + t.size();
-        //     Base::start_array();
-        //     while (i != end) {
-        //         this->_store(*i);
-        //         ++i;
-        //     }
-        //     Base::add_last_scope_to_object(args...);
-
-        // } else if constexpr (requires { t.begin() ; t.end(); }) {
-        //     auto i = t.begin();
-        //     auto end = i.end();
-        //     Base::start_array();
-        //     while (i != end) {
-        //         this->_store(*i);
-        //         ++i;
-        //     }
-        //     Base::add_last_scope_to_object(args...);
-        // }
-        else if constexpr (std::is_same_v<T, vstd::Guid>) {
+        } else if constexpr (std::is_same_v<T, vstd::Guid>) {
             auto str = t.to_base64();
             Base::add(luisa::string_view{str}, args...);
         } else {
@@ -901,8 +880,14 @@ struct DeSerializer : public Base {
 using JsonSerializer = Serializer<JsonWriter>;
 using JsonDeSerializer = DeSerializer<JsonReader>;
 
+using BinSerializer = Serializer<BinWriter>;
+using BinDeSerializer = DeSerializer<BinReader>;
+
 using ArchiveReadJson = detail::ArchiveReadAdapter<JsonReader>;
 using ArchiveWriteJson = detail::ArchiveWriteAdapter<JsonWriter>;
+
+using ArchiveReadBin = detail::ArchiveReadAdapter<BinReader>;
+using ArchiveWriteBin = detail::ArchiveWriteAdapter<BinWriter>;
 
 template<typename T>
 struct is_serializer {
