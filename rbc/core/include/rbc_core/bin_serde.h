@@ -25,9 +25,9 @@ struct BinScope {
     uint64_t array_index;
     luisa::string last_key;
     bool in_object;
-    bool object_start_written; // For objects in object context, track if ObjectStart has been written
-    uint64_t object_start_pos; // Position where ObjectStart should be written (if delayed)
-    uint64_t array_size_pos; // Position where array size was written (for root array or nested arrays)
+    bool object_start_written;// For objects in object context, track if ObjectStart has been written
+    uint64_t object_start_pos;// Position where ObjectStart should be written (if delayed)
+    uint64_t array_size_pos;  // Position where array size was written (for root array or nested arrays)
 };
 
 struct RBC_CORE_API BinWriter {
@@ -81,6 +81,9 @@ public:
     // bytes interface
     void bytes(luisa::span<std::byte const> data);
     void bytes(luisa::span<std::byte const> data, char const *name);
+    // Direct bytes interface (void* version)
+    void bytes(void *data, uint64_t size);
+    void bytes(void *data, uint64_t size, char const *name);
 
 public:
     [[nodiscard]] luisa::BinaryBlob write_to() const;
@@ -126,8 +129,11 @@ struct RBC_CORE_API BinReader {
     bool read(luisa::string &value, char const *name);
 
     // bytes interface
-    bool read_bytes(luisa::vector<std::byte> &data);
-    bool read_bytes(luisa::vector<std::byte> &data, char const *name);
+    bool bytes(luisa::vector<std::byte> &data);
+    bool bytes(luisa::vector<std::byte> &data, char const *name);
+    // Direct bytes interface (void* version)
+    bool bytes(void *data, uint64_t size);
+    bool bytes(void *data, uint64_t size, char const *name);
 
     bool valid() const;
 
@@ -137,7 +143,7 @@ protected:
     bool read_uint64(uint64_t &value);
     bool read_string(luisa::string &value);
     bool check_type(BinType expected);
-    bool skip_value(); // Skip current value (used when key doesn't match in object)
+    bool skip_value();// Skip current value (used when key doesn't match in object)
 };
 
 }// namespace rbc

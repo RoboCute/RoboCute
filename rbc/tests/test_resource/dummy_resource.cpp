@@ -7,24 +7,24 @@ void DummyResource::serialize_meta(world::ObjSerialize const &ser) const {
     // write basic informations: type_id, file_path, etc...
     BaseType::serialize_meta(ser);
     // write dependencies
-    ser.ser.start_array();
+    ser.ar.start_array();
     for (auto &i : _depended) {
-        ser.ser._store(i->guid());
+        ser.ar.value(i->guid());
     }
-    ser.ser.add_last_scope_to_object("depend");
+    ser.ar.end_array("depend");
 }
 void DummyResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     BaseType::deserialize_meta(ser);
-    size_t size;
-    LUISA_ASSERT(ser.ser.start_array(size, "depend"), "Bad meta");
+    uint64_t size;
+    LUISA_ASSERT(ser.ar.start_array(size, "depend"), "Bad meta");
     _depended.reserve(size);
 
     for (size_t i = 0; i < size; ++i) {
         vstd::Guid depended_guid{};
-        LUISA_ASSERT(ser.ser._load(depended_guid), "Bad meta");
+        LUISA_ASSERT(ser.ar.value(depended_guid), "Bad meta");
         LUISA_ASSERT(_depended.emplace_back(world::load_resource(depended_guid)), "Load depended failed.");
     }
-    ser.ser.end_scope();
+    ser.ar.end_scope();
 }
 void DummyResource::create_empty(std::initializer_list<RC<DummyResource>> depended, luisa::string_view name) {
     _depended.clear();

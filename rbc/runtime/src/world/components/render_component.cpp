@@ -27,8 +27,7 @@ void RenderComponent::on_destroy() {
     remove_object();
 }
 void RenderComponent::serialize_meta(ObjSerialize const &ser) const {
-    auto &ser_obj = ser.ser;
-    ser_obj.start_array();
+    ser.ar.start_array();
     for (auto &i : _materials) {
         vstd::Guid guid;
         if (i) {
@@ -36,44 +35,43 @@ void RenderComponent::serialize_meta(ObjSerialize const &ser) const {
         } else {
             guid.reset();
         }
-        ser_obj._store(guid);
+        ser.ar.value(guid);
     }
-    ser_obj.add_last_scope_to_object("mats");
+    ser.ar.end_array("mats");
     if (_mesh_ref) {
         auto guid = _mesh_ref->guid();
         if (guid) {
-            ser_obj._store(guid, "mesh");
+            ser.ar.value(guid, "mesh");
             // TODO: mark dependencies
             // ser.depended_resources.emplace(guid);
             // ser.depended_resources.emplace(guid);
         }
     }
 }
-void RenderComponent::deserialize_meta(ObjDeSerialize const &ser) {
-    auto &obj = ser.ser;
+void RenderComponent::deserialize_meta(ObjDeSerialize const &deser) {
     uint64_t size;
-    if (obj.start_array(size, "mats")) {
+    if (deser.ar.start_array(size, "mats")) {
         _materials.reserve(size);
         for (auto &i : vstd::range(size)) {
             vstd::Guid guid;
-            if (!obj._load(guid)) {
+            if (!deser.ar.value(guid)) {
                 _materials.emplace_back(nullptr);
             } else {
-                auto obj = load_resource(guid, true);
-                if (obj && obj->is_type_of(TypeInfo::get<MaterialResource>())) {
-                    _materials.emplace_back(std::move(obj));
+                auto res = load_resource(guid, true);
+                if (res && res->is_type_of(TypeInfo::get<MaterialResource>())) {
+                    _materials.emplace_back(std::move(res));
                 } else {
                     _materials.emplace_back(nullptr);
                 }
             }
         }
-        obj.end_scope();
+        deser.ar.end_scope();
     }
     vstd::Guid guid;
-    if (obj._load(guid, "mesh")) {
-        auto obj = load_resource(guid, true);
-        if (obj && obj->is_type_of(TypeInfo::get<MeshResource>())) {
-            _mesh_ref = RC<MeshResource>(std::move(obj));
+    if (deser.ar.value(guid, "mesh")) {
+        auto res = load_resource(guid, true);
+        if (res && res->is_type_of(TypeInfo::get<MeshResource>())) {
+            _mesh_ref = RC<MeshResource>(std::move(res));
         }
     }
 }

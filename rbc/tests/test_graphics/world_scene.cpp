@@ -6,8 +6,12 @@
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_app/graphics_utils.h>
 #include <rbc_core/binary_file_writer.h>
+#include <rbc_core/serde.h>
 #include <rbc_render/click_manager.h>
 #include <tracy_wrapper.h>
+
+using rbc::ArchiveWriteJson;
+using rbc::ArchiveReadJson;
 
 namespace rbc {
 void WorldScene::_init_scene(GraphicsUtils *utils) {
@@ -144,8 +148,8 @@ void WorldScene::_write_scene() {
                 0);
         res->save_to_path();
         JsonSerializer js;
-        res->serialize_meta(world::ObjSerialize{
-            js});
+        ArchiveWriteJson adapter(js);
+        res->serialize_meta(world::ObjSerialize{adapter});
         auto blob = js.write_to();
         LUISA_ASSERT(!blob.empty());
         BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / (res->guid().to_string() + ".rbcmt")));
@@ -161,11 +165,12 @@ void WorldScene::_write_scene() {
     }
     // write_scene
     JsonSerializer scene_ser{true};
-    world::ObjSerialize ser{scene_ser};
+    ArchiveWriteJson scene_adapter(scene_ser);
+    world::ObjSerialize ser{scene_adapter};
     for (auto &i : _entities) {
-        scene_ser.start_object();
+        scene_adapter.start_object();
         i->serialize_meta(ser);
-        scene_ser.add_last_scope_to_object();
+        scene_adapter.end_object();
     }
     BinaryFileWriter file_writer(luisa::to_string(entities_path));
     file_writer.write(scene_ser.write_to());
@@ -212,13 +217,14 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         // load test_scene/scene.rbcmt
         JsonDeSerializer entitie_deser(luisa::string_view((char const *)data.data(), data.size()));
         LUISA_ASSERT(entitie_deser.valid());
+        ArchiveReadJson read_adapter(entitie_deser);
         uint64_t size = entitie_deser.last_array_size();
         _entities.reserve(size);
         for (auto i : vstd::range(size)) {
             auto e = _entities.emplace_back(world::create_object<world::Entity>());
-            entitie_deser.start_object();
-            e->deserialize_meta(world::ObjDeSerialize{entitie_deser});
-            entitie_deser.end_scope();
+            read_adapter.start_object();
+            e->deserialize_meta(world::ObjDeSerialize{read_adapter});
+            read_adapter.end_scope();
         }
         for (auto &i : _entities) {
             auto render = i->get_component<world::RenderComponent>();

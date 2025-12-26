@@ -1,4 +1,3 @@
-#include "generated/generated.hpp"
 #include <luisa/core/stl.h>
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/basic_types.h>
@@ -23,135 +22,98 @@ using namespace rbc;
 using namespace luisa;
 
 int main(int argc, char *argv[]) {
+    luisa::fiber::scheduler scheduler;
     RuntimeStaticBase::init_all();
     auto dispose_runtime_static = vstd::scope_exit([] {
         RuntimeStaticBase::dispose_all();
     });
-    // world::init_world(luisa::filesystem::path{argv[0]}.parent_path());
-    // auto dsp_world = vstd::scope_exit([&]() {
-    //     world::destroy_world();
-    // });
 
-    // // ====== Test Raw API =============
-    // LUISA_INFO("=== Testing Raw API ===");
-    // luisa::BinaryBlob json;
-    // {
-    //     auto entity = world::create_object_with_guid<world::Entity>(vstd::Guid(true));
+    world::init_world(luisa::filesystem::path{argv[0]}.parent_path());
+    auto dsp_world = vstd::scope_exit([&]() {
+        world::destroy_world();
+    });
 
-    //     auto trans = entity->add_component<world::TransformComponent>();
-    //     trans->set_pos(double3(114, 514, 1919), false);
-    //     JsonSerializer writer(true);
-    //     world::ObjSerialize writer_args(writer);
-    //     // serialize entity and components
-    //     auto guid = entity->guid();
-    //     auto type_id = entity->type_id();
-    //     writer.start_object();
-    //     if (guid) {
-    //         writer._store(guid, "__guid__");
-    //         entity->serialize_meta(writer_args);
-    //     }
-    //     writer.add_last_scope_to_object();
-    //     json = writer.write_to();
-    //     auto trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
-    //     // test life time
-    //     LUISA_ASSERT(trans_ptr == trans);
-    //     trans->delete_this();
-    //     trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
-    //     // tarnsform already destroyed
-    //     LUISA_ASSERT(trans_ptr == nullptr);
-    //     entity->delete_this();
-    // }
-    // // Try deserialize
-    // auto json_str = luisa::string_view{
-    //     (char const *)json.data(),
-    //     json.size()};
-    // LUISA_INFO("{}", json_str);
-    // rbc::JsonDeSerializer reader{json_str};
-    // auto entity_size = reader.last_array_size();
-    // luisa::vector<world::Entity *> entities;
-    // entities.reserve(entity_size);
-    // for (auto i : vstd::range(entity_size)) {
-    //     reader.start_object();
-    //     vstd::Guid guid;
-    //     LUISA_ASSERT(reader._load(guid, "__guid__"));
-    //     auto entity = entities.emplace_back(world::create_object_with_guid<world::Entity>(guid));
-    //     auto deser_obj = world::ObjDeSerialize{.ser = reader};
-    //     entity->deserialize_meta(deser_obj);
-    //     reader.end_scope();
-    // }
-    // for (auto &i : entities) {
-    //     auto trans = i->get_component<world::TransformComponent>();
-    //     LUISA_INFO("{}", trans->position());
-    // }
-    // // Dispose all entities created during deserialization to prevent leaks
-    // for (auto &i : entities) {
-    //     i->delete_this();
-    // }
-    // LUISA_INFO("=== Testing Raw API Done ===");
+    // ====== Test Entity Serialization with Unified API ======
+    LUISA_INFO("=== Testing Entity Serialization ===");
+    luisa::BinaryBlob json;
+    {
+        auto entity = world::create_object<world::Entity>();
+        auto saved_guid = entity->guid();
+
+        auto trans = entity->add_component<world::TransformComponent>();
+        trans->set_pos(double3(114, 514, 1919), false);
+
+        JsonSerializer writer;
+        writer._store(*entity, "entity");
+        json = writer.write_to();
+
+        auto trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
+        // test life time
+        LUISA_ASSERT(trans_ptr == trans);
+        trans->delete_this();
+        trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
+        // transform already destroyed
+        LUISA_ASSERT(trans_ptr == nullptr);
+
+        // Print JSON
+        auto json_str = luisa::string_view{
+            (char const *)json.data(),
+            json.size()};
+        LUISA_INFO("Serialized Entity JSON:\n{}", json_str);
+
+        // Try deserialize into a NEW entity (don't reuse GUID while old entity exists)
+        {
+            JsonDeSerializer reader{json_str};
+            // Create a new entity for deserialization
+            auto new_entity = world::create_object<world::Entity>();
+            reader._load(*new_entity, "entity");
+
+            auto new_trans = new_entity->get_component<world::TransformComponent>();
+            if (new_trans) {
+                LUISA_INFO("Deserialized position: {}", new_trans->position());
+            } else {
+                LUISA_WARNING("TransformComponent not found after deserialization");
+            }
+
+            // Cleanup new entity
+            new_entity->delete_this();
+        }
+
+        // Cleanup original entity
+        entity->delete_this();
+    }
+
+    LUISA_INFO("=== Testing Entity Serialization Done ===");
+
+    // ====== Test Binary Serialization ======
+    LUISA_INFO("=== Testing Binary Serialization ===");
+    {
+        auto entity = world::create_object<world::Entity>();
+        auto trans = entity->add_component<world::TransformComponent>();
+        trans->set_pos(double3(100, 200, 300), false);
+
+        // Serialize with BinSerializer using _store (no name for root level)
+        BinSerializer bin_writer;
+        bin_writer._store(*entity, "entity");
+
+        auto bin_blob = bin_writer.write_to();
+        LUISA_INFO("Binary blob size: {} bytes", bin_blob.size());
+
+        // Deserialize into a new entity
+        {
+            BinDeSerializer bin_reader{bin_blob};
+            // Create a new entity for deserialization
+            auto new_entity = world::create_object<world::Entity>();
+            bin_reader._load(*new_entity, "entity");
+            auto new_trans = new_entity->get_component<world::TransformComponent>();
+            if (new_trans) {
+                LUISA_INFO("Binary deserialized position: {}", new_trans->position());
+            }
+            new_entity->delete_this();
+        }
+        entity->delete_this();
+    }
+    LUISA_INFO("=== Testing Binary Serialization Done ===");
 
     return 0;
-    //     rbc::JsonSerializer writer;
-    //     StateMap state_map;
-    //     {
-    //         MyStruct my_struct;
-    //         my_struct.a = 114;
-    //         my_struct.b = make_double2(1.5, 6.6);
-    //         my_struct.c = 514.f;
-    //         my_struct.matrix = make_float4x4(
-    //             1, 2, 3, 4,
-    //             5, 6, 7, 8,
-    //             9, 10, 11, 12,
-    //             13, 14, 15, 16);
-    //         my_struct.dd = "this is string";
-    //         my_struct.ee.emplace_back(1919);
-    //         my_struct.ee.emplace_back(810);
-    //         my_struct.ff.try_emplace("key", make_float4(4, 3, 2, 1));
-    //         my_struct.vec_str.emplace_back("str0");
-    //         my_struct.vec_str.emplace_back("str1");
-    //         my_struct.test_enum = MyEnum::Off;
-    //         my_struct.guid.remake();
-    //         auto &v0 = my_struct.multi_dim_vec.emplace_back();
-    //         v0.emplace_back(1);
-    //         v0.emplace_back(2);
-    //         auto &v1 = my_struct.multi_dim_vec.emplace_back();
-    //         v1.emplace_back(3);
-    //         v1.emplace_back(4);
-    //         state_map.write_atomic(std::move(my_struct));
-    //     }
-    //     // Ser
-    //     auto text = state_map.serialize_to_json();
-    //     auto type = TypeInfo::get<MyStruct>();
-    //     LUISA_INFO("Type {} md5 {} json-write {}",
-    //                type.name(),
-    //                type.md5_to_string(),
-    //                (char const *)text.data());
-
-    //     //     // Deser
-    //     {
-    //         StateMap deser_map;
-    //         deser_map.init_json({reinterpret_cast<char const *>(text.data()), text.size()});
-    //         auto &&new_struct = deser_map.read<MyStruct>();
-    // #define PRINT_MY_STRUCT(m) LUISA_INFO("{} {}", #m, new_struct.m)
-    //         PRINT_MY_STRUCT(a);
-    //         PRINT_MY_STRUCT(b);
-    //         PRINT_MY_STRUCT(c);
-    //         PRINT_MY_STRUCT(dd);
-    //         PRINT_MY_STRUCT(matrix);
-    //         for (auto &i : new_struct.ee) {
-    //             LUISA_INFO("ee {}", i);
-    //         }
-    //         for (auto &i : new_struct.ff) {
-    //             LUISA_INFO("ff {}, {}", i.first, i.second);
-    //         }
-    //         for (auto &i : new_struct.vec_str) {
-    //             LUISA_INFO("vec str {}", i);
-    //         }
-    //         for (auto &i : new_struct.multi_dim_vec) {
-    //             for (auto &j : i) {
-    //                 LUISA_INFO("multi_dim_vec {}", j);
-    //             }
-    //         }
-    //         LUISA_INFO("test_enum {}", luisa::to_string(new_struct.test_enum));
-    //         LUISA_INFO("guid {}", new_struct.guid.to_base64());
-    //     }
 }

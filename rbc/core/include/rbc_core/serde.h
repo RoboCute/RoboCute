@@ -1,5 +1,5 @@
 #pragma once
-#include <cstddef> // for std::byte
+#include <cstddef>// for std::byte
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/stl/type_traits.h>
 #include <luisa/core/stl/unordered_map.h>
@@ -68,6 +68,12 @@ concept SerWriter = requires(T t) {
     t.add_arr(std::declval<luisa::span<bool const>>(), std::declval<char const *>());
     t.add(std::declval<luisa::string_view>(), std::declval<char const *>());
 
+    // bytes interface
+    t.bytes(std::declval<luisa::span<std::byte const>>());
+    t.bytes(std::declval<luisa::span<std::byte const>>(), std::declval<char const *>());
+    t.bytes(std::declval<void *>(), std::declval<uint64_t>());
+    t.bytes(std::declval<void *>(), std::declval<uint64_t>(), std::declval<char const *>());
+
     std::same_as<decltype(t.write_to()), luisa::BinaryBlob>;
 };
 template<typename T>
@@ -88,6 +94,12 @@ concept SerReader = requires(T t) {
     std::same_as<bool, decltype(t.read(lvalue_declval<double>(), std::declval<char const *>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<luisa::string>(), std::declval<char const *>()))>;
     t.end_scope();
+
+    // bytes interface
+    std::same_as<bool, decltype(t.bytes(std::declval<luisa::vector<std::byte> &>()))>;
+    std::same_as<bool, decltype(t.bytes(std::declval<luisa::vector<std::byte> &>(), std::declval<char const *>()))>;
+    std::same_as<bool, decltype(t.bytes(std::declval<void *>(), std::declval<uint64_t>()))>;
+    std::same_as<bool, decltype(t.bytes(std::declval<void *>(), std::declval<uint64_t>(), std::declval<char const *>()))>;
 };
 
 // Concepts for detecting Serialize<T> specializations
@@ -188,8 +200,16 @@ struct ArchiveWrite {
     virtual void add_arr(luisa::span<bool const> bool_values, char const *name) = 0;
 
     // bytes interface for raw binary data (only supported in binary format)
-    virtual void bytes(luisa::span<std::byte const> data) = 0;
-    virtual void bytes(luisa::span<std::byte const> data, char const *name) = 0;
+    // Returns true on success, false on failure
+    virtual bool bytes(luisa::span<std::byte const> data) = 0;
+    virtual bool bytes(luisa::span<std::byte const> data, char const *name) = 0;
+    // Direct bytes interface for raw binary data (void* version)
+    virtual bool bytes(void *data, uint64_t size) = 0;
+    virtual bool bytes(void *data, uint64_t size, char const *name) = 0;
+
+    // Check if this archive is structured (JSON/object format) or streamed (binary bytes)
+    // Returns true for structured formats (JSON), false for streamed binary formats
+    [[nodiscard]] virtual bool is_structured() const = 0;
 
     template<typename T>
     void value(const T &v) {
@@ -200,18 +220,44 @@ struct ArchiveWrite {
             end_object();
         } else if constexpr (std::is_same_v<T, bool>) {
             add(v);
+        } else if constexpr (std::is_enum_v<T>) {
+            // Enum types - serialize as string
+            static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
+            auto strv = EnumSerializer::template get_enum_value_name<T>(luisa::to_underlying(v));
+            add(strv);
         } else if constexpr (std::is_integral_v<T>) {
             if constexpr (std::is_unsigned_v<T>) {
                 add((uint64_t)v);
             } else {
                 add((int64_t)v);
             }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+        } 
+        // int64_t
+        else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>) {
+            add(v);
+        }
+        else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             add((double)v);
+        } else if constexpr (std::is_same_v<T, vstd::Guid>) {
+            add(v.to_string());
         } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
             add(luisa::string_view{v});
-        } else if (rbc::detail::is_vector<T>::value) {
-            // vector container
+        } else if constexpr (luisa::is_vector_v<T>) {
+            // Math vector types (float3, uint2, etc.)
+            start_array();
+            for (size_t i = 0; i < luisa::vector_dimension_v<T>; ++i) {
+                value(v[i]);
+            }
+            end_array();
+        } else if constexpr (concepts::is_matrix_v<T>) {
+            // Matrix types
+            start_array();
+            for (size_t i = 0; i < luisa::matrix_dimension_v<T>; ++i) {
+                value(v[i]);
+            }
+            end_array();
+        } else if constexpr (rbc::detail::is_vector<T>::value) {
+            // vector container (luisa::vector<T>)
             using EleType = luisa::vector_element_t<T>;
             start_array();
             for (auto &&i : v) {
@@ -219,6 +265,7 @@ struct ArchiveWrite {
             }
             end_array();
         } else {
+            static_assert(!sizeof(T), "Unsupported type for ArchiveWrite::value");
         }
     }
 
@@ -231,17 +278,45 @@ struct ArchiveWrite {
             end_object(name);
         } else if constexpr (std::is_same_v<T, bool>) {
             add(v, name);
+        } else if constexpr (std::is_enum_v<T>) {
+            // Enum types - serialize as string
+            static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
+            auto strv = EnumSerializer::template get_enum_value_name<T>(luisa::to_underlying(v));
+            add(strv, name);
         } else if constexpr (std::is_integral_v<T>) {
             if constexpr (std::is_unsigned_v<T>) {
                 add((uint64_t)v, name);
             } else {
                 add((int64_t)v, name);
             }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+        } 
+        // int64_t
+        else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>) {
+            add(v, name);
+        }
+        // float
+        else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             add((double)v, name);
+        } else if constexpr (std::is_same_v<T, vstd::Guid>) {
+            add(v.to_string(), name);
         } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
             add(luisa::string_view{v}, name);
-        } else if (rbc::detail::is_vector<T>::value) {
+        } else if constexpr (luisa::is_vector_v<T>) {
+            // Math vector types (float3, uint2, etc.)
+            start_array();
+            for (size_t i = 0; i < luisa::vector_dimension_v<T>; ++i) {
+                value(v[i]);
+            }
+            end_array(name);
+        } else if constexpr (concepts::is_matrix_v<T>) {
+            // Matrix types
+            start_array();
+            for (size_t i = 0; i < luisa::matrix_dimension_v<T>; ++i) {
+                value(v[i]);
+            }
+            end_array(name);
+        } else if constexpr (rbc::detail::is_vector<T>::value) {
+            // vector container (luisa::vector<T>)
             using EleType = luisa::vector_element_t<T>;
             start_array();
             for (auto &&i : v) {
@@ -249,6 +324,7 @@ struct ArchiveWrite {
             }
             end_array(name);
         } else {
+            static_assert(!sizeof(T), "Unsupported type for ArchiveWrite::value");
         }
     }
 };
@@ -271,9 +347,16 @@ struct ArchiveRead {
     virtual bool read(double &v, char const *name) = 0;
     virtual bool read(luisa::string &v, char const *name) = 0;
 
-    // bytes interface for raw binary data (only supported in binary format)
-    virtual bool read_bytes(luisa::vector<std::byte> &data) = 0;
-    virtual bool read_bytes(luisa::vector<std::byte> &data, char const *name) = 0;
+    // Reads bytes into a vector (for structured access)
+    virtual bool bytes(luisa::vector<std::byte> &data) = 0;
+    virtual bool bytes(luisa::vector<std::byte> &data, char const *name) = 0;
+    // for stream (raw access)
+    virtual bool bytes(void *data, uint64_t size) = 0;
+    virtual bool bytes(void *data, uint64_t size, char const *name) = 0;
+
+    // Check if this archive is structured (JSON/object format) or streamed (binary bytes)
+    // Returns true for structured formats (JSON), false for streamed binary formats
+    [[nodiscard]] virtual bool is_structured() const = 0;
 
     // value<T>() method that uses Serialize<T> specialization
     template<typename T>
@@ -286,38 +369,81 @@ struct ArchiveRead {
             return result;
         } else if constexpr (std::is_same_v<T, bool>) {
             return read(v);
+        } else if constexpr (std::is_enum_v<T>) {
+            // Enum types - deserialize from string
+            static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
+            luisa::string str;
+            if (!read(str)) return false;
+            auto value_opt = EnumSerializer::template get_enum_value<T>(str);
+            if (!value_opt) return false;
+            v = static_cast<T>(*value_opt);
+            return true;
         } else if constexpr (std::is_integral_v<T>) {
             if constexpr (std::is_unsigned_v<T>) {
                 uint64_t temp;
                 bool result = read(temp);
-                if (result) v = (T)temp;
+                if (result) v = static_cast<T>(temp);
                 return result;
             } else {
                 int64_t temp;
                 bool result = read(temp);
-                if (result) v = (T)temp;
+                if (result) v = static_cast<T>(temp);
                 return result;
             }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+        // int64_t
+        } else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>) {
+            int64_t temp;
+            bool result = read(temp);
+            if (result) v = static_cast<T>(temp);
+            return result;
+        }
+        // float
+        else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             double temp;
             bool result = read(temp);
-            if (result) v = (T)temp;
+            if (result) v = static_cast<T>(temp);
             return result;
+        } else if constexpr (std::is_same_v<T, vstd::Guid>) {
+            luisa::string str;
+            if (!read(str)) return false;
+            v = vstd::Guid(std::string_view{str.data(), str.size()});
+            return true;
         } else if constexpr (std::is_same_v<T, luisa::string>) {
             return read(v);
-        } else if (rbc::detail::is_vector<T>::value) {
-            using EleType = luisa::vector_element_t<T>;
-            size_t size;
-            start_array(size);
+        } else if constexpr (luisa::is_vector_v<T>) {
+            // Math vector types (float3, uint2, etc.)
+            uint64_t size;
+            if (!start_array(size)) return false;
             bool result = true;
-            for (auto i = 0; i < size; i++) {
+            for (size_t i = 0; i < luisa::vector_dimension_v<T> && i < size; ++i) {
+                result &= value(v[i]);
+            }
+            end_scope();
+            return result;
+        } else if constexpr (concepts::is_matrix_v<T>) {
+            // Matrix types
+            uint64_t size;
+            if (!start_array(size)) return false;
+            bool result = true;
+            for (size_t i = 0; i < luisa::matrix_dimension_v<T> && i < size; ++i) {
+                result &= value(v[i]);
+            }
+            end_scope();
+            return result;
+        } else if constexpr (rbc::detail::is_vector<T>::value) {
+            // vector container (luisa::vector<T>)
+            using EleType = luisa::vector_element_t<T>;
+            uint64_t size;
+            if (!start_array(size)) return false;
+            bool result = true;
+            v.resize(size);
+            for (size_t i = 0; i < size; i++) {
                 result &= value(v[i]);
             }
             end_scope();
             return result;
         } else {
-            // For other types without Serialize<T>, fall back to deserializer's _load method
-            LUISA_ERROR("fallback read");
+            static_assert(!sizeof(T), "Unsupported type for ArchiveRead::value");
             return false;
         }
     }
@@ -333,37 +459,73 @@ struct ArchiveRead {
             return result;
         } else if constexpr (std::is_same_v<T, bool>) {
             return read(v, name);
+        } else if constexpr (std::is_enum_v<T>) {
+            // Enum types - deserialize from string
+            static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
+            luisa::string str;
+            if (!read(str, name)) return false;
+            auto value_opt = EnumSerializer::template get_enum_value<T>(str);
+            if (!value_opt) return false;
+            v = static_cast<T>(*value_opt);
+            return true;
         } else if constexpr (std::is_integral_v<T>) {
             if constexpr (std::is_unsigned_v<T>) {
                 uint64_t temp;
                 bool result = read(temp, name);
-                if (result) v = (T)temp;
+                if (result) v = static_cast<T>(temp);
                 return result;
             } else {
                 int64_t temp;
                 bool result = read(temp, name);
-                if (result) v = (T)temp;
+                if (result) v = static_cast<T>(temp);
                 return result;
             }
         } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             double temp;
             bool result = read(temp, name);
-            if (result) v = (T)temp;
+            if (result) v = static_cast<T>(temp);
             return result;
+        } else if constexpr (std::is_same_v<T, vstd::Guid>) {
+            luisa::string str;
+            if (!read(str, name)) return false;
+            v = vstd::Guid(std::string_view{str.data(), str.size()});
+            return true;
         } else if constexpr (std::is_same_v<T, luisa::string>) {
             return read(v, name);
+        } else if constexpr (luisa::is_vector_v<T>) {
+            // Math vector types (float3, uint2, etc.)
+            uint64_t size;
+            if (!start_array(size, name)) return false;
+            bool result = true;
+            for (size_t i = 0; i < luisa::vector_dimension_v<T> && i < size; ++i) {
+                result &= value(v[i]);
+            }
+            end_scope();
+            return result;
+        } else if constexpr (concepts::is_matrix_v<T>) {
+            // Matrix types
+            uint64_t size;
+            if (!start_array(size, name)) return false;
+            bool result = true;
+            for (size_t i = 0; i < luisa::matrix_dimension_v<T> && i < size; ++i) {
+                result &= value(v[i]);
+            }
+            end_scope();
+            return result;
         } else if constexpr (rbc::detail::is_vector<T>::value) {
+            // vector container (luisa::vector<T>)
             using EleType = luisa::vector_element_t<T>;
-            size_t size;
-            start_array(size, name);
+            uint64_t size;
+            if (!start_array(size, name)) return false;
             bool result = true;
             v.resize(size);
-            for (auto i = 0; i < size; i++) {
+            for (size_t i = 0; i < size; i++) {
                 result &= value(v[i]);
             }
             end_scope();
             return result;
         } else {
+            static_assert(!sizeof(T), "Unsupported type for ArchiveRead::value");
             return false;
         }
     }
@@ -431,19 +593,46 @@ struct ArchiveWriteAdapter : public ArchiveWrite {
     void add_arr(luisa::span<bool const> bool_values, char const *name) override { writer.add_arr(bool_values, name); }
 
     // bytes interface - only supported for binary format
-    void bytes(luisa::span<std::byte const> data) override {
+    bool bytes(luisa::span<std::byte const> data) override {
         if constexpr (std::is_same_v<Writer, BinWriter>) {
             writer.bytes(data);
+            return true;
         } else {
             LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+            return false;
         }
     }
-    void bytes(luisa::span<std::byte const> data, char const *name) override {
+    bool bytes(luisa::span<std::byte const> data, char const *name) override {
         if constexpr (std::is_same_v<Writer, BinWriter>) {
             writer.bytes(data, name);
+            return true;
         } else {
             LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+            return false;
         }
+    }
+    bool bytes(void *data, uint64_t size) override {
+        if constexpr (std::is_same_v<Writer, BinWriter>) {
+            writer.bytes(data, size);
+            return true;
+        } else {
+            LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+            return false;
+        }
+    }
+    bool bytes(void *data, uint64_t size, char const *name) override {
+        if constexpr (std::is_same_v<Writer, BinWriter>) {
+            writer.bytes(data, size, name);
+            return true;
+        } else {
+            LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+            return false;
+        }
+    }
+
+    // Check if this archive is structured (JSON) or streamed (binary)
+    [[nodiscard]] bool is_structured() const override {
+        return !std::is_same_v<Writer, BinWriter>;
     }
 };
 
@@ -488,22 +677,43 @@ struct ArchiveReadAdapter : public ArchiveRead {
     bool read(double &value, char const *name) override { return reader.read(value, name); }
     bool read(luisa::string &value, char const *name) override { return reader.read(value, name); }
 
-    // bytes interface - only supported for binary format
-    bool read_bytes(luisa::vector<std::byte> &data) override {
+    // bytes interface - structured access (reads into vector)
+    bool bytes(luisa::vector<std::byte> &data) override {
         if constexpr (std::is_same_v<Reader, BinReader>) {
-            return reader.read_bytes(data);
+            return reader.bytes(data);
         } else {
-            LUISA_ERROR("read_bytes() interface is only supported in binary format, not JSON format");
+            LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
             return false;
         }
     }
-    bool read_bytes(luisa::vector<std::byte> &data, char const *name) override {
+    bool bytes(luisa::vector<std::byte> &data, char const *name) override {
         if constexpr (std::is_same_v<Reader, BinReader>) {
-            return reader.read_bytes(data, name);
+            return reader.bytes(data, name);
         } else {
-            LUISA_ERROR("read_bytes() interface is only supported in binary format, not JSON format");
+            LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
             return false;
         }
+    }
+    bool bytes(void *data, uint64_t size) override {
+        if constexpr (std::is_same_v<Reader, BinReader>) {
+            return reader.bytes(data, size);
+        } else {
+            LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+            return false;
+        }
+    }
+    bool bytes(void *data, uint64_t size, char const *name) override {
+        if constexpr (std::is_same_v<Reader, BinReader>) {
+            return reader.bytes(data, size, name);
+        } else {
+            LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+            return false;
+        }
+    }
+
+    // Check if this archive is structured (JSON) or streamed (binary)
+    [[nodiscard]] bool is_structured() const override {
+        return !std::is_same_v<Reader, BinReader>;
     }
 };
 

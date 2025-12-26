@@ -7,11 +7,10 @@
 
 namespace rbc {
 
-struct SkeletonResource : world::ResourceBaseImpl<SkeletonResource> {
+struct RBC_RUNTIME_API SkeletonResource : world::ResourceBaseImpl<SkeletonResource> {
 
     using BaseType = world::ResourceBaseImpl<SkeletonResource>;
     DECLARE_WORLD_OBJECT_FRIEND(SkeletonResource)
-    
 
     void serialize_meta(world::ObjSerialize const &ser) const override;
     void deserialize_meta(world::ObjDeSerialize const &ser) override;
@@ -21,6 +20,7 @@ struct SkeletonResource : world::ResourceBaseImpl<SkeletonResource> {
 
 public:
     const ReferenceSkeleton &ref_skel() const { return skeleton; }
+    void log_brief();
 
 protected:
     bool unsafe_save_to_path() const override;
@@ -28,6 +28,7 @@ protected:
 
 private:
     friend class ISkeletonImporter;
+
     ReferenceSkeleton skeleton;
 };
 
@@ -45,3 +46,9 @@ protected:
 };
 
 }// namespace rbc
+
+template<>
+struct rbc::Serialize<rbc::SkeletonResource> {
+    static RBC_RUNTIME_API void write(rbc::ArchiveWrite &w, const rbc::SkeletonResource &v);
+    static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::SkeletonResource &v);
+};

@@ -19,6 +19,7 @@
 #include <rbc_core/runtime_static.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <tracy_wrapper.h>
+
 #include <rbc_world/entity.h>
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/texture.h>
@@ -29,6 +30,9 @@
 #include <rbc_world/importers/gltf_scene_loader.h>
 #include <rbc_world/resource_base.h>
 #include <rbc_world/base_object.h>
+
+#include <rbc_anim/resource/skeleton_resource.h>
+
 #include <luisa/core/logging.h>
 
 using namespace rbc;
@@ -112,10 +116,30 @@ int main(int argc, char *argv[]) {
 
     RC<world::Entity> entity;
     RC<world::MeshResource> loaded_mesh;
+
     luisa::vector<RC<world::MaterialResource>> loaded_materials;
     {
         RBCZoneScopedN("Load GLTF Scene");
-        auto scene_data = world::GltfSceneLoader::load_scene(gltf_path);
+        world::GltfLoadConfig config;
+        config.load_skeleton = true;
+        auto scene_data = world::GltfSceneLoader::load_scene(gltf_path, config);
+
+        scene_data.skel->log_brief();
+
+        {
+            auto *skel = scene_data.skel.get();
+            // Resource Serialize
+            BinSerializer writer;
+            writer._store(*skel, "skel");
+            auto bin_blob = writer.write_to();
+
+            BinDeSerializer reader{bin_blob};
+            // Use world::create_object to properly register the resource with the world system
+            auto resource = RC<rbc::SkeletonResource>(world::create_object<rbc::SkeletonResource>());
+            reader._load(*resource, "skel");
+
+            resource->log_brief();
+        }
 
         if (!scene_data.mesh || scene_data.mesh->empty()) {
             LUISA_ERROR("Failed to load GLTF model from: {}", luisa::to_string(gltf_path));

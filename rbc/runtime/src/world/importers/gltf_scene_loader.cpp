@@ -2,6 +2,10 @@
 #include <rbc_world/importers/mesh_importer_gltf.h>
 #include <rbc_world/texture_loader.h>
 #include <rbc_world/resources/material.h>
+
+#include <rbc_anim/tool/skel_importer_gltf.h>
+#include <rbc_anim/tool/anim_sequence_importer_gltf.h>
+
 #include <tiny_gltf.h>
 #include <luisa/core/logging.h>
 
@@ -34,9 +38,9 @@ bool load_gltf_model(tinygltf::Model &model, luisa::filesystem::path const &path
     return ret;
 }
 
-GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_path) {
+GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_path, GltfLoadConfig config) {
     GltfSceneData result;
-
+    result.config = config;
     // Load GLTF model
     tinygltf::Model model;
     if (!load_gltf_model(model, gltf_path, false)) {
@@ -53,6 +57,16 @@ GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_pa
         GltfMeshImporter importer;
         if (!importer.import(result.mesh.get(), gltf_path)) {
             LUISA_ERROR("Failed to import mesh from GLTF file");
+            return result;
+        }
+    }
+
+    // Load skeleton
+    if (config.load_skeleton) {
+        result.skel = RC<SkeletonResource>(create_object<SkeletonResource>());
+        GltfSkeletonImporter importer;
+        if (!importer.import(result.skel.get(), gltf_path)) {
+            LUISA_ERROR("Failed to import skeleton from GLTF file");
             return result;
         }
     }
@@ -176,9 +190,10 @@ GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_pa
     return result;
 }
 
-GltfSceneData GltfSceneLoader::load_scene_binary(luisa::filesystem::path const &glb_path) {
+GltfSceneData GltfSceneLoader::load_scene_binary(luisa::filesystem::path const &glb_path, GltfLoadConfig config) {
+    // WIP, NOT TESTED
     GltfSceneData result;
-
+    result.config = config;
     // Load GLB model
     tinygltf::Model model;
     if (!load_gltf_model(model, glb_path, true)) {

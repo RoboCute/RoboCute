@@ -69,12 +69,10 @@ struct BaseObjectDerive;
 template<typename T>
 struct ComponentDerive;
 struct ObjSerialize {
-    rbc::JsonSerializer &ser;
-    // TODO: may need more arguments
+    rbc::ArchiveWrite &ar;
 };
 struct ObjDeSerialize {
-    rbc::JsonDeSerializer &ser;
-    // TODO: may need more arguments
+    rbc::ArchiveRead &ar;
 };
 struct BaseObject : RCBase {
     template<typename T, BaseObjectType base_type_v>
@@ -97,14 +95,18 @@ private:
     uint64_t _instance_id{~0ull};
     void init();
     void init_with_guid(vstd::Guid const &guid);
+
 public:
     [[nodiscard]] InstanceID instance_id() const {
         return InstanceID{_instance_id};
     }
     [[nodiscard]] auto guid() const { return _guid; }
     [[nodiscard]] virtual BaseObjectType base_type() const = 0;
-    virtual void serialize_meta(ObjSerialize const &obj) const {}
-    virtual void deserialize_meta(ObjDeSerialize const &obj) {}
+
+    virtual void serialize_meta(ObjSerialize const &obj) const {
+    }
+    virtual void deserialize_meta(ObjDeSerialize const &obj) {
+    }
 
     [[nodiscard]] bool is_type_of(TypeInfo const &type) const {
         auto dst = type_id();

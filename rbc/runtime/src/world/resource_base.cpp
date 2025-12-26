@@ -10,19 +10,17 @@
 namespace rbc ::world {
 void Resource::serialize_meta(ObjSerialize const &obj) const {
     auto type_id = this->type_id();
-    obj.ser._store(
-        reinterpret_cast<vstd::Guid &>(type_id),
-        "__typeid__");
+    obj.ar.value(reinterpret_cast<vstd::Guid &>(type_id), "__typeid__");
     if (!_path.empty()) {
-        obj.ser._store(luisa::to_string(_path), "path");
-        obj.ser._store(_file_offset, "file_offset");
+        obj.ar.value(luisa::to_string(_path), "path");
+        obj.ar.value(_file_offset, "file_offset");
     }
 }
 void Resource::deserialize_meta(ObjDeSerialize const &obj) {
     luisa::string path_str;
-    if (obj.ser._load(path_str, "path")) {
+    if (obj.ar.value(path_str, "path")) {
         _path = path_str;
-        obj.ser._load(_file_offset, "file_offset");
+        obj.ar.value(_file_offset, "file_offset");
     }
 }
 void Resource::set_path(
@@ -64,8 +62,8 @@ struct ResourceLoader {
     std::mutex _async_mtx;
     void register_resource(Resource *res) {
         JsonSerializer js;
-        res->serialize_meta(world::ObjSerialize{
-            js});
+        rbc::ArchiveWriteJson adapter(js);
+        res->serialize_meta(world::ObjSerialize{adapter});
         _resmap_mtx.lock();
         auto &v = resource_types.force_emplace(res->guid()).value();
         _resmap_mtx.unlock();
@@ -269,8 +267,9 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         remove_value();
         return {};
     }
+    rbc::ArchiveReadJson adapter(deser);
     vstd::Guid type_id;
-    if (!deser._load(type_id, "__typeid__")) [[unlikely]] {
+    if (!adapter.value(type_id, "__typeid__")) [[unlikely]] {
         remove_value();
         return {};
     }
@@ -279,7 +278,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         remove_value();
         return {};
     }
-    ObjDeSerialize obj_deser{.ser = deser};
+    ObjDeSerialize obj_deser{adapter};
     v->res = res->instance_id();
     res->deserialize_meta(obj_deser);
     lck.unlock();

@@ -47,20 +47,20 @@ uint64_t TextureResource::desire_size_bytes() const {
 void TextureResource::serialize_meta(ObjSerialize const &obj) const {
     std::shared_lock lck{_async_mtx};
     BaseType::serialize_meta(obj);
-    obj.ser._store(_pixel_storage, "pixel_storage");
-    obj.ser._store(_size, "size");
-    obj.ser._store(_mip_level, "mip_level");
-    obj.ser._store(_is_vt, "is_vt");
+    obj.ar.value(_pixel_storage, "pixel_storage");
+    obj.ar.value(_size, "size");
+    obj.ar.value(_mip_level, "mip_level");
+    obj.ar.value(_is_vt, "is_vt");
 }
 void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
     BaseType::deserialize_meta(obj);
-#define RBC_MESH_LOAD(m)            \
-    {                               \
-        decltype(_##m) m;           \
-        if (obj.ser._load(m, #m)) { \
-            _##m = m;               \
-        }                           \
+#define RBC_MESH_LOAD(m)           \
+    {                              \
+        decltype(_##m) m;          \
+        if (obj.ar.value(m, #m)) { \
+            _##m = m;              \
+        }                          \
     }
     RBC_MESH_LOAD(pixel_storage)
     RBC_MESH_LOAD(mip_level)

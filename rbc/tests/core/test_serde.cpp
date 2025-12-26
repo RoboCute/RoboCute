@@ -374,7 +374,7 @@ TEST_SUITE("serde") {
 
         BinDeSerializer reader{bin_blob};
         luisa::vector<std::byte> deserialized_bytes;
-        CHECK(reader.read_bytes(deserialized_bytes, "test_bytes"));
+        CHECK(reader.bytes(deserialized_bytes, "test_bytes"));
 
         CHECK(deserialized_bytes.size() == test_bytes.size());
         for (size_t i = 0; i < test_bytes.size(); ++i) {
@@ -393,7 +393,7 @@ TEST_SUITE("serde") {
         points.emplace_back(test_serde::TestPoint{4.0, 5.0, 6.0});
         points.emplace_back(test_serde::TestPoint{7.0, 8.0, 9.0});
 
-        BinSerializer writer(true); // root_array = true
+        BinSerializer writer(true);// root_array = true
         for (const auto &point : points) {
             writer._store(point);
         }
@@ -417,4 +417,3 @@ TEST_SUITE("serde") {
         }
     }
 }
-
