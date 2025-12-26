@@ -26,6 +26,7 @@
 #include <rbc_world/resources/material.h>
 #include <rbc_world/components/transform.h>
 #include <rbc_world/components/render_component.h>
+#include <rbc_world/components/skelmesh_component.h>
 #include <rbc_world/texture_loader.h>
 #include <rbc_world/util/gltf_scene_loader.h>
 #include <rbc_world/resource_base.h>
@@ -124,9 +125,9 @@ int main(int argc, char *argv[]) {
     {
         RBCZoneScopedN("Load GLTF Scene");
         world::GltfLoadConfig config;
-        // config.load_skeleton = true;
-        // config.load_skin = true;
-        // config.load_anim_seq = true;
+        config.load_skeleton = true;
+        config.load_skin = true;
+        config.load_anim_seq = true;
         auto scene_data = world::GltfSceneLoader::load_scene(gltf_path, config);
         if (false) {
             scene_data.skel->log_brief();
@@ -228,6 +229,8 @@ int main(int argc, char *argv[]) {
 
         auto render = entity->add_component<world::RenderComponent>();
         render->start_update_object(loaded_materials, loaded_mesh.get());
+
+        auto skelmesh = entity->add_component<world::SkelMeshComponent>();
     }
 
     // Camera setup
@@ -323,6 +326,11 @@ int main(int argc, char *argv[]) {
             }
 
             {
+                // AnimTick
+                entity->get_component<world::SkelMeshComponent>()->tick(delta_time);
+            }
+
+            {
                 RBCZoneScopedN("Render Tick");
                 auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
                 utils.tick(
@@ -331,6 +339,18 @@ int main(int argc, char *argv[]) {
                     0,// 不积累，
                     window_size,
                     tick_stage);
+                auto *render_comp = entity->get_component<world::RenderComponent>();
+                auto vert_count = render_comp->_mesh_ref->vertex_count();
+                auto *host_data = render_comp->_mesh_ref->host_data();
+                int32_t pos_offset = 0;
+                luisa::span<float3> pos_{(float3 *)host_data->data(), vert_count};
+
+                for (auto &pos : pos_) {
+                    pos.x += sin(delta_time);
+                }
+                utils.update_mesh_data(render_comp->_mesh_ref->device_mesh().get(), true);
+
+                // entity->get_component<world::SkelMeshComponent>()->update_render();
             }
 
             ++frame_index;

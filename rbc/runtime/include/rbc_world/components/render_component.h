@@ -21,14 +21,14 @@ private:
         uint _procedural_idx;
     };
 
-    RC<MeshResource> _mesh_ref;
     void _on_transform_update();
 public:
+    RC<MeshResource> _mesh_ref;
     void on_awake() override;
     void on_destroy() override;
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
-    
+
     // draw
     uint get_tlas_index() const;
     void remove_object();

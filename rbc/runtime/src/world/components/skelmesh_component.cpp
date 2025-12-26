@@ -14,6 +14,13 @@ void SkelMeshComponent::on_destroy() {
 void SkelMeshComponent::serialize_meta(ObjSerialize const &ser) const {}
 void SkelMeshComponent::deserialize_meta(ObjDeSerialize const &ser) {}
 
+void SkelMeshComponent::tick(float delta_time) {
+    // LUISA_INFO("Updating SkelMesh");
+}
+void SkelMeshComponent::update_render() {
+    // LUISA_INFO("UpdateRender SkelMesh");
+}
+
 DECLARE_WORLD_COMPONENT_REGISTER(SkelMeshComponent);
 
 }// namespace rbc::world

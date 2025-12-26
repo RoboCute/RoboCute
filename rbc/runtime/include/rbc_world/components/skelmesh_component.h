@@ -11,13 +11,17 @@ private:
     SkelMeshComponent(Entity *entity);
     ~SkelMeshComponent();
 
-    RC<SkelMeshResource> _skel_mesh_ref;
-
+    // RC<SkelMeshResource> _skel_mesh_ref;
 public:
     void on_awake() override;
     void on_destroy() override;
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
+
+
+public:
+    void tick(float delta_time = 0.0f);
+    void update_render();
 };
 
 }// namespace rbc::world
