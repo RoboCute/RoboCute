@@ -12,10 +12,11 @@ void coroutine::resume() {
     LUISA_DEBUG_ASSERT(_own, "Coroutine already disposed.");
     if (_base.done()) [[unlikely]]
         return;
-    auto &aw = _base.promise()._awaitable;
-    if (aw) [[likely]] {
-        if (aw->await_ready()) {
-            aw = nullptr;
+    auto &prom = _base.promise();
+    if (prom._awaitable_func) [[likely]] {
+        if (prom._awaitable_func(prom._awaitable_ptr)) {
+            prom._awaitable_func = nullptr;
+            prom._awaitable_ptr = nullptr;
             _base.resume();
         }
     } else {

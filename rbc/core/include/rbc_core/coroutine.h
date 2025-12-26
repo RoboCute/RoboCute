@@ -5,6 +5,7 @@
 #include <luisa/core/stl/type_traits.h>
 
 namespace rbc {
+
 struct promise;
 // Coro from cppref
 struct coroutine {
@@ -33,13 +34,11 @@ public:
     RBC_CORE_API void destroy();
     RBC_CORE_API ~coroutine();
 };
-struct i_awaitable;
+
 struct promise {
-    i_awaitable *_awaitable{};
-    promise() {
-    }
-    ~promise() {
-    }
+    friend struct coroutine;
+    promise() = default;
+    ~promise() = default;
     coroutine get_return_object() {
         return {coroutine::from_promise(*this)};
     }
@@ -52,33 +51,28 @@ struct promise {
     void return_void() {
     }
     void unhandled_exception() {}
-};
-struct i_awaitable {
+    promise(promise const &) = delete;
+    promise(promise &&) = delete;
+    template<typename T>
+    void set_callable(T *t) {
+        _awaitable_ptr = t;
+        _awaitable_func = +[](void *ptr) {
+            return static_cast<T *>(ptr)->await_ready();
+        };
+    }
 private:
-    promise *_promise{};
-public:
-    virtual bool await_ready() = 0;
+    void *_awaitable_ptr{};
+    bool (*_awaitable_func)(void *){};
+};
+template<typename T>
+struct i_awaitable {
     i_awaitable() = default;
+    ~i_awaitable() = default;
     i_awaitable(i_awaitable const &) = delete;
     i_awaitable(i_awaitable &&) = delete;
     void await_suspend(std::coroutine_handle<rbc::promise> h) {
-        _promise = &h.promise();
-        _promise->_awaitable = this;
+        h.promise().set_callable(static_cast<T *>(this));
     }
     void await_resume() {}
-protected:
-    ~i_awaitable() = default;
-};
-template<typename FuncType>
-    requires((std::is_invocable_r_v<bool, FuncType>) && (!std::is_reference_v<FuncType>))
-struct awaitable final : i_awaitable {
-    FuncType func_type;
-    template<typename... Args>
-        requires(luisa::is_constructible_v<FuncType, Args && ...>)
-    awaitable(Args &&...args)
-        : func_type(std::forward<Args>(args)...) {}
-    bool await_ready() override {
-        return func_type();
-    }
 };
 }// namespace rbc
