@@ -21,7 +21,8 @@ struct RBC_RUNTIME_API SkinResource : world::ResourceBaseImpl<SkinResource> {
     RC<SkeletonResource> ref_skel;
     RC<world::MeshResource> ref_mesh;
     void generate_LUT();
-    
+    void log_brief();
+
 protected:
     bool unsafe_save_to_path() const override;
     void _unload() override;
@@ -36,7 +37,6 @@ private:
     luisa::vector<AnimFloat4x4> inverse_bind_poses;
     // generated data
     luisa::vector<BoneIndexType> joint_remaps_LUT;// LUT: joint_remaps[i] -> bone index in skel
-
 };
 
 }// namespace rbc

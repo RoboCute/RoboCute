@@ -15,6 +15,10 @@ rbc::coroutine AnimSequenceResource::_async_load() {
     co_return;
 }
 
+void AnimSequenceResource::log_brief() {
+    anim_sequence.log_brief();
+}
+
 bool AnimSequenceResource::unsafe_save_to_path() const {
     return {};
 }

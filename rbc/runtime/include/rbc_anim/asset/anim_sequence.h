@@ -20,7 +20,8 @@ public:
 
 public:
     [[nodiscard]] const AnimSequenceRuntimeAsset &GetRawAnim() const { return animation; }
-
+    void log_brief() const; // debug helper
+    
 private:
     AnimSequenceRuntimeAsset animation;
     float rate_scale = 1.0f;

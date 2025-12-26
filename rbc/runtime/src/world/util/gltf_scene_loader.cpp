@@ -81,10 +81,10 @@ GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_pa
             }
             result.skin->ref_skel = result.skel;
             result.skin->ref_mesh = result.mesh;
-    
+
             result.skin->generate_LUT();
         }
-    
+
         // Load animation (depends on skeleton)
         if (config.load_anim_seq) {
             result.anim = RC<AnimSequenceResource>(create_object<AnimSequenceResource>());
@@ -96,8 +96,6 @@ GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_pa
             }
         }
     }
-
-
 
     // Load textures and materials
     {

@@ -122,10 +122,11 @@ int main(int argc, char *argv[]) {
         RBCZoneScopedN("Load GLTF Scene");
         world::GltfLoadConfig config;
         config.load_skeleton = true;
+        config.load_skin = true;
+        config.load_anim_seq = true;
         auto scene_data = world::GltfSceneLoader::load_scene(gltf_path, config);
 
         scene_data.skel->log_brief();
-
         {
             LUISA_INFO("====== Serde Skeleton");
             auto *skel = scene_data.skel.get();
@@ -146,6 +147,29 @@ int main(int argc, char *argv[]) {
 
             new_skel.log_brief();
             LUISA_INFO("====== Serde Skeleton Done");
+        }
+
+        scene_data.skin->log_brief();
+        {
+            LUISA_INFO("====== Serde Skin");
+            auto *skin = scene_data.skin.get();
+            if (skin->path().empty()) {
+                skin->set_path(resource_dir / (skin->guid().to_string() + ".rbcb"), 0);
+            }
+            skin->save_to_path();
+            LUISA_INFO("====== Serde Skin Done");
+        }
+
+        LUISA_INFO("====== Anim Sequence");
+        scene_data.anim->log_brief();
+        {
+            LUISA_INFO("====== Serde Animation");
+            auto *anim = scene_data.anim.get();
+            if (anim->path().empty()) {
+                anim->set_path(resource_dir / (anim->guid().to_string() + ".rbcb"), 0);
+            }
+            anim->save_to_path();
+            LUISA_INFO("====== Serde Animation Done");
         }
 
         if (!scene_data.mesh || scene_data.mesh->empty()) {

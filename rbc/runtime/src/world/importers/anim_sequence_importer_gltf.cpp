@@ -10,13 +10,19 @@ bool GltfAnimSequenceImporter::import(AnimSequenceResource *resource, luisa::fil
     LUISA_ASSERT(ref_skel.get());// RefSkeleton Should be valid
     GltfOzzImporter impl;
     ozz::animation::offline::OzzImporter &importer = impl;
-    // TODO: static dependencies for SkeletonResource
 
     auto *skel = ref_skel.get();
+    if (!skel) {
+        LUISA_ERROR("Import AnimSequence Should Depend on a Valid SkeletonResource");
+    }
+    if (!importer.Load(path.string().c_str())) {
+        LUISA_ERROR("Failed to load gltf {} for AnimSeq", path.string());
+    }
 
     auto *raw_anim = RBCNew<RawAnimationAsset>();
 
     auto anim_names = importer.GetAnimationNames();
+
     if (!(anim_names.size() > 0)) {
         LUISA_ERROR("No Animation Found in GLTF File: {}", path.string());
         return false;
@@ -44,6 +50,8 @@ bool GltfAnimSequenceImporter::import(AnimSequenceResource *resource, luisa::fil
     skel_ref(resource) = ref_skel;
 
     RBCDelete(raw_anim);
+
+    return true;
 }
 
 }// namespace rbc::world

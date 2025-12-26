@@ -21,6 +21,7 @@ public:
 
     const AnimSequence &ref_seq() const { return anim_sequence; }
     RC<SkeletonResource> ref_skel;
+    void log_brief();
 
 protected:
     bool unsafe_save_to_path() const override;

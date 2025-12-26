@@ -19,4 +19,12 @@ AnimSequence &AnimSequence::operator=(AnimSequenceRuntimeAsset &&InAnim) {
     return *this;
 }
 
+void AnimSequence::log_brief() const {
+    LUISA_INFO("Anim has {} Tracks {} soa tracks {} timepoints of duration {}", 
+        animation.num_tracks(), 
+        animation.num_soa_tracks(), 
+        animation.timepoints().size(), 
+        animation.duration());
+}
+
 }// namespace rbc

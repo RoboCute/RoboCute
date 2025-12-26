@@ -21,7 +21,7 @@ bool GltfSkinImporter::import(SkinResource *resource, luisa::filesystem::path co
         for (auto const &joint : skin.joints) {
             joint_remaps[joint] = model.nodes[joint].name;
         }
-        auto &inverse_bind_poses = inverse_bind_poses_ref(resource);    
+        auto &inverse_bind_poses = inverse_bind_poses_ref(resource);
         inverse_bind_poses.resize(skin.inverseBindMatrices >= 0 ? model.accessors[skin.inverseBindMatrices].count : 0);
 
         // ozz和gltf的矩阵都是列主序，所以可以直接复制
@@ -44,11 +44,11 @@ void SkinResource::generate_LUT() {
     }
 
     joint_remaps_LUT.resize(joint_remaps.size());
-    auto* skel = ref_skel.get();
-    auto* mesh = ref_mesh.get();
+    auto *skel = ref_skel.get();
+    auto *mesh = ref_mesh.get();
     for (size_t i = 0; i < joint_remaps.size(); i++) {
         auto it = std::find(
-            skel->ref_skel().RawJointNames().begin(), 
+            skel->ref_skel().RawJointNames().begin(),
             skel->ref_skel().RawJointNames().end(), joint_remaps[i]);
         if (it == skel->ref_skel().RawJointNames().end()) {
             LUISA_ERROR("Joint {} not found in skeleton", joint_remaps[i]);
