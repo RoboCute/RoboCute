@@ -95,6 +95,7 @@ void BaseObject::init() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     _guid.reset();
     _instance_id = ++_world_inst->_instance_id_counter;
+
     std::lock_guard lck{_world_inst->_instance_mtx};
     _world_inst->_instance_ids.force_emplace(_instance_id, this);
 }

@@ -121,8 +121,9 @@ void BinWriter::add_last_scope_to_object(char const *name) {
     auto &parent = _scope.back();
     LUISA_DEBUG_ASSERT(!parent.is_array && parent.in_object);
 
-    // If ObjectStart hasn't been written yet, write key first, then ObjectStart
-    if (!scope.object_start_written) {
+    // If ObjectStart hasn't been written yet (delayed object in object context), 
+    // write key first, then ObjectStart. This only applies to object scopes, not arrays.
+    if (!scope.is_array && !scope.object_start_written) {
         // Save current buffer size (where we'll insert key + ObjectStart)
         uint64_t insert_pos = scope.object_start_pos;
         uint64_t content_size = buffer_.size() - insert_pos;
@@ -150,9 +151,40 @@ void BinWriter::add_last_scope_to_object(char const *name) {
         if (content_size > 0) {
             write_bytes(content_backup.data(), content_size);
         }
+    } else if (scope.is_array) {
+        // Array scope with a name - need to insert key before ArrayStart
+        // array_size_pos points to the size field (right after ArrayStart type byte)
+        // So ArrayStart is at array_size_pos - sizeof(BinType) = array_size_pos - 1
+        uint64_t array_start_pos = scope.array_size_pos - sizeof(BinType);
+        uint64_t content_size = buffer_.size() - array_start_pos;
+
+        // Save the content (ArrayStart + size + array elements)
+        luisa::vector<std::byte> content_backup;
+        if (content_size > 0) {
+            content_backup.resize(content_size);
+            std::memcpy(content_backup.data(), buffer_.data() + array_start_pos, content_size);
+        }
+
+        // Truncate buffer to insert position
+        buffer_.resize(array_start_pos);
+
+        // Write key first
+        luisa::string_view key(name);
+        write_type(BinType::String);
+        write_uint64(key.size());
+        write_bytes(key.data(), key.size());
+
+        // Restore the content (ArrayStart + size + elements)
+        if (content_size > 0) {
+            write_bytes(content_backup.data(), content_size);
+        }
+        
+        // Update the array size at the new position (it shifted due to key insertion)
+        uint64_t new_array_size_pos = scope.array_size_pos + (buffer_.size() - array_start_pos - content_size);
+        std::memcpy(buffer_.data() + new_array_size_pos, &scope.array_size, sizeof(uint64_t));
     } else {
-        // ObjectStart already written, this shouldn't happen in object context
-        // But if it does, write key before scope end
+        // Object scope with ObjectStart already written - this shouldn't normally happen
+        // in object context, but handle it by writing key before scope end
         luisa::string_view key(name);
         write_type(BinType::String);
         write_uint64(key.size());
@@ -794,9 +826,13 @@ bool BinReader::start_object(char const *name) {
         return start_object();
     }
 
-    LUISA_DEBUG_ASSERT(!_scope.empty());
+    if (!valid_ || _scope.empty()) {
+        return false;
+    }
     auto &scope = _scope.back();
-    LUISA_DEBUG_ASSERT(!scope.is_array && scope.in_object);
+    if (scope.is_array || !scope.in_object) {
+        return false;
+    }
 
     // Scan through key-value pairs until we find the matching key
     while (true) {
@@ -845,7 +881,10 @@ bool BinReader::start_object(char const *name) {
 }
 
 void BinReader::end_scope() {
-    LUISA_ASSERT(!_scope.empty());
+    if (_scope.empty()) {
+        LUISA_ERROR("[BinReader] end_scope() called but scope is empty");
+        return;
+    }
 
     // Read scope end marker
     BinType type;

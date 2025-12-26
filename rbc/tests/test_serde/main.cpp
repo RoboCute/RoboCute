@@ -43,15 +43,8 @@ int main(int argc, char *argv[]) {
         auto trans = entity->add_component<world::TransformComponent>();
         trans->set_pos(double3(114, 514, 1919), false);
 
-        // Use unified Serialize<Entity> API with JSON
-        JsonSerializer writer(true);
-        ArchiveWriteJson adapter(writer);
-
-        // Serialize entity using the Serialize<T> pattern
-        adapter.start_object();
-        Serialize<world::Entity>::write(adapter, *entity);
-        adapter.end_object();
-
+        JsonSerializer writer;
+        writer._store(*entity, "entity");
         json = writer.write_to();
 
         auto trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
@@ -71,16 +64,9 @@ int main(int argc, char *argv[]) {
         // Try deserialize into a NEW entity (don't reuse GUID while old entity exists)
         {
             JsonDeSerializer reader{json_str};
-            ArchiveReadJson read_adapter(reader);
-
             // Create a new entity for deserialization
             auto new_entity = world::create_object<world::Entity>();
-
-            // Deserialize using the Serialize<T> pattern
-            if (read_adapter.start_object()) {
-                Serialize<world::Entity>::read(read_adapter, *new_entity);
-                read_adapter.end_scope();
-            }
+            reader._load(*new_entity, "entity");
 
             auto new_trans = new_entity->get_component<world::TransformComponent>();
             if (new_trans) {
@@ -108,7 +94,7 @@ int main(int argc, char *argv[]) {
 
         // Serialize with BinSerializer using _store (no name for root level)
         BinSerializer bin_writer;
-        bin_writer._store(*entity);
+        bin_writer._store(*entity, "entity");
 
         auto bin_blob = bin_writer.write_to();
         LUISA_INFO("Binary blob size: {} bytes", bin_blob.size());
@@ -116,19 +102,15 @@ int main(int argc, char *argv[]) {
         // Deserialize into a new entity
         {
             BinDeSerializer bin_reader{bin_blob};
-
             // Create a new entity for deserialization
             auto new_entity = world::create_object<world::Entity>();
-            bin_reader._load(*new_entity);
-
+            bin_reader._load(*new_entity, "entity");
             auto new_trans = new_entity->get_component<world::TransformComponent>();
             if (new_trans) {
                 LUISA_INFO("Binary deserialized position: {}", new_trans->position());
             }
-
             new_entity->delete_this();
         }
-
         entity->delete_this();
     }
     LUISA_INFO("=== Testing Binary Serialization Done ===");

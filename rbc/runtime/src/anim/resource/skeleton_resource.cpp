@@ -5,10 +5,12 @@ namespace rbc {
 
 void SkeletonResource::serialize_meta(world::ObjSerialize const &ser) const {
     BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
+    ser.ar.value(skeleton, "skeleton");
 }
 
 void SkeletonResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     BaseType::deserialize_meta(ser);
+    ser.ar.value(skeleton, "skeleton");
 }
 
 rbc::coroutine SkeletonResource::_async_load() {
@@ -64,9 +66,11 @@ DECLARE_WORLD_OBJECT_REGISTER(SkeletonResource)
 }// namespace rbc
 
 void rbc::Serialize<rbc::SkeletonResource>::write(rbc::ArchiveWrite &w, const rbc::SkeletonResource &v) {
-    w.value(v.skeleton, "skeleton");
+    rbc::world::ObjSerialize ser_obj{w};
+    v.serialize_meta(ser_obj);
 }
 bool rbc::Serialize<rbc::SkeletonResource>::read(rbc::ArchiveRead &r, rbc::SkeletonResource &v) {
-    r.value(v.skeleton, "skeleton");
+    rbc::world::ObjDeSerialize deser_obj{r};
+    v.deserialize_meta(deser_obj);
     return true;
 }

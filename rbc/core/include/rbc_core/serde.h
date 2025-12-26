@@ -230,7 +230,12 @@ struct ArchiveWrite {
             } else {
                 add((int64_t)v);
             }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+        } 
+        // int64_t
+        else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>) {
+            add(v);
+        }
+        else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             add((double)v);
         } else if constexpr (std::is_same_v<T, vstd::Guid>) {
             add(v.to_string());
@@ -283,7 +288,13 @@ struct ArchiveWrite {
             } else {
                 add((int64_t)v, name);
             }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+        } 
+        // int64_t
+        else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>) {
+            add(v, name);
+        }
+        // float
+        else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             add((double)v, name);
         } else if constexpr (std::is_same_v<T, vstd::Guid>) {
             add(v.to_string(), name);
@@ -378,7 +389,15 @@ struct ArchiveRead {
                 if (result) v = static_cast<T>(temp);
                 return result;
             }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+        // int64_t
+        } else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>) {
+            int64_t temp;
+            bool result = read(temp);
+            if (result) v = static_cast<T>(temp);
+            return result;
+        }
+        // float
+        else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             double temp;
             bool result = read(temp);
             if (result) v = static_cast<T>(temp);

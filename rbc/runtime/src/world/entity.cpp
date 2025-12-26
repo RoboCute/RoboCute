@@ -85,6 +85,7 @@ Component *Entity::get_component(TypeInfo const &type) {
     return comp;
 }
 void Entity::serialize_meta(ObjSerialize const &ser) const {
+    BaseObject::serialize_meta(ser);
     ser.ar.start_array();
     for (auto &i : _components) {
         auto comp = i.second;
@@ -98,6 +99,8 @@ void Entity::serialize_meta(ObjSerialize const &ser) const {
     ser.ar.end_array("components");
 }
 void Entity::deserialize_meta(ObjDeSerialize const &ser) {
+    // super deserialize
+    BaseObject::deserialize_meta(ser);
     uint64_t size;
     if (!ser.ar.start_array(size, "components")) return;
     _components.reserve(size);
@@ -143,18 +146,12 @@ DECLARE_WORLD_OBJECT_REGISTER(Entity)
 
 // Serialize<Entity> implementation
 void rbc::Serialize<rbc::world::Entity>::write(rbc::ArchiveWrite &w, const rbc::world::Entity &v) {
-    // Serialize GUID
-    auto guid = v.guid();
-    w.value(guid, "__guid__");
-    
     // Serialize components via serialize_meta
     rbc::world::ObjSerialize ser_obj{w};
     v.serialize_meta(ser_obj);
 }
 
 bool rbc::Serialize<rbc::world::Entity>::read(rbc::ArchiveRead &r, rbc::world::Entity &v) {
-    // Note: GUID is expected to be handled by the caller (create_object_with_guid)
-    // Here we just deserialize the components
     rbc::world::ObjDeSerialize deser_obj{r};
     v.deserialize_meta(deser_obj);
     return true;

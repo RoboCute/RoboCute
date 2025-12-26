@@ -28,7 +28,6 @@ protected:
 
 private:
     friend class ISkeletonImporter;
-    friend class rbc::Serialize<rbc::SkeletonResource>;
 
     ReferenceSkeleton skeleton;
 };
