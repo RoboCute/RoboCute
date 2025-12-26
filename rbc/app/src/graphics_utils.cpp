@@ -335,8 +335,8 @@ void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
             0,
             IOBufferSubView{mesh_data->pack.data}};
     }
-    _render_device.lc_main_cmd_list().add_callback([m = RC<DeviceMesh>(mesh)] {});
     auto &sm = SceneManager::instance();
+    sm.dispose_after_sync(RC<DeviceMesh>(mesh));
     sm.accel_manager().mark_dirty();
     if (mesh_data->pack.mesh) {
         _build_meshes.emplace(mesh);
@@ -369,7 +369,8 @@ void GraphicsUtils::update_texture(DeviceImage *ptr) {
         ptr->host_data().data(),
         0,
         IOTextureSubView{ptr->get_float_image()}};
-    _frame_mem_io_list.add_callback([m = RC<DeviceImage>(ptr)] {});
+    auto &sm = SceneManager::instance();
+    sm.dispose_after_sync(RC<DeviceImage>(ptr));
 }
 void GraphicsUtils::denoise() {
     if (!_denoiser_inited) return;

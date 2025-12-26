@@ -190,7 +190,6 @@ void MeshManager::_create_submesh_buffer(
 
 auto MeshManager::make_transforming_instance(
     BindlessAllocator &bdls_alloc,
-    CommandList &cmdlist,
     MeshData *mesh_data) -> MeshData * {
     auto result = reinterpret_cast<MeshData *>(pool.create_lock(_pool_mtx));
     result->pack.data = device.create_buffer<uint>(mesh_data->pack.data.size());

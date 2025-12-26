@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
 
         // Initialize mesh device resource
         loaded_mesh->init_device_resource();
-        utils.update_mesh_data(loaded_mesh->device_mesh().get(), false);
+        utils.update_mesh_data(loaded_mesh->device_mesh(), false);
 
         // Initialize texture device resources
         for (auto &tex : scene_data.textures) {

@@ -104,7 +104,7 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
                 1);
         }
     }
-
+    /*
     auto &device_mesh = device_mesh_ref(resource);
     if (!device_mesh)
         device_mesh = RC<DeviceMesh>(new DeviceMesh());
@@ -144,6 +144,8 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         }
     }
     return true;
+    */
+    return false;
 }
 
 }// namespace rbc::world

@@ -99,8 +99,8 @@ ResourceImporterRegistry &ResourceImporterRegistry::instance() {
 }
 
 // IMeshImporter accessor method implementations
-RC<rbc::DeviceMesh> &IMeshImporter::device_mesh_ref(MeshResource *resource) {
-    return resource->_device_mesh;
+rbc::DeviceMesh* IMeshImporter::device_mesh_ref(MeshResource *resource) {
+    return resource->device_mesh();
 }
 
 uint32_t &IMeshImporter::vertex_count_ref(MeshResource *resource) {

@@ -22,7 +22,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         cbox_mesh = world::create_object<world::MeshResource>();
         cbox_mesh->decode("cornell_box.obj");
         cbox_mesh->init_device_resource();
-        utils->update_mesh_data(cbox_mesh->device_mesh().get(), false);// update through render-thread
+        utils->update_mesh_data(cbox_mesh->device_mesh(), false);// update through render-thread
     }
     {
         RBCZoneScopedN("Create Materials");
@@ -89,7 +89,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     auto s = quad_bytes.size_bytes();
     *quad_mesh->host_data() = std::move(quad_bytes);
     quad_mesh->init_device_resource();
-    utils->update_mesh_data(quad_mesh->device_mesh().get(), false);// update through render-thread
+    utils->update_mesh_data(quad_mesh->device_mesh(), false);// update through render-thread
 
     {
         RBCZoneScopedN("Load Textures");

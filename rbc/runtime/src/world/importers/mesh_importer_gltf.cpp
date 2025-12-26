@@ -35,7 +35,9 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
     if (mesh_builder.position.empty()) {
         return false;
     }
+    // TODO: please don't do this
 
+    /*
     // Setup device mesh - access protected members from member function
     auto &device_mesh = device_mesh_ref(resource);
     if (!device_mesh)
@@ -70,8 +72,9 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
         size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
         std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinAttrib));
     }
-
     return true;
+*/
+    return false;
 }
 
 bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path const &path) {
@@ -91,7 +94,8 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
     if (mesh_builder.position.empty()) {
         return false;
     }
-
+    // TODO: please don't do this
+    /*
     // Setup device mesh - access protected members from member function
     auto &device_mesh = device_mesh_ref(resource);
     if (!device_mesh)
@@ -121,6 +125,8 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinAttrib));
     }
     return true;
+    */
+    return false;
 }
 
 }// namespace rbc::world

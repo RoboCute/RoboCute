@@ -2,7 +2,9 @@
 #include <rbc_world/resource_base.h>
 #include <luisa/runtime/byte_buffer.h>
 namespace rbc {
+struct DeviceResource;
 struct DeviceMesh;
+struct DeviceTransformingMesh;
 }// namespace rbc
 namespace rbc::world {
 
@@ -26,11 +28,12 @@ struct RBC_RUNTIME_API MeshResource final : ResourceBaseImpl<MeshResource> {
     };
 
 private:
-    RC<DeviceMesh> _device_mesh;
+    RC<DeviceResource> _device_res;
     mutable rbc::shared_atomic_mutex _async_mtx;
 
     // meta
     vstd::vector<uint> _submesh_offsets;
+    vstd::Guid _origin_mesh;
     uint32_t _vertex_count{};
     uint32_t _triangle_count{};
     uint32_t _uv_count{};
@@ -54,6 +57,7 @@ public:
     [[nodiscard]] auto contained_tangent() const { return _contained_tangent; }
     [[nodiscard]] auto submesh_count() const { return std::max<size_t>(_submesh_offsets.size(), 1); }
     [[nodiscard]] luisa::vector<std::byte> *host_data();
+    [[nodiscard]] bool is_transforming_mesh() const;
     uint64_t basic_size_bytes() const;
     uint64_t extra_size_bytes() const;
     uint64_t desire_size_bytes() const;
@@ -66,13 +70,13 @@ public:
         uint32_t uv_count,
         bool contained_normal,
         bool contained_tangent);
+    void create_from_mesh(MeshResource* origin_mesh);
     [[nodiscard]] std::pair<CustomProperty &, luisa::span<std::byte>> add_property(luisa::string &&name, size_t size_bytes);
     [[nodiscard]] luisa::span<std::byte> get_property_host(luisa::string_view name);
     [[nodiscard]] luisa::compute::ByteBufferView get_property_buffer(luisa::string_view name);
     [[nodiscard]] luisa::compute::ByteBufferView get_or_create_property_buffer(luisa::string_view name);
-    [[nodiscard]] auto const &device_mesh() const {
-        return _device_mesh;
-    }
+    [[nodiscard]] DeviceMesh *device_mesh() const;
+    [[nodiscard]] DeviceTransformingMesh *device_transforming_mesh() const;
     bool init_device_resource();
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;

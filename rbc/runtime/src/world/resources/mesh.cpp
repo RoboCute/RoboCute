@@ -3,9 +3,12 @@
 #include <rbc_world/type_register.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
+#include <rbc_graphics/device_assets/device_transforming_mesh.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 namespace rbc::world {
-MeshResource::MeshResource() = default;
+MeshResource::MeshResource() {
+    _origin_mesh.reset();
+}
 MeshResource::~MeshResource() {
     auto inst = AssetsManager::instance();
     if (!inst) return;
@@ -21,6 +24,7 @@ void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     BaseType::serialize_meta(ser);
     ser.ar.value(_contained_normal, "contained_normal");
     ser.ar.value(_contained_tangent, "contained_tangent");
+    ser.ar.value(is_transforming_mesh(), "is_transforming_mesh");
     ser.ar.value(_vertex_count, "vertex_count");
     ser.ar.value(_triangle_count, "triangle_count");
     ser.ar.value(_uv_count, "uv_count");
@@ -43,7 +47,7 @@ void MeshResource::serialize_meta(ObjSerialize const &ser) const {
 
 bool MeshResource::empty() const {
     std::shared_lock lck{_async_mtx};
-    return !_device_mesh;
+    return !_device_res;
 }
 
 void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
@@ -59,6 +63,7 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     RBC_MESH_LOAD(file_offset)
     RBC_MESH_LOAD(contained_normal)
     RBC_MESH_LOAD(contained_tangent)
+    RBC_MESH_LOAD(origin_mesh)
     RBC_MESH_LOAD(vertex_count)
     RBC_MESH_LOAD(triangle_count)
     RBC_MESH_LOAD(uv_count)
@@ -100,9 +105,10 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     }
 }
 luisa::vector<std::byte> *MeshResource::host_data() {
+    auto mesh = device_mesh();
     std::shared_lock lck{_async_mtx};
-    if (_device_mesh) {
-        return &_device_mesh->host_data_ref();
+    if (mesh) {
+        return &mesh->host_data_ref();
     } else
         return nullptr;
 }
@@ -130,36 +136,60 @@ void MeshResource::create_empty(
     bool contained_normal,
     bool contained_tangent) {
     _status = EResourceLoadingStatus::Loading;
-    if (_device_mesh) [[unlikely]] {
+    if (_device_res) [[unlikely]] {
         LUISA_ERROR("Can not create on exists mesh.");
     }
     std::lock_guard lck{_async_mtx};
-    _submesh_offsets = std::move(submesh_offsets);
     _path = std::move(path);
     _file_offset = file_offset;
+    _submesh_offsets = std::move(submesh_offsets);
     _vertex_count = vertex_count;
     _triangle_count = triangle_count;
     _uv_count = uv_count;
     _contained_normal = contained_normal;
     _contained_tangent = contained_tangent;
-    _device_mesh = new DeviceMesh{};
+    _origin_mesh.reset();
+    _device_res = new DeviceMesh{};
+}
+void MeshResource::create_from_mesh(MeshResource *origin_mesh) {
+    std::lock_guard lck{_async_mtx};
+    auto origin_device_mesh = origin_mesh->device_mesh();
+    LUISA_ASSERT(origin_device_mesh);
+    _submesh_offsets.clear();
+    vstd::push_back_all(_submesh_offsets, origin_mesh->submesh_offsets());
+    _vertex_count = origin_mesh->vertex_count();
+    _triangle_count = origin_mesh->triangle_count();
+    _uv_count = origin_mesh->uv_count();
+    _contained_normal = origin_mesh->contained_normal();
+    _contained_tangent = origin_mesh->contained_tangent();
+    _origin_mesh = origin_mesh->guid();
+    auto tr_mesh = new DeviceTransformingMesh{};
+    _device_res = tr_mesh;
+    tr_mesh->create_from_origin(origin_device_mesh);
 }
 bool MeshResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
-    if (!render_device || !_device_mesh || _device_mesh->mesh_data()) return false;
-    auto host_data_ = host_data();
-    auto file_size = desire_size_bytes();
-    LUISA_ASSERT(host_data_->empty() || host_data_->size() == file_size, "Host data length {} mismatch with required length {}.", host_data_->size(), file_size);
-    {
-        std::lock_guard lck{_async_mtx};
-        _device_mesh->create_mesh(
-            render_device->lc_main_cmd_list(),
-            _vertex_count,
-            _contained_normal,
-            _contained_tangent,
-            _uv_count,
-            _triangle_count,
-            vstd::vector<uint>(_submesh_offsets));
+    if (!is_transforming_mesh()) {
+        auto mesh = device_mesh();
+        if (!render_device || !mesh || mesh->mesh_data()) return false;
+        auto host_data_ = host_data();
+        auto file_size = desire_size_bytes();
+        LUISA_ASSERT(host_data_->empty() || host_data_->size() == file_size, "Host data length {} mismatch with required length {}.", host_data_->size(), file_size);
+        {
+            std::lock_guard lck{_async_mtx};
+            mesh->create_mesh(
+                render_device->lc_main_cmd_list(),
+                _vertex_count,
+                _contained_normal,
+                _contained_tangent,
+                _uv_count,
+                _triangle_count,
+                vstd::vector<uint>(_submesh_offsets));
+        }
+    } else {
+        auto mesh = device_transforming_mesh();
+        if (!render_device || !mesh) return false;
+        mesh->copy_from_origin(render_device->lc_main_cmd_list());
     }
     _status = EResourceLoadingStatus::Loaded;
     return true;
@@ -173,36 +203,50 @@ bool MeshResource::_async_load_from_file() {
         return false;
     }
     std::lock_guard lck{_async_mtx};
-    if (_device_mesh) {
+    if (_device_res) {
         return false;
     }
-    _device_mesh = new DeviceMesh{};
-    _device_mesh->async_load_from_file(
-        _path,
-        _vertex_count,
-        _triangle_count,
-        _contained_normal,
-        _contained_tangent,
-        _uv_count, vstd::vector<uint>{_submesh_offsets},
-        false, true,
-        _file_offset,
-        true, extra_size_bytes());
+    if (!is_transforming_mesh()) {
+        auto mesh = new DeviceMesh{};
+        _device_res = mesh;
+        mesh->async_load_from_file(
+            _path,
+            _vertex_count,
+            _triangle_count,
+            _contained_normal,
+            _contained_tangent,
+            _uv_count, vstd::vector<uint>{_submesh_offsets},
+            false, true,
+            _file_offset,
+            true, extra_size_bytes());
+    } else {
+        auto origin_mesh_obj = get_object_ref(_origin_mesh);
+        if (!origin_mesh_obj || !origin_mesh_obj->is_type_of(TypeInfo::get<MeshResource>())) {
+            return false;
+        }
+        auto origin_mesh = static_cast<MeshResource *>(origin_mesh_obj.get());
+        auto mesh = new DeviceTransformingMesh();
+        _device_res = mesh;
+        mesh->async_load(RC<DeviceMesh>{origin_mesh->device_mesh()});
+    }
     return true;
 }
 bool MeshResource::unsafe_save_to_path() const {
+    if (is_transforming_mesh()) return false;
     std::shared_lock lck{_async_mtx};
-    if (!_device_mesh || _device_mesh->host_data().empty()) return false;
+    auto mesh = device_mesh();
+    if (!mesh || mesh->host_data().empty()) return false;
     BinaryFileWriter writer{luisa::to_string(_path)};
     if (!writer._file) [[unlikely]] {
         return false;
     }
-    writer.write(_device_mesh->host_data());
+    writer.write(mesh->host_data());
 
     return true;
 }
 rbc::coroutine MeshResource::_async_load() {
     if (!_async_load_from_file()) co_return;
-    while (!_device_mesh->load_finished()) {
+    while (!_device_res->load_finished()) {
         co_await std::suspend_always{};
     }
     _status = EResourceLoadingStatus::Loaded;
@@ -210,7 +254,7 @@ rbc::coroutine MeshResource::_async_load() {
 }
 void MeshResource::_unload() {
     std::lock_guard lck{_async_mtx};
-    _device_mesh.reset();
+    _device_res.reset();
 }
 
 // import
@@ -287,6 +331,23 @@ luisa::compute::ByteBufferView MeshResource::get_or_create_property_buffer(luisa
     }
     return b;
 }
-
+bool MeshResource::is_transforming_mesh() const {
+    if (_device_res) {
+        return _device_res->resource_type() == DeviceResource::Type::TransformingMesh;
+    }
+    return _origin_mesh;
+}
+DeviceMesh *MeshResource::device_mesh() const {
+    if (_device_res && _device_res->resource_type() == DeviceResource::Type::Mesh) {
+        return static_cast<DeviceMesh *>(_device_res.get());
+    }
+    return nullptr;
+}
+DeviceTransformingMesh *MeshResource::device_transforming_mesh() const {
+    if (_device_res && _device_res->resource_type() == DeviceResource::Type::TransformingMesh) {
+        return static_cast<DeviceTransformingMesh *>(_device_res.get());
+    }
+    return nullptr;
+}
 DECLARE_WORLD_OBJECT_REGISTER(MeshResource)
 }// namespace rbc::world

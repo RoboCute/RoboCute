@@ -15,7 +15,7 @@
 #define RBC_FTELL ftello
 #endif
 namespace rbc {
-static constexpr size_t fallback_staging_size = 192ull * 1024ull * 1024ull;
+static constexpr size_t fallback_staging_size = 128ull * 1024ull * 1024ull;
 struct DStorageStreamFallbackImpl : DStorageStream {
 public:
     std::atomic_uint64_t signaled_fence_idx{};

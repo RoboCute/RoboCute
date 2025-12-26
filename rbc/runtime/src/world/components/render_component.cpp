@@ -254,7 +254,7 @@ coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const
                     auto emissions = material_emissions(_materials);
                     _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                         render_device->lc_main_cmd_list(),
-                        mesh->device_mesh(),
+                        RC<DeviceMesh>{mesh->device_mesh()},
                         matrix,
                         emissions,
                         _material_codes);
@@ -287,13 +287,14 @@ coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const
                     _type = ObjectRenderType::Mesh;
                 } else {
                     auto emissions = material_emissions(_materials);
+                    RC<DeviceMesh> m{mesh->device_mesh()};
                     Lights::instance()->update_mesh_light_sync(
                         render_device->lc_main_cmd_list(),
                         _mesh_light_idx,
                         matrix,
                         emissions,
                         _material_codes,
-                        &mesh->device_mesh());
+                        &m);
                 }
                 break;
             case ObjectRenderType::Procedural: {
@@ -307,7 +308,7 @@ coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const
             auto emissions = material_emissions(_materials);
             _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                 render_device->lc_main_cmd_list(),
-                mesh->device_mesh(),
+                RC<DeviceMesh>{mesh->device_mesh()},
                 matrix,
                 emissions,
                 _material_codes);

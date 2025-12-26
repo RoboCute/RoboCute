@@ -37,7 +37,7 @@ private:
     // render
     luisa::shared_ptr<DynamicModule> _render_module;
     RenderPlugin *_render_plugin{};
-    StateMap* _render_settings;
+    StateMap *_render_settings;
     RenderPlugin::PipeCtxStub *_display_pipe_ctx{};
     vstd::optional<rbc::Lights> _lights;
     bool _require_reset : 1 {false};

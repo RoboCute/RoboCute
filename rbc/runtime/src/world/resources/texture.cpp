@@ -50,7 +50,7 @@ void TextureResource::serialize_meta(ObjSerialize const &obj) const {
     obj.ar.value(_pixel_storage, "pixel_storage");
     obj.ar.value(_size, "size");
     obj.ar.value(_mip_level, "mip_level");
-    obj.ar.value(_is_vt, "is_vt");
+    obj.ar.value(is_vt(), "is_vt");
 }
 void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
@@ -113,9 +113,6 @@ bool TextureResource::is_vt() const {
 bool TextureResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_tex || load_executed()) {
-        return false;
-    }
-    if (_is_vt != is_vt()) {
         return false;
     }
     auto file_size = desire_size_bytes();

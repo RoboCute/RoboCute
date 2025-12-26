@@ -78,7 +78,7 @@ protected:
     // IMeshImporter is a friend of MeshResource, so it can access private members
     // Implementation is in resource_importer.cpp to avoid circular dependencies
 
-    static RC<rbc::DeviceMesh> &device_mesh_ref(MeshResource *resource);
+    static rbc::DeviceMesh* device_mesh_ref(MeshResource *resource);
     static uint32_t &vertex_count_ref(MeshResource *resource);
     static uint32_t &triangle_count_ref(MeshResource *resource);
     static uint32_t &uv_count_ref(MeshResource *resource);
