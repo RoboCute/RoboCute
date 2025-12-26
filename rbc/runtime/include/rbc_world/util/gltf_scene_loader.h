@@ -5,6 +5,7 @@
 
 #include <rbc_world/resources/skeleton.h>
 #include <rbc_world/resources/anim_sequence.h>
+#include <rbc_world/resources/skin.h>
 
 #include <luisa/core/stl/filesystem.h>
 
@@ -19,7 +20,8 @@ bool load_gltf_model(tinygltf::Model &model, luisa::filesystem::path const &path
 
 struct GltfLoadConfig {
     bool load_skeleton = false;
-    bool load_animation = false;
+    bool load_skin = false;
+    bool load_anim_seq = false;
     bool load_mesh = true;
     bool load_materials = true;
 };
@@ -27,7 +29,9 @@ struct GltfLoadConfig {
 struct GltfSceneData {
     GltfLoadConfig config;
     RC<MeshResource> mesh;
-    RC<SkeletonResource> skel;
+    RC<SkeletonResource> skel;// skeleton
+    RC<SkinResource> skin;
+    RC<AnimSequenceResource> anim;
     luisa::vector<RC<MaterialResource>> materials;
     luisa::vector<RC<TextureResource>> textures;
 };

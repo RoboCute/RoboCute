@@ -8,7 +8,7 @@
 #include <luisa/core/logging.h>
 #include <cstring>
 #include <algorithm>
-#include "rbc_world/importers/gltf_scene_loader.h"
+#include "rbc_world/util/gltf_scene_loader.h"
 #include "rbc_world/util/gltf.h"
 
 namespace rbc::world {

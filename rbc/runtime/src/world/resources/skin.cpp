@@ -25,4 +25,26 @@ void SkinResource::_unload() {
 // dispose declared here
 DECLARE_WORLD_OBJECT_REGISTER(SkinResource)
 
+
+
+// ISkinImporter
+luisa::string &ISkinImporter::name_ref(SkinResource *resource) {
+    return resource->name;
+}
+luisa::vector<luisa::string> &ISkinImporter::joint_remaps_ref(SkinResource *resource) {
+    return resource->joint_remaps;
+}
+luisa::vector<AnimFloat4x4> &ISkinImporter::inverse_bind_poses_ref(SkinResource *resource) {
+    return resource->inverse_bind_poses;
+}
+luisa::vector<BoneIndexType> &ISkinImporter::joint_remaps_LUT_ref(SkinResource *resource) {
+    return resource->joint_remaps_LUT;
+}
+RC<SkeletonResource> &ISkinImporter::ref_skel_ref(SkinResource *resource) {
+    return resource->ref_skel;
+}
+RC<world::MeshResource> &ISkinImporter::ref_mesh_ref(SkinResource *resource) {
+    return resource->ref_mesh;
+}
+
 }// namespace rbc

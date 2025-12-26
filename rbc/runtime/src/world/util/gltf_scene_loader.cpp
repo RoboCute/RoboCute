@@ -1,10 +1,11 @@
-#include <rbc_world/importers/gltf_scene_loader.h>
+#include <rbc_world/util/gltf_scene_loader.h>
 #include <rbc_world/importers/mesh_importer_gltf.h>
 #include <rbc_world/texture_loader.h>
 #include <rbc_world/resources/material.h>
 
 #include <rbc_world/importers/skel_importer_gltf.h>
 #include <rbc_world/importers/anim_sequence_importer_gltf.h>
+#include <rbc_world/importers/skin_importer_gltf.h>
 
 #include <tiny_gltf.h>
 #include <luisa/core/logging.h>
@@ -69,7 +70,34 @@ GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_pa
             LUISA_ERROR("Failed to import skeleton from GLTF file");
             return result;
         }
+
+        // Load skin (depends on skeleton and mesh)
+        if (config.load_skin) {
+            result.skin = RC<SkinResource>(create_object<SkinResource>());
+            GltfSkinImporter importer;
+            if (!importer.import(result.skin.get(), gltf_path)) {
+                LUISA_ERROR("Failed to import skin from GLTF file");
+                return result;
+            }
+            result.skin->ref_skel = result.skel;
+            result.skin->ref_mesh = result.mesh;
+    
+            result.skin->generate_LUT();
+        }
+    
+        // Load animation (depends on skeleton)
+        if (config.load_anim_seq) {
+            result.anim = RC<AnimSequenceResource>(create_object<AnimSequenceResource>());
+            GltfAnimSequenceImporter importer;
+            importer.ref_skel = result.skel;
+            if (!importer.import(result.anim.get(), gltf_path)) {
+                LUISA_ERROR("Failed to import animation sequence from GLTF file");
+                return result;
+            }
+        }
     }
+
+
 
     // Load textures and materials
     {

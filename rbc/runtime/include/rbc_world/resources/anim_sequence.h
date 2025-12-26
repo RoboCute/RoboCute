@@ -20,6 +20,8 @@ public:
     rbc::coroutine _async_load() override;
 
     const AnimSequence &ref_seq() const { return anim_sequence; }
+    RC<SkeletonResource> ref_skel;
+
 protected:
     bool unsafe_save_to_path() const override;
     void _unload() override;
@@ -27,7 +29,7 @@ protected:
 private:
     friend class IAnimSequenceImporter;
     AnimSequence anim_sequence;
-    RC<SkeletonResource> ref_skeleton;
+
 };
 
 }// namespace rbc
@@ -41,7 +43,7 @@ struct RBC_RUNTIME_API IAnimSequenceImporter : world::IResourceImporter {
 
 protected:
     AnimSequence &seq_ref(AnimSequenceResource *resource) { return resource->anim_sequence; }
-    RC<SkeletonResource> skel_ref(AnimSequenceResource *resource) { return resource->ref_skeleton; }
+    RC<SkeletonResource> skel_ref(AnimSequenceResource *resource) { return resource->ref_skel; }
 };
 
 }// namespace rbc

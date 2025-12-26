@@ -15,10 +15,10 @@ RBC_RUNTIME_API void register_builtin_importers() {
     // Register mesh importers
     static ObjMeshImporter obj_mesh_importer;
     registry.register_importer(&obj_mesh_importer);
-    
+
     static GltfMeshImporter gltf_mesh_importer;
     registry.register_importer(&gltf_mesh_importer);
-    
+
     static GlbMeshImporter glb_mesh_importer;
     registry.register_importer(&glb_mesh_importer);
 
@@ -42,14 +42,7 @@ RBC_RUNTIME_API void register_builtin_importers() {
     static ExrTextureImporter exr_texture_importer;
     registry.register_importer(&exr_texture_importer);
 
-    // Register additional STB formats with StbTextureImporter
-    // We need to register StbTextureImporter for each supported extension
-    // For simplicity, we'll create multiple instances or modify the registry
-    // to support multiple extensions per importer
-    // Alternative: Register StbTextureImporter for each extension
-    // Since StbTextureImporter::supports_extension checks multiple formats,
-    // we register it for the primary extension (.png) and let it handle others
-    // through the can_import check
+    // Anim Resources
 }
 
 }// namespace rbc::world

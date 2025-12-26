@@ -17,19 +17,26 @@ struct RBC_RUNTIME_API SkinResource : world::ResourceBaseImpl<SkinResource> {
     void deserialize_meta(world::ObjDeSerialize const &ser) override;
 
     rbc::coroutine _async_load() override;
-
-    struct Data {
-        luisa::string name;
-        luisa::vector<luisa::string> joint_remaps;
-        luisa::vector<AnimFloat4x4> inverse_bind_poses;
-    };
-    luisa::vector<BoneIndexType> joint_remaps_LUT;// LUT: joint_remaps[i] -> bone index in skel
+    // meta data
     RC<SkeletonResource> ref_skel;
     RC<world::MeshResource> ref_mesh;
-
+    void generate_LUT();
+    
 protected:
     bool unsafe_save_to_path() const override;
     void _unload() override;
+
+
+
+private:
+    friend class ISkinImporter;
+    // direct data
+    luisa::string name;
+    luisa::vector<luisa::string> joint_remaps;
+    luisa::vector<AnimFloat4x4> inverse_bind_poses;
+    // generated data
+    luisa::vector<BoneIndexType> joint_remaps_LUT;// LUT: joint_remaps[i] -> bone index in skel
+
 };
 
 }// namespace rbc
@@ -41,6 +48,12 @@ struct RBC_RUNTIME_API ISkinImporter : world::IResourceImporter {
     [[nodiscard]] world::ResourceType resource_type() const override { return world::ResourceType::Skin; }
     virtual bool import(SkinResource *resource, luisa::filesystem::path const &path) = 0;
 protected:
+    static luisa::string &name_ref(SkinResource *resource);
+    static luisa::vector<luisa::string> &joint_remaps_ref(SkinResource *resource);
+    static luisa::vector<AnimFloat4x4> &inverse_bind_poses_ref(SkinResource *resource);
+    static luisa::vector<BoneIndexType> &joint_remaps_LUT_ref(SkinResource *resource);
+    static RC<SkeletonResource> &ref_skel_ref(SkinResource *resource);
+    static RC<world::MeshResource> &ref_mesh_ref(SkinResource *resource);
 };
 
 }// namespace rbc
