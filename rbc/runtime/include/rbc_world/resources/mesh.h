@@ -10,7 +10,6 @@ struct SkinAttrib {
     int16_t joint_id;
     float weight;
 };
-
 // Forward declarations for friend classes
 struct IMeshImporter;
 
