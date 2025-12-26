@@ -12,13 +12,19 @@ BinWriter::BinWriter(bool root_array) : pos_(0) {
         scope.array_size = 0;
         scope.array_index = 0;
         scope.in_object = false;
-        _scope.emplace_back(scope);
+        scope.object_start_written = false;
+        scope.object_start_pos = 0;
         write_type(BinType::ArrayStart);
+        scope.array_size_pos = buffer_.size(); // Save position where size will be written
         write_uint64(0); // placeholder for size
+        _scope.emplace_back(scope);
     } else {
         BinScope scope;
         scope.is_array = false;
         scope.in_object = true;
+        scope.object_start_written = true;
+        scope.object_start_pos = 0;
+        scope.array_size_pos = 0;
         _scope.emplace_back(scope);
         write_type(BinType::ObjectStart);
     }
@@ -51,21 +57,33 @@ void BinWriter::start_array() {
     new_scope.array_size = 0;
     new_scope.array_index = 0;
     new_scope.in_object = false;
-    _scope.emplace_back(new_scope);
-    
+    new_scope.object_start_written = false;
+    new_scope.object_start_pos = 0;
     write_type(BinType::ArrayStart);
+    new_scope.array_size_pos = buffer_.size(); // Save position where size will be written
     write_uint64(0); // placeholder for size
+    _scope.emplace_back(new_scope);
 }
 
 void BinWriter::start_object() {
     LUISA_DEBUG_ASSERT(!_scope.empty());
     
+    auto &parent = _scope.back();
     BinScope new_scope;
     new_scope.is_array = false;
     new_scope.in_object = true;
-    _scope.emplace_back(new_scope);
     
-    write_type(BinType::ObjectStart);
+    // If we're in an object context, delay writing ObjectStart until we know if there's a key
+    if (!parent.is_array && parent.in_object) {
+        new_scope.object_start_written = false;
+        new_scope.object_start_pos = buffer_.size();
+    } else {
+        new_scope.object_start_written = true;
+        new_scope.object_start_pos = 0;
+        write_type(BinType::ObjectStart);
+    }
+    
+    _scope.emplace_back(new_scope);
 }
 
 void BinWriter::add_last_scope_to_object() {
@@ -82,11 +100,11 @@ void BinWriter::add_last_scope_to_object() {
     // Write scope end
     write_type(BinType::ScopeEnd);
     
-    // Update array size in buffer if this was an array
-    if (scope.is_array) {
-        // Find the position where we wrote the array size
-        // We need to track this, but for simplicity, we'll write size at the end
-        // Actually, we need to update it when we end the scope
+    // If the scope being added was an array, update its size in the buffer
+    // Note: For root array, the size will be updated in write_to()
+    if (scope.is_array && scope.array_size_pos > 0 && _scope.size() > 0) {
+        // Update the array size at the saved position
+        std::memcpy(buffer_.data() + scope.array_size_pos, &scope.array_size, sizeof(uint64_t));
     }
 }
 
@@ -103,11 +121,43 @@ void BinWriter::add_last_scope_to_object(char const *name) {
     auto &parent = _scope.back();
     LUISA_DEBUG_ASSERT(!parent.is_array && parent.in_object);
     
-    // Write key
-    luisa::string_view key(name);
-    write_type(BinType::String);
-    write_uint64(key.size());
-    write_bytes(key.data(), key.size());
+    // If ObjectStart hasn't been written yet, write key first, then ObjectStart
+    if (!scope.object_start_written) {
+        // Save current buffer size (where we'll insert key + ObjectStart)
+        uint64_t insert_pos = scope.object_start_pos;
+        uint64_t content_size = buffer_.size() - insert_pos;
+        
+        // Save the content that was written after start_object()
+        luisa::vector<std::byte> content_backup;
+        if (content_size > 0) {
+            content_backup.resize(content_size);
+            std::memcpy(content_backup.data(), buffer_.data() + insert_pos, content_size);
+        }
+        
+        // Truncate buffer to insert position
+        buffer_.resize(insert_pos);
+        
+        // Write key first
+        luisa::string_view key(name);
+        write_type(BinType::String);
+        write_uint64(key.size());
+        write_bytes(key.data(), key.size());
+        
+        // Write ObjectStart
+        write_type(BinType::ObjectStart);
+        
+        // Restore the content after ObjectStart
+        if (content_size > 0) {
+            write_bytes(content_backup.data(), content_size);
+        }
+    } else {
+        // ObjectStart already written, this shouldn't happen in object context
+        // But if it does, write key before scope end
+        luisa::string_view key(name);
+        write_type(BinType::String);
+        write_uint64(key.size());
+        write_bytes(key.data(), key.size());
+    }
     
     // Write scope end
     write_type(BinType::ScopeEnd);
@@ -452,10 +502,22 @@ void BinWriter::bytes(luisa::span<std::byte const> data, char const *name) {
 }
 
 luisa::BinaryBlob BinWriter::write_to() const {
-    // Create a copy of the buffer
-    auto size = buffer_.size();
+    // Update array sizes in buffer before creating the blob
+    // We need to modify the buffer, so create a mutable copy
+    luisa::vector<std::byte> buffer_copy = buffer_;
+    
+    // Update all array sizes that were written as placeholders
+    for (const auto &scope : _scope) {
+        if (scope.is_array && scope.array_size_pos > 0) {
+            // Update the array size at the saved position
+            std::memcpy(buffer_copy.data() + scope.array_size_pos, &scope.array_size, sizeof(uint64_t));
+        }
+    }
+    
+    // Create a copy of the updated buffer
+    auto size = buffer_copy.size();
     auto data = vengine_malloc(size);
-    std::memcpy(data, buffer_.data(), size);
+    std::memcpy(data, buffer_copy.data(), size);
     return luisa::BinaryBlob{
         reinterpret_cast<std::byte *>(data),
         size,

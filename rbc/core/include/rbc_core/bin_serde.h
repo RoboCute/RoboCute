@@ -25,6 +25,9 @@ struct BinScope {
     uint64_t array_index;
     luisa::string last_key;
     bool in_object;
+    bool object_start_written; // For objects in object context, track if ObjectStart has been written
+    uint64_t object_start_pos; // Position where ObjectStart should be written (if delayed)
+    uint64_t array_size_pos; // Position where array size was written (for root array or nested arrays)
 };
 
 struct RBC_CORE_API BinWriter {
