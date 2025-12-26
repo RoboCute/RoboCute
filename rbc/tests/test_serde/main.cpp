@@ -43,11 +43,12 @@ struct TestTransform {
     TestColor color;
 };
 
-// struct TestArrayStruct {
-//     luisa::vector<int32_t> int_array;
-//     luisa::vector<luisa::string> string_array;
-//     luisa::vector<TestPoint> point_array;
-// };
+struct TestArrayStruct {
+    luisa::vector<int32_t> int_array;
+    luisa::vector<luisa::string> string_array;
+    luisa::vector<TestPoint> point_array;
+};
+
 }// namespace test_serde
 
 // Serialize<T> specializations for test types
@@ -104,21 +105,21 @@ struct Serialize<test_serde::TestTransform> {
     }
 };
 
-// template<>
-// struct Serialize<test_serde::TestArrayStruct> {
-//     static void write(ArchiveWrite &w, const test_serde::TestArrayStruct &v) {
-//         w.value(v.int_array, "int_array");
-//         w.value(v.string_array, "string_array");
-//         w.value(v.point_array, "point_array");
-//     }
+template<>
+struct Serialize<test_serde::TestArrayStruct> {
+    static void write(ArchiveWrite &w, const test_serde::TestArrayStruct &v) {
+        w.value(v.int_array, "int_array");
+        w.value(v.string_array, "string_array");
+        w.value(v.point_array, "point_array");
+    }
 
-//     static bool read(ArchiveRead &r, test_serde::TestArrayStruct &v) {
-//         if (!r.value(v.int_array, "int_array")) return false;
-//         if (!r.value(v.string_array, "string_array")) return false;
-//         if (!r.value(v.point_array, "point_array")) return false;
-//         return true;
-//     }
-// };
+    static bool read(ArchiveRead &r, test_serde::TestArrayStruct &v) {
+        if (!r.value(v.int_array, "int_array")) return false;
+        if (!r.value(v.string_array, "string_array")) return false;
+        if (!r.value(v.point_array, "point_array")) return false;
+        return true;
+    }
+};
 
 }// namespace rbc
 
@@ -260,45 +261,45 @@ int main(int argc, char *argv[]) {
     }
 
     // Test 3: Array serialization
-    // {
-    //     test_serde::TestArrayStruct array_struct;
-    //     array_struct.int_array.emplace_back(1);
-    //     array_struct.int_array.emplace_back(2);
-    //     array_struct.int_array.emplace_back(3);
-    //     array_struct.string_array.emplace_back("hello");
-    //     array_struct.string_array.emplace_back("world");
-    //     array_struct.point_array.emplace_back(test_serde::TestPoint{1.0, 2.0, 3.0});
-    //     array_struct.point_array.emplace_back(test_serde::TestPoint{4.0, 5.0, 6.0});
+    {
+        test_serde::TestArrayStruct array_struct;
+        array_struct.int_array.emplace_back(1);
+        array_struct.int_array.emplace_back(2);
+        array_struct.int_array.emplace_back(3);
+        array_struct.string_array.emplace_back("hello");
+        array_struct.string_array.emplace_back("world");
+        array_struct.point_array.emplace_back(test_serde::TestPoint{1.0, 2.0, 3.0});
+        array_struct.point_array.emplace_back(test_serde::TestPoint{4.0, 5.0, 6.0});
 
-    //     JsonSerializer writer;
-    //     writer._store(array_struct, "array_struct");
-    //     auto json_blob = writer.write_to();
+        JsonSerializer writer;
+        writer._store(array_struct, "array_struct");
+        auto json_blob = writer.write_to();
 
-    //     luisa::string_view json_str{(char const *)json_blob.data(), json_blob.size()};
-    //     LUISA_INFO("Serialized TestArrayStruct: {}", json_str);
+        luisa::string_view json_str{(char const *)json_blob.data(), json_blob.size()};
+        LUISA_INFO("Serialized TestArrayStruct: {}", json_str);
 
-    //     JsonDeSerializer reader{json_str};
-    //     test_serde::TestArrayStruct deserialized_array;
-    //     LUISA_ASSERT(reader._load(deserialized_array, "array_struct"));
+        JsonDeSerializer reader{json_str};
+        test_serde::TestArrayStruct deserialized_array;
+        LUISA_ASSERT(reader._load(deserialized_array, "array_struct"));
 
-    //     LUISA_ASSERT(deserialized_array.int_array.size() == array_struct.int_array.size());
-    //     for (size_t i = 0; i < array_struct.int_array.size(); ++i) {
-    //         LUISA_ASSERT(deserialized_array.int_array[i] == array_struct.int_array[i]);
-    //     }
+        LUISA_ASSERT(deserialized_array.int_array.size() == array_struct.int_array.size());
+        for (size_t i = 0; i < array_struct.int_array.size(); ++i) {
+            LUISA_ASSERT(deserialized_array.int_array[i] == array_struct.int_array[i]);
+        }
 
-    //     LUISA_ASSERT(deserialized_array.string_array.size() == array_struct.string_array.size());
-    //     for (size_t i = 0; i < array_struct.string_array.size(); ++i) {
-    //         LUISA_ASSERT(deserialized_array.string_array[i] == array_struct.string_array[i]);
-    //     }
+        LUISA_ASSERT(deserialized_array.string_array.size() == array_struct.string_array.size());
+        for (size_t i = 0; i < array_struct.string_array.size(); ++i) {
+            LUISA_ASSERT(deserialized_array.string_array[i] == array_struct.string_array[i]);
+        }
 
-    //     LUISA_ASSERT(deserialized_array.point_array.size() == array_struct.point_array.size());
-    //     for (size_t i = 0; i < array_struct.point_array.size(); ++i) {
-    //         LUISA_ASSERT(deserialized_array.point_array[i].x == array_struct.point_array[i].x);
-    //         LUISA_ASSERT(deserialized_array.point_array[i].y == array_struct.point_array[i].y);
-    //         LUISA_ASSERT(deserialized_array.point_array[i].z == array_struct.point_array[i].z);
-    //     }
-    //     LUISA_INFO("TestArrayStruct serialization/deserialization: PASSED");
-    // }
+        LUISA_ASSERT(deserialized_array.point_array.size() == array_struct.point_array.size());
+        for (size_t i = 0; i < array_struct.point_array.size(); ++i) {
+            LUISA_ASSERT(deserialized_array.point_array[i].x == array_struct.point_array[i].x);
+            LUISA_ASSERT(deserialized_array.point_array[i].y == array_struct.point_array[i].y);
+            LUISA_ASSERT(deserialized_array.point_array[i].z == array_struct.point_array[i].z);
+        }
+        LUISA_INFO("TestArrayStruct serialization/deserialization: PASSED");
+    }
 
     // Test 4: Array root serialization
     {

@@ -158,14 +158,12 @@ struct is_vector<luisa::vector<Ele>> {
 
 struct ArchiveWrite {
 
-    virtual bool _is_current_scope_object() = 0;
-    virtual bool _is_scope_counters_empty() = 0;
-    virtual void _generate_sequential_key_impl(luisa::string &str) = 0;
     virtual void start_object() = 0;
-
     virtual void start_array() = 0;
     virtual void end_object() = 0;
     virtual void end_object(char const *name) = 0;
+    virtual void end_array() = 0;
+    virtual void end_array(char const *name) = 0;
 
     virtual void add(bool bool_value) = 0;
     virtual void add(int64_t int_value) = 0;
@@ -188,63 +186,29 @@ struct ArchiveWrite {
 
     template<typename T>
     void value(const T &v) {
-        // Check if we're in an object context and should use sequential keys
-        bool use_sequential_key = _is_current_scope_object();
-        char const *key_name = nullptr;
-        luisa::string sequential_key_str;
-
-        if (use_sequential_key && !_is_scope_counters_empty()) {
-            _generate_sequential_key_impl(sequential_key_str);
-            key_name = sequential_key_str.c_str();
-        }
-
         if constexpr (requires { Serialize<T>::write(*this, v); }) {
-            if (use_sequential_key && key_name) {
-                start_object();
-                Serialize<T>::write(*this, v);
-                end_object();
-            } else {
-                // In array context or no sequential key needed
-                Serialize<T>::write(*this, v);
-            }
+            // In array context we need to enter the object first
+            start_object();
+            Serialize<T>::write(*this, v);
+            end_object();
         } else if constexpr (std::is_same_v<T, bool>) {
-            if (use_sequential_key && key_name) {
-                add(v, key_name);
-            } else {
-                add(v);
-            }
+            add(v);
         } else if constexpr (std::is_integral_v<T>) {
             if constexpr (std::is_unsigned_v<T>) {
-                if (use_sequential_key && key_name) {
-                    add((uint64_t)v, key_name);
-                } else {
-                    add((uint64_t)v);
-                }
+                add((uint64_t)v);
             } else {
-                if (use_sequential_key && key_name) {
-                    add((int64_t)v, key_name);
-                } else {
-                    add((int64_t)v);
-                }
+                add((int64_t)v);
             }
         } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
-            if (use_sequential_key && key_name) {
-                add((double)v, key_name);
-            } else {
-                add((double)v);
-            }
+            add((double)v);
         } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
-            if (use_sequential_key && key_name) {
-                add(luisa::string_view{v}, key_name);
-            } else {
-                add(luisa::string_view{v});
-            }
-
+            add(luisa::string_view{v});
         } else if (rbc::detail::is_vector<T>::value) {
+            // vector container
             using EleType = luisa::vector_element_t<T>;
             start_array();
             for (auto &&i : v) {
-                Serialize<EleType>::write(i);
+                value(i);
             }
             end_array();
         } else {
@@ -274,7 +238,7 @@ struct ArchiveWrite {
             using EleType = luisa::vector_element_t<T>;
             start_array();
             for (auto &&i : v) {
-                Serialize<EleType>::write(*this, i);
+                value(i);
             }
             end_array(name);
         } else {
@@ -283,11 +247,6 @@ struct ArchiveWrite {
 };
 
 struct ArchiveRead {
-
-    virtual bool _is_current_scope_object() = 0;
-    virtual bool _is_scope_counters_empty() = 0;
-    virtual luisa::string _generate_sequential_key_impl() = 0;
-
     virtual bool start_object() = 0;
     virtual bool start_object(char const *name) = 0;
     virtual bool start_array(uint64_t &size) = 0;
@@ -308,75 +267,46 @@ struct ArchiveRead {
     // value<T>() method that uses Serialize<T> specialization
     template<typename T>
     bool value(T &v) {
-        // Check if we're in an object context and should use sequential keys
-        bool use_sequential_key = _is_current_scope_object();
-        char const *key_name = nullptr;
-        luisa::string sequential_key;
-
-        if (use_sequential_key && !_is_scope_counters_empty()) {
-            // Generate sequential key from counter
-            sequential_key = _generate_sequential_key_impl();
-            key_name = sequential_key.c_str();
-        }
-
         if constexpr (requires { Serialize<T>::read(*this, v); }) {
-            // Serialize<T>::read expects to be called in an object context
-            // If we're in an object context with sequential keys, we need to enter the nested object first
-            if (use_sequential_key && key_name) {
-                // We're in an object context, so we need to read a nested object with the sequential key
-                if (!start_object(key_name)) return false;
-                bool result = Serialize<T>::read(*this, v);
-                end_scope();
-                return result;
-            } else {
-                // In array context, we need to enter the object first
-                if (!start_object()) return false;
-                bool result = Serialize<T>::read(*this, v);
-                end_scope();
-                return result;
-            }
+            // In array context, we need to enter the object first
+            if (!start_object()) return false;
+            bool result = Serialize<T>::read(*this, v);
+            end_scope();
+            return result;
         } else if constexpr (std::is_same_v<T, bool>) {
-            if (use_sequential_key && key_name) {
-                return read(v, key_name);
-            } else {
-                return read(v);
-            }
+            return read(v);
         } else if constexpr (std::is_integral_v<T>) {
             if constexpr (std::is_unsigned_v<T>) {
                 uint64_t temp;
-                bool result = use_sequential_key && key_name ? read(temp, key_name) : read(temp);
+                bool result = read(temp);
                 if (result) v = (T)temp;
                 return result;
             } else {
                 int64_t temp;
-                bool result = use_sequential_key && key_name ? read(temp, key_name) : read(temp);
+                bool result = read(temp);
                 if (result) v = (T)temp;
                 return result;
             }
         } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             double temp;
-            bool result = use_sequential_key && key_name ? read(temp, key_name) : read(temp);
+            bool result = read(temp);
             if (result) v = (T)temp;
             return result;
         } else if constexpr (std::is_same_v<T, luisa::string>) {
-            if (use_sequential_key && key_name) {
-                return read(v, key_name);
-            } else {
-                return read(v);
-            }
+            return read(v);
         } else if (rbc::detail::is_vector<T>::value) {
             using EleType = luisa::vector_element_t<T>;
             size_t size;
             start_array(size);
             bool result = true;
             for (auto i = 0; i < size; i++) {
-                result &= Serialize<EleType>::read(*this, v[i]);
+                result &= value(v[i]);
             }
-            end_array();
+            end_scope();
             return result;
         } else {
             // For other types without Serialize<T>, fall back to deserializer's _load method
-            LUISA_ERROR("fallback read {}:{}", key_name ? key_name : "null", v);
+            LUISA_ERROR("fallback read");
             return false;
         }
     }
@@ -412,6 +342,17 @@ struct ArchiveRead {
         } else if constexpr (std::is_same_v<T, luisa::string>) {
             return read(v, name);
         } else if constexpr (rbc::detail::is_vector<T>::value) {
+            using EleType = luisa::vector_element_t<T>;
+            size_t size;
+            start_array(size, name);
+            bool result = true;
+            v.resize(size);
+            for (auto i = 0; i < size; i++) {
+                result &= value(v[i]);
+            }
+            end_scope();
+            return result;
+        } else {
             return false;
         }
     }
@@ -426,74 +367,34 @@ struct ArchiveWriteAdapter : public ArchiveWrite {
     Serializer<Writer> &serializer;
     Writer &writer;
 
-    // Stack to track sequential index counters for each object scope
-    // Each entry is a pair: (is_object_scope, counter)
-    luisa::vector<std::pair<bool, uint64_t>> _scope_counters;
-
     explicit ArchiveWriteAdapter(Serializer<Writer> &s) : serializer(s), writer(static_cast<Writer &>(s)) {}
-
-    // Helper to generate sequential key from counter
-    // Note: JsonWriter::add() methods now copy the string, so we can use a temporary string
-    luisa::string _generate_sequential_key(uint64_t index) {
-        // Convert index to string using std::to_string, then convert to luisa::string
-        auto str = std::to_string(index);
-        return luisa::string(str);
-    }
-
-    // Helper to check if current scope is an object and get/advance counter
-    bool _is_current_scope_object() override {
-        // Try to use JsonWriter's method if available
-        if constexpr (requires { writer.is_current_scope_array(); }) {
-            return !writer.is_current_scope_array();
-        }
-        // Fallback: check if we have a counter on the stack
-        return !_scope_counters.empty() && _scope_counters.back().first;
-    }
-    bool _is_scope_counters_empty() override {
-        return _scope_counters.empty();
-    }
-    void _generate_sequential_key_impl(luisa::string &str) override {
-        // Generate sequential key from counter
-        uint64_t index = _scope_counters.back().second;
-
-        str = _generate_sequential_key(index);
-
-        // Advance counter for next value
-        _scope_counters.back().second++;
-    }
 
     // Forward all writer methods
     void start_array() override {
         writer.start_array();
-        // Push a marker for array scope (not an object, so no counter needed)
-        _scope_counters.emplace_back(false, 0);
     }
 
     void start_object() override {
         writer.start_object();
-        // Push a new counter for object scope
-        _scope_counters.emplace_back(true, 0);
     }
     void end_object() override {
         add_last_scope_to_object();
     }
     void end_object(char const *name) override {
-        writer.add_last_scope_to_object(name);
+        add_last_scope_to_object(name);
+    }
+    void end_array() override {
+        add_last_scope_to_object();
+    }
+    void end_array(char const *name) override {
+        add_last_scope_to_object(name);
     }
 
     void add_last_scope_to_object() {
         writer.add_last_scope_to_object();
-        // Pop the scope counter when exiting a scope
-        if (!_scope_counters.empty()) {
-            _scope_counters.pop_back();
-        }
     }
     void add_last_scope_to_object(char const *name) {
         writer.add_last_scope_to_object(name);
-        // Pop the scope counter when exiting a scope
-        if (!_scope_counters.empty()) {
-            _scope_counters.pop_back();
-        }
     }
 
     // value<T>() method that uses Serialize<T> specialization
@@ -524,74 +425,28 @@ template<concepts::SerReader Reader>
 struct ArchiveReadAdapter : public ArchiveRead {
     DeSerializer<Reader> &deserializer;
     Reader &reader;
-    // Stack to track sequential index counters for each object scope
-    // Each entry is a pair: (is_object_scope, counter)
-    luisa::vector<std::pair<bool, uint64_t>> _scope_counters;
 
     explicit ArchiveReadAdapter(DeSerializer<Reader> &d) : deserializer(d), reader(static_cast<Reader &>(d)) {}
-
-    // Helper to generate sequential key from counter
-    luisa::string _generate_sequential_key(uint64_t index) {
-        // Convert index to string (simple implementation, can be optimized)
-        char buffer[32];
-        auto len = snprintf(buffer, sizeof(buffer), "%llu", static_cast<unsigned long long>(index));
-        return luisa::string(buffer, len);
-    }
-
-    luisa::string _generate_sequential_key_impl() override {
-        uint64_t index = _scope_counters.back().second;
-        _scope_counters.back().second++;
-        return _generate_sequential_key(index);
-    }
-
-    // Helper to check if current scope is an object
-    bool _is_current_scope_object() override {
-        // Check if we have a counter on the stack
-        return !_scope_counters.empty() && _scope_counters.back().first;
-    }
-    bool _is_scope_counters_empty() override {
-        return _scope_counters.empty();
-    }
 
     // Forward all reader methods
     bool start_array(uint64_t &size) override {
         bool result = reader.start_array(size);
-        if (result) {
-            // Push a marker for array scope (not an object, so no counter needed)
-            _scope_counters.emplace_back(false, 0);
-        }
         return result;
     }
     bool start_array(uint64_t &size, char const *name) override {
         bool result = reader.start_array(size, name);
-        if (result) {
-            // Push a marker for array scope (not an object, so no counter needed)
-            _scope_counters.emplace_back(false, 0);
-        }
         return result;
     }
     bool start_object() override {
         bool result = reader.start_object();
-        if (result) {
-            // Push a new counter for object scope
-            _scope_counters.emplace_back(true, 0);
-        }
         return result;
     }
     bool start_object(char const *name) override {
         bool result = reader.start_object(name);
-        if (result) {
-            // Push a new counter for object scope
-            _scope_counters.emplace_back(true, 0);
-        }
         return result;
     }
     void end_scope() override {
         reader.end_scope();
-        // Pop the scope counter when exiting a scope
-        if (!_scope_counters.empty()) {
-            _scope_counters.pop_back();
-        }
     }
 
     // Direct access to underlying reader for primitive types
@@ -654,7 +509,7 @@ template<concepts::SerWriter Base>
 struct Serializer : public Base {
 
     template<typename... Args>
-    Serializer(Args &&...args)
+    explicit Serializer(Args &&...args)
         : Base(std::forward<Args>(args)...) {
     }
 
@@ -821,7 +676,7 @@ struct Serializer : public Base {
 template<concepts::SerReader Base>
 struct DeSerializer : public Base {
     template<typename... Args>
-    DeSerializer(Args &&...args)
+    explicit DeSerializer(Args &&...args)
         : Base(std::forward<Args>(args)...) {
     }
     template<concepts::DeSerializableType<DeSerializer> T, typename... Args>
