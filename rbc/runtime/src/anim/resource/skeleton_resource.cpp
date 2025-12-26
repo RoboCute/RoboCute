@@ -62,3 +62,11 @@ void SkeletonResource::log_brief() {
 DECLARE_WORLD_OBJECT_REGISTER(SkeletonResource)
 
 }// namespace rbc
+
+void rbc::Serialize<rbc::SkeletonResource>::write(rbc::ArchiveWrite &w, const rbc::SkeletonResource &v) {
+    w.value(v.skeleton, "skeleton");
+}
+bool rbc::Serialize<rbc::SkeletonResource>::read(rbc::ArchiveRead &r, rbc::SkeletonResource &v) {
+    r.value(v.skeleton, "skeleton");
+    return true;
+}

@@ -1,5 +1,6 @@
 #pragma once
 #include <rbc_core/type_info.h>
+#include <rbc_core/serde.h>
 #include <rbc_world/component.h>
 #include <luisa/vstl/ranges.h>
 namespace rbc::world {
@@ -71,3 +72,9 @@ public:
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Entity);
+
+template<>
+struct rbc::Serialize<rbc::world::Entity> {
+    static RBC_RUNTIME_API void write(rbc::ArchiveWrite &w, const rbc::world::Entity &v);
+    static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::world::Entity &v);
+};

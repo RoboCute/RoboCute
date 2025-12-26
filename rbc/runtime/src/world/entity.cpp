@@ -85,38 +85,36 @@ Component *Entity::get_component(TypeInfo const &type) {
     return comp;
 }
 void Entity::serialize_meta(ObjSerialize const &ser) const {
-    ser.ser.start_array();
+    ser.ar.start_array();
     for (auto &i : _components) {
         auto comp = i.second;
         if (!comp) return;
-        ser.ser.start_object();
+        ser.ar.start_object();
         auto type_id = comp->type_id();
-        ser.ser._store(
-            reinterpret_cast<vstd::Guid &>(type_id),
-            "__typeid__");
+        ser.ar.value(reinterpret_cast<vstd::Guid &>(type_id), "__typeid__");
         comp->serialize_meta(ser);
-        ser.ser.add_last_scope_to_object();
+        ser.ar.end_object();
     }
-    ser.ser.add_last_scope_to_object("components");
+    ser.ar.end_array("components");
 }
 void Entity::deserialize_meta(ObjDeSerialize const &ser) {
     uint64_t size;
-    if (!ser.ser.start_array(size, "components")) return;
+    if (!ser.ar.start_array(size, "components")) return;
     _components.reserve(size);
     for (auto &i : vstd::range(size)) {
-        if (!ser.ser.start_object()) break;
+        if (!ser.ar.start_object()) break;
         auto d = vstd::scope_exit([&] {
-            ser.ser.end_scope();
+            ser.ar.end_scope();
         });
         vstd::Guid type_id;
-        if (!ser.ser._load(type_id, "__typeid__")) {
+        if (!ser.ar.value(type_id, "__typeid__")) {
             continue;
         }
         auto comp = _create_component(reinterpret_cast<std::array<uint64_t, 2> const &>(type_id));
         _add_component(comp);
         comp->deserialize_meta(ser);
     }
-    ser.ser.end_scope();
+    ser.ar.end_scope();
 }
 void Entity::_remove_component(Component *component) {
     LUISA_DEBUG_ASSERT(component->entity() == this);
@@ -142,3 +140,22 @@ Component::Component(Entity *entity) {}
 Component::~Component() {}
 DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world
+
+// Serialize<Entity> implementation
+void rbc::Serialize<rbc::world::Entity>::write(rbc::ArchiveWrite &w, const rbc::world::Entity &v) {
+    // Serialize GUID
+    auto guid = v.guid();
+    w.value(guid, "__guid__");
+    
+    // Serialize components via serialize_meta
+    rbc::world::ObjSerialize ser_obj{w};
+    v.serialize_meta(ser_obj);
+}
+
+bool rbc::Serialize<rbc::world::Entity>::read(rbc::ArchiveRead &r, rbc::world::Entity &v) {
+    // Note: GUID is expected to be handled by the caller (create_object_with_guid)
+    // Here we just deserialize the components
+    rbc::world::ObjDeSerialize deser_obj{r};
+    v.deserialize_meta(deser_obj);
+    return true;
+}

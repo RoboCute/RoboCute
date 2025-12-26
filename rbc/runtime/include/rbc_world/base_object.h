@@ -69,12 +69,10 @@ struct BaseObjectDerive;
 template<typename T>
 struct ComponentDerive;
 struct ObjSerialize {
-    rbc::JsonSerializer &ser;
-    // TODO: may need more arguments
+    rbc::ArchiveWrite &ar;
 };
 struct ObjDeSerialize {
-    rbc::JsonDeSerializer &ser;
-    // TODO: may need more arguments
+    rbc::ArchiveRead &ar;
 };
 struct BaseObject : RCBase {
     template<typename T, BaseObjectType base_type_v>

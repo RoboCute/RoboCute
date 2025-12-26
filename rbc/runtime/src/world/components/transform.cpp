@@ -12,16 +12,15 @@ luisa::vector<InstanceID> &dirty_transforms() {
     return _trans_inst->dirty_trans;
 }
 void TransformComponent::serialize_meta(ObjSerialize const &obj) const {
-    auto &ser_obj = obj.ser;
-    ser_obj.start_array();
+    obj.ar.start_array();
     for (auto &child : _children) {
         auto &&child_guid = child->guid();
         if (child_guid) {
-            ser_obj._store(child_guid);
+            obj.ar.value(child_guid);
         }
     }
-    ser_obj.add_last_scope_to_object("children");
-    ser_obj._store(_trs, "trs");
+    obj.ar.end_array("children");
+    obj.ar.value(_trs, "trs");
 }
 float4x4 TransformComponent::trs_float() const {
     return make_float4x4(
@@ -30,20 +29,20 @@ float4x4 TransformComponent::trs_float() const {
         make_float4(_trs[2]),
         make_float4(_trs[3]));
 }
-void TransformComponent::deserialize_meta(ObjDeSerialize const &obj) {
+void TransformComponent::deserialize_meta(ObjDeSerialize const &deser) {
     uint64_t size;
-    if (obj.ser.start_array(size, "children")) {
+    if (deser.ar.start_array(size, "children")) {
         _children.reserve(size);
         vstd::Guid child_guid;
-        if (obj.ser._load(child_guid)) {
+        if (deser.ar.value(child_guid)) {
             auto obj = get_object(child_guid);
             if (obj && obj->is_type_of(TypeInfo::get<TransformComponent>())) {
                 add_children(static_cast<TransformComponent *>(obj));
             }
         }
-        obj.ser.end_scope();
+        deser.ar.end_scope();
     }
-    obj.ser._load(_trs, "trs");
+    deser.ar.value(_trs, "trs");
     _decomposed = false;
 }
 void TransformComponent::try_decompose() {

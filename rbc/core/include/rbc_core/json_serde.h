@@ -2,6 +2,7 @@
 #include <luisa/core/stl/string.h>
 #include <luisa/core/stl/vector.h>
 #include <luisa/vstl/meta_lib.h>
+#include <luisa/core/logging.h>
 #include <luisa/core/binary_io.h>
 #include <rbc_config.h>
 #include <yyjson.h>
@@ -54,6 +55,24 @@ public:
     void add_arr(luisa::span<double const> double_values, char const *name);
     void add_arr(luisa::span<bool const> bool_values, char const *name);
 
+    // bytes interface (UNSPPORTED for json)
+    bool bytes(luisa::span<std::byte const> data) {
+        LUISA_ERROR("bytes() interface is not supported for json format");
+        return false;
+    }
+    bool bytes(luisa::span<std::byte const> data, char const *name) {
+        LUISA_ERROR("bytes() interface is not supported for json");
+        return false;
+    }
+    bool bytes(void *data, uint64_t size) {
+        LUISA_ERROR("bytes() interface is not supported for json format");
+        return false;
+    }
+    bool bytes(void *data, uint64_t size, char const *name) {
+        LUISA_ERROR("bytes() interface is not supported for json");
+        return false;
+    }
+
 public:
     [[nodiscard]] luisa::BinaryBlob write_to() const;
     // Check if current scope is an object (false) or array (true)
@@ -96,5 +115,23 @@ struct RBC_CORE_API JsonReader {
     bool read(double &value, char const *name);
     bool read(luisa::string &value, char const *name);
     bool valid() const;
+
+    // bytes interface (UNSPPORTED for json)
+    bool bytes(luisa::vector<std::byte> &data) {
+        LUISA_ERROR("bytes() interface is not supported for json format");
+        return false;
+    }
+    bool bytes(luisa::vector<std::byte> &data, char const *name) {
+        LUISA_ERROR("bytes() interface is not supported for json");
+        return false;
+    }
+    bool bytes(void *data, uint64_t size) {
+        LUISA_ERROR("bytes() interface is not supported for json format");
+        return false;
+    }
+    bool bytes(void *data, uint64_t size, char const *name) {
+        LUISA_ERROR("bytes() interface is not supported for json");
+        return false;
+    }
 };
 }// namespace rbc

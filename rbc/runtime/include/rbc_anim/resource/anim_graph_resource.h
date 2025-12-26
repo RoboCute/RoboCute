@@ -5,11 +5,10 @@
 
 namespace rbc {
 
-struct AnimGraphResource : world::ResourceBaseImpl<AnimGraphResource> {
+struct RBC_RUNTIME_API AnimGraphResource : world::ResourceBaseImpl<AnimGraphResource> {
 
     using BaseType = world::ResourceBaseImpl<AnimGraphResource>;
     DECLARE_WORLD_OBJECT_FRIEND(AnimGraphResource)
-    
 
     void serialize_meta(world::ObjSerialize const &ser) const override;
     void deserialize_meta(world::ObjDeSerialize const &ser) override;

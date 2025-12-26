@@ -4,7 +4,7 @@ namespace rbc {
 
 }// namespace rbc
 
-bool rbc::Serialize<rbc::AnimFloat4x4>::write(rbc::ArchiveWrite &w, const rbc::AnimFloat4x4 &v) {
+void rbc::Serialize<rbc::AnimFloat4x4>::write(rbc::ArchiveWrite &w, const rbc::AnimFloat4x4 &v) {
     w.start_array();
     float f[4];
     for (auto col : v.cols) {
@@ -15,7 +15,6 @@ bool rbc::Serialize<rbc::AnimFloat4x4>::write(rbc::ArchiveWrite &w, const rbc::A
         w.value<float>(f[3]);
     }
     w.end_object("data");
-    return true;
 }
 bool rbc::Serialize<rbc::AnimFloat4x4>::read(rbc::ArchiveRead &r, rbc::AnimFloat4x4 &v) {
     size_t size;

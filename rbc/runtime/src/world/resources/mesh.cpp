@@ -19,26 +19,26 @@ MeshResource::~MeshResource() {
 void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     std::shared_lock lck{_async_mtx};
     BaseType::serialize_meta(ser);
-    ser.ser._store(_contained_normal, "contained_normal");
-    ser.ser._store(_contained_tangent, "contained_tangent");
-    ser.ser._store(_vertex_count, "vertex_count");
-    ser.ser._store(_triangle_count, "triangle_count");
-    ser.ser._store(_uv_count, "uv_count");
-    ser.ser.start_array();
+    ser.ar.value(_contained_normal, "contained_normal");
+    ser.ar.value(_contained_tangent, "contained_tangent");
+    ser.ar.value(_vertex_count, "vertex_count");
+    ser.ar.value(_triangle_count, "triangle_count");
+    ser.ar.value(_uv_count, "uv_count");
+    ser.ar.start_array();
     for (auto &i : _custom_properties) {
-        ser.ser._store(i.first);
-        ser.ser.start_object();
+        ser.ar.value(i.first);
+        ser.ar.start_object();
         auto &v = i.second;
-        ser.ser._store(v.offset_bytes, "offset_bytes");
-        ser.ser._store(v.size_bytes, "size_bytes");
-        ser.ser.add_last_scope_to_object();
+        ser.ar.value(v.offset_bytes, "offset_bytes");
+        ser.ar.value(v.size_bytes, "size_bytes");
+        ser.ar.end_object();
     }
-    ser.ser.add_last_scope_to_object("properties");
-    ser.ser.start_array();
+    ser.ar.end_array("properties");
+    ser.ar.start_array();
     for (auto &i : _submesh_offsets) {
-        ser.ser._store(i);
+        ser.ar.value(i);
     }
-    ser.ser.add_last_scope_to_object("submesh_offsets");
+    ser.ar.end_array("submesh_offsets");
 }
 
 bool MeshResource::empty() const {
@@ -49,12 +49,12 @@ bool MeshResource::empty() const {
 void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     std::shared_lock lck{_async_mtx};
     BaseType::deserialize_meta(ser);
-#define RBC_MESH_LOAD(m)            \
-    {                               \
-        decltype(_##m) m;           \
-        if (ser.ser._load(m, #m)) { \
-            _##m = m;               \
-        }                           \
+#define RBC_MESH_LOAD(m)           \
+    {                              \
+        decltype(_##m) m;          \
+        if (ser.ar.value(m, #m)) { \
+            _##m = m;              \
+        }                          \
     }
     RBC_MESH_LOAD(file_offset)
     RBC_MESH_LOAD(contained_normal)
@@ -64,20 +64,20 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     RBC_MESH_LOAD(uv_count)
 #undef RBC_MESH_LOAD
     uint64_t size;
-    if (ser.ser.start_array(size, "submesh_offsets")) {
+    if (ser.ar.start_array(size, "submesh_offsets")) {
         _submesh_offsets.reserve(size);
         for (auto i : vstd::range(size)) {
             uint v;
-            if (ser.ser._load(v)) {
+            if (ser.ar.value(v)) {
                 _submesh_offsets.push_back(v);
             }
         }
-        ser.ser.end_scope();
+        ser.ar.end_scope();
     }
 
-    if (ser.ser.start_array(size, "properties")) {
+    if (ser.ar.start_array(size, "properties")) {
         auto dsp = vstd::scope_exit([&] {
-            ser.ser.end_scope();
+            ser.ar.end_scope();
         });
         if ((size & 1) != 0) {
             return;
@@ -85,14 +85,14 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
         _custom_properties.reserve(size / 2);
         for (auto i : vstd::range(size)) {
             luisa::string s;
-            if (!ser.ser._load(s)) return;
-            if (!ser.ser.start_object()) return;
+            if (!ser.ar.value(s)) return;
+            if (!ser.ar.start_object()) return;
             auto dsp = vstd::scope_exit([&] {
-                ser.ser.end_scope();
+                ser.ar.end_scope();
             });
             uint64_t offset_bytes, size_bytes;
-            if (!ser.ser._load(offset_bytes, "offset_bytes")) continue;
-            if (!ser.ser._load(size_bytes, "size_bytes")) continue;
+            if (!ser.ar.value(offset_bytes, "offset_bytes")) continue;
+            if (!ser.ar.value(size_bytes, "size_bytes")) continue;
             auto &v = _custom_properties.emplace(std::move(s)).value();
             v.offset_bytes = offset_bytes;
             v.size_bytes = size_bytes;

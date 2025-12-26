@@ -98,23 +98,21 @@ void LightComponent::on_destroy() {
     _light_stub.remove_light();
 }
 void LightComponent::serialize_meta(ObjSerialize const &ser) const {
-    auto &ser_obj = ser.ser;
-    ser_obj._store(_luminance, "luminance");
-    ser_obj._store(_angle_radians, "angle_radians");
-    ser_obj._store(_small_angle_radians, "small_angle_radians");
-    ser_obj._store(_angle_atten_pow, "angle_atten_pow");
-    ser_obj._store(_visible, "visible");
-    ser_obj._store((uint)_light_stub.light_type, "light_type");
+    ser.ar.value(_luminance, "luminance");
+    ser.ar.value(_angle_radians, "angle_radians");
+    ser.ar.value(_small_angle_radians, "small_angle_radians");
+    ser.ar.value(_angle_atten_pow, "angle_atten_pow");
+    ser.ar.value(_visible, "visible");
+    ser.ar.value((uint)_light_stub.light_type, "light_type");
 }
 void LightComponent::deserialize_meta(ObjDeSerialize const &ser) {
-    auto &obj = ser.ser;
-    obj._load(_luminance, "luminance");
-    obj._load(_angle_radians, "angle_radians");
-    obj._load(_small_angle_radians, "small_angle_radians");
-    obj._load(_angle_atten_pow, "angle_atten_pow");
-    obj._load(_visible, "visible");
+    ser.ar.value(_luminance, "luminance");
+    ser.ar.value(_angle_radians, "angle_radians");
+    ser.ar.value(_small_angle_radians, "small_angle_radians");
+    ser.ar.value(_angle_atten_pow, "angle_atten_pow");
+    ser.ar.value(_visible, "visible");
     uint light_type;
-    if (obj._load(light_type, "light_type")) {
+    if (ser.ar.value(light_type, "light_type")) {
         _light_stub.light_type = (LightType)light_type;
     }
 }

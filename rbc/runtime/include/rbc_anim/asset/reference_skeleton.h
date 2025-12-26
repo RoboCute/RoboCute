@@ -41,6 +41,6 @@ private:
 
 template<>
 struct rbc::Serialize<rbc::ReferenceSkeleton> {
-    static RBC_RUNTIME_API bool write(rbc::ArchiveWrite &w, const rbc::ReferenceSkeleton &v);
+    static RBC_RUNTIME_API void write(rbc::ArchiveWrite &w, const rbc::ReferenceSkeleton &v);
     static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::ReferenceSkeleton &v);
 };

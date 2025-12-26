@@ -124,6 +124,23 @@ int main(int argc, char *argv[]) {
         config.load_skeleton = true;
         auto scene_data = world::GltfSceneLoader::load_scene(gltf_path, config);
 
+        scene_data.skel->log_brief();
+
+        {
+            auto *skel = scene_data.skel.get();
+            // Resource Serialize
+            BinSerializer writer;
+            writer._store(*skel, "skel");
+            auto bin_blob = writer.write_to();
+
+            BinDeSerializer reader{bin_blob};
+            // Use world::create_object to properly register the resource with the world system
+            auto resource = RC<rbc::SkeletonResource>(world::create_object<rbc::SkeletonResource>());
+            reader._load(*resource, "skel");
+
+            resource->log_brief();
+        }
+
         if (!scene_data.mesh || scene_data.mesh->empty()) {
             LUISA_ERROR("Failed to load GLTF model from: {}", luisa::to_string(gltf_path));
             return 1;

@@ -15,11 +15,10 @@
 
 namespace rbc {
 
-struct SkelMeshResource : world::ResourceBaseImpl<SkelMeshResource> {
+struct RBC_RUNTIME_API SkelMeshResource : world::ResourceBaseImpl<SkelMeshResource> {
 
     using BaseType = world::ResourceBaseImpl<SkelMeshResource>;
     DECLARE_WORLD_OBJECT_FRIEND(SkelMeshResource)
-    
 
     void serialize_meta(world::ObjSerialize const &ser) const override;
     void deserialize_meta(world::ObjDeSerialize const &ser) override;
