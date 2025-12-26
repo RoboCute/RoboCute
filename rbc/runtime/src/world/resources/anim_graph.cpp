@@ -19,9 +19,6 @@ bool AnimGraphResource::unsafe_save_to_path() const {
     return {};//TODO
 }
 
-void AnimGraphResource::_unload() {
-}
-
 // dispose declared here
 DECLARE_WORLD_OBJECT_REGISTER(AnimGraphResource)
 

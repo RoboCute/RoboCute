@@ -252,10 +252,6 @@ rbc::coroutine MeshResource::_async_load() {
     _status = EResourceLoadingStatus::Loaded;
     co_return;
 }
-void MeshResource::_unload() {
-    std::lock_guard lck{_async_mtx};
-    _device_res.reset();
-}
 
 // import
 bool MeshResource::decode(luisa::filesystem::path const &path) {

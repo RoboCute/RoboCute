@@ -175,10 +175,6 @@ bool MaterialResource::_async_load_from_file() {
 MaterialResource::MaterialResource() {}
 
 MaterialResource::~MaterialResource() {
-    _unload();
-}
-void MaterialResource::_unload() {
-    std::lock_guard lck{_async_mtx};
     _depended_resources.clear();
     _loaded = false;
     if (_mat_code.value == ~0u) return;

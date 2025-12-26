@@ -65,10 +65,7 @@ bool DummyResource::unsafe_save_to_path() const {
                   _value.size_bytes()});
     return true;
 }
-void DummyResource::_unload() {
-    _value.clear();
-    _depended.clear();
-}
+
 luisa::string_view DummyResource::value() const {
     return {_value.data(), _value.size()};
 }

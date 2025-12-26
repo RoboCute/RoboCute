@@ -27,7 +27,6 @@ struct RBC_RUNTIME_API SkelMeshResource : world::ResourceBaseImpl<SkelMeshResour
 
 protected:
     bool unsafe_save_to_path() const override;
-    void _unload() override;
 };
 
 }// namespace rbc

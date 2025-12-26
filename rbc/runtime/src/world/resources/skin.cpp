@@ -19,8 +19,6 @@ bool SkinResource::unsafe_save_to_path() const {
     return {};//TODO
 }
 
-void SkinResource::_unload() {
-}
 
 // dispose declared here
 DECLARE_WORLD_OBJECT_REGISTER(SkinResource)

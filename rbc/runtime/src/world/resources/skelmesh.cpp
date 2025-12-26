@@ -18,10 +18,6 @@ rbc::coroutine SkelMeshResource::_async_load() {
 bool SkelMeshResource::unsafe_save_to_path() const {
     return {};
 }
-
-void SkelMeshResource::_unload() {
-}
-
 // dispose declared here
 DECLARE_WORLD_OBJECT_REGISTER(SkelMeshResource)
 

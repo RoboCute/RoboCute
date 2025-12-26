@@ -204,7 +204,7 @@ struct ResourceLoader {
                     if (!res_ptr || res_ptr->base_type() != BaseObjectType::Resource) {
                         co_return;
                     }
-                    static_cast<Resource *>(res_ptr.get())->unload();
+                    static_cast<Resource *>(res_ptr.get())->delete_this();
                     co_return;
                 }
                 co_await std::suspend_always{};
@@ -302,16 +302,6 @@ ResourceAwait Resource::await_loading() {
     }
     _res_loader->try_load_resource(this);
     return {instance_id()};
-}
-void Resource::unload() {
-    EResourceLoadingStatus old = EResourceLoadingStatus::Loaded;
-    if (_status.compare_exchange_strong(
-            old,
-            EResourceLoadingStatus::Unloaded)) {
-        _unload();
-        return;
-    }
-    _res_loader->try_unload_resource(this);
 }
 void dispose_resource_loader() {
     if (_res_loader)

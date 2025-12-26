@@ -86,7 +86,6 @@ public:
 protected:
     bool _async_load_from_file();
     bool unsafe_save_to_path() const override;
-    void _unload() override;
 };
 }// namespace rbc::world
 

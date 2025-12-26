@@ -34,10 +34,6 @@ bool SkeletonResource::unsafe_save_to_path() const {
 
     return true;
 }
-
-void SkeletonResource::_unload() {
-}
-
 void SkeletonResource::log_brief() {
     skeleton.log_brief();
 }

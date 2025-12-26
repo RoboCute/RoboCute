@@ -19,9 +19,6 @@ bool AnimSequenceResource::unsafe_save_to_path() const {
     return {};
 }
 
-void AnimSequenceResource::_unload() {
-}
-
 // dispose declared here
 DECLARE_WORLD_OBJECT_REGISTER(AnimSequenceResource)
 

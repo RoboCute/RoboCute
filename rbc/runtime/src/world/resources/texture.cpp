@@ -189,10 +189,6 @@ bool TextureResource::_async_load_from_file() {
     return true;
 }
 
-void TextureResource::_unload() {
-    std::lock_guard lck{_async_mtx};
-    _tex.reset();
-}
 uint32_t TextureResource::heap_index() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return ~0u;
