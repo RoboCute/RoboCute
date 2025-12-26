@@ -231,15 +231,14 @@ struct ArchiveWrite {
             } else {
                 add((int64_t)v);
             }
-        } 
+        }
         // int64_t
         else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>) {
             add(v);
-        }
-        else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             add((double)v);
         } else if constexpr (std::is_same_v<T, vstd::Guid>) {
-            add(v.to_string());
+            add(v.to_base64());
         } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
             add(luisa::string_view{v});
         } else if constexpr (luisa::is_vector_v<T>) {
@@ -289,7 +288,7 @@ struct ArchiveWrite {
             } else {
                 add((int64_t)v, name);
             }
-        } 
+        }
         // int64_t
         else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>) {
             add(v, name);
@@ -298,7 +297,7 @@ struct ArchiveWrite {
         else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
             add((double)v, name);
         } else if constexpr (std::is_same_v<T, vstd::Guid>) {
-            add(v.to_string(), name);
+            add(v.to_base64(), name);
         } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
             add(luisa::string_view{v}, name);
         } else if constexpr (luisa::is_vector_v<T>) {
@@ -390,7 +389,7 @@ struct ArchiveRead {
                 if (result) v = static_cast<T>(temp);
                 return result;
             }
-        // int64_t
+            // int64_t
         } else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>) {
             int64_t temp;
             bool result = read(temp);
@@ -406,7 +405,9 @@ struct ArchiveRead {
         } else if constexpr (std::is_same_v<T, vstd::Guid>) {
             luisa::string str;
             if (!read(str)) return false;
-            v = vstd::Guid(std::string_view{str.data(), str.size()});
+            auto g = vstd::Guid::TryParseGuid(std::string_view{str.data(), str.size()});
+            if (!g) return false;
+            v = *g;
             return true;
         } else if constexpr (std::is_same_v<T, luisa::string>) {
             return read(v);
@@ -488,7 +489,9 @@ struct ArchiveRead {
         } else if constexpr (std::is_same_v<T, vstd::Guid>) {
             luisa::string str;
             if (!read(str, name)) return false;
-            v = vstd::Guid(std::string_view{str.data(), str.size()});
+            auto g = vstd::Guid::TryParseGuid(std::string_view{str.data(), str.size()});
+            if (!g) return false;
+            v = *g;
             return true;
         } else if constexpr (std::is_same_v<T, luisa::string>) {
             return read(v, name);
@@ -1121,7 +1124,6 @@ struct DeSerializer : public Base {
         } else if constexpr (std::is_same_v<T, vstd::Guid>) {
             luisa::string guid_str;
             if (!Base::read(guid_str, args...)) return false;
-            if (guid_str.size() != 22 && guid_str.size() != 32) return false;
             auto g = vstd::Guid::TryParseGuid(guid_str);
             if (!g) return false;
             t = *g;

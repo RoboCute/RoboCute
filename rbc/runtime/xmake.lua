@@ -3,9 +3,6 @@ local function rbc_runtime_interface()
         public = true
     })
     add_deps('lc-runtime', 'rbc_core')
-    -- third-party usage
-    add_deps("ozz_animation_runtime_static", "ozz_animation_offline_static")
-
 end
 
 local function rbc_runtime_impl()
@@ -22,6 +19,8 @@ local function rbc_runtime_impl()
         links = false
     })
     add_deps('tinyexr', 'tiny_obj_loader', 'stb-image', 'open_fbx', 'tinytiff', "tinygltf") -- thirdparty
+    -- third-party usage
+    add_deps("ozz_animation_runtime_static", "ozz_animation_offline_static")
 
     -- add_interface_deps('rbc_render_plugin')
     add_deps('lc-volk')
@@ -38,3 +37,4 @@ interface_target('rbc_runtime', rbc_runtime_interface, rbc_runtime_impl)
 add_defines('RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_IMPORT', {
     public = true
 })
+add_deps('ozz_animation_include')

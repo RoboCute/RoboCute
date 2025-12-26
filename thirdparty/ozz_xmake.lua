@@ -1,8 +1,13 @@
+target('ozz_animation_include')
+    set_kind('phony')
+    add_includedirs("ozz_animation/include", { public = true})
+target_end()
+
 target("ozz_animation_base")
     set_kind("static")
     add_headerfiles("ozz_animation/include/**.h")
-    add_includedirs("ozz_animation/include", { public = true})
     add_files("ozz_animation/src/base/**.cc")
+    add_deps('ozz_animation_include')
 target_end()
 
 target("ozz_animation_runtime_static")
