@@ -33,6 +33,7 @@ public:
     void EnsureParentsExistAndSort(luisa::vector<BoneIndexType> &InOutBoneUnsortedIndices) const;
 
 private:
+    friend struct Serialize<ReferenceSkeleton>;
     SkeletonRuntimeAsset skeleton;
 };
 

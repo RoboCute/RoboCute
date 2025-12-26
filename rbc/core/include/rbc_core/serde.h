@@ -187,8 +187,13 @@ struct ArchiveWrite {
     virtual void add_arr(luisa::span<bool const> bool_values, char const *name) = 0;
 
     // bytes interface for raw binary data (only supported in binary format)
-    virtual void bytes(luisa::span<std::byte const> data) = 0;
-    virtual void bytes(luisa::span<std::byte const> data, char const *name) = 0;
+    // Returns true on success, false on failure
+    virtual bool bytes(luisa::span<std::byte const> data) = 0;
+    virtual bool bytes(luisa::span<std::byte const> data, char const *name) = 0;
+    
+    // Check if this archive is structured (JSON/object format) or streamed (binary bytes)
+    // Returns true for structured formats (JSON), false for streamed binary formats
+    [[nodiscard]] virtual bool is_structured() const = 0;
 
     template<typename T>
     void value(const T &v) {
@@ -271,8 +276,15 @@ struct ArchiveRead {
     virtual bool read(luisa::string &v, char const *name) = 0;
 
     // bytes interface for raw binary data (only supported in binary format)
+    // Reads bytes directly into the provided buffer (for streamed access)
+    virtual bool bytes(luisa::span<std::byte> data) = 0;
+    // Reads bytes into a vector (for structured access)
     virtual bool read_bytes(luisa::vector<std::byte> &data) = 0;
     virtual bool read_bytes(luisa::vector<std::byte> &data, char const *name) = 0;
+    
+    // Check if this archive is structured (JSON/object format) or streamed (binary bytes)
+    // Returns true for structured formats (JSON), false for streamed binary formats
+    [[nodiscard]] virtual bool is_structured() const = 0;
 
     // value<T>() method that uses Serialize<T> specialization
     template<typename T>
@@ -430,19 +442,28 @@ struct ArchiveWriteAdapter : public ArchiveWrite {
     void add_arr(luisa::span<bool const> bool_values, char const *name) override { writer.add_arr(bool_values, name); }
 
     // bytes interface - only supported for binary format
-    void bytes(luisa::span<std::byte const> data) override {
+    bool bytes(luisa::span<std::byte const> data) override {
         if constexpr (std::is_same_v<Writer, BinWriter>) {
             writer.bytes(data);
+            return true;
         } else {
             LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+            return false;
         }
     }
-    void bytes(luisa::span<std::byte const> data, char const *name) override {
+    bool bytes(luisa::span<std::byte const> data, char const *name) override {
         if constexpr (std::is_same_v<Writer, BinWriter>) {
             writer.bytes(data, name);
+            return true;
         } else {
             LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+            return false;
         }
+    }
+    
+    // Check if this archive is structured (JSON) or streamed (binary)
+    [[nodiscard]] bool is_structured() const override {
+        return !std::is_same_v<Writer, BinWriter>;
     }
 };
 
@@ -487,7 +508,17 @@ struct ArchiveReadAdapter : public ArchiveRead {
     bool read(double &value, char const *name) override { return reader.read(value, name); }
     bool read(luisa::string &value, char const *name) override { return reader.read(value, name); }
 
-    // bytes interface - only supported for binary format
+    // bytes interface - streamed binary access (directly into provided buffer)
+    bool bytes(luisa::span<std::byte> data) override {
+        if constexpr (std::is_same_v<Reader, BinReader>) {
+            return reader.read_bytes_internal(data.data(), data.size());
+        } else {
+            LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+            return false;
+        }
+    }
+    
+    // bytes interface - structured access (reads into vector)
     bool read_bytes(luisa::vector<std::byte> &data) override {
         if constexpr (std::is_same_v<Reader, BinReader>) {
             return reader.read_bytes(data);
@@ -503,6 +534,11 @@ struct ArchiveReadAdapter : public ArchiveRead {
             LUISA_ERROR("read_bytes() interface is only supported in binary format, not JSON format");
             return false;
         }
+    }
+    
+    // Check if this archive is structured (JSON) or streamed (binary)
+    [[nodiscard]] bool is_structured() const override {
+        return !std::is_same_v<Reader, BinReader>;
     }
 };
 

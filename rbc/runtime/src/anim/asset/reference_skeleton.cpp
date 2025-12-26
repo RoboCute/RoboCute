@@ -1,4 +1,6 @@
 #include <rbc_anim/asset/reference_skeleton.h>
+#include <rbc_anim/asset/ozz_stream.h>
+#include <ozz/base/io/archive.h>
 
 namespace rbc {
 ReferenceSkeleton::ReferenceSkeleton() = default;
@@ -80,9 +82,15 @@ void ReferenceSkeleton::EnsureParentsExistAndSort(luisa::vector<BoneIndexType> &
 }// namespace rbc
 
 bool rbc::Serialize<rbc::ReferenceSkeleton>::write(rbc::ArchiveWrite &w, const rbc::ReferenceSkeleton &v) {
+    OzzStream ozz_stream(nullptr, &w);
 
+    ozz::io::OArchive archive(&ozz_stream);
+    archive << v.skeleton;
     return true;
 }
 bool rbc::Serialize<rbc::ReferenceSkeleton>::read(rbc::ArchiveRead &r, rbc::ReferenceSkeleton &v) {
+    OzzStream ozz_stream(&r, nullptr);
+    ozz::io::IArchive archive(&ozz_stream);
+    archive >> v.skeleton;
     return true;
 }
