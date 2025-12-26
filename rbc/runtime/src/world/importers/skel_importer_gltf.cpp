@@ -1,6 +1,6 @@
 #include "rbc_core/memory.h"
-#include "rbc_anim/tool/skel_importer_gltf.h"
-#include "rbc_anim/tool/gltf2ozz.h"
+#include "rbc_world/importers/skel_importer_gltf.h"
+#include "rbc_world/importers/gltf2ozz.h"
 #include "ozz/animation/offline/tools/import2ozz.h"
 #include "ozz/animation/offline/skeleton_builder.h"
 #include "rbc_anim/types.h"

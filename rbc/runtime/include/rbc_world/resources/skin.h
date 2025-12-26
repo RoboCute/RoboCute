@@ -3,7 +3,7 @@
 #include "rbc_world/resource_base.h"
 #include "rbc_world/resource_importer.h"
 #include "rbc_anim/types.h"
-#include "rbc_anim/resource/skeleton_resource.h"
+#include "rbc_world/resources/skeleton.h"
 #include "rbc_world/resources/mesh.h"
 
 namespace rbc {

@@ -33,7 +33,7 @@
 #include <cassert>
 #include <cstring>
 
-#include "rbc_anim/tool/gltf2ozz.h"
+#include "rbc_world/importers/gltf2ozz.h"
 #include "ozz/animation/runtime/skeleton.h"
 #include "ozz/base/containers/map.h"
 #include "ozz/base/containers/set.h"

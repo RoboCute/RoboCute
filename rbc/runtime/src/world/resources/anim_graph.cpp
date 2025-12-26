@@ -1,4 +1,4 @@
-#include "rbc_anim/resource/anim_graph_resource.h"
+#include "rbc_world/resources/anim_graph.h"
 #include "rbc_world/type_register.h"
 
 namespace rbc {

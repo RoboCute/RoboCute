@@ -1,10 +1,10 @@
-#include "rbc_anim/tool/anim_sequence_importer_gltf.h"
+#include "rbc_world/importers/anim_sequence_importer_gltf.h"
 #include "ozz/animation/offline/tools/import2ozz.h"
-#include "rbc_anim/tool/gltf2ozz.h"
+#include "rbc_world/importers/gltf2ozz.h"
 #include "ozz/animation/offline/animation_builder.h"
 #include "rbc_core/memory.h"
 
-namespace rbc {
+namespace rbc::world {
 
 bool GltfAnimSequenceImporter::import(AnimSequenceResource *resource, luisa::filesystem::path const &path) {
     LUISA_ASSERT(ref_skel.get());// RefSkeleton Should be valid
@@ -46,4 +46,4 @@ bool GltfAnimSequenceImporter::import(AnimSequenceResource *resource, luisa::fil
     RBCDelete(raw_anim);
 }
 
-}// namespace rbc
+}// namespace rbc::world

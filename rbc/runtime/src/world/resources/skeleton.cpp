@@ -1,4 +1,4 @@
-#include "rbc_anim/resource/skeleton_resource.h"
+#include "rbc_world/resources/skeleton.h"
 #include "rbc_world/type_register.h"
 #include <rbc_core/binary_file_writer.h>
 

@@ -1,9 +1,9 @@
 #pragma once
 #include "rbc_world/resource_importer.h"
-#include "rbc_anim/resource/anim_sequence_resource.h"
-#include "rbc_anim/resource/skeleton_resource.h"
+#include "rbc_world/resources/anim_sequence.h"
+#include "rbc_world/resources/skeleton.h"
 
-namespace rbc {
+namespace rbc::world {
 
 struct RBC_RUNTIME_API GltfAnimSequenceImporter final : IAnimSequenceImporter {
     [[nodiscard]] luisa::string_view extension() const override { return ".gltf"; }
@@ -15,4 +15,4 @@ struct RBC_RUNTIME_API GltfAnimSequenceImporter final : IAnimSequenceImporter {
     float sampling_rate = 30.0f;
 };
 
-}// namespace rbc
+}// namespace rbc::world

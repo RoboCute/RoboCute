@@ -26,7 +26,10 @@ bool GltfMeshImporter::import(MeshResource *resource, luisa::filesystem::path co
         return false;
     }
     GltfImportData import_data = process_gltf_model(model);
+    return import_from_data(resource, import_data);
+}
 
+bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &import_data) {
     MeshBuilder &mesh_builder = import_data.mesh_builder;
 
     if (mesh_builder.position.empty()) {
@@ -102,6 +105,7 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
     uv_count_ref(resource) = mesh_builder.uv_count();
     set_contained_normal(resource, mesh_builder.contained_normal());
     set_contained_tangent(resource, mesh_builder.contained_tangent());
+
     mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
 
     // Write skinning weights
@@ -116,7 +120,6 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
         std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinAttrib));
     }
-
     return true;
 }
 

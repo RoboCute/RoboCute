@@ -1,4 +1,4 @@
-#include "rbc_anim/resource/skin_resource.h"
+#include "rbc_world/resources/skin.h"
 #include "rbc_world/type_register.h"
 
 namespace rbc {

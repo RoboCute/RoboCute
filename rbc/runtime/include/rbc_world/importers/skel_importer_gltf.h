@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rbc_anim/resource/skeleton_resource.h"
+#include "rbc_world/resources/skeleton.h"
 
 namespace rbc {
 

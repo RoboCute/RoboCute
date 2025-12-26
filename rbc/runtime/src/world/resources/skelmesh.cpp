@@ -1,4 +1,4 @@
-#include "rbc_anim/resource/skelmesh_resource.h"
+#include "rbc_world/resources/skelmesh.h"
 #include "rbc_world/type_register.h"
 
 namespace rbc {
