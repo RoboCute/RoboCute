@@ -19,7 +19,7 @@ struct RBC_RUNTIME_API MeshResource final : ResourceBaseImpl<MeshResource> {
     DECLARE_WORLD_OBJECT_FRIEND(MeshResource)
     using BaseType = ResourceBaseImpl<MeshResource>;
 
-    friend struct IMeshImporter;
+    // friend struct IMeshImporter;
     struct CustomProperty {
         size_t offset_bytes;
         size_t size_bytes;

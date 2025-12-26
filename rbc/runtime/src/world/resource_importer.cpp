@@ -99,41 +99,41 @@ ResourceImporterRegistry &ResourceImporterRegistry::instance() {
 }
 
 // IMeshImporter accessor method implementations
-rbc::DeviceMesh* IMeshImporter::device_mesh_ref(MeshResource *resource) {
-    return resource->device_mesh();
-}
+// rbc::DeviceMesh* IMeshImporter::device_mesh_ref(MeshResource *resource) {
+//     return resource->device_mesh();
+// }
 
-uint32_t &IMeshImporter::vertex_count_ref(MeshResource *resource) {
-    return resource->_vertex_count;
-}
+// uint32_t &IMeshImporter::vertex_count_ref(MeshResource *resource) {
+//     return resource->_vertex_count;
+// }
 
-uint32_t &IMeshImporter::triangle_count_ref(MeshResource *resource) {
-    return resource->_triangle_count;
-}
+// uint32_t &IMeshImporter::triangle_count_ref(MeshResource *resource) {
+//     return resource->_triangle_count;
+// }
 
-uint32_t &IMeshImporter::uv_count_ref(MeshResource *resource) {
-    return resource->_uv_count;
-}
+// uint32_t &IMeshImporter::uv_count_ref(MeshResource *resource) {
+//     return resource->_uv_count;
+// }
 
-bool IMeshImporter::contained_normal(MeshResource *resource) {
-    return resource->_contained_normal;
-}
+// bool IMeshImporter::contained_normal(MeshResource *resource) {
+//     return resource->_contained_normal;
+// }
 
-void IMeshImporter::set_contained_normal(MeshResource *resource, bool value) {
-    resource->_contained_normal = value;
-}
+// void IMeshImporter::set_contained_normal(MeshResource *resource, bool value) {
+//     resource->_contained_normal = value;
+// }
 
-bool IMeshImporter::contained_tangent(MeshResource *resource) {
-    return resource->_contained_tangent;
-}
+// bool IMeshImporter::contained_tangent(MeshResource *resource) {
+//     return resource->_contained_tangent;
+// }
 
-void IMeshImporter::set_contained_tangent(MeshResource *resource, bool value) {
-    resource->_contained_tangent = value;
-}
+// void IMeshImporter::set_contained_tangent(MeshResource *resource, bool value) {
+//     resource->_contained_tangent = value;
+// }
 
-vstd::vector<uint> &IMeshImporter::submesh_offsets_ref(MeshResource *resource) {
-    return resource->_submesh_offsets;
-}
+// vstd::vector<uint> &IMeshImporter::submesh_offsets_ref(MeshResource *resource) {
+//     return resource->_submesh_offsets;
+// }
 
 // ITextureImporter accessor method implementations
 RC<rbc::DeviceResource> &ITextureImporter::tex_ref(TextureResource *resource) {

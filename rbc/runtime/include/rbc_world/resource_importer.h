@@ -78,17 +78,17 @@ protected:
     // IMeshImporter is a friend of MeshResource, so it can access private members
     // Implementation is in resource_importer.cpp to avoid circular dependencies
 
-    static rbc::DeviceMesh* device_mesh_ref(MeshResource *resource);
-    static uint32_t &vertex_count_ref(MeshResource *resource);
-    static uint32_t &triangle_count_ref(MeshResource *resource);
-    static uint32_t &uv_count_ref(MeshResource *resource);
+    // static rbc::DeviceMesh* device_mesh_ref(MeshResource *resource);
+    // static uint32_t &vertex_count_ref(MeshResource *resource);
+    // static uint32_t &triangle_count_ref(MeshResource *resource);
+    // static uint32_t &uv_count_ref(MeshResource *resource);
     // Bit-fields cannot return references, so use getter/setter methods
     // Implementation is in resource_importer.cpp
-    static bool contained_normal(MeshResource *resource);
-    static void set_contained_normal(MeshResource *resource, bool value);
-    static bool contained_tangent(MeshResource *resource);
-    static void set_contained_tangent(MeshResource *resource, bool value);
-    static vstd::vector<uint> &submesh_offsets_ref(MeshResource *resource);
+    // static bool contained_normal(MeshResource *resource);
+    // static void set_contained_normal(MeshResource *resource, bool value);
+    // static bool contained_tangent(MeshResource *resource);
+    // static void set_contained_tangent(MeshResource *resource, bool value);
+    // static vstd::vector<uint> &submesh_offsets_ref(MeshResource *resource);
 };
 
 /**
