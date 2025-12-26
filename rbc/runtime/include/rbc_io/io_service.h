@@ -14,6 +14,11 @@ namespace ioservice_detail {
 struct CallbackThread;
 }// namespace ioservice_detail
 struct RBC_RUNTIME_API IOService {
+    enum struct QueueType {
+        Default,
+        DX12,
+        Fallback
+    };
 private:
     friend struct ioservice_detail::CallbackThread;
     uint64_t _self_idx;
@@ -30,7 +35,7 @@ private:
     TimelineEvent _evt;
     vector<IOCommand> extra_cmds;
     uint _res_index{0};
-    void split_commands(vector<IOCommand> &commands, vector<IOCommand> &extra_commands);
+    void split_commands(vector<IOCommand> &commands, vector<IOCommand> &extra_commands, uint64_t staging_size);
     // vstd::SingleThreadArrayQueue<std::pair<IOCommandList, uint64_t>> _cmds;
     vstd::spin_mutex _cmd_mtx;
     //////// async area
@@ -41,17 +46,15 @@ private:
     uint64_t _timeline{0};
     void _join();
     void _tick();
-    void _execute_cmdlist(IOCommandList &cmd, uint64_t timeline);
+    void _execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t wait_on_event_handle, uint64_t wait_on_fence_index);
     void _clear_res(Callbacks &r);
     IOService(
+        QueueType queue_type,
         Device &device,
         DStorageSrcType src_type);
 
 public:
-    enum struct QueueType {
-        DX12,
-        Fallback
-    };
+
     static QueueType queue_type();
     static void add_callback(vstd::function<void()> &&callback);
     static void init(
@@ -63,9 +66,10 @@ public:
     void synchronize(uint64_t timeline) const;
     static IOService *create_service(
         Device &device,
-        DStorageSrcType src_type);
+        DStorageSrcType src_type,
+        QueueType queue_type = QueueType::Default);
     static void dispose_service(IOService *);
-    uint64_t execute(IOCommandList &&cmdlist);
+    uint64_t execute(IOCommandList &&cmdlist, uint64_t wait_on_event_handle = invalid_resource_handle, uint64_t wait_on_fence_index = 0);
     bool timeline_signaled(uint64_t timeline) const;
 };
 

@@ -15,11 +15,15 @@
 #define RBC_FTELL ftello
 #endif
 namespace rbc {
+static constexpr size_t fallback_staging_size = 256ull * 1024ull * 1024ull;
 struct DStorageStreamFallbackImpl : DStorageStream {
 public:
-    inline static uint64_t staging_size{};
     std::atomic_uint64_t signaled_fence_idx{};
     ~DStorageStreamFallbackImpl();
+    bool support_wait() { return true; }
+    void enqueue_wait(
+        uint64_t event_handle,
+        uint64_t fence_index);
     void enqueue_request(
         IOFile::Handle const &file,
         size_t offset_bytes,
@@ -66,6 +70,9 @@ public:
         uint64_t event_handle,
         void *event,
         uint64_t fence_index);
+    uint64_t staging_size() {
+        return fallback_staging_size;
+    }
     void submit();
     void free_queue();
     bool is_event_complete(
@@ -83,6 +90,7 @@ public:
     bool timeline_signaled(uint64_t timeline) const override {
         return signaled_fence_idx.load() >= timeline;
     }
+
     DStorageStreamFallbackImpl(
         Device &device,
         DStorageSrcType src_type);
@@ -197,7 +205,7 @@ DStorageStreamFallbackImpl::DStorageStreamFallbackImpl(
     Device &device,
     DStorageSrcType src_type)
     : DStorageStream(src_type) {
-    queue = new rbc::detail::IOQueue(device, src_type, staging_size);
+    queue = new rbc::detail::IOQueue(device, src_type, fallback_staging_size);
 }
 
 DStorageStreamFallbackImpl::~DStorageStreamFallbackImpl() {
@@ -420,6 +428,17 @@ void DStorageStreamFallbackImpl::enqueue_request(
     queue_impl->works.emplace_back(std::move(io_queue));
     queue_impl->work_thd.unlock();
 }
+void DStorageStreamFallbackImpl::enqueue_wait(
+    uint64_t event_handle,
+    uint64_t fence_index) {
+    auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
+    luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[event_handle, fence_index, this](rbc::detail::IOQueue *queue) {
+        queue->stream << Event::Wait{event_handle, fence_index};
+    }};
+    queue_impl->work_thd.lock();
+    queue_impl->works.emplace_back(std::move(io_queue));
+    queue_impl->work_thd.unlock();
+}
 void DStorageStreamFallbackImpl::enqueue_signal(
     uint64_t event_handle,
     void *event,
@@ -461,8 +480,7 @@ void DStorageStreamFallbackImpl::sync_event(
     device_interface->synchronize_event(event_handle, idx);
 }
 
-void DStorageStream::init_fallback(uint64_t staging_size) {
-    DStorageStreamFallbackImpl::staging_size = staging_size;
+void DStorageStream::init_fallback() {
 }
 }// namespace rbc
 #undef RBC_FSEEK

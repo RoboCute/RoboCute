@@ -243,26 +243,23 @@ void GraphicsUtils::tick(
     rbc::world::_zz_on_before_rendering();
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeRender);
     _lights->mesh_light_accel.update_frame(_frame_mem_io_list);
-    if (!_frame_mem_io_list.empty()) {
-        _mem_io_fence = _render_device.mem_io_service()->execute(std::move(_frame_mem_io_list));
-    }
-    if (!_frame_disk_io_list.empty()) {
-        _disk_io_fence = _render_device.io_service()->execute(std::move(_frame_disk_io_list));
-    }
     // io sync
-    auto sync_io = [&](std::atomic_uint64_t &fence, IOService *service) {
-        auto io_fence = fence.exchange(0);
+    auto execute_io = [&](
+                          IOCommandList &&cmdlist,
+                          IOService *io_service) {
+        if (cmdlist.empty()) return;
+        auto io_fence = io_service->execute(std::move(cmdlist), _compute_event.event.handle(), _compute_event.fence_index);
         // support direct-storage
-        if (io_fence > 0) {
-            main_stream << service->wait(io_fence);
+        if (io_fence > 0) [[likely]] {
+            main_stream << io_service->wait(io_fence);
         }
     };
-    sync_io(_mem_io_fence, _render_device.mem_io_service());
-    sync_io(_disk_io_fence, _render_device.io_service());
+    execute_io(std::move(_frame_mem_io_list), _render_device.fallback_mem_io_service());
     for (auto &i : _build_meshes) {
         auto &mesh = i->mesh_data()->pack.mesh;
-        if (mesh)
+        if (mesh) {
             cmdlist << mesh.build();
+        }
     }
     _build_meshes.clear();
 
@@ -325,18 +322,20 @@ void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
     if (!host_data.size_bytes() == mesh_data->pack.data.size_bytes()) {
         LUISA_ERROR("Invalid host data length.");
     }
+
     if (only_vertex) {
         _frame_mem_io_list << IOCommand{
             host_data.data(),
             0,
             IOBufferSubView{mesh_data->pack.data.view(0, mesh_data->meta.tri_byte_offset / sizeof(uint))}};
     } else {
+        _render_device.lc_main_cmd_list() << mesh_data->pack.data.view().copy_from(host_data.data());
         _frame_mem_io_list << IOCommand{
             host_data.data(),
             0,
             IOBufferSubView{mesh_data->pack.data}};
     }
-    _frame_mem_io_list.add_callback([m = RC<DeviceMesh>(mesh)] {});
+    _render_device.lc_main_cmd_list().add_callback([m = RC<DeviceMesh>(mesh)] {});
     auto &sm = SceneManager::instance();
     sm.accel_manager().mark_dirty();
     if (mesh_data->pack.mesh) {

@@ -97,6 +97,7 @@ struct RBC_RUNTIME_API RenderDevice {
     inline auto &lc_async_timeline() { return _async_timeline; }
     inline auto io_service() { return _io_service; }
     inline auto mem_io_service() { return _mem_io_service; }
+    inline auto fallback_mem_io_service() { return _fallback_mem_io_service; }
     inline auto &lc_main_cmd_list() { return _main_cmd_list; }
     static bool is_rendering_thread();
     static void set_rendering_thread(bool is_rendering_thread);
@@ -132,6 +133,7 @@ private:
     luisa::string _backend;
     IOService *_io_service = nullptr;
     IOService *_mem_io_service = nullptr;
+    IOService *_fallback_mem_io_service = nullptr;
     std::mutex _render_loop_mtx;
     std::mutex _async_compute_loop_mtx;
 };

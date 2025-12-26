@@ -67,17 +67,22 @@ public:
     explicit DStorageStream(DStorageSrcType src_type)
         : src_type(src_type) {
     }
-    static void init_fallback(uint64_t staging_size);
+    static void init_fallback();
     static DStorageStream *create_dx12(Device &device, DStorageSrcType src_type);
     static DStorageStream *create_fallback(Device &device, DStorageSrcType src_type);
     static void init_dx12(
         luisa::filesystem::path const &runtime_dir,
-        size_t staging_size,
         bool force_hdd);
     static void dispose_dx12();
     virtual void dispose() = 0;
     DStorageStream(DStorageStream &&) = delete;
     DStorageStream(DStorageStream const &) = delete;
+    virtual uint64_t staging_size() = 0;
+    virtual bool support_wait() { return false; }
+    // not support by all backend
+    virtual void enqueue_wait(
+        uint64_t event_handle,
+        uint64_t fence_index) {}
     virtual void enqueue_request(
         IOFile::Handle const &file,
         size_t offset_bytes,

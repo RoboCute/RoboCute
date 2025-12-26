@@ -175,7 +175,7 @@ struct ResourceLoader {
             _loading_thds.emplace_back([this] { _loading_thread(); });
         }
     }
-    void delete_this() {
+    void dispose() {
         if (!_enabled) return;
         _async_mtx.lock();
         _enabled = false;
@@ -186,7 +186,7 @@ struct ResourceLoader {
         }
     }
     ~ResourceLoader() {
-        LUISA_ASSERT(!_enabled, "Resource loader not disabled.");
+        dispose();
     }
     void try_load_resource(Resource *res) {
         if (res->_status.exchange(EResourceLoadingStatus::Loading) != EResourceLoadingStatus::Unloaded) {
@@ -315,6 +315,6 @@ void Resource::unload() {
 }
 void dispose_resource_loader() {
     if (_res_loader)
-        _res_loader->delete_this();
+        _res_loader->dispose();
 }
 }// namespace rbc::world

@@ -42,11 +42,8 @@ private:
     vstd::optional<rbc::Lights> _lights;
     bool _require_reset : 1 {false};
     bool _denoiser_inited : 1 {false};
-    std::atomic_uint64_t _mem_io_fence{};
-    std::atomic_uint64_t _disk_io_fence{};
 
     IOCommandList _frame_mem_io_list;
-    IOCommandList _frame_disk_io_list;
     luisa::unordered_set<RC<DeviceMesh>, luisa::hash<RC<DeviceMesh>>, std::equal_to<RC<DeviceMesh>>> _build_meshes;
 public:
     auto render_plugin() const { return _render_plugin; }

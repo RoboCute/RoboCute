@@ -63,6 +63,11 @@ _TYPE_NAMES = {
     str: "luisa::string",
 }
 
+_PYBIND_SPECUAL_ARG = {
+    "luisa::span<std::byte>": "to_span_5d4636ab",
+    "luisa::function<void()> const&": "to_cppfunc_5d4636ab",
+    "py::memoryview": "to_memoryview_5d4636ab"
+}
 
 # Type name functions for special types
 def _print_str(t, py_interface: bool = False, is_view: bool = False) -> str:
@@ -92,6 +97,15 @@ def _print_data_buffer(t, py_interface: bool = False, is_view: bool = False) -> 
     else:
         return "luisa::span<std::byte>"
 
+def _print_callback(t, py_interface: bool = False, is_view: bool = False) -> str:
+    if py_interface:
+        if is_view:
+            return "py::function const&"
+        else:
+            raise ImportError("callback from c++ not supported.")
+    else:
+        return "luisa::function<void()> const&"
+
 
 _TYPE_NAME_FUNCTIONS = {
     str: _print_str,
@@ -103,9 +117,11 @@ _TYPE_NAME_FUNCTIONS = {
 try:
     from rbc_meta.utils.builtin import GUID as BuiltinGUID
     from rbc_meta.utils.builtin import DataBuffer as BuiltinDataBuffer
+    from rbc_meta.utils.builtin import Callback as BuiltinCallback
 
     _TYPE_NAME_FUNCTIONS[BuiltinGUID] = _print_guid
     _TYPE_NAME_FUNCTIONS[BuiltinDataBuffer] = _print_data_buffer
+    _TYPE_NAME_FUNCTIONS[BuiltinCallback] = _print_callback
 
 except ImportError:
     pass
@@ -322,8 +338,9 @@ def _print_py_args(
                 else None,
                 registry,
             )
-            if type_name == "luisa::span<std::byte>":
-                arg_open = "to_span_5d4636ab("
+            arg_parse = _PYBIND_SPECUAL_ARG.get(type_name)
+            if arg_parse:
+                arg_open = arg_parse + "("
                 arg_close = ")"
 
         # type_str = _get_py_type(param_type) if param_type else None
@@ -1277,8 +1294,9 @@ def pybind_codegen(
                 #     # return_close = ")"
                 #     pass
                 # if C++ method returns DataBuffer
-                if pybind_ret_type == "py::memoryview":
-                    return_expr += "to_memoryview_5d4636ab("
+                arg_parse = _PYBIND_SPECUAL_ARG.get(pybind_ret_type)
+                if arg_parse:
+                    return_expr += arg_parse + "("
                     return_close = ")"
                 else:
                     return_close = ""

@@ -16,6 +16,12 @@ public:
     explicit ModuleRegister(void (*callback)(py::module &));
 };
 
+inline luisa::function<void()> to_cppfunc_5d4636ab(py::function const &f) {
+    return [f] {
+        f();
+    };
+}
+
 inline luisa::span<std::byte> to_span_5d4636ab(py::buffer const &b) {
     auto r = b.request();
     return {
