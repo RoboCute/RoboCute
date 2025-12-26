@@ -92,15 +92,14 @@ ${INDENT}static constexpr const char *name{"${NAMESPACE_NAME}::${ENUM_NAME}"};
 CPP_ENUM_KVPAIR_TEMPLATE = Template("${INDENT}${KEY}${VALUE_EXPR}")
 
 CPP_STRUCT_BUILTIN_METHODS_TEMPLATE = Template("""
-${INDENT}${FUNC_API} static ${STRUCT_NAME}* _create_();
-${INDENT}virtual void dispose() = 0;
-${INDENT}virtual ~${STRUCT_NAME}() = default;  
+${INDENT}static void *_create_();
+${INDENT}static void _destroy_(void *ptr);
 """)
 
 CPP_STRUCT_TEMPLATE = Template("""
 namespace ${NAMESPACE_NAME} {
                                
-struct ${STRUCT_NAME} ${STRUCT_BASE_EXPR} {
+struct ${FUNC_API} ${STRUCT_NAME} ${STRUCT_BASE_EXPR} {
 // MEMBERS
 ${MEMBERS_EXPR}
                     
@@ -136,13 +135,13 @@ CPP_STRUCT_MEMBER_EXPR_TEMPLATE = Template(
     "${INDENT}${VAR_TYPE_NAME} ${MEMBER_NAME} {${INIT_EXPR}};"
 )
 CPP_STRUCT_SER_DECL_TEMPLATE = Template(
-    "${FUNC_API} void rbc_objser(rbc::JsonSerializer& obj) const;"
+    "void rbc_objser(rbc::JsonSerializer& obj) const;"
 )
 CPP_STRUCT_DESER_DECL_TEMPLATE = Template(
-    "${FUNC_API} void rbc_objdeser(rbc::JsonDeSerializer& obj);"
+    "void rbc_objdeser(rbc::JsonDeSerializer& obj);"
 )
 CPP_STRUCT_METHOD_DECL_TEMPLATE = Template(
-    "${INDENT}virtual ${RET_TYPE} ${FUNC_NAME}(${ARGS_EXPR}) = 0;"
+    "${INDENT}static ${RET_TYPE} ${FUNC_NAME}(void *this_${ARGS_EXPR});"
 )
 CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE = Template(
     "${INDENT}${STATIC_EXPR}${RET_TYPE} ${FUNC_NAME}(${ARGS_EXPR});"
@@ -402,12 +401,10 @@ ${INDENT}});
 
 PYBIND_DISPOSE_FUNC_TEMPLATE = Template("""
 ${INDENT}m.def("${DISPOSE_NAME}", [](void* ${PTR_NAME}) {
-${INDENT}${INDENT}static_cast<${STRUCT_NAME}*>(${PTR_NAME})->dispose();
+${INDENT}${INDENT}${STRUCT_NAME}::_destroy_(static_cast<${STRUCT_NAME}*>(${PTR_NAME}));
 ${INDENT}});
 """)
-
 PYBIND_METHOD_FUNC_TEMPLATE = Template("""
 ${INDENT}m.def("${METHOD_NAME}", [](void* ${PTR_NAME}${ARGS_DECL})${RET_TYPE} {
-${INDENT}${INDENT}${RETURN_EXPR}static_cast<${STRUCT_NAME}*>(${PTR_NAME})->${METHOD_NAME_CALL}(${ARGS_CALL})${RETURN_CLOSE};
-${INDENT}});
-""")
+${INDENT}${INDENT}${RETURN_EXPR}${STRUCT_NAME}::${METHOD_NAME_CALL}(${PTR_NAME}${ARGS_CALL})${RETURN_CLOSE};
+${INDENT}});""")

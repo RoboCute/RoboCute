@@ -308,13 +308,12 @@ class ReflectionRegistry:
 
         # 提取基类
         # print(f"extracting basics for {cls.__name__}: {cls.__bases__}")
-
-        base_classes = [
-            self.get_class_info(base.__name__)
-            for base in cls.__bases__
-            if issubclass(base, RBCStruct)
-        ]
-
+        base_classes = []
+        for base in cls.__bases__:
+            if base != None:
+                class_info = self.get_class_info(base.__name__)
+                if class_info:
+                    base_classes.append(class_info)
         return ClassInfo(
             name=cls.__name__,
             cls=cls,

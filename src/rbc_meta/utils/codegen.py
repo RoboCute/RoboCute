@@ -633,12 +633,12 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
         has_serde = info.serde and len(info.fields) > 0
 
         ser_decl = (
-            CPP_STRUCT_SER_DECL_TEMPLATE.substitute(FUNC_API=func_api)
+            CPP_STRUCT_SER_DECL_TEMPLATE.substitute()
             if has_serde
             else ""
         )
         deser_decl = (
-            CPP_STRUCT_DESER_DECL_TEMPLATE.substitute(FUNC_API=func_api)
+            CPP_STRUCT_DESER_DECL_TEMPLATE.substitute()
             if has_serde
             else ""
         )
@@ -657,7 +657,7 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
             method_params = {k: v for k,
                              v in method.parameters.items() if k != "self"}
             args_expr = _print_arg_vars_decl(
-                method_params, True, False, True, registry)
+                method_params, False, False, True, registry)
             method_expr = CPP_STRUCT_METHOD_DECL_TEMPLATE.substitute(
                 INDENT=INDENT,
                 RET_TYPE=ret_type,
@@ -708,11 +708,10 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
             ""
             if not info.pybind or not info.create_instance
             else CPP_STRUCT_BUILTIN_METHODS_TEMPLATE.substitute(
-                INDENT=INDENT, FUNC_API=func_api, STRUCT_NAME=class_name
+                INDENT=INDENT, STRUCT_NAME=class_name
             )
         )
         struct_base_expr = ": ::rbc::RBCStruct"
-
         if len(info.base_classes) == 1:
             base_class = info.base_classes[0]
             assert base_class is not None
@@ -727,6 +726,7 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
 
         struct_expr = CPP_STRUCT_TEMPLATE.substitute(
             NAMESPACE_NAME=namespace_name or "",
+            FUNC_API=func_api,
             STRUCT_NAME=class_name,
             STRUCT_BASE_EXPR=struct_base_expr,
             INDENT=INDENT,
@@ -1306,7 +1306,7 @@ def pybind_codegen(
                              v in method.parameters.items() if k != "self"}
             args_decl = _print_arg_vars_decl(
                 method_params, False, True, True, registry)
-            args_call = _print_py_args(method_params, True, True, registry)
+            args_call = _print_py_args(method_params, False, True, registry)
 
             method_func = PYBIND_METHOD_FUNC_TEMPLATE.substitute(
                 INDENT=INDENT,

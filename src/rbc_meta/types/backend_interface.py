@@ -2,6 +2,7 @@ from rbc_meta.utils.reflect import reflect
 from rbc_meta.utils.builtin import DataBuffer, ExternalType
 from rbc_meta.utils.builtin import uint, uint2, ulong, float3, float4x4, VoidPtr
 from rbc_meta.types.resource_enums import LCPixelStorage
+# from rbc_meta.types import class_inherit_test
 # import rbc_meta.types.world_interface
 
 MaterialsVector = ExternalType(
