@@ -6,7 +6,7 @@
 
 namespace rbc {
 
-struct ReferenceSkeleton final {
+struct RBC_RUNTIME_API ReferenceSkeleton final {
 public:
     ReferenceSkeleton();
     ~ReferenceSkeleton();
@@ -27,6 +27,8 @@ public:
     [[nodiscard]] luisa::span<const BoneIndexType> RawJointParents() const;
     [[nodiscard]] luisa::span<const AnimSOATransform> JointRestPoses() const;
     [[nodiscard]] BoneIndexType GetParentIndex(BoneIndexType InBoneIndex) const;
+
+    void log_brief();// debug helper
 
 public:
     void EnsureParentsExist(luisa::vector<BoneIndexType> &InOutBoneSortedIndices) const;
