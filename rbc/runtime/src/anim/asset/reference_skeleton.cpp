@@ -38,6 +38,42 @@ BoneIndexType ReferenceSkeleton::GetParentIndex(BoneIndexType InBoneIndex) const
     return RawJointParents()[InBoneIndex];
 }
 
+void ReferenceSkeleton::log_brief() {
+    LUISA_INFO("skel has {} joints {} soa joints", NumJoints(), NumSOAJoints());
+    const int NUM_LOG_JOINTS = NumJoints() > 10 ? 10 : NumJoints();
+    for (int i = 0; i < NUM_LOG_JOINTS; i++) {
+        auto &joint_name = RawJointNames()[i];
+        auto &parent = RawJointParents()[i];
+        LUISA_INFO("skel {} <{}> has parent {}", i, joint_name, parent);
+        int soa_idx = i / 4;
+        const ozz::math::SoaTransform soa_pose = JointRestPoses()[soa_idx];
+        float x[4];
+        float y[4];
+        float z[4];
+        float w[4];
+
+        ozz::math::StorePtrU(soa_pose.scale.x, x);
+        ozz::math::StorePtrU(soa_pose.scale.y, y);
+        ozz::math::StorePtrU(soa_pose.scale.z, z);
+        int soa_offset = i % 4;
+        ozz::math::Float3 scale{x[soa_offset], y[soa_offset], z[soa_offset]};
+        LUISA_INFO("scale {} {} {}", scale.x, scale.y, scale.z);
+
+        ozz::math::StorePtrU(soa_pose.translation.x, x);
+        ozz::math::StorePtrU(soa_pose.translation.y, y);
+        ozz::math::StorePtrU(soa_pose.translation.z, z);
+        ozz::math::Float3 translation{x[soa_offset], y[soa_offset], z[soa_offset]};
+        LUISA_INFO("translation {} {} {}", translation.x, translation.y, translation.z);
+
+        ozz::math::StorePtrU(soa_pose.rotation.x, x);
+        ozz::math::StorePtrU(soa_pose.rotation.y, y);
+        ozz::math::StorePtrU(soa_pose.rotation.z, z);
+        ozz::math::StorePtrU(soa_pose.rotation.w, w);
+        ozz::math::Quaternion rot{x[soa_offset], y[soa_offset], z[soa_offset], w[soa_offset]};
+        LUISA_INFO("rot {} {} {} {}", rot.x, rot.y, rot.z, rot.w);
+    }
+}
+
 void ReferenceSkeleton::EnsureParentsExist(luisa::vector<BoneIndexType> &InOutBoneSortedIndices) const {
     // 保证bone indices是排序过的，这样从前向后轮询不会出错
     // TODO: 考虑采用ThreadSingleton
@@ -61,7 +97,7 @@ void ReferenceSkeleton::EnsureParentsExist(luisa::vector<BoneIndexType> &InOutBo
             continue;
         }
         bone_exists[bone_index] = true;// make itself true
-        const BoneIndexType parent_index = GetParentIndex(bone_index);    
+        const BoneIndexType parent_index = GetParentIndex(bone_index);
 
         if (!bone_exists[parent_index]) {
             // 由于BoneIndices经过排序，所以parent必然在children之前出现，如果没有存在，则说明出现异常
@@ -86,7 +122,7 @@ void rbc::Serialize<rbc::ReferenceSkeleton>::write(rbc::ArchiveWrite &w, const r
     OzzStream ozz_stream;
     ozz::io::OArchive archive(&ozz_stream);
     archive << v.skeleton;
-    
+
     // Write the buffered data as a single bytes field
     auto buffer = ozz_stream.buffer();
     w.bytes(buffer, "data");
@@ -99,10 +135,11 @@ bool rbc::Serialize<rbc::ReferenceSkeleton>::read(rbc::ArchiveRead &r, rbc::Refe
         LUISA_ERROR("Failed to read skeleton data");
         return false;
     }
-    
+
     // Use OzzStream in read mode - provides sequential read from buffer
     OzzStream ozz_stream(luisa::span<const std::byte>{data.data(), data.size()});
     ozz::io::IArchive archive(&ozz_stream);
     archive >> v.skeleton;
+
     return true;
 }

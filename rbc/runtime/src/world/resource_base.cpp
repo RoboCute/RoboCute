@@ -8,6 +8,7 @@
 #include <rbc_world/importers/register_importers.h>
 
 namespace rbc ::world {
+
 void Resource::serialize_meta(ObjSerialize const &obj) const {
     auto type_id = this->type_id();
     obj.ar.value(reinterpret_cast<vstd::Guid &>(type_id), "__typeid__");

@@ -18,6 +18,8 @@ struct RBC_RUNTIME_API SkeletonResource : world::ResourceBaseImpl<SkeletonResour
     rbc::coroutine _async_load() override;
     luisa::string_view value() const;
 
+    mutable rbc::shared_atomic_mutex _async_mtx;
+
 public:
     const ReferenceSkeleton &ref_skel() const { return skeleton; }
     void log_brief();

@@ -127,18 +127,25 @@ int main(int argc, char *argv[]) {
         scene_data.skel->log_brief();
 
         {
+            LUISA_INFO("====== Serde Skeleton");
             auto *skel = scene_data.skel.get();
+            if (skel->path().empty()) {
+                skel->set_path(resource_dir / (skel->guid().to_string() + ".rbcb"), 0);
+            }
+            skel->save_to_path();
             // Resource Serialize
-            BinSerializer writer;
-            writer._store(*skel, "skel");
-            auto bin_blob = writer.write_to();
 
+            BinSerializer writer;
+            writer._store(skel->ref_skel(), "skel");
+            auto bin_blob = writer.write_to();
+            LUISA_INFO("Serde Bin {} bytes", bin_blob.size());
             BinDeSerializer reader{bin_blob};
             // Use world::create_object to properly register the resource with the world system
-            auto resource = RC<rbc::SkeletonResource>(world::create_object<rbc::SkeletonResource>());
-            reader._load(*resource, "skel");
+            ReferenceSkeleton new_skel;
+            reader._load(new_skel, "skel");
 
-            resource->log_brief();
+            new_skel.log_brief();
+            LUISA_INFO("====== Serde Skeleton Done");
         }
 
         if (!scene_data.mesh || scene_data.mesh->empty()) {

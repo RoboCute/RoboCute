@@ -197,6 +197,7 @@ bool MeshResource::unsafe_save_to_path() const {
         return false;
     }
     writer.write(_device_mesh->host_data());
+
     return true;
 }
 rbc::coroutine MeshResource::_async_load() {
