@@ -3,6 +3,11 @@
 
 namespace rbc {
 
+SkinResource::SkinResource() = default;
+SkinResource::~SkinResource() {
+    _unload();
+}
+
 void SkinResource::serialize_meta(world::ObjSerialize const &ser) const {
     BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
 }
@@ -20,6 +25,9 @@ bool SkinResource::unsafe_save_to_path() const {
 }
 
 void SkinResource::_unload() {
+    // release ref
+    ref_mesh.reset();
+    ref_skel.reset();
 }
 
 void SkinResource::log_brief() {

@@ -116,65 +116,74 @@ int main(int argc, char *argv[]) {
 
     RC<world::Entity> entity;
     RC<world::MeshResource> loaded_mesh;
-
     luisa::vector<RC<world::MaterialResource>> loaded_materials;
+    RC<SkeletonResource> loaded_skeleton;
+    RC<SkinResource> loaded_skin;
+    RC<AnimSequenceResource> loaded_anim;
+
     {
         RBCZoneScopedN("Load GLTF Scene");
         world::GltfLoadConfig config;
-        config.load_skeleton = true;
-        config.load_skin = true;
-        config.load_anim_seq = true;
+        // config.load_skeleton = true;
+        // config.load_skin = true;
+        // config.load_anim_seq = true;
         auto scene_data = world::GltfSceneLoader::load_scene(gltf_path, config);
+        if (false) {
+            scene_data.skel->log_brief();
+            {
+                LUISA_INFO("====== Serde Skeleton");
+                auto *skel = scene_data.skel.get();
+                if (skel->path().empty()) {
+                    skel->set_path(resource_dir / (skel->guid().to_string() + ".rbcb"), 0);
+                }
+                skel->save_to_path();
+                // Resource Serialize
 
-        scene_data.skel->log_brief();
-        {
-            LUISA_INFO("====== Serde Skeleton");
-            auto *skel = scene_data.skel.get();
-            if (skel->path().empty()) {
-                skel->set_path(resource_dir / (skel->guid().to_string() + ".rbcb"), 0);
+                BinSerializer writer;
+                writer._store(skel->ref_skel(), "skel");
+                auto bin_blob = writer.write_to();
+                LUISA_INFO("Serde Bin {} bytes", bin_blob.size());
+                BinDeSerializer reader{bin_blob};
+                // Use world::create_object to properly register the resource with the world system
+                ReferenceSkeleton new_skel;
+                reader._load(new_skel, "skel");
+
+                new_skel.log_brief();
+                LUISA_INFO("====== Serde Skeleton Done");
             }
-            skel->save_to_path();
-            // Resource Serialize
 
-            BinSerializer writer;
-            writer._store(skel->ref_skel(), "skel");
-            auto bin_blob = writer.write_to();
-            LUISA_INFO("Serde Bin {} bytes", bin_blob.size());
-            BinDeSerializer reader{bin_blob};
-            // Use world::create_object to properly register the resource with the world system
-            ReferenceSkeleton new_skel;
-            reader._load(new_skel, "skel");
-
-            new_skel.log_brief();
-            LUISA_INFO("====== Serde Skeleton Done");
-        }
-
-        scene_data.skin->log_brief();
-        {
-            LUISA_INFO("====== Serde Skin");
-            auto *skin = scene_data.skin.get();
-            if (skin->path().empty()) {
-                skin->set_path(resource_dir / (skin->guid().to_string() + ".rbcb"), 0);
+            scene_data.skin->log_brief();
+            {
+                LUISA_INFO("====== Serde Skin");
+                auto *skin = scene_data.skin.get();
+                if (skin->path().empty()) {
+                    skin->set_path(resource_dir / (skin->guid().to_string() + ".rbcb"), 0);
+                }
+                skin->save_to_path();
+                LUISA_INFO("====== Serde Skin Done");
             }
-            skin->save_to_path();
-            LUISA_INFO("====== Serde Skin Done");
-        }
 
-        LUISA_INFO("====== Anim Sequence");
-        scene_data.anim->log_brief();
-        {
-            LUISA_INFO("====== Serde Animation");
-            auto *anim = scene_data.anim.get();
-            if (anim->path().empty()) {
-                anim->set_path(resource_dir / (anim->guid().to_string() + ".rbcb"), 0);
+            LUISA_INFO("====== Anim Sequence");
+            scene_data.anim->log_brief();
+            {
+                LUISA_INFO("====== Serde Animation");
+                auto *anim = scene_data.anim.get();
+                if (anim->path().empty()) {
+                    anim->set_path(resource_dir / (anim->guid().to_string() + ".rbcb"), 0);
+                }
+                anim->save_to_path();
+                LUISA_INFO("====== Serde Animation Done");
             }
-            anim->save_to_path();
-            LUISA_INFO("====== Serde Animation Done");
-        }
 
-        if (!scene_data.mesh || scene_data.mesh->empty()) {
-            LUISA_ERROR("Failed to load GLTF model from: {}", luisa::to_string(gltf_path));
-            return 1;
+            if (!scene_data.mesh || scene_data.mesh->empty()) {
+                LUISA_ERROR("Failed to load GLTF model from: {}", luisa::to_string(gltf_path));
+                return 1;
+            }
+
+            // 在加载后保存
+            loaded_skeleton = scene_data.skel;
+            loaded_skin = scene_data.skin;
+            loaded_anim = scene_data.anim;
         }
 
         // Store resources for cleanup
@@ -318,7 +327,8 @@ int main(int argc, char *argv[]) {
                 auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
                 utils.tick(
                     static_cast<float>(delta_time),
-                    frame_index,
+                    // frame_index,
+                    0,// 不积累，
                     window_size,
                     tick_stage);
             }
@@ -329,13 +339,18 @@ int main(int argc, char *argv[]) {
     }
 
     utils.dispose([&]() {
+        // 在清理时释放
+        loaded_anim.reset();
+        loaded_skin.reset();
+        loaded_skeleton.reset();
         // remove ref-counted resources
         loaded_materials.clear();
         loaded_mesh.reset();
         skybox.reset();
+
         // Dispose entity first
         if (entity) {
-            entity.reset();
+            entity->delete_this();
         }
         // Destroy world (this will check for leaks)
         world::destroy_world();

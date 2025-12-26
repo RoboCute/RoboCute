@@ -14,6 +14,9 @@ public:
     using BaseType = world::ResourceBaseImpl<AnimSequenceResource>;
     DECLARE_WORLD_OBJECT_FRIEND(AnimSequenceResource)
 
+    AnimSequenceResource();
+    ~AnimSequenceResource();
+
     void serialize_meta(world::ObjSerialize const &ser) const override;
     void deserialize_meta(world::ObjDeSerialize const &ser) override;
 
@@ -30,7 +33,6 @@ protected:
 private:
     friend class IAnimSequenceImporter;
     AnimSequence anim_sequence;
-
 };
 
 }// namespace rbc

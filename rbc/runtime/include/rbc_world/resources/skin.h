@@ -13,6 +13,9 @@ struct RBC_RUNTIME_API SkinResource : world::ResourceBaseImpl<SkinResource> {
     using BaseType = world::ResourceBaseImpl<SkinResource>;
     DECLARE_WORLD_OBJECT_FRIEND(SkinResource)
 
+    SkinResource();
+    ~SkinResource();
+
     void serialize_meta(world::ObjSerialize const &ser) const override;
     void deserialize_meta(world::ObjDeSerialize const &ser) override;
 

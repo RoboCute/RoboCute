@@ -2,6 +2,7 @@
 #include <rbc_world/entity.h>
 #include <rbc_world/type_register.h>
 #include <rbc_core/runtime_static.h>
+
 namespace rbc::world {
 struct TransformStatic : RBCStruct {
     luisa::vector<InstanceID> dirty_trans;

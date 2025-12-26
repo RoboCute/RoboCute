@@ -152,6 +152,7 @@ bool MeshResource::init_device_resource() {
     LUISA_ASSERT(host_data_->empty() || host_data_->size() == file_size, "Host data length {} mismatch with required length {}.", host_data_->size(), file_size);
     {
         std::lock_guard lck{_async_mtx};
+
         _device_mesh->create_mesh(
             render_device->lc_main_cmd_list(),
             _vertex_count,

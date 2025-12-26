@@ -3,6 +3,11 @@
 
 namespace rbc {
 
+AnimSequenceResource::AnimSequenceResource() = default;
+AnimSequenceResource::~AnimSequenceResource() {
+    _unload();
+}
+
 void AnimSequenceResource::serialize_meta(world::ObjSerialize const &ser) const {
     BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
 }
@@ -24,6 +29,7 @@ bool AnimSequenceResource::unsafe_save_to_path() const {
 }
 
 void AnimSequenceResource::_unload() {
+    ref_skel.reset();
 }
 
 // dispose declared here
