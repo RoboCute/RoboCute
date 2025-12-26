@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>// for std::byte
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/stl/type_traits.h>
 #include <luisa/core/stl/unordered_map.h>
@@ -12,6 +13,8 @@
 #include <rbc_core/base.h>
 #include <rbc_core/enum_serializer.h>
 #include <rbc_core/json_serde.h>
+#include <rbc_core/bin_serde.h>
+
 namespace rbc {
 // Forward declaration for Serialize template
 template<typename T>
@@ -129,370 +132,6 @@ struct extract_reader_type<DeSerializer<Base>> {
 template<typename T>
 using extract_reader_type_t = typename extract_reader_type<T>::type;
 
-}// namespace detail
-
-// Archive adapters for Serialize<T> pattern
-namespace detail {
-// ArchiveWriteAdapter wraps a Serializer to provide value<T>() interface compatible with Serialize<T>
-template<concepts::SerWriter Writer>
-struct ArchiveWriteAdapter {
-    Serializer<Writer> &serializer;
-    Writer &writer;
-    // Stack to track sequential index counters for each object scope
-    // Each entry is a pair: (is_object_scope, counter)
-    luisa::vector<std::pair<bool, uint64_t>> _scope_counters;
-
-    explicit ArchiveWriteAdapter(Serializer<Writer> &s) : serializer(s), writer(static_cast<Writer &>(s)) {}
-
-    // Helper to generate sequential key from counter
-    // Note: JsonWriter::add() methods now copy the string, so we can use a temporary string
-    luisa::string _generate_sequential_key(uint64_t index) {
-        // Convert index to string using std::to_string, then convert to luisa::string
-        auto str = std::to_string(index);
-        return luisa::string(str);
-    }
-
-    // Helper to check if current scope is an object and get/advance counter
-    bool _is_current_scope_object() {
-        // Try to use JsonWriter's method if available
-        if constexpr (requires { writer.is_current_scope_array(); }) {
-            return !writer.is_current_scope_array();
-        }
-        // Fallback: check if we have a counter on the stack
-        return !_scope_counters.empty() && _scope_counters.back().first;
-    }
-
-    // Forward all writer methods
-    void start_array() {
-        writer.start_array();
-        // Push a marker for array scope (not an object, so no counter needed)
-        _scope_counters.emplace_back(false, 0);
-    }
-    void start_object() {
-        writer.start_object();
-        // Push a new counter for object scope
-        _scope_counters.emplace_back(true, 0);
-    }
-    void add_last_scope_to_object() {
-        writer.add_last_scope_to_object();
-        // Pop the scope counter when exiting a scope
-        if (!_scope_counters.empty()) {
-            _scope_counters.pop_back();
-        }
-    }
-    void add_last_scope_to_object(char const *name) {
-        writer.add_last_scope_to_object(name);
-        // Pop the scope counter when exiting a scope
-        if (!_scope_counters.empty()) {
-            _scope_counters.pop_back();
-        }
-    }
-
-    // value<T>() method that uses Serialize<T> specialization
-    template<typename T>
-    void value(const T &v) {
-        // Check if we're in an object context and should use sequential keys
-        bool use_sequential_key = _is_current_scope_object();
-        char const *key_name = nullptr;
-
-        luisa::string sequential_key_str;
-        if (use_sequential_key && !_scope_counters.empty()) {
-            // Generate sequential key from counter
-            uint64_t index = _scope_counters.back().second;
-            sequential_key_str = _generate_sequential_key(index);
-            key_name = sequential_key_str.c_str();
-            // Advance counter for next value
-            _scope_counters.back().second++;
-        }
-
-        if constexpr (requires { Serialize<T>::write(*this, v); }) {
-            if (use_sequential_key && key_name) {
-                // Custom type with Serialize<T> specialization in object context
-                writer.start_object();
-                Serialize<T>::write(*this, v);
-                writer.add_last_scope_to_object(key_name);
-            } else {
-                // In array context or no sequential key needed
-                Serialize<T>::write(*this, v);
-            }
-        } else if constexpr (std::is_same_v<T, bool>) {
-            if (use_sequential_key && key_name) {
-                writer.add(v, key_name);
-            } else {
-                writer.add(v);
-            }
-        } else if constexpr (std::is_integral_v<T>) {
-            if constexpr (std::is_unsigned_v<T>) {
-                if (use_sequential_key && key_name) {
-                    writer.add((uint64_t)v, key_name);
-                } else {
-                    writer.add((uint64_t)v);
-                }
-            } else {
-                if (use_sequential_key && key_name) {
-                    writer.add((int64_t)v, key_name);
-                } else {
-                    writer.add((int64_t)v);
-                }
-            }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
-            if (use_sequential_key && key_name) {
-                writer.add((double)v, key_name);
-            } else {
-                writer.add((double)v);
-            }
-        } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
-            if (use_sequential_key && key_name) {
-                writer.add(luisa::string_view{v}, key_name);
-            } else {
-                writer.add(luisa::string_view{v});
-            }
-        } else {
-            // For other types without Serialize<T>, fall back to serializer's _store method
-            if (use_sequential_key && key_name) {
-                serializer._store(v, key_name);
-            } else {
-                serializer._store(v);
-            }
-        }
-    }
-
-    // value<T>(name) method for named values
-    template<typename T>
-    void value(const T &v, char const *name) {
-        if constexpr (requires { Serialize<T>::write(*this, v); }) {
-            // Custom type with Serialize<T> specialization
-            writer.start_object();
-            Serialize<T>::write(*this, v);
-            writer.add_last_scope_to_object(name);
-        } else if constexpr (std::is_same_v<T, bool>) {
-            writer.add(v, name);
-        } else if constexpr (std::is_integral_v<T>) {
-            if constexpr (std::is_unsigned_v<T>) {
-                writer.add((uint64_t)v, name);
-            } else {
-                writer.add((int64_t)v, name);
-            }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
-            writer.add((double)v, name);
-        } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
-            writer.add(luisa::string_view{v}, name);
-        } else {
-            // For other types without Serialize<T>, fall back to serializer's _store method
-            serializer._store(v, name);
-        }
-    }
-
-    // Direct access to underlying writer for primitive types
-    void add(bool bool_value) { writer.add(bool_value); }
-    void add(int64_t int_value) { writer.add(int_value); }
-    void add(uint64_t uint_value) { writer.add(uint_value); }
-    void add(double float_value) { writer.add(float_value); }
-    void add(luisa::string_view str) { writer.add(str); }
-    void add(bool bool_value, char const *name) { writer.add(bool_value, name); }
-    void add(int64_t int_value, char const *name) { writer.add(int_value, name); }
-    void add(uint64_t uint_value, char const *name) { writer.add(uint_value, name); }
-    void add(double float_value, char const *name) { writer.add(float_value, name); }
-    void add(luisa::string_view str, char const *name) { writer.add(str, name); }
-    void add_arr(luisa::span<int64_t const> int_values) { writer.add_arr(int_values); }
-    void add_arr(luisa::span<uint64_t const> uint_values) { writer.add_arr(uint_values); }
-    void add_arr(luisa::span<double const> double_values) { writer.add_arr(double_values); }
-    void add_arr(luisa::span<bool const> bool_values) { writer.add_arr(bool_values); }
-    void add_arr(luisa::span<int64_t const> int_values, char const *name) { writer.add_arr(int_values, name); }
-    void add_arr(luisa::span<uint64_t const> uint_values, char const *name) { writer.add_arr(uint_values, name); }
-    void add_arr(luisa::span<double const> double_values, char const *name) { writer.add_arr(double_values, name); }
-    void add_arr(luisa::span<bool const> bool_values, char const *name) { writer.add_arr(bool_values, name); }
-};
-
-// ArchiveReadAdapter wraps a DeSerializer to provide value<T>() interface compatible with Serialize<T>
-template<concepts::SerReader Reader>
-struct ArchiveReadAdapter {
-    DeSerializer<Reader> &deserializer;
-    Reader &reader;
-    // Stack to track sequential index counters for each object scope
-    // Each entry is a pair: (is_object_scope, counter)
-    luisa::vector<std::pair<bool, uint64_t>> _scope_counters;
-
-    explicit ArchiveReadAdapter(DeSerializer<Reader> &d) : deserializer(d), reader(static_cast<Reader &>(d)) {}
-
-    // Helper to generate sequential key from counter
-    luisa::string _generate_sequential_key(uint64_t index) {
-        // Convert index to string (simple implementation, can be optimized)
-        char buffer[32];
-        auto len = snprintf(buffer, sizeof(buffer), "%llu", static_cast<unsigned long long>(index));
-        return luisa::string(buffer, len);
-    }
-
-    // Helper to check if current scope is an object
-    bool _is_current_scope_object() {
-        // Check if we have a counter on the stack
-        return !_scope_counters.empty() && _scope_counters.back().first;
-    }
-
-    // Forward all reader methods
-    bool start_array(uint64_t &size) {
-        bool result = reader.start_array(size);
-        if (result) {
-            // Push a marker for array scope (not an object, so no counter needed)
-            _scope_counters.emplace_back(false, 0);
-        }
-        return result;
-    }
-    bool start_array(uint64_t &size, char const *name) {
-        bool result = reader.start_array(size, name);
-        if (result) {
-            // Push a marker for array scope (not an object, so no counter needed)
-            _scope_counters.emplace_back(false, 0);
-        }
-        return result;
-    }
-    bool start_object() {
-        bool result = reader.start_object();
-        if (result) {
-            // Push a new counter for object scope
-            _scope_counters.emplace_back(true, 0);
-        }
-        return result;
-    }
-    bool start_object(char const *name) {
-        bool result = reader.start_object(name);
-        if (result) {
-            // Push a new counter for object scope
-            _scope_counters.emplace_back(true, 0);
-        }
-        return result;
-    }
-    void end_scope() {
-        reader.end_scope();
-        // Pop the scope counter when exiting a scope
-        if (!_scope_counters.empty()) {
-            _scope_counters.pop_back();
-        }
-    }
-
-    // value<T>() method that uses Serialize<T> specialization
-    template<typename T>
-    bool value(T &v) {
-        // Check if we're in an object context and should use sequential keys
-        bool use_sequential_key = _is_current_scope_object();
-        char const *key_name = nullptr;
-        luisa::string sequential_key;
-
-        if (use_sequential_key && !_scope_counters.empty()) {
-            // Generate sequential key from counter
-            uint64_t index = _scope_counters.back().second;
-            sequential_key = _generate_sequential_key(index);
-            key_name = sequential_key.c_str();
-            // Advance counter for next value
-            _scope_counters.back().second++;
-        }
-
-        if constexpr (requires { Serialize<T>::read(*this, v); }) {
-            // Serialize<T>::read expects to be called in an object context
-            // If we're in an object context with sequential keys, we need to enter the nested object first
-            if (use_sequential_key && key_name) {
-                // We're in an object context, so we need to read a nested object with the sequential key
-                if (!reader.start_object(key_name)) return false;
-                bool result = Serialize<T>::read(*this, v);
-                reader.end_scope();
-                return result;
-            } else {
-                // In array context, we need to enter the object first
-                if (!reader.start_object()) return false;
-                bool result = Serialize<T>::read(*this, v);
-                reader.end_scope();
-                return result;
-            }
-        } else if constexpr (std::is_same_v<T, bool>) {
-            if (use_sequential_key && key_name) {
-                return reader.read(v, key_name);
-            } else {
-                return reader.read(v);
-            }
-        } else if constexpr (std::is_integral_v<T>) {
-            if constexpr (std::is_unsigned_v<T>) {
-                uint64_t temp;
-                bool result = use_sequential_key && key_name ? reader.read(temp, key_name) : reader.read(temp);
-                if (result) v = (T)temp;
-                return result;
-            } else {
-                int64_t temp;
-                bool result = use_sequential_key && key_name ? reader.read(temp, key_name) : reader.read(temp);
-                if (result) v = (T)temp;
-                return result;
-            }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
-            double temp;
-            bool result = use_sequential_key && key_name ? reader.read(temp, key_name) : reader.read(temp);
-            if (result) v = (T)temp;
-            return result;
-        } else if constexpr (std::is_same_v<T, luisa::string>) {
-            if (use_sequential_key && key_name) {
-                return reader.read(v, key_name);
-            } else {
-                return reader.read(v);
-            }
-        } else {
-            // For other types without Serialize<T>, fall back to deserializer's _load method
-            if (use_sequential_key && key_name) {
-                return deserializer._load(v, key_name);
-            } else {
-                return deserializer._load(v);
-            }
-        }
-    }
-
-    // value<T>(name) method for named values
-    template<typename T>
-    bool value(T &v, char const *name) {
-        if constexpr (requires { Serialize<T>::read(*this, v); }) {
-            // Custom type with Serialize<T> specialization
-            if (!reader.start_object(name)) return false;
-            bool result = Serialize<T>::read(*this, v);
-            reader.end_scope();
-            return result;
-        } else if constexpr (std::is_same_v<T, bool>) {
-            return reader.read(v, name);
-        } else if constexpr (std::is_integral_v<T>) {
-            if constexpr (std::is_unsigned_v<T>) {
-                uint64_t temp;
-                bool result = reader.read(temp, name);
-                if (result) v = (T)temp;
-                return result;
-            } else {
-                int64_t temp;
-                bool result = reader.read(temp, name);
-                if (result) v = (T)temp;
-                return result;
-            }
-        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
-            double temp;
-            bool result = reader.read(temp, name);
-            if (result) v = (T)temp;
-            return result;
-        } else if constexpr (std::is_same_v<T, luisa::string>) {
-            return reader.read(v, name);
-        } else {
-            // For other types without Serialize<T>, fall back to deserializer's _load method
-            return deserializer._load(v, name);
-        }
-    }
-
-    // Direct access to underlying reader for primitive types
-    bool read(bool &value) { return reader.read(value); }
-    bool read(int64_t &value) { return reader.read(value); }
-    bool read(uint64_t &value) { return reader.read(value); }
-    bool read(double &value) { return reader.read(value); }
-    bool read(luisa::string &value) { return reader.read(value); }
-    bool read(bool &value, char const *name) { return reader.read(value, name); }
-    bool read(int64_t &value, char const *name) { return reader.read(value, name); }
-    bool read(uint64_t &value, char const *name) { return reader.read(value, name); }
-    bool read(double &value, char const *name) { return reader.read(value, name); }
-    bool read(luisa::string &value, char const *name) { return reader.read(value, name); }
-};
-
-}// namespace detail
-namespace detail {
 template<typename T>
 struct is_unordered_map {
     static constexpr bool value = false;
@@ -517,6 +156,359 @@ template<typename Ele>
 struct is_vector<luisa::vector<Ele>> {
     static constexpr bool value = true;
 };
+}// namespace detail
+
+struct ArchiveWrite {
+
+    virtual void start_object() = 0;
+    virtual void start_array() = 0;
+    virtual void end_object() = 0;
+    virtual void end_object(char const *name) = 0;
+    virtual void end_array() = 0;
+    virtual void end_array(char const *name) = 0;
+
+    virtual void add(bool bool_value) = 0;
+    virtual void add(int64_t int_value) = 0;
+    virtual void add(uint64_t uint_value) = 0;
+    virtual void add(double float_value) = 0;
+    virtual void add(luisa::string_view str) = 0;
+    virtual void add(bool bool_value, char const *name) = 0;
+    virtual void add(int64_t int_value, char const *name) = 0;
+    virtual void add(uint64_t uint_value, char const *name) = 0;
+    virtual void add(double float_value, char const *name) = 0;
+    virtual void add(luisa::string_view str, char const *name) = 0;
+    virtual void add_arr(luisa::span<int64_t const> int_values) = 0;
+    virtual void add_arr(luisa::span<uint64_t const> uint_values) = 0;
+    virtual void add_arr(luisa::span<double const> double_values) = 0;
+    virtual void add_arr(luisa::span<bool const> bool_values) = 0;
+    virtual void add_arr(luisa::span<int64_t const> int_values, char const *name) = 0;
+    virtual void add_arr(luisa::span<uint64_t const> uint_values, char const *name) = 0;
+    virtual void add_arr(luisa::span<double const> double_values, char const *name) = 0;
+    virtual void add_arr(luisa::span<bool const> bool_values, char const *name) = 0;
+
+    // bytes interface for raw binary data (only supported in binary format)
+    virtual void bytes(luisa::span<std::byte const> data) = 0;
+    virtual void bytes(luisa::span<std::byte const> data, char const *name) = 0;
+
+    template<typename T>
+    void value(const T &v) {
+        if constexpr (requires { Serialize<T>::write(*this, v); }) {
+            // In array context we need to enter the object first
+            start_object();
+            Serialize<T>::write(*this, v);
+            end_object();
+        } else if constexpr (std::is_same_v<T, bool>) {
+            add(v);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_unsigned_v<T>) {
+                add((uint64_t)v);
+            } else {
+                add((int64_t)v);
+            }
+        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+            add((double)v);
+        } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
+            add(luisa::string_view{v});
+        } else if (rbc::detail::is_vector<T>::value) {
+            // vector container
+            using EleType = luisa::vector_element_t<T>;
+            start_array();
+            for (auto &&i : v) {
+                value(i);
+            }
+            end_array();
+        } else {
+        }
+    }
+
+    // value<T>(name) method for named values
+    template<typename T>
+    void value(const T &v, char const *name) {
+        if constexpr (requires { Serialize<T>::write(*this, v); }) {
+            start_object();
+            Serialize<T>::write(*this, v);
+            end_object(name);
+        } else if constexpr (std::is_same_v<T, bool>) {
+            add(v, name);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_unsigned_v<T>) {
+                add((uint64_t)v, name);
+            } else {
+                add((int64_t)v, name);
+            }
+        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+            add((double)v, name);
+        } else if constexpr (luisa::is_constructible_v<luisa::string_view, T>) {
+            add(luisa::string_view{v}, name);
+        } else if (rbc::detail::is_vector<T>::value) {
+            using EleType = luisa::vector_element_t<T>;
+            start_array();
+            for (auto &&i : v) {
+                value(i);
+            }
+            end_array(name);
+        } else {
+        }
+    }
+};
+
+struct ArchiveRead {
+    virtual bool start_object() = 0;
+    virtual bool start_object(char const *name) = 0;
+    virtual bool start_array(uint64_t &size) = 0;
+    virtual bool start_array(uint64_t &size, char const *name) = 0;
+    virtual void end_scope() = 0;
+
+    virtual bool read(bool &v) = 0;
+    virtual bool read(int64_t &v) = 0;
+    virtual bool read(uint64_t &v) = 0;
+    virtual bool read(double &v) = 0;
+    virtual bool read(luisa::string &v) = 0;
+    virtual bool read(bool &v, char const *name) = 0;
+    virtual bool read(int64_t &v, char const *name) = 0;
+    virtual bool read(uint64_t &v, char const *name) = 0;
+    virtual bool read(double &v, char const *name) = 0;
+    virtual bool read(luisa::string &v, char const *name) = 0;
+
+    // bytes interface for raw binary data (only supported in binary format)
+    virtual bool read_bytes(luisa::vector<std::byte> &data) = 0;
+    virtual bool read_bytes(luisa::vector<std::byte> &data, char const *name) = 0;
+
+    // value<T>() method that uses Serialize<T> specialization
+    template<typename T>
+    bool value(T &v) {
+        if constexpr (requires { Serialize<T>::read(*this, v); }) {
+            // In array context, we need to enter the object first
+            if (!start_object()) return false;
+            bool result = Serialize<T>::read(*this, v);
+            end_scope();
+            return result;
+        } else if constexpr (std::is_same_v<T, bool>) {
+            return read(v);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_unsigned_v<T>) {
+                uint64_t temp;
+                bool result = read(temp);
+                if (result) v = (T)temp;
+                return result;
+            } else {
+                int64_t temp;
+                bool result = read(temp);
+                if (result) v = (T)temp;
+                return result;
+            }
+        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+            double temp;
+            bool result = read(temp);
+            if (result) v = (T)temp;
+            return result;
+        } else if constexpr (std::is_same_v<T, luisa::string>) {
+            return read(v);
+        } else if (rbc::detail::is_vector<T>::value) {
+            using EleType = luisa::vector_element_t<T>;
+            size_t size;
+            start_array(size);
+            bool result = true;
+            for (auto i = 0; i < size; i++) {
+                result &= value(v[i]);
+            }
+            end_scope();
+            return result;
+        } else {
+            // For other types without Serialize<T>, fall back to deserializer's _load method
+            LUISA_ERROR("fallback read");
+            return false;
+        }
+    }
+
+    // value<T>(name) method for named values
+    template<typename T>
+    bool value(T &v, char const *name) {
+        if constexpr (requires { Serialize<T>::read(*this, v); }) {
+            // Custom type with Serialize<T> specialization
+            if (!start_object(name)) return false;
+            bool result = Serialize<T>::read(*this, v);
+            end_scope();
+            return result;
+        } else if constexpr (std::is_same_v<T, bool>) {
+            return read(v, name);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_unsigned_v<T>) {
+                uint64_t temp;
+                bool result = read(temp, name);
+                if (result) v = (T)temp;
+                return result;
+            } else {
+                int64_t temp;
+                bool result = read(temp, name);
+                if (result) v = (T)temp;
+                return result;
+            }
+        } else if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, luisa::half>) {
+            double temp;
+            bool result = read(temp, name);
+            if (result) v = (T)temp;
+            return result;
+        } else if constexpr (std::is_same_v<T, luisa::string>) {
+            return read(v, name);
+        } else if constexpr (rbc::detail::is_vector<T>::value) {
+            using EleType = luisa::vector_element_t<T>;
+            size_t size;
+            start_array(size, name);
+            bool result = true;
+            v.resize(size);
+            for (auto i = 0; i < size; i++) {
+                result &= value(v[i]);
+            }
+            end_scope();
+            return result;
+        } else {
+            return false;
+        }
+    }
+};
+
+// Archive adapters for Serialize<T> pattern
+namespace detail {
+
+template<concepts::SerWriter Writer>
+struct ArchiveWriteAdapter : public ArchiveWrite {
+
+    Serializer<Writer> &serializer;
+    Writer &writer;
+
+    explicit ArchiveWriteAdapter(Serializer<Writer> &s) : serializer(s), writer(static_cast<Writer &>(s)) {}
+
+    // Forward all writer methods
+    void start_array() override {
+        writer.start_array();
+    }
+
+    void start_object() override {
+        writer.start_object();
+    }
+    void end_object() override {
+        add_last_scope_to_object();
+    }
+    void end_object(char const *name) override {
+        add_last_scope_to_object(name);
+    }
+    void end_array() override {
+        add_last_scope_to_object();
+    }
+    void end_array(char const *name) override {
+        add_last_scope_to_object(name);
+    }
+
+    void add_last_scope_to_object() {
+        writer.add_last_scope_to_object();
+    }
+    void add_last_scope_to_object(char const *name) {
+        writer.add_last_scope_to_object(name);
+    }
+
+    // value<T>() method that uses Serialize<T> specialization
+
+    // Direct access to underlying writer for primitive types
+    void add(bool bool_value) override { writer.add(bool_value); }
+    void add(int64_t int_value) override { writer.add(int_value); }
+    void add(uint64_t uint_value) override { writer.add(uint_value); }
+    void add(double float_value) override { writer.add(float_value); }
+    void add(luisa::string_view str) override { writer.add(str); }
+    void add(bool bool_value, char const *name) override { writer.add(bool_value, name); }
+    void add(int64_t int_value, char const *name) override { writer.add(int_value, name); }
+    void add(uint64_t uint_value, char const *name) override { writer.add(uint_value, name); }
+    void add(double float_value, char const *name) override { writer.add(float_value, name); }
+    void add(luisa::string_view str, char const *name) override { writer.add(str, name); }
+    void add_arr(luisa::span<int64_t const> int_values) override { writer.add_arr(int_values); }
+    void add_arr(luisa::span<uint64_t const> uint_values) override { writer.add_arr(uint_values); }
+    void add_arr(luisa::span<double const> double_values) override { writer.add_arr(double_values); }
+    void add_arr(luisa::span<bool const> bool_values) override { writer.add_arr(bool_values); }
+    void add_arr(luisa::span<int64_t const> int_values, char const *name) override { writer.add_arr(int_values, name); }
+    void add_arr(luisa::span<uint64_t const> uint_values, char const *name) override { writer.add_arr(uint_values, name); }
+    void add_arr(luisa::span<double const> double_values, char const *name) override { writer.add_arr(double_values, name); }
+    void add_arr(luisa::span<bool const> bool_values, char const *name) override { writer.add_arr(bool_values, name); }
+
+    // bytes interface - only supported for binary format
+    void bytes(luisa::span<std::byte const> data) override {
+        if constexpr (std::is_same_v<Writer, BinWriter>) {
+            writer.bytes(data);
+        } else {
+            LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+        }
+    }
+    void bytes(luisa::span<std::byte const> data, char const *name) override {
+        if constexpr (std::is_same_v<Writer, BinWriter>) {
+            writer.bytes(data, name);
+        } else {
+            LUISA_ERROR("bytes() interface is only supported in binary format, not JSON format");
+        }
+    }
+};
+
+// ArchiveReadAdapter wraps a DeSerializer to provide value<T>() interface compatible with Serialize<T>
+template<concepts::SerReader Reader>
+struct ArchiveReadAdapter : public ArchiveRead {
+    DeSerializer<Reader> &deserializer;
+    Reader &reader;
+
+    explicit ArchiveReadAdapter(DeSerializer<Reader> &d) : deserializer(d), reader(static_cast<Reader &>(d)) {}
+
+    // Forward all reader methods
+    bool start_array(uint64_t &size) override {
+        bool result = reader.start_array(size);
+        return result;
+    }
+    bool start_array(uint64_t &size, char const *name) override {
+        bool result = reader.start_array(size, name);
+        return result;
+    }
+    bool start_object() override {
+        bool result = reader.start_object();
+        return result;
+    }
+    bool start_object(char const *name) override {
+        bool result = reader.start_object(name);
+        return result;
+    }
+    void end_scope() override {
+        reader.end_scope();
+    }
+
+    // Direct access to underlying reader for primitive types
+    bool read(bool &value) override { return reader.read(value); }
+    bool read(int64_t &value) override { return reader.read(value); }
+    bool read(uint64_t &value) override { return reader.read(value); }
+    bool read(double &value) override { return reader.read(value); }
+    bool read(luisa::string &value) override { return reader.read(value); }
+    bool read(bool &value, char const *name) override { return reader.read(value, name); }
+    bool read(int64_t &value, char const *name) override { return reader.read(value, name); }
+    bool read(uint64_t &value, char const *name) override { return reader.read(value, name); }
+    bool read(double &value, char const *name) override { return reader.read(value, name); }
+    bool read(luisa::string &value, char const *name) override { return reader.read(value, name); }
+
+    // bytes interface - only supported for binary format
+    bool read_bytes(luisa::vector<std::byte> &data) override {
+        if constexpr (std::is_same_v<Reader, BinReader>) {
+            return reader.read_bytes(data);
+        } else {
+            LUISA_ERROR("read_bytes() interface is only supported in binary format, not JSON format");
+            return false;
+        }
+    }
+    bool read_bytes(luisa::vector<std::byte> &data, char const *name) override {
+        if constexpr (std::is_same_v<Reader, BinReader>) {
+            return reader.read_bytes(data, name);
+        } else {
+            LUISA_ERROR("read_bytes() interface is only supported in binary format, not JSON format");
+            return false;
+        }
+    }
+};
+
+}// namespace detail
+namespace detail {
+
 template<typename T>
 static constexpr bool serializable_native_type_v = std::is_integral_v<T> || std::is_floating_point_v<T> || luisa::is_vector_v<T> || concepts::is_matrix_v<T> || rbc::detail::is_unordered_map<T>::value || std::is_same_v<std::decay_t<T>, luisa::string> || std::is_same_v<T, vstd::Guid> || std::is_same_v<std::decay_t<T>, luisa::string_view> || std::is_same_v<T, luisa::half> || std::is_same_v<T, bool> || is_vector<T>::value || std::is_enum_v<T>;
 
@@ -556,11 +548,12 @@ template<typename T, typename DeSer>
 concept DeSerializableType = rbc::detail::serializable_native_type_v<T> || rbc::detail::deserializable_struct_type_v<T, DeSer>;
 
 };// namespace concepts
+
 template<concepts::SerWriter Base>
 struct Serializer : public Base {
 
     template<typename... Args>
-    Serializer(Args &&...args)
+    explicit Serializer(Args &&...args)
         : Base(std::forward<Args>(args)...) {
     }
 
@@ -568,9 +561,11 @@ struct Serializer : public Base {
     void _store(T const &t, Args... args) {
         // custom type
         if constexpr (std::is_enum_v<T>) {
+
             static_assert(rbc_rtti_detail::is_rtti_type<T>::value);
             auto strv = EnumSerializer::template get_enum_value_name<T>(luisa::to_underlying(t));
             Base::add(strv, args...);
+
         } else if constexpr (requires { Serialize<T>::write(std::declval<detail::ArchiveWriteAdapter<Base> &>(), std::declval<T const &>()); }) {
             // Use Serialize<T> specialization (new system)
             detail::ArchiveWriteAdapter<Base> adapter(*static_cast<Serializer<Base> *>(this));
@@ -682,29 +677,7 @@ struct Serializer : public Base {
                 this->_store(i);
             }
             Base::add_last_scope_to_object(args...);
-        }
-        // duck type (this is no good)
-        // else if constexpr (requires {t.data(); t. size(); }) {
-        //     auto i = t.data();
-        //     auto end = i + t.size();
-        //     Base::start_array();
-        //     while (i != end) {
-        //         this->_store(*i);
-        //         ++i;
-        //     }
-        //     Base::add_last_scope_to_object(args...);
-
-        // } else if constexpr (requires { t.begin() ; t.end(); }) {
-        //     auto i = t.begin();
-        //     auto end = i.end();
-        //     Base::start_array();
-        //     while (i != end) {
-        //         this->_store(*i);
-        //         ++i;
-        //     }
-        //     Base::add_last_scope_to_object(args...);
-        // }
-        else if constexpr (std::is_same_v<T, vstd::Guid>) {
+        } else if constexpr (std::is_same_v<T, vstd::Guid>) {
             auto str = t.to_base64();
             Base::add(luisa::string_view{str}, args...);
         } else {
@@ -725,7 +698,7 @@ struct Serializer : public Base {
 template<concepts::SerReader Base>
 struct DeSerializer : public Base {
     template<typename... Args>
-    DeSerializer(Args &&...args)
+    explicit DeSerializer(Args &&...args)
         : Base(std::forward<Args>(args)...) {
     }
     template<concepts::DeSerializableType<DeSerializer> T, typename... Args>
@@ -949,8 +922,15 @@ struct DeSerializer : public Base {
 };
 using JsonSerializer = Serializer<JsonWriter>;
 using JsonDeSerializer = DeSerializer<JsonReader>;
-using ArchiveWrite = detail::ArchiveWriteAdapter<JsonWriter>;
-using ArchiveRead = detail::ArchiveReadAdapter<JsonReader>;
+
+using BinSerializer = Serializer<BinWriter>;
+using BinDeSerializer = DeSerializer<BinReader>;
+
+using ArchiveReadJson = detail::ArchiveReadAdapter<JsonReader>;
+using ArchiveWriteJson = detail::ArchiveWriteAdapter<JsonWriter>;
+
+using ArchiveReadBin = detail::ArchiveReadAdapter<BinReader>;
+using ArchiveWriteBin = detail::ArchiveWriteAdapter<BinWriter>;
 
 template<typename T>
 struct is_serializer {
@@ -968,75 +948,10 @@ template<typename T>
 struct is_deserializer<DeSerializer<T>> {
     static constexpr bool value = true;
 };
+
 template<typename T>
 static constexpr bool is_serializer_v = is_serializer<T>::value;
 template<typename T>
 static constexpr bool is_deserializer_v = is_deserializer<T>::value;
-
-// Default Serialize<T> implementations that delegate to rbc_objser/rbc_arrser for backward compatibility
-// These are provided as a convenience - users can still specialize Serialize<T> to override them
-namespace detail {
-// Helper to create default Serialize<T> for types with rbc_objser
-template<typename T>
-struct DefaultSerializeImpl {
-    // Check if type has rbc_objser/rbc_arrser methods
-    template<typename Writer>
-    static constexpr bool has_objser() {
-        return requires(T const &t, Writer &w) { t.rbc_objser(w); };
-    }
-
-    template<typename Writer>
-    static constexpr bool has_arrser() {
-        return requires(T const &t, Writer &w) { t.rbc_arrser(w); };
-    }
-
-    template<typename Reader>
-    static constexpr bool has_objdeser() {
-        return requires(T &t, Reader &r) { t.rbc_objdeser(r); };
-    }
-
-    template<typename Reader>
-    static constexpr bool has_arrdeser() {
-        return requires(T &t, Reader &r) { t.rbc_arrdeser(r); };
-    }
-};
-
-}// namespace detail
-
-// Macro to help users create default Serialize<T> specializations that delegate to rbc_objser
-
-// Usage: RBC_DEFAULT_SERIALIZE(MyType, JsonSerializer, JsonDeSerializer)
-#define RBC_DEFAULT_SERIALIZE(Type, WriterType, ReaderType)                                                 \
-    namespace rbc {                                                                                         \
-    template<>                                                                                              \
-    struct Serialize<Type> {                                                                                \
-        static void write(detail::ArchiveWriteAdapter<WriterType> &w, const Type &v) {                      \
-            if constexpr (detail::DefaultSerializeImpl<Type>::template has_objser<WriterType>()) {          \
-                w.writer.start_object();                                                                    \
-                v.rbc_objser(w.writer);                                                                     \
-                w.writer.add_last_scope_to_object();                                                        \
-            } else if constexpr (detail::DefaultSerializeImpl<Type>::template has_arrser<WriterType>()) {   \
-                w.writer.start_array();                                                                     \
-                v.rbc_arrser(w.writer);                                                                     \
-                w.writer.add_last_scope_to_object();                                                        \
-            }                                                                                               \
-        }                                                                                                   \
-        static bool read(detail::ArchiveReadAdapter<ReaderType> &r, Type &v) {                              \
-            if constexpr (detail::DefaultSerializeImpl<Type>::template has_objdeser<ReaderType>()) {        \
-                if (!r.reader.start_object()) return false;                                                 \
-                v.rbc_objdeser(r.reader);                                                                   \
-                r.reader.end_scope();                                                                       \
-                return true;                                                                                \
-            } else if constexpr (detail::DefaultSerializeImpl<Type>::template has_arrdeser<ReaderType>()) { \
-                uint64_t size;                                                                              \
-                if (!r.reader.start_array(size)) return false;                                              \
-                v.rbc_arrdeser(r.reader);                                                                   \
-                r.reader.end_scope();                                                                       \
-                return true;                                                                                \
-            }                                                                                               \
-            return false;                                                                                   \
-        }                                                                                                   \
-    };                                                                                                      \
-    }
 
 }// namespace rbc

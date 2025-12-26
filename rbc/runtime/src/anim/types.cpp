@@ -14,7 +14,7 @@ bool rbc::Serialize<rbc::AnimFloat4x4>::write(rbc::ArchiveWrite &w, const rbc::A
         w.value<float>(f[2]);
         w.value<float>(f[3]);
     }
-    w.add_last_scope_to_object("data");
+    w.end_object("data");
     return true;
 }
 bool rbc::Serialize<rbc::AnimFloat4x4>::read(rbc::ArchiveRead &r, rbc::AnimFloat4x4 &v) {

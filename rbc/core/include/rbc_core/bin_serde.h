@@ -1,32 +1,56 @@
 #pragma once
+#include <luisa/core/binary_io.h>
 #include <luisa/core/stl/string.h>
 #include <luisa/core/stl/vector.h>
 #include <luisa/vstl/meta_lib.h>
-#include <luisa/core/binary_io.h>
 #include <rbc_config.h>
-#include <yyjson.h>
 
 namespace rbc {
 
-struct RBC_CORE_API JsonWriter {
-    vstd::VEngineMallocVisitor _alloc_callback;
-    vstd::StackAllocator _alloc;
-    yyjson_alc alc;
-    yyjson_mut_doc *json_doc;
-    // bool: is_array
-    luisa::vector<std::pair<yyjson_mut_val *, bool>> _json_scope;
-    JsonWriter(JsonWriter const &) = delete;
-    JsonWriter(JsonWriter &&) = delete;
+enum class BinType : uint8_t {
+    Bool = 0,
+    Int64 = 1,
+    UInt64 = 2,
+    Double = 3,
+    String = 4,
+    ArrayStart = 5,
+    ObjectStart = 6,
+    ScopeEnd = 7,
+    Bytes = 8
+};
 
-    JsonWriter(bool root_array = false);
-    ~JsonWriter();
+struct BinScope {
+    bool is_array;
+    uint64_t array_size;
+    uint64_t array_index;
+    luisa::string last_key;
+    bool in_object;
+    bool object_start_written; // For objects in object context, track if ObjectStart has been written
+    uint64_t object_start_pos; // Position where ObjectStart should be written (if delayed)
+    uint64_t array_size_pos; // Position where array size was written (for root array or nested arrays)
+};
+
+struct RBC_CORE_API BinWriter {
+    luisa::vector<std::byte> buffer_;
+    luisa::vector<BinScope> _scope;
+    uint64_t pos_;
+    BinWriter(BinWriter const &) = delete;
+    BinWriter(BinWriter &&) = delete;
+
+    BinWriter(bool root_array = false);
+    ~BinWriter();
+
     void start_array();
     void start_object();
     void add_last_scope_to_object();
     void add_last_scope_to_object(char const *name);
+
 protected:
     void clear_alloc();
-    void *allocate_temp_str(size_t size);
+    void write_bytes(void const *data, uint64_t size);
+    void write_type(BinType type);
+    void write_uint64(uint64_t value);
+
 public:
     // primitive
     void add(bool bool_value);
@@ -54,26 +78,30 @@ public:
     void add_arr(luisa::span<double const> double_values, char const *name);
     void add_arr(luisa::span<bool const> bool_values, char const *name);
 
+    // bytes interface
+    void bytes(luisa::span<std::byte const> data);
+    void bytes(luisa::span<std::byte const> data, char const *name);
+
 public:
     [[nodiscard]] luisa::BinaryBlob write_to() const;
-    // Check if current scope is an object (false) or array (true)
     [[nodiscard]] bool is_current_scope_array() const;
+    luisa::span<std::byte> buffer() {
+        return buffer_;
+    }
+    void reset();
+    void reset_buffer();
+    bool move_next(uint64_t size, uint64_t &old_pos);
 };
-struct ReadArray {
-    yyjson_val *arr_iter;
-    uint64_t size;
-    uint64_t idx;
-};
-struct ReadObj {
-    luisa::string last_key;
-    yyjson_obj_iter iter;
-};
-struct RBC_CORE_API JsonReader {
-    yyjson_alc alc;
-    yyjson_doc *json_doc;
-    luisa::vector<std::pair<yyjson_val *, vstd::variant<ReadArray, ReadObj>>> _json_scope;
-    explicit JsonReader(luisa::string_view str);
-    ~JsonReader();
+
+struct RBC_CORE_API BinReader {
+    luisa::vector<std::byte> buffer_;
+    uint64_t pos_;
+    luisa::vector<BinScope> _scope;
+    bool valid_;
+
+    explicit BinReader(luisa::span<std::byte const> data);
+    BinReader(luisa::BinaryBlob const &blob);
+    ~BinReader();
 
     [[nodiscard]] uint64_t last_array_size() const;
     [[nodiscard]] luisa::string_view last_key() const;
@@ -89,12 +117,27 @@ struct RBC_CORE_API JsonReader {
     bool read(uint64_t &value);
     bool read(double &value);
     bool read(luisa::string &value);
+
     // primitive with name
     bool read(bool &value, char const *name);
     bool read(int64_t &value, char const *name);
     bool read(uint64_t &value, char const *name);
     bool read(double &value, char const *name);
     bool read(luisa::string &value, char const *name);
+
+    // bytes interface
+    bool read_bytes(luisa::vector<std::byte> &data);
+    bool read_bytes(luisa::vector<std::byte> &data, char const *name);
+
     bool valid() const;
+
+protected:
+    bool read_bytes_internal(void *data, uint64_t size);
+    bool read_type(BinType &type);
+    bool read_uint64(uint64_t &value);
+    bool read_string(luisa::string &value);
+    bool check_type(BinType expected);
+    bool skip_value(); // Skip current value (used when key doesn't match in object)
 };
+
 }// namespace rbc
