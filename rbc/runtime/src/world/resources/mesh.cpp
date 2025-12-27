@@ -28,6 +28,9 @@ void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     ser.ar.value(_vertex_count, "vertex_count");
     ser.ar.value(_triangle_count, "triangle_count");
     ser.ar.value(_uv_count, "uv_count");
+    // if (_origin_mesh) {
+    //     ser.ar.value(_origin_mesh->guid(), "origin_mesh");
+    // }
     ser.ar.start_array();
     for (auto &i : _custom_properties) {
         ser.ar.value(i.first);
@@ -63,10 +66,13 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     RBC_MESH_LOAD(file_offset)
     RBC_MESH_LOAD(contained_normal)
     RBC_MESH_LOAD(contained_tangent)
-    RBC_MESH_LOAD(origin_mesh)
     RBC_MESH_LOAD(vertex_count)
     RBC_MESH_LOAD(triangle_count)
     RBC_MESH_LOAD(uv_count)
+    // vstd::Guid origin_mesh_guid;
+    // if (ser.ar.value(origin_mesh_guid, "origin_mesh")) {
+    //     _origin_mesh = load_resource(origin_mesh_guid, false);
+    // }
 #undef RBC_MESH_LOAD
     uint64_t size;
     if (ser.ar.start_array(size, "submesh_offsets")) {
@@ -160,23 +166,9 @@ void MeshResource::create_from_mesh(MeshResource *origin_mesh) {
     _uv_count = origin_mesh->uv_count();
     _contained_normal = origin_mesh->contained_normal();
     _contained_tangent = origin_mesh->contained_tangent();
-    _origin_mesh = origin_mesh->guid();
+    _origin_mesh = origin_mesh;
     auto tr_mesh = new DeviceTransformingMesh{};
     _device_res = tr_mesh;
-    auto origin_device_mesh = origin_mesh->device_mesh();
-    LUISA_ASSERT(origin_mesh->_status != EResourceLoadingStatus::Unloaded);
-    auto assets_mng = AssetsManager::instance();
-    if (assets_mng) [[likely]]
-        assets_mng->wake_load_thread();
-    auto coro = [](MeshResource *mesh_res) -> coroutine {
-        co_await mesh_res->await_loading();
-    }(origin_mesh);
-    while (!coro.done()) {
-        std::this_thread::yield();
-        coro.resume();
-        std::this_thread::yield();
-    }
-    tr_mesh->create_from_origin(origin_device_mesh);
 }
 bool MeshResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
@@ -198,9 +190,21 @@ bool MeshResource::init_device_resource() {
                 vstd::vector<uint>(_submesh_offsets));
         }
     } else {
-        auto mesh = device_transforming_mesh();
-        if (!render_device || !mesh) return false;
-        mesh->copy_from_origin(render_device->lc_main_cmd_list());
+        auto assets_mng = AssetsManager::instance();
+        if (assets_mng) [[likely]]
+            assets_mng->wake_load_thread();
+        auto coro = [](MeshResource *mesh_res) -> coroutine {
+            co_await mesh_res->await_loading();
+        }(_origin_mesh.get());
+        while (!coro.done()) {
+            std::this_thread::yield();
+            coro.resume();
+            std::this_thread::yield();
+        }
+        auto tr_mesh = static_cast<DeviceTransformingMesh *>(_device_res.get());
+        tr_mesh->create_from_origin(_origin_mesh->device_mesh());
+        if (!render_device || !tr_mesh) return false;
+        tr_mesh->copy_from_origin(render_device->lc_main_cmd_list());
     }
     _status = EResourceLoadingStatus::Loaded;
     return true;
@@ -244,18 +248,16 @@ rbc::coroutine MeshResource::_async_load() {
             _file_offset,
             true, extra_size_bytes());
     } else {
-        auto origin_mesh_obj = get_object_ref(_origin_mesh);
-        if (!origin_mesh_obj || !origin_mesh_obj->is_type_of(TypeInfo::get<MeshResource>())) {
+        if (!_origin_mesh) {
             co_return;
         }
-        auto origin_mesh = static_cast<MeshResource *>(origin_mesh_obj.get());
+        co_await _origin_mesh->await_loading();
+        auto origin_mesh = _origin_mesh->device_mesh();
+        if (!origin_mesh)
+            co_return;
         auto mesh = new DeviceTransformingMesh();
         _device_res = mesh;
-        co_await rbc::awaitable([&] {
-            auto origin_device_mesh = origin_mesh->device_mesh();
-            return origin_device_mesh && (origin_device_mesh->loaded() || origin_device_mesh->mesh_data());
-        });
-        mesh->async_load(RC<DeviceMesh>{origin_mesh->device_mesh()});
+        mesh->async_load(RC<DeviceMesh>{origin_mesh});
     }
 
     while (!_device_res->load_finished()) {
@@ -343,7 +345,7 @@ bool MeshResource::is_transforming_mesh() const {
     if (_device_res) {
         return _device_res->resource_type() == DeviceResource::Type::TransformingMesh;
     }
-    return _origin_mesh;
+    return _origin_mesh.get();
 }
 DeviceMesh *MeshResource::device_mesh() const {
     if (_device_res && _device_res->resource_type() == DeviceResource::Type::Mesh) {

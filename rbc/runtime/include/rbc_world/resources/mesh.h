@@ -34,7 +34,7 @@ private:
 
     // meta
     vstd::vector<uint> _submesh_offsets;
-    vstd::Guid _origin_mesh;
+    RC<MeshResource> _origin_mesh;
     uint32_t _vertex_count{};
     uint32_t _triangle_count{};
     uint32_t _uv_count{};
@@ -59,6 +59,8 @@ public:
     [[nodiscard]] auto submesh_count() const { return std::max<size_t>(_submesh_offsets.size(), 1); }
     [[nodiscard]] luisa::vector<std::byte> *host_data();
     [[nodiscard]] bool is_transforming_mesh() const;
+    [[nodiscard]] MeshResource* origin_mesh() const { return _origin_mesh.get(); }
+
     uint64_t basic_size_bytes() const;
     uint64_t extra_size_bytes() const;
     uint64_t desire_size_bytes() const;

@@ -11,6 +11,7 @@
 #include <rbc_render/renderer_data.h>
 #include <rbc_world/base_object.h>
 #include <rbc_world/component.h>
+#include <rbc_world/resources/mesh.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -421,6 +422,35 @@ void GraphicsUtils::create_texture(
     ptr->create_texture<float>(device, storage, size, mip_level);
 }
 void GraphicsUtils::build_transforming_mesh(DeviceTransformingMesh *mesh) {
-    _build_meshes.emplace(RC<DeviceResource>{mesh});
+    _build_meshes.emplace(mesh);
+}
+void GraphicsUtils::update_skinning(
+    world::MeshResource *skinning_mesh,
+    BufferView<DualQuaternion> bones) {
+    auto origin_mesh = skinning_mesh->origin_mesh();
+    auto origin_mesh_data = origin_mesh->mesh_data();
+    auto device_mesh = skinning_mesh->device_transforming_mesh();
+    LUISA_ASSERT(origin_mesh && device_mesh, "Invalid skinning mesh.");
+    auto weight_index_buffer = origin_mesh->get_or_create_property_buffer("skinning_weight_index");
+    if (!weight_index_buffer) [[unlikely]] {
+        LUISA_ERROR("Static mesh must have \"skinning_weight_index\" property.");
+    }
+    auto weight_count = (weight_index_buffer.size_bytes() / sizeof(uint)) / 2;
+    auto vert_count = origin_mesh_data->meta.vertex_count;
+    if (weight_count % vert_count > 0) [[unlikely]] {
+        LUISA_ERROR("Weight count {} invalid with vertex count {}", weight_count, vert_count);
+    }
+    auto buffer = weight_index_buffer.as<uint>();
+    auto weight_buffer = buffer.subview(0, weight_count).as<float>();
+    auto index_buffer = buffer.subview(weight_count, weight_count);
+    auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();
+    _skinning.update_mesh(
+        cmdlist,
+        skinning_mesh->mesh_data(),
+        origin_mesh_data,
+        bones,
+        weight_buffer,
+        index_buffer);
+    _build_meshes.emplace(device_mesh);
 }
 }// namespace rbc

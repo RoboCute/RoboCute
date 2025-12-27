@@ -14,6 +14,9 @@
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 namespace rbc {
+namespace world {
+struct MeshResource;
+}// namespace world
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -93,5 +96,8 @@ public:
         DeviceMesh *ptr,
         uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets);
     void update_mesh_data(DeviceMesh *mesh, bool only_vertex);
+    void update_skinning(
+        world::MeshResource *skinning_mesh,
+        BufferView<DualQuaternion> bones);
 };
 }// namespace rbc

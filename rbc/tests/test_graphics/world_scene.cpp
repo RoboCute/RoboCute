@@ -254,23 +254,28 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     test_bones = device.create_buffer<DualQuaternion>(2);
     MeshBuilder cube_mesh_builder;
     _create_cube(cube_mesh_builder, float3(), float3(1));
-    skinning_origin_mesh = world::create_object<world::MeshResource>();
     skinning_mesh = world::create_object<world::MeshResource>();
     luisa::vector<uint> submesh_offsets;
     luisa::vector<std::byte> cube_bytes;
     cube_mesh_builder.write_to(cube_bytes, submesh_offsets);
-    skinning_origin_mesh->create_empty({}, std::move(submesh_offsets), 0, cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
-    auto s = cube_bytes.size_bytes();
-    *skinning_origin_mesh->host_data() = std::move(cube_bytes);
-    skinning_origin_mesh->init_device_resource();
-    utils->update_mesh_data(skinning_origin_mesh->device_mesh(), false);// update through render-thread
-    skinning_mesh->create_from_mesh(skinning_origin_mesh.get());
-    skinning_mesh->init_device_resource();
-    test_skinning_weight_and_index = device.create_buffer<uint>(
-        cube_mesh_builder.vertex_count() * 2// one for weight and one for index
-    );
+    // create static origin mesh
+    {
+        skinning_origin_mesh = world::create_object<world::MeshResource>();
+        skinning_origin_mesh->create_empty({}, std::move(submesh_offsets), 0, cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
+
+        *skinning_origin_mesh->host_data() = std::move(cube_bytes);
+        skinning_origin_mesh->add_property("skinning_weight_index", cube_mesh_builder.vertex_count() * 2 * sizeof(uint));
+        skinning_origin_mesh->init_device_resource();
+        utils->update_mesh_data(skinning_origin_mesh->device_mesh(), false);// update through render-thread
+    }
+    auto skinning_weight_index = skinning_origin_mesh->get_or_create_property_buffer("skinning_weight_index").as<uint>();
+    // create skinning mesh
+    {
+        skinning_mesh->create_from_mesh(skinning_origin_mesh.get());
+        skinning_mesh->init_device_resource();
+    }
     luisa::vector<uint> weight_and_index_host;
-    weight_and_index_host.push_back_uninitialized(test_skinning_weight_and_index.size());
+    weight_and_index_host.push_back_uninitialized(skinning_weight_index.size());
     luisa::span<float> weights{
         (float *)weight_and_index_host.data(),
         weight_and_index_host.size() / 2};
@@ -283,7 +288,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     for (auto i : vstd::range(indices.size())) {
         indices[i] = (i < indices.size() / 2) ? 0 : 1;// index to bone 0 and bone 1
     }
-    render_device.lc_main_stream() << test_skinning_weight_and_index.view().copy_from(weight_and_index_host.data());
+    render_device.lc_main_stream() << skinning_weight_index.copy_from(weight_and_index_host.data());
     skinning_entity = world::create_object<world::Entity>();
     auto tr = skinning_entity->add_component<world::TransformComponent>();
     tr->set_pos(double3(0, 2, 1), false);
@@ -487,22 +492,16 @@ void WorldScene::tick_skinning(GraphicsUtils *utils) {
     static Clock clk;
     auto &sm = SceneManager::instance();
     auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();
+    // upload bones to gpu
     luisa::vector<DualQuaternion> bones{2};
     auto time = clk.toc() * 1e-3 * 3;
     bones[0] = encode_dual_quaternion(float3(sin(time), -0.5, cos(time)), Quaternion{});
     bones[1] = encode_dual_quaternion(float3(sin(time + pi * 0.5f), 0.5, cos(time + pi * 0.5f)), Quaternion{});
     cmdlist << test_bones.view().copy_from(bones.data());
     sm.dispose_after_commit(std::move(bones));
-    auto skinning_size = test_skinning_weight_and_index.size() / 2;
-    BufferView<float> test_skinning_weight = test_skinning_weight_and_index.view(0, skinning_size).as<float>();
-    BufferView<uint> test_skinning_index = test_skinning_weight_and_index.view(skinning_size, skinning_size);
-    Skinning::instance()->update_mesh(
-        cmdlist,
-        skinning_mesh->mesh_data(),
-        skinning_origin_mesh->mesh_data(),
-        test_bones,
-        test_skinning_weight,
-        test_skinning_index);
-    utils->build_transforming_mesh(skinning_mesh->device_transforming_mesh());
+    // skinning
+    utils->update_skinning(
+        skinning_mesh.get(),
+        test_bones);
 }
 }// namespace rbc

@@ -21,7 +21,6 @@ struct WorldScene {
     luisa::vector<RC<world::MaterialResource>> _mats;
     // skinning
     Buffer<DualQuaternion> test_bones;
-    Buffer<uint> test_skinning_weight_and_index;
     RC<world::MeshResource> skinning_origin_mesh;
     RC<world::MeshResource> skinning_mesh;
     RC<world::Entity> skinning_entity; // make it independent, no save to file
