@@ -153,8 +153,6 @@ void MeshResource::create_empty(
 }
 void MeshResource::create_from_mesh(MeshResource *origin_mesh) {
     std::lock_guard lck{_async_mtx};
-    auto origin_device_mesh = origin_mesh->device_mesh();
-    LUISA_ASSERT(origin_device_mesh);
     _submesh_offsets.clear();
     vstd::push_back_all(_submesh_offsets, origin_mesh->submesh_offsets());
     _vertex_count = origin_mesh->vertex_count();
@@ -165,6 +163,19 @@ void MeshResource::create_from_mesh(MeshResource *origin_mesh) {
     _origin_mesh = origin_mesh->guid();
     auto tr_mesh = new DeviceTransformingMesh{};
     _device_res = tr_mesh;
+    auto origin_device_mesh = origin_mesh->device_mesh();
+    LUISA_ASSERT(origin_mesh->_status != EResourceLoadingStatus::Unloaded);
+    auto assets_mng = AssetsManager::instance();
+    if (assets_mng) [[likely]]
+        assets_mng->wake_load_thread();
+    auto coro = [](MeshResource *mesh_res) -> coroutine {
+        co_await mesh_res->await_loading();
+    }(origin_mesh);
+    while (!coro.done()) {
+        std::this_thread::yield();
+        coro.resume();
+        std::this_thread::yield();
+    }
     tr_mesh->create_from_origin(origin_device_mesh);
 }
 bool MeshResource::init_device_resource() {
@@ -194,17 +205,30 @@ bool MeshResource::init_device_resource() {
     _status = EResourceLoadingStatus::Loaded;
     return true;
 }
-bool MeshResource::_async_load_from_file() {
+
+bool MeshResource::unsafe_save_to_path() const {
+    if (is_transforming_mesh()) return false;
+    std::shared_lock lck{_async_mtx};
+    auto mesh = device_mesh();
+    if (!mesh || mesh->host_data().empty()) return false;
+    BinaryFileWriter writer{luisa::to_string(_path)};
+    if (!writer._file) [[unlikely]] {
+        return false;
+    }
+    writer.write(mesh->host_data());
+    return true;
+}
+rbc::coroutine MeshResource::_async_load() {
     _status = EResourceLoadingStatus::Loading;
     auto render_device = RenderDevice::instance_ptr();
-    if (!render_device) return false;
+    if (!render_device) co_return;
     auto file_size = desire_size_bytes();
     if (_path.empty()) {
-        return false;
+        co_return;
     }
     std::lock_guard lck{_async_mtx};
     if (_device_res) {
-        return false;
+        co_return;
     }
     if (!is_transforming_mesh()) {
         auto mesh = new DeviceMesh{};
@@ -222,30 +246,18 @@ bool MeshResource::_async_load_from_file() {
     } else {
         auto origin_mesh_obj = get_object_ref(_origin_mesh);
         if (!origin_mesh_obj || !origin_mesh_obj->is_type_of(TypeInfo::get<MeshResource>())) {
-            return false;
+            co_return;
         }
         auto origin_mesh = static_cast<MeshResource *>(origin_mesh_obj.get());
         auto mesh = new DeviceTransformingMesh();
         _device_res = mesh;
+        co_await rbc::awaitable([&] {
+            auto origin_device_mesh = origin_mesh->device_mesh();
+            return origin_device_mesh && (origin_device_mesh->loaded() || origin_device_mesh->mesh_data());
+        });
         mesh->async_load(RC<DeviceMesh>{origin_mesh->device_mesh()});
     }
-    return true;
-}
-bool MeshResource::unsafe_save_to_path() const {
-    if (is_transforming_mesh()) return false;
-    std::shared_lock lck{_async_mtx};
-    auto mesh = device_mesh();
-    if (!mesh || mesh->host_data().empty()) return false;
-    BinaryFileWriter writer{luisa::to_string(_path)};
-    if (!writer._file) [[unlikely]] {
-        return false;
-    }
-    writer.write(mesh->host_data());
 
-    return true;
-}
-rbc::coroutine MeshResource::_async_load() {
-    if (!_async_load_from_file()) co_return;
     while (!_device_res->load_finished()) {
         co_await std::suspend_always{};
     }
@@ -344,6 +356,13 @@ DeviceTransformingMesh *MeshResource::device_transforming_mesh() const {
         return static_cast<DeviceTransformingMesh *>(_device_res.get());
     }
     return nullptr;
+}
+MeshManager::MeshData *MeshResource::mesh_data() const {
+    if (!_device_res) return nullptr;
+    if (is_transforming_mesh()) {
+        return static_cast<DeviceTransformingMesh *>(_device_res.get())->mesh_data();
+    }
+    return static_cast<DeviceMesh *>(_device_res.get())->mesh_data();
 }
 DECLARE_WORLD_OBJECT_REGISTER(MeshResource)
 }// namespace rbc::world

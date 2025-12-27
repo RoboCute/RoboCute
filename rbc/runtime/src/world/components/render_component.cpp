@@ -220,8 +220,10 @@ coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const
     _material_codes.reserve(submesh_size);
     vstd::push_back_func(
         _material_codes,
-        std::min(submesh_size, _materials.size()),
+        submesh_size,
         [&](size_t i) {
+            if (i >= _materials.size())
+                return MaterialResource::default_mat_code();
             auto &&mat = _materials[i];
             if (!mat || mat->loading_status() == EResourceLoadingStatus::Unloaded) {
                 return MaterialResource::default_mat_code();
@@ -267,7 +269,7 @@ coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const
                         sm.buffer_allocator(),
                         sm.buffer_uploader(),
                         sm.dispose_queue(),
-                        mesh->device_mesh()->mesh_data(),
+                        mesh->mesh_data(),
                         _material_codes,
                         matrix);
                 }
@@ -281,7 +283,7 @@ coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const
                         sm.buffer_allocator(),
                         sm.buffer_uploader(),
                         sm.dispose_queue(),
-                        mesh->device_mesh()->mesh_data(),
+                        mesh->mesh_data(),
                         _material_codes,
                         matrix);
                     _type = ObjectRenderType::Mesh;
@@ -320,7 +322,7 @@ coroutine RenderComponent::_update_object(luisa::span<RC<MaterialResource> const
                 sm.buffer_allocator(),
                 sm.buffer_uploader(),
                 sm.dispose_queue(),
-                mesh->device_mesh()->mesh_data(),
+                mesh->mesh_data(),
                 _material_codes,
                 matrix);
             _type = ObjectRenderType::Mesh;

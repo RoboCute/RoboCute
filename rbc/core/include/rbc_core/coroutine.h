@@ -75,4 +75,21 @@ struct i_awaitable {
     }
     void await_resume() {}
 };
+template<typename Func>
+    requires std::is_invocable_r_v<bool, Func>
+struct _awaitable : i_awaitable<_awaitable<Func>> {
+    Func func;
+    template<typename... Args>
+        requires(luisa::is_constructible_v<Func, Args && ...>)
+    _awaitable(Args &&...args)
+        : func(std::forward<Args>(args)...) {}
+    bool await_ready() {
+        return func();
+    }
+};
+template<typename Func>
+    requires std::is_invocable_r_v<bool, Func>
+_awaitable<Func> awaitable(Func &&func) {
+    return _awaitable<Func>{std::forward<Func>(func)};
+}
 }// namespace rbc

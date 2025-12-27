@@ -1,5 +1,6 @@
 #pragma once
 #include <rbc_world/resource_base.h>
+#include <rbc_graphics/mesh_manager.h>
 #include <luisa/runtime/byte_buffer.h>
 namespace rbc {
 struct DeviceResource;
@@ -70,13 +71,14 @@ public:
         uint32_t uv_count,
         bool contained_normal,
         bool contained_tangent);
-    void create_from_mesh(MeshResource* origin_mesh);
+    void create_from_mesh(MeshResource *origin_mesh);
     [[nodiscard]] std::pair<CustomProperty &, luisa::span<std::byte>> add_property(luisa::string &&name, size_t size_bytes);
     [[nodiscard]] luisa::span<std::byte> get_property_host(luisa::string_view name);
     [[nodiscard]] luisa::compute::ByteBufferView get_property_buffer(luisa::string_view name);
     [[nodiscard]] luisa::compute::ByteBufferView get_or_create_property_buffer(luisa::string_view name);
     [[nodiscard]] DeviceMesh *device_mesh() const;
     [[nodiscard]] DeviceTransformingMesh *device_transforming_mesh() const;
+    [[nodiscard]] MeshManager::MeshData *mesh_data() const;
     bool init_device_resource();
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
@@ -84,7 +86,6 @@ public:
     rbc::coroutine _async_load() override;
 
 protected:
-    bool _async_load_from_file();
     bool unsafe_save_to_path() const override;
 };
 }// namespace rbc::world

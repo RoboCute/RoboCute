@@ -40,6 +40,8 @@ void DeviceTransformingMesh::async_load(RC<DeviceMesh> origin_mesh, bool copy_fr
     });
 }
 void DeviceTransformingMesh::create_from_origin(DeviceMesh *device_mesh, bool init_last_vertex) {
+    if (device_mesh)
+        _origin_mesh = device_mesh;
     auto &device = RenderDevice::instance().lc_device();
     auto &sm = SceneManager::instance();
     _render_mesh_data = sm.mesh_manager().make_transforming_instance(

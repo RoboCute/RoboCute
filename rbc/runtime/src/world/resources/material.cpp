@@ -23,7 +23,6 @@ MatCode MaterialResource::default_mat_code() {
     }
     if (_mat_inst->_default_mat_code.value == ~0u) {
         material::OpenPBR mat{};
-        mat.base.albedo = {1, 0, 1};
         auto &sm = SceneManager::instance();
         _mat_inst->_default_mat_code = sm.mat_manager().emplace_mat_instance(
             mat,
