@@ -47,6 +47,7 @@ private:
     // extra_data:
     // array<struct SkinAttrib { int16_t joint_id; float weight; }, vertex_size>
     // array<float * _vertex_color_channels, vertex_size>
+    void _copy_from_mesh(MeshResource *origin_mesh);
 public:
     bool decode(luisa::filesystem::path const &path);
     [[nodiscard]] luisa::span<uint const> submesh_offsets() const { return _submesh_offsets; }

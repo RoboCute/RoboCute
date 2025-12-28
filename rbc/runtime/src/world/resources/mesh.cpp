@@ -22,15 +22,6 @@ MeshResource::~MeshResource() {
 void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     std::shared_lock lck{_async_mtx};
     BaseType::serialize_meta(ser);
-    ser.ar.value(_contained_normal, "contained_normal");
-    ser.ar.value(_contained_tangent, "contained_tangent");
-    ser.ar.value(is_transforming_mesh(), "is_transforming_mesh");
-    ser.ar.value(_vertex_count, "vertex_count");
-    ser.ar.value(_triangle_count, "triangle_count");
-    ser.ar.value(_uv_count, "uv_count");
-    // if (_origin_mesh) {
-    //     ser.ar.value(_origin_mesh->guid(), "origin_mesh");
-    // }
     ser.ar.start_array();
     for (auto &i : _custom_properties) {
         ser.ar.value(i.first);
@@ -41,6 +32,18 @@ void MeshResource::serialize_meta(ObjSerialize const &ser) const {
         ser.ar.end_object();
     }
     ser.ar.end_array("properties");
+    // skinning mesh
+    if (_origin_mesh) {
+        ser.ar.value(_origin_mesh->guid(), "origin_mesh");
+        return;
+    }
+
+    ser.ar.value(_contained_normal, "contained_normal");
+    ser.ar.value(_contained_tangent, "contained_tangent");
+    ser.ar.value(is_transforming_mesh(), "is_transforming_mesh");
+    ser.ar.value(_vertex_count, "vertex_count");
+    ser.ar.value(_triangle_count, "triangle_count");
+    ser.ar.value(_uv_count, "uv_count");
     ser.ar.start_array();
     for (auto &i : _submesh_offsets) {
         ser.ar.value(i);
@@ -56,36 +59,7 @@ bool MeshResource::empty() const {
 void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     std::shared_lock lck{_async_mtx};
     BaseType::deserialize_meta(ser);
-#define RBC_MESH_LOAD(m)           \
-    {                              \
-        decltype(_##m) m;          \
-        if (ser.ar.value(m, #m)) { \
-            _##m = m;              \
-        }                          \
-    }
-    RBC_MESH_LOAD(file_offset)
-    RBC_MESH_LOAD(contained_normal)
-    RBC_MESH_LOAD(contained_tangent)
-    RBC_MESH_LOAD(vertex_count)
-    RBC_MESH_LOAD(triangle_count)
-    RBC_MESH_LOAD(uv_count)
-    // vstd::Guid origin_mesh_guid;
-    // if (ser.ar.value(origin_mesh_guid, "origin_mesh")) {
-    //     _origin_mesh = load_resource(origin_mesh_guid, false);
-    // }
-#undef RBC_MESH_LOAD
     uint64_t size;
-    if (ser.ar.start_array(size, "submesh_offsets")) {
-        _submesh_offsets.reserve(size);
-        for (auto i : vstd::range(size)) {
-            uint v;
-            if (ser.ar.value(v)) {
-                _submesh_offsets.push_back(v);
-            }
-        }
-        ser.ar.end_scope();
-    }
-
     if (ser.ar.start_array(size, "properties")) {
         auto dsp = vstd::scope_exit([&] {
             ser.ar.end_scope();
@@ -108,6 +82,39 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
             v.offset_bytes = offset_bytes;
             v.size_bytes = size_bytes;
         }
+    }
+
+    vstd::Guid origin_mesh_guid;
+    // this is a skinning mesh
+    if (ser.ar.value(origin_mesh_guid, "origin_mesh")) {
+        _origin_mesh = load_resource(origin_mesh_guid, false);
+        _copy_from_mesh(_origin_mesh.get());
+        return;
+    }
+#define RBC_MESH_LOAD(m)           \
+    {                              \
+        decltype(_##m) m;          \
+        if (ser.ar.value(m, #m)) { \
+            _##m = m;              \
+        }                          \
+    }
+    RBC_MESH_LOAD(file_offset)
+    RBC_MESH_LOAD(contained_normal)
+    RBC_MESH_LOAD(contained_tangent)
+    RBC_MESH_LOAD(vertex_count)
+    RBC_MESH_LOAD(triangle_count)
+    RBC_MESH_LOAD(uv_count)
+
+#undef RBC_MESH_LOAD
+    if (ser.ar.start_array(size, "submesh_offsets")) {
+        _submesh_offsets.reserve(size);
+        for (auto i : vstd::range(size)) {
+            uint v;
+            if (ser.ar.value(v)) {
+                _submesh_offsets.push_back(v);
+            }
+        }
+        ser.ar.end_scope();
     }
 }
 luisa::vector<std::byte> *MeshResource::host_data() {
@@ -157,8 +164,7 @@ void MeshResource::create_empty(
     _origin_mesh.reset();
     _device_res = new DeviceMesh{};
 }
-void MeshResource::create_from_mesh(MeshResource *origin_mesh) {
-    std::lock_guard lck{_async_mtx};
+void MeshResource::_copy_from_mesh(MeshResource *origin_mesh) {
     _submesh_offsets.clear();
     vstd::push_back_all(_submesh_offsets, origin_mesh->submesh_offsets());
     _vertex_count = origin_mesh->vertex_count();
@@ -167,6 +173,10 @@ void MeshResource::create_from_mesh(MeshResource *origin_mesh) {
     _contained_normal = origin_mesh->contained_normal();
     _contained_tangent = origin_mesh->contained_tangent();
     _origin_mesh = origin_mesh;
+}
+void MeshResource::create_from_mesh(MeshResource *origin_mesh) {
+    std::lock_guard lck{_async_mtx};
+    _copy_from_mesh(origin_mesh);
     auto tr_mesh = new DeviceTransformingMesh{};
     _device_res = tr_mesh;
 }
