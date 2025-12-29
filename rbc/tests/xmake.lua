@@ -1,5 +1,5 @@
 includes('test_py_codegen')
-includes('test_serde', 'test_graphics', 'test_ipc')
+includes('test_serde', 'test_graphics', 'test_ipc', 'test_node')
 includes("test_resource")
 includes("test_coro")
 includes("sample_anim")

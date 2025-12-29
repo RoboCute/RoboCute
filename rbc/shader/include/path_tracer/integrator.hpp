@@ -336,52 +336,6 @@ static IntegratorResult sample_material(
             }
             return float4{eval_result.val, pdf};
         };
-        if (continue_loop) {
-            bsdf.init(wi, basic_param, extra_param, closure_data);
-            if (need_albedo) {
-                bool oldFlag = closure_data.spectrumed;
-                closure_data.spectrumed = false;
-                r.albedo = bsdf.energy(wi, closure_data);
-                closure_data.spectrumed = oldFlag;
-            }
-
-            closure_data.rand = float3(sampler.next2f(g_buffer_heap), lobe_rand);
-            auto sample_result = bsdf.sample(wi, closure_data, volume_stack);
-            spectrum_arg.selected_wavelength = closure_data.selected_wavelength;
-            r.sample_flags = sample_result.throughput.flags;
-            if (!sample_result ||
-                any(sample_result.throughput.val < 0.f) ||
-                !any(is_finite(sample_result.throughput.val)) ||
-                !is_finite(sample_result.pdf)) {
-                continue_loop = false;
-                beta = 0.0f;
-                return r;
-            }
-            new_dir = basic_param.geometry.onb.to_world(sample_result.wo);
-            if (
-                (dot(vertices_normal, input_dir) *
-                 dot(vertices_normal, new_dir) *
-                 (is_reflective(sample_result.throughput.flags) * 2 - 1)) > 0) {
-                new_dir -= 2.0f * dot(vertices_normal, new_dir) * vertices_normal;
-            }
-
-            pdf_bsdf = max(1e-4f, sample_result.pdf);
-            beta *= sample_result.throughput.val / pdf_bsdf;
-
-            if (mtl::is_delta(sample_result.throughput.flags)) pdf_bsdf = -1.0f;
-
-            if (mtl::is_specular(sample_result.throughput.flags)) {
-                di_use_specular = true;
-            }
-            if (mtl::is_transmissive(sample_result.throughput.flags)) {
-                length_sum = -1.0f;
-                if (basic_param.geometry.thin_walled)
-                    r.new_ray_offset = -basic_param.geometry.onb.normal * basic_param.geometry.thickness;
-            }
-            if (mtl::is_non_delta(sample_result.throughput.flags) && sample_result.throughput.flags != mtl::BSDFFlags::SpecularTransmission) {
-                detail = max(detail, mtl::is_specular(sample_result.throughput.flags) ? mtl::ShadingDetail::IndirectSpecular : mtl::ShadingDetail::IndirectDiffuse);
-            }
-        }
 
         if (is_indirect_ray && hit_triangle) {// indirect ray
             //////////////// Sample light and balance
@@ -452,10 +406,54 @@ static IntegratorResult sample_material(
             // radiance += beta * emission;
             //////////////// Done sample light and balance
         }
-        if (!continue_loop) {
+        if (continue_loop) {
+            bsdf.init(wi, basic_param, extra_param, closure_data);
+            if (need_albedo) {
+                bool oldFlag = closure_data.spectrumed;
+                closure_data.spectrumed = false;
+                r.albedo = bsdf.energy(wi, closure_data);
+                closure_data.spectrumed = oldFlag;
+            }
+
+            closure_data.rand = float3(sampler.next2f(g_buffer_heap), lobe_rand);
+            auto sample_result = bsdf.sample(wi, closure_data, volume_stack);
+            spectrum_arg.selected_wavelength = closure_data.selected_wavelength;
+            r.sample_flags = sample_result.throughput.flags;
+            if (!sample_result ||
+                any(sample_result.throughput.val < 0.f) ||
+                !any(is_finite(sample_result.throughput.val)) ||
+                !is_finite(sample_result.pdf)) {
+                continue_loop = false;
+                beta = 0.0f;
+                return r;
+            }
+            new_dir = basic_param.geometry.onb.to_world(sample_result.wo);
+            if (
+                (dot(vertices_normal, input_dir) *
+                 dot(vertices_normal, new_dir) *
+                 (is_reflective(sample_result.throughput.flags) * 2 - 1)) > 0) {
+                new_dir -= 2.0f * dot(vertices_normal, new_dir) * vertices_normal;
+            }
+
+            pdf_bsdf = max(1e-4f, sample_result.pdf);
+            beta *= sample_result.throughput.val / pdf_bsdf;
+
+            if (mtl::is_delta(sample_result.throughput.flags)) pdf_bsdf = -1.0f;
+
+            if (mtl::is_specular(sample_result.throughput.flags)) {
+                di_use_specular = true;
+            }
+            if (mtl::is_transmissive(sample_result.throughput.flags)) {
+                length_sum = -1.0f;
+                if (basic_param.geometry.thin_walled)
+                    r.new_ray_offset = -basic_param.geometry.onb.normal * basic_param.geometry.thickness;
+            }
+            if (mtl::is_non_delta(sample_result.throughput.flags) && sample_result.throughput.flags != mtl::BSDFFlags::SpecularTransmission) {
+                detail = max(detail, mtl::is_specular(sample_result.throughput.flags) ? mtl::ShadingDetail::IndirectSpecular : mtl::ShadingDetail::IndirectDiffuse);
+            }
+        } else {
             return r;
         }
-
         lighting::LightISResult is_result;
         ///////////// IS
         if (importance_sampling && pdf_bsdf > 1e-4f) {

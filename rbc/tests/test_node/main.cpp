@@ -8,11 +8,24 @@ int main(int argc, char *argv[]) {
     using namespace rbc;
     RenderDevice render_device;
     render_device.init(argv[0], argv[1]);
+    RenderDevice::set_rendering_thread(true);
+    render_device.set_main_stream(&render_device.lc_async_stream());
+
     DeviceManager device_mng{Context{render_device.lc_ctx()}};
     RC<BufferDescriptor> buffer_desc{new BufferDescriptor{
         Type::of<int>(),
         1024}};
-    ComputeDeviceDesc src_device_desc;
-    ComputeDeviceDesc dst_device_desc;
-    auto render_to_compute = device_mng.create_buffer(std::move(buffer_desc), src_device_desc, dst_device_desc);
+    ComputeDeviceDesc compute_device_desc{
+        .type = ComputeDeviceType::COMPUTE_DEVICE
+    };
+    ComputeDeviceDesc render_device_desc{
+        .type = ComputeDeviceType::RENDER_DEVICE
+    };
+    device_mng.add_device(compute_device_desc);
+    auto render_to_compute = device_mng.create_buffer(buffer_desc, compute_device_desc, render_device_desc);
+    auto compute_to_render = device_mng.create_buffer(buffer_desc, render_device_desc, compute_device_desc);
+
+    // test sync
+    device_mng.make_synchronize(compute_device_desc, render_device_desc);
+    render_device.lc_main_stream().synchronize();
 }

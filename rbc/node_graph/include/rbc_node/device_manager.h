@@ -23,6 +23,7 @@ struct ComputeDevice {
         DxCudaTimelineEvent,
         TimelineEvent>
         _interop_evt;
+    RBC_NODE_API  ~ComputeDevice();
 };
 struct RBC_NODE_API DeviceManager {
 private:
@@ -41,8 +42,8 @@ public:
     ~DeviceManager();
     void add_device(ComputeDeviceDesc const &device_desc);
     void make_synchronize(
-        ComputeDeviceDesc const &src_device,
-        ComputeDeviceDesc const &dst_device);
-    NodeBuffer create_buffer(RC<BufferDescriptor> buffer_desc, ComputeDeviceDesc const &src_device_desc, ComputeDeviceDesc const &dst_device_desc);
+        ComputeDeviceDesc src_device,
+        ComputeDeviceDesc dst_device);
+    NodeBuffer create_buffer(RC<BufferDescriptor> buffer_desc, ComputeDeviceDesc src_device_desc, ComputeDeviceDesc dst_device_desc);
 };
 }// namespace rbc

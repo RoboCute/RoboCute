@@ -25,7 +25,9 @@ struct RBC_RUNTIME_API MeshManager {
 public:
     using MeshMeta = geometry::MeshMeta;
     struct MeshPack {
+        BufferView<uint> data_view;
         Buffer<uint> data;
+        Buffer<uint> mutable_data;
         Buffer<uint16_t> submesh_indices;
         Mesh mesh;
     };
@@ -41,6 +43,7 @@ public:
         RC<BBoxRequest> bbox_requests;
         MeshPack pack;
         uint triangle_size;
+        uint mutable_stride;
         MeshMeta meta;
         bool is_vertex_instance;
         MeshData(MeshData const&) = delete;

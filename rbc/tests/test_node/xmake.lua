@@ -1,4 +1,4 @@
-target('test_serde')
+target('test_node')
 add_rules('lc_basic_settings', {
     project_kind = 'binary'
 })

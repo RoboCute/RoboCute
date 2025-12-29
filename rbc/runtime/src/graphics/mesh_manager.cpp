@@ -29,12 +29,13 @@ void MeshManager::emplace_unload_mesh_cmd(
     _unload_cmds.emplace_back(mesh_data);
 }
 void MeshManager::MeshData::build_mesh(Device &device, CommandList &cmdlist, AccelOption const &option) {
-    auto &&data_buffer = pack.data;
+    auto &&vertex_buffer = pack.mutable_data ? pack.mutable_data : pack.data;
+    BufferView<uint> index_buffer = pack.data ? pack.data : pack.data_view;
     if (!pack.mesh) {
         auto vertex_count = meta.vertex_count;
         uint tri_offset = meta.tri_byte_offset / sizeof(uint);
-        BufferView<float3> vb = data_buffer.view(0, vertex_count * sizeof(float3) / sizeof(uint)).as<float3>();
-        BufferView<Triangle> ib = data_buffer.view(tri_offset, data_buffer.size() - tri_offset).as<Triangle>();
+        BufferView<float3> vb = vertex_buffer.view(0, vertex_count * sizeof(float3) / sizeof(uint)).as<float3>();
+        BufferView<Triangle> ib = index_buffer.subview(tri_offset, index_buffer.size() - tri_offset).as<Triangle>();
         pack.mesh = device.create_mesh(vb, ib, option);
     }
     cmdlist << pack.mesh.build();
@@ -70,10 +71,14 @@ void MeshManager::on_frame_end(
     if (!unload_cmds.empty()) {
         for (auto &mesh_data : unload_cmds) {
             mesh_data->submesh_offset.clear();
-            if (!mesh_data->is_vertex_instance && mesh_data->meta.submesh_heap_idx != std::numeric_limits<uint>::max()) {
-                bdls_alloc.deallocate_buffer(mesh_data->meta.submesh_heap_idx);
+            if (!mesh_data->is_vertex_instance) {
+                if (mesh_data->meta.submesh_heap_idx != std::numeric_limits<uint>::max())
+                    bdls_alloc.deallocate_buffer(mesh_data->meta.submesh_heap_idx);
+                bdls_alloc.deallocate_buffer(mesh_data->meta.heap_idx);
             }
-            bdls_alloc.deallocate_buffer(mesh_data->meta.heap_idx);
+            if (mesh_data->meta.mutable_heap_idx != std::numeric_limits<uint>::max()) {
+                bdls_alloc.deallocate_buffer(mesh_data->meta.mutable_heap_idx);
+            }
             if (mesh_data->bbox_requests) {
                 mesh_data->bbox_requests->mesh_data = nullptr;
             }
@@ -108,6 +113,8 @@ auto MeshManager::load_mesh(
         stride += sizeof(float4);
         mask |= MeshMeta::tangent_mask;
     }
+    uint mutable_stride = 0;
+    mutable_stride = stride;
     LUISA_ASSERT(uv_count < 29, "UV reach maximum count.");
     stride += uv_count * sizeof(float2);
     for (auto i : vstd::range(uv_count)) {
@@ -144,9 +151,11 @@ auto MeshManager::load_mesh(
             _bounding_mtx.unlock();
         });
     }
+    m->mutable_stride = mutable_stride;
     m->pack.data = std::move(data_buffer);
     m->triangle_size = ib.size();
     m->meta.heap_idx = bdls_alloc.allocate_buffer(m->pack.data);
+    m->meta.mutable_heap_idx = std::numeric_limits<uint>::max();
     if (!submesh_offset.empty()) {
         LUISA_ASSERT(submesh_offset.size() > 1, "Should have more than one submesh-offset.");
         LUISA_ASSERT(submesh_offset[0] == 0, "First element must be 0.");
@@ -192,9 +201,12 @@ auto MeshManager::make_transforming_instance(
     BindlessAllocator &bdls_alloc,
     MeshData *mesh_data) -> MeshData * {
     auto result = reinterpret_cast<MeshData *>(pool.create_lock(_pool_mtx));
-    result->pack.data = device.create_buffer<uint>(mesh_data->pack.data.size());
+    result->mutable_stride = mesh_data->mutable_stride;
     result->meta = mesh_data->meta;
-    result->meta.heap_idx = bdls_alloc.allocate_buffer(result->pack.data);
+    auto mutable_buffer_size_bytes = result->mutable_stride * result->meta.vertex_count;
+    result->pack.mutable_data = device.create_buffer<uint>(mutable_buffer_size_bytes / sizeof(uint));
+    result->meta.mutable_heap_idx = bdls_alloc.allocate_buffer(result->pack.mutable_data);
+    result->pack.data_view = mesh_data->pack.data;
     result->triangle_size = mesh_data->triangle_size;
     result->is_vertex_instance = true;
     return result;

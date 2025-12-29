@@ -15,6 +15,6 @@ BufferDescriptor::BufferDescriptor(
       _element_size(element_size) {}
 BufferDescriptor::~BufferDescriptor() {}
 size_t BufferDescriptor::size_bytes() const {
-    return _element_size * _element_type->size();
+    return _element_size * (_element_type ? _element_type->size() : 1);
 }
 }// namespace rbc
