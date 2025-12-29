@@ -36,41 +36,25 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
         return false;
     }
 
-    // Setup device mesh - access protected members from member function
-    auto &device_mesh = device_mesh_ref(resource);
-    if (!device_mesh)
-        device_mesh = RC<DeviceMesh>(new DeviceMesh());
+    luisa::vector<uint> submesh_offsets;
+    luisa::vector<std::byte> resource_bytes;
+    mesh_builder.write_to(resource_bytes, submesh_offsets);
+    resource->create_empty({}, std::move(submesh_offsets), 0, mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
+    *(resource->host_data()) = std::move(resource_bytes);
 
-    vertex_count_ref(resource) = mesh_builder.vertex_count();
-    triangle_count_ref(resource) = 0;
-    for (auto &i : mesh_builder.triangle_indices) {
-        triangle_count_ref(resource) += i.size() / 3;
-    }
-    uv_count_ref(resource) = mesh_builder.uv_count();
-    set_contained_normal(resource, mesh_builder.contained_normal());
-    set_contained_tangent(resource, mesh_builder.contained_tangent());
-    mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
-
-    // Write skinning weights
-    if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
-        // skin_attrib_count_ref(resource) = import_data.max_weight_count;
-        size_t total_weight_size = vertex_count_ref(resource) * import_data.max_weight_count;
-
+    // skinning
+    if (!import_data.all_skin_weights.empty()) {
+        size_t weight_size = import_data.max_weight_count;
         auto property = resource->add_property(
             "skin_attrib",
-            total_weight_size * sizeof(SkinAttrib));
+            weight_size * resource->vertex_count() * sizeof(SkinAttrib));
 
         auto skin_weights = luisa::span{
             (SkinAttrib *)property.second.data(),
             property.second.size()};
-
-        std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
-
-        // Copy skin weights (already in the correct format)
-        size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
-        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinAttrib));
+        // 从导出开始已经同构，直接复制即可
+        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), skin_weights.size_bytes());
     }
-
     return true;
 }
 
@@ -79,7 +63,6 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         LUISA_WARNING("Can not create on exists mesh.");
         return false;
     }
-
     tinygltf::Model model;
     if (!load_gltf_model(model, path, true)) {
         return false;
@@ -92,33 +75,24 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         return false;
     }
 
-    // Setup device mesh - access protected members from member function
-    auto &device_mesh = device_mesh_ref(resource);
-    if (!device_mesh)
-        device_mesh = RC<DeviceMesh>(new DeviceMesh());
+    luisa::vector<uint> submesh_offsets;
+    luisa::vector<std::byte> resource_bytes;
+    mesh_builder.write_to(resource_bytes, submesh_offsets);
+    resource->create_empty({}, std::move(submesh_offsets), 0, mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
+    *(resource->host_data()) = std::move(resource_bytes);
 
-    vertex_count_ref(resource) = mesh_builder.vertex_count();
-    triangle_count_ref(resource) = 0;
-    for (auto &i : mesh_builder.triangle_indices) {
-        triangle_count_ref(resource) += i.size() / 3;
-    }
-    uv_count_ref(resource) = mesh_builder.uv_count();
-    set_contained_normal(resource, mesh_builder.contained_normal());
-    set_contained_tangent(resource, mesh_builder.contained_tangent());
+    // skinning
+    if (!import_data.all_skin_weights.empty()) {
+        size_t weight_size = import_data.max_weight_count;
+        auto property = resource->add_property(
+            "skin_attrib",
+            weight_size * resource->vertex_count() * sizeof(SkinAttrib));
 
-    mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
-
-    // Write skinning weights
-
-    if (import_data.max_weight_count > 0 && !import_data.all_skin_weights.empty()) {
-        size_t total_weight_size = vertex_count_ref(resource) * import_data.max_weight_count;
-        auto property = resource->add_property("skin_attrib", total_weight_size * sizeof(SkinAttrib));
-        auto skin_weights = property.second;
-        std::memset(skin_weights.data(), 0, skin_weights.size_bytes());
-
-        // Copy skin weights (already in the correct format)
-        size_t copy_size = std::min(import_data.all_skin_weights.size(), total_weight_size);
-        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), copy_size * sizeof(SkinAttrib));
+        auto skin_weights = luisa::span{
+            (SkinAttrib *)property.second.data(),
+            property.second.size()};
+        // 从导出开始已经同构，直接复制即可
+        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), skin_weights.size_bytes());
     }
     return true;
 }

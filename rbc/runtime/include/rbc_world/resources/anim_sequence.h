@@ -28,7 +28,6 @@ public:
 
 protected:
     bool unsafe_save_to_path() const override;
-    void _unload() override;
 
 private:
     friend class IAnimSequenceImporter;

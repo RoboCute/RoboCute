@@ -10,20 +10,25 @@
 #include <luisa/vstl/functional.h>
 #include <luisa/runtime/swapchain.h>
 #include <rbc_render/render_plugin.h>
+#include <rbc_graphics/skinning.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 namespace rbc {
+namespace world {
+struct MeshResource;
+}// namespace world
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
 #include <material/mats.inl>
-
+struct DeviceTransformingMesh;
 struct EventFence {
     TimelineEvent event;
     uint64_t fence_index{};
 };
 struct RBC_APP_API GraphicsUtils {
 private:
+    Skinning _skinning;
     RenderDevice _render_device;
     luisa::string _backend_name;
     EventFence _compute_event;
@@ -37,14 +42,15 @@ private:
     // render
     luisa::shared_ptr<DynamicModule> _render_module;
     RenderPlugin *_render_plugin{};
-    StateMap* _render_settings;
+    StateMap *_render_settings;
     RenderPlugin::PipeCtxStub *_display_pipe_ctx{};
     vstd::optional<rbc::Lights> _lights;
     bool _require_reset : 1 {false};
     bool _denoiser_inited : 1 {false};
+    bool _io_cmdlist_require_sync : 1 {false};
 
     IOCommandList _frame_mem_io_list;
-    luisa::unordered_set<RC<DeviceMesh>, luisa::hash<RC<DeviceMesh>>, std::equal_to<RC<DeviceMesh>>> _build_meshes;
+    luisa::unordered_set<RC<DeviceResource>, luisa::hash<RC<DeviceResource>>, std::equal_to<RC<DeviceResource>>> _build_meshes;
 public:
     auto render_plugin() const { return _render_plugin; }
     auto &present_stream() const { return _present_stream; }
@@ -73,6 +79,7 @@ public:
         OffineCapturing,
         PresentOfflineResult
     };
+    void build_transforming_mesh(DeviceTransformingMesh *mesh);
     void tick(
         float delta_time,
         uint64_t frame_index,
@@ -89,5 +96,8 @@ public:
         DeviceMesh *ptr,
         uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets);
     void update_mesh_data(DeviceMesh *mesh, bool only_vertex);
+    void update_skinning(
+        world::MeshResource *skinning_mesh,
+        BufferView<DualQuaternion> bones);
 };
 }// namespace rbc

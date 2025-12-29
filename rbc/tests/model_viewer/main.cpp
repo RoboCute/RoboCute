@@ -27,6 +27,7 @@
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/texture_loader.h>
 #include <rbc_world/util/gltf_scene_loader.h>
+#include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/resource_base.h>
 #include <rbc_world/base_object.h>
 #include <luisa/core/logging.h>
@@ -87,8 +88,12 @@ int main(int argc, char *argv[]) {
             // Try test_scene directory
             sky_path = runtime_dir / "test_scene" / "sky.exr";
         }
+        world::ExrTextureImporter importer;
         if (luisa::filesystem::exists(sky_path)) {
-            skybox = tex_loader.decode_texture(sky_path, 1, false);
+            skybox = world::create_object<world::TextureResource>();
+            importer.import(skybox, &tex_loader, sky_path, 1, false);
+
+            // skybox = tex_loader.decode_texture(sky_path, 1, false);
             if (skybox) {
                 tex_loader.finish_task();
                 skybox->init_device_resource();
@@ -127,7 +132,7 @@ int main(int argc, char *argv[]) {
 
         // Initialize mesh device resource
         loaded_mesh->init_device_resource();
-        utils.update_mesh_data(loaded_mesh->device_mesh().get(), false);
+        utils.update_mesh_data(loaded_mesh->device_mesh(), false);
 
         // Initialize texture device resources
         for (auto &tex : scene_data.textures) {

@@ -24,12 +24,6 @@ bool SkinResource::unsafe_save_to_path() const {
     return {};//TODO
 }
 
-void SkinResource::_unload() {
-    // release ref
-    ref_mesh.reset();
-    ref_skel.reset();
-}
-
 void SkinResource::log_brief() {
     // SKR_LOG_FMT_INFO(u8"Skin has {} inverse bind poses and {} joint_remaps", inverse_bind_poses.size(), joint_remaps.size());
     LUISA_INFO("Skin has {} inverse bind poses and {} joint_remaps", inverse_bind_poses.size(), joint_remaps.size());

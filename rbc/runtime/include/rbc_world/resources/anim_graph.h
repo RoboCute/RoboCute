@@ -17,7 +17,6 @@ struct RBC_RUNTIME_API AnimGraphResource : world::ResourceBaseImpl<AnimGraphReso
 
 protected:
     bool unsafe_save_to_path() const override;
-    void _unload() override;
 };
 
 }// namespace rbc

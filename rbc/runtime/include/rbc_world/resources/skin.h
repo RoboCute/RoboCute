@@ -28,8 +28,6 @@ struct RBC_RUNTIME_API SkinResource : world::ResourceBaseImpl<SkinResource> {
 
 protected:
     bool unsafe_save_to_path() const override;
-    void _unload() override;
-
 
 
 private:

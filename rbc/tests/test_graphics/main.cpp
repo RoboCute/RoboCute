@@ -245,9 +245,11 @@ int main(int argc, char *argv[]) {
                         dragged_object_ids = std::move(dragging_result);
                 }
             }
+            
 
             {
                 RBCZoneScopedN("Render Tick");
+                world_scene->tick_skinning(&utils);
                 auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
                 constexpr uint sample = 256;
                 // if (frame_index > sample) {

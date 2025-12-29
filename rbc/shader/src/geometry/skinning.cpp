@@ -7,15 +7,13 @@ using namespace luisa::shader;
 [[kernel_2d(128, 1)]] int kernel(
 	ByteBuffer<>& src_buffer,
 	ByteBuffer<>& dst_buffer,
-	Buffer<float3>& last_pos_buffer,
 	Buffer<geometry::DualQuaternion>& dq_bone_buffer,// bone matrix in raw (4 colume, 3 raw)
 	Buffer<uint>& bone_indices,
 	Buffer<float>& bone_weights,
 	uint bones_count_per_vert,
 	uint vertex_count,
 	bool contained_normal,
-	bool contained_tangent,
-	bool reset_frame) {
+	bool contained_tangent) {
 	auto vert_id = dispatch_id().x;
 	auto pos_normal = geometry::read_pos_normal(src_buffer, vert_id, vertex_count, contained_normal, contained_tangent);
 	auto buffer_idx = vert_id * bones_count_per_vert;
@@ -42,14 +40,6 @@ using namespace luisa::shader;
 	pos_normal.normal = geometry::QuaternionApplyRotation(float4(pos_normal.normal, 0.f), blend_dq.rotation_quaternion).xyz;
 	pos_normal.tangent = geometry::QuaternionApplyRotation(pos_normal.tangent, blend_dq.rotation_quaternion);
 	pos_normal.pos += geometry::QuaternionMultiply(blend_dq.translation_quaternion, geometry::QuaternionInvert(blend_dq.rotation_quaternion)).xyz;
-
-	float3 last_pos;
-	if (reset_frame) {
-		last_pos = pos_normal.pos;
-	} else {
-		last_pos = dst_buffer.byte_read<float3>(16 * vert_id);
-	}
-	last_pos_buffer.write(vert_id, last_pos);
 	geometry::write_pos_normal(
 		dst_buffer,
 		vert_id,

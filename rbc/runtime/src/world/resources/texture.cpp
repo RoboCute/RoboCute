@@ -50,7 +50,7 @@ void TextureResource::serialize_meta(ObjSerialize const &obj) const {
     obj.ar.value(_pixel_storage, "pixel_storage");
     obj.ar.value(_size, "size");
     obj.ar.value(_mip_level, "mip_level");
-    obj.ar.value(_is_vt, "is_vt");
+    obj.ar.value(is_vt(), "is_vt");
 }
 void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
@@ -113,9 +113,6 @@ bool TextureResource::is_vt() const {
 bool TextureResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_tex || load_executed()) {
-        return false;
-    }
-    if (_is_vt != is_vt()) {
         return false;
     }
     auto file_size = desire_size_bytes();
@@ -192,10 +189,6 @@ bool TextureResource::_async_load_from_file() {
     return true;
 }
 
-void TextureResource::_unload() {
-    std::lock_guard lck{_async_mtx};
-    _tex.reset();
-}
 uint32_t TextureResource::heap_index() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex) return ~0u;
@@ -222,6 +215,7 @@ bool TextureResource::load_executed() const {
         return static_cast<DeviceImage *>(_tex.get())->load_executed() || static_cast<DeviceImage *>(_tex.get())->type() != DeviceImage::ImageType::None;
     }
 }
+
 bool TextureResource::_load_finished() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex)
@@ -234,6 +228,64 @@ bool TextureResource::_load_finished() const {
         return static_cast<DeviceImage *>(_tex.get())->load_finished();
     }
 }
+
+void TextureResource::_pack_to_tile_level(uint level, luisa::span<std::byte const> src, luisa::span<std::byte> dst) {
+    auto size = _size >> level;
+    uint64_t pixel_size_bytes;
+    uint64_t raw_size_bytes;
+    uint chunk_resolution = TexStreamManager::chunk_resolution;
+    if (is_block_compressed((PixelStorage)_pixel_storage)) {
+        size /= 4u;
+        pixel_size_bytes = pixel_storage_size((PixelStorage)_pixel_storage, uint3(4u, 4u, 1u));
+        chunk_resolution /= 4;
+    } else {
+        pixel_size_bytes = pixel_storage_size((PixelStorage)_pixel_storage, uint3(1u));
+    }
+    raw_size_bytes = pixel_size_bytes * chunk_resolution;
+    auto block_size_bytes = raw_size_bytes * chunk_resolution;
+    auto block_count = (size + chunk_resolution - 1u) / chunk_resolution;
+    auto get_src_offset = [&](uint2 coord) {
+        return (coord.y * size.x + coord.x) * pixel_size_bytes;
+    };
+    auto get_dst_offset = [&](uint2 coord) {
+        auto block_index = coord / chunk_resolution;
+        auto block_offset = block_index.x + block_index.y * block_count.x;
+        auto local_coord = (coord & (chunk_resolution - 1));
+        return block_offset * block_size_bytes + pixel_size_bytes * (local_coord.x + local_coord.y * chunk_resolution);
+    };
+
+    for (auto block_x : vstd::range(block_count.x))
+        for (auto block_y : vstd::range(block_count.y)) {
+            for (auto raw : vstd::range(chunk_resolution)) {
+                uint2 coord = uint2(block_x, block_y) * chunk_resolution + uint2(0, raw);
+                const auto src_offset = get_src_offset(coord);
+                const auto dst_offset = get_dst_offset(coord);
+                std::memcpy(dst.data() + dst_offset, src.data() + src_offset, raw_size_bytes);
+            }
+        }
+}
+bool TextureResource::pack_to_tile() {
+    if (_is_vt) return {};
+    auto host_data_ = host_data();
+    if (!host_data_ || host_data_->empty()) return {};
+    luisa::vector<std::byte> data;
+    data.push_back_uninitialized(host_data_->size());
+    auto size = _size;
+    uint64_t offset = 0;
+    for (auto i : vstd::range(_mip_level)) {
+        auto level_size = pixel_storage_size((PixelStorage)_pixel_storage, make_uint3(size, 1u));
+        _pack_to_tile_level(
+            i,
+            luisa::span{*host_data_}.subspan(offset, level_size),
+            luisa::span{data}.subspan(offset, level_size));
+        size >>= 1u;
+        offset += level_size;
+    }
+    *host_data_ = std::move(data);
+    _is_vt = true;
+    return true;
+}
+
 DECLARE_WORLD_OBJECT_REGISTER(TextureResource)
 
 }// namespace rbc::world

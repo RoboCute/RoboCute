@@ -109,7 +109,6 @@ public:
     // for transforming, share data_buffer
     MeshData* make_transforming_instance(
         BindlessAllocator& bdls_alloc,
-        CommandList& cmdlist,
         MeshData* mesh_data
     );
 

@@ -30,7 +30,6 @@ public:
 protected:
     void _load_from_json(luisa::string_view json_vec, bool set_to_loaded);
     bool _async_load_from_file();
-    void _unload() override;
     bool unsafe_save_to_path() const override;
 };
 };// namespace rbc::world

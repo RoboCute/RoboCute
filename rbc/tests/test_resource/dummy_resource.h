@@ -13,7 +13,6 @@ struct DummyResource : world::ResourceBaseImpl<DummyResource> {
     void create_empty(std::initializer_list<RC<DummyResource>> depended, luisa::string_view name);
 protected:
     bool unsafe_save_to_path() const override;
-    void _unload() override;
 
     // depended resources
     luisa::vector<RC<DummyResource>> _depended;

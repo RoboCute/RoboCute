@@ -1,5 +1,6 @@
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
+#include <rbc_graphics/device_assets/device_transforming_mesh.h>
 #include <rbc_render/render_plugin.h>
 #include <luisa/runtime/rtx/accel.h>
 #include <luisa/runtime/rtx/mesh.h>
@@ -10,6 +11,7 @@
 #include <rbc_render/renderer_data.h>
 #include <rbc_world/base_object.h>
 #include <rbc_world/component.h>
+#include <rbc_world/resources/mesh.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -67,6 +69,7 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     {
         luisa::fiber::counter init_counter;
         _sm->load_shader(init_counter);
+        _skinning.load_shader(init_counter);
         // Build a simple accel to preload driver builtin shaders
         auto buffer = _render_device.lc_device().create_buffer<uint>(4 * 3 + 3);
         auto vb = buffer.view(0, 4 * 3).as<float3>();
@@ -242,13 +245,27 @@ void GraphicsUtils::tick(
     auto &cmdlist = _render_device.lc_main_cmd_list();
     rbc::world::_zz_on_before_rendering();
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeRender);
-    _lights->mesh_light_accel.update_frame(_frame_mem_io_list);
+    // mesh light accel update
+    {
+        auto io_cmdlist_last_size = _frame_mem_io_list.commands().size();
+        _lights->mesh_light_accel.update_frame(_frame_mem_io_list);
+        if (_frame_mem_io_list.commands().size() - io_cmdlist_last_size > 0) {
+            _io_cmdlist_require_sync = true;
+        }
+    }
     // io sync
     auto execute_io = [&](
                           IOCommandList &&cmdlist,
                           IOService *io_service) {
         if (cmdlist.empty()) return;
-        auto io_fence = io_service->execute(std::move(cmdlist), _compute_event.event.handle(), _compute_event.fence_index);
+        uint64_t handle = invalid_resource_handle;
+        uint64_t fence = 0;
+        if (_io_cmdlist_require_sync) {
+            _io_cmdlist_require_sync = false;
+            handle = _compute_event.event.handle();
+            fence = _compute_event.fence_index;
+        }
+        auto io_fence = io_service->execute(std::move(cmdlist), handle, fence);
         // support direct-storage
         if (io_fence > 0) [[likely]] {
             main_stream << io_service->wait(io_fence);
@@ -256,9 +273,17 @@ void GraphicsUtils::tick(
     };
     execute_io(std::move(_frame_mem_io_list), _render_device.fallback_mem_io_service());
     for (auto &i : _build_meshes) {
-        auto &mesh = i->mesh_data()->pack.mesh;
-        if (mesh) {
-            cmdlist << mesh.build();
+        auto build = [&](auto &&mesh_ptr) {
+            auto &mesh = mesh_ptr->mesh_data()->pack.mesh;
+            if (mesh) {
+                cmdlist << mesh.build();
+            }
+            _sm->accel_manager().mark_dirty();
+        };
+        if (i->resource_type() == DeviceResource::Type::Mesh) {
+            build(static_cast<DeviceMesh *>(i.get()));
+        } else if (i->resource_type() == DeviceResource::Type::TransformingMesh) {
+            build(static_cast<DeviceTransformingMesh *>(i.get()));
         }
     }
     _build_meshes.clear();
@@ -329,15 +354,16 @@ void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
             0,
             IOBufferSubView{mesh_data->pack.data.view(0, mesh_data->meta.tri_byte_offset / sizeof(uint))}};
     } else {
-        _render_device.lc_main_cmd_list() << mesh_data->pack.data.view().copy_from(host_data.data());
         _frame_mem_io_list << IOCommand{
             host_data.data(),
             0,
             IOBufferSubView{mesh_data->pack.data}};
     }
-    _render_device.lc_main_cmd_list().add_callback([m = RC<DeviceMesh>(mesh)] {});
+    if (mesh->mesh_data()->pack.mesh) {
+        _io_cmdlist_require_sync = true;
+    }
     auto &sm = SceneManager::instance();
-    sm.accel_manager().mark_dirty();
+    sm.dispose_after_sync(RC<DeviceMesh>(mesh));
     if (mesh_data->pack.mesh) {
         _build_meshes.emplace(mesh);
     }
@@ -365,11 +391,15 @@ void GraphicsUtils::create_mesh(
 }
 void GraphicsUtils::update_texture(DeviceImage *ptr) {
     ptr->wait_finished();
+    if (ptr->heap_idx() != ~0u) {
+        _io_cmdlist_require_sync = true;
+    }
     _frame_mem_io_list << IOCommand{
         ptr->host_data().data(),
         0,
         IOTextureSubView{ptr->get_float_image()}};
-    _frame_mem_io_list.add_callback([m = RC<DeviceImage>(ptr)] {});
+    auto &sm = SceneManager::instance();
+    sm.dispose_after_sync(RC<DeviceImage>(ptr));
 }
 void GraphicsUtils::denoise() {
     if (!_denoiser_inited) return;
@@ -390,5 +420,37 @@ void GraphicsUtils::create_texture(
     host_data.push_back_uninitialized(size_bytes);
     auto &device = RenderDevice::instance().lc_device();
     ptr->create_texture<float>(device, storage, size, mip_level);
+}
+void GraphicsUtils::build_transforming_mesh(DeviceTransformingMesh *mesh) {
+    _build_meshes.emplace(mesh);
+}
+void GraphicsUtils::update_skinning(
+    world::MeshResource *skinning_mesh,
+    BufferView<DualQuaternion> bones) {
+    auto origin_mesh = skinning_mesh->origin_mesh();
+    auto origin_mesh_data = origin_mesh->mesh_data();
+    auto device_mesh = skinning_mesh->device_transforming_mesh();
+    LUISA_ASSERT(origin_mesh && device_mesh, "Invalid skinning mesh.");
+    auto weight_index_buffer = origin_mesh->get_or_create_property_buffer("skinning_weight_index");
+    if (!weight_index_buffer) [[unlikely]] {
+        LUISA_ERROR("Static mesh must have \"skinning_weight_index\" property.");
+    }
+    auto weight_count = (weight_index_buffer.size_bytes() / sizeof(uint)) / 2;
+    auto vert_count = origin_mesh_data->meta.vertex_count;
+    if (weight_count % vert_count > 0) [[unlikely]] {
+        LUISA_ERROR("Weight count {} invalid with vertex count {}", weight_count, vert_count);
+    }
+    auto buffer = weight_index_buffer.as<uint>();
+    auto weight_buffer = buffer.subview(0, weight_count).as<float>();
+    auto index_buffer = buffer.subview(weight_count, weight_count);
+    auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();
+    _skinning.update_mesh(
+        cmdlist,
+        skinning_mesh->mesh_data(),
+        origin_mesh_data,
+        bones,
+        weight_buffer,
+        index_buffer);
+    _build_meshes.emplace(device_mesh);
 }
 }// namespace rbc

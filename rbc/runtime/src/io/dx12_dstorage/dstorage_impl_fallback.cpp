@@ -15,7 +15,7 @@
 #define RBC_FTELL ftello
 #endif
 namespace rbc {
-static constexpr size_t fallback_staging_size = 192ull * 1024ull * 1024ull;
+static constexpr size_t fallback_staging_size = 128ull * 1024ull * 1024ull;
 struct DStorageStreamFallbackImpl : DStorageStream {
 public:
     std::atomic_uint64_t signaled_fence_idx{};
@@ -279,13 +279,13 @@ void DStorageStreamFallbackImpl::enqueue_request(
     LUISA_ASSERT(src_type == DStorageSrcType::File, "Source type and queue mismatch.");
     auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
     luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[f = file.file, offset_bytes, buffer_handle, buffer_offset, len](rbc::detail::IOQueue *queue) {
-        if (queue->alloc && queue->alloc->get_next_size(len, 256) > queue->alloc->upload_buffer.size_bytes()) {
+        if (queue->alloc && queue->alloc->get_next_size(len, 16) > queue->alloc->upload_buffer.size_bytes()) {
             queue->commit();
         }
         queue->init_alloc();
-        auto chunk = queue->alloc->host_memory.allocate(len, 256);
+        auto chunk = queue->alloc->host_memory.allocate(len, 16);
         auto ptr = reinterpret_cast<void *>(chunk.handle + chunk.offset);
-        auto upload_buffer = queue->alloc->allocate(len, 256);
+        auto upload_buffer = queue->alloc->allocate(len, 16);
         auto upload_mapped_ptr = static_cast<std::byte *>(upload_buffer.native_handle()) + upload_buffer.offset_bytes();
         RBC_FSEEK(static_cast<::FILE *>(f), offset_bytes, SEEK_SET);
         fread(ptr, len, 1, static_cast<::FILE *>(f));
@@ -318,13 +318,14 @@ void DStorageStreamFallbackImpl::enqueue_request(
     luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{
         [f = file.file, offset_bytes, tex_handle, storage, offset, size, level](rbc::detail::IOQueue *queue) {
             auto size_bytes = pixel_storage_size(storage, size);
-            if (queue->alloc && queue->alloc->get_next_size(size_bytes, 256) > queue->alloc->upload_buffer.size_bytes()) {
+            auto buffer_size_bytes = (size_bytes + 511ull) & (~511ull);
+            if (queue->alloc && queue->alloc->get_next_size(buffer_size_bytes, 512) > queue->alloc->upload_buffer.size_bytes()) {
                 queue->commit();
             }
             queue->init_alloc();
-            auto chunk = queue->alloc->host_memory.allocate(size_bytes, 256);
+            auto chunk = queue->alloc->host_memory.allocate(buffer_size_bytes, 512);
             auto ptr = reinterpret_cast<void *>(chunk.handle + chunk.offset);
-            auto upload_buffer = queue->alloc->allocate(size_bytes, 256);
+            auto upload_buffer = queue->alloc->allocate(size_bytes, 512);
             auto upload_mapped_ptr = static_cast<std::byte *>(upload_buffer.native_handle()) + upload_buffer.offset_bytes();
             RBC_FSEEK(static_cast<::FILE *>(f), offset_bytes, SEEK_SET);
             fread(ptr, size_bytes, 1, static_cast<::FILE *>(f));
@@ -355,12 +356,12 @@ void DStorageStreamFallbackImpl::enqueue_request(
     LUISA_ASSERT(src_type == DStorageSrcType::Memory, "Source type and queue mismatch.");
     auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
     luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[mem_ptr, offset_bytes, buffer_handle, buffer_offset, len](rbc::detail::IOQueue *queue) {
-        if (queue->alloc && queue->alloc->get_next_size(len, 256) > queue->alloc->upload_buffer.size_bytes()) {
+        if (queue->alloc && queue->alloc->get_next_size(len, 16) > queue->alloc->upload_buffer.size_bytes()) {
             queue->commit();
         }
         queue->init_alloc();
         auto ptr = reinterpret_cast<std::byte const *>(mem_ptr) + offset_bytes;
-        auto upload_buffer = queue->alloc->allocate(len, 256);
+        auto upload_buffer = queue->alloc->allocate(len, 16);
         auto upload_mapped_ptr = static_cast<std::byte *>(upload_buffer.native_handle()) + upload_buffer.offset_bytes();
         std::memcpy(
             upload_mapped_ptr,
@@ -390,12 +391,13 @@ void DStorageStreamFallbackImpl::enqueue_request(
     auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
     luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[mem_ptr, tex_handle, offset_bytes, storage, offset, size, level](rbc::detail::IOQueue *queue) {
         auto size_bytes = pixel_storage_size(storage, size);
-        if (queue->alloc && queue->alloc->get_next_size(size_bytes, 256) > queue->alloc->upload_buffer.size_bytes()) {
+        auto buffer_size_bytes = (size_bytes + 511ull) & (~511ull);
+        if (queue->alloc && queue->alloc->get_next_size(buffer_size_bytes, 512) > queue->alloc->upload_buffer.size_bytes()) {
             queue->commit();
         }
         queue->init_alloc();
         auto ptr = reinterpret_cast<std::byte const *>(mem_ptr) + offset_bytes;
-        auto upload_buffer = queue->alloc->allocate(size_bytes, 256);
+        auto upload_buffer = queue->alloc->allocate(buffer_size_bytes, 512);
         std::memcpy(
             static_cast<std::byte *>(upload_buffer.native_handle()) + upload_buffer.offset_bytes(),
             ptr,

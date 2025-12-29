@@ -28,10 +28,6 @@ bool AnimSequenceResource::unsafe_save_to_path() const {
     return {};
 }
 
-void AnimSequenceResource::_unload() {
-    ref_skel.reset();
-}
-
 // dispose declared here
 DECLARE_WORLD_OBJECT_REGISTER(AnimSequenceResource)
 
