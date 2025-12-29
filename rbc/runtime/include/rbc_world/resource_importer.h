@@ -41,21 +41,9 @@ enum class ResourceType : uint32_t {
  */
 struct RBC_RUNTIME_API IResourceImporter {
     virtual ~IResourceImporter() = default;
-
-    /**
-     * @brief Get the file extension this importer handles (e.g., ".obj", ".png")
-     */
     [[nodiscard]] virtual luisa::string_view extension() const = 0;
-
-    /**
-     * @brief Get the resource type this importer handles
-     */
     [[nodiscard]] virtual ResourceType resource_type() const = 0;
-
-    /**
-     * @brief Check if this importer can handle the given path
-     */
-    virtual bool can_import(luisa::filesystem::path const &path) const;
+    [[nodiscard]] virtual bool can_import(luisa::filesystem::path const &path) const;
 };
 
 /**
@@ -63,44 +51,18 @@ struct RBC_RUNTIME_API IResourceImporter {
  */
 struct RBC_RUNTIME_API IMeshImporter : IResourceImporter {
     [[nodiscard]] ResourceType resource_type() const override { return ResourceType::Mesh; }
-
-    /**
-     * @brief Import mesh data from file
-     * @param resource The MeshResource to populate
-     * @param path Path to the file
-     * @return true if import succeeded, false otherwise
-     */
-    virtual bool import(MeshResource *resource, luisa::filesystem::path const &path) = 0;
-
-protected:
+    [[nodiscard]] virtual bool import(MeshResource *resource, luisa::filesystem::path const &path) = 0;
 };
 
-/**
- * @brief Importer interface for TextureResource
- */
 struct RBC_RUNTIME_API ITextureImporter : IResourceImporter {
     [[nodiscard]] ResourceType resource_type() const override { return ResourceType::Texture; }
 
-    /**
-     * @brief Import texture data from file
-     * @param loader The TextureLoader instance (for processing)
-     * @param path Path to the file
-     * @param mip_level Desired mip level
-     * @param to_vt Whether to convert to virtual texture
-     * @return RC<TextureResource> if import succeeded, nullptr otherwise
-     */
-    virtual RC<TextureResource> import(
+    [[nodiscard]] virtual bool import(
+        RC<TextureResource> resource,
         TextureLoader *loader,
         luisa::filesystem::path const &path,
         uint mip_level,
         bool to_vt) = 0;
-
-protected:
-    static RC<rbc::DeviceResource> &tex_ref(TextureResource *resource);
-    static luisa::uint2 &size_ref(TextureResource *resource);
-    static LCPixelStorage &pixel_storage_ref(TextureResource *resource);
-    static uint32_t &mip_level_ref(TextureResource *resource);
-    static bool &is_vt_ref(TextureResource *resource);
 };
 
 /**

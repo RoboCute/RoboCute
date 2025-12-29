@@ -10,50 +10,10 @@ struct TextureLoader;
  * Supports: .png, .jpg, .jpeg, .bmp, .gif, .psd, .pnm, .tga
  */
 struct RBC_RUNTIME_API StbTextureImporter final : ITextureImporter {
-    luisa::string_view extension() const override { return ".png"; }
-    
-    bool can_import(luisa::filesystem::path const &path) const override;
-    
-    RC<TextureResource> import(
-        TextureLoader *loader,
-        luisa::filesystem::path const &path,
-        uint mip_level,
-        bool to_vt) override;
-};
-
-/**
- * @brief HDR image importer for TextureResource
- */
-struct RBC_RUNTIME_API HdrTextureImporter final : ITextureImporter {
-    luisa::string_view extension() const override { return ".hdr"; }
-    
-    RC<TextureResource> import(
-        TextureLoader *loader,
-        luisa::filesystem::path const &path,
-        uint mip_level,
-        bool to_vt) override;
-};
-
-/**
- * @brief TIFF image importer for TextureResource
- */
-struct RBC_RUNTIME_API TiffTextureImporter final : ITextureImporter {
-    luisa::string_view extension() const override { return ".tiff"; }
-    
-    RC<TextureResource> import(
-        TextureLoader *loader,
-        luisa::filesystem::path const &path,
-        uint mip_level,
-        bool to_vt) override;
-};
-
-/**
- * @brief EXR image importer for TextureResource
- */
-struct RBC_RUNTIME_API ExrTextureImporter final : ITextureImporter {
-    luisa::string_view extension() const override { return ".exr"; }
-    
-    RC<TextureResource> import(
+    [[nodiscard]] luisa::string_view extension() const override { return ".png"; }
+    [[nodiscard]] bool can_import(luisa::filesystem::path const &path) const override;
+    [[nodiscard]] bool import(
+        RC<TextureResource> resource,
         TextureLoader *loader,
         luisa::filesystem::path const &path,
         uint mip_level,
@@ -61,4 +21,3 @@ struct RBC_RUNTIME_API ExrTextureImporter final : ITextureImporter {
 };
 
 }// namespace rbc::world
-

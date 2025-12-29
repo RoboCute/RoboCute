@@ -8,6 +8,9 @@
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_core/serde.h>
 #include <rbc_render/click_manager.h>
+#include <rbc_world/importers/texture_importer_exr.h>
+#include <rbc_world/importers/texture_importer_stb.h>
+
 #include <tracy_wrapper.h>
 
 using rbc::ArchiveWriteJson;
@@ -92,16 +95,23 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     utils->update_mesh_data(quad_mesh->device_mesh(), false);// update through render-thread
 
     {
+        world::ExrTextureImporter exr_importer;
+        world::StbTextureImporter stb_importer;
+
         RBCZoneScopedN("Load Textures");
         world::TextureLoader tex_loader;
-        tex = tex_loader.decode_texture(
-            "test_grid.png",
-            16,
-            true);
-        skybox = tex_loader.decode_texture(
-            "sky.exr",
-            1,
-            false);
+        // tex = tex_loader.decode_texture(
+        //     "test_grid.png",
+        //     16,
+        //     true);
+        tex = world::create_object<world::TextureResource>();
+        stb_importer.import(tex, &tex_loader, "test_grid.png", 1, false);
+        // skybox = tex_loader.decode_texture(
+        //     "sky.exr",
+        //     1,
+        //     false);
+        skybox = world::create_object<world::TextureResource>();
+        exr_importer.import(skybox, &tex_loader, "sky.exr", 1, false);
         // write guid
         {
             RBCZoneScopedN("Write Sky GUID");

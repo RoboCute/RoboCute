@@ -50,6 +50,9 @@ struct RBC_RUNTIME_API GltfSceneLoader {
      * @return GltfSceneData containing mesh, materials, and textures
      */
     static GltfSceneData load_scene_binary(luisa::filesystem::path const &glb_path, GltfLoadConfig config = {});
+
+private:
+    static GltfSceneData load_from_model(tinygltf::Model &model, GltfLoadConfig &config, luisa::filesystem::path const &path);
 };
 
 }// namespace rbc::world
