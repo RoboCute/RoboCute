@@ -73,22 +73,6 @@ struct RBC_RUNTIME_API IMeshImporter : IResourceImporter {
     virtual bool import(MeshResource *resource, luisa::filesystem::path const &path) = 0;
 
 protected:
-    // Accessor methods for MeshResource private members
-    // These methods allow derived importers to access private members
-    // IMeshImporter is a friend of MeshResource, so it can access private members
-    // Implementation is in resource_importer.cpp to avoid circular dependencies
-
-    // static rbc::DeviceMesh* device_mesh_ref(MeshResource *resource);
-    // static uint32_t &vertex_count_ref(MeshResource *resource);
-    // static uint32_t &triangle_count_ref(MeshResource *resource);
-    // static uint32_t &uv_count_ref(MeshResource *resource);
-    // Bit-fields cannot return references, so use getter/setter methods
-    // Implementation is in resource_importer.cpp
-    // static bool contained_normal(MeshResource *resource);
-    // static void set_contained_normal(MeshResource *resource, bool value);
-    // static bool contained_tangent(MeshResource *resource);
-    // static void set_contained_tangent(MeshResource *resource, bool value);
-    // static vstd::vector<uint> &submesh_offsets_ref(MeshResource *resource);
 };
 
 /**
@@ -112,11 +96,6 @@ struct RBC_RUNTIME_API ITextureImporter : IResourceImporter {
         bool to_vt) = 0;
 
 protected:
-    // Accessor methods for TextureResource private members
-    // These methods allow derived importers to access private members
-    // ITextureImporter is a friend of TextureResource, so it can access private members
-    // Implementation is in resource_importer.cpp to avoid circular dependencies
-
     static RC<rbc::DeviceResource> &tex_ref(TextureResource *resource);
     static luisa::uint2 &size_ref(TextureResource *resource);
     static LCPixelStorage &pixel_storage_ref(TextureResource *resource);

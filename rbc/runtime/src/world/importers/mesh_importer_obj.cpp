@@ -104,20 +104,12 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
                 1);
         }
     }
-    /*
-    auto &device_mesh = device_mesh_ref(resource);
-    if (!device_mesh)
-        device_mesh = RC<DeviceMesh>(new DeviceMesh());
 
-    vertex_count_ref(resource) = mesh_builder.vertex_count();
-    triangle_count_ref(resource) = 0;
-    for (auto &i : mesh_builder.triangle_indices) {
-        triangle_count_ref(resource) += i.size() / 3;
-    }
-    uv_count_ref(resource) = mesh_builder.uv_count();
-    set_contained_normal(resource, mesh_builder.contained_normal());
-    set_contained_tangent(resource, mesh_builder.contained_tangent());
-    mesh_builder.write_to(device_mesh->host_data_ref(), submesh_offsets_ref(resource));
+    luisa::vector<uint> submesh_offsets;
+    luisa::vector<std::byte> resource_bytes;
+    mesh_builder.write_to(resource_bytes, submesh_offsets);
+    resource->create_empty({}, std::move(submesh_offsets), 0, mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
+    *(resource->host_data()) = std::move(resource_bytes);
 
     // skinning
     if (!attri.skin_weights.empty()) {
@@ -127,7 +119,7 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
         }
         auto property = resource->add_property(
             "skin_attrib",
-            weight_size * vertex_count_ref(resource) * sizeof(SkinAttrib));
+            weight_size * resource->vertex_count() * sizeof(SkinAttrib));
 
         auto skin_weights = luisa::span{
             (SkinAttrib *)property.second.data(),
@@ -138,14 +130,13 @@ bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
             auto skin_ptr = &skin_weights[i.vertex_id * weight_size];
             for (auto &j : i.weightValues) {
                 skin_ptr->weight = j.weight;
-                skin_ptr->joint_id = j.joint_id;
+                skin_ptr->joint_id = static_cast<uint16_t>(j.joint_id);
                 ++skin_ptr;
             }
         }
     }
+
     return true;
-    */
-    return false;
 }
 
 }// namespace rbc::world

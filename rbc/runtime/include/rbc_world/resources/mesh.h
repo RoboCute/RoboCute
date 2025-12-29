@@ -10,7 +10,7 @@ struct DeviceTransformingMesh;
 namespace rbc::world {
 
 struct SkinAttrib {
-    int16_t joint_id;
+    uint16_t joint_id;
     float weight;
 };
 // Forward declarations for friend classes
@@ -60,7 +60,7 @@ public:
     [[nodiscard]] auto submesh_count() const { return std::max<size_t>(_submesh_offsets.size(), 1); }
     [[nodiscard]] luisa::vector<std::byte> *host_data();
     [[nodiscard]] bool is_transforming_mesh() const;
-    [[nodiscard]] MeshResource* origin_mesh() const { return _origin_mesh.get(); }
+    [[nodiscard]] MeshResource *origin_mesh() const { return _origin_mesh.get(); }
 
     uint64_t basic_size_bytes() const;
     uint64_t extra_size_bytes() const;
