@@ -4,9 +4,7 @@
 namespace rbc {
 
 AnimSequenceResource::AnimSequenceResource() = default;
-AnimSequenceResource::~AnimSequenceResource() {
-    _unload();
-}
+AnimSequenceResource::~AnimSequenceResource() {}
 
 void AnimSequenceResource::serialize_meta(world::ObjSerialize const &ser) const {
     BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)

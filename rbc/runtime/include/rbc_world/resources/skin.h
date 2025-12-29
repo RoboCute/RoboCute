@@ -26,6 +26,10 @@ struct RBC_RUNTIME_API SkinResource : world::ResourceBaseImpl<SkinResource> {
     void generate_LUT();
     void log_brief();
 
+    luisa::span<const luisa::string> JointRemaps() const { return {joint_remaps}; }
+    luisa::span<const AnimFloat4x4> InverseBindPoses() const { return {inverse_bind_poses}; }
+    luisa::span<const BoneIndexType> JointRemapsLUT() const { return {joint_remaps_LUT}; }
+
 protected:
     bool unsafe_save_to_path() const override;
 

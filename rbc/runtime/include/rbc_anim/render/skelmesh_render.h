@@ -39,13 +39,13 @@ public:
     int32_t GetNumLODs() const;
 
     // Core Data
-    skr::Span<const AnimFloat4x4> GetComponentSpaceTransforms() const;
-    skr::Span<const AnimFloat4x4> GetPreviousComponentSpaceTransforms() const;
+    [[nodiscard]] luisa::span<const AnimFloat4x4> GetComponentSpaceTransforms() const;
+    [[nodiscard]] luisa::span<const AnimFloat4x4> GetPreviousComponentSpaceTransforms() const;
     // [WIP] BoneVisibilityState
     // [WIP] Component Transform ?
     // [WIP] RefPoseOverride
 private:
-    skr::Span<const AnimFloat4x4> component_space_transforms_;
+    luisa::span<const AnimFloat4x4> component_space_transforms_;
 };
 
 /**

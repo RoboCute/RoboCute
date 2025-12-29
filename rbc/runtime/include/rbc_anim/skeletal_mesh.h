@@ -3,21 +3,13 @@
 #include "rbc_anim/bone_container.h"
 #include "rbc_anim/bone_pose.h"
 #include "rbc_world/resources/skeleton.h"
-
-namespace rbc {
-struct AnimInstance;
-struct AnimInstanceProxy;
-struct AnimGraph;
-struct AnimGraphResource;
-struct SkeletalMesh;
-struct BoneContainer;
-struct SkinResource;
-struct SkelMeshResource;
-struct SkeletonResource;
-struct SkeletalMeshRenderObject;
-struct AnimRenderState;
-struct ReferenceSkeleton;
-}// namespace rbc
+#include "rbc_world/resources/skin.h"
+#include "rbc_world/resources/anim_graph.h"
+#include "rbc_world/resources/skelmesh.h"
+#include "rbc_anim/anim_instance.h"
+#include "rbc_core/rc.h"
+#include "rbc_anim/render/render_data.h"
+#include "rbc_anim/render/skelmesh_render.h"
 
 namespace rbc {
 
@@ -68,7 +60,7 @@ struct AnimationEvaluationContext {
 // --> CPU/GPU Skinning
 //  ComponentSpace Triangles
 
-struct RBC_RUNTIME_API SkeletalMesh {
+struct RBC_RUNTIME_API SkeletalMesh : RCBase {
 public:
     // Entry For GameThread Loop
     void AllocateTransformData();
@@ -152,6 +144,7 @@ public:
     const ReferenceSkeleton &GetRefSkeleton() { return ref_skeleton->ref_skel(); }
     const SkeletonResource &GetRefSkeletonResource() const { *ref_skin.get(); }
     SkinResource &GetSkinResource() { return *ref_skin.get(); }
+
     const SkinResource &GetSkinResource() const { return *ref_skin.get(); }
     SkelMeshResource &GetSkelMeshResource() { return *ref_skelmesh.get(); }
     const SkelMeshResource &GetSkelMeshResource() const { return *ref_skelmesh.get(); }

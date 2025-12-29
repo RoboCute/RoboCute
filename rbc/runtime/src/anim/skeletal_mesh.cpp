@@ -171,7 +171,7 @@ void SkeletalMesh::RecalcRequiredBones(int32_t LODIndex) {
     ComputeRequiredBones(RequiredBones, FillComponentSpaceTransformsRequiredBones, LODIndex);
     // Reset Anim Pose to Reference Pose
     auto ref_pose = GetRefSkeleton().JointRestPoses();
-    BoneSpaceTransforms.resize_default(ref_pose.size());
+    BoneSpaceTransforms.resize_uninitialized(ref_pose.size());
     for (auto i = 0; i < ref_pose.size(); i++) {
         BoneSpaceTransforms[i] = ref_pose[i];
     }
@@ -311,17 +311,18 @@ void SkeletalMesh::FillComponentSpaceTransforms(luisa::span<const AnimSOATransfo
         return;
     }
 
-    AnimLocalToModelJob ltm_job;
-    ltm_job.skeleton = &(GetRefSkeleton().GetRawSkeleton());
-    ltm_job.input = {
-        (const AnimSOATransform *)InBoneSpaceTransforms.data(),
-        InBoneSpaceTransforms.size()};
-    ltm_job.output = {
-        (AnimFloat4x4 *)OutComponentSpaceTransforms.data(),
-        OutComponentSpaceTransforms.size()};
-    if (!ltm_job.Run()) {
-        LUISA_ERROR("Failed to run LocalToModelJob");
-    }
+    // AnimLocalToModelJob ltm_job;
+    // ltm_job.skeleton = &(GetRefSkeleton().GetRawSkeleton());
+    // ltm_job.input = {
+    //     (const AnimSOATransform *)InBoneSpaceTransforms.data(),
+    //     InBoneSpaceTransforms.size()};
+    // ltm_job.output = {
+    //     (AnimFloat4x4 *)OutComponentSpaceTransforms.data(),
+    //     OutComponentSpaceTransforms.size()};
+    // if (!ltm_job.Run()) {
+    //     LUISA_ERROR("Failed to run LocalToModelJob");
+    // }
+
 }// namespace skr
 
 void SkeletalMesh::SwapEvaluationContextBuffers() {
@@ -399,24 +400,6 @@ bool SkeletalMesh::IsDynamicDataDirty() const { return bRenderDynamicDataDirty; 
 void SkeletalMesh::EnableAnimation() { bAnimationEnabled = true; }
 void SkeletalMesh::DisableAnimation() { bAnimationEnabled = false; }
 bool SkeletalMesh::IsAnimationEnabled() const { return bAnimationEnabled; }
-
-ReferenceSkeleton &SkeletalMesh::GetRefSkeleton() {
-    // SKR_ASSERT(ref_skeleton.is_installed());
-    // return ref_skeleton.get_installed()->skeleton;
-}
-
-RC<SkeletonResource> &SkeletalMesh::GetRefSkeletonResource() {
-    return ref_skeleton;
-}
-const ReferenceSkeleton &SkeletalMesh::GetRefSkeleton() const {
-    // SKR_ASSERT(ref_skeleton.is_installed());
-    // return ref_skeleton.get_installed()->skeleton;
-    return *ref_skeleton.get();
-}
-
-const<SkeletonResource> &SkeletalMesh::GetRefSkeletonResource() const {
-    return ref_skeleton;
-}
 
 // Task Interface
 // ================================================================================

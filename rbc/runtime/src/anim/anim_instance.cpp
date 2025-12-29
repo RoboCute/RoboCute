@@ -3,6 +3,8 @@
 #include "rbc_world/base_object.h"
 #include "rbc_anim/bone_container.h"
 #include "rbc_anim/anim_instance.h"
+#include "rbc_anim/graph/AnimGraph.h"
+#include "rbc_world/resources/anim_graph.h"
 #include "rbc_anim/skeletal_mesh.h"
 
 namespace rbc {
@@ -200,7 +202,7 @@ void AnimInstanceProxy::UpdateAnimation() {
 void AnimInstanceProxy::UpdateAnimation_WithRoot(const AnimationUpdateContext &InContext, AnimNode *InRootNode) {
     // Layer?
     // Scope?
-    if (!(GetAnimInstanceObject()->rttr_cast<AnimInstance>())->IsUpdateAnimationEnabled()) {
+    if (!(GetAnimInstanceObject())->IsUpdateAnimationEnabled()) {
         return;
     }
 

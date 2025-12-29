@@ -34,7 +34,7 @@ protected:
 
 public:
     // Get Animaiton Class Type
-    Object *GetAnimInstanceObject() const;
+    AnimInstance *GetAnimInstanceObject() const;
     IndexType GetCurrentNodeId() const { return current_node_id; }
     IndexType GetPreviousNodeId() const { return previous_node_id; }
     AnimationUpdateSharedContext *GetSharedContext() const { return shared_context; }

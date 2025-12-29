@@ -4,11 +4,11 @@
 namespace rbc {
 
 void AnimGraphResource::serialize_meta(world::ObjSerialize const &ser) const {
-    BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
+    // BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
 }
 
 void AnimGraphResource::deserialize_meta(world::ObjDeSerialize const &ser) {
-    BaseType::deserialize_meta(ser);
+    // BaseType::deserialize_meta(ser);
 }
 
 rbc::coroutine AnimGraphResource::_async_load() {
@@ -16,7 +16,7 @@ rbc::coroutine AnimGraphResource::_async_load() {
 }
 
 bool AnimGraphResource::unsafe_save_to_path() const {
-    return {};//TODO
+    return {};
 }
 
 // dispose declared here

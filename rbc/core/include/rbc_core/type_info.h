@@ -91,6 +91,11 @@ public:
     }
 };
 
+template<class T>
+struct type_t {
+    using type = T;
+};
+
 }// namespace rbc
 namespace luisa {
 template<>
@@ -100,6 +105,7 @@ struct hash<rbc::TypeInfo> {
         return value.hash();
     }
 };
+
 }// namespace luisa
 namespace std {
 template<>

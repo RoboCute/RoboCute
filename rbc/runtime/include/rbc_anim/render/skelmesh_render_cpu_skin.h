@@ -1,24 +1,17 @@
 #pragma once
-#include "SkrAnim/objects/skeletal_mesh.hpp"
-#include "SkrAnim/render/render_data.hpp"
-#include "SkrAnim/render/skelmesh_render.hpp"
-#include "SkrAnim/resources/skin_resource.hpp"
-#include "SkrAnimCore/util.h"
-#include "SkrRenderGraph/frontend/render_graph.hpp"
+#include "rbc_anim/render/render_data.h"
+#include "rbc_anim/render/skelmesh_render.h"
 
-namespace skr
-{
+namespace rbc {
 
-struct SkelMeshRenderDataLODCPU : public SkelMeshRenderDataLOD
-{
+struct SkelMeshRenderDataLODCPU : public SkelMeshRenderDataLOD {
 };
 
-struct SKR_ANIM_API SkeletalMeshRenderObjectCPUSkin : public SkeletalMeshRenderObject
-{
+struct RBC_RUNTIME_API SkeletalMeshRenderObjectCPUSkin : public SkeletalMeshRenderObject {
 
 public:
-    SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh* InSkelMesh, skr::RenderDevice* InRenderDevice);
-    SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc& InSkelMeshDesc, skr::RenderDevice* InRenderDevice);
+    SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh *InSkelMesh);
+    SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc);
     virtual ~SkeletalMeshRenderObjectCPUSkin();
 
 public:
@@ -27,13 +20,13 @@ public:
     // 每一个Runtime SkeletalMesh都持有一个
     // 主要存储dynamic vertex buffers, SkinPrimitives和对应的GPU资产结构
 
-public: // interface
-    virtual void InitResources(const SkeletalMeshSceneProxyDesc& InSkelMeshDesc) override;
-    virtual void ReleaseResources() override;
-    virtual void Update(AnimRenderState& state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData& InDynamicData, const SkinResource* InRefSkin) override;
+public:// interface
+    [[nodiscard]] void InitResources(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) override;
+    [[nodiscard]] void ReleaseResources() override;
+    [[nodiscard]] void Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const SkinResource *InRefSkin) override;
 
 private:
-    void UpdateDynamicData_RenderThread(skr::RG::RenderGraph* rg);
+    void UpdateDynamicData_RenderThread();
     /**
      * CPUSkinAndCacheVertices
      * =============================================
@@ -41,7 +34,7 @@ private:
      * * 将CPU数据上传到GPU
      * * 替换RenderMesh中的primitive commands
      */
-    void CPUSkinAndCacheVertices(skr::RG::RenderGraph* rg);
+    void CPUSkinAndCacheVertices();
 
     /**
      * UpdateDrawcalls
@@ -58,9 +51,8 @@ private:
 
 private:
     // RenderData for each LOD
-    struct SkeletalMeshRenderDataLOD
-    {
-        SkeletalMeshRenderData* render_data_;
+    struct SkeletalMeshRenderDataLOD {
+        SkeletalMeshRenderData *render_data_;
         int32_t lod_index_;
     };
 
@@ -70,4 +62,4 @@ private:
     SkelMeshRenderDataLODCPU LOD;
 };
 
-} // namespace skr
+}// namespace rbc

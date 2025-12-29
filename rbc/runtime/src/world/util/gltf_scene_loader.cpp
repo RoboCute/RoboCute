@@ -68,7 +68,7 @@ GltfSceneData GltfSceneLoader::load_from_model(tinygltf::Model &model, GltfLoadC
         if (config.load_skin) {
             result.skin = RC<SkinResource>(create_object<SkinResource>());
             GltfSkinImporter importer;
-            if (!importer.import(result.skin.get(), gltf_path)) {
+            if (!importer.import(result.skin.get(), path)) {
                 LUISA_ERROR("Failed to import skin from GLTF file");
                 return result;
             }
@@ -83,7 +83,7 @@ GltfSceneData GltfSceneLoader::load_from_model(tinygltf::Model &model, GltfLoadC
             result.anim = RC<AnimSequenceResource>(create_object<AnimSequenceResource>());
             GltfAnimSequenceImporter importer;
             importer.ref_skel = result.skel;
-            if (!importer.import(result.anim.get(), gltf_path)) {
+            if (!importer.import(result.anim.get(), path)) {
                 LUISA_ERROR("Failed to import animation sequence from GLTF file");
                 return result;
             }

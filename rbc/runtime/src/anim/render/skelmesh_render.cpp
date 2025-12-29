@@ -1,17 +1,17 @@
 #include "rbc_anim/render/skelmesh_render.h"
+#include "rbc_world/resources/skelmesh.h"
+#include "rbc_world/resources/skin.h"
 #include <tracy_wrapper.h>
 
 namespace rbc {
 
-SkeletalMeshSceneProxyDesc::SkeletalMeshSceneProxyDesc(const SkeletalMesh *InSkelMesh)
-    : skin_resource(InSkelMesh->GetSkinResource().get_installed()), skelmesh_resource(InSkelMesh->GetSkelMeshResource().get_installed()) {
-    mesh_resource = skin_resource->ref_mesh.get_installed();
-    skel_resource = skin_resource->ref_skeleton.get_installed();
-    render_data = skelmesh_resource->render_data.get();
+SkeletalMeshSceneProxyDesc::SkeletalMeshSceneProxyDesc(const SkeletalMesh *InSkelMesh) {
+    // mesh_resource = skin_resource->ref_mesh.get_installed();
+    // skel_resource = skin_resource->ref_skeleton.get_installed();
+    // render_data = skelmesh_resource->render_data.get();
 }
 
-SkeletalMeshSceneProxyDynamicData::SkeletalMeshSceneProxyDynamicData(const SkeletalMesh *InSkelMesh)
-    : component_space_transforms_(InSkelMesh->GetComponentSpaceTransforms()) {
+SkeletalMeshSceneProxyDynamicData::SkeletalMeshSceneProxyDynamicData(const SkeletalMesh *InSkelMesh) {
 }
 
 bool SkeletalMeshSceneProxyDynamicData::IsSkinCacheAllowed() const {
@@ -73,13 +73,14 @@ void UpdateRefToLocalMatrices(luisa::vector<AnimFloat4x4> &ReferenceToLocal, con
     RBCZoneScopedN("UpdateRefToLocalMatrices");
     const auto component_space_transforms = InDynamicData.GetComponentSpaceTransforms();
     auto NumBones = component_space_transforms.size();
-    auto NumSkinJoints = InRefSkin->inverse_bind_poses.size();
+    auto NumSkinJoints = InRefSkin->InverseBindPoses().size();
+
     ReferenceToLocal.resize_uninitialized(NumSkinJoints);
 
     for (auto i = 0; i < NumSkinJoints; i++) {
         // ReferenceToLocal[i] = AnimFloat4x4::identity();
         // ReferenceToLocal[i] = InRefSkin->inverse_bind_poses[i];
-        ReferenceToLocal[i] = component_space_transforms[InRefSkin->joint_remaps_LUT[i]] * InRefSkin->inverse_bind_poses[i];
+        ReferenceToLocal[i] = component_space_transforms[InRefSkin->JointRemapsLUT()[i]] * InRefSkin->InverseBindPoses()[i];
     }
 }
 

@@ -12,6 +12,7 @@
 
 #include "rbc_world/resource_base.h"
 #include "rbc_world/resource_importer.h"
+#include "rbc_world/resources/skin.h"
 
 namespace rbc {
 
@@ -25,8 +26,12 @@ struct RBC_RUNTIME_API SkelMeshResource : world::ResourceBaseImpl<SkelMeshResour
 
     rbc::coroutine _async_load() override;
 
+    RC<SkinResource> GetSkinResource() const { return ref_skin; }
+
 protected:
     bool unsafe_save_to_path() const override;
+
+    RC<SkinResource> ref_skin;
 };
 
 }// namespace rbc

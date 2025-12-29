@@ -4,9 +4,7 @@
 namespace rbc {
 
 SkinResource::SkinResource() = default;
-SkinResource::~SkinResource() {
-    _unload();
-}
+SkinResource::~SkinResource() {}
 
 void SkinResource::serialize_meta(world::ObjSerialize const &ser) const {
     BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)

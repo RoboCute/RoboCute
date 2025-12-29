@@ -352,7 +352,7 @@ int main(int argc, char *argv[]) {
                 for (auto &pos : pos_) {
                     pos.x += sin(delta_time);
                 }
-                utils.update_mesh_data(render_comp->_mesh_ref->device_mesh().get(), true);
+                utils.update_mesh_data(render_comp->_mesh_ref->device_mesh(), true);
 
                 // entity->get_component<world::SkelMeshComponent>()->update_render();
             }
