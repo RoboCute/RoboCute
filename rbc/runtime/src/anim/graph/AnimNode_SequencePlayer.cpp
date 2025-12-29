@@ -4,10 +4,10 @@
 namespace rbc {
 
 void AnimNode_SequencePlayer::Initialize_AnyThread(const AnimationInitializationContext &InContext) {
-    // LUISA_INFO("Initialize AnimNode_SequencePlayer");
+    LUISA_INFO("Initialize AnimNode_SequencePlayer");
 }
 void AnimNode_SequencePlayer::Update_AnyThread(const AnimationUpdateContext &InContext) {
-    // LUISA_INFO("Updating AnimNode_SequencePlayer");
+    LUISA_INFO("Updating AnimNode_SequencePlayer");
     RBCZoneScopedN("AnimNode_SequencePlayer::Update_AnyThread");
     // add asset player to synchronizer
     // BlendWeight = InContext.GetFinalBlendWeight()
@@ -15,7 +15,7 @@ void AnimNode_SequencePlayer::Update_AnyThread(const AnimationUpdateContext &InC
 }
 
 void AnimNode_SequencePlayer::Evaluate_AnyThread(PoseContext &Output) {
-    // LUISA_INFO("Evaluating AnimNode_SequencePlayer with time {}", internal_time_accumulator);
+    LUISA_INFO("Evaluating AnimNode_SequencePlayer with time {}", internal_time_accumulator);
 
     // RBCZoneScopedN("AnimNode_SequencePlayer::Evaluate_AnyThread");
     // if (!anim_seq_resource) {

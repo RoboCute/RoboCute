@@ -3,11 +3,12 @@
 namespace rbc {
 
 void SkeletalMeshRenderData::InitializeWithRefSkeleton(const rbc::ReferenceSkeleton &InRefSkeleton) {
-    // 静态，应该跟随skin初始化
+
     required_bones.resize_uninitialized(InRefSkeleton.NumJoints());
     for (auto i = 0; i < InRefSkeleton.NumJoints(); ++i) {
-        required_bones[i] = i;
+        required_bones[i] = (BoneIndexType)i;
     }
+    LUISA_INFO("Initialize SkelMeshRenderData with {} Bones", required_bones.size());
 }
 
 void SkelMeshRenderDataLOD::Initialize(const world::MeshResource *InMeshResource) {

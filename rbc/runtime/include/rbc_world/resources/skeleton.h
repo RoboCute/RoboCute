@@ -22,6 +22,7 @@ struct RBC_RUNTIME_API SkeletonResource : world::ResourceBaseImpl<SkeletonResour
 
 public:
     const ReferenceSkeleton &ref_skel() const { return skeleton; }
+    ReferenceSkeleton &ref_skel() { return skeleton; }
     void log_brief();
 
 protected:

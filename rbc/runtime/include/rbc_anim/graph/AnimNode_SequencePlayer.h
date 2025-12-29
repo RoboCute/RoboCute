@@ -7,6 +7,11 @@
 namespace rbc {
 
 struct RBC_RUNTIME_API AnimNode_SequencePlayer : public AnimNode {
+public:
+    AnimNode_SequencePlayer() = default;
+    virtual ~AnimNode_SequencePlayer() {}
+
+public:
     // Node Interface
     void Initialize_AnyThread(const AnimationInitializationContext &InContext) override;
     void Update_AnyThread(const AnimationUpdateContext &InContext) override;
@@ -29,3 +34,5 @@ public:// temp public
 };
 
 }// namespace rbc
+
+RBC_RTTI(rbc::AnimNode_SequencePlayer)

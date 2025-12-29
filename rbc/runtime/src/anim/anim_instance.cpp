@@ -10,21 +10,23 @@
 namespace rbc {
 
 void AnimInstance::InitAnimInstance(RC<AnimGraphResource> &InAnimGraph) {
+    LUISA_INFO("Init AnimInstance");
     anim_graph = InAnimGraph;
 }
 
 void AnimInstance::BindSkelMesh(SkeletalMesh *InSkelMesh) {
-    // UE中使用Object::GetOuter获得对应的SkeletalMeshComponent，这里我们暂时没有对应的功能，所以手动绑定
+    LUISA_INFO("[AnimInstance] Binding SkelMesh");
     skel_mesh = InSkelMesh;
 }
 SkeletalMesh *AnimInstance::GetSkeletalMesh() const {
     return skel_mesh;
 }
 AnimGraph *AnimInstance::GetAnimGraph() {
-    return &(anim_graph.get()->graph);
+    return &(anim_graph->graph);
 }
 
 void AnimInstance::InitializeAnimation() {
+    LUISA_INFO("[AnimInstance] Init AnimProxy");
     GetProxyOnGameThread<AnimInstanceProxy>().Initialize(this);
 }
 
@@ -130,8 +132,6 @@ void AnimInstanceProxy::Initialize(AnimInstance *InAnimInstance) {
     AnimInstanceObject = InAnimInstance;
     InitializeObjects(InAnimInstance);
     {
-        // grab pointer to root_node
-        // [UE]: RootNode = RootNodeProperty->ContainerPtrToValuePtr<FAnimNode_Root>(InAnimInstance);
         root_node = InAnimInstance->GetAnimGraph()->GetRootNode();
     }
     InitializeRootNode(false);

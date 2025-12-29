@@ -122,9 +122,6 @@ int main(int argc, char *argv[]) {
     RC<world::Entity> entity;
     RC<world::MeshResource> loaded_mesh;
     luisa::vector<RC<world::MaterialResource>> loaded_materials;
-    RC<SkeletonResource> loaded_skeleton;
-    RC<SkinResource> loaded_skin;
-    RC<AnimSequenceResource> loaded_anim;
 
     {
         RBCZoneScopedN("Load GLTF Scene");
@@ -133,7 +130,7 @@ int main(int argc, char *argv[]) {
         config.load_skin = true;
         config.load_anim_seq = true;
         auto scene_data = world::GltfSceneLoader::load_scene(gltf_path, config);
-        if (false) {
+        if (true) {
             scene_data.skel->log_brief();
             {
                 LUISA_INFO("====== Serde Skeleton");
@@ -184,11 +181,6 @@ int main(int argc, char *argv[]) {
                 LUISA_ERROR("Failed to load GLTF model from: {}", luisa::to_string(gltf_path));
                 return 1;
             }
-
-            // 在加载后保存
-            loaded_skeleton = scene_data.skel;
-            loaded_skin = scene_data.skin;
-            loaded_anim = scene_data.anim;
         }
 
         // Store resources for cleanup
@@ -235,6 +227,7 @@ int main(int argc, char *argv[]) {
         render->start_update_object(loaded_materials, loaded_mesh.get());
 
         auto skelmesh = entity->add_component<world::SkelMeshComponent>();
+        skelmesh->SetRefSkelMesh(scene_data.skelmesh);
     }
 
     // Camera setup
@@ -346,6 +339,7 @@ int main(int argc, char *argv[]) {
 
                 // entity->get_component<world::SkelMeshComponent>()->update_render();
             }
+
             if (false) {
                 // anim render
                 auto *render_comp = entity->get_component<world::RenderComponent>();
@@ -366,10 +360,6 @@ int main(int argc, char *argv[]) {
     }
 
     utils.dispose([&]() {
-        // 在清理时释放
-        loaded_anim.reset();
-        loaded_skin.reset();
-        loaded_skeleton.reset();
         // remove ref-counted resources
         loaded_materials.clear();
         loaded_mesh.reset();

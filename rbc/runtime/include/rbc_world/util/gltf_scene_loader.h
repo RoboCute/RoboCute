@@ -6,6 +6,7 @@
 #include <rbc_world/resources/skeleton.h>
 #include <rbc_world/resources/anim_sequence.h>
 #include <rbc_world/resources/skin.h>
+#include <rbc_world/resources/skelmesh.h>
 
 #include <luisa/core/stl/filesystem.h>
 
@@ -32,6 +33,9 @@ struct GltfSceneData {
     RC<SkeletonResource> skel;// skeleton
     RC<SkinResource> skin;
     RC<AnimSequenceResource> anim;
+    RC<SkelMeshResource> skelmesh;
+    RC<AnimGraphResource> anim_graph;
+
     luisa::vector<RC<MaterialResource>> materials;
     luisa::vector<RC<TextureResource>> textures;
 };

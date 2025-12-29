@@ -1,12 +1,15 @@
 #include "rbc_anim/graph/AnimNode.h"
+#include "rbc_anim/graph/AnimGraph.h"
 #include "rbc_anim/anim_instance.h"
 #include "rbc_world/type_register.h"
 
 namespace rbc {
 
 void PoseLink::AttemptRelink(const AnimationBaseContext &InContext) {
+
     if (LinkedNode == nullptr && LinkedNodeID != INVALID_INDEX) {
-        // LinkedNode = InContext.GetAnimInstanceObject()->GetAnimGraph()->nodes[LinkedNodeID];
+        LUISA_INFO("Attempt Relinking...");
+        LinkedNode = InContext.GetAnimInstanceObject()->GetAnimGraph()->nodes[LinkedNodeID].get();
     }
 }
 
@@ -15,10 +18,12 @@ AnimNode *PoseLink::GetLinkedNode() {
 }
 
 void PoseLink::Initialize(const AnimationInitializationContext &InContext) {
+    LUISA_INFO("Initializing Through PoseLink for LinkedNode {}", LinkedNodeID);
+
     AttemptRelink(InContext);
+
     if (LinkedNode != nullptr) {
         AnimationInitializationContext init_ctx(InContext);
-        // Set Link ID
         LinkedNode->Initialize_AnyThread(init_ctx);
     }
 }

@@ -10,6 +10,7 @@
 #include "rbc_core/rc.h"
 #include "rbc_anim/render/render_data.h"
 #include "rbc_anim/render/skelmesh_render.h"
+#include "rbc_anim/render/render_data.h"
 
 namespace rbc {
 
@@ -141,13 +142,14 @@ public:
 
 public:
     // Get & Set
-    const ReferenceSkeleton &GetRefSkeleton() { return ref_skeleton->ref_skel(); }
+    const ReferenceSkeleton &GetRefSkeleton() const { return ref_skeleton->ref_skel(); }
+    ReferenceSkeleton &GetRefSkeleton() { return ref_skeleton->ref_skel(); }
+
     const SkeletonResource &GetRefSkeletonResource() const { *ref_skin.get(); }
     SkinResource &GetSkinResource() { return *ref_skin.get(); }
 
     const SkinResource &GetSkinResource() const { return *ref_skin.get(); }
-    SkelMeshResource &GetSkelMeshResource() { return *ref_skelmesh.get(); }
-    const SkelMeshResource &GetSkelMeshResource() const { return *ref_skelmesh.get(); }
+    SkelMeshResource *GetSkelMeshResource() const { return ref_skelmesh.get(); }
 
     int32_t GetPredictedLODLevel() const { return PredictedLODLevel; }
     luisa::vector<AnimFloat4x4> &GetEditableComponentSpaceTransforms();
@@ -184,12 +186,15 @@ public:
     int32_t CurrentEditableComponentTransformsIdx = 0;
     int32_t CurrentReadComponentTransformsIdx = 1;
     int32_t PredictedLODLevel = 0;// 当前占位，后续支持LOD
+
+    luisa::unique_ptr<SkeletalMeshRenderData> render_data;
     luisa::vector<BoneIndexType> RequiredBones;
     luisa::vector<BoneIndexType> FillComponentSpaceTransformsRequiredBones;
     luisa::vector<AnimSOATransform> BoneSpaceTransforms;
 
 private:
     // Object that is responsible for sending bone transforms
+
     SkeletalMeshRenderObject *render_object_ = nullptr;
     SkeletalMeshRenderObject *_previous_render_object = nullptr;// previous render object when RenderThread Recreated
 };

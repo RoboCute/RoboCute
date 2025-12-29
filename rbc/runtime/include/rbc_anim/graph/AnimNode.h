@@ -8,6 +8,7 @@ namespace rbc {
 struct AnimNode : public RCBase {
 public:
     virtual ~AnimNode() {};
+    AnimNode() = default;
     AnimNode::AnimNode(const AnimNode &) = delete;
     AnimNode &AnimNode::operator=(AnimNode &) = delete;
 

@@ -7,6 +7,9 @@
 #include <rbc_world/importers/anim_sequence_importer_gltf.h>
 #include <rbc_world/importers/skin_importer_gltf.h>
 
+#include <rbc_anim/graph/AnimNode_Root.h>
+#include <rbc_anim/graph/AnimNode_SequencePlayer.h>
+
 #include <tiny_gltf.h>
 #include <luisa/core/logging.h>
 
@@ -63,6 +66,7 @@ GltfSceneData GltfSceneLoader::load_from_model(tinygltf::Model &model, GltfLoadC
             LUISA_ERROR("Failed to import skeleton from GLTF file");
             return result;
         }
+        result.skel->unsafe_set_loaded();
 
         // Load skin (depends on skeleton and mesh)
         if (config.load_skin) {
@@ -74,13 +78,13 @@ GltfSceneData GltfSceneLoader::load_from_model(tinygltf::Model &model, GltfLoadC
             }
             result.skin->ref_skel = result.skel;
             result.skin->ref_mesh = result.mesh;
-
             result.skin->generate_LUT();
+            result.skin->unsafe_set_loaded();
         }
 
         // Load animation (depends on skeleton)
         if (config.load_anim_seq) {
-            result.anim = RC<AnimSequenceResource>(create_object<AnimSequenceResource>());
+            result.anim = create_object<AnimSequenceResource>();
             GltfAnimSequenceImporter importer;
             importer.ref_skel = result.skel;
             if (!importer.import(result.anim.get(), path)) {
@@ -213,11 +217,31 @@ GltfSceneData GltfSceneLoader::load_from_model(tinygltf::Model &model, GltfLoadC
         result.materials.push_back(std::move(default_mat));
     }
 
+    {
+        // Create a Simple Animation Graph
+        result.anim_graph = create_object<AnimGraphResource>();
+        // nodes[0] is the root node of this AnimGraph
+        auto root = RC<rbc::AnimNode_Root>::New();
+        result.anim_graph->graph.nodes.emplace_back(root);
+        auto seq_player_node = RC<rbc::AnimNode_SequencePlayer>::New();
+        seq_player_node->anim_seq_resource = result.anim;
+        result.anim_graph->graph.nodes.emplace_back(seq_player_node);
+        root->result.LinkedNodeID = 1;// Linked Node Index
+        result.anim_graph->unsafe_set_loaded();
+    }
+
+    {
+        result.skelmesh = create_object<SkelMeshResource>();
+        result.skelmesh->ref_skin = result.skin;
+        result.skelmesh->ref_skeleton = result.skel;
+        result.skelmesh->ref_anim_graph = result.anim_graph;
+        result.skelmesh->unsafe_set_loaded();
+    }
+
     return result;
 }
 
 GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_path, GltfLoadConfig config) {
-
     // Load GLTF model
     tinygltf::Model model;
     if (!load_gltf_model(model, gltf_path, false)) {

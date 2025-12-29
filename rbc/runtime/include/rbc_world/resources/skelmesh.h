@@ -30,12 +30,12 @@ struct RBC_RUNTIME_API SkelMeshResource : world::ResourceBaseImpl<SkelMeshResour
 
     RC<SkinResource> GetSkinResource() const { return ref_skin; }
 
-protected:
-    bool unsafe_save_to_path() const override;
-
     RC<SkinResource> ref_skin;
     RC<SkeletonResource> ref_skeleton;
     RC<AnimGraphResource> ref_anim_graph;
+
+protected:
+    bool unsafe_save_to_path() const override;
 };
 
 }// namespace rbc

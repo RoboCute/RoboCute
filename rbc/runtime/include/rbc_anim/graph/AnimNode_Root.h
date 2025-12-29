@@ -5,7 +5,11 @@
 namespace rbc {
 
 struct RBC_RUNTIME_API AnimNode_Root : public AnimNode {
+public:
+    AnimNode_Root() = default;
+    virtual ~AnimNode_Root() {}
 
+public:
     void Initialize_AnyThread(const AnimationInitializationContext &InContext) override;
     void Update_AnyThread(const AnimationUpdateContext &InContext) override;
     void Evaluate_AnyThread(PoseContext &Output) override;
@@ -19,3 +23,5 @@ public:
 };
 
 }// namespace rbc
+
+RBC_RTTI(rbc::AnimNode_Root)

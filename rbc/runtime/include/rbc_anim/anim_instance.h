@@ -31,7 +31,7 @@ struct ParallelEvaluationData {
 // AnimGraph资产对应的动态数据结构
 // 遍历并执行动画节点的入口，执行绑定的AnimGraph
 // 可能会被复制到多个角色持有相同的动作
-struct RBC_RUNTIME_API AnimInstance : world::BaseObject {
+struct RBC_RUNTIME_API AnimInstance : RCBase {
 
 public:
     void InitAnimInstance(RC<AnimGraphResource> &InAnimGraph);

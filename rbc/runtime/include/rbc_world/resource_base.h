@@ -41,6 +41,9 @@ public:
 
     ///////// Function call must be atomic
     EResourceLoadingStatus loading_status() const { return _status.load(std::memory_order_relaxed); }
+    void unsafe_set_loaded() { _status = EResourceLoadingStatus::Loaded; }// It is user's responsibility to make the state valid
+    bool loaded() const { return loading_status() == EResourceLoadingStatus::Loaded; }
+
     // await until the loading logic finished in both host-side and device-side
     RBC_RUNTIME_API ResourceAwait await_loading();
     // save host_data to Resource::_path

@@ -1,45 +1,40 @@
 #include "rbc_anim/skeletal_mesh.h"
 #include "rbc_anim/anim_instance.h"
+#include "rbc_anim/animation_runtime.h"
 
 namespace rbc {
 bool SkeletalMesh::InitAnim() {
     if (bInitialized) { return true; }
 
-    // if (!ref_skelmesh.is_installed()) {
-    //     SKR_LOG_ERROR(u8"SkelMeshAsset not valid");
-    //     return false;
-    // }
-    // auto *SkelMesh = GetSkelMeshResource().get_installed();
-    // anim_instance = skr::ObjPtr<AnimInstance>::New();
-    // anim_instance->InitAnimInstance(SkelMesh->RefAnimGraph);
-    // anim_instance->BindSkelMesh(this);
-    // anim_instance->InitializeAnimation();
-    // const SkeletonResource *skel = GetRefSkeletonResource().get_installed();
+    ref_skeleton = ref_skelmesh->ref_skeleton;
+    ref_skin = ref_skelmesh->ref_skin;
 
-    // if (!skel) {
-    //     SKR_LOG_ERROR(u8"Skeleton Resource Should be valid when InitAnim");
-    //     return false;
-    // }
+    auto *skelmesh = GetSkelMeshResource();
+    // initialize anim instance
+    anim_instance = RC<AnimInstance>::New();
+    anim_instance->InitAnimInstance(skelmesh->ref_anim_graph);// binding node graph
+    anim_instance->BindSkelMesh(this);
+    anim_instance->InitializeAnimation();// init AnimNodeProxy and parse node graph
+
     // const SkinResource *skin = GetSkinResource().get_installed();
     // const MeshResource *mesh = GetSkinResource().get_installed()->ref_mesh.get_installed();
     // all done, init anim internally
-    // InitAnim_Internal(skel, mesh, skin);
+    InitAnim_Internal();
     bInitialized = true;
     return true;
 }
 
 void SkeletalMesh::AllocateTransformData() {
-    // Get RefPose
-    // if skinned mesh valid
+    // Allocate Transform SwapBuffer base on NumBones
     const int32_t NumBones = GetRefSkeleton().GetNumBones();
     if (GetNumComponentSpaceTransforms() != NumBones) {
-        for (int32_t base_index = 0; base_index < 2; ++base_index) {
-            LUISA_INFO("Allocating ComponentSpace Transform with %d Bones", NumBones);
-            ComponentSpaceTransformsArray[base_index].clear();
-            ComponentSpaceTransformsArray[base_index].resize_uninitialized(NumBones);
+        for (auto &comp_space_transforms : ComponentSpaceTransformsArray) {
+            LUISA_INFO("Allocating ComponentSpace Transform with {} Bones", NumBones);
+            comp_space_transforms.clear();
+            comp_space_transforms.resize_uninitialized(NumBones);
             // Initialize with Identity
             for (auto i = 0; i < NumBones; i++) {
-                ComponentSpaceTransformsArray[base_index][i] = AnimFloat4x4::identity();
+                comp_space_transforms[i] = AnimFloat4x4::identity();
             }
         }
     }
@@ -49,14 +44,18 @@ void SkeletalMesh::AllocateTransformData() {
 
 void SkeletalMesh::DeallocateTransformData() {
     LUISA_INFO("Deallocate Transform Data");
-    for (int32_t base_index = 0; base_index < 2; ++base_index) {
-        ComponentSpaceTransformsArray[base_index].clear();
+    for (auto &comp_space_transform : ComponentSpaceTransformsArray) {
+        comp_space_transform.clear();
     }
 }
 
 void SkeletalMesh::InitAnim_Internal() {
+    LUISA_INFO("InitAnim_Internal");
+    render_data = luisa::make_unique<SkeletalMeshRenderData>();
+    render_data->static_mesh_ = ref_skelmesh->ref_skin->ref_mesh.get();
+    render_data->InitializeWithRefSkeleton(GetRefSkeleton());
+
     AllocateTransformData();// 从asset中复制一份到当前SkeletalMesh作为运行时ComponentSpace的DualBuffer
-    // Common Init
     RecalcRequiredBones(GetPredictedLODLevel());
     ResetToRefPose();
     RefreshBoneTransforms();
@@ -68,6 +67,8 @@ void SkeletalMesh::InitAnim_Internal() {
 
 // ========================= GameThread Phase =========================
 void SkeletalMesh::Tick(float InDeltaTime_s) {
+    // LUISA_INFO("SkelMesh Ticking..");
+    return;
     // LOD Changed?
     TickPose(InDeltaTime_s);// Do Update Here
     RefreshBoneTransforms();// Dispatch Evaluation Tasks Here
@@ -129,6 +130,7 @@ luisa::shared_ptr<BoneContainer> SkeletalMesh::GetSharedRequiredBones() {
 }
 
 void SkeletalMesh::ResetToRefPose() {
+    LUISA_INFO("Reseting To RefPose");
     // asset rest pose -> BoneSpace
     auto rest_view = GetRefSkeleton().JointRestPoses();
     SetBoneSpaceTransforms(rest_view);
@@ -175,6 +177,7 @@ void SkeletalMesh::RecalcRequiredBones(int32_t LODIndex) {
     for (auto i = 0; i < ref_pose.size(); i++) {
         BoneSpaceTransforms[i] = ref_pose[i];
     }
+    LUISA_INFO("Reset BoneSpace Transforms with RestPose with {} SOABones", ref_pose.size());
 
     // Clear Cached Bone Containers
     if (anim_instance) {
@@ -195,15 +198,14 @@ void SkeletalMesh::ComputeRequiredBones(luisa::vector<BoneIndexType> &OutRequire
     OutRequiredBones.clear();
     OutFillComponentSpaceTransformRequiredBones.clear();
 
-    // auto *skelmesh = GetSkelMeshResource().get_installed();
-    // SkeletalMeshRenderData *render_data = skelmesh->render_data.get();
-    // if (!render_data) {
-    //     SKR_LOG_ERROR(u8"SkeletalMesh has no render data!");
-    //     return;
-    // }
-    // OutRequiredBones = render_data->required_bones;// Copy from render data
-    // AnimationRuntime::EnsureParentsPresent(OutRequiredBones, GetRefSkeleton());
-    // OutRequiredBones.sort();
+    auto *skelmesh = GetSkelMeshResource();
+    if (!render_data) {
+        LUISA_ERROR("SkeletalMesh has no render data!");
+        return;
+    }
+    OutRequiredBones = render_data->required_bones;// Copy from render data
+    AnimationRuntime::EnsureParentsPresent(OutRequiredBones, GetRefSkeleton());
+    luisa::sort(OutRequiredBones.begin(), OutRequiredBones.end());
 }
 
 // void SkeletalMesh::CreateRenderState_Concurrent(skr::RenderDevice *InRenderDevice) {
@@ -273,7 +275,6 @@ void SkeletalMesh::EvaluateAnimation(SkeletalMesh *InSkelMesh, AnimInstance *InA
     if (!InSkelMesh) {
         return;
     }
-
     {
         // Construct Evaluation Data
         ParallelEvaluationData OutData{OutPose};
@@ -310,22 +311,23 @@ void SkeletalMesh::FillComponentSpaceTransforms(luisa::span<const AnimSOATransfo
     if (NumBones <= 0) {
         return;
     }
-
-    // AnimLocalToModelJob ltm_job;
-    // ltm_job.skeleton = &(GetRefSkeleton().GetRawSkeleton());
-    // ltm_job.input = {
-    //     (const AnimSOATransform *)InBoneSpaceTransforms.data(),
-    //     InBoneSpaceTransforms.size()};
-    // ltm_job.output = {
-    //     (AnimFloat4x4 *)OutComponentSpaceTransforms.data(),
-    //     OutComponentSpaceTransforms.size()};
-    // if (!ltm_job.Run()) {
-    //     LUISA_ERROR("Failed to run LocalToModelJob");
-    // }
+    LUISA_INFO("Running LocalToMotion Job");
+    AnimLocalToModelJob ltm_job;
+    ltm_job.skeleton = &(GetRefSkeleton().GetRawSkeleton());
+    ltm_job.input = {
+        (const AnimSOATransform *)InBoneSpaceTransforms.data(),
+        InBoneSpaceTransforms.size()};
+    ltm_job.output = {
+        (AnimFloat4x4 *)OutComponentSpaceTransforms.data(),
+        OutComponentSpaceTransforms.size()};
+    if (!ltm_job.Run()) {
+        LUISA_ERROR("Failed to run LocalToModelJob");
+    }
 
 }// namespace skr
 
 void SkeletalMesh::SwapEvaluationContextBuffers() {
+    LUISA_INFO("Swaping Evaluation Context Buffer");
     std::swap(anim_eval_context.BoneSpaceTransforms, BoneSpaceTransforms);
     std::swap(anim_eval_context.ComponentSpaceTransforms, GetEditableComponentSpaceTransforms());
 }
@@ -413,7 +415,9 @@ void SkeletalMesh::DispatchParallelEvaluationTasks() {
 }
 
 void SkeletalMesh::ParallelAnimationEvaluation() {
+
     if (anim_eval_context.bDoInterpolation) {
+        LUISA_INFO("Perform Animation with Interop");
         PerformAnimationProcessing(
             anim_eval_context.skel_mesh,
             anim_eval_context.anim_instance,
@@ -422,6 +426,7 @@ void SkeletalMesh::ParallelAnimationEvaluation() {
             anim_eval_context.CachedBoneSpaceTransforms,
             anim_eval_context.CachedComponentSpaceTransforms);
     } else {
+        LUISA_INFO("Perform Animation with No Interop");
         PerformAnimationProcessing(
             anim_eval_context.skel_mesh,
             anim_eval_context.anim_instance,
