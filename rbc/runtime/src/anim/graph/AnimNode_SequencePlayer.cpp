@@ -67,4 +67,12 @@ void AnimNode_SequencePlayer::CreateTickRecordForNode(const AnimationUpdateConte
     //     /**InOut */ internal_time_accumulator);
 }
 
+void AnimNode_SequencePlayer::Serialize(rbc::ArchiveWrite &w) {
+    w.value<AnimSequenceResource>(*anim_seq_resource, "ref_resource");
+}
+
+void AnimNode_SequencePlayer::Deserialize(rbc::ArchiveRead &r) {
+    r.value<AnimSequenceResource>(*anim_seq_resource, "ref_resource");
+}
+
 }// namespace rbc

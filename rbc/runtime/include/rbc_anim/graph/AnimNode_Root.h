@@ -10,6 +10,10 @@ struct RBC_RUNTIME_API AnimNode_Root : public AnimNode {
     void Update_AnyThread(const AnimationUpdateContext &InContext) override;
     void Evaluate_AnyThread(PoseContext &Output) override;
     void NodeDebug() override;
+
+    void Serialize(rbc::ArchiveWrite &w) override;
+    void Deserialize(rbc::ArchiveRead &r) override;
+
 public:
     PoseLink result;
 };

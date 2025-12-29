@@ -17,6 +17,10 @@ public:
     virtual void Evaluate_AnyThread(PoseContext &Output) = 0;
     virtual void NodeDebug() = 0;
 
+    // the special serialize and deserialize method for AnimNodes
+    virtual void Serialize(rbc::ArchiveWrite &w) = 0;
+    virtual void Deserialize(rbc::ArchiveRead &r) = 0;
+
     IndexType NodeID = INVALID_INDEX;
 };
 

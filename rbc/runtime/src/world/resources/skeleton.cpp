@@ -43,10 +43,12 @@ DECLARE_WORLD_OBJECT_REGISTER(SkeletonResource)
 
 }// namespace rbc
 
-void rbc::Serialize<rbc::SkeletonResource>::write(rbc::ArchiveWrite &w, const rbc::SkeletonResource &v) {
+bool rbc::Serialize<rbc::SkeletonResource>::write(rbc::ArchiveWrite &w, const rbc::SkeletonResource &v) {
     rbc::world::ObjSerialize ser_obj{w};
     v.serialize_meta(ser_obj);
+    return true;
 }
+
 bool rbc::Serialize<rbc::SkeletonResource>::read(rbc::ArchiveRead &r, rbc::SkeletonResource &v) {
     rbc::world::ObjDeSerialize deser_obj{r};
     v.deserialize_meta(deser_obj);

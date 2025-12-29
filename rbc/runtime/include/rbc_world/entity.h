@@ -35,10 +35,10 @@ private:
     void _remove_component(Component *component);
     Entity();
     ~Entity();
-    Component *_create_component(std::array<uint64_t, 2> const& type);
+    Component *_create_component(std::array<uint64_t, 2> const &type);
     void _add_component(Component *component);
 public:
-    
+
     EntityCompIter begin() const {
         return EntityCompIter{_components.begin()};
     }
@@ -53,12 +53,12 @@ public:
     T *add_component() {
         auto ptr = _create_component(rbc_rtti_detail::is_rtti_type<T>::get_md5());
         _add_component(ptr);
-        return static_cast<T*>(ptr);
+        return static_cast<T *>(ptr);
     }
     bool remove_component(TypeInfo const &type);
     Component *get_component(TypeInfo const &type);
-    void serialize_meta(ObjSerialize const&ser) const override;
-    void deserialize_meta(ObjDeSerialize const&ser) override;
+    void serialize_meta(ObjSerialize const &ser) const override;
+    void deserialize_meta(ObjDeSerialize const &ser) override;
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
     bool remove_component() {
@@ -75,6 +75,6 @@ RBC_RTTI(rbc::world::Entity);
 
 template<>
 struct rbc::Serialize<rbc::world::Entity> {
-    static RBC_RUNTIME_API void write(rbc::ArchiveWrite &w, const rbc::world::Entity &v);
+    static RBC_RUNTIME_API bool write(rbc::ArchiveWrite &w, const rbc::world::Entity &v);
     static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::world::Entity &v);
 };

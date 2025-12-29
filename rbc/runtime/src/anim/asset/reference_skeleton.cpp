@@ -117,7 +117,7 @@ void ReferenceSkeleton::EnsureParentsExistAndSort(luisa::vector<BoneIndexType> &
 
 }// namespace rbc
 
-void rbc::Serialize<rbc::ReferenceSkeleton>::write(rbc::ArchiveWrite &w, const rbc::ReferenceSkeleton &v) {
+bool rbc::Serialize<rbc::ReferenceSkeleton>::write(rbc::ArchiveWrite &w, const rbc::ReferenceSkeleton &v) {
     // Use OzzStream in write mode - buffers all data internally
     OzzStream ozz_stream;
     ozz::io::OArchive archive(&ozz_stream);
@@ -126,6 +126,8 @@ void rbc::Serialize<rbc::ReferenceSkeleton>::write(rbc::ArchiveWrite &w, const r
     // Write the buffered data as a single bytes field
     auto buffer = ozz_stream.buffer();
     w.bytes(buffer, "data");
+
+    return true;
 }
 
 bool rbc::Serialize<rbc::ReferenceSkeleton>::read(rbc::ArchiveRead &r, rbc::ReferenceSkeleton &v) {
@@ -133,7 +135,6 @@ bool rbc::Serialize<rbc::ReferenceSkeleton>::read(rbc::ArchiveRead &r, rbc::Refe
     luisa::vector<std::byte> data;
     if (!r.bytes(data, "data")) {
         LUISA_ERROR("Failed to read skeleton data");
-        return false;
     }
 
     // Use OzzStream in read mode - provides sequential read from buffer

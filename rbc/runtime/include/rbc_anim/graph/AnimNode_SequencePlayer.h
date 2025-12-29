@@ -13,6 +13,9 @@ struct RBC_RUNTIME_API AnimNode_SequencePlayer : public AnimNode {
     void Evaluate_AnyThread(PoseContext &Output) override;
     void NodeDebug() override;
 
+    void Serialize(rbc::ArchiveWrite &w) override;
+    void Deserialize(rbc::ArchiveRead &r) override;
+
 public:
     // Interface
     void UpdateAssetPlayer(const AnimationUpdateContext &InContext);

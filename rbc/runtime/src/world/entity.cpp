@@ -145,10 +145,11 @@ DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world
 
 // Serialize<Entity> implementation
-void rbc::Serialize<rbc::world::Entity>::write(rbc::ArchiveWrite &w, const rbc::world::Entity &v) {
+bool rbc::Serialize<rbc::world::Entity>::write(rbc::ArchiveWrite &w, const rbc::world::Entity &v) {
     // Serialize components via serialize_meta
     rbc::world::ObjSerialize ser_obj{w};
     v.serialize_meta(ser_obj);
+    return true;
 }
 
 bool rbc::Serialize<rbc::world::Entity>::read(rbc::ArchiveRead &r, rbc::world::Entity &v) {

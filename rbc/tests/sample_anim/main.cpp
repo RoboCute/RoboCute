@@ -343,6 +343,11 @@ int main(int argc, char *argv[]) {
                     0,// 不积累，
                     window_size,
                     tick_stage);
+
+                // entity->get_component<world::SkelMeshComponent>()->update_render();
+            }
+            if (false) {
+                // anim render
                 auto *render_comp = entity->get_component<world::RenderComponent>();
                 auto vert_count = render_comp->_mesh_ref->vertex_count();
                 auto *host_data = render_comp->_mesh_ref->host_data();
@@ -353,8 +358,6 @@ int main(int argc, char *argv[]) {
                     pos.x += sin(delta_time);
                 }
                 utils.update_mesh_data(render_comp->_mesh_ref->device_mesh(), true);
-
-                // entity->get_component<world::SkelMeshComponent>()->update_render();
             }
 
             ++frame_index;

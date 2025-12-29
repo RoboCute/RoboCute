@@ -44,6 +44,6 @@ using RawSkeletonAsset = ozz::animation::offline::RawSkeleton;
 // Specialize for AnimFloat4x4 (which is ozz::math::Float4x4)
 template<>
 struct rbc::Serialize<rbc::AnimFloat4x4> {
-    static RBC_RUNTIME_API void write(rbc::ArchiveWrite &w, const rbc::AnimFloat4x4 &v);
+    static RBC_RUNTIME_API bool write(rbc::ArchiveWrite &w, const rbc::AnimFloat4x4 &v);
     static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::AnimFloat4x4 &v);
 };

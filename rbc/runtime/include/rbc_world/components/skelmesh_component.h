@@ -11,7 +11,8 @@ private:
     SkelMeshComponent(Entity *entity);
     ~SkelMeshComponent();
 
-    // RC<SkelMeshResource> _skel_mesh_ref;
+    RC<SkelMeshResource> _skel_mesh_ref;// the animatable skeletal mesh resource
+
 public:
     void on_awake() override;
     void on_destroy() override;
@@ -22,6 +23,7 @@ public:
 public:
     void tick(float delta_time = 0.0f);
     void update_render();
+    void remove_object();
 };
 
 }// namespace rbc::world

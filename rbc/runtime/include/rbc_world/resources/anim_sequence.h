@@ -31,10 +31,18 @@ protected:
 
 private:
     friend class IAnimSequenceImporter;
+    friend class rbc::Serialize<rbc::AnimSequenceResource>;
     AnimSequence anim_sequence;
 };
 
 }// namespace rbc
+
+template<>
+struct RBC_RUNTIME_API rbc::Serialize<rbc::AnimSequenceResource> {
+    static bool write(rbc::ArchiveWrite &w, const rbc::AnimSequenceResource &v);
+    static bool read(rbc::ArchiveRead &r, rbc::AnimSequenceResource &v);
+};
+
 RBC_RTTI(rbc::AnimSequenceResource)
 
 namespace rbc {

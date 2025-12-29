@@ -19,4 +19,9 @@ void AnimNode_Root::NodeDebug() {
     LUISA_INFO("Debugging AnimNode_Root");
 }
 
+void AnimNode_Root::Serialize(rbc::ArchiveWrite &w) {
+}
+void AnimNode_Root::Deserialize(rbc::ArchiveRead &r) {
+}
+
 }// namespace rbc

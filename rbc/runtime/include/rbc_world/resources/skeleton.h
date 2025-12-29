@@ -50,6 +50,6 @@ protected:
 
 template<>
 struct rbc::Serialize<rbc::SkeletonResource> {
-    static RBC_RUNTIME_API void write(rbc::ArchiveWrite &w, const rbc::SkeletonResource &v);
+    static RBC_RUNTIME_API bool write(rbc::ArchiveWrite &w, const rbc::SkeletonResource &v);
     static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::SkeletonResource &v);
 };
