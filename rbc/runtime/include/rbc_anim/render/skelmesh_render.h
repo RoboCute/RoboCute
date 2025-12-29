@@ -62,9 +62,9 @@ public:
 public:
     virtual void InitResources(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) = 0;
     virtual void ReleaseResources() = 0;
+
     /**
      * Update
-     * @param rg: the input render graph
      * @param LODIndex: 未来传入LODIndex的placeholder，从RenderData中找到对应LODIndex的渲染数据，暂时没有作用
      * @param InDynamicData: 动画采样完毕之后的ComponentSpaceBoneTransform入口
      * 整个更新流程主要完成：

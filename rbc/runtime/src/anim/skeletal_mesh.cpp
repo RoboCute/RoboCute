@@ -1,6 +1,8 @@
 #include "rbc_anim/skeletal_mesh.h"
 #include "rbc_anim/anim_instance.h"
 #include "rbc_anim/animation_runtime.h"
+#include "rbc_anim/render/skelmesh_render_cpu_skin.h"
+#include "rbc_core/memory.h"
 
 namespace rbc {
 bool SkeletalMesh::InitAnim() {
@@ -208,43 +210,47 @@ void SkeletalMesh::ComputeRequiredBones(luisa::vector<BoneIndexType> &OutRequire
     luisa::sort(OutRequiredBones.begin(), OutRequiredBones.end());
 }
 
-// void SkeletalMesh::CreateRenderState_Concurrent(skr::RenderDevice *InRenderDevice) {
-//     if (bUseGPUSkin) {
-//         render_object_ = SkrNew<SkeletalMeshRenderObjectGPUSkin>(this, InRenderDevice);
-//     } else {
-//         render_object_ = SkrNew<SkeletalMeshRenderObjectCPUSkin>(this, InRenderDevice);
-//     }
-// }
-// void SkeletalMesh::DestroyRenderState_Concurrent() {
-//     if (render_object_) {
-//         render_object_->ReleaseResources();
-//         SkrDelete(render_object_);
-//     }
+void SkeletalMesh::CreateRenderState_Concurrent() {
+    if (bUseGPUSkin) {
+        LUISA_ERROR("GPUSkin Unimplemented");
+        RBC_UNIMPLEMENTED();
+        // render_object_ = SkrNew<SkeletalMeshRenderObjectGPUSkin>(this, InRenderDevice);
+    } else {
+        LUISA_INFO("Creating CPUSkin RenderObject");
+        render_object_ = RBCNew<SkeletalMeshRenderObjectCPUSkin>(this);
+    }
+}
+void SkeletalMesh::DestroyRenderState_Concurrent() {
+    if (render_object_) {
+        render_object_->ReleaseResources();
+        RBCDelete(render_object_);
+    }
 
-//     DeallocateTransformData();
-// }
-// void SkeletalMesh::DoDeferredRenderUpdate_Concurrent(AnimRenderState &state) {
-//     if (bRenderTransformDirty) {
-//     }
-//     if (bRenderDynamicDataDirty) {
-//         SendRenderDynamicData_Concurrent(state);
-//     }
-// }
+    DeallocateTransformData();
+}
 
-// void SkeletalMesh::SendRenderDynamicData_Concurrent(AnimRenderState &state) {
-//     bRenderDynamicDataDirty = false;
-//     {
-//         // cycle counter
-//         int32_t useLOD = GetPredictedLODLevel();
+void SkeletalMesh::DoDeferredRenderUpdate_Concurrent(AnimRenderState &state) {
+    if (bRenderTransformDirty) {
+    }
+    if (bRenderDynamicDataDirty) {
+        SendRenderDynamicData_Concurrent(state);
+    }
+}
 
-//         SkinResource *ref_skin = GetSkinResource().get_installed();
-//         if (ref_skin) {
-//             SkeletalMeshSceneProxyDynamicData data{this};
-//             render_object_->Update(state, 0, data, ref_skin);
-//             bForceMeshObjectUpdate = false;
-//         }
-//     }
-// }
+void SkeletalMesh::SendRenderDynamicData_Concurrent(AnimRenderState &state) {
+    bRenderDynamicDataDirty = false;
+    {
+        // cycle counter
+        int32_t useLOD = GetPredictedLODLevel();
+
+        SkinResource &ref_skin = GetSkinResource();
+        if (ref_skin.loaded()) {
+            SkeletalMeshSceneProxyDynamicData data{this};
+            render_object_->Update(state, 0, data, &ref_skin);
+            bForceMeshObjectUpdate = false;
+        }
+    }
+}
 
 void SkeletalMesh::PerformAnimationProcessing(SkeletalMesh *InSkeletalMesh, AnimInstance *InAnimInstance, bool bInDoEvaluation, bool bForceRefPose, luisa::vector<AnimSOATransform> &OutBoneSpaceTransforms, luisa::vector<AnimFloat4x4> &OutComponentSpaceTransforms) {
     if (!InSkeletalMesh) { return; }

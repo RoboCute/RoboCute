@@ -77,10 +77,10 @@ public:
 
 public:
     // Entry for RenderThread Loop
-    // void CreateRenderState_Concurrent(skr::RenderDevice *InRenderDevice);
-    // void DoDeferredRenderUpdate_Concurrent(AnimRenderState &state);
-    // void SendRenderDynamicData_Concurrent(AnimRenderState &state);
-    // void DestroyRenderState_Concurrent();
+    void CreateRenderState_Concurrent();
+    void DoDeferredRenderUpdate_Concurrent(AnimRenderState &state);
+    void SendRenderDynamicData_Concurrent(AnimRenderState &state);
+    void DestroyRenderState_Concurrent();
 
 public:// Core Task Interface
     void DispatchParallelEvaluationTasks();
