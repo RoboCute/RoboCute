@@ -14,3 +14,9 @@ void ModuleRegister::init(py::module &m) {
         ptr = ptr->next;
     }
 }
+luisa::function<void()> to_cppfunc_5d4636ab(py::function const &f) {
+    return [f] {
+        py::gil_scoped_acquire acquire;
+        f();
+    };
+}
