@@ -20,8 +20,14 @@ void AnimNode_Root::NodeDebug() {
 }
 
 void AnimNode_Root::Serialize(rbc::ArchiveWrite &w) {
+    w.start_object();
+    rbc::Serialize<rbc::PoseLink>::write(w, result);
+    w.end_object("result");
 }
 void AnimNode_Root::Deserialize(rbc::ArchiveRead &r) {
+    r.start_object("result");
+    rbc::Serialize<rbc::PoseLink>::read(r, result);
+    r.end_scope();
 }
 
 }// namespace rbc

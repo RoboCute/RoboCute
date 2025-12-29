@@ -25,6 +25,7 @@ public:
 };
 
 struct PoseLink : RCBase {
+    friend class Serialize<PoseLink>;
 public:
     IndexType LinkedNodeID = INVALID_INDEX;// Serialized Link ID from Graph
 protected:
@@ -42,3 +43,9 @@ public:
 
 RBC_RTTI(rbc::AnimNode)
 RBC_RTTI(rbc::PoseLink)
+
+template<>
+struct RBC_RUNTIME_API rbc::Serialize<rbc::PoseLink> {
+    static bool write(rbc::ArchiveWrite &w, const rbc::PoseLink &v);
+    static bool read(rbc::ArchiveRead &r, rbc::PoseLink &v);
+};

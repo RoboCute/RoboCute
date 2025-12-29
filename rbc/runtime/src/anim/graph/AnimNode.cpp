@@ -39,3 +39,12 @@ void PoseLink::Evaluate(PoseContext &Output) {
 }
 
 }// namespace rbc
+
+bool rbc::Serialize<rbc::PoseLink>::write(rbc::ArchiveWrite &w, const rbc::PoseLink &v) {
+    w.value(v.LinkedNodeID, "LinkedNodeID");
+}
+bool rbc::Serialize<rbc::PoseLink>::read(rbc::ArchiveRead &r, rbc::PoseLink &v) {
+    r.start_object();
+    r.value(v.LinkedNodeID, "LinkedNodeID");
+    r.end_scope();
+}
