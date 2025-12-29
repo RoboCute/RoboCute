@@ -34,11 +34,13 @@ void RenderDevice::init(
     const luisa::filesystem::path &program_path,
     luisa::string_view backend,
     bool headless,
-    bool require_async_stream, bool require_io_service, bool gpu_dump, void *external_device) {
+    bool require_async_stream, bool require_io_service, bool gpu_dump, void *external_device,
+    size_t device_index) {
     set_rendering_thread(true);
     set_instance(this);
     _backend = backend;
     _headless = headless;
+    _device_index = device_index;
     // create context
     _context.create(luisa::to_string(program_path));
 
@@ -50,7 +52,8 @@ void RenderDevice::init(
         ext = rbc::make_vk_device_config(external_device, gpu_dump);
 
     DeviceConfig config{
-        .extension = std::move(ext)};
+        .extension = std::move(ext),
+        .device_index = device_index};
     _device_ext = config.extension.get();
     _device = _context.value().create_device(
         backend, &config,

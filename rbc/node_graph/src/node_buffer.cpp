@@ -1,7 +1,7 @@
 #include <rbc_config.h>
 #include <rbc_node/node_buffer.h>
 namespace rbc {
-NodeBuffer::NodeBuffer(RC<BufferDescriptor> buffer_desc,
+NodeBuffer::NodeBuffer(RC<BufferDescriptor> &&buffer_desc,
                        ComputeDeviceDesc const &src_device_desc,
                        ComputeDeviceDesc const &dst_device_desc)
     : _buffer_desc(std::move(buffer_desc)),
