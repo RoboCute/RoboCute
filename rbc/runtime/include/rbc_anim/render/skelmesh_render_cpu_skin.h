@@ -10,8 +10,8 @@ struct SkelMeshRenderDataLODCPU : public SkelMeshRenderDataLOD {
 struct RBC_RUNTIME_API SkeletalMeshRenderObjectCPUSkin : public SkeletalMeshRenderObject {
 
 public:
-    SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh *InSkelMesh);
-    SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc);
+    explicit SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh *InSkelMesh);
+    explicit SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc);
     virtual ~SkeletalMeshRenderObjectCPUSkin();
 
 public:

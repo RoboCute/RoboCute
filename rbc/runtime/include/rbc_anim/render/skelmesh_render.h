@@ -2,24 +2,22 @@
 
 #include "rbc_world/resources/mesh.h"
 #include "rbc_anim/render/render_data.h"
+#include "rbc_world/resources/skelmesh.h"
+#include "rbc_world/resources/mesh.h"
+#include "rbc_world/resources/skin.h"
 
 namespace rbc {
-struct SkinResource;
-struct MeshResource;
-struct SkeletonResource;
-struct SkelMeshResource;
 struct SkeletalMesh;
-
 }// namespace rbc
 
 namespace rbc {
 
 // [PrimitiveSceneProxyDesc]
 struct SkeletalMeshSceneProxyDesc {
-    SkeletalMeshSceneProxyDesc(const SkeletalMesh *InSkelMesh);
+    explicit SkeletalMeshSceneProxyDesc(const SkeletalMesh *InSkelMesh);
 
     SkinResource *skin_resource;
-    MeshResource *mesh_resource;
+    world::MeshResource *mesh_resource;
     SkeletonResource *skel_resource;
     SkeletalMeshRenderData *render_data;
     SkelMeshResource *skelmesh_resource;
@@ -28,15 +26,15 @@ struct SkeletalMeshSceneProxyDesc {
 // 给Renderer的统一动态数据接口
 struct SkeletalMeshSceneProxyDynamicData {
 public:
-    SkeletalMeshSceneProxyDynamicData(const SkeletalMesh *InSkelMesh);
-    SkeletalMeshSceneProxyDynamicData() {}
+    explicit SkeletalMeshSceneProxyDynamicData(const SkeletalMesh *InSkelMesh);
+    SkeletalMeshSceneProxyDynamicData() = default;
 
 public:
-    bool IsSkinCacheAllowed() const;
-    uint32_t GetBoneTransformRevisionNumber() const;
-    uint32_t GetPreviousBoneTransformRevisionNumber() const;
-    uint32_t GetCurrentBoneTransformFrame() const;
-    int32_t GetNumLODs() const;
+    [[nodiscard]] bool IsSkinCacheAllowed() const;
+    [[nodiscard]] uint32_t GetBoneTransformRevisionNumber() const;
+    [[nodiscard]] uint32_t GetPreviousBoneTransformRevisionNumber() const;
+    [[nodiscard]] uint32_t GetCurrentBoneTransformFrame() const;
+    [[nodiscard]] int32_t GetNumLODs() const;
 
     // Core Data
     [[nodiscard]] luisa::span<const AnimFloat4x4> GetComponentSpaceTransforms() const;
@@ -55,8 +53,8 @@ private:
  */
 struct RBC_RUNTIME_API SkeletalMeshRenderObject {
 public:
-    SkeletalMeshRenderObject(const SkeletalMesh *InSkelMesh);
-    SkeletalMeshRenderObject(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc);
+    explicit SkeletalMeshRenderObject(const SkeletalMesh *InSkelMesh);
+    explicit SkeletalMeshRenderObject(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc);
     virtual ~SkeletalMeshRenderObject();
 
 public:

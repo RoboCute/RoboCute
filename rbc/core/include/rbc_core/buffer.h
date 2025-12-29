@@ -24,7 +24,7 @@ struct VertexBufferEntry {
     uint32_t offset;
 };
 
-struct VertexBufferView {
-};
+// struct VertexBufferView {
+// };
 
 }// namespace rbc

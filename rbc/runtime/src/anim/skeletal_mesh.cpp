@@ -1,3 +1,4 @@
+#include "rbc_config.h"
 #include "rbc_anim/skeletal_mesh.h"
 #include "rbc_anim/anim_instance.h"
 #include "rbc_anim/animation_runtime.h"
@@ -24,6 +25,11 @@ bool SkeletalMesh::InitAnim() {
     InitAnim_Internal();
     bInitialized = true;
     return true;
+}
+
+void SkeletalMesh::DestroyAnim() {
+    anim_instance.reset();
+    bInitialized = false;
 }
 
 void SkeletalMesh::AllocateTransformData() {
@@ -70,7 +76,6 @@ void SkeletalMesh::InitAnim_Internal() {
 // ========================= GameThread Phase =========================
 void SkeletalMesh::Tick(float InDeltaTime_s) {
     // LUISA_INFO("SkelMesh Ticking..");
-    return;
     // LOD Changed?
     TickPose(InDeltaTime_s);// Do Update Here
     RefreshBoneTransforms();// Dispatch Evaluation Tasks Here
@@ -147,12 +152,6 @@ void SkeletalMesh::ResetToRefPose() {
 
 void SkeletalMesh::RefreshBoneTransforms() {
     if (!bAnimationEnabled) { return; }
-    // recalc required bones when update
-    // recalc required corves
-    // if (!ref_skelmesh.is_installed()) {
-    //     SKR_LOG_ERROR(u8"SkelMeshAsset not valid");
-    //     return;
-    // }
     const bool bShouldDoEvaluation = true;
     const bool bShouldDoInterpolation = false;
     const bool bDoParallelEvaluation = true;
@@ -193,7 +192,7 @@ void SkeletalMesh::RecalcRequiredBones(int32_t LODIndex) {
     // Broadcast Messages
 }
 void SkeletalMesh::RecalcRequiredCurves() {
-    // NOT IMPLEMENTED
+    RBC_UNIMPLEMENTED();
 }
 
 void SkeletalMesh::ComputeRequiredBones(luisa::vector<BoneIndexType> &OutRequiredBones, luisa::vector<BoneIndexType> &OutFillComponentSpaceTransformRequiredBones, int32_t LODIndex) const {
@@ -219,7 +218,9 @@ void SkeletalMesh::CreateRenderState_Concurrent() {
         LUISA_INFO("Creating CPUSkin RenderObject");
         render_object_ = RBCNew<SkeletalMeshRenderObjectCPUSkin>(this);
     }
+    bRenderStateCreated = true;
 }
+
 void SkeletalMesh::DestroyRenderState_Concurrent() {
     if (render_object_) {
         render_object_->ReleaseResources();
@@ -227,6 +228,7 @@ void SkeletalMesh::DestroyRenderState_Concurrent() {
     }
 
     DeallocateTransformData();
+    bRenderStateCreated = false;
 }
 
 void SkeletalMesh::DoDeferredRenderUpdate_Concurrent(AnimRenderState &state) {
@@ -244,6 +246,7 @@ void SkeletalMesh::SendRenderDynamicData_Concurrent(AnimRenderState &state) {
         int32_t useLOD = GetPredictedLODLevel();
 
         SkinResource &ref_skin = GetSkinResource();
+
         if (ref_skin.loaded()) {
             SkeletalMeshSceneProxyDynamicData data{this};
             render_object_->Update(state, 0, data, &ref_skin);

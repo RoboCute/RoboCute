@@ -18,6 +18,7 @@ protected:
 public:
     RBC_FORCEINLINE void InitBones(int NumBones) {
         uint32_t num_soa_bones = (NumBones + 3) / 4;
+        LUISA_INFO("Init BasePose with {} SOABones", num_soa_bones);
         bones.resize_uninitialized(num_soa_bones);
     }
     RBC_FORCEINLINE int GetNumBones() const { return bones.size(); }

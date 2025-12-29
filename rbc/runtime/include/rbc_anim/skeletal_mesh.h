@@ -8,9 +8,11 @@
 #include "rbc_world/resources/skelmesh.h"
 #include "rbc_anim/anim_instance.h"
 #include "rbc_core/rc.h"
+
 #include "rbc_anim/render/render_data.h"
 #include "rbc_anim/render/skelmesh_render.h"
 #include "rbc_anim/render/render_data.h"
+#include "rbc_anim/render/skelmesh_render.h"
 
 namespace rbc {
 
@@ -66,7 +68,9 @@ public:
     // Entry For GameThread Loop
     void AllocateTransformData();
     void DeallocateTransformData();
+
     bool InitAnim();
+    void DestroyAnim();
 
     void Tick(float InDeltaTime_s);    // Tick entry for each system calls
     void TickPose(float InDeltaTime_s);// Tick Pose
@@ -81,6 +85,7 @@ public:
     void DoDeferredRenderUpdate_Concurrent(AnimRenderState &state);
     void SendRenderDynamicData_Concurrent(AnimRenderState &state);
     void DestroyRenderState_Concurrent();
+    bool RenderStateCreated() const { return bRenderStateCreated; }
 
 public:// Core Task Interface
     void DispatchParallelEvaluationTasks();
@@ -145,10 +150,11 @@ public:
     const ReferenceSkeleton &GetRefSkeleton() const { return ref_skeleton->ref_skel(); }
     ReferenceSkeleton &GetRefSkeleton() { return ref_skeleton->ref_skel(); }
 
-    const SkeletonResource &GetRefSkeletonResource() const { *ref_skin.get(); }
-    SkinResource &GetSkinResource() { return *ref_skin.get(); }
+    const SkeletonResource &GetRefSkeletonResource() const { *ref_skin; }
 
-    const SkinResource &GetSkinResource() const { return *ref_skin.get(); }
+    SkinResource &GetSkinResource() { return *ref_skin; }
+    const SkinResource &GetSkinResource() const { return *ref_skin; }
+
     SkelMeshResource *GetSkelMeshResource() const { return ref_skelmesh.get(); }
 
     int32_t GetPredictedLODLevel() const { return PredictedLODLevel; }
@@ -180,6 +186,8 @@ public:
     bool bForceMeshObjectUpdate = false;
     bool bUseGPUSkin = false;
     bool bInitialized = false;
+    bool bRenderStateCreated = false;
+
     AnimationEvaluationContext anim_eval_context;
     luisa::vector<AnimFloat4x4> ComponentSpaceTransformsArray[2];
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <rbc_anim/types.h>
 #include "rbc_core/serde.h"
+#include "rbc_anim/graph/AnimNodeContext.h"
 
 namespace rbc {
 
@@ -19,9 +20,18 @@ public:
     explicit AnimSequence(AnimSequenceRuntimeAsset &&InAnim);
     AnimSequence &operator=(AnimSequenceRuntimeAsset &&InAnim);
 
+
 public:
     [[nodiscard]] const AnimSequenceRuntimeAsset &GetRawAnim() const { return animation; }
+    [[nodiscard]] int GetNumSoaTracks() const { return animation.num_soa_tracks(); }
+    [[nodiscard]] int GetNumTracks() const { return animation.num_tracks(); }
+
     void log_brief() const;// debug helper
+
+    // void TickAssetPlayer(AnimTickRecord &InTickRecord, AnimAssetTickContext &InContext);
+    // Actural Evaluate
+    void GetAnimationPose(AnimationPoseData &OutPoseData, const AnimExtractContext &InExtractContext) const;
+
 
 private:
     friend class rbc::Serialize<rbc::AnimSequence>;

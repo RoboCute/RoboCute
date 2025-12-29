@@ -93,9 +93,10 @@ void AnimInstance::PostUpdateAnimation() {
 }
 
 void AnimInstance::ParallelEvaluateAnimation(bool bForceRefPose, const SkeletalMesh *InSkeletalMesh, ParallelEvaluationData &OutData) {
-    AnimInstanceProxy &AnimProxy = GetProxyOnAnyThread<AnimInstanceProxy>();
+    auto &AnimProxy = GetProxyOnAnyThread<AnimInstanceProxy>();
+
     OutData.OutPose.SetBoneContainer(&AnimProxy.GetRequiredBones());
-    // OutData.OutPose.ResetToRefPose();
+
     if (!bForceRefPose) {
         PoseContext eval_context(&AnimProxy);
         eval_context.ResetToRefPose();
@@ -179,7 +180,6 @@ void AnimInstanceProxy::RecalcRequiredBones(SkeletalMesh *InSkelMesh) {
         required_bones->InitializeTo(InSkelMesh->RequiredBones, InSkelMesh);
         // Set Pose Override
     }
-
     bBoneCachesValid = false;
 }
 
@@ -236,12 +236,7 @@ void AnimInstanceProxy::EvaluateAnimation(PoseContext &Output) {
 }
 
 void AnimInstanceProxy::EvaluateAnimation_WithRoot(PoseContext &Output, AnimNode *InRootNode) {
-    if (InRootNode == root_node) {
-        // CacheBones
-    } else {
-        // CacheBones_WithRoot()
-    }
-
+    // TODO: CacheBones
     if (!Evaluate_WithRoot(Output, InRootNode)) {
         EvaluateAnimationNode_WithRoot(Output, InRootNode);
     }
@@ -273,10 +268,6 @@ void AnimInstanceProxy::EvaluateAnimationNode(PoseContext &Output) {
 
 void AnimInstanceProxy::EvaluateAnimationNode_WithRoot(PoseContext &Output, AnimNode *InRootNode) {
     if (InRootNode != nullptr) {
-        if (InRootNode == root_node) {
-            // Counter
-            // Set Output Node ID
-        }
         InRootNode->Evaluate_AnyThread(Output);
     } else {
         Output.ResetToRefPose();

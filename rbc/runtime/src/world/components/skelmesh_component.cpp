@@ -34,8 +34,8 @@ void SkelMeshComponent::tick(float delta_time) {
     // Now Everything Ready, start Initialize
     if (!runtime_skel_mesh->IsInitialized()) {
         runtime_skel_mesh->ref_skelmesh = _skel_mesh_ref;
-
         runtime_skel_mesh->InitAnim();
+        runtime_skel_mesh->EnableAnimation();// Start Ticking!
     }
 
     // Now Initialized, Start Tick
@@ -44,9 +44,34 @@ void SkelMeshComponent::tick(float delta_time) {
 
 void SkelMeshComponent::update_render() {
     // LUISA_INFO("UpdateRender SkelMesh");
+    if (!runtime_skel_mesh) [[unlikely]] {
+        LUISA_ERROR("RenderTicking A SkelMeshComponent with an Invalid Runtime SkelMesh");
+        return;
+    }
+    if (!_skel_mesh_ref->loaded()) [[unlikely]] {
+        LUISA_ERROR("RenderTicking A SkelMeshComponent with an Unloaded Static SkelMesh Resource");
+        return;
+    }
+    // Now Everything Ready, start Initialize RenderState
+    if (!runtime_skel_mesh->RenderStateCreated()) {
+        runtime_skel_mesh->CreateRenderState_Concurrent();
+    } else {
+        AnimRenderState state;
+        // runtime_skel_mesh->DoDeferredRenderUpdate_Concurrent(state);
+    }
 }
 
 void SkelMeshComponent::remove_object() {
+    if (!runtime_skel_mesh) {
+        return;
+    }
+    if (runtime_skel_mesh->RenderStateCreated()) {
+        runtime_skel_mesh->DestroyRenderState_Concurrent();
+    }
+    if (runtime_skel_mesh->IsInitialized()) {
+        runtime_skel_mesh->DestroyAnim();
+    }
+    runtime_skel_mesh.reset();
 }
 
 DECLARE_WORLD_COMPONENT_REGISTER(SkelMeshComponent);

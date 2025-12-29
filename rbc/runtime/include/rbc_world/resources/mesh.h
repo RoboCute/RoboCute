@@ -7,6 +7,7 @@ struct DeviceResource;
 struct DeviceMesh;
 struct DeviceTransformingMesh;
 }// namespace rbc
+
 namespace rbc::world {
 
 struct SkinAttrib {

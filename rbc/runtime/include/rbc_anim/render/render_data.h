@@ -10,8 +10,8 @@
 namespace rbc {
 
 struct RBC_RUNTIME_API SkinPrimitive {
-    bool UseNormals() const { return b_use_normals; }
-    bool UseTangents() const { return b_use_tangents; }
+    [[nodiscard]] bool UseNormals() const { return b_use_normals; }
+    [[nodiscard]] bool UseTangents() const { return b_use_tangents; }
 
 public:
     // CPU Vertex Buffer Entry for Dynamic Skin Data
@@ -23,7 +23,7 @@ public:
     bool b_use_normals = false;
     bool b_use_tangents = false;
 
-    rbc::span<rbc::VertexBufferView> vertex_buffer_views;
+    // rbc::span<rbc::VertexBufferView> vertex_buffer_views;
     // CPU Vertex Data Entry for Static Mesh Data
     uint32_t vertex_count;
     const rbc::VertexBufferEntry *ref_position = nullptr;

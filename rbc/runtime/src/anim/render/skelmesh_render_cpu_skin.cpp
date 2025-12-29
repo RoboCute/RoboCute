@@ -99,6 +99,7 @@ SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalM
 
 SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc)
     : SkeletalMeshRenderObject(InSkelMeshDesc), cached_vertex_lod_(INVALID_INDEX) {
+
     InitResources(InSkelMeshDesc);
 }
 
@@ -115,7 +116,6 @@ SkeletalMeshRenderObjectCPUSkin::~SkeletalMeshRenderObjectCPUSkin() {
 
 /**
  * Update
- * @param rg: the input render graph
  * @param LODIndex: 未来传入LODIndex的placeholder，从RenderData中找到对应LODIndex的渲染数据，暂时没有作用
  * @param InDynamicData: 动画采样完毕之后的ComponentSpaceBoneTransform入口
  * @param InRenderData: SkeletalMesh对应的渲染数据入口
@@ -125,6 +125,8 @@ SkeletalMeshRenderObjectCPUSkin::~SkeletalMeshRenderObjectCPUSkin() {
  * * 将更新后的VertexBuffer缓存并上传到GPU，方便渲染器调用
  */
 void SkeletalMeshRenderObjectCPUSkin::Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const SkinResource *InRefSkin) {
+    LUISA_INFO("Updating SkeletalMesh CPUSkin RenderObject");
+
     UpdateRefToLocalMatrices(LOD.skin_matrices, InDynamicData, InRefSkin);
     // 当前直接同步计算，未来会推入执行队列中异步计算
     UpdateDynamicData_RenderThread();
@@ -133,26 +135,23 @@ void SkeletalMeshRenderObjectCPUSkin::Update(AnimRenderState &state, int32_t LOD
 void SkeletalMeshRenderObjectCPUSkin::UpdateDynamicData_RenderThread() {
     CPUSkinAndCacheVertices();
     // override primitive commands
-    if (true) {
+    if (false) {
         UpdateDrawcalls();
     }
     // override BLAS
-    if (true) {
+    if (false) {
         UpdateGPUScene();
     }
 }
 
 void SkeletalMeshRenderObjectCPUSkin::CPUSkinAndCacheVertices() {
-
+    LUISA_INFO("Doing CPUSkin");
     RBCZoneScopedN("DoCPUSkinAndUpload");
     DoCPUSkin(&LOD, LOD.skin_matrices);
     int buffer_size = LOD.skin_vertex_buffer_size;
-
-    // TODO: do upload
 }
 
 void SkeletalMeshRenderObjectCPUSkin::UpdateDrawcalls() {
-    auto *mesh_resource = LOD.render_data_->static_mesh_;
 }
 
 void SkeletalMeshRenderObjectCPUSkin::UpdateGPUScene() {}

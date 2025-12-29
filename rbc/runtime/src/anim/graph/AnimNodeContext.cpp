@@ -28,4 +28,17 @@ void PoseContext::ResetToRefPose() {
     Pose.ResetToRefPose();
 }
 
+AnimationPoseData::AnimationPoseData(PoseContext &InPoseContext)
+    : pose(InPoseContext.Pose) {
+}
+AnimationPoseData::AnimationPoseData(CompactPose &InPose)
+    : pose(InPose) {
+}
+const CompactPose &AnimationPoseData::GetPose() const {
+    return pose;
+}
+CompactPose &AnimationPoseData::GetPose() {
+    return pose;
+}
+
 }// namespace rbc

@@ -13,9 +13,7 @@ void SkeletalMeshRenderData::InitializeWithRefSkeleton(const rbc::ReferenceSkele
 
 void SkelMeshRenderDataLOD::Initialize(const world::MeshResource *InMeshResource) {
     // 因为只有vertex buffer和动态相关，所以只有一个buffer
-    buffers.resize_uninitialized(1);// CPU Buffers
-    // vertex_buffers.resize_zeroed(1);// GPU Buffers
-
+    // buffers.resize_uninitialized(1);// CPU Buffers
     // int prims_count = InMeshResource->primitives.size();
     // skin_primitives.reserve(prims_count);
     // // allocate dynamic mesh primitives
@@ -85,9 +83,10 @@ void SkelMeshRenderDataLOD::Initialize(const world::MeshResource *InMeshResource
 
 void SkelMeshRenderDataLOD::InitResources(SkeletalMeshRenderData *InRenderData) {
     // 动态，应该跟随RenderObject初始化
+    LUISA_INFO("Initializing Resources for SKelMehsRenderData");
     const auto *InMeshResource = InRenderData->static_mesh_;
-    // render_data_ = InRenderData;
-    // Initialize(InMeshResource);
+    render_data_ = InRenderData;
+    Initialize(InMeshResource);
 
     // for (auto j = 0u; j < buffers.size(); j++) {
     //     if (!vertex_buffers[j]) {

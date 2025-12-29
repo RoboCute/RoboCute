@@ -22,6 +22,7 @@ void BoneContainer::InitializeTo(luisa::span<const BoneIndexType> InRequiredBone
         InRequiredBoneIndices.begin(),
         InRequiredBoneIndices.end());
     asset_skeletal_mesh = InSkelMesh;
+
     Initialize();
 }
 
@@ -41,7 +42,7 @@ const luisa::vector<BoneIndexType> &BoneContainer::GetBoneIndices() const {
 
 void BoneContainer::Initialize() {
 
-    // ref_skeleton = &(asset_skeletal_mesh.lock()->GetRefSkeleton());
+    ref_skeleton = &(asset_skeletal_mesh.lock()->GetRefSkeleton());
     // TODO: Init SkeletonToCompactPose and CompactPoseToSkeletonIndex
     // BoneSwitchArrays
     // RemapFromSkelMesh

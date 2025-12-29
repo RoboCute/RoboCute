@@ -1,14 +1,14 @@
 #include "rbc_anim/render/skelmesh_render.h"
-#include "rbc_world/resources/skelmesh.h"
-#include "rbc_world/resources/skin.h"
+#include "rbc_anim/skeletal_mesh.h"
 #include <tracy_wrapper.h>
 
 namespace rbc {
 
 SkeletalMeshSceneProxyDesc::SkeletalMeshSceneProxyDesc(const SkeletalMesh *InSkelMesh) {
-    // mesh_resource = skin_resource->ref_mesh.get_installed();
-    // skel_resource = skin_resource->ref_skeleton.get_installed();
-    // render_data = skelmesh_resource->render_data.get();
+    skin_resource = InSkelMesh->ref_skin.get();
+    mesh_resource = skin_resource->ref_mesh.get();
+    skel_resource = skin_resource->ref_skel.get();
+    render_data = InSkelMesh->render_data.get();
 }
 
 SkeletalMeshSceneProxyDynamicData::SkeletalMeshSceneProxyDynamicData(const SkeletalMesh *InSkelMesh) {

@@ -1,6 +1,7 @@
 #pragma once
 #include "rbc_anim/types.h"
 #include "rbc_anim/bone_pose.h"
+#include "rbc_anim/anim_record.h"
 
 namespace rbc {
 struct AnimInstance;
@@ -112,6 +113,32 @@ public:
     // get & set
     bool ExpectsAdditivePose() const { return bExpectsAdditivePose; }
     void ResetToRefPose();
+};
+
+struct AnimationPoseData {
+public:
+    AnimationPoseData(PoseContext &InPoseContext);
+    // Slot
+    AnimationPoseData(CompactPose &InPose);
+    // No Default and Move Constructor
+    AnimationPoseData() = delete;
+    AnimationPoseData &operator=(AnimationPoseData &&Other) = delete;
+
+public:
+    // Getter
+    const CompactPose &GetPose() const;
+    CompactPose &GetPose();
+
+protected:
+    CompactPose &pose;
+};
+
+struct AnimExtractContext {
+    double current_time;// The Position in Sequence
+    bool looping;
+    bool extract_root_motion;
+    DeltaTimeRecord delta_time_record;
+    luisa::vector<bool> bones_required;
 };
 
 }// namespace rbc

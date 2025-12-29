@@ -326,6 +326,11 @@ int main(int argc, char *argv[]) {
                 // AnimTick
                 entity->get_component<world::SkelMeshComponent>()->tick(delta_time);
             }
+            if (true) {
+                // Anim Update Render
+                // perform on render thread in the future
+                entity->get_component<world::SkelMeshComponent>()->update_render();
+            }
 
             {
                 RBCZoneScopedN("Render Tick");
@@ -336,8 +341,6 @@ int main(int argc, char *argv[]) {
                     0,// 不积累，
                     window_size,
                     tick_stage);
-
-                // entity->get_component<world::SkelMeshComponent>()->update_render();
             }
 
             if (false) {
