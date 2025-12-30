@@ -23,6 +23,8 @@ int main(int argc, char *argv[]) {
         .type = ComputeDeviceType::COMPUTE_DEVICE};
     ComputeDeviceDesc render_device_desc{
         .type = ComputeDeviceType::RENDER_DEVICE};
+    ComputeDeviceDesc host_desc{
+        .type = ComputeDeviceType::HOST};
     device_mng.add_device(compute_device_desc);
     auto interop_buffer = device_mng.create_buffer(buffer_desc, compute_device_desc, render_device_desc);
     Kernel1D add_kernel{[](BufferVar<float> buffer, Float value, Bool add) {
@@ -33,7 +35,7 @@ int main(int argc, char *argv[]) {
         buffer.write(dispatch_id().x, dispatch_id().x.cast<float>() + value + v);
     }};
     auto render_shader = render_device.lc_device().compile(add_kernel);
-    auto& compute_device = device_mng.get_compute_device(compute_device_desc.device_index);
+    auto &compute_device = device_mng.get_compute_device(compute_device_desc.device_index);
     auto compute_shader = compute_device.device.compile(add_kernel);
     // Compute(CUDA) logic
     {
@@ -48,15 +50,16 @@ int main(int argc, char *argv[]) {
     luisa::vector<float> data(size);
     {
         auto buffer = device_mng.get_buffer(interop_buffer, render_device_desc);
-        render_device.lc_main_stream()
+        render_device.lc_main_cmd_list()
             << render_shader(
                    buffer.as<float>(), 514, 1)
                    .dispatch(size)
-            << buffer.copy_to(data.data()) << synchronize();
+            << buffer.copy_to(data.data());
     }
+    device_mng.make_synchronize(render_device_desc, host_desc);
     // result
     double average{};
-    for(auto& i : data) {
+    for (auto &i : data) {
         average += (double)i / (double)size;
     }
     LUISA_INFO("Result {}", average);
