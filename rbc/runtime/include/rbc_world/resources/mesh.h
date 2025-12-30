@@ -73,7 +73,10 @@ public:
         uint32_t uv_count,
         bool contained_normal,
         bool contained_tangent);
-    void create_from_mesh(MeshResource *origin_mesh);
+
+    // generate runtime morphing instance
+    void create_as_morphing_instance(MeshResource *origin_mesh);
+
     [[nodiscard]] std::pair<CustomProperty &, luisa::span<std::byte>> add_property(luisa::string &&name, size_t size_bytes);
     [[nodiscard]] luisa::span<std::byte> get_property_host(luisa::string_view name);
     [[nodiscard]] luisa::compute::ByteBufferView get_property_buffer(luisa::string_view name);

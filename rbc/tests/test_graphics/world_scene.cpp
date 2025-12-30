@@ -281,7 +281,8 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     auto skinning_weight_index = skinning_origin_mesh->get_or_create_property_buffer("skinning_weight_index").as<uint>();
     // create skinning mesh
     {
-        skinning_mesh->create_from_mesh(skinning_origin_mesh.get());
+        // assign skinning mesh as the morphing instance of origin mesh
+        skinning_mesh->create_as_morphing_instance(skinning_origin_mesh.get());
         skinning_mesh->init_device_resource();
     }
     luisa::vector<uint> weight_and_index_host;

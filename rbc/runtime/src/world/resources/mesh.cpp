@@ -174,12 +174,13 @@ void MeshResource::_copy_from_mesh(MeshResource *origin_mesh) {
     _contained_tangent = origin_mesh->contained_tangent();
     _origin_mesh = origin_mesh;
 }
-void MeshResource::create_from_mesh(MeshResource *origin_mesh) {
+void MeshResource::create_as_morphing_instance(MeshResource *origin_mesh) {
     std::lock_guard lck{_async_mtx};
     _copy_from_mesh(origin_mesh);
     auto tr_mesh = new DeviceTransformingMesh{};
     _device_res = tr_mesh;
 }
+
 bool MeshResource::init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!is_transforming_mesh()) {

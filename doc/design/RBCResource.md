@@ -37,6 +37,9 @@ void ConfigResource::SetType(GUID type) {
 
 ### MeshResource
 
+
+MeshResource是最特殊和复杂的Resource之一，一端连接着引擎的功能模块，一段连接着图形模块
+
 - string name
 - vector: sections
 - vector: primitives
@@ -46,10 +49,37 @@ void ConfigResource::SetType(GUID type) {
 - install_to_ram
 - pointer to RenderMesh
 
-
 MaterialResource
 
 MaterialTypeResource
+
+- get_or_create_property_buffer
+- 
+
+#### MeshResource::create_empty
+
+指定
+- path
+- file_offset
+- submesh_offset
+- vertex_count
+- triangle_count
+- uv_count
+- contained_normal
+- contained_tangent
+
+重置
+- origin_mesh：the ref-counted original MeshResource
+- device_res
+
+类型
+- device_res->resource_type 
+  - TransformingMesh
+  - Buffer
+  - Image
+  - Mesh
+  - SparseImage
+  
 
 ## ResourceHandle
 
