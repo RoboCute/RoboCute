@@ -9,8 +9,8 @@ struct AnimNode : public RCBase {
 public:
     virtual ~AnimNode() {};
     AnimNode() = default;
-    AnimNode::AnimNode(const AnimNode &) = delete;
-    AnimNode &AnimNode::operator=(AnimNode &) = delete;
+    AnimNode(const AnimNode &) = delete;
+    AnimNode &operator=(AnimNode &) = delete;
 
 public:
     virtual void Initialize_AnyThread(const AnimationInitializationContext &InContext) = 0;

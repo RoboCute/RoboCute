@@ -150,7 +150,7 @@ public:
     const ReferenceSkeleton &GetRefSkeleton() const { return ref_skeleton->ref_skel(); }
     ReferenceSkeleton &GetRefSkeleton() { return ref_skeleton->ref_skel(); }
 
-    const SkeletonResource &GetRefSkeletonResource() const { *ref_skin; }
+    const SkeletonResource &GetRefSkeletonResource() const { return *ref_skeleton; }
 
     SkinResource &GetSkinResource() { return *ref_skin; }
     const SkinResource &GetSkinResource() const { return *ref_skin; }
