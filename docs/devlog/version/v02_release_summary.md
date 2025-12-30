@@ -202,7 +202,7 @@ auto blob = writer.write_to();
 - [Full Changelog](https://github.com/RoboCute/RoboCute/compare/v0.1.0...v0.2.0)
 - [v0.2 Devlog](v02.md)
 - [v0.3 Planning](v03.md)
-- [Documentation](../../DOC.md)
+- [Online Documentation](https://robocute.github.io/RoboCute/)
 
 ---
 

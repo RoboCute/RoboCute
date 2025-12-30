@@ -52,7 +52,7 @@ Python在robocute中扮演双重角色：首先robocute最终会形成一个pyth
 
 ### Test Graphics
 
-![test_graphics_bin](doc/images/test_graphics_bin.png)
+![test_graphics_bin](images/test_graphics_bin.png)
 
 ## 发布运行
 

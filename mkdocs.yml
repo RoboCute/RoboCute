@@ -74,14 +74,16 @@ nav:
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quickstart.md
   - User Guide:
+      - User Guide: UserGuide.md
       - Scene Management: user-guide/scene-management.md
       - Node System: user-guide/node-system.md
       - Animation: user-guide/animation.md
       - Editor: user-guide/editor.md
-  - Development:
+  - Development: 
+      - Developer Guide: DeveloperGuide.md
       - Architecture: design/Architecture.md
       - Development Log: devlog/README.md
-      - Building: ../BUILD.md
+      - Building: BUILD.md
   - API Reference:
       - Python API: api/python-api.md
       - REST API: api/rest-api.md

@@ -1,13 +1,13 @@
 # Welcome to RoboCute
 
-<div align="center">
+<div style="text-align: center;" markdown="1">
 
 **Make Robotics Cute!**
 
 A Python-first 3D AIGC/Robotics development tool with node-based workflow
 
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../Licenses/Apache-2.0.txt)
+[![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-orange.svg)](devlog/README.md)
 
 </div>
@@ -60,10 +60,11 @@ server.start(port=5555)
 
 ## Documentation / 文档
 
-- 📖 [Getting Started](getting-started/overview.md)
-- 🛠️ [Build Guide](../BUILD.md)
-- 📝 [Development Log](devlog/README.md)
-- 🎨 [Architecture](design/Architecture.md)
+- 📖 [Getting Started](getting-started/overview.md) 概览
+- 🛠️ [Build Guide](BUILD.md) 构建指南
+- [Developer Guide](DeveloperGuide.md) 开发者入口
+- 📝 [Development Log](devlog/README.md) 开发文档
+- 🎨 [Architecture](design/Architecture.md) 架构入口
 
 ## Project Status / 项目状态
 

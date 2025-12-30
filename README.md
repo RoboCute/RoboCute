@@ -6,7 +6,7 @@
 
 A Python-first 3D AIGC/Robotics development tool with node-based workflow
 
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](Licenses/Apache-2.0.txt)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-orange.svg)](doc/devlog/)
 
@@ -149,18 +149,18 @@ result = executor.execute()
 
 **English:**
 
-- 📖 [Architecture Documentation](doc/design/Architecture.md) - System architecture overview
-- 🛠️ [Build Guide](BUILD.md) - How to build from source
-- 📝 [Development Log](doc/devlog/) - Development progress and milestones
-- 🎨 [Design Documents](doc/design/) - Design decisions and specifications
+- 📖 [Architecture Documentation](docs/design/Architecture.md) - System architecture overview
+- 🛠️ [Build Guide](docs/BUILD.md) - How to build from source
+- 📝 [Development Log](docs/devlog/) - Development progress and milestones
+- 🎨 [Design Documents](docs/design/) - Design decisions and specifications
 - 💻 [Samples](samples/) - Example code and tutorials
 
 **中文:**
 
-- 📖 [架构文档](doc/design/Architecture.md) - 系统架构概览
-- 🛠️ [构建指南](BUILD.md) - 如何从源码构建
-- 📝 [开发日志](doc/devlog/) - 开发进度和里程碑
-- 🎨 [设计文档](doc/design/) - 设计决策和规范
+- 📖 [架构文档](docs/design/Architecture.md) - 系统架构概览
+- 🛠️ [构建指南](docs/BUILD.md) - 如何从源码构建
+- 📝 [开发日志](docs/devlog/) - 开发进度和里程碑
+- 🎨 [设计文档](docs/design/) - 设计决策和规范
 - 💻 [示例代码](samples/) - 示例代码和教程
 
 ## 🏗️ Project Status / 项目状态
@@ -213,7 +213,7 @@ We welcome contributions! Here's how you can get involved:
 - 🔧 **Extend Editor**: Build editor extensions and improvements
 - 📚 **Improve Documentation**: Help us make the docs better
 
-For building from source, see [BUILD.md](BUILD.md).
+For building from source, see [BUILD.md](docs/BUILD.md).
 
 **中文:**
 
@@ -225,7 +225,7 @@ For building from source, see [BUILD.md](BUILD.md).
 - 🔧 **扩展编辑器**: 构建编辑器扩展和改进
 - 📚 **改进文档**: 帮助我们完善文档
 
-从源码构建请参考 [BUILD.md](BUILD.md)。
+从源码构建请参考 [BUILD.md](docs/BUILD.md)。
 
 ## 📄 License / 许可证
 
@@ -252,14 +252,14 @@ RoboCute 采用 Apache License 2.0 许可证。详情请参阅 [Licenses/Apache-
 **English:**
 
 - 📦 [PyPI Package](https://pypi.org/project/robocute/) (Coming soon)
-- 📖 [Full Documentation](doc/DOC.md)
+- 📖 [Full Documentation](https://robocute.github.io/RoboCute/)
 - 🐛 [Issue Tracker](https://github.com/robocute/robocute/issues)
 - 💬 [Discussions](https://github.com/robocute/robocute/discussions)
 
 **中文:**
 
 - 📦 [PyPI 包](https://pypi.org/project/robocute/)（即将推出）
-- 📖 [完整文档](doc/DOC.md)
+- 📖 [完整文档](https://robocute.github.io/RoboCute/)
 - 🐛 [问题追踪](https://github.com/robocute/robocute/issues)
 - 💬 [讨论区](https://github.com/robocute/robocute/discussions)
 

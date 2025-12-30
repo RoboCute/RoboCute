@@ -57,6 +57,7 @@ v0.3 Examples     ░░░░░░░░░░░░░░░░░░░░  
 ## 🔧 Technical Debt & Issues
 
 ### High Priority
+
 - [ ] AnimGraph system (planned for v0.3+)
 - [ ] Scene save/load UI
 - [ ] Comprehensive error handling
@@ -207,7 +208,7 @@ Stability:           ███████░░░ 70%
 ## 📞 Contact & Resources
 
 - **GitHub**: [RoboCute/RoboCute](https://github.com/RoboCute/RoboCute)
-- **Documentation**: [doc/DOC.md](../DOC.md)
+- **Documentation**: [Online Doc](https://robocute.github.io/RoboCute/)
 - **Devlog**: [doc/devlog/](.)
 - **Issues**: [GitHub Issues](https://github.com/RoboCute/RoboCute/issues)
 
