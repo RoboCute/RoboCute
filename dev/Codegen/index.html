@@ -1,0 +1,1863 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python-first 3D AIGC/Robotics development tool">
+      
+      
+        <meta name="author" content="RoboCute Team">
+      
+      
+        <link rel="canonical" href="https://robocute.github.io/robocute/dev/Codegen/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>py-first代码生成架构 - RoboCute Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#py-first" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="RoboCute Documentation" class="md-header__button md-logo" aria-label="RoboCute Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RoboCute Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              py-first代码生成架构
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/robocute/robocute" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    robocute
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/overview/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user-guide/scene-management/" class="md-tabs__link">
+          
+  
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../design/Architecture/" class="md-tabs__link">
+          
+  
+  
+  Development
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/python-api/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="RoboCute Documentation" class="md-nav__button md-logo" aria-label="RoboCute Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    RoboCute Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/robocute/robocute" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    robocute
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/scene-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scene Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/node-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Node System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/animation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Animation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/editor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Editor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BUILD.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/rest-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REST API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概述
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心数据结构
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="核心数据结构">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#classinfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClassInfo
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methodinfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MethodInfo
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fieldinfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FieldInfo
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genericinfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GenericInfo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reflectionregistry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        反射注册表 (ReflectionRegistry)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="反射注册表 (ReflectionRegistry)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心方法
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        注册流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        装饰器系统
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="装饰器系统">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reflect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        @reflect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rpc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        @rpc
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        序列化字段标记
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        代码生成系统
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="代码生成系统">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++接口生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++实现生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python接口生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pybind11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pybind11绑定生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rpc_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RPC客户端生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        类型系统
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="类型系统">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        内置类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        类型映射规则
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        泛型类型支持
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        使用示例
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="使用示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        基本用法
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        枚举类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        序列化控制
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        代码生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        架构特点
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        文件结构
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        模板系统
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="py-first">py-first代码生成架构<a class="headerlink" href="#py-first" title="Permanent link">&para;</a></h1>
+<h2 id="_1">概述<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<p><code>rbc_meta</code> 是一个基于Python的代码生成框架，采用"Python优先"（py-first）的设计理念。通过Python类型注解和装饰器，自动生成C++接口、实现、Python绑定和RPC客户端代码。</p>
+<p>核心思想：<strong>在Python中定义数据结构和方法，自动生成多语言绑定代码</strong>。</p>
+<h2 id="_2">核心数据结构<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<h3 id="classinfo">ClassInfo<a class="headerlink" href="#classinfo" title="Permanent link">&para;</a></h3>
+<p>类的完整元信息，是代码生成的基础数据结构。</p>
+<pre><code class="language-python">@dataclass
+class ClassInfo:
+    name: str                    # 类名
+    cls: Type                    # Python类对象
+    module: str                  # 所属模块名
+    is_enum: bool                # 是否为枚举类型
+    methods: List[MethodInfo]    # 方法列表
+    fields: List[FieldInfo]      # 字段列表
+    base_classes: List[str]      # 基类名称列表
+    doc: Optional[str] = None    # 文档字符串
+
+    # C++相关配置
+    cpp_namespace: str = &quot;&quot;      # C++命名空间
+    cpp_prefix: str = &quot;&quot;         # C++函数前缀（如RBC_API）
+
+    # 功能开关
+    serde: bool = False          # 是否启用序列化
+    pybind: bool = False         # 是否生成Python绑定
+</code></pre>
+<h3 id="methodinfo">MethodInfo<a class="headerlink" href="#methodinfo" title="Permanent link">&para;</a></h3>
+<p>方法信息，包含签名、类型注解等。</p>
+<pre><code class="language-python">@dataclass
+class MethodInfo:
+    name: str                                    # 方法名
+    signature: inspect.Signature                 # 方法签名
+    return_type: Optional[Type]                  # 返回类型
+    parameters: Dict[str, inspect.Parameter]     # 参数字典
+    return_type_generic: Optional[GenericInfo]   # 返回类型泛型信息
+    parameter_generics: Dict[str, Optional[GenericInfo]]  # 参数泛型信息
+    doc: Optional[str] = None                    # 文档字符串
+
+    # 方法特性
+    cpp_prefix: str = &quot;&quot;                        # C++前缀
+    is_rpc: bool = False                         # 是否为RPC方法
+    is_static: bool = False                      # 是否为静态方法
+</code></pre>
+<h3 id="fieldinfo">FieldInfo<a class="headerlink" href="#fieldinfo" title="Permanent link">&para;</a></h3>
+<p>字段信息，包含类型、默认值等。</p>
+<pre><code class="language-python">@dataclass
+class FieldInfo:
+    name: str                          # 字段名
+    type: Type                         # 字段类型
+    generic_info: Optional[GenericInfo] # 泛型信息
+    default: Any = None                # 默认值
+    cpp_init_expr: Optional[str] = None # C++初始化表达式
+    serde: Optional[bool] = None       # 是否序列化（None表示使用类级别设置）
+    doc: Optional[str] = None           # 文档字符串
+</code></pre>
+<h3 id="genericinfo">GenericInfo<a class="headerlink" href="#genericinfo" title="Permanent link">&para;</a></h3>
+<p>泛型类型信息，用于处理容器类型和可选类型。</p>
+<pre><code class="language-python">@dataclass
+class GenericInfo:
+    origin: Type                      # 泛型原始类型（如list, dict, Optional）
+    args: tuple                       # 泛型参数（如(int,) 或 (str, int)）
+    cpp_name: Optional[str] = None    # C++类型名称（如&quot;std::vector&quot;）
+    is_container: bool = False        # 是否为容器类型
+    is_optional: bool = False         # 是否为Optional类型
+</code></pre>
+<h2 id="reflectionregistry">反射注册表 (ReflectionRegistry)<a class="headerlink" href="#reflectionregistry" title="Permanent link">&para;</a></h2>
+<p><code>ReflectionRegistry</code> 是单例模式的注册表，管理所有需要代码生成的类。</p>
+<h3 id="_3">核心方法<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">class ReflectionRegistry:
+    # 单例模式
+    _instance: Optional[&quot;ReflectionRegistry&quot;] = None
+    _registered_classes: Dict[str, ClassInfo] = {}
+
+    def register(
+        self,
+        cls: Type,
+        module_name: str = None,
+        cpp_namespace: str = None,
+        serde: bool = False,
+        pybind: bool = False,
+        cpp_prefix: str = &quot;&quot;,
+    ) -&gt; Type:
+        &quot;&quot;&quot;注册类到反射系统&quot;&quot;&quot;
+
+    def get_class_info(
+        self, 
+        class_name: str, 
+        module_name: str = None
+    ) -&gt; Optional[ClassInfo]:
+        &quot;&quot;&quot;获取类信息&quot;&quot;&quot;
+
+    def get_all_classes(self) -&gt; Dict[str, ClassInfo]:
+        &quot;&quot;&quot;获取所有已注册的类&quot;&quot;&quot;
+
+    def scan_module(self, module_name: str):
+        &quot;&quot;&quot;扫描模块，自动注册所有标记的类&quot;&quot;&quot;
+
+    def _extract_class_info(self, cls: Type, module_name: str) -&gt; ClassInfo:
+        &quot;&quot;&quot;提取类的元信息（方法、字段、基类等）&quot;&quot;&quot;
+</code></pre>
+<h3 id="_4">注册流程<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>类注册</strong>：通过 <code>@reflect</code> 装饰器或 <code>register()</code> 方法注册类</li>
+<li><strong>信息提取</strong>：<code>_extract_class_info()</code> 自动提取：</li>
+<li>方法信息（通过 <code>inspect</code> 模块）</li>
+<li>字段信息（通过 <code>get_type_hints()</code>）</li>
+<li>泛型信息（解析 <code>List[T]</code>, <code>Dict[K,V]</code>, <code>Optional[T]</code> 等）</li>
+<li>枚举成员（如果是枚举类型）</li>
+<li><strong>存储</strong>：以 <code>{module_name}.{class_name}</code> 为key存储到 <code>_registered_classes</code></li>
+</ol>
+<h2 id="_5">装饰器系统<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<h3 id="reflect">@reflect<a class="headerlink" href="#reflect" title="Permanent link">&para;</a></h3>
+<p>类装饰器，标记需要反射的类。</p>
+<pre><code class="language-python">@reflect(
+    module_name=&quot;my_module&quot;,
+    cpp_namespace=&quot;my::ns&quot;,
+    serde=True,      # 启用序列化
+    pybind=True,     # 生成Python绑定
+    cpp_prefix=&quot;RBC_API&quot;
+)
+class MyClass:
+    x: int
+    y: float
+
+    def method(self, arg: str) -&gt; int:
+        ...
+</code></pre>
+<p><strong>参数说明</strong>：
+- <code>module_name</code>: 模块名（默认使用 <code>cls.__module__</code>）
+- <code>cpp_namespace</code>: C++命名空间
+- <code>serde</code>: 是否启用序列化
+- <code>pybind</code>: 是否生成Python绑定
+- <code>cpp_prefix</code>: C++函数前缀</p>
+<h3 id="rpc">@rpc<a class="headerlink" href="#rpc" title="Permanent link">&para;</a></h3>
+<p>方法装饰器，标记RPC方法。</p>
+<pre><code class="language-python">@reflect
+class MyService:
+    @rpc
+    def remote_method(self, arg: int) -&gt; str:
+        &quot;&quot;&quot;RPC方法，会生成客户端代码&quot;&quot;&quot;
+        ...
+
+    @rpc(is_static=True)
+    def static_rpc_method(arg: int) -&gt; str:
+        &quot;&quot;&quot;静态RPC方法&quot;&quot;&quot;
+        ...
+</code></pre>
+<p><strong>特性</strong>：
+- RPC方法会生成序列化/反序列化代码
+- 支持静态RPC方法
+- 自动生成客户端接口代码</p>
+<h3 id="_6">序列化字段标记<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
+<p>使用 <code>Annotated</code> 类型注解标记字段的序列化行为：</p>
+<pre><code class="language-python">from typing import Annotated
+from rbc_meta.utils import serde_field, no_serde_field
+
+@reflect(serde=True)
+class MyClass:
+    # 明确标记需要序列化
+    temperature: Annotated[float, serde_field()]
+
+    # 明确标记不序列化
+    internal_cache: Annotated[dict, no_serde_field()]
+
+    # 使用类级别设置（默认序列化）
+    name: str
+</code></pre>
+<h2 id="_7">代码生成系统<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<p>代码生成系统位于 <code>codegen.py</code>，提供以下生成函数：</p>
+<h3 id="c">C++接口生成<a class="headerlink" href="#c" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">def cpp_interface_gen(
+    module_filter: List[str] = None, 
+    *extra_includes
+) -&gt; str:
+    &quot;&quot;&quot;生成C++接口头文件&quot;&quot;&quot;
+</code></pre>
+<p><strong>生成内容</strong>：
+- 枚举定义（<code>enum struct</code>）
+- 结构体定义（<code>struct</code>）
+- 方法声明（虚函数）
+- RPC方法声明
+- 序列化/反序列化声明
+- RTTI元数据</p>
+<h3 id="c_1">C++实现生成<a class="headerlink" href="#c_1" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">def cpp_impl_gen(
+    module_filter: List[str] = None, 
+    *extra_includes
+) -&gt; str:
+    &quot;&quot;&quot;生成C++实现文件&quot;&quot;&quot;
+</code></pre>
+<p><strong>生成内容</strong>：
+- 枚举初始化器
+- 序列化/反序列化实现
+- RPC序列化器（函数序列化器）</p>
+<h3 id="python">Python接口生成<a class="headerlink" href="#python" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">def py_interface_gen(
+    module_name: str, 
+    module_filter: List[str] = None
+) -&gt; str:
+    &quot;&quot;&quot;生成Python接口代码&quot;&quot;&quot;
+</code></pre>
+<p><strong>生成内容</strong>：
+- Python类定义
+- <code>__init__</code> 和 <code>__del__</code> 方法
+- 方法包装（调用C++绑定）</p>
+<h3 id="pybind11">Pybind11绑定生成<a class="headerlink" href="#pybind11" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">def pybind_codegen(
+    module_name: str, 
+    module_filter: List[str] = None, 
+    *extra_includes
+) -&gt; str:
+    &quot;&quot;&quot;生成Pybind11绑定代码&quot;&quot;&quot;
+</code></pre>
+<p><strong>生成内容</strong>：
+- 枚举绑定
+- 类创建/销毁函数
+- 方法绑定函数
+- 模块注册代码</p>
+<h3 id="rpc_1">RPC客户端生成<a class="headerlink" href="#rpc_1" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">def cpp_client_interface_gen(
+    module_filter: List[str] = None, 
+    *extra_includes
+) -&gt; str:
+    &quot;&quot;&quot;生成RPC客户端接口&quot;&quot;&quot;
+
+def cpp_client_impl_gen(
+    module_filter: List[str] = None, 
+    *extra_includes
+) -&gt; str:
+    &quot;&quot;&quot;生成RPC客户端实现&quot;&quot;&quot;
+</code></pre>
+<p><strong>生成内容</strong>：
+- 客户端类定义
+- RPC调用方法（使用 <code>RPCCommandList</code>）
+- 参数序列化/返回值反序列化</p>
+<h2 id="_8">类型系统<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
+<h3 id="_9">内置类型<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h3>
+<p><code>builtin.py</code> 定义了内置类型映射：</p>
+<pre><code class="language-python"># 基本类型
+uint -&gt; uint32_t
+ulong -&gt; uint64_t
+ubyte -&gt; int8_t
+double -&gt; double
+
+# 向量类型
+float2 -&gt; luisa::float2
+float3 -&gt; luisa::float3
+float4 -&gt; luisa::float4
+float3x3 -&gt; luisa::float3x3
+float4x4 -&gt; luisa::float4x4
+
+# 容器类型
+Vector[T] -&gt; luisa::vector&lt;T&gt;
+UnorderedMap[K, V] -&gt; luisa::unordered_map&lt;K, V&gt;
+
+# 特殊类型
+GUID -&gt; vstd::Guid
+string -&gt; luisa::string
+</code></pre>
+<h3 id="_10">类型映射规则<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h3>
+<p>类型映射在 <code>codegen.py</code> 的 <code>_get_cpp_type()</code> 函数中实现：</p>
+<ol>
+<li><strong>基本类型</strong>：直接映射（<code>int</code> -&gt; <code>int32_t</code>）</li>
+<li><strong>泛型类型</strong>：递归处理（<code>List[int]</code> -&gt; <code>luisa::vector&lt;int32_t&gt;</code>）</li>
+<li><strong>自定义类型</strong>：检查 <code>_cpp_type_name</code> 属性</li>
+<li><strong>命名空间</strong>：通过 <code>ClassInfo.cpp_namespace</code> 添加命名空间前缀</li>
+</ol>
+<h3 id="_11">泛型类型支持<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h3>
+<p>支持的泛型类型：
+- <code>List[T]</code> / <code>list[T]</code> -&gt; <code>luisa::vector&lt;T&gt;</code>
+- <code>Dict[K, V]</code> / <code>dict[K, V]</code> -&gt; <code>luisa::unordered_map&lt;K, V&gt;</code>
+- <code>Optional[T]</code> / <code>Union[T, None]</code> -&gt; <code>std::optional&lt;T&gt;</code>
+- <code>Vector[T]</code> -&gt; <code>luisa::vector&lt;T&gt;</code>（自定义容器）
+- <code>UnorderedMap[K, V]</code> -&gt; <code>luisa::unordered_map&lt;K, V&gt;</code>（自定义容器）</p>
+<h2 id="_12">使用示例<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h2>
+<h3 id="_13">基本用法<a class="headerlink" href="#_13" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from rbc_meta.utils import reflect, rpc
+from rbc_meta.utils.builtin import Vector, float3
+
+@reflect(
+    cpp_namespace=&quot;rbc&quot;,
+    serde=True,
+    pybind=True
+)
+class Transform:
+    position: float3
+    rotation: float3
+    scale: float3 = float3(1.0, 1.0, 1.0)
+
+    def apply(self, point: float3) -&gt; float3:
+        &quot;&quot;&quot;应用变换&quot;&quot;&quot;
+        ...
+
+    @rpc
+    def remote_transform(self, point: float3) -&gt; float3:
+        &quot;&quot;&quot;RPC变换方法&quot;&quot;&quot;
+        ...
+</code></pre>
+<h3 id="_14">枚举类型<a class="headerlink" href="#_14" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from enum import Enum
+from rbc_meta.utils import reflect
+
+@reflect(cpp_namespace=&quot;rbc&quot;)
+class RenderMode(Enum):
+    Forward = 0
+    Deferred = 1
+    RayTracing = 2
+</code></pre>
+<h3 id="_15">序列化控制<a class="headerlink" href="#_15" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from typing import Annotated
+from rbc_meta.utils import reflect, serde_field, no_serde_field
+
+@reflect(serde=True)
+class Config:
+    # 序列化字段
+    width: Annotated[int, serde_field()]
+    height: Annotated[int, serde_field()]
+
+    # 不序列化字段
+    cache: Annotated[dict, no_serde_field()]
+
+    # 使用类级别设置
+    name: str
+</code></pre>
+<h3 id="_16">代码生成<a class="headerlink" href="#_16" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from rbc_meta.utils.codegen import (
+    cpp_interface_gen,
+    cpp_impl_gen,
+    py_interface_gen,
+    pybind_codegen
+)
+
+# 生成C++接口
+cpp_header = cpp_interface_gen(
+    module_filter=[&quot;my_module&quot;],
+    &quot;#include &lt;my_header.h&gt;&quot;
+)
+
+# 生成C++实现
+cpp_impl = cpp_impl_gen(
+    module_filter=[&quot;my_module&quot;]
+)
+
+# 生成Python接口
+py_interface = py_interface_gen(
+    module_name=&quot;my_module&quot;,
+    module_filter=[&quot;my_module&quot;]
+)
+
+# 生成Pybind绑定
+pybind_code = pybind_codegen(
+    module_name=&quot;my_module&quot;,
+    module_filter=[&quot;my_module&quot;]
+)
+</code></pre>
+<h2 id="_17">架构特点<a class="headerlink" href="#_17" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Python优先</strong>：在Python中定义数据结构，自动生成多语言绑定</li>
+<li><strong>类型安全</strong>：充分利用Python类型注解，生成类型安全的C++代码</li>
+<li><strong>自动化</strong>：通过装饰器自动注册，无需手动维护注册表</li>
+<li><strong>可扩展</strong>：支持自定义类型映射和容器类型</li>
+<li><strong>RPC支持</strong>：内置RPC方法支持，自动生成客户端代码</li>
+<li><strong>序列化</strong>：灵活的序列化控制（类级别和字段级别）</li>
+</ol>
+<h2 id="_18">文件结构<a class="headerlink" href="#_18" title="Permanent link">&para;</a></h2>
+<pre><code>rbc_meta/utils/
+├── __init__.py          # 模块导出
+├── reflect.py           # 反射核心（ReflectionRegistry, ClassInfo等）
+├── codegen.py           # 代码生成函数（C++, Python, Pybind）
+├── templates.py         # 代码模板
+├── generator.py         # 代码生成器类（备用）
+├── builtin.py           # 内置类型定义
+└── codegen_util.py      # 工具函数
+</code></pre>
+<h2 id="_19">模板系统<a class="headerlink" href="#_19" title="Permanent link">&para;</a></h2>
+<p>所有代码模板定义在 <code>templates.py</code> 中，使用 <code>string.Template</code> 进行字符串替换：</p>
+<ul>
+<li><code>CPP_*_TEMPLATE</code>: C++相关模板</li>
+<li><code>PY_*_TEMPLATE</code>: Python相关模板</li>
+<li><code>PYBIND_*_TEMPLATE</code>: Pybind11绑定模板</li>
+<li><code>CPP_CLIENT_*_TEMPLATE</code>: RPC客户端模板</li>
+</ul>
+<p>模板变量使用 <code>${VARIABLE_NAME}</code> 格式，通过 <code>Template.substitute()</code> 替换。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 RoboCute Team
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/robocute/robocute" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.annotate", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
