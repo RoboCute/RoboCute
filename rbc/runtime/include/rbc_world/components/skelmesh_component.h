@@ -15,6 +15,7 @@ private:
     RC<SkelMeshResource> _skel_mesh_ref;// the animatable skeletal mesh resource
     RC<SkeletalMesh> runtime_skel_mesh; // the runtime skeletal mesh
 
+
 public:
     void on_awake() override;
     void on_destroy() override;
@@ -22,6 +23,11 @@ public:
     void deserialize_meta(ObjDeSerialize const &ser) override;
 
     void SetRefSkelMesh(RC<SkelMeshResource> &_skel_mesh) { _skel_mesh_ref = _skel_mesh; }
+
+    RC<MeshResource> morph_mesh;// the morphing mesh instance
+    luisa::vector<std::byte> morph_bytes;
+    float time = 0.0f;
+
 public:
     void tick(float delta_time = 0.0f);
     void update_render();

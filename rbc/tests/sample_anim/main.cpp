@@ -220,14 +220,22 @@ int main(int argc, char *argv[]) {
 
         // Create entity with the loaded mesh
         entity = world::create_object<world::Entity>();
+
         auto transform = entity->add_component<world::TransformComponent>();
         transform->set_pos(double3(0, 0, 0), true);
 
         auto render = entity->add_component<world::RenderComponent>();
-        render->start_update_object(loaded_materials, loaded_mesh.get());
+
+        // render->start_update_object(loaded_materials, loaded_mesh.get());
 
         auto skelmesh = entity->add_component<world::SkelMeshComponent>();
         skelmesh->SetRefSkelMesh(scene_data.skelmesh);
+
+        skelmesh->morph_mesh = world::create_object<world::MeshResource>();
+        skelmesh->morph_mesh->create_as_morphing_instance(loaded_mesh.get());
+        skelmesh->morph_mesh->init_device_resource();
+
+        render->start_update_object(loaded_materials, skelmesh->morph_mesh.get());
     }
 
     // Camera setup
@@ -328,8 +336,13 @@ int main(int argc, char *argv[]) {
             }
             if (true) {
                 // Anim Update Render
+                auto *skelmesh = entity->get_component<world::SkelMeshComponent>();
                 // perform on render thread in the future
-                entity->get_component<world::SkelMeshComponent>()->update_render();
+                skelmesh->time += delta_time;
+                skelmesh->update_render();
+
+                // utils.update_mesh_data(skelmesh->morph_mesh->origin_mesh()->device_mesh(), false);
+                utils.build_transforming_mesh(skelmesh->morph_mesh->device_transforming_mesh());
             }
 
             {
@@ -344,7 +357,7 @@ int main(int argc, char *argv[]) {
             }
 
             if (false) {
-                // anim render
+                // direct change original render component
                 auto *render_comp = entity->get_component<world::RenderComponent>();
                 auto vert_count = render_comp->_mesh_ref->vertex_count();
                 auto *host_data = render_comp->_mesh_ref->host_data();
@@ -354,6 +367,7 @@ int main(int argc, char *argv[]) {
                 for (auto &pos : pos_) {
                     pos.x += sin(delta_time);
                 }
+
                 utils.update_mesh_data(render_comp->_mesh_ref->device_mesh(), true);
             }
 
