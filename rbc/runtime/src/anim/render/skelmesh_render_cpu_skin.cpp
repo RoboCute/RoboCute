@@ -11,21 +11,18 @@ void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLO
     auto *mesh = InRenderData->render_data_->static_mesh_;
 
     int vertex_count = sk_prim.vertex_count;
-    // Fetch span from static mesh data
     auto static_buffer_span = [&vertex_count, &mesh](const VertexBufferEntry *buffer, auto t, uint32_t comps = 1) {
         using T = typename decltype(t)::type;
         LUISA_ASSERT(buffer->stride == sizeof(T) * comps);
-        // auto offset = mesh->bins[buffer->buffer_index].blob->get_data() + buffer->offset;
-        auto offset = 0;
+        auto *data = mesh->host_data();
+        auto offset = data->data() + buffer->offset;
         return ozz::span<const T>{(T *)offset, vertex_count * comps};
     };
-
     // Fetch span from dynamic data
     auto dynamic_buffer_span = [&vertex_count, &InRenderData](const VertexBufferEntry *buffer, auto t, uint32_t comps = 1) {
         using T = typename decltype(t)::type;
         LUISA_ASSERT(buffer->stride == sizeof(T) * comps);
-        auto bin = InRenderData->buffers[buffer->buffer_index];
-        auto offset = InRenderData->buffers[buffer->buffer_index]->get_data() + buffer->offset;
+        auto offset = InRenderData->morph_bytes.data() + buffer->offset;
         return ozz::span<T>{(T *)offset, vertex_count * comps};
     };
 
@@ -39,12 +36,8 @@ void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLO
 
     // INPUT LAYOUT
     job.joint_indices = static_buffer_span(sk_prim.ref_joints, rbc::type_t<uint16_t>(), 4);
+
     job.joint_indices_stride = sk_prim.ref_joints->stride;
-    // SKR_LOG_FMT_INFO(u8"Joint Indicies: {} with vertex count {}", job.joint_indices.size(), vertex_count);
-    // for (auto i = 0; i < 10; i++)
-    // {
-    //     SKR_LOG_FMT_INFO(u8"Joint Index {}, {}, {}, {}", job.joint_indices[4 * i], job.joint_indices[4 * i + 1], job.joint_indices[4 * i + 2], job.joint_indices[4 * i + 3]);
-    // }
     job.joint_weights = static_buffer_span(sk_prim.ref_weights, rbc::type_t<float>(), 4);
     job.joint_weights_stride = sk_prim.ref_weights->stride;
     // for (auto i = 0; i < 10; i++)
@@ -85,6 +78,7 @@ void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLO
 }
 
 void DoCPUSkin(const SkelMeshRenderDataLODCPU *InRenderData, luisa::span<AnimFloat4x4> InReferenceToLocal) {
+
     for (auto i = 0; i < InRenderData->skin_primitives.size(); i++) {
         // create job per primitive
         DoCPUSkinPrimitive(InRenderData->skin_primitives[i], InRenderData, InReferenceToLocal);

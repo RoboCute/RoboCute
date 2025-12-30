@@ -60,7 +60,6 @@ struct SkelMeshRenderDataLOD {
     luisa::vector<SkinPrimitive> skin_primitives;// skin primitives
     // SkeletalMesh需要一些动态更新的Vertex/Normal/Tangent数据，构成Buffer
     uint32_t skin_vertex_buffer_size;
-    luisa::vector<RC<rbc::IBlob>> buffers;// CPU buffers to skinning
 
     RC<world::MeshResource> morph_mesh;// the morphing mesh instance
     luisa::vector<std::byte> morph_bytes;

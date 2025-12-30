@@ -2,6 +2,8 @@
 #include <rbc_world/resource_base.h>
 #include <rbc_graphics/mesh_manager.h>
 #include <luisa/runtime/byte_buffer.h>
+#include "rbc_core/buffer.h"
+
 namespace rbc {
 struct DeviceResource;
 struct DeviceMesh;
@@ -25,6 +27,14 @@ struct RBC_RUNTIME_API MeshResource final : ResourceBaseImpl<MeshResource> {
         size_t size_bytes;
         rbc::shared_atomic_mutex mtx;
         luisa::compute::ByteBuffer device_buffer;
+    };
+
+    struct Entries {
+        rbc::VertexBufferEntry position;
+        rbc::VertexBufferEntry normal;
+        rbc::VertexBufferEntry tangent;
+        rbc::VertexBufferEntry joint_index;
+        rbc::VertexBufferEntry joint_weight;
     };
 
 private:
@@ -57,6 +67,8 @@ public:
     [[nodiscard]] auto contained_normal() const { return _contained_normal; }
     [[nodiscard]] auto contained_tangent() const { return _contained_tangent; }
     [[nodiscard]] auto submesh_count() const { return std::max<size_t>(_submesh_offsets.size(), 1); }
+
+    // [pos: float3]  [normal: float3] [tangent: float4] [uvs: float2[]] [triangle: int]
     [[nodiscard]] luisa::vector<std::byte> *host_data();
     [[nodiscard]] bool is_transforming_mesh() const;
     [[nodiscard]] MeshResource *origin_mesh() const { return _origin_mesh.get(); }

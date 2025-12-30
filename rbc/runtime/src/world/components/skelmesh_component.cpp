@@ -64,6 +64,7 @@ void SkelMeshComponent::update_render() {
 
     // Now Everything Ready, start Initialize RenderState
     if (!runtime_skel_mesh->RenderStateCreated()) {
+
         runtime_skel_mesh->CreateRenderState_Concurrent(render_device);
         StartUpdateRender(*render, bind_mats);
     } else {
@@ -73,6 +74,7 @@ void SkelMeshComponent::update_render() {
 }
 
 void SkelMeshComponent::remove_object() {
+
     if (!runtime_skel_mesh) {
         return;
     }

@@ -18,7 +18,6 @@ enum class EVertexAttribute : uint32_t {
 
 struct VertexBufferEntry {
     EVertexAttribute attribute;
-    uint32_t buffer_index;
     uint32_t vertex_count;
     uint32_t stride;
     uint32_t offset;

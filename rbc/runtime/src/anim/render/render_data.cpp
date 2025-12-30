@@ -28,9 +28,18 @@ void SkelMeshRenderDataLOD::InitResources(SkeletalMeshRenderData *InRenderData, 
     auto *InMeshResource = InRenderData->static_mesh_;
     render_data_ = InRenderData;
     Initialize(InMeshResource, InDevice);
+
+    skin_primitives.resize_uninitialized(1);
+    auto &sk_prim = skin_primitives[0];
+
+    // calculate offset
+    sk_prim.b_use_normals = false;
+    sk_prim.b_use_tangents = false;
+    sk_prim.vertex_count = InMeshResource->vertex_count();
 }
 
 void SkelMeshRenderDataLOD::ReleaseResources() {
+    morph_mesh->delete_this();
 }
 
 }// namespace rbc

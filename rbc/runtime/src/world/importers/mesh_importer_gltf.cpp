@@ -45,6 +45,7 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
     // skinning
     if (!import_data.all_skin_weights.empty()) {
         size_t weight_size = import_data.max_weight_count;
+
         auto property = resource->add_property(
             "skin_attrib",
             weight_size * resource->vertex_count() * sizeof(SkinAttrib));
@@ -52,6 +53,7 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
         auto skin_weights = luisa::span{
             (SkinAttrib *)property.second.data(),
             property.second.size()};
+
         // 从导出开始已经同构，直接复制即可
         std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), skin_weights.size_bytes());
     }

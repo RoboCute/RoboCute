@@ -11,7 +11,7 @@ SkeletalMeshSceneProxyDesc::SkeletalMeshSceneProxyDesc(const SkeletalMesh *InSke
     render_data = InSkelMesh->render_data.get();
 }
 
-SkeletalMeshSceneProxyDynamicData::SkeletalMeshSceneProxyDynamicData(const SkeletalMesh *InSkelMesh) {
+SkeletalMeshSceneProxyDynamicData::SkeletalMeshSceneProxyDynamicData(const SkeletalMesh *InSkelMesh) : component_space_transforms_(InSkelMesh->GetComponentSpaceTransforms()) {
 }
 
 bool SkeletalMeshSceneProxyDynamicData::IsSkinCacheAllowed() const {
