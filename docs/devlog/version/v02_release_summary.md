@@ -1,6 +1,6 @@
 # RoboCute v0.2.0 Release Summary
 
-**Release Date**: December 30, 2024  
+**Release Date**: December 30, 2025  
 **Version**: 0.2.0  
 **Codename**: "Foundation"
 
