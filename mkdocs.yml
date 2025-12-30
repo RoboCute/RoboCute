@@ -57,11 +57,6 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
   - admonition
   - pymdownx.details
   - pymdownx.tabbed:
@@ -90,10 +85,6 @@ nav:
   - API Reference:
       - Python API: api/python-api.md
       - REST API: api/rest-api.md
-  - Examples:
-      - Basic Scene: ../samples/mvp_test.py
-      - Animation Nodes: ../samples/nodes_demo.py
-      - Text2Image: ../samples/text2image_example.py
 
 # Extra
 extra:

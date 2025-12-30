@@ -72,8 +72,12 @@ cu130 = [
   "accelerate>=1.12.0",
 ]
 dev = [
-  
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.0.0",
+    "pymdown-extensions>=10.0.0",
+    "mkdocs-i18n"
 ]
+
 
 [project.scripts]
 prepare = "scripts.main:prepare"
