@@ -71,6 +71,9 @@ cu130 = [
   "transformers>=4.57.3",
   "accelerate>=1.12.0",
 ]
+dev = [
+  
+]
 
 [project.scripts]
 prepare = "scripts.main:prepare"

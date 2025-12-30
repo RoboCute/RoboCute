@@ -1,11 +1,11 @@
 site_name: RoboCute Documentation
 site_description: Python-first 3D AIGC/Robotics development tool
 site_author: RoboCute Team
-site_url: https://your-org.github.io/robocute
+site_url: https://robocute.github.io/robocute
 
 # Repository
 repo_name: robocute
-repo_url: https://github.com/your-org/robocute
+repo_url: https://github.com/robocute/robocute
 edit_uri: edit/main/docs/
 
 # Copyright
@@ -99,7 +99,7 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/your-org/robocute
+      link: https://github.com/robocute/robocute
   version:
     provider: mike
 

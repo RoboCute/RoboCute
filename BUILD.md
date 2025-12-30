@@ -8,7 +8,7 @@ robocute是一个python-first，带GUI和cpp runtime的大型库，所以整体�
 
 1. 能够访问 github 的网络环境
 2. 安装 [xmake](https://github.com/xmake-io/xmake/releases) 我们的cpp工程由xmake组织
-3. 安装 [llvm 编译工具链](https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/LLVM-19.1.7-win64.exe) 安装完成后保证 bin 目录在PATH中，方便构建系统寻找，开发版本会保证保证clang-cl一直可以顺利编译
+3. 安装 [llvm 编译工具链](https://github.com/llvm/llvm-project/releases)，选择对应的平台版本安装，安装完成后保证 bin 目录在PATH中，方便构建系统寻找，开发版本主要在Windows机器上，会保证保证clang-cl一直可以顺利编译
 4. 安装[uv](https://docs.astral.sh/) 用于管理python环境，同时支持部分项目构建脚本
 5. 安装 [Qt 6.8+](https://www.qt.io/) 用来编译GUI程序
 
@@ -20,8 +20,9 @@ Python在robocute中扮演双重角色：首先robocute最终会形成一个pyth
 
 - 安装uv
 - `uv sync`同步所有包
+  - 如果希望增加一些对开发有帮助的库，增加`--extra dev`
   - 如果希望支持torch相关AIGC功能，增加`--extra cu128/cu130`
-  - 如果希望支持uipc物理模拟，增加`--extra uipc`
+  - 如果希望支持uipc物理模拟，增加`--extra uipc`，并参考
   - 如果希望支持Robotics相关，增加`--extra robotics`
 - (Optional) Pylance Select Interpreter `.venv/Scripts/python.exe`
 
