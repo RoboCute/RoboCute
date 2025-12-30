@@ -6,6 +6,7 @@
 #include "rbc_core/memory.h"
 
 namespace rbc {
+
 bool SkeletalMesh::InitAnim() {
     if (bInitialized) { return true; }
 
@@ -209,14 +210,14 @@ void SkeletalMesh::ComputeRequiredBones(luisa::vector<BoneIndexType> &OutRequire
     luisa::sort(OutRequiredBones.begin(), OutRequiredBones.end());
 }
 
-void SkeletalMesh::CreateRenderState_Concurrent() {
+void SkeletalMesh::CreateRenderState_Concurrent(RenderDevice *device) {
     if (bUseGPUSkin) {
         LUISA_ERROR("GPUSkin Unimplemented");
         RBC_UNIMPLEMENTED();
         // render_object_ = SkrNew<SkeletalMeshRenderObjectGPUSkin>(this, InRenderDevice);
     } else {
         LUISA_INFO("Creating CPUSkin RenderObject");
-        render_object_ = RBCNew<SkeletalMeshRenderObjectCPUSkin>(this);
+        render_object_ = RBCNew<SkeletalMeshRenderObjectCPUSkin>(this, device);
     }
     bRenderStateCreated = true;
 }
@@ -246,7 +247,6 @@ void SkeletalMesh::SendRenderDynamicData_Concurrent(AnimRenderState &state) {
         int32_t useLOD = GetPredictedLODLevel();
 
         SkinResource &ref_skin = GetSkinResource();
-
         if (ref_skin.loaded()) {
             SkeletalMeshSceneProxyDynamicData data{this};
             render_object_->Update(state, 0, data, &ref_skin);

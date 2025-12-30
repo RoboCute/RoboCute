@@ -7,6 +7,7 @@
 #include "rbc_anim/asset//reference_skeleton.h"
 #include "rbc_anim/types.h"
 
+#include "rbc_graphics/render_device.h"
 namespace rbc {
 
 struct RBC_RUNTIME_API SkinPrimitive {
@@ -41,7 +42,7 @@ public:
 public:
     bool support_ray_tracing = false;
     bool use_dynamic_buffer = false;
-    const world::MeshResource *static_mesh_;// for acquiring mesh buffers
+    world::MeshResource *static_mesh_;// for acquiring mesh buffers
     luisa::vector<BoneIndexType> required_bones;
 };
 
@@ -50,8 +51,8 @@ struct AnimRenderState {
 
 struct SkelMeshRenderDataLOD {
     virtual ~SkelMeshRenderDataLOD() {}
-    virtual void Initialize(const world::MeshResource *InMeshResource);
-    virtual void InitResources(SkeletalMeshRenderData *InRenderData);
+    virtual void Initialize(world::MeshResource *InMeshResource, RenderDevice *InDevice);
+    virtual void InitResources(SkeletalMeshRenderData *InRenderData, RenderDevice *InDevice);
     virtual void ReleaseResources();
 
     SkeletalMeshRenderData *render_data_;
@@ -60,6 +61,9 @@ struct SkelMeshRenderDataLOD {
     // SkeletalMesh需要一些动态更新的Vertex/Normal/Tangent数据，构成Buffer
     uint32_t skin_vertex_buffer_size;
     luisa::vector<RC<rbc::IBlob>> buffers;// CPU buffers to skinning
+
+    RC<world::MeshResource> morph_mesh;// the morphing mesh instance
+    luisa::vector<std::byte> morph_bytes;
 };
 
 }// namespace rbc

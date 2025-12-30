@@ -3,6 +3,7 @@
 #include "rbc_anim/skeletal_mesh.h"
 #include "rbc_graphics/device_assets/device_transforming_mesh.h"
 #include "rbc_graphics/render_device.h"
+#include "rbc_world/entity.h"
 
 namespace rbc::world {
 
@@ -59,31 +60,15 @@ void SkelMeshComponent::update_render() {
         LUISA_ERROR("Calling SkelMeshComponent update_render with INVALID render_device");
         return;
     }
+    auto *render = entity()->get_component<RenderComponent>();
+
     // Now Everything Ready, start Initialize RenderState
     if (!runtime_skel_mesh->RenderStateCreated()) {
-        runtime_skel_mesh->CreateRenderState_Concurrent();
-        auto &morph_data = morph_mesh->device_transforming_mesh()->mesh_data()->pack.mutable_data;
-        morph_bytes.resize_uninitialized(morph_data.size_bytes());
-        render_device->lc_main_cmd_list() << morph_data.view().copy_to(morph_bytes.data());
-
+        runtime_skel_mesh->CreateRenderState_Concurrent(render_device);
+        StartUpdateRender(*render, bind_mats);
     } else {
         AnimRenderState state;
-        // runtime_skel_mesh->DoDeferredRenderUpdate_Concurrent(state);
-
-        auto *origin_mesh = morph_mesh->origin_mesh();
-        auto *host_data = origin_mesh->host_data();
-
-        auto &morph_data = morph_mesh->device_transforming_mesh()->mesh_data()->pack.mutable_data;
-
-        auto vert_count = origin_mesh->vertex_count();
-
-        luisa::span<float3> pos_{(float3 *)host_data->data(), vert_count};
-        luisa::span<float3> target_pos_{(float3 *)morph_bytes.data(), vert_count};
-
-        for (auto i = 0; i < vert_count; i++) {
-            target_pos_[i].x = pos_[i].x + sin(time);
-        }
-        render_device->lc_main_cmd_list() << morph_data.view().copy_from(morph_bytes.data());
+        runtime_skel_mesh->DoDeferredRenderUpdate_Concurrent(state);
     }
 }
 
@@ -98,6 +83,22 @@ void SkelMeshComponent::remove_object() {
         runtime_skel_mesh->DestroyAnim();
     }
     runtime_skel_mesh.reset();
+}
+
+void SkelMeshComponent::StartUpdateRender(RenderComponent &render, luisa::span<RC<MaterialResource> const> mats) {
+    // auto &ref_mesh = _skel_mesh_ref->ref_skin->ref_mesh;
+    auto &render_data = runtime_skel_mesh->GetRenderObject().GetLODRenderData();
+    render.start_update_object(
+        mats, render_data.morph_mesh.get());
+}
+
+MeshResource *SkelMeshComponent::GetRuntimeMesh() const {
+    if (!runtime_skel_mesh->RenderStateCreated()) {
+        LUISA_INFO("RenderState Not Created ~");
+        return nullptr;
+    }
+    auto &render_data = runtime_skel_mesh->GetRenderObject().GetLODRenderData();
+    return render_data.morph_mesh.get();
 }
 
 DECLARE_WORLD_COMPONENT_REGISTER(SkelMeshComponent);

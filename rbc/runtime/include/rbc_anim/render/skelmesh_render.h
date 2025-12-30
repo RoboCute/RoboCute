@@ -6,6 +6,8 @@
 #include "rbc_world/resources/mesh.h"
 #include "rbc_world/resources/skin.h"
 
+#include "rbc_graphics/render_device.h"
+
 namespace rbc {
 struct SkeletalMesh;
 }// namespace rbc
@@ -53,14 +55,16 @@ private:
  */
 struct RBC_RUNTIME_API SkeletalMeshRenderObject {
 public:
-    explicit SkeletalMeshRenderObject(const SkeletalMesh *InSkelMesh);
-    explicit SkeletalMeshRenderObject(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc);
+    explicit SkeletalMeshRenderObject(const SkeletalMesh *InSkelMesh, RenderDevice *device);
+    explicit SkeletalMeshRenderObject(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc, RenderDevice *device);
     virtual ~SkeletalMeshRenderObject();
 
 public:
     virtual void InitResources(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) = 0;
     virtual void ReleaseResources() = 0;
 
+    // query runtime mesh data
+    virtual SkelMeshRenderDataLOD &GetLODRenderData() = 0;
     /**
      * Update
      * @param LODIndex: 未来传入LODIndex的placeholder，从RenderData中找到对应LODIndex的渲染数据，暂时没有作用
@@ -77,6 +81,7 @@ public:
 
 protected:
     uint32_t last_frame_number_;
+    RenderDevice *device_;
 };
 
 // Utility Functions

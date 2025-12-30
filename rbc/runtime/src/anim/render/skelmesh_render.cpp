@@ -47,11 +47,11 @@ luisa::span<const AnimFloat4x4> SkeletalMeshSceneProxyDynamicData::GetPreviousCo
 
 namespace rbc {
 
-SkeletalMeshRenderObject::SkeletalMeshRenderObject(const SkeletalMesh *InSkelMesh)
-    : SkeletalMeshRenderObject(SkeletalMeshSceneProxyDesc(InSkelMesh)) {
+SkeletalMeshRenderObject::SkeletalMeshRenderObject(const SkeletalMesh *InSkelMesh, RenderDevice *device)
+    : SkeletalMeshRenderObject(SkeletalMeshSceneProxyDesc(InSkelMesh), device) {
 }
 
-SkeletalMeshRenderObject::SkeletalMeshRenderObject(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) : last_frame_number_(0) {
+SkeletalMeshRenderObject::SkeletalMeshRenderObject(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc, RenderDevice *device) : last_frame_number_(0), device_(device) {
 }
 
 SkeletalMeshRenderObject::~SkeletalMeshRenderObject() {}

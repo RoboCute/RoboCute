@@ -26,6 +26,7 @@ RenderComponent是渲染相关的直接业务模块
 - tlas idx
 - _on_transform_update()
 - _mesh_ref: the Mesh Reference
+- start_update_object()
 
 ### SkelMeshComponent
 

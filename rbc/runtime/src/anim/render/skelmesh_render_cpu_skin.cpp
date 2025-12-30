@@ -3,6 +3,8 @@
 #include "ozz/base/span.h"
 #include <tracy_wrapper.h>
 
+#include "rbc_graphics/device_assets/device_transforming_mesh.h"
+
 namespace rbc {
 
 void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLODCPU *InRenderData, luisa::span<AnimFloat4x4> InReferenceToLocal) {
@@ -93,18 +95,17 @@ void DoCPUSkin(const SkelMeshRenderDataLODCPU *InRenderData, luisa::span<AnimFlo
 
 namespace rbc {
 
-SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh *InSkelMesh)
-    : SkeletalMeshRenderObjectCPUSkin(SkeletalMeshSceneProxyDesc(InSkelMesh)) {
+SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh *InSkelMesh, RenderDevice *device)
+    : SkeletalMeshRenderObjectCPUSkin(SkeletalMeshSceneProxyDesc(InSkelMesh), device) {
 }
 
-SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc)
-    : SkeletalMeshRenderObject(InSkelMeshDesc), cached_vertex_lod_(INVALID_INDEX) {
-
+SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc, RenderDevice *device)
+    : SkeletalMeshRenderObject(InSkelMeshDesc, device), cached_vertex_lod_(INVALID_INDEX) {
     InitResources(InSkelMeshDesc);
 }
 
 void SkeletalMeshRenderObjectCPUSkin::InitResources(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) {
-    LOD.InitResources(InSkelMeshDesc.render_data);
+    LOD.InitResources(InSkelMeshDesc.render_data, device_);
 }
 
 void SkeletalMeshRenderObjectCPUSkin::ReleaseResources() {
@@ -112,6 +113,10 @@ void SkeletalMeshRenderObjectCPUSkin::ReleaseResources() {
 }
 
 SkeletalMeshRenderObjectCPUSkin::~SkeletalMeshRenderObjectCPUSkin() {
+}
+
+SkelMeshRenderDataLOD &SkeletalMeshRenderObjectCPUSkin::GetLODRenderData() {
+    return LOD;
 }
 
 /**
@@ -147,8 +152,10 @@ void SkeletalMeshRenderObjectCPUSkin::UpdateDynamicData_RenderThread() {
 void SkeletalMeshRenderObjectCPUSkin::CPUSkinAndCacheVertices() {
     LUISA_INFO("Doing CPUSkin");
     RBCZoneScopedN("DoCPUSkinAndUpload");
-    DoCPUSkin(&LOD, LOD.skin_matrices);
-    int buffer_size = LOD.skin_vertex_buffer_size;
+    // DoCPUSkin(&LOD, LOD.skin_matrices);
+    auto *origin_mesh = LOD.morph_mesh->origin_mesh();
+    auto &morph_data = LOD.morph_mesh->device_transforming_mesh()->mesh_data()->pack.mutable_data;
+    device_->lc_main_cmd_list() << morph_data.view().copy_from(LOD.morph_bytes.data());
 }
 
 void SkeletalMeshRenderObjectCPUSkin::UpdateDrawcalls() {

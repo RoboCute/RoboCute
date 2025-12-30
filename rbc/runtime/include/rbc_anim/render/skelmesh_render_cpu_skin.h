@@ -1,6 +1,9 @@
 #pragma once
 #include "rbc_anim/render/render_data.h"
 #include "rbc_anim/render/skelmesh_render.h"
+#include "rbc_world/resources/mesh.h"
+
+#include "rbc_graphics/render_device.h"
 
 namespace rbc {
 
@@ -10,20 +13,21 @@ struct SkelMeshRenderDataLODCPU : public SkelMeshRenderDataLOD {
 struct RBC_RUNTIME_API SkeletalMeshRenderObjectCPUSkin : public SkeletalMeshRenderObject {
 
 public:
-    explicit SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh *InSkelMesh);
-    explicit SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc);
+    explicit SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh *InSkelMesh, RenderDevice *device);
+    explicit SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc, RenderDevice *device);
     virtual ~SkeletalMeshRenderObjectCPUSkin();
 
 public:
     // 所有跟渲染相关的动态资产
     // 在RenderThread->CreateRenderState_ConCurrent初始化SkeletalMeshRenderObject的时候被InitResource初始化
     // 每一个Runtime SkeletalMesh都持有一个
-    // 主要存储dynamic vertex buffers, SkinPrimitives和对应的GPU资产结构
+    // 主要存储dynamic vertex buffers, SkinPrimitives和对应的GPU资产结
 
 public:// interface
     [[nodiscard]] void InitResources(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) override;
     [[nodiscard]] void ReleaseResources() override;
     [[nodiscard]] void Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const SkinResource *InRefSkin) override;
+    [[nodiscard]] SkelMeshRenderDataLOD &GetLODRenderData() override;
 
 private:
     void UpdateDynamicData_RenderThread();

@@ -14,6 +14,8 @@
 #include "rbc_anim/render/render_data.h"
 #include "rbc_anim/render/skelmesh_render.h"
 
+#include "rbc_graphics/render_device.h"
+
 namespace rbc {
 
 enum class EPreviousBoneTransformUpdateMode {
@@ -81,7 +83,7 @@ public:
 
 public:
     // Entry for RenderThread Loop
-    void CreateRenderState_Concurrent();
+    void CreateRenderState_Concurrent(RenderDevice *device);
     void DoDeferredRenderUpdate_Concurrent(AnimRenderState &state);
     void SendRenderDynamicData_Concurrent(AnimRenderState &state);
     void DestroyRenderState_Concurrent();
@@ -163,6 +165,7 @@ public:
     size_t GetNumComponentSpaceTransforms() const;
     void SetBoneSpaceTransforms(luisa::span<const AnimSOATransform> InBoneSpaceTransforms);
     luisa::shared_ptr<BoneContainer> GetSharedRequiredBones();
+    SkeletalMeshRenderObject &GetRenderObject() { return *render_object_; }
 
 public:
     // resources
