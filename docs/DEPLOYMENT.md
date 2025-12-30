@@ -68,25 +68,6 @@ mkdocs serve
 
 ## Custom Domain / 自定义域名
 
-**English:**
-
-To use a custom domain (e.g., `docs.robocute.dev`):
-
-1. Add a `CNAME` file in the `docs` directory with your domain:
-   ```
-   docs.robocute.dev
-   ```
-
-2. Update `mkdocs.yml`:
-   ```yaml
-   site_url: https://docs.robocute.dev
-   ```
-
-3. Configure DNS:
-   - Add a CNAME record pointing to `your-username.github.io`
-
-**中文:**
-
 要使用自定义域名（例如 `docs.robocute.dev`）：
 
 1. 在 `docs` 目录中添加一个 `CNAME` 文件，包含您的域名：
@@ -106,17 +87,6 @@ To use a custom domain (e.g., `docs.robocute.dev`):
 
 ### Build Errors / 构建错误
 
-**English:**
-
-If you encounter build errors:
-
-1. Check Python version: `python --version` (should be 3.12+)
-2. Verify dependencies: `pip list | grep mkdocs`
-3. Check `mkdocs.yml` syntax
-4. Review build output: `mkdocs build --verbose`
-
-**中文:**
-
 如果遇到构建错误：
 
 1. 检查 Python 版本：`python --version`（应为 3.12+）
@@ -124,18 +94,7 @@ If you encounter build errors:
 3. 检查 `mkdocs.yml` 语法
 4. 查看构建输出：`mkdocs build --verbose`
 
-### GitHub Pages Not Updating / GitHub Pages 未更新
-
-**English:**
-
-If GitHub Pages is not updating:
-
-1. Check GitHub Actions workflow status
-2. Verify `gh-pages` branch exists and has content
-3. Ensure Pages source is set to `gh-pages` branch
-4. Wait a few minutes for changes to propagate
-
-**中文:**
+### GitHub Pages 未更新
 
 如果 GitHub Pages 未更新：
 

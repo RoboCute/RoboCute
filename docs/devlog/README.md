@@ -12,11 +12,6 @@ This directory contains development logs and milestone records for the RoboCute 
 - [v0.2](version/v02.md) - First Refactoring (✅ Completed / 已完成)
 - [v0.3](version/v03.md) - Example-Driven Development (🎯 Planned / 计划中)
 
-### Editor Development / 编辑器开发
-
-- [Editor V0.1](editor/EditorV01.md) - Initial Editor Implementation (✅ Completed / 已完成)
-- [Editor V0.2](editor/EditorV02.md) - MainWindow Refactoring (✅ Completed / 已完成)
-
 ## 📊 Development Timeline / 开发时间线
 
 ### v0.1 MVP (Completed / 已完成)
