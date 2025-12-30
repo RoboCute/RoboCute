@@ -9,6 +9,7 @@ using namespace luisa::shader;
 namespace geometry {
 struct MeshMeta {
 	uint heap_idx;
+	uint mutable_heap_idx;
 	uint tri_byte_offset;
 	uint vertex_count;
 	uint ele_mask;

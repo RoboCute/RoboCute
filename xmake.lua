@@ -8,7 +8,7 @@ includes('xmake/options.lua')
 
 lc_options = {
     lc_cpu_backend = false,
-    lc_cuda_backend = false,
+    lc_cuda_backend = true,
     lc_dx_backend = is_host("windows"),
     lc_vk_backend = true,
     lc_enable_mimalloc = true,

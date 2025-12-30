@@ -21,7 +21,7 @@ struct RBC_RUNTIME_API RenderDevice {
     RenderDevice &operator=(RenderDevice &&) = delete;
 
     // init & shutdown
-    void init(const luisa::filesystem::path &program_path, luisa::string_view backend = "dx", bool headless = false, bool require_async_stream = true, bool require_io_service = true, bool gpu_dump = false, void *external_device = nullptr);
+    void init(const luisa::filesystem::path &program_path, luisa::string_view backend = "dx", bool headless = false, bool require_async_stream = true, bool require_io_service = true, bool gpu_dump = false, void *external_device = nullptr, size_t device_index = std::numeric_limits<size_t>::max());
     template<typename T>
     Buffer<T> create_transient_buffer(vstd::string name, size_t element_count) {
         auto d = static_cast<ManagedDevice *>(_managed_device.impl());
@@ -97,6 +97,7 @@ struct RBC_RUNTIME_API RenderDevice {
     inline auto &lc_async_timeline() { return _async_timeline; }
     inline auto io_service() { return _io_service; }
     inline auto mem_io_service() { return _mem_io_service; }
+    inline auto device_index() { return _device_index; }
     inline auto fallback_mem_io_service() { return _fallback_mem_io_service; }
     inline auto &lc_main_cmd_list() { return _main_cmd_list; }
     static bool is_rendering_thread();
@@ -136,6 +137,7 @@ private:
     IOService *_fallback_mem_io_service = nullptr;
     std::mutex _render_loop_mtx;
     std::mutex _async_compute_loop_mtx;
+    size_t _device_index;
 };
 
 }// namespace rbc

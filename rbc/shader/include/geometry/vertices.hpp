@@ -50,10 +50,17 @@ inline std::array<PosUV, 3> read_vert_pos_uv(
     BindlessBuffer &heap,
     uint prim_id,
     MeshMeta mesh_meta) {
+    uint mutable_heap_idx;
+    if (mesh_meta.mutable_heap_idx != max_uint32) {
+        mutable_heap_idx = mesh_meta.mutable_heap_idx;
+    } else {
+        mutable_heap_idx = mesh_meta.heap_idx;
+    }
+
     std::array<PosUV, 3> arr;
     auto tri = heap.byte_buffer_read<Triangle>(mesh_meta.heap_idx, mesh_meta.tri_byte_offset + TriangleSize * prim_id);
     for (uint i = 0; i < 3; ++i) {
-        arr[i].pos = heap.buffer_read<float3>(mesh_meta.heap_idx, tri[i]);
+        arr[i].pos = heap.buffer_read<float3>(mutable_heap_idx, tri[i]);
     }
     uint offset = 16 * mesh_meta.vertex_count;
     if (mesh_meta.ele_mask & MeshMeta::normal_mask) {
@@ -70,29 +77,7 @@ inline std::array<PosUV, 3> read_vert_pos_uv(
     }
     return arr;
 }
-inline std::array<float2, 3> read_vert_uv(
-    ByteBuffer<> &byte_buffer,
-    uint prim_id,
-    uint vertex_count,
-    uint tri_byte_offset,
-    uint ele_mask) {
-    std::array<float2, 3> arr;
-    auto tri = byte_buffer.byte_read<Triangle>(tri_byte_offset + TriangleSize * prim_id);
-    uint offset = 16 * vertex_count;
-    if (ele_mask & MeshMeta::normal_mask) {
-        offset += 16 * vertex_count;
-    }
-    if ((ele_mask & MeshMeta::tangent_mask) != 0) {
-        offset += 16 * vertex_count;
-    }
-    if (ele_mask & (MeshMeta::uv_mask == 0u))
-        return arr;
-    for (uint i = 0; i < 3; ++i) {
-        arr[i] = byte_buffer.byte_read<float2>(
-            offset + tri[i] * 8);
-    }
-    return arr;
-}
+
 inline std::array<Vertex, 3> read_vertices(
     BindlessBuffer &heap,
     uint prim_id,
@@ -102,15 +87,22 @@ inline std::array<Vertex, 3> read_vertices(
     uint &contained_uv,
     Triangle &tri) {
     std::array<Vertex, 3> arr;
+    uint mutable_heap_idx;
+    if (mesh_meta.mutable_heap_idx != max_uint32) {
+        mutable_heap_idx = mesh_meta.mutable_heap_idx;
+    } else {
+        mutable_heap_idx = mesh_meta.heap_idx;
+    }
+
     tri = heap.byte_buffer_read<Triangle>(mesh_meta.heap_idx, mesh_meta.tri_byte_offset + TriangleSize * prim_id);
     for (uint i = 0; i < 3; ++i) {
-        arr[i].pos = heap.buffer_read<float3>(mesh_meta.heap_idx, tri[i]);
+        arr[i].pos = heap.buffer_read<float3>(mutable_heap_idx, tri[i]);
     }
     uint offset = 16 * mesh_meta.vertex_count;
     if (mesh_meta.ele_mask & MeshMeta::normal_mask) {
         for (uint i = 0; i < 3; ++i) {
             arr[i].normal = heap.byte_buffer_read<float3>(
-                mesh_meta.heap_idx, offset + tri[i] * 16);
+                mutable_heap_idx, offset + tri[i] * 16);
         }
         offset += 16 * mesh_meta.vertex_count;
         contained_normal = true;
@@ -120,7 +112,7 @@ inline std::array<Vertex, 3> read_vertices(
     if ((mesh_meta.ele_mask & MeshMeta::tangent_mask) != 0) {
         for (uint i = 0; i < 3; ++i) {
             arr[i].tangent = heap.byte_buffer_read<float4>(
-                mesh_meta.heap_idx, offset + tri[i] * 16);
+                mutable_heap_idx, offset + tri[i] * 16);
         }
         offset += 16 * mesh_meta.vertex_count;
         contained_tangent = true;
@@ -140,51 +132,7 @@ inline std::array<Vertex, 3> read_vertices(
     contained_uv = uv_idx;
     return arr;
 }
-inline std::array<Vertex, 3> read_vertices(
-    ByteBuffer<> &byte_buffer,
-    uint prim_id,
-    uint tri_byte_offset,
-    uint vertex_count,
-    uint ele_mask,
-    bool &contained_normal,
-    bool &contained_tangent,
-    uint &contained_uv) {
-    std::array<Vertex, 3> arr;
-    auto tri = byte_buffer.byte_read<Triangle>(tri_byte_offset + TriangleSize * prim_id);
-    for (uint i = 0; i < 3; ++i) {
-        arr[i].pos = byte_buffer.byte_read<float3>(tri[i] * 16);
-    }
-    uint offset = 16 * vertex_count;
-    if (ele_mask & MeshMeta::normal_mask) {
-        for (uint i = 0; i < 3; ++i) {
-            arr[i].normal = byte_buffer.byte_read<float3>(offset + tri[i] * 16);
-        }
-        offset += 16 * vertex_count;
-        contained_normal = true;
-    } else {
-        contained_normal = false;
-    }
-    if ((ele_mask & MeshMeta::tangent_mask) != 0) {
-        for (uint i = 0; i < 3; ++i) {
-            arr[i].tangent = byte_buffer.byte_read<float4>(offset + tri[i] * 16);
-        }
-        offset += 16 * vertex_count;
-        contained_tangent = true;
-    } else {
-        contained_tangent = false;
-    }
-    uint uv_idx;
-    for (uv_idx = 0; uv_idx < 4; ++uv_idx) {
-        if (ele_mask & ((MeshMeta::uv_mask << uv_idx) == 0u))
-            break;
-        for (uint i = 0; i < 3; ++i) {
-            arr[i].uvs[uv_idx] = byte_buffer.byte_read<float2>(offset + tri[i] * 8);
-        }
-        offset += 8 * vertex_count;
-    }
-    contained_uv = uv_idx;
-    return arr;
-}
+
 inline void write_pos_normal(
     ByteBuffer<> &byte_buffer,
     uint vert_id,

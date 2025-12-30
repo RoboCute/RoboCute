@@ -39,7 +39,7 @@ void Skinning::update_mesh(
     uint per_vert_weight = skin_weights.size() / vert_count;
     cmdlist << (*_skinning)(
                    ByteBufferView{in_mesh->pack.data},
-                   ByteBufferView{out_mesh->pack.data},
+                   ByteBufferView{out_mesh->pack.mutable_data},
                    dual_quat_skeleton,
                    skin_indices,
                    skin_weights,

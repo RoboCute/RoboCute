@@ -33,7 +33,7 @@ void DeviceTransformingMesh::async_load(RC<DeviceMesh> origin_mesh, bool copy_fr
         if (copy_from_origin) {
             auto pos_buffer = ptr->_origin_mesh->mesh_data()->pack.data.view(0, ptr->_last_vertex.size_bytes() / sizeof(uint)).as<float3>();
             args.cmdlist
-                << ptr->_render_mesh_data->pack.data.view().copy_from(ptr->_origin_mesh->mesh_data()->pack.data);
+                << ptr->_render_mesh_data->pack.mutable_data.view().copy_from(ptr->_origin_mesh->mesh_data()->pack.data.view(0, ptr->_render_mesh_data->pack.mutable_data.size()));
             if (init_last_vertex)
                 args.cmdlist << ptr->_last_vertex.view().copy_from(pos_buffer);
         }
@@ -54,7 +54,7 @@ void DeviceTransformingMesh::create_from_origin(DeviceMesh *device_mesh, bool in
 }
 void DeviceTransformingMesh::copy_from_origin(CommandList &cmdlist) {
     LUISA_ASSERT(_origin_mesh && _render_mesh_data);
-    cmdlist << _render_mesh_data->pack.data.view().copy_from(_origin_mesh->mesh_data()->pack.data);
+    cmdlist << _render_mesh_data->pack.mutable_data.view().copy_from(_origin_mesh->mesh_data()->pack.data.view(0, _render_mesh_data->pack.mutable_data.size()));
     if (_last_vertex) {
         auto pos_buffer = _origin_mesh->mesh_data()->pack.data.view(0, _last_vertex.size_bytes() / sizeof(uint)).as<float3>();
         cmdlist << _last_vertex.view().copy_from(pos_buffer);

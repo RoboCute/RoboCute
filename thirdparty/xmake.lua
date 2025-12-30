@@ -1,4 +1,12 @@
 includes("LuisaCompute")
+
+target('rbc_dllexport_include') -- to include dll_export.h
+    set_kind('phony')
+    add_includedirs('LuisaCompute/include', {
+        public = true
+    })
+target_end()
+
 includes("rtm")
 includes("tiny_obj_loader")
 includes("tinyexr")
