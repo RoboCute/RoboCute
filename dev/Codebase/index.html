@@ -268,7 +268,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../user-guide/scene-management/" class="md-tabs__link">
+        <a href="../../UserGuide/" class="md-tabs__link">
           
   
   
@@ -288,7 +288,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../design/Architecture/" class="md-tabs__link">
+        <a href="../../DeveloperGuide/" class="md-tabs__link">
           
   
   
@@ -598,6 +598,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../user-guide/scene-management/" class="md-nav__link">
         
   
@@ -771,6 +799,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../DeveloperGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../design/Architecture/" class="md-nav__link">
         
   
@@ -827,7 +883,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../BUILD.md" class="md-nav__link">
+      <a href="../../BUILD/" class="md-nav__link">
         
   
   
@@ -992,114 +1048,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#py-first" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        py-first标准工作流
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="py-first标准工作流">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#prepare" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prepare流程
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#codegen" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Codegen流程
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#c" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        C++编译
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install过程
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        标准库
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="标准库">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#hashmap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        HashMap
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        文档
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -1119,51 +1067,13 @@
 
 
 <h1 id="_1">代码库基础设施介绍<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
-<p>这里是方便整个RBC代码开发的基础设施介绍</p>
+<p>这里是方便整个RBC代码开发的基础设施介绍，包括如何构建C++和python代码，如何维护文档，整个代码库的基础工具，相关的资源管理等，主要包括</p>
 <ul>
-<li>doc: 文档</li>
-<li>custom_nodes</li>
-<li>packages</li>
-<li>rbc</li>
-<li>app</li>
-<li>core</li>
-<li>editor</li>
-<li>ext_c</li>
-<li>ipc</li>
-<li>oidn_plugin</li>
-<li>render_plugin</li>
-<li>runtime</li>
-<li>samples</li>
-<li>shader</li>
-<li>tests</li>
-<li>world</li>
-<li>world_v2</li>
-<li>samples</li>
-<li>src</li>
-<li>test</li>
-<li>thirdparty</li>
-<li>xmake</li>
+<li><a href="../codebase/py_first_build/">PY-FIRST构建系统</a>：RoboCute的核心构建流程</li>
+<li><a href="../codebase/typed_py_based_reflection/">基于TypedPython的反射</a>：一套基于typed-python的反射与代码生成框架</li>
+<li><a href="../codebase/documentation/">文档撰写与发布系统</a>：我们使用mkdocs构建了一套更新文档的工作流</li>
+<li><a href="../codebase/standard_lib/">标准库</a>：我们介绍项目中推荐使用的标准库方案</li>
 </ul>
-<h2 id="py-first">py-first标准工作流<a class="headerlink" href="#py-first" title="Permanent link">&para;</a></h2>
-<p>Robocute采用python-first的工作流，只在高性能，底层硬件封装和多线程层使用cpp进行加速，所以整体的开发流程也围绕python搭建。整体管理采用<code>uv</code>作为包管理工具，任何新增的python库采用<code>uv add &lt;library&gt;</code>添加，在新的工作区第一步采用<code>uv sync</code>同步基础的工作区组件</p>
-<h3 id="prepare">Prepare流程<a class="headerlink" href="#prepare" title="Permanent link">&para;</a></h3>
-<p>RBC的C++开发流程需要很多的开源库源码，SDK和工具链，这些二进制工具会在<code>uv run prepare</code>的过程中下载到指定的地方，请保证网络通畅。</p>
-<h3 id="codegen">Codegen流程<a class="headerlink" href="#codegen" title="Permanent link">&para;</a></h3>
-<p>因为Robocute采用大量的python-cpp胶水代码绑定，还有便于网络传输与硬盘加载的序列化-反序列化代码，这些大量的模板代码需要使用codegen进行生成，<code>uv run gen</code>的过程会生成所有需要的序列化代码，请务必在这些代码生成之后再进行cpp的编译和开发。</p>
-<h3 id="c">C++编译<a class="headerlink" href="#c" title="Permanent link">&para;</a></h3>
-<p>C++主要的编译对象是<code>rbc_ext_c.pyd</code>（一个C++和pybind11写成的python拓展）以及<code>rbc_editor.exe</code>一个使用Qt作为UI库，LuisaCompute完成Viewport的图形Editor。Robocute使用<code>xmake</code>来管理C++的编译流程，在配置好C++编译环境之后直接<code>xmake</code>即可</p>
-<h3 id="install">Install过程<a class="headerlink" href="#install" title="Permanent link">&para;</a></h3>
-<p>在C++编译完成之后，需要将编译产物install到指定的文件夹目录下，方便python端的打包和分发，同时用stubgen生成必要的存根文件，方便python部分的开发。</p>
-<p><code>xmake l xmake/install.lua</code></p>
-<h2 id="_2">标准库<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
-<h3 id="hashmap">HashMap<a class="headerlink" href="#hashmap" title="Permanent link">&para;</a></h3>
-<p>其实有个更高效的写法
-<code>auto is_new_elem = resource_factories.try_emplace(type, factory).second;</code></p>
-<p>如果你不希望在已经有了元素的情况下构建新的元素，那还可以
-<code>resource_factories.try_emplace(type, vstd::lazy_eval([&amp;] { return make_factory(); }))</code>;
-这样 make_factory 只有在需要添加的时候才会调用</p>
-<h2 id="_3">文档<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<p>文档包含对外的</p>
 
 
 
