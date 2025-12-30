@@ -37,14 +37,25 @@ int main(int argc, char *argv[]) {
     auto render_shader = render_device.lc_device().compile(add_kernel);
     auto &compute_device = device_mng.get_compute_device(compute_device_desc.device_index);
     auto compute_shader = compute_device.device.compile(add_kernel);
+    /*
+    Make a Render -> Compute -> Render interop test
+    */
+
+    // Render (DX12/VK) logic
+    {
+        compute_device.main_cmdlist
+            << compute_shader(
+                   device_mng.get_buffer(interop_buffer, compute_device_desc).as<float>(), 1919, 1)
+                   .dispatch(size);
+    }
+    device_mng.make_synchronize(render_device_desc, compute_device_desc);
     // Compute(CUDA) logic
     {
         compute_device.main_cmdlist
             << compute_shader(
-                   device_mng.get_buffer(interop_buffer, compute_device_desc).as<float>(), 114, 0)
+                   device_mng.get_buffer(interop_buffer, compute_device_desc).as<float>(), 114, 1)
                    .dispatch(size);
     }
-    // sync
     device_mng.make_synchronize(compute_device_desc, render_device_desc);
     // Render (DX12/VK) logic
     luisa::vector<float> data(size);

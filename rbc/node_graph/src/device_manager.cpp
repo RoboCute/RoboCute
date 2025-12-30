@@ -139,10 +139,6 @@ void DeviceManager::_sync_render_to_compute(uint32_t compute_index) {
     if (!cmdlist.empty()) {
         stream << cmdlist.commit();
     }
-    if (render_device.device_index() != std::numeric_limits<uint64_t>::max() && render_device.device_index() != compute_index) {
-        stream.synchronize();
-        return;
-    }
     auto &compute_device = get_compute_device(compute_index);
     _create_interop_evt(compute_index, compute_device);
     auto &interop_evt = compute_device._interop_evt;
@@ -173,10 +169,6 @@ void DeviceManager::_sync_compute_to_render(uint32_t compute_index) {
     auto &cmdlist = compute_device.main_cmdlist;
     if (!cmdlist.empty()) {
         compute_device.main_stream << cmdlist.commit();
-    }
-    if (render_device.device_index() != std::numeric_limits<uint64_t>::max() && render_device.device_index() != compute_index) {
-        compute_device.event.synchronize();
-        return;
     }
     _create_interop_evt(compute_index, compute_device);
     auto &interop_evt = compute_device._interop_evt;
