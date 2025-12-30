@@ -36,7 +36,6 @@ private:
     void *_interop_ext{};
     void _sync_render_to_compute(uint32_t compute_index);
     void _sync_compute_to_render(uint32_t compute_index);
-    ComputeDevice &_compute_device(uint32_t index);
     void _create_interop_evt(uint compute_index, ComputeDevice &compute_device);
 
 public:
@@ -46,6 +45,7 @@ public:
     void make_synchronize(
         ComputeDeviceDesc src_device,
         ComputeDeviceDesc dst_device);
+    ComputeDevice &get_compute_device(uint32_t index);
     NodeBuffer create_buffer(RC<BufferDescriptor> buffer_desc, ComputeDeviceDesc src_device_desc, ComputeDeviceDesc dst_device_desc);
     ByteBufferView get_buffer(NodeBuffer const &node_buffer, ComputeDeviceDesc dst_device_desc);
 };

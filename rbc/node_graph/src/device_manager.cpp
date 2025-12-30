@@ -63,7 +63,7 @@ void DeviceManager::add_device(ComputeDeviceDesc const &device_desc) {
                     render_hardware_device = dx_interop_ext->cuda_device_index();
                 }
             }
-            v.device = _lc_ctx.create_device("cuda", &device_config);
+            v.device = _lc_ctx.create_device("cuda", &device_config, false);
             v.main_stream = v.device.create_stream();
             v.event = v.device.create_event();
             if (render_hardware_device == device_config.device_index) {
@@ -84,13 +84,13 @@ void DeviceManager::make_synchronize(
     // same device
     if (src_device == dst_device || src_device.type == ComputeDeviceType::HOST) return;
     if (src_device.type == ComputeDeviceType::RENDER_DEVICE && dst_device.type == ComputeDeviceType::COMPUTE_DEVICE) {
-        if (_compute_device(dst_device.device_index)._can_interop) {
+        if (get_compute_device(dst_device.device_index)._can_interop) {
             _sync_render_to_compute(dst_device.device_index);
             return;
         }
     }
     if (src_device.type == ComputeDeviceType::COMPUTE_DEVICE && dst_device.type == ComputeDeviceType::RENDER_DEVICE) {
-        if (_compute_device(src_device.device_index)._can_interop) {
+        if (get_compute_device(src_device.device_index)._can_interop) {
             _sync_compute_to_render(src_device.device_index);
             return;
         }
@@ -105,7 +105,7 @@ void DeviceManager::make_synchronize(
             stream.synchronize();
         } break;
         case ComputeDeviceType::COMPUTE_DEVICE: {
-            auto &v = _compute_device(src_device.device_index);
+            auto &v = get_compute_device(src_device.device_index);
             if (!v.main_cmdlist.empty()) {
                 v.main_stream << v.main_cmdlist.commit() << v.event.signal();
             }
@@ -143,7 +143,7 @@ void DeviceManager::_sync_render_to_compute(uint32_t compute_index) {
         stream.synchronize();
         return;
     }
-    auto &compute_device = _compute_device(compute_index);
+    auto &compute_device = get_compute_device(compute_index);
     _create_interop_evt(compute_index, compute_device);
     auto &interop_evt = compute_device._interop_evt;
     interop_evt.visit([&]<typename T>(T const &t) {
@@ -158,7 +158,7 @@ void DeviceManager::_sync_render_to_compute(uint32_t compute_index) {
         }
     });
 }
-ComputeDevice &DeviceManager::_compute_device(uint32_t index) {
+ComputeDevice &DeviceManager::get_compute_device(uint32_t index) {
     auto iter = _compute_devices.find(index);
     if (!iter) [[unlikely]] {
         LUISA_ERROR("Can not find compute device {}", index);
@@ -167,9 +167,13 @@ ComputeDevice &DeviceManager::_compute_device(uint32_t index) {
 }
 void DeviceManager::_sync_compute_to_render(uint32_t compute_index) {
     auto &render_device = RenderDevice::instance();
-    auto &cmdlist = render_device.lc_main_cmd_list();
     auto &stream = render_device.lc_main_stream();
-    auto &compute_device = _compute_device(compute_index);
+
+    auto &compute_device = get_compute_device(compute_index);
+    auto &cmdlist = compute_device.main_cmdlist;
+    if (!cmdlist.empty()) {
+        compute_device.main_stream << cmdlist.commit();
+    }
     if (render_device.device_index() != std::numeric_limits<uint64_t>::max() && render_device.device_index() != compute_index) {
         compute_device.event.synchronize();
         return;
@@ -195,7 +199,7 @@ NodeBuffer DeviceManager::create_buffer(RC<BufferDescriptor> buffer_desc, Comput
     ComputeDevice *compute_device{};
     NodeBuffer node_buffer{std::move(buffer_desc), src_device_desc, dst_device_desc};
     auto can_interop = [&](uint index) {
-        compute_device = &_compute_device(index);
+        compute_device = &get_compute_device(index);
         return compute_device->_can_interop;
     };
     if ((src_device_desc.type == ComputeDeviceType::RENDER_DEVICE &&
@@ -233,7 +237,7 @@ NodeBuffer DeviceManager::create_buffer(RC<BufferDescriptor> buffer_desc, Comput
             node_buffer._buffer = RenderDevice::instance().lc_device().create_byte_buffer(desc.size_bytes());
         } break;
         case ComputeDeviceType::COMPUTE_DEVICE: {
-            auto &compute_device = _compute_device(src_device_desc.device_index);
+            auto &compute_device = get_compute_device(src_device_desc.device_index);
             node_buffer._buffer = compute_device.device.create_byte_buffer(desc.size_bytes());
         } break;
         case ComputeDeviceType::HOST: {
