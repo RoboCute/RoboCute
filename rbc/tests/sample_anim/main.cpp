@@ -130,6 +130,7 @@ int main(int argc, char *argv[]) {
         config.load_skin = true;
         config.load_anim_seq = true;
         auto scene_data = world::GltfSceneLoader::load_scene(gltf_path, config);
+
         if (true) {
             scene_data.skel->log_brief();
             {
@@ -223,6 +224,7 @@ int main(int argc, char *argv[]) {
 
         auto transform = entity->add_component<world::TransformComponent>();
         transform->set_pos(double3(0, 0, 0), true);
+        transform->set_scale(double3(0.2, 0.2, 0.2), true);
 
         auto render = entity->add_component<world::RenderComponent>();
 
@@ -291,6 +293,8 @@ int main(int argc, char *argv[]) {
     utils.window()->set_window_size_callback([&](uint2 size) {
         window_size = size;
     });
+
+    // return 0;
 
     while (!utils.should_close()) {
         RBCFrameMark;

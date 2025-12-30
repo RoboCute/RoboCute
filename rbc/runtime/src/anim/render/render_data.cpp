@@ -36,6 +36,8 @@ void SkelMeshRenderDataLOD::InitResources(SkeletalMeshRenderData *InRenderData, 
     sk_prim.b_use_normals = false;
     sk_prim.b_use_tangents = false;
     sk_prim.vertex_count = InMeshResource->vertex_count();
+    sk_prim.position.offset = 0;
+    sk_prim.position.stride = 16;
 }
 
 void SkelMeshRenderDataLOD::ReleaseResources() {

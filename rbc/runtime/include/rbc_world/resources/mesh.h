@@ -29,14 +29,6 @@ struct RBC_RUNTIME_API MeshResource final : ResourceBaseImpl<MeshResource> {
         luisa::compute::ByteBuffer device_buffer;
     };
 
-    struct Entries {
-        rbc::VertexBufferEntry position;
-        rbc::VertexBufferEntry normal;
-        rbc::VertexBufferEntry tangent;
-        rbc::VertexBufferEntry joint_index;
-        rbc::VertexBufferEntry joint_weight;
-    };
-
 private:
     RC<DeviceResource> _device_res;
     mutable rbc::shared_atomic_mutex _async_mtx;

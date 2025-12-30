@@ -42,7 +42,10 @@ bool load_gltf_model(tinygltf::Model &model, luisa::filesystem::path const &path
     return ret;
 }
 
-GltfSceneData GltfSceneLoader::load_from_model(tinygltf::Model &model, GltfLoadConfig &config, luisa::filesystem::path const &path) {
+GltfSceneData GltfSceneLoader::load_from_model(
+    tinygltf::Model &model,
+    GltfLoadConfig &config,
+    luisa::filesystem::path const &path) {
     GltfSceneData result;
     // Get the directory containing the GLTF file (for resolving relative texture paths)
     auto gltf_dir = path.parent_path();

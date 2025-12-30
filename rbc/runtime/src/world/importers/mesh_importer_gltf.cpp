@@ -45,6 +45,7 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
     // skinning
     if (import_data.max_weight_count > 0) {
         size_t weight_size = import_data.max_weight_count;
+        LUISA_ASSERT(weight_size == 4, "Skinning Weight Size is not 4");
 
         auto property = resource->add_property(
             "joint_index",
@@ -65,6 +66,15 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
             w_property.second.size()};
 
         std::memcpy(joint_weight.data(), import_data.all_joint_weight.data(), joint_weight.size_bytes());
+
+        for (auto i = 0; i < 10; i++) {
+            LUISA_INFO("Joint Index {}: {}", i, joint_index[i]);
+        }
+
+        for (auto i = 0; i < 10; i++) {
+
+            LUISA_INFO("Joint Weight {}: {}", i, joint_weight[i]);
+        }
     }
     return true;
 }
