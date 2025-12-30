@@ -43,19 +43,28 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
     *(resource->host_data()) = std::move(resource_bytes);
 
     // skinning
-    if (!import_data.all_skin_weights.empty()) {
+    if (import_data.max_weight_count > 0) {
         size_t weight_size = import_data.max_weight_count;
 
         auto property = resource->add_property(
-            "skin_attrib",
-            weight_size * resource->vertex_count() * sizeof(SkinAttrib));
+            "joint_index",
+            weight_size * resource->vertex_count() * sizeof(uint16_t));
 
-        auto skin_weights = luisa::span{
-            (SkinAttrib *)property.second.data(),
+        auto joint_index = luisa::span{
+            (uint16_t *)property.second.data(),
             property.second.size()};
 
-        // 从导出开始已经同构，直接复制即可
-        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), skin_weights.size_bytes());
+        std::memcpy(joint_index.data(), import_data.all_joint_index.data(), joint_index.size_bytes());
+
+        auto w_property = resource->add_property(
+            "joint_weight",
+            weight_size * resource->vertex_count() * sizeof(uint16_t));
+
+        auto joint_weight = luisa::span{
+            (float *)w_property.second.data(),
+            w_property.second.size()};
+
+        std::memcpy(joint_weight.data(), import_data.all_joint_weight.data(), joint_weight.size_bytes());
     }
     return true;
 }
@@ -84,17 +93,28 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
     *(resource->host_data()) = std::move(resource_bytes);
 
     // skinning
-    if (!import_data.all_skin_weights.empty()) {
+    if (import_data.max_weight_count > 0) {
         size_t weight_size = import_data.max_weight_count;
-        auto property = resource->add_property(
-            "skin_attrib",
-            weight_size * resource->vertex_count() * sizeof(SkinAttrib));
 
-        auto skin_weights = luisa::span{
-            (SkinAttrib *)property.second.data(),
+        auto property = resource->add_property(
+            "joint_index",
+            weight_size * resource->vertex_count() * sizeof(uint16_t));
+
+        auto joint_index = luisa::span{
+            (uint16_t *)property.second.data(),
             property.second.size()};
-        // 从导出开始已经同构，直接复制即可
-        std::memcpy(skin_weights.data(), import_data.all_skin_weights.data(), skin_weights.size_bytes());
+
+        std::memcpy(joint_index.data(), import_data.all_joint_index.data(), joint_index.size_bytes());
+
+        auto w_property = resource->add_property(
+            "joint_weight",
+            weight_size * resource->vertex_count() * sizeof(uint16_t));
+
+        auto joint_weight = luisa::span{
+            (float *)w_property.second.data(),
+            w_property.second.size()};
+
+        std::memcpy(joint_weight.data(), import_data.all_joint_weight.data(), joint_weight.size_bytes());
     }
     return true;
 }

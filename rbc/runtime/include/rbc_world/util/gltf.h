@@ -11,7 +11,8 @@ namespace rbc {
 struct GltfImportData {
     MeshBuilder mesh_builder;
     size_t max_weight_count = 0;// joint weight suite
-    luisa::vector<world::SkinAttrib> all_skin_weights;
+    luisa::vector<uint16_t> all_joint_index;
+    luisa::vector<float> all_joint_weight;
     luisa::vector<float> all_vertex_colors;
     size_t vertex_color_channels = 0;
 };

@@ -214,7 +214,8 @@ GltfImportData process_gltf_model(tinygltf::Model const &model) {
     }
 
     // Second pass: process skinning weights and vertex colors
-    luisa::vector<world::SkinAttrib> all_skin_weights;
+    luisa::vector<uint16_t> all_joint_index;
+    luisa::vector<float> all_joint_weight;
 
     luisa::vector<float> all_vertex_colors;
 
@@ -263,8 +264,9 @@ GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     // Resize skin weights array if needed (store max_weight_count per vertex)
                     size_t total_weights_needed = (current_vertex_offset + primitive_vertex_count) * max_weight_count;
 
-                    if (all_skin_weights.size() < total_weights_needed) {
-                        all_skin_weights.resize(total_weights_needed);
+                    if (all_joint_index.size() < total_weights_needed) {
+                        all_joint_index.resize(total_weights_needed);
+                        all_joint_weight.resize(total_weights_needed);
                     }
 
                     for (size_t v = 0; v < primitive_vertex_count; ++v) {
@@ -302,9 +304,9 @@ GltfImportData process_gltf_model(tinygltf::Model const &model) {
                                 }
                             }
 
-                            if (base_idx + w < all_skin_weights.size()) {
-                                all_skin_weights[base_idx + w].joint_id = joint_id;
-                                all_skin_weights[base_idx + w].weight = weight;
+                            if (base_idx + w < all_joint_index.size()) {
+                                all_joint_index[base_idx + w] = joint_id;
+                                all_joint_weight[base_idx + w] = weight;
                             }
                         }
                     }
@@ -358,7 +360,8 @@ GltfImportData process_gltf_model(tinygltf::Model const &model) {
 
     // Store the processed data
     result.max_weight_count = max_weight_count;
-    result.all_skin_weights = std::move(all_skin_weights);
+    result.all_joint_index = std::move(all_joint_index);
+    result.all_joint_weight = std::move(all_joint_weight);
     result.all_vertex_colors = std::move(all_vertex_colors);
     result.vertex_color_channels = vertex_color_channels;
 
