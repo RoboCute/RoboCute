@@ -167,19 +167,37 @@ result = executor.execute()
 
 **English:**
 
-RoboCute is currently in **early development**. The following milestones have been completed:
+RoboCute is currently in **active development**. The following milestones have been completed:
 
-- ✅ **v0.1 MVP** (Completed): Basic node system, scene management, animation workflow
-- 🚧 **v0.2** (In Progress): Codebase refactoring, world_v2 scene system, improved editor
+- ✅ **v0.1 MVP** (Nov 2024): Basic node system, scene management, animation workflow
+- ✅ **v0.2 Refactoring** (Dec 2024): Ozz animation integration, GLTF import, raster renderer, editor refactoring
+- 🎯 **v0.3 Examples** (Planned Q1 2025): Robot chassis simulation, physics-based character animation, AI nodes
+
+**Key Features Implemented**:
+- ✅ Python-first node graph system with visual editor
+- ✅ Complete GLTF asset pipeline (mesh, skeleton, skin, animation)
+- ✅ Ozz animation system with GPU skinning
+- ✅ Qt6-based editor with viewport, scene hierarchy, and node graph
+- ✅ Basic raster renderer with selection and outlining
+- ✅ Binary serialization framework for scenes and resources
 
 See [Development Log](doc/devlog/) for detailed progress.
 
 **中文:**
 
-RoboCute 目前处于**早期开发阶段**。已完成以下里程碑：
+RoboCute 目前处于**积极开发阶段**。已完成以下里程碑：
 
-- ✅ **v0.1 MVP**（已完成）：基础节点系统、场景管理、动画工作流
-- 🚧 **v0.2**（进行中）：代码库重构、world_v2 场景系统、改进的编辑器
+- ✅ **v0.1 MVP**（2024年11月）：基础节点系统、场景管理、动画工作流
+- ✅ **v0.2 重构**（2024年12月）：Ozz动画集成、GLTF导入、光栅渲染器、编辑器重构
+- 🎯 **v0.3 案例**（计划2025年Q1）：机器人底盘仿真、基于物理的人物动画、AI节点
+
+**已实现的核心功能**:
+- ✅ Python优先的节点图系统，配备可视化编辑器
+- ✅ 完整的GLTF资产管线（网格、骨骼、蒙皮、动画）
+- ✅ Ozz动画系统，支持GPU蒙皮
+- ✅ 基于Qt6的编辑器，包含视口、场景层级和节点图
+- ✅ 基础光栅渲染器，支持选择和描边
+- ✅ 场景和资源的二进制序列化框架
 
 详细进度请查看[开发日志](doc/devlog/)。
 

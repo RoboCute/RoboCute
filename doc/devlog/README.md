@@ -8,13 +8,14 @@ This directory contains development logs and milestone records for the RoboCute 
 
 ### Version Milestones / 版本里程碑
 
-- [v0.1 MVP](version/v01.md) - Minimum Viable Product (Completed / 已完成)
-- [v0.2](version/v02.md) - First Refactoring (In Progress / 进行中)
+- [v0.1 MVP](version/v01.md) - Minimum Viable Product (✅ Completed / 已完成)
+- [v0.2](version/v02.md) - First Refactoring (✅ Completed / 已完成)
+- [v0.3](version/v03.md) - Example-Driven Development (🎯 Planned / 计划中)
 
 ### Editor Development / 编辑器开发
 
-- [Editor V0.1](editor/EditorV01.md) - Initial Editor Implementation (Completed / 已完成)
-- [Editor V0.2](editor/EditorV02.md) - MainWindow Refactoring (In Progress / 进行中)
+- [Editor V0.1](editor/EditorV01.md) - Initial Editor Implementation (✅ Completed / 已完成)
+- [Editor V0.2](editor/EditorV02.md) - MainWindow Refactoring (✅ Completed / 已完成)
 
 ## 📊 Development Timeline / 开发时间线
 
@@ -40,29 +41,57 @@ The first milestone focused on creating a minimal viable product that demonstrat
 - ✅ 动画工作流（创建 → 执行 → 播放）
 - ✅ 通过 REST API 进行服务器-客户端通信
 
-### v0.2 (In Progress / 进行中)
+### v0.2 (Completed / 已完成)
 
 **English:**
 
-The second milestone focuses on refactoring and improving the codebase:
+The second milestone focused on refactoring and improving the codebase:
 
-- 🚧 Python codegen workflow refactoring
-- 🚧 C++ world_v2 scene and resource management system
-- 🚧 Improved editor GUI with better stability
-- 🚧 Basic raster renderer (grid lines, selection outlines, camera)
-- 🚧 AIGC nodes integration (text2image, text2model, text2anim)
-- 🚧 Physics nodes integration (UIPC rigid body physics)
+- ✅ Python codegen workflow refactoring
+- ✅ C++ scene and resource management system with GLTF import
+- ✅ Improved editor GUI with better stability
+- ✅ Basic raster renderer (grid lines, selection outlines, camera)
+- ✅ Ozz animation system integration (skeleton, skinning, animation)
+- ✅ AIGC nodes prototype (text2image interface)
+- ✅ Physics nodes prototype (UIPC interface)
 
 **中文:**
 
 第二个里程碑专注于重构和改进代码库：
 
-- 🚧 Python 代码生成工作流重构
-- 🚧 C++ world_v2 场景和资源管理系统
-- 🚧 改进的编辑器 GUI，提高稳定性
-- 🚧 基础光栅渲染器（网格线、选择描边、相机）
-- 🚧 AIGC 节点集成（text2image、text2model、text2anim）
-- 🚧 物理节点集成（UIPC 刚体物理）
+- ✅ Python 代码生成工作流重构
+- ✅ C++ 场景和资源管理系统，支持GLTF导入
+- ✅ 改进的编辑器 GUI，提高稳定性
+- ✅ 基础光栅渲染器（网格线、选择描边、相机）
+- ✅ Ozz 动画系统集成（骨骼、蒙皮、动画）
+- ✅ AIGC 节点原型（text2image 接口）
+- ✅ 物理节点原型（UIPC 接口）
+
+### v0.3 (Planned / 计划中)
+
+**English:**
+
+The third milestone will focus on example-driven development:
+
+- 🎯 Complete AI nodes implementation (text2image with Stable Diffusion)
+- 🎯 Complete physics nodes implementation (UIPC rigid body simulation)
+- 🎯 Robot chassis simulation examples (differential, Ackermann, tracked, mecanum)
+- 🎯 Path planning integration (A*, RRT, DWA)
+- 🎯 Physics-based character animation (B-Spline Lattice, SRBTrack paper)
+- 🎯 Map editor and trajectory visualization
+- 🎯 Performance optimization and debugging tools
+
+**中文:**
+
+第三个里程碑将专注于案例驱动的开发：
+
+- 🎯 完整的 AI 节点实现（基于 Stable Diffusion 的 text2image）
+- 🎯 完整的物理节点实现（UIPC 刚体模拟）
+- 🎯 机器人底盘仿真示例（差速、阿克曼、履带、麦克纳姆轮）
+- 🎯 路径规划集成（A*、RRT、DWA）
+- 🎯 基于物理的人物动画控制（B样条变形、SRBTrack论文复现）
+- 🎯 地图编辑器和轨迹可视化
+- 🎯 性能优化和调试工具
 
 ## 🎯 Key Design Principles / 核心设计原则
 
