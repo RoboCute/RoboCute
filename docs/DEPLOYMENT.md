@@ -4,48 +4,8 @@ This guide explains how to deploy the RoboCute documentation to GitHub Pages.
 
 本指南说明如何将 RoboCute 文档部署到 GitHub Pages。
 
-## Prerequisites / 前置要求
-
-**English:**
-
-- Python 3.12+
-- Git repository with GitHub Pages enabled
-- MkDocs and Material theme installed
-
-**中文:**
-
-- Python 3.12+
-- 已启用 GitHub Pages 的 Git 仓库
-- 已安装 MkDocs 和 Material 主题
-
-## Setup / 设置
-
-### 1. Install Dependencies / 安装依赖
-
-**English:**
-
-```bash
-pip install mkdocs mkdocs-material pymdown-extensions
-```
-
-**中文:**
-
-```bash
-pip install mkdocs mkdocs-material pymdown-extensions
-```
 
 ### 2. Configure Repository / 配置仓库
-
-**English:**
-
-1. Go to your GitHub repository
-2. Navigate to **Settings** → **Pages**
-3. Under **Source**, select:
-   - Branch: `gh-pages`
-   - Folder: `/ (root)`
-4. Click **Save**
-
-**中文:**
 
 1. 进入您的 GitHub 仓库
 2. 导航到 **Settings** → **Pages**
@@ -53,20 +13,6 @@ pip install mkdocs mkdocs-material pymdown-extensions
    - Branch: `gh-pages`
    - Folder: `/ (root)`
 4. 点击 **Save**
-
-### 3. Update Configuration / 更新配置
-
-**English:**
-
-Edit `mkdocs.yml` and update the following fields:
-
-```yaml
-site_url: https://your-username.github.io/robocute
-repo_name: robocute
-repo_url: https://github.com/your-username/robocute
-```
-
-**中文:**
 
 编辑 `mkdocs.yml` 并更新以下字段：
 
@@ -78,22 +24,11 @@ repo_url: https://github.com/your-username/robocute
 
 ## Deployment Methods / 部署方法
 
-### Method 1: GitHub Actions (Recommended) / 方法 1：GitHub Actions（推荐）
+```bash
+mkdocs gh-deploy
+```
 
-**English:**
-
-The repository includes a GitHub Actions workflow (`.github/workflows/docs.yml`) that automatically builds and deploys documentation when changes are pushed to the `main` branch.
-
-**Steps:**
-
-1. Ensure the workflow file exists: `.github/workflows/docs.yml`
-2. Push changes to the `main` branch
-3. The workflow will automatically:
-   - Build the documentation
-   - Deploy to the `gh-pages` branch
-   - Make it available at `https://your-username.github.io/robocute`
-
-**中文:**
+### 方法 1：GitHub Actions（推荐）
 
 仓库包含一个 GitHub Actions 工作流（`.github/workflows/docs.yml`），当更改推送到 `main` 分支时会自动构建和部署文档。
 
@@ -106,22 +41,7 @@ The repository includes a GitHub Actions workflow (`.github/workflows/docs.yml`)
    - 部署到 `gh-pages` 分支
    - 在 `https://your-username.github.io/robocute` 提供访问
 
-### Method 2: Manual Deployment / 方法 2：手动部署
-
-**English:**
-
-For manual deployment, use the `mkdocs gh-deploy` command:
-
-```bash
-mkdocs gh-deploy
-```
-
-This command will:
-1. Build the documentation
-2. Create/update the `gh-pages` branch
-3. Push to GitHub
-
-**中文:**
+### 方法 2：手动部署
 
 对于手动部署，使用 `mkdocs gh-deploy` 命令：
 
@@ -134,17 +54,7 @@ mkdocs gh-deploy
 2. 创建/更新 `gh-pages` 分支
 3. 推送到 GitHub
 
-### Method 3: Local Preview / 方法 3：本地预览
-
-**English:**
-
-To preview documentation locally without deploying:
-
-```bash
-mkdocs serve
-```
-
-Then open http://127.0.0.1:8000 in your browser.
+### 方法 3：本地预览
 
 **中文:**
 
