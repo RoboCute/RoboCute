@@ -47,17 +47,29 @@ void DeviceManager::add_device(ComputeDeviceDesc const &device_desc) {
             auto &v = iter.first.value();
             DeviceConfig device_config{
                 .device_index = device_desc.device_index};
+            uint render_hardware_device{};
+            // try vulkan
             {
-                auto interop_ext = RenderDevice::instance().lc_device().extension<VkCudaInterop>();
-                if (interop_ext) {
+                auto vk_interop_ext = RenderDevice::instance().lc_device().extension<VkCudaInterop>();
+                auto dx_interop_ext = RenderDevice::instance().lc_device().extension<DxCudaInterop>();
+                if (vk_interop_ext) {
                     auto ext_device = luisa::make_unique<detail::CudaDeviceConfigExtImpl>();
-                    ext_device->external_device = interop_ext->get_external_vk_device();
-                    device_config.extension = std::move(ext_device);
+                    ext_device->external_device = vk_interop_ext->get_external_vk_device();
+                    render_hardware_device = vk_interop_ext->cuda_device_index();
+                    if (render_hardware_device == device_config.device_index) {
+                        device_config.extension = std::move(ext_device);
+                    }
+                } else if (dx_interop_ext) {
+                    render_hardware_device = dx_interop_ext->cuda_device_index();
                 }
             }
             v.device = _lc_ctx.create_device("cuda", &device_config);
             v.main_stream = v.device.create_stream();
             v.event = v.device.create_event();
+            if (render_hardware_device == device_config.device_index) {
+                v._can_interop = true;
+                LUISA_INFO("Find interopable device");
+            }
         } break;
         default:
             LUISA_ERROR("Unsupported device {}", luisa::to_string(device_desc.type));
@@ -71,14 +83,17 @@ void DeviceManager::make_synchronize(
     detail::_check_device_desc(dst_device);
     // same device
     if (src_device == dst_device || src_device.type == ComputeDeviceType::HOST) return;
-
     if (src_device.type == ComputeDeviceType::RENDER_DEVICE && dst_device.type == ComputeDeviceType::COMPUTE_DEVICE) {
-        _sync_render_to_compute(dst_device.device_index);
-        return;
+        if (_compute_device(dst_device.device_index)._can_interop) {
+            _sync_render_to_compute(dst_device.device_index);
+            return;
+        }
     }
     if (src_device.type == ComputeDeviceType::COMPUTE_DEVICE && dst_device.type == ComputeDeviceType::RENDER_DEVICE) {
-        _sync_compute_to_render(src_device.device_index);
-        return;
+        if (_compute_device(src_device.device_index)._can_interop) {
+            _sync_compute_to_render(src_device.device_index);
+            return;
+        }
     }
     switch (src_device.type) {
         case ComputeDeviceType::RENDER_DEVICE: {
@@ -133,7 +148,7 @@ void DeviceManager::_sync_render_to_compute(uint32_t compute_index) {
     auto &interop_evt = compute_device._interop_evt;
     interop_evt.visit([&]<typename T>(T const &t) {
         std::lock_guard lck{_render_device_mtx};
-        auto fence = ++_render_device_fence_index;
+        auto fence = ++compute_device._render_device_fence_index;
         if constexpr (std::is_same_v<T, DxCudaTimelineEvent>) {
             stream << t.dx_signal(fence);
             compute_device.main_stream << t.cuda_wait(fence);
@@ -163,7 +178,7 @@ void DeviceManager::_sync_compute_to_render(uint32_t compute_index) {
     auto &interop_evt = compute_device._interop_evt;
     interop_evt.visit([&]<typename T>(T const &t) {
         std::lock_guard lck{_render_device_mtx};
-        auto fence = ++_render_device_fence_index;
+        auto fence = ++compute_device._render_device_fence_index;
         if constexpr (std::is_same_v<T, DxCudaTimelineEvent>) {
             compute_device.main_stream << t.cuda_signal(fence);
             stream << t.dx_wait(fence);
@@ -177,21 +192,40 @@ NodeBuffer DeviceManager::create_buffer(RC<BufferDescriptor> buffer_desc, Comput
     detail::_check_device_desc(src_device_desc);
     detail::_check_device_desc(dst_device_desc);
     auto &desc = *buffer_desc.get();
+    ComputeDevice *compute_device{};
     NodeBuffer node_buffer{std::move(buffer_desc), src_device_desc, dst_device_desc};
+    auto can_interop = [&](uint index) {
+        compute_device = &_compute_device(index);
+        return compute_device->_can_interop;
+    };
     if ((src_device_desc.type == ComputeDeviceType::RENDER_DEVICE &&
-         dst_device_desc.type == ComputeDeviceType::COMPUTE_DEVICE) ||
+         dst_device_desc.type == ComputeDeviceType::COMPUTE_DEVICE && can_interop(dst_device_desc.device_index)) ||
         (dst_device_desc.type == ComputeDeviceType::RENDER_DEVICE &&
-         src_device_desc.type == ComputeDeviceType::COMPUTE_DEVICE)) {
+         src_device_desc.type == ComputeDeviceType::COMPUTE_DEVICE && can_interop(src_device_desc.device_index))) {
         auto &render_device = RenderDevice::instance();
+        auto create_buffer = [&](auto ext) {
+            auto byte_buffer = ext->create_byte_buffer(desc.size_bytes());
+            uint64_t cuda_ptr;
+            uint64_t cuda_handle;
+            ext->cuda_buffer(byte_buffer.handle(), &cuda_ptr, &cuda_handle);
+            node_buffer._interop_buffer = compute_device->device.import_external_byte_buffer(
+                reinterpret_cast<void *>(cuda_ptr),
+                desc.size_bytes());
+            node_buffer._buffer = std::move(byte_buffer);
+            node_buffer._destruct = [cuda_ptr, cuda_handle, ext]() {
+                ext->unmap(reinterpret_cast<void *>(cuda_ptr), reinterpret_cast<void *>(cuda_handle));
+            };
+        };
         if (render_device.backend_name() == "dx") {
-            node_buffer._buffer = static_cast<DxCudaInterop *>(_interop_ext)->create_byte_buffer(desc.size_bytes());
+            auto ext = static_cast<DxCudaInterop *>(_interop_ext);
+            create_buffer(ext);
         } else if (render_device.backend_name() == "vk") {
-            node_buffer._buffer = static_cast<VkCudaInterop *>(_interop_ext)->create_byte_buffer(desc.size_bytes());
+            auto ext = static_cast<VkCudaInterop *>(_interop_ext);
+            create_buffer(ext);
         } else {
             // TODO: other devices
             LUISA_ERROR("Deivce {} not supported.", render_device.backend_name());
         }
-        node_buffer._is_interop = true;
         return node_buffer;
     }
     switch (src_device_desc.type) {
@@ -212,7 +246,16 @@ NodeBuffer DeviceManager::create_buffer(RC<BufferDescriptor> buffer_desc, Comput
             break;
     }
 }
+ByteBufferView DeviceManager::get_buffer(NodeBuffer const &node_buffer, ComputeDeviceDesc dst_device_desc) {
+    detail::_check_device_desc(dst_device_desc);
+    if (!node_buffer._buffer.is_type_of<ByteBuffer>()) return {};
+    if (dst_device_desc.type == ComputeDeviceType::COMPUTE_DEVICE && node_buffer._interop_buffer) {
+        return node_buffer._interop_buffer;
+    }
+    return node_buffer._buffer.force_get<ByteBuffer>();
+}
 ComputeDevice::~ComputeDevice() {
     main_stream.synchronize();
 }
+
 }// namespace rbc

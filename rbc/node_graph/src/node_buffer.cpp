@@ -7,7 +7,11 @@ NodeBuffer::NodeBuffer(RC<BufferDescriptor> &&buffer_desc,
     : _buffer_desc(std::move(buffer_desc)),
       _src_device_desc(src_device_desc),
       _dst_device_desc(dst_device_desc) {}
-NodeBuffer::~NodeBuffer() {}
+NodeBuffer::~NodeBuffer() {
+    if (_destruct) {
+        _destruct();
+    }
+}
 BufferDescriptor::BufferDescriptor(
     Type const *element_type,
     size_t element_size)

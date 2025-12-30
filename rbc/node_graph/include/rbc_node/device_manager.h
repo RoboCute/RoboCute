@@ -7,6 +7,7 @@
 #include <luisa/runtime/event.h>
 #include <luisa/core/fiber.h>
 #include <luisa/vstl/common.h>
+#include <luisa/vstl/functional.h>
 #include <rbc_node/node_buffer.h>
 #include <luisa/backends/ext/dx_cuda_interop.h>
 
@@ -23,13 +24,14 @@ struct ComputeDevice {
         DxCudaTimelineEvent,
         TimelineEvent>
         _interop_evt;
-    RBC_NODE_API  ~ComputeDevice();
+    uint64_t _render_device_fence_index{};
+    bool _can_interop{};
+    RBC_NODE_API ~ComputeDevice();
 };
 struct RBC_NODE_API DeviceManager {
 private:
     Context _lc_ctx;
     vstd::HashMap<uint32_t, ComputeDevice> _compute_devices;
-    uint64_t _render_device_fence_index{};
     luisa::spin_mutex _render_device_mtx;
     void *_interop_ext{};
     void _sync_render_to_compute(uint32_t compute_index);
@@ -45,5 +47,6 @@ public:
         ComputeDeviceDesc src_device,
         ComputeDeviceDesc dst_device);
     NodeBuffer create_buffer(RC<BufferDescriptor> buffer_desc, ComputeDeviceDesc src_device_desc, ComputeDeviceDesc dst_device_desc);
+    ByteBufferView get_buffer(NodeBuffer const &node_buffer, ComputeDeviceDesc dst_device_desc);
 };
 }// namespace rbc

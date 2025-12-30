@@ -5,6 +5,7 @@
 #include <luisa/vstl/common.h>
 #include <luisa/runtime/device.h>
 #include <luisa/runtime/rhi/device_interface.h>
+#include <rbc_core/base.h>
 namespace rbc {
 enum struct DStorageSrcType : uint64_t {
     File = 0,

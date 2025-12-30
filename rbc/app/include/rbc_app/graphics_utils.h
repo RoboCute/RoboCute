@@ -10,7 +10,6 @@
 #include <luisa/vstl/functional.h>
 #include <luisa/runtime/swapchain.h>
 #include <rbc_render/render_plugin.h>
-#include <rbc_graphics/skinning.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 namespace rbc {
@@ -28,7 +27,6 @@ struct EventFence {
 };
 struct RBC_APP_API GraphicsUtils {
 private:
-    Skinning _skinning;
     RenderDevice _render_device;
     luisa::string _backend_name;
     EventFence _compute_event;
@@ -47,10 +45,7 @@ private:
     vstd::optional<rbc::Lights> _lights;
     bool _require_reset : 1 {false};
     bool _denoiser_inited : 1 {false};
-    bool _io_cmdlist_require_sync : 1 {false};
 
-    IOCommandList _frame_mem_io_list;
-    luisa::unordered_set<RC<DeviceResource>, luisa::hash<RC<DeviceResource>>, std::equal_to<RC<DeviceResource>>> _build_meshes;
 public:
     auto render_plugin() const { return _render_plugin; }
     auto &present_stream() const { return _present_stream; }
@@ -79,6 +74,7 @@ public:
         OffineCapturing,
         PresentOfflineResult
     };
+    void build_mesh(DeviceMesh *mesh);
     void build_transforming_mesh(DeviceTransformingMesh *mesh);
     void tick(
         float delta_time,

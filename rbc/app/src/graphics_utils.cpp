@@ -69,7 +69,6 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     {
         luisa::fiber::counter init_counter;
         _sm->load_shader(init_counter);
-        _skinning.load_shader(init_counter);
         // Build a simple accel to preload driver builtin shaders
         auto buffer = _render_device.lc_device().create_buffer<uint>(4 * 3 + 3);
         auto vb = buffer.view(0, 4 * 3).as<float3>();
@@ -247,46 +246,13 @@ void GraphicsUtils::tick(
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeRender);
     // mesh light accel update
     {
-        auto io_cmdlist_last_size = _frame_mem_io_list.commands().size();
-        _lights->mesh_light_accel.update_frame(_frame_mem_io_list);
-        if (_frame_mem_io_list.commands().size() - io_cmdlist_last_size > 0) {
-            _io_cmdlist_require_sync = true;
+        auto io_cmdlist_last_size = _sm->frame_mem_io_list().commands().size();
+        _lights->mesh_light_accel.update_frame(_sm->frame_mem_io_list());
+        if (_sm->frame_mem_io_list().commands().size() - io_cmdlist_last_size > 0) {
+            _sm->set_io_cmdlist_require_sync();
         }
     }
-    // io sync
-    auto execute_io = [&](
-                          IOCommandList &&cmdlist,
-                          IOService *io_service) {
-        if (cmdlist.empty()) return;
-        uint64_t handle = invalid_resource_handle;
-        uint64_t fence = 0;
-        if (_io_cmdlist_require_sync) {
-            _io_cmdlist_require_sync = false;
-            handle = _compute_event.event.handle();
-            fence = _compute_event.fence_index;
-        }
-        auto io_fence = io_service->execute(std::move(cmdlist), handle, fence);
-        // support direct-storage
-        if (io_fence > 0) [[likely]] {
-            main_stream << io_service->wait(io_fence);
-        }
-    };
-    execute_io(std::move(_frame_mem_io_list), _render_device.fallback_mem_io_service());
-    for (auto &i : _build_meshes) {
-        auto build = [&](auto &&mesh_ptr) {
-            auto &mesh = mesh_ptr->mesh_data()->pack.mesh;
-            if (mesh) {
-                cmdlist << mesh.build();
-            }
-            _sm->accel_manager().mark_dirty();
-        };
-        if (i->resource_type() == DeviceResource::Type::Mesh) {
-            build(static_cast<DeviceMesh *>(i.get()));
-        } else if (i->resource_type() == DeviceResource::Type::TransformingMesh) {
-            build(static_cast<DeviceTransformingMesh *>(i.get()));
-        }
-    }
-    _build_meshes.clear();
+    _sm->execute_io(_render_device.fallback_mem_io_service(), main_stream, _compute_event.event.handle(), _compute_event.fence_index);
 
     _render_plugin->before_rendering({}, _display_pipe_ctx);
     auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
@@ -349,24 +315,22 @@ void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
     }
 
     if (only_vertex) {
-        _frame_mem_io_list << IOCommand{
+        _sm->frame_mem_io_list() << IOCommand{
             host_data.data(),
             0,
             IOBufferSubView{mesh_data->pack.data.view(0, mesh_data->meta.tri_byte_offset / sizeof(uint))}};
     } else {
-        _frame_mem_io_list << IOCommand{
+        _sm->frame_mem_io_list() << IOCommand{
             host_data.data(),
             0,
             IOBufferSubView{mesh_data->pack.data}};
     }
-    if (mesh->mesh_data()->pack.mesh) {
-        _io_cmdlist_require_sync = true;
+    if (mesh_data->pack.mesh) {
+        _sm->set_io_cmdlist_require_sync();
+        build_mesh(mesh);
     }
     auto &sm = SceneManager::instance();
     sm.dispose_after_sync(RC<DeviceMesh>(mesh));
-    if (mesh_data->pack.mesh) {
-        _build_meshes.emplace(mesh);
-    }
 }
 void GraphicsUtils::create_mesh(
     DeviceMesh *ptr,
@@ -392,9 +356,9 @@ void GraphicsUtils::create_mesh(
 void GraphicsUtils::update_texture(DeviceImage *ptr) {
     ptr->wait_finished();
     if (ptr->heap_idx() != ~0u) {
-        _io_cmdlist_require_sync = true;
+        _sm->set_io_cmdlist_require_sync();
     }
-    _frame_mem_io_list << IOCommand{
+    _sm->frame_mem_io_list() << IOCommand{
         ptr->host_data().data(),
         0,
         IOTextureSubView{ptr->get_float_image()}};
@@ -421,8 +385,15 @@ void GraphicsUtils::create_texture(
     auto &device = RenderDevice::instance().lc_device();
     ptr->create_texture<float>(device, storage, size, mip_level);
 }
+void GraphicsUtils::build_mesh(DeviceMesh *mesh) {
+    auto &blas = mesh->mesh_data()->pack.mesh;
+    if (blas)
+        _sm->build_mesh_in_frame(&blas, RC<RCBase>{mesh});
+}
 void GraphicsUtils::build_transforming_mesh(DeviceTransformingMesh *mesh) {
-    _build_meshes.emplace(mesh);
+    auto &blas = mesh->mesh_data()->pack.mesh;
+    if (blas)
+        _sm->build_mesh_in_frame(&blas, RC<RCBase>{mesh});
 }
 void GraphicsUtils::update_skinning(
     world::MeshResource *skinning_mesh,
@@ -444,13 +415,13 @@ void GraphicsUtils::update_skinning(
     auto weight_buffer = buffer.subview(0, weight_count).as<float>();
     auto index_buffer = buffer.subview(weight_count, weight_count);
     auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();
-    _skinning.update_mesh(
+    Skinning::instance()->update_mesh(
         cmdlist,
         skinning_mesh->mesh_data(),
         origin_mesh_data,
         bones,
         weight_buffer,
         index_buffer);
-    _build_meshes.emplace(device_mesh);
+    build_transforming_mesh(device_mesh);
 }
 }// namespace rbc

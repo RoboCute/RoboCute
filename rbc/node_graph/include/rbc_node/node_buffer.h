@@ -35,13 +35,14 @@ private:
         ByteBuffer,
         luisa::vector<std::byte>>
         _buffer;
-    bool _is_interop{false};
+    ByteBuffer _interop_buffer;
+    vstd::function<void()> _destruct;
     NodeBuffer(RC<BufferDescriptor> &&buffer_desc, ComputeDeviceDesc const &src_device_desc, ComputeDeviceDesc const &dst_device_desc);
 public:
     BufferDescriptor const &buffer_desc() const {
         return *_buffer_desc;
     }
-    bool is_interop() const { return _is_interop; }
+    bool is_interop() const { return _interop_buffer.valid(); }
     auto src_device_desc() const { return _src_device_desc; }
     auto dst_device_desc() const { return _dst_device_desc; }
     NodeBuffer(NodeBuffer const &) = delete;

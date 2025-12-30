@@ -9,7 +9,8 @@ int main(int argc, char *argv[]) {
     RenderDevice render_device;
     render_device.init(argv[0], argv[1]);
     RenderDevice::set_rendering_thread(true);
-    render_device.set_main_stream(&render_device.lc_async_stream());
+    auto main_stream = render_device.lc_device().create_stream(StreamTag::GRAPHICS);
+    render_device.set_main_stream(&main_stream);
 
     DeviceManager device_mng{Context{render_device.lc_ctx()}};
     RC<BufferDescriptor> buffer_desc{new BufferDescriptor{
@@ -27,5 +28,4 @@ int main(int argc, char *argv[]) {
 
     // test sync
     device_mng.make_synchronize(compute_device_desc, render_device_desc);
-    render_device.lc_main_stream().synchronize();
 }

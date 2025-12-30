@@ -58,9 +58,50 @@ void SceneManager::sync_bindless_heap(CommandList &cmdlist, Stream &stream) {
     }
     bindless_allocator().commit(cmdlist);
 }
+void SceneManager::execute_io(
+    IOService *io_service,
+    Stream &main_stream,
+    uint64_t event_handle,
+    uint64_t fence_index) {
+    auto execute_io = [&](
+                          IOCommandList &&cmdlist,
+                          IOService *io_service) {
+        if (cmdlist.empty()) return;
+        uint64_t handle = invalid_resource_handle;
+        uint64_t fence = 0;
+        if (_io_cmdlist_require_sync) {
+            _io_cmdlist_require_sync = false;
+            handle = event_handle;
+            fence = fence_index;
+        }
+        auto io_fence = io_service->execute(std::move(cmdlist), handle, fence);
+        // support direct-storage
+        if (io_fence > 0) [[likely]] {
+            main_stream << io_service->wait(io_fence);
+        }
+    };
+    execute_io(std::move(_frame_mem_io_list), io_service);
+}
+void SceneManager::build_mesh_in_frame(Mesh *mesh, RC<RCBase> &&mesh_rc) {
+    std::lock_guard lck{_build_mesh_mtx};
+    _build_meshes.try_emplace(mesh, std::move(mesh_rc));
+}
 void SceneManager::before_rendering(
     CommandList &cmdlist,
     Stream &stream) {
+    _build_mesh_mtx.lock();
+    auto build_meshes = std::move(_build_meshes);
+    _build_mesh_mtx.unlock();
+    for (auto &i : build_meshes) {
+        auto build = [&](auto &&mesh) {
+            if (mesh) {
+                cmdlist << mesh.build();
+            }
+            accel_manager().mark_dirty();
+        };
+        build(*i.first);
+    }
+    build_meshes.clear();
     {
         light_accel().reserve_tlas();
         light_accel().update_tlas(cmdlist, dispose_queue());
@@ -163,6 +204,7 @@ void SceneManager::load_shader(luisa::fiber::counter &init_counter) {
     _uploader.load_shader(init_counter);
     _tex_uploader.load_shader(init_counter);
     _light_accel.load_shader(init_counter);
+    _skinning.load_shader(init_counter);
 }
 namespace scene_mng_detail {
 static SceneManager *_inst = nullptr;

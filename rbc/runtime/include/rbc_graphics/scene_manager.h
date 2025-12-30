@@ -3,6 +3,8 @@
 #include <luisa/runtime/stream.h>
 #include <luisa/runtime/event.h>
 #include <luisa/vstl/lockfree_array_queue.h>
+#include <rbc_io/io_command_list.h>
+#include <rbc_io/io_service.h>
 #include <rbc_graphics/buffer_allocator.h>
 #include <rbc_graphics/bindless_manager.h>
 #include <rbc_graphics/buffer_uploader.h>
@@ -12,6 +14,7 @@
 #include "accel_manager.h"
 #include "mat_manager.h"
 #include "light_accel.h"
+#include "skinning.h"
 namespace rbc {
 struct ManagedDevice;
 struct PipelineCtxMutable;
@@ -48,6 +51,7 @@ private:
 
     // [SINGLETON]
     luisa::vector<luisa::unique_ptr<AccelManager>> _accel_mngs;
+    Skinning _skinning;
     MatManager _mat_mng;
     LightAccel _light_accel;
     TextureUploader _tex_uploader;
@@ -57,6 +61,10 @@ private:
     vstd::HashMap<vstd::string, SceneManagerEvent *> _before_render_evts;
     vstd::HashMap<vstd::string, SceneManagerEvent *> _on_frame_end_evts;
     luisa::fiber::event light_accel_event;
+    IOCommandList _frame_mem_io_list;
+    bool _io_cmdlist_require_sync : 1 {false};
+    luisa::spin_mutex _build_mesh_mtx;
+    luisa::unordered_map<Mesh *, RC<RCBase>> _build_meshes;
 
 public:
     ///////////// properties
@@ -74,6 +82,8 @@ public:
     [[nodiscard]] auto &mat_manager() { return _mat_mng; }
     [[nodiscard]] auto &host_upload_buffer() { return *_temp_buffer; }
     [[nodiscard]] auto &buffer_uploader() { return _uploader; }
+    [[nodiscard]] auto &frame_mem_io_list() { return _frame_mem_io_list; }
+    void set_io_cmdlist_require_sync() { _io_cmdlist_require_sync = true; }
     [[nodiscard]] auto const &buffer_heap() const { return _bdls_mng.buffer_heap(); }
     [[nodiscard]] auto &buffer_heap() { return _bdls_mng.buffer_heap(); }
     [[nodiscard]] auto const &image_heap() const { return _bdls_mng.image_heap(); }
@@ -95,12 +105,18 @@ public:
                  IOService &io_service,
                  CommandList &cmdlist,
                  luisa::filesystem::path const &shader_path);
+    void build_mesh_in_frame(Mesh *mesh, RC<RCBase> &&mesh_rc);
     void add_before_render_event(vstd::string_view name, SceneManagerEvent *func);
     void add_on_frame_end_event(vstd::string_view name, SceneManagerEvent *func);
     void remove_before_render_event(vstd::string_view name);
     void remove_on_frame_end_event(vstd::string_view name);
     void load_shader(luisa::fiber::counter &init_counter);
     void prepare_frame();
+    void execute_io(
+        IOService *io_service,
+        Stream &main_stream,
+        uint64_t event_handle,
+        uint64_t fence_index);
     void before_rendering(CommandList &cmdlist, Stream &stream);
     void sync_bindless_heap(CommandList &cmdlist, Stream &stream);
     bool on_frame_end(
