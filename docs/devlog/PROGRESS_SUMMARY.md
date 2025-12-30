@@ -14,45 +14,45 @@ v0.3 Examples     ░░░░░░░░░░░░░░░░░░░░  
 
 ## 🎯 Milestone Overview
 
-| Milestone | Status | Duration | Key Achievements |
-|-----------|--------|----------|------------------|
-| v0.1 MVP | ✅ Complete | Nov 2024 | Node system, Scene management, Basic editor |
-| v0.2 Refactoring | ✅ Complete | Dec 2024 | Ozz animation, GLTF import, Raster renderer |
-| v0.3 Examples | 🎯 Planned | Q1 2025 | Robot simulation, Character animation, AI nodes |
+| Milestone        | Status     | Duration | Key Achievements                                |
+| ---------------- | ---------- | -------- | ----------------------------------------------- |
+| v0.1 MVP         | ✅ Complete | Nov 2024 | Node system, Scene management, Basic editor     |
+| v0.2 Refactoring | ✅ Complete | Dec 2024 | Ozz animation, GLTF import, Raster renderer     |
+| v0.3 Examples    | 🎯 Planned  | Q1 2025  | Robot simulation, Character animation, AI nodes |
 
 ## 📊 Feature Matrix
 
 ### Core Systems
 
-| Feature | v0.1 | v0.2 | v0.3 (Planned) |
-|---------|------|------|----------------|
-| **Node System** | ✅ Basic | ✅ Enhanced | 🎯 AI/Physics nodes |
-| **Scene Management** | ✅ Basic ECS | ✅ Resource system | 🎯 Map editor |
-| **Animation** | ✅ Keyframe | ✅ Ozz skeletal | 🎯 Physics-based |
-| **Asset Import** | ❌ None | ✅ GLTF complete | 🎯 More formats |
-| **Serialization** | ⚠️ Prototype | ✅ Binary/JSON | ✅ Stable |
-| **Python Binding** | ⚠️ Manual | ✅ Codegen | ✅ Stable |
+| Feature              | v0.1        | v0.2              | v0.3 (Planned)     |
+| -------------------- | ----------- | ----------------- | ------------------ |
+| **Node System**      | ✅ Basic     | ✅ Enhanced        | 🎯 AI/Physics nodes |
+| **Scene Management** | ✅ Basic ECS | ✅ Resource system | 🎯 Map editor       |
+| **Animation**        | ✅ Keyframe  | ✅ Ozz skeletal    | 🎯 Physics-based    |
+| **Asset Import**     | ❌ None      | ✅ GLTF complete   | 🎯 More formats     |
+| **Serialization**    | ⚠️ Prototype | ✅ Binary/JSON     | ✅ Stable           |
+| **Python Binding**   | ⚠️ Manual    | ✅ Codegen         | ✅ Stable           |
 
 ### Editor Features
 
-| Feature | v0.1 | v0.2 | v0.3 (Planned) |
-|---------|------|------|----------------|
-| **UI Framework** | ✅ Qt6 basic | ✅ Refactored | 🎯 Map editor |
-| **Viewport** | ✅ Basic 3D | ✅ Camera control | 🎯 Trajectory viz |
-| **Node Editor** | ✅ QtNodes | ✅ Enhanced | ✅ Stable |
-| **Scene Hierarchy** | ✅ Basic | ✅ Drag-drop | ✅ Stable |
-| **Animation Player** | ✅ Timeline | ✅ Playback | ✅ Stable |
-| **Rendering** | ❌ None | ✅ Raster | 🎯 Debug viz |
+| Feature              | v0.1        | v0.2             | v0.3 (Planned)   |
+| -------------------- | ----------- | ---------------- | ---------------- |
+| **UI Framework**     | ✅ Qt6 basic | ✅ Refactored     | 🎯 Map editor     |
+| **Viewport**         | ✅ Basic 3D  | ✅ Camera control | 🎯 Trajectory viz |
+| **Node Editor**      | ✅ QtNodes   | ✅ Enhanced       | ✅ Stable         |
+| **Scene Hierarchy**  | ✅ Basic     | ✅ Drag-drop      | ✅ Stable         |
+| **Animation Player** | ✅ Timeline  | ✅ Playback       | ✅ Stable         |
+| **Rendering**        | ❌ None      | ✅ Raster         | 🎯 Debug viz      |
 
 ### Python Nodes
 
-| Category | v0.1 | v0.2 | v0.3 (Planned) |
-|----------|------|------|----------------|
-| **Basic Nodes** | ✅ Entity I/O | ✅ Stable | ✅ Stable |
-| **Animation Nodes** | ✅ Rotation | ✅ Stable | ✅ Stable |
-| **Physics Nodes** | ❌ None | ⚠️ Interface | 🎯 Full UIPC |
-| **AI Nodes** | ❌ None | ⚠️ Interface | 🎯 Stable Diffusion |
-| **Robot Nodes** | ❌ None | ❌ None | 🎯 Chassis/Planning |
+| Category            | v0.1         | v0.2        | v0.3 (Planned)     |
+| ------------------- | ------------ | ----------- | ------------------ |
+| **Basic Nodes**     | ✅ Entity I/O | ✅ Stable    | ✅ Stable           |
+| **Animation Nodes** | ✅ Rotation   | ✅ Stable    | ✅ Stable           |
+| **Physics Nodes**   | ❌ None       | ⚠️ Interface | 🎯 Full UIPC        |
+| **AI Nodes**        | ❌ None       | ⚠️ Interface | 🎯 Stable Diffusion |
+| **Robot Nodes**     | ❌ None       | ❌ None      | 🎯 Chassis/Planning |
 
 ## 🔧 Technical Debt & Issues
 
@@ -154,30 +154,30 @@ Total:          ~150+ commits
 
 ## 📚 Documentation Status
 
-| Document | Status | Completeness |
-|----------|--------|--------------|
-| README | ✅ Updated | 90% |
-| Architecture | ✅ Updated | 80% |
-| Build Guide | ✅ Complete | 95% |
-| v0.1 Devlog | ✅ Complete | 100% |
-| v0.2 Devlog | ✅ Complete | 100% |
-| v0.3 Planning | ✅ Complete | 100% |
-| API Docs | ⚠️ Partial | 40% |
-| Tutorials | ⚠️ Basic | 30% |
-| Examples | ⚠️ Basic | 40% |
+| Document      | Status     | Completeness |
+| ------------- | ---------- | ------------ |
+| README        | ✅ Updated  | 90%          |
+| Architecture  | ✅ Updated  | 80%          |
+| Build Guide   | ✅ Complete | 95%          |
+| v0.1 Devlog   | ✅ Complete | 100%         |
+| v0.2 Devlog   | ✅ Complete | 100%         |
+| v0.3 Planning | ✅ Complete | 100%         |
+| API Docs      | ⚠️ Partial  | 40%          |
+| Tutorials     | ⚠️ Basic    | 30%          |
+| Examples      | ⚠️ Basic    | 40%          |
 
 ## 🎯 Success Metrics
 
 ### v0.2 Goals Achievement
 
-| Goal | Target | Achieved | Status |
-|------|--------|----------|--------|
-| GLTF Import | Full support | ✅ Complete | 100% |
-| Ozz Integration | Skeletal + Skinning | ✅ Complete | 100% |
-| Editor Refactor | Clean architecture | ✅ Complete | 95% |
-| Raster Renderer | Basic rendering | ✅ Complete | 90% |
-| Serialization | Binary + JSON | ✅ Complete | 95% |
-| Python Codegen | Auto-generation | ✅ Complete | 90% |
+| Goal            | Target              | Achieved   | Status |
+| --------------- | ------------------- | ---------- | ------ |
+| GLTF Import     | Full support        | ✅ Complete | 100%   |
+| Ozz Integration | Skeletal + Skinning | ✅ Complete | 100%   |
+| Editor Refactor | Clean architecture  | ✅ Complete | 95%    |
+| Raster Renderer | Basic rendering     | ✅ Complete | 90%    |
+| Serialization   | Binary + JSON       | ✅ Complete | 95%    |
+| Python Codegen  | Auto-generation     | ✅ Complete | 90%    |
 
 ### Overall Project Health
 
@@ -209,7 +209,7 @@ Stability:           ███████░░░ 70%
 
 - **GitHub**: [RoboCute/RoboCute](https://github.com/RoboCute/RoboCute)
 - **Documentation**: [Online Doc](https://robocute.github.io/RoboCute/)
-- **Devlog**: [doc/devlog/](.)
+- **Devlog**: [doc/devlog/](README.md)
 - **Issues**: [GitHub Issues](https://github.com/RoboCute/RoboCute/issues)
 
 ---
