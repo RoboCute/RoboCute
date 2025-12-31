@@ -1,24 +1,6 @@
 # RoboCute Development Progress Summary
 
-**Last Updated**: December 30, 2025 
-**Current Version**: v0.2.0  
-**Project Status**: Active Development
 
-## 📈 Overall Progress
-
-```
-v0.1 MVP          ████████████████████ 100% (Completed Nov 2024)
-v0.2 Refactoring  ████████████████████ 100% (Completed Dec 2024)
-v0.3 Examples     ░░░░░░░░░░░░░░░░░░░░   0% (Planned Q1 2025)
-```
-
-## 🎯 Milestone Overview
-
-| Milestone        | Status     | Duration | Key Achievements                                |
-| ---------------- | ---------- | -------- | ----------------------------------------------- |
-| v0.1 MVP         | ✅ Complete | Nov 2024 | Node system, Scene management, Basic editor     |
-| v0.2 Refactoring | ✅ Complete | Dec 2024 | Ozz animation, GLTF import, Raster renderer     |
-| v0.3 Examples    | 🎯 Planned  | Q1 2025  | Robot simulation, Character animation, AI nodes |
 
 ## 📊 Feature Matrix
 
