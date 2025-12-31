@@ -45,6 +45,9 @@ MainWindow::MainWindow(QWidget *parent)
     context_->workflowManager = new rbc::WorkflowManager(this);
     context_->editorScene = new rbc::EditorScene();
 
+    // Register EditorScene with EditorEngine for frame tick processing
+    rbc::EditorEngine::instance().setEditorScene(context_->editorScene);
+
     layoutManager_ = new EditorLayoutManager(this, context_, this);
     eventAdapter_ = new rbc::EventAdapter(this);
     animationController_ = new rbc::AnimationController(context_, this);

@@ -20,6 +20,12 @@ AccelManager::AccelManager(Device &device)
         PixelFormat::RGBA32F};
 
     _basic_foramt.emplace_vertex_stream({&pos_attr, 1});
+
+    // Initialize buffers with minimum size to avoid null buffer access when scene is empty
+    constexpr auto aligned_size_inst = (65536u + sizeof(InstanceInfo) - 1) / sizeof(InstanceInfo);
+    constexpr auto aligned_size_trans = (65536u + sizeof(float4x4) - 1) / sizeof(float4x4);
+    _inst_buffer = _device.create_buffer<InstanceInfo>(aligned_size_inst);
+    _last_trans_buffer = _device.create_buffer<float4x4>(aligned_size_trans);
 }
 void AccelManager::load_shader(luisa::fiber::counter &counter) {
     counter.add();

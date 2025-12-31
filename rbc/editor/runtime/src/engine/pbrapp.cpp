@@ -108,8 +108,14 @@ void PBRApp::update() {
     auto &render_device = RenderDevice::instance();
 
     clear_dx_states(render_device.lc_device_ext());
-    add_dx_before_state(render_device.lc_device_ext(), Argument::Texture{utils.dst_image().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
-    add_dx_after_state(render_device.lc_device_ext(), Argument::Texture{utils.dst_image().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
+    add_dx_before_state(
+        render_device.lc_device_ext(), 
+        Argument::Texture{utils.dst_image().handle(), 0}, 
+        D3D12EnhancedResourceUsageType::RasterRead);
+    add_dx_after_state(
+        render_device.lc_device_ext(), 
+        Argument::Texture{utils.dst_image().handle(), 0}, 
+        D3D12EnhancedResourceUsageType::RasterRead);
 
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
     auto time = clk.toc();

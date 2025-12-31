@@ -1,4 +1,5 @@
 #include "RBCEditorRuntime/engine/EditorEngine.h"
+#include "RBCEditorRuntime/runtime/EditorScene.h"
 #include "QtGui/rhi/qrhi_platform.h"
 #include <QDebug>
 #include <luisa/core/logging.h>
@@ -56,6 +57,13 @@ void EditorEngine::init(QRhiNativeHandles &handles_base) {
 
 void EditorEngine::update() {
     if (m_isPaused || !m_renderApp) return;
+
+    // Process pending render operations before the frame
+    // This must happen after the previous frame's IO is complete
+    if (m_editorScene) {
+        m_editorScene->onFrameTick();
+    }
+
     m_renderApp->update();
 }
 

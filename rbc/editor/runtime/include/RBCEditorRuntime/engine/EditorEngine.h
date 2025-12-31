@@ -11,6 +11,8 @@
 
 namespace rbc {
 
+class EditorScene;
+
 class RBC_EDITOR_RUNTIME_API EditorEngine : public IRenderer {
 public:
     static EditorEngine &instance();
@@ -36,6 +38,8 @@ public:
     IApp *getRenderApp() { return m_renderApp.get(); }
     HttpClient *getHttpClient() { return m_httpClient; }
     void setHttpClient(HttpClient *client) { m_httpClient = client; }
+    EditorScene *getEditorScene() { return m_editorScene; }
+    void setEditorScene(EditorScene *scene) { m_editorScene = scene; }
 
     QRhi::Implementation getGraphicsApi() const { return m_graphicsApi; }
 
@@ -43,6 +47,7 @@ private:
     std::unique_ptr<IApp> m_renderApp;
 
     HttpClient *m_httpClient = nullptr;
+    EditorScene *m_editorScene = nullptr;
 
     bool m_isInitialized = false;
     bool m_isPaused = false;
