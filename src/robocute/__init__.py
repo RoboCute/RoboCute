@@ -30,7 +30,7 @@ from .executor import (
     ExecutionCache,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "RoboCute Team"
 
 __all__ = [

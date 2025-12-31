@@ -22,7 +22,7 @@ from .node_graph_service import NodeGraphService
 
 # 创建 FastAPI 应用（向后兼容）
 app = FastAPI(
-    title="RBCNode API", description="类似 ComfyUI 的节点系统后端 API", version="0.1.0"
+    title="RBCNode API", description="类似 ComfyUI 的节点系统后端 API", version="0.2.0"
 )
 
 # 创建默认的 NodeGraphService 实例用于向后兼容

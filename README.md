@@ -81,7 +81,7 @@ scene.add_component(
 )
 
 # Start server with editor service
-server = rbc.Server(title="RoboCute Server", version="0.1.0")
+server = rbc.Server(title="RoboCute Server", version="0.2.0")
 editor_service = rbc.EditorService(scene)
 server.register_service(editor_service)
 server.start(port=5555)
