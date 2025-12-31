@@ -1,6 +1,8 @@
 #include "RBCEditorRuntime/runtime/EditorScene.h"
 #include "RBCEditorRuntime/engine/EditorEngine.h"
 #include <rbc_world/base_object.h>
+#include <rbc_world/texture_loader.h>
+#include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/mat_manager.h>
@@ -19,6 +21,7 @@ EditorScene::EditorScene() {
     qDebug("EditorScene: Initializing with Runtime Entity-Component system");
     initWorld();
     initMaterial();
+    initSkybox();
     qDebug("EditorScene: Initialized successfully");
 }
 
@@ -39,6 +42,9 @@ EditorScene::~EditorScene() {
 
     // Clear material
     default_material_.reset();
+
+    // Clear skybox
+    default_skybox_.reset();
 
     // Destroy world system
     if (world_initialized_) {
@@ -87,6 +93,47 @@ void EditorScene::initMaterial() {
     default_material_->load_from_json(mat_json);
 
     qDebug("EditorScene: Default material created");
+}
+
+void EditorScene::initSkybox() {
+    using namespace luisa;
+
+    qDebug("EditorScene: Loading default skybox from sky.exr");
+
+    // Create texture loader and importer
+    world::TextureLoader tex_loader;
+    world::ExrTextureImporter exr_importer;
+
+    // Create skybox texture resource
+    default_skybox_ = world::create_object<world::TextureResource>();
+
+    // Import sky.exr (assumes it exists)
+    if (!exr_importer.import(default_skybox_, &tex_loader, "sky.exr", 1, false)) {
+        LUISA_ERROR("Failed to import skybox from sky.exr");
+        default_skybox_.reset();
+        return;
+    }
+
+    // Finish texture loading tasks
+    tex_loader.finish_task();
+
+    // Initialize device resource
+    default_skybox_->init_device_resource();
+
+    // Update skybox to render plugin (requires GraphicsUtils)
+    auto *appBase = EditorEngine::instance().getRenderAppBase();
+    if (appBase && default_skybox_->get_image()) {
+        // Update skybox in render plugin first
+        RC<DeviceImage> image{default_skybox_->get_image()};
+        appBase->utils.render_plugin()->update_skybox(image);
+
+        // Update texture data to GPU through render thread
+        appBase->utils.update_texture(default_skybox_->get_image());
+
+        qDebug("EditorScene: Default skybox loaded and updated to render plugin");
+    } else {
+        LUISA_WARNING("EditorScene: Cannot update skybox - render app not available");
+    }
 }
 
 void EditorScene::onFrameTick() {

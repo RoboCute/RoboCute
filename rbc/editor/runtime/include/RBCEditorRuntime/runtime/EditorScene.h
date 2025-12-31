@@ -2,6 +2,7 @@
 #include <rbc_world/entity.h>
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/material.h>
+#include <rbc_world/resources/texture.h>
 #include <rbc_world/components/transform.h>
 #include <rbc_world/components/render_component.h>
 #include <luisa/vstl/common.h>
@@ -63,6 +64,9 @@ private:
     // Default material for all entities
     RC<world::MaterialResource> default_material_;
 
+    // Default skybox texture (loaded from sky.exr)
+    RC<world::TextureResource> default_skybox_;
+
     // Animation transform overrides
     luisa::unordered_map<int, Transform> animation_transforms_;// entity_id -> animation transform
 
@@ -81,6 +85,7 @@ private:
     // Scene initialization
     void initWorld();
     void initMaterial();
+    void initSkybox();
 
     // Entity management
     void addEntity(int entity_id, const luisa::string &mesh_path, const Transform &transform);
