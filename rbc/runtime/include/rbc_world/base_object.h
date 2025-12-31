@@ -36,8 +36,7 @@ struct InstanceID {
         return {~0ull};
     }
 };
-RBC_RUNTIME_API void init_world(
-    luisa::filesystem::path const &meta_path);
+RBC_RUNTIME_API void init_world(luisa::filesystem::path const &meta_path = {});
 RBC_RUNTIME_API void destroy_world();
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object(rbc::TypeInfo const &type_info);
 [[nodiscard]] RBC_RUNTIME_API BaseObjectType get_base_object_type(vstd::Guid const &type_id);

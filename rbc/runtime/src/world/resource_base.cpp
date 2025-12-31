@@ -43,7 +43,7 @@ struct LoadingResource {
     InstanceID res_inst_id;
     coroutine loading_coro;
 };
-struct ResourceLoader {
+struct ResourceLoader : RBCStruct {
     luisa::filesystem::path _meta_path;
 
     struct ResourceHandle {
@@ -217,15 +217,14 @@ struct ResourceLoader {
     }
 };
 
-RuntimeStatic<ResourceLoader> _res_loader;
+ResourceLoader *_res_loader{};
 void register_resource(Resource *res) {
     _res_loader->register_resource(res);
 }
 void init_resource_loader(luisa::filesystem::path const &meta_path) {
     // Register all built-in resource importers
     register_builtin_importers();
-
-    LUISA_ASSERT(_res_loader);
+    _res_loader = new ResourceLoader{};
     _res_loader->_meta_path = meta_path;
     _res_loader->load_all_resources();
 }
@@ -304,7 +303,9 @@ ResourceAwait Resource::await_loading() {
     return {instance_id()};
 }
 void dispose_resource_loader() {
-    if (_res_loader)
-        _res_loader->dispose();
+    if (!_res_loader) return;
+    _res_loader->dispose();
+    delete _res_loader;
+    _res_loader = nullptr;
 }
 }// namespace rbc::world

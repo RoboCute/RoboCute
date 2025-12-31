@@ -41,7 +41,8 @@ void init_world(
         LUISA_ERROR("World already initialized.");
     }
     _world_inst = new BaseObjectStatics{};
-    init_resource_loader(meta_path);
+    if (!meta_path.empty())
+        init_resource_loader(meta_path);
 }
 void destroy_world() {
     if (!_world_inst) [[unlikely]] {
