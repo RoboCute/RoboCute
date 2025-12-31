@@ -61,6 +61,9 @@ pip install robocute
 ```
 
 ### Basic Usage / 基本使用
+
+运行一个服务器
+
 ```python
 import robocute as rbc
 
@@ -91,8 +94,13 @@ print("Server started on port 5555")
 print("Start the editor to connect and visualize the scene")
 ```
 
+打开`rbc_editor`，查看场景并连接节点，执行后在Editor上查看结果
+
+![rbc_editor](docs/images/RBCEditor.png)
+
 ### Example: Creating Animation Nodes / 示例：创建动画节点
 
+Headless模式下，可以完全不使用Editor来定义节点连接，这一部分同样也可以通过预先保存的节点图进行执行。方便在远程linux服务器上进行大批量的仿真/AI计算。
 
 ```python
 import robocute as rbc
@@ -147,21 +155,11 @@ result = executor.execute()
 
 ## 📚 Documentation / 文档
 
-**English:**
-
-- 📖 [Architecture Documentation](docs/design/Architecture.md) - System architecture overview
-- 🛠️ [Build Guide](docs/BUILD.md) - How to build from source
-- 📝 [Development Log](docs/devlog/) - Development progress and milestones
-- 🎨 [Design Documents](docs/design/) - Design decisions and specifications
-- 💻 [Samples](samples/) - Example code and tutorials
-
-**中文:**
-
-- 📖 [架构文档](docs/design/Architecture.md) - 系统架构概览
-- 🛠️ [构建指南](docs/BUILD.md) - 如何从源码构建
-- 📝 [开发日志](docs/devlog/) - 开发进度和里程碑
-- 🎨 [设计文档](docs/design/) - 设计决策和规范
-- 💻 [示例代码](samples/) - 示例代码和教程
+- 📖 [架构文档/Architecture Documentation](docs/design/Architecture.md) - 系统架构概览
+- 🛠️ [构建指南/Build Guide](docs/BUILD.md) - 如何从源码构建
+- 📝 [开发日志/Development Log](docs/devlog/) - 开发进度和里程碑
+- 🎨 [设计文档/Design Documents](docs/design/) - 设计决策和规范
+- 💻 [示例代码/Samples](samples/) - 示例代码和教程
 
 ## 🏗️ Project Status / 项目状态
 
