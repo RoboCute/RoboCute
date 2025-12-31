@@ -100,7 +100,7 @@ class NodeGraphService(Service):
             """根路径"""
             return {
                 "name": "RBCNode API",
-                "version": "0.1.0",
+                "version": "0.2.0",
                 "endpoints": {
                     "nodes": "/nodes",
                     "graph_create": "/graph/create",
