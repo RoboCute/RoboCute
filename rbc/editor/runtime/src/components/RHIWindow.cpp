@@ -1,13 +1,13 @@
 #include "RBCEditorRuntime/components/RHIWindow.h"
 #include "qbytearrayview.h"
-#include "rhi/qrhi_platform.h"
+#include <QtGui/rhi/qrhi_platform.h>
 #include <QPlatformSurfaceEvent>
 #include <QPainter>
 #include <QFile>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QDebug>
-#include <rhi/qshader.h>
+#include <QtGui/rhi/qshader.h>
 
 namespace rbc {
 static QShader getShader(const QString &name) {

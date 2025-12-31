@@ -25,11 +25,13 @@ target_include_directories(rbc_render_plugin PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../shader/host
 )
 
-# Public dependencies: users of this library also need these (header-only)
-# Note: oidn_plugin is header-only dependency, so we only need its headers
-# In CMake, linking PUBLIC will propagate headers but not require linking the library
+# Public dependencies: users of this library also need these
+# rbc_runtime is PUBLIC because:
+# 1. Public headers include rbc_graphics/* headers (e.g., camera.h, device_image.h)
+# 2. Runtime DLL dependency: rbc_render_plugin.dll requires rbc_runtime.dll at runtime
 target_link_libraries(rbc_render_plugin PUBLIC
-    oidn_plugin
+    rbc_runtime
+    oidn_plugin  # header-only dependency
 )
 
 # Private dependencies: only needed for building this library
@@ -45,7 +47,8 @@ if(TARGET luisa-compute-include)
     target_link_libraries(rbc_render_plugin PRIVATE luisa-compute-include)
 endif()
 
-target_link_libraries(rbc_render_plugin PRIVATE
-    rbc_runtime
-)
+# Note: DLL output directory is already set by setup_output_dirs.cmake
+# All DLLs should be in build_cmake/bin/Release or build_cmake/bin/Debug
+# The PUBLIC dependency on rbc_runtime ensures that rbc_runtime.dll will be
+# linked and available when rbc_render_plugin.dll is loaded
 

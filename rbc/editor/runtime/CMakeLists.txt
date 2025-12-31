@@ -4,6 +4,9 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/rbc_config.cmake)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
 
+# Qt setup - ensures proper include paths and MOC configuration
+qt6_standard_project_setup()
+
 # Editor Runtime Library
 add_library(rbc_editor_runtime SHARED)
 
@@ -46,16 +49,22 @@ set_target_properties(rbc_editor_runtime PROPERTIES
 target_link_libraries(rbc_editor_runtime PUBLIC
     Qt6::Core
     Qt6::Gui
+    Qt6::GuiPrivate  # Required for Qt RHI (Render Hardware Interface) private APIs
     Qt6::Widgets
     Qt6::Network
 )
 
 # Dependencies
-target_link_libraries(rbc_editor_runtime PRIVATE
+# Note: rbc_core, rbc_runtime, rbc_render_plugin, rbc_app are PUBLIC because
+# rbc_editor (main.cpp) directly includes headers from these modules
+target_link_libraries(rbc_editor_runtime PUBLIC
     rbc_core
     rbc_runtime
     rbc_render_plugin
     rbc_app
+)
+
+target_link_libraries(rbc_editor_runtime PRIVATE
     lc-volk
     qt_node_editor
 )

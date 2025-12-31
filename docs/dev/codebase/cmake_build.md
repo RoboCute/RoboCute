@@ -8,17 +8,19 @@ RoboCute 项目现在支持使用 CMake 进行构建，与现有的 xmake 构建
 
 ### 前置条件
 
+0. **第三方库下载**: 第三方库的下载由 Python 脚本处理：
+
+```bash
+uv run prepare
+```
+
 1. **Python 代码生成**: 在运行 CMake 配置之前，需要先执行 Python 代码生成步骤：
-   ```bash
-   python src/scripts/main.py generate
-   ```
 
-2. **第三方库下载**: 第三方库的下载由 Python 脚本处理：
-   ```bash
-   python src/scripts/main.py prepare
-   ```
+```bash
+uv run gen
+```
 
-3. **CMake 版本**: 需要 CMake 3.20 或更高版本
+2. **CMake 版本**: 需要 CMake 3.20 或更高版本
 
 ### 基本构建步骤
 

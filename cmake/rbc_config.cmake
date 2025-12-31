@@ -120,3 +120,37 @@ function(rbc_enable_unity_build target batch_size)
     endif()
 endfunction()
 
+# Function to ensure DLL dependencies are copied to output directory on Windows
+# This is needed for dynamically loaded plugins like rbc_render_plugin
+function(rbc_copy_dll_dependencies target)
+    if(WIN32 AND TARGET ${target})
+        # Get the output directory for the target
+        get_target_property(TARGET_TYPE ${target} TYPE)
+        if(TARGET_TYPE STREQUAL "SHARED_LIBRARY" OR TARGET_TYPE STREQUAL "EXECUTABLE")
+            # For multi-config generators (Visual Studio), we need to handle each config
+            get_cmake_property(IS_MULTI_CONFIG GENERATOR_IS_MULTI_CONFIG)
+            if(IS_MULTI_CONFIG)
+                foreach(CONFIG ${CMAKE_CONFIGURATION_TYPES})
+                    string(TOUPPER ${CONFIG} CONFIG_UPPER)
+                    set(OUTPUT_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER}}")
+                    if(OUTPUT_DIR)
+                        # Copy dependencies after build
+                        add_custom_command(TARGET ${target} POST_BUILD
+                            COMMAND ${CMAKE_COMMAND} -E echo "Copying DLL dependencies for ${target}..."
+                            COMMENT "Copying DLL dependencies for ${target}"
+                        )
+                    endif()
+                endforeach()
+            else()
+                set(OUTPUT_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+                if(OUTPUT_DIR)
+                    add_custom_command(TARGET ${target} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E echo "DLL dependencies should be in: ${OUTPUT_DIR}"
+                        COMMENT "DLL dependencies location"
+                    )
+                endif()
+            endif()
+        endif()
+    endif()
+endfunction()
+
