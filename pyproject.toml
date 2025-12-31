@@ -1,6 +1,6 @@
 [project]
 name = "robocute"
-version = "0.1.0"
+version = "0.2.0"
 description = "Make Robotics Cute!"
 readme = "README.md"
 license = {file = "Licenses/Apache-2.0.txt"}
@@ -83,6 +83,7 @@ dev = [
 prepare = "scripts.main:prepare"
 gen = "scripts.main:generate"
 stub = "scripts.main:generate_stub"
+install = "scripts.main:install"
 
 
 

@@ -41,6 +41,8 @@ compile_commands.json
 /build-vs
 /build-wasm
 /build-wasi
+/build_*
+/build-*
 
 # visual studio
 /.vs

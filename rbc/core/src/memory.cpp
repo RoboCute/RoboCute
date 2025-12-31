@@ -1,7 +1,7 @@
 #include <rbc_core/memory.h>
 
 #ifdef RBC_RUNTIME_USE_MIMALLOC
-#include "mimalloc.h"
+#include <mimalloc.h>
 #endif
 
 RBC_FORCEINLINE static void *calloc_aligned(size_t count, size_t size, size_t alignment) {

@@ -1,7 +1,7 @@
 #pragma once
 #include <QWindow>
 #include <QOffscreenSurface>
-#include <rhi/qrhi.h>
+#include <QtGui/rhi/qrhi.h>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWidget>

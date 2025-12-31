@@ -1,39 +1,22 @@
 #pragma once
-#include <rbc_graphics/scene_manager.h>
-#include <rbc_graphics/device_assets/device_mesh.h>
-#include <rbc_graphics/lights.h>
-#include <rbc_graphics/mat_code.h>
+#include <rbc_world/entity.h>
+#include <rbc_world/resources/mesh.h>
+#include <rbc_world/resources/material.h>
+#include <rbc_world/resources/texture.h>
+#include <rbc_world/components/transform.h>
+#include <rbc_world/components/render_component.h>
 #include <luisa/vstl/common.h>
 
 #include "RBCEditorRuntime/runtime/SceneSync.h"
 
 namespace rbc {
 
-struct Vertex {
-    float position[3];
-    float normal[3];
-    float texcoord[2];
-    float tangent[4];// xyz = tangent, w = bitangent sign
-};
-struct Mesh {
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-
-    // GPU buffers (opaque handles, can be device pointers or buffer IDs)
-    void *vertex_buffer = nullptr;
-    void *index_buffer = nullptr;
-
-    // Metadata
-    std::string name;
-
-    void compute_normals();
-};
-
 /**
  * Editor scene that synchronizes with Python server
  * 
- * Manages meshes loaded from file paths and entity transforms
- * based on scene state from the server.
+ * Uses Runtime's Entity-Component-Resource system for scene management.
+ * Manages entities with TransformComponent and RenderComponent based on
+ * scene state from the server.
  */
 class EditorScene {
 public:
@@ -43,8 +26,12 @@ public:
     // Update scene from synchronized state
     void updateFromSync(const SceneSync &sync);
 
-    // Check if TLAS is ready for rendering
-    [[nodiscard]] bool isReady() const { return tlas_ready_; }
+    // Called each frame to process pending render operations
+    // Should be called after IO operations are complete (e.g., after execute_io in tick)
+    void onFrameTick();
+
+    // Check if scene is ready for rendering
+    [[nodiscard]] bool isReady() const { return scene_ready_; }
 
     // Animation transform override
     void setAnimationTransform(int entity_id, const Transform &transform);
@@ -59,36 +46,57 @@ public:
     luisa::vector<int> getEntityIdsFromInstanceIds(const luisa::vector<uint> &instance_ids) const;
 
 private:
-    struct EntityInstance {
+    // Entity tracking info
+    struct EntityInfo {
         int entity_id = 0;
         luisa::string mesh_path;
-        uint32_t tlas_index = 0;
-        RC<DeviceMesh> device_mesh;
-        bool mesh_loaded = false;
+        world::Entity *entity = nullptr;
+        RC<world::MeshResource> mesh_resource;
     };
 
-    vstd::optional<rbc::Lights> lights_;
-    MatCode default_mat_code_;
-    luisa::vector<EntityInstance> instances_;
-    luisa::unordered_map<int, size_t> entity_map_;             // entity_id -> index in instances_
+    // Entities managed by this scene
+    luisa::vector<EntityInfo> entities_;
+    luisa::unordered_map<int, size_t> entity_map_;// entity_id -> index in entities_
+
+    // Mesh resource cache (keyed by path)
+    luisa::unordered_map<luisa::string, RC<world::MeshResource>> mesh_cache_;
+
+    // Default material for all entities
+    RC<world::MaterialResource> default_material_;
+
+    // Default skybox texture (loaded from sky.exr)
+    RC<world::TextureResource> default_skybox_;
+
+    // Animation transform overrides
     luisa::unordered_map<int, Transform> animation_transforms_;// entity_id -> animation transform
-    uint32_t light_id_ = 0;
-    bool light_initialized_ = false;// Track if light has been initialized
-    bool tlas_ready_ = false;
 
-    // Mesh loading and conversion
-    RC<DeviceMesh> loadMeshFromFile(const luisa::string &path);
+    // Pending entities that need start_update_object called after IO completes
+    struct PendingEntity {
+        int entity_id;
+        world::Entity *entity;
+        RC<world::MeshResource> mesh_resource;
+    };
+    luisa::vector<PendingEntity> pending_entities_;
 
-    static void convertMeshToBuilder(const luisa::shared_ptr<rbc::Mesh> &mesh,
-                                     class MeshBuilder &builder);
+    // State flags
+    bool world_initialized_ = false;
+    bool scene_ready_ = false;
 
     // Scene initialization
+    void initWorld();
     void initMaterial();
-    void initLight();
+    void initSkybox();
+
     // Entity management
     void addEntity(int entity_id, const luisa::string &mesh_path, const Transform &transform);
     void updateEntityTransform(int entity_id, const Transform &transform);
     void removeEntity(int entity_id);
+
+    // Mesh loading
+    RC<world::MeshResource> loadMeshResource(const luisa::string &path);
+
+    // Process pending entities (called after IO completes)
+    void processPendingEntities();
 };
 
 }// namespace rbc

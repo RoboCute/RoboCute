@@ -61,15 +61,21 @@ pip install robocute
 ```
 
 ### Basic Usage / 基本使用
+
+运行一个服务器
+
 ```python
 import robocute as rbc
 
+mesh_path = "D:/ws/data/assets/models/bunny.obj"
 # Create a scene
 scene = rbc.Scene()
 scene.start()
 
 # Create an entity
+mesh_id = scene.load_mesh(mesh_path, priority=rbc.LoadPriority.High)
 robot = scene.create_entity("Robot")
+# Add tranform component to define its position
 scene.add_component(
     robot.id,
     "transform",
@@ -79,9 +85,15 @@ scene.add_component(
         scale=[1.0, 1.0, 1.0],
     ),
 )
+# Add render component with mesh reference
+render_comp = rbc.RenderComponent(
+    mesh_id=mesh_id,
+    material_ids=[],
+)
+scene.add_component(robot1.id, "render", render_comp)
 
 # Start server with editor service
-server = rbc.Server(title="RoboCute Server", version="0.1.0")
+server = rbc.Server(title="RoboCute Server", version="0.2.0")
 editor_service = rbc.EditorService(scene)
 server.register_service(editor_service)
 server.start(port=5555)
@@ -91,8 +103,13 @@ print("Server started on port 5555")
 print("Start the editor to connect and visualize the scene")
 ```
 
+打开`rbc_editor`，查看场景并连接节点，执行后在Editor上查看结果
+
+![rbc_editor](docs/images/RBCEditor.png)
+
 ### Example: Creating Animation Nodes / 示例：创建动画节点
 
+Headless模式下，可以完全不使用Editor来定义节点连接，这一部分同样也可以通过预先保存的节点图进行执行。方便在远程linux服务器上进行大批量的仿真/AI计算。
 
 ```python
 import robocute as rbc
@@ -147,21 +164,11 @@ result = executor.execute()
 
 ## 📚 Documentation / 文档
 
-**English:**
-
-- 📖 [Architecture Documentation](docs/design/Architecture.md) - System architecture overview
-- 🛠️ [Build Guide](docs/BUILD.md) - How to build from source
-- 📝 [Development Log](docs/devlog/) - Development progress and milestones
-- 🎨 [Design Documents](docs/design/) - Design decisions and specifications
-- 💻 [Samples](samples/) - Example code and tutorials
-
-**中文:**
-
-- 📖 [架构文档](docs/design/Architecture.md) - 系统架构概览
-- 🛠️ [构建指南](docs/BUILD.md) - 如何从源码构建
-- 📝 [开发日志](docs/devlog/) - 开发进度和里程碑
-- 🎨 [设计文档](docs/design/) - 设计决策和规范
-- 💻 [示例代码](samples/) - 示例代码和教程
+- 📖 [架构文档/Architecture Documentation](docs/design/Architecture.md) - 系统架构概览
+- 🛠️ [构建指南/Build Guide](docs/BUILD.md) - 如何从源码构建
+- 📝 [开发日志/Development Log](docs/devlog/) - 开发进度和里程碑
+- 🎨 [设计文档/Design Documents](docs/design/) - 设计决策和规范
+- 💻 [示例代码/Samples](samples/) - 示例代码和教程
 
 ## 🏗️ Project Status / 项目状态
 
@@ -169,9 +176,9 @@ result = executor.execute()
 
 RoboCute is currently in **active development**. The following milestones have been completed:
 
-- ✅ **v0.1 MVP** (Nov 2024): Basic node system, scene management, animation workflow
-- ✅ **v0.2 Refactoring** (Dec 2024): Ozz animation integration, GLTF import, raster renderer, editor refactoring
-- 🎯 **v0.3 Examples** (Planned Q1 2025): Robot chassis simulation, physics-based character animation, AI nodes
+- ✅ **v0.1 MVP** (Nov 2025): Basic node system, scene management, animation workflow
+- ✅ **v0.2 First Refactor** (Dec 2025): Ozz animation integration, GLTF import, raster renderer, editor refactoring
+- 🎯 **v0.3 Examples** (Planned Q1 2026): Robot chassis simulation, physics-based character animation, AI nodes
 
 **Key Features Implemented**:
 - ✅ Python-first node graph system with visual editor
@@ -187,9 +194,9 @@ See [Development Log](doc/devlog/) for detailed progress.
 
 RoboCute 目前处于**积极开发阶段**。已完成以下里程碑：
 
-- ✅ **v0.1 MVP**（2024年11月）：基础节点系统、场景管理、动画工作流
-- ✅ **v0.2 重构**（2024年12月）：Ozz动画集成、GLTF导入、光栅渲染器、编辑器重构
-- 🎯 **v0.3 案例**（计划2025年Q1）：机器人底盘仿真、基于物理的人物动画、AI节点
+- ✅ **v0.1 MVP**（2025年11月）：基础节点系统、场景管理、动画工作流
+- ✅ **v0.2 重构**（2025年12月）：Ozz动画集成、GLTF导入、光栅渲染器、编辑器重构
+- 🎯 **v0.3 案例**（计划2026年Q1）：机器人底盘仿真、基于物理的人物动画、AI节点
 
 **已实现的核心功能**:
 - ✅ Python优先的节点图系统，配备可视化编辑器

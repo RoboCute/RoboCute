@@ -1,2 +1,3 @@
 # Node System
 
+Robocute自带一个Comfy-UI类似的节点系统，由于整个NodeSystem运行在原生python环境而不是自己的托管环境上，这就让Robocute可以方便地接入其他工具链。

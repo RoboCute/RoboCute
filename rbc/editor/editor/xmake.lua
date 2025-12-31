@@ -4,7 +4,7 @@ add_rules('lc_basic_settings', {
     enable_exception = true,
     rtti = true
 })
-
+set_group("04.targets")
 add_rules("qt.widgetapp")
 add_deps("rbc_editor_runtime")
 add_files("main.cpp")

@@ -2,7 +2,7 @@
 
 robocute是一个python-first，带GUI和cpp runtime的大型库，所以整体构建流程会比较复杂
 
-整体架构可以参考[[doc/design/Architecture.md]]
+整体架构可以参考[Architecture](design/Architecture.md)
 
 ## 准备环境
 
@@ -11,8 +11,11 @@ robocute是一个python-first，带GUI和cpp runtime的大型库，所以整体�
 3. 安装 [llvm 编译工具链](https://github.com/llvm/llvm-project/releases)，选择对应的平台版本安装，安装完成后保证 bin 目录在PATH中，方便构建系统寻找，开发版本主要在Windows机器上，会保证保证clang-cl一直可以顺利编译
 4. 安装[uv](https://docs.astral.sh/) 用于管理python环境，同时支持部分项目构建脚本
 5. 安装 [Qt 6.8+](https://www.qt.io/) 用来编译GUI程序
+6. 安装[7-zip](https://www.7-zip.org/) 用来解压和安装预构建资源
 
 ## 配置编译
+
+Robocute的构建核心是python脚本，我们会使用uv来进行python的包同步，同时也会使用python脚本来拉取C++的第三方源码库和必要的预构建资源。之后我们可以选择cmake和xmake两种方式来编译C++代码库，最终使用统一的python脚本完成最后的app安装，打包和分发。
 
 ### Python环境配置
 
@@ -28,19 +31,39 @@ Python在robocute中扮演双重角色：首先robocute最终会形成一个pyth
 
 ### RBC环境启动
 
-1. 安装环境 `uv run prepare` 下载cpp依赖的第三方库
-2. 从`src/rbc_meta`中生成接口代码：`uv run gen` 代码生成可以保证很多需要重复定义的对象只需要一次代码编写，没有代码生成无法顺利编译cpp
-3. 配置 `xmake f -m release -c`
-4. 编译 `xmake`
-5. 将cpp release结果复制安装到希望的py ext位置 `xmake l /xmake/install.lua`
+1. `uv run prepare`: 安装环境 下载cpp依赖的第三方库
+2. `uv run gen`: 从`src/rbc_meta`中生成接口代码，代码生成可以保证很多需要重复定义的对象只需要一次代码编写，没有代码生成无法顺利编译cpp
+
+### C++安装
+
+xmake版本：
+1. `xmake f -m release -c` 配置编译目标
+2. `xmake` 执行编译 
+3. `xmake l /xmake/install.lua` 将cpp release结果复制安装到希望的py ext位置 
+
+cmake版本
+
+1. `mkdir build_cmake && cd build_cmake`：创建cmake构建目标文件夹
+2. `cmake .. -DQt6_ROOT=D:/tools/Qt/6.9.3/msvc2022_64/lib/cmake/Qt6`：寻找Qt6中`Qt6Config.cmake`的文件目录并通过`Qt6_ROOT`变量设置给cmake
+3. `cmake --build . --config Release`：构建项目
+4. `uv run install`：后处理，将必须的shader、默认场景、渲染默认资源复制到target
 
 ## 测试用例
 
+xmake:
 - rbc-editor
   - 启动开发服务器`uv run main.py`
   - 启动editor `xmake run rbc-editor`
 - Graphics特性测试`xmake run test_graphics_bin`
 - Serde特性测试`xmake run test_serde`
+
+cmake:
+- 确认Qt6的`bin`文件夹存在于系统`PATH`变量中
+- rbc-editor
+  - 启动开发服务器`uv run main.py`
+  - 启动editor `cd ./build_cmake/bin/Release/ && ./rbc_editor`
+- Graphics特性测试`cd ./build_cmake/bin/Release/ && ./test_graphics_bin`
+
 
 ### Server-Editor
 
@@ -54,6 +77,3 @@ Python在robocute中扮演双重角色：首先robocute最终会形成一个pyth
 
 ![test_graphics_bin](images/test_graphics_bin.png)
 
-## 发布运行
-
-暂时仍在早期开发过程中，待补充

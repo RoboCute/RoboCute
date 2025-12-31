@@ -92,7 +92,7 @@ class Server:
     Provides dependency injection for services like EditorService and NodeGraphService.
     """
     
-    def __init__(self, title: str = "RoboCute Server", version: str = "0.1.0"):
+    def __init__(self, title: str = "RoboCute Server", version: str = "0.2.0"):
         """
         Initialize server
         

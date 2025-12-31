@@ -19,6 +19,7 @@ class ResultPanel;
 class EditorScene;
 class NodeEditor;
 class WorkflowManager;
+class WorkflowContainerManager;
 class EventAdapter;
 class AnimationController;
 class SceneUpdater;
@@ -54,6 +55,11 @@ private slots:
     void onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow);
 
     /**
+     * 处理 Workflow 切换时的容器切换
+     */
+    void onWorkflowChangedForContainer(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow);
+
+    /**
      * 处理动画加载完成（UI 更新）
      */
     void onAnimationLoaded(const QString &animName);
@@ -64,9 +70,15 @@ private:
      */
     void subscribeToEventBus();
 
+    /**
+     * 注册所有 Workflow 的容器到 ContainerManager
+     */
+    void registerWorkflowContainers();
+
 private:
     rbc::EditorContext *context_;
     EditorLayoutManager *layoutManager_;
+    rbc::WorkflowContainerManager *containerManager_;
     rbc::EventAdapter *eventAdapter_;
     rbc::AnimationController *animationController_;
     rbc::SceneUpdater *sceneUpdater_;

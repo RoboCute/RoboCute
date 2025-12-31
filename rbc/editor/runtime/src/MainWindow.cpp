@@ -20,11 +20,12 @@
 #include "RBCEditorRuntime/runtime/SceneSyncManager.h"
 #include "RBCEditorRuntime/runtime/EditorScene.h"
 #include "RBCEditorRuntime/runtime/WorkflowManager.h"
+#include "RBCEditorRuntime/runtime/WorkflowState.h"
+#include "RBCEditorRuntime/runtime/WorkflowContainerManager.h"
 #include "RBCEditorRuntime/runtime/EditorContext.h"
 #include "RBCEditorRuntime/runtime/EditorLayoutManager.h"
 #include "RBCEditorRuntime/runtime/EventBus.h"
 #include "RBCEditorRuntime/runtime/EventAdapter.h"
-#include "RBCEditorRuntime/runtime/CommandBus.h"
 #include "RBCEditorRuntime/runtime/AnimationController.h"
 #include "RBCEditorRuntime/runtime/SceneUpdater.h"
 #include "RBCEditorRuntime/runtime/EntitySelectionHandler.h"
@@ -34,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       context_(new rbc::EditorContext),
       layoutManager_(nullptr),
+      containerManager_(nullptr),
       eventAdapter_(nullptr),
       animationController_(nullptr),
       sceneUpdater_(nullptr),
@@ -45,7 +47,11 @@ MainWindow::MainWindow(QWidget *parent)
     context_->workflowManager = new rbc::WorkflowManager(this);
     context_->editorScene = new rbc::EditorScene();
 
+    // Register EditorScene with EditorEngine for frame tick processing
+    rbc::EditorEngine::instance().setEditorScene(context_->editorScene);
+
     layoutManager_ = new EditorLayoutManager(this, context_, this);
+    containerManager_ = new rbc::WorkflowContainerManager(this, context_, this);
     eventAdapter_ = new rbc::EventAdapter(this);
     animationController_ = new rbc::AnimationController(context_, this);
     animationController_->initialize();
@@ -68,6 +74,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(context_->workflowManager, &rbc::WorkflowManager::workflowChanged,
             eventAdapter_, &rbc::EventAdapter::onWorkflowChanged);
 
+    // Connect workflow manager to container manager for central widget switching
+    connect(context_->workflowManager, &rbc::WorkflowManager::workflowChanged,
+            this, &MainWindow::onWorkflowChangedForContainer);
+
     // Connect layout manager signals
     connect(layoutManager_, &EditorLayoutManager::workflowSwitchRequested,
             this, &MainWindow::switchWorkflow);
@@ -89,8 +99,21 @@ void MainWindow::setupUi() {
     setMinimumSize(800, 600);
     setWindowTitle("RoboCute Editor");
 
-    // Setup UI through layout manager
+    // 1. Setup UI components (Docks, MenuBar, ToolBar) through layout manager
     layoutManager_->setupUi();
+
+    // 2. Initialize container manager (creates StackedWidget as CentralWidget)
+    containerManager_->initialize();
+
+    // 3. Initialize workflow manager and create all workflow states
+    context_->workflowManager->initialize(context_);
+
+    // 4. Register all workflow containers
+    registerWorkflowContainers();
+
+    // 5. Switch to default workflow (SceneEditing)
+    // This will trigger the workflow state machine and set up the initial layout
+    switchWorkflow(rbc::WorkflowType::SceneEditing);
 
     // Connect signals for components created by layout manager
     // All business logic now goes through event bus via EventAdapter
@@ -130,9 +153,6 @@ void MainWindow::setupUi() {
                     context_->connectionStatusView, &rbc::ConnectionStatusView::updateConnectionStatus);
         }
     }
-
-    // Set default workflow (SceneEditing)
-    // switchWorkflow(rbc::WorkflowType::SceneEditing);
 
     statusBar()->showMessage("Ready");
 
@@ -228,4 +248,40 @@ void MainWindow::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowT
     } else if (newWorkflow == rbc::WorkflowType::Text2Image) {
         statusBar()->showMessage("Switched to Text2Image workflow");
     }
+}
+
+void MainWindow::onWorkflowChangedForContainer(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow) {
+    Q_UNUSED(oldWorkflow);
+
+    // Get the current state (which should have just entered)
+    auto* state = context_->workflowManager->getState(newWorkflow);
+    if (!state) {
+        qWarning() << "MainWindow: No state found for workflow" << static_cast<int>(newWorkflow);
+        return;
+    }
+
+    // Get the container (should be created by enter())
+    QWidget* container = state->getCentralContainer();
+    if (!container) {
+        qWarning() << "MainWindow: Container not created for workflow" << static_cast<int>(newWorkflow);
+        return;
+    }
+
+    // Register the container if not already registered
+    // This handles the case where the container was just created by enter()
+    if (!containerManager_->stackedWidget() || 
+        containerManager_->stackedWidget()->indexOf(container) == -1) {
+        containerManager_->registerContainer(newWorkflow, container);
+    }
+
+    // Switch to the container
+    containerManager_->switchContainer(newWorkflow);
+}
+
+void MainWindow::registerWorkflowContainers() {
+    // Register containers for all workflow states
+    // Note: Containers are created lazily in enter(), so we register them
+    // when they are created during workflow switching (in onWorkflowChangedForContainer)
+    // This function is kept for potential future use or explicit pre-registration
+    // For now, containers will be registered automatically when workflows are entered
 }

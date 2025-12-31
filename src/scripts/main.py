@@ -24,7 +24,8 @@ from scripts.prepare import (
     OIDN_NAME,
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
-from scripts.utils import is_empty_folder
+from scripts.utils import is_empty_folder, get_project_root, rel
+from scripts.install import install_resources
 
 import rbc_meta.utils.codegen_util as ut
 
@@ -38,20 +39,7 @@ from rbc_meta.utils.codegen import (
 )
 
 
-def get_project_root() -> Path:
-    # Assumes this script is located in <root>/src/srcripts/scripts.py
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = Path(script_dir).parent.parent
-    print(f"Checking ProjectRoot {project_root}")
-    return project_root
-
-
 PROJECT_ROOT = get_project_root()
-
-
-def rel(path):
-    global PROJECT_ROOT
-    return Path(PROJECT_ROOT) / path
 
 
 def find_process_path(process_name):
@@ -516,6 +504,11 @@ def generate_stub():
         )
     duration = time.time() - start_time
     print(f"Stub generation finished in {duration:.2f} seconds.")
+
+
+def install():
+    """Install resources after build (test_scene and shader build results)."""
+    install_resources()
 
 
 if __name__ == "__main__":

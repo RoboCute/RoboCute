@@ -52,10 +52,10 @@ void ViewportContainerWidget::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         // Check if we have selected entities
         bool hasSelection = false;
-        auto *renderApp = EditorEngine::instance().getRenderApp();
-        if (renderApp) {
-            auto *visApp = dynamic_cast<VisApp *>(renderApp);
-            if (visApp && !visApp->dragged_object_ids.empty()) {
+        auto *appBase = EditorEngine::instance().getRenderAppBase();
+        if (appBase && appBase->getRenderMode() == RenderMode::Editor) {
+            auto *visApp = static_cast<VisApp *>(appBase);
+            if (!visApp->dragged_object_ids.empty()) {
                 hasSelection = true;
             }
         }
@@ -94,10 +94,10 @@ void ViewportContainerWidget::mouseMoveEvent(QMouseEvent *event) {
     if (event->buttons() & Qt::LeftButton) {
         // Check if we have selected entities
         bool hasSelection = false;
-        auto *renderApp = EditorEngine::instance().getRenderApp();
-        if (renderApp) {
-            auto *visApp = dynamic_cast<VisApp *>(renderApp);
-            if (visApp && !visApp->dragged_object_ids.empty()) {
+        auto *appBase = EditorEngine::instance().getRenderAppBase();
+        if (appBase && appBase->getRenderMode() == RenderMode::Editor) {
+            auto *visApp = static_cast<VisApp *>(appBase);
+            if (!visApp->dragged_object_ids.empty()) {
                 hasSelection = true;
             }
         }
@@ -224,10 +224,10 @@ bool ViewportWidget::eventFilter(QObject *obj, QEvent *event) {
             if (mouseEvent->button() == Qt::LeftButton) {
                 // Check if we have selected entities
                 bool hasSelection = false;
-                auto *renderApp = EditorEngine::instance().getRenderApp();
-                if (renderApp) {
-                    auto *visApp = dynamic_cast<VisApp *>(renderApp);
-                    if (visApp && !visApp->dragged_object_ids.empty()) {
+                auto *appBase = EditorEngine::instance().getRenderAppBase();
+                if (appBase && appBase->getRenderMode() == RenderMode::Editor) {
+                    auto *visApp = static_cast<VisApp *>(appBase);
+                    if (!visApp->dragged_object_ids.empty()) {
                         hasSelection = true;
                     }
                 }
@@ -244,10 +244,10 @@ bool ViewportWidget::eventFilter(QObject *obj, QEvent *event) {
             if (mouseEvent->buttons() & Qt::LeftButton && m_container) {
                 // Check if we have selected entities
                 bool hasSelection = false;
-                auto *renderApp = EditorEngine::instance().getRenderApp();
-                if (renderApp) {
-                    auto *visApp = dynamic_cast<VisApp *>(renderApp);
-                    if (visApp && !visApp->dragged_object_ids.empty()) {
+                auto *appBase = EditorEngine::instance().getRenderAppBase();
+                if (appBase && appBase->getRenderMode() == RenderMode::Editor) {
+                    auto *visApp = static_cast<VisApp *>(appBase);
+                    if (!visApp->dragged_object_ids.empty()) {
                         hasSelection = true;
                     }
                 }
@@ -288,14 +288,14 @@ void ViewportWidget::startEntityDrag() {
         return;
     }
     
-    // Get VisApp instance from EditorEngine
-    auto *renderApp = EditorEngine::instance().getRenderApp();
-    if (!renderApp) {
+    // Get VisApp instance from EditorEngine (only available in Editor mode)
+    auto *appBase = EditorEngine::instance().getRenderAppBase();
+    if (!appBase || appBase->getRenderMode() != RenderMode::Editor) {
         return;
     }
     
-    auto *visApp = dynamic_cast<VisApp *>(renderApp);
-    if (!visApp || visApp->dragged_object_ids.empty()) {
+    auto *visApp = static_cast<VisApp *>(appBase);
+    if (visApp->dragged_object_ids.empty()) {
         return;
     }
     
