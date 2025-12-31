@@ -20,7 +20,7 @@ This document provides a detailed task checklist for implementing the RoboCute p
 - [ ] `ISkinImporter` 接口（已存在但需要验证）
 - [ ] `IAnimSequenceImporter` 接口（已存在但需要验证）
 
-**参考**: [resource_management.md](resource_management.md#2-核心类和接口--core-classes-and-interfaces)
+**参考**: [resource_management.md](resource_management.md)
 
 ### Task 1.2: 资源导入器注册表实现 ✅ (Partial)
 
@@ -769,16 +769,16 @@ Phase 8 (Documentation)
 
 ## 时间估算 / Time Estimation
 
-| Phase | 任务数 | 预估时间 |
-|-------|--------|----------|
-| Phase 1 | 3 | 2-3 天 |
-| Phase 2 | 3 | 3-4 天 |
-| Phase 3 | 3 | 4-5 天 |
-| Phase 4 | 4 | 3-4 天 |
-| Phase 5 | 3 | 2-3 天 |
-| Phase 6 | 3 | 2-3 天 |
-| Phase 7 | 3 | 3-4 天 |
-| Phase 8 | 3 | 2-3 天 |
+| Phase    | 任务数 | 预估时间     |
+| -------- | ------ | ------------ |
+| Phase 1  | 3      | 2-3 天       |
+| Phase 2  | 3      | 3-4 天       |
+| Phase 3  | 3      | 4-5 天       |
+| Phase 4  | 4      | 3-4 天       |
+| Phase 5  | 3      | 2-3 天       |
+| Phase 6  | 3      | 2-3 天       |
+| Phase 7  | 3      | 3-4 天       |
+| Phase 8  | 3      | 2-3 天       |
 | **总计** | **25** | **21-29 天** |
 
 ---

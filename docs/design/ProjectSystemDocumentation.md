@@ -313,13 +313,13 @@ docs/dev/resource_management.md#资源导入器注册表实现
 
 ### 更新频率 / Update Frequency
 
-| 文档 | 更新频率 | 更新时机 |
-|------|----------|----------|
-| Project.md | 高 | 添加新功能、更新进度 |
-| ProjectStructure.md | 低 | 结构变更、格式变更 |
-| resource_management.md | 中 | API 变更、新功能 |
-| project_initialization.md | 中 | API 变更、新功能 |
-| implementation_checklist.md | 高 | 任务完成、任务添加 |
+| 文档                        | 更新频率 | 更新时机             |
+| --------------------------- | -------- | -------------------- |
+| Project.md                  | 高       | 添加新功能、更新进度 |
+| ProjectStructure.md         | 低       | 结构变更、格式变更   |
+| resource_management.md      | 中       | API 变更、新功能     |
+| project_initialization.md   | 中       | API 变更、新功能     |
+| implementation_checklist.md | 高       | 任务完成、任务添加   |
 
 ### 版本控制 / Version Control
 
@@ -351,7 +351,7 @@ docs/dev/resource_management.md#资源导入器注册表实现
 
 ### 相关设计文档 / Related Design Documents
 - [Architecture.md](Architecture.md) - 整体架构
-- [Serialization.md](Serialization.md) - 序列化系统（如果存在）
+- [Serde.md](Serde.md) - 序列化系统设计
 
 ---
 
@@ -359,22 +359,22 @@ docs/dev/resource_management.md#资源导入器注册表实现
 
 ### 需要了解... / Need to know...
 
-| 问题 | 查看文档 | 章节 |
-|------|----------|------|
-| 项目目录结构 | ProjectStructure.md | §1, §2 |
-| 配置文件格式 | ProjectStructure.md | §1.1, §1.2 |
-| 资源文件格式 | ProjectStructure.md | §3.2 |
-| 数据库表结构 | ProjectStructure.md | §3.3 |
-| 场景文件格式 | ProjectStructure.md | §4 |
-| 节点图格式 | ProjectStructure.md | §5 |
-| 资源导入流程 | ProjectStructure.md | §9 |
-| 如何实现导入器 | resource_management.md | §3 |
-| 如何使用数据库 | resource_management.md | §4 |
-| 如何创建项目 | project_initialization.md | §1, §2 |
-| Python API | resource_management.md, project_initialization.md | §6, §3 |
-| CLI 工具 | resource_management.md, project_initialization.md | §7, §4 |
-| 任务清单 | implementation_checklist.md | 全部 |
-| 实现优先级 | implementation_checklist.md | §优先级和依赖关系 |
+| 问题           | 查看文档                                          | 章节              |
+| -------------- | ------------------------------------------------- | ----------------- |
+| 项目目录结构   | ProjectStructure.md                               | §1, §2            |
+| 配置文件格式   | ProjectStructure.md                               | §1.1, §1.2        |
+| 资源文件格式   | ProjectStructure.md                               | §3.2              |
+| 数据库表结构   | ProjectStructure.md                               | §3.3              |
+| 场景文件格式   | ProjectStructure.md                               | §4                |
+| 节点图格式     | ProjectStructure.md                               | §5                |
+| 资源导入流程   | ProjectStructure.md                               | §9                |
+| 如何实现导入器 | resource_management.md                            | §3                |
+| 如何使用数据库 | resource_management.md                            | §4                |
+| 如何创建项目   | project_initialization.md                         | §1, §2            |
+| Python API     | resource_management.md, project_initialization.md | §6, §3            |
+| CLI 工具       | resource_management.md, project_initialization.md | §7, §4            |
+| 任务清单       | implementation_checklist.md                       | 全部              |
+| 实现优先级     | implementation_checklist.md                       | §优先级和依赖关系 |
 
 ---
 

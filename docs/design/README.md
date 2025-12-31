@@ -7,6 +7,7 @@
 ## 📚 文档索引 / Document Index
 
 ### 项目系统 / Project System
+
 - **[ProjectSystemDocumentation.md](ProjectSystemDocumentation.md)** - 项目系统文档导航（从这里开始） 🚀
 - **[Project.md](Project.md)** - 项目系统设计概览
 - **[ProjectStructure.md](ProjectStructure.md)** - 完整的项目文件结构规范 ⭐
@@ -25,18 +26,20 @@
 👉 从 [ProjectSystemDocumentation.md](ProjectSystemDocumentation.md) 开始
 
 ### 如果你想实现功能
+
 👉 查看 [implementation_checklist.md](../dev/implementation_checklist.md)
 
 ### 如果你需要查找具体规范
+
 👉 查阅 [ProjectStructure.md](ProjectStructure.md)
 
 ---
 
 ## 其他设计文档 / Other Design Documents
 
-- [Architecture.md](Architecture.md) - RoboCute 整体架构
-- [SceneManagement.md](SceneManagement.md) - 场景管理（如果存在）
-- [AnimationSystem.md](AnimationSystem.md) - 动画系统（如果存在）
+- [Architecture](Architecture.md) - RoboCute 整体架构
+- [Scene](Scene.md) - 场景管理（如果存在）
+- [Animation](Animation.md) - 动画系统（如果存在）
 
 ---
 

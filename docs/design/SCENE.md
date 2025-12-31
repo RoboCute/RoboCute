@@ -1,5 +1,7 @@
 # 场景设计
 
+(WIP) Robocute Entity-Component-Resource场景设计
+
 Entity::get_component(TypeInfo)
 
 从RTTIType中提取TypeInfo之后，从_components中

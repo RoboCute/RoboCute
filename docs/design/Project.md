@@ -20,6 +20,7 @@ The RoboCute project system manages project directory structure, resource import
   - 版本控制建议
 
 ### 🔧 实现指南 / Implementation Guides
+
 - **[resource_management.md](../dev/resource_management.md)** - 资源管理系统实现
   - 资源生命周期
   - 导入器接口和实现
@@ -254,8 +255,8 @@ if isinstance(resource, rbc.MeshResource):
 ## 参考 / References
 
 - [Architecture.md](Architecture.md) - RoboCute 整体架构
-- [ResourceManagement.md](ResourceManagement.md) - 资源管理设计（如果存在）
-- [Serialization.md](Serialization.md) - 序列化系统设计（如果存在）
+- [RBCResource.md](RBCResource.md) - 资源管理设计
+- [Serde.md](Serde.md) - 序列化系统设计
 
 ---
 
