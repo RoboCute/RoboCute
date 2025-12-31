@@ -174,19 +174,7 @@ void EditorLayoutManager::setupDocks() {
     detailsDock->setWidget(context_->detailsPanel);
     mainWindow_->addDockWidget(Qt::RightDockWidgetArea, detailsDock);
 
-    // 3. Viewport - will be set as central widget in SceneEditing mode
-    context_->viewportDock = createViewportDock();
-    // Don't add as dock initially, will be set as central widget
-
-    // 4. Node Editor (Bottom) - use shared HttpClient
-    context_->nodeDock = new QDockWidget("Node Graph", mainWindow_);
-    context_->nodeDock->setObjectName("NodeDock");
-    context_->nodeDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
-    context_->nodeEditor = new rbc::NodeEditor(context_->httpClient, context_->nodeDock);
-    context_->nodeDock->setWidget(context_->nodeEditor);
-    // Don't add as dock initially, will be added in adjustLayoutForWorkflow
-
-    // 5. Result Panel (Right, below Details)
+    // 3. Result Panel (Right, below Details)
     auto *resultDock = new QDockWidget("Results", mainWindow_);
     resultDock->setObjectName("ResultDock");
     resultDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -208,7 +196,7 @@ void EditorLayoutManager::setupDocks() {
     // Stack Result dock below Details dock
     mainWindow_->splitDockWidget(detailsDock, resultDock, Qt::Vertical);
 
-    // 6. Connection Status View (Left, below Scene Hierarchy)
+    // 4. Connection Status View (Left, below Scene Hierarchy)
     context_->connectionStatusDock = new QDockWidget("Connection Status", mainWindow_);
     context_->connectionStatusDock->setObjectName("ConnectionStatusDock");
     context_->connectionStatusDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -220,123 +208,55 @@ void EditorLayoutManager::setupDocks() {
     // Stack Connection Status dock below Scene Hierarchy dock
     mainWindow_->splitDockWidget(sceneDock, context_->connectionStatusDock, Qt::Vertical);
 
+    // 5. Create Viewport Widget (will be used in workflow containers)
+    context_->viewportWidget = new rbc::ViewportWidget(&rbc::EditorEngine::instance(), mainWindow_);
+    context_->viewportWidget->setMinimumSize(400, 300);
+    context_->viewportWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    context_->viewportWidget->setEditorContext(context_);
+    // 初始时隐藏，等待 WorkflowState 管理其显示
+    context_->viewportWidget->setVisible(false);
+    // Note: ViewportWidget 不再放在 dock 中，而是由 WorkflowState 管理
+
+    // 6. Create Node Editor (will be used in workflow containers)
+    context_->nodeEditor = new rbc::NodeEditor(context_->httpClient, mainWindow_);
+    context_->nodeEditor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    // 初始时隐藏，等待 WorkflowState 管理其显示
+    context_->nodeEditor->setVisible(false);
+    // Note: NodeEditor 不再放在 dock 中，而是由 WorkflowState 管理
+
     // Create animation playback manager
     context_->playbackManager = new rbc::AnimationPlaybackManager(context_->editorScene, mainWindow_);
 
-    // Set default layout for SceneEditing workflow
-    adjustLayoutForWorkflow(rbc::WorkflowType::SceneEditing);
+    qDebug() << "EditorLayoutManager: Setup docks completed";
 }
 
-QDockWidget *EditorLayoutManager::createViewportDock() {
-    context_->viewportWidget = new rbc::ViewportWidget(&rbc::EditorEngine::instance(), mainWindow_);
-    context_->viewportWidget->setMinimumSize(400, 300);
-    // Set EditorContext for drag and drop support
-    context_->viewportWidget->setEditorContext(context_);
+void EditorLayoutManager::adjustDockVisibility(rbc::WorkflowType workflow) {
+    // 根据工作流类型调整 DockWidgets 的可见性
+    // CentralWidget 的管理已经由 WorkflowContainerManager 和 WorkflowState 负责
+    // 这里只需要控制 Dock 的可见性
+    
+    qDebug() << "EditorLayoutManager: Adjusting dock visibility for workflow" 
+             << static_cast<int>(workflow);
 
-    auto *dock = new QDockWidget("Viewport", mainWindow_);
-    dock->setObjectName("ViewportDock");
-    dock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    dock->setWidget(context_->viewportWidget);
-    dock->setVisible(true);
-
-    return dock;
-}
-
-void EditorLayoutManager::adjustLayoutForWorkflow(rbc::WorkflowType workflow) {
-    // 根据工作流类型调整布局
     switch (workflow) {
         case rbc::WorkflowType::SceneEditing:
-            // SceneEditing: Viewport 作为中央组件，NodeEditor 在底部
-            // 首先移除所有dock（如果已添加）
-            if (context_->viewportDock && context_->viewportDock->parent() == mainWindow_) {
-                mainWindow_->removeDockWidget(context_->viewportDock);
-            }
-            if (context_->nodeDock && context_->nodeDock->parent() == mainWindow_) {
-                mainWindow_->removeDockWidget(context_->nodeDock);
-            }
-
-            // 如果ViewportWidget还在dock中，需要先取出
-            if (context_->viewportDock && context_->viewportDock->widget() == context_->viewportWidget) {
-                context_->viewportDock->setWidget(nullptr);
-            }
-
-            // 将 Viewport 设置为中央组件，占据主要空间
-            if (context_->viewportWidget) {
-                // 显式设置parent为mainWindow（如果还没有设置）
-                // 这是关键修复：从dock中取出widget后，parent可能仍然是dock，
-                // 需要显式设置为mainWindow才能正确显示
-                if (context_->viewportWidget->parentWidget() != mainWindow_) {
-                    context_->viewportWidget->setParent(mainWindow_);
-                }
-                
-                mainWindow_->setCentralWidget(context_->viewportWidget);
-                
-                // 确保ViewportWidget可见并更新
-                context_->viewportWidget->show();
-                context_->viewportWidget->setVisible(true);
-                context_->viewportWidget->update();
-                context_->viewportWidget->repaint();
-            }
-
-            // 将 NodeEditor 添加到底部，设置合理的高度
-            if (context_->nodeDock) {
-                mainWindow_->addDockWidget(Qt::BottomDockWidgetArea, context_->nodeDock);
-                context_->nodeDock->setVisible(true);
-                // 设置NodeEditor的最小高度，确保有足够的空间
-                context_->nodeDock->setMinimumHeight(300);
-                // 使用窗口高度的30-35%作为NodeEditor的高度，确保Viewport有足够空间
-                // 计算可用高度（窗口高度减去菜单栏、工具栏、状态栏等）
-                int availableHeight = mainWindow_->height();
-                if (mainWindow_->menuBar()) {
-                    availableHeight -= mainWindow_->menuBar()->height();
-                }
-                if (mainWindow_->statusBar()) {
-                    availableHeight -= mainWindow_->statusBar()->height();
-                }
-                // 使用30%的高度给NodeEditor，剩余70%给Viewport
-                int nodeEditorHeight = qMax(300, static_cast<int>(availableHeight * 0.3));
-                // 使用resizeDocks来分配空间
-                QList<QDockWidget*> docks;
-                docks << context_->nodeDock;
-                QList<int> sizes;
-                sizes << nodeEditorHeight;
-                mainWindow_->resizeDocks(docks, sizes, Qt::Vertical);
-            }
+            // SceneEditing: 所有 Dock 都可见
+            // （Scene Hierarchy, Details, Results, Connection Status）
+            // 由 WorkflowState 决定具体哪些 Dock 可见
             break;
         case rbc::WorkflowType::Text2Image:
-            // Text2Image: NodeEditor 作为中央组件，隐藏 Viewport
-            // 移除Viewport（如果作为central widget）
-            if (mainWindow_->centralWidget() == context_->viewportWidget) {
-                mainWindow_->setCentralWidget(nullptr);
-                // 将ViewportWidget放回dock
-                if (context_->viewportDock && context_->viewportWidget) {
-                    context_->viewportDock->setWidget(context_->viewportWidget);
-                }
-            }
-            // 移除dock（如果已添加）
-            if (context_->viewportDock && context_->viewportDock->parent() == mainWindow_) {
-                mainWindow_->removeDockWidget(context_->viewportDock);
-                context_->viewportDock->setVisible(false);
-            }
-            if (context_->nodeDock && context_->nodeDock->parent() == mainWindow_) {
-                mainWindow_->removeDockWidget(context_->nodeDock);
-            }
-
-            // 如果NodeEditor还在dock中，需要先取出
-            if (context_->nodeDock && context_->nodeDock->widget() == context_->nodeEditor) {
-                context_->nodeDock->setWidget(nullptr);
-            }
-
-            // 将 NodeEditor 设置为中央组件
-            if (context_->nodeEditor) {
-                mainWindow_->setCentralWidget(context_->nodeEditor);
-            }
+            // Text2Image: 只显示 Results 和 Connection Status
+            // 隐藏 Scene Hierarchy, Details
+            // 由 WorkflowState 决定具体哪些 Dock 可见
             break;
     }
 }
 
 void EditorLayoutManager::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow) {
     Q_UNUSED(oldWorkflow);
+
+    qDebug() << "EditorLayoutManager: onWorkflowChanged from" << static_cast<int>(oldWorkflow)
+             << "to" << static_cast<int>(newWorkflow);
 
     // 更新工作流动作的选中状态
     switch (newWorkflow) {
@@ -358,8 +278,8 @@ void EditorLayoutManager::onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::
             break;
     }
 
-    // 调整布局
-    adjustLayoutForWorkflow(newWorkflow);
+    // 调整 Dock 可见性
+    adjustDockVisibility(newWorkflow);
 }
 
 void EditorLayoutManager::switchToSceneEditingWorkflow() {

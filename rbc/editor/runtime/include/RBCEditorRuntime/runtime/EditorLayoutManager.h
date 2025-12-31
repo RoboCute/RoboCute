@@ -24,13 +24,17 @@ class ConnectionStatusView;
 }// namespace rbc
 
 /**
- * EditorLayoutManager - 负责管理所有UI组件的创建、布局和显示/隐藏
+ * EditorLayoutManager - 负责管理 UI 组件的创建和 DockWidgets 的可见性
  * 
- * 职责：
- * - 管理菜单栏(MenuBar)、工具栏(ToolBar)的创建和配置
- * - 管理所有停靠窗口(DockWidgets)的创建、布局和可见性控制
- * - 根据工作流类型动态调整UI布局
+ * 职责（简化版）：
+ * - 创建菜单栏(MenuBar)、工具栏(ToolBar)
+ * - 创建所有停靠窗口(DockWidgets)
+ * - 根据工作流类型控制 DockWidgets 的可见性
  * - 管理渲染模式切换
+ * 
+ * 不再负责：
+ * - CentralWidget 的管理（由 WorkflowContainerManager 负责）
+ * - 复杂的布局调整逻辑（由 WorkflowState 负责）
  */
 class RBC_EDITOR_RUNTIME_API EditorLayoutManager : public QObject {
     Q_OBJECT
@@ -40,18 +44,18 @@ public:
     ~EditorLayoutManager() override = default;
 
     /**
-     * 初始化所有UI组件
+     * 初始化所有UI组件（菜单栏、工具栏、Docks）
      */
     void setupUi();
 
     /**
-     * 根据工作流类型调整UI布局
+     * 根据工作流类型调整 DockWidgets 的可见性
      */
-    void adjustLayoutForWorkflow(rbc::WorkflowType workflow);
+    void adjustDockVisibility(rbc::WorkflowType workflow);
 
 public slots:
     /**
-     * 响应工作流变化
+     * 响应工作流变化（更新 UI 状态和 Dock 可见性）
      */
     void onWorkflowChanged(rbc::WorkflowType newWorkflow, rbc::WorkflowType oldWorkflow);
 
@@ -81,11 +85,6 @@ private:
      * 创建所有停靠窗口
      */
     void setupDocks();
-
-    /**
-     * 创建视口停靠窗口
-     */
-    QDockWidget *createViewportDock();
 
     /**
      * 切换到场景编辑工作流
