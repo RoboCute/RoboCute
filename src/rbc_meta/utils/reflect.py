@@ -91,6 +91,7 @@ class ClassInfo:
     cpp_prefix: Optional[str] = ""
     serde = False
     pybind = False
+    inherit = None
     create_instance = True
 
     def __post_init__(self):
@@ -123,6 +124,7 @@ class ReflectionRegistry:
         serde: bool = False,
         pybind: bool = False,
         cpp_prefix: Optional[str] = "",
+        inherit: Optional[Type] = None,
         create_instance: bool = True,
     ) -> Type:
         """注册类"""
@@ -130,6 +132,7 @@ class ReflectionRegistry:
         class_info.cpp_namespace = cpp_namespace
         class_info.serde = serde
         class_info.pybind = pybind
+        class_info.inherit = inherit
         class_info.create_instance = create_instance
         class_info.cpp_prefix = cpp_prefix
 
@@ -150,6 +153,7 @@ class ReflectionRegistry:
         # 提取方法信息
         methods = []
         # 遍历类的所有属性，查找方法
+        # TODO: may add inherit base class method
         for name in dir(cls):
             if name.startswith("_"):
                 continue
@@ -179,8 +183,10 @@ class ReflectionRegistry:
                     func = attr
                     # 函数可能是静态方法（没有self参数）
                     sig = inspect.signature(func)
-                    parameters = {name: param for name, param in sig.parameters.items()}
-                    is_static = len(parameters) == 0 or "self" not in parameters
+                    parameters = {name: param for name,
+                                  param in sig.parameters.items()}
+                    is_static = len(
+                        parameters) == 0 or "self" not in parameters
                 else:  # is_method
                     func = attr.__func__ if hasattr(attr, "__func__") else attr
                     is_static = False
@@ -197,24 +203,26 @@ class ReflectionRegistry:
                 if return_type is not None:
                     return_type_generic = self._parse_generic_type(return_type)
 
-                parameters = {name: param for name, param in sig.parameters.items()}
+                parameters = {name: param for name,
+                              param in sig.parameters.items()}
 
                 # 解析参数的泛型信息
                 parameter_generics = {}
                 for param_name, param in parameters.items():
                     if param.annotation != inspect.Signature.empty:
-                        param_generic = self._parse_generic_type(param.annotation)
+                        param_generic = self._parse_generic_type(
+                            param.annotation)
                         parameter_generics[param_name] = param_generic
                     else:
                         parameter_generics[param_name] = None
 
                 # 检查是否为RPC方法（通过装饰器标记）
-                is_rpc = hasattr(func, "_rpc_") and getattr(func, "_rpc_", False)
+                is_rpc = hasattr(func, "_rpc_") and getattr(
+                    func, "_rpc_", False)
 
                 # 如果通过@rpc装饰器标记了is_static，使用装饰器的设置
                 if hasattr(func, "_static_"):
                     is_static = getattr(func, "_static_", is_static)
-
                 methods.append(
                     MethodInfo(
                         name=name,
@@ -309,11 +317,11 @@ class ReflectionRegistry:
         # 提取基类
         # print(f"extracting basics for {cls.__name__}: {cls.__bases__}")
         base_classes = []
-        for base in cls.__bases__:
-            if base != None:
-                class_info = self.get_class_info(base.__name__)
-                if class_info:
-                    base_classes.append(class_info)
+        # for base in cls.__bases__:
+        #     if base != None:
+        #         class_info = self.get_class_info(base.__name__)
+        #         if class_info:
+        #             base_classes.append(class_info)
         return ClassInfo(
             name=cls.__name__,
             cls=cls,
@@ -446,7 +454,8 @@ class ReflectionRegistry:
         except ImportError as e:
             import warnings
 
-            warnings.warn(f"Cannot import module {module_name}: {e}", ImportWarning)
+            warnings.warn(
+                f"Cannot import module {module_name}: {e}", ImportWarning)
 
 
 def reflect(
@@ -457,6 +466,7 @@ def reflect(
     serde: bool = False,
     pybind: bool = False,
     create_instance: bool = True,
+    inherit: Optional[Type] = None,
     cpp_prefix: Optional[str] = "",
 ) -> Type:
     """
@@ -485,6 +495,7 @@ def reflect(
             serde=serde,
             pybind=pybind,
             cpp_prefix=cpp_prefix,
+            inherit=inherit,
             create_instance=create_instance,
         )
         # 添加标记属性
@@ -492,7 +503,7 @@ def reflect(
         cls._is_enum_ = class_info.is_enum
         # 添加自定义属性
         cls._pybind_type_ = pybind
-        
+
         cls._cpp_type_name = f"{cpp_namespace}::{cls.__name__}"
         return cls
 

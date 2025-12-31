@@ -712,15 +712,16 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
             )
         )
         struct_base_expr = ": ::rbc::RBCStruct"
-        if len(info.base_classes) == 1:
-            base_class = info.base_classes[0]
-            assert base_class is not None
-            base_expr = _get_cpp_type(base_class.cls)
-            struct_base_expr = f": public {base_expr}"
-            # only on rttr type, valid
-        elif len(info.base_classes) > 1:
-            # should not happen
-            print(f"{class_name} has more than 1 base classes")
+        # TODO: we don't want to inherit in cpp
+        # if len(info.base_classes) == 1:
+        #     base_class = info.base_classes[0]
+        #     assert base_class is not None
+        #     base_expr = _get_cpp_type(base_class.cls)
+        #     struct_base_expr = f": public {base_expr}"
+        #     # only on rttr type, valid
+        # elif len(info.base_classes) > 1:
+        #     # should not happen
+        #     print(f"{class_name} has more than 1 base classes")
 
         # print(f"{class_name}: {info.base_classes}")
 
@@ -889,8 +890,11 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
     #     return PY_ENUM_EXPR_TEMPLATE.substitute(
     #         ENUM_NAME=enum_name, ENUM_VALUES=enum_values
     #     )
-
+    type_to_cls_info = {}
     def get_class_expr(key: str, info: ClassInfo):
+        inherit_cls_info: Optional[Type] = None
+        if info.inherit:
+            inherit_cls_info = type_to_cls_info.get(info.inherit)
         if info.is_enum:
             return "", []
 
@@ -930,7 +934,29 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
                 METHOD_NAME=method.name,
             )
             pybind_methods_list.append(pybind_method_name)
-
+            return PY_METHOD_TEMPLATE.substitute(
+                INDENT=INDENT,
+                METHOD_NAME=method.name,
+                ARGS_DECL=args_decl,
+                RETURN_EXPR=return_expr,
+                PYBIND_METHOD_NAME=pybind_method_name,
+                ARGS_CALL=args_call,
+                RETURN_END=return_end
+            )
+        def get_inherit_method_expr(method: MethodInfo, struct_name: str):
+            method_params = {k: v for k,
+                             v in method.parameters.items() if k != "self"}
+            args_decl = _print_py_args_decl(method_params, False)
+            args_call = _print_py_args(method_params, False, False)
+            return_expr = "return " if method.return_type else ""
+            return_end = ''
+            if method.return_type and hasattr(method.return_type, '_pybind_type_') and method.return_type._pybind_type_ and not method.return_type._is_enum_:
+                return_expr += _get_py_type(method.return_type) + '('
+                return_end = ')'
+            pybind_method_name = PYBIND_METHOD_NAME_TEMPLATE.substitute(
+                STRUCT_NAME=struct_name,
+                METHOD_NAME=method.name,
+            )
             return PY_METHOD_TEMPLATE.substitute(
                 INDENT=INDENT,
                 METHOD_NAME=method.name,
@@ -941,12 +967,15 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
                 RETURN_END=return_end
             )
 
+
         methods_list = []
         for method in info.methods:
             if _is_rpc_method(method):
                 continue  # Skip RPC methods in Python interface
             methods_list.append(get_method_expr(method))
-
+        if inherit_cls_info:
+            for method in inherit_cls_info.methods:
+                methods_list.append(get_inherit_method_expr(method, inherit_cls_info.name))
         methods_expr = "".join(methods_list)
 
         return PY_INTERFACE_CLASS_TEMPLATE.substitute(
@@ -961,6 +990,8 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
 
     # Use original order from registry to preserve module-defined order
     all_classes = registry.get_all_classes().items()
+    for key, info in all_classes:
+        type_to_cls_info[info.cls] = info
     for key, info in all_classes:
         if len(module_filter) > 0 and info.module not in module_filter:
             continue
