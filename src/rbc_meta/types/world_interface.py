@@ -2,8 +2,6 @@ from rbc_meta.utils.reflect import reflect
 from rbc_meta.utils.builtin import DataBuffer, ExternalType
 from rbc_meta.utils.builtin import uint, uint2, ulong, float3, float4x4, VoidPtr, GUID, double, double3, float4, double4x4
 from rbc_meta.types.resource_enums import LCPixelStorage
-
-
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
@@ -11,7 +9,19 @@ from rbc_meta.types.resource_enums import LCPixelStorage
     module_name="backend_interface",
     create_instance=False  # component can not be create
 )
-class TransformComponent:
+class Component:
+    def instance_id() -> ulong: ...
+    def guid() -> GUID: ...
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="backend_interface",
+    create_instance=False,  # component can not be create
+    inherit = Component
+)
+class TransformComponent():
     def position() -> double3: ...
     def scale() -> double3: ...
     def rotation() -> float4: ...
@@ -32,9 +42,10 @@ class TransformComponent:
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="backend_interface",
-    create_instance=False  # component can not be create
+    create_instance=False,  # component can not be create
+    inherit = Component
 )
-class LightComponent:
+class LightComponent():
     def add_area_light(luminance: float3, visible: bool) -> None: ...
     def add_disk_light(luminance: float3, visible: bool) -> None: ...
     def add_point_light(luminance: float3, visible: bool) -> None: ...
@@ -52,7 +63,8 @@ class LightComponent:
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="backend_interface",
-    create_instance=False  # component can not be create
+    create_instance=False,  # component can not be create
+    inherit = Component
 )
-class RenderComponent:
+class RenderComponent():
     pass
