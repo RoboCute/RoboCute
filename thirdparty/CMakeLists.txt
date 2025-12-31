@@ -20,12 +20,15 @@ if(TARGET luisa-compute-vstl)
     add_library(lc-vstl ALIAS luisa-compute-vstl)
     message(STATUS "Created alias: lc-vstl -> luisa-compute-vstl")
 endif()
-if(TARGET luisa-compute-ext-yyjson)
-    add_library(lc-yyjson ALIAS luisa-compute-ext-yyjson)
-    message(STATUS "Created alias: lc-yyjson -> luisa-compute-ext-yyjson")
-elseif(TARGET luisa-compute-ext-yyjson-interface)
+# Use the interface-only target for external consumers since yyjson implementation
+# is already compiled into luisa-compute-core (linking the OBJECT library would cause
+# duplicate symbol errors)
+if(TARGET luisa-compute-ext-yyjson-interface)
     add_library(lc-yyjson ALIAS luisa-compute-ext-yyjson-interface)
     message(STATUS "Created alias: lc-yyjson -> luisa-compute-ext-yyjson-interface")
+elseif(TARGET luisa-compute-ext-yyjson)
+    add_library(lc-yyjson ALIAS luisa-compute-ext-yyjson)
+    message(STATUS "Created alias: lc-yyjson -> luisa-compute-ext-yyjson")
 endif()
 
 # Runtime aliases

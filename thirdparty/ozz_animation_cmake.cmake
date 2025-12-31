@@ -8,7 +8,7 @@ target_include_directories(ozz_animation_include INTERFACE
 
 # Ozz Animation Base
 add_library(ozz_animation_base STATIC)
-file(GLOB OZZ_BASE_SOURCES
+file(GLOB_RECURSE OZZ_BASE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ozz_animation/src/base/*.cc
 )
 target_sources(ozz_animation_base PRIVATE ${OZZ_BASE_SOURCES})
@@ -19,10 +19,12 @@ rbc_apply_basic_settings(ozz_animation_base PROJECT_KIND static)
 add_library(ozz_animation_runtime_static STATIC)
 file(GLOB OZZ_RUNTIME_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ozz_animation/src/animation/runtime/*.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ozz_animation/src/geometry/*.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ozz_animation/src/options/*.cc
 )
-target_sources(ozz_animation_runtime_static PRIVATE ${OZZ_RUNTIME_SOURCES})
+file(GLOB_RECURSE OZZ_GEOMETRY_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/ozz_animation/src/geometry/*.cc
+)
+target_sources(ozz_animation_runtime_static PRIVATE ${OZZ_RUNTIME_SOURCES} ${OZZ_GEOMETRY_SOURCES})
 target_include_directories(ozz_animation_runtime_static PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/ozz_animation/src
 )
@@ -43,10 +45,12 @@ rbc_apply_basic_settings(ozz_json_cpp PROJECT_KIND shared)
 
 # Ozz Animation Offline Static
 add_library(ozz_animation_offline_static STATIC)
-file(GLOB OZZ_OFFLINE_SOURCES
+file(GLOB_RECURSE OZZ_OFFLINE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ozz_animation/src/animation/offline/*.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ozz_animation/src/animation/offline/tools/*.cc
 )
+# Exclude fbx and gltf subdirectories which have their own targets/dependencies
+list(FILTER OZZ_OFFLINE_SOURCES EXCLUDE REGEX ".*/fbx/.*")
+list(FILTER OZZ_OFFLINE_SOURCES EXCLUDE REGEX ".*/gltf/.*")
 target_sources(ozz_animation_offline_static PRIVATE ${OZZ_OFFLINE_SOURCES})
 target_include_directories(ozz_animation_offline_static PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/ozz_animation/src

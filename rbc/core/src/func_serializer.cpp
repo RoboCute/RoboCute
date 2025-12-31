@@ -5,7 +5,7 @@ struct GuidHash {
     size_t operator()(vstd::Guid::GuidData const &v) const {
         return luisa::hash64(&v, sizeof(vstd::Guid::GuidData), luisa::hash64_default_seed);
     }
-    bool operator()(vstd::Guid::GuidData const a, vstd::Guid::GuidData const b) {
+    bool operator()(vstd::Guid::GuidData const a, vstd::Guid::GuidData const b) const {
         return a.data0 == b.data0 && a.data1 == b.data1;
     }
 };

@@ -24,7 +24,7 @@ target_link_libraries(test_graphics PRIVATE
 )
 
 target_compile_definitions(test_graphics PRIVATE TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT)
-target_compile_definitions(test_graphics PUBLIC TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_IMPORT)
+target_compile_definitions(test_graphics INTERFACE TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_IMPORT)
 
 # Add shader compilation dependency
 rbc_add_shader_compilation(test_graphics)

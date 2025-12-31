@@ -7,8 +7,8 @@ add_library(rbc_runtime SHARED)
 
 # Set EXPORT for compiling this target's own sources (PRIVATE)
 target_compile_definitions(rbc_runtime PRIVATE RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT)
-# Set IMPORT for other targets that link to this target (PUBLIC)
-target_compile_definitions(rbc_runtime PUBLIC RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_IMPORT)
+# Set IMPORT for other targets that link to this target (INTERFACE)
+target_compile_definitions(rbc_runtime INTERFACE RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_IMPORT)
 
 # Apply basic settings
 rbc_apply_basic_settings(rbc_runtime PROJECT_KIND shared)
@@ -20,6 +20,13 @@ file(GLOB_RECURSE SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
 target_sources(rbc_runtime PRIVATE ${SOURCES})
+
+# Fix unity build conflict for duplicate filenames
+set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/anim/asset/anim_sequence.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/world/resources/anim_sequence.cpp
+    PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
+)
 
 # Public interface: headers and dependencies that users of this library need
 target_include_directories(rbc_runtime PUBLIC

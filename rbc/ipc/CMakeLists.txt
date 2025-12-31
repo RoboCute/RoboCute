@@ -7,8 +7,8 @@ add_library(rbc_ipc SHARED)
 
 # Set EXPORT for compiling this target's own sources (PRIVATE)
 target_compile_definitions(rbc_ipc PRIVATE RBC_IPC_API=LUISA_DECLSPEC_DLL_EXPORT)
-# Set IMPORT for other targets that link to this target (PUBLIC)
-target_compile_definitions(rbc_ipc PUBLIC RBC_IPC_API=LUISA_DECLSPEC_DLL_IMPORT)
+# Set IMPORT for other targets that link to this target (INTERFACE)
+target_compile_definitions(rbc_ipc INTERFACE RBC_IPC_API=LUISA_DECLSPEC_DLL_IMPORT)
 
 # Apply basic settings
 rbc_apply_basic_settings(rbc_ipc PROJECT_KIND shared ENABLE_EXCEPTION)

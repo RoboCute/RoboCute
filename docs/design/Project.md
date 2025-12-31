@@ -1,55 +1,16 @@
 # RBCProject
 
-- project.rbc
-- Content
-- Assets
-  - hash.rasset: the binary file format 
-- Intermediate
-  - .uipc
-    - <uipc_execute_hash>
-- logs.db: The Sqlite database for executing log
-
-- systems.json
-- scene.json
-- Cube.obj
-- Cube.001.obj
-- anim.json
-
-## scene.json
-
-- meshes
-  - Cube
-    - matrix_world
-    - constitution_type
-    - is_fixed
-    - enable_self_collision
-  - Cube.001
-    - matrix_world
-    - constitution_type
-    - is_fixed
-    - enable_self_collision
-- sim_frame_start
-- sim_frame_end
-- sim_dt
-
-## systems.json
-
-- features
-  - core/affine_body_state_accessor
-  - core/contact_system
-- sim_systems []
-  - engine_aware
+- rbc_project.json 项目入口文件
   - name
-  - strong_deps
-  - valid
-  - weak_deps
+  - version
+  - meta data ...
+- assets：原始图片/gltf/urdf/usd等等DCC导出场景文件
+- doc: 项目本身相关的文字信息（设定集，小说等）
+- datasets：项目本身的数据集
+- mid: The Intermediate Directory
+  - resources: asset经过引擎导入之后
+  - logs
+    - log.db: the sqlite dataset for log
+  - out: 默认输出目录
+- pretrained: the pretrained weights
 
-## anim.json
-
-- name
-  - slot_id
-  - original_vs
-  - anim []
-    - 0
-      - matrix_world
-      - co

@@ -11,6 +11,8 @@ add_executable(test_serde ${TEST_SOURCES})
 rbc_apply_basic_settings(test_serde PROJECT_KIND binary)
 
 target_link_libraries(test_serde PRIVATE
+    rbc_runtime
+    rbc_render_plugin
     rbc_core
 )
 
