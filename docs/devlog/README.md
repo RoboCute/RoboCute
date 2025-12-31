@@ -1,5 +1,9 @@
 # RoboCute Development Log / 开发日志
 
+**Last Updated**: December 30, 2025 
+**Current Version**: v0.2.0  
+**Project Status**: Active Development
+
 This directory contains development logs and milestone records for the RoboCute project.
 
 本目录包含 RoboCute 项目的开发日志和里程碑记录。
@@ -8,9 +12,9 @@ This directory contains development logs and milestone records for the RoboCute 
 
 ### Version Milestones / 版本里程碑
 
-- [v0.1 MVP](version/v01.md) - Minimum Viable Product (✅ Completed / 已完成)
-- [v0.2](version/v02.md) - First Refactoring (✅ Completed / 已完成)
-- [v0.3](version/v03.md) - Example-Driven Development (🎯 Planned / 计划中)
+- [v0.1 MVP](version/v01.md) - Minimum Viable Product (✅ Completed / 已完成, Nov 2025)
+- [v0.2](version/v02.md) - First Refactoring (✅ Completed / 已完成, Dec 2025)
+- [v0.3](version/v03.md) - Example-Driven Development (🎯 Planned / 计划中, Q1 2025)
 
 ## 📊 Development Timeline / 开发时间线
 
@@ -88,43 +92,10 @@ The third milestone will focus on example-driven development:
 - 🎯 地图编辑器和轨迹可视化
 - 🎯 性能优化和调试工具
 
-## 🎯 Key Design Principles / 核心设计原则
 
-**English:**
+## 📞 Contact & Resources
 
-1. **Python-First**: Python is the single source of truth for all scene data and logic
-2. **Optional Editor**: The editor is a debugging/visualization tool, not required for core functionality
-3. **Command Pattern**: Editor sends commands to server, server broadcasts updates back
-4. **Headless Support**: Full support for offline rendering and simulations without GUI
-5. **Extensible**: Easy to create custom nodes and extend functionality
-
-**中文:**
-
-1. **Python-First**: Python 是所有场景数据和逻辑的唯一真实来源
-2. **可选编辑器**: 编辑器是调试/可视化工具，不是核心功能的必需组件
-3. **命令模式**: 编辑器向服务器发送命令，服务器广播更新
-4. **无头支持**: 完全支持无 GUI 的离线渲染和仿真
-5. **可扩展**: 易于创建自定义节点和扩展功能
-
-## 📝 How to Contribute / 如何贡献
-
-**English:**
-
-When documenting new features or milestones:
-
-1. Create a new markdown file in the appropriate subdirectory
-2. Follow the existing format and structure
-3. Include both English and Chinese descriptions when possible
-4. Update this README with links to new documents
-5. Add completion dates and status indicators
-
-**中文:**
-
-在记录新功能或里程碑时：
-
-1. 在相应的子目录中创建新的 markdown 文件
-2. 遵循现有的格式和结构
-3. 尽可能包含英文和中文描述
-4. 更新此 README，添加新文档的链接
-5. 添加完成日期和状态指示器
-
+- **GitHub**: [RoboCute/RoboCute](https://github.com/RoboCute/RoboCute)
+- **Documentation**: [Online Doc](https://robocute.github.io/RoboCute/)
+- **Devlog**: [doc/devlog/](README.md)
+- **Issues**: [GitHub Issues](https://github.com/RoboCute/RoboCute/issues)

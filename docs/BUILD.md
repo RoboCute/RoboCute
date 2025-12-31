@@ -54,6 +54,3 @@ Python在robocute中扮演双重角色：首先robocute最终会形成一个pyth
 
 ![test_graphics_bin](images/test_graphics_bin.png)
 
-## 发布运行
-
-暂时仍在早期开发过程中，待补充
