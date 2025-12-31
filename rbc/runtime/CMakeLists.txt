@@ -1,64 +1,82 @@
 # RBC Runtime Library
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_interface_target.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_config.cmake)
 
-# Interface callback function
-function(rbc_runtime_interface_callback target)
-    target_include_directories(${target} INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../shader/include
-    )
-    target_link_libraries(${target} INTERFACE
-        lc-runtime
-        rbc_core
-    )
-endfunction()
+# Create shared library
+add_library(rbc_runtime SHARED)
 
-# Implementation callback function
-function(rbc_runtime_impl_callback target)
-    rbc_apply_basic_settings(${target} PROJECT_KIND shared)
-    rbc_enable_unity_build(${target} 8)
-    rbc_set_precompiled_header(${target} ${CMAKE_CURRENT_SOURCE_DIR}/src/zz_pch.h)
-    
-    file(GLOB_RECURSE SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    )
-    target_sources(${target} PRIVATE ${SOURCES})
-    
-    # Dependencies
-    target_link_libraries(${target} PRIVATE
-        tinyexr
-        tiny_obj_loader
-        open_fbx
-        tinytiff
-        tinygltf
-        ozz_animation_runtime_static
-        ozz_animation_offline_static
-        lc-volk
-    )
-    
-    # Note: lc-backends-dummy is handled by LuisaCompute (no link needed)
-    # stb-image is header-only, provided by LuisaCompute
-    
-    # Windows-specific system libraries
-    if(WIN32)
-        target_link_libraries(${target} PRIVATE d3d12 User32)
-    endif()
-    
-    # Export macro
-    target_compile_definitions(${target} PRIVATE RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT)
-endfunction()
+# Set EXPORT for compiling this target's own sources (PRIVATE)
+target_compile_definitions(rbc_runtime PRIVATE RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT)
+# Set IMPORT for other targets that link to this target (PUBLIC)
+target_compile_definitions(rbc_runtime PUBLIC RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_IMPORT)
 
-# Create interface target
-rbc_interface_target(rbc_runtime
-    INTERFACE_CALLBACK rbc_runtime_interface_callback
-    IMPL_CALLBACK rbc_runtime_impl_callback
+# Apply basic settings
+rbc_apply_basic_settings(rbc_runtime PROJECT_KIND shared)
+rbc_enable_unity_build(rbc_runtime 8)
+rbc_set_precompiled_header(rbc_runtime ${CMAKE_CURRENT_SOURCE_DIR}/src/zz_pch.h)
+
+# Collect source files
+file(GLOB_RECURSE SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+)
+target_sources(rbc_runtime PRIVATE ${SOURCES})
+
+# Public interface: headers and dependencies that users of this library need
+target_include_directories(rbc_runtime PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../shader/include
 )
 
-# Add import definition to interface
-target_compile_definitions(rbc_runtime_int INTERFACE RBC_RUNTIME_API=LUISA_DECLSPEC_DLL_IMPORT)
+target_link_libraries(rbc_runtime PUBLIC
+    lc-runtime
+    rbc_core
+    ozz_animation_include
+)
 
-# Add ozz_animation_include dependency
-target_link_libraries(rbc_runtime_int INTERFACE ozz_animation_include)
+# Private dependencies: only needed for building this library
+# Link LuisaCompute targets - try both alias and actual names
+if(TARGET lc-volk)
+    target_link_libraries(rbc_runtime PRIVATE lc-volk)
+elseif(TARGET luisa-compute-ext-volk)
+    target_link_libraries(rbc_runtime PRIVATE luisa-compute-ext-volk)
+endif()
+
+if(TARGET lc-runtime)
+    target_link_libraries(rbc_runtime PRIVATE lc-runtime)
+elseif(TARGET luisa-compute-runtime)
+    target_link_libraries(rbc_runtime PRIVATE luisa-compute-runtime)
+endif()
+
+if(TARGET lc-backends-dummy)
+    target_link_libraries(rbc_runtime PRIVATE lc-backends-dummy)
+elseif(TARGET luisa-compute-backends)
+    target_link_libraries(rbc_runtime PRIVATE luisa-compute-backends)
+endif()
+
+# LMDB is needed because luisa-compute-runtime uses it (OBJECT library PRIVATE deps don't propagate)
+if(TARGET luisa-compute-ext-lmdb)
+    target_link_libraries(rbc_runtime PRIVATE luisa-compute-ext-lmdb)
+endif()
+
+# Always link luisa-compute-include for headers
+if(TARGET luisa-compute-include)
+    target_link_libraries(rbc_runtime PRIVATE luisa-compute-include)
+endif()
+
+target_link_libraries(rbc_runtime PRIVATE
+    tinyexr
+    tiny_obj_loader
+    open_fbx
+    tinytiff
+    tinygltf
+    ozz_animation_runtime_static
+    ozz_animation_offline_static
+)
+
+# Note: stb-image is header-only, provided by LuisaCompute
+
+# Windows-specific system libraries
+if(WIN32)
+    target_link_libraries(rbc_runtime PRIVATE d3d12 User32)
+endif()
 

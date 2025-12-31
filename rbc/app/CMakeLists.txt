@@ -1,44 +1,46 @@
 # RBC App Library
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_interface_target.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_config.cmake)
 
-# Interface callback function
-function(rbc_app_interface_callback target)
-    target_include_directories(${target} INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-    target_link_libraries(${target} INTERFACE
-        rbc_runtime
-        rbc_core
-        rbc_render_plugin
-    )
-endfunction()
+# Create shared library
+add_library(rbc_app SHARED)
 
-# Implementation callback function
-function(rbc_app_impl_callback target)
-    rbc_apply_basic_settings(${target} PROJECT_KIND shared)
-    rbc_set_precompiled_header(${target} ${CMAKE_CURRENT_SOURCE_DIR}/src/zz_pch.h)
-    
-    file(GLOB_RECURSE SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    )
-    target_sources(${target} PRIVATE ${SOURCES})
-    
-    target_link_libraries(${target} PRIVATE
-        lc-gui
-    )
-    
-    # Export macro
-    target_compile_definitions(${target} PRIVATE RBC_APP_API=LUISA_DECLSPEC_DLL_EXPORT)
-endfunction()
+# Set EXPORT for compiling this target's own sources (PRIVATE)
+target_compile_definitions(rbc_app PRIVATE RBC_APP_API=LUISA_DECLSPEC_DLL_EXPORT)
+# Set IMPORT for other targets that link to this target (PUBLIC)
+target_compile_definitions(rbc_app PUBLIC RBC_APP_API=LUISA_DECLSPEC_DLL_IMPORT)
 
-# Create interface target
-rbc_interface_target(rbc_app
-    INTERFACE_CALLBACK rbc_app_interface_callback
-    IMPL_CALLBACK rbc_app_impl_callback
+# Apply basic settings
+rbc_apply_basic_settings(rbc_app PROJECT_KIND shared)
+rbc_set_precompiled_header(rbc_app ${CMAKE_CURRENT_SOURCE_DIR}/src/zz_pch.h)
+
+# Collect source files
+file(GLOB_RECURSE SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+)
+target_sources(rbc_app PRIVATE ${SOURCES})
+
+# Public interface: headers and dependencies that users of this library need
+target_include_directories(rbc_app PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Add import definition to interface
-target_compile_definitions(rbc_app_int INTERFACE RBC_APP_API=LUISA_DECLSPEC_DLL_IMPORT)
+target_link_libraries(rbc_app PUBLIC
+    rbc_runtime
+    rbc_core
+    rbc_render_plugin
+)
+
+# Private dependencies: only needed for building this library
+# Link LuisaCompute targets - try both alias and actual names
+if(TARGET lc-gui)
+    target_link_libraries(rbc_app PRIVATE lc-gui)
+elseif(TARGET luisa-compute-gui)
+    target_link_libraries(rbc_app PRIVATE luisa-compute-gui)
+endif()
+
+# Always link luisa-compute-include for headers
+if(TARGET luisa-compute-include)
+    target_link_libraries(rbc_app PRIVATE luisa-compute-include)
+endif()
 

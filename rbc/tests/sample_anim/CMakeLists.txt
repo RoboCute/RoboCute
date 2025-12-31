@@ -2,9 +2,11 @@
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/rbc_config.cmake)
 
-add_executable(sample_anim
+file(GLOB TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 )
+
+add_executable(sample_anim ${TEST_SOURCES})
 
 rbc_apply_basic_settings(sample_anim PROJECT_KIND binary)
 

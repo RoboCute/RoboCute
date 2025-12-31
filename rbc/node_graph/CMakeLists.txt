@@ -1,39 +1,32 @@
 # RBC Node Graph Library
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_interface_target.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_config.cmake)
 
-# Interface callback function
-function(rbc_node_interface_callback target)
-    target_include_directories(${target} INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-endfunction()
+# Create shared library
+add_library(rbc_node SHARED)
 
-# Implementation callback function
-function(rbc_node_impl_callback target)
-    rbc_apply_basic_settings(${target} PROJECT_KIND shared)
-    rbc_set_precompiled_header(${target} ${CMAKE_CURRENT_SOURCE_DIR}/src/zz_pch.h)
-    
-    file(GLOB_RECURSE SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    )
-    target_sources(${target} PRIVATE ${SOURCES})
-    
-    target_link_libraries(${target} PRIVATE
-        rbc_runtime
-    )
-    
-    # Export macro
-    target_compile_definitions(${target} PRIVATE RBC_NODE_API=LUISA_DECLSPEC_DLL_EXPORT)
-endfunction()
+# Set EXPORT for compiling this target's own sources (PRIVATE)
+target_compile_definitions(rbc_node PRIVATE RBC_NODE_API=LUISA_DECLSPEC_DLL_EXPORT)
+# Set IMPORT for other targets that link to this target (PUBLIC)
+target_compile_definitions(rbc_node PUBLIC RBC_NODE_API=LUISA_DECLSPEC_DLL_IMPORT)
 
-# Create interface target
-rbc_interface_target(rbc_node
-    INTERFACE_CALLBACK rbc_node_interface_callback
-    IMPL_CALLBACK rbc_node_impl_callback
+# Apply basic settings
+rbc_apply_basic_settings(rbc_node PROJECT_KIND shared)
+rbc_set_precompiled_header(rbc_node ${CMAKE_CURRENT_SOURCE_DIR}/src/zz_pch.h)
+
+# Collect source files
+file(GLOB_RECURSE SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+)
+target_sources(rbc_node PRIVATE ${SOURCES})
+
+# Public interface: headers that users of this library need
+target_include_directories(rbc_node PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Add import definition to interface
-target_compile_definitions(rbc_node_int INTERFACE RBC_NODE_API=LUISA_DECLSPEC_DLL_IMPORT)
+# Private dependencies: only needed for building this library
+target_link_libraries(rbc_node PRIVATE
+    rbc_runtime
+)
 

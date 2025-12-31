@@ -1,46 +1,51 @@
 # RBC Render Plugin
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_interface_target.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_config.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_shader_compile.cmake)
 
-# Interface callback function
-function(rbc_render_interface_callback target)
-    target_include_directories(${target} INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-endfunction()
+# Create shared library
+add_library(rbc_render_plugin SHARED)
 
-# Implementation callback function
-function(rbc_render_impl_callback target)
-    rbc_apply_basic_settings(${target} PROJECT_KIND shared)
-    rbc_set_precompiled_header(${target} ${CMAKE_CURRENT_SOURCE_DIR}/src/zz_pch.h)
-    
-    # Add shader hostgen dependency
-    rbc_add_shader_hostgen(${target})
-    
-    file(GLOB_RECURSE SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    )
-    target_sources(${target} PRIVATE ${SOURCES})
-    
-    target_link_libraries(${target} PRIVATE
-        rbc_runtime
-    )
-    
-    # Add shader host directory to includes
-    target_include_directories(${target} PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/../shader/host
-    )
-    
-    # Note: oidn_plugin dependency is NO_LINK, so we don't link it
-    # lc-backends-dummy is handled by LuisaCompute
-endfunction()
+# Apply basic settings
+rbc_apply_basic_settings(rbc_render_plugin PROJECT_KIND shared)
+rbc_set_precompiled_header(rbc_render_plugin ${CMAKE_CURRENT_SOURCE_DIR}/src/zz_pch.h)
 
-# Create interface target with NO_LINK
-rbc_interface_target(rbc_render_plugin
-    INTERFACE_CALLBACK rbc_render_interface_callback
-    IMPL_CALLBACK rbc_render_impl_callback
-    NO_LINK
+# Add shader hostgen dependency
+rbc_add_shader_hostgen(rbc_render_plugin)
+
+# Collect source files
+file(GLOB_RECURSE SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+)
+target_sources(rbc_render_plugin PRIVATE ${SOURCES})
+
+# Public interface: headers that users of this library need
+target_include_directories(rbc_render_plugin PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../shader/host
+)
+
+# Public dependencies: users of this library also need these (header-only)
+# Note: oidn_plugin is header-only dependency, so we only need its headers
+# In CMake, linking PUBLIC will propagate headers but not require linking the library
+target_link_libraries(rbc_render_plugin PUBLIC
+    oidn_plugin
+)
+
+# Private dependencies: only needed for building this library
+# Link LuisaCompute targets - try both alias and actual names
+if(TARGET lc-backends-dummy)
+    target_link_libraries(rbc_render_plugin PRIVATE lc-backends-dummy)
+elseif(TARGET luisa-compute-backends)
+    target_link_libraries(rbc_render_plugin PRIVATE luisa-compute-backends)
+endif()
+
+# Always link luisa-compute-include for headers
+if(TARGET luisa-compute-include)
+    target_link_libraries(rbc_render_plugin PRIVATE luisa-compute-include)
+endif()
+
+target_link_libraries(rbc_render_plugin PRIVATE
+    rbc_runtime
 )
 

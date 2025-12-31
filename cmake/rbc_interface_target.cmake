@@ -31,19 +31,25 @@ function(rbc_interface_target target_name)
     add_library(${target_name}_int INTERFACE)
     
     # Call interface callback to configure the interface target
-    ${RBC_IT_INTERFACE_CALLBACK}(${target_name}_int)
+    # Use cmake_language(EVAL CODE ...) to call function by name stored in variable
+    # This works around the limitation that cmake_language(CALL) may not work with variables
+    cmake_language(EVAL CODE "${RBC_IT_INTERFACE_CALLBACK}(${target_name}_int)")
     
     # Create implementation target (corresponds to _impl__)
     # We'll determine the type (SHARED/STATIC) in the impl callback
     # For now, create as SHARED by default (can be changed in impl callback)
     add_library(${target_name}_impl SHARED)
     
-    # Link interface to implementation
-    target_link_libraries(${target_name}_impl PRIVATE ${target_name}_int)
+    # Call impl callback FIRST to set PRIVATE EXPORT definitions
+    # This ensures that when compiling implementation sources, EXPORT is used
+    # Note: The impl callback should not change the library type - it's set at creation time
+    cmake_language(EVAL CODE "${RBC_IT_IMPL_CALLBACK}(${target_name}_impl)")
     
-    # Call impl callback to configure the implementation target
-    # Note: The impl callback can change the library type using set_target_properties
-    ${RBC_IT_IMPL_CALLBACK}(${target_name}_impl)
+    # Link interface to implementation AFTER impl callback
+    # The INTERFACE IMPORT definition from interface target will propagate,
+    # but PRIVATE EXPORT definition set in impl callback takes precedence for
+    # compiling this target's own sources
+    target_link_libraries(${target_name}_impl PRIVATE ${target_name}_int)
     
     # Create alias target (corresponds to main target name)
     if(NOT RBC_IT_NO_LINK)

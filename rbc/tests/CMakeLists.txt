@@ -4,8 +4,13 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_config.cmake)
 
 # Helper function to add a test
 function(rbc_add_test test_name deps)
-    add_executable(test_${test_name}
+    # Collect source files using GLOB
+    file(GLOB TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/${test_name}/*.cpp
+    )
+    
+    add_executable(test_${test_name}
+        ${TEST_SOURCES}
         ${CMAKE_CURRENT_SOURCE_DIR}/_framework/test_util.cpp
     )
     
@@ -39,5 +44,9 @@ add_subdirectory(test_coro)
 add_subdirectory(sample_anim)
 add_subdirectory(model_viewer)
 add_subdirectory(test_py_codegen)
-add_subdirectory(calculator)
+
+# Calculator test (requires Qt, only if building editor)
+if(RBC_BUILD_EDITOR)
+    add_subdirectory(calculator)
+endif()
 

@@ -47,16 +47,9 @@ function(rbc_apply_basic_settings target)
     set(multiValueArgs "")
     cmake_parse_arguments(RBC_BS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
-    # Set project kind (SHARED/STATIC/BINARY)
-    if(RBC_BS_PROJECT_KIND)
-        if(RBC_BS_PROJECT_KIND STREQUAL "shared")
-            set_target_properties(${target} PROPERTIES TYPE SHARED_LIBRARY)
-        elseif(RBC_BS_PROJECT_KIND STREQUAL "static")
-            set_target_properties(${target} PROPERTIES TYPE STATIC_LIBRARY)
-        elseif(RBC_BS_PROJECT_KIND STREQUAL "binary")
-            # Already an executable, nothing to do
-        endif()
-    endif()
+    # Note: PROJECT_KIND is informational only - library type must be set at creation time
+    # This parameter is kept for compatibility but does not modify the target type
+    # The caller should create the target with the correct type (SHARED/STATIC) before calling this function
     
     # Exception handling
     if(RBC_BS_ENABLE_EXCEPTION)

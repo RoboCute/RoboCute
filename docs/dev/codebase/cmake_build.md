@@ -37,6 +37,56 @@ cmake --build . --config Release
 ctest
 ```
 
+### 构建选项
+
+#### RBC_BUILD_EDITOR
+
+控制是否构建编辑器（需要 Qt6）。默认值为 `ON`。
+
+- `ON`（默认）: 构建编辑器，需要 Qt6
+- `OFF`: 不构建编辑器，不查找 Qt6
+
+示例：
+```bash
+# 禁用编辑器构建（不需要 Qt6）
+cmake -DRBC_BUILD_EDITOR=OFF ..
+
+# 启用编辑器构建（默认）
+cmake -DRBC_BUILD_EDITOR=ON ..
+```
+
+当 `RBC_BUILD_EDITOR=OFF` 时：
+- 不会查找 Qt6 库
+- 不会构建 `qt_node_editor`
+- 不会构建 `rbc_editor_runtime` 和 `rbc_editor`
+- 不会构建 `calculator` 测试（依赖 Qt）
+
+当 `RBC_BUILD_EDITOR=ON` 时，脚本会检查Qt的安装，可以通过`Qt6_ROOT`来传入Qt的地址，如`cmake -DQt6_ROOT=D:/tools/Qt/6.9.3 ..`
+
+#### RBC_BUILD_PY_EXT
+
+控制是否构建 Python 扩展模块（需要 Python3）。默认值为 `OFF`。
+
+- `ON`: 构建 Python 扩展，需要 Python3 开发库
+- `OFF`（默认）: 不构建 Python 扩展，不查找 Python3
+
+示例：
+```bash
+# 启用 Python 扩展构建（需要 Python3）
+cmake -DRBC_BUILD_PY_EXT=ON ..
+
+# 禁用 Python 扩展构建（默认）
+cmake -DRBC_BUILD_PY_EXT=OFF ..
+```
+
+当 `RBC_BUILD_PY_EXT=ON` 时：
+- 会查找 Python3（Interpreter、Development 组件）
+- 会构建 `rbc_ext_c` Python 扩展模块（.pyd 文件）
+
+当 `RBC_BUILD_PY_EXT=OFF` 时：
+- 不会查找 Python3
+- 不会构建 `rbc_ext_c`
+
 ## 架构设计
 
 ### Interface/Impl 模式

@@ -1,68 +1,112 @@
 # RBC OIDN Plugin
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_interface_target.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/rbc_config.cmake)
 
-# Interface callback function
-function(oidn_plugin_interface_callback target)
-    target_include_directories(${target} INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-endfunction()
+# Create shared library
+add_library(oidn_plugin SHARED)
 
-# Implementation callback function
-function(oidn_plugin_impl_callback target)
-    rbc_apply_basic_settings(${target} PROJECT_KIND shared)
-    
-    file(GLOB_RECURSE SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    )
-    target_sources(${target} PRIVATE ${SOURCES})
-    
-    target_link_libraries(${target} PRIVATE
-        oidn_interface
-        lc-vstl
-        lc-runtime
-    )
-    
-    # Link OIDN libraries
-    # Note: These should be available from build/download/oidn-2.3.3-windows-x64
-    find_library(OIDN_LIB OpenImageDenoise
-        PATHS
-        ${CMAKE_SOURCE_DIR}/build/download/oidn-2.3.3-windows-x64/lib
-        ${CMAKE_SOURCE_DIR}/build/download/oidn-2.3.3-windows-x64/lib/x64
-        NO_DEFAULT_PATH
-    )
-    find_library(OIDN_CORE_LIB OpenImageDenoise_core
-        PATHS
-        ${CMAKE_SOURCE_DIR}/build/download/oidn-2.3.3-windows-x64/lib
-        ${CMAKE_SOURCE_DIR}/build/download/oidn-2.3.3-windows-x64/lib/x64
-        NO_DEFAULT_PATH
-    )
-    
-    if(OIDN_LIB AND OIDN_CORE_LIB)
-        target_link_libraries(${target} PRIVATE ${OIDN_LIB} ${OIDN_CORE_LIB})
-    else()
-        message(WARNING "OIDN libraries not found. Please ensure OIDN is installed.")
-    endif()
-endfunction()
+# Apply basic settings
+rbc_apply_basic_settings(oidn_plugin PROJECT_KIND shared)
 
-# Create interface target with NO_LINK
-rbc_interface_target(oidn_plugin
-    INTERFACE_CALLBACK oidn_plugin_interface_callback
-    IMPL_CALLBACK oidn_plugin_impl_callback
-    NO_LINK
+# Collect source files
+file(GLOB_RECURSE SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
+target_sources(oidn_plugin PRIVATE ${SOURCES})
+
+# Public interface: headers that users of this library need
+target_include_directories(oidn_plugin PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# Public dependencies: users of this library also need these (header-only)
+target_link_libraries(oidn_plugin PUBLIC
+    oidn_interface
+)
+
+# Private dependencies: only needed for building this library
+# Link LuisaCompute targets - try both alias and actual names
+if(TARGET lc-vstl)
+    target_link_libraries(oidn_plugin PRIVATE lc-vstl)
+elseif(TARGET luisa-compute-vstl)
+    target_link_libraries(oidn_plugin PRIVATE luisa-compute-vstl)
+endif()
+
+if(TARGET lc-runtime)
+    target_link_libraries(oidn_plugin PRIVATE lc-runtime)
+elseif(TARGET luisa-compute-runtime)
+    target_link_libraries(oidn_plugin PRIVATE luisa-compute-runtime)
+endif()
+
+if(TARGET lc-backends-dummy)
+    target_link_libraries(oidn_plugin PRIVATE lc-backends-dummy)
+elseif(TARGET luisa-compute-backends)
+    target_link_libraries(oidn_plugin PRIVATE luisa-compute-backends)
+endif()
+
+# LMDB is needed because luisa-compute-vstl uses it (OBJECT library PRIVATE deps don't propagate)
+if(TARGET luisa-compute-ext-lmdb)
+    target_link_libraries(oidn_plugin PRIVATE luisa-compute-ext-lmdb)
+endif()
+
+# Always link luisa-compute-include for headers
+if(TARGET luisa-compute-include)
+    target_link_libraries(oidn_plugin PRIVATE luisa-compute-include)
+endif()
+
+# Link OIDN libraries
+# Note: These should be available from build/download/oidn-2.3.3-windows-x64
+set(OIDN_BASE_DIR ${CMAKE_SOURCE_DIR}/build/download/oidn-2.3.3-windows-x64)
+set(OIDN_LIB_PATH ${OIDN_BASE_DIR}/OpenImageDenoise.lib)
+set(OIDN_CORE_LIB_PATH ${OIDN_BASE_DIR}/OpenImageDenoise_core.lib)
+
+if(EXISTS ${OIDN_LIB_PATH} AND EXISTS ${OIDN_CORE_LIB_PATH})
+    message(STATUS "Found OIDN libraries: ${OIDN_LIB_PATH}, ${OIDN_CORE_LIB_PATH}")
+    target_link_libraries(oidn_plugin PRIVATE ${OIDN_LIB_PATH} ${OIDN_CORE_LIB_PATH})
+    # Add library directory to runtime path for DLL loading
+    if(WIN32)
+        set_target_properties(oidn_plugin PROPERTIES
+            VS_DEBUGGER_ENVIRONMENT "PATH=${OIDN_BASE_DIR};$ENV{PATH}"
+        )
+    endif()
+else()
+    message(WARNING "OIDN libraries not found at:")
+    message(WARNING "  ${OIDN_LIB_PATH}")
+    message(WARNING "  ${OIDN_CORE_LIB_PATH}")
+    message(WARNING "Please ensure OIDN is installed at: ${OIDN_BASE_DIR}")
+endif()
 
 # OIDN Checker executable
 add_executable(oidn_checker
     ${CMAKE_CURRENT_SOURCE_DIR}/oidn_checker.cpp
 )
 rbc_apply_basic_settings(oidn_checker PROJECT_KIND binary)
+
+# Link LuisaCompute targets - try both alias and actual names
+if(TARGET lc-volk)
+    target_link_libraries(oidn_checker PRIVATE lc-volk)
+elseif(TARGET luisa-compute-ext-volk)
+    target_link_libraries(oidn_checker PRIVATE luisa-compute-ext-volk)
+endif()
+
+if(TARGET lc-runtime)
+    target_link_libraries(oidn_checker PRIVATE lc-runtime)
+elseif(TARGET luisa-compute-runtime)
+    target_link_libraries(oidn_checker PRIVATE luisa-compute-runtime)
+endif()
+
+if(TARGET lc-backends-dummy)
+    target_link_libraries(oidn_checker PRIVATE lc-backends-dummy)
+elseif(TARGET luisa-compute-backends)
+    target_link_libraries(oidn_checker PRIVATE luisa-compute-backends)
+endif()
+
+# Always link luisa-compute-include for headers
+if(TARGET luisa-compute-include)
+    target_link_libraries(oidn_checker PRIVATE luisa-compute-include)
+endif()
+
 target_link_libraries(oidn_checker PRIVATE
     oidn_plugin
-    lc-volk
-    lc-runtime
 )
-# Note: lc-backends-dummy dependency is handled by LuisaCompute
 
