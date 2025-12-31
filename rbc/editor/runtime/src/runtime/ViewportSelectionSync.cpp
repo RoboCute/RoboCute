@@ -3,7 +3,7 @@
 #include "RBCEditorRuntime/runtime/EditorScene.h"
 #include "RBCEditorRuntime/components/DetailsPanel.h"
 #include "RBCEditorRuntime/engine/EditorEngine.h"
-#include "RBCEditorRuntime/engine/visapp.h"
+#include "RBCEditorRuntime/engine/visapp.h" // For VisApp::dragged_object_ids
 #include "RBCEditorRuntime/runtime/EventBus.h"
 #include <QDebug>
 
@@ -35,17 +35,14 @@ void ViewportSelectionSync::stop() {
 }
 
 void ViewportSelectionSync::checkSelection() {
-    // Get VisApp instance from EditorEngine
-    auto *renderApp = rbc::EditorEngine::instance().getRenderApp();
-    if (!renderApp) {
+    // Get VisApp instance from EditorEngine (only available in Editor mode)
+    auto *appBase = rbc::EditorEngine::instance().getRenderAppBase();
+    if (!appBase || appBase->getRenderMode() != rbc::RenderMode::Editor) {
         return;
     }
 
-    // Cast to VisApp
-    auto *visApp = dynamic_cast<rbc::VisApp *>(renderApp);
-    if (!visApp) {
-        return;
-    }
+    // Safe static_cast since we've verified render mode
+    auto *visApp = static_cast<rbc::VisApp *>(appBase);
 
     // Check if EditorScene is available
     if (!context_->editorScene) {

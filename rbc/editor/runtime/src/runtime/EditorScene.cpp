@@ -1,6 +1,5 @@
 #include "RBCEditorRuntime/runtime/EditorScene.h"
 #include "RBCEditorRuntime/engine/EditorEngine.h"
-#include "RBCEditorRuntime/engine/visapp.h"
 #include <rbc_world/base_object.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
@@ -297,13 +296,11 @@ RC<world::MeshResource> EditorScene::loadMeshResource(const luisa::string &path)
 
     // Upload mesh data to GPU through render thread
     // This is critical - without this, the mesh data won't be visible
-    auto *renderApp = EditorEngine::instance().getRenderApp();
-    if (renderApp) {
-        auto *visApp = dynamic_cast<VisApp *>(renderApp);
-        if (visApp && mesh->device_mesh()) {
-            visApp->utils.update_mesh_data(mesh->device_mesh(), false);
-            qDebug() << "EditorScene: Mesh data uploaded to GPU";
-        }
+    auto *appBase = EditorEngine::instance().getRenderAppBase();
+    if (appBase && mesh->device_mesh()) {
+        // AppBase provides utils directly, no need to cast to VisApp
+        appBase->utils.update_mesh_data(mesh->device_mesh(), false);
+        qDebug() << "EditorScene: Mesh data uploaded to GPU";
     }
 
     // Cache and return

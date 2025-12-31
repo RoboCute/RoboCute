@@ -25,7 +25,6 @@
 
 // Our Runtime
 #include "RBCEditorRuntime/runtime/AnimationPlaybackManager.h"
-#include "RBCEditorRuntime/runtime/EditorScene.h"
 #include "RBCEditorRuntime/engine/EditorEngine.h"
 #include "RBCEditorRuntime/runtime/WorkflowManager.h"
 #include "RBCEditorRuntime/runtime/EditorContext.h"
@@ -38,7 +37,12 @@ EditorLayoutManager::EditorLayoutManager(QMainWindow *mainWindow, rbc::EditorCon
       sceneEditingAction_(nullptr),
       text2ImageAction_(nullptr),
       sceneEditingToolAction_(nullptr),
-      text2ImageToolAction_(nullptr) {
+      text2ImageToolAction_(nullptr),
+      renderModeActionGroup_(nullptr),
+      editorModeAction_(nullptr),
+      realisticModeAction_(nullptr),
+      editorModeToolAction_(nullptr),
+      realisticModeToolAction_(nullptr) {
     Q_ASSERT(mainWindow_ != nullptr);
     Q_ASSERT(context_ != nullptr);
 }
@@ -67,8 +71,8 @@ void EditorLayoutManager::setupMenuBar() {
     editMenu->addSeparator();
     editMenu->addAction("Preferences...");
 
+    // Workflow menu
     QMenu *workflowMenu = menuBar->addMenu("Workflow");
-    // Create shared action group for menu and toolbar
     workflowActionGroup_ = new QActionGroup(this);
 
     sceneEditingAction_ = workflowMenu->addAction("Scene Editing");
@@ -81,6 +85,24 @@ void EditorLayoutManager::setupMenuBar() {
     text2ImageAction_->setCheckable(true);
     text2ImageAction_->setActionGroup(workflowActionGroup_);
     connect(text2ImageAction_, &QAction::triggered, this, &EditorLayoutManager::switchToText2ImageWorkflow);
+
+    // View menu with render mode options
+    QMenu *viewMenu = menuBar->addMenu("View");
+    QMenu *renderModeMenu = viewMenu->addMenu("Render Mode");
+    renderModeActionGroup_ = new QActionGroup(this);
+
+    editorModeAction_ = renderModeMenu->addAction("Editor Preview");
+    editorModeAction_->setCheckable(true);
+    editorModeAction_->setChecked(true);
+    editorModeAction_->setActionGroup(renderModeActionGroup_);
+    editorModeAction_->setToolTip("Fast rasterized preview with selection and interaction support");
+    connect(editorModeAction_, &QAction::triggered, this, &EditorLayoutManager::switchToEditorRenderMode);
+
+    realisticModeAction_ = renderModeMenu->addAction("Realistic Render");
+    realisticModeAction_->setCheckable(true);
+    realisticModeAction_->setActionGroup(renderModeActionGroup_);
+    realisticModeAction_->setToolTip("Path traced realistic rendering with PBR materials");
+    connect(realisticModeAction_, &QAction::triggered, this, &EditorLayoutManager::switchToRealisticRenderMode);
 
     QMenu *windowMenu = menuBar->addMenu("Window");
     // Actions to toggle docks could go here
@@ -105,6 +127,22 @@ void EditorLayoutManager::setupToolBar() {
     text2ImageToolAction_->setCheckable(true);
     text2ImageToolAction_->setActionGroup(workflowActionGroup_);
     connect(text2ImageToolAction_, &QAction::triggered, this, &EditorLayoutManager::switchToText2ImageWorkflow);
+
+    toolbar->addSeparator();
+
+    // Render mode switcher
+    editorModeToolAction_ = toolbar->addAction("Editor");
+    editorModeToolAction_->setCheckable(true);
+    editorModeToolAction_->setChecked(true);
+    editorModeToolAction_->setActionGroup(renderModeActionGroup_);
+    editorModeToolAction_->setToolTip("Editor Preview Mode - Fast rasterized preview with interaction");
+    connect(editorModeToolAction_, &QAction::triggered, this, &EditorLayoutManager::switchToEditorRenderMode);
+
+    realisticModeToolAction_ = toolbar->addAction("Realistic");
+    realisticModeToolAction_->setCheckable(true);
+    realisticModeToolAction_->setActionGroup(renderModeActionGroup_);
+    realisticModeToolAction_->setToolTip("Realistic Render Mode - Path traced PBR rendering");
+    connect(realisticModeToolAction_, &QAction::triggered, this, &EditorLayoutManager::switchToRealisticRenderMode);
 
     toolbar->addSeparator();
 
@@ -330,4 +368,37 @@ void EditorLayoutManager::switchToSceneEditingWorkflow() {
 
 void EditorLayoutManager::switchToText2ImageWorkflow() {
     emit workflowSwitchRequested(rbc::WorkflowType::Text2Image);
+}
+
+void EditorLayoutManager::switchToEditorRenderMode() {
+    rbc::EditorEngine::instance().setRenderMode(rbc::RenderMode::Editor);
+    updateRenderModeUI(rbc::RenderMode::Editor);
+    emit renderModeSwitchRequested(rbc::RenderMode::Editor);
+}
+
+void EditorLayoutManager::switchToRealisticRenderMode() {
+    rbc::EditorEngine::instance().setRenderMode(rbc::RenderMode::Realistic);
+    updateRenderModeUI(rbc::RenderMode::Realistic);
+    emit renderModeSwitchRequested(rbc::RenderMode::Realistic);
+}
+
+void EditorLayoutManager::updateRenderModeUI(rbc::RenderMode mode) {
+    switch (mode) {
+        case rbc::RenderMode::Editor:
+            if (editorModeAction_) {
+                editorModeAction_->setChecked(true);
+            }
+            if (editorModeToolAction_) {
+                editorModeToolAction_->setChecked(true);
+            }
+            break;
+        case rbc::RenderMode::Realistic:
+            if (realisticModeAction_) {
+                realisticModeAction_->setChecked(true);
+            }
+            if (realisticModeToolAction_) {
+                realisticModeToolAction_->setChecked(true);
+            }
+            break;
+    }
 }

@@ -1,5 +1,4 @@
-#include "RBCEditorRuntime/engine/VisApp.h"
-#include "luisa/core/logging.h"
+#include "RBCEditorRuntime/engine/visapp.h"
 #include <rbc_graphics/make_device_config.h>
 #include <rbc_render/click_manager.h>
 #include <luisa/backends/ext/native_resource_ext.hpp>
@@ -8,52 +7,6 @@ using namespace luisa;
 using namespace luisa::compute;
 
 namespace rbc {
-
-void VisApp::init(
-    const char *program_path, const char *backend_name) {
-    luisa::string_view backend = backend_name;
-    bool gpu_dump;
-    ctx = luisa::make_unique<luisa::compute::Context>(program_path);
-#ifdef NDEBUG
-    gpu_dump = false;
-#else
-    gpu_dump = true;
-#endif
-
-    void *native_device;
-    utils.init_device(
-        program_path,
-        backend);
-
-    auto &render_device = RenderDevice::instance();
-    get_dx_device(render_device.lc_device_ext(), native_device, dx_adaptor_luid);
-
-    utils.init_graphics(
-        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
-    utils.init_render();
-
-    utils.render_plugin()->update_skybox("../sky.bytes", PixelStorage::FLOAT4, uint2(4096, 2048));
-
-    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
-    cam.fov = radians(80.f);
-    cam_controller.camera = &cam;
-
-    last_frame_time = clk.toc();
-}
-
-uint64_t VisApp::create_texture(uint width, uint height) {
-    resolution = {width, height};
-
-    if (utils.dst_image() && any(resolution != utils.dst_image().size())) {
-        utils.resize_swapchain(resolution);
-        dst_image_reseted = true;
-    }
-    if (!utils.dst_image()) {
-        utils.init_display(resolution);
-        dst_image_reseted = true;
-    }
-    return (uint64_t)utils.dst_image().native_handle();
-}
 
 void VisApp::handle_key(luisa::compute::Key key, luisa::compute::Action action) {
     bool pressed = false;
@@ -118,6 +71,7 @@ void VisApp::handle_mouse(luisa::compute::MouseButton button, luisa::compute::Ac
         }
     }
 }
+
 void VisApp::handle_cursor_position(luisa::float2 xy) {
     // 更新交互管理器的鼠标位置
     interaction_manager.handle_cursor_position(xy, resolution);
@@ -126,30 +80,11 @@ void VisApp::handle_cursor_position(luisa::float2 xy) {
     camera_input.mouse_cursor_pos = xy;
 }
 
-void VisApp::update() {
-
+void VisApp::update_camera(float delta_time) {
     auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
-    auto &click_mng = utils.render_settings().read_mut<ClickManager>();
-
-    if (reset) {
-        reset = false;
-        utils.reset_frame();
-    }
-    auto &render_device = RenderDevice::instance();
-
-    clear_dx_states(render_device.lc_device_ext());
-    add_dx_before_state(render_device.lc_device_ext(), Argument::Texture{utils.dst_image().handle(), 0}, D3D12EnhancedResourceUsageType::RasterRead);
-
-    dst_image_reseted = false;
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
-    camera_input.viewport_size = {(float)(resolution.x),
-                                  (float)(resolution.y)};
-    auto time = clk.toc();
+    camera_input.viewport_size = {(float)(resolution.x), (float)(resolution.y)};
 
-    auto delta_time = time - last_frame_time;
-    last_frame_time = time;
-
-    // handle camera control
     // 只有在非交互模式或右键拖动时才允许相机控制
     // 注意：在点击选择、框选模式或左键拖动已选物体时，禁用相机控制以避免冲突
     // 左键拖动已选物体时，应该让ViewportWidget处理拖放到NodeEditor
@@ -159,12 +94,29 @@ void VisApp::update() {
     // 只有在非交互模式时才允许相机控制
     // Dragging模式（左键拖动已选物体）应该禁用相机控制，以便ViewportWidget可以处理拖放
     if (allow_camera_control) {
-        cam_controller.grab_input_from_viewport(camera_input, static_cast<float>(delta_time));
+        cam_controller.grab_input_from_viewport(camera_input, delta_time);
         if (cam_controller.any_changed())
             frame_index = 0;
     }
+}
+
+void VisApp::update() {
+    auto &click_mng = utils.render_settings().read_mut<ClickManager>();
+
+    handle_reset();
+    prepare_dx_states();
+
+    dst_image_reseted = false;
+
+    auto time = clk.toc();
+    auto delta_time = time - last_frame_time;
+    last_frame_time = time;
+
+    // 更新相机（考虑交互模式）
+    update_camera(static_cast<float>(delta_time));
 
     // 处理交互逻辑：根据交互状态设置点击管理器
+    auto interaction_mode = interaction_manager.get_interaction_mode();
 
     if (interaction_mode == ViewportInteractionManager::InteractionMode::ClickSelect) {
         // 点击选择：在Pressed或WaitingResult状态时添加点击请求
@@ -198,19 +150,9 @@ void VisApp::update() {
         resolution,
         GraphicsUtils::TickStage::RasterPreview);
 }
+
 VisApp::~VisApp() {
-    utils.dispose([&]() {
-        auto pipe_settings_json = utils.render_settings().serialize_to_json();
-        if (pipe_settings_json.data()) {
-            LUISA_INFO(
-                "{}",
-                luisa::string_view{
-                    (char const *)pipe_settings_json.data(),
-                    pipe_settings_json.size()});
-        }
-        // destroy render-pipeline
-    });
-    ctx.reset();
+    dispose();
 }
 
 }// namespace rbc

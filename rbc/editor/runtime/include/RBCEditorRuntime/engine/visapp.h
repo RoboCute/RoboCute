@@ -1,34 +1,19 @@
 #pragma once
-#include <luisa/luisa-compute.h>
-#include <luisa/dsl/sugar.h>
-#include <luisa/gui/input.h>
-#include <luisa/gui/window.h>
-#include <luisa/runtime/rhi/resource.h>
-#include <luisa/backends/ext/native_resource_ext_interface.h>
-#include "RBCEditorRuntime/engine/app.h"
-// #include "RBCEditorRuntime/runtime/RenderUtils.h"
-#include <rbc_app/graphics_utils.h>
-#include <rbc_app/camera_controller.h>
-#include "RBCEditorRuntime/runtime/RenderScene.h"
+#include "RBCEditorRuntime/engine/app_base.h"
 #include "RBCEditorRuntime/engine/ViewportInteractionManager.h"
 
 namespace rbc {
 
-struct VisApp : public IApp {
-    luisa::uint2 resolution;
-    luisa::uint2 dx_adaptor_luid;
-
-    luisa::fiber::scheduler scheduler;
-    GraphicsUtils utils;
-
-    uint64_t frame_index = 0;
-    double last_frame_time = 0;
-    luisa::Clock clk;
-    bool reset = false;
+/**
+ * VisApp - 编辑器可视化应用
+ * 
+ * 用于编辑器预览模式：
+ * - 光栅化快速预览
+ * - 支持选择、框选、拖动等交互
+ * - 物体轮廓高亮显示
+ */
+struct VisApp : public AppBase {
     bool dst_image_reseted = false;
-
-    CameraController::Input camera_input;
-    CameraController cam_controller;
 
     // 交互管理器：处理选择、拖动、框选逻辑
     ViewportInteractionManager interaction_manager;
@@ -37,22 +22,25 @@ struct VisApp : public IApp {
     luisa::vector<uint> dragged_object_ids;
 
 public:
-    [[nodiscard]] unsigned int GetDXAdapterLUIDHigh() const override { return dx_adaptor_luid.x; }
-    [[nodiscard]] unsigned int GetDXAdapterLUIDLow() const override { return dx_adaptor_luid.y; }
-    void init(const char *program_path, const char *backend_name) override;
-    uint64_t create_texture(uint width, uint height) override;
-    void update() override;
+    [[nodiscard]] RenderMode getRenderMode() const override { return RenderMode::Editor; }
 
+    void update() override;
     void handle_key(luisa::compute::Key key, luisa::compute::Action action) override;
     void handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy) override;
     void handle_cursor_position(luisa::float2 xy) override;
 
-    [[nodiscard]] void *GetStreamNativeHandle() const override {
-        LUISA_ASSERT(utils.present_stream());
-        return utils.present_stream().native_handle();
-    }
-    [[nodiscard]] void *GetDeviceNativeHandle() const override { return RenderDevice::instance().lc_device().native_handle(); }
-    ~VisApp();
+    /**
+     * 获取当前选中的对象ID列表
+     */
+    [[nodiscard]] const luisa::vector<uint> &getSelectedObjectIds() const { return dragged_object_ids; }
+
+    ~VisApp() override;
+
+protected:
+    /**
+     * 更新相机（考虑交互模式）
+     */
+    void update_camera(float delta_time) override;
 };
 
 }// namespace rbc
