@@ -83,6 +83,7 @@ dev = [
 prepare = "scripts.main:prepare"
 gen = "scripts.main:generate"
 stub = "scripts.main:generate_stub"
+install = "scripts.main:install"
 
 
 

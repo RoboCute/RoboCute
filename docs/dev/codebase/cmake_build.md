@@ -29,14 +29,14 @@ uv run gen
 mkdir build_cmake
 cd build_cmake
 
-# 2. 配置 CMake
-cmake ..
+# 2. 配置 CMake 寻找Qt6Config.cmake的位置并给定Qt6_ROOT
+cmake .. -DQt6_ROOT=D:/tools/Qt/6.9.3/msvc2022_64/lib/cmake/Qt6
 
 # 3. 构建项目
 cmake --build . --config Release
 
-# 4. (可选) 运行测试
-ctest
+# 4. 安装资源(shader，测试资源)
+uv run install
 ```
 
 ### 构建选项
