@@ -67,12 +67,15 @@ pip install robocute
 ```python
 import robocute as rbc
 
+mesh_path = "D:/ws/data/assets/models/bunny.obj"
 # Create a scene
 scene = rbc.Scene()
 scene.start()
 
 # Create an entity
+mesh_id = scene.load_mesh(mesh_path, priority=rbc.LoadPriority.High)
 robot = scene.create_entity("Robot")
+# Add tranform component to define its position
 scene.add_component(
     robot.id,
     "transform",
@@ -82,6 +85,12 @@ scene.add_component(
         scale=[1.0, 1.0, 1.0],
     ),
 )
+# Add render component with mesh reference
+render_comp = rbc.RenderComponent(
+    mesh_id=mesh_id,
+    material_ids=[],
+)
+scene.add_component(robot1.id, "render", render_comp)
 
 # Start server with editor service
 server = rbc.Server(title="RoboCute Server", version="0.2.0")
