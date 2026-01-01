@@ -6,13 +6,9 @@ add_rules('lc_basic_settings', {
     rtti = true
 })
 
-add_rules("qt.console")
+add_rules("qt.quickapp")
 
 add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickControls2", "QtNetwork")
-
-add_includedirs("..", {
-    public = true
-})
 
 add_files("main.cpp")
 

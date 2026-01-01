@@ -65,6 +65,30 @@ cmake:
 - Graphics特性测试`cd ./build_cmake/bin/Release/ && ./test_graphics_bin`
 
 
+## IDE支持
+
+Robocute支持使用IDE进行开发和调试
+
+### Compile Commands 支持
+
+方便clangd等工具进行代码提示和补全
+
+xmake: `xmake project -k compile_commands`
+cmake: msvc暂时不支持生成，其他平台可以-D配置宏生成
+
+### Visual Studio 支持
+
+xmake: `xmake project -k vsxmake2022` 在vsxmake文件夹生成Visual Studio 2022的sln文件
+cmake: configure的时候自动生成sln文件
+
+### QtCreator支持
+
+- 打开QtCreator，直接打开根目录下的`CMakeLists.txt`，正常Configure和构建即可
+- QtCreator使用Cmake构建后未必能正常安装资源，必要时需要手动执行安装，寻找build目录下的Qt Build目录，执行脚本
+  - `uv run python cmake/rbc_install_resources_post_build.py <project_dir> <target_dir>`
+  - 例如 `uv run python cmake/rbc_install_resources_post_build.py . .\build\Desktop_Qt_6_9_3_MSVC2022_64bit-Debug\bin`
+  - 将所需要的资源复制到指定位置
+
 ### Server-Editor
 
 - find the registered node

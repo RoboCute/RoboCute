@@ -98,3 +98,9 @@ add_subdirectory(thirdparty)
 
 # RBC modules
 add_subdirectory(rbc)
+
+# Include resource installation script
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/rbc_install_resources.cmake)
+
+# Configure resource installation (runs after all builds)
+rbc_install_resources()

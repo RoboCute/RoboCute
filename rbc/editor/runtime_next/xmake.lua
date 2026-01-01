@@ -7,7 +7,7 @@ add_rules('lc_basic_settings', {
     cxx_std = 'c++17'
 })
 
-add_rules("qt.shared")
+add_rules("qt.qmlplugin")
 
 add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork", "QtQml", "QtQuick", "QtQuickControls2")
 
@@ -18,9 +18,8 @@ add_includedirs("include", {
 add_headerfiles("include/RBCEditorRuntime/**.h")
 add_files("include/RBCEditorRuntime/**.h") -- qt moc file required
 add_files("src/**.cpp")
-add_files("qml/**.qml", "qml/**.qmldir") -- QML files
 set_pcxxheader('src/zz_pch.h')
-add_files("rbc_editor.qrc") -- qt resource files
+add_files("rbc_editor.qrc") -- qt resource files (includes QML files)
 
 add_defines("LUISA_QT_SAMPLE_ENABLE_DX", "LUISA_QT_SAMPLE_ENABLE_VK")
 
