@@ -15,6 +15,7 @@ import RBCEditor 1.0
  * - 更好的动画支持
  * - 可以在 Qt Creator 中直接预览和调试
  */
+
 Rectangle {
     id: root
     color: "#2b2b2b"

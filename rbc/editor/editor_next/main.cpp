@@ -14,6 +14,11 @@
 #include "RBCEditorRuntime/qml/ConnectionService.h"
 #include "RBCEditorRuntime/qml/EditorService.h"
 
+// Enable QML debugging when QT_QML_DEBUG is defined (Debug builds)
+#ifdef QT_QML_DEBUG
+#include <QQmlDebuggingEnabler>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #include <io.h>
@@ -116,6 +121,14 @@ int main(int argc, char *argv[]) {
     qDebug() << "RoboCute Editor Next Starting...";
     qDebug() << "Log file:" << logFilePath;
     qDebug() << "========================================";
+
+#ifdef QT_QML_DEBUG
+    // Enable QML debugging service
+    // This allows Qt Creator to connect and debug QML code
+    QQmlDebuggingEnabler enabler;
+    qDebug() << "QML Debugging enabled (port: 3768)";
+    qDebug() << "You can now connect Qt Creator's QML debugger";
+#endif
 
     try {
         // 注册 QML 类型
