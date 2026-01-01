@@ -1,0 +1,4 @@
+module RBCEditor
+ConnectionService 1.0 qml/ConnectionService.qml
+EditorService 1.0 qml/EditorService.qml
+

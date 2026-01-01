@@ -4,4 +4,8 @@
   <file alias="quad.frag.qsb">shaders/prebuilt/quad.frag.qsb</file>
   <file alias="main.qss">styles/main.qss</file>
 </qresource>
+<qresource prefix="/qml">
+  <file alias="MainWindow.qml">qml/MainWindow.qml</file>
+  <file alias="components/ConnectionStatusPanel.qml">qml/components/ConnectionStatusPanel.qml</file>
+</qresource>
 </RCC>

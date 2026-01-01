@@ -4,6 +4,8 @@
 
 - [x] 接入RBCRuntime中的场景定义
 - [x] 更新灵活的Workflow
+- [ ] 更科学的大型Qt项目组织
+- [ ] 热更新，组件调试工具链支持
 - [ ] 支持调试渲染参数的Detail面板
 - [ ] 实现RBCProject的结构管理
 

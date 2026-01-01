@@ -3,12 +3,13 @@ target("rbc_editor_runtime_next")
 add_rules('lc_basic_settings', {
     project_kind = 'shared',
     enable_exception = true,
-    rtti = true
+    rtti = true,
+    cxx_std = 'c++17'
 })
 
 add_rules("qt.shared")
 
-add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")
+add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork", "QtQml", "QtQuick", "QtQuickControls2")
 
 add_includedirs("include", {
     public = true
@@ -17,6 +18,7 @@ add_includedirs("include", {
 add_headerfiles("include/RBCEditorRuntime/**.h")
 add_files("include/RBCEditorRuntime/**.h") -- qt moc file required
 add_files("src/**.cpp")
+add_files("qml/**.qml", "qml/**.qmldir") -- QML files
 set_pcxxheader('src/zz_pch.h')
 add_files("rbc_editor.qrc") -- qt resource files
 
