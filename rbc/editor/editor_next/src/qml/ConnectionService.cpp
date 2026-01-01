@@ -13,7 +13,7 @@ ConnectionService::ConnectionService(QObject *parent)
     // 创建定时器用于定期健康检查
     m_healthCheckTimer = new QTimer(this);
     m_healthCheckTimer->setInterval(5000); // 5秒检查一次
-    connect(m_healthCheckTimer, &QTimer::timeout, this, &ConnectionService::performHealthCheck);
+    QObject::connect(m_healthCheckTimer, &QTimer::timeout, this, &ConnectionService::performHealthCheck);
 }
 
 void ConnectionService::setServerUrl(const QString &url) {
@@ -84,7 +84,7 @@ void ConnectionService::performHealthCheck() {
 
     QNetworkReply *reply = manager->get(request);
     
-    connect(reply, &QNetworkReply::finished, [this, reply, manager]() {
+    QObject::connect(reply, &QNetworkReply::finished, [this, reply, manager]() {
         bool success = false;
         
         if (reply->error() == QNetworkReply::NoError) {

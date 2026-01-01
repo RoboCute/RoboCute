@@ -6,6 +6,8 @@
 </qresource>
 <qresource prefix="/qml">
   <file alias="MainWindow.qml">qml/MainWindow.qml</file>
+  <file alias="qmldir">qml/qmldir</file>
   <file alias="components/ConnectionStatusPanel.qml">qml/components/ConnectionStatusPanel.qml</file>
+  <file alias="components/qmldir">qml/components/qmldir</file>
 </qresource>
 </RCC>

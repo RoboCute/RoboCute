@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Window 2.15
 import RBCEditor 1.0
+import "qrc:/qml/components" as Components
 
 ApplicationWindow {
     id: mainWindow
@@ -40,7 +41,7 @@ ApplicationWindow {
             spacing: 0
 
             // 连接状态面板（迁移示例）
-            ConnectionStatusPanel {
+            Components.ConnectionStatusPanel {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 200
                 connectionService: connectionService

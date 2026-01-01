@@ -1,0 +1,3 @@
+module Components
+ConnectionStatusPanel 1.0 ConnectionStatusPanel.qml
+
