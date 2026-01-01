@@ -19,7 +19,7 @@ QMainWindow::separator:hover {
 
 /* Menu Bar */
 QMenuBar {
-    background-color: #1e1e1e;
+    background-color: #1e1e1c;
     padding: 2px;
     border-bottom: 1px solid #3e3e42;
 }
