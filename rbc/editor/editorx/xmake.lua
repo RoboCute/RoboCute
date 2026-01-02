@@ -5,7 +5,8 @@ do
         rtti = true
     })
     add_rules("qt.shared")
-    add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")
+    add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickControls2", "QtNetwork")
+
     add_files("src/**.cpp")
     add_files("include/EditorRuntime/**.h")
     add_headerfiles("include/EditorRuntime/**.h")
