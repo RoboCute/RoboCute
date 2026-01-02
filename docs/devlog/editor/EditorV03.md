@@ -55,6 +55,22 @@
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+### 3. 数据流架构
+
+整体数据流遵循以下模式：
+
+```
+UI Event → Controller → Service → Repository → EventBus → Widget
+```
+
+**各层职责**：
+- **UI Event**：用户交互触发的事件（点击、输入等）
+- **Controller**：处理UI事件，协调Service调用，不包含业务逻辑
+- **Service**：业务逻辑层，处理具体业务操作
+- **Repository**：数据访问层，负责数据的持久化和缓存
+- **EventBus**：事件总线，实现组件间松耦合通信
+- **Widget**：UI组件，响应事件更新显示
+
 ## Plugin系统设计
 
 ### 1. IEditorPlugin 接口
@@ -95,10 +111,27 @@ struct ViewContribution {
     QString viewId;           // 唯一标识
     QString title;            // 显示名称
     QString qmlSource;        // QML组件路径（相对路径）
-    QString dockArea;         // 停靠区域
+    QString dockArea;         // 停靠区域（Left/Right/Top/Bottom/Center）
     QSize preferredSize;      // 首选尺寸
     bool closable = true;
     bool movable = true;
+};
+```
+
+**使用示例**：
+```cpp
+// ViewportPlugin实现
+class ViewportPlugin : public IEditorPlugin {
+public:
+    QList<ViewContribution> viewContributions() const override {
+        ViewContribution view;
+        view.viewId = "viewport";
+        view.title = "3D Viewport";
+        view.qmlSource = "viewport/ViewportView.qml";
+        view.dockArea = "Center";
+        view.preferredSize = QSize(1280, 720);
+        return {view};
+    }
 };
 ```
 
@@ -113,8 +146,8 @@ public:
     static PluginManager& instance();
     
     // === 插件生命周期 ===
-    bool loadPlugin(const QString& pluginPath);
-    bool loadPlugin(IEditorPlugin* plugin);  // 静态链接的内置插件
+    bool loadPlugin(const QString& pluginPath);  // 从DLL加载
+    bool loadPlugin(IEditorPlugin* plugin);      // 静态链接的内置插件
     bool unloadPlugin(const QString& pluginId);
     bool reloadPlugin(const QString& pluginId);
     
@@ -131,6 +164,10 @@ public:
     // === 服务注册（供Plugin使用）===
     void registerService(const QString& name, QObject* service);
     QObject* getService(const QString& name) const;
+    template<typename T>
+    T* getService() const {
+        return qobject_cast<T*>(getService(T::staticMetaObject.className()));
+    }
     
     // === QML引擎管理 ===
     void setQmlEngine(QQmlEngine* engine);
@@ -171,10 +208,12 @@ public:
         return qobject_cast<T*>(manager_->getService(T::staticMetaObject.className()));
     }
     
+    // 常用服务快捷方法
     IEventBus* eventBus() const;
     ISceneService* sceneService() const;
     ILayoutService* layoutService() const;
     IStyleManager* styleManager() const;
+    IResultService* resultService() const;
     
     // === QML支持 ===
     QQmlEngine* qmlEngine() const;
@@ -188,13 +227,26 @@ private:
 };
 ```
 
+**使用示例**：
+```cpp
+// Plugin在load时获取服务
+bool MyPlugin::load(PluginContext* context) {
+    auto* sceneService = context->sceneService();
+    auto* eventBus = context->eventBus();
+    
+    // 使用服务初始化Plugin
+    viewModel_ = new MyViewModel(sceneService, eventBus);
+    
+    return true;
+}
+```
+
 ## MVVM架构实现
 
 ### 1. 设计原则
 
 **为什么采用MVVM而非MVC/MVP?**
-
-- **数据绑定友好**：QML的声明式绑定与MVVM天然契合
+- **数据绑定友好**：QML的声明式绑定与MVVM天然契合，减少样板代码
 - **View与逻辑分离**：QML只负责UI表现，ViewModel处理所有逻辑
 - **可测试性**：ViewModel可以独立于View进行单元测试
 - **热更新支持**：View(QML)可以热重载而不影响ViewModel状态
@@ -215,9 +267,9 @@ public:
     QString errorMessage() const { return errorMessage_; }
     
     // 生命周期钩子（Plugin可重写）
-    virtual void onActivate() {}    // View显示时
-    virtual void onDeactivate() {}  // View隐藏时
-    virtual void onReload() {}      // 热更新时
+    virtual void onActivate() {}    // View显示时调用
+    virtual void onDeactivate() {}  // View隐藏时调用
+    virtual void onReload() {}      // 热更新时调用，用于恢复状态
     
 protected:
     void setBusy(bool busy);
@@ -227,6 +279,7 @@ protected:
     // 事件总线快捷方法
     void publish(const Event& event);
     void subscribe(EventType type, std::function<void(const Event&)> handler);
+    void unsubscribe(EventType type);
     
 signals:
     void isBusyChanged();
@@ -259,9 +312,14 @@ public:
                                QObject* parent = nullptr);
     
     // === 属性访问器 ===
-    int selectedEntityId() const;
-    QString cameraMode() const;
-    // ... 其他getter/setter
+    int selectedEntityId() const { return selectedEntityId_; }
+    QString cameraMode() const { return cameraMode_; }
+    void setCameraMode(const QString& mode);
+    bool showGrid() const { return showGrid_; }
+    void setShowGrid(bool show);
+    bool showGizmo() const { return showGizmo_; }
+    void setShowGizmo(bool show);
+    QVector3D cameraPosition() const;
     
     // === QML可调用方法 ===
     Q_INVOKABLE void selectEntity(int entityId);
@@ -322,7 +380,9 @@ Item {
             
             onClicked: (mouse) => {
                 let entityId = renderSurface.pickEntity(mouse.x, mouse.y)
-                viewModel.selectEntity(entityId)
+                if (entityId >= 0) {
+                    viewModel.selectEntity(entityId)
+                }
             }
             
             onWheel: (wheel) => {
@@ -383,6 +443,112 @@ Item {
     }
 }
 ```
+
+## 服务层设计
+
+### 1. 服务层架构
+
+服务层提供核心业务功能，所有服务通过`PluginManager`注册和获取：
+
+```
+infrastructure/
+├── events/                    # 事件系统
+│   ├── IEventBus.h            # 事件总线接口
+│   ├── EventBus.h             # 事件总线实现
+│   ├── Event.h                # 事件定义
+│   └── EventType.h            # 事件类型枚举
+│
+├── network/                    # 网络服务
+│   └── HttpClient.h
+│
+├── rendering/                  # 渲染服务
+│   └── RenderService.h
+│
+└── repository/                 # 数据仓库层
+    ├── SceneRepository.h       # 场景数据访问
+    └── AnimationRepository.h  # 动画数据访问
+```
+
+### 2. EventBus（事件总线）
+
+```cpp
+// services/IEventBus.h
+class IEventBus : public QObject {
+    Q_OBJECT
+public:
+    virtual ~IEventBus() = default;
+    
+    // 发布事件
+    virtual void publish(const Event& event) = 0;
+    virtual void publish(EventType type, const QVariant& data = QVariant()) = 0;
+    
+    // 订阅事件
+    virtual void subscribe(EventType type, std::function<void(const Event&)> handler) = 0;
+    virtual void subscribe(QObject* receiver, EventType type, const char* slot) = 0;
+    
+    // 取消订阅
+    virtual void unsubscribe(EventType type, std::function<void(const Event&)> handler) = 0;
+    virtual void unsubscribe(QObject* receiver) = 0;
+    
+signals:
+    void eventPublished(const Event& event);
+};
+
+// 使用示例
+void MyViewModel::init() {
+    // Lambda订阅
+    eventBus_->subscribe(EventType::EntitySelected, 
+        [this](const Event& e) {
+            int entityId = e.data.toInt();
+            this->onEntitySelected(entityId);
+        });
+    
+    // 信号槽订阅
+    eventBus_->subscribe(this, EventType::SceneUpdated, 
+        SLOT(onSceneUpdated()));
+}
+
+void MyViewModel::selectEntity(int id) {
+    // 发布事件
+    eventBus_->publish(EventType::EntitySelected, id);
+}
+```
+
+### 3. SceneService（场景服务）
+
+```cpp
+// services/ISceneService.h
+class ISceneService : public QObject {
+    Q_OBJECT
+public:
+    virtual ~ISceneService() = default;
+    
+    // 场景操作
+    virtual Entity* getEntity(int entityId) const = 0;
+    virtual QList<Entity*> getAllEntities() const = 0;
+    virtual void addEntity(Entity* entity) = 0;
+    virtual void removeEntity(int entityId) = 0;
+    
+    // 选择管理
+    virtual void selectEntity(int entityId) = 0;
+    virtual void clearSelection() = 0;
+    virtual int selectedEntityId() const = 0;
+    
+    // 场景状态
+    virtual bool isDirty() const = 0;
+    virtual void markClean() = 0;
+    
+signals:
+    void entityAdded(int entityId);
+    void entityRemoved(int entityId);
+    void entitySelected(int entityId);
+    void sceneChanged();
+};
+```
+
+### 4. StyleManager（样式管理）
+
+详见"热更新系统"章节。
 
 ## 窗口与视图管理
 
@@ -515,8 +681,9 @@ void QmlViewContainer::loadQmlComponent() {
 }
 
 void QmlViewContainer::reloadQml() {
-    // 保存当前状态
-    // ...
+    // 保存当前状态（如滚动位置、展开状态等）
+    QVariantMap state;
+    // ... 保存状态逻辑
     
     // 清除旧内容
     clearQmlContent();
@@ -528,7 +695,7 @@ void QmlViewContainer::reloadQml() {
     loadQmlComponent();
     
     // 恢复状态
-    // ...
+    // ... 恢复状态逻辑
 }
 ```
 
@@ -602,6 +769,7 @@ signals:
 private slots:
     void onFileChanged(const QString& path);
     void onDirectoryChanged(const QString& path);
+    void onDebounceTimer();
     
 private:
     void setupFileWatcher();
@@ -639,6 +807,14 @@ void StyleManager::onFileChanged(const QString& path) {
     }
 }
 
+void StyleManager::onDebounceTimer() {
+    // 批量处理待重载的文件
+    for (const QString& path : pendingReloads_) {
+        reloadComponent(path);
+    }
+    pendingReloads_.clear();
+}
+
 void StyleManager::reloadAll() {
     if (!engine_) return;
     
@@ -668,7 +844,8 @@ public:
     
     QString id() const override;
     QString name() const override;
-    // ...
+    QString version() const override;
+    QStringList dependencies() const override;
     
 private:
     bool loadLibrary();
@@ -694,474 +871,31 @@ extern "C" {
     __declspec(dllexport) const char* getPluginId();
     __declspec(dllexport) const char* getPluginVersion();
 }
-```
 
-## 目录结构
-
-```
-rbc/editor/
-├── runtime/
-│   ├── include/RBCEditorRuntime/
-│   │   ├── core/                          # 核心框架
-│   │   │   ├── EditorEngine.h
-│   │   │   └── EditorApplication.h
-│   │   │
-│   │   ├── plugins/                       # Plugin系统
-│   │   │   ├── IEditorPlugin.h
-│   │   │   ├── PluginManager.h
-│   │   │   ├── PluginContext.h
-│   │   │   ├── DynamicPlugin.h
-│   │   │   └── PluginContributions.h
-│   │   │
-│   │   ├── mvvm/                          # MVVM基础设施
-│   │   │   ├── ViewModelBase.h
-│   │   │   └── BindingHelpers.h
-│   │   │
-│   │   ├── services/                      # 服务层
-│   │   │   ├── IEventBus.h
-│   │   │   ├── EventBus.h
-│   │   │   ├── ISceneService.h
-│   │   │   ├── SceneService.h
-│   │   │   ├── IStyleManager.h
-│   │   │   ├── StyleManager.h
-│   │   │   ├── ILayoutService.h
-│   │   │   └── LayoutService.h
-│   │   │
-│   │   ├── ui/                            # UI框架
-│   │   │   ├── WindowManager.h
-│   │   │   ├── QmlViewContainer.h
-│   │   │   └── RenderSurface.h
-│   │   │
-│   │   └── infrastructure/                # 基础设施
-│   │       ├── rendering/
-│   │       └── network/
-│   │
-│   ├── src/                               # 实现文件
-│   │
-│   └── qml/                               # QML资源
-│       ├── components/                    # 通用QML组件
-│       │   ├── Button.qml
-│       │   ├── Panel.qml
-│       │   └── ...
-│       ├── styles/                        # 样式定义
-│       │   ├── Theme.qml
-│       │   └── Colors.qml
-│       └── views/                         # 视图（由Plugin引用）
-│
-├── plugins/                               # 内置插件
-│   ├── core_plugin/                       # 核心插件（菜单、工具栏等）
-│   │   ├── CorePlugin.h
-│   │   ├── CorePlugin.cpp
-│   │   └── qml/
-│   │
-│   ├── viewport_plugin/                   # 视口插件
-│   │   ├── ViewportPlugin.h
-│   │   ├── ViewportViewModel.h
-│   │   ├── ViewportViewModel.cpp
-│   │   └── qml/
-│   │       └── ViewportView.qml
-│   │
-│   ├── hierarchy_plugin/                  # 场景层级插件
-│   │   ├── HierarchyPlugin.h
-│   │   ├── HierarchyViewModel.h
-│   │   └── qml/
-│   │
-│   ├── detail_plugin/                     # 属性面板插件
-│   │   ├── DetailPlugin.h
-│   │   ├── DetailViewModel.h
-│   │   └── qml/
-│   │
-│   ├── node_editor_plugin/                # 节点编辑器插件
-│   │   ├── NodeEditorPlugin.h
-│   │   ├── NodeEditorViewModel.h
-│   │   └── qml/
-│   │
-│   └── result_viewer_plugin/              # 结果查看器插件
-│       ├── ResultViewerPlugin.h
-│       ├── ResultViewModel.h
-│       └── qml/
-│
-├── editor/                                # 主程序入口
-│   └── main.cpp
-│
-└── tests/                                 # 测试
-    ├── plugins/
-    ├── mvvm/
-    └── mocks/
-```
-
-## 启动流程
-
-```cpp
-// editor/main.cpp
-int main(int argc, char* argv[]) {
-    // 1. 初始化渲染引擎（在Qt之前）
-    EditorEngine::instance().init(argc, argv);
-    
-    // 2. 创建Qt应用
-    QApplication app(argc, argv);
-    
-    // 3. 初始化Plugin系统
-    auto& pluginManager = PluginManager::instance();
-    
-    // 4. 创建并注册核心服务
-    auto* eventBus = new EventBus();
-    auto* sceneService = new SceneService(eventBus);
-    auto* styleManager = new StyleManager();
-    auto* layoutService = new LayoutService();
-    
-    pluginManager.registerService("EventBus", eventBus);
-    pluginManager.registerService("SceneService", sceneService);
-    pluginManager.registerService("StyleManager", styleManager);
-    pluginManager.registerService("LayoutService", layoutService);
-    
-    // 5. 初始化StyleManager（处理命令行参数）
-    styleManager->initialize(argc, argv);
-    
-    // 6. 创建QML引擎
-    QQmlEngine engine;
-    pluginManager.setQmlEngine(&engine);
-    
-    // 7. 加载内置插件
-    pluginManager.loadPlugin(new CorePlugin());
-    pluginManager.loadPlugin(new ViewportPlugin());
-    pluginManager.loadPlugin(new HierarchyPlugin());
-    pluginManager.loadPlugin(new DetailPlugin());
-    pluginManager.loadPlugin(new NodeEditorPlugin());
-    pluginManager.loadPlugin(new ResultViewerPlugin());
-    
-    // 8. 扫描并加载外部插件
-    pluginManager.watchPluginDirectory("./plugins");
-    
-    // 9. 创建主窗口
-    WindowManager windowManager(&pluginManager);
-    windowManager.setupMainWindow();
-    
-    // 10. 应用所有Plugin的UI贡献
-    for (auto* plugin : pluginManager.getLoadedPlugins()) {
-        for (const auto& view : plugin->viewContributions()) {
-            windowManager.createDockableView(view, /* viewModel from plugin */);
-        }
+// Plugin DLL实现示例
+// MyPlugin.cpp
+extern "C" {
+    IEditorPlugin* createPlugin() {
+        return new MyPlugin();
     }
     
-    // 11. 恢复上次布局
-    layoutService->loadLayout("default");
+    void destroyPlugin(IEditorPlugin* plugin) {
+        delete plugin;
+    }
     
-    // 12. 显示主窗口
-    windowManager.mainWindow()->show();
+    const char* getPluginId() {
+        return "com.example.myplugin";
+    }
     
-    // 13. 运行事件循环
-    int result = app.exec();
-    
-    // 14. 清理
-    pluginManager.unloadAllPlugins();
-    EditorEngine::instance().shutdown();
-    
-    return result;
+    const char* getPluginVersion() {
+        return "1.0.0";
+    }
 }
 ```
 
-## 命令行参数
+## 特别案例：Animation Playback 模块重构
 
-```
-RoboCuteEditor.exe [options]
-
-Options:
-  --qml-dev              启用QML热重载模式（从源码目录加载QML）
-  --qml-source <path>    指定QML源码根目录
-  --plugin-dir <path>    额外的插件搜索目录
-  --no-plugins           禁用外部插件加载
-  --layout <name>        使用指定的布局配置
-  --connect <host:port>  自动连接到Python Server
-  --headless             无头模式（用于测试）
-  --verbose              详细日志输出
-```
-
-## 测试策略
-
-### 1. ViewModel单元测试
-
-```cpp
-// tests/mvvm/test_viewport_viewmodel.cpp
-class MockSceneService : public ISceneService {
-    Q_OBJECT
-public:
-    MOCK_METHOD(Entity*, getEntity, (int), (const, override));
-    MOCK_METHOD(void, selectEntity, (int), (override));
-    // ...
-};
-
-class ViewportViewModelTest : public QObject {
-    Q_OBJECT
-    
-private slots:
-    void test_selectEntity_updatesSelection() {
-        MockSceneService mockScene;
-        ViewportViewModel vm(&mockScene, nullptr);
-        
-        EXPECT_CALL(mockScene, selectEntity(42));
-        
-        vm.selectEntity(42);
-        
-        QCOMPARE(vm.selectedEntityId(), 42);
-    }
-    
-    void test_selectEntity_emitsSignal() {
-        MockSceneService mockScene;
-        ViewportViewModel vm(&mockScene, nullptr);
-        
-        QSignalSpy spy(&vm, &ViewportViewModel::selectionChanged);
-        
-        vm.selectEntity(42);
-        
-        QCOMPARE(spy.count(), 1);
-    }
-};
-```
-
-### 2. Plugin集成测试
-
-```cpp
-// tests/plugins/test_plugin_lifecycle.cpp
-class PluginLifecycleTest : public QObject {
-    Q_OBJECT
-    
-private slots:
-    void test_loadUnloadPlugin() {
-        PluginManager manager;
-        auto* testPlugin = new TestPlugin();
-        
-        // Load
-        QVERIFY(manager.loadPlugin(testPlugin));
-        QCOMPARE(manager.getLoadedPlugins().size(), 1);
-        
-        // Unload
-        QVERIFY(manager.unloadPlugin(testPlugin->id()));
-        QCOMPARE(manager.getLoadedPlugins().size(), 0);
-    }
-    
-    void test_hotReload() {
-        PluginManager manager;
-        manager.enableHotReload(true);
-        
-        auto* plugin = new TestPlugin();
-        manager.loadPlugin(plugin);
-        
-        QSignalSpy spy(&manager, &PluginManager::pluginReloaded);
-        
-        manager.reloadPlugin(plugin->id());
-        
-        QCOMPARE(spy.count(), 1);
-    }
-};
-```
-
-## 迁移计划
-
-### Phase 1: 基础设施（1周）
-- [ ] 实现PluginManager核心逻辑
-- [ ] 实现IEditorPlugin接口
-- [ ] 实现PluginContext依赖注入
-- [ ] 实现ViewModelBase基类
-
-### Phase 2: 服务层重构（1周）
-- [ ] 重构EventBus为服务
-- [ ] 重构SceneService
-- [ ] 实现StyleManager热重载
-- [ ] 实现WindowManager
-
-### Phase 3: 插件化迁移（2周）
-- [ ] 将Viewport迁移为ViewportPlugin
-- [ ] 将Hierarchy迁移为HierarchyPlugin
-- [ ] 将Detail面板迁移为DetailPlugin
-- [ ] 将NodeEditor迁移为NodeEditorPlugin
-- [ ] 将ResultViewer迁移为ResultViewerPlugin
-
-### Phase 4: 热更新完善（1周）
-- [ ] 实现DLL动态加载
-- [ ] 实现Plugin状态保持
-- [ ] 完善热更新调试工具
-- [ ] 性能优化
-
-### Phase 5: 测试与文档（1周）
-- [ ] 单元测试覆盖
-- [ ] 集成测试
-- [ ] 开发者文档
-- [ ] Plugin开发指南
-
-## 总结
-
-新架构的核心优势：
-
-1. **生命周期可控**：C++管理所有窗口生命周期，QML仅作为View组件
-2. **热更新友好**：Plugin机制支持DLL和QML的动态重载
-3. **高度模块化**：每个功能模块都是独立Plugin，可单独开发测试
-4. **MVVM清晰**：ViewModel持有状态和逻辑，View(QML)只负责展示
-5. **依赖注入**：通过PluginContext注入服务，便于测试和Mock
-6. **扩展性强**：外部开发者可以通过Plugin扩展Editor功能
-
-
-infrastructure
-- events
-  - IEventButs
-  - EventBus
-  - Event
-  - EventType
-- network
-- rendering
-- respository
-  - SceneRepository
-  - AnimationRepository
-
-UI Event - Controller - Service - Repository - EventBus - Widget
-
-#### 5.1 重构前：MainWindow创建和初始化
-
-```cpp
-// 旧代码：MainWindow承担过多职责
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent),
-      context_(new rbc::EditorContext),
-      layoutManager_(nullptr),
-      containerManager_(nullptr) {
-    
-    // 直接创建和管理所有组件
-    context_->httpClient = new rbc::HttpClient(this);
-    context_->workflowManager = new rbc::WorkflowManager(this);
-    context_->editorScene = new rbc::EditorScene();
-    // ... 创建大量组件
-    
-    // 手动连接信号槽
-    connect(context_->workflowManager, &rbc::WorkflowManager::workflowChanged,
-            this, &MainWindow::onWorkflowChanged);
-    // ... 大量信号槽连接
-}
-```
-
-#### 5.2 重构后：使用Service和Controller
-
-```cpp
-// 新代码：职责清晰，依赖注入
-class MainWindow : public QMainWindow, public IMainWindow {
-    Q_OBJECT
-public:
-    explicit MainWindow(QWidget* parent = nullptr) 
-        : QMainWindow(parent) {
-        
-        // 从ServiceLocator获取服务
-        sceneService_ = ServiceLocator::instance().sceneService();
-        workflowService_ = ServiceLocator::instance().workflowService();
-        layoutService_ = ServiceLocator::instance().layoutService();
-        
-        // 创建控制器
-        sceneController_ = new SceneController(
-            sceneService_, EventBus::instance(), this);
-        animController_ = new AnimationController(
-            animService_, sceneService_, EventBus::instance(), this);
-        
-        // UI组件通过工厂或Builder创建
-        setupUI();
-    }
-    
-private:
-    void setupUI() {
-        // 使用LayoutService管理布局
-        layoutService_->setupMainWindow(this);
-        
-        // 创建UI组件（通过工厂）
-        sceneHierarchy_ = WidgetFactory::createSceneHierarchy(this);
-        detailsPanel_ = WidgetFactory::createDetailsPanel(this);
-        viewport_ = WidgetFactory::createViewport(this);
-        
-        // 连接UI到Controller（单向，简单）
-        connect(sceneHierarchy_->asWidget(), &SceneHierarchyWidget::entitySelected,
-                sceneController_, &SceneController::onEntitySelected);
-    }
-    
-private:
-    // 服务引用（不拥有）
-    ISceneService* sceneService_;
-    IWorkflowService* workflowService_;
-    ILayoutService* layoutService_;
-    
-    // 控制器（拥有）
-    SceneController* sceneController_;
-    AnimationController* animController_;
-    
-    // UI组件
-    ISceneHierarchyWidget* sceneHierarchy_;
-    IDetailsPanel* detailsPanel_;
-    IViewportWidget* viewport_;
-};
-```
-
-#### 5.3 重构前：组件间通信
-
-```cpp
-// 旧代码：通过EditorContext访问其他组件，耦合度高
-void SceneHierarchyWidget::onEntityClicked(int entityId) {
-    // 直接访问context中的其他组件
-    if (context_->detailsPanel) {
-        auto entity = context_->editorScene->getEntity(entityId);
-        context_->detailsPanel->showEntity(entity);
-    }
-    
-    if (context_->viewportWidget) {
-        context_->viewportWidget->highlightEntity(entityId);
-    }
-    
-    // 发送事件
-    EventBus::instance().publish(EventType::EntitySelected, entityId);
-}
-```
-
-#### 5.4 重构后：通过Service和EventBus通信
-
-```cpp
-// 新代码：通过Controller和EventBus，松耦合
-class SceneHierarchyWidget : public QWidget, public ISceneHierarchyWidget {
-signals:
-    void entitySelected(int entityId);  // 只发送信号，不关心谁处理
-};
-
-// Controller处理业务逻辑
-void SceneController::onEntitySelected(int entityId) {
-    // 更新Service状态
-    sceneService_->selectEntity(entityId);
-    
-    // 发布事件（其他组件监听）
-    eventBus_->publish(Event(EventType::EntitySelected, entityId));
-}
-
-// DetailsPanel监听事件并更新
-class DetailsPanel : public QWidget, public IDetailsPanel {
-public:
-    DetailsPanel() {
-        // 订阅事件
-        EventBus::instance().subscribe(EventType::EntitySelected,
-            [this](const Event& e) {
-                int entityId = e.data.toInt();
-                showEntity(entityId);
-            });
-    }
-};
-
-// ViewportWidget同样监听事件
-class ViewportWidget : public QWidget, public IViewportWidget {
-public:
-    ViewportWidget() {
-        EventBus::instance().subscribe(EventType::EntitySelected,
-            [this](const Event& e) {
-                int entityId = e.data.toInt();
-                highlightEntity(entityId);
-            });
-    }
-};
-```
-
-### 8. 特别案例：Animation Playback 模块重构
-
-#### 8.1 当前Animation Playback的问题分析
+### 1. 当前问题分析
 
 当前动画播放功能存在以下严重的架构问题：
 
@@ -1191,16 +925,16 @@ public:
 - 播放逻辑与UI混合
 - 无法独立测试播放逻辑
 
-#### 8.2 新设计：独立的结果查看器系统
+### 2. 新设计：独立的结果查看器系统
 
-##### 8.2.1 核心设计思想
+#### 2.1 核心设计思想
 
 1. **独立的预览场景**：动画播放使用独立的Scene实例，不影响主编辑场景
 2. **模块化的查看器**：支持嵌入式和独立窗口两种模式
 3. **统一的结果管理**：通过ResultService管理所有类型的执行结果（动画、图片、视频等）
 4. **清晰的分层**：Viewer（UI）→ Service（逻辑）→ Repository（数据）
 
-##### 8.2.2 新架构设计
+#### 2.2 新架构设计
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -1241,7 +975,7 @@ public:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-##### 8.2.3 详细接口设计
+#### 2.3 详细接口设计
 
 ```cpp
 // ============================================================================
@@ -1586,7 +1320,7 @@ private:
 } // namespace rbc
 ```
 
-##### 8.2.4 使用场景示例
+#### 2.4 使用场景示例
 
 **场景1：在主窗口中嵌入式查看动画结果**
 
@@ -1595,7 +1329,7 @@ private:
 void MainWindow::setupResultViewer() {
     // 创建结果服务
     auto* resultService = new ResultService(this);
-    ServiceLocator::instance().registerResultService(resultService);
+    PluginManager::instance().registerService("ResultService", resultService);
     
     // 创建结果浏览器面板（左侧或底部Dock）
     resultBrowserPanel_ = new ResultBrowserPanel(resultService, this);
@@ -1640,13 +1374,14 @@ void MainWindow::onNodeExecutionFinished(const QJsonObject& output) {
     
     // 添加到结果服务
     auto result = std::make_unique<AnimationResult>(meta, animData);
-    ServiceLocator::instance().resultService()->addResult(std::move(result));
+    auto* resultService = PluginManager::instance().getService<IResultService>("ResultService");
+    resultService->addResult(std::move(result));
 }
 
 // 打开独立窗口
 void MainWindow::openResultInNewWindow(IResult* result) {
-    auto* viewer = AnimationViewer::createStandaloneWindow(
-        ServiceLocator::instance().resultService());
+    auto* resultService = PluginManager::instance().getService<IResultService>("ResultService");
+    auto* viewer = AnimationViewer::createStandaloneWindow(resultService);
     
     viewer->setResult(result);
     viewer->setAttribute(Qt::WA_DeleteOnClose);
@@ -1715,7 +1450,7 @@ private:
 };
 ```
 
-##### 8.2.5 新架构的优势
+#### 2.5 新架构的优势
 
 **1. 完全解耦主编辑场景**
 - 预览使用独立的`PreviewScene`
@@ -1760,7 +1495,7 @@ TEST(AnimationViewerTest, LoadAnimation) {
 - 新增查看器只需实现`IResultViewer`接口
 - 支持插件式的结果处理器
 
-##### 8.2.6 目录结构
+#### 2.6 目录结构
 
 ```
 rbc/editor/runtime/
@@ -1776,8 +1511,7 @@ rbc/editor/runtime/
 │   │   │   ├── IResultService.h
 │   │   │   ├── ResultService.h
 │   │   │   ├── IPreviewScene.h
-│   │   │   ├── PreviewScene.h
-│   │   │   └── IStyleManager.h          # 样式服务
+│   │   │   └── PreviewScene.h
 │   │   │
 │   │   ├── viewers/                     # 查看器（UI层）
 │   │   │   ├── IResultViewer.h
@@ -1798,3 +1532,545 @@ rbc/editor/runtime/
 │       ├── AnimationTimeline.h          # 纯UI组件（时间轴控件）
 │       └── PlaybackControls.h           # 纯UI组件（播放控制）
 ```
+
+## 目录结构
+
+```
+rbc/editor/
+├── runtime/
+│   ├── include/RBCEditorRuntime/
+│   │   ├── core/                          # 核心框架
+│   │   │   ├── EditorEngine.h
+│   │   │   └── EditorApplication.h
+│   │   │
+│   │   ├── plugins/                       # Plugin系统
+│   │   │   ├── IEditorPlugin.h
+│   │   │   ├── PluginManager.h
+│   │   │   ├── PluginContext.h
+│   │   │   ├── DynamicPlugin.h
+│   │   │   └── PluginContributions.h
+│   │   │
+│   │   ├── mvvm/                          # MVVM基础设施
+│   │   │   ├── ViewModelBase.h
+│   │   │   └── BindingHelpers.h
+│   │   │
+│   │   ├── services/                      # 服务层
+│   │   │   ├── IEventBus.h
+│   │   │   ├── EventBus.h
+│   │   │   ├── ISceneService.h
+│   │   │   ├── SceneService.h
+│   │   │   ├── IStyleManager.h
+│   │   │   ├── StyleManager.h
+│   │   │   ├── ILayoutService.h
+│   │   │   ├── LayoutService.h
+│   │   │   ├── IResultService.h
+│   │   │   └── ResultService.h
+│   │   │
+│   │   ├── ui/                            # UI框架
+│   │   │   ├── WindowManager.h
+│   │   │   ├── QmlViewContainer.h
+│   │   │   └── RenderSurface.h
+│   │   │
+│   │   ├── infrastructure/                # 基础设施
+│   │   │   ├── events/
+│   │   │   │   ├── Event.h
+│   │   │   │   └── EventType.h
+│   │   │   ├── network/
+│   │   │   ├── rendering/
+│   │   │   └── repository/
+│   │   │       ├── SceneRepository.h
+│   │   │       └── AnimationRepository.h
+│   │   │
+│   │   └── results/                       # 结果系统
+│   │       └── ...                        # 见Animation Playback章节
+│   │
+│   ├── src/                               # 实现文件
+│   │
+│   └── qml/                               # QML资源
+│       ├── components/                    # 通用QML组件
+│       │   ├── Button.qml
+│       │   ├── Panel.qml
+│       │   └── ...
+│       ├── styles/                        # 样式定义
+│       │   ├── Theme.qml
+│       │   └── Colors.qml
+│       └── views/                         # 视图（由Plugin引用）
+│
+├── plugins/                               # 内置插件
+│   ├── core_plugin/                       # 核心插件（菜单、工具栏等）
+│   │   ├── CorePlugin.h
+│   │   ├── CorePlugin.cpp
+│   │   └── qml/
+│   │
+│   ├── viewport_plugin/                   # 视口插件
+│   │   ├── ViewportPlugin.h
+│   │   ├── ViewportViewModel.h
+│   │   ├── ViewportViewModel.cpp
+│   │   └── qml/
+│   │       └── ViewportView.qml
+│   │
+│   ├── hierarchy_plugin/                   # 场景层级插件
+│   │   ├── HierarchyPlugin.h
+│   │   ├── HierarchyViewModel.h
+│   │   └── qml/
+│   │
+│   ├── detail_plugin/                     # 属性面板插件
+│   │   ├── DetailPlugin.h
+│   │   ├── DetailViewModel.h
+│   │   └── qml/
+│   │
+│   ├── node_editor_plugin/                # 节点编辑器插件
+│   │   ├── NodeEditorPlugin.h
+│   │   ├── NodeEditorViewModel.h
+│   │   └── qml/
+│   │
+│   └── result_viewer_plugin/              # 结果查看器插件
+│       ├── ResultViewerPlugin.h
+│       ├── ResultViewModel.h
+│       └── qml/
+│
+├── editor/                                # 主程序入口
+│   └── main.cpp
+│
+└── tests/                                 # 测试
+    ├── plugins/
+    ├── mvvm/
+    └── mocks/
+```
+
+## 启动流程
+
+```cpp
+// editor/main.cpp
+int main(int argc, char* argv[]) {
+    // 1. 初始化渲染引擎（在Qt之前）
+    EditorEngine::instance().init(argc, argv);
+    
+    // 2. 创建Qt应用
+    QApplication app(argc, argv);
+    
+    // 3. 初始化Plugin系统
+    auto& pluginManager = PluginManager::instance();
+    
+    // 4. 创建并注册核心服务
+    auto* eventBus = new EventBus();
+    auto* sceneService = new SceneService(eventBus);
+    auto* styleManager = new StyleManager();
+    auto* layoutService = new LayoutService();
+    auto* resultService = new ResultService();
+    
+    pluginManager.registerService("EventBus", eventBus);
+    pluginManager.registerService("SceneService", sceneService);
+    pluginManager.registerService("StyleManager", styleManager);
+    pluginManager.registerService("LayoutService", layoutService);
+    pluginManager.registerService("ResultService", resultService);
+    
+    // 5. 初始化StyleManager（处理命令行参数）
+    styleManager->initialize(argc, argv);
+    
+    // 6. 创建QML引擎
+    QQmlEngine engine;
+    pluginManager.setQmlEngine(&engine);
+    
+    // 7. 加载内置插件
+    pluginManager.loadPlugin(new CorePlugin());
+    pluginManager.loadPlugin(new ViewportPlugin());
+    pluginManager.loadPlugin(new HierarchyPlugin());
+    pluginManager.loadPlugin(new DetailPlugin());
+    pluginManager.loadPlugin(new NodeEditorPlugin());
+    pluginManager.loadPlugin(new ResultViewerPlugin());
+    
+    // 8. 扫描并加载外部插件
+    pluginManager.watchPluginDirectory("./plugins");
+    
+    // 9. 创建主窗口
+    WindowManager windowManager(&pluginManager);
+    windowManager.setupMainWindow();
+    
+    // 10. 应用所有Plugin的UI贡献
+    for (auto* plugin : pluginManager.getLoadedPlugins()) {
+        for (const auto& view : plugin->viewContributions()) {
+            // 从Plugin获取对应的ViewModel
+            auto* viewModel = plugin->createViewModel(view.viewId);
+            if (viewModel) {
+                windowManager.createDockableView(view, viewModel);
+            }
+        }
+    }
+    
+    // 11. 恢复上次布局
+    layoutService->loadLayout("default");
+    
+    // 12. 显示主窗口
+    windowManager.mainWindow()->show();
+    
+    // 13. 运行事件循环
+    int result = app.exec();
+    
+    // 14. 清理
+    pluginManager.unloadAllPlugins();
+    EditorEngine::instance().shutdown();
+    
+    return result;
+}
+```
+
+## 命令行参数
+
+```
+RoboCuteEditor.exe [options]
+
+Options:
+  --qml-dev              启用QML热重载模式（从源码目录加载QML）
+  --qml-source <path>    指定QML源码根目录（默认：./rbc/editor/runtime/qml）
+  --plugin-dir <path>    额外的插件搜索目录
+  --no-plugins           禁用外部插件加载
+  --layout <name>        使用指定的布局配置
+  --connect <host:port>  自动连接到Python Server
+  --headless             无头模式（用于测试）
+  --verbose              详细日志输出
+
+示例：
+  # 开发模式，启用QML热重载
+  RoboCuteEditor.exe --qml-dev --qml-source D:/ws/repos/RoboCute-repo/RoboCute/rbc/editor/runtime/qml
+  
+  # 加载自定义插件目录
+  RoboCuteEditor.exe --plugin-dir ./custom_plugins
+  
+  # 无头模式运行测试
+  RoboCuteEditor.exe --headless --no-plugins
+```
+
+## 测试策略
+
+### 1. ViewModel单元测试
+
+```cpp
+// tests/mvvm/test_viewport_viewmodel.cpp
+class MockSceneService : public ISceneService {
+    Q_OBJECT
+public:
+    MOCK_METHOD(Entity*, getEntity, (int), (const, override));
+    MOCK_METHOD(void, selectEntity, (int), (override));
+    MOCK_METHOD(int, selectedEntityId, (), (const, override));
+    // ...
+};
+
+class ViewportViewModelTest : public QObject {
+    Q_OBJECT
+    
+private slots:
+    void test_selectEntity_updatesSelection() {
+        MockSceneService mockScene;
+        ViewportViewModel vm(&mockScene, nullptr);
+        
+        EXPECT_CALL(mockScene, selectEntity(42));
+        EXPECT_CALL(mockScene, selectedEntityId())
+            .WillRepeatedly(Return(42));
+        
+        vm.selectEntity(42);
+        
+        QCOMPARE(vm.selectedEntityId(), 42);
+    }
+    
+    void test_selectEntity_emitsSignal() {
+        MockSceneService mockScene;
+        ViewportViewModel vm(&mockScene, nullptr);
+        
+        QSignalSpy spy(&vm, &ViewportViewModel::selectionChanged);
+        
+        vm.selectEntity(42);
+        
+        QCOMPARE(spy.count(), 1);
+    }
+    
+    void test_cameraMode_change() {
+        MockSceneService mockScene;
+        ViewportViewModel vm(&mockScene, nullptr);
+        
+        QSignalSpy spy(&vm, &ViewportViewModel::cameraModeChanged);
+        
+        vm.setCameraMode("fps");
+        
+        QCOMPARE(vm.cameraMode(), QString("fps"));
+        QCOMPARE(spy.count(), 1);
+    }
+};
+```
+
+### 2. Plugin集成测试
+
+```cpp
+// tests/plugins/test_plugin_lifecycle.cpp
+class PluginLifecycleTest : public QObject {
+    Q_OBJECT
+    
+private slots:
+    void test_loadUnloadPlugin() {
+        PluginManager manager;
+        auto* testPlugin = new TestPlugin();
+        
+        // Load
+        QVERIFY(manager.loadPlugin(testPlugin));
+        QCOMPARE(manager.getLoadedPlugins().size(), 1);
+        QCOMPARE(manager.getPlugin("test"), testPlugin);
+        
+        // Unload
+        QVERIFY(manager.unloadPlugin("test"));
+        QCOMPARE(manager.getLoadedPlugins().size(), 0);
+    }
+    
+    void test_hotReload() {
+        PluginManager manager;
+        manager.enableHotReload(true);
+        
+        auto* plugin = new TestPlugin();
+        manager.loadPlugin(plugin);
+        
+        QSignalSpy spy(&manager, &PluginManager::pluginReloaded);
+        
+        manager.reloadPlugin(plugin->id());
+        
+        QCOMPARE(spy.count(), 1);
+    }
+    
+    void test_pluginDependencies() {
+        PluginManager manager;
+        
+        // 加载依赖插件
+        auto* depPlugin = new DependencyPlugin();
+        manager.loadPlugin(depPlugin);
+        
+        // 加载依赖它的插件
+        auto* mainPlugin = new MainPlugin();
+        QVERIFY(manager.loadPlugin(mainPlugin));
+        
+        // 卸载依赖插件应该失败
+        QVERIFY(!manager.unloadPlugin(depPlugin->id()));
+    }
+};
+```
+
+### 3. 服务层测试
+
+```cpp
+// tests/services/test_result_service.cpp
+class ResultServiceTest : public QObject {
+    Q_OBJECT
+    
+private slots:
+    void test_addAndGetResult() {
+        ResultService service;
+        
+        auto result = createTestAnimationResult();
+        service.addResult(std::move(result));
+        
+        auto* retrieved = service.getResult("test-id");
+        QVERIFY(retrieved != nullptr);
+        QCOMPARE(retrieved->type(), ResultType::Animation);
+    }
+    
+    void test_createPreviewScene() {
+        ResultService service;
+        service.addResult(createTestAnimationResult());
+        
+        auto* scene = service.createPreviewScene("test-id");
+        QVERIFY(scene != nullptr);
+        QCOMPARE(scene->resultId(), QString("test-id"));
+        
+        service.destroyPreviewScene(scene);
+    }
+};
+```
+
+## 架构演进：从旧架构到新架构
+
+### 1. 重构前的问题
+
+**问题1：MainWindow承担过多职责**
+
+```cpp
+// 旧代码：MainWindow承担过多职责
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent),
+      context_(new rbc::EditorContext),
+      layoutManager_(nullptr),
+      containerManager_(nullptr) {
+    
+    // 直接创建和管理所有组件
+    context_->httpClient = new rbc::HttpClient(this);
+    context_->workflowManager = new rbc::WorkflowManager(this);
+    context_->editorScene = new rbc::EditorScene();
+    // ... 创建大量组件
+    
+    // 手动连接信号槽
+    connect(context_->workflowManager, &rbc::WorkflowManager::workflowChanged,
+            this, &MainWindow::onWorkflowChanged);
+    // ... 大量信号槽连接
+}
+```
+
+**问题2：组件间通信耦合严重**
+
+```cpp
+// 旧代码：通过EditorContext访问其他组件，耦合度高
+void SceneHierarchyWidget::onEntityClicked(int entityId) {
+    // 直接访问context中的其他组件
+    if (context_->detailsPanel) {
+        auto entity = context_->editorScene->getEntity(entityId);
+        context_->detailsPanel->showEntity(entity);
+    }
+    
+    if (context_->viewportWidget) {
+        context_->viewportWidget->highlightEntity(entityId);
+    }
+    
+    // 发送事件
+    EventBus::instance().publish(EventType::EntitySelected, entityId);
+}
+```
+
+### 2. 重构后的改进
+
+**改进1：职责清晰，依赖注入**
+
+```cpp
+// 新代码：职责清晰，依赖注入
+class MainWindow : public QMainWindow, public IMainWindow {
+    Q_OBJECT
+public:
+    explicit MainWindow(QWidget* parent = nullptr) 
+        : QMainWindow(parent) {
+        
+        // 从PluginManager获取服务
+        auto& pm = PluginManager::instance();
+        sceneService_ = pm.getService<ISceneService>();
+        workflowService_ = pm.getService<IWorkflowService>();
+        layoutService_ = pm.getService<ILayoutService>();
+        
+        // UI组件通过工厂创建
+        setupUI();
+    }
+    
+private:
+    void setupUI() {
+        // 使用LayoutService管理布局
+        layoutService_->setupMainWindow(this);
+        
+        // 创建UI组件（通过工厂）
+        sceneHierarchy_ = WidgetFactory::createSceneHierarchy(this);
+        detailsPanel_ = WidgetFactory::createDetailsPanel(this);
+        viewport_ = WidgetFactory::createViewport(this);
+    }
+    
+private:
+    // 服务引用（不拥有）
+    ISceneService* sceneService_;
+    IWorkflowService* workflowService_;
+    ILayoutService* layoutService_;
+    
+    // UI组件
+    ISceneHierarchyWidget* sceneHierarchy_;
+    IDetailsPanel* detailsPanel_;
+    IViewportWidget* viewport_;
+};
+```
+
+**改进2：通过Service和EventBus通信，松耦合**
+
+```cpp
+// 新代码：通过Service和EventBus，松耦合
+class SceneHierarchyWidget : public QWidget, public ISceneHierarchyWidget {
+signals:
+    void entitySelected(int entityId);  // 只发送信号，不关心谁处理
+};
+
+// Controller处理业务逻辑
+void SceneController::onEntitySelected(int entityId) {
+    // 更新Service状态
+    sceneService_->selectEntity(entityId);
+    
+    // 发布事件（其他组件监听）
+    eventBus_->publish(Event(EventType::EntitySelected, entityId));
+}
+
+// DetailsPanel监听事件并更新
+class DetailsPanel : public QWidget, public IDetailsPanel {
+public:
+    DetailsPanel() {
+        // 订阅事件
+        EventBus::instance().subscribe(EventType::EntitySelected,
+            [this](const Event& e) {
+                int entityId = e.data.toInt();
+                showEntity(entityId);
+            });
+    }
+};
+
+// ViewportWidget同样监听事件
+class ViewportWidget : public QWidget, public IViewportWidget {
+public:
+    ViewportWidget() {
+        EventBus::instance().subscribe(EventType::EntitySelected,
+            [this](const Event& e) {
+                int entityId = e.data.toInt();
+                highlightEntity(entityId);
+            });
+    }
+};
+```
+
+### 3. 重构带来的好处
+
+1. **解耦**：组件不再直接依赖其他组件，通过Service和EventBus通信
+2. **可测试**：Service可以Mock，便于单元测试
+3. **可扩展**：新功能可以作为Plugin添加，不影响现有代码
+4. **可维护**：职责清晰，代码组织更合理
+
+## 迁移计划
+
+### Phase 1: 基础设施（1周）
+- [ ] 实现PluginManager核心逻辑
+- [ ] 实现IEditorPlugin接口
+- [ ] 实现PluginContext依赖注入
+- [ ] 实现ViewModelBase基类
+- [ ] 实现EventBus服务
+
+### Phase 2: 服务层重构（1周）
+- [ ] 重构EventBus为服务
+- [ ] 重构SceneService
+- [ ] 实现StyleManager热重载
+- [ ] 实现WindowManager
+- [ ] 实现ResultService（Animation Playback重构）
+
+### Phase 3: 插件化迁移（2周）
+- [ ] 将Viewport迁移为ViewportPlugin
+- [ ] 将Hierarchy迁移为HierarchyPlugin
+- [ ] 将Detail面板迁移为DetailPlugin
+- [ ] 将NodeEditor迁移为NodeEditorPlugin
+- [ ] 将ResultViewer迁移为ResultViewerPlugin
+
+### Phase 4: 热更新完善（1周）
+- [ ] 实现DLL动态加载
+- [ ] 实现Plugin状态保持
+- [ ] 完善热更新调试工具
+- [ ] 性能优化
+
+### Phase 5: 测试与文档（1周）
+- [ ] 单元测试覆盖
+- [ ] 集成测试
+- [ ] 开发者文档
+- [ ] Plugin开发指南
+
+## 总结
+
+新架构的核心优势：
+
+1. **生命周期可控**：C++管理所有窗口生命周期，QML仅作为View组件
+2. **热更新友好**：Plugin机制支持DLL和QML的动态重载
+3. **高度模块化**：每个功能模块都是独立Plugin，可单独开发测试
+4. **MVVM清晰**：ViewModel持有状态和逻辑，View(QML)只负责展示
+5. **依赖注入**：通过PluginContext注入服务，便于测试和Mock
+6. **扩展性强**：外部开发者可以通过Plugin扩展Editor功能
+7. **松耦合**：组件通过Service和EventBus通信，降低耦合度
+8. **可测试性**：各层职责清晰，便于单元测试和集成测试
