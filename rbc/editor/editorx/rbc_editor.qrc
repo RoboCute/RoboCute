@@ -1,0 +1,7 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource>
+    <file>qml/RBCButton.qml</file>
+    <file>qml/MainWindow.qml</file>
+  </qresource>
+</RCC>

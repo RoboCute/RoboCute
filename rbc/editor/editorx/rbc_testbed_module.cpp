@@ -15,12 +15,7 @@
 #include <QtGlobal>
 #include <rbc_config.h>
 
-#ifdef RBC_EDITOR_MODULE
-LUISA_EXPORT_API int dll_main(int argc, char *argv[])
-#else
-int main(int argc, char *argv[])
-#endif
-{
+LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
 
     QCommandLineParser parser;
@@ -60,11 +55,11 @@ int main(int argc, char *argv[])
         qmlPath = pathInfo.absoluteFilePath();
         watchDir = qmlPath;
         QDir dir(watchDir);
-        qmlFilePath = dir.absoluteFilePath("main.qml");
+        qmlFilePath = dir.absoluteFilePath("MainWindow.qml");
         qputenv("QML_DISABLE_DISK_CACHE", "1");
         qputenv("QT_QUICK_COMPILER_DISABLE_CACHE", "1");
     } else {
-        qmlFilePath = "qrc://qml/main.qml";
+        qmlFilePath = "qrc://qml/MainWindow.qml";
     }
 
     qDebug() << "Loading QML from:" << qmlPath;
