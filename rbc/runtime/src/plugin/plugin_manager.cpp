@@ -3,18 +3,18 @@
 #include <rbc_plugin/plugin_manager.h>
 namespace rbc {
 namespace plugin_mng_detail {
-vstd::optional<PluginManager> inst_;
+PluginManager *inst_{};
 }// namespace plugin_mng_detail
 PluginManager &PluginManager::instance() {
     return *plugin_mng_detail::inst_;
 }
 void PluginManager::init() {
     if (!plugin_mng_detail::inst_)
-        plugin_mng_detail::inst_.create();
+        plugin_mng_detail::inst_ = new PluginManager{};
 }
 void PluginManager::destroy_instance() {
-    if (plugin_mng_detail::inst_)
-        plugin_mng_detail::inst_.destroy();
+    delete plugin_mng_detail::inst_;
+    plugin_mng_detail::inst_ = nullptr;
 }
 PluginManager::PluginManager() {}
 PluginManager::~PluginManager() {}

@@ -58,6 +58,13 @@ void SceneManager::sync_bindless_heap(CommandList &cmdlist, Stream &stream) {
     }
     bindless_allocator().commit(cmdlist);
 }
+bool SceneManager::accel_dirty() const {
+    if (!_build_meshes.empty()) return true;
+    for (auto &i : _accel_mngs) {
+        if (i->dirty()) return true;
+    }
+    return false;
+}
 void SceneManager::execute_io(
     IOService *io_service,
     Stream &main_stream,

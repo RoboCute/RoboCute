@@ -68,6 +68,7 @@ private:
 
 public:
     ///////////// properties
+    bool accel_dirty() const;
     [[nodiscard]] auto &tex_streamer() { return *_tex_streamer; }
     [[nodiscard]] auto &ctx() const { return _ctx; }
     [[nodiscard]] auto &device() const { return _device; }

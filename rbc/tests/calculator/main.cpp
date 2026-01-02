@@ -18,15 +18,14 @@
 #include "NumberDisplayDataModel.hpp"
 #include "NumberSourceDataModel.hpp"
 #include "SubtractionModel.hpp"
-
+#include <rbc_config.h>
 using QtNodes::ConnectionStyle;
 using QtNodes::DataFlowGraphicsScene;
 using QtNodes::DataFlowGraphModel;
 using QtNodes::GraphicsView;
 using QtNodes::NodeDelegateModelRegistry;
 
-static std::shared_ptr<NodeDelegateModelRegistry> registerDataModels()
-{
+static std::shared_ptr<NodeDelegateModelRegistry> registerDataModels() {
     auto ret = std::make_shared<NodeDelegateModelRegistry>();
     ret->registerModel<NumberSourceDataModel>("Sources");
 
@@ -43,8 +42,7 @@ static std::shared_ptr<NodeDelegateModelRegistry> registerDataModels()
     return ret;
 }
 
-static void setStyle()
-{
+static void setStyle() {
     ConnectionStyle::setConnectionStyle(
         R"(
   {
@@ -64,8 +62,11 @@ static void setStyle()
   }
   )");
 }
-
+#ifdef RBC_TEST_QT_MODULE
+LUISA_EXPORT_API int dll_main(int argc, char *argv[])
+#else
 int main(int argc, char *argv[])
+#endif
 {
     QApplication app(argc, argv);
 
@@ -112,8 +113,7 @@ int main(int argc, char *argv[])
     mainWidget.setWindowTitle("[*]Data Flow: simplest calculator");
     mainWidget.resize(800, 600);
     // Center window.
-    mainWidget.move(QApplication::primaryScreen()->availableGeometry().center()
-                    - mainWidget.rect().center());
+    mainWidget.move(QApplication::primaryScreen()->availableGeometry().center() - mainWidget.rect().center());
     mainWidget.showNormal();
 
     return app.exec();

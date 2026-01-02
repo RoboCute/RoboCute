@@ -13,9 +13,9 @@ private:
         luisa::weak_ptr<luisa::DynamicModule>>
         loaded_modules;
     std::mutex mtx;
-public:
     PluginManager();
     ~PluginManager();
+public:
     luisa::shared_ptr<luisa::DynamicModule> load_module(luisa::string_view name);
     void unload_module(luisa::string_view name);
     static PluginManager &instance();
