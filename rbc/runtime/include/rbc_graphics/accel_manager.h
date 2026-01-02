@@ -197,7 +197,7 @@ public:
         float4x4 const &transform,
         uint8_t visibility_mask = 0xffu);
     void init_accel(CommandList &cmdlist);
-    void dispose_accel(CommandList &cmdlist, DisposeQueue& disp_queue);
+    void dispose_accel(CommandList &cmdlist, DisposeQueue &disp_queue);
 
     void move_the_world(
         CommandList &cmdlist,
@@ -221,6 +221,7 @@ public:
     void mark_dirty() {
         _dirty = true;
     }
+    bool dirty() const { return _dirty; }
     BufferView<uint> triangle_vis_buffer() const {
         return _triangle_vis_buffer;
     }
