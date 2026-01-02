@@ -6,7 +6,6 @@
 #include <rbc_graphics/device_assets/device_image.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <luisa/core/clock.h>
-#include <luisa/gui/window.h>
 #include <luisa/vstl/functional.h>
 #include <luisa/runtime/swapchain.h>
 #include <rbc_render/render_plugin.h>
@@ -25,7 +24,7 @@ struct EventFence {
     TimelineEvent event;
     uint64_t fence_index{};
 };
-struct RBC_APP_API GraphicsUtils {
+struct RBC_RUNTIME_API GraphicsUtils {
 private:
     RenderDevice _render_device;
     luisa::string _backend_name;
@@ -33,7 +32,6 @@ private:
     vstd::optional<SceneManager> _sm;
     // present
     Stream _present_stream;
-    vstd::optional<Window> _window;
     Swapchain _swapchain;
     Image<float> _dst_image;
     DenoisePack _denoise_pack;
@@ -49,8 +47,6 @@ private:
 public:
     auto render_plugin() const { return _render_plugin; }
     auto &present_stream() const { return _present_stream; }
-    auto &window() const { return _window; }
-    auto &window() { return _window; }
     auto &render_settings() const { return *_render_settings; }
     auto &render_settings() { return *_render_settings; }
     auto default_pipe_ctx() const { return _display_pipe_ctx; }
@@ -63,11 +59,16 @@ public:
     void init_graphics(luisa::filesystem::path const &shader_path);
     void init_present_stream();
     void init_render();
-    void resize_swapchain(uint2 size);
-    void init_display_with_window(luisa::string_view name, uint2 resolution, bool resizable);
-    void init_display(uint2 resolution);
+    void resize_swapchain(
+        uint2 size,
+        uint64_t native_display,
+        uint64_t native_handle);
+
+    void init_display(
+        uint2 resolution,
+        uint64_t native_display,
+        uint64_t native_handle);
     void reset_frame();
-    bool should_close();
     enum struct TickStage {
         RasterPreview,
         PathTracingPreview,

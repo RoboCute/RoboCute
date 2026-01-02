@@ -7,7 +7,7 @@
 namespace rbc {
 using namespace luisa;
 
-struct RBC_APP_API CameraController {
+struct RBC_RUNTIME_API CameraController {
     struct Input {
         float2 mouse_cursor_pos;
         float2 viewport_size;

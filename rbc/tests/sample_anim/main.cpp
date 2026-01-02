@@ -66,7 +66,8 @@ int main(int argc, char *argv[]) {
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
-    utils.init_display_with_window(luisa::string{"model_viewer_"} + utils.backend_name(), uint2(1024), true);
+    Window window{luisa::string{"sample_anim_"} + utils.backend_name(), uint2(1024), true};
+    utils.init_display(window.size(), window.native_display(), window.native_handle());
 
     uint64_t frame_index = 0;
     Clock clk;
@@ -243,9 +244,9 @@ int main(int argc, char *argv[]) {
     cam.position = double3(0, 0, 5);
 
     CameraController::Input camera_input;
-    uint2 window_size = utils.window()->size();
+    uint2 window_size = window.size();
 
-    utils.window()->set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
+    window.set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
         if (button == MOUSE_BUTTON_2) {
             if (action == Action::ACTION_PRESSED) {
                 camera_input.is_mouse_right_down = true;
@@ -255,11 +256,11 @@ int main(int argc, char *argv[]) {
         }
     });
 
-    utils.window()->set_cursor_position_callback([&](float2 xy) {
+    window.set_cursor_position_callback([&](float2 xy) {
         camera_input.mouse_cursor_pos = xy;
     });
 
-    utils.window()->set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
+    window.set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
         bool pressed = (action == Action::ACTION_PRESSED);
         switch (key) {
             case Key::KEY_SPACE:
@@ -290,13 +291,13 @@ int main(int argc, char *argv[]) {
         }
     });
 
-    utils.window()->set_window_size_callback([&](uint2 size) {
+    window.set_window_size_callback([&](uint2 size) {
         window_size = size;
     });
 
     // return 0;
 
-    while (!utils.should_close()) {
+    while (!window.should_close()) {
         RBCFrameMark;
 
         {
@@ -304,14 +305,14 @@ int main(int argc, char *argv[]) {
 
             {
                 RBCZoneScopedN("Poll Events");
-                if (utils.window())
-                    utils.window()->poll_events();
+                if (window)
+                    window.poll_events();
             }
 
             auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
             if (any(window_size != utils.dst_image().size())) {
                 RBCZoneScopedN("Resize Swapchain");
-                utils.resize_swapchain(window_size);
+                utils.resize_swapchain(window_size, window.native_display(), window.native_handle());
                 frame_index = 0;
             }
 

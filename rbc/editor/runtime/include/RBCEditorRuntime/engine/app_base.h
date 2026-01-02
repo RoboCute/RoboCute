@@ -3,6 +3,7 @@
 #include "RBCEditorRuntime/engine/app.h"
 #include <rbc_app/graphics_utils.h>
 #include <rbc_app/camera_controller.h>
+#include <luisa/gui/window.h>
 
 namespace rbc {
 
@@ -35,7 +36,6 @@ struct RBC_EDITOR_RUNTIME_API AppBase : public IApp {
 
     luisa::fiber::scheduler scheduler;
     GraphicsUtils utils;
-
     uint64_t frame_index = 0;
     double last_frame_time = 0;
     luisa::Clock clk;

@@ -28,7 +28,7 @@ void AppBase::init(const char *program_path, const char *backend_name) {
     get_dx_device(render_device.lc_device_ext(), native_device, dx_adaptor_luid);
 
     utils.init_graphics(
-        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / 
+        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() /
         (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
 
@@ -48,10 +48,10 @@ uint64_t AppBase::create_texture(uint width, uint height) {
     resolution = {width, height};
 
     if (utils.dst_image() && any(resolution != utils.dst_image().size())) {
-        utils.resize_swapchain(resolution);
+        utils.resize_swapchain(resolution, 0, invalid_resource_handle);
     }
     if (!utils.dst_image()) {
-        utils.init_display(resolution);
+        utils.init_display(resolution, 0, invalid_resource_handle);
     }
     return (uint64_t)utils.dst_image().native_handle();
 }
@@ -67,8 +67,8 @@ void AppBase::prepare_dx_states() {
     auto &render_device = RenderDevice::instance();
     clear_dx_states(render_device.lc_device_ext());
     add_dx_before_state(
-        render_device.lc_device_ext(), 
-        Argument::Texture{utils.dst_image().handle(), 0}, 
+        render_device.lc_device_ext(),
+        Argument::Texture{utils.dst_image().handle(), 0},
         D3D12EnhancedResourceUsageType::RasterRead);
 }
 
@@ -102,4 +102,3 @@ AppBase::~AppBase() {
 }
 
 }// namespace rbc
-

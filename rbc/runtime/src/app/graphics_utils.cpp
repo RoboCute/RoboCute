@@ -45,7 +45,6 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     if (_present_stream)
         _present_stream.synchronize();
     _dst_image.reset();
-    _window.reset();
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
     PluginManager::init();
@@ -119,18 +118,21 @@ void GraphicsUtils::init_present_stream() {
         _present_stream = device.create_stream(StreamTag::GRAPHICS);
 }
 
-void GraphicsUtils::init_display(uint2 resolution) {
+void GraphicsUtils::init_display(
+    uint2 resolution,
+    uint64_t native_display,
+    uint64_t native_handle) {
     auto &device = _render_device.lc_device();
     init_present_stream();
     if (_dst_image && any(_dst_image.size() != resolution)) {
-        resize_swapchain(resolution);
+        resize_swapchain(resolution, native_display, native_handle);
     } else if (!_dst_image) {
-        if (!_swapchain && _window) {
+        if (!_swapchain && native_handle != invalid_resource_handle) {
             _swapchain = device.create_swapchain(
                 _present_stream,
                 SwapchainOption{
-                    .display = _window->native_display(),
-                    .window = _window->native_handle(),
+                    .display = native_display,
+                    .window = native_handle,
                     .size = resolution,
                     .wants_hdr = false,
                     .wants_vsync = false,
@@ -141,18 +143,11 @@ void GraphicsUtils::init_display(uint2 resolution) {
     }
 }
 
-void GraphicsUtils::init_display_with_window(luisa::string_view name, uint2 resolution, bool resizable) {
-    _window.create(luisa::string{name}.c_str(), resolution, resizable);
-    init_display(resolution);
-}
 void GraphicsUtils::reset_frame() {
     _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), true, true);
     _render_plugin->clear_context(_display_pipe_ctx);
 }
 
-bool GraphicsUtils::should_close() {
-    return _window && _window->should_close();
-}
 void GraphicsUtils::tick(
     float delta_time,
     uint64_t frame_index,
@@ -281,7 +276,10 @@ void GraphicsUtils::tick(
     //     _present_stream << i.second.present(dst_img);
     // }
 }
-void GraphicsUtils::resize_swapchain(uint2 size) {
+void GraphicsUtils::resize_swapchain(
+    uint2 size,
+    uint64_t native_display,
+    uint64_t native_handle) {
     reset_frame();
     _compute_event.event.synchronize(_compute_event.fence_index);
     _present_stream.synchronize();
@@ -289,12 +287,12 @@ void GraphicsUtils::resize_swapchain(uint2 size) {
     _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, size, 1, true, true);
     _dst_image.set_name("Dest image");
     _swapchain.reset();
-    if (_window)
+    if (native_handle != invalid_resource_handle)
         _swapchain = _render_device.lc_device().create_swapchain(
             _present_stream,
             SwapchainOption{
-                .display = _window->native_display(),
-                .window = _window->native_handle(),
+                .display = native_display,
+                .window = native_handle,
                 .size = size,
                 .wants_hdr = false,
                 .wants_vsync = false,

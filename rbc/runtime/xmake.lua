@@ -3,6 +3,7 @@ local function rbc_runtime_interface()
         public = true
     })
     add_deps('lc-runtime', 'rbc_core')
+    add_interface_depend('rbc_render_plugin')
 end
 
 local function rbc_runtime_impl()
@@ -30,7 +31,6 @@ local function rbc_runtime_impl()
             target:add('syslinks', 'd3d12', 'User32')
         end
     end)
-
 end
 
 interface_target('rbc_runtime', rbc_runtime_interface, rbc_runtime_impl)
