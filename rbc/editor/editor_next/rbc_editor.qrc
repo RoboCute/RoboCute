@@ -4,10 +4,5 @@
   <file alias="quad.frag.qsb">shaders/prebuilt/quad.frag.qsb</file>
   <file alias="main.qss">styles/main.qss</file>
 </qresource>
-<qresource prefix="/qml">
-  <file alias="MainWindow.qml">qml/MainWindow.qml</file>
-  <file alias="qmldir">qml/qmldir</file>
-  <file alias="components/ConnectionStatusPanel.qml">qml/components/ConnectionStatusPanel.qml</file>
-  <file alias="components/qmldir">qml/components/qmldir</file>
-</qresource>
+<!-- QML files are now loaded directly from file system, not from resources -->
 </RCC>

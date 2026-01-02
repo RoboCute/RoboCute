@@ -3,7 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Window 2.15
 import RBCEditor 1.0
-import "qrc:/qml/components" as Components
+import "./components" as Components
 
 ApplicationWindow {
     id: mainWindow

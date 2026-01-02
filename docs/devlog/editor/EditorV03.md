@@ -4,8 +4,9 @@
 
 - [x] 接入RBCRuntime中的场景定义
 - [x] 更新灵活的Workflow
+- [x] 引入QML进行组件封装与样式定义
+- [x] 支持样式热加载与调试模式（argv控制）
 - [ ] 更科学的大型Qt项目组织，做好功能层次拆分，支持子模块mock和可复用Component独立开发和复用
-- [ ] 支持自定义样式拓展，支持运行中加载和调试组件样式
 - [ ] 支持调试渲染参数的Detail面板
 - [ ] 实现RBCProject的结构管理
 
@@ -108,6 +109,11 @@ rbc/editor/
    - 模块间通过事件总线或服务接口通信
    - 支持模块的动态加载/卸载
 
+5. **混合UI架构 (Hybrid UI)**：
+   - **逻辑与表现分离**：C++负责核心逻辑与性能敏感部分，QML负责UI表现与交互动画
+   - **开发效率**：利用QML的声明式语法快速构建界面
+   - **热重载支持**：支持开发阶段的UI热加载，提升调试效率
+
 ### 3. 新架构设计
 
 #### 3.1 整体架构分层
@@ -166,7 +172,12 @@ rbc/editor/
 │   │   │   │   ├── DetailsPanel.h
 │   │   │   │   ├── IResultPanel.h
 │   │   │   │   └── ...
-│   │   │   └── dialogs/                 # 对话框
+│   │   │   ├── dialogs/                 # 对话框
+│   │   │   │
+│   │   │   └── qml/                     # QML资源 (New)
+│   │   │       ├── components/          # QML组件
+│   │   │       ├── styles/              # 样式定义
+│   │   │       └── Views/               # QML视图
 │   │   │
 │   │   ├── application/                 # Application Layer
 │   │   │   ├── services/                # 应用服务
@@ -178,6 +189,8 @@ rbc/editor/
 │   │   │   │   ├── WorkflowService.h
 │   │   │   │   ├── ILayoutService.h
 │   │   │   │   ├── LayoutService.h
+│   │   │   │   ├── IStyleManager.h      # 样式管理器 (New)
+│   │   │   │   ├── StyleManager.h
 │   │   │   │   └── ServiceLocator.h     # 服务定位器
 │   │   │   │
 │   │   │   ├── controllers/             # 控制器（协调UI和Service）
@@ -342,6 +355,26 @@ public:
 signals:
     void layoutChanged();
 };
+
+// IStyleManager.h - 样式与QML管理服务 (New)
+class IStyleManager {
+public:
+    virtual ~IStyleManager() = default;
+
+    // 初始化与配置
+    virtual void initialize(int argc, char** argv) = 0;
+    virtual bool isHotReloadEnabled() const = 0;
+
+    // 资源加载
+    virtual QUrl resolveUrl(const QString& relativePath) = 0;
+    virtual QQmlEngine* qmlEngine() = 0;
+
+    // 组件创建
+    virtual QWidget* createQmlWidget(const QString& qmlPath, QWidget* parent = nullptr) = 0;
+
+signals:
+    void styleReloaded(); // 通知UI重新加载
+};
 ```
 
 ##### 3.3.2 Service Locator模式
@@ -358,12 +391,14 @@ public:
     void registerService(IAnimationService* service);
     void registerService(IWorkflowService* service);
     void registerService(ILayoutService* service);
+    void registerService(IStyleManager* service);
     
     // 服务获取
     ISceneService* sceneService();
     IAnimationService* animationService();
     IWorkflowService* workflowService();
     ILayoutService* layoutService();
+    IStyleManager* styleManager();
     
     // 测试支持：清除所有服务（用于Mock）
     void clear();
@@ -374,6 +409,7 @@ private:
     std::unique_ptr<IAnimationService> animationService_;
     std::unique_ptr<IWorkflowService> workflowService_;
     std::unique_ptr<ILayoutService> layoutService_;
+    std::unique_ptr<IStyleManager> styleManager_;
 };
 ```
 
@@ -497,7 +533,70 @@ public:
 └─────────────┘
 ```
 
-#### 3.5 新架构的优势
+#### 3.5 UI架构：QML集成与热加载系统
+
+##### 3.5.1 混合架构设计
+
+为了结合Qt Widgets的成熟窗口管理能力和QML的灵活样式表现，采用混合架构：
+- **Shell层 (C++/Widgets)**：使用`QMainWindow`和`QDockWidget`管理整体布局、窗口停靠、原生菜单栏。
+- **Content层 (QML)**：具体的功能面板（如Details Panel, Result Viewer）的内容区域使用`QQuickWidget`嵌入QML。
+- **Bridge层**：通过`Q_PROPERTY`、`Q_INVOKABLE`和`Signals/Slots`实现C++逻辑与QML界面的双向通信。
+
+##### 3.5.2 样式热加载机制
+
+为了提高UI开发效率，支持在不重启编辑器的情况下实时更新QML样式。
+
+**实现原理**：
+1. **启动参数控制**：通过命令行参数（如`--qml-dev`）激活开发模式。
+2. **文件监听**：在开发模式下，`StyleManager`使用`QFileSystemWatcher`监听QML源码目录。
+3. **动态加载**：
+   - **Dev模式**：`resolveUrl`返回本地文件系统的绝对路径（`file:///...`），使得修改立即生效。
+   - **Release模式**：`resolveUrl`返回Qt资源路径（`qrc:///...`），使用编译进二进制的资源。
+4. **引擎重置**：检测到文件变更时，通过`QQmlEngine::clearComponentCache()`清除缓存，并发送`styleReloaded`信号通知组件重新加载源文件。
+
+```cpp
+// StyleManager 实现示意
+void StyleManager::initialize(int argc, char** argv) {
+    // 解析命令行参数
+    QCommandLineParser parser;
+    QCommandLineOption devOption("qml-dev", "Enable QML hot reload from source directory");
+    parser.addOption(devOption);
+    parser.process(QCoreApplication::arguments());
+
+    isDevMode_ = parser.isSet(devOption);
+    
+    if (isDevMode_) {
+        // 设置源码根目录
+        sourceRoot_ = findSourceRoot(); // 向上查找源码根目录
+        
+        // 启动文件监听
+        watcher_ = new QFileSystemWatcher(this);
+        watcher_->addPath(sourceRoot_ + "/rbc/editor/runtime/qml");
+        
+        connect(watcher_, &QFileSystemWatcher::directoryChanged, 
+                this, &StyleManager::onQmlFileChanged);
+        connect(watcher_, &QFileSystemWatcher::fileChanged, 
+                this, &StyleManager::onQmlFileChanged);
+    }
+}
+
+QUrl StyleManager::resolveUrl(const QString& relativePath) {
+    if (isDevMode_) {
+        return QUrl::fromLocalFile(sourceRoot_ + "/rbc/editor/runtime/qml/" + relativePath);
+    } else {
+        return QUrl("qrc:/qml/" + relativePath);
+    }
+}
+
+void StyleManager::onQmlFileChanged(const QString& path) {
+    // 清除缓存
+    engine_->clearComponentCache();
+    // 通知UI刷新
+    emit styleReloaded();
+}
+```
+
+#### 3.6 新架构的优势
 
 1. **职责清晰**：
    - UI层只负责显示和用户交互
@@ -533,6 +632,7 @@ public:
 
 **阶段1：建立基础设施** (1-2周)
 - 创建新的目录结构
+- 搭建QML基础环境与StyleManager
 - 实现Service接口和ServiceLocator
 - 实现EventBus改进版（如果需要）
 - 编写单元测试框架
@@ -1526,7 +1626,8 @@ rbc/editor/runtime/
 │   │   │   ├── IResultService.h
 │   │   │   ├── ResultService.h
 │   │   │   ├── IPreviewScene.h
-│   │   │   └── PreviewScene.h
+│   │   │   ├── PreviewScene.h
+│   │   │   └── IStyleManager.h          # 样式服务
 │   │   │
 │   │   ├── viewers/                     # 查看器（UI层）
 │   │   │   ├── IResultViewer.h
@@ -1534,6 +1635,10 @@ rbc/editor/runtime/
 │   │   │   ├── ImageViewer.h
 │   │   │   ├── ResultBrowserPanel.h
 │   │   │   └── AnimationComparisonWindow.h
+│   │   │
+│   │   ├── qml/                         # QML视图实现
+│   │   │   ├── ResultViewer.qml
+│   │   │   └── Controls/
 │   │   │
 │   │   └── repositories/                # 数据访问
 │   │       ├── IResultRepository.h

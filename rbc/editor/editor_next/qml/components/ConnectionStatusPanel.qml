@@ -31,10 +31,10 @@ Rectangle {
 
         // 标题
         Text {
-            text: "Connection Status"
+            text: "Connection Stats"
             font.pixelSize: 14
             font.bold: true
-            color: "#ffffff"
+            color: "#ffff00"
         }
 
         // 状态指示器
