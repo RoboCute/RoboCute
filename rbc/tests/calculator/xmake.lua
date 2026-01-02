@@ -4,7 +4,8 @@ do
         project_kind = "shared",
         rtti = true
     })
-    add_rules("qt.rbc_widgetapp")
+    add_rules("qt.shared")
+    add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")
     add_files("main.cpp", "MathOperationDataModel.cpp", "NumberDisplayDataModel.cpp", "NumberSourceDataModel.cpp")
     add_files("*.hpp")
     add_headerfiles("*.hpp")
