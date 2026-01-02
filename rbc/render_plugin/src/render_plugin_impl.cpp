@@ -241,7 +241,6 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             .denoise_callback = [&denoiser, &stream]() {
                 stream << synchronize();
                 denoiser.execute();
-                stream << synchronize();
             }};
     }
     void destroy_denoise_task(luisa::compute::Stream &stream) override {

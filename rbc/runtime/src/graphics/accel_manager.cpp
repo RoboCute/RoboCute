@@ -616,11 +616,13 @@ auto AccelManager::draw_object(uint inst_id, uint draw_instance_count, uint obje
     }
     reinterpret_cast<uint &>(cmd.info.local_to_world_and_inst_id[2][3]) = triangle_offset;
     reinterpret_cast<uint &>(cmd.info.local_to_world_and_inst_id[3][3]) = inst_id;
+    BufferView<uint> vert_buffer = mesh_data->pack.mutable_data ? mesh_data->pack.mutable_data : mesh_data->pack.data;
+    BufferView<uint> index_buffer = mesh_data->pack.data ? mesh_data->pack.data : mesh_data->pack.data_view;
     VertexBufferView vbv{
-        mesh_data->pack.data.view(0, mesh_data->meta.vertex_count * 4).as<float4>()};
+        vert_buffer.subview(0, mesh_data->meta.vertex_count * 4).as<float4>()};
     cmd.mesh = RasterMesh(
         luisa::span{&vbv, 1},
-        mesh_data->pack.data.view(
+        index_buffer.subview(
             mesh_data->meta.tri_byte_offset / sizeof(uint) + triangle_offset * 3,
             triangle_size * 3),
         draw_instance_count, object_id, 0);
