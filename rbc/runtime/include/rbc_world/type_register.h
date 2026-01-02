@@ -19,7 +19,8 @@ private:
     virtual void destroy() = 0;
 protected:
     BaseObjectType base_obj_type;
-    RBC_RUNTIME_API TypeRegisterBase();
+    TypeRegisterBase() = default;
+    RBC_RUNTIME_API void _base_init();
     ~TypeRegisterBase() = default;
 public:
     [[nodiscard]] BaseObjectType base_type() const { return base_obj_type; }
@@ -38,6 +39,7 @@ struct TypeObjectRegister : TypeRegisterBase {
         : _ctor_func(ctor_func),
           _dtor_func(dtor_func) {
         TypeRegisterBase::base_obj_type = T::base_object_type_v;
+        _base_init();
     }
     void init() override {
         _pool.create(2, false);
@@ -74,6 +76,7 @@ struct TypeComponentRegister : TypeRegisterBase {
         : _ctor_func(ctor_func),
           _dtor_func(dtor_func) {
         TypeRegisterBase::base_obj_type = T::base_object_type_v;
+        _base_init();
     }
     void init() override {
         _pool.create(64, false);

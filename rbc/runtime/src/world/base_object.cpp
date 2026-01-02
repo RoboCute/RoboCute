@@ -11,10 +11,13 @@ struct BaseObjectStatics : RBCStruct {
     luisa::unordered_map<uint64_t, BaseObject *> _instance_ids;
     luisa::unordered_map<std::array<uint64_t, 2>, BaseObject *> _obj_guids;
     luisa::unordered_map<std::array<uint64_t, 2>, TypeRegisterBase *> _create_funcs;
+    void init_register(TypeRegisterBase *p) {
+        p->init();
+        _create_funcs.try_emplace(p->type_id(), p);
+    }
     BaseObjectStatics() {
         for (auto p = _type_register_header; p; p = p->p_next) {
-            p->init();
-            _create_funcs.try_emplace(p->type_id(), p);
+            init_register(p);
         }
     }
     ~BaseObjectStatics() {
@@ -27,10 +30,13 @@ struct BaseObjectStatics : RBCStruct {
     }
 };
 static BaseObjectStatics *_world_inst = nullptr;
-
-TypeRegisterBase::TypeRegisterBase() {
-    p_next = _type_register_header;
-    _type_register_header = this;
+void TypeRegisterBase::_base_init() {
+    if (_world_inst) {
+        _world_inst->init_register(this);
+    } else {
+        p_next = _type_register_header;
+        _type_register_header = this;
+    }
 }
 void _collect_all_materials();
 void init_resource_loader(luisa::filesystem::path const &meta_path);// in resource_base.cpp
