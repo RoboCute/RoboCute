@@ -25,8 +25,6 @@ add_rules('lc_install_sdk', {
         extract_dir = 'build/tool/clangd'
     }, {
         name = render_resources
-    }, {
-        name = sqlite3
     }}
 })
 target_end()
@@ -95,8 +93,7 @@ before_build(function(target)
     local cache_dir = path.join(shader_dir, '.cache', 'hostgen')
     local shader_out_dir = path.translate(path.join(builddir, 'shader_build_hostgen'))
     local args = {'--in=' .. path.translate(path.join(shader_dir, 'src')), '--out=' .. shader_out_dir,
-                  '--cache_dir=' .. cache_dir, 
-                  '--hostgen=' .. path.translate(path.join(shader_dir, 'host')),
+                  '--cache_dir=' .. cache_dir, '--hostgen=' .. path.translate(path.join(shader_dir, 'host')),
                   '--include=' .. path.translate(path.join(shader_dir, 'include'))}
     os.mkdir(cache_dir)
     os.execv(compiler_path, args)
