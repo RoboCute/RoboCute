@@ -25,6 +25,8 @@ add_rules('lc_install_sdk', {
         extract_dir = 'build/tool/clangd'
     }, {
         name = render_resources
+    }, {
+        name = sqlite3
     }}
 })
 target_end()

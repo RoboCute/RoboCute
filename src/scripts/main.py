@@ -22,6 +22,7 @@ from scripts.prepare import (
     ARCH,
     XMAKE_GLOBAL_TOOLCHAIN,
     OIDN_NAME,
+    SQLITE3
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder, get_project_root, rel
@@ -139,6 +140,10 @@ def download_packages():
             "address": address,
             "path": download_path,
         },
+        SQLITE3: {
+            "address": address,
+            "path": download_path,
+        },
         RENDER_RESOURCE_NAME: {
             "address": address,
             "path": download_path,
@@ -151,6 +156,7 @@ def download_packages():
     lua_file = f'''clangd_filename = "{CLANGD_NAME}"
 clangcxx_filename = "{CLANGCXX_NAME}"
 oidn = "{OIDN_NAME}"
+sqlite3 = "{SQLITE3}"
 render_resources = "{RENDER_RESOURCE_NAME}"
 '''
     ut._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
