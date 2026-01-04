@@ -4,6 +4,7 @@ includes("test_resource")
 includes("test_coro")
 includes("sample_anim")
 includes("model_viewer")
+includes("test_sql")
 
 function add_test(name, deps)
     deps = deps or {}

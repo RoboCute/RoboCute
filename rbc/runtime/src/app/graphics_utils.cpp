@@ -110,6 +110,7 @@ void GraphicsUtils::init_render() {
     _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, false);
     _sm->prepare_frame();
     _denoiser_inited = _render_plugin->init_oidn();
+    _render_plugin->sync_init();
 }
 
 void GraphicsUtils::init_present_stream() {

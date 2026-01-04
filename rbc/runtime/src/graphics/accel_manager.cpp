@@ -684,10 +684,12 @@ void AccelManager::make_draw_list(
     for (auto &drawcall : *mesh_map) {
         auto &mesh = drawcall.first;
         auto &inst_list = drawcall.second;
+        BufferView<uint> vert_buffer_data = mesh->pack.mutable_data ? mesh->pack.mutable_data : mesh->pack.data;
+        BufferView<uint> index_buffer_data = mesh->pack.data ? mesh->pack.data : mesh->pack.data_view;
         VertexBufferView vbv{
-            mesh->pack.data.view(0, mesh->meta.vertex_count * 4).as<float4>()};
+            vert_buffer_data.subview(0, mesh->meta.vertex_count * 4).as<float4>()};
         auto idx_size = mesh->triangle_size * 3;
-        auto index_buffer = mesh->pack.data.view(mesh->pack.data.size() - idx_size, idx_size);
+        auto index_buffer = index_buffer_data.subview(index_buffer_data.size() - idx_size, idx_size);
         for (auto submesh_idx : vstd::range(std::max<uint>(mesh->submesh_offset.size(), 1))) {
             auto &instance_indices = inst_list.instance_indices[submesh_idx];
             if (instance_indices.empty()) continue;

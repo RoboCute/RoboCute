@@ -20,6 +20,7 @@ struct RenderPlugin : Plugin {
     virtual PipeCtxStub *create_pipeline_context() = 0;
     virtual StateMap *pipe_ctx_state_map(PipeCtxStub *ctx) = 0;
     virtual void destroy_pipeline_context(PipeCtxStub *ctx) = 0;
+    virtual void sync_init() = 0;
     virtual Camera &get_camera(PipeCtxStub *pipe_ctx) = 0;
 
     // render_loop
