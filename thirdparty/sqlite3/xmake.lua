@@ -13,7 +13,7 @@ on_load(function(target)
             interface = true
         })
     else
-        target:add('defines', 'SQLITE_API=__attribute__((visibility("default")))')
+        target:add('defines', 'SQLITE_API=__attribute__((visibility("default")))', {public = true})
     end
 end)
 target_end()
