@@ -83,12 +83,12 @@ GIT_TASKS = {
         "branch": None,
         "deps": [],
     },
-    # "ozz_animation": {
-    #     "subdir": "thirdparty/ozz_animation",
-    #     "url": "https://github.com/RoboCute/ozz-animation.git",
-    #     "branch": None,
-    #     "deps": [],
-    # },
+    "ozz_animation": {
+        "subdir": "thirdparty/ozz_animation",
+        "url": "https://github.com/RoboCute/ozz-animation.git",
+        "branch": None,
+        "deps": [],
+    },
     # "jolt_physics": {
     #     "subdir": "thirdparty/jolt_physics",
     #     "url": "https://github.com/RoboCute/JoltPhysics.git",
