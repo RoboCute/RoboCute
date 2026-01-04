@@ -679,39 +679,23 @@ void QmlViewContainer::reloadQml() {
 
 ### 1. 热更新原理
 
+```mermaid
+---
+title: Hot Reload Flow
+---
+graph LR
+FC([File Changed]) --> 
+FW(
+    FileWatcher: 
+    检测QML/Plugin文件变更)
+ --> PM(
+    PluginManager: 
+    确定变更类型
+ )
+PM --> QML变更 --> UNQML(Clear Cache) --> REQML(Reload Engine) --> UI(UI Updated)
+PM --> DLL变更 --> UNDLL(unload Plugin) --> REDLL(load Plugin) --> UI
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Hot Reload Flow                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   [File Changed]                                                 │
-│        │                                                         │
-│        ▼                                                         │
-│   ┌─────────────┐                                               │
-│   │FileWatcher  │  检测QML/Plugin文件变更                        │
-│   └──────┬──────┘                                               │
-│          │                                                       │
-│          ▼                                                       │
-│   ┌─────────────┐                                               │
-│   │PluginManager│  确定变更类型                                  │
-│   └──────┬──────┘                                               │
-│          │                                                       │
-│      ┌───┴───┐                                                  │
-│      ▼       ▼                                                  │
-│   [QML变更] [DLL变更]                                           │
-│      │       │                                                  │
-│      ▼       ▼                                                  │
-│   clearCache  unloadPlugin                                      │
-│      │       │                                                  │
-│      ▼       ▼                                                  │
-│   reloadQml  loadPlugin                                         │
-│      │       │                                                  │
-│      └───┬───┘                                                  │
-│          ▼                                                       │
-│   [UI Updated]  ViewModel状态保持                               │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+
 
 ### 2. StyleManager（QML热重载核心）
 
@@ -912,43 +896,81 @@ extern "C" {
 
 #### 2.2 新架构设计
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  Result Viewer System                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────────┐        ┌──────────────────┐         │
-│  │ ResultViewer     │        │ AnimationViewer  │         │
-│  │   (Abstract)     │◄───────│   (Concrete)     │         │
-│  └────────┬─────────┘        └──────────────────┘         │
-│           │                                                 │
-│           │ uses                                            │
-│           ▼                                                 │
-│  ┌──────────────────┐                                      │
-│  │ IResultService   │                                      │
-│  │                  │                                      │
-│  │ - getResults()   │                                      │
-│  │ - loadResult()   │                                      │
-│  │ - exportResult() │                                      │
-│  └────────┬─────────┘                                      │
-│           │                                                 │
-│           │ implements                                      │
-│           ▼                                                 │
-│  ┌──────────────────┐        ┌──────────────────┐         │
-│  │ ResultService    │───────►│ PreviewScene     │         │
-│  │                  │        │   (Isolated)     │         │
-│  └────────┬─────────┘        └──────────────────┘         │
-│           │                                                 │
-│           │ uses                                            │
-│           ▼                                                 │
-│  ┌──────────────────┐                                      │
-│  │ IResultRepository│                                      │
-│  │                  │                                      │
-│  │ - fetch()        │                                      │
-│  │ - cache()        │                                      │
-│  └──────────────────┘                                      │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+
+```mermaid
+---
+title: Result Viewer System
+---
+classDiagram
+    class IResultViewer {
+        <<abstract>>
+        +setResult(IResult*)
+        +currentResult() IResult*
+        +play()
+        +pause()
+        +reset()
+    }
+    
+    class AnimationViewer {
+        +setResult(IResult*)
+        +setFrame(int)
+        +currentFrame() int
+        +createStandaloneWindow() AnimationViewer*
+    }
+    
+    class IResultService {
+        <<interface>>
+        +getAllResults() QList~IResult*~
+        +getResult(QString) IResult*
+        +getResultsByType(ResultType) QList~IResult*~
+        +addResult(IResult*)
+        +removeResult(QString)
+        +createPreviewScene(QString) IPreviewScene*
+        +exportResult(QString, QString) bool
+    }
+    
+    class ResultService {
+        -results_ QMap~QString, IResult*~
+        -previewScenes_ QList~IPreviewScene*~
+        +getAllResults() QList~IResult*~
+        +getResult(QString) IResult*
+        +addResult(IResult*)
+        +createPreviewScene(QString) IPreviewScene*
+    }
+    
+    class IPreviewScene {
+        <<interface>>
+        +loadResult(QString)
+        +clear()
+        +play()
+        +pause()
+        +setFrame(int)
+        +currentFrame() int
+        +renderer() IRenderer*
+    }
+    
+    class PreviewScene {
+        -scene_ EditorScene*
+        -renderer_ IRenderer*
+        -currentClip_ AnimationClip*
+        +loadResult(QString)
+        +play()
+        +pause()
+        +setFrame(int)
+    }
+    
+    class IResultRepository {
+        <<interface>>
+        +fetch(QString) IResult*
+        +cache(IResult*)
+    }
+    
+    IResultViewer <|-- AnimationViewer : inherits
+    AnimationViewer ..> IResultService : uses
+    IResultService <|.. ResultService : implements
+    ResultService --> IPreviewScene : creates
+    IPreviewScene <|.. PreviewScene : implements
+    ResultService ..> IResultRepository : uses
 ```
 
 #### 2.3 详细接口设计
