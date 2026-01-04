@@ -8,6 +8,7 @@ int main(int argc, char *argv[]) {
     auto meta_path = luisa::filesystem::path{argv[0]}.parent_path() / "dummy_scene";
     luisa::filesystem::remove_all(meta_path);
     world::init_world(meta_path);
+    world::load_all_resources_from_meta();
     auto dispose_runtime_static = vstd::scope_exit([] {
         world::destroy_world();
         RuntimeStaticBase::dispose_all();
@@ -50,10 +51,10 @@ int main(int argc, char *argv[]) {
 
         // wait dummy_ptr
         {
-            auto wait_skybox = [&]() -> rbc::coroutine{
+            auto wait_skybox = [&]() -> rbc::coroutine {
                 co_await dummy_ptr->await_loading();
             }();
-            while(!wait_skybox.done()){
+            while (!wait_skybox.done()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 wait_skybox.resume();
             }

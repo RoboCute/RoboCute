@@ -44,6 +44,7 @@ Project::Project(
             SqliteCpp::ColumnDesc{
                 .name = "GUID",
                 .type = SqliteCpp::DataType::String,
+                .unique = true,
                 .not_null = true});
         columns.emplace_back(
             SqliteCpp::ColumnDesc{
@@ -153,6 +154,7 @@ void Project::scan_project() {
                     std::move(i));
                 ++start_idx;
             }
+            _resources.emplace_back(file_guid);
             values_mtx.unlock();
         },
         128);
@@ -174,6 +176,52 @@ bool Project::_import_file(
     vstd::Guid file_guid) {
     // TODO
     return true;
+}
+
+void Project::collect_garbage_meta() {
+    luisa::vector<vstd::Guid> check_files;
+    luisa::spin_mutex check_mtx;
+    for (auto &i : std::filesystem::directory_iterator(_meta_path)) {
+        auto &path = i.path();
+        if (!i.is_regular_file()) {
+            luisa::filesystem::remove(path);
+            continue;
+        }
+        if (path.extension() != ".rbcmt") {
+            luisa::filesystem::remove(path);
+            continue;
+        }
+        auto file_name = path.filename();
+        auto base_path = luisa::to_string(file_name.replace_extension());
+        if (auto guid_result = vstd::Guid::TryParseGuid(base_path)) {
+            check_mtx.lock();
+            check_files.emplace_back(*guid_result);
+            check_mtx.unlock();
+        } else {
+            luisa::filesystem::remove(path);
+        }
+    }
+    auto func = [&](uint32_t i) {
+        auto &guid = check_files[i];
+        auto file_path = _meta_path / (guid.to_string() + ".rbcmt");
+        luisa::filesystem::path origin_file_path;
+        _db.read_columns_with(
+            "RBC_FILE_META"sv,
+            [&](SqliteCpp::ColumnValue &&value) {
+                origin_file_path = value.name;
+            },
+            "PATH"sv,
+            "GUID"sv,
+            guid.to_base64());
+        if (origin_file_path.empty() || !luisa::filesystem::is_regular_file(_assets_path / origin_file_path)) {
+            luisa::filesystem::remove(file_path);
+            return;
+        }
+    };
+    luisa::fiber::parallel(
+        check_files.size(),
+        func,
+        32);
 }
 
 Project::~Project() {}

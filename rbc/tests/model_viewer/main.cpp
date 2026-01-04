@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     }
 
     world::init_world(resource_dir);
-
+    world::load_all_resources_from_meta();
     // Load skybox
     RC<world::TextureResource> skybox;
     {

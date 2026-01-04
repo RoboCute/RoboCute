@@ -93,5 +93,8 @@ protected:
 };
 RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file = true);
 RBC_RUNTIME_API void register_resource(Resource *res);
+// No project or origin-files, load all meta-files from meta dir
+RBC_RUNTIME_API void load_all_resources_from_meta();
+RBC_RUNTIME_API void load_meta_file(luisa::span<vstd::Guid const> meta_files_guid);
 
 }// namespace rbc::world
