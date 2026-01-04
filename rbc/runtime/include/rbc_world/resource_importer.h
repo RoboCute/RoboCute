@@ -92,7 +92,7 @@ struct RBC_RUNTIME_API ResourceImporterRegistry {
 
 private:
     vstd::HashMap<ImporterKey, IResourceImporter *, KeyHash, KeyEqual> _importers;
-    mutable luisa::spin_mutex _mtx;
+    mutable rbc::shared_atomic_mutex _mtx;
 
 public:
     /**

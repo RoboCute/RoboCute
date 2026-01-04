@@ -1,7 +1,7 @@
 #include <rbc_core/utils/parse_string.h>
 #include <rbc_core/utils/fast_float.h>
 namespace rbc {
-vstd::variant<int64_t, double> parse_string_to(luisa::string_view string, uint32_t base) {
+vstd::optional<int64_t> parse_string_to_int(luisa::string_view string, uint32_t base) {
     const char *start = string.data();
     const char *end = start + string.size();
     {
@@ -11,6 +11,11 @@ vstd::variant<int64_t, double> parse_string_to(luisa::string_view string, uint32
             return result;
         }
     }
+    return {};
+}
+vstd::optional<double> parse_string_to_float(luisa::string_view string, uint32_t base) {
+    const char *start = string.data();
+    const char *end = start + string.size();
     {
         double result;
         auto err = fast_float::from_chars(start, end, result);

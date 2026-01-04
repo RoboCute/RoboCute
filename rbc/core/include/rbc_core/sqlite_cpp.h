@@ -45,15 +45,16 @@ public:
     };
     struct ColumnValue {
         luisa::string name;
-        ValueVariant value;
+        luisa::string value;
     };
     auto db() const { return _db; }
     SqliteCpp();
     SqliteCpp(char const *filename);
+    SqliteCpp(luisa::string const &str) : SqliteCpp{str.c_str()} {}
     ~SqliteCpp();
     SqliteCpp(SqliteCpp &&rhs);
     SqliteCpp(SqliteCpp const &) = delete;
-    bool check_table_exists(luisa::string_view table_name);
+    bool check_table_exists(luisa::string_view table_name) const;
     Result create_table(
         luisa::string_view table_name,
         luisa::span<ColumnDesc const> column_descs);
@@ -73,13 +74,13 @@ public:
         ValueVariant const &compare_column_value);
     Result select(
         char const *sql_command,
-        luisa::vector<ColumnValue> &out_result);
+        luisa::move_only_function<void(ColumnValue &&)> const &out_callback) const;
     Result read_columns_with(
         luisa::string_view table_name,
-        luisa::vector<ColumnValue> &out_result,
+        luisa::move_only_function<void(ColumnValue &&)> const &out_callback,
         luisa::string_view target_column_name = {},
         luisa::string_view compare_column_name = {},
-        ValueVariant const &compare_column_value = {});
-    Result execute(luisa::span<char const> command);
+        ValueVariant const &compare_column_value = {}) const;
+    Result execute(luisa::span<char const> command) const;
 };
 }// namespace rbc

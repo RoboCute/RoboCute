@@ -1,6 +1,6 @@
 #include <rbc_core/sqlite_cpp.h>
-#include <rbc_core/utils/parse_string.h>
 #include <luisa/core/stl/format.h>
+#include <luisa/core/logging.h>
 #include <sqlite3.h>
 
 namespace rbc {
@@ -175,7 +175,7 @@ auto SqliteCpp::insert_values(
     vec.push_back(0);
     return execute(vec);
 }
-auto SqliteCpp::execute(luisa::span<char const> command) -> Result {
+auto SqliteCpp::execute(luisa::span<char const> command) const -> Result {
     LUISA_DEBUG_ASSERT(command.back() == 0);
     char *err_msg{};
     int rc = sqlite3_exec(_db, command.data(), nullptr, 0, &err_msg);
@@ -190,7 +190,7 @@ auto SqliteCpp::execute(luisa::span<char const> command) -> Result {
     }
     return r;
 }
-bool SqliteCpp::check_table_exists(luisa::string_view table_name) {
+bool SqliteCpp::check_table_exists(luisa::string_view table_name) const {
     auto cmd = luisa::format("SELECT name FROM sqlite_master WHERE type='table' AND name='{}';", table_name);
     bool result{false};
     char *err_msg{};
@@ -253,7 +253,7 @@ auto SqliteCpp::update_with_key(
 }
 auto SqliteCpp::select(
     char const *sql_command,
-    luisa::vector<ColumnValue> &out_result) -> Result {
+    luisa::move_only_function<void(ColumnValue &&)> const &out_callback) const -> Result {
     sqlite3_stmt *stmt;
     Result r;
     int rc = sqlite3_prepare_v2(_db, sql_command, -1, &stmt, nullptr);
@@ -270,16 +270,10 @@ auto SqliteCpp::select(
                     const char *colName = sqlite3_column_name(stmt, i);      //get the column name
                     const unsigned char *text = sqlite3_column_text(stmt, i);//get the value from at that column as text
                     auto text_strv = luisa::string_view{reinterpret_cast<char const *>(text)};
-                    auto value = parse_string_to(text_strv);
-                    auto &v = out_result.emplace_back();
+                    ColumnValue v;
                     v.name = colName;
-                    if (!value.valid()) {
-                        v.value = text_strv;
-                    } else {
-                        value.visit([&](auto &&t) {
-                            v.value = t;
-                        });
-                    }
+                    v.value = text_strv;
+                    out_callback(std::move(v));
                 }
                 break;
             case SQLITE_DONE:          //case sqlite3_step() has finished executing
@@ -291,10 +285,10 @@ auto SqliteCpp::select(
 }
 auto SqliteCpp::read_columns_with(
     luisa::string_view table_name,
-    luisa::vector<ColumnValue> &out_result,
+    luisa::move_only_function<void(ColumnValue &&)> const &out_callback,
     luisa::string_view target_column_name,
     luisa::string_view compare_column_name,
-    ValueVariant const &compare_column_value) -> Result {
+    ValueVariant const &compare_column_value) const -> Result {
     luisa::string where_cmd;
     if (!compare_column_name.empty()) {
         where_cmd = luisa::format(" WHERE {}={}", compare_column_name, compare_column_value.visit_or<luisa::string>("NULL", [&]<typename T>(T const &t) {
@@ -306,7 +300,7 @@ auto SqliteCpp::read_columns_with(
         }));
     }
     auto sql_cmd = luisa::format("SELECT {} FROM {}{};", target_column_name.empty() ? "*"sv : target_column_name, table_name, where_cmd);
-    return select(sql_cmd.c_str(), out_result);
+    return select(sql_cmd.c_str(), out_callback);
 }
 SqliteCpp::Result::Result(Result &&rhs) {
     _err = rhs._err;

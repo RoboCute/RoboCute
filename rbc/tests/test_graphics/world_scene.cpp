@@ -10,6 +10,7 @@
 #include <rbc_render/click_manager.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
+// #include <rbc_world/project.h>
 
 #include <tracy_wrapper.h>
 
@@ -257,6 +258,21 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     }
     _set_gizmos();
     _init_skinning(utils);
+    // {
+    //     world::Project project{
+    //         "test_scene",
+    //         "test_scene_meta",
+    //         "test_scene_binary",
+    //         "test_scene_meta/.database"};
+    //     project.scan_project();
+    //     project.db().read_columns_with(
+    //         "RBC_FILE_META"sv,
+    //         [&](SqliteCpp::ColumnValue &&column) {
+    //             luisa::string spaces;
+    //             spaces.resize(32 - column.name.size(), ' ');
+    //             LUISA_INFO("Name: {}{}Value: {}", column.name, spaces, column.value);
+    //         });
+    // }
 }
 void WorldScene::_init_skinning(GraphicsUtils *utils) {
     auto &render_device = RenderDevice::instance();
