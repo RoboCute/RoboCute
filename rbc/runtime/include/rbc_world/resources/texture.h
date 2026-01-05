@@ -26,7 +26,6 @@ private:
     LCPixelStorage _pixel_storage;
     luisa::uint2 _size;
     uint32_t _mip_level{};
-    RC<VTLoadFlag> _vt_finished{};
     bool _is_vt{};
     TextureResource();
     ~TextureResource();

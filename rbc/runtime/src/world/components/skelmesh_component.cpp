@@ -90,7 +90,7 @@ void SkelMeshComponent::remove_object() {
 void SkelMeshComponent::StartUpdateRender(RenderComponent &render, luisa::span<RC<MaterialResource> const> mats) {
     // auto &ref_mesh = _skel_mesh_ref->ref_skin->ref_mesh;
     auto &render_data = runtime_skel_mesh->GetRenderObject().GetLODRenderData();
-    render.start_update_object(
+    render.update_object(
         mats, render_data.morph_mesh.get());
 }
 

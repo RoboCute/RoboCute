@@ -84,7 +84,7 @@ void TextureResource::create_empty(
     _is_vt = is_vt;
     if (is_vt) {
         _tex = new DeviceSparseImage();
-        _vt_finished = new VTLoadFlag{};
+        // _vt_finished = new VTLoadFlag{};
     } else {
         _tex = new DeviceImage();
     }
@@ -124,9 +124,10 @@ bool TextureResource::init_device_resource() {
         auto tex = static_cast<DeviceSparseImage *>(_tex.get());
         tex->load(
             TexStreamManager::instance(),
-            [vt_finished = this->_vt_finished]() {
-                vt_finished->finished = true;
-            },
+            // [vt_finished = this->_vt_finished]() {
+            //     vt_finished->finished = true;
+            // },
+            {},
             path,
             0,
             {},
@@ -159,12 +160,13 @@ bool TextureResource::_async_load_from_file() {
     if (is_vt()) {
         auto tex = new DeviceSparseImage();
         _tex = tex;
-        _vt_finished = new VTLoadFlag{};
+        // _vt_finished = new VTLoadFlag{};
         tex->load(
             TexStreamManager::instance(),
-            [vt_finished = this->_vt_finished]() {
-                vt_finished->finished = true;
-            },
+            // [vt_finished = this->_vt_finished]() {
+            //     vt_finished->finished = true;
+            // },
+            {},
             path,
             0,
             {},
@@ -220,7 +222,7 @@ bool TextureResource::_load_finished() const {
         return false;
     if (is_vt()) {
         auto vt = static_cast<DeviceSparseImage *>(_tex.get());
-        auto result = vt->load_executed() && _vt_finished->finished;
+        auto result = vt->load_executed();// && _vt_finished->finished;
         return result;
     } else {
         return static_cast<DeviceImage *>(_tex.get())->load_finished();
@@ -284,7 +286,7 @@ bool TextureResource::pack_to_tile() {
     save_to_path();
     _tex.reset();
     _tex = new DeviceSparseImage();
-    _vt_finished = new VTLoadFlag{};
+    // _vt_finished = new VTLoadFlag{};
     _is_vt = true;
     return true;
 }

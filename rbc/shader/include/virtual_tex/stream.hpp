@@ -44,7 +44,7 @@ inline float4 sample_vt(
 	value |= dst_level;
 	uint buffer_offset = chunk_offset + sub_level_idx;
 	g_vt_level_buffer.atomic_fetch_min(buffer_offset, value);
-	min_level = buffer_heap.uniform_idx_buffer_read<uint>(heap_indices::min_level_buffer_idx, buffer_offset);
+	min_level = buffer_heap.uniform_idx_buffer_read<uint16>(heap_indices::min_level_buffer_idx, buffer_offset);
 	return image_heap.image_sample_grad(tex_heap_idx, uv, ddx, ddy, min_level, filter, address);
 }
 inline float4 sample_vt(
@@ -71,7 +71,7 @@ inline float4 sample_vt(
 	value |= uint(target_level);
 	uint buffer_offset = chunk_offset + sub_level_idx;
 	g_vt_level_buffer.atomic_fetch_min(buffer_offset, value);
-	min_level = buffer_heap.uniform_idx_buffer_read<uint>(heap_indices::min_level_buffer_idx, buffer_offset);
+	min_level = buffer_heap.uniform_idx_buffer_read<uint16>(heap_indices::min_level_buffer_idx, buffer_offset);
 	return image_heap.image_sample_level(tex_heap_idx, uv, max((float)min_level, target_level), filter, address);
 }
 inline float4 sample_vt_quiet(
@@ -100,7 +100,7 @@ inline float4 sample_vt_quiet(
 	auto sub_level_coord = uint2(float2(sub_level_count) * uv);
 	auto sub_level_idx = sub_level_coord.x + sub_level_coord.y * sub_level_count.x;
 	uint buffer_offset = chunk_offset + sub_level_idx;
-	min_level = buffer_heap.uniform_idx_buffer_read<uint>(heap_indices::min_level_buffer_idx, buffer_offset);
+	min_level = buffer_heap.uniform_idx_buffer_read<uint16>(heap_indices::min_level_buffer_idx, buffer_offset);
 	return image_heap.image_sample_grad(tex_heap_idx, uv, ddx, ddy, min_level, filter, address);
 }
 inline float4 sample_vt_quiet(
@@ -123,7 +123,7 @@ inline float4 sample_vt_quiet(
 	auto sub_level_coord = uint2(float2(sub_level_count) * uv);
 	auto sub_level_idx = sub_level_coord.x + sub_level_coord.y * sub_level_count.x;
 	uint buffer_offset = chunk_offset + sub_level_idx;
-	min_level = buffer_heap.uniform_idx_buffer_read<uint>(heap_indices::min_level_buffer_idx, buffer_offset);
+	min_level = buffer_heap.uniform_idx_buffer_read<uint16>(heap_indices::min_level_buffer_idx, buffer_offset);
 	return image_heap.image_sample_level(tex_heap_idx, uv, max((float)min_level, target_level), filter, address);
 }
 }// namespace vt

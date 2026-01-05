@@ -67,7 +67,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
                 0, 0, -1));
         transform->set_rotation(rot, true);
         auto render = entity->add_component<world::RenderComponent>();
-        render->start_update_object(_mats, cbox_mesh);
+        render->update_object(_mats, cbox_mesh);
     }
     MeshBuilder mesh_builder;
     mesh_builder.position.emplace_back(make_float3(-0.5f, -0.5f, 0));
@@ -148,7 +148,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     auto mat_start_idx = _mats.size();
     _mats.emplace_back(quad_mat);
     auto mats = luisa::span{_mats}.subspan(mat_start_idx, 1);
-    quad_render->start_update_object(mats, quad_mesh);
+    quad_render->update_object(mats, quad_mesh);
 }
 void WorldScene::_write_scene() {
     // save scene
@@ -233,7 +233,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         for (auto &i : _entities) {
             auto render = i->get_component<world::RenderComponent>();
             if (render) {
-                render->start_update_object();
+                render->update_object();
             }
         }
         // wait skybox
@@ -293,7 +293,7 @@ void WorldScene::_init_physics(GraphicsUtils *utils) {
         auto render = physics_floor_entity->add_component<world::RenderComponent>();
         auto jolt = physics_floor_entity->add_component<world::JoltComponent>();
         jolt->init(true);
-        render->start_update_object({}, physics_box_mesh.get());
+        render->update_object({}, physics_box_mesh.get());
     }
     // box
     {
@@ -304,7 +304,7 @@ void WorldScene::_init_physics(GraphicsUtils *utils) {
         jolt->init(false);
         auto mats = {physics_mat};
         physics_mat->load_from_json(mat1);
-        render->start_update_object(mats, physics_box_mesh.get());
+        render->update_object(mats, physics_box_mesh.get());
     }
 }
 void WorldScene::_init_skinning(GraphicsUtils *utils) {
@@ -353,7 +353,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     auto tr = skinning_entity->add_component<world::TransformComponent>();
     tr->set_pos(double3(0, 2, 1), false);
     auto render = skinning_entity->add_component<world::RenderComponent>();
-    render->start_update_object({}, skinning_mesh.get());
+    render->update_object({}, skinning_mesh.get());
 }
 void WorldScene::_create_cube(MeshBuilder &mesh_builder, float3 offset, float3 scale) {
     auto idx = mesh_builder.position.size();

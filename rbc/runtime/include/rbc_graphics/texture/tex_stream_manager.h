@@ -122,13 +122,14 @@ private:
     IOService &_io_service;
     BindlessManager &_bdls_mng;
     BufferUploader _uploader;
-    Buffer<uint> _min_level_buffer;
+    Buffer<uint16_t> _min_level_buffer;
     Buffer<uint> _chunk_offset_buffer;
     BufferAllocator _level_buffer;
     std::mutex _async_mtx;
     vstd::HashMap<uint64, shared_ptr<TexIndex>> _loaded_texs;
     luisa::spin_mutex _dispose_map_mtx;
     vstd::HashMap<uint> _dispose_map;
+    Shader1D<Buffer<uint16_t>, uint> const *set_shader16;
     Shader1D<Buffer<uint>, uint> const *set_shader;
     Shader1D<Buffer<uint>, uint, uint> const *clear_shader;
     uint _countdown{(1u << 28u) - 2u};

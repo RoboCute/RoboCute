@@ -21,6 +21,7 @@ public:
     };
 
 private:
+    Shader2D<Buffer<uint16_t>, Buffer<uint16_t>, Buffer<uint>> const* _align2_copy{ nullptr };
     Shader2D<Buffer<uint>, Buffer<uint>, Buffer<uint>> const* _align4_copy{ nullptr };
     Shader2D<Buffer<uint2>, Buffer<uint2>, Buffer<uint>> const* _align8_copy{ nullptr };
     Shader2D<Buffer<uint4>, Buffer<uint4>, Buffer<uint>> const* _align16_copy{ nullptr };

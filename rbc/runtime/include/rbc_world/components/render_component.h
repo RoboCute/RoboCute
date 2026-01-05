@@ -32,9 +32,8 @@ public:
     // draw
     uint get_tlas_index() const;
     void remove_object();
-    void start_update_object(luisa::span<RC<MaterialResource> const> materials = {}, MeshResource *mesh = nullptr);
+    void update_object(luisa::span<RC<MaterialResource> const> materials = {}, MeshResource *mesh = nullptr);
 private:
-    coroutine _update_object(luisa::span<RC<MaterialResource> const> materials = {}, MeshResource *mesh = nullptr);
     void _update_object_pos(float4x4 matrix);
 };
 }// namespace rbc::world

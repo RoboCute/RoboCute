@@ -83,16 +83,17 @@ TexStreamManager::TexStreamManager(
     luisa::fiber::counter counter;
     _uploader.load_shader(counter);
     _frame_res.reserve(64);
-    _min_level_buffer = device.create_buffer<uint>(65536);
+    _min_level_buffer = device.create_buffer<uint16_t>(65536);
     _chunk_offset_buffer = device.create_buffer<uint>(262144u);
-    ShaderManager::instance()->load("texture_process/tex_mng_clear.bin", clear_shader);
-    ShaderManager::instance()->load("path_tracer/clear_buffer.bin", set_shader);
-    cmdlist << (*set_shader)(_min_level_buffer, 16u).dispatch(_min_level_buffer.size())
+    ShaderManager::instance()->async_load(counter, "texture_process/tex_mng_clear.bin", clear_shader);
+    ShaderManager::instance()->async_load(counter, "path_tracer/clear_buffer.bin", set_shader);
+    ShaderManager::instance()->async_load(counter, "path_tracer/clear_buffer16.bin", set_shader16);
+    counter.wait();
+    cmdlist << (*set_shader16)(_min_level_buffer, 32768u).dispatch(_min_level_buffer.size())
             << (*set_shader)(_chunk_offset_buffer, std::numeric_limits<uint>::max()).dispatch(_chunk_offset_buffer.size());
     bdls_mng.alloc().set_reserved_buffer(heap_indices::chunk_offset_buffer_idx, _chunk_offset_buffer);
     bdls_mng.alloc().set_reserved_buffer(heap_indices::min_level_buffer_idx, _min_level_buffer);
     _main_stream_event = device.create_timeline_event();
-    counter.wait();
 }
 
 size_t TexStreamManager::TexIndex::get_byte_offset(uint2 tile_idx, uint level) {
@@ -141,8 +142,8 @@ void TexStreamManager::_async_logic() {
                 for (auto &i : res->set_level_cmds) {
                     copy_cmd.indices.emplace_back(i.offset);
                     auto size = copy_cmd.datas.size();
-                    copy_cmd.datas.push_back_uninitialized(sizeof(uint));
-                    auto ptr = reinterpret_cast<uint *>(copy_cmd.datas.data() + size);
+                    copy_cmd.datas.push_back_uninitialized(sizeof(uint16_t));
+                    auto ptr = reinterpret_cast<uint16_t *>(copy_cmd.datas.data() + size);
                     *ptr = i.value;
                 }
             });
@@ -314,10 +315,10 @@ auto TexStreamManager::load_sparse_img(
         std::lock_guard lck{_uploader_mtx};
         auto callback = [&](Buffer<uint> const &old_buffer, Buffer<uint> const &new_buffer) {
             _uploader.swap_buffer(old_buffer, new_buffer);
-            auto new_min_level_buffer = _device.create_buffer<uint>(new_buffer.size());
+            auto new_min_level_buffer = _device.create_buffer<uint16_t>(new_buffer.size());
             auto rest_view = new_min_level_buffer.view(_min_level_buffer.size(), new_min_level_buffer.size() - _min_level_buffer.size());
             cmdlist << new_min_level_buffer.view(0, _min_level_buffer.size()).copy_from(_min_level_buffer)
-                    << (*set_shader)(rest_view, 16u).dispatch(rest_view.size());
+                    << (*set_shader16)(rest_view, 32768u).dispatch(rest_view.size());
             _uploader.swap_buffer(_min_level_buffer, new_min_level_buffer);
             disp_queue.dispose_after_queue(std::move(_min_level_buffer));
             _min_level_buffer = std::move(new_min_level_buffer);
