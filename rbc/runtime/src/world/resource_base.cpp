@@ -9,16 +9,10 @@
 #include <rbc_world/importers/register_importers.h>
 
 namespace rbc ::world {
-void Resource::set_path(luisa::filesystem::path const &path) {
-    if (!_path.empty()) [[unlikely]] {
-        LUISA_ERROR("Resource path already setted.");
-    }
-    _path = path;
+luisa::filesystem::path Resource::path() const {
+    return binary_root_path() / (guid().to_string() + ".rbcb");
 }
 bool Resource::save_to_path() {
-    if (_path.empty()) {
-        set_path(binary_root_path() / (guid().to_string() + ".rbcb"));
-    }
     return unsafe_save_to_path();
 }
 Resource::Resource() = default;
@@ -292,7 +286,6 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         return res;
     }
 
-    auto guid_str = guid.to_string();
     auto remove_value = [&]() {
         std::lock_guard lck{_res_loader->_resmap_mtx};
         _res_loader->resource_types.remove(guid);
@@ -315,7 +308,6 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     }
     ObjDeSerialize obj_deser{adapter};
     v->res = res->instance_id();
-    res->set_path(guid_str + ".rbcb");
     res->deserialize_meta(obj_deser);
     lck.unlock();
     if (async_load_from_file)
@@ -349,9 +341,6 @@ void Resource::serialize_meta(ObjSerialize const &obj) const {
     obj.ar.value(reinterpret_cast<vstd::Guid &>(type_id), "__typeid__");
 }
 void Resource::deserialize_meta(ObjDeSerialize const &obj) {
-    if (!_path.empty()) {
-        _path = _res_loader->_binary_path / _path;
-    }
 }
 luisa::filesystem::path const &Resource::meta_root_path() {
     return _res_loader->_meta_path;

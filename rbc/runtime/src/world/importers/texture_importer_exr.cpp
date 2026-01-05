@@ -31,7 +31,7 @@ bool ExrTextureImporter::import(
         static_cast<unsigned int>(height)};
     mip_level = TextureResource::desired_mip_level(size, mip_level);
 
-    resource->create_empty({}, LCPixelStorage::FLOAT4, size, mip_level, to_vt);
+    resource->create_empty(LCPixelStorage::FLOAT4, size, mip_level, to_vt);
 
     auto &img = resource->get_image()->host_data_ref();
     img.clear();

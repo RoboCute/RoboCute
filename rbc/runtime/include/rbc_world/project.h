@@ -7,13 +7,7 @@ struct RBC_RUNTIME_API Project {
 private:
     luisa::filesystem::path _assets_path;
     luisa::filesystem::path _meta_path;
-    luisa::filesystem::path _binary_path;
     luisa::vector<vstd::Guid> _resources;
-    Resource *_import_file(
-        luisa::filesystem::path const &origin_file_path,
-        luisa::filesystem::path const &binary_file_path,
-        vstd::Guid file_guid);
-
 public:
     // meta files in project
     luisa::span<vstd::Guid const> resources() const {
@@ -22,7 +16,6 @@ public:
     Project(
         luisa::filesystem::path assets_path,
         luisa::filesystem::path meta_path,
-        luisa::filesystem::path binary_path,
         luisa::filesystem::path const &assets_db_path);
     void scan_project();
     ~Project();

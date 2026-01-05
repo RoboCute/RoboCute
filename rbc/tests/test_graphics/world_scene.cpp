@@ -90,7 +90,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     luisa::vector<uint> submesh_offsets;
     luisa::vector<std::byte> quad_bytes;
     mesh_builder.write_to(quad_bytes, submesh_offsets);
-    quad_mesh->create_empty({}, std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
+    quad_mesh->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     auto s = quad_bytes.size_bytes();
     *quad_mesh->host_data() = std::move(quad_bytes);
     quad_mesh->init_device_resource();
@@ -280,7 +280,7 @@ void WorldScene::_init_physics(GraphicsUtils *utils) {
     physics_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
     {
         physics_box_mesh = world::create_object<world::MeshResource>();
-        physics_box_mesh->create_empty({}, std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
+        physics_box_mesh->create_empty(std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
 
         *physics_box_mesh->host_data() = std::move(cube_bytes);
         physics_box_mesh->init_device_resource();
@@ -320,7 +320,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     // create static origin mesh
     {
         skinning_origin_mesh = world::create_object<world::MeshResource>();
-        skinning_origin_mesh->create_empty({}, std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
+        skinning_origin_mesh->create_empty(std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
 
         *skinning_origin_mesh->host_data() = std::move(cube_bytes);
         skinning_origin_mesh->add_property("skinning_weight_index", cube_mesh_builder.vertex_count() * 2 * sizeof(uint));

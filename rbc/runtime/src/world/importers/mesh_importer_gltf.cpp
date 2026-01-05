@@ -39,7 +39,7 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
     luisa::vector<uint> submesh_offsets;
     luisa::vector<std::byte> resource_bytes;
     mesh_builder.write_to(resource_bytes, submesh_offsets);
-    resource->create_empty({}, std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
+    resource->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     *(resource->host_data()) = std::move(resource_bytes);
 
     // skinning
@@ -99,7 +99,7 @@ bool GlbMeshImporter::import(MeshResource *resource, luisa::filesystem::path con
     luisa::vector<uint> submesh_offsets;
     luisa::vector<std::byte> resource_bytes;
     mesh_builder.write_to(resource_bytes, submesh_offsets);
-    resource->create_empty({}, std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
+    resource->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     *(resource->host_data()) = std::move(resource_bytes);
 
     // skinning

@@ -95,11 +95,7 @@ public:
     
     // 保存到文件
     bool save_to_path();
-    
-    // 设置路径（仅当资源为空时）
-    void set_path(
-        luisa::filesystem::path const &path);
-    
+
     // 使用注册的导入器解码资源
     bool decode(luisa::filesystem::path const &path);
     
@@ -729,7 +725,6 @@ struct ResourceImportManager::Impl {
             auto resource_path = resources_dir / resource_type_to_string(type) / resource_filename;
             
             luisa::filesystem::create_directories(resource_path.parent_path());
-            resource->set_path(resource_path);
             
             if (!resource->save_to_path()) {
                 result.error_message = fmt::format("Failed to save resource to {}", 

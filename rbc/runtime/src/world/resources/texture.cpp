@@ -69,7 +69,6 @@ void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
 #undef RBC_MESH_LOAD
 }
 void TextureResource::create_empty(
-    luisa::filesystem::path &&path,
     LCPixelStorage pixel_storage,
     luisa::uint2 size,
     uint32_t mip_level,
@@ -79,7 +78,6 @@ void TextureResource::create_empty(
         LUISA_ERROR("Can not create on exists texture.");
     }
     std::lock_guard lck{_async_mtx};
-    _path = std::move(path);
     _size = size;
     _pixel_storage = pixel_storage;
     _mip_level = mip_level;
@@ -94,7 +92,7 @@ void TextureResource::create_empty(
 bool TextureResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex || _tex->host_data().empty()) return false;
-    BinaryFileWriter writer{luisa::to_string(_path)};
+    BinaryFileWriter writer{luisa::to_string(path())};
     if (!writer._file) [[unlikely]] {
         return false;
     }
@@ -117,8 +115,9 @@ bool TextureResource::init_device_resource() {
     auto host_data_ = host_data();
     LUISA_ASSERT(!host_data_ || host_data_->empty() || host_data_->size() == file_size, "Invalid host data length {}, requires {}.", host_data_->size(), file_size);
     std::lock_guard lck{_async_mtx};
+    auto path = this->path();
     if (is_vt()) {
-        if (_path.empty()) {
+        if (path.empty()) {
             LUISA_WARNING("Virtual texture must have path.");
             return false;
         }
@@ -128,7 +127,7 @@ bool TextureResource::init_device_resource() {
             [vt_finished = this->_vt_finished]() {
                 vt_finished->finished = true;
             },
-            _path,
+            path,
             0,
             {},
             (PixelStorage)_pixel_storage,
@@ -149,7 +148,8 @@ bool TextureResource::_async_load_from_file() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     auto file_size = desire_size_bytes();
-    if (_path.empty()) {
+    auto path = this->path();
+    if (path.empty()) {
         return false;
     }
     std::lock_guard lck{_async_mtx};
@@ -165,7 +165,7 @@ bool TextureResource::_async_load_from_file() {
             [vt_finished = this->_vt_finished]() {
                 vt_finished->finished = true;
             },
-            _path,
+            path,
             0,
             {},
             (PixelStorage)_pixel_storage,
@@ -175,7 +175,7 @@ bool TextureResource::_async_load_from_file() {
         auto tex = new DeviceImage();
         _tex = tex;
         tex->async_load_from_file(
-            _path,
+            path,
             0,
             {},
             (PixelStorage)_pixel_storage,

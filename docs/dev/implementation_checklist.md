@@ -290,7 +290,6 @@ if (importer && importer->can_import(asset_path)) {
 ```cpp
 auto resource_filename = fmt::format("{}.rbcb", resource->guid().to_string());
 auto resource_path = resources_dir / resource_type_to_string(type) / resource_filename;
-resource->set_path(resource_path);
 resource->save_to_path();
 ```
 

@@ -47,8 +47,8 @@ bool StbTextureImporter::import(
     luisa::uint2 size{
         static_cast<unsigned int>(x),
         static_cast<unsigned int>(y)};
-    mip_level = TextureResource::desired_mip_level(uint2(x,y), mip_level);
-    resource->create_empty({}, LCPixelStorage::BYTE4, size, mip_level, false);
+    mip_level = TextureResource::desired_mip_level(uint2(x, y), mip_level);
+    resource->create_empty(LCPixelStorage::BYTE4, size, mip_level, false);
     auto &img = resource->get_image()->host_data_ref();
     img.clear();
     img.push_back_uninitialized(resource->desire_size_bytes());

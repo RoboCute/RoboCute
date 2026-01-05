@@ -32,7 +32,6 @@ int main(int argc, char *argv[]) {
         auto write_to = [&](RC<DummyResource> &res) {
             // write binary
             auto bin = meta_path / (luisa::string{res->value()} + ".dummy");
-            res->set_path(bin);
             res->save_to_path();
             // write serialize_data
             world::register_resource(res.get());

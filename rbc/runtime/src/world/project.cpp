@@ -3,21 +3,17 @@
 #include <rbc_core/utils/parse_string.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_world/resource_base.h>
+#include <rbc_world/resource_importer.h>
 namespace rbc::world {
 static constexpr uint sql_column_count = 4;
 Project::Project(
     luisa::filesystem::path assets_path,
     luisa::filesystem::path meta_path,
-    luisa::filesystem::path binary_path,
     luisa::filesystem::path const &assets_db_path)
     : _assets_path(std::move(assets_path)),
-      _meta_path(std::move(meta_path)),
-      _binary_path(std::move(binary_path)) {
+      _meta_path(std::move(meta_path)) {
     if (!luisa::filesystem::is_directory(_meta_path)) {
         luisa::filesystem::create_directories(_meta_path);
-    }
-    if (!luisa::filesystem::is_directory(_binary_path)) {
-        luisa::filesystem::create_directories(_binary_path);
     }
     if (!luisa::filesystem::is_directory(_assets_path)) {
         luisa::filesystem::create_directories(_assets_path);
@@ -51,9 +47,8 @@ void Project::scan_project() {
             auto &path = paths[i];
             bool file_is_dirty{true};
             bool file_meta_is_dirty{false};
-            vstd::Guid guid;
+            luisa::vector<vstd::Guid> guids;
             vstd::Guid md5;
-            guid.reset();
             md5.reset();
             uint64_t file_last_write_time{};
             luisa::vector<std::byte> vec;
@@ -69,12 +64,24 @@ void Project::scan_project() {
                     return;
                 }
                 uint64_t last_write_time;
-                if (!deser.read(last_write_time, "last_write_time")) [[unlikely]]
-                    return;
-                if (!deser._load(guid, "guid")) [[unlikely]]
+                uint64_t guid_count;
+                if (deser.start_array(guid_count, "guids")) {
+                    guids.reserve(guid_count);
+                    for (auto i : vstd::range(guid_count)) {
+                        vstd::Guid guid;
+                        if (!deser._load(guid)) break;
+                        guids.emplace_back(guid);
+                    }
+                    deser.end_scope();
+                }
+                if (!deser.read(last_write_time, "last_time")) [[unlikely]]
                     return;
                 if (!deser._load(md5, "md5")) [[unlikely]] {
                     md5.reset();
+                    return;
+                }
+                if (!deser._load(file_is_dirty, "dirty") || file_is_dirty) {
+                    file_is_dirty = true;
                     return;
                 }
                 file_last_write_time = luisa::filesystem::last_write_time(path).time_since_epoch().count();
@@ -98,9 +105,6 @@ void Project::scan_project() {
             }();
             if (!(file_meta_is_dirty || file_is_dirty)) return;// file is clean
             file_meta_is_dirty |= file_is_dirty;
-            if (!guid) {
-                guid = vstd::Guid{true};
-            }
             auto update = [&] {
                 if (!md5) {
                     luisa::BinaryFileStream fs{luisa::to_string(path)};
@@ -116,30 +120,27 @@ void Project::scan_project() {
                 }
             };
             if (file_is_dirty) {
-                RC<Resource> res{_import_file(path, _binary_path / (guid.to_string() + "rbcb"), guid)};
-                if (!res) {
-                    return;
-                }
-                update();
-                register_resource(res.get());
+                // TODO: may need to process dirty file
             }
             if (file_meta_is_dirty) {
                 update();
-                auto meta_json = luisa::format(R"({{"guid":{},"md5":{},"last_write_time":{}}})", guid.to_base64(), md5.to_base64(), file_last_write_time);
+                luisa::fixed_vector<char, 64> guid_str;
+                for (auto i : vstd::range(guids.size())) {
+                    if (i > 0) {
+                        guid_str.push_back(',');
+                    }
+                    auto s = guids[i].to_base64();
+                    auto start_idx = guid_str.size();
+                    guid_str.push_back_uninitialized(s.size());
+                    std::memcpy(guid_str.data() + start_idx, s.data(), s.size());
+                }
+                auto meta_json = luisa::format(R"({{"guids":[{}],"md5":{},"dirty":{},"last_time":{}}})", luisa::string_view{guid_str.data(), guid_str.size()}, md5.to_base64(), file_is_dirty ? "true"sv : "false"sv, file_last_write_time);
                 BinaryFileWriter file_writer{
                     luisa::to_string(path) + ".rbcmt"};
                 file_writer.write({reinterpret_cast<std::byte const *>(meta_json.data()),
                                    meta_json.size()});
             }
         });
-}
-
-Resource *Project::_import_file(
-    luisa::filesystem::path const &origin_file_path,
-    luisa::filesystem::path const &binary_file_path,
-    vstd::Guid file_guid) {
-    // TODO
-    return nullptr;
 }
 
 Project::~Project() {}

@@ -43,7 +43,6 @@ public:
     [[nodiscard]] uint64_t desire_size_bytes() const;
     [[nodiscard]] uint32_t heap_index() const;
     void create_empty(
-        luisa::filesystem::path &&path,
         LCPixelStorage pixel_storage,
         luisa::uint2 size,
         uint32_t mip_level,

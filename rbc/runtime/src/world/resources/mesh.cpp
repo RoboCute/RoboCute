@@ -139,7 +139,6 @@ uint64_t MeshResource::desire_size_bytes() const {
 }
 
 void MeshResource::create_empty(
-    luisa::filesystem::path &&path,
     luisa::vector<uint> &&submesh_offsets,
     uint32_t vertex_count,
     uint32_t triangle_count,
@@ -151,7 +150,6 @@ void MeshResource::create_empty(
         LUISA_ERROR("Can not create on exists mesh.");
     }
     std::lock_guard lck{_async_mtx};
-    _path = std::move(path);
     _submesh_offsets = std::move(submesh_offsets);
     _vertex_count = vertex_count;
     _triangle_count = triangle_count;
@@ -223,7 +221,7 @@ bool MeshResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     auto mesh = device_mesh();
     if (!mesh || mesh->host_data().empty()) return false;
-    BinaryFileWriter writer{luisa::to_string(_path)};
+    BinaryFileWriter writer{luisa::to_string(path())};
     if (!writer._file) [[unlikely]] {
         return false;
     }
@@ -235,7 +233,8 @@ rbc::coroutine MeshResource::_async_load() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) co_return;
     auto file_size = desire_size_bytes();
-    if (_path.empty()) {
+    auto path = this->path();
+    if (path.empty()) {
         co_return;
     }
     std::lock_guard lck{_async_mtx};
@@ -246,7 +245,7 @@ rbc::coroutine MeshResource::_async_load() {
         auto mesh = new DeviceMesh{};
         _device_res = mesh;
         mesh->async_load_from_file(
-            _path,
+            path,
             _vertex_count,
             _triangle_count,
             _contained_normal,
