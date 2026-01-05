@@ -53,7 +53,8 @@ public:
     bool init_device_resource();
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
-    
+    static uint desired_mip_level(luisa::uint2 size, uint idx);
+
 protected:
     bool _async_load_from_file();
     bool _load_finished() const;

@@ -350,15 +350,26 @@ void GraphicsUtils::create_mesh(
         triangle_count,
         std::move(offsets));
 }
-void GraphicsUtils::update_texture(DeviceImage *ptr) {
+void GraphicsUtils::update_texture(DeviceImage *ptr, uint mip_level) {
     ptr->wait_finished();
     if (ptr->heap_idx() != ~0u) {
         _sm->set_io_cmdlist_require_sync();
     }
-    _sm->frame_mem_io_list() << IOCommand{
-        ptr->host_data().data(),
-        0,
-        IOTextureSubView{ptr->get_float_image()}};
+    auto &&img = ptr->get_float_image();
+    if (mip_level == ~0u) {
+        for (auto i : vstd::range(img.mip_levels())) {
+            _sm->frame_mem_io_list() << IOCommand{
+                ptr->host_data().data(),
+                0,
+                IOTextureSubView{img.view(i)}};
+        }
+    } else {
+        _sm->frame_mem_io_list() << IOCommand{
+            ptr->host_data().data(),
+            0,
+            IOTextureSubView{img.view(std::min<uint32_t>(img.mip_levels() - 1, mip_level))}};
+    }
+
     auto &sm = SceneManager::instance();
     sm.dispose_after_sync(RC<DeviceImage>(ptr));
 }

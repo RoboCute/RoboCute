@@ -29,9 +29,12 @@ bool ExrTextureImporter::import(
     luisa::uint2 size{
         static_cast<unsigned int>(width),
         static_cast<unsigned int>(height)};
+    mip_level = TextureResource::desired_mip_level(size, mip_level);
+
     resource->create_empty({}, LCPixelStorage::FLOAT4, size, mip_level, to_vt);
 
     auto &img = resource->get_image()->host_data_ref();
+    img.clear();
     img.push_back_uninitialized(resource->desire_size_bytes());
     size_t image_size = width * height * sizeof(float) * 4;
     std::memcpy(img.data(), out, image_size);

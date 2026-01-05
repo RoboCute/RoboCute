@@ -53,7 +53,8 @@ public:
     // deserialize_meta meta information
     RBC_RUNTIME_API void deserialize_meta(ObjDeSerialize const &obj) override;
     // RBC_RUNTIME_API virtual void (ObjDeSerialize const&obj);
-
+    RBC_RUNTIME_API static luisa::filesystem::path const &meta_root_path();
+    RBC_RUNTIME_API static luisa::filesystem::path const &binary_root_path();
     /**
      * @brief Decode resource from file using registered importers
      * @param path Path to the resource file

@@ -264,25 +264,37 @@ void TextureResource::_pack_to_tile_level(uint level, luisa::span<std::byte cons
 }
 bool TextureResource::pack_to_tile() {
     if (_is_vt) return false;
-    auto host_data_ = host_data();
-    if (!host_data_ || host_data_->empty()) return false;
-    LUISA_ASSERT(static_cast<DeviceImage *>(_tex.get())->type() == DeviceImage::ImageType::None, "Loaded texture can not be packed to vt.");
+    auto host_data_ptr = host_data();
+    if (!host_data_ptr || host_data_ptr->empty()) return false;
+    auto &host_data = *host_data_ptr;
     luisa::vector<std::byte> data;
-    data.push_back_uninitialized(host_data_->size());
+    data.push_back_uninitialized(host_data.size());
     auto size = _size;
     uint64_t offset = 0;
     for (auto i : vstd::range(_mip_level)) {
         auto level_size = pixel_storage_size((PixelStorage)_pixel_storage, make_uint3(size, 1u));
         _pack_to_tile_level(
             i,
-            luisa::span{*host_data_}.subspan(offset, level_size),
+            luisa::span{host_data}.subspan(offset, level_size),
             luisa::span{data}.subspan(offset, level_size));
         size >>= 1u;
         offset += level_size;
     }
-    *host_data_ = std::move(data);
+    host_data = std::move(data);
+    save_to_path();
+    _tex.reset();
+    _tex = new DeviceSparseImage();
+    _vt_finished = new VTLoadFlag{};
     _is_vt = true;
     return true;
+}
+
+uint TextureResource::desired_mip_level(luisa::uint2 size, uint idx) {
+    for (auto i : vstd::range(1, idx)) {
+        size >>= 1u;
+        if (any(size < 256u)) return i;
+    }
+    return idx;
 }
 
 DECLARE_WORLD_OBJECT_REGISTER(TextureResource)

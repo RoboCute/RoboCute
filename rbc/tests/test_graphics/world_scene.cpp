@@ -107,7 +107,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         //     16,
         //     true);
         tex = world::create_object<world::TextureResource>();
-        stb_importer.import(tex, &tex_loader, "test_grid.png", 1, false);
+        stb_importer.import(tex, &tex_loader, "test_grid.png", 16, true);
         // skybox = tex_loader.decode_texture(
         //     "sky.exr",
         //     1,
@@ -128,6 +128,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         // TODO: transform from regular tex to vt need reload device-image
         // tex->pack_to_tile();
         tex->init_device_resource();
+        // utils->update_texture(tex->get_image());
         skybox->init_device_resource();
     }
 
@@ -154,8 +155,6 @@ void WorldScene::_write_scene() {
     vstd::HashMap<vstd::Guid> saved;
     auto write_file = [&](world::Resource *res) {
         if (!res || !saved.try_emplace(res->guid()).second) return;
-        if (res->path().empty())
-            res->set_path(scene_root_dir / (res->guid().to_string() + ".rbcb"));
         res->save_to_path();
         world::register_resource(res);
     };

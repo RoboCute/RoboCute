@@ -16,7 +16,9 @@ void Resource::set_path(luisa::filesystem::path const &path) {
     _path = path;
 }
 bool Resource::save_to_path() {
-    if (_path.empty()) return false;
+    if (_path.empty()) {
+        set_path(binary_root_path() / (guid().to_string() + ".rbcb"));
+    }
     return unsafe_save_to_path();
 }
 Resource::Resource() = default;
@@ -165,9 +167,7 @@ struct ResourceLoader : RBCStruct {
             if (!parse_result) [[unlikely]] {
                 LUISA_ERROR("Database is broken. please re-generate from project.");
             }
-            resource_types.emplace(*parse_result);
-        },
-                                   "GUID"sv);
+            resource_types.emplace(*parse_result); }, "GUID"sv);
         auto iter = resource_types.begin();
         luisa::spin_mutex _iter_mtx;
         luisa::spin_mutex remove_mtx;
@@ -352,5 +352,11 @@ void Resource::deserialize_meta(ObjDeSerialize const &obj) {
     if (!_path.empty()) {
         _path = _res_loader->_binary_path / _path;
     }
+}
+luisa::filesystem::path const &Resource::meta_root_path() {
+    return _res_loader->_meta_path;
+}
+luisa::filesystem::path const &Resource::binary_root_path() {
+    return _res_loader->_binary_path;
 }
 }// namespace rbc::world

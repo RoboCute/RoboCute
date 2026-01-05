@@ -44,13 +44,13 @@ bool StbTextureImporter::import(
         (const stbi_uc *)data.data(), data.size(), &x, &y, &channels_in_file, 4);
 
     if (!ptr) return false;
-
     luisa::uint2 size{
         static_cast<unsigned int>(x),
         static_cast<unsigned int>(y)};
+    mip_level = TextureResource::desired_mip_level(uint2(x,y), mip_level);
     resource->create_empty({}, LCPixelStorage::BYTE4, size, mip_level, false);
-
     auto &img = resource->get_image()->host_data_ref();
+    img.clear();
     img.push_back_uninitialized(resource->desire_size_bytes());
     size_t image_size = x * y * sizeof(stbi_uc) * 4;
     std::memcpy(img.data(), ptr, image_size);
