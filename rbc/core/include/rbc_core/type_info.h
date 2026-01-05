@@ -13,6 +13,11 @@ namespace rbc_rtti_detail {
 template<typename T>
 struct is_rtti_type {
     static constexpr bool value = false;
+    static_assert(luisa::always_false_v<T>, "Invalid RTTI, did you forget declare \"RBC_RTTI(TT)\"");
+    static constexpr const char *name = "";
+    static std::array<uint64_t, 2> get_md5() {
+        return {};
+    }
 };
 }// namespace rbc_rtti_detail
 

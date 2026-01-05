@@ -18,7 +18,7 @@ for target_name, is_standalone in pairs(targets) do
         add_includedirs('generated', {
             interface = true
         })
-        add_deps('rbc_app')
+        add_deps('rbc_runtime')
     end
 
     local function test_graphics_impl()
@@ -40,6 +40,7 @@ for target_name, is_standalone in pairs(targets) do
                 end
                 target:set('kind', 'shared')
             end
+            target:add('deps', 'Jolt')
             target:add('deps', 'rbc_render_plugin', 'rbc_ipc', 'lc-gui', 'compile_shaders')
             target:add('deps', 'test_graphics_scene', {inherit = false})
             target:add('defines', 'TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')

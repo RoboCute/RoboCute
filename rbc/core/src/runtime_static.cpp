@@ -2,13 +2,17 @@
 
 namespace rbc {
 static RuntimeStaticBase *_runtime_static_header{};
-RuntimeStaticBase::RuntimeStaticBase() {
-    p_next = _runtime_static_header;
-    _runtime_static_header = this;
-}
-RuntimeStaticBase::~RuntimeStaticBase() {
+static bool _runtime_already_loaded{false};
+void RuntimeStaticBase::_base_init() {
+    if (_runtime_already_loaded) {
+        init();
+    } else {
+        p_next = _runtime_static_header;
+        _runtime_static_header = this;
+    }
 }
 void RuntimeStaticBase::init_all() {
+    _runtime_already_loaded = true;
     for (auto p = _runtime_static_header; p; p = p->p_next) {
         p->init();
     }

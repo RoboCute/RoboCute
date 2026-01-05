@@ -21,7 +21,7 @@ from scripts.prepare import (
     PLATFORM,
     ARCH,
     XMAKE_GLOBAL_TOOLCHAIN,
-    OIDN_NAME,
+    OIDN_NAME
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder, get_project_root, rel

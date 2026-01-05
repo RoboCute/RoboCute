@@ -73,6 +73,11 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
     void clear_context(PipeCtxStub *ctx) override {
         reinterpret_cast<PipelineContext *>(ctx)->clear();
     }
+    void sync_init() override {
+        auto ptr = get_pipe({});
+        if (!ptr) return;
+        ptr->wait_enable();
+    }
     bool before_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) override {
         auto ptr = get_pipe(pipeline_name);
         if (!ptr) return false;

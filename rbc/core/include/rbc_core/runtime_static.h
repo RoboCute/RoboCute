@@ -8,8 +8,9 @@ struct RuntimeStaticBase {
     RBC_CORE_API static void dispose_all();
 protected:
     RuntimeStaticBase *p_next{};
-    RBC_CORE_API RuntimeStaticBase();
-    RBC_CORE_API ~RuntimeStaticBase();
+    RuntimeStaticBase() = default;
+    ~RuntimeStaticBase() = default;
+    RBC_CORE_API void _base_init();
     static RBC_CORE_API void check_ptr(bool ptr);
 private:
     virtual void init() = 0;
@@ -20,8 +21,10 @@ template<typename T, typename... Args>
 struct RuntimeStatic : RuntimeStaticBase {
     vstd::optional<T> ptr;
     std::tuple<Args...> _args;
-    explicit RuntimeStatic(Args &&...args)
-        : _args(std::forward<Args>(args)...) {}
+    RuntimeStatic(Args &&...args)
+        : _args(std::forward<Args>(args)...) {
+        _base_init();
+    }
     T const *operator->() const {
         return ptr.ptr();
     }
@@ -54,6 +57,9 @@ template<typename T>
     requires std::is_default_constructible_v<T>
 struct RuntimeStatic<T> : RuntimeStaticBase {
     vstd::optional<T> ptr;
+    RuntimeStatic() {
+        _base_init();
+    }
     T const *operator->() const {
 #ifndef NDEBUG
         RuntimeStaticBase::check_ptr(ptr);

@@ -45,19 +45,14 @@ void ResourceImporterRegistry::unregister_importer(luisa::string_view extension,
     auto key = std::make_pair(ext, type);
 
     std::lock_guard lock(_mtx);
-    auto iter = _importers.find(key);
-    if (iter) {
-        // vstd::HashMap doesn't have erase, so we set to nullptr or use a different approach
-        // For now, we'll just leave it (unregistering is rarely needed)
-        // If needed, we could use a flag or rebuild the map
-    }
+    _importers.remove(key);
 }
 
 IResourceImporter *ResourceImporterRegistry::find_importer(luisa::string_view extension, ResourceType type) const {
     auto ext = normalize_extension(extension);
     auto key = std::make_pair(ext, type);
 
-    std::lock_guard lock(_mtx);
+    std::shared_lock lock(_mtx);
     auto iter = _importers.find(key);
     return iter ? iter.value() : nullptr;
 }
@@ -66,8 +61,7 @@ IResourceImporter *ResourceImporterRegistry::find_importer(luisa::filesystem::pa
     // First try exact match
     auto ext = normalize_extension(path.extension().string());
     auto key = std::make_pair(ext, type);
-
-    std::lock_guard lock(_mtx);
+    std::shared_lock lock(_mtx);
     auto iter = _importers.find(key);
     if (iter) {
         auto *importer = iter.value();

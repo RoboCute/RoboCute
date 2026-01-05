@@ -43,6 +43,6 @@ function interface_target(target_name, interface_callback, impl_callback, no_lin
     })
 end
 
-function add_interface_depend(target)
-    add_deps(target .. '_int__')
+function add_interface_depend(target, options)
+    add_deps(target .. '_int__', options)
 end

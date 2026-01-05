@@ -17,6 +17,7 @@
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 #include <rbc_render/click_manager.h>
+#include <luisa/gui/window.h>
 #include <rbc_app/camera_controller.h>
 #include <rbc_core/runtime_static.h>
 #include <rbc_plugin/plugin_manager.h>
@@ -48,7 +49,8 @@ int main(int argc, char *argv[]) {
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
-    utils.init_display_with_window(luisa::string{"test_graphics_"} + utils.backend_name(), uint2(1024), true);
+    Window window{luisa::string{"test_graphics_"} + utils.backend_name(), uint2(1024), true};
+    utils.init_display(window.size(), window.native_display(), window.native_handle());
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer
     Clock clk;
@@ -60,7 +62,7 @@ int main(int argc, char *argv[]) {
     // Test FOV
     bool reset = false;
     auto &click_mng = utils.render_settings().read_mut<ClickManager>();
-    uint2 window_size = utils.window()->size();
+    uint2 window_size = window.size();
     float2 start_uv, end_uv;
     luisa::vector<uint> dragged_object_ids;
     uint clicked_user_id;
@@ -73,7 +75,7 @@ int main(int argc, char *argv[]) {
 
     MouseStage stage{MouseStage::None};
     CameraController::Input camera_input;
-    utils.window()->set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
+    window.set_mouse_callback([&](MouseButton button, Action action, float2 xy) {
         if (button == MOUSE_BUTTON_1) {
             if (action == Action::ACTION_PRESSED) {
                 start_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
@@ -95,13 +97,13 @@ int main(int argc, char *argv[]) {
             }
         }
     });
-    utils.window()->set_cursor_position_callback([&](float2 xy) {
+    window.set_cursor_position_callback([&](float2 xy) {
         if (stage == MouseStage::Dragging) {
             end_uv = clamp(xy / make_float2(window_size), float2(0.f), float2(1.f));
         }
         camera_input.mouse_cursor_pos = xy;
     });
-    utils.window()->set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
+    window.set_key_callback([&](Key key, KeyModifiers modifiers, Action action) {
         bool pressed = false;
         if (action == Action::ACTION_PRESSED) {
             pressed = true;
@@ -170,11 +172,11 @@ int main(int argc, char *argv[]) {
     CameraController cam_controller;
     cam_controller.camera = &cam;
 
-    utils.window()->set_window_size_callback([&](uint2 size) {
+    window.set_window_size_callback([&](uint2 size) {
         window_size = size;
     });
     cam.fov = radians(80.f);
-    while (!utils.should_close()) {
+    while (!window.should_close()) {
         RBCFrameMark;// Mark frame boundary
 
         {
@@ -187,8 +189,8 @@ int main(int argc, char *argv[]) {
 
             {
                 RBCZoneScopedN("Poll Events");
-                if (utils.window())
-                    utils.window()->poll_events();
+                if (window)
+                    window.poll_events();
             }
 
             // reuse drag logic
@@ -200,7 +202,7 @@ int main(int argc, char *argv[]) {
             auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
             if (any(window_size != utils.dst_image().size())) {
                 RBCZoneScopedN("Resize Swapchain");
-                utils.resize_swapchain(window_size);
+                utils.resize_swapchain(window_size, window.native_display(), window.native_handle());
                 frame_index = 0;
             }
             if (reset) {
@@ -245,7 +247,6 @@ int main(int argc, char *argv[]) {
                         dragged_object_ids = std::move(dragging_result);
                 }
             }
-            
 
             {
                 RBCZoneScopedN("Render Tick");
@@ -256,6 +257,9 @@ int main(int argc, char *argv[]) {
                 //     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
                 // }
                 click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
+                if (SceneManager::instance().accel_dirty()) {
+                    frame_index = 0;
+                }
                 utils.tick(
                     static_cast<float>(delta_time),
                     frame_index,
