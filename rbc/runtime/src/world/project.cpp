@@ -1,6 +1,8 @@
 #include <rbc_world/project.h>
 #include <luisa/core/fiber.h>
 #include <rbc_core/utils/parse_string.h>
+#include <rbc_core/binary_file_writer.h>
+#include <rbc_world/resource_base.h>
 namespace rbc::world {
 static constexpr uint sql_column_count = 4;
 Project::Project(
@@ -8,21 +10,9 @@ Project::Project(
     luisa::filesystem::path meta_path,
     luisa::filesystem::path binary_path,
     luisa::filesystem::path const &assets_db_path)
-    : _db([&] {
-          if (assets_db_path.has_parent_path()) {
-              auto &&dir = assets_db_path.parent_path();
-              if (!dir.empty() && !luisa::filesystem::exists(dir)) {
-                  luisa::filesystem::create_directories(dir);
-              }
-          }
-          return luisa::to_string(assets_db_path);
-      }()),
-      _assets_path(std::move(assets_path)),
+    : _assets_path(std::move(assets_path)),
       _meta_path(std::move(meta_path)),
       _binary_path(std::move(binary_path)) {
-    if (!_db.db()) [[unlikely]] {
-        LUISA_ERROR("Create project database failed.");
-    }
     if (!luisa::filesystem::is_directory(_meta_path)) {
         luisa::filesystem::create_directories(_meta_path);
     }
@@ -31,36 +21,6 @@ Project::Project(
     }
     if (!luisa::filesystem::is_directory(_assets_path)) {
         luisa::filesystem::create_directories(_assets_path);
-    }
-    if (!_db.check_table_exists("RBC_FILE_META"sv)) {
-        luisa::fixed_vector<SqliteCpp::ColumnDesc, sql_column_count> columns;
-        columns.emplace_back(
-            SqliteCpp::ColumnDesc{
-                .name = "PATH",
-                .type = SqliteCpp::DataType::String,
-                .primary_key = true,
-                .unique = true,
-                .not_null = true});
-        columns.emplace_back(
-            SqliteCpp::ColumnDesc{
-                .name = "GUID",
-                .type = SqliteCpp::DataType::String,
-                .unique = true,
-                .not_null = true});
-        columns.emplace_back(
-            SqliteCpp::ColumnDesc{
-                .name = "LAST_WRITE_TIME",
-                .type = SqliteCpp::DataType::Int,
-                .not_null = true});
-        columns.emplace_back(
-            SqliteCpp::ColumnDesc{
-                .name = "META_LAST_WRITE_TIME",
-                .type = SqliteCpp::DataType::String,
-                .not_null = true});
-        LUISA_ASSERT(columns.size() == sql_column_count);
-        _db.create_table(
-            "RBC_FILE_META"sv,
-            columns);
     }
 }
 namespace detail {
@@ -78,152 +38,108 @@ void Project::scan_project() {
     luisa::spin_mutex values_mtx;
     luisa::vector<luisa::filesystem::path> paths;
     for (auto &i : std::filesystem::recursive_directory_iterator(_assets_path)) {
-        if (!i.is_regular_file()) {
+        if (!i.is_regular_file() || i.path().extension() == ".rbcmt") {
             continue;
         }
         // TODO: check file ext valid
         paths.emplace_back(i.path());
     }
-    luisa::vector<SqliteCpp::ValueVariant> insert_values;
+
     luisa::fiber::parallel(
         paths.size(),
         [&](size_t i) {
             auto &path = paths[i];
-            auto path_key = detail::get_path_key(path, _assets_path);
-            luisa::fixed_vector<SqliteCpp::ColumnValue, sql_column_count> values;
-            _db.read_columns_with("RBC_FILE_META"sv, [&](SqliteCpp::ColumnValue &&value) { values.emplace_back(std::move(value)); } /*read all meta*/, "PATH", path_key);
-            vstd::Guid file_guid;
-            file_guid.reset();
-            luisa::filesystem::path file_meta_path;
-            bool file_is_dirty = [&] {
-                if (values.size() != sql_column_count) return true;
-                if (values[1].name != "GUID") return true;
-                auto &&guid_str = values[1].value;
-                if (auto guid = vstd::Guid::TryParseGuid(guid_str)) {
-                    file_guid = *guid;
-                } else {
-                    return true;
+            bool file_is_dirty{true};
+            bool file_meta_is_dirty{false};
+            vstd::Guid guid;
+            vstd::Guid md5;
+            guid.reset();
+            md5.reset();
+            uint64_t file_last_write_time{};
+            luisa::vector<std::byte> vec;
+            [&] {
+                {
+                    luisa::BinaryFileStream fs{luisa::to_string(path) + ".rbcmt"};
+                    if (!fs.valid()) return;
+                    vec.push_back_uninitialized(fs.length());
+                    fs.read(vec);
                 }
-                if (values[2].name != "LAST_WRITE_TIME") return true;
-                if (values[3].name != "META_LAST_WRITE_TIME") return true;
-                auto last_time = luisa::filesystem::last_write_time(path).time_since_epoch().count();
-                // original file dirty
-                auto parse_last_time = parse_string_to_int(values[2].value);
-                if (!parse_last_time || *parse_last_time != last_time) {
-                    return true;
+                JsonDeSerializer deser{luisa::string_view{(char const *)vec.data(), vec.size()}};
+                if (!deser.valid()) [[unlikely]] {
+                    return;
                 }
-                file_meta_path = _meta_path / (file_guid.to_string() + ".rbcmt");
-                // meta file illegal
-                if (!luisa::filesystem::is_regular_file(file_meta_path)) {
-                    return true;
+                uint64_t last_write_time;
+                if (!deser.read(last_write_time, "last_write_time")) [[unlikely]]
+                    return;
+                if (!deser._load(guid, "guid")) [[unlikely]]
+                    return;
+                if (!deser._load(md5, "md5")) [[unlikely]] {
+                    md5.reset();
+                    return;
                 }
-                // meta file dirty
-                auto meta_parse_last_time = parse_string_to_int(values[3].value);
-                if (!meta_parse_last_time || luisa::filesystem::last_write_time(file_meta_path).time_since_epoch().count() != *meta_parse_last_time) {
-                    return true;
+                file_last_write_time = luisa::filesystem::last_write_time(path).time_since_epoch().count();
+                if (file_last_write_time != last_write_time) [[unlikely]] {
+                    // time not equal, check hash
+                    luisa::BinaryFileStream fs{luisa::to_string(path)};
+                    if (!fs.valid()) return;
+                    vec.clear();
+                    vec.push_back_uninitialized(fs.length());
+                    vstd::MD5 file_md5(
+                        {reinterpret_cast<uint8_t const *>(vec.data()),
+                         vec.size()});
+
+                    if (file_md5 != reinterpret_cast<vstd::MD5 &>(md5)) {
+                        reinterpret_cast<vstd::MD5 &>(md5) = file_md5;
+                        return;
+                    }
+                    file_meta_is_dirty = true;
                 }
-                return false;
+                file_is_dirty = false;
             }();
-            if (!file_guid) {
-                file_guid = vstd::Guid{true};
+            if (!(file_meta_is_dirty || file_is_dirty)) return;// file is clean
+            file_meta_is_dirty |= file_is_dirty;
+            if (!guid) {
+                guid = vstd::Guid{true};
             }
-            if (!file_is_dirty) return;
-            std::array<SqliteCpp::ValueVariant, sql_column_count> local_values;
-            if (!values.empty())
-                _db.delete_with_key("RBC_FILE_META"sv, "PATH", path_key);
-            if (file_meta_path.empty())
-                file_meta_path = _meta_path / (file_guid.to_string() + ".rbcmt");
-            // TODO: import
-            if (!_import_file(
-                    path,
-                    file_meta_path,
-                    _binary_path / (file_guid.to_string(), ".rbcb"),
-                    file_guid)) return;
-            local_values[0] = path_key;
-            local_values[1] = file_guid.to_base64();
-            local_values[2] = luisa::filesystem::last_write_time(path).time_since_epoch().count();
-            if (luisa::filesystem::is_regular_file(file_meta_path)) {
-                local_values[3] = luisa::filesystem::last_write_time(file_meta_path).time_since_epoch().count();
-            } else {
-                local_values[3] = int64_t(0);
+            auto update = [&] {
+                if (!md5) {
+                    luisa::BinaryFileStream fs{luisa::to_string(path)};
+                    if (!fs.valid()) return;
+                    vec.clear();
+                    vec.push_back_uninitialized(fs.length());
+                    md5 = vstd::MD5(
+                        {reinterpret_cast<uint8_t const *>(vec.data()),
+                         vec.size()});
+                }
+                if (file_last_write_time == 0) {
+                    file_last_write_time = luisa::filesystem::last_write_time(path).time_since_epoch().count();
+                }
+            };
+            if (file_is_dirty) {
+                RC<Resource> res{_import_file(path, _binary_path / (guid.to_string() + "rbcb"), guid)};
+                if (!res) {
+                    return;
+                }
+                update();
+                register_resource(res.get());
             }
-            values_mtx.lock();
-            size_t start_idx = insert_values.size();
-            insert_values.push_back_uninitialized(local_values.size());
-            for (auto &i : local_values) {
-                std::construct_at(
-                    std::addressof(insert_values[start_idx]),
-                    std::move(i));
-                ++start_idx;
+            if (file_meta_is_dirty) {
+                update();
+                auto meta_json = luisa::format(R"({{"guid":{},"md5":{},"last_write_time":{}}})", guid.to_base64(), md5.to_base64(), file_last_write_time);
+                BinaryFileWriter file_writer{
+                    luisa::to_string(path) + ".rbcmt"};
+                file_writer.write({reinterpret_cast<std::byte const *>(meta_json.data()),
+                                   meta_json.size()});
             }
-            _resources.emplace_back(file_guid);
-            values_mtx.unlock();
-        },
-        128);
-    if (!insert_values.empty()) {
-        std::initializer_list<luisa::string>
-            columns = {
-                "PATH",
-                "GUID",
-                "LAST_WRITE_TIME",
-                "META_LAST_WRITE_TIME"};
-        _db.insert_values("RBC_FILE_META"sv, columns, insert_values, true);
-    }
+        });
 }
 
-bool Project::_import_file(
+Resource *Project::_import_file(
     luisa::filesystem::path const &origin_file_path,
-    luisa::filesystem::path const &meta_file_path,
     luisa::filesystem::path const &binary_file_path,
     vstd::Guid file_guid) {
     // TODO
-    return true;
-}
-
-void Project::collect_garbage_meta() {
-    luisa::vector<vstd::Guid> check_files;
-    luisa::spin_mutex check_mtx;
-    for (auto &i : std::filesystem::directory_iterator(_meta_path)) {
-        auto &path = i.path();
-        if (!i.is_regular_file()) {
-            luisa::filesystem::remove(path);
-            continue;
-        }
-        if (path.extension() != ".rbcmt") {
-            luisa::filesystem::remove(path);
-            continue;
-        }
-        auto file_name = path.filename();
-        auto base_path = luisa::to_string(file_name.replace_extension());
-        if (auto guid_result = vstd::Guid::TryParseGuid(base_path)) {
-            check_mtx.lock();
-            check_files.emplace_back(*guid_result);
-            check_mtx.unlock();
-        } else {
-            luisa::filesystem::remove(path);
-        }
-    }
-    auto func = [&](uint32_t i) {
-        auto &guid = check_files[i];
-        auto file_path = _meta_path / (guid.to_string() + ".rbcmt");
-        luisa::filesystem::path origin_file_path;
-        _db.read_columns_with(
-            "RBC_FILE_META"sv,
-            [&](SqliteCpp::ColumnValue &&value) {
-                origin_file_path = value.name;
-            },
-            "PATH"sv,
-            "GUID"sv,
-            guid.to_base64());
-        if (origin_file_path.empty() || !luisa::filesystem::is_regular_file(_assets_path / origin_file_path)) {
-            luisa::filesystem::remove(file_path);
-            return;
-        }
-    };
-    luisa::fiber::parallel(
-        check_files.size(),
-        func,
-        32);
+    return nullptr;
 }
 
 Project::~Project() {}

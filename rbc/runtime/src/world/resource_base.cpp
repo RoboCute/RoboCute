@@ -165,9 +165,9 @@ struct ResourceLoader : RBCStruct {
             if (!parse_result) [[unlikely]] {
                 LUISA_ERROR("Database is broken. please re-generate from project.");
             }
-            resource_types.emplace(*parse_result); 
-        
-        }, "GUID"sv);
+            resource_types.emplace(*parse_result);
+        },
+                                   "GUID"sv);
         auto iter = resource_types.begin();
         luisa::spin_mutex _iter_mtx;
         luisa::spin_mutex remove_mtx;

@@ -263,9 +263,10 @@ void TextureResource::_pack_to_tile_level(uint level, luisa::span<std::byte cons
         }
 }
 bool TextureResource::pack_to_tile() {
-    if (_is_vt) return {};
+    if (_is_vt) return false;
     auto host_data_ = host_data();
-    if (!host_data_ || host_data_->empty()) return {};
+    if (!host_data_ || host_data_->empty()) return false;
+    LUISA_ASSERT(static_cast<DeviceImage *>(_tex.get())->type() == DeviceImage::ImageType::None, "Loaded texture can not be packed to vt.");
     luisa::vector<std::byte> data;
     data.push_back_uninitialized(host_data_->size());
     auto size = _size;
