@@ -8,9 +8,9 @@ do
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickControls2", "QtNetwork")
 
     add_files("src/**.cpp")
-    add_files("include/EditorRuntime/**.h")
+    add_files("include/RBCEditorRuntime/**.h")
     add_files("rbc_editor.qrc") -- source file
-    add_headerfiles("include/EditorRuntime/**.h")
+    add_headerfiles("include/RBCEditorRuntime/**.h")
     add_includedirs("include", {
         public = true
     })
