@@ -5,16 +5,22 @@
 #include <QStringList>
 #include <QtGlobal>
 #include <rbc_config.h>
+#include <QQmlEngine>
+
+#include "RBCEditorRuntime/core/EditorEngine.h"
+#include "RBCEditorRuntime/plugins/PluginManager.h"
+#include "RBCEditorRuntime/ui/WindowManager.h"
 
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
+    using namespace rbc;
     // 1. Initialize Render Engine Before Qt
-    // EditorEngine::instance().init(argc, argv);
+    EditorEngine::instance().init(argc, argv);
 
     // 2. Create Qt Application
-    // QApplication app(argc, argv);
+    QApplication app(argc, argv);
 
     // 3. Initialize Plugin System
-    // auto& pluginManager = PluginManager::instance();
+    auto &pluginManager = PluginManager::instance();
 
     // 4. Create and Register Core Service
     // auto *eventBus = new EventBus();
@@ -33,8 +39,8 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     // styleManager->initialize(argc, argv);
 
     // 6. Create QML Engine
-    // QQmlEngine engine;
-    // pluginManager.setQmlEngine(&engine);
+    QQmlEngine engine;
+    pluginManager.setQmlEngine(&engine);
 
     // 7. Create Built-in Plugin
     // pluginManager.loadPlugin(new CorePlugin());
@@ -48,8 +54,8 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     // pluginManager.watchPluginDirectory("./plugins");
 
     // 9. Create Main Window
-    // WindowManager windowManager(&pluginManager);
-    // windowManager.setupMainWindow();
+    WindowManager windowManager(&pluginManager);
+    windowManager.setup_main_window();
 
     // 10. Apply the UI contributions for all plugins
     // for (auto* plugin : pluginManager.getLoadedPlugins()) {
@@ -66,14 +72,15 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     // layoutService->loadLayout("default");
 
     // 12. Show Main Window
-    // windowManager.mainWindow()->show();
+    windowManager.main_window()->show();
 
     // 13. Run Event Loop
-    // int result = app.exec();
+    int result = app.exec();
 
     // 14. Clear
-    // pluginManager.unloadAllPlugins();
-    // EditorEngine::instance().shutdown();
+    pluginManager.unloadAllPlugins();
+    EditorEngine::instance().shutdown();
+    return 0;
 
     // QApplication app(argc, argv);
     // QWidget w;
@@ -81,5 +88,4 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     // w.show();
     // int res = app.exec();
     // return res;
-    return 0;
 }

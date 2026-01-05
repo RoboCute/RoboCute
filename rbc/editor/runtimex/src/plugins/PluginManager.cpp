@@ -24,6 +24,9 @@ bool PluginManager::reloadPlugin(const QString &pluginId) {
     return true;
 }
 
+void PluginManager::unloadAllPlugins() {
+}
+
 IEditorPlugin *PluginManager::getPlugin(const QString &id) const {
     return nullptr;
 }

@@ -7,4 +7,9 @@ EditorEngine &EditorEngine::instance() {
     return engine;
 }
 
+void EditorEngine::init(int argc, char **argv) {
+}
+
+void EditorEngine::shutdown() {}
+
 }// namespace rbc

@@ -5,7 +5,7 @@ do
         rtti = true
     })
     add_rules("qt.shared")
-    add_frameworks("QtCore", "QtGui", "QtWidgets")
+    add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick")
     add_deps("rbc_editor_runtimex", {
         public = true
     })
@@ -34,6 +34,7 @@ do
     add_rules("lc_basic_settings", {
         project_kind = "binary"
     })
+
     add_deps('rbc_editor_module', 'rbc_testbed_module', 'rbc_runtime')
     add_files('main_entry.cpp')
 end

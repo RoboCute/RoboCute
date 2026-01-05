@@ -2,23 +2,11 @@
 
 #include <QObject>
 #include <QQmlEngine>
+#include "RBCEditorRuntime/plugins/PluginContributions.h"
 
 namespace rbc {
 
 struct PluginContext;
-
-enum struct PluginState {
-};
-
-struct ViewContribution {
-    QString viewId;   // the unique identifier
-    QString title;    // display title
-    QString qmlSource;// relevant path for QML
-    QString dockArea; // (Left/Right/Top/Bottom/Center/...)
-    QString preferredSize;
-    bool closable;
-    bool movable;
-};
 
 struct MenuContribution {};
 struct ToolbarContribution {};

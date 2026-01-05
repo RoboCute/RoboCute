@@ -5,7 +5,7 @@ do
         rtti = true
     })
     add_rules("qt.shared")
-    add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickControls2", "QtNetwork")
+    add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickWidgets", "QtQuickControls2", "QtNetwork")
 
     add_files("src/**.cpp")
     add_files("include/RBCEditorRuntime/**.h")
@@ -16,5 +16,9 @@ do
     })
     add_deps("qt_node_editor", 'rbc_core')
     add_defines('RBC_EDITOR_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT')
+    add_defines('RBC_EDITOR_RUNTIME_API=LUISA_DECLSPEC_DLL_IMPORT', {
+        interface = true
+    })
 end
+
 target_end()

@@ -1,4 +1,5 @@
 #pragma once
+#include <rbc_config.h>
 #include <QObject>
 #include <QQmlEngine>
 #include <QFileSystemWatcher>
@@ -8,7 +9,7 @@ namespace rbc {
 
 struct IEditorPlugin;
 
-class PluginManager : public QObject {
+class RBC_EDITOR_RUNTIME_API PluginManager : public QObject {
     Q_OBJECT
 public:
     static PluginManager &instance();
@@ -18,6 +19,7 @@ public:
     bool loadPlugin(IEditorPlugin *plugin);
     bool unloadPlugin(const QString &pluginId);
     bool reloadPlugin(const QString &pluginId);
+    void unloadAllPlugins();// 集中卸载全部Plugins
 
     // Plugin Query
     IEditorPlugin *getPlugin(const QString &id) const;
