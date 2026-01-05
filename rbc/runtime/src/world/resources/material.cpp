@@ -161,10 +161,8 @@ bool MaterialResource::_async_load_from_file() {
     _loaded = true;
     BinaryFileStream file_stream(luisa::to_string(_path));
     if (!file_stream.valid()) return false;
-    if (_file_offset >= file_stream.length()) return false;
-    file_stream.set_pos(_file_offset);
     luisa::vector<char> json_vec;
-    json_vec.push_back_uninitialized(file_stream.length() - _file_offset);
+    json_vec.push_back_uninitialized(file_stream.length());
     file_stream.read(
         {reinterpret_cast<std::byte *>(json_vec.data()),
          json_vec.size()});

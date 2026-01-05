@@ -70,7 +70,6 @@ void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
 }
 void TextureResource::create_empty(
     luisa::filesystem::path &&path,
-    uint64_t file_offset,
     LCPixelStorage pixel_storage,
     luisa::uint2 size,
     uint32_t mip_level,
@@ -81,7 +80,6 @@ void TextureResource::create_empty(
     }
     std::lock_guard lck{_async_mtx};
     _path = std::move(path);
-    _file_offset = file_offset;
     _size = size;
     _pixel_storage = pixel_storage;
     _mip_level = mip_level;
@@ -131,7 +129,7 @@ bool TextureResource::init_device_resource() {
                 vt_finished->finished = true;
             },
             _path,
-            _file_offset,
+            0,
             {},
             (PixelStorage)_pixel_storage,
             _size,
@@ -168,7 +166,7 @@ bool TextureResource::_async_load_from_file() {
                 vt_finished->finished = true;
             },
             _path,
-            _file_offset,
+            0,
             {},
             (PixelStorage)_pixel_storage,
             _size,
@@ -178,7 +176,7 @@ bool TextureResource::_async_load_from_file() {
         _tex = tex;
         tex->async_load_from_file(
             _path,
-            _file_offset,
+            0,
             {},
             (PixelStorage)_pixel_storage,
             _size,

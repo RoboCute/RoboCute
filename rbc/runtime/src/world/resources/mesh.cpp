@@ -98,7 +98,6 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
             _##m = m;              \
         }                          \
     }
-    RBC_MESH_LOAD(file_offset)
     RBC_MESH_LOAD(contained_normal)
     RBC_MESH_LOAD(contained_tangent)
     RBC_MESH_LOAD(vertex_count)
@@ -142,7 +141,6 @@ uint64_t MeshResource::desire_size_bytes() const {
 void MeshResource::create_empty(
     luisa::filesystem::path &&path,
     luisa::vector<uint> &&submesh_offsets,
-    uint64_t file_offset,
     uint32_t vertex_count,
     uint32_t triangle_count,
     uint32_t uv_count,
@@ -154,7 +152,6 @@ void MeshResource::create_empty(
     }
     std::lock_guard lck{_async_mtx};
     _path = std::move(path);
-    _file_offset = file_offset;
     _submesh_offsets = std::move(submesh_offsets);
     _vertex_count = vertex_count;
     _triangle_count = triangle_count;
@@ -256,7 +253,7 @@ rbc::coroutine MeshResource::_async_load() {
             _contained_tangent,
             _uv_count, vstd::vector<uint>{_submesh_offsets},
             false, true,
-            _file_offset,
+            0,
             true, extra_size_bytes());
     } else {
         if (!_origin_mesh) {

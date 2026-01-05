@@ -90,7 +90,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     luisa::vector<uint> submesh_offsets;
     luisa::vector<std::byte> quad_bytes;
     mesh_builder.write_to(quad_bytes, submesh_offsets);
-    quad_mesh->create_empty({}, std::move(submesh_offsets), 0, mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
+    quad_mesh->create_empty({}, std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     auto s = quad_bytes.size_bytes();
     *quad_mesh->host_data() = std::move(quad_bytes);
     quad_mesh->init_device_resource();
@@ -155,17 +155,9 @@ void WorldScene::_write_scene() {
     auto write_file = [&](world::Resource *res) {
         if (!res || !saved.try_emplace(res->guid()).second) return;
         if (res->path().empty())
-            res->set_path(
-                scene_root_dir / (res->guid().to_string() + ".rbcb"),
-                0);
+            res->set_path(scene_root_dir / (res->guid().to_string() + ".rbcb"));
         res->save_to_path();
-        JsonSerializer js;
-        ArchiveWriteJson adapter(js);
-        res->serialize_meta(world::ObjSerialize{adapter});
-        auto blob = js.write_to();
-        LUISA_ASSERT(!blob.empty());
-        BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / (res->guid().to_string() + ".rbcmt")));
-        file_writer.write(blob);
+        world::register_resource(res);
     };
     write_file(cbox_mesh);
     write_file(quad_mesh);
@@ -192,7 +184,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     auto runtime_dir = render_device.lc_ctx().runtime_directory();
     luisa::filesystem::path meta_dir{"test_scene"};
     scene_root_dir = runtime_dir / meta_dir;
-    entities_path = scene_root_dir / "scene.rbcmt";
+    entities_path = scene_root_dir / "scene.rbc";
 
     // write a demo scene
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
@@ -289,7 +281,7 @@ void WorldScene::_init_physics(GraphicsUtils *utils) {
     physics_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
     {
         physics_box_mesh = world::create_object<world::MeshResource>();
-        physics_box_mesh->create_empty({}, std::move(submesh_offsets), 0, cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
+        physics_box_mesh->create_empty({}, std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
 
         *physics_box_mesh->host_data() = std::move(cube_bytes);
         physics_box_mesh->init_device_resource();
@@ -329,7 +321,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     // create static origin mesh
     {
         skinning_origin_mesh = world::create_object<world::MeshResource>();
-        skinning_origin_mesh->create_empty({}, std::move(submesh_offsets), 0, cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
+        skinning_origin_mesh->create_empty({}, std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
 
         *skinning_origin_mesh->host_data() = std::move(cube_bytes);
         skinning_origin_mesh->add_property("skinning_weight_index", cube_mesh_builder.vertex_count() * 2 * sizeof(uint));

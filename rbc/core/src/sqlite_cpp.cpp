@@ -125,7 +125,8 @@ auto SqliteCpp::create_table(
 auto SqliteCpp::insert_values(
     luisa::string_view table_name,
     luisa::span<luisa::string const> column_names,
-    luisa::span<ValueVariant const> values) -> Result {
+    luisa::span<ValueVariant const> values,
+    bool replace) -> Result {
     if (values.size() == 0 || values.size() % column_names.size() != 0) [[unlikely]] {
         LUISA_ERROR("values count not aligned as column_names count.");
     }
@@ -134,7 +135,11 @@ auto SqliteCpp::insert_values(
     size_t set_values = values.size() / column_names.size();
     vec.clear();
     using namespace sql_detail;
-    push_to(vec, "INSERT INTO "sv);
+    push_to(vec, "INSERT "sv);
+    if (replace) {
+        push_to(vec, "OR REPLACE "sv);
+    }
+    push_to(vec, "INTO "sv);
     push_to(vec, table_name);
     vec.push_back(' ');
     vec.push_back('(');

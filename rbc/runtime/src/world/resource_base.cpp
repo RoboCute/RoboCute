@@ -5,17 +5,15 @@
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>
+#include <rbc_core/sqlite_cpp.h>
 #include <rbc_world/importers/register_importers.h>
 
 namespace rbc ::world {
-void Resource::set_path(
-    luisa::filesystem::path const &path,
-    uint64_t const &file_offset) {
-    if (!_path.empty() || _file_offset != 0) [[unlikely]] {
+void Resource::set_path(luisa::filesystem::path const &path) {
+    if (!_path.empty()) [[unlikely]] {
         LUISA_ERROR("Resource path already setted.");
     }
     _path = path;
-    _file_offset = file_offset;
 }
 bool Resource::save_to_path() {
     if (_path.empty()) return false;
@@ -30,10 +28,11 @@ struct LoadingResource {
 struct ResourceLoader : RBCStruct {
     luisa::filesystem::path _meta_path;
     luisa::filesystem::path _binary_path;
+    SqliteCpp _meta_db;
 
     struct ResourceHandle {
         InstanceID res;
-        luisa::BinaryBlob json;
+        luisa::string json;
         luisa::spin_mutex mtx;
         ResourceHandle() = default;
         ResourceHandle(ResourceHandle &&rhs) noexcept : res(std::move(rhs.res)) {}
@@ -46,6 +45,30 @@ struct ResourceLoader : RBCStruct {
     std::atomic_bool _enabled = true;
     std::condition_variable _async_cv;
     std::mutex _async_mtx;
+    void init_db() {
+        if (!luisa::filesystem::is_directory(_meta_path)) {
+            luisa::filesystem::create_directories(_meta_path);
+        }
+        vstd::reset(_meta_db, luisa::to_string(_meta_path / ".meta_db"));
+        if (!_meta_db.check_table_exists("RBC_FILE_META"sv)) {
+            luisa::fixed_vector<SqliteCpp::ColumnDesc, 2> columns;
+            columns.emplace_back(
+                SqliteCpp::ColumnDesc{
+                    .name = "GUID",
+                    .type = SqliteCpp::DataType::String,
+                    .primary_key = true,
+                    .unique = true,
+                    .not_null = true});
+            columns.emplace_back(
+                SqliteCpp::ColumnDesc{
+                    .name = "META",
+                    .type = SqliteCpp::DataType::String,
+                    .not_null = true});
+            _meta_db.create_table(
+                "RBC_FILE_META"sv,
+                columns);
+        }
+    }
     void register_resource(Resource *res) {
         JsonSerializer js;
         rbc::ArchiveWriteJson adapter(js);
@@ -53,11 +76,13 @@ struct ResourceLoader : RBCStruct {
         _resmap_mtx.lock();
         auto &v = resource_types.force_emplace(res->guid()).value();
         _resmap_mtx.unlock();
-        v.json = js.write_to();
+        js.write_to(v.json);
         LUISA_ASSERT(v.json.size() > 0);
-
-        BinaryFileWriter file_writer(luisa::to_string(_meta_path / (res->guid().to_string() + ".rbcmt")));
-        file_writer.write(v.json);
+        auto columns = {luisa::string("GUID"), luisa::string("META")};
+        auto values = {
+            SqliteCpp::ValueVariant{res->guid().to_base64()},
+            SqliteCpp::ValueVariant{v.json}};
+        LUISA_ASSERT(_meta_db.insert_values("RBC_FILE_META"sv, columns, values, true).is_success(), "Write SQLITE failed.");
     }
     void _loading_thread() {
         auto execute = [&](LoadingResource &res) {
@@ -100,20 +125,11 @@ struct ResourceLoader : RBCStruct {
             execute(loading_res);
         }
     }
-    luisa::BinaryBlob to_binary(vstd::Guid guid) {
-        auto file_name = guid.to_string();
-        luisa::BinaryFileStream file_stream(luisa::to_string(_meta_path / (file_name + ".rbcmt")));
-        if (!file_stream.valid()) {
-            return {};
-        }
-        auto json = luisa::BinaryBlob{
-            (std::byte *)vengine_malloc(file_stream.length()),
-            file_stream.length(),
-            +[](void *ptr) { vengine_free(ptr); }};
-        file_stream.read(
-            {reinterpret_cast<std::byte *>(json.data()),
-             json.size()});
-        return json;
+    luisa::string to_binary(vstd::Guid guid) {
+        luisa::string result;
+        auto file_name = guid.to_base64();
+        _meta_db.read_columns_with("RBC_FILE_META"sv, [&](SqliteCpp::ColumnValue &&v) { result = std::move(v.value); }, "META"sv, "GUID"sv, file_name);
+        return result;
     }
     void load_meta_files(
         luisa::span<vstd::Guid const> meta_files_guid) {
@@ -130,7 +146,7 @@ struct ResourceLoader : RBCStruct {
             auto json = to_binary(guid);
             if (json.empty()) {
                 std::lock_guard lck{remove_mtx};
-                LUISA_WARNING("Read file {} failed.", guid.to_string() + ".rbcmt");
+                LUISA_WARNING("Read file meta {} failed.", guid.to_string());
                 removed_guid.emplace_back(guid);
                 return;
             }
@@ -144,25 +160,14 @@ struct ResourceLoader : RBCStruct {
 
     void load_all_resources() {
         std::lock_guard lck{_resmap_mtx};
-        // iterate all files
-        if (std::filesystem::exists(_meta_path)) {
-            for (auto &i : std::filesystem::directory_iterator(_meta_path)) {
-                if (!i.is_regular_file()) {
-                    continue;
-                }
-                auto &path = i.path();
-                if (path.extension() != ".rbcmt")
-                    continue;
-                auto file_name = path.filename();
-                auto base_path = luisa::to_string(file_name.replace_extension());
-                if (auto guid_result = vstd::Guid::TryParseGuid(base_path)) {
-                    resource_types.emplace(*guid_result);
-                }
+        _meta_db.read_columns_with("RBC_FILE_META"sv, [&](SqliteCpp::ColumnValue &&v) {
+            auto parse_result = vstd::Guid::TryParseGuid(v.value);
+            if (!parse_result) [[unlikely]] {
+                LUISA_ERROR("Database is broken. please re-generate from project.");
             }
-        } else {
-            std::filesystem::create_directories(_meta_path);
-            return;
-        }
+            resource_types.emplace(*parse_result); 
+        
+        }, "GUID"sv);
         auto iter = resource_types.begin();
         luisa::spin_mutex _iter_mtx;
         luisa::spin_mutex remove_mtx;
@@ -178,7 +183,7 @@ struct ResourceLoader : RBCStruct {
             auto json = to_binary(guid);
             if (json.empty()) {
                 std::lock_guard lck{remove_mtx};
-                LUISA_WARNING("Read file {} failed.", guid.to_string() + ".rbcmt");
+                LUISA_WARNING("Read file meta {} failed.", guid.to_string());
                 removed_guid.emplace_back(guid);
                 return;
             }
@@ -256,6 +261,7 @@ void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::files
     _res_loader = new ResourceLoader{};
     _res_loader->_meta_path = meta_path;
     _res_loader->_binary_path = binary_path;
+    _res_loader->init_db();
 }
 RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     {
@@ -309,6 +315,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     }
     ObjDeSerialize obj_deser{adapter};
     v->res = res->instance_id();
+    res->set_path(guid_str + ".rbcb");
     res->deserialize_meta(obj_deser);
     lck.unlock();
     if (async_load_from_file)
@@ -340,22 +347,10 @@ void dispose_resource_loader() {
 void Resource::serialize_meta(ObjSerialize const &obj) const {
     auto type_id = this->type_id();
     obj.ar.value(reinterpret_cast<vstd::Guid &>(type_id), "__typeid__");
-    if (!_path.empty()) {
-        auto relative_path = _path;
-        if (!relative_path.is_absolute()) {
-            relative_path = luisa::filesystem::absolute(relative_path);
-        }
-        relative_path = luisa::filesystem::relative(relative_path, _res_loader->_binary_path).lexically_normal();
-        obj.ar.value(luisa::to_string(relative_path), "path");
-        obj.ar.value(_file_offset, "file_offset");
-    }
 }
 void Resource::deserialize_meta(ObjDeSerialize const &obj) {
-    luisa::string path_str;
-    if (obj.ar.value(path_str, "path")) {
-        _path = path_str;
+    if (!_path.empty()) {
         _path = _res_loader->_binary_path / _path;
-        obj.ar.value(_file_offset, "file_offset");
     }
 }
 }// namespace rbc::world

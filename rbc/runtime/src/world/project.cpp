@@ -2,6 +2,7 @@
 #include <luisa/core/fiber.h>
 #include <rbc_core/utils/parse_string.h>
 namespace rbc::world {
+static constexpr uint sql_column_count = 4;
 Project::Project(
     luisa::filesystem::path assets_path,
     luisa::filesystem::path meta_path,
@@ -32,7 +33,7 @@ Project::Project(
         luisa::filesystem::create_directories(_assets_path);
     }
     if (!_db.check_table_exists("RBC_FILE_META"sv)) {
-        luisa::vector<SqliteCpp::ColumnDesc> columns;
+        luisa::fixed_vector<SqliteCpp::ColumnDesc, sql_column_count> columns;
         columns.emplace_back(
             SqliteCpp::ColumnDesc{
                 .name = "PATH",
@@ -56,6 +57,7 @@ Project::Project(
                 .name = "META_LAST_WRITE_TIME",
                 .type = SqliteCpp::DataType::String,
                 .not_null = true});
+        LUISA_ASSERT(columns.size() == sql_column_count);
         _db.create_table(
             "RBC_FILE_META"sv,
             columns);
@@ -88,13 +90,13 @@ void Project::scan_project() {
         [&](size_t i) {
             auto &path = paths[i];
             auto path_key = detail::get_path_key(path, _assets_path);
-            luisa::fixed_vector<SqliteCpp::ColumnValue, 4> values;
+            luisa::fixed_vector<SqliteCpp::ColumnValue, sql_column_count> values;
             _db.read_columns_with("RBC_FILE_META"sv, [&](SqliteCpp::ColumnValue &&value) { values.emplace_back(std::move(value)); } /*read all meta*/, "PATH", path_key);
             vstd::Guid file_guid;
             file_guid.reset();
             luisa::filesystem::path file_meta_path;
             bool file_is_dirty = [&] {
-                if (values.size() != 4) return true;
+                if (values.size() != sql_column_count) return true;
                 if (values[1].name != "GUID") return true;
                 auto &&guid_str = values[1].value;
                 if (auto guid = vstd::Guid::TryParseGuid(guid_str)) {
@@ -126,7 +128,7 @@ void Project::scan_project() {
                 file_guid = vstd::Guid{true};
             }
             if (!file_is_dirty) return;
-            std::array<SqliteCpp::ValueVariant, 4> local_values;
+            std::array<SqliteCpp::ValueVariant, sql_column_count> local_values;
             if (!values.empty())
                 _db.delete_with_key("RBC_FILE_META"sv, "PATH", path_key);
             if (file_meta_path.empty())
@@ -165,7 +167,7 @@ void Project::scan_project() {
                 "GUID",
                 "LAST_WRITE_TIME",
                 "META_LAST_WRITE_TIME"};
-        _db.insert_values("RBC_FILE_META"sv, columns, insert_values);
+        _db.insert_values("RBC_FILE_META"sv, columns, insert_values, true);
     }
 }
 

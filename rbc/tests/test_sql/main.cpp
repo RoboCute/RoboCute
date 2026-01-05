@@ -67,10 +67,10 @@ int main() {
         result = sqlite.insert_values(
             "STUDENT",
             column_names,
-            values);
-    if (!result.is_success()) {
-        LUISA_WARNING("{}", result.error_message());
-    }
+            values, true);
+        if (!result.is_success()) {
+            LUISA_WARNING("{}", result.error_message());
+        }
 
         // delete
         // result = sqlite.delete_with_key(

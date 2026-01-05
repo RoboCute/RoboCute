@@ -71,7 +71,6 @@ public:
     void create_empty(
         luisa::filesystem::path &&path,
         luisa::vector<uint> &&submesh_offsets,
-        uint64_t file_offset,
         uint32_t vertex_count,
         uint32_t triangle_count,
         uint32_t uv_count,
