@@ -20,7 +20,7 @@ add_files("main.cpp")
 add_defines("LUISA_QT_SAMPLE_ENABLE_DX", "LUISA_QT_SAMPLE_ENABLE_VK")
 -- Dependencies
 add_deps("rbc_core") -- For json_serde (yyjson)
-add_deps('rbc_runtime', 'rbc_render_plugin', 'rbc_app')
+add_deps('rbc_runtime', 'rbc_render_plugin')
 add_deps("lc-volk")
 add_deps("qt_node_editor")
 target_end()
