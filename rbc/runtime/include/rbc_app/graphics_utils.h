@@ -81,7 +81,8 @@ public:
         float delta_time,
         uint64_t frame_index,
         uint2 resolution,
-        TickStage tick_stage = TickStage::PathTracingPreview);
+        TickStage tick_stage = TickStage::PathTracingPreview,
+        bool enable_denoise = false);
     void denoise();
     void create_texture(
         DeviceImage *ptr,

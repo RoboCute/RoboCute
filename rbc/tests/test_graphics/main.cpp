@@ -26,6 +26,7 @@ using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
 #include <material/mats.inl>
+void save_image(luisa::filesystem::path const &path, Image<float> const &img);
 #ifdef STANDALONE
 int main(int argc, char *argv[]) {
     using namespace rbc;
@@ -53,7 +54,6 @@ int main(int argc, char *argv[]) {
     utils.init_display(window.size(), window.native_display(), window.native_handle());
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer
-    Clock clk;
     double last_frame_time = 0;
     // vstd::optional<SimpleScene> simple_scene;
     vstd::optional<WorldScene> world_scene;
@@ -176,6 +176,7 @@ int main(int argc, char *argv[]) {
         window_size = size;
     });
     cam.fov = radians(80.f);
+    Clock clk;
     while (!window.should_close()) {
         RBCFrameMark;// Mark frame boundary
 
@@ -247,28 +248,44 @@ int main(int argc, char *argv[]) {
                         dragged_object_ids = std::move(dragging_result);
                 }
             }
-
+            static constexpr bool offline_mode = false;
             {
+                static uint64_t saved_frame_index = 0;
                 RBCZoneScopedN("Render Tick");
-                world_scene->tick_skinning(&utils);
+                // if (clk.toc() > 2000.f)
+                if (!offline_mode || frame_index == 0)
+                    world_scene->tick_skinning(&utils, 1 / 10.0f);
                 auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
                 constexpr uint sample = 256;
-                // if (frame_index > sample) {
-                //     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
-                // }
+                if (offline_mode && frame_index > sample) {
+                    tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
+                }
                 click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
-                if (SceneManager::instance().accel_dirty()) {
+                if (SceneManager::instance().accel_dirty() || world::world_transform_dirty()) {
                     frame_index = 0;
                 }
                 utils.tick(
                     static_cast<float>(delta_time),
                     frame_index,
                     window_size,
-                    tick_stage);
-                // if (frame_index == sample) {
-                //     LUISA_INFO("Denoising..");
-                //     utils.denoise();
-                // }
+                    tick_stage,
+                    offline_mode);
+                if constexpr (offline_mode) {
+                    if (frame_index == sample) {
+                        LUISA_INFO("Denoising..");
+                        utils.denoise();
+                    }
+                    // after denoise, save image
+                    else if (frame_index == sample + 1) {
+                        if (!luisa::filesystem::exists("screenshots")) {
+                            luisa::filesystem::create_directories("screenshots");
+                        }
+                        save_image(
+                            luisa::format("screenshots/frame_{}.jpg", saved_frame_index++),
+                            utils.dst_image());
+                        frame_index = -1;
+                    }
+                }
             }
 
             ++frame_index;

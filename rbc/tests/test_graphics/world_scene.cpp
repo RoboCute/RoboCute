@@ -10,6 +10,7 @@
 #include <rbc_render/click_manager.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
+#include "jolt_component.h"
 // #include <rbc_world/project.h>
 
 #include <tracy_wrapper.h>
@@ -258,6 +259,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         utils->render_plugin()->update_skybox(image);
     }
     _set_gizmos();
+    // _init_physics(utils);
     _init_skinning(utils);
     // {
     //     world::Project project{
@@ -274,6 +276,45 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     //             LUISA_INFO("Name: {}{}Value: {}", column.name, spaces, column.value);
     //         });
     // }
+}
+void WorldScene::_init_physics(GraphicsUtils *utils) {
+    MeshBuilder cube_mesh_builder;
+    _create_cube(cube_mesh_builder, float3(-0.5f), float3(1));
+    luisa::vector<uint> submesh_offsets;
+    luisa::vector<std::byte> cube_bytes;
+    cube_mesh_builder.write_to(cube_bytes, submesh_offsets);
+    // create static origin mesh
+    auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
+
+    physics_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+    {
+        physics_box_mesh = world::create_object<world::MeshResource>();
+        physics_box_mesh->create_empty({}, std::move(submesh_offsets), 0, cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
+
+        *physics_box_mesh->host_data() = std::move(cube_bytes);
+        physics_box_mesh->init_device_resource();
+        utils->update_mesh_data(physics_box_mesh->device_mesh(), false);// update through render-thread
+    }
+    // floor
+    {
+        physics_floor_entity = world::create_object<world::Entity>();
+        auto tr = physics_floor_entity->add_component<world::TransformComponent>();
+        auto render = physics_floor_entity->add_component<world::RenderComponent>();
+        auto jolt = physics_floor_entity->add_component<world::JoltComponent>();
+        jolt->init(true);
+        render->start_update_object({}, physics_box_mesh.get());
+    }
+    // box
+    {
+        physics_box_entity = world::create_object<world::Entity>();
+        auto tr = physics_box_entity->add_component<world::TransformComponent>();
+        auto render = physics_box_entity->add_component<world::RenderComponent>();
+        auto jolt = physics_box_entity->add_component<world::JoltComponent>();
+        jolt->init(false);
+        auto mats = {physics_mat};
+        physics_mat->load_from_json(mat1);
+        render->start_update_object(mats, physics_box_mesh.get());
+    }
 }
 void WorldScene::_init_skinning(GraphicsUtils *utils) {
     auto &render_device = RenderDevice::instance();
@@ -412,6 +453,8 @@ void WorldScene::_set_gizmos() {
 bool WorldScene::draw_gizmos(
     bool dragging,
     GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, Camera const &cam) {
+    if (_entities.empty())
+        return false;
     RBCZoneScopedN("WorldScene::draw_gizmos");
 
     auto &click_mng = utils->render_settings().read_mut<ClickManager>();
@@ -514,9 +557,19 @@ WorldScene::~WorldScene() {
     skinning_entity.reset();
     skinning_mesh.reset();
     skinning_origin_mesh.reset();
+    physics_mat.reset();
+    physics_floor_entity.reset();
+    physics_box_entity.reset();
+    physics_box_mesh.reset();
     world::destroy_world();
 }
-void WorldScene::tick_skinning(GraphicsUtils *utils) {
+void WorldScene::tick_skinning(GraphicsUtils *utils, float delta_time) {
+    if (physics_box_entity) {
+        world::JoltComponent::update_step(min(delta_time, 1 / 60.0f));
+        physics_box_entity->get_component<world::JoltComponent>()->update_pos();
+    }
+    if (_entities.empty())
+        return;
     static Clock clk;
     auto &sm = SceneManager::instance();
     auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();

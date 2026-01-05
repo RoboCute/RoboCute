@@ -8,22 +8,6 @@
 #include <rbc_world/importers/register_importers.h>
 
 namespace rbc ::world {
-
-void Resource::serialize_meta(ObjSerialize const &obj) const {
-    auto type_id = this->type_id();
-    obj.ar.value(reinterpret_cast<vstd::Guid &>(type_id), "__typeid__");
-    if (!_path.empty()) {
-        obj.ar.value(luisa::to_string(_path), "path");
-        obj.ar.value(_file_offset, "file_offset");
-    }
-}
-void Resource::deserialize_meta(ObjDeSerialize const &obj) {
-    luisa::string path_str;
-    if (obj.ar.value(path_str, "path")) {
-        _path = path_str;
-        obj.ar.value(_file_offset, "file_offset");
-    }
-}
 void Resource::set_path(
     luisa::filesystem::path const &path,
     uint64_t const &file_offset) {
@@ -45,6 +29,7 @@ struct LoadingResource {
 };
 struct ResourceLoader : RBCStruct {
     luisa::filesystem::path _meta_path;
+    luisa::filesystem::path _binary_path;
 
     struct ResourceHandle {
         InstanceID res;
@@ -265,11 +250,12 @@ void load_meta_file(luisa::span<vstd::Guid const> meta_files_guid) {
     LUISA_ASSERT(_res_loader);
     _res_loader->load_meta_files(meta_files_guid);
 }
-void init_resource_loader(luisa::filesystem::path const &meta_path) {
+void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::filesystem::path const &binary_path) {
     // Register all built-in resource importers
     register_builtin_importers();
     _res_loader = new ResourceLoader{};
     _res_loader->_meta_path = meta_path;
+    _res_loader->_binary_path = binary_path;
 }
 RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     {
@@ -350,5 +336,26 @@ void dispose_resource_loader() {
     _res_loader->dispose();
     delete _res_loader;
     _res_loader = nullptr;
+}
+void Resource::serialize_meta(ObjSerialize const &obj) const {
+    auto type_id = this->type_id();
+    obj.ar.value(reinterpret_cast<vstd::Guid &>(type_id), "__typeid__");
+    if (!_path.empty()) {
+        auto relative_path = _path;
+        if (!relative_path.is_absolute()) {
+            relative_path = luisa::filesystem::absolute(relative_path);
+        }
+        relative_path = luisa::filesystem::relative(relative_path, _res_loader->_binary_path).lexically_normal();
+        obj.ar.value(luisa::to_string(relative_path), "path");
+        obj.ar.value(_file_offset, "file_offset");
+    }
+}
+void Resource::deserialize_meta(ObjDeSerialize const &obj) {
+    luisa::string path_str;
+    if (obj.ar.value(path_str, "path")) {
+        _path = path_str;
+        _path = _res_loader->_binary_path / _path;
+        obj.ar.value(_file_offset, "file_offset");
+    }
 }
 }// namespace rbc::world
