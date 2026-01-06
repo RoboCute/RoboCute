@@ -34,7 +34,9 @@ int main(int argc, char *argv[]) {
     using namespace luisa::compute;
     luisa::fiber::scheduler scheduler;
     RuntimeStaticBase::init_all();
+    PluginManager::init();
     auto dispose_runtime_static = vstd::scope_exit([] {
+        PluginManager::destroy_instance();
         RuntimeStaticBase::dispose_all();
     });
 
@@ -43,7 +45,6 @@ int main(int argc, char *argv[]) {
         backend = argv[1];
     }
     GraphicsUtils utils;
-    PluginManager::init();
     utils.init_device(
         argv[0],
         backend.c_str());

@@ -9,6 +9,7 @@
 #include <rbc_world/resources/texture.h>
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/material.h>
+#include <rbc_app/graphics_utils.h>
 
 namespace rbc {
 vstd::Guid Object::guid(void *this_) {
@@ -44,7 +45,9 @@ void *Entity::add_component(void *this_, luisa::string_view name) {
     auto e = static_cast<world::Entity *>(this_);
     auto comp = e->_create_component(
         reinterpret_cast<std::array<uint64_t, 2> const &>(md5));
-    if (!comp) return nullptr;
+    if (!comp) {
+        return nullptr;
+    }
     e->_add_component(comp);
     return comp;
 }
@@ -183,10 +186,24 @@ void TextureResource::create_empty(void *this_, rbc::LCPixelStorage pixel_storag
     auto c = static_cast<world::TextureResource *>(this_);
     c->create_empty(pixel_storage, size, mip_level, is_virtual_texture);
 }
+void TextureResource::upload(void *this_, uint mip_level) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    if (c->is_vt()) [[unlikely]] {
+        LUISA_ERROR("Can not upload to virtual-texture.");
+    }
+    auto tex = c->get_image();
+    if (!tex) [[unlikely]] {
+        LUISA_ERROR("Texture not initialized.");
+    }
+    GraphicsUtils::instance()->update_texture(tex, mip_level);
+}
 luisa::span<std::byte> TextureResource::data_buffer(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
     auto ptr = c->host_data();
     if (!ptr) return {};
+    if (ptr->empty()) {
+        ptr->push_back_uninitialized(c->desire_size_bytes());
+    }
     return *ptr;
 }
 bool TextureResource::has_data_buffer(void *this_) {
@@ -225,6 +242,15 @@ luisa::uint2 TextureResource::size(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
     return c->size();
 }
+void MeshResource::upload(void *this_, bool only_vertex) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    auto mesh = c->device_mesh();
+    if (!mesh) [[unlikely]] {
+        LUISA_ERROR("Can not upload to un-initialized mesh.");
+    }
+    GraphicsUtils::instance()->update_mesh_data(mesh, only_vertex);
+}
+
 uint64_t MeshResource::basic_size_bytes(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     return c->basic_size_bytes();
@@ -241,14 +267,20 @@ void MeshResource::create_as_morphing_instance(void *this_, void *origin_mesh) {
     auto c = static_cast<world::MeshResource *>(this_);
     c->create_as_morphing_instance(static_cast<world::MeshResource *>(origin_mesh));
 }
-void MeshResource::create_empty(void *this_, luisa::vector<int> const &submesh_offsets, uint32_t vertex_count, uint32_t triangle_count, uint32_t uv_count, bool contained_normal, bool contained_tangent) {
+void MeshResource::create_empty(void *this_, luisa::span<std::byte> offset, uint32_t vertex_count, uint32_t triangle_count, uint32_t uv_count, bool contained_normal, bool contained_tangent) {
+    luisa::vector<uint> submesh_offsets;
+    submesh_offsets.push_back_uninitialized(offset.size_bytes() / sizeof(uint));
+    std::memcpy(submesh_offsets.data(), offset.data(), submesh_offsets.size_bytes());
     auto c = static_cast<world::MeshResource *>(this_);
-    c->create_empty(reinterpret_cast<luisa::vector<uint> &&>(const_cast<luisa::vector<int> &>(submesh_offsets)), vertex_count, triangle_count, uv_count, contained_normal, contained_tangent);
+    c->create_empty(std::move(submesh_offsets), vertex_count, triangle_count, uv_count, contained_normal, contained_tangent);
 }
 luisa::span<std::byte> MeshResource::data_buffer(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     auto data = c->host_data();
     if (!data) return {};
+    if (data->empty()) {
+        data->push_back_uninitialized(c->basic_size_bytes());
+    }
     return *data;
 }
 uint64_t MeshResource::desire_size_bytes(void *this_) {
@@ -324,6 +356,7 @@ void RenderComponent::update_object(void *this_, luisa::vector<rbc::RC<rbc::RCBa
     c->update_object(
         luisa::span{
             reinterpret_cast<RC<world::MaterialResource> const *>(mat_vector.data()),
-            mat_vector.size()});
+            mat_vector.size()},
+        static_cast<world::MeshResource *>(mesh));
 }
 }// namespace rbc

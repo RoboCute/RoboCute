@@ -17,8 +17,18 @@ using namespace luisa;
 using namespace luisa::compute;
 #include <material/mats.inl>
 namespace rbc {
-GraphicsUtils::GraphicsUtils() {}
-GraphicsUtils::~GraphicsUtils() {};
+static GraphicsUtils *_graphics_utils_singleton{};
+GraphicsUtils *GraphicsUtils::instance() {
+    return _graphics_utils_singleton;
+}
+GraphicsUtils::GraphicsUtils() {
+    LUISA_ASSERT(!_graphics_utils_singleton);
+    _graphics_utils_singleton = this;
+}
+GraphicsUtils::~GraphicsUtils() {
+    LUISA_ASSERT(_graphics_utils_singleton == this);
+    _graphics_utils_singleton = nullptr;
+};
 
 void deser_openpbr(
     JsonSerializer &serde,

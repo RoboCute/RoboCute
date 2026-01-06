@@ -53,7 +53,7 @@ void init_world(
 }
 void destroy_world() {
     if (!_world_inst) [[unlikely]] {
-        LUISA_ERROR("World already destroyed.");
+        return;
     }
     dispose_resource_loader();
     delete _world_inst;

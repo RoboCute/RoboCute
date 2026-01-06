@@ -454,7 +454,7 @@ def generate():
 
     ut.codegen_to(cpp_path)(
         pybind_codegen, pyd_name, ["world_interface"], include)
-    ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["world_interface"])
+    ut.codegen_to(py_path)(py_interface_gen, "test_py_codegen", ["world_interface"])
 
     exit_code = 0
     duration = time.time() - start_time

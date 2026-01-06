@@ -4,10 +4,6 @@ from rbc_meta.utils.builtin import uint, uint2, ulong, float3, float4x4, VoidPtr
 from rbc_meta.types.resource_enums import LCPixelStorage
 from enum import Enum
 
-IntVector = ExternalType(
-    "luisa::vector<int>", False, "Vec<int>"
-)
-
 MaterialsVector = ExternalType(
     "luisa::vector<rbc::RC<rbc::RCBase>>", False, "Vec<rbc::RC<rbc::RCBase>>"
 )
@@ -18,13 +14,6 @@ class ResourceLoadStatus(Enum):
     Unloaded = 0
     Loading = 1
     Loaded = 2
-
-
-class Component:
-    pass
-
-
-Component._pybind_type_ = True
 
 
 @reflect(
@@ -47,8 +36,8 @@ class Object:
     inherit=Object
 )
 class Entity:
-    def add_component(name: str) -> Component: ...
-    def get_component(name: str) -> Component: ...
+    def add_component(name: str) -> VoidPtr: ...
+    def get_component(name: str) -> VoidPtr: ...
     def remove_component(name: str) -> bool: ...
 
 
@@ -153,6 +142,7 @@ class TextureResource:
     def has_data_buffer() -> bool: ...
     def data_buffer() -> DataBuffer: ...
     def heap_index() -> uint: ...
+    def upload(mip_level: uint) -> None: ...
 
 
 class MeshResource:
@@ -186,13 +176,14 @@ class MeshResource:
     def desire_size_bytes() -> ulong: ...
 
     def create_empty(
-        submesh_offsets: IntVector,
+        submesh_offsets: DataBuffer,
         vertex_count: uint,
         triangle_count: uint,
         uv_count: uint,
         contained_normal: bool,
         contained_tangent: bool,
     ) -> None: ...
+    def upload(only_vertex: bool) -> None: ...
 
     def create_as_morphing_instance(origin_mesh: MeshResource) -> None: ...
 

@@ -91,6 +91,9 @@ Lights::Lights()
     luisa::vector<uint> sphere_triangles;
     {
         LightAccel::generate_sphere_mesh(sphere_vertices, sphere_triangles);
+        for(auto& i : sphere_vertices) {
+            i *= 0.5f;
+        }
         auto data_buffer = device.create_buffer<uint>((sphere_triangles.size_bytes() + sphere_vertices.size_bytes()) / sizeof(uint));
         auto vert_buffer = scene.host_upload_buffer().allocate_upload_buffer<uint>(data_buffer.size());
         auto ptr = reinterpret_cast<std::byte *>(vert_buffer.mapped_ptr());
@@ -123,7 +126,7 @@ Lights::Lights()
         disk_triangles.reserve(3 * disk_split_triangle);
         auto get_vert = [](float weight) {
             auto rad = weight * luisa::pi * 2.f;
-            return float3(cos(rad), sin(rad), 0.f);
+            return float3(cos(rad), sin(rad), 0.f) * 0.5f;
         };
         // center
         disk_vertices.emplace_back(float3(0));

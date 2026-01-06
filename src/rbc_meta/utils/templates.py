@@ -153,22 +153,7 @@ PY_MODULE_TEMPLATE = Template("""
 # This File is Generated From Python Def
 # Modifying This File will not affect final result, checkout src/rbc_meta/ for real defs
 # ================== GENERATED CODE BEGIN ==================
-
-# BUILT-IN_IMPORT BEGIN
-from rbc_ext._C.test_py_codegen import (
-    float4x4,
-    float3,
-    uint2,
-    capsule_vector,
-    make_float4x4,
-    float4,
-    destroy_object,
-)
-# BUILT-IN_IMPORT END
-
-# USER_DEFINED_IMPORT BEGIN
-from rbc_ext._C.${MODULE_NAME} import ${IMPORT_NAMES}
-# USER_DEFINED_IMPORT END
+${MODULE_EXPR}
 
 ${ENUM_EXPRS}
 

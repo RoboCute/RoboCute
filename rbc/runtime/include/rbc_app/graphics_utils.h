@@ -55,6 +55,9 @@ public:
     GraphicsUtils();
     void dispose(vstd::function<void()> after_sync = {});
     ~GraphicsUtils();
+    GraphicsUtils(GraphicsUtils &&) = delete;
+    GraphicsUtils(GraphicsUtils const &) = delete;
+    static GraphicsUtils *instance();
     void init_device(luisa::string_view program_path, luisa::string_view backend_name);
     void init_graphics(luisa::filesystem::path const &shader_path);
     void init_present_stream();
