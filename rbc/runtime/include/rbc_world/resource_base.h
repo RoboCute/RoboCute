@@ -46,12 +46,6 @@ public:
     // RBC_RUNTIME_API virtual void (ObjDeSerialize const&obj);
     RBC_RUNTIME_API static luisa::filesystem::path const &meta_root_path();
     RBC_RUNTIME_API static luisa::filesystem::path const &binary_root_path();
-    /**
-     * @brief Decode resource from file using registered importers
-     * @param path Path to the resource file
-     * @return true if decode succeeded, false otherwise
-     */
-    RBC_RUNTIME_API bool decode(luisa::filesystem::path const &path);
 protected:
     virtual bool unsafe_save_to_path() const = 0;
 };

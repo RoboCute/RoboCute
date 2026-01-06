@@ -233,7 +233,7 @@ def _get_full_cpp_type(
 
     # Check if the type itself is registered
     info = None
-    if hasattr(type_hint, '_pybind_type_') and type_hint._pybind_type_ and not type_hint._is_enum_:
+    if hasattr(type_hint, '_pybind_type_') and type_hint._pybind_type_ and (not hasattr(type_hint, '_is_enum_') or not type_hint._is_enum_):
         return 'void*'
     if hasattr(type_hint, "__name__"):
         # Try to find by name in registry
@@ -246,7 +246,8 @@ def _get_full_cpp_type(
         if info.cpp_namespace in cpp_type:  # Already has namespace?
             return cpp_type
         return f"{info.cpp_namespace}::{cpp_type}"
-
+    # elif not info:
+    #     return "void*"
     return cpp_type
 
 
@@ -922,7 +923,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
             args_call = _print_py_args(method_params, False, False)
             return_expr = "return " if method.return_type else ""
             return_end = ''
-            if method.return_type and hasattr(method.return_type, '_pybind_type_') and method.return_type._pybind_type_ and not method.return_type._is_enum_:
+            if method.return_type and hasattr(method.return_type, '_pybind_type_') and method.return_type._pybind_type_ and (not hasattr(method.return_type, '_is_enum_') or not method.return_type._is_enum_):
                 return_expr += _get_py_type(method.return_type) + '('
                 return_end = ')'
 

@@ -41,6 +41,7 @@ inline float4 sample_vt(
     auto sub_level_coord = uint2(float2(sub_level_count) * uv);
     auto sub_level_idx = sub_level_coord.x + sub_level_coord.y * sub_level_count.x;
     uint value = vt_meta.frame_countdown << uint(4);
+    dst_level = clamp(dst_level, 0u, 15u);
     value |= dst_level;
     uint buffer_offset = chunk_offset + sub_level_idx;
     g_vt_level_buffer.atomic_fetch_min(buffer_offset, value);
@@ -71,6 +72,7 @@ inline float4 sample_vt(
     auto sub_level_coord = uint2(float2(sub_level_count) * uv);
     auto sub_level_idx = sub_level_coord.x + sub_level_coord.y * sub_level_count.x;
     uint value = vt_meta.frame_countdown << uint(4);
+    target_level = clamp(target_level, 0u, 15u);
     value |= uint(target_level);
     uint buffer_offset = chunk_offset + sub_level_idx;
     g_vt_level_buffer.atomic_fetch_min(buffer_offset, value);
