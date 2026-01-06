@@ -26,14 +26,11 @@ bool ConnectionPlugin::load(PluginContext *context) {
     context_ = context;
 
     // Get ConnectionService from PluginManager
-    auto &pm = EditorPluginManager::instance();
-    connectionService_ = pm.getService<ConnectionService>();
+    connectionService_ = context->getService<ConnectionService>();
 
     if (!connectionService_) {
-        qWarning() << "ConnectionPlugin::load: ConnectionService not found, creating default";
-        // Create a default ConnectionService if not registered
-        connectionService_ = new ConnectionService(this);
-        pm.registerService("ConnectionService", connectionService_);
+        qWarning() << "ConnectionPlugin::load: ConnectionService should be registered before ConnectionPlugin load";
+        return false;
     }
 
     // Create ViewModel

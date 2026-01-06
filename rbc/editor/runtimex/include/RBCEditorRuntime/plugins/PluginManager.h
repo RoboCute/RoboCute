@@ -34,6 +34,10 @@ public:
 
     // Register Services
     void registerService(const QString &name, QObject *service);
+    template<typename T>
+    void registerService(T *service) {
+        registerService(T::staticMetaObject.className(), service);
+    }
     QObject *getService(const QString &name) const;
 
     template<typename T>

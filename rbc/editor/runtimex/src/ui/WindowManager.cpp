@@ -12,9 +12,7 @@
 namespace rbc {
 
 WindowManager::WindowManager(EditorPluginManager *plugin_mng, QObject *parent)
-    : QObject(parent)
-    , main_window_(nullptr)
-    , plugin_mng_(plugin_mng) {
+    : QObject(parent), main_window_(nullptr), plugin_mng_(plugin_mng) {
 }
 
 void WindowManager::setup_main_window() {
@@ -82,7 +80,7 @@ QDockWidget *WindowManager::createDockableView(const ViewContribution &contribut
     } else if (contribution.dockArea == "Bottom") {
         dockArea = Qt::BottomDockWidgetArea;
     } else if (contribution.dockArea == "Center") {
-        dockArea = Qt::NoDockWidgetArea; // Center is not a dock area
+        dockArea = Qt::NoDockWidgetArea;// Center is not a dock area
     }
 
     // Parse preferred size

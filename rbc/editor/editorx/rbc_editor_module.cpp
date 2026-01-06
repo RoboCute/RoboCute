@@ -30,16 +30,16 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     // Set Qt Quick Controls style to Fusion via environment variable
     // This allows custom backgrounds in Button and TextField
     qputenv("QT_QUICK_CONTROLS_STYLE", "Fusion");
-    
+
     QApplication app(argc, argv);
 
     // 3. Initialize Plugin System
     auto &pluginManager = EditorPluginManager::instance();
-
     // 4. Create and Register Core Services
     // Create ConnectionService
+
     auto *connectionService = new ConnectionService(&app);
-    pluginManager.registerService("ConnectionService", connectionService);
+    pluginManager.registerService(connectionService);
     qDebug() << "ConnectionService registered";
 
     // 5. Create QML Engine
@@ -119,7 +119,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     }
 
     // 10. Show Main Window
-    mainWindow->resize(1280, 720);
+    mainWindow->resize(1920, 1080);
     mainWindow->show();
     qDebug() << "Main window shown";
 
