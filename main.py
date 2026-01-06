@@ -70,6 +70,7 @@ def main():
     # create a green smaller one
     robot2 = scene.create_entity("Robot")
     print(f"    Created entity: {robot2.name} (ID: {robot2.id})")
+
     scene.add_component(
         robot2.id,
         "transform",
@@ -116,12 +117,23 @@ def main():
     node_graph_service = rbc.NodeGraphService(scene)
     server.register_service(node_graph_service)
 
+    # Register health check endpoint for connection plugin
+    from datetime import datetime
+    @server.app.get("/health")
+    async def health_check():
+        """健康检查接口，供 ConnectionPlugin 使用"""
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+        }
+
     # Start server
     print("\n[5] Starting Server...")
     server.start(port=5555)
 
     print("    Server started on port 5555")
     print("    Endpoints available:")
+    print("      - GET  http://127.0.0.1:5555/health (Health check)")
     print("      - GET  http://127.0.0.1:5555/scene/state")
     print("      - GET  http://127.0.0.1:5555/resources/all")
     print("      - POST http://127.0.0.1:5555/editor/register")
