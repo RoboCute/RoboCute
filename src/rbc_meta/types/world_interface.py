@@ -8,6 +8,10 @@ IntVector = ExternalType(
     "luisa::vector<int>", False, "Vec<int>"
 )
 
+MaterialsVector = ExternalType(
+    "luisa::vector<rbc::RC<rbc::RCBase>>", False, "Vec<rbc::RC<rbc::RCBase>>"
+)
+
 
 @reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
 class ResourceLoadStatus(Enum):
@@ -105,17 +109,6 @@ class LightComponent():
     def angle_atten_pow() -> float: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
-    create_instance=False,
-    inherit=Component
-)
-class RenderComponent():
-    pass
-
 # Resources
 
 
@@ -143,7 +136,6 @@ class Resource:
     inherit=Resource
 )
 class TextureResource:
-    def valid() -> bool: ...
     def is_vt() -> bool: ...
     def pack_to_tile() -> bool: ...
     def pixel_storage() -> LCPixelStorage: ...
@@ -165,6 +157,8 @@ class TextureResource:
 
 class MeshResource:
     pass
+
+
 MeshResource._pybind_type_ = True
 
 
@@ -176,7 +170,6 @@ MeshResource._pybind_type_ = True
     inherit=Resource
 )
 class MeshResource:
-    def valid() -> bool: ...
     def vertex_count() -> uint: ...
     def triangle_count() -> uint: ...
     def uv_count() -> uint: ...
@@ -215,3 +208,21 @@ class MaterialResource:
     def mat_code() -> uint: ...
     def init_device_resource() -> bool: ...
     def load_from_json(json: str) -> None: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+    create_instance=False,
+    inherit=Component
+)
+class RenderComponent():
+    def get_tlas_index() -> uint: ...
+    def remove_object() -> None: ...
+    def update_object(mat_vector: MaterialsVector,
+                      mesh: MeshResource) -> None: ...
+
+    def update_mesh(mesh: MeshResource) -> None: ...
+    def update_material(mat_vector: MaterialsVector) -> None: ...

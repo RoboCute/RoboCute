@@ -225,11 +225,6 @@ luisa::uint2 TextureResource::size(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
     return c->size();
 }
-bool TextureResource::valid(void *this_) {
-    auto c = static_cast<world::TextureResource *>(this_);
-    return !c->empty();
-}
-
 uint64_t MeshResource::basic_size_bytes(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     return c->basic_size_bytes();
@@ -246,16 +241,89 @@ void MeshResource::create_as_morphing_instance(void *this_, void *origin_mesh) {
     auto c = static_cast<world::MeshResource *>(this_);
     c->create_as_morphing_instance(static_cast<world::MeshResource *>(origin_mesh));
 }
-void MeshResource::create_empty(void *this_, luisa::vector<int> const &submesh_offsets, uint32_t vertex_count, uint32_t triangle_count, uint32_t uv_count, bool contained_normal, bool contained_tangent) { auto c = static_cast<world::MeshResource *>(this_); }
-luisa::span<std::byte> MeshResource::data_buffer(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-uint64_t MeshResource::desire_size_bytes(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-uint64_t MeshResource::extra_size_bytes(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-bool MeshResource::has_data_buffer(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-bool MeshResource::init_device_resource(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-bool MeshResource::is_transforming_mesh(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-uint32_t MeshResource::submesh_count(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-uint32_t MeshResource::triangle_count(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-uint32_t MeshResource::uv_count(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-bool MeshResource::valid(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
-uint32_t MeshResource::vertex_count(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+void MeshResource::create_empty(void *this_, luisa::vector<int> const &submesh_offsets, uint32_t vertex_count, uint32_t triangle_count, uint32_t uv_count, bool contained_normal, bool contained_tangent) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    c->create_empty(reinterpret_cast<luisa::vector<uint> &&>(const_cast<luisa::vector<int> &>(submesh_offsets)), vertex_count, triangle_count, uv_count, contained_normal, contained_tangent);
+}
+luisa::span<std::byte> MeshResource::data_buffer(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    auto data = c->host_data();
+    if (!data) return {};
+    return *data;
+}
+uint64_t MeshResource::desire_size_bytes(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->desire_size_bytes();
+}
+uint64_t MeshResource::extra_size_bytes(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->extra_size_bytes();
+}
+bool MeshResource::has_data_buffer(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->host_data();
+}
+bool MeshResource::init_device_resource(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->init_device_resource();
+}
+bool MeshResource::is_transforming_mesh(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->is_transforming_mesh();
+}
+uint32_t MeshResource::submesh_count(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->submesh_count();
+}
+uint32_t MeshResource::triangle_count(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->triangle_count();
+}
+uint32_t MeshResource::uv_count(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->uv_count();
+}
+uint32_t MeshResource::vertex_count(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->vertex_count();
+}
+bool MaterialResource::init_device_resource(void *this_) {
+    auto c = static_cast<world::MaterialResource *>(this_);
+    return c->init_device_resource();
+}
+void MaterialResource::load_from_json(void *this_, luisa::string_view json) {
+    auto c = static_cast<world::MaterialResource *>(this_);
+    c->load_from_json(json);
+}
+uint32_t MaterialResource::mat_code(void *this_) {
+    auto c = static_cast<world::MaterialResource *>(this_);
+    return c->mat_code().value;
+}
+
+uint32_t RenderComponent::get_tlas_index(void *this_) {
+    auto c = static_cast<world::RenderComponent *>(this_);
+    return c->get_tlas_index();
+}
+void RenderComponent::remove_object(void *this_) {
+    auto c = static_cast<world::RenderComponent *>(this_);
+    c->remove_object();
+}
+void RenderComponent::update_material(void *this_, luisa::vector<rbc::RC<rbc::RCBase>> const &mat_vector) {
+    auto c = static_cast<world::RenderComponent *>(this_);
+    c->update_object(
+        luisa::span{
+            reinterpret_cast<RC<world::MaterialResource> const *>(mat_vector.data()),
+            mat_vector.size()});
+}
+void RenderComponent::update_mesh(void *this_, void *mesh) {
+    auto c = static_cast<world::RenderComponent *>(this_);
+    c->update_object({}, static_cast<world::MeshResource *>(mesh));
+}
+void RenderComponent::update_object(void *this_, luisa::vector<rbc::RC<rbc::RCBase>> const &mat_vector, void *mesh) {
+    auto c = static_cast<world::RenderComponent *>(this_);
+    c->update_object(
+        luisa::span{
+            reinterpret_cast<RC<world::MaterialResource> const *>(mat_vector.data()),
+            mat_vector.size()});
+}
 }// namespace rbc
