@@ -6,8 +6,8 @@
 - [x] 更新灵活的Workflow
 - [x] 引入QML进行组件封装与样式定义
 - [x] 支持样式热加载与调试模式（argv控制）
-- [ ] 支持通用Plugin(DLL)加载与热更新
-- [ ] 基于Plugin的MVVM架构，支持模块动态load/unload
+- [x] 支持通用Plugin(DLL)加载与热更新
+- [x] 基于Plugin的MVVM架构，支持模块动态load/unload
 - [ ] 更科学的大型Qt项目组织，支持子模块mock和可复用Component独立开发
 - [ ] 支持调试渲染参数的Detail面板
 - [ ] 实现RBCProject的结构管理

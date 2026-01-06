@@ -53,7 +53,7 @@ private:
  * 
  * 提供连接状态管理的 UI 面板
  */
-class ConnectionPlugin : public IEditorPlugin {
+class RBC_EDITOR_PLUGIN_API ConnectionPlugin : public IEditorPlugin {
     Q_OBJECT
 
 public:

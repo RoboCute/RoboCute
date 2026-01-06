@@ -6,7 +6,7 @@
 
 namespace rbc {
 
-class PluginContext : public QObject {
+class RBC_EDITOR_RUNTIME_API PluginContext : public QObject {
     Q_OBJECT
 public:
     explicit PluginContext(EditorPluginManager *manager, QObject *parent);
