@@ -5,7 +5,6 @@
 #include <rbc_world/resource_base.h>
 #include <rbc_world/resource_importer.h>
 namespace rbc::world {
-static constexpr uint sql_column_count = 4;
 Project::Project(
     luisa::filesystem::path assets_path,
     luisa::filesystem::path meta_path,
@@ -118,9 +117,9 @@ void Project::scan_project() {
                 }
             };
             if (file_is_dirty) {
-                for (auto &i : guids) {
-                    _reimport(i, path);
-                }
+                luisa::fiber::parallel(guids.size(), [&](uint32_t i) {
+                    _reimport(guids[i], path);
+                });
             }
             if (file_meta_is_dirty) {
                 update();
