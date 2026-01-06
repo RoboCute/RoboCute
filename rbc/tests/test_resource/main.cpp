@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
             auto bin = meta_path / (luisa::string{res->value()} + ".dummy");
             res->save_to_path();
             // write serialize_data
-            world::register_resource(res.get());
+            world::register_resource_meta(res.get());
         };
         write_to(a);
         write_to(b);

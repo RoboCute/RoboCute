@@ -8,6 +8,8 @@ private:
     luisa::filesystem::path _assets_path;
     luisa::filesystem::path _meta_path;
     luisa::vector<vstd::Guid> _resources;
+    void _reimport(vstd::Guid binary_guid, luisa::filesystem::path const &origin_path);
+
 public:
     // meta files in project
     luisa::span<vstd::Guid const> resources() const {

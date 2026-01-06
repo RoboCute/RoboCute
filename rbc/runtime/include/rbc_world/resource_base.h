@@ -80,7 +80,11 @@ protected:
     ~ResourceBaseImpl() = default;
 };
 RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file = true);
-RBC_RUNTIME_API void register_resource(Resource *res);
+RBC_RUNTIME_API void register_resource_meta(
+    vstd::Guid resource_guid,
+    luisa::string &&meta_info,
+    std::array<uint64_t, 2> type_id);
+RBC_RUNTIME_API void register_resource_meta(Resource *res);
 // No project or origin-files, load all meta-files from meta dir
 RBC_RUNTIME_API void load_all_resources_from_meta();
 RBC_RUNTIME_API void load_meta_file(luisa::span<vstd::Guid const> meta_files_guid);
