@@ -161,6 +161,7 @@ class FrameSettings:
     resource_color_space: ResourceColorSpace
     realtime_rendering: bool
     offline_capturing: bool
+    reject_sampling: bool
     albedo_buffer: BufferFloatConstPtr
     normal_buffer: BufferFloatConstPtr
     radiance_buffer: BufferFloatConstPtr
