@@ -9,10 +9,10 @@ namespace rbc {
 
 struct IEditorPlugin;
 
-class RBC_EDITOR_RUNTIME_API PluginManager : public QObject {
+class RBC_EDITOR_RUNTIME_API EditorPluginManager : public QObject {
     Q_OBJECT
 public:
-    static PluginManager &instance();
+    static EditorPluginManager &instance();
 
     // Plugin LifeCycle
     bool loadPlugin(const QString &pluginPath);// Load From DLL
@@ -51,7 +51,7 @@ signals:
     void hotReloadTriggered(const QString &pluginId);
 
 private:
-    PluginManager();
+    EditorPluginManager();
 
     void resolvePluginDependencies();
     void initializePlugin(IEditorPlugin *plugin);
