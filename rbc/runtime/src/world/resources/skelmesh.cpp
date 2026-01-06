@@ -4,11 +4,9 @@
 namespace rbc {
 
 void SkelMeshResource::serialize_meta(world::ObjSerialize const &ser) const {
-    BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
 }
 
 void SkelMeshResource::deserialize_meta(world::ObjDeSerialize const &ser) {
-    BaseType::deserialize_meta(ser);
 }
 
 rbc::coroutine SkelMeshResource::_async_load() {

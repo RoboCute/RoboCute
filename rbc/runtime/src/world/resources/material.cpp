@@ -145,7 +145,6 @@ luisa::BinaryBlob MaterialResource::write_content_to() {
     return json_ser.write_to();
 }
 void MaterialResource::serialize_meta(ObjSerialize const &ser) const {
-    BaseType::serialize_meta(ser);
     // TODO: mark dependencies
     // for (auto &i : _depended_resources) {
     //     auto guid = i->guid();

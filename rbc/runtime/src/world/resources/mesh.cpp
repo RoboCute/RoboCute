@@ -21,7 +21,6 @@ MeshResource::~MeshResource() {
 
 void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     std::shared_lock lck{_async_mtx};
-    BaseType::serialize_meta(ser);
     ser.ar.start_array();
     for (auto &i : _custom_properties) {
         ser.ar.value(i.first);
@@ -58,7 +57,6 @@ bool MeshResource::empty() const {
 
 void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     std::shared_lock lck{_async_mtx};
-    BaseType::deserialize_meta(ser);
     uint64_t size;
     if (ser.ar.start_array(size, "properties")) {
         auto dsp = vstd::scope_exit([&] {

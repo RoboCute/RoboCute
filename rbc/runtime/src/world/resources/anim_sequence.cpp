@@ -7,11 +7,9 @@ AnimSequenceResource::AnimSequenceResource() = default;
 AnimSequenceResource::~AnimSequenceResource() {}
 
 void AnimSequenceResource::serialize_meta(world::ObjSerialize const &ser) const {
-    BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
 }
 
 void AnimSequenceResource::deserialize_meta(world::ObjDeSerialize const &ser) {
-    BaseType::deserialize_meta(ser);
 }
 
 rbc::coroutine AnimSequenceResource::_async_load() {

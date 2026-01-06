@@ -46,7 +46,6 @@ uint64_t TextureResource::desire_size_bytes() const {
 }
 void TextureResource::serialize_meta(ObjSerialize const &obj) const {
     std::shared_lock lck{_async_mtx};
-    BaseType::serialize_meta(obj);
     obj.ar.value(_pixel_storage, "pixel_storage");
     obj.ar.value(_size, "size");
     obj.ar.value(_mip_level, "mip_level");
@@ -54,7 +53,6 @@ void TextureResource::serialize_meta(ObjSerialize const &obj) const {
 }
 void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
-    BaseType::deserialize_meta(obj);
 #define RBC_MESH_LOAD(m)           \
     {                              \
         decltype(_##m) m;          \

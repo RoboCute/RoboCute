@@ -85,7 +85,6 @@ Component *Entity::get_component(TypeInfo const &type) {
     return comp;
 }
 void Entity::serialize_meta(ObjSerialize const &ser) const {
-    BaseObject::serialize_meta(ser);
     ser.ar.start_array();
     for (auto &i : _components) {
         auto comp = i.second;
@@ -99,8 +98,6 @@ void Entity::serialize_meta(ObjSerialize const &ser) const {
     ser.ar.end_array("components");
 }
 void Entity::deserialize_meta(ObjDeSerialize const &ser) {
-    // super deserialize
-    BaseObject::deserialize_meta(ser);
     uint64_t size;
     if (!ser.ar.start_array(size, "components")) return;
     _components.reserve(size);

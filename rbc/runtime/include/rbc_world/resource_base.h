@@ -43,10 +43,6 @@ public:
     RBC_RUNTIME_API ResourceAwait await_loading();
     // save host_data to Resource::_path
     RBC_RUNTIME_API bool save_to_path();
-    // serialize_meta meta information
-    RBC_RUNTIME_API void serialize_meta(ObjSerialize const &obj) const override;
-    // deserialize_meta meta information
-    RBC_RUNTIME_API void deserialize_meta(ObjDeSerialize const &obj) override;
     // RBC_RUNTIME_API virtual void (ObjDeSerialize const&obj);
     RBC_RUNTIME_API static luisa::filesystem::path const &meta_root_path();
     RBC_RUNTIME_API static luisa::filesystem::path const &binary_root_path();

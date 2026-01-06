@@ -5,12 +5,10 @@
 namespace rbc {
 
 void SkeletonResource::serialize_meta(world::ObjSerialize const &ser) const {
-    BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
     ser.ar.value(skeleton, "skeleton");
 }
 
 void SkeletonResource::deserialize_meta(world::ObjDeSerialize const &ser) {
-    BaseType::deserialize_meta(ser);
 
     ser.ar.value(skeleton, "skeleton");
 }
