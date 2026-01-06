@@ -39,16 +39,17 @@ void TypeRegisterBase::_base_init() {
     }
 }
 void _collect_all_materials();
-void init_resource_loader(luisa::filesystem::path const &meta_path);// in resource_base.cpp
-void dispose_resource_loader();                                     // in resource_base.cpp
+void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::filesystem::path const &binary_path);// in resource_base.cpp
+void dispose_resource_loader();                                                                                 // in resource_base.cpp
 void init_world(
-    luisa::filesystem::path const &meta_path) {
+    luisa::filesystem::path const &meta_path,
+    luisa::filesystem::path const &binary_path) {
     if (_world_inst) [[unlikely]] {
         LUISA_ERROR("World already initialized.");
     }
     _world_inst = new BaseObjectStatics{};
     if (!meta_path.empty())
-        init_resource_loader(meta_path);
+        init_resource_loader(meta_path, binary_path.empty() ? meta_path : binary_path);
 }
 void destroy_world() {
     if (!_world_inst) [[unlikely]] {
@@ -211,6 +212,10 @@ BaseObjectType base_type_of(vstd::Guid const &type_id) {
     if (iter == _world_inst->_create_funcs.end())
         return BaseObjectType::Custom;
     return iter->second->base_type();
+}
+bool world_transform_dirty() {
+    auto &v = dirty_transforms();
+    return !v.empty();
 }
 void _zz_clear_dirty_transform() {
     auto &v = dirty_transforms();

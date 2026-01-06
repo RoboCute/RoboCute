@@ -5,7 +5,6 @@
 namespace rbc {
 void DummyResource::serialize_meta(world::ObjSerialize const &ser) const {
     // write basic informations: type_id, file_path, etc...
-    BaseType::serialize_meta(ser);
     // write dependencies
     ser.ar.start_array();
     for (auto &i : _depended) {
@@ -14,7 +13,6 @@ void DummyResource::serialize_meta(world::ObjSerialize const &ser) const {
     ser.ar.end_array("depend");
 }
 void DummyResource::deserialize_meta(world::ObjDeSerialize const &ser) {
-    BaseType::deserialize_meta(ser);
     uint64_t size;
     LUISA_ASSERT(ser.ar.start_array(size, "depend"), "Bad meta");
     _depended.reserve(size);

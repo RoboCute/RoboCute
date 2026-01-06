@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
         transform->set_pos(double3(0, 0, 0), true);
 
         auto render = entity->add_component<world::RenderComponent>();
-        render->start_update_object(loaded_materials, loaded_mesh.get());
+        render->update_object(loaded_materials, loaded_mesh.get());
     }
 
     // Camera setup

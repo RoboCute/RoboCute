@@ -124,7 +124,7 @@ class ReflectionRegistry:
         serde: bool = False,
         pybind: bool = False,
         cpp_prefix: Optional[str] = "",
-        inherit: Optional[Type] = None,
+        inherit  = None,
         create_instance: bool = True,
     ) -> Type:
         """注册类"""
@@ -466,7 +466,7 @@ def reflect(
     serde: bool = False,
     pybind: bool = False,
     create_instance: bool = True,
-    inherit: Optional[Type] = None,
+    inherit = None,
     cpp_prefix: Optional[str] = "",
 ) -> Type:
     """

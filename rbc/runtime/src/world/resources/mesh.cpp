@@ -21,7 +21,6 @@ MeshResource::~MeshResource() {
 
 void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     std::shared_lock lck{_async_mtx};
-    BaseType::serialize_meta(ser);
     ser.ar.start_array();
     for (auto &i : _custom_properties) {
         ser.ar.value(i.first);
@@ -58,7 +57,6 @@ bool MeshResource::empty() const {
 
 void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     std::shared_lock lck{_async_mtx};
-    BaseType::deserialize_meta(ser);
     uint64_t size;
     if (ser.ar.start_array(size, "properties")) {
         auto dsp = vstd::scope_exit([&] {
@@ -98,7 +96,6 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
             _##m = m;              \
         }                          \
     }
-    RBC_MESH_LOAD(file_offset)
     RBC_MESH_LOAD(contained_normal)
     RBC_MESH_LOAD(contained_tangent)
     RBC_MESH_LOAD(vertex_count)
@@ -140,9 +137,7 @@ uint64_t MeshResource::desire_size_bytes() const {
 }
 
 void MeshResource::create_empty(
-    luisa::filesystem::path &&path,
     luisa::vector<uint> &&submesh_offsets,
-    uint64_t file_offset,
     uint32_t vertex_count,
     uint32_t triangle_count,
     uint32_t uv_count,
@@ -153,8 +148,6 @@ void MeshResource::create_empty(
         LUISA_ERROR("Can not create on exists mesh.");
     }
     std::lock_guard lck{_async_mtx};
-    _path = std::move(path);
-    _file_offset = file_offset;
     _submesh_offsets = std::move(submesh_offsets);
     _vertex_count = vertex_count;
     _triangle_count = triangle_count;
@@ -226,7 +219,7 @@ bool MeshResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     auto mesh = device_mesh();
     if (!mesh || mesh->host_data().empty()) return false;
-    BinaryFileWriter writer{luisa::to_string(_path)};
+    BinaryFileWriter writer{luisa::to_string(path())};
     if (!writer._file) [[unlikely]] {
         return false;
     }
@@ -238,7 +231,8 @@ rbc::coroutine MeshResource::_async_load() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) co_return;
     auto file_size = desire_size_bytes();
-    if (_path.empty()) {
+    auto path = this->path();
+    if (path.empty()) {
         co_return;
     }
     std::lock_guard lck{_async_mtx};
@@ -249,14 +243,14 @@ rbc::coroutine MeshResource::_async_load() {
         auto mesh = new DeviceMesh{};
         _device_res = mesh;
         mesh->async_load_from_file(
-            _path,
+            path,
             _vertex_count,
             _triangle_count,
             _contained_normal,
             _contained_tangent,
             _uv_count, vstd::vector<uint>{_submesh_offsets},
             false, true,
-            _file_offset,
+            0,
             true, extra_size_bytes());
     } else {
         if (!_origin_mesh) {

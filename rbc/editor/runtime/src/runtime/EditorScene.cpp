@@ -407,7 +407,7 @@ void EditorScene::processPendingEntities() {
         if (default_material_) {
             mats = {&default_material_, 1};
         }
-        render->start_update_object(mats, pending.mesh_resource.get());
+        render->update_object(mats, pending.mesh_resource.get());
 
         qDebug() << "EditorScene: Entity" << pending.entity_id << "render started";
     }

@@ -95,12 +95,7 @@ public:
     
     // 保存到文件
     bool save_to_path();
-    
-    // 设置路径（仅当资源为空时）
-    void set_path(
-        luisa::filesystem::path const &path,
-        uint64_t const &file_offset);
-    
+
     // 使用注册的导入器解码资源
     bool decode(luisa::filesystem::path const &path);
     
@@ -273,7 +268,6 @@ struct GltfMeshImporter : IMeshImporter {
         resource->create_empty(
             {}, 
             std::move(submesh_offsets), 
-            0,
             mesh_builder.vertex_count(), 
             mesh_builder.indices_count() / 3,
             mesh_builder.uv_count(),
@@ -731,7 +725,6 @@ struct ResourceImportManager::Impl {
             auto resource_path = resources_dir / resource_type_to_string(type) / resource_filename;
             
             luisa::filesystem::create_directories(resource_path.parent_path());
-            resource->set_path(resource_path, 0);
             
             if (!resource->save_to_path()) {
                 result.error_message = fmt::format("Failed to save resource to {}", 

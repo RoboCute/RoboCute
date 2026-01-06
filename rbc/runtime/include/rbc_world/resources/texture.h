@@ -26,7 +26,6 @@ private:
     LCPixelStorage _pixel_storage;
     luisa::uint2 _size;
     uint32_t _mip_level{};
-    RC<VTLoadFlag> _vt_finished{};
     bool _is_vt{};
     TextureResource();
     ~TextureResource();
@@ -43,8 +42,6 @@ public:
     [[nodiscard]] uint64_t desire_size_bytes() const;
     [[nodiscard]] uint32_t heap_index() const;
     void create_empty(
-        luisa::filesystem::path &&path,
-        uint64_t file_offset,
         LCPixelStorage pixel_storage,
         luisa::uint2 size,
         uint32_t mip_level,
@@ -54,7 +51,8 @@ public:
     bool init_device_resource();
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
-    
+    static uint desired_mip_level(luisa::uint2 size, uint idx);
+
 protected:
     bool _async_load_from_file();
     bool _load_finished() const;

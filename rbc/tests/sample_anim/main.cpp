@@ -137,9 +137,6 @@ int main(int argc, char *argv[]) {
             {
                 LUISA_INFO("====== Serde Skeleton");
                 auto *skel = scene_data.skel.get();
-                if (skel->path().empty()) {
-                    skel->set_path(resource_dir / (skel->guid().to_string() + ".rbcb"), 0);
-                }
                 skel->save_to_path();
                 // Resource Serialize
 
@@ -160,9 +157,6 @@ int main(int argc, char *argv[]) {
             {
                 LUISA_INFO("====== Serde Skin");
                 auto *skin = scene_data.skin.get();
-                if (skin->path().empty()) {
-                    skin->set_path(resource_dir / (skin->guid().to_string() + ".rbcb"), 0);
-                }
                 skin->save_to_path();
                 LUISA_INFO("====== Serde Skin Done");
             }
@@ -172,9 +166,6 @@ int main(int argc, char *argv[]) {
             {
                 LUISA_INFO("====== Serde Animation");
                 auto *anim = scene_data.anim.get();
-                if (anim->path().empty()) {
-                    anim->set_path(resource_dir / (anim->guid().to_string() + ".rbcb"), 0);
-                }
                 anim->save_to_path();
                 LUISA_INFO("====== Serde Animation Done");
             }

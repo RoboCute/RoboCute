@@ -892,9 +892,6 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
     #     )
     type_to_cls_info = {}
     def get_class_expr(key: str, info: ClassInfo):
-        inherit_cls_info: Optional[Type] = None
-        if info.inherit:
-            inherit_cls_info = type_to_cls_info.get(info.inherit)
         if info.is_enum:
             return "", []
 
@@ -973,9 +970,23 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
             if _is_rpc_method(method):
                 continue  # Skip RPC methods in Python interface
             methods_list.append(get_method_expr(method))
-        if inherit_cls_info:
-            for method in inherit_cls_info.methods:
-                methods_list.append(get_inherit_method_expr(method, inherit_cls_info.name))
+        def print_inherit(info: ClassInfo):
+            inherit_cls_infos = []
+            if info.inherit:
+                if type(info.inherit) != list:
+                    inherit_cls_info = type_to_cls_info.get(info.inherit)
+                    if inherit_cls_info:
+                        inherit_cls_infos.append(inherit_cls_info)
+                else:
+                    for i in info.inherit:
+                        inherit_cls_info = type_to_cls_info.get(i)
+                        if inherit_cls_info:
+                            inherit_cls_infos.append(inherit_cls_info)
+            for inherit_cls_info in inherit_cls_infos:
+                for method in inherit_cls_info.methods:
+                    methods_list.append(get_inherit_method_expr(method, inherit_cls_info.name))
+                print_inherit(inherit_cls_info)
+        print_inherit(info)
         methods_expr = "".join(methods_list)
 
         return PY_INTERFACE_CLASS_TEMPLATE.substitute(

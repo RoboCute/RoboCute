@@ -12,12 +12,14 @@
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Physics/PhysicsSettings.h>
+#include <rbc_world/entity.h>
+#include <rbc_world/components/transform.h>
 #include <iostream>
 namespace JPH {
 #include "Layers.h"
 }// namespace JPH
 namespace rbc::world {
-struct JoltInstance {
+struct JoltSingleton {
     JPH::TempAllocator *mTempAllocator{};
     JPH::JobSystem *mJobSystem{};
     JPH::PhysicsSystem *mSystem{};
@@ -36,7 +38,7 @@ struct JoltInstance {
         mSystem->Init(1024, 0, 4096, 1024, mBroadPhaseLayerInterface, mObjectVsBroadPhaseLayerFilter, mObjectVsObjectLayerFilter);
     }
 
-    ~JoltInstance() {
+    ~JoltSingleton() {
         delete mSystem;
         delete mJobSystem;
         delete mTempAllocator;
@@ -79,26 +81,24 @@ struct JoltInstance {
         creation_settings.mMotionType = EMotionType::Dynamic;
         creation_settings.mMotionQuality = EMotionQuality::Discrete;
         creation_settings.mObjectLayer = Layers::MOVING;
-        creation_settings.mPosition = RVec3(0, 3, 0);
+        creation_settings.mPosition = RVec3(0, 3, 3);
         creation_settings.mFriction = 0.5f;
         creation_settings.mRestitution = 0.6f;
-        creation_settings.SetShape(new BoxShape(RVec3(0.5, 0.5, 0.5)));
-        (new BoxShape(
-             Vec3(0.5f, 0.75f, 1.0f)),
-         EMotionType::Dynamic, Layers::MOVING);
+        auto boxShape = luisa::unique_ptr<BoxShape>(new BoxShape(RVec3(0.5, 0.5, 0.5)));
+        creation_settings.SetShape(boxShape.get());
         auto &body_interface = mSystem->GetBodyInterface();
-        BodyID sphere_id = body_interface.CreateAndAddBody(creation_settings, EActivation::Activate);
-        body_interface.SetLinearVelocity(sphere_id, Vec3(0.0f, -5.0f, 0.0f));
+        BodyID box_id = body_interface.CreateAndAddBody(creation_settings, EActivation::Activate);
+        body_interface.SetLinearVelocity(box_id, Vec3(0.0f, -5.0f, 0.0f));
         mSystem->OptimizeBroadPhase();
         const float cDeltaTime = 1.0f / 60.0f;
         uint step = 0;
-        while (body_interface.IsActive(sphere_id)) {
+        while (body_interface.IsActive(box_id)) {
             // Next step
             ++step;
 
             // Output current position and velocity of the sphere
-            RVec3 position = body_interface.GetCenterOfMassPosition(sphere_id);
-            Vec3 velocity = body_interface.GetLinearVelocity(sphere_id);
+            RVec3 position = body_interface.GetCenterOfMassPosition(box_id);
+            Vec3 velocity = body_interface.GetLinearVelocity(box_id);
             std::cout << "Step " << step << ": Position = (" << position.GetX() << ", " << position.GetY() << ", " << position.GetZ() << "), Velocity = (" << velocity.GetX() << ", " << velocity.GetY() << ", " << velocity.GetZ() << ")" << std::endl;
 
             // If you take larger steps than 1 / 60th of a second you need to do multiple collision steps in order to keep the simulation stable. Do 1 collision step per 1 / 60th of a second (round up).
@@ -109,18 +109,95 @@ struct JoltInstance {
         }
     }
 };
-static RuntimeStatic<JoltInstance> jolt_instance;
-void JoltComponent::test_jolt() {
-    jolt_instance->init();
-    jolt_instance->test();
+
+static RuntimeStatic<JoltSingleton> jolt_singleton;
+struct BoxCollider {
+    luisa::unique_ptr<JPH::BoxShape> _box_shape;
+    JPH::BodyID box_id;
+};
+struct JoltInstance : RBCStruct {
+    vstd::variant<
+        JPH::Body *, BoxCollider>
+        body;
+};
+void JoltComponent::init(
+    bool is_floor// for demo, floor or object
+) {
+    using namespace JPH;
+    if (_physics_instance) return;
+    jolt_singleton->init();
+    auto inst = new JoltInstance{};
+    _physics_instance = inst;
+    auto transform = entity()->get_component<TransformComponent>();
+    if (is_floor) {
+        BoxShapeSettings floor_shape_settings(Vec3(10.0f, 0.3f, 10.0f));
+        floor_shape_settings.SetEmbedded();
+        ShapeSettings::ShapeResult floor_shape_result = floor_shape_settings.Create();
+        ShapeRefC floor_shape = floor_shape_result.Get();
+        BodyCreationSettings floor_settings(floor_shape, RVec3(0.0, -2.0, 3.0), Quat::sIdentity(), EMotionType::Static, Layers::NON_MOVING);
+        inst->body = &jolt_singleton->CreateBody(floor_settings, EActivation::DontActivate);
+        transform->set_pos(double3(0, -2, 3), false);
+        transform->set_scale(double3(10.0, 0.6, 10.0), false);
+    } else {
+        BoxCollider collider;
+        BodyCreationSettings creation_settings{};
+        creation_settings.mMotionType = EMotionType::Dynamic;
+        creation_settings.mMotionQuality = EMotionQuality::Discrete;
+        creation_settings.mObjectLayer = Layers::MOVING;
+        creation_settings.mPosition = RVec3(0, 3, 3);
+        auto rot = quaternion(make_float3x3(luisa::rotation(float3(1, 0, 0), 0.1f) * luisa::rotation(float3(0, 0, 1), 0.2f)));
+        creation_settings.mRotation = Quat{
+            rot.v.x, rot.v.y, rot.v.z, rot.v.w};
+        creation_settings.mFriction = 0.5f;
+        creation_settings.mRestitution = 0.6f;
+        collider._box_shape = luisa::unique_ptr<BoxShape>(new BoxShape(RVec3(0.5, 0.5, 0.5)));
+        creation_settings.SetShape(collider._box_shape.get());
+        auto &body_interface = jolt_singleton->mSystem->GetBodyInterface();
+        collider.box_id = body_interface.CreateAndAddBody(creation_settings, EActivation::Activate);
+        inst->body = std::move(collider);
+        transform->set_pos(double3(0, 3, 3), false);
+        body_interface.SetLinearVelocity(collider.box_id, Vec3(0.0f, -5.0f, 0.0f));
+        jolt_singleton->mSystem->OptimizeBroadPhase();
+    }
 }
 JoltComponent::JoltComponent(Entity *entity)
     : ComponentDerive<JoltComponent>(entity) {}
 JoltComponent::~JoltComponent() {}
+void JoltComponent::update_step(float delta_time) {
+    jolt_singleton->mSystem->Update(delta_time, 8, jolt_singleton->mTempAllocator, jolt_singleton->mJobSystem);
+}
+void JoltComponent::update_pos() {
+    using namespace JPH;
+    if (!_physics_instance) return;
+    auto &body = static_cast<JoltInstance *>(_physics_instance)->body;
+    if (!body.is_type_of<BoxCollider>()) return;
+    auto &collider = body.force_get<BoxCollider>();
+    auto &body_interface = jolt_singleton->mSystem->GetBodyInterface();
+    if (!body_interface.IsActive(collider.box_id)) return;
+    auto transform = entity()->get_component<TransformComponent>();
+    auto mat = body_interface.GetCenterOfMassTransform(collider.box_id);
+    auto to_double4 = [&](JPH::Vec4 vec) {
+        return double4(vec.GetX(), vec.GetY(), vec.GetZ(), vec.GetW());
+    };
+    transform->set_trs(
+        double4x4(
+            to_double4(mat.GetColumn4(0)),
+            to_double4(mat.GetColumn4(1)),
+            to_double4(mat.GetColumn4(2)),
+            to_double4(mat.GetColumn4(3))),
+        false);
+}
 void JoltComponent::on_awake() {
 }
-void JoltComponent::on_destroy() {}
-void JoltComponent::serialize_meta(ObjSerialize const &ser) const {}
-void JoltComponent::deserialize_meta(ObjDeSerialize const &ser) {}
+void JoltComponent::on_destroy() {
+    delete static_cast<JoltInstance *>(_physics_instance);
+    _physics_instance = nullptr;
+}
+void JoltComponent::serialize_meta(ObjSerialize const &ser) const {
+    LUISA_NOT_IMPLEMENTED();
+}
+void JoltComponent::deserialize_meta(ObjDeSerialize const &ser) {
+    LUISA_NOT_IMPLEMENTED();
+}
 DECLARE_WORLD_COMPONENT_REGISTER(JoltComponent);
 }// namespace rbc::world

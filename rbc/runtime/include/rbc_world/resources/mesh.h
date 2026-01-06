@@ -69,9 +69,7 @@ public:
     uint64_t extra_size_bytes() const;
     uint64_t desire_size_bytes() const;
     void create_empty(
-        luisa::filesystem::path &&path,
         luisa::vector<uint> &&submesh_offsets,
-        uint64_t file_offset,
         uint32_t vertex_count,
         uint32_t triangle_count,
         uint32_t uv_count,

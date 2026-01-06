@@ -145,7 +145,6 @@ luisa::BinaryBlob MaterialResource::write_content_to() {
     return json_ser.write_to();
 }
 void MaterialResource::serialize_meta(ObjSerialize const &ser) const {
-    BaseType::serialize_meta(ser);
     // TODO: mark dependencies
     // for (auto &i : _depended_resources) {
     //     auto guid = i->guid();
@@ -154,17 +153,16 @@ void MaterialResource::serialize_meta(ObjSerialize const &ser) const {
     // }
 }
 bool MaterialResource::_async_load_from_file() {
-    if (_path.empty()) return false;
+    auto path = this->path();
+    if (path.empty()) return false;
     if (_loaded) {
         return false;
     }
     _loaded = true;
-    BinaryFileStream file_stream(luisa::to_string(_path));
+    BinaryFileStream file_stream(luisa::to_string(path));
     if (!file_stream.valid()) return false;
-    if (_file_offset >= file_stream.length()) return false;
-    file_stream.set_pos(_file_offset);
     luisa::vector<char> json_vec;
-    json_vec.push_back_uninitialized(file_stream.length() - _file_offset);
+    json_vec.push_back_uninitialized(file_stream.length());
     file_stream.read(
         {reinterpret_cast<std::byte *>(json_vec.data()),
          json_vec.size()});
@@ -288,7 +286,7 @@ bool MaterialResource::unsafe_save_to_path() const {
             auto blob = t.write_to();
             if (blob.empty()) [[unlikely]]
                 return false;
-            BinaryFileWriter writer(luisa::to_string(_path));
+            BinaryFileWriter writer(luisa::to_string(path()));
             if (!writer._file) [[unlikely]]
                 return false;
             writer.write({blob.data(),

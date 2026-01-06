@@ -81,14 +81,16 @@ public:
         float delta_time,
         uint64_t frame_index,
         uint2 resolution,
-        TickStage tick_stage = TickStage::PathTracingPreview);
+        TickStage tick_stage = TickStage::PathTracingPreview,
+        bool enable_denoise = false);
     void denoise();
     void create_texture(
         DeviceImage *ptr,
         PixelStorage storage,
         uint2 size, uint mip_level);
     void update_texture(
-        DeviceImage *ptr);
+        DeviceImage *ptr,
+        uint mip_level = ~0u);
     void create_mesh(
         DeviceMesh *ptr,
         uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, vstd::vector<uint> &&offsets);

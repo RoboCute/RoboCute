@@ -51,6 +51,14 @@ void *JsonWriter::allocate_temp_str(size_t size) {
     auto c = _alloc.allocate(size);
     return reinterpret_cast<void *>(c.handle + c.offset);
 }
+void JsonWriter::write_to(luisa::string &str) const {
+    size_t len{};
+    auto json = yyjson_mut_write_opts(json_doc, 0, &alc, &len, nullptr);
+    auto s = str.size();
+    str.resize(s + len);
+    std::memcpy(str.data() + s, json, len);
+    vengine_free(json);
+}
 
 BinaryBlob JsonWriter::write_to() const {
     size_t len{};

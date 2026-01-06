@@ -36,7 +36,7 @@ struct InstanceID {
         return {~0ull};
     }
 };
-RBC_RUNTIME_API void init_world(luisa::filesystem::path const &meta_path = {});
+RBC_RUNTIME_API void init_world(luisa::filesystem::path const &meta_path = {}, luisa::filesystem::path const &binary_path = {});
 RBC_RUNTIME_API void destroy_world();
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object(rbc::TypeInfo const &type_info);
 [[nodiscard]] RBC_RUNTIME_API BaseObjectType get_base_object_type(vstd::Guid const &type_id);
@@ -62,6 +62,7 @@ T *create_object_with_guid(vstd::Guid const &guid) {
 [[nodiscard]] RBC_RUNTIME_API BaseObjectType base_type_of(vstd::Guid const &type_id);
 RBC_RUNTIME_API void _zz_clear_dirty_transform();
 RBC_RUNTIME_API void _zz_on_before_rendering();
+RBC_RUNTIME_API bool world_transform_dirty();
 
 template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive;

@@ -61,7 +61,8 @@ public:
     Result insert_values(
         luisa::string_view table_name,
         luisa::span<luisa::string const> column_names,
-        luisa::span<ValueVariant const> values);
+        luisa::span<ValueVariant const> values,
+        bool replace);
     Result delete_with_key(
         luisa::string_view table_name,
         luisa::string_view compare_column_name,

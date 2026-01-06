@@ -46,7 +46,6 @@ uint64_t TextureResource::desire_size_bytes() const {
 }
 void TextureResource::serialize_meta(ObjSerialize const &obj) const {
     std::shared_lock lck{_async_mtx};
-    BaseType::serialize_meta(obj);
     obj.ar.value(_pixel_storage, "pixel_storage");
     obj.ar.value(_size, "size");
     obj.ar.value(_mip_level, "mip_level");
@@ -54,7 +53,6 @@ void TextureResource::serialize_meta(ObjSerialize const &obj) const {
 }
 void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
-    BaseType::deserialize_meta(obj);
 #define RBC_MESH_LOAD(m)           \
     {                              \
         decltype(_##m) m;          \
@@ -69,8 +67,6 @@ void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
 #undef RBC_MESH_LOAD
 }
 void TextureResource::create_empty(
-    luisa::filesystem::path &&path,
-    uint64_t file_offset,
     LCPixelStorage pixel_storage,
     luisa::uint2 size,
     uint32_t mip_level,
@@ -80,15 +76,13 @@ void TextureResource::create_empty(
         LUISA_ERROR("Can not create on exists texture.");
     }
     std::lock_guard lck{_async_mtx};
-    _path = std::move(path);
-    _file_offset = file_offset;
     _size = size;
     _pixel_storage = pixel_storage;
     _mip_level = mip_level;
     _is_vt = is_vt;
     if (is_vt) {
         _tex = new DeviceSparseImage();
-        _vt_finished = new VTLoadFlag{};
+        // _vt_finished = new VTLoadFlag{};
     } else {
         _tex = new DeviceImage();
     }
@@ -96,7 +90,7 @@ void TextureResource::create_empty(
 bool TextureResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     if (!_tex || _tex->host_data().empty()) return false;
-    BinaryFileWriter writer{luisa::to_string(_path)};
+    BinaryFileWriter writer{luisa::to_string(path())};
     if (!writer._file) [[unlikely]] {
         return false;
     }
@@ -119,19 +113,21 @@ bool TextureResource::init_device_resource() {
     auto host_data_ = host_data();
     LUISA_ASSERT(!host_data_ || host_data_->empty() || host_data_->size() == file_size, "Invalid host data length {}, requires {}.", host_data_->size(), file_size);
     std::lock_guard lck{_async_mtx};
+    auto path = this->path();
     if (is_vt()) {
-        if (_path.empty()) {
+        if (path.empty()) {
             LUISA_WARNING("Virtual texture must have path.");
             return false;
         }
         auto tex = static_cast<DeviceSparseImage *>(_tex.get());
         tex->load(
             TexStreamManager::instance(),
-            [vt_finished = this->_vt_finished]() {
-                vt_finished->finished = true;
-            },
-            _path,
-            _file_offset,
+            // [vt_finished = this->_vt_finished]() {
+            //     vt_finished->finished = true;
+            // },
+            {},
+            path,
+            0,
             {},
             (PixelStorage)_pixel_storage,
             _size,
@@ -151,7 +147,8 @@ bool TextureResource::_async_load_from_file() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     auto file_size = desire_size_bytes();
-    if (_path.empty()) {
+    auto path = this->path();
+    if (path.empty()) {
         return false;
     }
     std::lock_guard lck{_async_mtx};
@@ -161,14 +158,15 @@ bool TextureResource::_async_load_from_file() {
     if (is_vt()) {
         auto tex = new DeviceSparseImage();
         _tex = tex;
-        _vt_finished = new VTLoadFlag{};
+        // _vt_finished = new VTLoadFlag{};
         tex->load(
             TexStreamManager::instance(),
-            [vt_finished = this->_vt_finished]() {
-                vt_finished->finished = true;
-            },
-            _path,
-            _file_offset,
+            // [vt_finished = this->_vt_finished]() {
+            //     vt_finished->finished = true;
+            // },
+            {},
+            path,
+            0,
             {},
             (PixelStorage)_pixel_storage,
             _size,
@@ -177,8 +175,8 @@ bool TextureResource::_async_load_from_file() {
         auto tex = new DeviceImage();
         _tex = tex;
         tex->async_load_from_file(
-            _path,
-            _file_offset,
+            path,
+            0,
             {},
             (PixelStorage)_pixel_storage,
             _size,
@@ -222,7 +220,7 @@ bool TextureResource::_load_finished() const {
         return false;
     if (is_vt()) {
         auto vt = static_cast<DeviceSparseImage *>(_tex.get());
-        auto result = vt->load_executed() && _vt_finished->finished;
+        auto result = vt->load_executed();// && _vt_finished->finished;
         return result;
     } else {
         return static_cast<DeviceImage *>(_tex.get())->load_finished();
@@ -265,25 +263,38 @@ void TextureResource::_pack_to_tile_level(uint level, luisa::span<std::byte cons
         }
 }
 bool TextureResource::pack_to_tile() {
-    if (_is_vt) return {};
-    auto host_data_ = host_data();
-    if (!host_data_ || host_data_->empty()) return {};
+    if (_is_vt) return false;
+    auto host_data_ptr = host_data();
+    if (!host_data_ptr || host_data_ptr->empty()) return false;
+    auto &host_data = *host_data_ptr;
     luisa::vector<std::byte> data;
-    data.push_back_uninitialized(host_data_->size());
+    data.push_back_uninitialized(host_data.size());
     auto size = _size;
     uint64_t offset = 0;
     for (auto i : vstd::range(_mip_level)) {
         auto level_size = pixel_storage_size((PixelStorage)_pixel_storage, make_uint3(size, 1u));
         _pack_to_tile_level(
             i,
-            luisa::span{*host_data_}.subspan(offset, level_size),
+            luisa::span{host_data}.subspan(offset, level_size),
             luisa::span{data}.subspan(offset, level_size));
         size >>= 1u;
         offset += level_size;
     }
-    *host_data_ = std::move(data);
+    host_data = std::move(data);
+    save_to_path();
+    _tex.reset();
+    _tex = new DeviceSparseImage();
+    // _vt_finished = new VTLoadFlag{};
     _is_vt = true;
     return true;
+}
+
+uint TextureResource::desired_mip_level(luisa::uint2 size, uint idx) {
+    for (auto i : vstd::range(1, idx)) {
+        size >>= 1u;
+        if (any(size < 256u)) return i;
+    }
+    return idx;
 }
 
 DECLARE_WORLD_OBJECT_REGISTER(TextureResource)

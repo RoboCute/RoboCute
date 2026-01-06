@@ -75,6 +75,7 @@ public:
 
 public:
     [[nodiscard]] luisa::BinaryBlob write_to() const;
+    [[nodiscard]] void write_to(luisa::string& str) const;
     // Check if current scope is an object (false) or array (true)
     [[nodiscard]] bool is_current_scope_array() const;
 };

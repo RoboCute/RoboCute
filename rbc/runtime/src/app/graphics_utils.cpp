@@ -153,7 +153,8 @@ void GraphicsUtils::tick(
     float delta_time,
     uint64_t frame_index,
     uint2 resolution,
-    TickStage tick_stage) {
+    TickStage tick_stage,
+    bool enable_denoise) {
     AssetsManager::instance()->wake_load_thread();
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeFrame);
     std::unique_lock render_lck{_render_device.render_loop_mtx()};
@@ -190,18 +191,14 @@ void GraphicsUtils::tick(
             _sm->dispose_after_sync(std::move(_denoise_pack.external_normal));
     });
     _denoise_pack = {};
-    switch (tick_stage) {
-        case TickStage::OffineCapturing:
-        case TickStage::PresentOfflineResult:
-            if (_denoiser_inited) {
-                _denoise_pack = _render_plugin->create_denoise_task(
-                    main_stream,
-                    frame_settings.display_resolution);
-            }
-            break;
+    enable_denoise &= _denoiser_inited;
+    if (tick_stage != TickStage::RasterPreview && enable_denoise) {
+        _denoise_pack = _render_plugin->create_denoise_task(
+            main_stream,
+            frame_settings.display_resolution);
     }
     auto set_denoise_pack = [&]() {
-        if (_denoiser_inited) {
+        if (enable_denoise) {
             frame_settings.albedo_buffer = &_denoise_pack.external_albedo;
             frame_settings.normal_buffer = &_denoise_pack.external_normal;
             frame_settings.radiance_buffer = &_denoise_pack.external_input;
@@ -215,6 +212,7 @@ void GraphicsUtils::tick(
             pipe_settings.use_post_filter = false;
             break;
         case TickStage::PathTracingPreview:
+            set_denoise_pack();
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
             pipe_settings.use_editing = true;
@@ -228,7 +226,7 @@ void GraphicsUtils::tick(
             pipe_settings.use_editing = false;
             break;
         case TickStage::PresentOfflineResult:
-            if (_denoiser_inited) {
+            if (enable_denoise) {
                 frame_settings.radiance_buffer = &_denoise_pack.external_output;
             }
             pipe_settings.use_raster = false;
@@ -352,15 +350,26 @@ void GraphicsUtils::create_mesh(
         triangle_count,
         std::move(offsets));
 }
-void GraphicsUtils::update_texture(DeviceImage *ptr) {
+void GraphicsUtils::update_texture(DeviceImage *ptr, uint mip_level) {
     ptr->wait_finished();
     if (ptr->heap_idx() != ~0u) {
         _sm->set_io_cmdlist_require_sync();
     }
-    _sm->frame_mem_io_list() << IOCommand{
-        ptr->host_data().data(),
-        0,
-        IOTextureSubView{ptr->get_float_image()}};
+    auto &&img = ptr->get_float_image();
+    if (mip_level == ~0u) {
+        for (auto i : vstd::range(img.mip_levels())) {
+            _sm->frame_mem_io_list() << IOCommand{
+                ptr->host_data().data(),
+                0,
+                IOTextureSubView{img.view(i)}};
+        }
+    } else {
+        _sm->frame_mem_io_list() << IOCommand{
+            ptr->host_data().data(),
+            0,
+            IOTextureSubView{img.view(std::min<uint32_t>(img.mip_levels() - 1, mip_level))}};
+    }
+
     auto &sm = SceneManager::instance();
     sm.dispose_after_sync(RC<DeviceImage>(ptr));
 }

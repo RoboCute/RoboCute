@@ -5,12 +5,10 @@
 namespace rbc {
 
 void SkeletonResource::serialize_meta(world::ObjSerialize const &ser) const {
-    BaseType::serialize_meta(ser);// common attribute (type_id, file_path, etc)
     ser.ar.value(skeleton, "skeleton");
 }
 
 void SkeletonResource::deserialize_meta(world::ObjDeSerialize const &ser) {
-    BaseType::deserialize_meta(ser);
 
     ser.ar.value(skeleton, "skeleton");
 }
@@ -24,11 +22,12 @@ bool SkeletonResource::unsafe_save_to_path() const {
     BinSerializer ser;
     ser._store(skeleton, "skeleton");
 
-    BinaryFileWriter writer{luisa::to_string(_path)};
+    auto path = this->path();
+    BinaryFileWriter writer{luisa::to_string(path)};
     if (!writer._file) [[unlikely]] {
         return false;
     }
-    LUISA_INFO("Skeleton Writing to {}", _path.string());
+    LUISA_INFO("Skeleton Writing to {}", path.string());
     auto bytes = ser.write_to();
     writer.write(bytes);
 

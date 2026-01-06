@@ -10,6 +10,7 @@
 #include <rbc_render/click_manager.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
+#include "jolt_component.h"
 // #include <rbc_world/project.h>
 
 #include <tracy_wrapper.h>
@@ -66,7 +67,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
                 0, 0, -1));
         transform->set_rotation(rot, true);
         auto render = entity->add_component<world::RenderComponent>();
-        render->start_update_object(_mats, cbox_mesh);
+        render->update_object(_mats, cbox_mesh);
     }
     MeshBuilder mesh_builder;
     mesh_builder.position.emplace_back(make_float3(-0.5f, -0.5f, 0));
@@ -89,7 +90,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     luisa::vector<uint> submesh_offsets;
     luisa::vector<std::byte> quad_bytes;
     mesh_builder.write_to(quad_bytes, submesh_offsets);
-    quad_mesh->create_empty({}, std::move(submesh_offsets), 0, mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
+    quad_mesh->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     auto s = quad_bytes.size_bytes();
     *quad_mesh->host_data() = std::move(quad_bytes);
     quad_mesh->init_device_resource();
@@ -106,7 +107,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         //     16,
         //     true);
         tex = world::create_object<world::TextureResource>();
-        stb_importer.import(tex, &tex_loader, "test_grid.png", 1, false);
+        stb_importer.import(tex, &tex_loader, "test_grid.png", 16, true);
         // skybox = tex_loader.decode_texture(
         //     "sky.exr",
         //     1,
@@ -127,6 +128,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         // TODO: transform from regular tex to vt need reload device-image
         // tex->pack_to_tile();
         tex->init_device_resource();
+        // utils->update_texture(tex->get_image());
         skybox->init_device_resource();
     }
 
@@ -146,25 +148,15 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     auto mat_start_idx = _mats.size();
     _mats.emplace_back(quad_mat);
     auto mats = luisa::span{_mats}.subspan(mat_start_idx, 1);
-    quad_render->start_update_object(mats, quad_mesh);
+    quad_render->update_object(mats, quad_mesh);
 }
 void WorldScene::_write_scene() {
     // save scene
     vstd::HashMap<vstd::Guid> saved;
     auto write_file = [&](world::Resource *res) {
         if (!res || !saved.try_emplace(res->guid()).second) return;
-        if (res->path().empty())
-            res->set_path(
-                scene_root_dir / (res->guid().to_string() + ".rbcb"),
-                0);
         res->save_to_path();
-        JsonSerializer js;
-        ArchiveWriteJson adapter(js);
-        res->serialize_meta(world::ObjSerialize{adapter});
-        auto blob = js.write_to();
-        LUISA_ASSERT(!blob.empty());
-        BinaryFileWriter file_writer(luisa::to_string(scene_root_dir / (res->guid().to_string() + ".rbcmt")));
-        file_writer.write(blob);
+        world::register_resource(res);
     };
     write_file(cbox_mesh);
     write_file(quad_mesh);
@@ -191,7 +183,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     auto runtime_dir = render_device.lc_ctx().runtime_directory();
     luisa::filesystem::path meta_dir{"test_scene"};
     scene_root_dir = runtime_dir / meta_dir;
-    entities_path = scene_root_dir / "scene.rbcmt";
+    entities_path = scene_root_dir / "scene.rbc";
 
     // write a demo scene
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
@@ -241,7 +233,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         for (auto &i : _entities) {
             auto render = i->get_component<world::RenderComponent>();
             if (render) {
-                render->start_update_object();
+                render->update_object();
             }
         }
         // wait skybox
@@ -258,6 +250,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
         utils->render_plugin()->update_skybox(image);
     }
     _set_gizmos();
+    // _init_physics(utils);
     _init_skinning(utils);
     // {
     //     world::Project project{
@@ -275,6 +268,45 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     //         });
     // }
 }
+void WorldScene::_init_physics(GraphicsUtils *utils) {
+    MeshBuilder cube_mesh_builder;
+    _create_cube(cube_mesh_builder, float3(-0.5f), float3(1));
+    luisa::vector<uint> submesh_offsets;
+    luisa::vector<std::byte> cube_bytes;
+    cube_mesh_builder.write_to(cube_bytes, submesh_offsets);
+    // create static origin mesh
+    auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
+
+    physics_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+    {
+        physics_box_mesh = world::create_object<world::MeshResource>();
+        physics_box_mesh->create_empty(std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
+
+        *physics_box_mesh->host_data() = std::move(cube_bytes);
+        physics_box_mesh->init_device_resource();
+        utils->update_mesh_data(physics_box_mesh->device_mesh(), false);// update through render-thread
+    }
+    // floor
+    {
+        physics_floor_entity = world::create_object<world::Entity>();
+        auto tr = physics_floor_entity->add_component<world::TransformComponent>();
+        auto render = physics_floor_entity->add_component<world::RenderComponent>();
+        auto jolt = physics_floor_entity->add_component<world::JoltComponent>();
+        jolt->init(true);
+        render->update_object({}, physics_box_mesh.get());
+    }
+    // box
+    {
+        physics_box_entity = world::create_object<world::Entity>();
+        auto tr = physics_box_entity->add_component<world::TransformComponent>();
+        auto render = physics_box_entity->add_component<world::RenderComponent>();
+        auto jolt = physics_box_entity->add_component<world::JoltComponent>();
+        jolt->init(false);
+        auto mats = {physics_mat};
+        physics_mat->load_from_json(mat1);
+        render->update_object(mats, physics_box_mesh.get());
+    }
+}
 void WorldScene::_init_skinning(GraphicsUtils *utils) {
     auto &render_device = RenderDevice::instance();
     auto &device = render_device.lc_device();
@@ -288,7 +320,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     // create static origin mesh
     {
         skinning_origin_mesh = world::create_object<world::MeshResource>();
-        skinning_origin_mesh->create_empty({}, std::move(submesh_offsets), 0, cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
+        skinning_origin_mesh->create_empty(std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
 
         *skinning_origin_mesh->host_data() = std::move(cube_bytes);
         skinning_origin_mesh->add_property("skinning_weight_index", cube_mesh_builder.vertex_count() * 2 * sizeof(uint));
@@ -321,7 +353,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     auto tr = skinning_entity->add_component<world::TransformComponent>();
     tr->set_pos(double3(0, 2, 1), false);
     auto render = skinning_entity->add_component<world::RenderComponent>();
-    render->start_update_object({}, skinning_mesh.get());
+    render->update_object({}, skinning_mesh.get());
 }
 void WorldScene::_create_cube(MeshBuilder &mesh_builder, float3 offset, float3 scale) {
     auto idx = mesh_builder.position.size();
@@ -412,6 +444,8 @@ void WorldScene::_set_gizmos() {
 bool WorldScene::draw_gizmos(
     bool dragging,
     GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, Camera const &cam) {
+    if (_entities.empty())
+        return false;
     RBCZoneScopedN("WorldScene::draw_gizmos");
 
     auto &click_mng = utils->render_settings().read_mut<ClickManager>();
@@ -514,9 +548,19 @@ WorldScene::~WorldScene() {
     skinning_entity.reset();
     skinning_mesh.reset();
     skinning_origin_mesh.reset();
+    physics_mat.reset();
+    physics_floor_entity.reset();
+    physics_box_entity.reset();
+    physics_box_mesh.reset();
     world::destroy_world();
 }
-void WorldScene::tick_skinning(GraphicsUtils *utils) {
+void WorldScene::tick_skinning(GraphicsUtils *utils, float delta_time) {
+    if (physics_box_entity) {
+        world::JoltComponent::update_step(min(delta_time, 1 / 60.0f));
+        physics_box_entity->get_component<world::JoltComponent>()->update_pos();
+    }
+    if (_entities.empty())
+        return;
     static Clock clk;
     auto &sm = SceneManager::instance();
     auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();

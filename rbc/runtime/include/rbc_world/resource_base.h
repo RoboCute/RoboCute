@@ -27,17 +27,12 @@ struct Resource : BaseObject {
     friend struct ResourceBaseImpl;
 protected:
     std::atomic<EResourceLoadingStatus> _status{EResourceLoadingStatus::Unloaded};
-    luisa::filesystem::path _path;
-    uint64_t _file_offset{};
     RBC_RUNTIME_API Resource();
     RBC_RUNTIME_API ~Resource();
     virtual rbc::coroutine _async_load() = 0;
 
 public:
-    [[nodiscard]] luisa::filesystem::path const &path() const {
-        return _path;
-    }
-    [[nodiscard]] uint64_t file_offset() const { return _file_offset; }
+    [[nodiscard]] RBC_RUNTIME_API luisa::filesystem::path path() const;
 
     ///////// Function call must be atomic
     EResourceLoadingStatus loading_status() const { return _status.load(std::memory_order_relaxed); }
@@ -48,16 +43,9 @@ public:
     RBC_RUNTIME_API ResourceAwait await_loading();
     // save host_data to Resource::_path
     RBC_RUNTIME_API bool save_to_path();
-    // set Resource::_path, valid only if this resource is empty
-    RBC_RUNTIME_API void set_path(
-        luisa::filesystem::path const &path,
-        uint64_t const &file_offset);
-    // serialize_meta meta information
-    RBC_RUNTIME_API void serialize_meta(ObjSerialize const &obj) const override;
-    // deserialize_meta meta information
-    RBC_RUNTIME_API void deserialize_meta(ObjDeSerialize const &obj) override;
     // RBC_RUNTIME_API virtual void (ObjDeSerialize const&obj);
-
+    RBC_RUNTIME_API static luisa::filesystem::path const &meta_root_path();
+    RBC_RUNTIME_API static luisa::filesystem::path const &binary_root_path();
     /**
      * @brief Decode resource from file using registered importers
      * @param path Path to the resource file
