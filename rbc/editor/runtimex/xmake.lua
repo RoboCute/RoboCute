@@ -14,7 +14,7 @@ do
     add_includedirs("include", {
         public = true
     })
-    add_deps("qt_node_editor", 'rbc_core')
+    add_deps("qt_node_editor", 'rbc_core', "rbc_runtime")
     add_defines('RBC_EDITOR_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT')
     add_defines('RBC_EDITOR_RUNTIME_API=LUISA_DECLSPEC_DLL_IMPORT', {
         interface = true

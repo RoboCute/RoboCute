@@ -13,8 +13,8 @@ namespace rbc {
  * - Realistic: 真实感渲染模式（路径追踪，PBR渲染）
  */
 enum class RenderMode {
-    Editor,    // 编辑器模式 (VisApp)
-    Realistic  // 真实感渲染模式 (PBRApp)
+    Editor,  // 编辑器模式 (VisApp)
+    Realistic// 真实感渲染模式 (PBRApp)
 };
 
 /**
@@ -48,13 +48,8 @@ struct RBC_EDITOR_RUNTIME_API AppBase : public IApp {
 public:
     [[nodiscard]] unsigned int GetDXAdapterLUIDHigh() const override { return dx_adaptor_luid.x; }
     [[nodiscard]] unsigned int GetDXAdapterLUIDLow() const override { return dx_adaptor_luid.y; }
-
     [[nodiscard]] void *GetStreamNativeHandle() const override;
     [[nodiscard]] void *GetDeviceNativeHandle() const override;
-
-    /**
-     * 获取渲染模式
-     */
     [[nodiscard]] virtual RenderMode getRenderMode() const = 0;
 
     /**
@@ -97,4 +92,3 @@ protected:
 };
 
 }// namespace rbc
-

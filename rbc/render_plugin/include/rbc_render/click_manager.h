@@ -3,6 +3,8 @@
 #include <luisa/vstl/common.h>
 #include <luisa/runtime/rtx/triangle.h>
 #include <luisa/runtime/buffer.h>
+#include <rbc_core/type_info.h>
+
 namespace rbc {
 struct ClickRequire {
     luisa::float2 screen_uv;

@@ -422,29 +422,6 @@ Item {
 
 ## 服务层设计
 
-### 1. 服务层架构
-
-服务层提供核心业务功能，所有服务通过`PluginManager`注册和获取：
-
-```
-infrastructure/
-├── events/                    # 事件系统
-│   ├── IEventBus.h            # 事件总线接口
-│   ├── EventBus.h             # 事件总线实现
-│   ├── Event.h                # 事件定义
-│   └── EventType.h            # 事件类型枚举
-│
-├── network/                    # 网络服务
-│   └── HttpClient.h
-│
-├── rendering/                  # 渲染服务
-│   └── RenderService.h
-│
-└── repository/                 # 数据仓库层
-    ├── SceneRepository.h       # 场景数据访问
-    └── AnimationRepository.h  # 动画数据访问
-```
-
 ### 2. EventBus（事件总线）
 
 ```cpp
