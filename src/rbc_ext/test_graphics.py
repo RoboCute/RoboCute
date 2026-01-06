@@ -188,11 +188,6 @@ def main():
     #         start_time = time.perf_counter()
 
     # destroy_object(mesh)
-    del mat_vector
-    del cube_mesh
-    del second_mat
-    del mat
-    del entity
     del ctx
 
 
