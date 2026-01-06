@@ -1,9 +1,9 @@
-
 #include "RBCEditorRuntime/services/ConnectionService.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTimer>
 
 namespace rbc {
 

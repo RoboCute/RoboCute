@@ -1,12 +1,13 @@
 #pragma once
 
+#include <rbc_config.h>
 #include <QObject>
 #include "RBCEditorRuntime/infra/events/Event.h"
 #include "RBCEditorRuntime/infra/events/EventType.h"
 
 namespace rbc {
 
-class ViewModelBase : public QObject {
+class RBC_EDITOR_RUNTIME_API ViewModelBase : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool isBusy READ isBusy NOTIFY isBusyChanged)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)

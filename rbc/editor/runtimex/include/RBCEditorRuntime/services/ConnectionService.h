@@ -1,11 +1,12 @@
 #pragma once
 
+#include <rbc_config.h>
 #include <QObject>
 #include <QTimer>
 
 namespace rbc {
 
-class ConnectionService : public QObject {
+class RBC_EDITOR_RUNTIME_API ConnectionService : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString serverUrl READ serverUrl WRITE setServerUrl NOTIFY serverUrlChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)

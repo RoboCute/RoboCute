@@ -4,6 +4,7 @@
 #include <QQmlEngine>
 #include <QFileSystemWatcher>
 #include "RBCEditorRuntime/services/IEventBus.h"
+#include <rbc_plugin/plugin_manager.h>
 
 namespace rbc {
 
@@ -16,7 +17,7 @@ public:
 
     // Plugin LifeCycle
     bool loadPlugin(const QString &pluginPath);// Load From DLL
-    bool loadPlugin(IEditorPlugin *plugin);
+    bool loadPlugin(IEditorPlugin *plugin);    // Load from built-in instances
     bool unloadPlugin(const QString &pluginId);
     bool reloadPlugin(const QString &pluginId);
     void unloadAllPlugins();// 集中卸载全部Plugins

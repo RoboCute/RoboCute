@@ -1,7 +1,7 @@
 #pragma once
-#include <QObject>
-#include "RBCEditorRuntime/mvvm/ViewModelBase.h"
+
 #include "RBCEditorRuntime/services/ConnectionService.h"
+#include "RBCEditorRuntime/mvvm/ViewModelBase.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 
 namespace rbc {
@@ -76,10 +76,22 @@ public:
 
     void register_view_models(QQmlEngine *engine) override;
 
+    // Get ViewModel for a specific view
+    QObject *getViewModel(const QString &viewId) override;
+
 private:
     ConnectionService *connectionService_ = nullptr;
     ConnectionViewModel *viewModel_ = nullptr;
     PluginContext *context_ = nullptr;
 };
+
+// Extern "C" Interface
+
+extern "C" {
+__declspec(dllexport) IEditorPlugin *createPlugin();
+__declspec(dllexport) void destroyPlugin(IEditorPlugin *plugin);
+__declspec(dllexport) const char *getPluginId();
+__declspec(dllexpor) const char *getPluginVersion();
+}
 
 }// namespace rbc

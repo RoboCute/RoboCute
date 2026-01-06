@@ -1,5 +1,6 @@
 #pragma once
 
+#include <rbc_config.h>
 #include <QObject>
 #include <QQmlEngine>
 #include "RBCEditorRuntime/plugins/PluginContributions.h"
@@ -11,7 +12,7 @@ struct PluginContext;
 struct MenuContribution {};
 struct ToolbarContribution {};
 
-class IEditorPlugin : public QObject {
+class RBC_EDITOR_RUNTIME_API IEditorPlugin : public QObject {
     Q_OBJECT
 public:
     virtual ~IEditorPlugin() = default;
@@ -34,6 +35,12 @@ public:
 
     // == ViewModel Registration ==
     virtual void register_view_models(QQmlEngine *engine) = 0;
+
+    // == Get ViewModel for a view ==
+    virtual QObject *getViewModel(const QString &viewId) {
+        Q_UNUSED(viewId);
+        return nullptr;
+    }
 
 signals:
     void reloadRequested();

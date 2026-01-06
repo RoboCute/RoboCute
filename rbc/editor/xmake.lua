@@ -5,3 +5,4 @@ includes("editor_next")
 
 includes("runtimex")
 includes("editorx")
+includes("plugins")

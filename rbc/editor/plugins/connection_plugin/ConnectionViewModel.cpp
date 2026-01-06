@@ -5,23 +5,22 @@
 namespace rbc {
 
 ConnectionViewModel::ConnectionViewModel(ConnectionService *connectionService, QObject *parent)
-    : ViewModelBase(parent)
-    , connectionService_(connectionService) {
-    
+    : ViewModelBase(parent), connectionService_(connectionService) {
+
     if (!connectionService_) {
         qWarning() << "ConnectionViewModel: connectionService is null";
         return;
     }
 
     // Connect to service signals
-    connect(connectionService_, &ConnectionService::serverUrlChanged,
-            this, &ConnectionViewModel::serverUrlChanged);
-    connect(connectionService_, &ConnectionService::connectedChanged,
-            this, &ConnectionViewModel::onConnectionStatusChanged);
-    connect(connectionService_, &ConnectionService::statusTextChanged,
-            this, &ConnectionViewModel::onStatusTextChanged);
-    connect(connectionService_, &ConnectionService::connectionTested,
-            this, &ConnectionViewModel::onConnectionTested);
+    // connect(connectionService_, &ConnectionService::serverUrlChanged,
+    //         this, &ConnectionViewModel::serverUrlChanged);
+    // connect(connectionService_, &ConnectionService::connectedChanged,
+    //         this, &ConnectionViewModel::onConnectionStatusChanged);
+    // connect(connectionService_, &ConnectionService::statusTextChanged,
+    //         this, &ConnectionViewModel::onStatusTextChanged);
+    // connect(connectionService_, &ConnectionService::connectionTested,
+    //         this, &ConnectionViewModel::onConnectionTested);
 }
 
 QString ConnectionViewModel::serverUrl() const {
@@ -79,4 +78,3 @@ void ConnectionViewModel::onConnectionTested(bool success) {
 }
 
 }// namespace rbc
-

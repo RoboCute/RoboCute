@@ -1,6 +1,7 @@
 #include "ConnectionPlugin.h"
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/PluginContext.h"
+
 #include <QQmlEngine>
 #include <QDebug>
 #include <QTimer>
@@ -8,7 +9,7 @@
 namespace rbc {
 
 ConnectionPlugin::ConnectionPlugin(QObject *parent)
-    : IEditorPlugin(parent) {
+    : IEditorPlugin() {
 }
 
 bool ConnectionPlugin::load(PluginContext *context) {
@@ -22,7 +23,7 @@ bool ConnectionPlugin::load(PluginContext *context) {
     // Get ConnectionService from PluginManager
     auto &pm = EditorPluginManager::instance();
     connectionService_ = pm.getService<ConnectionService>();
-    
+
     if (!connectionService_) {
         qWarning() << "ConnectionPlugin::load: ConnectionService not found, creating default";
         // Create a default ConnectionService if not registered
@@ -53,7 +54,7 @@ bool ConnectionPlugin::unload() {
 
 bool ConnectionPlugin::reload() {
     qDebug() << "ConnectionPlugin reloading...";
-    
+
     // Save current state if needed
     QString savedUrl = connectionService_ ? connectionService_->serverUrl() : QString();
     bool wasConnected = connectionService_ ? connectionService_->connected() : false;
@@ -88,7 +89,7 @@ QList<ViewContribution> ConnectionPlugin::view_contributions() const {
     view.preferredSize = "300,200";
     view.closable = true;
     view.movable = true;
-    
+
     return {view};
 }
 
@@ -100,9 +101,32 @@ void ConnectionPlugin::register_view_models(QQmlEngine *engine) {
 
     // Register ConnectionViewModel as QML type
     qmlRegisterType<ConnectionViewModel>("RoboCute.Connection", 1, 0, "ConnectionViewModel");
-    
+
     qDebug() << "ConnectionPlugin: ViewModels registered";
 }
 
-}// namespace rbc
+QObject *ConnectionPlugin::getViewModel(const QString &viewId) {
+    if (viewId == "connection_status" && viewModel_) {
+        return viewModel_;
+    }
+    return nullptr;
+}
 
+// Extern "C" Interface
+IEditorPlugin *createPlugin() {
+    return new ConnectionPlugin();
+}
+
+void destroyPlugin(IEditorPlugin *plugin) {
+    delete plugin;
+}
+
+const char *getPluginId() {
+    return "rbc.editor.connection_plugin";
+}
+
+const char *getPluginVersion() {
+    return "1.0.0";
+}
+
+}// namespace rbc
