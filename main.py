@@ -117,16 +117,6 @@ def main():
     node_graph_service = rbc.NodeGraphService(scene)
     server.register_service(node_graph_service)
 
-    # Register health check endpoint for connection plugin
-    from datetime import datetime
-    @server.app.get("/health")
-    async def health_check():
-        """健康检查接口，供 ConnectionPlugin 使用"""
-        return {
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-        }
-
     # Start server
     print("\n[5] Starting Server...")
     server.start(port=5555)

@@ -13,14 +13,14 @@ ConnectionViewModel::ConnectionViewModel(ConnectionService *connectionService, Q
     }
 
     // Connect to service signals
-    // connect(connectionService_, &ConnectionService::serverUrlChanged,
-    //         this, &ConnectionViewModel::serverUrlChanged);
-    // connect(connectionService_, &ConnectionService::connectedChanged,
-    //         this, &ConnectionViewModel::onConnectionStatusChanged);
-    // connect(connectionService_, &ConnectionService::statusTextChanged,
-    //         this, &ConnectionViewModel::onStatusTextChanged);
-    // connect(connectionService_, &ConnectionService::connectionTested,
-    //         this, &ConnectionViewModel::onConnectionTested);
+    QObject::connect(connectionService_, &ConnectionService::serverUrlChanged,
+            this, &ConnectionViewModel::serverUrlChanged);
+    QObject::connect(connectionService_, &ConnectionService::connectedChanged,
+            this, &ConnectionViewModel::onConnectionStatusChanged);
+    QObject::connect(connectionService_, &ConnectionService::statusTextChanged,
+            this, &ConnectionViewModel::onStatusTextChanged);
+    QObject::connect(connectionService_, &ConnectionService::connectionTested,
+            this, &ConnectionViewModel::onConnectionTested);
 }
 
 QString ConnectionViewModel::serverUrl() const {

@@ -30,6 +30,8 @@ void ConnectionService::testConnection() {
 }
 
 void ConnectionService::connect() {
+    qDebug() << "[Connection Service] Connecting ... " << m_serverUrl;
+
     if (m_serverUrl.isEmpty()) {
         updateStatus(false, "No server URL set");
         return;
@@ -86,13 +88,15 @@ void ConnectionService::performHealthCheck() {
             QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
             if (!doc.isNull() && doc.isObject()) {
                 QJsonObject obj = doc.object();
-                if (obj.contains("status") && obj["status"].toString() == "ok") {
+                // qDebug() << "Connect Get: " << obj;
+                if (obj.contains("status") && obj["status"].toString() == "healthy") {
                     success = true;
                 }
             }
         }
 
         onHealthCheckComplete(success);
+
         reply->deleteLater();
         manager->deleteLater();
     });
