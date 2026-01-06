@@ -17,8 +17,14 @@ void BufferUploader::commit_cmd(
     CmdKey const &key, CmdValue &value,
     CommandList &cmdlist,
     HostBufferManager &temp_buffer) {
-    auto ind_buffer = temp_buffer.allocate_upload_buffer<uint>(value.indices.size(), 16);
-    memcpy(ind_buffer.mapped_ptr(), value.indices.data(), value.indices.size_bytes());
+    value.indices_vec.clear();
+    value.indices_vec.reserve(value.indices_map.size());
+    for (auto &i : value.indices_map) {
+        value.indices_vec.emplace_back(i);
+    }
+    value.indices_map.clear();
+    auto ind_buffer = temp_buffer.allocate_upload_buffer<uint>(value.indices_vec.size(), 16);
+    memcpy(ind_buffer.mapped_ptr(), value.indices_vec.data(), value.indices_vec.size_bytes());
     auto alloc_data_buffer = [&]<typename T>() {
         auto data_buffer = temp_buffer.allocate_upload_buffer<T>((value.datas.size_bytes() + sizeof(T) - 1) / sizeof(T), 16);
         memcpy(data_buffer.mapped_ptr(), value.datas.data(), value.datas.size_bytes());
@@ -30,28 +36,28 @@ void BufferUploader::commit_cmd(
                            value.origin_buffer.as<uint16_t>(),
                            alloc_data_buffer.operator()<uint>().view.as<uint16_t>(),
                            ind_buffer.view)
-                           .dispatch(value.indices.size(), key.struct_size / 2u);
+                           .dispatch(value.indices_vec.size(), key.struct_size / 2u);
         } break;
         case 4: {
             cmdlist << (*_align4_copy)(
                            value.origin_buffer.as<uint>(),
                            alloc_data_buffer.operator()<uint>().view,
                            ind_buffer.view)
-                           .dispatch(value.indices.size(), key.struct_size / 4u);
+                           .dispatch(value.indices_vec.size(), key.struct_size / 4u);
         } break;
         case 8: {
             cmdlist << (*_align8_copy)(
                            value.origin_buffer.as<uint2>(),
                            alloc_data_buffer.operator()<uint2>().view,
                            ind_buffer.view)
-                           .dispatch(value.indices.size(), key.struct_size / 8u);
+                           .dispatch(value.indices_vec.size(), key.struct_size / 8u);
         } break;
         case 16: {
             cmdlist << (*_align16_copy)(
                            value.origin_buffer.as<uint4>(),
                            alloc_data_buffer.operator()<uint4>().view,
                            ind_buffer.view)
-                           .dispatch(value.indices.size(), key.struct_size / 16u);
+                           .dispatch(value.indices_vec.size(), key.struct_size / 16u);
         } break;
         default:
             LUISA_ERROR("Invalid alignment {}, require 2, 4, 8 or 16.", key.struct_align);
@@ -121,7 +127,7 @@ void *BufferUploader::emplace_copy_cmd(
         }));
     auto &v = iter.first->second;
     for (auto i : vstd::range(offset, offset + size)) {
-        v.indices.emplace_back(i);
+        v.indices_map.emplace(i);
     }
     auto start_idx = v.datas.size();
     v.datas.push_back_uninitialized(size * struct_size);

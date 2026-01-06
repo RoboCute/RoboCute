@@ -16,7 +16,8 @@ struct RBC_RUNTIME_API BufferUploader
 public:
     struct CmdValue {
         BufferView<uint> origin_buffer;
-        vector<uint> indices;
+        luisa::unordered_set<uint> indices_map;
+        luisa::vector<uint> indices_vec;
         vector<std::byte> datas;
     };
 

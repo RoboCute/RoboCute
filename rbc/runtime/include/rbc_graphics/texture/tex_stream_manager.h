@@ -116,6 +116,10 @@ public:
         uint offset;
         uint value;
     };
+    struct SetRange {
+        uint offset;
+        uint size;
+    };
 private:
     Device &_device;
     Stream &_async_stream;
@@ -128,10 +132,14 @@ private:
     std::mutex _async_mtx;
     vstd::HashMap<uint64, shared_ptr<TexIndex>> _loaded_texs;
     luisa::spin_mutex _dispose_map_mtx;
-    vstd::HashMap<uint> _dispose_map;
+    vstd::HashMap<uint, SetRange> _dispose_map;
     Shader1D<Buffer<uint16_t>, uint> const *set_shader16;
+    Shader1D<Buffer<uint16_t>, Buffer<uint2>, Buffer<uint>, uint> const *set_min_level_shader;
     Shader1D<Buffer<uint>, uint> const *set_shader;
     Shader1D<Buffer<uint>, uint, uint> const *clear_shader;
+    // used in before_rendering
+    luisa::vector<uint2> dispose_offset_cache;
+    luisa::vector<uint3> dispose_dispatch_cache;
     uint _countdown{(1u << 28u) - 2u};
     ////////////// callback thread	struct
     struct FrameResource {
@@ -212,8 +220,8 @@ public:
         uint8_t lru_frame = 16,
         uint8_t lru_frame_memoryless = 4,
         size_t memoryless_threshold = 1024ull * 1024ull * 8ull,
-        // default 4 GB
-        size_t memory_limit = 4ull * 1024ull * 1024ull * 1024ull);
+        // default 16 GB
+        size_t memory_limit = 16ull * 1024ull * 1024ull * 1024ull);
     ~TexStreamManager();
     LoadResult load_sparse_img(
         SparseImage<float> &&img,

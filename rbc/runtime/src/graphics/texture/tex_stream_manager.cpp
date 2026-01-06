@@ -83,8 +83,9 @@ TexStreamManager::TexStreamManager(
     luisa::fiber::counter counter;
     _uploader.load_shader(counter);
     _frame_res.reserve(64);
-    _min_level_buffer = device.create_buffer<uint16_t>(65536);
+    _min_level_buffer = device.create_buffer<uint16_t>(262144u);
     _chunk_offset_buffer = device.create_buffer<uint>(262144u);
+    ShaderManager::instance()->async_load(counter, "texture_process/set_min_level_buffer.bin", set_min_level_shader);
     ShaderManager::instance()->async_load(counter, "texture_process/tex_mng_clear.bin", clear_shader);
     ShaderManager::instance()->async_load(counter, "path_tracer/clear_buffer.bin", set_shader);
     ShaderManager::instance()->async_load(counter, "path_tracer/clear_buffer16.bin", set_shader16);
@@ -125,12 +126,10 @@ void TexStreamManager::CopyStreamCallback::operator()() {
 void TexStreamManager::_async_logic() {
     CommandList &cmdlist = async_cmdlist;
     luisa::vector<SparseTextureHeap> _disposed_heap;
-    auto remove_list = [&]() {
-        return std::move(_remove_list);
-    }();
-    for (auto &i : remove_list) {
+    for (auto &i : _remove_list) {
         _unmap_lists.remove(i);
     }
+    _remove_list.clear();
 
     if (auto res = _frame_res.pop()) {
         inqueue_frame--;
@@ -140,7 +139,7 @@ void TexStreamManager::_async_logic() {
                 if (res->set_level_cmds.empty()) return;
                 auto &copy_cmd = _uploader._get_copy_cmd(_min_level_buffer.view());
                 for (auto &i : res->set_level_cmds) {
-                    copy_cmd.indices.emplace_back(i.offset);
+                    copy_cmd.indices_map.emplace(i.offset);
                     auto size = copy_cmd.datas.size();
                     copy_cmd.datas.push_back_uninitialized(sizeof(uint16_t));
                     auto ptr = reinterpret_cast<uint16_t *>(copy_cmd.datas.data() + size);
@@ -359,8 +358,12 @@ void TexStreamManager::unload_sparse_img(
     auto iter = _loaded_texs.find(img_uid);
     LUISA_ASSERT(iter, "Trying to destroy non-exists tex.");
     auto &v = iter.value();
+    auto node_offset = v->node.offset_bytes() / sizeof(uint);
+    uint chunk_count = v->node.size_bytes() / sizeof(uint);
     _dispose_map_mtx.lock();
-    _dispose_map.emplace(v->bindless_idx);
+    _dispose_map.emplace(v->bindless_idx, SetRange{
+                                              .offset = (uint)node_offset,
+                                              .size = chunk_count});
     _dispose_map_mtx.unlock();
     _bdls_mng.alloc().deallocate_tex2d(v->bindless_idx);
     _level_buffer.free(v->node);
@@ -425,9 +428,6 @@ IOCommandList TexStreamManager::_process_readback(vstd::span<uint const> readbac
             lru_frame = _lru_frame;
         }
         for (auto chunk_idx : vstd::range(chunk_count)) {
-            if ((size_t)rb_ptr < 99999) {
-                LUISA_WARNING("{}", (size_t)readback.data());
-            }
             auto rb_value = rb_ptr[chunk_idx];
             uint last_updated_countdown = rb_value >> 4u;
             uint dst_level = rb_value & 15u;
@@ -577,24 +577,41 @@ void TexStreamManager::before_rendering(
     if (!_async_load_evt.is_signalled()) {
         return;
     }
+    dispose_offset_cache.clear();
+    dispose_dispatch_cache.clear();
     cmdlist.add_range(std::move(async_cmdlist));
     {
         std::lock_guard lck{_uploader_mtx};
         {
             std::lock_guard lck1{_dispose_map_mtx};
             if (!_dispose_map.empty()) {
+                dispose_offset_cache.reserve(_dispose_map.size());
+                dispose_dispatch_cache.reserve(_dispose_map.size());
                 auto &copy_cmd = _uploader._get_copy_cmd(_chunk_offset_buffer.view());
                 for (auto &i : _dispose_map) {
-                    copy_cmd.indices.emplace_back(i);
+                    copy_cmd.indices_map.emplace(i.first);
                     auto size = copy_cmd.datas.size();
                     copy_cmd.datas.push_back_uninitialized(sizeof(uint));
                     auto ptr = reinterpret_cast<uint *>(copy_cmd.datas.data() + size);
                     *ptr = std::numeric_limits<uint>::max();
+                    dispose_offset_cache.emplace_back(i.second.offset, i.first);
+                    dispose_dispatch_cache.emplace_back(make_uint3(i.second.size, 1, 1));
                 }
                 _dispose_map.clear();
             }
         }
         _uploader.commit(cmdlist, temp_buffer);
+    }
+    // clear min-level buffer
+    if (!dispose_offset_cache.empty()) {
+        auto bf = temp_buffer.allocate_upload_buffer<uint2>(dispose_offset_cache.size(), 16);
+        std::memcpy(bf.mapped_ptr(), dispose_offset_cache.data(), dispose_offset_cache.size_bytes());
+        cmdlist << (*set_min_level_shader)(
+                       _min_level_buffer,
+                       bf.view,
+                       _chunk_offset_buffer.view(),
+                       32768u)
+                       .dispatch(dispose_dispatch_cache);
     }
     auto fence = ++last_fence;
 
