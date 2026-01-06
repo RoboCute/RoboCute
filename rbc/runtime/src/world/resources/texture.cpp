@@ -17,6 +17,9 @@ luisa::vector<std::byte> *TextureResource::host_data() {
     }
     return nullptr;
 }
+bool TextureResource::empty() const {
+    return !_tex;
+}
 DeviceImage *TextureResource::get_image() const {
     std::shared_lock lck{_async_mtx};
     if (_tex && !is_vt()) {

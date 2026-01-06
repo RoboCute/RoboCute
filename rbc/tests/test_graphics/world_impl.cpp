@@ -6,6 +6,9 @@
 #include <rbc_world/components/transform.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/light.h>
+#include <rbc_world/resources/texture.h>
+#include <rbc_world/resources/mesh.h>
+#include <rbc_world/resources/material.h>
 
 namespace rbc {
 vstd::Guid Object::guid(void *this_) {
@@ -151,4 +154,108 @@ float LightComponent::small_angle_radians(void *this_) {
     auto c = static_cast<world::LightComponent *>(this_);
     return c->small_angle_radians();
 }
+
+void *TextureResource::_create_() {
+    auto p = world::create_object<world::TextureResource>();
+    manually_add_ref(p);
+    return p;
+}
+void *MeshResource::_create_() {
+    auto p = world::create_object<world::MeshResource>();
+    manually_add_ref(p);
+    return p;
+}
+void *MaterialResource::_create_() {
+    auto p = world::create_object<world::MaterialResource>();
+    manually_add_ref(p);
+    return p;
+}
+void TextureResource::_destroy_(void *ptr) {
+    manually_release_ref(static_cast<world::BaseObject *>(ptr));
+}
+void MeshResource::_destroy_(void *ptr) {
+    manually_release_ref(static_cast<world::BaseObject *>(ptr));
+}
+void MaterialResource::_destroy_(void *ptr) {
+    manually_release_ref(static_cast<world::BaseObject *>(ptr));
+}
+void TextureResource::create_empty(void *this_, rbc::LCPixelStorage pixel_storage, luisa::uint2 size, uint32_t mip_level, bool is_virtual_texture) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    c->create_empty(pixel_storage, size, mip_level, is_virtual_texture);
+}
+luisa::span<std::byte> TextureResource::data_buffer(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    auto ptr = c->host_data();
+    if (!ptr) return {};
+    return *ptr;
+}
+bool TextureResource::has_data_buffer(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return c->host_data();
+}
+uint32_t TextureResource::heap_index(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return c->heap_index();
+}
+bool TextureResource::init_device_resource(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return c->init_device_resource();
+}
+bool TextureResource::is_vt(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return c->is_vt();
+}
+bool TextureResource::load_executed(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return c->load_executed();
+}
+uint32_t TextureResource::mip_level(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return c->mip_level();
+}
+bool TextureResource::pack_to_tile(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return c->pack_to_tile();
+}
+rbc::LCPixelStorage TextureResource::pixel_storage(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return c->pixel_storage();
+}
+luisa::uint2 TextureResource::size(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return c->size();
+}
+bool TextureResource::valid(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    return !c->empty();
+}
+
+uint64_t MeshResource::basic_size_bytes(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->basic_size_bytes();
+}
+bool MeshResource::contained_normal(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->contained_normal();
+}
+bool MeshResource::contained_tangent(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    return c->contained_tangent();
+}
+void MeshResource::create_as_morphing_instance(void *this_, void *origin_mesh) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    c->create_as_morphing_instance(static_cast<world::MeshResource *>(origin_mesh));
+}
+void MeshResource::create_empty(void *this_, luisa::vector<int> const &submesh_offsets, uint32_t vertex_count, uint32_t triangle_count, uint32_t uv_count, bool contained_normal, bool contained_tangent) { auto c = static_cast<world::MeshResource *>(this_); }
+luisa::span<std::byte> MeshResource::data_buffer(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+uint64_t MeshResource::desire_size_bytes(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+uint64_t MeshResource::extra_size_bytes(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+bool MeshResource::has_data_buffer(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+bool MeshResource::init_device_resource(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+bool MeshResource::is_transforming_mesh(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+uint32_t MeshResource::submesh_count(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+uint32_t MeshResource::triangle_count(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+uint32_t MeshResource::uv_count(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+bool MeshResource::valid(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
+uint32_t MeshResource::vertex_count(void *this_) { auto c = static_cast<world::MeshResource *>(this_); }
 }// namespace rbc
