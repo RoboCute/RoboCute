@@ -52,7 +52,7 @@ QDockWidget *WindowManager::createDockableView(const ViewContribution &contribut
         qmlUrl = QUrl("qrc:/qml/" + contribution.qmlSource);
     }
 
-    // Set root context property for ViewModel
+    // Set root context property for ViewModel (before loading QML)
     QQmlContext *context = quickWidget->rootContext();
     context->setContextProperty("viewModel", viewModel);
 

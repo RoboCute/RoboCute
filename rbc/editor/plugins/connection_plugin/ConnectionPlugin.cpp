@@ -89,7 +89,9 @@ QList<ViewContribution> ConnectionPlugin::view_contributions() const {
     ViewContribution view;
     view.viewId = "connection_status";
     view.title = "Connection Status";
-    view.qmlSource = "connection_plugin/ConnectionView.qml";
+    // qml file is compiled into the plugin's qrc under qrc:/qml/
+    // keep the relative path minimal so WindowManager resolves it correctly
+    view.qmlSource = "ConnectionView.qml";
     view.dockArea = "Left";
     view.preferredSize = "300,200";
     view.closable = true;

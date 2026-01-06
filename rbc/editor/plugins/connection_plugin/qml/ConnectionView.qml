@@ -12,8 +12,8 @@ import RoboCute.Connection 1.0
 Item {
     id: root
 
-    // ViewModel 由 C++ 注入
-    required property ConnectionViewModel viewModel
+    // ViewModel 从上下文属性读取（由 C++ 通过 setContextProperty 注入）
+    // 直接使用上下文属性 viewModel，无需声明
 
     Rectangle {
         id: container
