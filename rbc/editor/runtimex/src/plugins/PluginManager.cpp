@@ -2,9 +2,6 @@
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/plugins/PluginContext.h"
 
-// services
-#include "RBCEditorRuntime/services/ConnectionService.h"
-
 #include <QDebug>
 #include <QDir>
 
@@ -22,7 +19,16 @@ EditorPluginManager::EditorPluginManager()
 bool EditorPluginManager::loadPlugin(const QString &pluginPath) {
     auto &inst = rbc::PluginManager::instance();
     try {
-        inst.load_module(pluginPath.toStdString().c_str());
+        auto module = inst.load_module(pluginPath.toStdString().c_str());
+        IEditorPlugin *plugin = module->invoke<IEditorPlugin *()>("createPlugin");
+        plugin->plugin_path = pluginPath;
+        QString pluginId = plugin->id();
+        if (!loadPlugin(plugin)) {
+            return false;
+        }
+        // keep the module alive while the plugin instance exists
+        modules_[pluginId] = std::move(module);
+        return true;
     } catch (std::exception &e) {
         qFatal() << "Plugin from " << pluginPath << " load failed";
     }
@@ -53,7 +59,7 @@ bool EditorPluginManager::loadPlugin(IEditorPlugin *plugin) {
 
     // Register plugin
     plugins_[pluginId] = plugin;
-    plugin->setParent(this);
+    // plugin->setParent(this);
 
     // Register ViewModels
     if (qmlEngine_) {
@@ -63,7 +69,7 @@ bool EditorPluginManager::loadPlugin(IEditorPlugin *plugin) {
     // Initialize plugin
     initializePlugin(plugin);
 
-    qDebug() << "EditorPluginManager::loadPlugin: Plugin" << pluginId << "loaded successfully";
+    qDebug() << "EditorPluginManager::loadPlugin: Plugin" << pluginId << "(" << plugin->name() << ") loaded successfully";
     emit pluginLoaded(pluginId);
 
     return true;
@@ -76,7 +82,7 @@ bool EditorPluginManager::unloadPlugin(const QString &pluginId) {
     }
 
     IEditorPlugin *plugin = plugins_[pluginId];
-
+    auto pluginPath = plugin->plugin_path;
     // Check dependencies
     for (auto *otherPlugin : plugins_) {
         if (otherPlugin != plugin) {
@@ -89,18 +95,33 @@ bool EditorPluginManager::unloadPlugin(const QString &pluginId) {
         }
     }
 
-    // Unload plugin
+    auto &inst = rbc::PluginManager::instance();
+    luisa::shared_ptr<luisa::DynamicModule> moduleRef;
+    // keep DLL loaded while calling virtual methods
+    if (modules_.contains(pluginId)) {
+        moduleRef = modules_[pluginId];
+    } else if (!pluginPath.isEmpty()) {
+        moduleRef = inst.load_module(pluginPath.toStdString().c_str());
+    }
+
+    // now it is safe to call virtual functions because the module stays loaded
     if (!plugin->unload()) {
         qWarning() << "EditorPluginManager::unloadPlugin: Failed to unload plugin" << pluginId;
         return false;
-    } else {
-        auto &inst = rbc::PluginManager::instance();
-        inst.unload_module(plugin->name().toStdString().c_str());
     }
 
-    // Remove from map
+    // 从 map 中移除（在删除对象之前）
     plugins_.remove(pluginId);
-    plugin->deleteLater();
+
+    // 同步删除对象（而不是 deleteLater），确保在 DLL 卸载前完成
+    delete plugin;
+    plugin = nullptr;
+
+    // 最后卸载 DLL 模块（此时对象已删除，不再需要 DLL）
+    modules_.remove(pluginId);
+    if (!pluginPath.isEmpty()) {
+        inst.unload_module(pluginPath.toStdString().c_str());
+    }
 
     qDebug() << "EditorPluginManager::unloadPlugin: Plugin" << pluginId << "unloaded";
     emit pluginUnloaded(pluginId);

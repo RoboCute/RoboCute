@@ -1,5 +1,5 @@
 #pragma once
-
+#include <rbc_config.h>
 #include "RBCEditorRuntime/services/ConnectionService.h"
 #include "RBCEditorRuntime/mvvm/ViewModelBase.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
@@ -11,7 +11,7 @@ namespace rbc {
  * 
  * 负责管理连接状态的显示和交互逻辑
  */
-class ConnectionViewModel : public ViewModelBase {
+class RBC_EDITOR_PLUGIN_API ConnectionViewModel : public ViewModelBase {
     Q_OBJECT
     Q_PROPERTY(QString serverUrl READ serverUrl WRITE setServerUrl NOTIFY serverUrlChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
@@ -58,7 +58,7 @@ class ConnectionPlugin : public IEditorPlugin {
 
 public:
     explicit ConnectionPlugin(QObject *parent = nullptr);
-    ~ConnectionPlugin() override = default;
+    ~ConnectionPlugin() override;
 
     // IEditorPlugin interface
     bool load(PluginContext *context) override;
@@ -85,13 +85,6 @@ private:
     PluginContext *context_ = nullptr;
 };
 
-// Extern "C" Interface
-
-extern "C" {
-__declspec(dllexport) IEditorPlugin *createPlugin();
-__declspec(dllexport) void destroyPlugin(IEditorPlugin *plugin);
-__declspec(dllexport) const char *getPluginId();
-__declspec(dllexpor) const char *getPluginVersion();
-}
+LUISA_EXPORT_API IEditorPlugin *createPlugin();
 
 }// namespace rbc

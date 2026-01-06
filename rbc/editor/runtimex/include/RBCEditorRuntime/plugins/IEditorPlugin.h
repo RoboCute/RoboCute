@@ -42,6 +42,8 @@ public:
         return nullptr;
     }
 
+    QString plugin_path = "";
+
 signals:
     void reloadRequested();
     void stateChanged(PluginState state);

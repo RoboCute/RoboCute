@@ -58,6 +58,8 @@ private:
     void initializePlugin(IEditorPlugin *plugin);
 
     QMap<QString, IEditorPlugin *> plugins_;
+    QMap<QString, luisa::shared_ptr<luisa::DynamicModule>> modules_;
+
     QMap<QString, QObject *> services_;
     QQmlEngine *qmlEngine_ = nullptr;
     QFileSystemWatcher *hotReloadWatcher_ = nullptr;

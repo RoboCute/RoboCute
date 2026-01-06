@@ -37,6 +37,7 @@ do
     add_rules("lc_basic_settings", {
         project_kind = "binary"
     })
+    set_group("04.targets")
 
     add_deps('rbc_editor_module', 'rbc_testbed_module', 'rbc_runtime')
     add_files('main_entry.cpp')

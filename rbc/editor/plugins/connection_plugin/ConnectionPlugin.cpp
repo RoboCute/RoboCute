@@ -10,6 +10,11 @@ namespace rbc {
 
 ConnectionPlugin::ConnectionPlugin(QObject *parent)
     : IEditorPlugin() {
+    qDebug() << "ConnectionPlugin created";
+}
+
+ConnectionPlugin::~ConnectionPlugin() {
+    qDebug() << "ConnectionPlugin destroyed";
 }
 
 bool ConnectionPlugin::load(PluginContext *context) {
@@ -114,19 +119,8 @@ QObject *ConnectionPlugin::getViewModel(const QString &viewId) {
 
 // Extern "C" Interface
 IEditorPlugin *createPlugin() {
-    return new ConnectionPlugin();
-}
-
-void destroyPlugin(IEditorPlugin *plugin) {
-    delete plugin;
-}
-
-const char *getPluginId() {
-    return "rbc.editor.connection_plugin";
-}
-
-const char *getPluginVersion() {
-    return "1.0.0";
+    // let upper parent manage the life cycle
+    return static_cast<IEditorPlugin *>(new ConnectionPlugin());
 }
 
 }// namespace rbc
