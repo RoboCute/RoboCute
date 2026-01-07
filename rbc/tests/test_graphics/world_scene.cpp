@@ -246,8 +246,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
                 wait_skybox.resume();
             }
         }
-        rbc::RC<DeviceImage> image{skybox->get_image()};
-        utils->render_plugin()->update_skybox(image);
+        utils->render_plugin()->update_skybox(rbc::RC<DeviceImage>{skybox->get_image()});
     }
     _set_gizmos();
     // _init_physics(utils);

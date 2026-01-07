@@ -12,12 +12,15 @@ void RuntimeStaticBase::_base_init() {
     }
 }
 void RuntimeStaticBase::init_all() {
+    if (_runtime_already_loaded) return;
     _runtime_already_loaded = true;
     for (auto p = _runtime_static_header; p; p = p->p_next) {
         p->init();
     }
 }
 void RuntimeStaticBase::dispose_all() {
+    if (!_runtime_already_loaded) return;
+    _runtime_already_loaded = false;
     for (auto p = _runtime_static_header; p; p = p->p_next) {
         p->destroy();
     }

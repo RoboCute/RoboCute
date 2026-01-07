@@ -10,8 +10,9 @@
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/material.h>
 #include <rbc_app/graphics_utils.h>
-
 namespace rbc {
+void add_ref(rbc::world::BaseObject *rc);// defined in interface.cpp
+void deref(rbc::world::BaseObject *rc);
 vstd::Guid Object::guid(void *this_) {
     return static_cast<world::BaseObject *>(this_)->guid();
 }
@@ -35,7 +36,7 @@ bool Resource::save_to_path(void *this_) {
 }
 void *Entity::_create_() {
     auto entity = world::create_object<world::Entity>();
-    manually_add_ref(entity);
+    add_ref(entity);
     return entity;
 }
 void *Entity::add_component(void *this_, luisa::string_view name) {
@@ -52,7 +53,7 @@ void *Entity::add_component(void *this_, luisa::string_view name) {
     return comp;
 }
 void Entity::_destroy_(void *ptr) {
-    manually_release_ref(static_cast<world::BaseObject *>(ptr));
+    deref(static_cast<world::BaseObject *>(ptr));
 }
 void *Entity::get_component(void *this_, luisa::string_view name) {
     auto e = static_cast<world::Entity *>(this_);
@@ -160,27 +161,27 @@ float LightComponent::small_angle_radians(void *this_) {
 
 void *TextureResource::_create_() {
     auto p = world::create_object<world::TextureResource>();
-    manually_add_ref(p);
+    add_ref(p);
     return p;
 }
 void *MeshResource::_create_() {
     auto p = world::create_object<world::MeshResource>();
-    manually_add_ref(p);
+    add_ref(p);
     return p;
 }
 void *MaterialResource::_create_() {
     auto p = world::create_object<world::MaterialResource>();
-    manually_add_ref(p);
+    add_ref(p);
     return p;
 }
 void TextureResource::_destroy_(void *ptr) {
-    manually_release_ref(static_cast<world::BaseObject *>(ptr));
+    deref(static_cast<world::BaseObject *>(ptr));
 }
 void MeshResource::_destroy_(void *ptr) {
-    manually_release_ref(static_cast<world::BaseObject *>(ptr));
+    deref(static_cast<world::BaseObject *>(ptr));
 }
 void MaterialResource::_destroy_(void *ptr) {
-    manually_release_ref(static_cast<world::BaseObject *>(ptr));
+    deref(static_cast<world::BaseObject *>(ptr));
 }
 void TextureResource::create_empty(void *this_, rbc::LCPixelStorage pixel_storage, luisa::uint2 size, uint32_t mip_level, bool is_virtual_texture) {
     auto c = static_cast<world::TextureResource *>(this_);
@@ -279,7 +280,7 @@ luisa::span<std::byte> MeshResource::data_buffer(void *this_) {
     auto data = c->host_data();
     if (!data) return {};
     if (data->empty()) {
-        data->push_back_uninitialized(c->basic_size_bytes());
+        data->push_back_uninitialized(c->desire_size_bytes());
     }
     return *data;
 }
