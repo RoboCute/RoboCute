@@ -8,6 +8,12 @@
 
 namespace rbc {
 
+class IEventSubscriber {
+public:
+    virtual ~IEventSubscriber() = default;
+    virtual void onEvent(const Event &event) = 0;
+};
+
 /**
  * Use Case
  * ================
@@ -40,18 +46,21 @@ public:
 
     // publish event
     virtual void publish(const Event &event) = 0;
-    virtual void publish(EventType type, const QVariant &data = QVariant()) = 0;
+    virtual void publish(EventType type, const QVariant &data = QVariant(), QObject *sender = nullptr) = 0;
 
-    // subscibe event
+    // subscibe event (callback & subscriber)
     virtual void subscribe(EventType type, std::function<void(const Event &)> handler) = 0;
-    virtual void subscribe(QObject *receiver, EventType type, const char *slot) = 0;
+    virtual void subscribe(EventType type, IEventSubscriber *subscriber) = 0;
 
     // cancel subscription
-    virtual void unsubscribe(EventType type, std::function<void(const Event &)> handler) = 0;
-    virtual void unsubscribe(QObject *receiver) = 0;
+    virtual void unsubscribe(int subscriptionId) = 0;
+    virtual void unsubscribe(EventType type, IEventSubscriber *subscriber) = 0;
+
+    // clear all subscrib
+    virtual void clear() = 0;
 
 signals:
-    void event_published(const Event &event);
+    void eventPublished(const Event &event);
 };
 
 }// namespace rbc

@@ -28,7 +28,7 @@ lc_options = {
     lc_vk_cuda_interop = true,
     lc_enable_py = false,
     lc_enable_unity_build = true
-    -- lc_toy_c_backend = true
+-- lc_toy_c_backend = true
 }
 
 includes('xmake/py_codegen.lua', 'xmake/option_meta.lua', 'xmake/interface_target.lua')
