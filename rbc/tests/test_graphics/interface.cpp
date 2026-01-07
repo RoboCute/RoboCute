@@ -79,8 +79,14 @@ void add_ref(rbc::world::BaseObject *rc) {
     _disposer.add_ref();
     manually_add_ref(rc);
 }
+void add_ref() {
+    _disposer.add_ref();
+}
 void deref(rbc::world::BaseObject *rc) {
     manually_release_ref(rc);
+    _disposer.deref();
+}
+void deref() {
     _disposer.deref();
 }
 

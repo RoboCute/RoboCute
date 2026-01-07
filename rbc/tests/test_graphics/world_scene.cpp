@@ -189,13 +189,11 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
         luisa::filesystem::create_directories(scene_root_dir);
         world::init_world(scene_root_dir);
-        world::load_all_resources_from_meta();
         _init_scene(utils);
 
     } else {
         // load demo scene
         world::init_world(scene_root_dir);// open project folder
-        world::load_all_resources_from_meta();
         // load skybox
         {
             BinaryFileStream file_stream{"test_scene/sky_guid.txt"};

@@ -3,13 +3,10 @@
 
 namespace rbc {
 coroutine::coroutine(coroutine &&rhs)
-    : _base(rhs._base),
-      _own(rhs._own) {
-    rhs._own = false;
-    rhs._base = {};
+    : _base(rhs._base) {
+    rhs._base = nullptr;
 }
 void coroutine::resume() {
-    LUISA_DEBUG_ASSERT(_own, "Coroutine already disposed.");
     if (_base.done()) [[unlikely]]
         return;
     auto &prom = _base.promise();
@@ -24,18 +21,16 @@ void coroutine::resume() {
     }
 }
 bool coroutine::done() {
-    LUISA_DEBUG_ASSERT(_own, "Coroutine already disposed.");
-    return _base.done();
+    return !_base || _base.done();
 }
 void coroutine::destroy() {
-    if (!_own) [[unlikely]]
+    if (!_base) [[unlikely]]
         return;
     _base.destroy();
-    _own = false;
-    _base = {};
+    _base = nullptr;
 }
 coroutine::~coroutine() {
-    if (_own) {
+    if (_base) {
         _base.destroy();
     }
 }

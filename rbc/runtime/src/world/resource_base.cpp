@@ -28,8 +28,6 @@ struct ResourceLoader : RBCStruct {
 
     struct ResourceHandle {
         InstanceID res;
-        luisa::string json;
-        vstd::Guid type_id;
         luisa::spin_mutex mtx;
         ResourceHandle() = default;
         ResourceHandle(ResourceHandle &&rhs) noexcept : res(std::move(rhs.res)) {}
@@ -77,12 +75,11 @@ struct ResourceLoader : RBCStruct {
         _resmap_mtx.lock();
         auto &v = resource_types.force_emplace(resource_guid).value();
         _resmap_mtx.unlock();
-        v.json = std::move(meta_info);
-        LUISA_ASSERT(v.json.size() > 0);
+        LUISA_ASSERT(meta_info.size() > 0);
         auto columns = {luisa::string("GUID"), luisa::string("META"), luisa::string("TYPEID")};
         auto values = {
             SqliteCpp::ValueVariant{resource_guid.to_base64()},
-            SqliteCpp::ValueVariant{v.json},
+            SqliteCpp::ValueVariant{std::move(meta_info)},
             SqliteCpp::ValueVariant{reinterpret_cast<vstd::Guid &>(type_id).to_base64()}};
         LUISA_ASSERT(_meta_db.insert_values("RBC_FILE_META"sv, columns, values, true).is_success(), "Write SQLITE failed.");
     }
@@ -93,13 +90,14 @@ struct ResourceLoader : RBCStruct {
         _resmap_mtx.lock();
         auto &v = resource_types.force_emplace(res->guid()).value();
         _resmap_mtx.unlock();
-        js.write_to(v.json);
-        LUISA_ASSERT(v.json.size() > 0);
+        luisa::string meta_info;
+        js.write_to(meta_info);
+        LUISA_ASSERT(meta_info.size() > 0);
         auto columns = {luisa::string("GUID"), luisa::string("META"), luisa::string("TYPEID")};
         auto type_id = res->type_id();
         auto values = {
             SqliteCpp::ValueVariant{res->guid().to_base64()},
-            SqliteCpp::ValueVariant{v.json},
+            SqliteCpp::ValueVariant{std::move(meta_info)},
             SqliteCpp::ValueVariant{reinterpret_cast<vstd::Guid &>(type_id).to_base64()}};
         LUISA_ASSERT(_meta_db.insert_values("RBC_FILE_META"sv, columns, values, true).is_success(), "Write SQLITE failed.");
     }
@@ -161,70 +159,7 @@ struct ResourceLoader : RBCStruct {
             } }, "META, TYPEID"sv, "GUID"sv, file_name);
         return {result, type_id};
     }
-    void load_meta_files(
-        luisa::span<vstd::Guid const> meta_files_guid) {
-        std::lock_guard lck{_resmap_mtx};
-        luisa::spin_mutex remove_mtx;
-        luisa::vector<vstd::Guid> removed_guid;
-        auto func = [&](uint32_t i) {
-            auto &&guid = meta_files_guid[i];
-            auto iter = resource_types.try_emplace(guid);
-            if (!iter.second) {
-                return;
-            }
-            auto &v = iter.first.value();
-            auto json_and_typeid = to_binary(guid);
-            v.type_id = json_and_typeid.second;
-            auto &json = json_and_typeid.first;
-            if (json.empty()) {
-                std::lock_guard lck{remove_mtx};
-                LUISA_WARNING("Read file meta {} failed.", guid.to_string());
-                removed_guid.emplace_back(guid);
-                return;
-            }
-            v.json = std::move(json);
-        };
-        luisa::fiber::parallel(meta_files_guid.size(), func, 32);
-        for (auto &i : removed_guid) {
-            resource_types.remove(i);
-        }
-    }
 
-    void load_all_resources() {
-        std::lock_guard lck{_resmap_mtx};
-        _meta_db.read_columns_with("RBC_FILE_META"sv, [&](SqliteCpp::ColumnValue &&v) {
-            auto parse_result = vstd::Guid::TryParseGuid(v.value);
-            if (!parse_result) [[unlikely]] {
-                LUISA_ERROR("Database is broken. please re-generate from project.");
-            }
-            resource_types.emplace(*parse_result); }, "GUID"sv);
-        auto iter = resource_types.begin();
-        luisa::spin_mutex _iter_mtx;
-        luisa::spin_mutex remove_mtx;
-        luisa::vector<vstd::Guid> removed_guid;
-        luisa::fiber::parallel(resource_types.size(), [&](size_t) {
-            ResourceHandle *v;
-            vstd::Guid guid;
-            _iter_mtx.lock();
-            guid = iter->first;
-            v = &iter->second;
-            iter++;
-            _iter_mtx.unlock();
-            auto json_and_typeid = to_binary(guid);
-            v->type_id = json_and_typeid.second;
-            auto &json = json_and_typeid.first;
-            if (json.empty()) {
-                std::lock_guard lck{remove_mtx};
-                LUISA_WARNING("Read file meta {} failed.", guid.to_string());
-                removed_guid.emplace_back(guid);
-                return;
-            }
-            v->json = std::move(json);
-        });
-        for (auto &i : removed_guid) {
-            resource_types.remove(i);
-        }
-    }
     ResourceLoader() {
         auto loading_thread_count = std::clamp<uint>(std::thread::hardware_concurrency() / 4, 1, 4);
         _loading_thds.reserve(loading_thread_count);
@@ -285,14 +220,6 @@ void register_resource_meta(
     std::array<uint64_t, 2> type_id) {
     _res_loader->register_resource(resource_guid, std::move(meta_info), type_id);
 }
-void load_all_resources_from_meta() {
-    LUISA_ASSERT(_res_loader);
-    _res_loader->load_all_resources();
-}
-void load_meta_file(luisa::span<vstd::Guid const> meta_files_guid) {
-    LUISA_ASSERT(_res_loader);
-    _res_loader->load_meta_files(meta_files_guid);
-}
 void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::filesystem::path const &binary_path) {
     // Register all built-in resource importers
     register_builtin_importers();
@@ -311,10 +238,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     ResourceLoader::ResourceHandle *v{};
     {
         std::shared_lock lck{_res_loader->_resmap_mtx};
-        auto iter = _res_loader->resource_types.find(guid);
-        if (!iter) {
-            return {};
-        }
+        auto iter = _res_loader->resource_types.emplace(guid);
         v = &iter.value();
     }
     std::unique_lock lck{v->mtx};
@@ -329,18 +253,21 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         }
         return res;
     }
-
+    auto obj_meta = _res_loader->to_binary(guid);
     auto remove_value = [&]() {
         std::lock_guard lck{_res_loader->_resmap_mtx};
         _res_loader->resource_types.remove(guid);
     };
-    JsonDeSerializer deser{luisa::string_view{(char const *)v->json.data(), v->json.size()}};
+    if (obj_meta.first.empty()) {
+        obj_meta.first = "{}";
+    }
+    JsonDeSerializer deser{obj_meta.first};
     if (!deser.valid()) [[unlikely]] {
         remove_value();
         return {};
     }
     rbc::ArchiveReadJson adapter(deser);
-    res = static_cast<Resource *>(_zz_create_object_with_guid_test_base(v->type_id, guid, BaseObjectType::Resource));
+    res = static_cast<Resource *>(_zz_create_object_with_guid_test_base(obj_meta.second, guid, BaseObjectType::Resource));
     if (!res) [[unlikely]] {
         remove_value();
         return {};

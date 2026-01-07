@@ -67,7 +67,6 @@ void EditorScene::initWorld() {
     }
 
     world::init_world(editor_scene_dir);
-    world::load_all_resources_from_meta();
     world_initialized_ = true;
     auto path_str = luisa::to_string(editor_scene_dir);
     qDebug() << "EditorScene: World initialized at" << QString::fromUtf8(path_str.c_str(), static_cast<int>(path_str.size()));

@@ -184,7 +184,6 @@ RBC_RC_INTERFACE
 - rbc_rc_weak_ref_counter_notify_dead
 - rbc_rc_delete
 
-RBC_RC_IMPL
 
 - RC
 - RCWeak

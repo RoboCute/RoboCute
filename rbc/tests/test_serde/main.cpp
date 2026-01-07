@@ -29,7 +29,6 @@ int main(int argc, char *argv[]) {
     });
 
     world::init_world(luisa::filesystem::path{argv[0]}.parent_path());
-    world::load_all_resources_from_meta();
     auto dsp_world = vstd::scope_exit([&]() {
         world::destroy_world();
     });

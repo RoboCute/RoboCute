@@ -8,9 +8,14 @@
 #include <rbc_world/components/light.h>
 #include <rbc_world/resources/texture.h>
 #include <rbc_world/resources/mesh.h>
+#include <rbc_world/texture_loader.h>
 #include <rbc_world/resources/material.h>
 #include <rbc_app/graphics_utils.h>
+#include <rbc_world/project.h>
+#include <luisa/core/binary_file_stream.h>
 namespace rbc {
+void add_ref();
+void deref();
 void add_ref(rbc::world::BaseObject *rc);// defined in interface.cpp
 void deref(rbc::world::BaseObject *rc);
 vstd::Guid Object::guid(void *this_) {
@@ -359,5 +364,92 @@ void RenderComponent::update_object(void *this_, luisa::vector<rbc::RC<rbc::RCBa
             reinterpret_cast<RC<world::MaterialResource> const *>(mat_vector.data()),
             mat_vector.size()},
         static_cast<world::MeshResource *>(mesh));
+}
+struct AsyncRequestImpl : RBCStruct {
+    world::BaseObject *_result{};
+    luisa::fiber::event task;
+    AsyncRequestImpl() {
+        add_ref();
+    }
+    void dispose() {
+        if (_result) {
+            deref(_result);
+        }
+        _result = nullptr;
+    }
+    void set_value(world::BaseObject *r) {
+        dispose();
+        _result = r;
+        add_ref(r);
+    }
+    ~AsyncRequestImpl() {
+        dispose();
+    }
+};
+void *AsyncRequest::_create_() {
+    LUISA_ERROR("Create async-request in python is not allowed.");// TODO: this is for development
+    return nullptr;
+}
+void AsyncRequest::_destroy_(void *ptr) {
+    delete static_cast<AsyncRequestImpl *>(ptr);
+}
+bool AsyncRequest::done(void *this_) {
+    auto c = static_cast<AsyncRequestImpl *>(this_);
+    return c->task.test();
+}
+void *AsyncRequest::get_result(void *this_) {
+    auto c = static_cast<AsyncRequestImpl *>(this_);
+    c->task.wait();
+    return c->_result;
+}
+void *Project::_create_() {
+    return new world::Project(".meta_db"sv);
+}
+void Project::_destroy_(void *ptr) {
+    delete static_cast<world::Project *>(ptr);
+}
+// TODO: register guid
+void *Project::import_material(void *this_, luisa::string_view path) {
+    // auto c = static_cast<world::Project*>(this_);
+    auto request = new AsyncRequestImpl{};
+    RC<world::MaterialResource> mat{world::create_object<world::MaterialResource>()};
+    request->set_value(mat.get());
+    request->task = luisa::fiber::async([mat = std::move(mat), p = luisa::string{path}] {
+        BinaryFileStream fs{p};
+        if (!fs) return;
+        luisa::vector<std::byte> vec;
+        vec.push_back_uninitialized(fs.length());
+        fs.read(vec);
+        mat->load_from_json({(char *)vec.data(), vec.size()});
+    });
+    return request;
+}
+void *Project::import_mesh(void *this_, luisa::string_view path) {
+    // auto c = static_cast<world::Project*>(this_);
+    auto request = new AsyncRequestImpl{};
+    RC<world::MeshResource> mesh{world::create_object<world::MeshResource>()};
+    request->set_value(mesh.get());
+    request->task = luisa::fiber::async([mesh = std::move(mesh), p = luisa::filesystem::path{path}] {
+        mesh->decode(p);
+    });
+    return request;
+}
+void *Project::import_texture(void *this_, luisa::string_view path) {
+    // auto c = static_cast<world::Project*>(this_);
+    auto request = new AsyncRequestImpl{};
+    RC<world::TextureResource> tex{world::create_object<world::TextureResource>()};
+    request->set_value(tex.get());
+    request->task = luisa::fiber::async([tex = std::move(tex), p = luisa::filesystem::path{path}] {
+        world::TextureLoader loader;
+        loader.process_texture(tex, 1, false);
+        loader.finish_task();
+    });
+    return request;
+}
+void *Project::load_resource(void *this_, vstd::Guid const &guid) {
+    auto res = world::load_resource(guid);
+    if (!res) return nullptr;
+    add_ref(res.get());
+    return res.get();
 }
 }// namespace rbc
