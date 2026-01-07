@@ -13,6 +13,8 @@
 #include <rbc_app/graphics_utils.h>
 #include <rbc_world/project.h>
 #include <luisa/core/binary_file_stream.h>
+#include <rbc_world/importers/texture_importer_exr.h>
+#include <rbc_world/importers/texture_importer_stb.h>
 namespace rbc {
 void add_ref();
 void deref();
@@ -201,6 +203,9 @@ void TextureResource::upload(void *this_, uint mip_level) {
     if (!tex) [[unlikely]] {
         LUISA_ERROR("Texture not initialized.");
     }
+    if (tex->type() == DeviceImage::ImageType::None) {
+        c->init_device_resource();
+    }
     GraphicsUtils::instance()->update_texture(tex, mip_level);
 }
 luisa::span<std::byte> TextureResource::data_buffer(void *this_) {
@@ -253,6 +258,9 @@ void MeshResource::upload(void *this_, bool only_vertex) {
     auto mesh = c->device_mesh();
     if (!mesh) [[unlikely]] {
         LUISA_ERROR("Can not upload to un-initialized mesh.");
+    }
+    if (!mesh->mesh_data()) {
+        c->init_device_resource();
     }
     GraphicsUtils::instance()->update_mesh_data(mesh, only_vertex);
 }
@@ -435,21 +443,49 @@ void *Project::import_mesh(void *this_, luisa::string_view path) {
     return request;
 }
 void *Project::import_texture(void *this_, luisa::string_view path) {
+    // TODO: manage importer
+    static world::ExrTextureImporter exr_importer;
+    static world::StbTextureImporter stb_importer;
+    static world::TextureLoader tex_loader;
     // auto c = static_cast<world::Project*>(this_);
     auto request = new AsyncRequestImpl{};
     RC<world::TextureResource> tex{world::create_object<world::TextureResource>()};
     request->set_value(tex.get());
     request->task = luisa::fiber::async([tex = std::move(tex), p = luisa::filesystem::path{path}] {
-        world::TextureLoader loader;
-        loader.process_texture(tex, 1, false);
-        loader.finish_task();
+        auto ext = luisa::to_string(p.extension());
+        for (auto &i : ext) {
+            i = std::tolower(i);
+        }
+        if (ext == ".exr") {
+            exr_importer.import(tex, &tex_loader, p, 1, false);
+        } else {
+            stb_importer.import(tex, &tex_loader, p, 1, false);
+        }
+        tex_loader.finish_task();
     });
     return request;
 }
 void *Project::load_resource(void *this_, vstd::Guid const &guid) {
     auto res = world::load_resource(guid);
-    if (!res) return nullptr;
+    if (!res) {
+        return nullptr;
+    }
     add_ref(res.get());
     return res.get();
+}
+
+void Project::set_skybox(void *this_, void *tex) {
+    auto t = static_cast<world::TextureResource *>(tex);
+    if (t->loading_status() == world::EResourceLoadingStatus::Unloaded) [[unlikely]] {
+        LUISA_ERROR("Skybox dest texture not loaded.");
+    }
+    auto wait_skybox = [&]() -> rbc::coroutine {
+        co_await t->await_loading();
+    }();
+    while (!wait_skybox.done()) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+        wait_skybox.resume();
+    }
+    GraphicsUtils::instance()->render_plugin()->update_skybox(RC<DeviceImage>{t->get_image()});
 }
 }// namespace rbc

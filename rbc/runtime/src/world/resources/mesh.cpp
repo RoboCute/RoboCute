@@ -143,7 +143,7 @@ void MeshResource::create_empty(
     uint32_t uv_count,
     bool contained_normal,
     bool contained_tangent) {
-    _status = EResourceLoadingStatus::Loading;
+    _status = EResourceLoadingStatus::Unloaded;
     if (_device_res) [[unlikely]] {
         LUISA_ERROR("Can not create on exists mesh.");
     }

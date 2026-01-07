@@ -22,6 +22,7 @@ struct BaseObjectStatics : RBCStruct {
     }
     ~BaseObjectStatics() {
         // collect dangling objects
+        luisa::vector<BaseObject *> remove_obj;
         if (!_instance_ids.empty()) {
             for (auto iter = _instance_ids.begin(); iter != _instance_ids.end();) {
                 auto o = iter->second;
@@ -31,8 +32,11 @@ struct BaseObjectStatics : RBCStruct {
                 }
                 o->_guid.reset();
                 o->_instance_id = ~0ull;
-                o->delete_this();
+                remove_obj.emplace_back(o);
                 iter = _instance_ids.erase(iter);
+            }
+            for (auto &o : remove_obj) {
+                o->delete_this();
             }
         }
         if (!_instance_ids.empty()) {

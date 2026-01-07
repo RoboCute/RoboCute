@@ -74,7 +74,7 @@ void TextureResource::create_empty(
     luisa::uint2 size,
     uint32_t mip_level,
     bool is_vt) {
-    _status = EResourceLoadingStatus::Loading;
+    _status = EResourceLoadingStatus::Unloaded;
     if (_tex) [[unlikely]] {
         LUISA_ERROR("Can not create on exists texture.");
     }
@@ -200,7 +200,12 @@ uint32_t TextureResource::heap_index() const {
     }
 }
 rbc::coroutine TextureResource::_async_load() {
-    if (!_async_load_from_file()) co_return;
+    auto last_status = _status.load();
+    _status = EResourceLoadingStatus::Loading;
+    if (!_async_load_from_file()) {
+        _status = last_status;
+        co_return;
+    }
     while (!_load_finished()) {
         co_await std::suspend_always{};
     }

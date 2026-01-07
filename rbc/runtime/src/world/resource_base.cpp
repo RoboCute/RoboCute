@@ -13,6 +13,7 @@ luisa::filesystem::path Resource::path() const {
     return binary_root_path() / (guid().to_string() + ".rbcb");
 }
 bool Resource::save_to_path() {
+    register_resource_meta(this);
     return unsafe_save_to_path();
 }
 Resource::Resource() = default;
@@ -146,6 +147,7 @@ struct ResourceLoader : RBCStruct {
     std::pair<luisa::string, vstd::Guid> to_binary(vstd::Guid guid) {
         luisa::string result;
         vstd::Guid type_id;
+        type_id.reset();
         auto file_name = guid.to_base64();
         _meta_db.read_columns_with("RBC_FILE_META"sv, [&](SqliteCpp::ColumnValue &&v) { 
             if(v.name == "META"sv) {
@@ -254,6 +256,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         return res;
     }
     auto obj_meta = _res_loader->to_binary(guid);
+    if (!obj_meta.second) return {};
     auto remove_value = [&]() {
         std::lock_guard lck{_res_loader->_resmap_mtx};
         _res_loader->resource_types.remove(guid);

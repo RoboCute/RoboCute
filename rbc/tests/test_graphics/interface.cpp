@@ -66,6 +66,7 @@ struct Disposer {
     void dispose() {
         if (_disposed) return;
         _disposed = true;
+        LUISA_INFO("RBC disposed.");
         rbc::world::destroy_world();
         rbc::PluginManager::destroy_instance();
         rbc::RuntimeStaticBase::dispose_all();
@@ -105,10 +106,6 @@ void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa:
 void RBCContext::init_render(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     c.utils.init_render();
-}
-void RBCContext::load_skybox(void *this_, luisa::string_view path, uint2 size) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    c.utils.render_plugin()->update_skybox(path, PixelStorage::FLOAT4, size);
 }
 void RBCContext::create_window(void *this_, luisa::string_view name, uint2 size, bool resiable) {
     auto &c = *static_cast<ContextImpl *>(this_);

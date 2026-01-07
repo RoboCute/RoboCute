@@ -44,15 +44,39 @@ def main():
 
     program_path = str(runtime_dir.parent / "debug")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
-    sky_path = str(runtime_dir.parent / "sky.bytes")
+    sky_path = str(runtime_dir.parent / "sky.exr")
     world_path = str(runtime_dir.parent / 'world')
 
     ctx = RBCContext()
     ctx.init_world(world_path, world_path)
     ctx.init_device(backend_name, program_path, shader_path)
     ctx.init_render()
-    ctx.load_skybox(sky_path, uint2(4096, 2048))
+    project = Project()
+    sky_guid_path = Path(world_path) / "sky_guid.txt"
+    skybox_tex = None
+    if sky_guid_path.exists():
+        sky_guid_file = open(sky_guid_path, "r")
+        sky_guid_str = sky_guid_file.read()
+        sky_guid_file.close()
+        sky_guid = GUID(sky_guid_str)
+        skybox_tex = project.load_resource(sky_guid)
+    if skybox_tex and skybox_tex._handle:
+        project.set_skybox(skybox_tex)
+    else:
+        print("Skybox not found, importing sky.exr")
+        skybox_tex_request = project.import_texture(str(sky_path))
+        skybox_tex = TextureResource(skybox_tex_request.get_result(), True)
+        skybox_tex.upload(0)
+        sky_guid_str = str(skybox_tex.guid())
+        skybox_tex.save_to_path()
+        sky_guid_file = open(sky_guid_path, "w")
+        sky_guid_file.write(sky_guid_str)
+        sky_guid_file.close()
+        project.set_skybox(skybox_tex)
+        
     ctx.create_window("py_window", uint2(1920, 1080), True)
+    
+    # ctx.load_skybox(sky_path, uint2(4096, 2048))
 
     # make_submesh
     submesh_offsets = np.empty(shape=2, dtype=np.uint32)
