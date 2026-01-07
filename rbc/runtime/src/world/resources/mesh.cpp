@@ -1,4 +1,5 @@
 #include <rbc_world/resources/mesh.h>
+#include <rbc_world/resource_importer.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_world/type_register.h>
 #include <rbc_graphics/render_device.h>

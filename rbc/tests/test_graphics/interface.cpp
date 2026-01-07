@@ -177,6 +177,7 @@ void RBCContext::tick(void *this_) {
     }
 }
 void *RBCContext::_create_() {
+    LUISA_ASSERT(!_ctx_inst);
     _disposer.add_ref();
     rbc::RuntimeStaticBase::init_all();
     rbc::PluginManager::init();

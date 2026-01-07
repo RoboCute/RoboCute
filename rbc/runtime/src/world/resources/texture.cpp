@@ -6,6 +6,8 @@
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/texture/tex_stream_manager.h>
 #include <rbc_world/type_register.h>
+#include <rbc_world/resource_importer.h>
+
 namespace rbc::world {
 
 TextureResource::TextureResource() = default;
@@ -25,7 +27,8 @@ DeviceImage *TextureResource::get_image() const {
     if (_tex && !is_vt()) {
         return static_cast<DeviceImage *>(_tex.get());
     }
-    LUISA_ERROR("Getting non-sparse image from virtual texture");
+    if (_is_vt) [[unlikely]]
+        LUISA_ERROR("Getting non-sparse image from virtual texture");
     return nullptr;
 }
 DeviceSparseImage *TextureResource::get_sparse_image() const {
@@ -33,7 +36,8 @@ DeviceSparseImage *TextureResource::get_sparse_image() const {
     if (_tex && is_vt()) {
         return static_cast<DeviceSparseImage *>(_tex.get());
     }
-    LUISA_ERROR("Getting sparse image from non-virtual texture");
+    if (!_is_vt) [[unlikely]]
+        LUISA_ERROR("Getting sparse image from non-virtual texture");
     return nullptr;
 }
 uint64_t TextureResource::desire_size_bytes() const {
@@ -56,18 +60,18 @@ void TextureResource::serialize_meta(ObjSerialize const &obj) const {
 }
 void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
-#define RBC_MESH_LOAD(m)           \
+#define RBC_TEXTURE_LOAD(m)        \
     {                              \
         decltype(_##m) m;          \
         if (obj.ar.value(m, #m)) { \
             _##m = m;              \
         }                          \
     }
-    RBC_MESH_LOAD(pixel_storage)
-    RBC_MESH_LOAD(mip_level)
-    RBC_MESH_LOAD(size)
-    RBC_MESH_LOAD(is_vt)
-#undef RBC_MESH_LOAD
+    RBC_TEXTURE_LOAD(pixel_storage)
+    RBC_TEXTURE_LOAD(mip_level)
+    RBC_TEXTURE_LOAD(size)
+    RBC_TEXTURE_LOAD(is_vt)
+#undef RBC_TEXTURE_LOAD
 }
 void TextureResource::create_empty(
     LCPixelStorage pixel_storage,
@@ -303,6 +307,28 @@ uint TextureResource::desired_mip_level(luisa::uint2 size, uint idx) {
         if (any(size < 256u)) return i;
     }
     return idx;
+}
+
+bool TextureResource::decode(luisa::filesystem::path const &path, TextureLoader *tex_loader, uint mip_level, bool virtual_tex) {
+    if (!empty()) [[unlikely]] {
+        LUISA_WARNING("Can not create on exists texture.");
+        return false;
+    }
+
+    auto &registry = ResourceImporterRegistry::instance();
+    auto *importer = registry.find_importer(path, ResourceType::Texture);
+    if (!importer) {
+        LUISA_WARNING("No importer found for texture file: {}", luisa::to_string(path));
+        return false;
+    }
+
+    // Avoid dynamic_cast across DLL boundaries - use resource_type() check instead
+    if (importer->resource_type() != ResourceType::Texture) {
+        LUISA_WARNING("Invalid importer type for texture file: {}", luisa::to_string(path));
+        return false;
+    }
+    auto *texture_importer = static_cast<ITextureImporter *>(importer);
+    return texture_importer->import(RC<TextureResource>{this}, tex_loader, path, mip_level, virtual_tex);
 }
 
 DECLARE_WORLD_OBJECT_REGISTER(TextureResource)

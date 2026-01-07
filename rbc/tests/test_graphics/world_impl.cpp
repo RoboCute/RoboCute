@@ -15,6 +15,7 @@
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
+#include <rbc_core/runtime_static.h>
 namespace rbc {
 void add_ref();
 void deref();
@@ -442,26 +443,16 @@ void *Project::import_mesh(void *this_, luisa::string_view path) {
     });
     return request;
 }
+static RuntimeStatic<world::TextureLoader> tex_loader;
 void *Project::import_texture(void *this_, luisa::string_view path) {
     // TODO: manage importer
-    static world::ExrTextureImporter exr_importer;
-    static world::StbTextureImporter stb_importer;
-    static world::TextureLoader tex_loader;
     // auto c = static_cast<world::Project*>(this_);
     auto request = new AsyncRequestImpl{};
     RC<world::TextureResource> tex{world::create_object<world::TextureResource>()};
     request->set_value(tex.get());
     request->task = luisa::fiber::async([tex = std::move(tex), p = luisa::filesystem::path{path}] {
-        auto ext = luisa::to_string(p.extension());
-        for (auto &i : ext) {
-            i = std::tolower(i);
-        }
-        if (ext == ".exr") {
-            exr_importer.import(tex, &tex_loader, p, 1, false);
-        } else {
-            stb_importer.import(tex, &tex_loader, p, 1, false);
-        }
-        tex_loader.finish_task();
+        tex->decode(p, tex_loader.ptr, 1, false);
+        tex_loader->finish_task();
     });
     return request;
 }

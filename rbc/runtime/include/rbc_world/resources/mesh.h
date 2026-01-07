@@ -97,8 +97,4 @@ protected:
 };
 }// namespace rbc::world
 
-// Include importer header after MeshResource definition
-// This ensures ObjMeshImporter is fully defined when used
-#include <rbc_world/importers/mesh_importer_obj.h>
-
 RBC_RTTI(rbc::world::MeshResource)
