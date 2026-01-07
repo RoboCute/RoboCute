@@ -46,12 +46,6 @@ public:
     // RBC_RUNTIME_API virtual void (ObjDeSerialize const&obj);
     RBC_RUNTIME_API static luisa::filesystem::path const &meta_root_path();
     RBC_RUNTIME_API static luisa::filesystem::path const &binary_root_path();
-    /**
-     * @brief Decode resource from file using registered importers
-     * @param path Path to the resource file
-     * @return true if decode succeeded, false otherwise
-     */
-    RBC_RUNTIME_API bool decode(luisa::filesystem::path const &path);
 protected:
     virtual bool unsafe_save_to_path() const = 0;
 };
@@ -80,7 +74,11 @@ protected:
     ~ResourceBaseImpl() = default;
 };
 RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file = true);
-RBC_RUNTIME_API void register_resource(Resource *res);
+RBC_RUNTIME_API void register_resource_meta(
+    vstd::Guid resource_guid,
+    luisa::string &&meta_info,
+    std::array<uint64_t, 2> type_id);
+RBC_RUNTIME_API void register_resource_meta(Resource *res);
 // No project or origin-files, load all meta-files from meta dir
 RBC_RUNTIME_API void load_all_resources_from_meta();
 RBC_RUNTIME_API void load_meta_file(luisa::span<vstd::Guid const> meta_files_guid);

@@ -70,6 +70,8 @@ _PYBIND_SPECUAL_ARG = {
 }
 
 # Type name functions for special types
+
+
 def _print_str(t, py_interface: bool = False, is_view: bool = False) -> str:
     if is_view:
         return "luisa::string_view"
@@ -96,6 +98,7 @@ def _print_data_buffer(t, py_interface: bool = False, is_view: bool = False) -> 
             return "py::memoryview"
     else:
         return "luisa::span<std::byte>"
+
 
 def _print_callback(t, py_interface: bool = False, is_view: bool = False) -> str:
     if py_interface:
@@ -233,7 +236,7 @@ def _get_full_cpp_type(
 
     # Check if the type itself is registered
     info = None
-    if hasattr(type_hint, '_pybind_type_') and type_hint._pybind_type_ and not type_hint._is_enum_:
+    if hasattr(type_hint, '_pybind_type_') and type_hint._pybind_type_ and (not hasattr(type_hint, '_is_enum_') or not type_hint._is_enum_):
         return 'void*'
     if hasattr(type_hint, "__name__"):
         # Try to find by name in registry
@@ -246,7 +249,8 @@ def _get_full_cpp_type(
         if info.cpp_namespace in cpp_type:  # Already has namespace?
             return cpp_type
         return f"{info.cpp_namespace}::{cpp_type}"
-
+    # elif not info:
+    #     return "void*"
     return cpp_type
 
 
@@ -299,7 +303,7 @@ def _print_arg_vars_decl(
 
 
 def _print_py_args_decl(
-    parameters: Dict[str, inspect.Parameter], is_first: bool
+    parameters: Dict[str, inspect.Parameter], is_first: bool, self_type: Type
 ) -> str:
     """Print Python argument declarations with type hints."""
     r = ""
@@ -310,7 +314,9 @@ def _print_py_args_decl(
         param_type = (
             param.annotation if param.annotation != inspect.Signature.empty else None
         )
-        type_str = _get_py_type(param_type) if param_type else None
+        type_str = None
+        if not (hasattr(param_type, "__name__") and self_type.__name__ == param_type.__name__):
+            type_str = _get_py_type(param_type) if param_type else None
         r += param_name
         if type_str:
             r += ": " + type_str
@@ -342,7 +348,10 @@ def _print_py_args(
             if arg_parse:
                 arg_open = arg_parse + "("
                 arg_close = ")"
-
+        else:
+            param_type = (param.annotation if param.annotation != inspect.Signature.empty else None)
+            if param_type and hasattr(param_type, "_pybind_type_") and param_type._pybind_type_:
+                arg_close = "._handle" + arg_close
         # type_str = _get_py_type(param_type) if param_type else None
         r += arg_open + param_name + arg_close
     return r
@@ -866,8 +875,6 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
 
-    import_names = []
-
     # def get_enum_expr(key: str, info: ClassInfo):
     #     print(f"Generating Enum for {info.name}")
     #     if not info.is_enum:
@@ -891,13 +898,15 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
     #         ENUM_NAME=enum_name, ENUM_VALUES=enum_values
     #     )
     type_to_cls_info = {}
+
     def get_class_expr(key: str, info: ClassInfo):
         if info.is_enum:
             return "", []
 
         struct_name = info.name  # Use class name as struct name for C++ binding
         if not info.pybind or not info.create_instance:
-            init_method = PY_INIT_METHOD_TEMPLATE_EXTERNAL.substitute(INDENT=INDENT)
+            init_method = PY_INIT_METHOD_TEMPLATE_EXTERNAL.substitute(
+                INDENT=INDENT)
             dispose_method = ""
         else:
             init_method = PY_INIT_METHOD_TEMPLATE.substitute(
@@ -911,18 +920,19 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
             )
 
         pybind_methods_list = []
-        pybind_methods_list.append(f"create__{struct_name}__")
-        pybind_methods_list.append(f"dispose__{struct_name}__")
+        if info.create_instance:
+            pybind_methods_list.append(f"create__{struct_name}__")
+            pybind_methods_list.append(f"dispose__{struct_name}__")
 
-        def get_method_expr(method: MethodInfo):
+        def get_method_expr(method: MethodInfo, type: Type):
             # Filter out 'self' parameter for Python method declarations
             method_params = {k: v for k,
                              v in method.parameters.items() if k != "self"}
-            args_decl = _print_py_args_decl(method_params, False)
+            args_decl = _print_py_args_decl(method_params, False, type)
             args_call = _print_py_args(method_params, False, False)
             return_expr = "return " if method.return_type else ""
             return_end = ''
-            if method.return_type and hasattr(method.return_type, '_pybind_type_') and method.return_type._pybind_type_ and not method.return_type._is_enum_:
+            if method.return_type and hasattr(method.return_type, '_pybind_type_') and method.return_type._pybind_type_ and (not hasattr(method.return_type, '_is_enum_') or not method.return_type._is_enum_):
                 return_expr += _get_py_type(method.return_type) + '('
                 return_end = ')'
 
@@ -940,10 +950,11 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
                 ARGS_CALL=args_call,
                 RETURN_END=return_end
             )
-        def get_inherit_method_expr(method: MethodInfo, struct_name: str):
+
+        def get_inherit_method_expr(method: MethodInfo, struct_name: str, type: Type):
             method_params = {k: v for k,
                              v in method.parameters.items() if k != "self"}
-            args_decl = _print_py_args_decl(method_params, False)
+            args_decl = _print_py_args_decl(method_params, False, type)
             args_call = _print_py_args(method_params, False, False)
             return_expr = "return " if method.return_type else ""
             return_end = ''
@@ -964,12 +975,12 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
                 RETURN_END=return_end
             )
 
-
         methods_list = []
         for method in info.methods:
             if _is_rpc_method(method):
                 continue  # Skip RPC methods in Python interface
-            methods_list.append(get_method_expr(method))
+            methods_list.append(get_method_expr(method, info.cls))
+
         def print_inherit(info: ClassInfo):
             inherit_cls_infos = []
             if info.inherit:
@@ -984,7 +995,8 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
                             inherit_cls_infos.append(inherit_cls_info)
             for inherit_cls_info in inherit_cls_infos:
                 for method in inherit_cls_info.methods:
-                    methods_list.append(get_inherit_method_expr(method, inherit_cls_info.name))
+                    methods_list.append(get_inherit_method_expr(
+                        method, inherit_cls_info.name, info.cls))
                 print_inherit(inherit_cls_info)
         print_inherit(info)
         methods_expr = "".join(methods_list)
@@ -1013,20 +1025,17 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
         # enum_expr = get_enum_expr(key, info)
         # if enum_expr:
         #     enum_exprs.append(enum_expr)
-        if info.is_enum:
-            import_names.append(info.name)
 
         class_expr, pybind_methods_list = get_class_expr(key, info)
         if class_expr:
             classes_expr_list.append(class_expr)
-            import_names.extend(pybind_methods_list)
 
     classes_expr = "\n".join(classes_expr_list)
     enum_exprs = "\n".join(enum_exprs)
+    module_expr = f'from rbc_ext._C.{module_name} import *'
 
     result = PY_MODULE_TEMPLATE.substitute(
-        MODULE_NAME=module_name,
-        IMPORT_NAMES=", ".join(import_names),
+        MODULE_EXPR=module_expr,
         ENUM_EXPRS=enum_exprs,
         CLASS_EXPRS=classes_expr,
     )
@@ -1241,7 +1250,7 @@ def pybind_codegen(
     INDENT = DEFAULT_INDENT
     export_func_name = f"export_{module_name}"
     extra_includes_expr = "\n".join(extra_includes) if extra_includes else ""
-    ptr_name = "ptr_484111b5e8ed4230b5ef5f5fdc33ca81"  # magic name
+    ptr_name = "ptr_484111b5e"  # magic name
 
     def get_enum_binding(key: str, info: ClassInfo):
         if not info.is_enum:

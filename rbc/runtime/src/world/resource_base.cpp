@@ -71,6 +71,21 @@ struct ResourceLoader : RBCStruct {
                 columns);
         }
     }
+    void register_resource(vstd::Guid resource_guid,
+                           luisa::string &&meta_info,
+                           std::array<uint64_t, 2> type_id) {
+        _resmap_mtx.lock();
+        auto &v = resource_types.force_emplace(resource_guid).value();
+        _resmap_mtx.unlock();
+        v.json = std::move(meta_info);
+        LUISA_ASSERT(v.json.size() > 0);
+        auto columns = {luisa::string("GUID"), luisa::string("META"), luisa::string("TYPEID")};
+        auto values = {
+            SqliteCpp::ValueVariant{resource_guid.to_base64()},
+            SqliteCpp::ValueVariant{v.json},
+            SqliteCpp::ValueVariant{reinterpret_cast<vstd::Guid &>(type_id).to_base64()}};
+        LUISA_ASSERT(_meta_db.insert_values("RBC_FILE_META"sv, columns, values, true).is_success(), "Write SQLITE failed.");
+    }
     void register_resource(Resource *res) {
         JsonSerializer js;
         rbc::ArchiveWriteJson adapter(js);
@@ -261,8 +276,14 @@ struct ResourceLoader : RBCStruct {
 };
 
 ResourceLoader *_res_loader{};
-void register_resource(Resource *res) {
+void register_resource_meta(Resource *res) {
     _res_loader->register_resource(res);
+}
+void register_resource_meta(
+    vstd::Guid resource_guid,
+    luisa::string &&meta_info,
+    std::array<uint64_t, 2> type_id) {
+    _res_loader->register_resource(resource_guid, std::move(meta_info), type_id);
 }
 void load_all_resources_from_meta() {
     LUISA_ASSERT(_res_loader);

@@ -31,6 +31,7 @@ private:
     ~TextureResource();
     void _pack_to_tile_level(uint level, luisa::span<std::byte const> src, luisa::span<std::byte> dst);
 public:
+    bool empty() const;
     bool is_vt() const;
     bool pack_to_tile();
     [[nodiscard]] DeviceImage *get_image() const;

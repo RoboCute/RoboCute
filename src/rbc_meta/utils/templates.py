@@ -153,22 +153,7 @@ PY_MODULE_TEMPLATE = Template("""
 # This File is Generated From Python Def
 # Modifying This File will not affect final result, checkout src/rbc_meta/ for real defs
 # ================== GENERATED CODE BEGIN ==================
-
-# BUILT-IN_IMPORT BEGIN
-from rbc_ext._C.test_py_codegen import (
-    float4x4,
-    float3,
-    uint2,
-    capsule_vector,
-    make_float4x4,
-    float4,
-    destroy_object,
-)
-# BUILT-IN_IMPORT END
-
-# USER_DEFINED_IMPORT BEGIN
-from rbc_ext._C.${MODULE_NAME} import ${IMPORT_NAMES}
-# USER_DEFINED_IMPORT END
+${MODULE_EXPR}
 
 ${ENUM_EXPRS}
 
@@ -194,8 +179,10 @@ ${METHODS_EXPR}
 PY_INIT_METHOD_TEMPLATE = Template("""${INDENT}def __init__(self, handle = None):
 ${INDENT}${INDENT}if handle:
 ${INDENT}${INDENT}${INDENT}self._handle = handle
+${INDENT}${INDENT}${INDENT}self._own = False
 ${INDENT}${INDENT}else:
 ${INDENT}${INDENT}${INDENT}self._handle = create__${STRUCT_NAME}__()
+${INDENT}${INDENT}${INDENT}self._own = True
 """)
 
 PY_INIT_METHOD_TEMPLATE_EXTERNAL = Template("""${INDENT}def __init__(self, handle):
@@ -203,7 +190,8 @@ ${INDENT}${INDENT}self._handle = handle
 """)
 
 PY_DISPOSE_METHOD_TEMPLATE = Template("""${INDENT}def __del__(self):
-${INDENT}${INDENT}dispose__${STRUCT_NAME}__(self._handle)
+${INDENT}${INDENT}if self._own:
+${INDENT}${INDENT}${INDENT}dispose__${STRUCT_NAME}__(self._handle)
 """)
 
 PY_METHOD_TEMPLATE = Template("""${INDENT}def ${METHOD_NAME}(self${ARGS_DECL}):

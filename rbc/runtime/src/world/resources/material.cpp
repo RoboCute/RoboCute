@@ -177,8 +177,10 @@ MaterialResource::~MaterialResource() {
     if (_mat_code.value == ~0u) return;
     auto value = _mat_code.value;
     _mat_code.value = ~0u;
-    std::lock_guard lck1{_mat_inst->_mat_mtx};
-    _mat_inst->_disposed_mat.emplace_back(value);
+    if (_mat_inst) [[likely]] {
+        std::lock_guard lck1{_mat_inst->_mat_mtx};
+        _mat_inst->_disposed_mat.emplace_back(value);
+    }
 }
 bool MaterialResource::init_device_resource() {
     if (_status.load(std::memory_order_relaxed) != EResourceLoadingStatus::Loaded) return false;

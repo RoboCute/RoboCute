@@ -1,6 +1,7 @@
 import os
 import time
 from pathlib import Path
+from rbc_ext._C.test_py_codegen import init_world
 from rbc_ext.generated.rbc_backend import (
     RBCContext,
     uint2,
@@ -8,8 +9,10 @@ from rbc_ext.generated.rbc_backend import (
     float4,
     float3,
     make_float4x4,
+    make_double4x4,
     destroy_object,
 )
+from rbc_ext.generated.world import *
 import numpy as np
 import json
 import math
@@ -43,6 +46,9 @@ def main():
     program_path = str(runtime_dir.parent / "debug")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
     sky_path = str(runtime_dir.parent / "sky.bytes")
+    world_path = str(runtime_dir.parent / 'world')
+    init_world(world_path, world_path)
+
     ctx = RBCContext()
     ctx.init_device(backend_name, program_path, shader_path)
     ctx.init_render()
@@ -56,87 +62,132 @@ def main():
     # first submesh start at 'last_tri_size'
 
     submesh_offsets[1] = triangle_count // 2
-    mesh = ctx.create_mesh(
-        vertex_count, False, False, 0, triangle_count, submesh_offsets
+
+    cube_mesh = MeshResource()
+    cube_mesh.create_empty(
+        submesh_offsets,
+        vertex_count,
+        triangle_count,
+        0, False, False
     )
+    cube_mesh.init_device_resource()
     mesh_array = np.ndarray(
         vertex_count * 4 + triangle_count * 3,
         dtype=np.float32,
-        buffer=ctx.get_mesh_data(mesh),
+        buffer=cube_mesh.data_buffer()
     )
     create_mesh_array(mesh_array)
-    ctx.update_mesh(mesh, False)
-    mat = ctx.create_pbr_material()
-    ctx.update_material(mat, "{}")  # use default value
-    mat_default_json = json.loads(ctx.get_material_json(mat))
-    mat_default_json["base_albedo"] = [0, 0, 0]
-    mat_default_json["emission_luminance"] = [100, 0, 0]
+    cube_mesh.upload(False)
+    mat_default_json = json.loads("{}")
+    mat_default_json["base_albedo"] = [1, 0.6, 0.7]
+    mat = MaterialResource()
+    mat.load_from_json(json.dumps(mat_default_json))
+    mat.init_device_resource()
 
-    # Use texture to turn cube to red
-    # TEX_SIZE = 1024
-    # tex = ctx.create_texture(
-    #     LCPixelStorage.FLOAT4,
-    #     uint2(TEX_SIZE, TEX_SIZE),
-    #     1
-    # )
-    # mat_default_json['base_albedo_tex'] = ctx.texture_heap_idx(tex)
-    # tex_array = np.ndarray(TEX_SIZE * TEX_SIZE * 4, dtype=np.float32, buffer = ctx.get_texture_data(tex))
-    # for x in range(TEX_SIZE):
-    #     for y in range(TEX_SIZE):
-    #         idx = (y * TEX_SIZE + x) * 4
-    #         tex_array[idx] = 1.0
-    #         tex_array[idx + 1] = 0.
-    #         tex_array[idx + 2] = 0.
-    # ctx.update_texture(tex)
-
-    second_mat = ctx.create_pbr_material()
-    ctx.update_material(second_mat, json.dumps(mat_default_json))
+    mat_default_json["base_albedo"] = [0.6, 1, 0.7]
+    second_mat = MaterialResource()
+    second_mat.load_from_json(json.dumps(mat_default_json))
+    second_mat.init_device_resource()
 
     mat_vector = capsule_vector()
-    mat_vector.emplace_back(mat)
-    mat_vector.emplace_back(second_mat)
+    mat_vector.emplace_back(mat._handle)
+    mat_vector.emplace_back(second_mat._handle)
 
-    obj = ctx.create_object(
-        make_float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -0.8, -0.8, 4, 1),
-        mesh,
-        mat_vector,
+    entity = Entity()
+    trans = TransformComponent(entity.add_component("TransformComponent"))
+    render = RenderComponent(entity.add_component("RenderComponent"))
+    trans.set_pos(double3(0, -1, 5), False)
+    render.update_object(mat_vector, cube_mesh)
+    
+    light_entity = Entity()
+    light_trans = TransformComponent(light_entity.add_component("TransformComponent"))
+    light = LightComponent(light_entity.add_component("LightComponent"))
+    light_trans.set_trs_matrix(
+        make_double4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 1, 0.5, 4, 1),
+        False
     )
-    area_light = ctx.add_area_light(
-        make_float4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 1, 1.5, 4, 1),
-        float3(0, 0, 1.0) * 100,
-        True,
-    )
-    obj_changed = False
-    start_time = None
+    light.add_area_light(float3(100, 67, 33), True)
+    
+
+    # mesh = ctx.create_mesh(
+    #     vertex_count, False, False, 0, triangle_count, submesh_offsets
+    # )
+
+    # create_mesh_array(mesh_array)
+    # ctx.update_mesh(mesh, False)
+    # mat = ctx.create_pbr_material()
+    # ctx.update_material(mat, "{}")  # use default value
+    # mat_default_json = json.loads(ctx.get_material_json(mat))
+    # mat_default_json["base_albedo"] = [0, 0, 0]
+    # mat_default_json["emission_luminance"] = [100, 0, 0]
+
+    # # Use texture to turn cube to red
+    # # TEX_SIZE = 1024
+    # # tex = ctx.create_texture(
+    # #     LCPixelStorage.FLOAT4,
+    # #     uint2(TEX_SIZE, TEX_SIZE),
+    # #     1
+    # # )
+    # # mat_default_json['base_albedo_tex'] = ctx.texture_heap_idx(tex)
+    # # tex_array = np.ndarray(TEX_SIZE * TEX_SIZE * 4, dtype=np.float32, buffer = ctx.get_texture_data(tex))
+    # # for x in range(TEX_SIZE):
+    # #     for y in range(TEX_SIZE):
+    # #         idx = (y * TEX_SIZE + x) * 4
+    # #         tex_array[idx] = 1.0
+    # #         tex_array[idx + 1] = 0.
+    # #         tex_array[idx + 2] = 0.
+    # # ctx.update_texture(tex)
+
+    # second_mat = ctx.create_pbr_material()
+    # ctx.update_material(second_mat, json.dumps(mat_default_json))
+
+    # mat_vector = capsule_vector()
+    # mat_vector.emplace_back(mat)
+    # mat_vector.emplace_back(second_mat)
+
+    # obj = ctx.create_object(
+    #     make_float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -0.8, -0.8, 4, 1),
+    #     mesh,
+    #     mat_vector,
+    # )
+    # area_light = ctx.add_area_light(
+    #     make_float4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 1, 1.5, 4, 1),
+    #     float3(0, 0, 1.0) * 100,
+    #     True,
+    # )
+    # obj_changed = False
+    # start_time = None
     while not ctx.should_close():
-        end_time = time.perf_counter()
-        if start_time:
-            for i in range(4, 8):
-                mesh_array[i * 4 + 1] = 0.5 + math.sin(end_time - start_time) * 0.2
-        ctx.update_mesh(mesh, True)
-        if not obj_changed:
-            if start_time and end_time - start_time > 2:
-                obj_changed = True
-                mat_default_json["base_albedo"] = [1, 0.84, 0]
-                mat_default_json["emission_luminance"] = [0, 0, 0]
-                mat_default_json["specular_roughness"] = 0.0
-                mat_default_json["weight_metallic"] = 1.0
-                mat_vector.clear()
-                mat_vector.emplace_back(second_mat)
-                mat_vector.emplace_back(mat)
-                ctx.update_material(second_mat, json.dumps(mat_default_json))
-                ctx.update_object(
-                    obj,
-                    make_float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -0.8, -1.0, 4, 1),
-                    mesh,
-                    mat_vector,
-                )
-                ctx.reset_frame_index()
         ctx.tick()
-        if not start_time:
-            start_time = time.perf_counter()
+    #     end_time = time.perf_counter()
+    #     if start_time:
+    #         for i in range(4, 8):
+    #             mesh_array[i * 4 + 1] = 0.5 + \
+    #                 math.sin(end_time - start_time) * 0.2
+    #     ctx.update_mesh(mesh, True)
+    #     if not obj_changed:
+    #         if start_time and end_time - start_time > 2:
+    #             obj_changed = True
+    #             mat_default_json["base_albedo"] = [1, 0.84, 0]
+    #             mat_default_json["emission_luminance"] = [0, 0, 0]
+    #             mat_default_json["specular_roughness"] = 0.0
+    #             mat_default_json["weight_metallic"] = 1.0
+    #             mat_vector.clear()
+    #             mat_vector.emplace_back(second_mat)
+    #             mat_vector.emplace_back(mat)
+    #             ctx.update_material(second_mat, json.dumps(mat_default_json))
+    #             ctx.update_object(
+    #                 obj,
+    #                 make_float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0,
+    #                               0, 1, 0, -0.8, -1.0, 4, 1),
+    #                 mesh,
+    #                 mat_vector,
+    #             )
+    #             ctx.reset_frame_index()
+    #     if not start_time:
+    #         start_time = time.perf_counter()
 
-    destroy_object(mesh)
+    # destroy_object(mesh)
     del ctx
 
 
@@ -144,7 +195,8 @@ def create_mesh_array(mesh_array):
     # create a cube
     if mesh_array.size != vertex_count * 4 + triangle_count * 3:
         raise Exception("Bad mesh-array size")
-    vertex_arr = np.ndarray(vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+    vertex_arr = np.ndarray(
+        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
     indices_arr = np.ndarray(
         shape=triangle_count * 3,
         dtype=np.uint32,

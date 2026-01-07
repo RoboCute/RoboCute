@@ -48,11 +48,11 @@ int main(int argc, char *argv[]) {
         writer._store(*entity, "entity");
         json = writer.write_to();
 
-        auto trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
+        auto trans_ptr = entity->get_component<world::TransformComponent>();
         // test life time
         LUISA_ASSERT(trans_ptr == trans);
         trans->delete_this();
-        trans_ptr = entity->get_component(TypeInfo::get<world::TransformComponent>());
+        trans_ptr = entity->get_component<world::TransformComponent>();
         // transform already destroyed
         LUISA_ASSERT(trans_ptr == nullptr);
 

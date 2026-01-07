@@ -2,14 +2,26 @@ from rbc_meta.utils.reflect import reflect
 from rbc_meta.utils.builtin import DataBuffer, ExternalType
 from rbc_meta.utils.builtin import uint, uint2, ulong, float3, float4x4, VoidPtr, GUID, double, double3, float4, double4x4
 from rbc_meta.types.resource_enums import LCPixelStorage
+from enum import Enum
+
+MaterialsVector = ExternalType(
+    "luisa::vector<rbc::RC<rbc::RCBase>>", False, "Vec<rbc::RC<rbc::RCBase>>"
+)
+
+
+@reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
+class ResourceLoadStatus(Enum):
+    Unloaded = 0
+    Loading = 1
+    Loaded = 2
 
 
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="backend_interface",
-    create_instance=False,  # component can not be create
+    module_name="world_interface",
+    create_instance=False,
 )
 class Object:
     def instance_id() -> ulong: ...
@@ -20,21 +32,34 @@ class Object:
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="backend_interface",
-    create_instance=False,  # component can not be create
+    module_name="world_interface",
     inherit=Object
 )
-class Component:
-    def entity_handle() -> ulong: ...
+class Entity:
+    def add_component(name: str) -> VoidPtr: ...
+    def get_component(name: str) -> VoidPtr: ...
+    def remove_component(name: str) -> bool: ...
 
 
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="backend_interface",
-    create_instance=False,  # component can not be create
-    inherit=Component
+    module_name="world_interface",
+    inherit=Object,
+    create_instance=False,
+)
+class Component:
+    def entity() -> Entity: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+    inherit=Component,
+    create_instance=False,
 )
 class TransformComponent():
     def position() -> double3: ...
@@ -43,7 +68,6 @@ class TransformComponent():
     def trs() -> double4x4: ...
     def trs_float() -> float4x4: ...
     def children_count() -> ulong: ...
-    def get_children() -> VoidPtr: ...
     def remove_children(children: VoidPtr) -> bool: ...
     def set_pos(pos: double3, recursive: bool) -> None: ...
     def set_scale(scale: double3, recursive: bool) -> None: ...
@@ -57,8 +81,8 @@ class TransformComponent():
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="backend_interface",
-    create_instance=False,  # component can not be create
+    module_name="world_interface",
+    create_instance=False,
     inherit=Component
 )
 class LightComponent():
@@ -74,13 +98,122 @@ class LightComponent():
     def angle_atten_pow() -> float: ...
 
 
+# Resources
+
+
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="backend_interface",
-    create_instance=False,  # component can not be create
+    module_name="world_interface",
+    inherit=Object,
+    create_instance=False,
+)
+class Resource:
+    def load_status() -> ResourceLoadStatus: ...
+    def loading() -> bool: ...
+    def loaded() -> bool: ...
+    def path() -> str: ...
+    def save_to_path() -> bool: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+    inherit=Resource
+)
+class TextureResource:
+    def is_vt() -> bool: ...
+    def pack_to_tile() -> bool: ...
+    def pixel_storage() -> LCPixelStorage: ...
+    def size() -> uint2: ...
+    def mip_level() -> uint: ...
+
+    def create_empty(
+        pixel_storage: LCPixelStorage,
+        size: uint2,
+        mip_level: uint,
+        is_virtual_texture: bool
+    ) -> None: ...
+    def load_executed() -> bool: ...
+    def init_device_resource() -> bool: ...
+    def has_data_buffer() -> bool: ...
+    def data_buffer() -> DataBuffer: ...
+    def heap_index() -> uint: ...
+    def upload(mip_level: uint) -> None: ...
+
+
+class MeshResource:
+    pass
+
+
+MeshResource._pybind_type_ = True
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+    inherit=Resource
+)
+class MeshResource:
+    def vertex_count() -> uint: ...
+    def triangle_count() -> uint: ...
+    def uv_count() -> uint: ...
+    def submesh_count() -> uint: ...
+    def is_transforming_mesh() -> bool: ...
+    def contained_normal() -> bool: ...
+    def data_buffer() -> DataBuffer: ...
+    def contained_tangent() -> bool: ...
+    def init_device_resource() -> bool: ...
+    def has_data_buffer() -> bool: ...
+    def data_buffer() -> DataBuffer: ...
+    def basic_size_bytes() -> ulong: ...
+    def extra_size_bytes() -> ulong: ...
+    def desire_size_bytes() -> ulong: ...
+
+    def create_empty(
+        submesh_offsets: DataBuffer,
+        vertex_count: uint,
+        triangle_count: uint,
+        uv_count: uint,
+        contained_normal: bool,
+        contained_tangent: bool,
+    ) -> None: ...
+    def upload(only_vertex: bool) -> None: ...
+
+    def create_as_morphing_instance(origin_mesh: MeshResource) -> None: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+    inherit=Resource
+)
+class MaterialResource:
+    def mat_code() -> uint: ...
+    def init_device_resource() -> bool: ...
+    def load_from_json(json: str) -> None: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+    create_instance=False,
     inherit=Component
 )
 class RenderComponent():
-    pass
+    def get_tlas_index() -> uint: ...
+    def remove_object() -> None: ...
+    def update_object(mat_vector: MaterialsVector,
+                      mesh: MeshResource) -> None: ...
+
+    def update_mesh(mesh: MeshResource) -> None: ...
+    def update_material(mat_vector: MaterialsVector) -> None: ...

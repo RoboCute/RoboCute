@@ -25,16 +25,23 @@ for target_name, is_standalone in pairs(targets) do
         add_rules('lc_basic_settings', {})
         on_load(function(target)
             if is_standalone then
+                local ignore_files = {
+                    interface = true,
+                    world_impl = true,
+                }
                 for _, v in ipairs(os.files(path.join(os.scriptdir(), '**.cpp'))) do
-                    if path.basename(v) ~= 'interface' then
+                    if not ignore_files[path.basename(v)]then
                         target:add('files', v)
                     end
                 end
                 target:set('kind', 'binary')
                 target:add('defines', 'STANDALONE')
             else
+                local ignore_files = {
+                    main = true
+                }
                 for _, v in ipairs(os.files(path.join(os.scriptdir(), '**.cpp'))) do
-                    if path.basename(v) ~= 'main' then
+                    if not ignore_files[path.basename(v)] then
                         target:add('files', v)
                     end
                 end

@@ -26,7 +26,7 @@ void LightComponent::_update_light() {
             case LightType::Disk:
                 _light_stub.add_disk_light(
                     make_float3(tr->position()),
-                    scale,
+                    scale * 0.5,
                     _luminance,
                     normalize(matrix[2].xyz()),
                     _visible);
@@ -34,14 +34,14 @@ void LightComponent::_update_light() {
             case LightType::Sphere:
                 _light_stub.add_point_light(
                     make_float3(tr->position()),
-                    scale,
+                    scale * 0.5,
                     _luminance,
                     _visible);
                 break;
             case LightType::Spot:
                 _light_stub.add_spot_light(
                     make_float3(tr->position()),
-                    scale,
+                    scale * 0.5,
                     _luminance,
                     normalize(matrix[2].xyz()),
                     _angle_radians,

@@ -5,7 +5,6 @@
 #include <rbc_world/resource_base.h>
 #include <rbc_world/resource_importer.h>
 namespace rbc::world {
-static constexpr uint sql_column_count = 4;
 Project::Project(
     luisa::filesystem::path assets_path,
     luisa::filesystem::path meta_path,
@@ -30,6 +29,8 @@ static luisa::string get_path_key(luisa::filesystem::path const &path, luisa::fi
     return path_key;
 }
 }// namespace detail
+void Project::_reimport(vstd::Guid binary_guid, luisa::filesystem::path const &origin_path) {
+}
 void Project::scan_project() {
     luisa::spin_mutex values_mtx;
     luisa::vector<luisa::filesystem::path> paths;
@@ -80,10 +81,6 @@ void Project::scan_project() {
                     md5.reset();
                     return;
                 }
-                if (!deser._load(file_is_dirty, "dirty") || file_is_dirty) {
-                    file_is_dirty = true;
-                    return;
-                }
                 file_last_write_time = luisa::filesystem::last_write_time(path).time_since_epoch().count();
                 if (file_last_write_time != last_write_time) [[unlikely]] {
                     // time not equal, check hash
@@ -120,7 +117,9 @@ void Project::scan_project() {
                 }
             };
             if (file_is_dirty) {
-                // TODO: may need to process dirty file
+                luisa::fiber::parallel(guids.size(), [&](uint32_t i) {
+                    _reimport(guids[i], path);
+                });
             }
             if (file_meta_is_dirty) {
                 update();
@@ -134,7 +133,7 @@ void Project::scan_project() {
                     guid_str.push_back_uninitialized(s.size());
                     std::memcpy(guid_str.data() + start_idx, s.data(), s.size());
                 }
-                auto meta_json = luisa::format(R"({{"guids":[{}],"md5":{},"dirty":{},"last_time":{}}})", luisa::string_view{guid_str.data(), guid_str.size()}, md5.to_base64(), file_is_dirty ? "true"sv : "false"sv, file_last_write_time);
+                auto meta_json = luisa::format(R"({{"guids":[{}],"md5":{},"last_time":{}}})", luisa::string_view{guid_str.data(), guid_str.size()}, md5.to_base64(), file_last_write_time);
                 BinaryFileWriter file_writer{
                     luisa::to_string(path) + ".rbcmt"};
                 file_writer.write({reinterpret_cast<std::byte const *>(meta_json.data()),
@@ -142,6 +141,5 @@ void Project::scan_project() {
             }
         });
 }
-
 Project::~Project() {}
 }// namespace rbc::world

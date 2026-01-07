@@ -17,8 +17,18 @@ using namespace luisa;
 using namespace luisa::compute;
 #include <material/mats.inl>
 namespace rbc {
-GraphicsUtils::GraphicsUtils() {}
-GraphicsUtils::~GraphicsUtils() {};
+static GraphicsUtils *_graphics_utils_singleton{};
+GraphicsUtils *GraphicsUtils::instance() {
+    return _graphics_utils_singleton;
+}
+GraphicsUtils::GraphicsUtils() {
+    LUISA_ASSERT(!_graphics_utils_singleton);
+    _graphics_utils_singleton = this;
+}
+GraphicsUtils::~GraphicsUtils() {
+    LUISA_ASSERT(_graphics_utils_singleton == this);
+    _graphics_utils_singleton = nullptr;
+};
 
 void deser_openpbr(
     JsonSerializer &serde,
@@ -179,6 +189,7 @@ void GraphicsUtils::tick(
     frame_settings.normal_buffer = nullptr;
     frame_settings.radiance_buffer = nullptr;
     frame_settings.resolved_img = nullptr;
+    frame_settings.reject_sampling = false;
     auto &main_stream = _render_device.lc_main_stream();
     auto dispose_denoise_pack = vstd::scope_exit([&] {
         if (_denoise_pack.external_albedo)
@@ -202,6 +213,7 @@ void GraphicsUtils::tick(
             frame_settings.albedo_buffer = &_denoise_pack.external_albedo;
             frame_settings.normal_buffer = &_denoise_pack.external_normal;
             frame_settings.radiance_buffer = &_denoise_pack.external_input;
+            frame_settings.reject_sampling = true;
         }
     };
     switch (tick_stage) {
@@ -220,6 +232,7 @@ void GraphicsUtils::tick(
             break;
         case TickStage::OffineCapturing:
             set_denoise_pack();
+            frame_settings.reject_sampling = true;
             pipe_settings.use_raster = false;
             pipe_settings.use_raytracing = true;
             pipe_settings.use_post_filter = true;

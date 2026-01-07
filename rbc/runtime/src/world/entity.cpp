@@ -63,8 +63,8 @@ void Entity::_add_component(Component *component) {
     component->on_awake();
 }
 
-bool Entity::remove_component(TypeInfo const &type) {
-    auto iter = _components.find(type.md5());
+bool Entity::remove_component(std::array<uint64_t, 2> const& type_md5) {
+    auto iter = _components.find(type_md5);
     if (iter == _components.end()) return false;
     auto obj = iter->second;
     _components.erase(iter);
@@ -75,8 +75,8 @@ bool Entity::remove_component(TypeInfo const &type) {
     comp->delete_this();
     return true;
 }
-Component *Entity::get_component(TypeInfo const &type) {
-    auto iter = _components.find(type.md5());
+Component *Entity::get_component(std::array<uint64_t, 2> const& type_md5) {
+    auto iter = _components.find(type_md5);
     if (iter == _components.end()) return nullptr;
     auto obj = iter->second;
     LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);

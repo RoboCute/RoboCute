@@ -156,7 +156,7 @@ void WorldScene::_write_scene() {
     auto write_file = [&](world::Resource *res) {
         if (!res || !saved.try_emplace(res->guid()).second) return;
         res->save_to_path();
-        world::register_resource(res);
+        world::register_resource_meta(res);
     };
     write_file(cbox_mesh);
     write_file(quad_mesh);

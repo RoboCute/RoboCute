@@ -35,10 +35,9 @@ private:
     void _remove_component(Component *component);
     Entity();
     ~Entity();
+public:
     Component *_create_component(std::array<uint64_t, 2> const &type);
     void _add_component(Component *component);
-public:
-
     EntityCompIter begin() const {
         return EntityCompIter{_components.begin()};
     }
@@ -55,19 +54,19 @@ public:
         _add_component(ptr);
         return static_cast<T *>(ptr);
     }
-    bool remove_component(TypeInfo const &type);
-    Component *get_component(TypeInfo const &type);
+    bool remove_component(std::array<uint64_t, 2> const &type_md5);
+    Component *get_component(std::array<uint64_t, 2> const &type_md5);
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
     bool remove_component() {
-        return remove_component(TypeInfo::get<T>());
+        return remove_component(TypeInfo::get<T>().md5());
     }
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
     T *get_component() {
-        return static_cast<T *>(get_component(TypeInfo::get<T>()));
+        return static_cast<T *>(get_component(TypeInfo::get<T>().md5()));
     }
 };
 }// namespace rbc::world
