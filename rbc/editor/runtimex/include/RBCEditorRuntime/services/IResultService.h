@@ -86,7 +86,7 @@ public:
     virtual QList<IResult *> getResultsByType(ResultType type) const = 0;
 
     // Result Management
-    virtual void addResult(luisa::unique_ptr<IResult> result);
+    virtual void addResult(luisa::unique_ptr<IResult> result) = 0;
     virtual void removeResult(const QString &id) = 0;
     virtual void clearResults() = 0;
 
