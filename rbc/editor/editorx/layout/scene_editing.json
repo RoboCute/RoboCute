@@ -1,0 +1,25 @@
+{
+    "layout_id": "scene_editing",
+    "layout_name": "3D Scene Editing",
+    "description": "Default Layout for 3D scene editing with viewport as central widget",
+    "version": "1.0",
+    "views": [
+        {}
+    ],
+    "dock_arrangements": {
+        "Left": {
+            "split_orientation": "verticle",
+            "split_ratio": [
+                0.7,
+                0.3
+            ],
+            "widgets": [
+                "scene_hierarchy",
+                "connection_status"
+            ]
+        },
+        "Center": {
+            "central_widget": "viewport"
+        }
+    }
+}

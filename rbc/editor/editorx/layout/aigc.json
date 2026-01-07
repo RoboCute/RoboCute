@@ -1,0 +1,23 @@
+{
+    "layout_id": "aigc",
+    "layout_name": "AIGC",
+    "description": "Layout optimized for AIGC",
+    "version": "1.0",
+    "views": [],
+    "doc_arrangements": {
+        "Center": {
+            "central_widget": "node_editor"
+        },
+        "Right": {
+            "split_orientation": "vertical",
+            "split_ratio": [
+                0.4,
+                0.6
+            ],
+            "widgets": [
+                "result_browser",
+                "image_preview"
+            ]
+        }
+    }
+}
