@@ -4,5 +4,7 @@
     <file>qml/RBCButton.qml</file>
     <file>shaders/prebuilt/quad.frag.qsb</file>
     <file>shaders/prebuilt/quad.vert.qsb</file>
+    <file>ui/layout/scene_editing.json</file>
+    <file>ui/layout/aigc.json</file>
   </qresource>
 </RCC>

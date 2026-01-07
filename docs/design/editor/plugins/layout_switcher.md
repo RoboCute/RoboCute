@@ -1,0 +1,3 @@
+# Layout Switcher
+
+Layout Switcher是一个内置Plugin，用来在UI层面与LayoutService进行交互，切换全局的Layout

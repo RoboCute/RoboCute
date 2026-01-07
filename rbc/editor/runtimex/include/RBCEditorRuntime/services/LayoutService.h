@@ -2,6 +2,7 @@
 /**
  * Default LayoutService for RBC Editor
  */
+#include <rbc_config.h>
 #include <QMainWindow>
 #include "RBCEditorRuntime/services/ILayoutService.h"
 
@@ -33,7 +34,7 @@ struct LayoutConfig {
     bool isModified = false;
 };
 
-class LayoutService : public ILayoutService {
+class RBC_EDITOR_RUNTIME_API LayoutService : public ILayoutService {
     Q_OBJECT
 public:
     explicit LayoutService(QObject *parent = nullptr);

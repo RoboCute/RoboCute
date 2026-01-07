@@ -1444,15 +1444,3 @@ void LayoutService::applyLayout(const QString& layoutId) {
     mainWindow->update();
 }
 ```
-
-## 11. 总结
-
-LayoutService 是 RoboCute Editor 布局管理的核心服务，提供了以下关键能力：
-
-1. **灵活的布局配置**：通过 JSON 配置文件定义布局，支持多种预设和用户自定义
-2. **无缝切换**：在不同工作场景（3D 编辑、AIGC 生成等）之间快速切换
-3. **与 Plugin 系统集成**：自动发现和管理 Plugin 提供的视图
-4. **持久化支持**：保存用户的布局修改，下次启动时恢复
-5. **可扩展性**：易于添加新的布局预设和自定义布局
-
-通过 LayoutService，RoboCute Editor 能够为不同的工作流提供最优化的界面布局，提升用户体验和工作效率。
