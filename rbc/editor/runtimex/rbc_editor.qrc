@@ -2,8 +2,6 @@
 <RCC version="1.0">
   <qresource>
     <file>qml/RBCButton.qml</file>
-    <file>qml/MainWindow.qml</file>
-    <file>qml/connection_plugin/ConnectionView.qml</file>
     <file>shaders/prebuilt/quad.frag.qsb</file>
     <file>shaders/prebuilt/quad.vert.qsb</file>
   </qresource>

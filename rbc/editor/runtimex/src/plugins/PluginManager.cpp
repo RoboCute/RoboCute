@@ -17,6 +17,7 @@ EditorPluginManager::EditorPluginManager()
 }
 
 bool EditorPluginManager::loadPlugin(const QString &pluginPath) {
+
     auto &inst = rbc::PluginManager::instance();
     try {
         auto module = inst.load_module(pluginPath.toStdString().c_str());
@@ -82,7 +83,6 @@ bool EditorPluginManager::unloadPlugin(const QString &pluginId) {
     }
 
     IEditorPlugin *plugin = plugins_[pluginId];
-    auto pluginPath = plugin->plugin_path;
     // Check dependencies
     for (auto *otherPlugin : plugins_) {
         if (otherPlugin != plugin) {
@@ -94,14 +94,19 @@ bool EditorPluginManager::unloadPlugin(const QString &pluginId) {
             }
         }
     }
-
-    auto &inst = rbc::PluginManager::instance();
     luisa::shared_ptr<luisa::DynamicModule> moduleRef;
-    // keep DLL loaded while calling virtual methods
-    if (modules_.contains(pluginId)) {
-        moduleRef = modules_[pluginId];
-    } else if (!pluginPath.isEmpty()) {
-        moduleRef = inst.load_module(pluginPath.toStdString().c_str());
+    auto pluginPath = plugin->plugin_path;
+    bool is_dynamic = plugin->is_dynamic();
+    if (is_dynamic) {
+        // if is dynamic plugin, safely unload dll
+        auto &inst = rbc::PluginManager::instance();
+
+        // keep DLL loaded while calling virtual methods
+        if (modules_.contains(pluginId)) {
+            moduleRef = modules_[pluginId];
+        } else if (!pluginPath.isEmpty()) {
+            moduleRef = inst.load_module(pluginPath.toStdString().c_str());
+        }
     }
 
     // now it is safe to call virtual functions because the module stays loaded
@@ -118,9 +123,12 @@ bool EditorPluginManager::unloadPlugin(const QString &pluginId) {
     plugin = nullptr;
 
     // 最后卸载 DLL 模块（此时对象已删除，不再需要 DLL）
-    modules_.remove(pluginId);
-    if (!pluginPath.isEmpty()) {
-        inst.unload_module(pluginPath.toStdString().c_str());
+    if (is_dynamic) {
+        modules_.remove(pluginId);
+        auto &inst = rbc::PluginManager::instance();
+        if (!pluginPath.isEmpty()) {
+            inst.unload_module(pluginPath.toStdString().c_str());
+        }
     }
 
     qDebug() << "EditorPluginManager::unloadPlugin: Plugin" << pluginId << "unloaded";

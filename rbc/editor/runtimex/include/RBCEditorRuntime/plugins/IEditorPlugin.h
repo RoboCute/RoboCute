@@ -27,6 +27,7 @@ public:
     virtual QString name() const = 0;
     virtual QString version() const = 0;
     virtual QStringList dependencies() const = 0;
+    virtual bool is_dynamic() const = 0;
 
     // === UI Contributions ===
     virtual QList<ViewContribution> view_contributions() const = 0;

@@ -69,6 +69,7 @@ public:
     QString name() const override { return "Connection Plugin"; }
     QString version() const override { return "1.0.0"; }
     QStringList dependencies() const override { return {}; }
+    bool is_dynamic() const override { return true; }
 
     QList<ViewContribution> view_contributions() const override;
     QList<MenuContribution> menu_contributions() const override { return {}; }
