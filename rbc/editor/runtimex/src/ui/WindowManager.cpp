@@ -8,8 +8,22 @@
 #include <QVBoxLayout>
 #include <QDebug>
 #include <QUrl>
+#include <QStringList>
 
 namespace rbc {
+
+static Qt::DockWidgetArea parse_dock_area(const QString &dockArea) {
+    if (dockArea == "Right") {
+        return Qt::RightDockWidgetArea;
+    } else if (dockArea == "Top") {
+        return Qt::TopDockWidgetArea;
+    } else if (dockArea == "Bottom") {
+        return Qt::BottomDockWidgetArea;
+    } else if (dockArea == "Center") {
+        return Qt::NoDockWidgetArea;// Center is not a dock area
+    }
+    return Qt::LeftDockWidgetArea;
+}
 
 WindowManager::WindowManager(EditorPluginManager *plugin_mng, QObject *parent)
     : QObject(parent), main_window_(nullptr), plugin_mng_(plugin_mng) {
@@ -20,6 +34,35 @@ void WindowManager::setup_main_window() {
         main_window_ = new QMainWindow();
         main_window_->setWindowTitle("RoboCute Editor");
     }
+}
+
+QDockWidget *WindowManager::createDockWidgetCommon(
+    const QString &viewId,
+    const QString &title,
+    QWidget *content,
+    Qt::DockWidgetArea dockArea,
+    QDockWidget::DockWidgetFeatures features,
+    Qt::DockWidgetAreas allowedAreas) {
+
+    if (!main_window_) {
+        qWarning() << "WindowManager::createDockWidgetCommon: main_window_ is null, call setup_main_window() first";
+        return nullptr;
+    }
+    if (!content) {
+        qWarning() << "WindowManager::createDockWidgetCommon: content widget is null";
+        return nullptr;
+    }
+
+    QDockWidget *dock = new QDockWidget(title, main_window_);
+    dock->setObjectName(viewId);
+    dock->setAllowedAreas(allowedAreas);
+    dock->setFeatures(features);
+    dock->setWidget(content);
+
+    if (dockArea != Qt::NoDockWidgetArea) {
+        main_window_->addDockWidget(dockArea, dock);
+    }
+    return dock;
 }
 
 QDockWidget *WindowManager::createDockableView(const ViewContribution &contribution, QObject *viewModel) {
@@ -64,24 +107,8 @@ QDockWidget *WindowManager::createDockableView(const ViewContribution &contribut
         return nullptr;
     }
 
-    // Create DockWidget
-    QDockWidget *dock = new QDockWidget(contribution.title, main_window_);
-    dock->setObjectName(contribution.viewId);
-    dock->setWidget(quickWidget);
-    dock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    dock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
-
     // Parse dock area
-    Qt::DockWidgetArea dockArea = Qt::LeftDockWidgetArea;
-    if (contribution.dockArea == "Right") {
-        dockArea = Qt::RightDockWidgetArea;
-    } else if (contribution.dockArea == "Top") {
-        dockArea = Qt::TopDockWidgetArea;
-    } else if (contribution.dockArea == "Bottom") {
-        dockArea = Qt::BottomDockWidgetArea;
-    } else if (contribution.dockArea == "Center") {
-        dockArea = Qt::NoDockWidgetArea;// Center is not a dock area
-    }
+    Qt::DockWidgetArea dockArea = parse_dock_area(contribution.dockArea);
 
     // Parse preferred size
     if (!contribution.preferredSize.isEmpty()) {
@@ -96,13 +123,31 @@ QDockWidget *WindowManager::createDockableView(const ViewContribution &contribut
         }
     }
 
-    // Add to main window
-    if (dockArea != Qt::NoDockWidgetArea) {
-        main_window_->addDockWidget(dockArea, dock);
+    QDockWidget *dock = createDockWidgetCommon(
+        contribution.viewId,
+        contribution.title,
+        quickWidget,
+        dockArea,
+        QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable,
+        Qt::AllDockWidgetAreas);
+    if (!dock) {
+        delete quickWidget;
+        return nullptr;
     }
 
     qDebug() << "WindowManager::createDockableView: Created dock for" << contribution.viewId;
     return dock;
+}
+
+QDockWidget *WindowManager::createDockableView(
+    const QString &viewId,
+    const QString &title,
+    QWidget *widget,
+    Qt::DockWidgetArea dockArea,
+    QDockWidget::DockWidgetFeatures features,
+    Qt::DockWidgetAreas allowedAreas) {
+
+    return createDockWidgetCommon(viewId, title, widget, dockArea, features, allowedAreas);
 }
 
 QWidget *WindowManager::createStandaloneView(const QString &qmlSource, QObject *viewModel, const QString &title) {

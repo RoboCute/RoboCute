@@ -16,3 +16,5 @@ Signal
 - entityRemoved
 - entitySelected
 - sceneChanged
+
+NodeGraph

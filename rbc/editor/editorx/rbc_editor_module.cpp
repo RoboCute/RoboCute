@@ -66,6 +66,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         if (!plugin) {
             return;
         }
+
         QList<ViewContribution> views = plugin->view_contributions();
         for (const auto &view : views) {
             qDebug() << "Creating view:" << view.viewId << "from" << view.qmlSource;
@@ -96,14 +97,15 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         if (occupiedDockAreas.contains(areaName)) {
             return;
         }
-        auto *placeholderDock = new QDockWidget(areaName + " Placeholder", mainWindow);
-        auto *label = new QLabel(QString("%1 area placeholder").arg(areaName), placeholderDock);
+        auto *label = new QLabel(QString("%1 area placeholder").arg(areaName), nullptr);
         label->setAlignment(Qt::AlignCenter);
-        placeholderDock->setWidget(label);
-        placeholderDock->setFeatures(QDockWidget::NoDockWidgetFeatures);
-        if (area != Qt::NoDockWidgetArea) {
-            mainWindow->addDockWidget(area, placeholderDock);
-        }
+        windowManager.createDockableView(
+            QStringLiteral("Placeholder_") + areaName,
+            areaName + " Placeholder",
+            label,
+            area,
+            QDockWidget::NoDockWidgetFeatures,
+            Qt::DockWidgetAreas(area));
     };
 
     addPlaceholder("Left", Qt::LeftDockWidgetArea);
