@@ -1,0 +1,6 @@
+target("argparse")
+set_kind("headeronly")
+set_group("00.thirdparty")
+add_headerfiles("include/argparse/argparse.hpp")
+add_includedirs("include")
+target_end()

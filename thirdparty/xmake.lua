@@ -1,10 +1,10 @@
 includes("LuisaCompute")
 
 target('rbc_dllexport_include') -- to include dll_export.h
-    set_kind('phony')
-    add_includedirs('LuisaCompute/include', {
-        public = true
-    })
+set_kind('phony')
+add_includedirs('LuisaCompute/include', {
+    public = true
+})
 target_end()
 
 includes("rtm")
@@ -30,6 +30,8 @@ includes('oidn')
 includes('tracy_xmake.lua')
 includes('qt_rule/qt_rule.lua')
 includes('sqlite3')
+includes('argparse')
+
 -- target('magic_enum')
 -- set_kind('headeronly')
 -- on_load(function(target)
