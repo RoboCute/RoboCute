@@ -5,15 +5,13 @@
 #include <rbc_world/resource_base.h>
 #include <rbc_world/resource_importer.h>
 namespace rbc::world {
-Project::Project(
-    luisa::filesystem::path assets_path,
-    luisa::filesystem::path meta_path,
-    luisa::filesystem::path const &assets_db_path)
-    : _assets_path(std::move(assets_path)),
-      _meta_path(std::move(meta_path)) {
-    if (!luisa::filesystem::is_directory(_meta_path)) {
-        luisa::filesystem::create_directories(_meta_path);
+static Project *_project_inst{};
+Project::Project(    luisa::filesystem::path const &assets_db_path)
+    : _assets_path(world::Resource::meta_root_path()) {
+    if (_project_inst) [[unlikely]] {
+        LUISA_ERROR("Project must be singleton.");
     }
+    _project_inst = this;
     if (!luisa::filesystem::is_directory(_assets_path)) {
         luisa::filesystem::create_directories(_assets_path);
     }
@@ -38,7 +36,6 @@ void Project::scan_project() {
         if (!i.is_regular_file() || i.path().extension() == ".rbcmt") {
             continue;
         }
-        // TODO: check file ext valid
         paths.emplace_back(i.path());
     }
 
@@ -141,5 +138,7 @@ void Project::scan_project() {
             }
         });
 }
-Project::~Project() {}
+Project::~Project() {
+    if (_project_inst == this) _project_inst = nullptr;
+}
 }// namespace rbc::world

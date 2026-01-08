@@ -217,3 +217,30 @@ class RenderComponent():
 
     def update_mesh(mesh: MeshResource) -> None: ...
     def update_material(mat_vector: MaterialsVector) -> None: ...
+
+# Import, load and manage project
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class AsyncRequest:
+    def done() -> bool: ...
+    def get_result() -> VoidPtr: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface"
+)
+class Project():
+    def import_texture(path: str) -> AsyncRequest: ...
+    def import_mesh(path: str) -> AsyncRequest: ...
+    def import_material(path: str) -> AsyncRequest: ...
+    def load_resource(guid: GUID) -> TextureResource: ...
+    def set_skybox(tex: TextureResource) -> None: ...

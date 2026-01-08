@@ -21,6 +21,24 @@ struct BaseObjectStatics : RBCStruct {
         }
     }
     ~BaseObjectStatics() {
+        // collect dangling objects
+        luisa::vector<BaseObject *> remove_obj;
+        if (!_instance_ids.empty()) {
+            for (auto iter = _instance_ids.begin(); iter != _instance_ids.end();) {
+                auto o = iter->second;
+                if (o->rbc_rc_count() > 0) {
+                    ++iter;
+                    continue;
+                }
+                o->_guid.reset();
+                o->_instance_id = ~0ull;
+                remove_obj.emplace_back(o);
+                iter = _instance_ids.erase(iter);
+            }
+            for (auto &o : remove_obj) {
+                o->delete_this();
+            }
+        }
         if (!_instance_ids.empty()) {
             LUISA_ERROR("World object is leaking.");
         }

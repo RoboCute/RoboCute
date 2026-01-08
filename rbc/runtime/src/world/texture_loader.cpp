@@ -35,12 +35,12 @@ void TextureLoader::process_texture(RC<TextureResource> const &tex, uint mip_lev
 
     auto render_device = RenderDevice::instance_ptr();
     LUISA_ASSERT(render_device, "Render device must be initialized.");
-    {
+    if (mip_level > 1 || to_vt) {
         std::lock_guard lck{_mtx};
-        if (!_pack_tex) {
+        if (to_vt && !_pack_tex) {
             _pack_tex.create(render_device->lc_device());
         }
-        if (!_event) {
+        if (mip_level > 1 && !_event) {
             _event = render_device->lc_device().create_timeline_event();
         }
     }

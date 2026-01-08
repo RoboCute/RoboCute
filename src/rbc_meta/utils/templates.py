@@ -176,13 +176,13 @@ ${DISPOSE_METHOD}
 ${METHODS_EXPR}
 """)
 
-PY_INIT_METHOD_TEMPLATE = Template("""${INDENT}def __init__(self, handle = None):
-${INDENT}${INDENT}if handle:
-${INDENT}${INDENT}${INDENT}self._handle = handle
-${INDENT}${INDENT}${INDENT}self._own = False
-${INDENT}${INDENT}else:
+PY_INIT_METHOD_TEMPLATE = Template("""${INDENT}def __init__(self, *args):
+${INDENT}${INDENT}if len(args) == 0:
 ${INDENT}${INDENT}${INDENT}self._handle = create__${STRUCT_NAME}__()
 ${INDENT}${INDENT}${INDENT}self._own = True
+${INDENT}${INDENT}else:
+${INDENT}${INDENT}${INDENT}self._handle = args[0]
+${INDENT}${INDENT}${INDENT}self._own = args[1] if len(args) > 1 else True
 """)
 
 PY_INIT_METHOD_TEMPLATE_EXTERNAL = Template("""${INDENT}def __init__(self, handle):

@@ -189,13 +189,11 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
         luisa::filesystem::create_directories(scene_root_dir);
         world::init_world(scene_root_dir);
-        world::load_all_resources_from_meta();
         _init_scene(utils);
 
     } else {
         // load demo scene
         world::init_world(scene_root_dir);// open project folder
-        world::load_all_resources_from_meta();
         // load skybox
         {
             BinaryFileStream file_stream{"test_scene/sky_guid.txt"};
@@ -246,8 +244,7 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
                 wait_skybox.resume();
             }
         }
-        rbc::RC<DeviceImage> image{skybox->get_image()};
-        utils->render_plugin()->update_skybox(image);
+        utils->render_plugin()->update_skybox(rbc::RC<DeviceImage>{skybox->get_image()});
     }
     _set_gizmos();
     // _init_physics(utils);

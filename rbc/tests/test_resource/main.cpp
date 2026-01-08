@@ -8,7 +8,6 @@ int main(int argc, char *argv[]) {
     auto meta_path = luisa::filesystem::path{argv[0]}.parent_path() / "dummy_scene";
     luisa::filesystem::remove_all(meta_path);
     world::init_world(meta_path);
-    world::load_all_resources_from_meta();
     auto dispose_runtime_static = vstd::scope_exit([] {
         world::destroy_world();
         RuntimeStaticBase::dispose_all();

@@ -233,15 +233,12 @@ inline bool rc_release_with_delete(T *p) {
     virtual void rbc_rc_delete() = 0;
 
 // impl macros
-#define RBC_RC_IMPL_(x)                                                             \
+#define RBC_RC_IMPL_(write_permission, read_permission)                             \
 private:                                                                            \
     mutable ::std::atomic<::rbc::RCCounterType> zz_rbc_rc = 0;                      \
     mutable ::std::atomic<::rbc::RCWeakRefCounter *> zz_rbc_weak_counter = nullptr; \
                                                                                     \
-    x:                                                                              \
-    inline rbc::RCCounterType rbc_rc_count() const {                                \
-        return rbc::rc_ref_count(zz_rbc_rc);                                        \
-    }                                                                               \
+    write_permission:                                                               \
     inline rbc::RCCounterType rbc_rc_add_ref() const {                              \
         return rbc::rc_add_ref(zz_rbc_rc);                                          \
     }                                                                               \
@@ -251,16 +248,19 @@ private:                                                                        
     inline rbc::RCCounterType rbc_rc_release() const {                              \
         return rbc::rc_release(zz_rbc_rc);                                          \
     }                                                                               \
-    inline rbc::RCCounterType rbc_rc_weak_ref_count() const {                       \
-        return rbc::rc_weak_ref_count(zz_rbc_weak_counter);                         \
-    }                                                                               \
     inline rbc::RCWeakRefCounter *rbc_rc_weak_ref_counter() const {                 \
         return rbc::rc_get_or_new_weak_ref_counter(zz_rbc_weak_counter);            \
     }                                                                               \
     inline void rbc_rc_weak_ref_counter_notify_dead() const {                       \
         rbc::rc_notify_weak_ref_counter_dead(zz_rbc_weak_counter);                  \
+    }                                                                               \
+    read_permission:                                                                \
+    inline rbc::RCCounterType rbc_rc_weak_ref_count() const {                       \
+        return rbc::rc_weak_ref_count(zz_rbc_weak_counter);                         \
+    }                                                                               \
+    inline rbc::RCCounterType rbc_rc_count() const {                                \
+        return rbc::rc_ref_count(zz_rbc_rc);                                        \
     }
-#define RBC_RC_IMPL RBC_RC_IMPL_(public)
 #define RBC_RC_DELETER_IMPL_DEFAULT         \
     inline void rbc_rc_delete() {           \
         luisa::delete_with_allocator(this); \
@@ -289,7 +289,7 @@ struct RCBase : RBCStruct {
         requires(ObjectWithRC<T> || std::is_base_of_v<RCBase, T>)
     friend bool manually_release_ref(T *ptr);
 
-    RBC_RC_IMPL_(private)
+    RBC_RC_IMPL_(private, public)
     RBC_RC_DELETER_IMPL_DEFAULT
 public:
     virtual ~RCBase() = default;

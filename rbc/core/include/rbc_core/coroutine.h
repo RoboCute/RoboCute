@@ -14,10 +14,9 @@ struct coroutine {
     using base_type = std::coroutine_handle<rbc::promise>;
 private:
     base_type _base;
-    bool _own{};
 public:
     coroutine() = default;
-    coroutine(base_type &&rhs) : _base(rhs), _own{true} {}
+    coroutine(base_type &&rhs) : _base(rhs) {}
     coroutine(coroutine const &) = delete;
     RBC_CORE_API coroutine(coroutine &&rhs);
     static auto from_promise(promise &prom) {
@@ -28,6 +27,12 @@ public:
         std::destroy_at(this);
         std::construct_at(this, std::move(rhs));
         return *this;
+    }
+    operator bool() const {
+        return _base != nullptr;
+    }
+    bool operator==(std::nullptr_t) const {
+        return _base == nullptr;
     }
     RBC_CORE_API void resume();
     RBC_CORE_API bool done();

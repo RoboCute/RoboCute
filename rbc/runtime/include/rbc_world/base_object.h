@@ -80,6 +80,7 @@ struct BaseObject : RCBase {
     template<typename T>
     friend struct ComponentDerive;
     friend struct Entity;
+    friend struct BaseObjectStatics;
     RBC_RUNTIME_API friend BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
     RBC_RUNTIME_API friend BaseObject *create_object(vstd::Guid const &type_info);
     RBC_RUNTIME_API friend BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid);

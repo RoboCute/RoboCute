@@ -21,11 +21,15 @@
 #include <tracy_wrapper.h>
 #include <rbc_core/runtime_static.h>
 #include <luisa/gui/window.h>
-
-using namespace rbc;
+#include <rbc_core/runtime_static.h>
+#include <rbc_world/base_object.h>
+#include <rbc_plugin/plugin_manager.h>
 using namespace luisa;
 using namespace luisa::compute;
 #include <material/mats.inl>
+namespace rbc {
+struct ContextImpl;
+static ContextImpl *_ctx_inst{};
 struct ContextImpl : RBCStruct {
     luisa::fiber::scheduler scheduler;
     luisa::string backend = "dx";
@@ -36,14 +40,60 @@ struct ContextImpl : RBCStruct {
     Clock clk;
     uint64_t frame_index{};
     ContextImpl() {
+        if (_ctx_inst) [[unlikely]] {
+            LUISA_ERROR("Context can only have one.");
+        }
+        _ctx_inst = this;
         log_level_info();
-        RuntimeStaticBase::init_all();
     }
     ~ContextImpl() {
+        if (_ctx_inst == this) [[likely]]
+            _ctx_inst = nullptr;
         utils.dispose();
-        RuntimeStaticBase::dispose_all();
     }
 };
+struct Disposer {
+    uint64_t _ref_count{};
+    bool _disposed{false};
+    void add_ref() {
+        ++_ref_count;
+    }
+    void deref() {
+        if (--_ref_count == 0) {
+            dispose();
+        }
+    }
+    void dispose() {
+        if (_disposed) return;
+        _disposed = true;
+        LUISA_INFO("RBC disposed.");
+        rbc::world::destroy_world();
+        rbc::PluginManager::destroy_instance();
+        rbc::RuntimeStaticBase::dispose_all();
+    }
+    ~Disposer() {
+        dispose();
+    }
+};
+static Disposer _disposer;
+void add_ref(rbc::world::BaseObject *rc) {
+    _disposer.add_ref();
+    manually_add_ref(rc);
+}
+void add_ref() {
+    _disposer.add_ref();
+}
+void deref(rbc::world::BaseObject *rc) {
+    manually_release_ref(rc);
+    _disposer.deref();
+}
+void deref() {
+    _disposer.deref();
+}
+
+void RBCContext::init_world(void *this_, luisa::string_view meta_path, luisa::string_view binary_path) {
+    rbc::world::init_world(meta_path, binary_path);
+}
 void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa::string_view program_path, luisa::string_view shader_path) {
     auto &c = *static_cast<ContextImpl *>(this_);
     c.backend = rhi_backend;
@@ -57,10 +107,6 @@ void RBCContext::init_render(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     c.utils.init_render();
 }
-void RBCContext::load_skybox(void *this_, luisa::string_view path, uint2 size) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    c.utils.render_plugin()->update_skybox(path, PixelStorage::FLOAT4, size);
-}
 void RBCContext::create_window(void *this_, luisa::string_view name, uint2 size, bool resiable) {
     auto &c = *static_cast<ContextImpl *>(this_);
     c.window.create(luisa::string{name}, size, resiable);
@@ -69,185 +115,6 @@ void RBCContext::create_window(void *this_, luisa::string_view name, uint2 size,
     c.window->set_window_size_callback([&](uint2 size) {
         c.window_size = size;
     });
-}
-void *RBCContext::create_mesh(void *this_, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    auto ptr = new DeviceMesh();
-    manually_add_ref(ptr);
-    vstd::vector<uint32_t> vec;
-    vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
-    std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
-    c.utils.create_mesh(ptr, vertex_count, contained_normal, contained_tangent, uv_count, triangle_count, std::move(vec));
-    return ptr;
-}
-
-void *RBCContext::load_mesh(void *this_, luisa::string_view file_path, uint64_t file_offset, uint32_t vertex_count, bool contained_normal, bool contained_tangent, uint32_t uv_count, uint32_t triangle_count, luisa::span<std::byte> offset_uint32) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    vstd::vector<uint32_t> vec;
-    vec.push_back_uninitialized(offset_uint32.size() / sizeof(uint));
-    std::memcpy(vec.data(), offset_uint32.data(), vec.size_bytes());
-    auto ptr = new DeviceMesh();
-    manually_add_ref(ptr);
-    ptr->async_load_from_file(
-        file_path,
-        vertex_count,
-        triangle_count,
-        contained_normal,
-        contained_tangent,
-        uv_count,
-        std::move(vec),
-        false,
-        true,
-        file_offset,
-        true);
-    return ptr;
-}
-
-luisa::span<std::byte> RBCContext::get_mesh_data(void *this_, void *handle) {
-    auto mesh = (DeviceMesh *)handle;
-    mesh->wait_finished();
-    auto host_data = mesh->host_data();
-    return host_data;
-}
-void RBCContext::update_mesh(void *this_, void *handle, bool only_vertex) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    c.utils.update_mesh_data((DeviceMesh *)handle, only_vertex);
-}
-void *RBCContext::create_pbr_material(void *this_) {
-    auto ptr = new MaterialStub();
-    manually_add_ref(ptr);
-    ptr->craete_pbr_material();
-    return ptr;
-}
-void RBCContext::update_material(void *this_, void *ptr, luisa::string_view json) {
-    auto mat = static_cast<MaterialStub *>(ptr);
-    mat->update_material(json);
-}
-luisa::string RBCContext::get_material_json(void *this_, void *mat_ptr) {
-    auto ptr = (MaterialStub *)mat_ptr;
-    JsonSerializer ser(false);
-    ptr->mat_data.visit(
-        [&](auto &a) {
-            MaterialStub::openpbr_json_ser(ser, a);
-        });
-    auto data = ser.write_to();
-    return luisa::string{
-        luisa::string_view{(char const *)data.data(), data.size()}};
-}
-void *RBCContext::add_area_light(void *this_, luisa::float4x4 matrix, luisa::float3 luminance, bool visible) {
-    auto &render_device = RenderDevice::instance();
-    auto stub = new LightStub{};
-    manually_add_ref(stub);
-    stub->add_area_light(matrix, luminance, visible);
-    return stub;
-}
-void *RBCContext::add_disk_light(void *this_, luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, bool visible) {
-    auto &render_device = RenderDevice::instance();
-    auto stub = new LightStub{};
-    manually_add_ref(stub);
-    stub->add_disk_light(center, radius, luminance, forward_dir, visible);
-    return stub;
-}
-void *RBCContext::add_point_light(void *this_, luisa::float3 center, float radius, luisa::float3 luminance, bool visible) {
-    auto &render_device = RenderDevice::instance();
-    auto stub = new LightStub{};
-    manually_add_ref(stub);
-    stub->add_point_light(center, radius, luminance, visible);
-    return stub;
-}
-void *RBCContext::add_spot_light(void *this_, luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, float angle_radians, float small_angle_radians, float angle_atten_pow, bool visible) {
-    auto &render_device = RenderDevice::instance();
-    auto stub = new LightStub{};
-    manually_add_ref(stub);
-    stub->add_spot_light(center, radius, luminance, forward_dir, angle_radians, small_angle_radians, angle_atten_pow, visible);
-    return stub;
-}
-void *RBCContext::create_texture(void *this_, rbc::LCPixelStorage storage, luisa::uint2 size, uint32_t mip_level) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    auto ptr = new DeviceImage();
-    manually_add_ref(ptr);
-    c.utils.create_texture(ptr, (PixelStorage)storage, size, mip_level);
-    return ptr;
-}
-luisa::span<std::byte> RBCContext::get_texture_data(void *this_, void *handle) {
-    auto mesh = (DeviceImage *)handle;
-    mesh->wait_finished();
-    auto host_data = mesh->host_data();
-    return host_data;
-}
-void RBCContext::update_texture(void *this_, void *ptr) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    c.utils.update_texture((DeviceImage *)ptr);
-}
-void *RBCContext::load_texture(void *this_, luisa::string_view file_path, uint64_t file_offset, rbc::LCPixelStorage storage, luisa::uint2 size, uint32_t mip_level, bool is_vt) {
-    auto &sm = SceneManager::instance();
-    if (is_vt) {
-        auto ptr = new DeviceSparseImage();
-        manually_add_ref(ptr);
-        ptr->load(
-            &sm.tex_streamer(),
-            {},
-            file_path,
-            file_offset,
-            Sampler{},
-            (PixelStorage)storage,
-            size,
-            mip_level);
-        return ptr;
-    } else {
-        auto ptr = new DeviceImage();
-        manually_add_ref(ptr);
-        ptr->async_load_from_file(
-            file_path,
-            file_offset,
-            Sampler{},
-            (PixelStorage)storage,
-            size,
-            mip_level,
-            DeviceImage::ImageType::Float,
-            true);
-        return ptr;
-    }
-}
-uint RBCContext::texture_heap_idx(void *this_, void *ptr) {
-    auto tex = (DeviceImage *)ptr;
-    tex->wait_executed();
-    return tex->heap_idx();
-}
-void RBCContext::update_area_light(void *this_, void *light, luisa::float4x4 matrix, luisa::float3 luminance, bool visible) {
-    auto &render_device = RenderDevice::instance();
-    auto stub = reinterpret_cast<LightStub *>(light);
-    stub->update_area_light(matrix, luminance, visible);
-}
-void RBCContext::update_disk_light(void *this_, void *light, luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, bool visible) {
-    auto &render_device = RenderDevice::instance();
-    auto stub = reinterpret_cast<LightStub *>(light);
-    stub->update_disk_light(center, radius, luminance, forward_dir, visible);
-}
-void RBCContext::update_point_light(void *this_, void *light, luisa::float3 center, float radius, luisa::float3 luminance, bool visible) {
-    auto &render_device = RenderDevice::instance();
-    auto stub = reinterpret_cast<LightStub *>(light);
-    stub->update_point_light(center, radius, luminance, visible);
-}
-void RBCContext::update_spot_light(void *this_, void *light, luisa::float3 center, float radius, luisa::float3 luminance, luisa::float3 forward_dir, float angle_radians, float small_angle_radians, float angle_atten_pow, bool visible) {
-    auto &render_device = RenderDevice::instance();
-    auto stub = reinterpret_cast<LightStub *>(light);
-    stub->update_spot_light(center, radius, luminance, forward_dir, angle_radians, small_angle_radians, angle_atten_pow, visible);
-}
-
-void *RBCContext::create_object(void *this_, luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) {
-    auto stub = new ObjectStub{};
-    manually_add_ref(stub);
-    stub->create_object(matrix, (DeviceMesh *)mesh, materials);
-    return stub;
-}
-void RBCContext::update_object_pos(void *this_, void *ptr, luisa::float4x4 matrix) {
-    auto stub = static_cast<ObjectStub *>(ptr);
-    stub->update_object_pos(matrix);
-}
-void RBCContext::update_object(void *this_, void *ptr, luisa::float4x4 matrix, void *mesh, luisa::vector<RC<RCBase>> const &materials) {
-    auto stub = static_cast<ObjectStub *>(ptr);
-    stub->update_object(matrix, (DeviceMesh *)mesh, materials);
 }
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
     auto &c = *static_cast<ContextImpl *>(this_);
@@ -266,7 +133,8 @@ void RBCContext::set_view_camera(void *this_, luisa::float3 pos, float roll, flo
     cam.rotation_yaw = yaw;
 }
 void RBCContext::disable_view(void *this_) {
-    // TODO
+    auto &c = *static_cast<ContextImpl *>(this_);
+    c.window.destroy();
 }
 bool RBCContext::should_close(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
@@ -309,9 +177,15 @@ void RBCContext::tick(void *this_) {
     }
 }
 void *RBCContext::_create_() {
-    auto ptr = new ContextImpl{};
-    return ptr;
+    LUISA_ASSERT(!_ctx_inst);
+    _disposer.add_ref();
+    rbc::RuntimeStaticBase::init_all();
+    rbc::PluginManager::init();
+    return new ContextImpl{};
 }
 void RBCContext::_destroy_(void *ptr) {
     delete static_cast<ContextImpl *>(ptr);
+    _disposer.deref();
 }
+
+}// namespace rbc

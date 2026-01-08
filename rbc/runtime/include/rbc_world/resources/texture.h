@@ -34,6 +34,7 @@ public:
     bool empty() const;
     bool is_vt() const;
     bool pack_to_tile();
+    bool decode(luisa::filesystem::path const &path, TextureLoader* tex_loader, uint mip_level, bool virtual_tex);
     [[nodiscard]] DeviceImage *get_image() const;
     [[nodiscard]] DeviceSparseImage *get_sparse_image() const;
     [[nodiscard]] auto pixel_storage() const { return _pixel_storage; }
