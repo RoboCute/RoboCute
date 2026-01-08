@@ -10,7 +10,7 @@ do
         public = true
     })
     add_files("rbc_editor_module.cpp") -- module entry
-
+    add_deps("argparse")
     -- plugins 
 end
 target_end()
@@ -28,7 +28,7 @@ do
     add_deps("rbc_editor_runtimex", {
         public = true
     })
-
+    add_deps("argparse")
 end
 target_end()
 

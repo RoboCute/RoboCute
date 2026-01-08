@@ -17,6 +17,8 @@
 #include "RBCEditorRuntime/ui/WindowManager.h"
 #include "RBCEditorRuntime/services/ConnectionService.h"
 
+#include <argparse/argparse.hpp>
+
 // Connection Plugin
 // #include "ConnectionPlugin.h"
 
