@@ -198,8 +198,6 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
             _materials,
             mats.subspan(0, setted_size));
     }
-    // synchronize
-    // wait mesh load
     bool loaded = false;
     [&] {
         if (!mesh->loaded()) return;
@@ -213,8 +211,14 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
         loaded = true;
         return;
     }();
+
     if (!loaded) {
         auto coro = [&]() -> rbc::coroutine {
+            if (mesh->loading_status() == EResourceLoadingStatus::Unloaded) {
+                if (!mesh->init_device_resource()) [[unlikely]] {
+                    LUISA_ERROR("Render mesh not initialized.");
+                }
+            }
             co_await mesh->await_loading();
             for (auto iter = _materials.begin(); iter != _materials.end();) {
                 auto &i = *iter;
@@ -243,6 +247,9 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                 return MaterialResource::default_mat_code();
             } else {
                 mat->init_device_resource();
+                if (mat->mat_code().value == ~0u) [[unlikely]] {
+                    LUISA_ERROR("Render sub-material {} not initialized.", i);
+                }
                 return mat->mat_code();
             }
         });

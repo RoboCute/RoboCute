@@ -44,6 +44,7 @@ def main():
 
     program_path = str(runtime_dir.parent / "debug")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
+    cbox_path = str(runtime_dir.parent / "cornell_box.obj")
     sky_path = str(runtime_dir.parent / "sky.exr")
     world_path = str(runtime_dir.parent / 'world')
 
@@ -65,7 +66,8 @@ def main():
     else:
         print("Skybox not found, importing sky.exr")
         skybox_tex_request = project.import_texture(str(sky_path))
-        skybox_tex = TextureResource(skybox_tex_request.get_result(), True)
+        skybox_tex = TextureResource(skybox_tex_request.get_result_release(), True)
+        del skybox_tex_request # handle released, async-request already useless
         skybox_tex.upload(0)
         sky_guid_str = str(skybox_tex.guid())
         skybox_tex.save_to_path()
@@ -73,7 +75,7 @@ def main():
         sky_guid_file.write(sky_guid_str)
         sky_guid_file.close()
         project.set_skybox(skybox_tex)
-        
+    del skybox_tex
     ctx.create_window("py_window", uint2(1920, 1080), True)
     
     # ctx.load_skybox(sky_path, uint2(4096, 2048))
@@ -85,57 +87,91 @@ def main():
     # first submesh start at 'last_tri_size'
 
     submesh_offsets[1] = triangle_count // 2
+    ##################### Load cbox
+    cbox_mesh_request = project.import_mesh(cbox_path)
+    cbox_mesh = MeshResource(cbox_mesh_request.get_result_release(), True)
+    cbox_mesh.upload(False) # we must upload imported data to GPU
+    
+    ##################### Create a test cube
+    # cube_mesh = MeshResource()
+    # cube_mesh.create_empty(
+    #     submesh_offsets,
+    #     vertex_count,
+    #     triangle_count,
+    #     0, False, False
+    # )
+    # mesh_array = np.ndarray(
+    #     vertex_count * 4 + triangle_count * 3,
+    #     dtype=np.float32,
+    #     buffer=cube_mesh.data_buffer()
+    # )
+    # create_mesh_array(mesh_array)
+    # cube_mesh.upload(False)
+    
+    # mat_default_json = json.loads("{}")
+    # mat_default_json["base_albedo"] = [1, 0.6, 0.7]
+    # mat = MaterialResource()
+    # mat.load_from_json(json.dumps(mat_default_json))
+    # mat.init_device_resource()
 
-    cube_mesh = MeshResource()
-    cube_mesh.create_empty(
-        submesh_offsets,
-        vertex_count,
-        triangle_count,
-        0, False, False
-    )
-    cube_mesh.init_device_resource()
-    mesh_array = np.ndarray(
-        vertex_count * 4 + triangle_count * 3,
-        dtype=np.float32,
-        buffer=cube_mesh.data_buffer()
-    )
-    create_mesh_array(mesh_array)
-    cube_mesh.upload(False)
-    mat_default_json = json.loads("{}")
-    mat_default_json["base_albedo"] = [1, 0.6, 0.7]
-    mat = MaterialResource()
-    mat.load_from_json(json.dumps(mat_default_json))
-    mat.init_device_resource()
+    # mat_default_json["base_albedo"] = [0.6, 1, 0.7]
+    # second_mat = MaterialResource()
+    # second_mat.load_from_json(json.dumps(mat_default_json))
+    # second_mat.init_device_resource()
 
-    mat_default_json["base_albedo"] = [0.6, 1, 0.7]
-    second_mat = MaterialResource()
-    second_mat.load_from_json(json.dumps(mat_default_json))
-    second_mat.init_device_resource()
-
+    # mat_vector = capsule_vector()
+    # mat_vector.emplace_back(mat._handle)
+    # mat_vector.emplace_back(second_mat._handle)
+    # mat_vector.emplace_back(mat._handle)
+    # mat_vector.emplace_back(second_mat._handle)
+    # mat_vector.emplace_back(mat._handle)
+    # mat_vector.emplace_back(second_mat._handle)
+    # mat_vector.emplace_back(mat._handle)
+    # mat_vector.emplace_back(second_mat._handle)
+    
+    mat0 = '{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]}'
+    mat1 = '{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]}'
+    mat2 = '{"type": "pbr", "specular_roughness": 0.5, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]}'
+    light_mat_desc = '{"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]}'
+    
+    basic_mat = MaterialResource()
+    basic_mat.load_from_json(mat0)
+    
+    left_wall_mat = MaterialResource()
+    left_wall_mat.load_from_json(mat1)
+    
+    right_wall_mat = MaterialResource()
+    right_wall_mat.load_from_json(mat2)
+    
+    light_mat = MaterialResource()
+    light_mat.load_from_json(light_mat_desc)
+    
     mat_vector = capsule_vector()
-    mat_vector.emplace_back(mat._handle)
-    mat_vector.emplace_back(second_mat._handle)
+    mat_vector.emplace_back(basic_mat._handle)
+    mat_vector.emplace_back(basic_mat._handle)
+    mat_vector.emplace_back(basic_mat._handle)
+    mat_vector.emplace_back(left_wall_mat._handle)
+    mat_vector.emplace_back(right_wall_mat._handle)
+    mat_vector.emplace_back(basic_mat._handle)
+    mat_vector.emplace_back(basic_mat._handle)
+    mat_vector.emplace_back(light_mat._handle)
 
     entity = Entity()
     trans = TransformComponent(entity.add_component("TransformComponent"))
     render = RenderComponent(entity.add_component("RenderComponent"))
-    trans.set_pos(double3(0, -1, 5), False)
-    render.update_object(mat_vector, cube_mesh)
+    trans.set_pos(double3(0, -1, 3), False)
+    trans.set_rotation(float4(0, -1, 0, 0), False)
+    render.update_object(mat_vector, cbox_mesh)
+    del mat_vector
     
     light_entity = Entity()
     light_trans = TransformComponent(light_entity.add_component("TransformComponent"))
     light = LightComponent(light_entity.add_component("LightComponent"))
     light_trans.set_trs_matrix(
-        make_double4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 1, 0.5, 4, 1),
+        make_double4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0.5, 4, 1),
         False
     )
-    light.add_area_light(float3(100, 67, 33), True)
-    # test RC
-    # this del should be safe
-    del mat
-    del second_mat
-    del cube_mesh
-    
+    light.add_area_light(float3(30, 20, 20), True)    
     while not ctx.should_close():
         ctx.tick()
 

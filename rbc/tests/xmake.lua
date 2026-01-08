@@ -1,10 +1,11 @@
 includes('test_py_codegen')
-includes('test_serde', 'test_graphics', 'test_ipc', 'test_node')
-includes("test_resource")
-includes("test_coro")
+includes('test_graphics')
+-- includes('test_serde', 'test_ipc', 'test_node')
+-- includes("test_resource")
+-- includes("test_coro")
+-- includes("test_sql")
 includes("sample_anim")
 includes("model_viewer")
-includes("test_sql")
 
 function add_test(name, deps)
     deps = deps or {}

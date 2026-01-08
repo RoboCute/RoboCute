@@ -5,7 +5,6 @@
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>
-#include <rbc_core/sqlite_cpp.h>
 #include <rbc_world/importers/register_importers.h>
 
 namespace rbc ::world {
@@ -22,10 +21,18 @@ struct LoadingResource {
     InstanceID res_inst_id;
     coroutine loading_coro;
 };
+enum struct ResourceMetaType : uint8_t {
+    META_JSON,
+    TYPE_ID
+};
+struct BinaryBlock {
+    uint type : 8;// ResourceMetaType
+    uint size : 24;
+};
 struct ResourceLoader : RBCStruct {
     luisa::filesystem::path _meta_path;
     luisa::filesystem::path _binary_path;
-    SqliteCpp _meta_db;
+    vstd::LMDB _meta_db;
 
     struct ResourceHandle {
         InstanceID res;
@@ -46,61 +53,62 @@ struct ResourceLoader : RBCStruct {
             luisa::filesystem::create_directories(_meta_path);
         }
         vstd::reset(_meta_db, luisa::to_string(_meta_path / ".meta_db"));
-        if (!_meta_db.check_table_exists("RBC_FILE_META"sv)) {
-            luisa::fixed_vector<SqliteCpp::ColumnDesc, 3> columns;
-            columns.emplace_back(
-                SqliteCpp::ColumnDesc{
-                    .name = "GUID",
-                    .type = SqliteCpp::DataType::String,
-                    .primary_key = true,
-                    .unique = true,
-                    .not_null = true});
-            columns.emplace_back(
-                SqliteCpp::ColumnDesc{
-                    .name = "META",
-                    .type = SqliteCpp::DataType::String,
-                    .not_null = true});
-            columns.emplace_back(
-                SqliteCpp::ColumnDesc{
-                    .name = "TYPEID",
-                    .type = SqliteCpp::DataType::String,
-                    .not_null = true});
-            _meta_db.create_table(
-                "RBC_FILE_META"sv,
-                columns);
-        }
+    }
+    void add_block(
+        ResourceMetaType type,
+        luisa::span<std::byte const> data,
+        luisa::fixed_vector<std::byte, 64> &result) {
+        LUISA_DEBUG_ASSERT(data.size() < 1u << 24u);
+        BinaryBlock block{
+            .type = (uint)type,
+            .size = (uint)data.size()};
+        auto sz = result.size();
+        result.push_back_uninitialized(sizeof(BinaryBlock) + data.size());
+        std::memcpy(result.data() + sz, &block, sizeof(BinaryBlock));
+        std::memcpy(result.data() + sz + sizeof(BinaryBlock), data.data(), data.size());
     }
     void register_resource(vstd::Guid resource_guid,
                            luisa::string &&meta_info,
                            std::array<uint64_t, 2> type_id) {
         _resmap_mtx.lock();
-        auto &v = resource_types.force_emplace(resource_guid).value();
+        auto &v = resource_types.emplace(resource_guid).value();
         _resmap_mtx.unlock();
         LUISA_ASSERT(meta_info.size() > 0);
-        auto columns = {luisa::string("GUID"), luisa::string("META"), luisa::string("TYPEID")};
-        auto values = {
-            SqliteCpp::ValueVariant{resource_guid.to_base64()},
-            SqliteCpp::ValueVariant{std::move(meta_info)},
-            SqliteCpp::ValueVariant{reinterpret_cast<vstd::Guid &>(type_id).to_base64()}};
-        LUISA_ASSERT(_meta_db.insert_values("RBC_FILE_META"sv, columns, values, true).is_success(), "Write SQLITE failed.");
+        luisa::fixed_vector<std::byte, 64> result;
+        add_block(ResourceMetaType::META_JSON,
+                  {(std::byte const *)meta_info.data(), meta_info.size()},
+                  result);
+        add_block(ResourceMetaType::TYPE_ID,
+                  {(std::byte const *)&type_id, sizeof(type_id)},
+                  result);
+        _meta_db.write(
+            {(std::byte const *)(&resource_guid),
+             sizeof(resource_guid)},
+            result);
     }
     void register_resource(Resource *res) {
         JsonSerializer js;
         rbc::ArchiveWriteJson adapter(js);
         res->serialize_meta(world::ObjSerialize{adapter});
         _resmap_mtx.lock();
-        auto &v = resource_types.force_emplace(res->guid()).value();
+        auto resource_guid = res->guid();
+        auto &v = resource_types.emplace(resource_guid).value();
         _resmap_mtx.unlock();
         luisa::string meta_info;
         js.write_to(meta_info);
         LUISA_ASSERT(meta_info.size() > 0);
-        auto columns = {luisa::string("GUID"), luisa::string("META"), luisa::string("TYPEID")};
         auto type_id = res->type_id();
-        auto values = {
-            SqliteCpp::ValueVariant{res->guid().to_base64()},
-            SqliteCpp::ValueVariant{std::move(meta_info)},
-            SqliteCpp::ValueVariant{reinterpret_cast<vstd::Guid &>(type_id).to_base64()}};
-        LUISA_ASSERT(_meta_db.insert_values("RBC_FILE_META"sv, columns, values, true).is_success(), "Write SQLITE failed.");
+        luisa::fixed_vector<std::byte, 64> result;
+        add_block(ResourceMetaType::META_JSON,
+                  {(std::byte const *)meta_info.data(), meta_info.size()},
+                  result);
+        add_block(ResourceMetaType::TYPE_ID,
+                  {(std::byte const *)&type_id, sizeof(type_id)},
+                  result);
+        _meta_db.write(
+            {(std::byte const *)(&resource_guid),
+             sizeof(resource_guid)},
+            result);
     }
     void _loading_thread() {
         auto execute = [&](LoadingResource &res) {
@@ -148,17 +156,33 @@ struct ResourceLoader : RBCStruct {
         luisa::string result;
         vstd::Guid type_id;
         type_id.reset();
-        auto file_name = guid.to_base64();
-        _meta_db.read_columns_with("RBC_FILE_META"sv, [&](SqliteCpp::ColumnValue &&v) { 
-            if(v.name == "META"sv) {
-                result = std::move(v.value);
-            } else {
-                auto id = vstd::Guid::TryParseGuid(v.value);
-                if(!id) [[unlikely]] {
-                    LUISA_ERROR("Database is broken. please re-generate from project.");
-                }
-                type_id = *id;
-            } }, "META, TYPEID"sv, "GUID"sv, file_name);
+        auto sp = _meta_db.read(
+            {(std::byte const *)&guid,
+             sizeof(guid)});
+        auto ptr = sp.data();
+        auto end = ptr + sp.size();
+        while (true) {
+            if ((int64_t)(end - ptr) < sizeof(BinaryBlock)) {
+                break;
+            }
+            BinaryBlock b;
+            std::memcpy(&b, ptr, sizeof(BinaryBlock));
+            ptr += sizeof(BinaryBlock);
+            if ((int64_t)(end - ptr) < b.size) {
+                break;
+            }
+            switch ((ResourceMetaType)b.type) {
+                case ResourceMetaType::TYPE_ID:
+                    LUISA_ASSERT(b.size == sizeof(type_id));
+                    std::memcpy(&type_id, ptr, b.size);
+                    break;
+                case ResourceMetaType::META_JSON:
+                    result.resize(b.size);
+                    std::memcpy(result.data(), ptr, b.size);
+                    break;
+            }
+            ptr += b.size;
+        }
         return {result, type_id};
     }
 
