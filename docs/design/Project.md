@@ -47,21 +47,18 @@ MyRoboCuteProject/
 ├── rbc_project.json          # 项目配置文件
 ├── .rbcignore                 # 忽略文件配置
 ├── assets/                    # 原始资产（GLTF, 纹理等）
-├── scenes/                    # 场景文件
-├── graphs/                    # 节点图文件
-├── scripts/                   # 自定义脚本和节点
+  ├── scenes/                    # 场景文件
+  ├── graphs/                    # 节点图文件
+  ├── scripts/                   # 自定义脚本和节点
 ├── docs/                      # 项目文档
 ├── datasets/                  # 训练数据集
 ├── pretrained/                # 预训练模型权重
 └── .rbc/                      # 中间文件目录（不提交到版本控制）
     ├── resources/             # 运行时资源
     │   ├── resource_registry.db
-    │   ├── meshes/
-    │   ├── textures/
-    │   ├── materials/
-    │   ├── skeletons/
-    │   ├── skins/
-    │   └── animations/
+        | xxx.rbcb
+        | xxx.rbch
+        | ....
     ├── cache/                 # 缓存文件
     │   ├── shaders/
     │   ├── thumbnails/
