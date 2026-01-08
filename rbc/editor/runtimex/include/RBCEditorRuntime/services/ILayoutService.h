@@ -1,4 +1,5 @@
 #pragma once
+#include <rbc_config.h>
 #include <QObject>
 #include <QDockWidget>
 #include <QJsonObject>

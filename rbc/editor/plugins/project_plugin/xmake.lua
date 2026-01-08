@@ -1,4 +1,4 @@
-target("RBCE_ProjectPreviewerPlugin")
+target("RBCE_ProjectPlugin")
 do
     add_rules("lc_basic_settings", {
         project_kind = "shared",

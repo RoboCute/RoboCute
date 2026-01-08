@@ -8,25 +8,20 @@
 
 namespace rbc {
 
-/**
- * ProjectPreviewerViewModel - 项目预览视图模型
- * 
- * 负责管理项目文件系统的显示和交互逻辑
- */
-class RBC_EDITOR_PLUGIN_API ProjectPreviewerViewModel : public ViewModelBase {
+class RBC_EDITOR_PLUGIN_API ProjectViewModel : public ViewModelBase {
     Q_OBJECT
     Q_PROPERTY(QString projectRoot READ projectRoot NOTIFY projectRootChanged)
-    Q_PROPERTY(QFileSystemModel* fileSystemModel READ fileSystemModel CONSTANT)
+    Q_PROPERTY(QFileSystemModel *fileSystemModel READ fileSystemModel CONSTANT)
     Q_PROPERTY(QModelIndex rootIndex READ rootIndex NOTIFY rootIndexChanged)
     Q_PROPERTY(QString filter READ filter WRITE setFilter NOTIFY filterChanged)
 
 public:
-    explicit ProjectPreviewerViewModel(IProjectService *projectService, QObject *parent = nullptr);
-    ~ProjectPreviewerViewModel() override;
+    explicit ProjectViewModel(IProjectService *projectService, QObject *parent = nullptr);
+    ~ProjectViewModel() override;
 
     // Property accessors
     QString projectRoot() const;
-    QFileSystemModel* fileSystemModel() const { return fileSystemModel_; }
+    QFileSystemModel *fileSystemModel() const { return fileSystemModel_; }
     QModelIndex rootIndex() const;
     QString filter() const { return filter_; }
     void setFilter(const QString &filter);
@@ -39,7 +34,7 @@ public:
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void navigateUp();
     Q_INVOKABLE bool canNavigateUp() const;
-    
+
     // Helper methods for QML (using row index)
     Q_INVOKABLE QString getFilePathByRow(int row) const;
     Q_INVOKABLE bool isDirectoryByRow(int row) const;
@@ -66,29 +61,24 @@ private:
 
     IProjectService *projectService_ = nullptr;
     QFileSystemModel *fileSystemModel_ = nullptr;
-    QString filter_ = "*";  // Default: show all files
+    QString filter_ = "*";// Default: show all files
     QString currentRootPath_;
 };
 
-/**
- * ProjectPreviewerPlugin - 项目预览插件
- * 
- * 提供项目文件系统预览的 UI 面板，使用 Qt 的 QFileSystemModel
- */
-class RBC_EDITOR_PLUGIN_API ProjectPreviewerPlugin : public IEditorPlugin {
+class RBC_EDITOR_PLUGIN_API ProjectPlugin : public IEditorPlugin {
     Q_OBJECT
 
 public:
-    explicit ProjectPreviewerPlugin(QObject *parent = nullptr);
-    ~ProjectPreviewerPlugin() override;
+    explicit ProjectPlugin(QObject *parent = nullptr);
+    ~ProjectPlugin() override;
 
     // IEditorPlugin interface
     bool load(PluginContext *context) override;
     bool unload() override;
     bool reload() override;
 
-    QString id() const override { return "com.robocute.project_previewer"; }
-    QString name() const override { return "Project Previewer"; }
+    QString id() const override { return "com.robocute.project_plugin"; }
+    QString name() const override { return "Project Plugin"; }
     QString version() const override { return "1.0.0"; }
     QStringList dependencies() const override { return {}; }
     bool is_dynamic() const override { return true; }
@@ -104,7 +94,7 @@ public:
 
 private:
     IProjectService *projectService_ = nullptr;
-    ProjectPreviewerViewModel *viewModel_ = nullptr;
+    ProjectViewModel *viewModel_ = nullptr;
     PluginContext *context_ = nullptr;
 };
 

@@ -1,5 +1,5 @@
 #pragma once
-
+#include <rbc_config.h>
 #include <QObject>
 #include <QDateTime>
 #include <QJsonObject>
@@ -49,7 +49,7 @@ struct ProjectOpenOptions {
 
 // === Service Interface =======================================================
 
-class IProjectService : public QObject {
+class RBC_EDITOR_RUNTIME_API IProjectService : public QObject {
     Q_OBJECT
 public:
     explicit IProjectService(QObject *parent = nullptr) : QObject(parent) {}
