@@ -53,7 +53,7 @@ void *Entity::add_component(void *this_, luisa::string_view name) {
     vstd::MD5 md5{luisa::string_view{class_name}};
     auto e = static_cast<world::Entity *>(this_);
     auto comp = e->_create_component(
-        reinterpret_cast<std::array<uint64_t, 2> const &>(md5));
+        reinterpret_cast<MD5 const &>(md5));
     if (!comp) {
         return nullptr;
     }
@@ -68,7 +68,7 @@ void *Entity::get_component(void *this_, luisa::string_view name) {
     luisa::string class_name{"rbc::world::"};
     class_name += name;
     vstd::MD5 md5{luisa::string_view{class_name}};
-    auto comp = e->get_component(reinterpret_cast<std::array<uint64_t, 2> const &>(md5));
+    auto comp = e->get_component(reinterpret_cast<MD5 const &>(md5));
     return comp;
 }
 bool Entity::remove_component(void *this_, luisa::string_view name) {
@@ -76,7 +76,7 @@ bool Entity::remove_component(void *this_, luisa::string_view name) {
     luisa::string class_name{"rbc::world::"};
     class_name += name;
     vstd::MD5 md5{luisa::string_view{class_name}};
-    return e->remove_component(reinterpret_cast<std::array<uint64_t, 2> const &>(md5));
+    return e->remove_component(reinterpret_cast<MD5 const &>(md5));
 }
 void *Component::entity(void *this_) {
     auto c = static_cast<world::Component *>(this_);

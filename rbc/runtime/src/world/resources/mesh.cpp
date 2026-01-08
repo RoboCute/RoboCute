@@ -281,7 +281,7 @@ bool MeshResource::decode(luisa::filesystem::path const &path) {
     }
 
     auto &registry = ResourceImporterRegistry::instance();
-    auto *importer = registry.find_importer(path, ResourceType::Mesh);
+    auto *importer = registry.find_importer(path, TypeInfo::get<MeshResource>().md5());
 
     if (!importer) {
         LUISA_WARNING("No importer found for mesh file: {}", luisa::to_string(path));
@@ -289,7 +289,7 @@ bool MeshResource::decode(luisa::filesystem::path const &path) {
     }
 
     // Avoid dynamic_cast across DLL boundaries - use resource_type() check instead
-    if (importer->resource_type() != ResourceType::Mesh) {
+    if (importer->resource_type() != TypeInfo::get<MeshResource>().md5()) {
         LUISA_WARNING("Invalid importer type for mesh file: {}", luisa::to_string(path));
         return false;
     }

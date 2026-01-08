@@ -316,14 +316,14 @@ bool TextureResource::decode(luisa::filesystem::path const &path, TextureLoader 
     }
 
     auto &registry = ResourceImporterRegistry::instance();
-    auto *importer = registry.find_importer(path, ResourceType::Texture);
+    auto *importer = registry.find_importer(path, TypeInfo::get<TextureResource>().md5());
     if (!importer) {
         LUISA_WARNING("No importer found for texture file: {}", luisa::to_string(path));
         return false;
     }
 
     // Avoid dynamic_cast across DLL boundaries - use resource_type() check instead
-    if (importer->resource_type() != ResourceType::Texture) {
+    if (importer->resource_type() != TypeInfo::get<TextureResource>().md5()) {
         LUISA_WARNING("Invalid importer type for texture file: {}", luisa::to_string(path));
         return false;
     }

@@ -57,7 +57,7 @@ private:
     [[nodiscard]] const char *type_name() const override {
         return rbc_rtti_detail::is_rtti_type<Derive>::name;
     }
-    [[nodiscard]] std::array<uint64_t, 2> type_id() const override {
+    [[nodiscard]] MD5 type_id() const override {
         return rbc_rtti_detail::is_rtti_type<Derive>::get_md5();
     }
     [[nodiscard]] BaseObjectType base_type() const override {
@@ -77,6 +77,6 @@ RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_lo
 RBC_RUNTIME_API void register_resource_meta(
     vstd::Guid resource_guid,
     luisa::string &&meta_info,
-    std::array<uint64_t, 2> type_id);
+    MD5 type_id);
 RBC_RUNTIME_API void register_resource_meta(Resource *res);
 }// namespace rbc::world

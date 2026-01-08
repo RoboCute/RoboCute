@@ -9,8 +9,8 @@ struct BaseObjectStatics : RBCStruct {
     shared_atomic_mutex _guid_mtx;
     std::atomic_uint64_t _instance_id_counter{};
     luisa::unordered_map<uint64_t, BaseObject *> _instance_ids;
-    luisa::unordered_map<std::array<uint64_t, 2>, BaseObject *> _obj_guids;
-    luisa::unordered_map<std::array<uint64_t, 2>, TypeRegisterBase *> _create_funcs;
+    luisa::unordered_map<MD5, BaseObject *> _obj_guids;
+    luisa::unordered_map<MD5, TypeRegisterBase *> _create_funcs;
     void init_register(TypeRegisterBase *p) {
         p->init();
         _create_funcs.try_emplace(p->type_id(), p);
@@ -91,7 +91,7 @@ BaseObject *get_object(InstanceID instance_id) {
 BaseObject *get_object(vstd::Guid const &guid) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     std::shared_lock lck{_world_inst->_guid_mtx};
-    auto iter = _world_inst->_obj_guids.find(reinterpret_cast<std::array<uint64_t, 2> const &>(guid));
+    auto iter = _world_inst->_obj_guids.find(reinterpret_cast<MD5 const &>(guid));
     if (iter == _world_inst->_obj_guids.end()) {
         return nullptr;
     }
@@ -111,7 +111,7 @@ RC<BaseObject> get_object_ref(InstanceID instance_id) {
 RC<BaseObject> get_object_ref(vstd::Guid const &guid) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     std::shared_lock lck{_world_inst->_guid_mtx};
-    auto iter = _world_inst->_obj_guids.find(reinterpret_cast<std::array<uint64_t, 2> const &>(guid));
+    auto iter = _world_inst->_obj_guids.find(reinterpret_cast<MD5 const &>(guid));
     if (iter == _world_inst->_obj_guids.end()) {
         return {};
     }
@@ -132,7 +132,7 @@ void BaseObject::init_with_guid(vstd::Guid const &guid) {
     _guid = guid;
     {
         std::lock_guard lck{_world_inst->_guid_mtx};
-        auto new_guid = _world_inst->_obj_guids.try_emplace(reinterpret_cast<std::array<uint64_t, 2> const &>(guid), static_cast<BaseObject *>(this)).second;
+        auto new_guid = _world_inst->_obj_guids.try_emplace(reinterpret_cast<MD5 const &>(guid), static_cast<BaseObject *>(this)).second;
         LUISA_DEBUG_ASSERT(new_guid);
     }
 }
@@ -143,7 +143,7 @@ BaseObject::~BaseObject() {
         _world_inst->_instance_ids.erase(_instance_id);
     }
     if (_guid) {
-        auto &guid = reinterpret_cast<std::array<uint64_t, 2> const &>(_guid);
+        auto &guid = reinterpret_cast<MD5 const &>(_guid);
         std::lock_guard lck{_world_inst->_guid_mtx};
         auto iter = _world_inst->_obj_guids.find(guid);
         LUISA_DEBUG_ASSERT(iter->second == this);
@@ -155,7 +155,7 @@ luisa::spin_mutex &dirty_trans_mtx();
 luisa::vector<InstanceID> &dirty_transforms();
 BaseObjectType get_base_object_type(vstd::Guid const &type_id) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    auto iter = _world_inst->_create_funcs.find((std::array<uint64_t, 2> const &)type_id);
+    auto iter = _world_inst->_create_funcs.find((MD5 const &)type_id);
     if (iter == _world_inst->_create_funcs.end()) {
         return BaseObjectType::None;
     }
@@ -171,7 +171,7 @@ BaseObject *create_object(rbc::TypeInfo const &type_info) {
     ptr->init_with_guid(vstd::Guid(true));
     return ptr;
 }
-Component *Entity::_create_component(std::array<uint64_t, 2> const &type) {
+Component *Entity::_create_component(MD5 const &type) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(type);
     if (iter == _world_inst->_create_funcs.end()) {
@@ -193,7 +193,7 @@ BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid c
 }
 BaseObject *create_object(vstd::Guid const &type_info) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    auto iter = _world_inst->_create_funcs.find(reinterpret_cast<std::array<uint64_t, 2> const &>(type_info));
+    auto iter = _world_inst->_create_funcs.find(reinterpret_cast<MD5 const &>(type_info));
     if (iter == _world_inst->_create_funcs.end()) {
         return nullptr;
     }
@@ -203,7 +203,7 @@ BaseObject *create_object(vstd::Guid const &type_info) {
 }
 BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    auto iter = _world_inst->_create_funcs.find(reinterpret_cast<std::array<uint64_t, 2> const &>(type_info));
+    auto iter = _world_inst->_create_funcs.find(reinterpret_cast<MD5 const &>(type_info));
     if (iter == _world_inst->_create_funcs.end()) {
         return nullptr;
     }
@@ -214,7 +214,7 @@ BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid cons
 
 BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    auto iter = _world_inst->_create_funcs.find(reinterpret_cast<std::array<uint64_t, 2> const &>(type_info));
+    auto iter = _world_inst->_create_funcs.find(reinterpret_cast<MD5 const &>(type_info));
     if (iter == _world_inst->_create_funcs.end()) {
         return nullptr;
     }
@@ -226,7 +226,7 @@ BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, v
 BaseObjectType base_type_of(vstd::Guid const &type_id) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(
-        reinterpret_cast<std::array<uint64_t, 2> const &>(type_id));
+        reinterpret_cast<MD5 const &>(type_id));
     if (iter == _world_inst->_create_funcs.end())
         return BaseObjectType::Custom;
     return iter->second->base_type();

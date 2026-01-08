@@ -48,7 +48,7 @@ RBC_RTTI(rbc::AnimSequenceResource)
 namespace rbc {
 
 struct RBC_RUNTIME_API IAnimSequenceImporter : world::IResourceImporter {
-    [[nodiscard]] world::ResourceType resource_type() const override { return world::ResourceType::AnimSequence; }
+    [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<AnimSequenceResource>().md5(); }
     virtual bool import(AnimSequenceResource *resource, luisa::filesystem::path const &path) = 0;
 
 protected:

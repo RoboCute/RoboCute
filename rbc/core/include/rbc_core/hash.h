@@ -19,6 +19,14 @@ struct hash<vstd::Guid> {
         return luisa::hash64(&value, sizeof(T), seed);
     }
 };
+template<>
+struct hash<vstd::MD5> {
+    using T = vstd::MD5;
+    using is_avalanching = void;
+    [[nodiscard]] uint64_t operator()(T const &value, uint64_t seed = hash64_default_seed) const noexcept {
+        return luisa::hash64(&value, sizeof(T), seed);
+    }
+};
 }// namespace luisa
 
 namespace std {

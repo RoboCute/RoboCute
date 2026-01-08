@@ -112,11 +112,11 @@ public:
     [[nodiscard]] bool is_type_of(TypeInfo const &type) const {
         auto dst = type_id();
         auto &&src = type.md5();
-        return src[0] == dst[0] && src[1] == dst[1];
+        return src == dst;
     }
     virtual void delete_this() = 0;
     [[nodiscard]] virtual const char *type_name() const = 0;
-    [[nodiscard]] virtual std::array<uint64_t, 2> type_id() const = 0;
+    [[nodiscard]] virtual vstd::MD5 type_id() const = 0;
     static void *operator new(
         size_t size) noexcept {
         LUISA_ERROR("operator new banned.");
@@ -177,7 +177,7 @@ public:
     [[nodiscard]] const char *type_name() const override {
         return rbc_rtti_detail::is_rtti_type<T>::name;
     }
-    [[nodiscard]] std::array<uint64_t, 2> type_id() const override {
+    [[nodiscard]] vstd::MD5 type_id() const override {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
     [[nodiscard]] BaseObjectType base_type() const override {

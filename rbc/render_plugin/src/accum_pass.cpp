@@ -26,6 +26,7 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
 
     const auto &frame_settings = ctx.pipeline_settings.read<FrameSettings>();
+	AccumPassContext* pass_ctx{};
     pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
     pass_ctx->frame_index = std::min<size_t>(pass_ctx->frame_index, frame_settings.frame_index);
     if (any(frame_settings.render_resolution != frame_settings.display_resolution)) {
@@ -54,6 +55,9 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     jitter_data.jitter = float2(halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 2), halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 3)) - 0.5f;
 }
 void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
+    AccumPassContext* pass_ctx{};
+    pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
+	Image<float> temp_img;
     auto &pt_pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
     auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();

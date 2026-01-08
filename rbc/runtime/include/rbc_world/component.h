@@ -41,7 +41,7 @@ struct ComponentDerive : Component {
     [[nodiscard]] const char *type_name() const override {
         return rbc_rtti_detail::is_rtti_type<T>::name;
     }
-    [[nodiscard]] std::array<uint64_t, 2> type_id() const override {
+    [[nodiscard]] MD5 type_id() const override {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
 protected:

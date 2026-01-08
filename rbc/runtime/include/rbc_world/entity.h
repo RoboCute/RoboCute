@@ -8,7 +8,7 @@ struct Component;
 namespace detail {
 }
 struct EntityCompIter {
-    using IterType = luisa::unordered_map<std::array<uint64_t, 2>, Component *>::const_iterator;
+    using IterType = luisa::unordered_map<MD5, Component *>::const_iterator;
 private:
     IterType _iter;
 public:
@@ -31,12 +31,12 @@ struct RBC_RUNTIME_API Entity final : BaseObjectDerive<Entity, BaseObjectType::E
     friend struct Component;
 
 private:
-    luisa::unordered_map<std::array<uint64_t, 2>, Component *> _components;
+    luisa::unordered_map<MD5, Component *> _components;
     void _remove_component(Component *component);
     Entity();
     ~Entity();
 public:
-    Component *_create_component(std::array<uint64_t, 2> const &type);
+    Component *_create_component(MD5 const &type);
     void _add_component(Component *component);
     EntityCompIter begin() const {
         return EntityCompIter{_components.begin()};
@@ -54,8 +54,8 @@ public:
         _add_component(ptr);
         return static_cast<T *>(ptr);
     }
-    bool remove_component(std::array<uint64_t, 2> const &type_md5);
-    Component *get_component(std::array<uint64_t, 2> const &type_md5);
+    bool remove_component(MD5 const &type_md5);
+    Component *get_component(MD5 const &type_md5);
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
     template<typename T>

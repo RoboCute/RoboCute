@@ -27,10 +27,8 @@ public:
 		uint2,
 		uint> const* accum_buffer;
 	// ShaderBase const* _lut_baker;
-	Buffer<float4> lut_buffer;
+	// Buffer<float4> lut_buffer;
 	uint64_t buffer_frame_idx = 0;
-	AccumPassContext* pass_ctx{};
-	Image<float> temp_img;
 	void on_enable(
 		Pipeline const& pipeline,
 		Device& device,

@@ -56,6 +56,7 @@ public:
 };
 struct HDRI;
 struct SkyAtmosphere;
+struct Pass;
 struct PipelineContext : RBCStruct {
     // settings
     mutable rbc::StateMap pipeline_settings;
@@ -68,6 +69,7 @@ struct PipelineContext : RBCStruct {
     Stream *stream{nullptr};
     SceneManager *scene{nullptr};
     CommandList *cmdlist{nullptr};
+    vstd::vector<Pass *> _enabled_passes;
 
     mutable PipelineCtxMutable mut;
     PipelineContext();

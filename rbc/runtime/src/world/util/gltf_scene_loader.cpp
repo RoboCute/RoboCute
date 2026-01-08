@@ -133,13 +133,13 @@ GltfSceneData GltfSceneLoader::load_from_model(
                               tex_path.string(), path.string());
                 continue;
             }
-            auto *importer = registry.find_importer(tex_path, ResourceType::Texture);
+            auto *importer = registry.find_importer(tex_path, TypeInfo::get<TextureResource>().md5());
 
             if (!importer) {
                 LUISA_WARNING("No importer found for texture file: {}", tex_path.string());
                 continue;
             }
-            if (importer->resource_type() != ResourceType::Texture) {
+            if (importer->resource_type() != TypeInfo::get<TextureResource>().md5()) {
                 LUISA_WARNING("Invalid importer type for texture file: {}", tex_path.string());
                 continue;
             }

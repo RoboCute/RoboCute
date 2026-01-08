@@ -14,26 +14,10 @@ struct DeviceResource;
 namespace rbc::world {
 
 // Forward declarations
+struct MaterialResource;
 struct MeshResource;
 struct TextureResource;
 struct TextureLoader;
-
-/**
- * @brief Resource type identifier
- */
-enum class ResourceType : uint32_t {
-    Unknown = 0,
-    Mesh = 1,
-    Texture = 2,
-    Material = 3,
-    Shader = 4,
-    AnimSequence = 5,
-    Skeleton = 6,
-    Skin = 9,
-    AnimGraph = 10,
-    SkelMesh = 11,
-    Custom = 1000
-};
 
 /**
  * @brief Base interface for resource importers
@@ -42,20 +26,24 @@ enum class ResourceType : uint32_t {
 struct RBC_RUNTIME_API IResourceImporter {
     virtual ~IResourceImporter() = default;
     [[nodiscard]] virtual luisa::string_view extension() const = 0;
-    [[nodiscard]] virtual ResourceType resource_type() const = 0;
+    [[nodiscard]] virtual MD5 resource_type() const = 0;
     [[nodiscard]] virtual bool can_import(luisa::filesystem::path const &path) const;
 };
 
 /**
  * @brief Importer interface for MeshResource
  */
-struct RBC_RUNTIME_API IMeshImporter : IResourceImporter {
-    [[nodiscard]] ResourceType resource_type() const override { return ResourceType::Mesh; }
+struct IMeshImporter : IResourceImporter {
+    [[nodiscard]] MD5 resource_type() const override {
+        return MD5{"rbc::world::MeshResource"sv};
+    }
     [[nodiscard]] virtual bool import(MeshResource *resource, luisa::filesystem::path const &path) = 0;
 };
 
-struct RBC_RUNTIME_API ITextureImporter : IResourceImporter {
-    [[nodiscard]] ResourceType resource_type() const override { return ResourceType::Texture; }
+struct ITextureImporter : IResourceImporter {
+    [[nodiscard]] MD5 resource_type() const override {
+        return MD5{"rbc::world::TextureResource"sv};
+    }
 
     [[nodiscard]] virtual bool import(
         RC<TextureResource> resource,
@@ -71,12 +59,11 @@ struct RBC_RUNTIME_API ITextureImporter : IResourceImporter {
  */
 struct RBC_RUNTIME_API ResourceImporterRegistry {
     using ExtensionKey = luisa::string;
-    using ImporterKey = std::pair<ExtensionKey, ResourceType>;
+    using ImporterKey = std::pair<ExtensionKey, MD5>;
 
     struct KeyHash {
         size_t operator()(ImporterKey const &key) const {
-            return luisa::hash<ExtensionKey>{}(key.first) ^
-                   (static_cast<size_t>(key.second) << 16);
+            return luisa::hash<ExtensionKey>{}(key.first, luisa::hash<MD5>{}(key.second));
         }
     };
 
@@ -84,9 +71,7 @@ struct RBC_RUNTIME_API ResourceImporterRegistry {
         int32_t operator()(ImporterKey const &lhs, ImporterKey const &rhs) const {
             if (lhs.first < rhs.first) return -1;
             if (lhs.first > rhs.first) return 1;
-            if (lhs.second < rhs.second) return -1;
-            if (lhs.second > rhs.second) return 1;
-            return 0;// equal
+            return std::memcmp(&lhs.second, &rhs.second, sizeof(MD5));
         }
     };
 
@@ -103,17 +88,17 @@ public:
     /**
      * @brief Unregister an importer
      */
-    void unregister_importer(luisa::string_view extension, ResourceType type);
+    void unregister_importer(luisa::string_view extension, MD5 type);
 
     /**
      * @brief Find an importer for the given extension and resource type
      */
-    IResourceImporter *find_importer(luisa::string_view extension, ResourceType type) const;
+    IResourceImporter *find_importer(luisa::string_view extension, MD5 type) const;
 
     /**
      * @brief Find an importer for the given path and resource type
      */
-    IResourceImporter *find_importer(luisa::filesystem::path const &path, ResourceType type) const;
+    IResourceImporter *find_importer(luisa::filesystem::path const &path, MD5 type) const;
 
     /**
      * @brief Get the global registry instance

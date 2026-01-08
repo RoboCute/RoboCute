@@ -69,7 +69,7 @@ struct ResourceLoader : RBCStruct {
     }
     void register_resource(vstd::Guid resource_guid,
                            luisa::string &&meta_info,
-                           std::array<uint64_t, 2> type_id) {
+                           MD5 type_id) {
         _resmap_mtx.lock();
         auto &v = resource_types.emplace(resource_guid).value();
         _resmap_mtx.unlock();
@@ -243,7 +243,7 @@ void register_resource_meta(Resource *res) {
 void register_resource_meta(
     vstd::Guid resource_guid,
     luisa::string &&meta_info,
-    std::array<uint64_t, 2> type_id) {
+    MD5 type_id) {
     _res_loader->register_resource(resource_guid, std::move(meta_info), type_id);
 }
 void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::filesystem::path const &binary_path) {
