@@ -1,5 +1,16 @@
 # py-first代码生成架构
 
+```
+rbc_meta/utils/
+├── __init__.py          # 模块导出
+├── reflect.py           # 反射核心（ReflectionRegistry, ClassInfo等）
+├── codegen.py           # 代码生成函数（C++, Python, Pybind）
+├── templates.py         # 代码模板
+├── generator.py         # 代码生成器类（备用）
+├── builtin.py           # 内置类型定义
+└── codegen_util.py      # 工具函数
+```
+
 ## 概述
 
 `rbc_meta` 是一个基于Python的代码生成框架，采用"Python优先"（py-first）的设计理念。通过Python类型注解和装饰器，自动生成C++接口、实现、Python绑定和RPC客户端代码。
@@ -209,6 +220,10 @@ class MyClass:
 ## 代码生成系统
 
 代码生成系统位于 `codegen.py`，提供以下生成函数：
+
+- cpp_impl_gen
+- py_interface_gen
+
 
 ### C++接口生成
 
@@ -446,18 +461,6 @@ pybind_code = pybind_codegen(
 5. **RPC支持**：内置RPC方法支持，自动生成客户端代码
 6. **序列化**：灵活的序列化控制（类级别和字段级别）
 
-## 文件结构
-
-```
-rbc_meta/utils/
-├── __init__.py          # 模块导出
-├── reflect.py           # 反射核心（ReflectionRegistry, ClassInfo等）
-├── codegen.py           # 代码生成函数（C++, Python, Pybind）
-├── templates.py         # 代码模板
-├── generator.py         # 代码生成器类（备用）
-├── builtin.py           # 内置类型定义
-└── codegen_util.py      # 工具函数
-```
 
 ## 模板系统
 
