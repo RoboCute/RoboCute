@@ -40,7 +40,7 @@ void ResourceImporterRegistry::register_importer(IResourceImporter *importer) {
     iter.first.value() = importer;
 }
 
-void ResourceImporterRegistry::unregister_importer(luisa::string_view extension, ResourceType type) {
+void ResourceImporterRegistry::unregister_importer(luisa::string_view extension, MD5 type) {
     auto ext = normalize_extension(extension);
     auto key = std::make_pair(ext, type);
 
@@ -48,7 +48,7 @@ void ResourceImporterRegistry::unregister_importer(luisa::string_view extension,
     _importers.remove(key);
 }
 
-IResourceImporter *ResourceImporterRegistry::find_importer(luisa::string_view extension, ResourceType type) const {
+IResourceImporter *ResourceImporterRegistry::find_importer(luisa::string_view extension, MD5 type) const {
     auto ext = normalize_extension(extension);
     auto key = std::make_pair(ext, type);
 
@@ -57,7 +57,7 @@ IResourceImporter *ResourceImporterRegistry::find_importer(luisa::string_view ex
     return iter ? iter.value() : nullptr;
 }
 
-IResourceImporter *ResourceImporterRegistry::find_importer(luisa::filesystem::path const &path, ResourceType type) const {
+IResourceImporter *ResourceImporterRegistry::find_importer(luisa::filesystem::path const &path, MD5 type) const {
     // First try exact match
     auto ext = normalize_extension(path.extension().string());
     auto key = std::make_pair(ext, type);
@@ -70,7 +70,7 @@ IResourceImporter *ResourceImporterRegistry::find_importer(luisa::filesystem::pa
             return importer;
         }
     }
-    if (type == ResourceType::Texture) {
+    if (type == TypeInfo::get<TextureResource>().md5()) {
         if (ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".gif" || ext == ".psd" || ext == ".pnm" || ext == ".tga") {
             auto alt_ext = ".png";
             auto alt_key = std::make_pair(alt_ext, type);

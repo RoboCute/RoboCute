@@ -15,7 +15,7 @@ local function rbc_core_impl()
     })
     set_pcxxheader('src/zz_pch.h')
     add_files('src/**.cpp')
-    add_deps('rtm', 'sqlite3', 'RBCTracy')
+    add_deps('rtm', 'RBCTracy')
     add_defines('RBC_CORE_API=LUISA_DECLSPEC_DLL_EXPORT')
 end
 

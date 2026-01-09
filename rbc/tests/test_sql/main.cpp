@@ -1,8 +1,11 @@
 #include <rbc_core/sqlite_cpp.h>
 #include <luisa/core/logging.h>
 using namespace rbc;
-
+void profile(); // defined in profile.cpp
 int main() {
+    //// profile code
+    // profile();
+    // return 0;
     if (!luisa::filesystem::exists("test_sql"))
         luisa::filesystem::create_directory("test_sql");
     SqliteCpp sqlite("test_sql/db.sqlite3");

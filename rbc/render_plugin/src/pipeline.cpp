@@ -56,22 +56,22 @@ void Pipeline::wait_enable() {
 }
 
 void Pipeline::update(PipelineContext &ctx) {
-    for (auto &i : _enabled_passes) {
+    for (auto &i : ctx._enabled_passes) {
         i->update(*this, ctx);
     }
-    for (auto &i : _enabled_passes) {
+    for (auto &i : ctx._enabled_passes) {
         i->on_frame_end(*this, *ctx.device, *ctx.scene);
     }
-    _enabled_passes.clear();
+    ctx._enabled_passes.clear();
 }
 
 void Pipeline::early_update(PipelineContext &ctx) {
-    _enabled_passes.clear();
-    _enabled_passes.reserve(_passes.size());
+    ctx._enabled_passes.clear();
+    ctx._enabled_passes.reserve(_passes.size());
     for (auto &i : _passes) {
 
         if (i->_actived) {
-            _enabled_passes.emplace_back(i.get());
+            ctx._enabled_passes.emplace_back(i.get());
             i->early_update(*this, ctx);
         }
     }

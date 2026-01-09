@@ -28,7 +28,7 @@ RBC_RTTI(rbc::AnimGraphResource)
 namespace rbc {
 
 struct RBC_RUNTIME_API IAnimGraphImporter : world::IResourceImporter {
-    [[nodiscard]] world::ResourceType resource_type() const override { return world::ResourceType::AnimGraph; }
+    [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<AnimGraphResource>().md5(); }
     virtual bool import(AnimGraphResource *resource, luisa::filesystem::path const &path) = 0;
 protected:
 };

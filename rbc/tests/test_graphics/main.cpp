@@ -201,7 +201,6 @@ int main(int argc, char *argv[]) {
                 auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam.position, cam.far_plane, cam);
             }
 
-            auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
             if (any(window_size != utils.dst_image().size())) {
                 RBCZoneScopedN("Resize Swapchain");
                 utils.resize_swapchain(window_size, window.native_display(), window.native_handle());

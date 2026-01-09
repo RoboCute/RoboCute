@@ -63,7 +63,7 @@ void Entity::_add_component(Component *component) {
     component->on_awake();
 }
 
-bool Entity::remove_component(std::array<uint64_t, 2> const& type_md5) {
+bool Entity::remove_component(MD5 const& type_md5) {
     auto iter = _components.find(type_md5);
     if (iter == _components.end()) return false;
     auto obj = iter->second;
@@ -75,7 +75,7 @@ bool Entity::remove_component(std::array<uint64_t, 2> const& type_md5) {
     comp->delete_this();
     return true;
 }
-Component *Entity::get_component(std::array<uint64_t, 2> const& type_md5) {
+Component *Entity::get_component(MD5 const& type_md5) {
     auto iter = _components.find(type_md5);
     if (iter == _components.end()) return nullptr;
     auto obj = iter->second;
@@ -110,7 +110,7 @@ void Entity::deserialize_meta(ObjDeSerialize const &ser) {
         if (!ser.ar.value(type_id, "__typeid__")) {
             continue;
         }
-        auto comp = _create_component(reinterpret_cast<std::array<uint64_t, 2> const &>(type_id));
+        auto comp = _create_component(reinterpret_cast<MD5 const &>(type_id));
         _add_component(comp);
         comp->deserialize_meta(ser);
     }

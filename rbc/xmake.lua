@@ -11,5 +11,6 @@ includes('tools.lua')
 includes('tests')
 -- Targets
 includes('editor')
-includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd
+-- Later need refactor from new rbc-world
+-- includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd
 includes('node_graph')

@@ -14,7 +14,7 @@ struct TypeRegisterBase {
     virtual Component *create_component(Entity *) = 0;
 private:
     TypeRegisterBase *p_next{};
-    virtual std::array<uint64_t, 2> type_id() = 0;
+    virtual MD5 type_id() = 0;
     virtual void init() = 0;
     virtual void destroy() = 0;
 protected:
@@ -47,7 +47,7 @@ struct TypeObjectRegister : TypeRegisterBase {
     void destroy() override {
         _pool.destroy();
     }
-    std::array<uint64_t, 2> type_id() override {
+    MD5 type_id() override {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
     BaseObject *create() override {
@@ -84,7 +84,7 @@ struct TypeComponentRegister : TypeRegisterBase {
     void destroy() override {
         _pool.destroy();
     }
-    std::array<uint64_t, 2> type_id() override {
+    MD5 type_id() override {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
     BaseObject *create() override {

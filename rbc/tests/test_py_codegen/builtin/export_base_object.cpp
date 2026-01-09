@@ -11,7 +11,7 @@ using namespace rbc;
 void export_base_obj(py::module &m) {
     m.def("_create_resource", [&](luisa::string_view type_info) -> void * {
         vstd::MD5 md5{type_info};
-        rbc::TypeInfo type{type_info, md5.to_binary().data0, md5.to_binary().data1};
+        rbc::TypeInfo type{type_info, md5};
         auto ptr = world::create_object(type);
         if (!ptr) return nullptr;
         if (ptr->base_type() != world::BaseObjectType::Resource) [[unlikely]] {
@@ -20,7 +20,7 @@ void export_base_obj(py::module &m) {
     });
     m.def("_create_resource_guid", [&](luisa::string_view type_info, GuidData guid) -> void * {
         vstd::MD5 md5{type_info};
-        rbc::TypeInfo type{type_info, md5.to_binary().data0, md5.to_binary().data1};
+        rbc::TypeInfo type{type_info, md5};
         auto ptr = world::create_object_with_guid(type, reinterpret_cast<vstd::Guid const &>(guid));
         if (!ptr) return nullptr;
         if (ptr->base_type() != world::BaseObjectType::Resource) [[unlikely]] {

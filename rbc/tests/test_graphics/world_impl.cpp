@@ -53,7 +53,7 @@ void *Entity::add_component(void *this_, luisa::string_view name) {
     vstd::MD5 md5{luisa::string_view{class_name}};
     auto e = static_cast<world::Entity *>(this_);
     auto comp = e->_create_component(
-        reinterpret_cast<std::array<uint64_t, 2> const &>(md5));
+        reinterpret_cast<MD5 const &>(md5));
     if (!comp) {
         return nullptr;
     }
@@ -68,7 +68,7 @@ void *Entity::get_component(void *this_, luisa::string_view name) {
     luisa::string class_name{"rbc::world::"};
     class_name += name;
     vstd::MD5 md5{luisa::string_view{class_name}};
-    auto comp = e->get_component(reinterpret_cast<std::array<uint64_t, 2> const &>(md5));
+    auto comp = e->get_component(reinterpret_cast<MD5 const &>(md5));
     return comp;
 }
 bool Entity::remove_component(void *this_, luisa::string_view name) {
@@ -76,7 +76,7 @@ bool Entity::remove_component(void *this_, luisa::string_view name) {
     luisa::string class_name{"rbc::world::"};
     class_name += name;
     vstd::MD5 md5{luisa::string_view{class_name}};
-    return e->remove_component(reinterpret_cast<std::array<uint64_t, 2> const &>(md5));
+    return e->remove_component(reinterpret_cast<MD5 const &>(md5));
 }
 void *Component::entity(void *this_) {
     auto c = static_cast<world::Component *>(this_);
@@ -377,6 +377,7 @@ void RenderComponent::update_object(void *this_, luisa::vector<rbc::RC<rbc::RCBa
 struct AsyncRequestImpl : RBCStruct {
     world::BaseObject *_result{};
     luisa::fiber::event task;
+    vstd::function<void()> finished_func;
     AsyncRequestImpl() {
         add_ref();
     }
@@ -406,10 +407,25 @@ bool AsyncRequest::done(void *this_) {
     auto c = static_cast<AsyncRequestImpl *>(this_);
     return c->task.test();
 }
-void *AsyncRequest::get_result(void *this_) {
+void *AsyncRequest::borrow_result(void *this_) {
     auto c = static_cast<AsyncRequestImpl *>(this_);
     c->task.wait();
+    if (c->finished_func) {
+        c->finished_func();
+        c->finished_func = {};
+    }
     return c->_result;
+}
+void *AsyncRequest::get_result_release(void *this_) {
+    auto c = static_cast<AsyncRequestImpl *>(this_);
+    c->task.wait();
+    if (c->finished_func) {
+        c->finished_func();
+        c->finished_func = {};
+    }
+    auto r = c->_result;
+    c->_result = nullptr;
+    return r;
 }
 void *Project::_create_() {
     return new world::Project(".meta_db"sv);
@@ -452,8 +468,10 @@ void *Project::import_texture(void *this_, luisa::string_view path) {
     request->set_value(tex.get());
     request->task = luisa::fiber::async([tex = std::move(tex), p = luisa::filesystem::path{path}] {
         tex->decode(p, tex_loader.ptr, 1, false);
-        tex_loader->finish_task();
     });
+    request->finished_func = []() {
+        tex_loader->finish_task();
+    };
     return request;
 }
 void *Project::load_resource(void *this_, vstd::Guid const &guid) {

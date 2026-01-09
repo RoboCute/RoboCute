@@ -19,7 +19,6 @@ public:
 private:
     vstd::vector<vstd::unique_ptr<Pass>> _passes;
     vstd::HashMap<TypeInfo, size_t> _pass_indices;
-    vstd::vector<Pass *> _enabled_passes;
     bool initialized = false;
 
 public:

@@ -43,8 +43,8 @@ RBC_RTTI(rbc::SkelMeshResource)
 
 namespace rbc {
 
-struct RBC_RUNTIME_API ISkelMeshImporter : world::IResourceImporter {
-    [[nodiscard]] world::ResourceType resource_type() const override { return world::ResourceType::SkelMesh; }
+struct ISkelMeshImporter : world::IResourceImporter {
+    [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<rbc::SkelMeshResource>().md5(); }
     virtual bool import(SkelMeshResource *resource, luisa::filesystem::path const &path) = 0;
 
 protected:
