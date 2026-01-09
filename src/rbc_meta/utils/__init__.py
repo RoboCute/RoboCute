@@ -1,20 +1,3 @@
-"""
-反射和代码生成框架
-
-使用示例:
-    from codegen import reflect
-    from codegen.generator import CodeGenerator
-
-    @reflect
-    class MyClass:
-        def method(self, x: int) -> str:
-            ...
-
-    generator = CodeGenerator()
-    python_code = generator.generate_python("MyClass")
-    cpp_header = generator.generate_cpp_header("MyClass", namespace="myns")
-"""
-
 from .reflect import (
     reflect,
     rpc,
@@ -24,7 +7,7 @@ from .reflect import (
     FieldInfo,
     GenericInfo,
 )
-from .generator import CodeGenerator, PythonGenerator, CppGenerator, TypeMapper
+from .generator import PythonGenerator, CppGenerator, TypeMapper
 
 # Builtin Types
 _registry = ReflectionRegistry()
@@ -39,7 +22,6 @@ __all__ = [
     "MethodInfo",
     "FieldInfo",
     "GenericInfo",
-    "CodeGenerator",
     "PythonGenerator",
     "CppGenerator",
     "TypeMapper",

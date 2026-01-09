@@ -21,7 +21,7 @@ from scripts.prepare import (
     PLATFORM,
     ARCH,
     XMAKE_GLOBAL_TOOLCHAIN,
-    OIDN_NAME
+    OIDN_NAME,
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder, get_project_root, rel
@@ -346,6 +346,13 @@ def run_generation_task(module_name, function_name, *args):
         sys.exit(1)
 
 
+def generatex():
+    import scripts.generate
+    from scripts.generate import generate_registered
+
+    generate_registered()
+
+
 def generate():
     """
     Main execution function. Sets up paths and spawns parallel processes for generation.
@@ -431,8 +438,7 @@ def generate():
         pybind_codegen, pyd_name, ["backend_interface", "runtime"], include
     )  # TODO: 对pybind特殊处理，指定所有导出的module_filter，不太优雅
     ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["backend_interface", "runtime"])
-    
-    
+
     target_modules = ["world_interface"]
     file_name = "world"
     pyd_name = "test_world"
@@ -452,8 +458,7 @@ def generate():
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
 
-    ut.codegen_to(cpp_path)(
-        pybind_codegen, pyd_name, ["world_interface"], include)
+    ut.codegen_to(cpp_path)(pybind_codegen, pyd_name, ["world_interface"], include)
     ut.codegen_to(py_path)(py_interface_gen, "test_py_codegen", ["world_interface"])
 
     exit_code = 0

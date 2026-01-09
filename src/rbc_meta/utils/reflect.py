@@ -124,7 +124,7 @@ class ReflectionRegistry:
         serde: bool = False,
         pybind: bool = False,
         cpp_prefix: Optional[str] = "",
-        inherit  = None,
+        inherit=None,
         create_instance: bool = True,
     ) -> Type:
         """注册类"""
@@ -136,13 +136,12 @@ class ReflectionRegistry:
         class_info.create_instance = create_instance
         class_info.cpp_prefix = cpp_prefix
 
-        key = (
-            f"{module_name}.{cls.__name__}" if module_name is not None else cls.__name__
-        )
+        key = cls.__name__
+        if self._registered_classes.get(key) is not None:
+            print(f"Duplicate Reflect Class {key}")
 
         self._registered_classes[key] = class_info
         # print(f"Registering {key} : {class_info.name}")
-
         # 返回原始类，不修改它
         return class_info
 
@@ -153,7 +152,6 @@ class ReflectionRegistry:
         # 提取方法信息
         methods = []
         # 遍历类的所有属性，查找方法
-        # TODO: may add inherit base class method
         for name in dir(cls):
             if name.startswith("_"):
                 continue
@@ -183,10 +181,8 @@ class ReflectionRegistry:
                     func = attr
                     # 函数可能是静态方法（没有self参数）
                     sig = inspect.signature(func)
-                    parameters = {name: param for name,
-                                  param in sig.parameters.items()}
-                    is_static = len(
-                        parameters) == 0 or "self" not in parameters
+                    parameters = {name: param for name, param in sig.parameters.items()}
+                    is_static = len(parameters) == 0 or "self" not in parameters
                 else:  # is_method
                     func = attr.__func__ if hasattr(attr, "__func__") else attr
                     is_static = False
@@ -203,22 +199,19 @@ class ReflectionRegistry:
                 if return_type is not None:
                     return_type_generic = self._parse_generic_type(return_type)
 
-                parameters = {name: param for name,
-                              param in sig.parameters.items()}
+                parameters = {name: param for name, param in sig.parameters.items()}
 
                 # 解析参数的泛型信息
                 parameter_generics = {}
                 for param_name, param in parameters.items():
                     if param.annotation != inspect.Signature.empty:
-                        param_generic = self._parse_generic_type(
-                            param.annotation)
+                        param_generic = self._parse_generic_type(param.annotation)
                         parameter_generics[param_name] = param_generic
                     else:
                         parameter_generics[param_name] = None
 
                 # 检查是否为RPC方法（通过装饰器标记）
-                is_rpc = hasattr(func, "_rpc_") and getattr(
-                    func, "_rpc_", False)
+                is_rpc = hasattr(func, "_rpc_") and getattr(func, "_rpc_", False)
 
                 # 如果通过@rpc装饰器标记了is_static，使用装饰器的设置
                 if hasattr(func, "_static_"):
@@ -454,8 +447,7 @@ class ReflectionRegistry:
         except ImportError as e:
             import warnings
 
-            warnings.warn(
-                f"Cannot import module {module_name}: {e}", ImportWarning)
+            warnings.warn(f"Cannot import module {module_name}: {e}", ImportWarning)
 
 
 def reflect(
@@ -466,7 +458,7 @@ def reflect(
     serde: bool = False,
     pybind: bool = False,
     create_instance: bool = True,
-    inherit = None,
+    inherit=None,
     cpp_prefix: Optional[str] = "",
 ) -> Type:
     """

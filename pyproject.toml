@@ -82,6 +82,7 @@ dev = [
 [project.scripts]
 prepare = "scripts.main:prepare"
 gen = "scripts.main:generate"
+genx = "scripts.main:generatex"
 stub = "scripts.main:generate_stub"
 install = "scripts.main:install"
 
