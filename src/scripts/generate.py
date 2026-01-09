@@ -59,6 +59,7 @@ from rbc_meta.utils.codegen import (
     _is_rpc_method,
     _print_arg_vars_decl,
     _get_rpc_methods,
+    _print_rpc_serializer,
 )
 from rbc_meta.utils.codegen_util import _write_string_to
 import hashlib
@@ -84,6 +85,10 @@ from rbc_meta.types.pipeline_settings import (
 )
 
 
+def to_include_expr(x):
+    return f"#include <{x}>"
+
+
 class CodegenResitry:
     _instance: Optional["CodegenResitry"] = None
     _modules: Dict[str, "CodeModule"] = {}
@@ -102,50 +107,152 @@ class CodegenResitry:
 
     def generate(self):
         print(f"Generating {len(self._modules)} modules")
-        reg = ReflectionRegistry()
 
-        to_include_expr = lambda x: f"#include <{x}>"
         for name, mod in self._modules.items():
             print("=========================")
             print(mod.name())
-            print("Dependencies: [")
-            extra_headers = mod.header_files_
-            for dep in mod.deps_:
-                dep_mod = self._modules[dep.__name__]
-                print("- " + dep_mod.name())
-                extra_headers.extend(dep_mod.header_files_)
-
-            print("]")
-
-            print(f"Collected {len(extra_headers)} Header Files")
-            for header in extra_headers:
-                print("- " + header)
-
             if mod.enable_cpp_interface_:
-                header_path = Path(mod.interface_header_file_).resolve()
-                structs_expr = []
-                enums_expr = []
-                extra_include_expr = "\n".join(
-                    [to_include_expr(x) for x in extra_headers]
+                self.gen_interface_header(mod)
+                if mod.enable_cpp_impl_:
+                    self.gen_cpp_impl(mod)
+
+    def gen_cpp_impl(self, mod: "CodeModule"):
+        reg = ReflectionRegistry()
+        INDENT = DEFAULT_INDENT
+
+        struct_impls_list = []
+        enum_initers_list = []
+        extra_includes_expr = to_include_expr(mod.interface_header_file_)
+
+        for cls in mod.classes_:
+            print(f"Generating {cls.__name__}")
+            info = reg.get_class_info(cls.__name__)
+            namespace_name = info.cpp_namespace or ""
+            class_name = info.name
+            if info.is_enum:
+                # Generate enum initer
+                full_name = (
+                    f"{namespace_name}::{class_name}" if namespace_name else class_name
+                )
+                m = hashlib.md5(full_name.encode("ascii"))
+                digest = m.hexdigest()
+
+                enum_names = ", ".join([f'"{field.name}"' for field in info.fields])
+                # For enum values, use the default value or index
+                enum_values = ", ".join(
+                    [
+                        f"(uint64_t){field.default}"
+                        if field.default is not None
+                        else f"(uint64_t){i}"
+                        for i, field in enumerate(info.fields)
+                    ]
                 )
 
-                for cls in mod.classes_:
-                    print(f"Generating {cls.__name__}")
-                    info = reg.get_class_info(cls.__name__)
-                    # print(cls_info)
-                    if info.is_enum:
-                        enums_expr.append(self.enum_gen(info))
-                    else:
-                        structs_expr.append(self.cpp_struct_def_gen(info))
-                enums_expr = "\n".join(enums_expr)
-                structs_expr = "\n".join(structs_expr)
+                initer = f'"{full_name}", std::initializer_list<char const*>{{{enum_names}}}, std::initializer_list<uint64_t>{{{enum_values}}}'
 
-                file_expr = CPP_INTERFACE_TEMPLATE.substitute(
-                    EXTRA_INCLUDE=extra_include_expr,
-                    ENUMS_EXPR=enums_expr,
-                    STRUCTS_EXPR=structs_expr,
+                enum_initer = CPP_ENUM_INITER_TEMPLATE.substitute(
+                    DIGEST=digest,
+                    INITER=initer,
                 )
-                _write_string_to(file_expr, header_path)
+                enum_initers_list.append(enum_initer)
+                continue
+            # Serde Impl (only if serde is enabled)
+            if info.serde and len(info.fields) > 0:
+                store_stmts_list = []
+                load_stmts_list = []
+
+                for field in info.fields:
+                    # 检查字段级别的 serde 设置
+                    # field.serde == None 表示使用类级别的 serde 设置
+                    # field.serde == True 表示序列化
+                    # field.serde == False 表示不序列化
+                    should_serde = info.serde
+                    # print(f"{field.name}: {field.serde}")
+                    if field.serde is not None:
+                        should_serde = field.serde
+
+                    if should_serde:
+                        store_stmts_list.append(
+                            f'{INDENT}{INDENT}obj._store(this->{field.name}, "{field.name}");'
+                        )
+                        load_stmts_list.append(
+                            f'{INDENT}{INDENT}obj._load(this->{field.name}, "{field.name}");'
+                        )
+
+                store_stmts = "\n".join(store_stmts_list)
+                load_stmts = "\n".join(load_stmts_list)
+
+                ser_impl = CPP_STRUCT_SER_IMPL_TEMPLATE.substitute(
+                    NAMESPACE_NAME=namespace_name,
+                    CLASS_NAME=class_name,
+                    STORE_STMTS=store_stmts,
+                )
+
+                deser_impl = CPP_STRUCT_DESER_IMPL_TEMPLATE.substitute(
+                    CLASS_NAME=class_name,
+                    LOAD_STMTS=load_stmts,
+                    NAMESPACE_NAME=namespace_name,
+                )
+
+                struct_impls_list.append(ser_impl)
+                struct_impls_list.append(deser_impl)
+
+            # RPC serializer
+            rpc_serializer = _print_rpc_serializer(info, reg)
+            if rpc_serializer:
+                struct_impls_list.append(rpc_serializer)
+
+        struct_impls_expr = "\n".join(struct_impls_list)
+        enum_initers_expr = "\n".join(enum_initers_list)
+
+        file_expr = CPP_IMPL_TEMPLATE.substitute(
+            EXTRA_INCLUDES=extra_includes_expr,
+            ENUM_INITERS_EXPR=enum_initers_expr,
+            STRUCT_IMPLS_EXPR=struct_impls_expr,
+        )
+        cpp_path = Path(mod.cpp_base_dir_ + "/src/" + mod.cpp_impl_file_).resolve()
+
+        _write_string_to(file_expr, cpp_path)
+
+    def gen_interface_header(self, mod: "CodeModule"):
+        reg = ReflectionRegistry()
+
+        print("Dependencies: [")
+        extra_headers = mod.header_files_
+
+        for dep in mod.deps_:
+            dep_mod = self._modules[dep.__name__]
+            print("- " + dep_mod.name())
+            extra_headers.extend(dep_mod.header_files_)
+        print("]")
+
+        print(f"Collected {len(extra_headers)} Header Files")
+        for header in extra_headers:
+            print("- " + header)
+
+        structs_expr = []
+        enums_expr = []
+        extra_include_expr = "\n".join([to_include_expr(x) for x in extra_headers])
+
+        for cls in mod.classes_:
+            print(f"Generating {cls.__name__}")
+            info = reg.get_class_info(cls.__name__)
+            # print(cls_info)
+            if info.is_enum:
+                enums_expr.append(self.enum_gen(info))
+            else:
+                structs_expr.append(self.cpp_struct_def_gen(info))
+        enums_expr = "\n".join(enums_expr)
+        structs_expr = "\n".join(structs_expr)
+        header_path = Path(
+            mod.cpp_base_dir_ + "/include/", mod.interface_header_file_
+        ).resolve()
+        file_expr = CPP_INTERFACE_TEMPLATE.substitute(
+            EXTRA_INCLUDE=extra_include_expr,
+            ENUMS_EXPR=enums_expr,
+            STRUCTS_EXPR=structs_expr,
+        )
+        _write_string_to(file_expr, header_path)
 
     def cpp_struct_def_gen(self, info: ClassInfo) -> str:
         INDENT = DEFAULT_INDENT
@@ -370,6 +477,10 @@ class CodeModule:
     name_: str = "CodeModule"
     classes_: List[str] = []
     enable_cpp_interface_: bool = False
+    cpp_base_dir_: str = ""
+    interface_header_file_: str = ""
+    enable_cpp_impl_: bool = False
+    cpp_impl_file_: str = ""
     header_files_: List[str] = []
     deps_: List[Type] = []
 
@@ -406,7 +517,7 @@ class ResourceMetaModule(CodeModule):
     interface_header_file_ = (
         "rbc/runtime/include/rbc_plugin/generated/resource_meta_x.hpp"
     )
-    impl_cpp_file_ = "rbc/runtime/src/generated/resource_meta_x.cpp"
+    cpp_impl_file_ = "rbc/runtime/src/generated/resource_meta_x.cpp"
     deps_ = [LuisaResourceModule]
     classes_ = [MeshMeta, TextureMeta]
 
@@ -414,10 +525,10 @@ class ResourceMetaModule(CodeModule):
 @codegen
 class PipelineSettingModule(CodeModule):
     enable_cpp_interface_ = True
-    interface_header_file_ = (
-        "rbc/render_plugin/include/rbc_render/generated/pipeline_settings_x.hpp"
-    )
-    impl_cpp_file_ = "rbc/render_plugin/src/generated/pipeline_settings_x.cpp"
+    cpp_base_dir_ = "rbc/render_plugin/"
+    interface_header_file_ = "rbc_render/generated/pipeline_settings_x.hpp"
+    enable_cpp_impl_ = True
+    cpp_impl_file_ = "generated/pipeline_settings_x.cpp"
     header_files_ = ["rbc_render/procedural/sky_atmosphere.h"]
     deps_ = [LuisaResourceModule, RBCCoreModule]
     classes_ = [

@@ -367,6 +367,7 @@ def generate():
     ).resolve()
     cpp_path = Path("rbc/runtime/src/generated/resource_meta.cpp").resolve()
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
+
     include = "#include <rbc_plugin/generated/resource_meta.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
