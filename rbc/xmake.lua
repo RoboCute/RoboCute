@@ -15,3 +15,4 @@ includes('editor')
 -- includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd
 includes('node_graph')
 includes('project_plugin')
+includes("tool")
