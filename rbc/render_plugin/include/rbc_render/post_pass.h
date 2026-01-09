@@ -21,7 +21,6 @@ public:
     // Shader2D<Image<float>, Image<float>> const* hdr_to_ldr_shader;
 
 private:
-    PostPassContext *post_ctx{};
 
     using UberShader = Shader2D<
         Image<float>, // src_img,
@@ -45,7 +44,6 @@ private:
     luisa::fiber::counter init_counter;
 
 public:
-    BufferView<float> exposure_buffer() const;
 
     PostPass(DeviceConfigExt *device_config = nullptr);
 

@@ -5,6 +5,7 @@ do
         rtti = true
     })
     add_rules("qt.shared")
+    add_rules('rbc_qt_rule')
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick")
     add_deps("rbc_editor_runtimex", {
         public = true
@@ -22,6 +23,7 @@ do
         rtti = true
     })
     add_rules("qt.shared")
+    add_rules('rbc_qt_rule')
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickControls2", "QtNetwork")
 
     add_files("rbc_testbed_module.cpp") -- module entry

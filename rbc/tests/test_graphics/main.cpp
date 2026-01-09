@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
         backend.c_str());
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
-    utils.init_render();
+    utils.init_render(true /*false for headless mode*/);
     Window window{luisa::string{"test_graphics_"} + utils.backend_name(), uint2(1024), true};
     utils.init_display(window.size(), window.native_display(), window.native_handle());
     uint64_t frame_index = 0;
@@ -62,7 +62,9 @@ int main(int argc, char *argv[]) {
     // simple_scene.create(*Lights::instance());
     // Test FOV
     bool reset = false;
-    auto &click_mng = utils.render_settings().read_mut<ClickManager>();
+    ClickManager *click_mng{};
+    if (utils.default_pipe_ctx())
+        click_mng = &utils.render_settings().read_mut<ClickManager>();
     uint2 window_size = window.size();
     float2 start_uv, end_uv;
     luisa::vector<uint> dragged_object_ids;
@@ -169,18 +171,21 @@ int main(int argc, char *argv[]) {
                 // } break;
         }
     });
-    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+    Camera *cam{};
+    if (utils.default_pipe_ctx()) {
+        cam = &utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+    }
     CameraController cam_controller;
-    cam_controller.camera = &cam;
+    cam_controller.camera = cam;
 
     window.set_window_size_callback([&](uint2 size) {
         window_size = size;
     });
-    cam.fov = radians(80.f);
+    if (cam)
+        cam->fov = radians(80.f);
     Clock clk;
     while (!window.should_close()) {
         RBCFrameMark;// Mark frame boundary
-
         {
             RBCZoneScopedN("Main Loop");
 
@@ -196,9 +201,9 @@ int main(int argc, char *argv[]) {
             }
 
             // reuse drag logic
-            {
+            if (cam && click_mng) {
                 RBCZoneScopedN("Draw Gizmos");
-                auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam.position, cam.far_plane, cam);
+                auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam->position, cam->far_plane, *cam);
             }
 
             if (any(window_size != utils.dst_image().size())) {
@@ -211,10 +216,10 @@ int main(int argc, char *argv[]) {
             }
 
             float delta_time = 0.0f;
-            {
+            if (cam && click_mng) {
                 RBCZoneScopedN("Update Camera");
                 camera_input.viewport_size = make_float2(window_size);
-                cam.aspect_ratio = (float)window_size.x / (float)window_size.y;
+                cam->aspect_ratio = (float)window_size.x / (float)window_size.y;
                 auto time = clk.toc();
                 delta_time = (time - last_frame_time) * 1e-3f;
                 RBCPlot("Frame Time (ms)", delta_time * 1000.0f);
@@ -225,25 +230,25 @@ int main(int argc, char *argv[]) {
             }
 
             // click
-            {
+            if (cam && click_mng) {
                 RBCZoneScopedN("Handle Input");
                 if (stage == MouseStage::Clicking) {
-                    click_mng.add_require("click", ClickRequire{.screen_uv = start_uv});
+                    click_mng->add_require("click", ClickRequire{.screen_uv = start_uv});
                 }
                 // set drag
                 else if (stage == MouseStage::Dragging) {
-                    click_mng.add_frame_selection("dragging", min(start_uv, end_uv) * 2.f - 1.f, max(start_uv, end_uv) * 2.f - 1.f, true);
+                    click_mng->add_frame_selection("dragging", min(start_uv, end_uv) * 2.f - 1.f, max(start_uv, end_uv) * 2.f - 1.f, true);
                 }
                 if (stage == MouseStage::Clicking || stage == MouseStage::Dragging) {
                     dragged_object_ids.clear();
                 }
                 if (stage == MouseStage::Clicked) {
-                    auto click_result = click_mng.query_result("click");
+                    auto click_result = click_mng->query_result("click");
                     if (click_result) {
                         dragged_object_ids.push_back(click_result->inst_id);
                     }
                 } else if (stage == MouseStage::Dragging) {
-                    auto dragging_result = click_mng.query_frame_selection("dragging");
+                    auto dragging_result = click_mng->query_frame_selection("dragging");
                     if (!dragging_result.empty())
                         dragged_object_ids = std::move(dragging_result);
                 }
@@ -260,7 +265,8 @@ int main(int argc, char *argv[]) {
                 if (offline_mode && frame_index > sample) {
                     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;
                 }
-                click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
+                if (click_mng)
+                    click_mng->set_contour_objects(luisa::vector<uint>{dragged_object_ids});
                 if (SceneManager::instance().accel_dirty() || world::world_transform_dirty()) {
                     frame_index = 0;
                 }
@@ -302,6 +308,7 @@ int main(int argc, char *argv[]) {
 
     utils.dispose([&]() {
         world_scene.destroy();
+        if (!utils.default_pipe_ctx()) return;
         auto pipe_settings_json = utils.render_settings().serialize_to_json();
         if (pipe_settings_json.data()) {
             LUISA_INFO("{}", luisa::string_view{

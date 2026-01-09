@@ -32,5 +32,17 @@ on_config(function(target)
         target:add("cxxflags", "/Zc:__cplusplus", { tools = {"cl", "clang_cl", "clang"}})
         target:add("cxxflags", "/permissive-", { tools = {"cl", "clang_cl"}})
     end
+    target:add('cxflags', '/Zc:__cplusplus', {
+        tools = {'cl', 'clang_cl'}
+    })
+end)
+rule_end()
+
+
+rule('rbc_qt_rule')
+on_load(function(target)
+    target:add('cxflags', '/Zc:__cplusplus', {
+        tools = 'cl'
+    })
 end)
 rule_end()

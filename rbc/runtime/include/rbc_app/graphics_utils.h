@@ -24,6 +24,15 @@ struct EventFence {
     TimelineEvent event;
     uint64_t fence_index{};
 };
+struct GraphicsUtils;
+struct RBC_RUNTIME_API RenderView {
+    friend struct GraphicsUtils;
+    RenderPlugin::PipeCtxStub *pipe_ctx{};
+    Image<float> const *img{};
+    uint2 view_offset_pixels;
+    uint2 view_size_pixels;
+    uint64_t frame_index{};
+};
 struct RBC_RUNTIME_API GraphicsUtils {
 private:
     RenderDevice _render_device;
@@ -38,8 +47,8 @@ private:
     // render
     luisa::shared_ptr<DynamicModule> _render_module;
     RenderPlugin *_render_plugin{};
-    StateMap *_render_settings[2]{};
-    RenderPlugin::PipeCtxStub *_display_pipe_ctxs[1]{};
+    RenderPlugin::PipeCtxStub * _display_pipe_ctx{};
+    vstd::HashMap<uint64_t, RenderView> _render_pipe_ctxs{};
     vstd::optional<rbc::Lights> _lights;
     bool _require_reset : 1 {false};
     bool _denoiser_inited : 1 {false};
@@ -47,9 +56,8 @@ private:
 public:
     auto render_plugin() const { return _render_plugin; }
     auto &present_stream() const { return _present_stream; }
-    auto &render_settings() const { return *_render_settings[0]; }
-    auto &render_settings() { return *_render_settings[0]; }
-    auto default_pipe_ctx() const { return _display_pipe_ctxs[0]; }
+    StateMap &render_settings() const;
+    auto default_pipe_ctx() const { return _display_pipe_ctx; }
     auto &dst_image() const { return _dst_image; }
     auto &backend_name() const { return _backend_name; }
     GraphicsUtils();
@@ -61,7 +69,7 @@ public:
     void init_device(luisa::string_view program_path, luisa::string_view backend_name);
     void init_graphics(luisa::filesystem::path const &shader_path);
     void init_present_stream();
-    void init_render();
+    void init_render(bool init_display_view = true);
     void resize_swapchain(
         uint2 size,
         uint64_t native_display,

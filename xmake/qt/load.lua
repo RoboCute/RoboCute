@@ -224,15 +224,9 @@ function main(target, opt)
 
     if qt_sdkver:ge("6.0") then
         -- @see https://github.com/xmake-io/xmake/issues/2071
-        -- /Zc:__cplusplus is required for Qt 6+ on MSVC to properly report __cplusplus
-        -- This flag must be included in compile_commands.json for clangd to work correctly
-        if target:is_plat("windows") then
-            -- Add for MSVC compiler (cl) and clang-cl (MSVC-compatible mode)
-            target:add("cxxflags", "/Zc:__cplusplus", { tools = {"cl", "clang_cl"}})
-            target:add("cxxflags", "/permissive-", { tools = {"cl", "clang_cl"}})
-            -- Also add for clang compiler (used by clangd with compile_commands.json)
-            -- clang understands MSVC flags when in MSVC-compatible mode
-            target:add("cxxflags", "/Zc:__cplusplus", { tools = {"clang"}})
+        if target:is_plat("windows") and target:has_tool("cxx", "clang_cl", "cl") then
+            target:add("cxxflags", "/Zc:__cplusplus")
+            target:add("cxxflags", "/permissive-")
         end
     end
     -- need c++11 at least

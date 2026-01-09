@@ -1,5 +1,6 @@
 target("qt_node_editor")
 add_rules("qt.shared")
+add_rules('rbc_qt_rule')
 add_frameworks("QtGui", "QtWidgets", "QtCore", "QtOpenGL")
 add_headerfiles("qt_node_editor/include/QtNodes/internal/*.hpp")
 add_files("qt_node_editor/include/QtNodes/internal/*.hpp")

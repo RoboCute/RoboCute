@@ -10,6 +10,7 @@ QStringList LayoutService::availableLayouts() const {
     return {};
 }
 QJsonObject LayoutService::getLayoutMetadata(const QString &layoutId) const {
+    return {};
 }
 
 bool LayoutService::hasLayout(const QString &layoutId) const {

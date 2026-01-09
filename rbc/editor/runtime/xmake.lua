@@ -21,6 +21,7 @@ do
     add_deps("rbc_core") -- For json_serde (yyjson)
     add_deps('rbc_runtime', 'rbc_render_plugin')
     add_deps("lc-volk")
+    add_rules('rbc_qt_rule')
     add_deps("qt_node_editor")
 end
 target_end()

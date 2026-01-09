@@ -4,9 +4,15 @@ namespace rbc {
 ViewportPlugin::ViewportPlugin(QObject *parent) {}
 ViewportPlugin::~ViewportPlugin() {}
 
-bool ViewportPlugin::load(PluginContext *context) {}
-bool ViewportPlugin::unload() {}
-bool ViewportPlugin::reload() {}
+bool ViewportPlugin::load(PluginContext *context) {
+    return false;
+}
+bool ViewportPlugin::unload() {
+    return false;
+}
+bool ViewportPlugin::reload() {
+    return false;
+}
 
 QObject *ViewportPlugin::getViewModel(const QString &viewId) {
     if (viewId == "viewport" && viewModel_) {

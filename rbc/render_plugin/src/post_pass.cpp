@@ -86,10 +86,6 @@ void PostPass::wait_enable() {
     init_counter.wait();
 }
 
-BufferView<float> PostPass::exposure_buffer() const {
-    return post_ctx->exposure.exposure_buffer;
-}
-
 void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
     const auto &toneMappingSettings = ctx.pipeline_settings.read<ToneMappingSettings>();
     const auto &displaySettings = ctx.pipeline_settings.read<DisplaySettings>();
@@ -97,8 +93,8 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
     const auto &exposureSettings = ctx.pipeline_settings.read<ExposureSettings>();
     init_counter.wait();
     auto &pipeline_mode = ctx.pipeline_settings.read<PTPipelineSettings>();
+    PostPassContext *post_ctx{};
     if (!pipeline_mode.use_post_filter) {
-        post_ctx = nullptr;
         return;
     }
     post_ctx = ctx.mut.get_pass_context<PostPassContext>(
@@ -176,7 +172,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     rbc::detail::post_process_distortion(args.distortion_CenterScale, args.distortion_Amount, distortionSettings);
     args.chromatic_aberration = displaySettings.chromatic_aberration;
     args.pixel_offset = frame_settings.display_offset;
-
+    auto &post_ctx = ctx.mut.get_pass_context_mut<PostPassContext>();
     post_ctx->exposure.generate(
         exposureSettings,
         cmdlist,
@@ -211,11 +207,11 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                    post_ctx->exposure.exposure_buffer,
                    *uber_out_img)
                    .dispatch(frame_settings.display_resolution);
+    if (post_ctx)
+        post_ctx->reset = false;
 }
 
 void PostPass::on_frame_end(Pipeline const &pipeline, Device &device, SceneManager &scene) {
-    if (post_ctx)
-        post_ctx->reset = false;
 }
 
 void PostPass::on_disable(Pipeline const &pipeline, Device &device, CommandList &cmdlist, SceneManager &scene) {
