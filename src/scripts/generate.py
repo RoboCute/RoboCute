@@ -550,6 +550,20 @@ class PipelineSettingModule(CodeModule):
     ]
 
 
+from rbc_meta.types.test_ipc import Chat
+
+
+# TODO: modify path & client
+# @codegen
+# class TestIPCModule(CodeModule):
+#     enable_cpp_interface_ = True
+#     cpp_base_dir_ = "rbc/tests/test_ipc/"
+#     interface_header_file_ = "generated/server_x.hpp"
+#     enable_cpp_impl_ = True
+#     cpp_impl_file_ = "server_x.cpp"
+#     classes_ = [Chat]
+
+
 def generate_registered():
     r = CodegenResitry()
     r.generate()
