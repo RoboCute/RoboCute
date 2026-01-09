@@ -14,3 +14,4 @@ includes('editor')
 -- Later need refactor from new rbc-world
 -- includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd
 includes('node_graph')
+includes('project_plugin')
