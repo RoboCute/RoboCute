@@ -12,7 +12,7 @@
 #include <rbc_core/func_serializer.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_world/base_object.h>
-#include <rbc_world/components/transform.h>
+#include <rbc_world/components/transform_component.h>
 #include <rbc_world/entity.h>
 #include <rbc_world/resources/material.h>
 #include <rbc_world/resource_base.h>

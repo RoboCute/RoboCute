@@ -83,7 +83,7 @@ void VisApp::handle_cursor_position(luisa::float2 xy) {
 }
 
 void VisApp::update_camera(float delta_time) {
-    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+    auto & cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
     camera_input.viewport_size = {(float)(resolution.x), (float)(resolution.y)};
 
@@ -103,7 +103,7 @@ void VisApp::update_camera(float delta_time) {
 }
 
 void VisApp::update() {
-    auto &click_mng = utils.render_settings().read_mut<ClickManager>();
+    auto &click_mng = utils.render_settings(pipe_ctx).read_mut<ClickManager>();
 
     handle_reset();
     prepare_dx_states();
@@ -148,7 +148,6 @@ void VisApp::update() {
 
     utils.tick(
         (float)delta_time,
-        frame_index,
         resolution,
         GraphicsUtils::TickStage::RasterPreview);
 }

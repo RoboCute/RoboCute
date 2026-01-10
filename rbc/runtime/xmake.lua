@@ -3,7 +3,11 @@ local function rbc_runtime_interface()
         public = true
     })
     add_deps('lc-runtime', 'rbc_core')
-    add_interface_depend('rbc_render_plugin')
+    on_load(function(target)
+        target:add('includedirs', path.join(os.projectdir(), 'rbc/render_plugin/include'), {
+            public = true
+        })
+    end)
 end
 
 local function rbc_runtime_impl()

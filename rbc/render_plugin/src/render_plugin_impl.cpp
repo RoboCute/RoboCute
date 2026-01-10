@@ -9,11 +9,9 @@ namespace rbc {
 
 struct DenoiserStream {
     luisa::shared_ptr<Denoiser> denoiser;
-    DenoiserExt::DenoiserInput input;
     DenoiserStream(
-        luisa::shared_ptr<Denoiser> &&denoiser,
-        uint2 res)
-        : denoiser(std::move(denoiser)), input(res.x, res.y) {
+        luisa::shared_ptr<Denoiser> &&denoiser)
+        : denoiser(std::move(denoiser)) {
     }
 };
 
@@ -50,9 +48,6 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
     }
     void destroy_pipeline_context(PipeCtxStub *ctx) override {
         delete reinterpret_cast<PipelineContext *>(ctx);
-    }
-    Camera &get_camera(PipeCtxStub *pipe_ctx) override {
-        return reinterpret_cast<PipelineContext *>(pipe_ctx)->cam;
     }
     Pipeline *get_pipe(luisa::string_view name) {
         if (name.empty()) {
@@ -203,6 +198,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
     }
     DenoisePack create_denoise_task(
         luisa::compute::Stream &stream,
+        PipeCtxStub *ctx,
         uint2 render_resolution) override {
         if (oidn_support != OidnSupport::Supported) {
             LUISA_ERROR("Denoiser not supported.");
@@ -214,16 +210,17 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             stream.handle(),
             vstd::lazy_eval([&]() {
                 init = true;
-                return DenoiserStream(oidn_ext->create(), render_resolution);
+                return DenoiserStream(oidn_ext->create());
             }));
 
         auto &denoiser = *iter.value().denoiser;
-        auto &input = iter.value().input;
+        auto &input = reinterpret_cast<PipelineContext *>(ctx)->pipeline_settings.read_mut<DenoiserExt::DenoiserInput>();
 
         // check if the resolution is changed
         if (input.width != render_resolution.x || input.height != render_resolution.y) {
             init = true;
-            vstd::reset(input, render_resolution.x, render_resolution.y);
+            input.width = render_resolution.x;
+            input.height = render_resolution.y;
         }
 
         // rebuild denoiser data

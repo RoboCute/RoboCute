@@ -23,7 +23,7 @@
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/texture.h>
 #include <rbc_world/resources/material.h>
-#include <rbc_world/components/transform.h>
+#include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/texture_loader.h>
 #include <rbc_world/util/gltf_scene_loader.h>
@@ -61,6 +61,8 @@ int main(int argc, char *argv[]) {
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
+    auto pipe_ctx = utils.register_render_pipectx({});
+    auto &render_settings = utils.render_settings(pipe_ctx);
     Window window{luisa::string{"model_viewer_"} + utils.backend_name(), uint2(1024), true};
 
     utils.init_display(window.size(), window.native_display(), window.native_handle());
@@ -172,7 +174,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Camera setup
-    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+    auto &cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     CameraController cam_controller;
     cam_controller.camera = &cam;
     cam.fov = radians(80.f);
@@ -242,7 +244,7 @@ int main(int argc, char *argv[]) {
                     window.poll_events();
             }
 
-            auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+            auto &cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
             if (any(window_size != utils.dst_image().size())) {
                 RBCZoneScopedN("Resize Swapchain");
                 utils.resize_swapchain(window_size, window.native_display(), window.native_handle());
@@ -262,13 +264,15 @@ int main(int argc, char *argv[]) {
                     frame_index = 0;
                 last_frame_time = time;
             }
-
+            {
+                auto &frame_settings = render_settings.read_mut<FrameSettings>();
+                frame_settings.frame_index = frame_index;
+            }
             {
                 RBCZoneScopedN("Render Tick");
                 auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
                 utils.tick(
                     static_cast<float>(delta_time),
-                    frame_index,
                     window_size,
                     tick_stage);
             }

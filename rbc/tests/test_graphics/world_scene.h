@@ -8,6 +8,7 @@
 #include <rbc_core/containers/rbc_concurrent_queue.h>
 
 namespace rbc {
+struct ClickManager;
 struct GraphicsUtils;
 struct MeshBuilder;
 struct WorldScene {
@@ -49,6 +50,7 @@ struct WorldScene {
         uint2 window_size,
         double3 const &cam_pos,
         float cam_far_plane,
+        ClickManager& click_mng,
         Camera const &cam);
     void tick_skinning(GraphicsUtils *utils, float delta_time);
 private:

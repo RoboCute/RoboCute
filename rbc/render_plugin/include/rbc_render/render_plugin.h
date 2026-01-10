@@ -21,7 +21,6 @@ struct RenderPlugin : Plugin {
     virtual StateMap *pipe_ctx_state_map(PipeCtxStub *ctx) = 0;
     virtual void destroy_pipeline_context(PipeCtxStub *ctx) = 0;
     virtual void sync_init() = 0;
-    virtual Camera &get_camera(PipeCtxStub *pipe_ctx) = 0;
 
     // render_loop
     virtual bool initialize_pipeline(luisa::string_view pipeline_name) = 0;
@@ -40,6 +39,7 @@ struct RenderPlugin : Plugin {
     virtual bool init_oidn() = 0;
     virtual DenoisePack create_denoise_task(
         luisa::compute::Stream &stream,
+        PipeCtxStub* ctx,
         uint2 render_resolution) = 0;
     virtual void destroy_denoise_task(luisa::compute::Stream &stream) = 0;
 protected:

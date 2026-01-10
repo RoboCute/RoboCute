@@ -15,6 +15,7 @@ namespace rbc {
 struct PBRApp : public RenderAppBase {
     // vstd::optional<rbc::SimpleScene> simple_scene;
     vstd::optional<float3> cube_move, light_move;
+    RenderPlugin::PipeCtxStub* pipe_ctx{};
 
 public:
     [[nodiscard]] RenderMode getRenderMode() const override { return RenderMode::PBR; }

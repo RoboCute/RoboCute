@@ -44,6 +44,7 @@ struct RBC_EDITOR_RUNTIME_API AppBase : public IApp {
     // 相机控制（共享）
     CameraController::Input camera_input;
     CameraController cam_controller;
+    RenderPlugin::PipeCtxStub* pipe_ctx{};
 
 public:
     [[nodiscard]] unsigned int GetDXAdapterLUIDHigh() const override { return dx_adaptor_luid.x; }

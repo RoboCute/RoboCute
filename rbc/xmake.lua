@@ -1,18 +1,25 @@
 -- Modules
-includes('core') -- 底层数据结构
-
-includes('runtime') -- （图像，动画，物理，插件等）运行时功能
-includes('ipc') -- 跨进程
--- Render
-includes('render_plugin')
-includes('oidn_plugin')
--- Utils
 includes('tools.lua')
-includes('tests')
+-- Utils
+includes('core') -- 底层数据结构
+includes('runtime') -- （图像，动画，物理，插件等）运行时功能
+-- Plugins
+if get_config('rbc_plugins') then
+    includes('render_plugin')
+    includes('oidn_plugin')
+    includes('project_plugin')
+end
+if get_config('rbc_tests') then
+    includes('tests')
+end
 -- Targets
-includes('editor')
--- Later need refactor from new rbc-world
--- includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd
-includes('node_graph')
-includes('project_plugin')
-includes("tool")
+if get_config('rbc_editor') then
+    includes('editor')
+    -- Later need refactor from new rbc-world
+    -- includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd
+    includes('node_graph')
+end
+if get_config('rbc_tools') then
+    includes('ipc') -- 跨进程
+    includes("tool")
+end

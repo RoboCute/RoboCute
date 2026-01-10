@@ -3,7 +3,7 @@
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/material.h>
 #include <rbc_world/resources/texture.h>
-#include <rbc_world/components/transform.h>
+#include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <luisa/vstl/common.h>
 

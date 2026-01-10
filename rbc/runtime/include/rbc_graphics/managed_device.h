@@ -173,7 +173,7 @@ public:
 
     // swap chain
     [[nodiscard]] SwapchainCreationInfo create_swapchain(const SwapchainOption& option, uint64_t stream_handle) noexcept override;
-    void destroy_swap_chain(uint64_t handle) noexcept override;
+    void destroy_swapchain(uint64_t handle) noexcept override;
     void present_display_in_stream(uint64_t stream_handle, uint64_t swapchain_handle, uint64_t image_handle) noexcept override;
 
     // kernel

@@ -2,6 +2,7 @@
 #include <rbc_graphics/make_device_config.h>
 #include <rbc_render/click_manager.h>
 #include <luisa/backends/ext/native_resource_ext.hpp>
+#include <rbc_render/generated/pipeline_settings.hpp>
 
 using namespace luisa;
 using namespace luisa::compute;
@@ -81,7 +82,7 @@ void VisApp::handle_cursor_position(luisa::float2 xy) {
 }
 
 void VisApp::update_camera(float delta_time) {
-    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+    auto & cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
     camera_input.viewport_size = {(float)(resolution.x), (float)(resolution.y)};
 
@@ -101,7 +102,7 @@ void VisApp::update_camera(float delta_time) {
 }
 
 void VisApp::update() {
-    auto &click_mng = utils.render_settings().read_mut<ClickManager>();
+    auto &click_mng = utils.render_settings(pipe_ctx).read_mut<ClickManager>();
 
     handle_reset();
     prepare_dx_states();
@@ -143,10 +144,12 @@ void VisApp::update() {
 
     // 设置轮廓对象（高亮显示选中的物体）
     click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
-
+    {
+        auto &frame_settings = utils.render_settings(pipe_ctx).read_mut<FrameSettings>();
+        frame_settings.frame_index = frame_index;
+    }
     utils.tick(
         (float)delta_time,
-        frame_index,
         resolution,
         GraphicsUtils::TickStage::RasterPreview);
 }

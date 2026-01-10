@@ -7,6 +7,7 @@
 
 #include <luisa/backends/ext/native_resource_ext.hpp>
 #include <luisa/vstl/meta_lib.h>
+#include <rbc_core/type_info.h>
 
 namespace rbc {
 using namespace luisa::compute;
@@ -107,9 +108,7 @@ struct DenoiserExt : public vstd::IOperatorNewBase {
         }
 
     public:
-        DenoiserInput() noexcept = delete;
-        DenoiserInput(uint32_t width, uint32_t height) noexcept
-            : width{width}, height{height} {}
+        DenoiserInput() noexcept {}
         void push_noisy_image(ImageFormat format,
                               ImageColorSpace cs = ImageColorSpace::HDR,
                               float input_scale = 1.0f) noexcept {
@@ -170,3 +169,4 @@ public:
 
 }// namespace rbc
 OIDN_API rbc::DenoiserExt *rbc_create_oidn(luisa::compute::Device const &device);
+RBC_RTTI(rbc::DenoiserExt::DenoiserInput)

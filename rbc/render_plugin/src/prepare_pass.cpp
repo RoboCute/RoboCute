@@ -249,16 +249,18 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
         ctx.scene->dispose_after_commit(std::move(i.data));
     }
     _lut_load_cmds.clear();
-    auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(ctx.cam);
+    auto & cam = ctx.pipeline_settings.read_mut<Camera>();
+    auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(cam);
 
-    auto &frane_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
+    cam.set_aspect_ratio_from_resolution(frame_settings.render_resolution.x, frame_settings.render_resolution.y);
     auto &mut = ctx.mut;
     auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
     auto &cam_data = ctx.pipeline_settings.read_mut<CameraData>();
-    if (frane_settings.frame_index == 0) {
-        pass_ctx->last_cam = ctx.cam;
+    if (frame_settings.frame_index == 0) {
+        pass_ctx->last_cam = cam;
     }
-    // pass_ctx->last_cam.position += make_double3(frane_settings.global_offset);
+    // pass_ctx->last_cam.position += make_double3(frame_settings.global_offset);
 
     jitter_data.last_jitter = pass_ctx->last_jitter;
     cam_data.last_proj = make_float4x4(pass_ctx->last_cam.projection_matrix());
@@ -267,24 +269,24 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     cam_data.last_vp = cam_data.last_proj * cam_data.last_view;
     cam_data.last_sky_vp = cam_data.last_proj * cam_data.last_sky_view;
     cam_data.last_inv_vp = inverse(cam_data.last_vp);
-    switch (frane_settings.resource_color_space) {
+    switch (frame_settings.resource_color_space) {
         case ResourceColorSpace::Rec709:
-            frane_settings.to_rec2020_matrix = make_float3x3(0.627404, 0.329283, 0.043313, 0.069097, 0.919540, 0.011362, 0.016391, 0.088013, 0.895595);
+            frame_settings.to_rec2020_matrix = make_float3x3(0.627404, 0.329283, 0.043313, 0.069097, 0.919540, 0.011362, 0.016391, 0.088013, 0.895595);
             break;
         case ResourceColorSpace::AdobeRGB:
-            frane_settings.to_rec2020_matrix = make_float3x3(0.877334, 0.077494, 0.045172, 0.096623, 0.891527, 0.011850, 0.022921, 0.043037, 0.934042);
+            frame_settings.to_rec2020_matrix = make_float3x3(0.877334, 0.077494, 0.045172, 0.096623, 0.891527, 0.011850, 0.022921, 0.043037, 0.934042);
             break;
         case ResourceColorSpace::P3_D60:
-            frane_settings.to_rec2020_matrix = make_float3x3(0.763906, 0.193206, 0.042888, 0.046355, 0.916212, 0.011251, -0.001227, 0.017124, 0.886810);
+            frame_settings.to_rec2020_matrix = make_float3x3(0.763906, 0.193206, 0.042888, 0.046355, 0.916212, 0.011251, -0.001227, 0.017124, 0.886810);
             break;
         case ResourceColorSpace::P3_D65:
-            frane_settings.to_rec2020_matrix = make_float3x3(0.753833, 0.198597, 0.047570, 0.045744, 0.941777, 0.012479, -0.001210, 0.017602, 0.983609);
+            frame_settings.to_rec2020_matrix = make_float3x3(0.753833, 0.198597, 0.047570, 0.045744, 0.941777, 0.012479, -0.001210, 0.017602, 0.983609);
             break;
         case ResourceColorSpace::Rec2020:
-            frane_settings.to_rec2020_matrix = float3x3::eye(1);
+            frame_settings.to_rec2020_matrix = float3x3::eye(1);
             break;
     }
-    frane_settings.to_rec2020_matrix = transpose(frane_settings.to_rec2020_matrix);
+    frame_settings.to_rec2020_matrix = transpose(frame_settings.to_rec2020_matrix);
 
     auto &scene = *ctx.scene;
     auto &&alloc = scene.bindless_allocator();
@@ -325,21 +327,22 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     emplace_tex2d(heap_indices::cie_xyz_cdfinv_idx, cie_xyz_cdfinv, Sampler::linear_point_mirror());
 
     jitter_data.jitter = float2(0.f);
-    cam_data.inv_view = make_float4x4(ctx.cam.local_to_world_matrix());
-    cam_data.inv_sky_view = make_float4x4(ctx.cam.rotation_matrix());
+    cam_data.inv_view = make_float4x4(cam.local_to_world_matrix());
+    cam_data.inv_sky_view = make_float4x4(cam.rotation_matrix());
     cam_data.view = inverse(cam_data.inv_view);
-    cam_data.proj = make_float4x4(ctx.cam.projection_matrix());
+    cam_data.proj = make_float4x4(cam.projection_matrix());
     cam_data.vp = cam_data.proj * cam_data.view;
     cam_data.inv_proj = inverse(cam_data.proj);
     cam_data.inv_vp = inverse(cam_data.vp);
-    if (frane_settings.frame_index != 0) {
-        pass_ctx->last_cam = ctx.cam;
+    if (frame_settings.frame_index != 0) {
+        pass_ctx->last_cam = cam;
     } else {
         cam_data.last_proj = cam_data.proj;
     }
 }
 void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(ctx.cam);
+    auto & cam = ctx.pipeline_settings.read_mut<Camera>();
+    auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(cam);
     auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
     pass_ctx->last_jitter = jitter_data.jitter;
 }

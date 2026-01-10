@@ -13,7 +13,7 @@ local function oidn_plugin_impl()
     on_load(function(target)
         target:add('links', 'OpenImageDenoise', 'OpenImageDenoise_core')
     end)
-    add_deps('lc-vstl', 'lc-runtime')
+    add_deps('lc-vstl', 'lc-runtime', 'rbc_core')
 end
 interface_target('oidn_plugin', oidn_plugin_interface, oidn_plugin_impl, true)
 
@@ -27,7 +27,7 @@ do
             inherit = false,
             links = false
         })
-        target:add('deps', 'oidn_plugin', 'lc-volk', 'lc-runtime')
+        target:add('deps', 'oidn_plugin', 'lc-volk', 'lc-runtime', 'rbc_core')
     end)
     add_files('oidn_checker.cpp')
 end

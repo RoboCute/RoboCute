@@ -591,7 +591,7 @@ void ManagedDevice::set_stream_log_callback(uint64_t stream_handle, const Stream
 SwapchainCreationInfo ManagedDevice::create_swapchain(const SwapchainOption &option, uint64_t stream_handle) noexcept {
     RBC_NOT_IMPL_RET;
 }
-void ManagedDevice::destroy_swap_chain(uint64_t handle) noexcept {
+void ManagedDevice::destroy_swapchain(uint64_t handle) noexcept {
     RBC_NOT_IMPL;
 }
 void ManagedDevice::present_display_in_stream(uint64_t stream_handle, uint64_t swapchain_handle, uint64_t image_handle) noexcept {

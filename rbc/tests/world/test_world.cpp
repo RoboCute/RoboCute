@@ -1,7 +1,7 @@
 #include "test_util.h"
 #include <rbc_world/base_object.h>
 #include <rbc_world/entity.h>
-#include <rbc_world/components/transform.h>
+#include <rbc_world/components/transform_component.h>
 
 TEST_SUITE("world") {
     TEST_CASE("ec") {

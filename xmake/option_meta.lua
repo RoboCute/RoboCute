@@ -1,12 +1,35 @@
-option('rbc_py_bin')
-set_showmenu(false)
-set_default(false)
-option_end()
+option('rbc_py_bin', {
+    default = false,
+    showmenu = false
+})
+
+-- enable targets
+
+option('rbc_editor', {
+    default = true,
+    showmenu = false
+})
+
+option('rbc_tests', {
+    default = true,
+    showmenu = false
+})
+
+option('rbc_tools', {
+    default = true,
+    showmenu = false
+})
+
+option('rbc_plugins', {
+    default = true,
+    showmenu = false
+})
 
 option('rbc_option')
 set_showmenu(false)
 set_default(false)
-add_deps('lc_toolchain', 'lc_py_include', 'lc_py_linkdir', 'lc_py_libs', 'rbc_py_bin', 'lc_use_lto')
+add_deps('lc_toolchain', 'lc_py_include', 'lc_py_linkdir', 'lc_py_libs', 'rbc_py_bin', 'lc_use_lto', 'rbc_editor',
+    'rbc_tools', 'rbc_plugins', 'rbc_tests')
 after_check(function(option)
     import("core.base.json")
     local luatable = json.decode(io.readfile(path.join(os.scriptdir(), 'options.json')))
@@ -16,7 +39,9 @@ after_check(function(option)
         })
     end
     if get_config('toolchain') == 'msvc' and is_mode('release') then
-        option:dep('lc_use_lto'):enable(true, {force = true})
+        option:dep('lc_use_lto'):enable(true, {
+            force = true
+        })
     end
 end)
 option_end()

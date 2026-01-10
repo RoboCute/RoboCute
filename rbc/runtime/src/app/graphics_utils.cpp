@@ -23,12 +23,8 @@ GraphicsUtils *GraphicsUtils::instance() {
     return _graphics_utils_singleton;
 }
 GraphicsUtils::GraphicsUtils() {
-    LUISA_ASSERT(!_graphics_utils_singleton);
-    _graphics_utils_singleton = this;
 }
 GraphicsUtils::~GraphicsUtils() {
-    LUISA_ASSERT(_graphics_utils_singleton == this);
-    _graphics_utils_singleton = nullptr;
 };
 
 void deser_openpbr(
@@ -36,6 +32,8 @@ void deser_openpbr(
     material::OpenPBR &x) {
 }
 void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
+    LUISA_ASSERT(_graphics_utils_singleton == this);
+    _graphics_utils_singleton = nullptr;
     if (_sm) {
         _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, true);
     }
@@ -43,10 +41,8 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
         _compute_event.event.synchronize(_compute_event.fence_index);
     if (after_sync)
         after_sync();
-    if (_display_pipe_ctx)
-        _render_plugin->destroy_pipeline_context(_display_pipe_ctx);
     for (auto &i : _render_pipe_ctxs) {
-        _render_plugin->destroy_pipeline_context(i.second.pipe_ctx);
+        _render_plugin->destroy_pipeline_context(i.first);
     }
     _denoise_packs.clear();
     _render_module.reset();
@@ -61,6 +57,8 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     _dst_image.reset();
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
+    LUISA_ASSERT(!_graphics_utils_singleton);
+    _graphics_utils_singleton = this;
     PluginManager::init();
     _render_device.init(program_path, backend_name);
     init_present_stream();
@@ -107,10 +105,21 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     }
     _lights.create();
 }
-StateMap &GraphicsUtils::render_settings() const {
-    return *_render_plugin->pipe_ctx_state_map(_display_pipe_ctx);
+StateMap &GraphicsUtils::render_settings(RenderPlugin::PipeCtxStub *pipe_ctx) const {
+    return *_render_plugin->pipe_ctx_state_map(pipe_ctx);
 }
-void GraphicsUtils::init_render(bool init_display_view) {
+RenderPlugin::PipeCtxStub *GraphicsUtils::register_render_pipectx(RenderView const &init_render_view) {
+    if (!_render_plugin) return nullptr;
+    auto pipe_ctx = _render_plugin->create_pipeline_context();
+    _render_pipe_ctxs.emplace(pipe_ctx, init_render_view);
+    return pipe_ctx;
+}
+void GraphicsUtils::set_render_view(RenderPlugin::PipeCtxStub *pipe_ctx, RenderView const &render_view) {
+    auto iter = _render_pipe_ctxs.find(pipe_ctx);
+    LUISA_ASSERT(iter);
+    iter.value() = render_view;
+}
+void GraphicsUtils::init_render() {
     PluginManager::init();
     _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
         _sm->bindless_allocator(),
@@ -121,9 +130,6 @@ void GraphicsUtils::init_render(bool init_display_view) {
     _render_module = PluginManager::instance().load_module("rbc_render_plugin");
     LUISA_ASSERT(_render_module, "Render module not found.");
     _render_plugin = _render_module->invoke<RenderPlugin *()>("get_render_plugin");
-    if (init_display_view) {
-        _display_pipe_ctx = _render_plugin->create_pipeline_context();
-    }
     LUISA_ASSERT(_render_plugin->initialize_pipeline({}));
     _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, false);
     _sm->prepare_frame();
@@ -164,16 +170,13 @@ void GraphicsUtils::init_display(
 
 void GraphicsUtils::reset_frame() {
     _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), true, true);
-    if (_display_pipe_ctx)
-        _render_plugin->clear_context(_display_pipe_ctx);
     for (auto &i : _render_pipe_ctxs) {
-        _render_plugin->clear_context(i.second.pipe_ctx);
+        _render_plugin->clear_context(i.first);
     }
 }
 
 void GraphicsUtils::tick(
     float delta_time,
-    uint64_t frame_index,
     uint2 resolution,
     TickStage tick_stage,
     bool enable_denoise) {
@@ -202,19 +205,18 @@ void GraphicsUtils::tick(
         }
     });
     _denoise_packs.clear();
-    const auto cam_count = (_display_pipe_ctx ? 1 : 0) + _render_pipe_ctxs.size();
-    _denoise_packs.reserve(cam_count);
-    auto init_render_ctx = [&](RenderView const &render_view) {
-        auto render_settings = _render_plugin->pipe_ctx_state_map(render_view.pipe_ctx);
+    _denoise_packs.reserve(_render_pipe_ctxs.size());
+    auto init_render_ctx = [&](RenderPlugin::PipeCtxStub *pipe_ctx, RenderView const &render_view) {
+        auto render_settings = _render_plugin->pipe_ctx_state_map(pipe_ctx);
         auto &frame_settings = render_settings->read_mut<rbc::FrameSettings>();
         auto &pipe_settings = render_settings->read_mut<rbc::PTPipelineSettings>();
         // TODO: camera settings
-        frame_settings.display_offset = min(render_view.view_offset_pixels, render_view.img->size() - 1u);
-        frame_settings.display_resolution = min(render_view.view_size_pixels, render_view.img->size() - frame_settings.display_offset);
+        auto img = render_view.img ? render_view.img : &_dst_image;
+        frame_settings.display_offset = min(render_view.view_offset_pixels, img->size() - 1u);
+        frame_settings.display_resolution = min(render_view.view_size_pixels, img->size() - frame_settings.display_offset);
         frame_settings.render_resolution = frame_settings.display_resolution;// desired for super-sampling
-        frame_settings.dst_img = render_view.img;
+        frame_settings.dst_img = img;
         frame_settings.delta_time = delta_time;
-        frame_settings.frame_index = render_view.frame_index;
         frame_settings.albedo_buffer = nullptr;
         frame_settings.normal_buffer = nullptr;
         frame_settings.radiance_buffer = nullptr;
@@ -227,6 +229,7 @@ void GraphicsUtils::tick(
             denoise_pack = &_denoise_packs.emplace_back();
             _render_plugin->create_denoise_task(
                 main_stream,
+                pipe_ctx,
                 frame_settings.display_resolution);
         }
         auto set_denoise_pack = [&]() {
@@ -270,17 +273,8 @@ void GraphicsUtils::tick(
                 break;
         }
     };
-    if (_display_pipe_ctx) {
-        RenderView display_view{
-            _display_pipe_ctx,
-            &_dst_image,
-            uint2(0),
-            _dst_image.size(),
-            frame_index};
-        init_render_ctx(display_view);
-    }
     for (auto &i : _render_pipe_ctxs) {
-        init_render_ctx(i.second);
+        init_render_ctx(i.first, i.second);
     }
     rbc::world::_zz_on_before_rendering();
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeRender);
@@ -293,10 +287,8 @@ void GraphicsUtils::tick(
         }
     }
     _sm->execute_io(_render_device.fallback_mem_io_service(), main_stream, _compute_event.event.handle(), _compute_event.fence_index);
-    if (_display_pipe_ctx)
-        _render_plugin->before_rendering({}, _display_pipe_ctx);
     for (auto &i : _render_pipe_ctxs) {
-        _render_plugin->before_rendering({}, i.second.pipe_ctx);
+        _render_plugin->before_rendering({}, i.first);
     }
     auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
     managed_device->begin_managing(cmdlist);
@@ -306,12 +298,10 @@ void GraphicsUtils::tick(
     // on render
     uint64_t idx = 0;
     _render_device._pipeline_name_ = {};
-    if (_display_pipe_ctx)
-        _render_plugin->on_rendering({}, _display_pipe_ctx);
     for (auto &i : _render_pipe_ctxs) {
         _render_device._pipeline_name_ = luisa::format("{}\126", idx);
         ++idx;
-        _render_plugin->on_rendering({}, i.second.pipe_ctx);
+        _render_plugin->on_rendering({}, i.first);
     }
     _render_device._pipeline_name_ = {};
     // TODO: pipeline update

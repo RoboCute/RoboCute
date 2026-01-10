@@ -1,7 +1,7 @@
 #include "world_scene.h"
-#include <rbc_world/components/transform.h>
+#include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
-#include <rbc_world/components/light.h>
+#include <rbc_world/components/light_component.h>
 #include <rbc_world/texture_loader.h>
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_app/graphics_utils.h>
@@ -440,12 +440,13 @@ void WorldScene::_set_gizmos() {
 }
 bool WorldScene::draw_gizmos(
     bool dragging,
-    GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, Camera const &cam) {
+    GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, 
+    ClickManager& click_mng,
+    Camera const &cam) {
     if (_entities.empty())
         return false;
     RBCZoneScopedN("WorldScene::draw_gizmos");
 
-    auto &click_mng = utils->render_settings().read_mut<ClickManager>();
     auto tr = _entities[0]->get_component<world::TransformComponent>();
 
     auto transform_matrix = tr->trs();

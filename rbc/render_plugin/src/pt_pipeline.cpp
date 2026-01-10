@@ -96,8 +96,6 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
             sky_settings.dirty = false;
         }
         if (sky_atom.update(*ctx.cmdlist, *ctx.stream, ctx.scene->bindless_allocator(), sky_settings.force_sync)) {
-            // frame_settings.sky_confidence = 1.0f;
-            frame_settings.frame_index = 0;
         }
         sky_heap.sky_heap_idx = sky_atom.sky_id();
         sky_heap.alias_heap_idx = sky_atom.sky_alias_id();
@@ -109,7 +107,6 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     }
 
     // update camera settings
-    ctx.cam.set_aspect_ratio_from_resolution(frame_settings.render_resolution.x, frame_settings.render_resolution.y);
     auto &pt_pipe_settings = ctx.pipeline_settings.read_mut<PTPipelineSettings>();
     if(pt_pipe_settings.use_raster && pt_pipe_settings.use_raytracing) [[unlikely]] {
         LUISA_ERROR("Can not enable both raster and raytracing.");

@@ -79,7 +79,7 @@ void PBRApp::update() {
         Argument::Texture{utils.dst_image().handle(), 0},
         D3D12EnhancedResourceUsageType::RasterRead);
 
-    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+    auto & cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
 
     auto time = clk.toc();
@@ -98,7 +98,6 @@ void PBRApp::update() {
 
     utils.tick(
         (float)delta_time,
-        frame_index,
         resolution,
         GraphicsUtils::TickStage::PresentOfflineResult);
 
@@ -107,7 +106,7 @@ void PBRApp::update() {
 
 PBRApp::~PBRApp() {
     utils.dispose([&]() {
-        auto pipe_settings_json = utils.render_settings().serialize_to_json();
+        auto pipe_settings_json = utils.render_settings(pipe_ctx).serialize_to_json();
         if (pipe_settings_json.data()) {
             LUISA_INFO(
                 "{}",

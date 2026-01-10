@@ -35,6 +35,7 @@ struct ContextImpl : RBCStruct {
     luisa::string backend = "dx";
     GraphicsUtils utils;
     vstd::optional<Window> window;
+    RenderPlugin::PipeCtxStub *pipe_ctx{};
     uint2 window_size;
     double last_frame_time{};
     Clock clk;
@@ -126,7 +127,10 @@ void RBCContext::reset_frame_index(void *this_) {
 }
 void RBCContext::set_view_camera(void *this_, luisa::float3 pos, float roll, float pitch, float yaw) {
     auto &c = *static_cast<ContextImpl *>(this_);
-    auto &cam = c.utils.render_plugin()->get_camera(c.utils.default_pipe_ctx());
+    if (!c.pipe_ctx) {
+        c.pipe_ctx = c.utils.register_render_pipectx({});
+    }
+    auto &cam = c.utils.render_settings(c.pipe_ctx).read_mut<Camera>();
     cam.position = make_double3(pos);
     cam.rotation_roll = roll;
     cam.rotation_pitch = pitch;
@@ -151,24 +155,28 @@ void RBCContext::tick(void *this_) {
         if (c.window)
             c.window->poll_events();
     }
-
+    auto &render_settings = c.utils.render_settings(c.pipe_ctx);
     {
         RBCZoneScopedN("Update Camera");
-        auto &cam = c.utils.render_plugin()->get_camera(c.utils.default_pipe_ctx());
-        if (any(c.window_size != c.utils.dst_image().size())) {
-            c.utils.resize_swapchain(c.window_size, c.window->native_display(), c.window->native_handle());
+        if (c.pipe_ctx) {
+            auto &cam = render_settings.read_mut<Camera>();
+            if (any(c.window_size != c.utils.dst_image().size())) {
+                c.utils.resize_swapchain(c.window_size, c.window->native_display(), c.window->native_handle());
+            }
+            cam.aspect_ratio = (float)c.window_size.x / (float)c.window_size.y;
         }
-        cam.aspect_ratio = (float)c.window_size.x / (float)c.window_size.y;
         auto time = c.clk.toc();
         auto delta_time = time - c.last_frame_time;
         RBCPlot("Frame Time (ms)", delta_time * 1000.0);
         c.last_frame_time = time;
-
+        {
+            auto &frame_settings = render_settings.read_mut<FrameSettings>();
+            frame_settings.frame_index = c.frame_index;
+        }
         {
             RBCZoneScopedN("Render Tick");
             c.utils.tick(
                 static_cast<float>(delta_time),
-                c.frame_index,
                 c.window_size);
         }
 

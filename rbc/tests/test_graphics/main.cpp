@@ -50,7 +50,9 @@ int main(int argc, char *argv[]) {
         backend.c_str());
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
-    utils.init_render(true /*false for headless mode*/);
+    utils.init_render();
+    auto pipe_ctx = utils.register_render_pipectx({});
+    auto &render_settings = utils.render_settings(pipe_ctx);
     Window window{luisa::string{"test_graphics_"} + utils.backend_name(), uint2(1024), true};
     utils.init_display(window.size(), window.native_display(), window.native_handle());
     uint64_t frame_index = 0;
@@ -62,9 +64,8 @@ int main(int argc, char *argv[]) {
     // simple_scene.create(*Lights::instance());
     // Test FOV
     bool reset = false;
-    ClickManager *click_mng{};
-    if (utils.default_pipe_ctx())
-        click_mng = &utils.render_settings().read_mut<ClickManager>();
+    ClickManager *click_mng = &render_settings.read_mut<ClickManager>();
+
     uint2 window_size = window.size();
     float2 start_uv, end_uv;
     luisa::vector<uint> dragged_object_ids;
@@ -171,10 +172,7 @@ int main(int argc, char *argv[]) {
                 // } break;
         }
     });
-    Camera *cam{};
-    if (utils.default_pipe_ctx()) {
-        cam = &utils.render_plugin()->get_camera(utils.default_pipe_ctx());
-    }
+    Camera *cam = &utils.render_settings(pipe_ctx).read_mut<Camera>();
     CameraController cam_controller;
     cam_controller.camera = cam;
 
@@ -203,7 +201,7 @@ int main(int argc, char *argv[]) {
             // reuse drag logic
             if (cam && click_mng) {
                 RBCZoneScopedN("Draw Gizmos");
-                auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam->position, cam->far_plane, *cam);
+                auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam->position, cam->far_plane, *click_mng, *cam);
             }
 
             if (any(window_size != utils.dst_image().size())) {
@@ -270,9 +268,12 @@ int main(int argc, char *argv[]) {
                 if (SceneManager::instance().accel_dirty() || world::world_transform_dirty()) {
                     frame_index = 0;
                 }
+                {
+                    auto &frame_settings = render_settings.read_mut<FrameSettings>();
+                    frame_settings.frame_index = frame_index;
+                }
                 utils.tick(
                     static_cast<float>(delta_time),
-                    frame_index,
                     window_size,
                     tick_stage,
                     offline_mode);
@@ -308,8 +309,7 @@ int main(int argc, char *argv[]) {
 
     utils.dispose([&]() {
         world_scene.destroy();
-        if (!utils.default_pipe_ctx()) return;
-        auto pipe_settings_json = utils.render_settings().serialize_to_json();
+        auto pipe_settings_json = render_settings.serialize_to_json();
         if (pipe_settings_json.data()) {
             LUISA_INFO("{}", luisa::string_view{
                                  (char const *)pipe_settings_json.data(),

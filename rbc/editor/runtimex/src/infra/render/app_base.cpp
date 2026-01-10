@@ -34,7 +34,7 @@ void RenderAppBase::init(const char *program_path, const char *backend_name) {
 
     utils.render_plugin()->update_skybox("../sky.bytes", PixelStorage::FLOAT4, uint2(4096, 2048));
 
-    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+    auto & cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam.fov = radians(80.f);
     cam_controller.camera = &cam;
 
@@ -73,7 +73,7 @@ void RenderAppBase::prepare_dx_states() {
 }
 
 void RenderAppBase::update_camera(float delta_time) {
-    auto &cam = utils.render_plugin()->get_camera(utils.default_pipe_ctx());
+    auto & cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
     camera_input.viewport_size = {(float)(resolution.x), (float)(resolution.y)};
 
@@ -85,7 +85,7 @@ void RenderAppBase::update_camera(float delta_time) {
 
 void RenderAppBase::dispose() {
     utils.dispose([&]() {
-        auto pipe_settings_json = utils.render_settings().serialize_to_json();
+        auto pipe_settings_json = utils.render_settings(pipe_ctx).serialize_to_json();
         if (pipe_settings_json.data()) {
             LUISA_INFO(
                 "{}",

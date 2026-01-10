@@ -1,5 +1,5 @@
-#include <rbc_world/components/light.h>
-#include <rbc_world/components/transform.h>
+#include <rbc_world/components/light_component.h>
+#include <rbc_world/components/transform_component.h>
 #include <rbc_world/entity.h>
 #include <rbc_world/type_register.h>
 #include <rbc_graphics/render_device.h>

@@ -4,6 +4,7 @@
 #include <luisa/core/stl/memory.h>
 #include <rbc_config.h>
 #include <rbc_core/quaternion.h>
+#include <rbc_core/type_info.h>
 #include <rbc_graphics/matrix.h>
 namespace rbc {
 using namespace luisa;
@@ -69,5 +70,6 @@ struct RBC_RUNTIME_API Camera {
     double focus_distance = 2.0f;
 };
 
-using CameraComponent = Camera;
 }// namespace rbc
+
+RBC_RTTI(rbc::Camera)

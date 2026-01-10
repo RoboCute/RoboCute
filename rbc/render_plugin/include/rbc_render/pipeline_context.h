@@ -60,10 +60,6 @@ struct Pass;
 struct PipelineContext : RBCStruct {
     // settings
     mutable rbc::StateMap pipeline_settings;
-
-    // config
-    Camera cam;
-
     // resource
     Device *device{nullptr};
     Stream *stream{nullptr};

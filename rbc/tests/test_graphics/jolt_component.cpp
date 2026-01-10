@@ -13,7 +13,7 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <rbc_world/entity.h>
-#include <rbc_world/components/transform.h>
+#include <rbc_world/components/transform_component.h>
 #include <iostream>
 namespace JPH {
 #include "Layers.h"

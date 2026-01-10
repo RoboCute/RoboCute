@@ -100,6 +100,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     const auto &jitter_data = ctx.pipeline_settings.read<JitterData>();
     const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
     const auto &ptSettings = ctx.pipeline_settings.read<PathTracerSettings>();
+    const auto &cam = ctx.pipeline_settings.read<Camera>();
 
     const auto &sky_heap = ctx.pipeline_settings.read<SkyHeapIndices>();
     Image<uint> id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
@@ -113,7 +114,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                        frame_settings.to_rec2020_matrix,
                        cam_data.world_to_sky,
                        cam_data.inv_vp,
-                       make_float3(ctx.cam.position),
+                       make_float3(cam.position),
                        jitter_data.jitter,
                        frame_settings.frame_index)
                        .dispatch(frame_settings.render_resolution);
@@ -158,21 +159,21 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         .sky_heap_idx = sky_heap.sky_heap_idx,
         .alias_table_idx = sky_heap.alias_heap_idx,
         .pdf_table_idx = sky_heap.pdf_heap_idx,
-        .cam_pos = make_float3(ctx.cam.position),
+        .cam_pos = make_float3(cam.position),
         .inv_view = cam_data.inv_view,
         .view = cam_data.view,
         .inv_vp = cam_data.inv_vp,
         .frame_countdown = scene.tex_streamer().countdown(),
         .light_count = static_cast<uint>(scene.light_accel().light_count()),
         .tex_grad_scale = float2(1),
-        .enable_physical_camera = ctx.cam.enable_physical_camera,
+        .enable_physical_camera = cam.enable_physical_camera,
         // .srgb_to_fourier_even_idx = prepare_pass->srgb_to_fourier_even_idx,
         // .bmese_phase_idx = prepare_pass->bmese_phase_idx,
         .require_reject = frame_settings.reject_sampling};
-    if (ctx.cam.enable_physical_camera) {
-        auto lens_radius = static_cast<float>(0.05 / ctx.cam.aperture);
+    if (cam.enable_physical_camera) {
+        auto lens_radius = static_cast<float>(0.05 / cam.aperture);
         auto resolution = make_float2(frame_settings.render_resolution);
-        pt_args.focus_distance = ctx.cam.focus_distance;
+        pt_args.focus_distance = cam.focus_distance;
         pt_args.lens_radius = lens_radius;
     }
     if (accum_pass_ctx->frame_index == 0) {
@@ -257,7 +258,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                        value_buffer,
                        surfel_mark,
                        pt_args.jitter_offset,
-                       make_float3(ctx.cam.position),
+                       make_float3(cam.position),
                        10.0f,
                        key_buffer.size(),
                        8,
