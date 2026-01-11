@@ -4,11 +4,9 @@ includes('tools.lua')
 includes('core') -- 底层数据结构
 includes('runtime') -- （图像，动画，物理，插件等）运行时功能
 -- Plugins
-if get_config('rbc_plugins') then
-    includes('render_plugin')
-    includes('oidn_plugin')
-    includes('project_plugin')
-end
+includes('render_plugin')
+includes('oidn_plugin')
+includes('project_plugin')
 if get_config('rbc_tests') then
     includes('tests')
 end
