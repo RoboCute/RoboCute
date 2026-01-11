@@ -86,9 +86,6 @@ struct BaseObject : RCBase {
     RBC_RUNTIME_API friend BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid);
     RBC_RUNTIME_API friend BaseObject *create_object(rbc::TypeInfo const &type_info);
     RBC_RUNTIME_API friend BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
-    inline void rbc_rc_delete() {
-        delete_this();
-    }
 protected:
     BaseObject() = default;
 private:
@@ -114,7 +111,6 @@ public:
         auto &&src = type.md5();
         return src == dst;
     }
-    virtual void delete_this() = 0;
     [[nodiscard]] virtual const char *type_name() const = 0;
     [[nodiscard]] virtual vstd::MD5 type_id() const = 0;
     static void *operator new(
@@ -192,12 +188,12 @@ RBC_RTTI(rbc::world::BaseObject);
 #define DECLARE_WORLD_OBJECT_FRIEND(type_name)             \
     friend void ea525e13_create_##type_name(type_name *);  \
     friend void ea525e13_destroy_##type_name(type_name *); \
-    void delete_this() override;
+    void rbc_rc_delete() override;
 
 #define DECLARE_WORLD_COMPONENT_FRIEND(type_name)                   \
     friend void ea525e13_create_##type_name(type_name *, Entity *); \
     friend void ea525e13_destroy_##type_name(type_name *);          \
-    void delete_this() override;
+    void rbc_rc_delete() override;
 
 namespace luisa {
 template<>

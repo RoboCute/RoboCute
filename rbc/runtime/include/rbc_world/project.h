@@ -3,7 +3,7 @@
 #include <luisa/core/stl/filesystem.h>
 namespace rbc::world {
 struct Resource;
-struct RBC_RUNTIME_API Project {
+struct RBC_RUNTIME_API Project : RCBase {
 private:
     luisa::filesystem::path _assets_path;
     void _reimport(vstd::Guid binary_guid, luisa::filesystem::path const &origin_path);

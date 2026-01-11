@@ -374,7 +374,7 @@ int main(int argc, char *argv[]) {
 
         // Dispose entity first
         if (entity) {
-            entity->delete_this();
+            entity->rbc_rc_delete();
         }
         // Destroy world (this will check for leaks)
         world::destroy_world();

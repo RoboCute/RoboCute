@@ -175,6 +175,13 @@ void GraphicsUtils::reset_frame() {
     }
 }
 
+void GraphicsUtils::remove_render_pipectx(RenderPlugin::PipeCtxStub *pipe_ctx) {
+    LUISA_DEBUG_ASSERT(_render_plugin);
+    _render_pipe_ctxs.remove(pipe_ctx);
+    _frame_requires_sync = true;
+    _render_plugin->destroy_pipeline_context(pipe_ctx);
+}
+
 void GraphicsUtils::tick(
     float delta_time,
     uint2 resolution,
@@ -183,6 +190,9 @@ void GraphicsUtils::tick(
     AssetsManager::instance()->wake_load_thread();
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeFrame);
     std::unique_lock render_lck{_render_device.render_loop_mtx()};
+    if (_frame_requires_sync.exchange(false)) {
+        _compute_event.event.synchronize(_compute_event.fence_index);
+    }
     _sm->prepare_frame();
     if (_require_reset) {
         _require_reset = false;
@@ -328,6 +338,7 @@ void GraphicsUtils::resize_swapchain(
     uint64_t native_display,
     uint64_t native_handle) {
     reset_frame();
+    _frame_requires_sync = false;
     _compute_event.event.synchronize(_compute_event.fence_index);
     _present_stream.synchronize();
     _dst_image.reset();

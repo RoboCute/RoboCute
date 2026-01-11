@@ -64,6 +64,7 @@ struct RBC_RUNTIME_API Camera {
     double aspect_ratio = 1;
     double near_plane = 0.3f;
     double far_plane = 20000.0f;
+    bool auto_aspect_ratio{true};
     // physical camera
     bool enable_physical_camera = false;
     double aperture = 1.4f;

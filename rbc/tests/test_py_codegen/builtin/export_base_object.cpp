@@ -5,10 +5,33 @@
 #include "module_register.h"
 #include <rbc_core/rc.h>
 #include <rbc_world/base_object.h>
+#include <rbc_plugin/plugin_manager.h>
+#include <rbc_core/runtime_static.h>
 namespace py = pybind11;
 using namespace luisa;
 using namespace rbc;
+struct Disposer {
+    bool _disposed{false};
+    void dispose() {
+        if (_disposed) return;
+        _disposed = true;
+        LUISA_INFO("RBC disposed.");
+        rbc::world::destroy_world();
+        rbc::PluginManager::destroy_instance();
+        rbc::RuntimeStaticBase::dispose_all();
+    }
+    ~Disposer() {
+        dispose();
+    }
+};
+static Disposer _disposer;
 void export_base_obj(py::module &m) {
+    m.def("rbc_add_ref", [](void *ptr) {
+        manually_add_ref(static_cast<RCBase *>(ptr));
+    });
+    m.def("rbc_release", [](void *ptr) {
+        manually_release_ref(static_cast<RCBase *>(ptr));
+    });
     m.def("_create_resource", [&](luisa::string_view type_info) -> void * {
         vstd::MD5 md5{type_info};
         rbc::TypeInfo type{type_info, md5};

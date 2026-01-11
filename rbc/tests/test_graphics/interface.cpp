@@ -30,7 +30,7 @@ using namespace luisa::compute;
 namespace rbc {
 struct ContextImpl;
 static ContextImpl *_ctx_inst{};
-struct ContextImpl : RBCStruct {
+struct ContextImpl : RCBase {
     luisa::fiber::scheduler scheduler;
     luisa::string backend = "dx";
     GraphicsUtils utils;
@@ -53,44 +53,6 @@ struct ContextImpl : RBCStruct {
         utils.dispose();
     }
 };
-struct Disposer {
-    uint64_t _ref_count{};
-    bool _disposed{false};
-    void add_ref() {
-        ++_ref_count;
-    }
-    void deref() {
-        if (--_ref_count == 0) {
-            dispose();
-        }
-    }
-    void dispose() {
-        if (_disposed) return;
-        _disposed = true;
-        LUISA_INFO("RBC disposed.");
-        rbc::world::destroy_world();
-        rbc::PluginManager::destroy_instance();
-        rbc::RuntimeStaticBase::dispose_all();
-    }
-    ~Disposer() {
-        dispose();
-    }
-};
-static Disposer _disposer;
-void add_ref(rbc::world::BaseObject *rc) {
-    _disposer.add_ref();
-    manually_add_ref(rc);
-}
-void add_ref() {
-    _disposer.add_ref();
-}
-void deref(rbc::world::BaseObject *rc) {
-    manually_release_ref(rc);
-    _disposer.deref();
-}
-void deref() {
-    _disposer.deref();
-}
 
 void RBCContext::init_world(void *this_, luisa::string_view meta_path, luisa::string_view binary_path) {
     rbc::world::init_world(meta_path, binary_path);
@@ -113,6 +75,9 @@ void RBCContext::create_window(void *this_, luisa::string_view name, uint2 size,
     c.window.create(luisa::string{name}, size, resiable);
     c.utils.init_display(size, c.window->native_display(), c.window->native_handle());
     c.window_size = size;
+    if (!c.pipe_ctx) {
+        c.pipe_ctx = c.utils.register_render_pipectx({});
+    }
     c.window->set_window_size_callback([&](uint2 size) {
         c.window_size = size;
     });
@@ -155,11 +120,14 @@ void RBCContext::tick(void *this_) {
         if (c.window)
             c.window->poll_events();
     }
-    auto &render_settings = c.utils.render_settings(c.pipe_ctx);
+    StateMap *render_settings{};
+    if (c.pipe_ctx) {
+        render_settings = &c.utils.render_settings(c.pipe_ctx);
+    }
     {
         RBCZoneScopedN("Update Camera");
-        if (c.pipe_ctx) {
-            auto &cam = render_settings.read_mut<Camera>();
+        if (render_settings) {
+            auto &cam = render_settings->read_mut<Camera>();
             if (any(c.window_size != c.utils.dst_image().size())) {
                 c.utils.resize_swapchain(c.window_size, c.window->native_display(), c.window->native_handle());
             }
@@ -169,8 +137,8 @@ void RBCContext::tick(void *this_) {
         auto delta_time = time - c.last_frame_time;
         RBCPlot("Frame Time (ms)", delta_time * 1000.0);
         c.last_frame_time = time;
-        {
-            auto &frame_settings = render_settings.read_mut<FrameSettings>();
+        if (render_settings) {
+            auto &frame_settings = render_settings->read_mut<FrameSettings>();
             frame_settings.frame_index = c.frame_index;
         }
         {
@@ -186,14 +154,10 @@ void RBCContext::tick(void *this_) {
 }
 void *RBCContext::_create_() {
     LUISA_ASSERT(!_ctx_inst);
-    _disposer.add_ref();
     rbc::RuntimeStaticBase::init_all();
     rbc::PluginManager::init();
-    return new ContextImpl{};
+    auto ptr = new ContextImpl{};
+    manually_add_ref(ptr);
+    return ptr;
 }
-void RBCContext::_destroy_(void *ptr) {
-    delete static_cast<ContextImpl *>(ptr);
-    _disposer.deref();
-}
-
 }// namespace rbc

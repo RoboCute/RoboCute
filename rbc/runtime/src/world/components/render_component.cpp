@@ -25,6 +25,10 @@ void RenderComponent::on_awake() {
 }
 void RenderComponent::on_destroy() {
     remove_object();
+    auto tr = entity()->get_component<TransformComponent>();
+    if (tr) {
+        tr->remove_on_update_event(this);
+    }
 }
 void RenderComponent::serialize_meta(ObjSerialize const &ser) const {
     ser.ar.start_array();

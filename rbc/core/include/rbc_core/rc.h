@@ -290,9 +290,9 @@ struct RCBase : RBCStruct {
     friend bool manually_release_ref(T *ptr);
 
     RBC_RC_IMPL_(private, public)
-    RBC_RC_DELETER_IMPL_DEFAULT
 public:
     virtual ~RCBase() = default;
+    virtual void rbc_rc_delete() { delete this; }
 };
 template<typename T>
 struct RC {

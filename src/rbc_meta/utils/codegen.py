@@ -50,7 +50,6 @@ from rbc_meta.utils.templates import (
     PYBIND_ENUM_BINDING_TEMPLATE,
     PYBIND_ENUM_VALUE_TEMPLATE,
     PYBIND_CREATE_FUNC_TEMPLATE,
-    PYBIND_DISPOSE_FUNC_TEMPLATE,
     PYBIND_METHOD_FUNC_TEMPLATE,
 )
 
@@ -900,14 +899,12 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
             )
 
             dispose_method = PY_DISPOSE_METHOD_TEMPLATE.substitute(
-                INDENT=INDENT,
-                STRUCT_NAME=struct_name,
+                INDENT=INDENT
             )
 
         pybind_methods_list = []
         if info.create_instance:
             pybind_methods_list.append(f"create__{struct_name}__")
-            pybind_methods_list.append(f"dispose__{struct_name}__")
 
         def get_method_expr(method: MethodInfo, type: Type):
             # Filter out 'self' parameter for Python method declarations
@@ -1301,18 +1298,19 @@ def pybind_codegen(
             )
         result_parts.append(create_func)
 
+        ## No custom dispose, all use RC
         # dispose function
-        dispose_name = f"dispose__{class_name}__"
-        if not info.pybind or not info.create_instance:
-            dispose_func = ""
-        else:
-            dispose_func = PYBIND_DISPOSE_FUNC_TEMPLATE.substitute(
-                INDENT=INDENT,
-                DISPOSE_NAME=dispose_name,
-                PTR_NAME=ptr_name,
-                STRUCT_NAME=struct_name,
-            )
-        result_parts.append(dispose_func)
+        # dispose_name = f"dispose__{class_name}__"
+        # if not info.pybind or not info.create_instance:
+        #     dispose_func = ""
+        # else:
+        #     dispose_func = PYBIND_DISPOSE_FUNC_TEMPLATE.substitute(
+        #         INDENT=INDENT,
+        #         DISPOSE_NAME=dispose_name,
+        #         PTR_NAME=ptr_name,
+        #         STRUCT_NAME=struct_name,
+        #     )
+        # result_parts.append(dispose_func)
 
         # method functions
         for method in info.methods:

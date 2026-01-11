@@ -51,7 +51,7 @@ Entity::~Entity() {
         LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
         auto comp = static_cast<Component *>(obj);
         LUISA_DEBUG_ASSERT(comp->entity() == this);
-        comp->delete_this();
+        comp->rbc_rc_delete();
     }
 }
 void Entity::_add_component(Component *component) {
@@ -72,7 +72,7 @@ bool Entity::remove_component(MD5 const& type_md5) {
     auto comp = static_cast<Component *>(obj);
     LUISA_DEBUG_ASSERT(comp->entity() == this);
     comp->_clear_entity();
-    comp->delete_this();
+    comp->rbc_rc_delete();
     return true;
 }
 Component *Entity::get_component(MD5 const& type_md5) {

@@ -31,7 +31,7 @@ EditorScene::~EditorScene() {
     // Clear all entities first
     for (auto &info : entities_) {
         if (info.entity) {
-            info.entity->delete_this();
+            info.entity->rbc_rc_delete();
         }
     }
     entities_.clear();
@@ -297,7 +297,7 @@ void EditorScene::removeEntity(int entity_id) {
 
     // Delete the entity (this will clean up components and TLAS entry automatically)
     if (info.entity) {
-        info.entity->delete_this();
+        info.entity->rbc_rc_delete();
     }
 
     // Swap with last and remove

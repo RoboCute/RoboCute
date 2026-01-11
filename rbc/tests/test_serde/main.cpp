@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
         auto trans_ptr = entity->get_component<world::TransformComponent>();
         // test life time
         LUISA_ASSERT(trans_ptr == trans);
-        trans->delete_this();
+        trans->rbc_rc_delete();
         trans_ptr = entity->get_component<world::TransformComponent>();
         // transform already destroyed
         LUISA_ASSERT(trans_ptr == nullptr);
@@ -76,11 +76,11 @@ int main(int argc, char *argv[]) {
             }
 
             // Cleanup new entity
-            new_entity->delete_this();
+            new_entity->rbc_rc_delete();
         }
 
         // Cleanup original entity
-        entity->delete_this();
+        entity->rbc_rc_delete();
     }
 
     LUISA_INFO("=== Testing Entity Serialization Done ===");
@@ -109,9 +109,9 @@ int main(int argc, char *argv[]) {
             if (new_trans) {
                 LUISA_INFO("Binary deserialized position: {}", new_trans->position());
             }
-            new_entity->delete_this();
+            new_entity->rbc_rc_delete();
         }
-        entity->delete_this();
+        entity->rbc_rc_delete();
     }
     LUISA_INFO("=== Testing Binary Serialization Done ===");
 

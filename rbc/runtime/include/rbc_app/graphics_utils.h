@@ -47,6 +47,7 @@ private:
     RenderPlugin *_render_plugin{};
     vstd::HashMap<RenderPlugin::PipeCtxStub *, RenderView> _render_pipe_ctxs{};
     vstd::optional<rbc::Lights> _lights;
+    std::atomic_bool _frame_requires_sync{false};
     bool _require_reset : 1 {false};
     bool _denoiser_inited : 1 {false};
 
@@ -67,6 +68,7 @@ public:
     void init_present_stream();
     void init_render();
     RenderPlugin::PipeCtxStub *register_render_pipectx(RenderView const &init_render_view);
+    void remove_render_pipectx(RenderPlugin::PipeCtxStub *pipe_ctx);
     void set_render_view(RenderPlugin::PipeCtxStub *pipe_ctx, RenderView const &render_view);
     void resize_swapchain(
         uint2 size,

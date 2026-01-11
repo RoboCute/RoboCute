@@ -36,7 +36,7 @@ struct BaseObjectStatics : RBCStruct {
                 iter = _instance_ids.erase(iter);
             }
             for (auto &o : remove_obj) {
-                o->delete_this();
+                o->rbc_rc_delete();
             }
         }
         if (!_instance_ids.empty()) {

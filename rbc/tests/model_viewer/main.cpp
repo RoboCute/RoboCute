@@ -288,7 +288,7 @@ int main(int argc, char *argv[]) {
         loaded_mesh.reset();
         skybox.reset();
         // Dispose entity first
-        entity->delete_this();
+        entity->rbc_rc_delete();
         world::destroy_world();
     });
 

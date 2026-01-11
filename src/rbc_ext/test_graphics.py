@@ -66,7 +66,7 @@ def main():
     else:
         print("Skybox not found, importing sky.exr")
         skybox_tex_request = project.import_texture(str(sky_path))
-        skybox_tex = TextureResource(skybox_tex_request.get_result_release(), True)
+        skybox_tex = TextureResource(skybox_tex_request.get_result_release())
         del skybox_tex_request # handle released, async-request already useless
         skybox_tex.upload(0)
         sky_guid_str = str(skybox_tex.guid())
@@ -91,7 +91,6 @@ def main():
     cbox_mesh_request = project.import_mesh(cbox_path)
     cbox_mesh = MeshResource(cbox_mesh_request.get_result_release(), True)
     cbox_mesh.upload(False) # we must upload imported data to GPU
-    
     ##################### Create a test cube
     # cube_mesh = MeshResource()
     # cube_mesh.create_empty(
@@ -133,7 +132,6 @@ def main():
     mat1 = '{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]}'
     mat2 = '{"type": "pbr", "specular_roughness": 0.5, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]}'
     light_mat_desc = '{"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]}'
-    
     basic_mat = MaterialResource()
     basic_mat.load_from_json(mat0)
     
@@ -171,6 +169,7 @@ def main():
         make_double4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0.5, 4, 1),
         False
     )
+    
     light.add_area_light(float3(30, 20, 20), True)    
     while not ctx.should_close():
         ctx.tick()

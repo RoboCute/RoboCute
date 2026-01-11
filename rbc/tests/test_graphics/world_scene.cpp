@@ -541,7 +541,7 @@ WorldScene::~WorldScene() {
     tex.reset();
     _mats.clear();
     for (auto &i : _entities) {
-        i->delete_this();
+        i->rbc_rc_delete();
     }
     skinning_entity.reset();
     skinning_mesh.reset();

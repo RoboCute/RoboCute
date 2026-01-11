@@ -1,4 +1,4 @@
-set_xmakever("3.0.4")
+set_xmakever("3.0.6")
 add_rules("mode.release", "mode.debug", "mode.releasedbg")
 set_policy("build.ccache", not is_plat("windows"))
 set_languages("c++20")

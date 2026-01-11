@@ -12,7 +12,8 @@ void Camera::set_rotation_from_direction(double3 dir) {
     rotation_yaw = atan2f(-dir.x, dir.z);
 }
 void Camera::set_aspect_ratio_from_resolution(double width, double height) {
-    aspect_ratio = width / height;
+    if (auto_aspect_ratio)
+        aspect_ratio = width / height;
 }
 // matrix getter
 double4x4 Camera::rotation_matrix() const {

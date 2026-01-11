@@ -223,7 +223,7 @@ struct ResourceLoader : RBCStruct {
                     if (!res_ptr || res_ptr->base_type() != BaseObjectType::Resource) {
                         co_return;
                     }
-                    static_cast<Resource *>(res_ptr.get())->delete_this();
+                    static_cast<Resource *>(res_ptr.get())->rbc_rc_delete();
                     co_return;
                 }
                 co_await std::suspend_always{};

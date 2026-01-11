@@ -111,7 +111,7 @@ struct TypeComponentRegister : TypeRegisterBase {
     static ::rbc::world::TypeObjectRegister<type_name> type_name##_register_{ \
         ea525e13_create_##type_name,                                          \
         ea525e13_destroy_##type_name};                                        \
-    void type_name::delete_this() {                                               \
+    void type_name::rbc_rc_delete() {                                               \
         type_name##_register_.destroy(this);                                  \
     }
 #define DECLARE_WORLD_COMPONENT_REGISTER(type_name)                              \
@@ -124,7 +124,7 @@ struct TypeComponentRegister : TypeRegisterBase {
     static ::rbc::world::TypeComponentRegister<type_name> type_name##_register_{ \
         ea525e13_create_##type_name,                                             \
         ea525e13_destroy_##type_name};                                           \
-    void type_name::delete_this() {                                                  \
+    void type_name::rbc_rc_delete() {                                                  \
         type_name##_register_.destroy(this);                                     \
     }
 }// namespace rbc::world

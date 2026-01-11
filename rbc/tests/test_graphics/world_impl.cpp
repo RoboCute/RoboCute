@@ -17,10 +17,6 @@
 #include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_core/runtime_static.h>
 namespace rbc {
-void add_ref();
-void deref();
-void add_ref(rbc::world::BaseObject *rc);// defined in interface.cpp
-void deref(rbc::world::BaseObject *rc);
 vstd::Guid Object::guid(void *this_) {
     return static_cast<world::BaseObject *>(this_)->guid();
 }
@@ -44,7 +40,7 @@ bool Resource::save_to_path(void *this_) {
 }
 void *Entity::_create_() {
     auto entity = world::create_object<world::Entity>();
-    add_ref(entity);
+    manually_add_ref(entity);
     return entity;
 }
 void *Entity::add_component(void *this_, luisa::string_view name) {
@@ -59,9 +55,6 @@ void *Entity::add_component(void *this_, luisa::string_view name) {
     }
     e->_add_component(comp);
     return comp;
-}
-void Entity::_destroy_(void *ptr) {
-    deref(static_cast<world::BaseObject *>(ptr));
 }
 void *Entity::get_component(void *this_, luisa::string_view name) {
     auto e = static_cast<world::Entity *>(this_);
@@ -169,27 +162,18 @@ float LightComponent::small_angle_radians(void *this_) {
 
 void *TextureResource::_create_() {
     auto p = world::create_object<world::TextureResource>();
-    add_ref(p);
+    manually_add_ref(p);
     return p;
 }
 void *MeshResource::_create_() {
     auto p = world::create_object<world::MeshResource>();
-    add_ref(p);
+    manually_add_ref(p);
     return p;
 }
 void *MaterialResource::_create_() {
     auto p = world::create_object<world::MaterialResource>();
-    add_ref(p);
+    manually_add_ref(p);
     return p;
-}
-void TextureResource::_destroy_(void *ptr) {
-    deref(static_cast<world::BaseObject *>(ptr));
-}
-void MeshResource::_destroy_(void *ptr) {
-    deref(static_cast<world::BaseObject *>(ptr));
-}
-void MaterialResource::_destroy_(void *ptr) {
-    deref(static_cast<world::BaseObject *>(ptr));
 }
 void TextureResource::create_empty(void *this_, rbc::LCPixelStorage pixel_storage, luisa::uint2 size, uint32_t mip_level, bool is_virtual_texture) {
     auto c = static_cast<world::TextureResource *>(this_);
@@ -374,46 +358,42 @@ void RenderComponent::update_object(void *this_, luisa::vector<rbc::RC<rbc::RCBa
             mat_vector.size()},
         static_cast<world::MeshResource *>(mesh));
 }
-struct AsyncRequestImpl : RBCStruct {
-    world::BaseObject *_result{};
+struct AsyncRequestImpl : RCBase {
+    RCBase *_result{};
     luisa::fiber::event task;
     vstd::function<void()> finished_func;
     AsyncRequestImpl() {
-        add_ref();
     }
     void dispose() {
         if (_result) {
-            deref(_result);
+            manually_release_ref(_result);
         }
         _result = nullptr;
     }
     void set_value(world::BaseObject *r) {
         dispose();
         _result = r;
-        add_ref(r);
+        manually_add_ref(r);
     }
     ~AsyncRequestImpl() {
         dispose();
     }
 };
 void *AsyncRequest::_create_() {
-    LUISA_ERROR("Create async-request in python is not allowed.");// TODO: this is for development
-    return nullptr;
-}
-void AsyncRequest::_destroy_(void *ptr) {
-    delete static_cast<AsyncRequestImpl *>(ptr);
+    return new AsyncRequestImpl();
 }
 bool AsyncRequest::done(void *this_) {
     auto c = static_cast<AsyncRequestImpl *>(this_);
     return c->task.test();
 }
-void *AsyncRequest::borrow_result(void *this_) {
+void *AsyncRequest::get_result(void *this_) {
     auto c = static_cast<AsyncRequestImpl *>(this_);
     c->task.wait();
     if (c->finished_func) {
         c->finished_func();
         c->finished_func = {};
     }
+    manually_add_ref(c->_result);
     return c->_result;
 }
 void *AsyncRequest::get_result_release(void *this_) {
@@ -428,15 +408,15 @@ void *AsyncRequest::get_result_release(void *this_) {
     return r;
 }
 void *Project::_create_() {
-    return new world::Project(".meta_db"sv);
-}
-void Project::_destroy_(void *ptr) {
-    delete static_cast<world::Project *>(ptr);
+    auto ptr = new world::Project(".meta_db"sv);
+    manually_add_ref(ptr);
+    return ptr;
 }
 // TODO: register guid
 void *Project::import_material(void *this_, luisa::string_view path) {
     // auto c = static_cast<world::Project*>(this_);
     auto request = new AsyncRequestImpl{};
+    manually_add_ref(request);
     RC<world::MaterialResource> mat{world::create_object<world::MaterialResource>()};
     request->set_value(mat.get());
     request->task = luisa::fiber::async([mat = std::move(mat), p = luisa::string{path}] {
@@ -452,6 +432,7 @@ void *Project::import_material(void *this_, luisa::string_view path) {
 void *Project::import_mesh(void *this_, luisa::string_view path) {
     // auto c = static_cast<world::Project*>(this_);
     auto request = new AsyncRequestImpl{};
+    manually_add_ref(request);
     RC<world::MeshResource> mesh{world::create_object<world::MeshResource>()};
     request->set_value(mesh.get());
     request->task = luisa::fiber::async([mesh = std::move(mesh), p = luisa::filesystem::path{path}] {
@@ -464,6 +445,7 @@ void *Project::import_texture(void *this_, luisa::string_view path) {
     // TODO: manage importer
     // auto c = static_cast<world::Project*>(this_);
     auto request = new AsyncRequestImpl{};
+    manually_add_ref(request);
     RC<world::TextureResource> tex{world::create_object<world::TextureResource>()};
     request->set_value(tex.get());
     request->task = luisa::fiber::async([tex = std::move(tex), p = luisa::filesystem::path{path}] {
@@ -479,8 +461,11 @@ void *Project::load_resource(void *this_, vstd::Guid const &guid) {
     if (!res) {
         return nullptr;
     }
-    add_ref(res.get());
-    return res.get();
+    auto ptr = res.get();
+    // forget
+    vstd::Storage<decltype(res)> storage;
+    new (&storage) decltype(res)(std::move(res));
+    return ptr;
 }
 
 void Project::set_skybox(void *this_, void *tex) {

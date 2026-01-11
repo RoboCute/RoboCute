@@ -41,7 +41,7 @@ void SkelMeshRenderDataLOD::InitResources(SkeletalMeshRenderData *InRenderData, 
 }
 
 void SkelMeshRenderDataLOD::ReleaseResources() {
-    morph_mesh->delete_this();
+    morph_mesh->rbc_rc_delete();
 }
 
 }// namespace rbc

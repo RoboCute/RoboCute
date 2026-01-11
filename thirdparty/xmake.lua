@@ -25,7 +25,9 @@ includes('tinygltf_xmake.lua')
 includes("doctest")
 includes('jolt_xmake.lua')
 includes('ozz_xmake.lua')
-includes('qt_xmake.lua')
+if get_config('rbc_editor') then
+    includes('qt_xmake.lua')
+end
 includes('oidn')
 includes('tracy_xmake.lua')
 -- includes('sqlite3')

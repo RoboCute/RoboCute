@@ -93,7 +93,6 @@ CPP_ENUM_KVPAIR_TEMPLATE = Template("${INDENT}${KEY}${VALUE_EXPR}")
 
 CPP_STRUCT_BUILTIN_METHODS_TEMPLATE = Template("""
 ${INDENT}static void *_create_();
-${INDENT}static void _destroy_(void *ptr);
 """)
 
 CPP_STRUCT_TEMPLATE = Template("""
@@ -179,10 +178,8 @@ ${METHODS_EXPR}
 PY_INIT_METHOD_TEMPLATE = Template("""${INDENT}def __init__(self, *args):
 ${INDENT}${INDENT}if len(args) == 0:
 ${INDENT}${INDENT}${INDENT}self._handle = create__${STRUCT_NAME}__()
-${INDENT}${INDENT}${INDENT}self._own = True
 ${INDENT}${INDENT}else:
 ${INDENT}${INDENT}${INDENT}self._handle = args[0]
-${INDENT}${INDENT}${INDENT}self._own = args[1] if len(args) > 1 else True
 """)
 
 PY_INIT_METHOD_TEMPLATE_EXTERNAL = Template("""${INDENT}def __init__(self, handle):
@@ -190,8 +187,8 @@ ${INDENT}${INDENT}self._handle = handle
 """)
 
 PY_DISPOSE_METHOD_TEMPLATE = Template("""${INDENT}def __del__(self):
-${INDENT}${INDENT}if self._own:
-${INDENT}${INDENT}${INDENT}dispose__${STRUCT_NAME}__(self._handle)
+${INDENT}${INDENT}if self._handle:
+${INDENT}${INDENT}${INDENT}rbc_release(self._handle)
 """)
 
 PY_METHOD_TEMPLATE = Template("""${INDENT}def ${METHOD_NAME}(self${ARGS_DECL}):
@@ -387,11 +384,6 @@ ${INDENT}${INDENT}return ${STRUCT_NAME}::_create_();
 ${INDENT}});
 """)
 
-PYBIND_DISPOSE_FUNC_TEMPLATE = Template("""
-${INDENT}m.def("${DISPOSE_NAME}", [](void* ${PTR_NAME}) {
-${INDENT}${INDENT}${STRUCT_NAME}::_destroy_(static_cast<${STRUCT_NAME}*>(${PTR_NAME}));
-${INDENT}});
-""")
 PYBIND_METHOD_FUNC_TEMPLATE = Template("""
 ${INDENT}m.def("${METHOD_NAME}", [](void* ${PTR_NAME}${ARGS_DECL})${RET_TYPE} {
 ${INDENT}${INDENT}${RETURN_EXPR}${STRUCT_NAME}::${METHOD_NAME_CALL}(${PTR_NAME}${ARGS_CALL})${RETURN_CLOSE};
