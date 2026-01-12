@@ -4,7 +4,7 @@
 #include <rbc_world/components/light_component.h>
 #include <rbc_world/texture_loader.h>
 #include <rbc_graphics/mesh_builder.h>
-#include <rbc_app/graphics_utils.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_core/serde.h>
 #include <rbc_render/click_manager.h>

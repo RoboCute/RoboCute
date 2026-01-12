@@ -2,6 +2,7 @@
 #include <rbc_world/base_object.h>
 #include <rbc_core/coroutine.h>
 namespace rbc::world {
+struct Resource;
 struct Entity;
 enum struct WorldEventType {
     BeforeFrame,
@@ -26,6 +27,11 @@ public:
     static void _zz_invoke_world_event(WorldEventType event_type);
     void add_world_event(WorldEventType event_type, rbc::coroutine &&coro);
     void remove_world_event(WorldEventType event_type);
+    ////////// for reload
+
+    virtual void update_data() {}
+    ////////// for reload
+
     virtual void on_awake() {};
     virtual void on_destroy() {};
     static constexpr BaseObjectType base_object_type_v = BaseObjectType::Component;

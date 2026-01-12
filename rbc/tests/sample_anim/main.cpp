@@ -12,7 +12,7 @@
 #include <rbc_graphics/device_assets/device_sparse_image.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/device_assets/device_image.h>
-#include <rbc_app/graphics_utils.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 #include <rbc_app/camera_controller.h>

@@ -1,7 +1,7 @@
 #pragma once
 #include "RBCEditorRuntime/config.h"
 #include "RBCEditorRuntime/engine/app.h"
-#include <rbc_app/graphics_utils.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <rbc_app/camera_controller.h>
 #include <luisa/gui/window.h>
 

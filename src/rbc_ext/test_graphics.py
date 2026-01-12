@@ -68,7 +68,6 @@ def main():
         skybox_tex_request = project.import_texture(str(sky_path))
         skybox_tex = TextureResource(skybox_tex_request.get_result_release())
         del skybox_tex_request # handle released, async-request already useless
-        skybox_tex.upload(0)
         sky_guid_str = str(skybox_tex.guid())
         skybox_tex.save_to_path()
         sky_guid_file = open(sky_guid_path, "w")
@@ -90,7 +89,6 @@ def main():
     ##################### Load cbox
     cbox_mesh_request = project.import_mesh(cbox_path)
     cbox_mesh = MeshResource(cbox_mesh_request.get_result_release(), True)
-    cbox_mesh.upload(False) # we must upload imported data to GPU
     ##################### Create a test cube
     # cube_mesh = MeshResource()
     # cube_mesh.create_empty(

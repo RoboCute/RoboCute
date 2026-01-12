@@ -95,9 +95,7 @@ RC<Resource> IResourceImporter::import(
     vstd::Guid guid,
     luisa::filesystem::path const &path, luisa::string const &meta_json) const {
     auto res = load_resource(guid, false);
-    if (res) {
-        reset_object(res.get());
-    } else {
+    if (!res) {
         auto type_id = resource_type();
         res = create_object_with_guid(reinterpret_cast<vstd::Guid const &>(type_id), guid);
     }

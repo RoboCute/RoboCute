@@ -6,7 +6,7 @@
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/mat_manager.h>
-#include <rbc_app/graphics_utils.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <luisa/core/logging.h>
 #include <QDebug>
 

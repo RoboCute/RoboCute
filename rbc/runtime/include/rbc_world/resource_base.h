@@ -30,6 +30,7 @@ protected:
     RBC_RUNTIME_API Resource();
     RBC_RUNTIME_API ~Resource();
     virtual rbc::coroutine _async_load() = 0;
+    virtual bool _init_device_resource() { return false; }
 
 public:
     [[nodiscard]] RBC_RUNTIME_API luisa::filesystem::path path() const;
@@ -38,7 +39,7 @@ public:
     EResourceLoadingStatus loading_status() const { return _status.load(std::memory_order_relaxed); }
     void unsafe_set_loaded() { _status = EResourceLoadingStatus::Loaded; }// It is user's responsibility to make the state valid
     bool loaded() const { return loading_status() == EResourceLoadingStatus::Loaded; }
-
+    RBC_RUNTIME_API bool init_device_resource();
     // await until the loading logic finished in both host-side and device-side
     RBC_RUNTIME_API ResourceAwait await_loading();
     // save host_data to Resource::_path

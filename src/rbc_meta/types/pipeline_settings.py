@@ -28,6 +28,7 @@ Curve = ExternalType("Curve")
 SkyAtmospherePtr = ExternalType("SkyAtmosphere*")
 BufferFloatConstPtr = ExternalType("luisa::compute::Buffer<float> const*")
 ImageFloatConstPtr = ExternalType("luisa::compute::Image<float> const*")
+ImageFloat = ExternalType("luisa::compute::Image<float>")
 
 
 @reflect(
@@ -164,7 +165,7 @@ class FrameSettings:
     albedo_buffer: BufferFloatConstPtr
     normal_buffer: BufferFloatConstPtr
     radiance_buffer: BufferFloatConstPtr
-    resolved_img: ImageFloatConstPtr
+    resolved_img: ImageFloat
     dst_img: ImageFloatConstPtr
 
     _cpp_init = {

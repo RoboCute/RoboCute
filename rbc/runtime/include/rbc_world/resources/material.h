@@ -21,13 +21,13 @@ public:
     auto &mat_code() const { return _mat_code; }
     auto &mat_data() const { return _mat_data; }
     // prepare host data and emplace
-    bool init_device_resource();
     luisa::BinaryBlob write_content_to();
     void serialize_meta(ObjSerialize const &obj) const override;
-    
+
     rbc::coroutine _async_load() override;
     void load_from_json(luisa::string_view json_vec);
 protected:
+    bool _init_device_resource() override;
     void _load_from_json(luisa::string_view json_vec, bool set_to_loaded);
     bool _async_load_from_file();
     bool unsafe_save_to_path() const override;

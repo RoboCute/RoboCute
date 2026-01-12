@@ -33,6 +33,7 @@ public:
     uint get_tlas_index() const;
     void remove_object();
     void update_object(luisa::span<RC<MaterialResource> const> materials = {}, MeshResource *mesh = nullptr);
+    void update_data() override;
 private:
     void _update_object_pos(float4x4 matrix);
 };

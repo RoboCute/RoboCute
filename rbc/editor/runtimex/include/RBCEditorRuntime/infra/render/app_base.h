@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rbc_app/graphics_utils.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <rbc_app/camera_controller.h>
 #include <luisa/dsl/sugar.h>
 #include <luisa/gui/input.h>

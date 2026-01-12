@@ -82,8 +82,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             .write = true},
     };
     auto raster_ext = render_device.lc_device().extension<RasterExt>();
-    emission = render_device.create_transient_image<float>("emission", PixelStorage::BYTE4, frame_settings.render_resolution, 1, false, true);
-    frame_settings.resolved_img = &emission;
+    Image<float> emission = render_device.create_transient_image<float>("emission", PixelStorage::BYTE4, frame_settings.render_resolution, 1, false, true);
     auto id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
     cmdlist << pass_ctx->depth_buffer.clear(0.0f)
             << (*_clear_id)(id_map, uint4(-1, -1, 0, 0)).dispatch(frame_settings.render_resolution);
@@ -101,6 +100,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     float3 light_dir = make_float3(cam.dir_forward());
     float3 light_color{1};
     cmdlist << draw_raster::dispatch_shader(_shading, frame_settings.render_resolution, sm.tex_streamer().level_buffer(), sm.buffer_heap(), sm.image_heap(), id_map, emission, sm.accel_manager().last_trans_buffer(), cam_data.inv_vp, frame_settings.to_rec2020_matrix, cam_data.world_to_sky, make_float3(cam.position), sky_heap.sky_heap_idx, sm.tex_streamer().countdown(), light_dir, light_color);
+    frame_settings.resolved_img = std::move(emission);
 }
 void RasterPass::on_disable(
     Pipeline const &pipeline,

@@ -5,7 +5,7 @@
 #include <luisa/runtime/rtx/accel.h>
 #include <luisa/runtime/rtx/mesh.h>
 #include <luisa/runtime/rtx/triangle.h>
-#include <rbc_app/graphics_utils.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_render/renderer_data.h>
@@ -230,7 +230,7 @@ void GraphicsUtils::tick(
         frame_settings.albedo_buffer = nullptr;
         frame_settings.normal_buffer = nullptr;
         frame_settings.radiance_buffer = nullptr;
-        frame_settings.resolved_img = nullptr;
+        frame_settings.resolved_img.reset();
         frame_settings.reject_sampling = false;
 
         enable_denoise &= _denoiser_inited;

@@ -3,6 +3,7 @@
 #include <rbc_core/type_info.h>
 #include <rbc_core/shared_atomic_mutex.h>
 #include <luisa/vstl/common.h>
+#include <luisa/vstl/functional.h>
 #include <luisa/core/stl/hash.h>
 #include <luisa/core/logging.h>
 #include <rbc_core/hash.h>
@@ -39,10 +40,8 @@ struct InstanceID {
 RBC_RUNTIME_API void init_world(luisa::filesystem::path const &meta_path = {}, luisa::filesystem::path const &binary_path = {});
 RBC_RUNTIME_API void destroy_world();
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object(rbc::TypeInfo const &type_info);
-[[nodiscard]] RBC_RUNTIME_API void reset_object(BaseObject *obj);
 [[nodiscard]] RBC_RUNTIME_API BaseObjectType get_base_object_type(vstd::Guid const &type_id);
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid);
-[[nodiscard]] RBC_RUNTIME_API void reset_object_with_guid(BaseObject *obj, vstd::Guid const &guid);
 template<typename T>
     requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<BaseObject, T>)
 T *create_object() {
@@ -65,6 +64,7 @@ T *create_object_with_guid(vstd::Guid const &guid) {
 RBC_RUNTIME_API void _zz_clear_dirty_transform();
 RBC_RUNTIME_API void _zz_on_before_rendering();
 RBC_RUNTIME_API bool world_transform_dirty();
+RBC_RUNTIME_API void get_all_objects(vstd::function<void(BaseObject*)> const& callback);
 
 template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive;
@@ -85,8 +85,6 @@ struct BaseObject : RCBase {
     friend struct BaseObjectStatics;
     RBC_RUNTIME_API friend BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
     RBC_RUNTIME_API friend BaseObject *create_object(vstd::Guid const &type_info);
-    RBC_RUNTIME_API friend void reset_object(BaseObject *obj);
-    RBC_RUNTIME_API friend void reset_object_with_guid(BaseObject *obj, vstd::Guid const &guid);
     RBC_RUNTIME_API friend BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
 protected:
     BaseObject() = default;

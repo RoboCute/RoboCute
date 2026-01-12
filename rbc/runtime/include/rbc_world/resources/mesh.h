@@ -86,7 +86,7 @@ public:
     [[nodiscard]] DeviceMesh *device_mesh() const;
     [[nodiscard]] DeviceTransformingMesh *device_transforming_mesh() const;
     [[nodiscard]] MeshManager::MeshData *mesh_data() const;
-    bool init_device_resource();
+    bool _init_device_resource() override;
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
 

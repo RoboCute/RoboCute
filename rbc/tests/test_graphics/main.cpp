@@ -13,7 +13,7 @@
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include "world_scene.h"
-#include <rbc_app/graphics_utils.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 #include <rbc_render/click_manager.h>

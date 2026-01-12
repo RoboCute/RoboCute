@@ -329,6 +329,21 @@ void dispose_resource_loader() {
     delete _res_loader;
     _res_loader = nullptr;
 }
+bool Resource::init_device_resource() {
+#ifndef NDEBUG
+    Clock clk;
+#endif
+    while (loading_status() == EResourceLoadingStatus::Loading) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+#ifndef NDEBUG
+        if (clk.toc() > 1000) {
+            LUISA_WARNING("Still waiting for resource {}", guid().to_string());
+            clk.tic();
+        }
+#endif
+    }
+    return _init_device_resource();
+}
 luisa::filesystem::path const &Resource::meta_root_path() {
     return _res_loader->_meta_path;
 }

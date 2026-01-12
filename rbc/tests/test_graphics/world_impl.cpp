@@ -10,7 +10,7 @@
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/texture_loader.h>
 #include <rbc_world/resources/material.h>
-#include <rbc_app/graphics_utils.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
@@ -177,24 +177,6 @@ void TextureResource::create_empty(void *this_, rbc::LCPixelStorage pixel_storag
     auto c = static_cast<world::TextureResource *>(this_);
     c->create_empty(pixel_storage, size, mip_level, is_virtual_texture);
 }
-void TextureResource::upload(void *this_, uint mip_level) {
-    auto c = static_cast<world::TextureResource *>(this_);
-    if (c->is_vt()) [[unlikely]] {
-        LUISA_ERROR("Can not upload to virtual-texture.");
-    }
-    auto graphics = GraphicsUtils::instance();
-    if (!graphics) [[unlikely]] {
-        LUISA_ERROR("Graphics context not initialized.");
-    }
-    auto tex = c->get_image();
-    if (!tex) [[unlikely]] {
-        LUISA_ERROR("Texture not initialized.");
-    }
-    if (tex->type() == DeviceImage::ImageType::None) {
-        c->init_device_resource();
-    }
-    graphics->update_texture(tex, mip_level);
-}
 luisa::span<std::byte> TextureResource::data_buffer(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
     auto ptr = c->host_data();
@@ -239,21 +221,6 @@ rbc::LCPixelStorage TextureResource::pixel_storage(void *this_) {
 luisa::uint2 TextureResource::size(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
     return c->size();
-}
-void MeshResource::upload(void *this_, bool only_vertex) {
-    auto c = static_cast<world::MeshResource *>(this_);
-    auto mesh = c->device_mesh();
-    if (!mesh) [[unlikely]] {
-        LUISA_ERROR("Can not upload to un-initialized mesh.");
-    }
-    auto graphics = GraphicsUtils::instance();
-    if (!graphics) [[unlikely]] {
-        LUISA_ERROR("Graphics context not initialized.");
-    }
-    if (!mesh->mesh_data()) {
-        c->init_device_resource();
-    }
-    graphics->update_mesh_data(mesh, only_vertex);
 }
 
 uint64_t MeshResource::basic_size_bytes(void *this_) {

@@ -30,6 +30,20 @@ void RenderComponent::on_destroy() {
         tr->remove_on_update_event(this);
     }
 }
+void RenderComponent::update_data() {
+    bool dirty{false};
+    if (_mesh_ref->loaded()) {
+        for (auto &i : _materials) {
+            if (i && i->loaded()) continue;
+            dirty = true;
+            break;
+        }
+    } else {
+        dirty = true;
+    }
+    if (dirty)
+        update_object();
+}
 void RenderComponent::serialize_meta(ObjSerialize const &ser) const {
     ser.ar.start_array();
     for (auto &i : _materials) {
@@ -202,7 +216,6 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
             _materials,
             mats.subspan(0, setted_size));
     }
-    bool loaded = false;
     [&] {
         if (!mesh->loaded()) return;
         for (auto iter = _materials.begin(); iter != _materials.end();) {
@@ -212,34 +225,11 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
             }
             ++iter;
         }
-        loaded = true;
         return;
     }();
-
-    if (!loaded) {
-        auto coro = [&]() -> rbc::coroutine {
-            if (mesh->loading_status() == EResourceLoadingStatus::Unloaded) {
-                if (!mesh->init_device_resource()) [[unlikely]] {
-                    LUISA_ERROR("Render mesh not initialized.");
-                }
-            }
-            co_await mesh->await_loading();
-            for (auto iter = _materials.begin(); iter != _materials.end();) {
-                auto &i = *iter;
-                if (i) {
-                    // wait material load
-                    co_await i->await_loading();
-                }
-                ++iter;
-            }
-        }();
-        while (!coro.done()) {
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
-            coro.resume();
-        }
-    }
     _material_codes.clear();
     _material_codes.reserve(submesh_size);
+    mesh->init_device_resource();
     vstd::push_back_func(
         _material_codes,
         submesh_size,

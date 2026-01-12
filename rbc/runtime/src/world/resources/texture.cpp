@@ -7,6 +7,7 @@
 #include <rbc_graphics/texture/tex_stream_manager.h>
 #include <rbc_world/type_register.h>
 #include <rbc_world/resource_importer.h>
+#include <rbc_graphics/graphics_utils.h>
 
 namespace rbc::world {
 
@@ -78,11 +79,12 @@ void TextureResource::create_empty(
     luisa::uint2 size,
     uint32_t mip_level,
     bool is_vt) {
-    _status = EResourceLoadingStatus::Unloaded;
-    if (_tex) [[unlikely]] {
-        LUISA_ERROR("Can not create on exists texture.");
+    while (_status == EResourceLoadingStatus::Loading) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
+    _status = EResourceLoadingStatus::Unloaded;
     std::lock_guard lck{_async_mtx};
+    _tex.reset();
     _size = size;
     _pixel_storage = pixel_storage;
     _mip_level = mip_level;
@@ -111,7 +113,11 @@ bool TextureResource::is_vt() const {
         return _is_vt;
     }
 }
-bool TextureResource::init_device_resource() {
+bool TextureResource::_init_device_resource() {
+    while (loading_status() == EResourceLoadingStatus::Loading) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+    }
+
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_tex || load_executed()) {
         return false;
@@ -146,6 +152,11 @@ bool TextureResource::init_device_resource() {
             (PixelStorage)_pixel_storage,
             _size,
             _mip_level);
+        auto graphics = GraphicsUtils::instance();
+        if (!graphics) [[unlikely]] {
+            LUISA_ERROR("Graphics context not initialized.");
+        }
+        graphics->update_texture(tex, ~0u);
     }
     _status = EResourceLoadingStatus::Loaded;
     return true;

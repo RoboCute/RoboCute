@@ -135,14 +135,14 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         if (frame_settings.radiance_buffer) {
             temp_img = render_device.create_transient_image<float>("temp_tex_from_radiance", PixelStorage::FLOAT4, frame_settings.display_resolution);
             cmdlist << (*blit_from_buffer)(temp_img, *frame_settings.radiance_buffer, 3).dispatch(frame_settings.display_resolution);
-            frame_settings.resolved_img = &temp_img;
+            frame_settings.resolved_img = std::move(temp_img);
         } else {
             return;
         }
     }
     auto &pipeline_mode = ctx.pipeline_settings.read<PTPipelineSettings>();
     if (!pipeline_mode.use_post_filter) {
-        cmdlist << (*blit_shader)(*frame_settings.dst_img, *frame_settings.resolved_img, false).dispatch(frame_settings.dst_img->size());
+        cmdlist << (*blit_shader)(*frame_settings.dst_img, frame_settings.resolved_img, false).dispatch(frame_settings.dst_img->size());
         return;
     }
     auto &scene = *ctx.scene;
@@ -151,10 +151,10 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
 
     auto temp_res = render_device.create_transient_image<float>(
         "post_temp_img",
-        frame_settings.resolved_img->storage(),
-        frame_settings.resolved_img->size());
+        frame_settings.resolved_img.storage(),
+        frame_settings.resolved_img.size());
     Image<float> const *imgs[2]{
-        frame_settings.resolved_img,
+        &frame_settings.resolved_img,
         &temp_res,
     };
 

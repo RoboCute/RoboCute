@@ -71,7 +71,7 @@ void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frame_settings.render_resolution, pass_ctx->frame_index).dispatch(frame_settings.display_resolution);
     }
     frame_settings.radiance_buffer = nullptr;
-    frame_settings.resolved_img = &temp_img;
+    frame_settings.resolved_img = std::move(temp_img);
 
     /////// Bake lut
     // constexpr uint64_t lut_frame = 16384;

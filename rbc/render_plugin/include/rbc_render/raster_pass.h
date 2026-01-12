@@ -32,7 +32,6 @@ public:
         SceneManager &scene) override;
     RasterPass();
     ~RasterPass();
-    Image<float> emission;
     void wait_enable() override;
 };
 struct RasterPassContext : public PassContext {

@@ -2,7 +2,7 @@
 #include <rbc_world/entity.h>
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/type_register.h>
-#include <rbc_app/graphics_utils.h>
+#include <rbc_graphics/graphics_utils.h>
 
 namespace rbc::world {
 CameraComponent::CameraComponent(Entity *entity)

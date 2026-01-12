@@ -6,6 +6,7 @@
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/device_assets/device_transforming_mesh.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
+#include <rbc_graphics/graphics_utils.h>
 namespace rbc::world {
 MeshResource::MeshResource() {
     _origin_mesh.reset();
@@ -144,11 +145,12 @@ void MeshResource::create_empty(
     uint32_t uv_count,
     bool contained_normal,
     bool contained_tangent) {
-    _status = EResourceLoadingStatus::Unloaded;
-    if (_device_res) [[unlikely]] {
-        LUISA_ERROR("Can not create on exists mesh.");
+    while (_status == EResourceLoadingStatus::Loading) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
+    _status = EResourceLoadingStatus::Unloaded;
     std::lock_guard lck{_async_mtx};
+    _device_res.reset();
     _submesh_offsets = std::move(submesh_offsets);
     _vertex_count = vertex_count;
     _triangle_count = triangle_count;
@@ -175,7 +177,7 @@ void MeshResource::create_as_morphing_instance(MeshResource *origin_mesh) {
     _device_res = tr_mesh;
 }
 
-bool MeshResource::init_device_resource() {
+bool MeshResource::_init_device_resource() {
     auto render_device = RenderDevice::instance_ptr();
     if (!is_transforming_mesh()) {
         auto mesh = device_mesh();
@@ -194,10 +196,13 @@ bool MeshResource::init_device_resource() {
                 _triangle_count,
                 vstd::vector<uint>(_submesh_offsets));
         }
+        auto graphics = GraphicsUtils::instance();
+        if (!graphics) [[unlikely]] {
+            LUISA_ERROR("Graphics context not initialized.");
+        }
+        graphics->update_mesh_data(mesh, false);
     } else {
-        auto assets_mng = AssetsManager::instance();
-        if (assets_mng) [[likely]]
-            assets_mng->wake_load_thread();
+        if (!render_device || !_device_res) return false;
         auto coro = [](MeshResource *mesh_res) -> coroutine {
             co_await mesh_res->await_loading();
         }(_origin_mesh.get());
@@ -207,11 +212,10 @@ bool MeshResource::init_device_resource() {
             std::this_thread::yield();
         }
         auto tr_mesh = static_cast<DeviceTransformingMesh *>(_device_res.get());
+        if (tr_mesh->mesh_data()) return false;
         tr_mesh->create_from_origin(_origin_mesh->device_mesh());
-        if (!render_device || !tr_mesh) return false;
         tr_mesh->copy_from_origin(render_device->lc_main_cmd_list());
     }
-    _status = EResourceLoadingStatus::Loaded;
     return true;
 }
 
