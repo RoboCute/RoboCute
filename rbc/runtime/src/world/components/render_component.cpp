@@ -31,18 +31,7 @@ void RenderComponent::on_destroy() {
     }
 }
 void RenderComponent::update_data() {
-    bool dirty{false};
-    if (_mesh_ref->loaded()) {
-        for (auto &i : _materials) {
-            if (i && i->loaded()) continue;
-            dirty = true;
-            break;
-        }
-    } else {
-        dirty = true;
-    }
-    if (dirty)
-        update_object();
+    update_object();
 }
 void RenderComponent::serialize_meta(ObjSerialize const &ser) const {
     ser.ar.start_array();
@@ -182,7 +171,7 @@ void RenderComponent::remove_object() {
     }
 }
 
-RenderComponent::RenderComponent(Entity *entity) : ComponentDerive<RenderComponent>(entity) {
+RenderComponent::RenderComponent() {
     _mesh_light_idx = ~0u;
 }
 void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats, MeshResource *mesh) {
@@ -216,17 +205,6 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
             _materials,
             mats.subspan(0, setted_size));
     }
-    [&] {
-        if (!mesh->loaded()) return;
-        for (auto iter = _materials.begin(); iter != _materials.end();) {
-            auto &i = *iter;
-            if (i && !i->loaded()) {
-                return;
-            }
-            ++iter;
-        }
-        return;
-    }();
     _material_codes.clear();
     _material_codes.reserve(submesh_size);
     mesh->install();
@@ -391,5 +369,5 @@ uint RenderComponent::get_tlas_index() const {
     }
 }
 
-DECLARE_WORLD_COMPONENT_REGISTER(RenderComponent);
+DECLARE_WORLD_OBJECT_REGISTER(RenderComponent);
 }// namespace rbc::world

@@ -1,6 +1,7 @@
 #include "rbc_world/importers/texture_importer_tiff.h"
 #include "tinytiffreader.h"
 #include <rbc_graphics/device_assets/device_image.h>
+#include <rbc_world/resources/texture.h>
 
 namespace rbc::world {
 

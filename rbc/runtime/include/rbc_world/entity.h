@@ -58,6 +58,8 @@ public:
     Component *get_component(MD5 const &type_md5);
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
+    void unsafe_call_awake();
+    void unsafe_call_update();
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
     bool remove_component() {

@@ -15,6 +15,7 @@
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_core/runtime_static.h>
+#include <rbc_graphics/device_assets/device_image.h>
 namespace rbc {
 vstd::Guid Object::guid(void *this_) {
     return static_cast<world::BaseObject *>(this_)->guid();
@@ -447,10 +448,6 @@ void TextureResource::set_skybox(void *this_) {
     if (t->loading_status() == world::EResourceLoadingStatus::Unloaded) [[unlikely]] {
         LUISA_ERROR("Skybox dest texture not loaded.");
     }
-    auto graphics = GraphicsUtils::instance();
-    if (!graphics) [[unlikely]] {
-        LUISA_ERROR("Graphics context not initialized.");
-    }
     auto wait_skybox = [&]() -> rbc::coroutine {
         co_await t->await_loading();
     }();
@@ -458,6 +455,9 @@ void TextureResource::set_skybox(void *this_) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
         wait_skybox.resume();
     }
-    graphics->render_plugin()->update_skybox(RC<DeviceImage>{t->get_image()});
+    auto graphics = GraphicsUtils::instance();
+    if (graphics) {
+        graphics->render_plugin()->update_skybox(RC<DeviceImage>{t->get_image()});
+    }
 }
 }// namespace rbc

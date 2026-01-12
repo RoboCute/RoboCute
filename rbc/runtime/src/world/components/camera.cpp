@@ -1,12 +1,12 @@
 #include <rbc_world/components/camera_component.h>
 #include <rbc_world/entity.h>
+#include <rbc_graphics/camera.h>
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/type_register.h>
 #include <rbc_graphics/graphics_utils.h>
 
 namespace rbc::world {
-CameraComponent::CameraComponent(Entity *entity)
-    : ComponentDerive<CameraComponent>{entity} {}
+CameraComponent::CameraComponent() {}
 CameraComponent::~CameraComponent() {}
 void CameraComponent::serialize_meta(ObjSerialize const &obj) const {
     obj.ar.value(fov, "fov");
@@ -80,5 +80,5 @@ void CameraComponent::on_destroy() {
     }
     disable_camera();
 }
-DECLARE_WORLD_COMPONENT_REGISTER(CameraComponent)
+DECLARE_WORLD_OBJECT_REGISTER(CameraComponent)
 }// namespace rbc::world

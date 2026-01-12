@@ -160,8 +160,7 @@ void JoltComponent::init(
         jolt_singleton->mSystem->OptimizeBroadPhase();
     }
 }
-JoltComponent::JoltComponent(Entity *entity)
-    : ComponentDerive<JoltComponent>(entity) {}
+JoltComponent::JoltComponent() {}
 JoltComponent::~JoltComponent() {}
 void JoltComponent::update_step(float delta_time) {
     jolt_singleton->mSystem->Update(delta_time, 8, jolt_singleton->mTempAllocator, jolt_singleton->mJobSystem);
@@ -199,5 +198,5 @@ void JoltComponent::serialize_meta(ObjSerialize const &ser) const {
 void JoltComponent::deserialize_meta(ObjDeSerialize const &ser) {
     LUISA_NOT_IMPLEMENTED();
 }
-DECLARE_WORLD_COMPONENT_REGISTER(JoltComponent);
+DECLARE_WORLD_OBJECT_REGISTER(JoltComponent);
 }// namespace rbc::world

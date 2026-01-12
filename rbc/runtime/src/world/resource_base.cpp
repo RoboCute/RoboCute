@@ -6,6 +6,7 @@
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>
 #include <rbc_world/importers/register_importers.h>
+#include <rbc_core/atomic.h>
 
 namespace rbc ::world {
 luisa::filesystem::path Resource::path() const {
@@ -123,7 +124,7 @@ struct ResourceLoader : RBCStruct {
             if (!res.loading_coro.done()) {
                 loading_queue.enqueue(std::move(res));
             } else {
-                ptr->_status = EResourceLoadingStatus::Loaded;
+                ptr->unsafe_set_loaded();
             }
             auto asset_mng = AssetsManager::instance();
             if (asset_mng) {
@@ -330,9 +331,13 @@ void dispose_resource_loader() {
     _res_loader = nullptr;
 }
 void Resource::unsafe_set_loaded() {
-    _status = EResourceLoadingStatus::Loaded;
+    atomic_max(_status, EResourceLoadingStatus::Loaded);
+}
+void Resource::unsafe_set_installed() {
+    atomic_max(_status, EResourceLoadingStatus::Installed);
 }
 bool Resource::install() {
+    if (_status == EResourceLoadingStatus::Installed) return false;
 #ifndef NDEBUG
     Clock clk;
 #endif
@@ -348,7 +353,7 @@ bool Resource::install() {
     _status = EResourceLoadingStatus::Installing;
     auto v = _install();
     if (v) {
-        _status = EResourceLoadingStatus::Installed;
+        unsafe_set_installed();
     }
     return v;
 }

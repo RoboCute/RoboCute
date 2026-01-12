@@ -99,7 +99,7 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
         //TODO: other types
     }
     if (set_to_loaded) {
-        _status = EResourceLoadingStatus::Loaded;
+        unsafe_set_loaded();
     }
 }
 luisa::BinaryBlob MaterialResource::write_content_to() {
@@ -143,14 +143,6 @@ luisa::BinaryBlob MaterialResource::write_content_to() {
         LUISA_ASSERT(iter == _depended_resources.end(), "Material type mismatch.");
     }
     return json_ser.write_to();
-}
-void MaterialResource::serialize_meta(ObjSerialize const &ser) const {
-    // TODO: mark dependencies
-    // for (auto &i : _depended_resources) {
-    //     auto guid = i->guid();
-    //     if (guid)
-    //         ser.depended_resources.emplace(guid);
-    // }
 }
 bool MaterialResource::_async_load_from_file() {
     auto path = this->path();
@@ -247,7 +239,7 @@ rbc::coroutine MaterialResource::_async_load() {
         if (i)
             co_await i->await_loading();
     }
-    _status = EResourceLoadingStatus::Loaded;
+    unsafe_set_loaded();
     co_return;
 }
 

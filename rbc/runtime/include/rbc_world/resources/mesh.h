@@ -86,13 +86,12 @@ public:
     [[nodiscard]] DeviceMesh *device_mesh() const;
     [[nodiscard]] DeviceTransformingMesh *device_transforming_mesh() const;
     [[nodiscard]] MeshManager::MeshData *mesh_data() const;
-    bool _install() override;
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
 
     rbc::coroutine _async_load() override;
-
 protected:
+    bool _install() override;
     bool unsafe_save_to_path() const override;
 };
 }// namespace rbc::world

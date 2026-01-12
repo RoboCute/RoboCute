@@ -3,9 +3,9 @@
 namespace rbc::world {
 
 struct RBC_RUNTIME_API ExternalComponent final : ComponentDerive<ExternalComponent> {
-    DECLARE_WORLD_COMPONENT_FRIEND(ExternalComponent)
+    DECLARE_WORLD_OBJECT_FRIEND(ExternalComponent)
 private:
-    ExternalComponent(Entity *entity);
+    ExternalComponent();
     ~ExternalComponent();
 public:
     luisa::function<void()> _on_awake_func;

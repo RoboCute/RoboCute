@@ -42,6 +42,7 @@ public:
     bool loaded() const { return loading_status() >= EResourceLoadingStatus::Loaded; }
     bool installed() const { return loading_status() >= EResourceLoadingStatus::Installed; }
     void unsafe_set_loaded();
+    void unsafe_set_installed();
     RBC_RUNTIME_API bool install();
     // await until the loading logic finished in both host-side and device-side
     RBC_RUNTIME_API ResourceAwait await_loading();

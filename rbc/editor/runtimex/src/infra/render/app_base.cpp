@@ -2,6 +2,7 @@
 #include "luisa/core/logging.h"
 #include <rbc_graphics/make_device_config.h>
 #include <luisa/backends/ext/native_resource_ext.hpp>
+#include <rbc_core/state_map.h>
 
 namespace rbc {
 

@@ -1,17 +1,15 @@
 #pragma once
 #include <rbc_graphics/scene_manager.h>
-#include <rbc_graphics/shader_manager.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/lights.h>
-#include <rbc_graphics/device_assets/device_image.h>
-#include <rbc_graphics/device_assets/device_mesh.h>
 #include <luisa/core/clock.h>
 #include <luisa/vstl/functional.h>
 #include <luisa/runtime/swapchain.h>
 #include <rbc_render/render_plugin.h>
-#include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/dynamic_module.h>
 namespace rbc {
+struct DeviceImage;
+struct DeviceMesh;
 namespace world {
 struct MeshResource;
 struct TextureLoader;

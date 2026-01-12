@@ -28,7 +28,7 @@ rbc::coroutine ExternalComponent::after_frame() {
     }
     co_return;
 }
-ExternalComponent::ExternalComponent(Entity *entity) : ComponentDerive<ExternalComponent>(entity) {}
+ExternalComponent::ExternalComponent() = default;
 ExternalComponent::~ExternalComponent() {}
-DECLARE_WORLD_COMPONENT_REGISTER(ExternalComponent);
+DECLARE_WORLD_OBJECT_REGISTER(ExternalComponent);
 }// namespace rbc::world

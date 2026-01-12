@@ -6,13 +6,13 @@
 
 namespace rbc::world {
 
-LightComponent::LightComponent(Entity *entity) : ComponentDerive<LightComponent>(entity) {}
+LightComponent::LightComponent() {}
 LightComponent::~LightComponent() {}
-void LightComponent::_update_light() {
+void LightComponent::update_data() {
     auto tr = entity()->get_component<TransformComponent>();
     if (!tr) return;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
-        LUISA_ERROR("Light::_update_light can only be called in render-thread.");
+        LUISA_ERROR("Light::update_data can only be called in render-thread.");
     }
     auto matrix = tr->trs_float();
     auto scale_vec = tr->scale();
@@ -91,7 +91,7 @@ void LightComponent::_update_light() {
 void LightComponent::on_awake() {
     auto tr = entity()->get_component<TransformComponent>();
     if (tr) {
-        tr->add_on_update_event(this, &LightComponent::_update_light);
+        tr->add_on_update_event(this, &LightComponent::update_data);
     }
 }
 void LightComponent::on_destroy() {
@@ -123,7 +123,7 @@ void LightComponent::add_area_light(luisa::float3 luminance, bool visible) {
         _light_stub.remove_light();
     }
     _light_stub.light_type = LightType::Area;
-    _update_light();
+    update_data();
 }
 void LightComponent::add_disk_light(luisa::float3 luminance, bool visible) {
     _luminance = luminance;
@@ -132,7 +132,7 @@ void LightComponent::add_disk_light(luisa::float3 luminance, bool visible) {
         _light_stub.remove_light();
     }
     _light_stub.light_type = LightType::Disk;
-    _update_light();
+    update_data();
 }
 void LightComponent::add_point_light(luisa::float3 luminance, bool visible) {
     _luminance = luminance;
@@ -141,7 +141,7 @@ void LightComponent::add_point_light(luisa::float3 luminance, bool visible) {
         _light_stub.remove_light();
     }
     _light_stub.light_type = LightType::Sphere;
-    _update_light();
+    update_data();
 }
 void LightComponent::add_spot_light(luisa::float3 luminance, float angle_radians, float small_angle_radians, float angle_atten_pow, bool visible) {
     _luminance = luminance;
@@ -153,8 +153,8 @@ void LightComponent::add_spot_light(luisa::float3 luminance, float angle_radians
         _light_stub.remove_light();
     }
     _light_stub.light_type = LightType::Spot;
-    _update_light();
+    update_data();
 }
-DECLARE_WORLD_COMPONENT_REGISTER(LightComponent);
+DECLARE_WORLD_OBJECT_REGISTER(LightComponent);
 
 }// namespace rbc::world

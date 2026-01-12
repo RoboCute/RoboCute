@@ -47,10 +47,13 @@ Entity::Entity() {
 }
 Entity::~Entity() {
     for (auto &i : _components) {
-        auto obj = i.second;
-        LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
-        auto comp = static_cast<Component *>(obj);
-        LUISA_DEBUG_ASSERT(comp->entity() == this);
+        auto comp = i.second;
+        LUISA_DEBUG_ASSERT(comp->entity() == this || comp->entity() == nullptr);
+        if (comp->entity())
+            comp->on_destroy();
+    }
+    for (auto &i : _components) {
+        auto comp = i.second;
         comp->rbc_rc_delete();
     }
 }
@@ -63,7 +66,7 @@ void Entity::_add_component(Component *component) {
     component->on_awake();
 }
 
-bool Entity::remove_component(MD5 const& type_md5) {
+bool Entity::remove_component(MD5 const &type_md5) {
     auto iter = _components.find(type_md5);
     if (iter == _components.end()) return false;
     auto obj = iter->second;
@@ -75,7 +78,7 @@ bool Entity::remove_component(MD5 const& type_md5) {
     comp->rbc_rc_delete();
     return true;
 }
-Component *Entity::get_component(MD5 const& type_md5) {
+Component *Entity::get_component(MD5 const &type_md5) {
     auto iter = _components.find(type_md5);
     if (iter == _components.end()) return nullptr;
     auto obj = iter->second;
@@ -111,10 +114,24 @@ void Entity::deserialize_meta(ObjDeSerialize const &ser) {
             continue;
         }
         auto comp = _create_component(reinterpret_cast<MD5 const &>(type_id));
-        _add_component(comp);
-        comp->deserialize_meta(ser);
+        if (comp) {
+            comp->deserialize_meta(ser);
+            auto result = _components.try_emplace(comp->type_id(), comp).second;
+            LUISA_ASSERT(result, "Component already exists.");
+            comp->_entity = this;
+        }
     }
     ser.ar.end_scope();
+}
+void Entity::unsafe_call_awake() {
+    for (auto &i : _components) {
+        i.second->on_awake();
+    }
+}
+void Entity::unsafe_call_update() {
+    for (auto &i : _components) {
+        i.second->update_data();
+    }
 }
 void Entity::_remove_component(Component *component) {
     LUISA_DEBUG_ASSERT(component->entity() == this);
@@ -136,8 +153,8 @@ void Component::_clear_entity() {
     on_destroy();
     _entity = nullptr;
 }
-Component::Component(Entity *entity) {}
-Component::~Component() {}
+Component::Component() = default;
+Component::~Component() = default;
 DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world
 

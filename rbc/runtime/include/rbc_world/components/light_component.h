@@ -4,17 +4,17 @@
 
 namespace rbc::world {
 struct RBC_RUNTIME_API LightComponent final : ComponentDerive<LightComponent> {
-    DECLARE_WORLD_COMPONENT_FRIEND(LightComponent)
+    DECLARE_WORLD_OBJECT_FRIEND(LightComponent)
 private:
     LightStub _light_stub;
-    LightComponent(Entity *entity);
+    LightComponent();
     ~LightComponent();
     float3 _luminance{1, 1, 1};
     float _angle_radians{1.04719755119659f};       // 60
     float _small_angle_radians{0.349065850398865f};// 20
     float _angle_atten_pow{1.0f};
     bool _visible{true};
-    void _update_light();
+    void update_data() override;
 public:
     [[nodiscard]] auto luminance() const { return _luminance; }
     [[nodiscard]] auto angle_radians() const { return _angle_radians; }

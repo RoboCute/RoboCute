@@ -4,9 +4,9 @@
 
 namespace rbc::world {
 struct RBC_RUNTIME_API CameraComponent final : ComponentDerive<CameraComponent> {
-    DECLARE_WORLD_COMPONENT_FRIEND(CameraComponent)
+    DECLARE_WORLD_OBJECT_FRIEND(CameraComponent)
 private:
-    CameraComponent(Entity *entity);
+    CameraComponent();
     ~CameraComponent();
     void *_render_pipe_ctx{};
     void _on_transform_update();

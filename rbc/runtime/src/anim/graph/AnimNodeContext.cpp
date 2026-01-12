@@ -1,6 +1,6 @@
 #include "rbc_anim/graph/AnimNodeContext.h"
 #include "rbc_anim/anim_instance.h"
-
+#include "rbc_world/resources/anim_graph.h"
 namespace rbc {
 
 AnimInstance *AnimationBaseContext::GetAnimInstanceObject() const { return anim_instance_proxy->GetAnimInstanceObject(); }

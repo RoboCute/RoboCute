@@ -177,9 +177,9 @@ Component *Entity::_create_component(MD5 const &type) {
     if (iter == _world_inst->_create_funcs.end()) {
         return nullptr;
     }
-    auto ptr = iter->second->create_component(this);
+    auto ptr = iter->second->create();
     ptr->init_with_guid(vstd::Guid(true));
-    return ptr;
+    return static_cast<Component *>(ptr);
 }
 BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid) {
     return create_object_with_guid(type_info.md5(), guid);

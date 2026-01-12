@@ -24,6 +24,8 @@
 #include <rbc_core/runtime_static.h>
 #include <rbc_world/base_object.h>
 #include <rbc_plugin/plugin_manager.h>
+#include <rbc_core/state_map.h>
+#include <rbc_graphics/camera.h>
 using namespace luisa;
 using namespace luisa::compute;
 #include <material/mats.inl>

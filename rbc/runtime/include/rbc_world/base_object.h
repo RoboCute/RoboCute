@@ -64,7 +64,7 @@ T *create_object_with_guid(vstd::Guid const &guid) {
 RBC_RUNTIME_API void _zz_clear_dirty_transform();
 RBC_RUNTIME_API void _zz_on_before_rendering();
 RBC_RUNTIME_API bool world_transform_dirty();
-RBC_RUNTIME_API void get_all_objects(vstd::function<void(BaseObject*)> const& callback);
+RBC_RUNTIME_API void get_all_objects(vstd::function<void(BaseObject *)> const &callback);
 
 template<typename T, BaseObjectType base_type_v>
 struct BaseObjectDerive;
@@ -188,11 +188,6 @@ RBC_RTTI(rbc::world::BaseObject);
 #define DECLARE_WORLD_OBJECT_FRIEND(type_name)             \
     friend void ea525e13_create_##type_name(type_name *);  \
     friend void ea525e13_destroy_##type_name(type_name *); \
-    void rbc_rc_delete() override;
-
-#define DECLARE_WORLD_COMPONENT_FRIEND(type_name)                   \
-    friend void ea525e13_create_##type_name(type_name *, Entity *); \
-    friend void ea525e13_destroy_##type_name(type_name *);          \
     void rbc_rc_delete() override;
 
 namespace luisa {

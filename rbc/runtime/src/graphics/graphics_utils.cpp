@@ -1,3 +1,6 @@
+#include <rbc_graphics/device_assets/assets_manager.h>
+#include <rbc_graphics/device_assets/device_image.h>
+#include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/device_assets/device_transforming_mesh.h>

@@ -6,10 +6,10 @@
 namespace rbc::world {
 
 struct RBC_RUNTIME_API SkelMeshComponent final : ComponentDerive<SkelMeshComponent> {
-    DECLARE_WORLD_COMPONENT_FRIEND(SkelMeshComponent)
+    DECLARE_WORLD_OBJECT_FRIEND(SkelMeshComponent)
 
 private:
-    SkelMeshComponent(Entity *entity);
+    SkelMeshComponent();
     ~SkelMeshComponent();
 
     RC<SkelMeshResource> _skel_mesh_ref;// the animatable skeletal mesh resource

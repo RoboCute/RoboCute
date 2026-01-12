@@ -22,7 +22,6 @@ public:
     auto &mat_data() const { return _mat_data; }
     // prepare host data and emplace
     luisa::BinaryBlob write_content_to();
-    void serialize_meta(ObjSerialize const &obj) const override;
 
     rbc::coroutine _async_load() override;
     void load_from_json(luisa::string_view json_vec);

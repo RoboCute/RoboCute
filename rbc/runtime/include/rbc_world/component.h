@@ -18,7 +18,7 @@ struct RBC_RUNTIME_API Component : BaseObject {
 private:
     Entity *_entity{};
     void _remove_self_from_entity();
-    explicit Component(Entity *entity);
+    Component();
     ~Component();
 
     void _clear_entity();
@@ -51,7 +51,7 @@ struct ComponentDerive : Component {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
 protected:
-    explicit ComponentDerive(Entity *entity) : Component(entity) {}
+    ComponentDerive() = default;
     ~ComponentDerive() {
         Component::_remove_self_from_entity();
     }

@@ -8,9 +8,9 @@ struct MeshResource;
 struct MaterialResource;
 
 struct RBC_RUNTIME_API RenderComponent final : ComponentDerive<RenderComponent> {
-    DECLARE_WORLD_COMPONENT_FRIEND(RenderComponent)
+    DECLARE_WORLD_OBJECT_FRIEND(RenderComponent)
 private:
-    RenderComponent(Entity *entity);
+    RenderComponent();
     ~RenderComponent();
     ObjectRenderType _type{};
     luisa::vector<MatCode> _material_codes;

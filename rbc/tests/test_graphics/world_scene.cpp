@@ -10,6 +10,7 @@
 #include <rbc_render/click_manager.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
+#include <rbc_graphics/device_assets/device_image.h>
 #include "jolt_component.h"
 
 #include <tracy_wrapper.h>
@@ -228,9 +229,10 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
             read_adapter.end_scope();
         }
         for (auto &i : _entities) {
+            i->unsafe_call_awake();
             auto render = i->get_component<world::RenderComponent>();
             if (render) {
-                render->update_object();
+                render->update_data();
             }
         }
         // wait skybox

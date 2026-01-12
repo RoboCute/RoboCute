@@ -7,7 +7,7 @@ namespace rbc::world {
 struct TransformStatic : RBCStruct {
     luisa::vector<InstanceID> dirty_trans;
 };
-TransformComponent::TransformComponent(Entity *entity) : ComponentDerive<TransformComponent>(entity) {}
+TransformComponent::TransformComponent() {}
 static RuntimeStatic<TransformStatic> _trans_inst;
 luisa::vector<InstanceID> &dirty_transforms() {
     return _trans_inst->dirty_trans;
@@ -193,6 +193,6 @@ void TransformComponent::remove_on_update_event(Component *ptr) {
     _on_update_events.remove(ptr->instance_id());
 }
 // clang-format off
-DECLARE_WORLD_COMPONENT_REGISTER(TransformComponent)
+DECLARE_WORLD_OBJECT_REGISTER(TransformComponent)
 // clang-format on
 }// namespace rbc::world

@@ -4,7 +4,8 @@
 #include <rbc_render/click_manager.h>
 
 #include <luisa/backends/ext/native_resource_ext.hpp>
-
+#include <rbc_core/state_map.h>
+#include <rbc_graphics/camera.h>
 using namespace luisa;
 using namespace luisa::compute;
 

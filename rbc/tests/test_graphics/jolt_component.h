@@ -3,10 +3,10 @@
 
 namespace rbc::world {
 struct JoltComponent final : ComponentDerive<JoltComponent> {
-    DECLARE_WORLD_COMPONENT_FRIEND(JoltComponent)
+    DECLARE_WORLD_OBJECT_FRIEND(JoltComponent)
 private:
     void *_physics_instance{};
-    JoltComponent(Entity *entity);
+    JoltComponent();
     ~JoltComponent();
 public:
     void init(

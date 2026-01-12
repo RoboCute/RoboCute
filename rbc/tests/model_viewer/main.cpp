@@ -31,6 +31,7 @@
 #include <rbc_world/resource_base.h>
 #include <rbc_world/base_object.h>
 #include <luisa/core/logging.h>
+#include <rbc_core/state_map.h>
 
 using namespace rbc;
 using namespace luisa;

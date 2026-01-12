@@ -2,6 +2,7 @@
 #include "rbc_anim/graph/AnimGraph.h"
 #include "rbc_anim/anim_instance.h"
 #include "rbc_world/type_register.h"
+#include "rbc_world/resources/anim_graph.h"
 
 namespace rbc {
 

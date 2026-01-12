@@ -95,7 +95,7 @@ void TextureResource::create_empty(
     } else {
         _tex = new DeviceImage();
     }
-    _status = EResourceLoadingStatus::Loaded;
+    unsafe_set_loaded();
 }
 bool TextureResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
@@ -150,10 +150,9 @@ bool TextureResource::_install() {
             _size,
             _mip_level);
         auto graphics = GraphicsUtils::instance();
-        if (!graphics) [[unlikely]] {
-            LUISA_ERROR("Graphics context not initialized.");
+        if (graphics) {
+            graphics->update_texture(tex, ~0u);
         }
-        graphics->update_texture(tex, ~0u);
     }
     return true;
 }
@@ -220,7 +219,7 @@ rbc::coroutine TextureResource::_async_load() {
     while (!_load_finished()) {
         co_await std::suspend_always{};
     }
-    _status = EResourceLoadingStatus::Installed;
+    unsafe_set_installed();
     co_return;
 }
 bool TextureResource::load_executed() const {

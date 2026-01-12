@@ -19,6 +19,7 @@
 #include <rbc_core/runtime_static.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <tracy_wrapper.h>
+#include <rbc_core/state_map.h>
 
 #include <rbc_world/entity.h>
 #include <rbc_world/resources/mesh.h>

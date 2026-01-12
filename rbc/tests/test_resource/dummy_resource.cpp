@@ -32,7 +32,7 @@ void DummyResource::create_empty(std::initializer_list<RC<DummyResource>> depend
     }
     vstd::push_back_all(_value, luisa::span{name.data(), name.size()});
     // mark as loaded
-    _status = world::EResourceLoadingStatus::Loaded;
+    unsafe_set_loaded();
 }
 rbc::coroutine DummyResource::_async_load() {
     // load current binary
@@ -53,8 +53,6 @@ rbc::coroutine DummyResource::_async_load() {
         }
     }
     LUISA_INFO("Value: {}", print_result);
-    // we DO NOT need this, status will be setted automatically
-    // _status = world::EResourceLoadingStatus::Loaded;
     co_return;
 }
 bool DummyResource::unsafe_save_to_path() const {

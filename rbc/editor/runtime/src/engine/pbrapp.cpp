@@ -4,6 +4,8 @@
 #include <rbc_graphics/make_device_config.h>
 #include <luisa/backends/ext/native_resource_ext.hpp>
 #include <rbc_render/generated/pipeline_settings.hpp>
+#include <rbc_core/state_map.h>
+#include <rbc_graphics/camera.h>
 
 using namespace luisa;
 using namespace luisa::compute;

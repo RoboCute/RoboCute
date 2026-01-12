@@ -159,7 +159,7 @@ void MeshResource::create_empty(
     _contained_tangent = contained_tangent;
     _origin_mesh.reset();
     _device_res = new DeviceMesh{};
-    _status = EResourceLoadingStatus::Loaded;
+    unsafe_set_loaded();
 }
 void MeshResource::_copy_from_mesh(MeshResource *origin_mesh) {
     _submesh_offsets.clear();
@@ -176,7 +176,7 @@ void MeshResource::create_as_morphing_instance(MeshResource *origin_mesh) {
     _copy_from_mesh(origin_mesh);
     auto tr_mesh = new DeviceTransformingMesh{};
     _device_res = tr_mesh;
-    _status = EResourceLoadingStatus::Loaded;
+    unsafe_set_loaded();
 }
 
 bool MeshResource::_install() {
@@ -199,10 +199,9 @@ bool MeshResource::_install() {
                 vstd::vector<uint>(_submesh_offsets));
         }
         auto graphics = GraphicsUtils::instance();
-        if (!graphics) [[unlikely]] {
-            LUISA_ERROR("Graphics context not initialized.");
+        if (graphics) {
+            graphics->update_mesh_data(mesh, false);
         }
-        graphics->update_mesh_data(mesh, false);
     } else {
         if (!render_device || !_device_res) return false;
         auto coro = [](MeshResource *mesh_res) -> coroutine {
@@ -275,7 +274,7 @@ rbc::coroutine MeshResource::_async_load() {
     while (!_device_res->load_finished()) {
         co_await std::suspend_always{};
     }
-    _status = EResourceLoadingStatus::Installed;
+    unsafe_set_installed();
     co_return;
 }
 

@@ -7,7 +7,7 @@
 
 namespace rbc::world {
 
-SkelMeshComponent::SkelMeshComponent(Entity *entity) : ComponentDerive<SkelMeshComponent>(entity) {}
+SkelMeshComponent::SkelMeshComponent() {}
 SkelMeshComponent::~SkelMeshComponent() {
 }
 void SkelMeshComponent::on_awake() {
@@ -103,6 +103,6 @@ MeshResource *SkelMeshComponent::GetRuntimeMesh() const {
     return render_data.morph_mesh.get();
 }
 
-DECLARE_WORLD_COMPONENT_REGISTER(SkelMeshComponent);
+DECLARE_WORLD_OBJECT_REGISTER(SkelMeshComponent);
 
 }// namespace rbc::world

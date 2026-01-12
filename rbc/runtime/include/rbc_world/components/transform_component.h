@@ -8,7 +8,7 @@ namespace rbc::world {
 struct Entity;
 
 struct RBC_RUNTIME_API TransformComponent final : ComponentDerive<TransformComponent> {
-    DECLARE_WORLD_COMPONENT_FRIEND(TransformComponent)
+    DECLARE_WORLD_OBJECT_FRIEND(TransformComponent)
     RBC_RUNTIME_API friend void _zz_clear_dirty_transform();
     RBC_RUNTIME_API friend void _zz_on_before_rendering();
 private:
@@ -20,7 +20,7 @@ private:
     double4x4 _trs;
     bool _dirty : 1 {};
     bool _decomposed : 1 {true};
-    TransformComponent(Entity *entity);
+    TransformComponent();
     vstd::HashMap<
         InstanceID,
         void (Component::*)()>
