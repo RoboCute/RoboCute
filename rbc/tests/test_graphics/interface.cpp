@@ -32,7 +32,6 @@ struct ContextImpl;
 static ContextImpl *_ctx_inst{};
 struct ContextImpl : RCBase {
     luisa::fiber::scheduler scheduler;
-    luisa::string backend = "dx";
     GraphicsUtils utils;
     vstd::optional<Window> window;
     RenderPlugin::PipeCtxStub *pipe_ctx{};
@@ -59,10 +58,9 @@ void RBCContext::init_world(void *this_, luisa::string_view meta_path, luisa::st
 }
 void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa::string_view program_path, luisa::string_view shader_path) {
     auto &c = *static_cast<ContextImpl *>(this_);
-    c.backend = rhi_backend;
     c.utils.init_device(
         program_path,
-        c.backend);
+        rhi_backend);
     c.utils.init_graphics(shader_path);
 }
 

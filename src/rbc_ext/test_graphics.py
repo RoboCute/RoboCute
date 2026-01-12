@@ -62,7 +62,7 @@ def main():
         sky_guid = GUID(sky_guid_str)
         skybox_tex = project.load_resource(sky_guid)
     if skybox_tex and skybox_tex._handle:
-        project.set_skybox(skybox_tex)
+        skybox_tex.set_skybox()
     else:
         print("Skybox not found, importing sky.exr")
         skybox_tex_request = project.import_texture(str(sky_path))
@@ -74,7 +74,7 @@ def main():
         sky_guid_file = open(sky_guid_path, "w")
         sky_guid_file.write(sky_guid_str)
         sky_guid_file.close()
-        project.set_skybox(skybox_tex)
+        skybox_tex.set_skybox()
     del skybox_tex
     ctx.create_window("py_window", uint2(1920, 1080), True)
     

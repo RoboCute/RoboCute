@@ -11,7 +11,6 @@
 #include <rbc_world/texture_loader.h>
 #include <rbc_world/resources/material.h>
 #include <rbc_app/graphics_utils.h>
-#include <rbc_world/project.h>
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
@@ -48,8 +47,7 @@ void *Entity::add_component(void *this_, luisa::string_view name) {
     class_name += name;
     vstd::MD5 md5{luisa::string_view{class_name}};
     auto e = static_cast<world::Entity *>(this_);
-    auto comp = e->_create_component(
-        reinterpret_cast<MD5 const &>(md5));
+    auto comp = e->_create_component(md5);
     if (!comp) {
         return nullptr;
     }
@@ -61,7 +59,7 @@ void *Entity::get_component(void *this_, luisa::string_view name) {
     luisa::string class_name{"rbc::world::"};
     class_name += name;
     vstd::MD5 md5{luisa::string_view{class_name}};
-    auto comp = e->get_component(reinterpret_cast<MD5 const &>(md5));
+    auto comp = e->get_component(md5);
     return comp;
 }
 bool Entity::remove_component(void *this_, luisa::string_view name) {
@@ -69,7 +67,7 @@ bool Entity::remove_component(void *this_, luisa::string_view name) {
     luisa::string class_name{"rbc::world::"};
     class_name += name;
     vstd::MD5 md5{luisa::string_view{class_name}};
-    return e->remove_component(reinterpret_cast<MD5 const &>(md5));
+    return e->remove_component(md5);
 }
 void *Component::entity(void *this_) {
     auto c = static_cast<world::Component *>(this_);
@@ -184,6 +182,10 @@ void TextureResource::upload(void *this_, uint mip_level) {
     if (c->is_vt()) [[unlikely]] {
         LUISA_ERROR("Can not upload to virtual-texture.");
     }
+    auto graphics = GraphicsUtils::instance();
+    if (!graphics) [[unlikely]] {
+        LUISA_ERROR("Graphics context not initialized.");
+    }
     auto tex = c->get_image();
     if (!tex) [[unlikely]] {
         LUISA_ERROR("Texture not initialized.");
@@ -191,7 +193,7 @@ void TextureResource::upload(void *this_, uint mip_level) {
     if (tex->type() == DeviceImage::ImageType::None) {
         c->init_device_resource();
     }
-    GraphicsUtils::instance()->update_texture(tex, mip_level);
+    graphics->update_texture(tex, mip_level);
 }
 luisa::span<std::byte> TextureResource::data_buffer(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
@@ -244,10 +246,14 @@ void MeshResource::upload(void *this_, bool only_vertex) {
     if (!mesh) [[unlikely]] {
         LUISA_ERROR("Can not upload to un-initialized mesh.");
     }
+    auto graphics = GraphicsUtils::instance();
+    if (!graphics) [[unlikely]] {
+        LUISA_ERROR("Graphics context not initialized.");
+    }
     if (!mesh->mesh_data()) {
         c->init_device_resource();
     }
-    GraphicsUtils::instance()->update_mesh_data(mesh, only_vertex);
+    graphics->update_mesh_data(mesh, only_vertex);
 }
 
 uint64_t MeshResource::basic_size_bytes(void *this_) {
@@ -408,9 +414,10 @@ void *AsyncRequest::get_result_release(void *this_) {
     return r;
 }
 void *Project::_create_() {
-    auto ptr = new world::Project(".meta_db"sv);
-    manually_add_ref(ptr);
-    return ptr;
+    // auto ptr = new world::Project(".meta_db"sv);
+    // manually_add_ref(ptr);
+    // return ptr;
+    return nullptr;
 }
 // TODO: register guid
 void *Project::import_material(void *this_, luisa::string_view path) {
@@ -468,10 +475,14 @@ void *Project::load_resource(void *this_, vstd::Guid const &guid) {
     return ptr;
 }
 
-void Project::set_skybox(void *this_, void *tex) {
-    auto t = static_cast<world::TextureResource *>(tex);
+void TextureResource::set_skybox(void *this_) {
+    auto t = static_cast<world::TextureResource *>(this_);
     if (t->loading_status() == world::EResourceLoadingStatus::Unloaded) [[unlikely]] {
         LUISA_ERROR("Skybox dest texture not loaded.");
+    }
+    auto graphics = GraphicsUtils::instance();
+    if (!graphics) [[unlikely]] {
+        LUISA_ERROR("Graphics context not initialized.");
     }
     auto wait_skybox = [&]() -> rbc::coroutine {
         co_await t->await_loading();
@@ -480,6 +491,6 @@ void Project::set_skybox(void *this_, void *tex) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
         wait_skybox.resume();
     }
-    GraphicsUtils::instance()->render_plugin()->update_skybox(RC<DeviceImage>{t->get_image()});
+    graphics->render_plugin()->update_skybox(RC<DeviceImage>{t->get_image()});
 }
 }// namespace rbc

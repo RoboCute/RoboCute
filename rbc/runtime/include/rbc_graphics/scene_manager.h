@@ -79,6 +79,7 @@ public:
     [[nodiscard]] auto const &buffer_allocator() const { return _bf_alloc; }
     [[nodiscard]] auto &bindless_manager() { return _bdls_mng; }
     [[nodiscard]] auto &buffer_allocator() { return _bf_alloc; }
+    [[nodiscard]] luisa::span<luisa::unique_ptr<AccelManager> const> accel_managers();
     [[nodiscard]] AccelManager &accel_manager();
     [[nodiscard]] auto &mat_manager() { return _mat_mng; }
     [[nodiscard]] auto &host_upload_buffer() { return *_temp_buffer; }

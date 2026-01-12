@@ -1,30 +1,22 @@
 #pragma once
 #include <rbc_config.h>
 #include <luisa/core/stl/filesystem.h>
-
-namespace rbc::world {
-
-// Configurable Project Paths
-struct ProjectPaths {
-    using Path = luisa::filesystem::path;
-    Path root_path;
-    Path asset_path;
-    Path intermediate_path;
-};
-
-// Configurable Project Meta
-struct ProjectMeta {
-    luisa::filesystem::path project_root_path;
-};
-
-struct Project {
+namespace rbc::project {
+struct Resource;
+struct Project : RCBase {
 private:
-    ProjectPaths paths_;
+    luisa::filesystem::path _assets_path;
+    void _reimport(
+        vstd::Guid binary_guid,
+        luisa::string &meta_data,
+        vstd::MD5 type_id,
+        luisa::filesystem::path const &origin_path);
+
+public:
+    Project(luisa::filesystem::path const &assets_db_path);
+    void scan_project();
+    ~Project();
+    Project(Project const &) = delete;
+    Project(Project &&) = delete;
 };
-
-struct ProjectManager {
-
-    luisa::vector<ProjectMeta> saved_project_metas;
-};
-
 }// namespace rbc::world

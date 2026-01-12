@@ -26,12 +26,9 @@ SceneManager::SceneManager(
     set_instance(this);
 }
 
-AccelManager &SceneManager::accel_manager() {
+luisa::span<luisa::unique_ptr<AccelManager> const> SceneManager::accel_managers() {
     LUISA_DEBUG_ASSERT(!_accel_mngs.empty());
-    return *_accel_mngs[0];
-}
-Accel &SceneManager::accel() {
-    return accel_manager().accel();
+    return _accel_mngs;
 }
 
 void SceneManager::refresh_pipeline(
@@ -93,6 +90,13 @@ void SceneManager::build_mesh_in_frame(Mesh *mesh, RC<RCBase> &&mesh_rc) {
     std::lock_guard lck{_build_mesh_mtx};
     _build_meshes.try_emplace(mesh, std::move(mesh_rc));
 }
+AccelManager &SceneManager::accel_manager() {
+    LUISA_DEBUG_ASSERT(!_accel_mngs.empty());
+    return *_accel_mngs[0];
+}
+Accel &SceneManager::accel() {
+    return _accel_mngs[0]->accel();
+}
 void SceneManager::before_rendering(
     CommandList &cmdlist,
     Stream &stream) {
@@ -104,7 +108,10 @@ void SceneManager::before_rendering(
             if (mesh) {
                 cmdlist << mesh.build();
             }
-            accel_manager().mark_dirty();
+            for (auto &i : _accel_mngs) {
+                if (i->mesh_instance_size() > 0)
+                    i->mark_dirty();
+            }
         };
         build(*i.first);
     }
@@ -205,7 +212,8 @@ bool SceneManager::on_frame_end(
 void SceneManager::load_shader(luisa::fiber::counter &init_counter) {
     _mesh_mng.load_shader(init_counter);
     // default scene
-    _accel_mngs.emplace_back(luisa::make_unique<AccelManager>(_device));
+    if (_accel_mngs.empty())
+        _accel_mngs.emplace_back(luisa::make_unique<AccelManager>(_device));
     for (auto &i : _accel_mngs)
         i->load_shader(init_counter);
     _uploader.load_shader(init_counter);

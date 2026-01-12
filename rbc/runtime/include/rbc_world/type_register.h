@@ -12,6 +12,7 @@ struct TypeRegisterBase {
     friend struct BaseObjectStatics;
     virtual BaseObject *create() = 0;
     virtual Component *create_component(Entity *) = 0;
+    virtual void reset(BaseObject *base_obj) = 0;
 private:
     TypeRegisterBase *p_next{};
     virtual MD5 type_id() = 0;
@@ -55,6 +56,12 @@ struct TypeObjectRegister : TypeRegisterBase {
         _ctor_func(ptr);
         return static_cast<BaseObject *>(ptr);
     }
+    void reset(BaseObject *base_obj) override {
+        RCBase rc_dummy{static_cast<RCBase &&>(*base_obj)};
+        _dtor_func(static_cast<T *>(base_obj));
+        _ctor_func(static_cast<T *>(base_obj));
+        base_obj->_rcbase_unsafe_move_rc(std::move(rc_dummy));
+    }
     Component *create_component(Entity *) override {
         return nullptr;
     }
@@ -87,6 +94,13 @@ struct TypeComponentRegister : TypeRegisterBase {
     MD5 type_id() override {
         return rbc_rtti_detail::is_rtti_type<T>::get_md5();
     }
+    void reset(BaseObject *base_obj) override {
+        auto e = static_cast<Component *>(base_obj)->entity();
+        RCBase rc_dummy{static_cast<RCBase &&>(*base_obj)};
+        _dtor_func(static_cast<T *>(base_obj));
+        _ctor_func(static_cast<T *>(base_obj), e);
+        base_obj->_rcbase_unsafe_move_rc(std::move(rc_dummy));
+    }
     BaseObject *create() override {
         return nullptr;
     }
@@ -111,7 +125,7 @@ struct TypeComponentRegister : TypeRegisterBase {
     static ::rbc::world::TypeObjectRegister<type_name> type_name##_register_{ \
         ea525e13_create_##type_name,                                          \
         ea525e13_destroy_##type_name};                                        \
-    void type_name::rbc_rc_delete() {                                               \
+    void type_name::rbc_rc_delete() {                                         \
         type_name##_register_.destroy(this);                                  \
     }
 #define DECLARE_WORLD_COMPONENT_REGISTER(type_name)                              \
@@ -124,7 +138,7 @@ struct TypeComponentRegister : TypeRegisterBase {
     static ::rbc::world::TypeComponentRegister<type_name> type_name##_register_{ \
         ea525e13_create_##type_name,                                             \
         ea525e13_destroy_##type_name};                                           \
-    void type_name::rbc_rc_delete() {                                                  \
+    void type_name::rbc_rc_delete() {                                            \
         type_name##_register_.destroy(this);                                     \
     }
 }// namespace rbc::world

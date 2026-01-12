@@ -11,7 +11,6 @@
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
 #include "jolt_component.h"
-// #include <rbc_world/project.h>
 
 #include <tracy_wrapper.h>
 

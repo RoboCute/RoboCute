@@ -877,12 +877,8 @@ struct Serializer : public Base {
         else if constexpr (rbc::detail::is_unordered_map<T>::value) {
             Base::start_array();
             for (auto &&i : t) {
-                if constexpr (requires { i.first.c_str(); }) {
-                    this->_store(luisa::string_view{i.first});
-                    this->_store(i.second);
-                } else {
-                    static_assert(luisa::always_false_v<T>, "Invalid HashMap key-value type.");
-                }
+                this->_store(i.first);
+                this->_store(i.second);
             }
             Base::add_last_scope_to_object(args...);
         } else if constexpr (rbc::detail::is_vector<T>::value) {
@@ -1087,23 +1083,14 @@ struct DeSerializer : public Base {
             auto end_scope = vstd::scope_exit([&] {
                 Base::end_scope();
             });
-
-            if constexpr (requires {
-                              t.try_emplace(std::declval<luisa::string>(), std::declval<typename rbc::detail::is_unordered_map<T>::ValueType>());
-                          })
-
-            {
-                t.reserve(size);
-                typename rbc::detail::is_unordered_map<T>::ValueType value;
-                luisa::string key;
-                if (!this->_load(key)) return false;
-                if (!this->_load(value)) return false;
-                t.try_emplace(
-                    std::move(key),
-                    std::move(value));
-            } else {
-                static_assert(luisa::always_false_v<T>, "Invalid HashMap key-value type.");
-            }
+            t.reserve(size);
+            typename rbc::detail::is_unordered_map<T>::KeyType key;
+            typename rbc::detail::is_unordered_map<T>::ValueType value;
+            if (!this->_load(key)) return false;
+            if (!this->_load(value)) return false;
+            t.try_emplace(
+                std::move(key),
+                std::move(value));
             return true;
         }
         // duck type

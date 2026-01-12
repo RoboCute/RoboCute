@@ -89,12 +89,12 @@ GIT_TASKS = {
         "branch": None,
         "deps": [],
     },
-    # "jolt_physics": {
-    #     "subdir": "thirdparty/jolt_physics",
-    #     "url": "https://github.com/RoboCute/JoltPhysics.git",
-    #     "branch": None,
-    #     "deps": [],
-    # },
+    "jolt_physics": {
+        "subdir": "thirdparty/jolt_physics",
+        "url": "https://github.com/RoboCute/JoltPhysics.git",
+        "branch": None,
+        "deps": [],
+    },
     # "acl": {
     #     "subdir": "thirdparty/acl",
     #     "url": "https://github.com/RoboCute/acl.git",

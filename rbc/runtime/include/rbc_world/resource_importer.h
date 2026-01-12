@@ -23,11 +23,16 @@ struct TextureLoader;
  * @brief Base interface for resource importers
  * Each importer handles a specific (extension, resource_type) combination
  */
-struct RBC_RUNTIME_API IResourceImporter {
+struct IResourceImporter {
     virtual ~IResourceImporter() = default;
     [[nodiscard]] virtual luisa::string_view extension() const = 0;
     [[nodiscard]] virtual MD5 resource_type() const = 0;
     [[nodiscard]] virtual bool can_import(luisa::filesystem::path const &path) const;
+    [[nodiscard]] virtual bool import(Resource* res, luisa::filesystem::path const &path, luisa::string const &meta_json) const { return false; }
+    [[nodiscard]] RBC_RUNTIME_API RC<Resource> import(
+        vstd::Guid guid,
+        luisa::filesystem::path const &path,
+        luisa::string const &meta_json) const;
 };
 
 /**

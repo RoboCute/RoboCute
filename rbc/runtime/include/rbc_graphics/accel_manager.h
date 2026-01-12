@@ -128,6 +128,9 @@ public:
     [[nodiscard]] auto const &accel() const { return _accel; }
     [[nodiscard]] auto &accel() { return _accel; }
     [[nodiscard]] auto const &instance_data(uint id) const { return _insts[id]; }
+    [[nodiscard]] auto const &procedural_instance_data(uint id) const { return _procedural_insts[id]; }
+    [[nodiscard]] auto mesh_instance_size() const { return _insts.size(); }
+    [[nodiscard]] auto procedural_instance_size() const { return _procedural_insts.size(); }
     AccelManager(Device &device);
     void load_shader(luisa::fiber::counter &counter);
     void set_mesh_instance(

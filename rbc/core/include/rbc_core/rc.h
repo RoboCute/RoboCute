@@ -291,6 +291,20 @@ struct RCBase : RBCStruct {
 
     RBC_RC_IMPL_(private, public)
 public:
+    RCBase() = default;
+    RCBase(RCBase const &rhs) = delete;
+    RCBase(RCBase &&rhs)
+        : zz_rbc_rc(rhs.zz_rbc_rc.load()),
+          zz_rbc_weak_counter(rhs.zz_rbc_weak_counter.load()) {
+        rhs.zz_rbc_rc = 0;
+        rhs.zz_rbc_weak_counter = nullptr;
+    }
+    void _rcbase_unsafe_move_rc(RCBase &&rhs) {
+        zz_rbc_rc = rhs.zz_rbc_rc.load();
+        zz_rbc_weak_counter = rhs.zz_rbc_weak_counter.load();
+        rhs.zz_rbc_rc = 0;
+        rhs.zz_rbc_weak_counter = nullptr;
+    }
     virtual ~RCBase() = default;
     virtual void rbc_rc_delete() { delete this; }
 };

@@ -162,15 +162,21 @@ BaseObjectType get_base_object_type(vstd::Guid const &type_id) {
     return iter->second->base_type();
 }
 BaseObject *create_object(rbc::TypeInfo const &type_info) {
-    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    auto iter = _world_inst->_create_funcs.find(type_info.md5());
-    if (iter == _world_inst->_create_funcs.end()) {
-        return nullptr;
-    }
-    auto ptr = iter->second->create();
-    ptr->init_with_guid(vstd::Guid(true));
-    return ptr;
+    return create_object(type_info.md5());
 }
+
+void reset_object(BaseObject *obj) {
+    auto guid = obj->guid();
+    auto type_id = obj->type_id();
+    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
+    auto iter = _world_inst->_create_funcs.find(type_id);
+    if (iter == _world_inst->_create_funcs.end()) [[unlikely]] {
+        LUISA_ERROR("Type non-exists.");
+    }
+    iter->second->reset(obj);
+    obj->init_with_guid(guid);
+}
+
 Component *Entity::_create_component(MD5 const &type) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find(type);
@@ -182,14 +188,18 @@ Component *Entity::_create_component(MD5 const &type) {
     return ptr;
 }
 BaseObject *create_object_with_guid(rbc::TypeInfo const &type_info, vstd::Guid const &guid) {
+    return create_object_with_guid(type_info.md5(), guid);
+}
+
+void reset_object_with_guid(BaseObject *obj, vstd::Guid const &guid) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    auto iter = _world_inst->_create_funcs.find(type_info.md5());
-    if (iter == _world_inst->_create_funcs.end()) {
-        return nullptr;
+    auto type_id = obj->type_id();
+    auto iter = _world_inst->_create_funcs.find(type_id);
+    if (iter == _world_inst->_create_funcs.end()) [[unlikely]] {
+        LUISA_ERROR("Type non-exists.");
     }
-    auto ptr = iter->second->create();
-    ptr->init_with_guid(guid);
-    return ptr;
+    iter->second->reset(obj);
+    obj->init_with_guid(guid);
 }
 BaseObject *create_object(vstd::Guid const &type_info) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
