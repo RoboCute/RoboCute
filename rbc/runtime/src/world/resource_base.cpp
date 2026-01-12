@@ -333,7 +333,7 @@ bool Resource::init_device_resource() {
 #ifndef NDEBUG
     Clock clk;
 #endif
-    while (loading_status() == EResourceLoadingStatus::Loading) {
+    while (!loaded()) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
 #ifndef NDEBUG
         if (clk.toc() > 1000) {

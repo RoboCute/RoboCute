@@ -95,6 +95,7 @@ void TextureResource::create_empty(
     } else {
         _tex = new DeviceImage();
     }
+    unsafe_set_loaded();
 }
 bool TextureResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
@@ -114,10 +115,6 @@ bool TextureResource::is_vt() const {
     }
 }
 bool TextureResource::_init_device_resource() {
-    while (loading_status() == EResourceLoadingStatus::Loading) {
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-    }
-
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_tex || load_executed()) {
         return false;
@@ -158,7 +155,6 @@ bool TextureResource::_init_device_resource() {
         }
         graphics->update_texture(tex, ~0u);
     }
-    _status = EResourceLoadingStatus::Loaded;
     return true;
 }
 bool TextureResource::_async_load_from_file() {
@@ -224,7 +220,7 @@ rbc::coroutine TextureResource::_async_load() {
     while (!_load_finished()) {
         co_await std::suspend_always{};
     }
-    _status = EResourceLoadingStatus::Loaded;
+    unsafe_set_loaded();
     co_return;
 }
 bool TextureResource::load_executed() const {

@@ -6,7 +6,7 @@ namespace rbc {
 
 struct RBC_RUNTIME_API GltfSkeletonImporter final : ISkeletonImporter {
     [[nodiscard]] luisa::string_view extension() const override { return ".gltf"; }
-    [[nodiscard]] bool import(SkeletonResource *resource, luisa::filesystem::path const &path) override;
+    [[nodiscard]] bool import(world::Resource *resource, luisa::filesystem::path const &path) override;
 };
 
 }// namespace rbc

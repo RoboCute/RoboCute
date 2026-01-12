@@ -99,7 +99,7 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
         //TODO: other types
     }
     if (set_to_loaded) {
-        _status = EResourceLoadingStatus::Loaded;
+        unsafe_set_loaded();
     }
 }
 luisa::BinaryBlob MaterialResource::write_content_to() {
@@ -247,7 +247,7 @@ rbc::coroutine MaterialResource::_async_load() {
         if (i)
             co_await i->await_loading();
     }
-    _status = EResourceLoadingStatus::Loaded;
+    unsafe_set_loaded();
     co_return;
 }
 

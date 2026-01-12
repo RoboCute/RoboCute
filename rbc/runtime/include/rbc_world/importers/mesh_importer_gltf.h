@@ -10,7 +10,7 @@ namespace rbc::world {
 struct RBC_RUNTIME_API GltfMeshImporter final : IMeshImporter {
     [[nodiscard]] luisa::string_view extension() const override { return ".gltf"; }
 
-    bool import(MeshResource *resource, luisa::filesystem::path const &path) override;
+    bool import(Resource *resource_base, luisa::filesystem::path const &path) override;
     static bool import_from_data(MeshResource *resource, GltfImportData &import_data);
 };
 
@@ -20,7 +20,7 @@ struct RBC_RUNTIME_API GltfMeshImporter final : IMeshImporter {
 struct RBC_RUNTIME_API GlbMeshImporter final : IMeshImporter {
     [[nodiscard]] luisa::string_view extension() const override { return ".glb"; }
 
-    bool import(MeshResource *resource, luisa::filesystem::path const &path) override;
+    bool import(Resource *resource_base, luisa::filesystem::path const &path) override;
 };
 
 }// namespace rbc::world

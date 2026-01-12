@@ -5,11 +5,10 @@ struct IMaterialImporter : IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override {
         return MD5{"rbc::world::MaterialResource"sv};
     }
-    [[nodiscard]] virtual bool import(MaterialResource *resource, luisa::filesystem::path const &path) = 0;
 };
 
 struct RBC_RUNTIME_API MatJsonImporter final : IMaterialImporter {
     luisa::string_view extension() const;
-    bool import(MaterialResource *resource, luisa::filesystem::path const &path) override;
+    bool import(Resource *resource, luisa::filesystem::path const &path) override;
 };
 }// namespace rbc::world

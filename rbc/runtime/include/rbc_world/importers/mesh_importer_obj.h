@@ -9,7 +9,7 @@ namespace rbc::world {
 struct RBC_RUNTIME_API ObjMeshImporter final : IMeshImporter {
     luisa::string_view extension() const override { return ".obj"; }
     
-    bool import(MeshResource *resource, luisa::filesystem::path const &path) override;
+    bool import(Resource *resource_base, luisa::filesystem::path const &path) override;
 };
 
 }// namespace rbc::world

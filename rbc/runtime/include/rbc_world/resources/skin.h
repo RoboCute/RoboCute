@@ -51,7 +51,6 @@ namespace rbc {
 
 struct ISkinImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<SkinResource>().md5(); }
-    virtual bool import(SkinResource *resource, luisa::filesystem::path const &path) = 0;
 protected:
     static luisa::string &name_ref(SkinResource *resource);
     static luisa::vector<luisa::string> &joint_remaps_ref(SkinResource *resource);

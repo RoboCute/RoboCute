@@ -1,6 +1,7 @@
 #include <rbc_world/resource_importer.h>
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/texture.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <rbc_core/runtime_static.h>
 #include <algorithm>
 #include <cctype>
@@ -93,13 +94,41 @@ ResourceImporterRegistry &ResourceImporterRegistry::instance() {
 }
 RC<Resource> IResourceImporter::import(
     vstd::Guid guid,
-    luisa::filesystem::path const &path, luisa::string const &meta_json) const {
+    luisa::filesystem::path const &path, luisa::string const &meta_json) {
     auto res = load_resource(guid, false);
-    if (!res) {
+    if (res) {
+#ifndef NDEBUG
+        Clock clk;
+#endif
+        while (res->loading_status() == EResourceLoadingStatus::Loading) {
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
+#ifndef NDEBUG
+            if (clk.toc() > 1000) {
+                LUISA_WARNING("Still waiting for resource {}", res->guid().to_string());
+                clk.tic();
+            }
+#endif
+        }
+    } else {
         auto type_id = resource_type();
         res = create_object_with_guid(reinterpret_cast<vstd::Guid const &>(type_id), guid);
+        register_resource_meta(res.get());
     }
-    import(res.get(), path, meta_json);
+    JsonSerializer ser;
+    rbc::ArchiveWriteJson writer{ser};
+    ObjSerialize obj_ser{
+        .ar = writer};
+    res->serialize_meta(obj_ser);
+    import(res.get(), path);
     return res;
+}
+bool ITextureImporter::import(Resource *resource, luisa::filesystem::path const &path) {
+    auto tex = static_cast<TextureResource *>(resource);
+    return import(
+        RC<TextureResource>(tex),
+        GraphicsUtils::instance()->tex_loader(),
+        path,
+        tex->mip_level(),
+        tex->is_vt());
 }
 }// namespace rbc::world

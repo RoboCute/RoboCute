@@ -103,7 +103,7 @@ def main():
     #     buffer=cube_mesh.data_buffer()
     # )
     # create_mesh_array(mesh_array)
-    # cube_mesh.upload(False)
+    # cube_mesh.init_device_resource()
     
     # mat_default_json = json.loads("{}")
     # mat_default_json["base_albedo"] = [1, 0.6, 0.7]

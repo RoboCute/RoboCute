@@ -28,11 +28,11 @@ struct IResourceImporter {
     [[nodiscard]] virtual luisa::string_view extension() const = 0;
     [[nodiscard]] virtual MD5 resource_type() const = 0;
     [[nodiscard]] virtual bool can_import(luisa::filesystem::path const &path) const;
-    [[nodiscard]] virtual bool import(Resource* res, luisa::filesystem::path const &path, luisa::string const &meta_json) const { return false; }
+    [[nodiscard]] virtual bool import(Resource *res, luisa::filesystem::path const &path) = 0;
     [[nodiscard]] RBC_RUNTIME_API RC<Resource> import(
         vstd::Guid guid,
         luisa::filesystem::path const &path,
-        luisa::string const &meta_json) const;
+        luisa::string const &meta_json);
 };
 
 /**
@@ -42,7 +42,6 @@ struct IMeshImporter : IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override {
         return MD5{"rbc::world::MeshResource"sv};
     }
-    [[nodiscard]] virtual bool import(MeshResource *resource, luisa::filesystem::path const &path) = 0;
 };
 
 struct ITextureImporter : IResourceImporter {
@@ -56,6 +55,7 @@ struct ITextureImporter : IResourceImporter {
         luisa::filesystem::path const &path,
         uint mip_level,
         bool to_vt) = 0;
+    RBC_RUNTIME_API bool import(Resource *resource, luisa::filesystem::path const &path) override;
 };
 
 /**

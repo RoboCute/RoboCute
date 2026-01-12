@@ -14,6 +14,7 @@
 namespace rbc {
 namespace world {
 struct MeshResource;
+struct TextureLoader;
 }// namespace world
 using namespace rbc;
 using namespace luisa;
@@ -39,6 +40,7 @@ private:
     vstd::optional<SceneManager> _sm;
     // present
     Stream _present_stream;
+    luisa::unique_ptr<world::TextureLoader> _tex_loader;
     Swapchain _swapchain;
     Image<float> _dst_image;
     luisa::vector<DenoisePack> _denoise_packs;
@@ -59,6 +61,7 @@ public:
     auto &backend_name() const { return _backend_name; }
     GraphicsUtils();
     void dispose(vstd::function<void()> after_sync = {});
+    auto tex_loader() const { return _tex_loader.get(); }
     ~GraphicsUtils();
     GraphicsUtils(GraphicsUtils &&) = delete;
     GraphicsUtils(GraphicsUtils const &) = delete;

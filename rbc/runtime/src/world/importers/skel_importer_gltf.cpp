@@ -7,7 +7,8 @@
 #include <tracy_wrapper.h>
 
 namespace rbc {
-bool GltfSkeletonImporter::import(SkeletonResource *resource, luisa::filesystem::path const &path) {
+bool GltfSkeletonImporter::import(world::Resource *resource_base, luisa::filesystem::path const &path) {
+    auto resource = static_cast<SkeletonResource *>(resource_base);
     GltfOzzImporter impl;
     ozz::animation::offline::OzzImporter &importer = impl;
     ozz::animation::offline::OzzImporter::NodeType types = {};

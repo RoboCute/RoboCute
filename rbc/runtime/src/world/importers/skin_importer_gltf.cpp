@@ -3,7 +3,8 @@
 
 namespace rbc {
 
-bool GltfSkinImporter::import(SkinResource *resource, luisa::filesystem::path const &path) {
+bool GltfSkinImporter::import(world::Resource *resource_base, luisa::filesystem::path const &path) {
+    auto resource = static_cast<SkinResource *>(resource_base);
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;

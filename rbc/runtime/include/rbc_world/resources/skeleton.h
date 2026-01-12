@@ -41,7 +41,6 @@ namespace rbc {
 
 struct RBC_RUNTIME_API ISkeletonImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<SkeletonResource>().md5(); }
-    virtual bool import(SkeletonResource *resource, luisa::filesystem::path const &path) = 0;
 protected:
 
     ReferenceSkeleton &ref_skel(SkeletonResource *resource) { return resource->skeleton; }

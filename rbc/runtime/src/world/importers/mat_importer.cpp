@@ -5,7 +5,8 @@ namespace rbc::world {
 luisa::string_view MatJsonImporter::extension() const {
     return ".json";
 }
-bool MatJsonImporter::import(MaterialResource *resource, luisa::filesystem::path const &path) {
+bool MatJsonImporter::import(Resource *resource_base, luisa::filesystem::path const &path) {
+    auto resource = static_cast<MaterialResource *>(resource_base);
     luisa::BinaryFileStream file_stream(luisa::to_string(path));
     if (!file_stream.valid()) return false;
     luisa::vector<std::byte> vec;

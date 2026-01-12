@@ -7,8 +7,7 @@ namespace rbc::world {
 
 struct RBC_RUNTIME_API GltfAnimSequenceImporter final : IAnimSequenceImporter {
     [[nodiscard]] luisa::string_view extension() const override { return ".gltf"; }
-    [[nodiscard]] bool import(AnimSequenceResource *resource, luisa::filesystem::path const &path) override;
-
+    [[nodiscard]] bool import(Resource *resource, luisa::filesystem::path const &path) override;
     // dependencies
     RC<SkeletonResource> ref_skel;
     luisa::string chosen_anim_name;

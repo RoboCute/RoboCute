@@ -45,7 +45,6 @@ namespace rbc {
 
 struct ISkelMeshImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<rbc::SkelMeshResource>().md5(); }
-    virtual bool import(SkelMeshResource *resource, luisa::filesystem::path const &path) = 0;
 
 protected:
 };

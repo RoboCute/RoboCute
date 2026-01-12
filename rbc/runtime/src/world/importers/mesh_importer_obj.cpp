@@ -11,7 +11,8 @@ namespace rbc::world {
 using namespace luisa;
 using namespace luisa::compute;
 
-bool ObjMeshImporter::import(MeshResource *resource, luisa::filesystem::path const &path) {
+bool ObjMeshImporter::import(Resource* resource_base, luisa::filesystem::path const &path) {
+    auto resource = static_cast<MeshResource*>(resource_base);
     if (!resource || resource->empty() == false) [[unlikely]] {
         LUISA_WARNING("Can not create on exists mesh.");
         return false;

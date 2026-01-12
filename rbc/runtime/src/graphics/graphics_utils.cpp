@@ -12,6 +12,7 @@
 #include <rbc_world/base_object.h>
 #include <rbc_world/component.h>
 #include <rbc_world/resources/mesh.h>
+#include <rbc_world/texture_loader.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -41,6 +42,7 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
         _compute_event.event.synchronize(_compute_event.fence_index);
     if (after_sync)
         after_sync();
+    _tex_loader.reset();
     for (auto &i : _render_pipe_ctxs) {
         _render_plugin->destroy_pipeline_context(i.first);
     }
@@ -65,6 +67,7 @@ void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_v
     _render_device.set_main_stream(&_present_stream);
     _compute_event.event = _render_device.lc_device().create_timeline_event();
     _backend_name = backend_name;
+    _tex_loader = luisa::make_unique<world::TextureLoader>();
 }
 void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     auto &cmdlist = _render_device.lc_main_cmd_list();
