@@ -25,7 +25,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         RBCZoneScopedN("Load Cornell Box Mesh");
         cbox_mesh = world::create_object<world::MeshResource>();
         cbox_mesh->decode("cornell_box.obj");
-        cbox_mesh->init_device_resource();
+        cbox_mesh->install();
         utils->update_mesh_data(cbox_mesh->device_mesh(), false);// update through render-thread
     }
     {
@@ -92,7 +92,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     quad_mesh->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     auto s = quad_bytes.size_bytes();
     *quad_mesh->host_data() = std::move(quad_bytes);
-    quad_mesh->init_device_resource();
+    quad_mesh->install();
     utils->update_mesh_data(quad_mesh->device_mesh(), false);// update through render-thread
 
     {
@@ -126,9 +126,9 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         tex_loader.finish_task();
         // TODO: transform from regular tex to vt need reload device-image
         // tex->pack_to_tile();
-        tex->init_device_resource();
+        tex->install();
         // utils->update_texture(tex->get_image());
-        skybox->init_device_resource();
+        skybox->install();
     }
 
     rbc::RC<DeviceImage> image{skybox->get_image()};
@@ -279,7 +279,7 @@ void WorldScene::_init_physics(GraphicsUtils *utils) {
         physics_box_mesh->create_empty(std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
 
         *physics_box_mesh->host_data() = std::move(cube_bytes);
-        physics_box_mesh->init_device_resource();
+        physics_box_mesh->install();
         utils->update_mesh_data(physics_box_mesh->device_mesh(), false);// update through render-thread
     }
     // floor
@@ -320,7 +320,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
 
         *skinning_origin_mesh->host_data() = std::move(cube_bytes);
         skinning_origin_mesh->add_property("skinning_weight_index", cube_mesh_builder.vertex_count() * 2 * sizeof(uint));
-        skinning_origin_mesh->init_device_resource();
+        skinning_origin_mesh->install();
         utils->update_mesh_data(skinning_origin_mesh->device_mesh(), false);// update through render-thread
     }
     auto skinning_weight_index = skinning_origin_mesh->get_or_create_property_buffer("skinning_weight_index").as<uint>();
@@ -328,7 +328,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     {
         // assign skinning mesh as the morphing instance of origin mesh
         skinning_mesh->create_as_morphing_instance(skinning_origin_mesh.get());
-        skinning_mesh->init_device_resource();
+        skinning_mesh->install();
     }
     luisa::vector<uint> weight_and_index_host;
     weight_and_index_host.push_back_uninitialized(skinning_weight_index.size());

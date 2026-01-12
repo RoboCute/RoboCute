@@ -95,7 +95,7 @@ void TextureResource::create_empty(
     } else {
         _tex = new DeviceImage();
     }
-    unsafe_set_loaded();
+    _status = EResourceLoadingStatus::Loaded;
 }
 bool TextureResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
@@ -114,7 +114,7 @@ bool TextureResource::is_vt() const {
         return _is_vt;
     }
 }
-bool TextureResource::_init_device_resource() {
+bool TextureResource::_install() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device || !_tex || load_executed()) {
         return false;
@@ -220,7 +220,7 @@ rbc::coroutine TextureResource::_async_load() {
     while (!_load_finished()) {
         co_await std::suspend_always{};
     }
-    unsafe_set_loaded();
+    _status = EResourceLoadingStatus::Installed;
     co_return;
 }
 bool TextureResource::load_executed() const {

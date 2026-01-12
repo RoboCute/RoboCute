@@ -117,7 +117,7 @@ void TextureLoader::process_texture(RC<TextureResource> const &tex, uint mip_lev
         }
         auto &host_data = *tex->host_data();
         host_data.resize_uninitialized(size);
-        tex->init_device_resource();
+        tex->install();
         auto &&img = tex->get_image()->get_float_image();
         lck.lock();
         gpu_fence = _finished_fence.load();

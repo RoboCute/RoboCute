@@ -15,7 +15,7 @@ void SkeletalMeshRenderData::InitializeWithRefSkeleton(const rbc::ReferenceSkele
 void SkelMeshRenderDataLOD::Initialize(world::MeshResource *InMeshResource, RenderDevice *InDevice) {
     morph_mesh = world::create_object<world::MeshResource>();
     morph_mesh->create_as_morphing_instance(InMeshResource);
-    morph_mesh->init_device_resource();
+    morph_mesh->install();
 
     auto &morph_data = morph_mesh->device_transforming_mesh()->mesh_data()->pack.mutable_data;
     morph_bytes.resize_uninitialized(morph_data.size_bytes());

@@ -232,7 +232,7 @@ await resource.await_loading()
 
 # 使用资源
 if isinstance(resource, rbc.MeshResource):
-    resource.init_device_resource()
+    resource.install()
     mesh = resource.device_mesh()
 ```
 

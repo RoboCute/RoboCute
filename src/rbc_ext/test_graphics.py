@@ -103,18 +103,18 @@ def main():
     #     buffer=cube_mesh.data_buffer()
     # )
     # create_mesh_array(mesh_array)
-    # cube_mesh.init_device_resource()
+    # cube_mesh.install()
     
     # mat_default_json = json.loads("{}")
     # mat_default_json["base_albedo"] = [1, 0.6, 0.7]
     # mat = MaterialResource()
     # mat.load_from_json(json.dumps(mat_default_json))
-    # mat.init_device_resource()
+    # mat.install()
 
     # mat_default_json["base_albedo"] = [0.6, 1, 0.7]
     # second_mat = MaterialResource()
     # second_mat.load_from_json(json.dumps(mat_default_json))
-    # second_mat.init_device_resource()
+    # second_mat.install()
 
     # mat_vector = capsule_vector()
     # mat_vector.emplace_back(mat._handle)

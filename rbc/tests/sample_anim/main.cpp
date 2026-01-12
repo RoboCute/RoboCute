@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
 
             if (skybox) {
                 tex_loader.finish_task();
-                skybox->init_device_resource();
+                skybox->install();
                 utils.update_texture(skybox->get_image());
                 RC<DeviceImage> image{skybox->get_image()};
                 utils.render_plugin()->update_skybox(image);
@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
         loaded_materials = std::move(scene_data.materials);
 
         // Initialize mesh device resource
-        loaded_mesh->init_device_resource();
+        loaded_mesh->install();
         utils.update_mesh_data(loaded_mesh->device_mesh(), false);
 
         // Initialize texture device resources
@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
         // Initialize materials
         for (auto &mat : loaded_materials) {
             if (mat) {
-                mat->init_device_resource();
+                mat->install();
             }
         }
 

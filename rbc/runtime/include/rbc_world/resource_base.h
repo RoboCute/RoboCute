@@ -11,7 +11,9 @@ struct ResourceBaseImpl;
 enum struct EResourceLoadingStatus : uint8_t {
     Unloaded,
     Loading,
-    Loaded
+    Loaded,
+    Installing,
+    Installed
 };
 struct ResourceAwait : rbc::i_awaitable<ResourceAwait> {
     friend struct Resource;
@@ -30,16 +32,17 @@ protected:
     RBC_RUNTIME_API Resource();
     RBC_RUNTIME_API ~Resource();
     virtual rbc::coroutine _async_load() = 0;
-    virtual bool _init_device_resource() { return false; }
+    virtual bool _install() { return true; }
 
 public:
     [[nodiscard]] RBC_RUNTIME_API luisa::filesystem::path path() const;
 
     ///////// Function call must be atomic
     EResourceLoadingStatus loading_status() const { return _status.load(std::memory_order_relaxed); }
-    void unsafe_set_loaded() { _status = EResourceLoadingStatus::Loaded; }// It is user's responsibility to make the state valid
-    bool loaded() const { return loading_status() == EResourceLoadingStatus::Loaded; }
-    RBC_RUNTIME_API bool init_device_resource();
+    bool loaded() const { return loading_status() >= EResourceLoadingStatus::Loaded; }
+    bool installed() const { return loading_status() >= EResourceLoadingStatus::Installed; }
+    void unsafe_set_loaded();
+    RBC_RUNTIME_API bool install();
     // await until the loading logic finished in both host-side and device-side
     RBC_RUNTIME_API ResourceAwait await_loading();
     // save host_data to Resource::_path

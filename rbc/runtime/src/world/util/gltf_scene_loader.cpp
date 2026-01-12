@@ -154,7 +154,7 @@ GltfSceneData GltfSceneLoader::load_from_model(
         // Store loaded textures and initialize them
         for (auto &tex : result.textures) {
             if (tex) {
-                tex->init_device_resource();
+                tex->install();
             }
         }
 

@@ -159,7 +159,7 @@ void MeshResource::create_empty(
     _contained_tangent = contained_tangent;
     _origin_mesh.reset();
     _device_res = new DeviceMesh{};
-    unsafe_set_loaded();
+    _status = EResourceLoadingStatus::Loaded;
 }
 void MeshResource::_copy_from_mesh(MeshResource *origin_mesh) {
     _submesh_offsets.clear();
@@ -176,10 +176,10 @@ void MeshResource::create_as_morphing_instance(MeshResource *origin_mesh) {
     _copy_from_mesh(origin_mesh);
     auto tr_mesh = new DeviceTransformingMesh{};
     _device_res = tr_mesh;
-    unsafe_set_loaded();
+    _status = EResourceLoadingStatus::Loaded;
 }
 
-bool MeshResource::_init_device_resource() {
+bool MeshResource::_install() {
     auto render_device = RenderDevice::instance_ptr();
     if (!is_transforming_mesh()) {
         auto mesh = device_mesh();
@@ -275,7 +275,7 @@ rbc::coroutine MeshResource::_async_load() {
     while (!_device_res->load_finished()) {
         co_await std::suspend_always{};
     }
-    unsafe_set_loaded();
+    _status = EResourceLoadingStatus::Installed;
     co_return;
 }
 

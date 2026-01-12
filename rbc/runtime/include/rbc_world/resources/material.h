@@ -27,7 +27,7 @@ public:
     rbc::coroutine _async_load() override;
     void load_from_json(luisa::string_view json_vec);
 protected:
-    bool _init_device_resource() override;
+    bool _install() override;
     void _load_from_json(luisa::string_view json_vec, bool set_to_loaded);
     bool _async_load_from_file();
     bool unsafe_save_to_path() const override;

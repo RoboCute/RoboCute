@@ -50,7 +50,7 @@ public:
         bool is_virtual_texture);
     rbc::coroutine _async_load() override;
     bool load_executed() const;
-    bool _init_device_resource() override;
+    bool _install() override;
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
     static uint desired_mip_level(luisa::uint2 size, uint idx);

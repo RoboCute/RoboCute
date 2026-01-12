@@ -207,9 +207,10 @@ struct ResourceLoader : RBCStruct {
         dispose();
     }
     void try_load_resource(Resource *res) {
-        if (res->_status.exchange(EResourceLoadingStatus::Loading) != EResourceLoadingStatus::Unloaded) {
+        if (res->_status != EResourceLoadingStatus::Unloaded) {
             return;
         }
+        res->_status = EResourceLoadingStatus::Loading;
         loading_queue.enqueue(LoadingResource{res->instance_id(), res->_async_load()});
         _async_mtx.lock();
         _async_mtx.unlock();
@@ -313,11 +314,10 @@ bool ResourceAwait::await_ready() {
     auto obj = get_object_ref(_inst_id);
     if (!obj || obj->base_type() != BaseObjectType::Resource) [[unlikely]]
         return true;
-    return static_cast<Resource *>(obj.get())->loading_status() == EResourceLoadingStatus::Loaded;
+    return static_cast<Resource *>(obj.get())->loaded();
 }
 ResourceAwait Resource::await_loading() {
-    auto st = _status.load(std::memory_order_relaxed);
-    if (st == EResourceLoadingStatus::Loaded) {
+    if (loaded()) {
         return {InstanceID::invalid_resource_handle()};
     }
     _res_loader->try_load_resource(this);
@@ -329,7 +329,10 @@ void dispose_resource_loader() {
     delete _res_loader;
     _res_loader = nullptr;
 }
-bool Resource::init_device_resource() {
+void Resource::unsafe_set_loaded() {
+    _status = EResourceLoadingStatus::Loaded;
+}
+bool Resource::install() {
 #ifndef NDEBUG
     Clock clk;
 #endif
@@ -342,7 +345,12 @@ bool Resource::init_device_resource() {
         }
 #endif
     }
-    return _init_device_resource();
+    _status = EResourceLoadingStatus::Installing;
+    auto v = _install();
+    if (v) {
+        _status = EResourceLoadingStatus::Installed;
+    }
+    return v;
 }
 luisa::filesystem::path const &Resource::meta_root_path() {
     return _res_loader->_meta_path;

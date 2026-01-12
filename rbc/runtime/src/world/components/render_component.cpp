@@ -229,7 +229,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
     }();
     _material_codes.clear();
     _material_codes.reserve(submesh_size);
-    mesh->init_device_resource();
+    mesh->install();
     vstd::push_back_func(
         _material_codes,
         submesh_size,
@@ -240,7 +240,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
             if (!mat || mat->loading_status() == EResourceLoadingStatus::Unloaded) {
                 return MaterialResource::default_mat_code();
             } else {
-                mat->init_device_resource();
+                mat->install();
                 if (mat->mat_code().value == ~0u) [[unlikely]] {
                     LUISA_ERROR("Render sub-material {} not initialized.", i);
                 }

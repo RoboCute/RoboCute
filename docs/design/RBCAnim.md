@@ -6,7 +6,7 @@ RBC动画模块设计
 
 - 首先创建一个运行时MeshResource `skinning_mesh=world::create_object<world::MeshResource>()`
 - 然后从静态Mesh创建 `skinning_mesh->create_as_morphing_instance(static_mesh)`
-- 初始化GPU资源 `skinning_mesh->init_device_resource`
+- 初始化GPU资源 `skinning_mesh->install`
 - 对这样创建的MeshResource，可以`skinning_mesh->origin_mesh()`获取静态资产
 - mesh_data
 - `device_mesh = skinning_mesh->device_transforming_mesh()`

@@ -118,7 +118,7 @@ void EditorScene::initSkybox() {
     tex_loader.finish_task();
 
     // Initialize device resource
-    default_skybox_->init_device_resource();
+    default_skybox_->install();
 
     // Update skybox to render plugin (requires GraphicsUtils)
     auto *appBase = EditorEngine::instance().getRenderAppBase();
@@ -339,7 +339,7 @@ RC<world::MeshResource> EditorScene::loadMeshResource(const luisa::string &path)
     }
 
     // Initialize device resource
-    mesh->init_device_resource();
+    mesh->install();
 
     // Upload mesh data to GPU through render thread
     // This is critical - without this, the mesh data won't be visible

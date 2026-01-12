@@ -99,7 +99,7 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
         //TODO: other types
     }
     if (set_to_loaded) {
-        unsafe_set_loaded();
+        _status = EResourceLoadingStatus::Loaded;
     }
 }
 luisa::BinaryBlob MaterialResource::write_content_to() {
@@ -182,11 +182,11 @@ MaterialResource::~MaterialResource() {
         _mat_inst->_disposed_mat.emplace_back(value);
     }
 }
-bool MaterialResource::_init_device_resource() {
+bool MaterialResource::_install() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return false;
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
-        LUISA_ERROR("Material::init_device_resource can only be called in render-thread.");
+        LUISA_ERROR("Material::_install can only be called in render-thread.");
     }
     std::lock_guard lck{_async_mtx};
     if (!_loaded) [[unlikely]] {
@@ -247,7 +247,7 @@ rbc::coroutine MaterialResource::_async_load() {
         if (i)
             co_await i->await_loading();
     }
-    unsafe_set_loaded();
+    _status = EResourceLoadingStatus::Loaded;
     co_return;
 }
 

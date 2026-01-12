@@ -194,9 +194,9 @@ uint32_t TextureResource::heap_index(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
     return c->heap_index();
 }
-bool TextureResource::init_device_resource(void *this_) {
+bool TextureResource::install(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
-    return c->init_device_resource();
+    return c->install();
 }
 bool TextureResource::is_vt(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
@@ -267,9 +267,9 @@ bool MeshResource::has_data_buffer(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     return c->host_data();
 }
-bool MeshResource::init_device_resource(void *this_) {
+bool MeshResource::install(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
-    return c->init_device_resource();
+    return c->install();
 }
 bool MeshResource::is_transforming_mesh(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
@@ -291,9 +291,9 @@ uint32_t MeshResource::vertex_count(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     return c->vertex_count();
 }
-bool MaterialResource::init_device_resource(void *this_) {
+bool MaterialResource::install(void *this_) {
     auto c = static_cast<world::MaterialResource *>(this_);
-    return c->init_device_resource();
+    return c->install();
 }
 void MaterialResource::load_from_json(void *this_, luisa::string_view json) {
     auto c = static_cast<world::MaterialResource *>(this_);
