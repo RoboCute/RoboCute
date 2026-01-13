@@ -1,6 +1,5 @@
-#include "RBCEditorRuntime/nodes/DynamicNodeModel.h"
-#include "RBCEditorRuntime/nodes/EntityIdSpinBox.h"
-#include "RBCEditorRuntime/nodes/EntityGroupListWidget.h"
+#include "RBCEditorRuntime/infra/nodes/DynamicNodeModel.h"
+#include "RBCEditorRuntime/infra/nodes/EntityIdSpinBox.h"
 #include <QFormLayout>
 #include <QJsonDocument>
 #include <QVBoxLayout>
@@ -12,8 +11,7 @@
 
 namespace rbc {
 
-DynamicNodeModel::DynamicNodeModel(const QJsonObject &metadata)
-    : m_mainWidget(nullptr) {
+DynamicNodeModel::DynamicNodeModel(const QJsonObject &metadata) : m_mainWidget(nullptr) {
     m_nodeType = metadata["node_type"].toString();
     m_displayName = metadata["display_name"].toString();
     m_category = metadata["category"].toString();
@@ -23,7 +21,7 @@ DynamicNodeModel::DynamicNodeModel(const QJsonObject &metadata)
 
     // Initialize output data
     for (int i = 0; i < m_outputs.size(); ++i) {
-        m_outputData[i] = std::make_shared<GenericData>();
+        m_outputData[i] = std::make_shared<GenericNodeData>();
     }
 }
 
@@ -38,7 +36,7 @@ unsigned int DynamicNodeModel::nPorts(PortType portType) const {
     }
 }
 
-NodeDataType DynamicNodeModel::dataType(PortType portType, PortIndex portIndex) const {
+QtNodes::NodeDataType DynamicNodeModel::dataType(PortType portType, PortIndex portIndex) const {
     QString typeName = "generic";
 
     if (portType == PortType::In && portIndex < m_inputs.size()) {
@@ -59,10 +57,10 @@ QString DynamicNodeModel::portCaption(PortType portType, PortIndex portIndex) co
         return output["name"].toString();
     }
 
-    return QString();
+    return QString{};
 }
 
-std::shared_ptr<NodeData> DynamicNodeModel::outData(PortIndex port) {
+std::shared_ptr<QtNodes::NodeData> DynamicNodeModel::outData(PortIndex port) {
     if (m_outputData.count(port)) {
         return m_outputData[port];
     }
@@ -71,9 +69,6 @@ std::shared_ptr<NodeData> DynamicNodeModel::outData(PortIndex port) {
 
 void DynamicNodeModel::setInData(std::shared_ptr<NodeData> data, PortIndex portIndex) {
     m_inputData[portIndex] = data;
-
-    // For nodes with connections, we don't use the widget values
-    // The connected data takes precedence
 }
 
 QWidget *DynamicNodeModel::embeddedWidget() {
@@ -93,8 +88,6 @@ void DynamicNodeModel::createInputWidgets() {
         QJsonObject inputDef = m_inputs[i].toObject();
         QString name = inputDef["name"].toString();
 
-        // Only create widgets for inputs that don't require connections
-        // (i.e., inputs with default values that can be set directly)
         bool required = inputDef["required"].toBool(false);
         bool hasDefault = inputDef.contains("default");
 
@@ -118,6 +111,8 @@ QWidget *DynamicNodeModel::createWidgetForInput(const QJsonObject &inputDef) {
     QString type = inputDef["type"].toString();
     QString name = inputDef["name"].toString();
     QVariant defaultValue = inputDef["default"].toVariant();
+
+    // TODO: change to factory register
 
     if (type == "number" || type == "float") {
         auto spinBox = new QDoubleSpinBox();
@@ -150,37 +145,6 @@ QWidget *DynamicNodeModel::createWidgetForInput(const QJsonObject &inputDef) {
         checkBox->setChecked(defaultValue.toBool());
 
         return checkBox;
-    } else if (type == "entity_group") {
-        // Use EntityGroupListWidget for entity_group inputs to support drag and drop
-        auto groupWidget = new EntityGroupListWidget();
-        // Parse default value if provided as JSON array or comma-separated string
-        QString defaultStr = defaultValue.toString();
-        if (!defaultStr.isEmpty()) {
-            QList<int> entityIds;
-            try {
-                QJsonDocument doc = QJsonDocument::fromJson(defaultStr.toUtf8());
-                if (doc.isArray()) {
-                    QJsonArray arr = doc.array();
-                    for (const QJsonValue &val : arr) {
-                        entityIds.append(val.toInt());
-                    }
-                }
-            } catch (...) {
-                // Fall back to comma-separated parsing
-                QStringList parts = defaultStr.split(",");
-                for (const QString &part : parts) {
-                    bool ok;
-                    int id = part.trimmed().toInt(&ok);
-                    if (ok) {
-                        entityIds.append(id);
-                    }
-                }
-            }
-            if (!entityIds.isEmpty()) {
-                groupWidget->setEntityIds(entityIds);
-            }
-        }
-        return groupWidget;
     }
 
     return nullptr;
@@ -193,6 +157,7 @@ QJsonObject DynamicNodeModel::getInputValues() const {
         QString name = it->first;
         QWidget *widget = it->second;
 
+        // TODO: Use Other Identifier
         if (auto spinBox = qobject_cast<QDoubleSpinBox *>(widget)) {
             values[name] = spinBox->value();
         } else if (auto spinBox = qobject_cast<QSpinBox *>(widget)) {
@@ -201,23 +166,12 @@ QJsonObject DynamicNodeModel::getInputValues() const {
             values[name] = lineEdit->text();
         } else if (auto checkBox = qobject_cast<QCheckBox *>(widget)) {
             values[name] = checkBox->isChecked();
-        } else if (auto groupWidget = qobject_cast<EntityGroupListWidget *>(widget)) {
-            // Convert entity IDs list to JSON array string
-            QList<int> entityIds = groupWidget->getEntityIds();
-            QJsonArray idsArray;
-            for (int id : entityIds) {
-                idsArray.append(id);
-            }
-            QJsonDocument doc(idsArray);
-            values[name] = QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
         }
     }
-
     return values;
 }
 
 void DynamicNodeModel::setOutputValues(const QJsonObject &outputs) {
-    // Update output data based on execution results
     for (int i = 0; i < m_outputs.size(); ++i) {
         QJsonObject outputDef = m_outputs[i].toObject();
         QString outputName = outputDef["name"].toString();
@@ -226,20 +180,18 @@ void DynamicNodeModel::setOutputValues(const QJsonObject &outputs) {
         if (outputs.contains(outputName)) {
             QVariant value = outputs[outputName].toVariant();
             updateOutputData(i, value, outputType);
-
-            // Update preview if applicable
             updatePreview(outputs[outputName], outputName);
         }
     }
 }
 
 void DynamicNodeModel::updateOutputData(PortIndex port, const QVariant &value, const QString &typeName) {
-    m_outputData[port] = std::make_shared<GenericData>(value, typeName);
+    m_outputData[port] = std::make_shared<GenericNodeData>(value, typeName);
     emit dataUpdated(port);
 }
 
 QJsonObject DynamicNodeModel::save() const {
-    QJsonObject modelJson = NodeDelegateModel::save();
+    QJsonObject modelJson = QtNodes::NodeDelegateModel::save();
     modelJson["node_type"] = m_nodeType;
     modelJson["input_values"] = getInputValues();
     return modelJson;
@@ -253,7 +205,6 @@ void DynamicNodeModel::load(QJsonObject const &p) {
             QString name = it.key();
             if (m_inputWidgets.count(name)) {
                 QWidget *widget = m_inputWidgets[name];
-
                 if (auto spinBox = qobject_cast<QDoubleSpinBox *>(widget)) {
                     spinBox->setValue(it.value().toDouble());
                 } else if (auto spinBox = qobject_cast<QSpinBox *>(widget)) {
