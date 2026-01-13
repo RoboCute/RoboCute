@@ -1,5 +1,6 @@
 #include <rbc_core/utils/parse_string.h>
 #include <rbc_core/utils/fast_float.h>
+#include <charconv>
 namespace rbc {
 vstd::optional<int64_t> parse_string_to_int(luisa::string_view string, uint32_t base) {
     const char *start = string.data();

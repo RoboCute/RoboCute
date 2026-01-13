@@ -13,7 +13,7 @@ do
     add_headerfiles("include/RBCEditorRuntime/**.h")
     add_files("include/RBCEditorRuntime/**.h") -- qt moc file required
     add_files("src/**.cpp")
-    set_pcxxheader('src/zz_pch.h')
+    rbc_set_pch('src/zz_pch.h')
     add_files("rbc_editor.qrc") -- qt resource files
     add_defines("LUISA_QT_SAMPLE_ENABLE_DX", "LUISA_QT_SAMPLE_ENABLE_VK")
     add_defines('RBC_EDITOR_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT')

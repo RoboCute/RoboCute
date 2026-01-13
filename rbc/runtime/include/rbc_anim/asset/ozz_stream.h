@@ -4,6 +4,7 @@
 // to work with structured archive formats like BinSerde.
 #include "ozz/base/io/stream.h"
 #include <luisa/core/stl/vector.h>
+#include <luisa/core/stl/memory.h>
 #include <rbc_config.h>
 
 namespace rbc {

@@ -2,6 +2,7 @@
 #include <rbc_graphics/device_assets/device_resource.h>
 #include <luisa/vstl/common.h>
 #include <luisa/runtime/image.h>
+#include <luisa/runtime/device.h>
 #include <luisa/runtime/buffer.h>
 #include <luisa/core/stl/filesystem.h>
 #include <luisa/core/binary_io.h>

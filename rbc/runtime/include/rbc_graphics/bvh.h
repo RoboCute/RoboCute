@@ -5,6 +5,7 @@
 #include <luisa/vstl/common.h>
 #include <luisa/vstl/spin_mutex.h>
 #include <luisa/vstl/pool.h>
+#include <rbc_core/base.h>
 namespace rbc {
 using namespace luisa;
 struct RBC_RUNTIME_API BVH {

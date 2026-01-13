@@ -40,7 +40,7 @@
 #include "ozz/base/containers/vector.h"
 #include "ozz/base/log.h"
 #include "ozz/base/maths/simd_math.h"
-
+#include <luisa/core/logging.h>
 namespace {
 
 template<typename _VectorType>

@@ -1,6 +1,7 @@
 #include <rbc_render/utils/heitz_sobol.h>
 #include <rbc_core/binary_file_writer.h>
 #include <luisa/core/logging.h>
+#include <luisa/core/binary_file_stream.h>
 // export heitz-sobol binary data
 /*
 extern int spp1_scramblingTile[128 * 128 * 8];

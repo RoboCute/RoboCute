@@ -2,6 +2,7 @@
 #include "rbc_anim/types.h"
 #include "rbc_anim/bone_indices.h"
 #include "rbc_anim/asset/reference_skeleton.h"
+#include <rbc_core/rc.h>
 
 // Native Transient Container for Bones
 

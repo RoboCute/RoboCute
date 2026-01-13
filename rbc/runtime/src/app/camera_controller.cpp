@@ -1,5 +1,5 @@
 #include <rbc_app/camera_controller.h>
-
+#include <luisa/core/logging.h>
 namespace rbc {
 // phase
 void CameraController::grab_input_from_viewport(Input const &input, float delta_time) {

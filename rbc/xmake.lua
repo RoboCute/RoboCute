@@ -7,17 +7,17 @@ includes('runtime') -- （图像，动画，物理，插件等）运行时功能
 includes('render_plugin')
 includes('oidn_plugin')
 includes('project_plugin')
-if get_config('rbc_tests') then
+if has_config('rbc_tests') then
     includes('tests')
 end
 -- Targets
-if get_config('rbc_editor') then
+if has_config('rbc_editor') then
     includes('editor')
     -- Later need refactor from new rbc-world
     -- includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd
     includes('node_graph')
 end
-if get_config('rbc_tools') then
+if has_config('rbc_tools') then
     includes('ipc') -- 跨进程
     includes("tool")
 end

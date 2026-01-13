@@ -4,6 +4,7 @@
 #include <luisa/backends/ext/pinned_memory_ext.hpp>
 #include <luisa/core/binary_file_stream.h>
 #include <luisa/vstl/functional.h>
+#include <luisa/core/logging.h>
 // use 32m staging
 namespace rbc {
 TimelineEvent::Wait IOService::wait(uint64_t timeline) const {

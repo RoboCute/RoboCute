@@ -16,6 +16,8 @@
 #include <rbc_world/component.h>
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/texture_loader.h>
+#include <rbc_render/generated/pipeline_settings.hpp>
+#include <rbc_core/state_map.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -243,7 +245,7 @@ void GraphicsUtils::tick(
         DenoisePack *denoise_pack{};
         if (tick_stage != TickStage::RasterPreview && enable_denoise) {
             denoise_pack = &_denoise_packs.emplace_back();
-            _render_plugin->create_denoise_task(
+            *denoise_pack = _render_plugin->create_denoise_task(
                 main_stream,
                 pipe_ctx,
                 frame_settings.display_resolution);

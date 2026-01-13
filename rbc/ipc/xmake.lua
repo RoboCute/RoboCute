@@ -9,7 +9,7 @@ local function rbc_ipc_impl()
         project_kind = 'shared'
     })
     add_deps('cpp-ipc', 'rbc_core')
-    set_pcxxheader('src/zz_pch.h')
+    rbc_set_pch('src/zz_pch.h')
     add_files("src/**.cpp")
     add_defines('RBC_IPC_API=LUISA_DECLSPEC_DLL_EXPORT')
 end

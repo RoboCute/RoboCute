@@ -4,7 +4,24 @@
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_world/resource_base.h>
 #include <rbc_world/resource_importer.h>
+#include <luisa/core/binary_file_stream.h>
 namespace rbc::project {
+struct Project : IProject {
+private:
+    luisa::filesystem::path _assets_path;
+    void _reimport(
+        vstd::Guid binary_guid,
+        luisa::string &meta_data,
+        vstd::MD5 type_id,
+        luisa::filesystem::path const &origin_path);
+
+public:
+    Project(luisa::filesystem::path const &assets_db_path);
+    void scan_project();
+    ~Project();
+    Project(Project const &) = delete;
+    Project(Project &&) = delete;
+};
 Project::Project(luisa::filesystem::path const &assets_db_path)
     : _assets_path(world::Resource::meta_root_path()) {
 }
@@ -27,9 +44,12 @@ void Project::_reimport(
     auto &importers = world::ResourceImporterRegistry::instance();
     auto importer = importers.find_importer(origin_path, type_id);
     if (!importer) {
-        // TODO: deal with error
         return;
     }
+    importer->import(
+        binary_guid,
+        origin_path,
+        meta_data);
 }
 void Project::scan_project() {
     luisa::spin_mutex values_mtx;

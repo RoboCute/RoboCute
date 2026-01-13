@@ -10,10 +10,8 @@ local function rbc_core_impl()
     add_rules('lc_basic_settings', {
         project_kind = 'shared'
     })
-    add_rules("c++.unity_build", {
-        batchsize = 4
-    })
-    set_pcxxheader('src/zz_pch.h')
+    rbc_unity_build(4)
+    rbc_set_pch('src/zz_pch.h')
     add_files('src/**.cpp')
     add_deps('rtm', 'RBCTracy')
     add_defines('RBC_CORE_API=LUISA_DECLSPEC_DLL_EXPORT')

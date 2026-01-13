@@ -6,6 +6,7 @@
 #include <luisa/core/binary_io.h>
 #include <rbc_config.h>
 #include <yyjson.h>
+#include <luisa/vstl/stack_allocator.h>
 
 namespace rbc {
 

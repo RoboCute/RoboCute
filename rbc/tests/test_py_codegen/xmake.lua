@@ -14,7 +14,7 @@ do
     
     add_includedirs('builtin')
 
-    set_pcxxheader('builtin/zz_pch.h')
+    rbc_set_pch('builtin/zz_pch.h')
     add_rules('pybind')
 end
 target_end()

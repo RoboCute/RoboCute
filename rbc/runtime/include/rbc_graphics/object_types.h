@@ -2,6 +2,7 @@
 #include <rbc_graphics/lights.h>
 #include <rbc_graphics/light_type.h>
 #include <rbc_core/rc.h>
+#include <rbc_core/serde.h>
 namespace rbc {
 #include <rbc_graphics/materials.h>
 #include <material/mats.inl>
