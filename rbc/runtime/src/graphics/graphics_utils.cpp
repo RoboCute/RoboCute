@@ -245,7 +245,7 @@ void GraphicsUtils::tick(
         DenoisePack *denoise_pack{};
         if (tick_stage != TickStage::RasterPreview && enable_denoise) {
             denoise_pack = &_denoise_packs.emplace_back();
-            _render_plugin->create_denoise_task(
+            *denoise_pack = _render_plugin->create_denoise_task(
                 main_stream,
                 pipe_ctx,
                 frame_settings.display_resolution);
