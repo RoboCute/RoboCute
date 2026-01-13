@@ -1,6 +1,6 @@
 #include <rbc_world/importers/mat_importer.h>
 #include <rbc_world/resources/material.h>
-
+#include <luisa/core/binary_file_stream.h>
 namespace rbc::world {
 luisa::string_view MatJsonImporter::extension() const {
     return ".json";

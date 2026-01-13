@@ -7,6 +7,7 @@
 #include <luisa/runtime/raster/raster_shader.h>
 #include <luisa/ast/function.h>
 #include <luisa/vstl/common.h>
+#include <luisa/vstl/functional.h>
 #include <luisa/vstl/spin_mutex.h>
 #include <luisa/core/fiber.h>
 

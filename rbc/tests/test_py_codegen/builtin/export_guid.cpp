@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include "module_register.h"
+#include <luisa/core/logging.h>
 
 namespace py = pybind11;
 

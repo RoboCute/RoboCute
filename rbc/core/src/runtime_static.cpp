@@ -1,4 +1,5 @@
 #include <rbc_core/runtime_static.h>
+#include <luisa/core/logging.h>
 
 namespace rbc {
 static RuntimeStaticBase *_runtime_static_header{};

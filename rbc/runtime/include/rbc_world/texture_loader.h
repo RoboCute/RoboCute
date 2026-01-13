@@ -1,6 +1,9 @@
 #pragma once
 #include <rbc_world/resources/texture.h>
 #include <rbc_graphics/texture/pack_texture.h>
+#include <luisa/core/fiber.h>
+#include <luisa/runtime/event.h>
+#include <luisa/vstl/lockfree_array_queue.h>
 namespace rbc::world {
 struct RBC_RUNTIME_API TextureLoader {
 private:

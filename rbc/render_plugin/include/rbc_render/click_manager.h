@@ -4,6 +4,7 @@
 #include <luisa/runtime/rtx/triangle.h>
 #include <luisa/runtime/buffer.h>
 #include <rbc_core/type_info.h>
+#include <luisa/vstl/spin_mutex.h>
 
 namespace rbc {
 struct ClickRequire {

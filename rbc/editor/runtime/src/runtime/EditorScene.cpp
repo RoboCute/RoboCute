@@ -9,6 +9,7 @@
 #include <rbc_graphics/graphics_utils.h>
 #include <luisa/core/logging.h>
 #include <QDebug>
+#include <rbc_graphics/device_assets/device_image.h>
 
 namespace rbc {
 #include <rbc_graphics/materials.h>

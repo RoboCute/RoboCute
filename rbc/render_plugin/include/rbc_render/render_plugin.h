@@ -4,6 +4,8 @@
 #include <luisa/runtime/buffer.h>
 #include <luisa/runtime/stream.h>
 #include <luisa/runtime/rhi/pixel.h>
+#include <luisa/vstl/functional.h>
+#include <rbc_core/rc.h>
 namespace rbc {
 struct StateMap;
 struct DeviceImage;

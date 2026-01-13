@@ -7,6 +7,8 @@
 #include <rbc_core/containers/rbc_concurrent_queue.h>
 #include <rbc_world/importers/register_importers.h>
 #include <rbc_core/atomic.h>
+#include <luisa/vstl/lmdb.hpp>
+#include <luisa/core/clock.h>
 
 namespace rbc ::world {
 luisa::filesystem::path Resource::path() const {

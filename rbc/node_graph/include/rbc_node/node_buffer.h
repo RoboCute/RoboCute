@@ -4,6 +4,7 @@
 #include <luisa/runtime/byte_buffer.h>
 #include <luisa/vstl/common.h>
 #include <rbc_node/buffer_desc.h>
+#include <luisa/vstl/functional.h>
 namespace rbc {
 enum struct ComputeDeviceType : uint32_t {
     HOST,//

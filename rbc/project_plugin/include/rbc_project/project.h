@@ -1,5 +1,6 @@
 #pragma once
 #include <rbc_config.h>
+#include <rbc_core/rc.h>
 #include <luisa/core/stl/filesystem.h>
 namespace rbc::project {
 struct Resource;

@@ -10,7 +10,7 @@ local function rbc_runtime_impl()
     })
     add_defines('RBC_NODE_API=LUISA_DECLSPEC_DLL_EXPORT')
     add_deps('rbc_runtime')
-    set_pcxxheader('src/zz_pch.h')
+    rbc_set_pch('src/zz_pch.h')
     add_files('src/**.cpp')
 end
 interface_target('rbc_node', rbc_runtime_interface, rbc_runtime_impl)

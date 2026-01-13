@@ -18,14 +18,13 @@ on_load(function(target)
     end
 end)
 rule_end()
-function interface_target(target_name, interface_callback, impl_callback, is_plugin)
-    local target_interface_name = target_name .. '_int__'
-    target(target_interface_name)
-    set_kind('phony')
-    interface_callback()
-    target_end()
-
-    if (not is_plugin) or get_config('rbc_plugins') then
+if has_config('rbc_plugins') then
+    function interface_target(target_name, interface_callback, impl_callback, is_plugin)
+        local target_interface_name = target_name .. '_int__'
+        target(target_interface_name)
+        set_kind('phony')
+        interface_callback()
+        target_end()
 
         local target_impl_name = target_name .. '_impl__'
         target(target_impl_name)
@@ -43,11 +42,39 @@ function interface_target(target_name, interface_callback, impl_callback, is_plu
             target_impl_name = target_impl_name,
             target_interface_name = target_interface_name
         })
-    else
-        target(target_name)
+    end
+else
+    function interface_target(target_name, interface_callback, impl_callback, is_plugin)
+        local target_interface_name = target_name .. '_int__'
+        target(target_interface_name)
         set_kind('phony')
-        add_deps(target_interface_name)
+        interface_callback()
         target_end()
+
+        if (not is_plugin) then
+
+            local target_impl_name = target_name .. '_impl__'
+            target(target_impl_name)
+            set_basename(target_name)
+            add_deps(target_interface_name)
+            impl_callback()
+            target_end()
+
+            target(target_name)
+            set_kind('phony')
+            add_rules('lc_run_target')
+            add_rules('_rbc_depend_', {
+                no_link = is_plugin or false,
+                target_name = target_name,
+                target_impl_name = target_impl_name,
+                target_interface_name = target_interface_name
+            })
+        else
+            target(target_name)
+            set_kind('phony')
+            add_deps(target_interface_name)
+            target_end()
+        end
     end
 end
 

@@ -1,6 +1,6 @@
 CompileFlags:
   Add: [-Wno-ignored-attributes, -Wno-unused-function]
-  Remove: [-f*, -m*, /Yu*]
+  Remove: [-f*, -m*, /Yu*, /FID*, -FI*]
 
 Diagnostics:
   Suppress:

@@ -25,7 +25,7 @@ includes('tinygltf_xmake.lua')
 includes("doctest")
 includes('jolt_xmake.lua')
 includes('ozz_xmake.lua')
-if get_config('rbc_editor') then
+if has_config('rbc_editor') then
     includes('qt_xmake.lua')
 end
 includes('oidn')
@@ -35,7 +35,7 @@ includes('argparse')
 -- target('magic_enum')
 -- set_kind('headeronly')
 -- on_load(function(target)
---     target:add('includedirs', path.join(get_config('lc_ext_path'), 'magic_enum'), {
+--     target:add('includedirs', path.join(has_config('lc_ext_path'), 'magic_enum'), {
 --         public = true
 --     })
 -- end)
