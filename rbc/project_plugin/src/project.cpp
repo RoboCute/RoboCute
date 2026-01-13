@@ -5,7 +5,8 @@
 #include <rbc_world/resource_base.h>
 #include <rbc_world/resource_importer.h>
 #include <luisa/core/binary_file_stream.h>
-namespace rbc::project {
+#include <rbc_project/project_plugin.h>
+namespace rbc {
 struct Project : IProject {
 private:
     luisa::filesystem::path _assets_path;
@@ -16,15 +17,14 @@ private:
         luisa::filesystem::path const &origin_path);
 
 public:
-    Project(luisa::filesystem::path const &assets_db_path);
+    Project(luisa::filesystem::path const &assets_db_path)
+        : _assets_path(assets_db_path) {}
     void scan_project();
-    ~Project();
+    ~Project() {
+    }
     Project(Project const &) = delete;
     Project(Project &&) = delete;
 };
-Project::Project(luisa::filesystem::path const &assets_db_path)
-    : _assets_path(world::Resource::meta_root_path()) {
-}
 namespace detail {
 static luisa::string get_path_key(luisa::filesystem::path const &path, luisa::filesystem::path const &base) {
     auto path_key = luisa::to_string(luisa::filesystem::relative(path, base).lexically_normal());
@@ -46,6 +46,7 @@ void Project::_reimport(
     if (!importer) {
         return;
     }
+    LUISA_VERBOSE("Importing {}", luisa::to_string(origin_path));
     importer->import(
         binary_guid,
         origin_path,
@@ -162,6 +163,7 @@ void Project::scan_project() {
                 });
             }
             if (file_meta_is_dirty) {
+                LUISA_VERBOSE("Generating {} meta", luisa::to_string(path));
                 update();
                 JsonSerializer json_ser;
                 json_ser.start_array();
@@ -180,6 +182,17 @@ void Project::scan_project() {
             }
         });
 }
-Project::~Project() {
+struct ProjectPluginImpl : ProjectPlugin {
+public:
+    ProjectPluginImpl() {}
+    IProject *create_project(luisa::filesystem::path const &assets_db_path) override {
+        return new Project(assets_db_path);
+    }
+};
+
+LUISA_EXPORT_API ProjectPlugin *get_project_plugin() {
+    static ProjectPluginImpl project_plugin_impl{};
+    return &project_plugin_impl;
 }
-}// namespace rbc::project
+
+}// namespace rbc

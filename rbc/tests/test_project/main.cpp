@@ -1,4 +1,5 @@
 #include <rbc_project/project.h>
+#include <rbc_project/project_plugin.h>
 #include <luisa/core/fiber.h>
 #include <rbc_plugin/plugin.h>
 #include <rbc_plugin/plugin_manager.h>
@@ -27,8 +28,17 @@ int main(int argc, char *argv[]) {
     utils.init_device(
         argv[0],
         backend.c_str());
+    auto binary_dir = RenderDevice::instance().lc_ctx().runtime_directory() / "test_project_meta";
+    if (!luisa::filesystem::is_directory(binary_dir)) {
+        luisa::filesystem::create_directories(binary_dir);
+    }
     utils.init_graphics(RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
-    world::init_world(argv[2]);
+    world::init_world(binary_dir);
     // TODO: test project
+    auto project_plugin_module = PluginManager::instance().load_module("rbc_project_plugin");
+    auto project_plugin = project_plugin_module->invoke<ProjectPlugin *()>(
+        "get_project_plugin");
+    auto proj = luisa::unique_ptr<IProject>(project_plugin->create_project(argv[2]));
+    proj->scan_project();
     return 0;
 }

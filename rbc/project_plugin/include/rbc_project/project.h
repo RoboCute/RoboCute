@@ -2,7 +2,7 @@
 #include <rbc_config.h>
 #include <rbc_core/rc.h>
 #include <luisa/core/stl/filesystem.h>
-namespace rbc::project {
+namespace rbc {
 struct Resource;
 struct IProject : RCBase {
     IProject() = default;
