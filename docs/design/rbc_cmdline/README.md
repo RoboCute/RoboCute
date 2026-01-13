@@ -4,9 +4,39 @@
 
 ## Project Management
 
+### Info
+
+- show the brief and detailed info for the project
+- `rbc project info --web`: show project info through a web server
+
 ### Create
 
-`rbc create your-project --template uipc`
+```bash
+# 使用 CLI
+rbc project create MyRobotProject \
+    --name "My Robot Project" \
+    --template "uipc" \
+    --author "John Doe" \
+    --description "A robot simulation project" \
+    --git
+```
 
 从模板拉取并
   
+### Validate
+
+Check if the project is a valid project
+
+### Import Asset
+
+```bash
+# 导入单个资产
+rbc import asset --project MyRobotProject --asset assets/models/robot.gltf
+
+# 导入目录
+rbc import dir --project MyRobotProject --directory assets/ --recursive
+```
+
+### Package
+
+`rbc pack/unpack`

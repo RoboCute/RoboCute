@@ -7,7 +7,7 @@ public:
     ProjectPluginImpl() {}
 };
 
-LUISA_EXPORT_API ProjectPlugin *get_project_plugin() {
+LUISA_EXPORT_API ProjectPlugin *get_plugin() {
     static ProjectPluginImpl project_plugin_impl{};
     return &project_plugin_impl;
 }
