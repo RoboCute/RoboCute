@@ -175,7 +175,7 @@ bool SceneManager::on_frame_end(
         }
     }
     // mesh manager dispose data
-    _mesh_mng.on_frame_end(cmdlist, _bdls_mng.alloc());
+    _mesh_mng.on_frame_end(&cmdlist, _bdls_mng.alloc());
 
     // store transform in accel
     for (auto &i : _accel_mngs)

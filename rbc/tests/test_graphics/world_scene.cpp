@@ -12,8 +12,10 @@
 #include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include "jolt_component.h"
-
 #include <tracy_wrapper.h>
+#include <rbc_plugin/plugin_manager.h>
+#include <rbc_project/project.h>
+#include <rbc_project/project_plugin.h>
 
 using rbc::ArchiveWriteJson;
 using rbc::ArchiveReadJson;
@@ -152,6 +154,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
 }
 void WorldScene::_write_scene() {
     // save scene
+    if (entities_path.empty()) return;
     vstd::HashMap<vstd::Guid> saved;
     auto write_file = [&](world::Resource *res) {
         if (!res || !saved.try_emplace(res->guid()).second) return;
@@ -178,22 +181,36 @@ void WorldScene::_write_scene() {
     BinaryFileWriter file_writer(luisa::to_string(entities_path));
     file_writer.write(scene_ser.write_to());
 }
-WorldScene::WorldScene(GraphicsUtils *utils) {
+WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &target_binary_dir,
+                       luisa::filesystem::path const &assets_dir) {
     auto &render_device = RenderDevice::instance();
     auto runtime_dir = render_device.lc_ctx().runtime_directory();
     luisa::filesystem::path meta_dir{"test_scene"};
-    scene_root_dir = runtime_dir / meta_dir;
+    if (!target_binary_dir.empty()) {
+        scene_root_dir = target_binary_dir;
+    } else {
+        scene_root_dir = runtime_dir / meta_dir;
+    }
     entities_path = scene_root_dir / "scene.rbc";
+    world::init_world(scene_root_dir);
 
     // write a demo scene
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
-        luisa::filesystem::create_directories(scene_root_dir);
-        world::init_world(scene_root_dir);
         _init_scene(utils);
-
+    } else if (!target_binary_dir.empty() && !assets_dir.empty()) {
+        auto project_plugin_module = PluginManager::instance().load_module("rbc_project_plugin");
+        auto project_plugin = project_plugin_module->invoke<ProjectPlugin *()>(
+            "get_project_plugin");
+        auto proj = luisa::unique_ptr<IProject>(project_plugin->create_project(
+            luisa::to_string(assets_dir)));
+        luisa::vector<IProject::FileMeta> metas;
+        proj->read_file_metas(
+            "test_scene.scene",
+            metas);
+        LUISA_ASSERT(metas.size() == 1, "Illegal scene");
+        scene = world::load_resource<world::SceneResource>(metas[0].guid);
+        scene->install();
     } else {
-        // load demo scene
-        world::init_world(scene_root_dir);// open project folder
         // load skybox
         {
             BinaryFileStream file_stream{"test_scene/sky_guid.txt"};
@@ -246,10 +263,10 @@ WorldScene::WorldScene(GraphicsUtils *utils) {
             }
         }
         utils->render_plugin()->update_skybox(rbc::RC<DeviceImage>{skybox->get_image()});
+        _set_gizmos();
+        _init_skinning(utils);
     }
-    _set_gizmos();
     // _init_physics(utils);
-    _init_skinning(utils);
     // {
     //     world::Project project{
     //         "test_scene",
@@ -441,8 +458,8 @@ void WorldScene::_set_gizmos() {
 }
 bool WorldScene::draw_gizmos(
     bool dragging,
-    GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane, 
-    ClickManager& click_mng,
+    GraphicsUtils *utils, uint2 click_pixel_pos, uint2 mouse_pos, uint2 window_size, double3 const &cam_pos, float cam_far_plane,
+    ClickManager &click_mng,
     Camera const &cam) {
     if (_entities.empty())
         return false;
@@ -544,6 +561,7 @@ WorldScene::~WorldScene() {
     for (auto &i : _entities) {
         i->rbc_rc_delete();
     }
+    scene.reset();
     skinning_entity.reset();
     skinning_mesh.reset();
     skinning_origin_mesh.reset();

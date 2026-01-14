@@ -3,14 +3,15 @@
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/texture.h>
 #include <rbc_world/resources/material.h>
+#include <rbc_world/resources/scene.h>
 #include <rbc_graphics/camera.h>
 #include <rbc_core/coroutine.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>
 
 namespace rbc {
 struct ClickManager;
-struct GraphicsUtils;
 struct MeshBuilder;
+struct GraphicsUtils;
 struct WorldScene {
     luisa::filesystem::path scene_root_dir;
     luisa::filesystem::path entities_path;
@@ -30,6 +31,7 @@ struct WorldScene {
     RC<world::Entity> physics_floor_entity;// make it independent, no save to file
     RC<world::Entity> physics_box_entity;  // make it independent, no save to file
     RC<world::MeshResource> physics_box_mesh;
+    RC<world::SceneResource> scene;
 
     struct Gizmos : RCBase {
         Buffer<uint> data;
@@ -40,7 +42,10 @@ struct WorldScene {
         float to_cam_distance;
         uint picked_face{~0u};
     };
-    WorldScene(GraphicsUtils *utils);
+    WorldScene(
+        GraphicsUtils *utils,
+        luisa::filesystem::path const &target_binary_dir,
+        luisa::filesystem::path const &assets_dir);
     ~WorldScene();
     bool draw_gizmos(
         bool dragging,
@@ -50,7 +55,7 @@ struct WorldScene {
         uint2 window_size,
         double3 const &cam_pos,
         float cam_far_plane,
-        ClickManager& click_mng,
+        ClickManager &click_mng,
         Camera const &cam);
     void tick_skinning(GraphicsUtils *utils, float delta_time);
 private:

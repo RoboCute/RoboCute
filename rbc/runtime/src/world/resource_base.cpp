@@ -251,6 +251,12 @@ void register_resource_meta(
 }
 void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::filesystem::path const &binary_path) {
     // Register all built-in resource importers
+    if (!meta_path.empty() && !luisa::filesystem::exists(meta_path)) {
+        luisa::filesystem::create_directories(meta_path);
+    }
+    if (!binary_path.empty() && binary_path != meta_path && !luisa::filesystem::exists(binary_path)) {
+        luisa::filesystem::create_directories(binary_path);
+    }
     register_builtin_importers();
     _res_loader = new ResourceLoader{};
     _res_loader->_meta_path = meta_path;

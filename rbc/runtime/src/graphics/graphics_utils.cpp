@@ -60,10 +60,12 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
         _lights.destroy();
     AssetsManager::destroy_instance();
     if (_sm) {
+        _sm->mesh_manager().on_frame_end(nullptr, _sm->bindless_allocator());
         _sm.destroy();
     }
-    if (_present_stream)
+    if (_present_stream) {
         _present_stream.synchronize();
+    }
     _dst_image.reset();
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
