@@ -2,7 +2,7 @@
 
 namespace rbc {
 
-EditorProject::EditorProject(ProjectConfig config) : config_(config) {
+EditorProject::EditorProject() {
 }
 EditorProject::~EditorProject() {}
 

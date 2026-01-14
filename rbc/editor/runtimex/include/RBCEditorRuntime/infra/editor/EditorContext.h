@@ -9,7 +9,6 @@ namespace rbc {
 
 // previous project open log
 struct ProjectCache {
-    luisa::vector<ProjectConfig> previous_projects;
 };
 
 // opening project

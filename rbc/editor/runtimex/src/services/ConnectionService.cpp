@@ -4,6 +4,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTimer>
+#include <QPointer>
 
 namespace rbc {
 
@@ -11,6 +12,24 @@ ConnectionService::ConnectionService(QObject *parent) : IService(parent) {
     m_healthCheckTimer = new QTimer(this);
     m_healthCheckTimer->setInterval(5000);
     QObject::connect(m_healthCheckTimer, &QTimer::timeout, this, &ConnectionService::performHealthCheck);
+}
+
+ConnectionService::~ConnectionService() {
+    // Stop timer and disconnect before destruction
+    if (m_healthCheckTimer) {
+        m_healthCheckTimer->stop();
+        m_healthCheckTimer->disconnect();
+    }
+    
+    // Stop health check and disconnect from server
+    m_connected = false;
+    
+    // Disconnect all signals to prevent callbacks after destruction
+    // Use QObject::disconnect() to avoid conflict with ConnectionService::disconnect()
+    QObject::disconnect();
+    
+    // Clear any pending network requests
+    // QNetworkAccessManager children will be automatically deleted by Qt's parent-child mechanism
 }
 
 void ConnectionService::setServerUrl(const QString &url) {
@@ -82,7 +101,18 @@ void ConnectionService::performHealthCheck() {
 
     QNetworkReply *reply = manager->get(request);
 
-    QObject::connect(reply, &QNetworkReply::finished, [this, reply, manager]() {
+    // Use QPointer to safely check if service still exists when callback executes
+    QPointer<ConnectionService> servicePtr = this;
+    
+    QObject::connect(reply, &QNetworkReply::finished, [servicePtr, reply, manager]() {
+        // Check if service still exists before accessing it
+        if (!servicePtr) {
+            // Service was destroyed, just clean up
+            reply->deleteLater();
+            manager->deleteLater();
+            return;
+        }
+        
         bool success = false;
         if (reply->error() == QNetworkReply::NoError) {
             QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
@@ -95,7 +125,9 @@ void ConnectionService::performHealthCheck() {
             }
         }
 
-        onHealthCheckComplete(success);
+        if (servicePtr) {
+            servicePtr->onHealthCheckComplete(success);
+        }
 
         reply->deleteLater();
         manager->deleteLater();

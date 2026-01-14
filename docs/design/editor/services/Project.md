@@ -42,3 +42,8 @@ ProjectOpenOptions
 - projectRoot
 - projectFilePath
 - projectInfo
+
+## OpenProject
+
+打开Project的流程
+

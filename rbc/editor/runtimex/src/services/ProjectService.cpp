@@ -32,6 +32,26 @@ static QString join_clean(const QString &a, const QString &b) {
 ProjectService::ProjectService(QObject *parent) : IProjectService(parent) {
 }
 
+ProjectService::~ProjectService() {
+    // Disconnect all signals first to prevent callbacks during cleanup
+    QObject::disconnect();
+    
+    // Close project if open before destruction
+    // But don't emit signals as objects might be destroyed
+    if (open_) {
+        // Clear state without emitting signals
+        open_ = false;
+        projectRoot_.clear();
+        projectFilePath_.clear();
+        info_ = ProjectInfo{};
+        lastError_.clear();
+        userPrefs_ = QJsonObject{};
+        openedGraphs_.clear();
+        activeGraph_.clear();
+        graphDirty_.clear();
+    }
+}
+
 bool ProjectService::isOpen() const { return open_; }
 
 QString ProjectService::projectRoot() const {

@@ -1,6 +1,7 @@
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/plugins/PluginContext.h"
+#include "RBCEditorRuntime/services/ConnectionService.h"
 
 #include <QDebug>
 #include <QDir>
@@ -14,6 +15,32 @@ EditorPluginManager &EditorPluginManager::instance() {
 
 EditorPluginManager::EditorPluginManager()
     : QObject(nullptr), qmlEngine_(nullptr), hotReloadWatcher_(nullptr), hotReloadEnabled_(false) {
+}
+
+EditorPluginManager::~EditorPluginManager() {
+    // Stop all active operations in services before destruction
+    for (auto it = services_.begin(); it != services_.end(); ++it) {
+        QObject *service = it.value();
+        if (service) {
+            // Disconnect all signals to prevent callbacks during destruction
+            service->disconnect();
+            
+            // If it's a ConnectionService, stop its timer and disconnect
+            if (auto *connService = qobject_cast<ConnectionService *>(service)) {
+                // Call ConnectionService::disconnect() to stop health check
+                connService->disconnect();
+            }
+        }
+    }
+    
+    // Unload all plugins before services are destroyed
+    unloadAllPlugins();
+    
+    // Clear services map
+    // Note: Services are children of their original parent (usually &app),
+    // so they will be deleted when the app is destroyed, not here
+    // We just clear our reference to them
+    services_.clear();
 }
 
 bool EditorPluginManager::loadPlugin(const QString &pluginPath) {
@@ -213,10 +240,16 @@ void EditorPluginManager::registerService(const QString &serviceId, QObject *ser
 
     if (services_.contains(serviceId)) {
         qWarning() << "EditorPluginManager::registerService: Service" << serviceId << "already registered";
+        // Don't overwrite existing service
+        return;
     }
 
     services_[serviceId] = service;
-    service->setParent(this);
+    // Set parent to PluginManager so services are automatically cleaned up
+    // But only if service doesn't already have a parent (to avoid reparenting issues)
+    if (!service->parent()) {
+        service->setParent(this);
+    }
     qDebug() << "EditorPluginManager::registerService: Service" << serviceId << "registered";
 }
 

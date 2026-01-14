@@ -15,6 +15,7 @@ class RBC_EDITOR_RUNTIME_API WindowManager : public QObject {
 
 public:
     explicit WindowManager(EditorPluginManager *plugin_mng, QObject *parent = nullptr);
+    ~WindowManager() override;
 
     // == MainWindow Management ==
     QMainWindow *main_window() const { return main_window_; }

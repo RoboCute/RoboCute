@@ -9,6 +9,8 @@
 #include <QTreeView>
 #include <QVBoxLayout>
 #include <QHeaderView>
+#include <QPointer>
+#include <QDockWidget>
 
 namespace rbc {
 
@@ -22,6 +24,64 @@ ProjectPlugin::ProjectPlugin(QObject *parent)
 }
 
 ProjectPlugin::~ProjectPlugin() {
+    // Clean up in reverse order of creation
+    // First disconnect all signals
+    if (projectService_) {
+        QObject::disconnect(projectService_, nullptr, this, nullptr);
+    }
+    
+    // CRITICAL: fileBrowserWidget_ ownership issue
+    // Once fileBrowserWidget_ is added to DockWidget, the dock owns it.
+    // We should NOT delete it here, just clean up references.
+    if (fileBrowserWidget_) {
+        QWidget *parent = fileBrowserWidget_->parentWidget();
+        if (parent) {
+            // Widget has a parent (likely DockWidget), so it's owned by the parent
+            // We should NOT delete it, just clean up our references
+            QDockWidget *dock = qobject_cast<QDockWidget *>(parent);
+            if (dock) {
+                // Clear model from tree view
+                QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
+                if (treeView) {
+                    treeView->setModel(nullptr);
+                    treeView->disconnect();
+                }
+                
+                // Disconnect signals
+                fileBrowserWidget_->disconnect();
+                
+                // Remove widget from dock (dock will handle deletion)
+                dock->setWidget(nullptr);
+                qDebug() << "ProjectPlugin::~ProjectPlugin: Released fileBrowserWidget ownership to DockWidget";
+            } else {
+                qDebug() << "ProjectPlugin::~ProjectPlugin: fileBrowserWidget has parent, releasing ownership";
+            }
+        } else {
+            // Widget has no parent, we own it and should delete it
+            QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
+            if (treeView) {
+                treeView->setModel(nullptr);
+                treeView->disconnect();
+            }
+            fileBrowserWidget_->disconnect();
+            fileBrowserWidget_->deleteLater();
+            qDebug() << "ProjectPlugin::~ProjectPlugin: Deleted fileBrowserWidget (no parent)";
+        }
+        
+        // Always clear our pointer
+        fileBrowserWidget_ = nullptr;
+    }
+    
+    // Clean up ViewModel
+    if (viewModel_) {
+        viewModel_->deleteLater();
+        viewModel_ = nullptr;
+    }
+    
+    // Clear references (don't delete service as it's managed elsewhere)
+    projectService_ = nullptr;
+    context_ = nullptr;
+    
     qDebug() << "ProjectPlugin destroyed";
 }
 
@@ -59,19 +119,28 @@ bool ProjectPlugin::load(PluginContext *context) {
     treeView->setSortingEnabled(true);
     
     // Connect double-click to navigate into directories
-    QObject::connect(treeView, &QTreeView::doubleClicked, [this, treeView](const QModelIndex &index) {
-        if (viewModel_ && viewModel_->isDirectory(index)) {
-            QString path = viewModel_->getFilePath(index);
-            viewModel_->setRootPath(path);
-            treeView->setRootIndex(viewModel_->rootIndex());
+    // Use QPointer to safely check if objects still exist
+    QPointer<ProjectViewModel> viewModelPtr = viewModel_;
+    QPointer<QTreeView> treeViewPtr = treeView;
+    
+    QObject::connect(treeView, &QTreeView::doubleClicked, [viewModelPtr, treeViewPtr](const QModelIndex &index) {
+        if (viewModelPtr && treeViewPtr && viewModelPtr->isDirectory(index)) {
+            QString path = viewModelPtr->getFilePath(index);
+            viewModelPtr->setRootPath(path);
+            if (treeViewPtr) {
+                treeViewPtr->setRootIndex(viewModelPtr->rootIndex());
+            }
         }
     });
     
     // Connect project opened signal to update tree view
-    QObject::connect(projectService_, &IProjectService::projectOpened, [this, treeView]() {
-        if (viewModel_) {
-            viewModel_->setRootPath(projectService_->projectRoot());
-            treeView->setRootIndex(viewModel_->rootIndex());
+    QPointer<ProjectPlugin> pluginPtr = this;
+    QObject::connect(projectService_, &IProjectService::projectOpened, [pluginPtr, viewModelPtr, treeViewPtr]() {
+        if (pluginPtr && viewModelPtr && treeViewPtr && pluginPtr->projectService_) {
+            viewModelPtr->setRootPath(pluginPtr->projectService_->projectRoot());
+            if (treeViewPtr) {
+                treeViewPtr->setRootIndex(viewModelPtr->rootIndex());
+            }
         }
     });
     
@@ -83,11 +152,56 @@ bool ProjectPlugin::load(PluginContext *context) {
 }
 
 bool ProjectPlugin::unload() {
+    // Disconnect all signals first
+    if (projectService_) {
+        QObject::disconnect(projectService_, nullptr, this, nullptr);
+    }
+    
+    // CRITICAL: fileBrowserWidget_ ownership issue
+    // Once fileBrowserWidget_ is added to DockWidget via dock->setWidget(),
+    // the dock becomes its parent and owns it. ProjectPlugin should NOT delete it.
+    // We only need to clear the model and disconnect signals, then release the pointer.
     if (fileBrowserWidget_) {
-        fileBrowserWidget_->deleteLater();
+        QWidget *parent = fileBrowserWidget_->parentWidget();
+        if (parent) {
+            // Widget has a parent (likely DockWidget), so it's owned by the parent
+            // We should NOT delete it, just clean up our references
+            QDockWidget *dock = qobject_cast<QDockWidget *>(parent);
+            if (dock) {
+                // Clear model from tree view before widget is destroyed by dock
+                QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
+                if (treeView) {
+                    treeView->setModel(nullptr); // Important: clear model before widget destruction
+                    treeView->disconnect();
+                }
+                
+                // Disconnect signals from widget
+                fileBrowserWidget_->disconnect();
+                
+                // Remove widget from dock (dock will handle deletion)
+                dock->setWidget(nullptr);
+                qDebug() << "ProjectPlugin::unload: Released fileBrowserWidget ownership to DockWidget";
+            } else {
+                // Widget has a different parent, still not ours to delete
+                qDebug() << "ProjectPlugin::unload: fileBrowserWidget has parent, releasing ownership";
+            }
+        } else {
+            // Widget has no parent, we own it and should delete it
+            QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
+            if (treeView) {
+                treeView->setModel(nullptr);
+                treeView->disconnect();
+            }
+            fileBrowserWidget_->disconnect();
+            fileBrowserWidget_->deleteLater();
+            qDebug() << "ProjectPlugin::unload: Deleted fileBrowserWidget (no parent)";
+        }
+        
+        // Always clear our pointer - widget is now owned by dock or deleted
         fileBrowserWidget_ = nullptr;
     }
     
+    // Clean up ViewModel (this will also clean up QFileSystemModel)
     if (viewModel_) {
         viewModel_->deleteLater();
         viewModel_ = nullptr;

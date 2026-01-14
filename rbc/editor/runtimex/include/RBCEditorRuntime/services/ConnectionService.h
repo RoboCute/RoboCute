@@ -15,7 +15,7 @@ class RBC_EDITOR_RUNTIME_API ConnectionService : public IService {
 
 public:
     explicit ConnectionService(QObject *parent = nullptr);
-    ~ConnectionService() override = default;
+    ~ConnectionService() override;
 
     // IService interface
     QString serviceId() const override { return "com.robocute.connection_service"; }

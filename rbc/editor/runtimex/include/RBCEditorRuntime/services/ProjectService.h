@@ -20,7 +20,7 @@ class RBC_EDITOR_RUNTIME_API ProjectService : public IProjectService {
 
 public:
     explicit ProjectService(QObject *parent = nullptr);
-    ~ProjectService() override = default;
+    ~ProjectService() override;
 
     // -- IProjectService --
     bool isOpen() const override;

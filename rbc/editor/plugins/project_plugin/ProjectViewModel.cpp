@@ -32,7 +32,22 @@ ProjectViewModel::ProjectViewModel(IProjectService *projectService, QObject *par
     }
 }
 
-ProjectViewModel::~ProjectViewModel() = default;
+ProjectViewModel::~ProjectViewModel() {
+    // Disconnect all signals before destruction
+    if (projectService_) {
+        QObject::disconnect(projectService_, nullptr, this, nullptr);
+    }
+    
+    // Clear file system model root path to stop any background operations
+    if (fileSystemModel_) {
+        fileSystemModel_->setRootPath(QString());
+        // fileSystemModel_ will be automatically deleted as it's a child of this
+    }
+    
+    // Clear references
+    projectService_ = nullptr;
+    fileSystemModel_ = nullptr;
+}
 
 QString ProjectViewModel::projectRoot() const {
     return projectService_ ? projectService_->projectRoot() : QString();

@@ -5,11 +5,6 @@
 
 namespace rbc {
 
-struct ProjectConfig {
-    luisa::string project_root;
-    bool is_local_project = true;
-};
-
 struct SceneConfig {
     luisa::string scene_file;
     bool is_remote = false;
@@ -17,11 +12,10 @@ struct SceneConfig {
 
 class EditorProject {
 public:
-    EditorProject(ProjectConfig config);// load from config
+    EditorProject();// load from config
     ~EditorProject();
 
-private:
-    ProjectConfig config_;             // config for this project
+private:                               // config for this project
     luisa::vector<SceneConfig> scenes_;// scenes contained in this project
     vstd::optional<EditorScene> scene; // optional opening scene
 };

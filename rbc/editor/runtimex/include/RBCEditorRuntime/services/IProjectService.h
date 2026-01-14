@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QString>
 #include <QStringList>
+#include "RBCEditorRuntime/infra/editor/EditorProject.h"
 #include "RBCEditorRuntime/services/IService.h"
 
 namespace rbc {

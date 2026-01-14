@@ -51,7 +51,7 @@ public:
     T *getService() const {
         // Try to find a registered service of type T and get its service ID
         QString serviceId;
-        
+
         // First, try to find any registered service that can be cast to T
         for (auto it = services_.begin(); it != services_.end(); ++it) {
             QObject *service = it.value();
@@ -66,7 +66,7 @@ public:
                 return qobject_cast<T *>(service);
             }
         }
-        
+
         // If not found by searching, try using class name as fallback
         serviceId = T::staticMetaObject.className();
         QObject *service = getService(serviceId);
@@ -80,7 +80,7 @@ public:
             }
             return qobject_cast<T *>(service);
         }
-        
+
         return nullptr;
     }
 
@@ -96,6 +96,7 @@ signals:
 
 private:
     EditorPluginManager();
+    ~EditorPluginManager();
 
     void resolvePluginDependencies();
     void initializePlugin(IEditorPlugin *plugin);

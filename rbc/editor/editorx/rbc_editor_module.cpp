@@ -32,12 +32,12 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     auto *connectionService = new ConnectionService(&app);
     pluginManager.registerService(connectionService);
     qDebug() << "ConnectionService registered";
-    
+
     // Register ProjectService
     auto *projectService = new ProjectService(&app);
     pluginManager.registerService(projectService);
     qDebug() << "ProjectService registered";
-    
+
     // 5. Create QML Engine
     QQmlEngine *engine = new QQmlEngine(&app);
     pluginManager.setQmlEngine(engine);
@@ -101,9 +101,8 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
                 fileBrowserWidget,
                 Qt::LeftDockWidgetArea,
                 QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable,
-                Qt::AllDockWidgetAreas
-            );
-            
+                Qt::AllDockWidgetAreas);
+
             if (fileBrowserDock) {
                 occupiedDockAreas.insert("Left");
                 qDebug() << "Created file browser dock";
