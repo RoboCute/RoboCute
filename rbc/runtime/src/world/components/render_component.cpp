@@ -193,10 +193,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
     } else {
         mesh = _mesh_ref.get();
     }
-    if (!mesh) {
-        LUISA_WARNING("Mesh not loaded, renderer update failed.");
-        return;
-    }
+
     auto submesh_size = mesh->submesh_count();
     if (!mats.empty()) {
         _materials.clear();
@@ -220,7 +217,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
             } else {
                 mat->install();
                 if (mat->mat_code().value == ~0u) [[unlikely]] {
-                    LUISA_ERROR("Render sub-material {} not initialized.", i);
+                    return MaterialResource::default_mat_code();
                 }
                 return mat->mat_code();
             }
@@ -234,6 +231,10 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
     // TODO: change light type
     bool is_emission = material_is_emission(_materials);
     if (!render_device) return;
+    if (!mesh) {
+        LUISA_WARNING("Mesh not loaded, renderer update failed.");
+        return;
+    }
     if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
         LUISA_ERROR("RenderComponent::update_object can only be called in render-thread.");
     }

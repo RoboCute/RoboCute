@@ -38,6 +38,10 @@ void deser_openpbr(
     material::OpenPBR &x) {
 }
 void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
+    if (_tex_loader) {
+        _tex_loader->finish_task();
+        _tex_loader.reset();
+    }
     LUISA_ASSERT(_graphics_utils_singleton == this);
     _graphics_utils_singleton = nullptr;
     if (_sm) {
@@ -47,7 +51,6 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
         _compute_event.event.synchronize(_compute_event.fence_index);
     if (after_sync)
         after_sync();
-    _tex_loader.reset();
     for (auto &i : _render_pipe_ctxs) {
         _render_plugin->destroy_pipeline_context(i.first);
     }
@@ -109,6 +112,12 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
             << accel.build()
             << [accel = std::move(accel), mesh = std::move(mesh), buffer = std::move(buffer)]() {};
         _render_device.lc_main_stream().synchronize();
+        _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
+            _sm->bindless_allocator(),
+            65536);
+        _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
+            _sm->bindless_allocator(),
+            65536);
         init_counter.wait();
     }
     _lights.create();
@@ -128,13 +137,6 @@ void GraphicsUtils::set_render_view(RenderPlugin::PipeCtxStub *pipe_ctx, RenderV
     iter.value() = render_view;
 }
 void GraphicsUtils::init_render() {
-    PluginManager::init();
-    _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
-        _sm->bindless_allocator(),
-        65536);
-    _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
-        _sm->bindless_allocator(),
-        65536);
     _render_module = PluginManager::instance().load_module("rbc_render_plugin");
     LUISA_ASSERT(_render_module, "Render module not found.");
     _render_plugin = _render_module->invoke<RenderPlugin *()>("get_render_plugin");

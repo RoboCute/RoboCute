@@ -30,7 +30,7 @@ struct RBC_RUNTIME_API RenderView {
     uint2 view_offset_pixels;
     uint2 view_size_pixels{~0u};
 };
-struct RBC_RUNTIME_API GraphicsUtils {
+struct RBC_RUNTIME_API GraphicsUtils : RBCStruct {
 private:
     RenderDevice _render_device;
     luisa::string _backend_name;

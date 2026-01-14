@@ -27,8 +27,9 @@ struct Resource : BaseObject {
     friend struct IResourceImporter;
     template<typename Derive>
     friend struct ResourceBaseImpl;
-protected:
+private:
     std::atomic<EResourceLoadingStatus> _status{EResourceLoadingStatus::Unloaded};
+protected:
     RBC_RUNTIME_API Resource();
     RBC_RUNTIME_API ~Resource();
     virtual rbc::coroutine _async_load() = 0;
@@ -41,11 +42,14 @@ public:
     EResourceLoadingStatus loading_status() const { return _status.load(std::memory_order_relaxed); }
     bool loaded() const { return loading_status() >= EResourceLoadingStatus::Loaded; }
     bool installed() const { return loading_status() >= EResourceLoadingStatus::Installed; }
+    RBC_RUNTIME_API EResourceLoadingStatus unsafe_set_loading_status_min(EResourceLoadingStatus dst_status);
+    RBC_RUNTIME_API EResourceLoadingStatus unsafe_set_loading_status_max(EResourceLoadingStatus dst_status);
     void unsafe_set_loaded();
     void unsafe_set_installed();
     RBC_RUNTIME_API bool install();
     // await until the loading logic finished in both host-side and device-side
     RBC_RUNTIME_API ResourceAwait await_loading();
+    RBC_RUNTIME_API void wait_loading();
     // save host_data to Resource::_path
     RBC_RUNTIME_API bool save_to_path();
     // RBC_RUNTIME_API virtual void (ObjDeSerialize const&obj);
@@ -79,6 +83,17 @@ protected:
     ~ResourceBaseImpl() = default;
 };
 RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file = true);
+template<typename T>
+    requires std::is_base_of_v<Resource, T>
+RC<T> load_resource(vstd::Guid const &guid, bool async_load_from_file = true) {
+    auto res = load_resource(guid, async_load_from_file);
+    if (res) {
+        LUISA_ASSERT(res->type_id() == TypeInfo::get<T>().md5());
+        return std::move(res).cast_static<T>();
+    } else {
+        return {};
+    }
+}
 RBC_RUNTIME_API void register_resource_meta(
     vstd::Guid resource_guid,
     luisa::string &&meta_info,

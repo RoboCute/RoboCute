@@ -34,10 +34,10 @@ void TextureLoader::_try_execute() {
 void TextureLoader::process_texture(RC<TextureResource> const &tex, uint mip_level, bool to_vt) {
 
     auto render_device = RenderDevice::instance_ptr();
-    LUISA_ASSERT(render_device, "Render device must be initialized.");
     if (mip_level > 1 || to_vt) {
+        LUISA_ASSERT(render_device, "Render device must be initialized.");
         std::lock_guard lck{_mtx};
-        if (to_vt && !_pack_tex) {
+        if (!_pack_tex) {
             _pack_tex.create(render_device->lc_device());
         }
         if (mip_level > 1 && !_event) {

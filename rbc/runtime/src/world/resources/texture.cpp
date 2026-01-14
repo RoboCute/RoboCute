@@ -79,10 +79,10 @@ void TextureResource::create_empty(
     luisa::uint2 size,
     uint32_t mip_level,
     bool is_vt) {
-    while (_status == EResourceLoadingStatus::Loading) {
+    while (loading_status() == EResourceLoadingStatus::Loading) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
-    _status = EResourceLoadingStatus::Unloaded;
+    unsafe_set_loading_status_min(EResourceLoadingStatus::Unloaded);
     std::lock_guard lck{_async_mtx};
     _tex.reset();
     _size = size;
@@ -210,10 +210,8 @@ uint32_t TextureResource::heap_index() const {
     }
 }
 rbc::coroutine TextureResource::_async_load() {
-    auto last_status = _status.load();
-    _status = EResourceLoadingStatus::Loading;
     if (!_async_load_from_file()) {
-        _status = last_status;
+        unsafe_set_loading_status_min(EResourceLoadingStatus::Unloaded);
         co_return;
     }
     while (!_load_finished()) {
@@ -308,6 +306,7 @@ bool TextureResource::pack_to_tile() {
 }
 
 uint TextureResource::desired_mip_level(luisa::uint2 size, uint idx) {
+    if (idx < 1) return 1;
     for (auto i : vstd::range(1, idx)) {
         size >>= 1u;
         if (any(size < 256u)) return i;

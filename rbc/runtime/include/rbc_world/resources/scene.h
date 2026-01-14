@@ -7,15 +7,17 @@ struct Entity;
 struct RBC_RUNTIME_API SceneResource : ResourceBaseImpl<SceneResource> {
     DECLARE_WORLD_OBJECT_FRIEND(SceneResource)
     rbc::coroutine _async_load() override;
-    void enable();
+    bool load_from_json(luisa::filesystem::path const &path);
     void update_data();
+    Entity* add_entity();
+    // TODO: manage resources
 private:
     bool unsafe_save_to_path() const;
+    bool _install() override;
     SceneResource();
     ~SceneResource();
 private:
     luisa::vector<RC<Entity>> _entities;
-    std::atomic_bool _enabled{false};
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::SceneResource)

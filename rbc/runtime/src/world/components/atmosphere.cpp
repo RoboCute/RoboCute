@@ -6,23 +6,23 @@
 
 namespace rbc::world {
 void AtmosphereComponent::serialize_meta(ObjSerialize const &obj) const {
-    if (_hdri) {
-        obj.ar.value(_hdri->guid(), "hdri");
+    if (hdri) {
+        obj.ar.value(hdri->guid(), "hdri");
     }
 }
 void AtmosphereComponent::deserialize_meta(ObjDeSerialize const &obj) {
     vstd::Guid hdri_guid;
     if (obj.ar.value(hdri_guid, "hdri")) {
-        _hdri = load_resource(hdri_guid);
+        hdri = load_resource(hdri_guid);
     }
 }
 void AtmosphereComponent::on_awake() {
 }
 void AtmosphereComponent::update_data() {
     auto graphics = GraphicsUtils::instance();
-    if (!graphics || !_hdri) return;
-    _hdri->install();
-    auto img = _hdri->get_image();
+    if (!graphics || !hdri) return;
+    hdri->install();
+    auto img = hdri->get_image();
     auto render_plugin = graphics->render_plugin();
     if (img && render_plugin)
         render_plugin->update_skybox(RC<DeviceImage>(img));

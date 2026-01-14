@@ -4,6 +4,7 @@
 #include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_hdr.h>
+#include <rbc_world/importers/scene_importer.h>
 #include <rbc_world/importers/mat_importer.h>
 
 namespace rbc::world {
@@ -47,6 +48,9 @@ RBC_RUNTIME_API void register_builtin_importers() {
 
     static MatJsonImporter mat_json_importer;
     registry.register_importer(&mat_json_importer);
+
+    static SceneImporter scene_importer;
+    registry.register_importer(&scene_importer);
 
     // Anim Resources
 }

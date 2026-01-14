@@ -286,6 +286,7 @@ void JsonWriter::add(luisa::string_view str, char const *name) {
 }
 
 JsonWriter::~JsonWriter() {
+    if (!json_doc) return;
     LUISA_ASSERT(_json_scope.size() == 1);
     yyjson_mut_doc_free(json_doc);
 }
@@ -358,9 +359,9 @@ void JsonReader::end_scope() {
     _json_scope.pop_back();
 }
 JsonReader::~JsonReader() {
+    if (!json_doc) return;
     LUISA_ASSERT(_json_scope.size() == 1);
-    if (json_doc)
-        yyjson_doc_free(json_doc);
+    yyjson_doc_free(json_doc);
 }
 bool JsonReader::read(bool &value, char const *name) {
     if (!name) {

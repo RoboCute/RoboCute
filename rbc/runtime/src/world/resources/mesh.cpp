@@ -145,10 +145,10 @@ void MeshResource::create_empty(
     uint32_t uv_count,
     bool contained_normal,
     bool contained_tangent) {
-    while (_status == EResourceLoadingStatus::Loading) {
+    while (loading_status() == EResourceLoadingStatus::Loading) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
-    _status = EResourceLoadingStatus::Unloaded;
+    unsafe_set_loading_status_min(EResourceLoadingStatus::Unloaded);
     std::lock_guard lck{_async_mtx};
     _device_res.reset();
     _submesh_offsets = std::move(submesh_offsets);
@@ -233,7 +233,6 @@ bool MeshResource::unsafe_save_to_path() const {
     return true;
 }
 rbc::coroutine MeshResource::_async_load() {
-    _status = EResourceLoadingStatus::Loading;
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) co_return;
     auto file_size = desire_size_bytes();

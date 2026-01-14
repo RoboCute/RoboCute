@@ -210,10 +210,9 @@ struct ResourceLoader : RBCStruct {
         dispose();
     }
     void try_load_resource(Resource *res) {
-        if (res->_status != EResourceLoadingStatus::Unloaded) {
+        if (atomic_max(res->_status, EResourceLoadingStatus::Loading) != EResourceLoadingStatus::Unloaded) {
             return;
         }
-        res->_status = EResourceLoadingStatus::Loading;
         loading_queue.enqueue(LoadingResource{res->instance_id(), res->_async_load()});
         _async_mtx.lock();
         _async_mtx.unlock();
@@ -319,6 +318,24 @@ bool ResourceAwait::await_ready() {
         return true;
     return static_cast<Resource *>(obj.get())->loaded();
 }
+void Resource::wait_loading() {
+    auto coro = [](Resource *self) -> rbc::coroutine {
+        co_await self->await_loading();
+    }(this);
+#ifndef NDEBUG
+    Clock clk;
+#endif
+    while (!coro.done()) {
+        coro.resume();
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+#ifndef NDEBUG
+        if (clk.toc() > 1000) {
+            LUISA_WARNING("Still waiting for resource {}", guid().to_string());
+            clk.tic();
+        }
+#endif
+    }
+}
 ResourceAwait Resource::await_loading() {
     if (loaded()) {
         return {InstanceID::invalid_resource_handle()};
@@ -352,12 +369,18 @@ bool Resource::install() {
         }
 #endif
     }
-    _status = EResourceLoadingStatus::Installing;
+    atomic_max(_status, EResourceLoadingStatus::Installing);
     auto v = _install();
     if (v) {
         unsafe_set_installed();
     }
     return v;
+}
+EResourceLoadingStatus Resource::unsafe_set_loading_status_min(EResourceLoadingStatus dst_status) {
+    return atomic_min(_status, dst_status);
+}
+EResourceLoadingStatus Resource::unsafe_set_loading_status_max(EResourceLoadingStatus dst_status) {
+    return atomic_max(_status, dst_status);
 }
 luisa::filesystem::path const &Resource::meta_root_path() {
     return _res_loader->_meta_path;
