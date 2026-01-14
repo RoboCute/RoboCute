@@ -139,7 +139,9 @@ void BaseObject::init_with_guid(vstd::Guid const &guid) {
     {
         std::lock_guard lck{_world_inst->_guid_mtx};
         auto new_guid = _world_inst->_obj_guids.try_emplace(reinterpret_cast<MD5 const &>(guid), static_cast<BaseObject *>(this)).second;
-        LUISA_DEBUG_ASSERT(new_guid);
+        if (!new_guid) [[unlikely]] {
+            LUISA_ERROR("Creating object with non-unique GUID {}", guid.to_string());
+        }
     }
 }
 BaseObject::~BaseObject() {

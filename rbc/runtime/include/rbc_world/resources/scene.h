@@ -9,7 +9,8 @@ struct RBC_RUNTIME_API SceneResource : ResourceBaseImpl<SceneResource> {
     rbc::coroutine _async_load() override;
     bool load_from_json(luisa::filesystem::path const &path);
     void update_data();
-    Entity* add_entity();
+    Entity *get_entity(vstd::Guid guid);
+    Entity *get_or_add_entity(vstd::Guid guid);
     // TODO: manage resources
 private:
     bool unsafe_save_to_path() const;
@@ -17,7 +18,8 @@ private:
     SceneResource();
     ~SceneResource();
 private:
-    luisa::vector<RC<Entity>> _entities;
+    rbc::shared_atomic_mutex _map_mtx;
+    vstd::HashMap<vstd::Guid, RC<Entity>> _entities;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::SceneResource)
