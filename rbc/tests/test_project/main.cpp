@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
             mats[7] = light_mat;
             // material not loaded from assets, but generated
 
-            auto entity = s->add_entity();
+            auto entity = s->get_or_add_entity(vstd::Guid{true});
             auto atmo_component = entity->add_component<world::AtmosphereComponent>();
             atmo_component->hdri = std::move(sky_tex);
             auto transform = entity->add_component<world::TransformComponent>();
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
         // add bunny
         {
             bunny_obj->wait_loading();
-            auto entity = s->add_entity();
+            auto entity = s->get_or_add_entity(vstd::Guid{true});
             auto transform = entity->add_component<world::TransformComponent>();
             transform->set_pos(double3(0, 3, 2), false);
             transform->set_scale(double3(10), false);

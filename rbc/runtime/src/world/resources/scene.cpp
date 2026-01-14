@@ -6,13 +6,22 @@
 
 namespace rbc::world {
 using namespace luisa;
-Entity* SceneResource::add_entity() {
-    auto e = create_object<Entity>();
-    LUISA_DEBUG_ASSERT(e);
-    _entities.emplace_back(e);
-    return e;
+Entity *SceneResource::get_entity(vstd::Guid guid) {
+    std::shared_lock lck{_map_mtx};
+    auto iter = _entities.find(guid);
+    return iter ? iter.value().get() : nullptr;
+}
+Entity *SceneResource::get_or_add_entity(vstd::Guid guid) {
+    std::shared_lock lck{_map_mtx};
+    auto iter = _entities.try_emplace(
+        guid,
+        vstd::lazy_eval([&] {
+            return create_object_with_guid<Entity>(guid);
+        }));
+    return iter.first.value().get();
 }
 bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
+    std::lock_guard lck{_map_mtx};
     LUISA_ASSERT(_entities.empty());// scene must be empty
     BinaryFileStream file_stream(luisa::to_string(path));
     if (!file_stream.valid()) return false;
@@ -26,8 +35,15 @@ bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
     ArchiveReadJson read_adapter(deser);
     uint64_t size = deser.last_array_size();
     _entities.reserve(size);
-    for (auto i : vstd::range(size)) {
-        auto e = _entities.emplace_back(world::create_object<world::Entity>());
+    for (auto i : vstd::range(size / 2)) {
+        vstd::Guid guid;
+        LUISA_ASSERT(deser._load(guid));
+        auto e =
+            _entities.try_emplace(
+                         guid, vstd::lazy_eval([&] {
+                             return world::create_object_with_guid<world::Entity>(guid);
+                         }))
+                .first.value();
         read_adapter.start_object();
         e->deserialize_meta(world::ObjDeSerialize{read_adapter});
         read_adapter.end_scope();
@@ -43,32 +59,30 @@ rbc::coroutine SceneResource::_async_load() {
 SceneResource::SceneResource() {}
 SceneResource::~SceneResource() {}
 bool SceneResource::unsafe_save_to_path() const {
-    JsonSerializer SceneResource_ser{true};
-    ArchiveWriteJson SceneResource_adapter(SceneResource_ser);
-    world::ObjSerialize ser{SceneResource_adapter};
+    JsonSerializer ser{true};
+    ArchiveWriteJson adapter(ser);
     for (auto &i : _entities) {
-        SceneResource_adapter.start_object();
-        i->serialize_meta(ser);
-        SceneResource_adapter.end_object();
+        ser._store(i.first);
+        adapter.start_object();
+        i.second->serialize_meta(world::ObjSerialize{adapter});
+        adapter.end_object();
     }
     BinaryFileWriter file_writer(luisa::to_string(path()));
-    file_writer.write(SceneResource_ser.write_to());
+    file_writer.write(ser.write_to());
     return true;
 }
 
 void SceneResource::update_data() {
     for (auto &i : _entities) {
-        i->unsafe_call_update();
+        i.second->unsafe_call_update();
     }
 }
 
 bool SceneResource::_install() {
     for (auto &i : _entities) {
-        i->unsafe_call_awake();
+        i.second->unsafe_call_awake();
     }
-    for (auto &i : _entities) {
-        i->unsafe_call_update();
-    }
+    update_data();
     return true;
 }
 DECLARE_WORLD_OBJECT_REGISTER(SceneResource)
