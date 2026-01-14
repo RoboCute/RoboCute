@@ -51,11 +51,16 @@ struct ProjectOpenOptions {
 
 // === Service Interface =======================================================
 
+/**
+ * IProjectService - Project management service interface
+ * 
+ * 重要：作为接口类，使用内联析构器避免链接冲突
+ * 具体实现类（如 ProjectService）应在 .cpp 中定义析构器
+ */
 class RBC_EDITOR_RUNTIME_API IProjectService : public IService {
     Q_OBJECT
 public:
     explicit IProjectService(QObject *parent = nullptr) : IService(parent) {}
-    virtual ~IProjectService() = default;
 
     // IService interface
     QString serviceId() const override { return "com.robocute.project_service"; }

@@ -40,11 +40,17 @@ void MyViewModel::selectEntity(int id) {
 
 */
 
+/**
+ * IEventBus - Event bus service interface
+ * 
+ * 重要：作为接口类，使用内联析构器避免链接冲突
+ * 具体实现类（如 EventBus）应在 .cpp 中定义析构器
+ */
 class IEventBus : public IService {
     Q_OBJECT
 public:
     explicit IEventBus(QObject *parent = nullptr) : IService(parent) {}
-    virtual ~IEventBus() = default;
+    ~IEventBus() override {}// 内联空实现，避免与 moc 生成的代码冲突
 
     // IService interface
     QString serviceId() const override { return "com.robocute.event_bus"; }

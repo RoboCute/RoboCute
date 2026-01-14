@@ -33,8 +33,17 @@ ProjectViewModel::ProjectViewModel(IProjectService *projectService, QObject *par
 }
 
 ProjectViewModel::~ProjectViewModel() {
-    // Disconnect all signals before destruction
+    // 关键：在析构时显式断开与 Service 的信号槽连接
+    // 使用正确的语法：QObject::disconnect(sender, signal, receiver, slot)
+    // 
+    // 为什么必须显式断开？
+    // 1. Service 的生命周期比 ViewModel 长（Service 在 app 析构时才删除）
+    // 2. 如果依赖 Qt 自动清理，在 Service 析构时会访问已删除的 ViewModel
+    // 3. 显式断开是安全的，因为此时 this 还存在
+    
     if (projectService_) {
+        // 断开所有从 projectService_ 到 this 的连接
+        // 这是安全的：sender 和 receiver 都还存在
         QObject::disconnect(projectService_, nullptr, this, nullptr);
     }
     

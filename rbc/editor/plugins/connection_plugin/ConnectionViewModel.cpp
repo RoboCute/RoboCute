@@ -23,6 +23,16 @@ ConnectionViewModel::ConnectionViewModel(ConnectionService *connectionService, Q
             this, &ConnectionViewModel::onConnectionTested);
 }
 
+ConnectionViewModel::~ConnectionViewModel() {
+    // 关键：在析构时显式断开与 Service 的信号槽连接
+    // 原因同 ProjectViewModel：Service 生命周期比 ViewModel 长
+    if (connectionService_) {
+        // 断开所有从 connectionService_ 到 this 的连接
+        QObject::disconnect(connectionService_, nullptr, this, nullptr);
+    }
+    connectionService_ = nullptr;
+}
+
 QString ConnectionViewModel::serverUrl() const {
     return connectionService_ ? connectionService_->serverUrl() : QString();
 }

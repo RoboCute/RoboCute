@@ -46,6 +46,14 @@ public:
         }
     }
     QObject *getService(const QString &serviceId) const;
+    
+    /**
+     * @brief 清理所有 service 引用
+     * 
+     * 必须在 services 的真实拥有者（如 QApplication）析构前调用
+     * 这样可以避免 EditorPluginManager 析构时访问已被删除的 service
+     */
+    void clearServices();
 
     template<typename T>
     T *getService() const {

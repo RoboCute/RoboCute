@@ -7,7 +7,7 @@ namespace rbc {
 class EventBus : public IEventBus {
     Q_OBJECT
 public:
-    virtual ~EventBus() = default;
+    ~EventBus() override;  // 在 .cpp 中定义，不使用 = default
     // delete copy
     EventBus(const EventBus &) = delete;
     EventBus &operator=(const EventBus &) = delete;

@@ -15,21 +15,13 @@ ConnectionService::ConnectionService(QObject *parent) : IService(parent) {
 }
 
 ConnectionService::~ConnectionService() {
-    // Stop timer and disconnect before destruction
+    // Stop timer before destruction
     if (m_healthCheckTimer) {
         m_healthCheckTimer->stop();
-        m_healthCheckTimer->disconnect();
     }
-    
+
     // Stop health check and disconnect from server
     m_connected = false;
-    
-    // Disconnect all signals to prevent callbacks after destruction
-    // Use QObject::disconnect() to avoid conflict with ConnectionService::disconnect()
-    QObject::disconnect();
-    
-    // Clear any pending network requests
-    // QNetworkAccessManager children will be automatically deleted by Qt's parent-child mechanism
 }
 
 void ConnectionService::setServerUrl(const QString &url) {
@@ -103,7 +95,7 @@ void ConnectionService::performHealthCheck() {
 
     // Use QPointer to safely check if service still exists when callback executes
     QPointer<ConnectionService> servicePtr = this;
-    
+
     QObject::connect(reply, &QNetworkReply::finished, [servicePtr, reply, manager]() {
         // Check if service still exists before accessing it
         if (!servicePtr) {
@@ -112,7 +104,7 @@ void ConnectionService::performHealthCheck() {
             manager->deleteLater();
             return;
         }
-        
+
         bool success = false;
         if (reply->error() == QNetworkReply::NoError) {
             QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());

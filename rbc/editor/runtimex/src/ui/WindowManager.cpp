@@ -33,146 +33,113 @@ static Qt::DockWidgetArea parse_dock_area(const QString &dockArea) {
 }
 
 WindowManager::WindowManager(EditorPluginManager *plugin_mng, QObject *parent)
-    : QObject(parent), main_window_(nullptr), plugin_mng_(plugin_mng) {
+    : QObject(parent), plugin_mng_(plugin_mng) {
 }
 
 WindowManager::~WindowManager() {
-    // Clean up main window and all its dock widgets
+    // 确保 cleanup() 已被调用
+    if (!cleaned_up_) {
+        qWarning() << "WindowManager::~WindowManager: cleanup() was not called before destruction!";
+        cleanup();
+    }
+    
+    // 简单的析构：依赖 Qt 的 parent-child 自动清理机制
+    // main_window_ 及其所有子 widget 会被自动删除
     if (main_window_) {
-        // CRITICAL: Hide window first to stop all rendering and event processing
-        main_window_->hide();
+        delete main_window_;
+        main_window_ = nullptr;
+    }
+    
+    qDebug() << "WindowManager::~WindowManager: Destroyed";
+}
+
+void WindowManager::cleanupQmlWidget(QWidget *widget) {
+    QQuickWidget *quickWidget = qobject_cast<QQuickWidget *>(widget);
+    if (!quickWidget) return;
+    
+    // 隐藏 QQuickWidget 停止渲染
+    quickWidget->hide();
+    
+    // 清理 context properties，打破对 ViewModel 的引用
+    // 这是关键：防止 QML 在 ViewModel 销毁后访问它
+    QQmlContext *context = quickWidget->rootContext();
+    if (context) {
+        context->setContextProperty("viewModel", nullptr);
+    }
+    
+    // 清空 source 停止 QML 执行
+    quickWidget->setSource(QUrl());
+    
+    qDebug() << "WindowManager::cleanupQmlWidget: Cleaned up QQuickWidget";
+}
+
+void WindowManager::cleanup() {
+    if (cleaned_up_) {
+        return;
+    }
+    cleaned_up_ = true;
+    
+    if (!main_window_) {
+        return;
+    }
+    
+    qDebug() << "WindowManager::cleanup: Starting cleanup...";
+    
+    // 1. 隐藏窗口，停止所有渲染和事件处理
+    main_window_->hide();
+    
+    // 2. 清理所有 dock widget 中的 QML widget
+    //    这一步打破 QML 对 ViewModel 的引用，防止 plugin unload 后访问已销毁对象
+    QList<QDockWidget *> dockWidgets = main_window_->findChildren<QDockWidget *>();
+    for (QDockWidget *dock : dockWidgets) {
+        QWidget *widget = dock->widget();
+        if (widget) {
+            cleanupQmlWidget(widget);
+        }
+    }
+    
+    // 3. 释放外部 widget 的引用
+    //    外部 widget 由其创建者（plugin）管理，我们只是解除引用
+    for (auto it = external_widgets_.begin(); it != external_widgets_.end(); ++it) {
+        QString viewId = it.key();
+        QPointer<QWidget> widgetPtr = it.value();
         
-        // CRITICAL: Disconnect all signals/slots BEFORE destroying widgets
-        // This prevents QObject::ConnectionData from accessing destroyed objects
-        
-        // Helper function to recursively disconnect all QObject signals
-        std::function<void(QObject *)> disconnectAllSignals = [&disconnectAllSignals](QObject *obj) {
-            if (!obj) return;
-            // Disconnect all signals from this object
-            QObject::disconnect(obj, nullptr, nullptr, nullptr);
-            // Recursively disconnect all child objects
-            QList<QObject *> children = obj->children();
-            for (QObject *child : children) {
-                disconnectAllSignals(child);
+        if (widgetPtr) {
+            // 找到对应的 dock 并解除关联
+            QDockWidget *dock = main_window_->findChild<QDockWidget *>(viewId);
+            if (dock && dock->widget() == widgetPtr) {
+                // 从 dock 中移除外部 widget，但不删除它
+                // 这样 plugin 仍然可以安全地管理它
+                dock->setWidget(nullptr);
+                qDebug() << "WindowManager::cleanup: Released external widget:" << viewId;
             }
-        };
-        
-        // Helper function to recursively disconnect menu actions
+        }
+    }
+    external_widgets_.clear();
+    
+    // 4. 断开菜单 action 的信号连接
+    //    菜单 callback 可能捕获了 plugin 对象的指针，需要在 plugin unload 前断开
+    QMenuBar *menuBar = main_window_->menuBar();
+    if (menuBar) {
         std::function<void(QMenu *)> disconnectMenuActions;
         disconnectMenuActions = [&disconnectMenuActions](QMenu *menu) {
             if (!menu) return;
-            QList<QAction *> actions = menu->actions();
-            for (QAction *action : actions) {
-                // Disconnect all signals from this action
-                QObject::disconnect(action, nullptr, nullptr, nullptr);
-                // Recursively disconnect submenu actions
+            for (QAction *action : menu->actions()) {
+                QObject::disconnect(action, &QAction::triggered, nullptr, nullptr);
                 if (action->menu()) {
                     disconnectMenuActions(action->menu());
                 }
             }
-            // Disconnect menu itself
-            QObject::disconnect(menu, nullptr, nullptr, nullptr);
         };
         
-        // 1. Disconnect all menu bar actions and their connections
-        QMenuBar *menuBar = main_window_->menuBar();
-        if (menuBar) {
-            // Disconnect all actions from menu bar (recursively)
-            QList<QAction *> menuBarActions = menuBar->actions();
-            for (QAction *action : menuBarActions) {
-                // Disconnect all signals from this action
-                QObject::disconnect(action, nullptr, nullptr, nullptr);
-                // Recursively disconnect submenu actions
-                if (action->menu()) {
-                    disconnectMenuActions(action->menu());
-                }
+        for (QAction *action : menuBar->actions()) {
+            if (action->menu()) {
+                disconnectMenuActions(action->menu());
             }
-            // Disconnect menu bar itself
-            QObject::disconnect(menuBar, nullptr, nullptr, nullptr);
         }
-        
-        // 2. Get all dock widgets and their content widgets BEFORE removing them
-        QList<QDockWidget *> dockWidgets = main_window_->findChildren<QDockWidget *>();
-        QList<QWidget *> contentWidgets; // Store content widgets for later deletion
-        
-        // 3. Process and clean up dock widgets and their content widgets FIRST
-        for (QDockWidget *dock : dockWidgets) {
-            // Get content widget BEFORE removing dock
-            QWidget *widget = dock->widget();
-            if (widget) {
-                // Special handling for QQuickWidget: must clean up QML context properly
-                QQuickWidget *quickWidget = qobject_cast<QQuickWidget *>(widget);
-                if (quickWidget) {
-                    // Hide QQuickWidget first to stop rendering
-                    quickWidget->hide();
-                    
-                    // Clear context properties to break references to ViewModel
-                    QQmlContext *context = quickWidget->rootContext();
-                    if (context) {
-                        // Clear context properties to break references to ViewModel
-                        // This is critical to prevent ConnectionData from accessing destroyed ViewModel
-                        context->setContextProperty("viewModel", nullptr);
-                    }
-                    
-                    // Set source to empty to stop QML execution and clear root object
-                    quickWidget->setSource(QUrl());
-                    
-                    // Disconnect QQuickWidget's internal signals
-                    QObject::disconnect(quickWidget, nullptr, nullptr, nullptr);
-                }
-                
-                // Recursively disconnect all signals from widget and its children
-                disconnectAllSignals(widget);
-                
-                // Remove widget from dock to break parent-child relationship
-                dock->setWidget(nullptr);
-                
-                // Store widget for later deletion
-                contentWidgets.append(widget);
-            }
-            
-            // Recursively disconnect all signals from dock and its children
-            disconnectAllSignals(dock);
-        }
-        
-        // 4. NOW remove dock widgets from main window (after content widgets are cleaned)
-        for (QDockWidget *dock : dockWidgets) {
-            main_window_->removeDockWidget(dock);
-        }
-        
-        // 5. Disconnect central widget signals recursively
-        QWidget *centralWidget = main_window_->centralWidget();
-        if (centralWidget) {
-            disconnectAllSignals(centralWidget);
-            main_window_->setCentralWidget(nullptr);
-        }
-        
-        // 6. Recursively disconnect all signals from main window and its children
-        disconnectAllSignals(main_window_);
-        
-        // 7. Process pending events to ensure any pending operations complete
-        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-        
-        // 8. Delete content widgets explicitly (they were removed from docks, no longer have parents)
-        for (QWidget *widget : contentWidgets) {
-            delete widget;
-        }
-        
-        // 9. Delete dock widgets explicitly
-        for (QDockWidget *dock : dockWidgets) {
-            delete dock;
-        }
-        
-        // 10. Delete central widget if it exists
-        if (centralWidget) {
-            delete centralWidget;
-        }
-        
-        // 11. Now safe to delete main window (all children should be cleaned up)
-        delete main_window_;
-        main_window_ = nullptr;
-        qDebug() << "WindowManager::~WindowManager: Cleaned up main window";
     }
+    
+    qDebug() << "WindowManager::cleanup: Cleanup completed";
 }
 
 void WindowManager::setup_main_window() {
@@ -291,9 +258,19 @@ QDockWidget *WindowManager::createDockableView(
     QWidget *widget,
     Qt::DockWidgetArea dockArea,
     QDockWidget::DockWidgetFeatures features,
-    Qt::DockWidgetAreas allowedAreas) {
+    Qt::DockWidgetAreas allowedAreas,
+    bool isExternalWidget) {
 
-    return createDockWidgetCommon(viewId, title, widget, dockArea, features, allowedAreas);
+    QDockWidget *dock = createDockWidgetCommon(viewId, title, widget, dockArea, features, allowedAreas);
+    
+    // 如果是外部 widget，使用 QPointer 追踪它
+    // 这样在 cleanup() 时可以安全地释放引用，让 plugin 管理其生命周期
+    if (dock && isExternalWidget) {
+        external_widgets_.insert(viewId, QPointer<QWidget>(widget));
+        qDebug() << "WindowManager::createDockableView: Registered external widget:" << viewId;
+    }
+    
+    return dock;
 }
 
 QWidget *WindowManager::createStandaloneView(const QString &qmlSource, QObject *viewModel, const QString &title) {

@@ -19,6 +19,7 @@ class RBC_EDITOR_PLUGIN_API ConnectionViewModel : public ViewModelBase {
 
 public:
     explicit ConnectionViewModel(ConnectionService *connectionService, QObject *parent = nullptr);
+    ~ConnectionViewModel() override;
 
     // Property accessors
     QString serverUrl() const;

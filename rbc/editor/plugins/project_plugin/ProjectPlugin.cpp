@@ -24,61 +24,33 @@ ProjectPlugin::ProjectPlugin(QObject *parent)
 }
 
 ProjectPlugin::~ProjectPlugin() {
-    // Clean up in reverse order of creation
-    // First disconnect all signals
-    if (projectService_) {
-        QObject::disconnect(projectService_, nullptr, this, nullptr);
+    // 析构器保持简单，依赖 unload() 已经被调用
+    // 如果 unload() 没有被调用，在这里做最小化清理
+    
+    // 首先断开所有连接（即使 unload 已经调用过，重复断开是安全的）
+    // 这是关键的安全保障，防止析构过程中 service 发送信号
+    if (projectOpenedConnection_) {
+        QObject::disconnect(projectOpenedConnection_);
+        projectOpenedConnection_ = {};
+    }
+    if (treeViewDoubleClickConnection_) {
+        QObject::disconnect(treeViewDoubleClickConnection_);
+        treeViewDoubleClickConnection_ = {};
     }
     
-    // CRITICAL: fileBrowserWidget_ ownership issue
-    // Once fileBrowserWidget_ is added to DockWidget, the dock owns it.
-    // We should NOT delete it here, just clean up references.
-    if (fileBrowserWidget_) {
-        QWidget *parent = fileBrowserWidget_->parentWidget();
-        if (parent) {
-            // Widget has a parent (likely DockWidget), so it's owned by the parent
-            // We should NOT delete it, just clean up our references
-            QDockWidget *dock = qobject_cast<QDockWidget *>(parent);
-            if (dock) {
-                // Clear model from tree view
-                QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
-                if (treeView) {
-                    treeView->setModel(nullptr);
-                    treeView->disconnect();
-                }
-                
-                // Disconnect signals
-                fileBrowserWidget_->disconnect();
-                
-                // Remove widget from dock (dock will handle deletion)
-                dock->setWidget(nullptr);
-                qDebug() << "ProjectPlugin::~ProjectPlugin: Released fileBrowserWidget ownership to DockWidget";
-            } else {
-                qDebug() << "ProjectPlugin::~ProjectPlugin: fileBrowserWidget has parent, releasing ownership";
-            }
-        } else {
-            // Widget has no parent, we own it and should delete it
-            QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
-            if (treeView) {
-                treeView->setModel(nullptr);
-                treeView->disconnect();
-            }
-            fileBrowserWidget_->disconnect();
-            fileBrowserWidget_->deleteLater();
-            qDebug() << "ProjectPlugin::~ProjectPlugin: Deleted fileBrowserWidget (no parent)";
+    if (fileBrowserWidget_ || viewModel_) {
+        qWarning() << "ProjectPlugin::~ProjectPlugin: unload() was not called before destruction!";
+        // 尝试清理，但可能不完整
+        if (viewModel_) {
+            delete viewModel_;
+            viewModel_ = nullptr;
         }
-        
-        // Always clear our pointer
-        fileBrowserWidget_ = nullptr;
+        if (fileBrowserWidget_) {
+            delete fileBrowserWidget_;
+            fileBrowserWidget_ = nullptr;
+        }
     }
     
-    // Clean up ViewModel
-    if (viewModel_) {
-        viewModel_->deleteLater();
-        viewModel_ = nullptr;
-    }
-    
-    // Clear references (don't delete service as it's managed elsewhere)
     projectService_ = nullptr;
     context_ = nullptr;
     
@@ -123,26 +95,39 @@ bool ProjectPlugin::load(PluginContext *context) {
     QPointer<ProjectViewModel> viewModelPtr = viewModel_;
     QPointer<QTreeView> treeViewPtr = treeView;
     
-    QObject::connect(treeView, &QTreeView::doubleClicked, [viewModelPtr, treeViewPtr](const QModelIndex &index) {
-        if (viewModelPtr && treeViewPtr && viewModelPtr->isDirectory(index)) {
-            QString path = viewModelPtr->getFilePath(index);
-            viewModelPtr->setRootPath(path);
-            if (treeViewPtr) {
-                treeViewPtr->setRootIndex(viewModelPtr->rootIndex());
+    // 重要修复：保存连接句柄，以便在 unload 时显式断开
+    // 同时使用 this 作为 context，这样当 plugin 被删除时连接也会自动断开
+    treeViewDoubleClickConnection_ = QObject::connect(
+        treeView, &QTreeView::doubleClicked, 
+        this,  // context 对象 - 确保 plugin 删除时连接自动断开
+        [viewModelPtr, treeViewPtr](const QModelIndex &index) {
+            if (viewModelPtr && treeViewPtr && viewModelPtr->isDirectory(index)) {
+                QString path = viewModelPtr->getFilePath(index);
+                viewModelPtr->setRootPath(path);
+                if (treeViewPtr) {
+                    treeViewPtr->setRootIndex(viewModelPtr->rootIndex());
+                }
             }
-        }
-    });
+        });
     
     // Connect project opened signal to update tree view
+    // 关键修复：
+    // 1. 保存连接句柄到 projectOpenedConnection_
+    // 2. 使用 this 作为 context 对象
+    // 这样在 unload() 中可以通过句柄显式断开，
+    // 即使 unload() 没有被调用，当 plugin 删除时连接也会自动断开
     QPointer<ProjectPlugin> pluginPtr = this;
-    QObject::connect(projectService_, &IProjectService::projectOpened, [pluginPtr, viewModelPtr, treeViewPtr]() {
-        if (pluginPtr && viewModelPtr && treeViewPtr && pluginPtr->projectService_) {
-            viewModelPtr->setRootPath(pluginPtr->projectService_->projectRoot());
-            if (treeViewPtr) {
-                treeViewPtr->setRootIndex(viewModelPtr->rootIndex());
+    projectOpenedConnection_ = QObject::connect(
+        projectService_, &IProjectService::projectOpened, 
+        this,  // context 对象 - 这是关键！没有它 disconnect(sender, nullptr, this, nullptr) 无法断开 lambda 连接
+        [pluginPtr, viewModelPtr, treeViewPtr]() {
+            if (pluginPtr && viewModelPtr && treeViewPtr && pluginPtr->projectService_) {
+                viewModelPtr->setRootPath(pluginPtr->projectService_->projectRoot());
+                if (treeViewPtr) {
+                    treeViewPtr->setRootIndex(viewModelPtr->rootIndex());
+                }
             }
-        }
-    });
+        });
     
     layout->addWidget(treeView);
     fileBrowserWidget_->setLayout(layout);
@@ -152,66 +137,57 @@ bool ProjectPlugin::load(PluginContext *context) {
 }
 
 bool ProjectPlugin::unload() {
-    // Disconnect all signals first
+    qDebug() << "ProjectPlugin::unload: Starting unload...";
+    
+    // 1. 显式断开所有保存的连接句柄
+    //    这是必要的，因为我们需要在删除 viewModel_ 之前断开连接，
+    //    否则在 viewModel_ 删除后到 plugin 删除前的窗口期内，
+    //    如果 projectService_ 发送信号，lambda 会被调用
+    if (projectOpenedConnection_) {
+        QObject::disconnect(projectOpenedConnection_);
+        projectOpenedConnection_ = {};
+        qDebug() << "ProjectPlugin::unload: Disconnected projectOpenedConnection";
+    }
+    if (treeViewDoubleClickConnection_) {
+        QObject::disconnect(treeViewDoubleClickConnection_);
+        treeViewDoubleClickConnection_ = {};
+        qDebug() << "ProjectPlugin::unload: Disconnected treeViewDoubleClickConnection";
+    }
+    
+    // 2. 断开其他可能的信号连接（使用 receiver 匹配）
     if (projectService_) {
         QObject::disconnect(projectService_, nullptr, this, nullptr);
     }
     
-    // CRITICAL: fileBrowserWidget_ ownership issue
-    // Once fileBrowserWidget_ is added to DockWidget via dock->setWidget(),
-    // the dock becomes its parent and owns it. ProjectPlugin should NOT delete it.
-    // We only need to clear the model and disconnect signals, then release the pointer.
+    // 2. 清理 fileBrowserWidget_
+    //    新范式：WindowManager.cleanup() 已经在 plugin unload 之前被调用
+    //    它会从 dock 中移除外部 widget，所以这里 widget 应该没有 parent
+    //    我们可以安全地删除它
     if (fileBrowserWidget_) {
-        QWidget *parent = fileBrowserWidget_->parentWidget();
-        if (parent) {
-            // Widget has a parent (likely DockWidget), so it's owned by the parent
-            // We should NOT delete it, just clean up our references
-            QDockWidget *dock = qobject_cast<QDockWidget *>(parent);
-            if (dock) {
-                // Clear model from tree view before widget is destroyed by dock
-                QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
-                if (treeView) {
-                    treeView->setModel(nullptr); // Important: clear model before widget destruction
-                    treeView->disconnect();
-                }
-                
-                // Disconnect signals from widget
-                fileBrowserWidget_->disconnect();
-                
-                // Remove widget from dock (dock will handle deletion)
-                dock->setWidget(nullptr);
-                qDebug() << "ProjectPlugin::unload: Released fileBrowserWidget ownership to DockWidget";
-            } else {
-                // Widget has a different parent, still not ours to delete
-                qDebug() << "ProjectPlugin::unload: fileBrowserWidget has parent, releasing ownership";
-            }
-        } else {
-            // Widget has no parent, we own it and should delete it
-            QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
-            if (treeView) {
-                treeView->setModel(nullptr);
-                treeView->disconnect();
-            }
-            fileBrowserWidget_->disconnect();
-            fileBrowserWidget_->deleteLater();
-            qDebug() << "ProjectPlugin::unload: Deleted fileBrowserWidget (no parent)";
+        // 清理 tree view 的 model 引用
+        QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
+        if (treeView) {
+            treeView->setModel(nullptr);
         }
         
-        // Always clear our pointer - widget is now owned by dock or deleted
+        // 删除 widget（如果 WindowManager 正确调用了 cleanup()，widget 应该没有 parent）
+        delete fileBrowserWidget_;
         fileBrowserWidget_ = nullptr;
+        qDebug() << "ProjectPlugin::unload: Deleted fileBrowserWidget";
     }
     
-    // Clean up ViewModel (this will also clean up QFileSystemModel)
+    // 3. 清理 ViewModel
     if (viewModel_) {
-        viewModel_->deleteLater();
+        delete viewModel_;
         viewModel_ = nullptr;
+        qDebug() << "ProjectPlugin::unload: Deleted viewModel";
     }
 
-    // Don't delete projectService_ as it might be used by other plugins
+    // 4. 清理引用（不删除 service，它由其他地方管理）
     projectService_ = nullptr;
     context_ = nullptr;
 
-    qDebug() << "ProjectPlugin unloaded";
+    qDebug() << "ProjectPlugin::unload: Unload completed";
     return true;
 }
 

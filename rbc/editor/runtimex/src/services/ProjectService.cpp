@@ -33,13 +33,7 @@ ProjectService::ProjectService(QObject *parent) : IProjectService(parent) {
 }
 
 ProjectService::~ProjectService() {
-    // Disconnect all signals first to prevent callbacks during cleanup
-    QObject::disconnect();
-    
-    // Close project if open before destruction
-    // But don't emit signals as objects might be destroyed
     if (open_) {
-        // Clear state without emitting signals
         open_ = false;
         projectRoot_.clear();
         projectFilePath_.clear();
@@ -56,21 +50,21 @@ bool ProjectService::isOpen() const { return open_; }
 
 QString ProjectService::projectRoot() const {
     if (!open_) {
-        return QString(); // Return empty string if project is not open
+        return QString();// Return empty string if project is not open
     }
     return projectRoot_;
 }
 
 QString ProjectService::projectFilePath() const {
     if (!open_) {
-        return QString(); // Return empty string if project is not open
+        return QString();// Return empty string if project is not open
     }
     return projectFilePath_;
 }
 
 ProjectInfo ProjectService::projectInfo() const {
     if (!open_) {
-        return ProjectInfo{}; // Return empty ProjectInfo if project is not open
+        return ProjectInfo{};// Return empty ProjectInfo if project is not open
     }
     return info_;
 }
@@ -266,21 +260,21 @@ bool ProjectService::saveUserPreferences() {
         setLastError("saveUserPreferences: no project opened");
         return false;
     }
-    
+
     const auto dataDir = editorDataDirPath();
     if (dataDir.isEmpty()) {
         setLastError("saveUserPreferences: invalid project path");
         return false;
     }
-    
+
     QDir().mkpath(dataDir);
-    
+
     const auto file = userPrefsFilePath();
     if (file.isEmpty()) {
         setLastError("saveUserPreferences: invalid preferences file path");
         return false;
     }
-    
+
     return writeJsonFile(file, userPrefs_);
 }
 
@@ -330,7 +324,7 @@ bool ProjectService::closeNodeGraph(const QString &graphPath, bool allowDirty) {
 
     const auto p = QDir::cleanPath(normalizeProjectPath(graphPath));
     if (!openedGraphs_.contains(p)) {
-        return true; // nothing to close
+        return true;// nothing to close
     }
     if (!allowDirty && graphDirty_.value(p, false)) {
         setLastError(QString("closeNodeGraph: graph is dirty: %1").arg(p));
@@ -434,9 +428,9 @@ bool ProjectService::loadEditorSession() {
         setLastError("loadEditorSession: invalid project path");
         return false;
     }
-    
+
     if (!QFileInfo::exists(file)) {
-        return true; // no session yet
+        return true;// no session yet
     }
 
     QJsonObject obj;
@@ -494,9 +488,9 @@ bool ProjectService::saveEditorSession() {
         setLastError("saveEditorSession: invalid project path");
         return false;
     }
-    
+
     QDir().mkpath(dataDir);
-    
+
     const auto file = sessionFilePath();
     if (file.isEmpty()) {
         setLastError("saveEditorSession: invalid session file path");
@@ -517,7 +511,7 @@ bool ProjectService::saveEditorSession() {
 
 QString ProjectService::editorDataDirPath() const {
     if (!open_ || projectRoot_.isEmpty()) {
-        return QString(); // Return empty string if project is not open
+        return QString();// Return empty string if project is not open
     }
     // Place editor-only data under intermediate dir; can be changed later.
     const auto intermediate = info_.paths.intermediate.isEmpty() ? ".rbc" : info_.paths.intermediate;
@@ -639,7 +633,7 @@ bool ProjectService::loadProjectFile(const QString &projectFilePath) {
         return true;
     } catch (const std::exception &e) {
         setLastError(QString("loadProjectFile: exception while parsing project file %1: %2")
-                     .arg(projectFilePath, QString::fromStdString(e.what())));
+                         .arg(projectFilePath, QString::fromStdString(e.what())));
         return false;
     } catch (...) {
         setLastError(QString("loadProjectFile: unknown exception while parsing project file: %1").arg(projectFilePath));

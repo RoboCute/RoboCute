@@ -106,6 +106,12 @@ private:
     ProjectViewModel *viewModel_ = nullptr;
     PluginContext *context_ = nullptr;
     QWidget *fileBrowserWidget_ = nullptr;
+    
+    // 保存连接句柄，以便在 unload 时显式断开
+    // 这是必要的，因为 lambda 连接如果没有 context 对象，
+    // 调用 disconnect(sender, nullptr, this, nullptr) 无法断开它们
+    QMetaObject::Connection projectOpenedConnection_;
+    QMetaObject::Connection treeViewDoubleClickConnection_;
 };
 
 LUISA_EXPORT_API IEditorPlugin *createPlugin();

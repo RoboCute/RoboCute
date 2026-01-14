@@ -7,7 +7,6 @@ namespace rbc {
 
 class IStyleManager : public QObject {
     Q_OBJECT
-
 public:
     // interface
     virtual void initialize(int argc, char **argv) = 0;

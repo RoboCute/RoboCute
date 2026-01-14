@@ -64,9 +64,9 @@ public:
 
 private:
     // Files/dirs (placeholder layout, can be refactored later)
-    QString editorDataDirPath() const;     // {project}/.rbc/editor
-    QString userPrefsFilePath() const;     // .../user_prefs.json
-    QString sessionFilePath() const;       // .../session.json
+    QString editorDataDirPath() const;// {project}/.rbc/editor
+    QString userPrefsFilePath() const;// .../user_prefs.json
+    QString sessionFilePath() const;  // .../session.json
 
     bool readJsonFile(const QString &filePath, QJsonObject &outObj);
     bool writeJsonFile(const QString &filePath, const QJsonObject &obj);
@@ -87,9 +87,9 @@ private:
 
     QJsonObject userPrefs_;
 
-    QStringList openedGraphs_;         // project-relative paths
-    QString activeGraph_;              // project-relative path
-    QHash<QString, bool> graphDirty_;  // graphPath -> dirty
+    QStringList openedGraphs_;       // project-relative paths
+    QString activeGraph_;            // project-relative path
+    QHash<QString, bool> graphDirty_;// graphPath -> dirty
 };
 
 }// namespace rbc

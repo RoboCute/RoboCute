@@ -1,8 +1,9 @@
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/plugins/PluginContext.h"
-#include "RBCEditorRuntime/services/ConnectionService.h"
 
+#include <QCoreApplication>
+#include <QEventLoop>
 #include <QDebug>
 #include <QDir>
 
@@ -18,29 +19,17 @@ EditorPluginManager::EditorPluginManager()
 }
 
 EditorPluginManager::~EditorPluginManager() {
-    // Stop all active operations in services before destruction
-    for (auto it = services_.begin(); it != services_.end(); ++it) {
-        QObject *service = it.value();
-        if (service) {
-            // Disconnect all signals to prevent callbacks during destruction
-            service->disconnect();
-            
-            // If it's a ConnectionService, stop its timer and disconnect
-            if (auto *connService = qobject_cast<ConnectionService *>(service)) {
-                // Call ConnectionService::disconnect() to stop health check
-                connService->disconnect();
-            }
-        }
+    // 如果 clearServices() 没有被调用，在这里做最后的清理
+    // 但此时如果 services 已被其 parent 删除，访问它们会导致 crash
+    if (!services_.isEmpty()) {
+        qWarning() << "EditorPluginManager::~EditorPluginManager: clearServices() was not called!";
+        qWarning() << "This may cause crashes if services have already been destroyed by their parent.";
+        // 不尝试访问 services，直接清空引用
+        services_.clear();
     }
     
-    // Unload all plugins before services are destroyed
+    // Unload all plugins
     unloadAllPlugins();
-    
-    // Clear services map
-    // Note: Services are children of their original parent (usually &app),
-    // so they will be deleted when the app is destroyed, not here
-    // We just clear our reference to them
-    services_.clear();
 }
 
 bool EditorPluginManager::loadPlugin(const QString &pluginPath) {
@@ -255,6 +244,25 @@ void EditorPluginManager::registerService(const QString &serviceId, QObject *ser
 
 QObject *EditorPluginManager::getService(const QString &serviceId) const {
     return services_.value(serviceId, nullptr);
+}
+
+void EditorPluginManager::clearServices() {
+    qDebug() << "EditorPluginManager::clearServices: Clearing all service references";
+    
+    // 此时所有 plugin 已经 unload，所有 ViewModel 已经被删除
+    // ViewModel 在析构时已经显式断开了与 service 的连接
+    // 
+    // 这里只需要：
+    // 1. 清空 PluginManager 对 service 的引用
+    // 2. 防止 PluginManager 析构时访问已被 app 删除的 service
+    
+    // 处理所有待处理的事件，确保所有 deleteLater() 的对象已被删除
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    
+    // 清空引用 map（不访问 service 对象，避免任何潜在问题）
+    services_.clear();
+    
+    qDebug() << "EditorPluginManager::clearServices: All service references cleared";
 }
 
 void EditorPluginManager::setQmlEngine(QQmlEngine *engine) {
