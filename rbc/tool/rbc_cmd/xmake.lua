@@ -8,7 +8,13 @@ add_rules('lc_basic_settings', {
 add_rules("qt.console")
 set_group("04.targets")
 
+add_frameworks("QtCore", "QtNetwork", "QtGui")
+
 add_files("main.cpp")
+
 add_deps("rbc_runtime")
+add_deps("rbc_project_plugin")
+
 add_deps("argparse")
+
 target_end()
