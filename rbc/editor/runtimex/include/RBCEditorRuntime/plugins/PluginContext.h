@@ -14,7 +14,7 @@ public:
     // Get Service
     template<typename T>
     T *getService() const {
-        return qobject_cast<T *>(manager_->getService(T::staticMetaObject.className()));
+        return manager_->getService<T>();
     }
 
     // fast impl for services

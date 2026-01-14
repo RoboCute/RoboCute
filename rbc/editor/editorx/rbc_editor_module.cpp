@@ -16,6 +16,7 @@
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/ui/WindowManager.h"
 #include "RBCEditorRuntime/services/ConnectionService.h"
+#include "RBCEditorRuntime/services/ProjectService.h"
 
 #include <argparse/argparse.hpp>
 
@@ -24,61 +25,51 @@
 
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;
-
-    // 1. Initialize Render Engine Before Qt
     EditorEngine::instance().init(argc, argv);
-
-    // 2. Create Qt Application
-    // Set Qt Quick Controls style to Fusion via environment variable
-    // This allows custom backgrounds in Button and TextField
     qputenv("QT_QUICK_CONTROLS_STYLE", "Fusion");
-
     QApplication app(argc, argv);
-
-    // 3. Initialize Plugin System
     auto &pluginManager = EditorPluginManager::instance();
-    // 4. Create and Register Core Services
-    // Create ConnectionService
-
     auto *connectionService = new ConnectionService(&app);
     pluginManager.registerService(connectionService);
     qDebug() << "ConnectionService registered";
-
+    
+    // Register ProjectService
+    auto *projectService = new ProjectService(&app);
+    pluginManager.registerService(projectService);
+    qDebug() << "ProjectService registered";
+    
     // 5. Create QML Engine
     QQmlEngine *engine = new QQmlEngine(&app);
     pluginManager.setQmlEngine(engine);
     qDebug() << "QML Engine created";
-
     // 6. Load Built-in Plugins
     // Load ConnectionPlugin
     if (!pluginManager.loadPlugin("RBCE_ConnectionPlugin")) {
         qWarning() << "Failed to load ConnectionPlugin";
     }
-
+    // Load ProjectPlugin
+    if (!pluginManager.loadPlugin("RBCE_ProjectPlugin")) {
+        qWarning() << "Failed to load ProjectPlugin";
+    }
     // 7. Create Main Window
     WindowManager windowManager(&pluginManager, &app);
     windowManager.setup_main_window();
     auto *mainWindow = windowManager.main_window();
     qDebug() << "Main window created";
-
     // 8. Apply UI contributions for all plugins
     QSet<QString> occupiedDockAreas;
-
     auto addViewContribution = [&](IEditorPlugin *plugin) {
         if (!plugin) {
             return;
         }
-
         QList<ViewContribution> views = plugin->view_contributions();
         for (const auto &view : views) {
             qDebug() << "Creating view:" << view.viewId << "from" << view.qmlSource;
-
             QObject *viewModel = plugin->getViewModel(view.viewId);
             if (!viewModel) {
                 qWarning() << "Failed to get ViewModel for view:" << view.viewId;
                 continue;
             }
-
             QDockWidget *dock = windowManager.createDockableView(view, viewModel);
             if (dock) {
                 qDebug() << "Created dock for view:" << view.viewId;
@@ -89,6 +80,40 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         }
     };
 
+    // Apply menu contributions
+    for (auto *plugin : pluginManager.getLoadedPlugins()) {
+        qDebug() << "Processing plugin:" << plugin->id();
+        QList<MenuContribution> menus = plugin->menu_contributions();
+        if (!menus.isEmpty()) {
+            windowManager.applyMenuContributions(menus);
+        }
+    }
+
+    // Create file browser dock for ProjectPlugin
+    IEditorPlugin *projectPlugin = pluginManager.getPlugin("com.robocute.project_plugin");
+    if (projectPlugin) {
+        // Use QObject property to get the file browser widget
+        QWidget *fileBrowserWidget = projectPlugin->property("fileBrowserWidget").value<QWidget *>();
+        if (fileBrowserWidget) {
+            QDockWidget *fileBrowserDock = windowManager.createDockableView(
+                "project_file_browser",
+                "Project Files",
+                fileBrowserWidget,
+                Qt::LeftDockWidgetArea,
+                QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable,
+                Qt::AllDockWidgetAreas
+            );
+            
+            if (fileBrowserDock) {
+                occupiedDockAreas.insert("Left");
+                qDebug() << "Created file browser dock";
+            }
+        } else {
+            qWarning() << "File browser widget not available from ProjectPlugin";
+        }
+    }
+
+    // Apply view contributions
     for (auto *plugin : pluginManager.getLoadedPlugins()) {
         qDebug() << "Processing plugin:" << plugin->id();
         addViewContribution(plugin);

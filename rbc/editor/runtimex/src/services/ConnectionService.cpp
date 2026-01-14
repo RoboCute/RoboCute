@@ -7,7 +7,7 @@
 
 namespace rbc {
 
-ConnectionService::ConnectionService(QObject *parent) : QObject(parent) {
+ConnectionService::ConnectionService(QObject *parent) : IService(parent) {
     m_healthCheckTimer = new QTimer(this);
     m_healthCheckTimer->setInterval(5000);
     QObject::connect(m_healthCheckTimer, &QTimer::timeout, this, &ConnectionService::performHealthCheck);

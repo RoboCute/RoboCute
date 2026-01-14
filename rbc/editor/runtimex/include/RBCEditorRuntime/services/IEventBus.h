@@ -3,6 +3,7 @@
 #include <QVariant>
 #include "RBCEditorRuntime/infra/events/Event.h"
 #include "RBCEditorRuntime/infra/events/EventType.h"
+#include "RBCEditorRuntime/services/IService.h"
 
 // 事件总线
 
@@ -39,10 +40,14 @@ void MyViewModel::selectEntity(int id) {
 
 */
 
-class IEventBus : public QObject {
+class IEventBus : public IService {
     Q_OBJECT
 public:
+    explicit IEventBus(QObject *parent = nullptr) : IService(parent) {}
     virtual ~IEventBus() = default;
+
+    // IService interface
+    QString serviceId() const override { return "com.robocute.event_bus"; }
 
     // publish event
     virtual void publish(const Event &event) = 0;

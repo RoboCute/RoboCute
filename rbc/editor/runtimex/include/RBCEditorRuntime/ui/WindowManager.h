@@ -38,6 +38,9 @@ public:
     // == Create Standalone Window (for Preview)
     QWidget *createStandaloneView(const QString &qmlSource, QObject *viewModel, const QString &title);
 
+    // == Apply Menu Contributions from plugins
+    void applyMenuContributions(const QList<MenuContribution> &contributions);
+
 private:
     QDockWidget *createDockWidgetCommon(
         const QString &viewId,

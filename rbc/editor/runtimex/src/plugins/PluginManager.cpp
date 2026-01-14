@@ -205,23 +205,23 @@ void EditorPluginManager::watchPluginDirectory(const QString &path) {
     qDebug() << "EditorPluginManager::watchPluginDirectory: Watching" << path;
 }
 
-void EditorPluginManager::registerService(const QString &name, QObject *service) {
+void EditorPluginManager::registerService(const QString &serviceId, QObject *service) {
     if (!service) {
         qWarning() << "EditorPluginManager::registerService: service is null";
         return;
     }
 
-    if (services_.contains(name)) {
-        qWarning() << "EditorPluginManager::registerService: Service" << name << "already registered";
+    if (services_.contains(serviceId)) {
+        qWarning() << "EditorPluginManager::registerService: Service" << serviceId << "already registered";
     }
 
-    services_[name] = service;
+    services_[serviceId] = service;
     service->setParent(this);
-    qDebug() << "EditorPluginManager::registerService: Service" << name << "registered";
+    qDebug() << "EditorPluginManager::registerService: Service" << serviceId << "registered";
 }
 
-QObject *EditorPluginManager::getService(const QString &name) const {
-    return services_.value(name, nullptr);
+QObject *EditorPluginManager::getService(const QString &serviceId) const {
+    return services_.value(serviceId, nullptr);
 }
 
 void EditorPluginManager::setQmlEngine(QQmlEngine *engine) {

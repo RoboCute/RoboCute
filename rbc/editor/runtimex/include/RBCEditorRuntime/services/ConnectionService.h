@@ -3,10 +3,11 @@
 #include <rbc_config.h>
 #include <QObject>
 #include <QTimer>
+#include "RBCEditorRuntime/services/IService.h"
 
 namespace rbc {
 
-class RBC_EDITOR_RUNTIME_API ConnectionService : public QObject {
+class RBC_EDITOR_RUNTIME_API ConnectionService : public IService {
     Q_OBJECT
     Q_PROPERTY(QString serverUrl READ serverUrl WRITE setServerUrl NOTIFY serverUrlChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
@@ -15,6 +16,9 @@ class RBC_EDITOR_RUNTIME_API ConnectionService : public QObject {
 public:
     explicit ConnectionService(QObject *parent = nullptr);
     ~ConnectionService() override = default;
+
+    // IService interface
+    QString serviceId() const override { return "com.robocute.connection_service"; }
 
     QString serverUrl() const { return m_serverUrl; }
     void setServerUrl(const QString &url);

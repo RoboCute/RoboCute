@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QString>
 #include <QStringList>
+#include "RBCEditorRuntime/services/IService.h"
 
 namespace rbc {
 
@@ -49,11 +50,14 @@ struct ProjectOpenOptions {
 
 // === Service Interface =======================================================
 
-class RBC_EDITOR_RUNTIME_API IProjectService : public QObject {
+class RBC_EDITOR_RUNTIME_API IProjectService : public IService {
     Q_OBJECT
 public:
-    explicit IProjectService(QObject *parent = nullptr) : QObject(parent) {}
+    explicit IProjectService(QObject *parent = nullptr) : IService(parent) {}
     virtual ~IProjectService() = default;
+
+    // IService interface
+    QString serviceId() const override { return "com.robocute.project_service"; }
 
     // -- State --
     virtual bool isOpen() const = 0;

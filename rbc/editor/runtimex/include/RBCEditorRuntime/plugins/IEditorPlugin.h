@@ -9,9 +9,6 @@ namespace rbc {
 
 struct PluginContext;
 
-struct MenuContribution {};
-struct ToolbarContribution {};
-
 class RBC_EDITOR_RUNTIME_API IEditorPlugin : public QObject {
     Q_OBJECT
 public:

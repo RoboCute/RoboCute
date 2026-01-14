@@ -2,9 +2,11 @@
 
 #include <rbc_config.h>
 #include "RBCEditorRuntime/services/IProjectService.h"
+#include "RBCEditorRuntime/services/ProjectService.h"
 #include "RBCEditorRuntime/mvvm/ViewModelBase.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include <QFileSystemModel>
+#include <QWidget>
 
 namespace rbc {
 
@@ -67,6 +69,7 @@ private:
 
 class RBC_EDITOR_PLUGIN_API ProjectPlugin : public IEditorPlugin {
     Q_OBJECT
+    Q_PROPERTY(QWidget *fileBrowserWidget READ fileBrowserWidget CONSTANT)
 
 public:
     explicit ProjectPlugin(QObject *parent = nullptr);
@@ -84,7 +87,7 @@ public:
     bool is_dynamic() const override { return true; }
 
     QList<ViewContribution> view_contributions() const override;
-    QList<MenuContribution> menu_contributions() const override { return {}; }
+    QList<MenuContribution> menu_contributions() const override;
     QList<ToolbarContribution> toolbar_contributions() const override { return {}; }
 
     void register_view_models(QQmlEngine *engine) override;
@@ -92,10 +95,17 @@ public:
     // Get ViewModel for a specific view
     QObject *getViewModel(const QString &viewId) override;
 
+    // Get file browser widget (for native widget dock)
+    QWidget *fileBrowserWidget() const { return fileBrowserWidget_; }
+
+private slots:
+    void onOpenProjectTriggered();
+
 private:
     IProjectService *projectService_ = nullptr;
     ProjectViewModel *viewModel_ = nullptr;
     PluginContext *context_ = nullptr;
+    QWidget *fileBrowserWidget_ = nullptr;
 };
 
 LUISA_EXPORT_API IEditorPlugin *createPlugin();

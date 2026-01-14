@@ -9,6 +9,10 @@
 #include <QDebug>
 #include <QUrl>
 #include <QStringList>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QKeySequence>
 
 namespace rbc {
 
@@ -188,6 +192,93 @@ QWidget *WindowManager::createStandaloneView(const QString &qmlSource, QObject *
     }
 
     return quickWidget;
+}
+
+void WindowManager::applyMenuContributions(const QList<MenuContribution> &contributions) {
+    if (!main_window_) {
+        qWarning() << "WindowManager::applyMenuContributions: main_window_ is null";
+        return;
+    }
+
+    QMenuBar *menuBar = main_window_->menuBar();
+    if (!menuBar) {
+        menuBar = new QMenuBar(main_window_);
+        main_window_->setMenuBar(menuBar);
+    }
+
+    for (const auto &contribution : contributions) {
+        // Parse menu path (e.g., "File/Open Project")
+        QStringList pathParts = contribution.menuPath.split("/");
+        if (pathParts.isEmpty()) {
+            qWarning() << "WindowManager::applyMenuContributions: Empty menu path";
+            continue;
+        }
+
+        // Find or create menu hierarchy
+        QMenu *currentMenu = nullptr;
+        QString menuName = pathParts.first();
+        
+        // Find existing menu or create new one
+        QList<QAction *> menuBarActions = menuBar->actions();
+        for (QAction *action : menuBarActions) {
+            if (action->text() == menuName) {
+                currentMenu = action->menu();
+                break;
+            }
+        }
+        
+        if (!currentMenu) {
+            currentMenu = menuBar->addMenu(menuName);
+        }
+
+        // Navigate/create submenus if needed
+        // If pathParts has more than one element, the last one is the action text
+        // Otherwise, use contribution.actionText
+        QString actionText;
+        if (pathParts.size() > 1) {
+            // Navigate through submenus
+            for (int i = 1; i < pathParts.size() - 1; ++i) {
+                QString subMenuName = pathParts[i];
+                QMenu *subMenu = nullptr;
+                
+                QList<QAction *> menuActions = currentMenu->actions();
+                for (QAction *action : menuActions) {
+                    if (action->text() == subMenuName && action->menu()) {
+                        subMenu = action->menu();
+                        break;
+                    }
+                }
+                
+                if (!subMenu) {
+                    subMenu = currentMenu->addMenu(subMenuName);
+                }
+                currentMenu = subMenu;
+            }
+            // Last part is the action text
+            actionText = pathParts.last();
+        } else {
+            // Single level menu, use actionText from contribution
+            actionText = contribution.actionText;
+        }
+        
+        if (actionText.isEmpty()) {
+            qWarning() << "WindowManager::applyMenuContributions: Empty action text for" << contribution.menuPath;
+            continue;
+        }
+
+        QAction *action = currentMenu->addAction(actionText);
+        if (!contribution.shortcut.isEmpty()) {
+            action->setShortcut(QKeySequence(contribution.shortcut));
+        }
+        action->setObjectName(contribution.actionId);
+
+        // Connect callback
+        if (contribution.callback) {
+            QObject::connect(action, &QAction::triggered, contribution.callback);
+        }
+
+        qDebug() << "WindowManager::applyMenuContributions: Added menu item" << contribution.menuPath;
+    }
 }
 
 }// namespace rbc

@@ -4,6 +4,7 @@
 #include <QQmlEngine>
 #include <QFileSystemWatcher>
 #include "RBCEditorRuntime/services/IEventBus.h"
+#include "RBCEditorRuntime/services/IService.h"
 #include <rbc_plugin/plugin_manager.h>
 
 namespace rbc {
@@ -33,16 +34,54 @@ public:
     void watchPluginDirectory(const QString &path);
 
     // Register Services
-    void registerService(const QString &name, QObject *service);
+    void registerService(const QString &serviceId, QObject *service);
     template<typename T>
     void registerService(T *service) {
-        registerService(T::staticMetaObject.className(), service);
+        // Try to use IService::serviceId() if available
+        if (auto *iservice = qobject_cast<IService *>(service)) {
+            registerService(iservice->serviceId(), service);
+        } else {
+            // Fallback to class name for backward compatibility
+            registerService(T::staticMetaObject.className(), service);
+        }
     }
-    QObject *getService(const QString &name) const;
+    QObject *getService(const QString &serviceId) const;
 
     template<typename T>
     T *getService() const {
-        return qobject_cast<T *>(getService(T::staticMetaObject.className()));
+        // Try to find a registered service of type T and get its service ID
+        QString serviceId;
+        
+        // First, try to find any registered service that can be cast to T
+        for (auto it = services_.begin(); it != services_.end(); ++it) {
+            QObject *service = it.value();
+            if (qobject_cast<T *>(service)) {
+                // If it's an IService, use its serviceId
+                if (auto *iservice = qobject_cast<IService *>(service)) {
+                    serviceId = iservice->serviceId();
+                } else {
+                    // Fallback to the key (which should be the serviceId)
+                    serviceId = it.key();
+                }
+                return qobject_cast<T *>(service);
+            }
+        }
+        
+        // If not found by searching, try using class name as fallback
+        serviceId = T::staticMetaObject.className();
+        QObject *service = getService(serviceId);
+        if (service) {
+            // If found and it's an IService, update serviceId and re-get
+            if (auto *iservice = qobject_cast<IService *>(service)) {
+                QString correctId = iservice->serviceId();
+                if (correctId != serviceId) {
+                    service = getService(correctId);
+                }
+            }
+            return qobject_cast<T *>(service);
+        }
+        
+        return nullptr;
     }
 
     // QML Engine
