@@ -45,23 +45,23 @@ int main(int argc, char *argv[]) {
     if (argc >= 2) {
         backend = argv[1];
     }
-    GraphicsUtils utils;
-    utils.init_device(
+    auto utils = luisa::make_unique<GraphicsUtils>();
+    utils->init_device(
         argv[0],
         backend.c_str());
-    utils.init_graphics(
-        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
-    utils.init_render();
-    auto pipe_ctx = utils.register_render_pipectx({});
-    auto &render_settings = utils.render_settings(pipe_ctx);
-    Window window{luisa::string{"test_graphics_"} + utils.backend_name(), uint2(1024), true};
-    utils.init_display(window.size(), window.native_display(), window.native_handle());
+    utils->init_graphics(
+        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils->backend_name()));
+    utils->init_render();
+    auto pipe_ctx = utils->register_render_pipectx({});
+    auto &render_settings = utils->render_settings(pipe_ctx);
+    Window window{luisa::string{"test_graphics_"} + utils->backend_name(), uint2(1024), true};
+    utils->init_display(window.size(), window.native_display(), window.native_handle());
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer
     double last_frame_time = 0;
     // vstd::optional<SimpleScene> simple_scene;
     vstd::optional<WorldScene> world_scene;
-    world_scene.create(&utils);
+    world_scene.create(utils.get());
     // simple_scene.create(*Lights::instance());
     // Test FOV
     bool reset = false;
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
                 // } break;
         }
     });
-    Camera *cam = &utils.render_settings(pipe_ctx).read_mut<Camera>();
+    Camera *cam = &utils->render_settings(pipe_ctx).read_mut<Camera>();
     CameraController cam_controller;
     cam_controller.camera = cam;
 
@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
 
             if (reset) {
                 reset = false;
-                utils.reset_frame();
+                utils->reset_frame();
             }
 
             {
@@ -202,12 +202,12 @@ int main(int argc, char *argv[]) {
             // reuse drag logic
             if (cam && click_mng) {
                 RBCZoneScopedN("Draw Gizmos");
-                auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, &utils, make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam->position, cam->far_plane, *click_mng, *cam);
+                auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, utils.get(), make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam->position, cam->far_plane, *click_mng, *cam);
             }
 
-            if (any(window_size != utils.dst_image().size())) {
+            if (any(window_size != utils->dst_image().size())) {
                 RBCZoneScopedN("Resize Swapchain");
-                utils.resize_swapchain(window_size, window.native_display(), window.native_handle());
+                utils->resize_swapchain(window_size, window.native_display(), window.native_handle());
                 frame_index = 0;
             }
             if (reset) {
@@ -258,7 +258,7 @@ int main(int argc, char *argv[]) {
                 RBCZoneScopedN("Render Tick");
                 // if (clk.toc() > 2000.f)
                 if (!offline_mode || frame_index == 0)
-                    world_scene->tick_skinning(&utils, 1 / 10.0f);
+                    world_scene->tick_skinning(utils.get(), 1 / 10.0f);
                 auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
                 constexpr uint sample = 256;
                 if (offline_mode && frame_index > sample) {
@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
                     auto &frame_settings = render_settings.read_mut<FrameSettings>();
                     frame_settings.frame_index = frame_index;
                 }
-                utils.tick(
+                utils->tick(
                     static_cast<float>(delta_time),
                     window_size,
                     tick_stage,
@@ -281,7 +281,7 @@ int main(int argc, char *argv[]) {
                 if constexpr (offline_mode) {
                     if (frame_index == sample) {
                         LUISA_INFO("Denoising..");
-                        utils.denoise();
+                        utils->denoise();
                     }
                     // after denoise, save image
                     else if (frame_index == sample + 1) {
@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
                         }
                         save_image(
                             luisa::format("screenshots/frame_{}.jpg", saved_frame_index++),
-                            utils.dst_image());
+                            utils->dst_image());
                         frame_index = -1;
                     }
                 }
@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
     }
     // rpc_hook.shutdown_remote();
 
-    utils.dispose([&]() {
+    utils->dispose([&]() {
         world_scene.destroy();
         auto pipe_settings_json = render_settings.serialize_to_json();
         if (pipe_settings_json.data()) {
@@ -318,5 +318,6 @@ int main(int argc, char *argv[]) {
         }
         // destroy render-pipeline
     });
+    utils.reset();
 }
 #endif

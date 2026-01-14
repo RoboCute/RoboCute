@@ -10,10 +10,10 @@ struct RBC_RUNTIME_API AtmosphereComponent final : ComponentDerive<AtmosphereCom
     void on_awake() override;
     void update_data() override;
     void on_destroy() override;
+    RC<TextureResource> hdri;
 private:
     AtmosphereComponent();
     ~AtmosphereComponent();
-    RC<TextureResource> _hdri;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::AtmosphereComponent);

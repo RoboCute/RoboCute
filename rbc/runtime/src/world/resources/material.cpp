@@ -18,10 +18,10 @@ struct MaterialInst : RBCStruct {
 };
 static RuntimeStatic<MaterialInst> _mat_inst;
 MatCode MaterialResource::default_mat_code() {
-    if (!RenderDevice::is_rendering_thread()) [[unlikely]] {
+    if (RenderDevice::instance_ptr() && !RenderDevice::is_rendering_thread()) [[unlikely]] {
         LUISA_ERROR("Renderer::update_object can only be called in render-thread.");
     }
-    if (_mat_inst->_default_mat_code.value == ~0u) {
+    if (_mat_inst->_default_mat_code.value == ~0u && SceneManager::instance_ptr()) {
         material::OpenPBR mat{};
         auto &sm = SceneManager::instance();
         _mat_inst->_default_mat_code = sm.mat_manager().emplace_mat_instance(
@@ -50,7 +50,6 @@ void MaterialResource::load_from_json(luisa::string_view json_vec) {
     _load_from_json(json_vec, true);
 }
 void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_loaded) {
-    _status = EResourceLoadingStatus::Loading;
     JsonDeSerializer deser{json_vec};
     luisa::string mat_type;
     bool is_default{false};

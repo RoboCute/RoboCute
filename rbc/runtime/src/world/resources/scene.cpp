@@ -6,11 +6,16 @@
 
 namespace rbc::world {
 using namespace luisa;
-rbc::coroutine SceneResource::_async_load() {
-    auto path = this->path();
-    if (path.empty()) co_return;
+Entity* SceneResource::add_entity() {
+    auto e = create_object<Entity>();
+    LUISA_DEBUG_ASSERT(e);
+    _entities.emplace_back(e);
+    return e;
+}
+bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
+    LUISA_ASSERT(_entities.empty());// scene must be empty
     BinaryFileStream file_stream(luisa::to_string(path));
-    if (!file_stream.valid()) co_return;
+    if (!file_stream.valid()) return false;
     luisa::vector<char> json_vec;
     json_vec.push_back_uninitialized(file_stream.length());
     file_stream.read(
@@ -27,6 +32,12 @@ rbc::coroutine SceneResource::_async_load() {
         e->deserialize_meta(world::ObjDeSerialize{read_adapter});
         read_adapter.end_scope();
     }
+    return true;
+}
+rbc::coroutine SceneResource::_async_load() {
+    auto path = this->path();
+    if (path.empty()) co_return;
+    load_from_json(path);
     co_return;
 }
 SceneResource::SceneResource() {}
@@ -51,14 +62,14 @@ void SceneResource::update_data() {
     }
 }
 
-void SceneResource::enable() {
-    if (_enabled.exchange(true)) return;
+bool SceneResource::_install() {
     for (auto &i : _entities) {
         i->unsafe_call_awake();
     }
     for (auto &i : _entities) {
         i->unsafe_call_update();
     }
+    return true;
 }
 DECLARE_WORLD_OBJECT_REGISTER(SceneResource)
 }// namespace rbc::world

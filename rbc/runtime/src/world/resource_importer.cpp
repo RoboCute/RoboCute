@@ -126,7 +126,7 @@ bool ITextureImporter::import(Resource *resource, luisa::filesystem::path const 
     auto tex = static_cast<TextureResource *>(resource);
     return import(
         RC<TextureResource>(tex),
-        GraphicsUtils::instance()->tex_loader(),
+        GraphicsUtils::instance() ? GraphicsUtils::instance()->tex_loader() : nullptr,
         path,
         tex->mip_level(),
         tex->is_vt());
