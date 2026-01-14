@@ -34,11 +34,26 @@ ProjectService::ProjectService(QObject *parent) : IProjectService(parent) {
 
 bool ProjectService::isOpen() const { return open_; }
 
-QString ProjectService::projectRoot() const { return projectRoot_; }
+QString ProjectService::projectRoot() const {
+    if (!open_) {
+        return QString(); // Return empty string if project is not open
+    }
+    return projectRoot_;
+}
 
-QString ProjectService::projectFilePath() const { return projectFilePath_; }
+QString ProjectService::projectFilePath() const {
+    if (!open_) {
+        return QString(); // Return empty string if project is not open
+    }
+    return projectFilePath_;
+}
 
-ProjectInfo ProjectService::projectInfo() const { return info_; }
+ProjectInfo ProjectService::projectInfo() const {
+    if (!open_) {
+        return ProjectInfo{}; // Return empty ProjectInfo if project is not open
+    }
+    return info_;
+}
 
 QString ProjectService::lastError() const { return lastError_; }
 
@@ -81,23 +96,38 @@ bool ProjectService::openProject(const QString &projectRootOrProjectFile, const 
         return false;
     }
 
+    // Load project file - if this fails, we should not proceed
     if (!loadProjectFile(projectFile)) {
-        // lastError already set
+        // lastError already set by loadProjectFile
+        // Ensure state is cleared on failure
+        clearState();
         return false;
     }
 
+    // Only set state after successful load
     projectRoot_ = rootDir;
     projectFilePath_ = projectFile;
     open_ = true;
 
     // Ensure editor data dir exists (placeholder)
-    QDir().mkpath(editorDataDirPath());
+    // This might fail, but we should continue anyway
+    try {
+        QDir().mkpath(editorDataDirPath());
+    } catch (...) {
+        qWarning() << "[ProjectService] Failed to create editor data directory";
+        // Don't fail the project open for this
+    }
 
+    // Load preferences and session - failures here should not prevent project opening
     if (options.loadUserPreferences) {
-        loadUserPreferences();
+        if (!loadUserPreferences()) {
+            qWarning() << "[ProjectService] Failed to load user preferences, continuing anyway";
+        }
     }
     if (options.loadEditorSession) {
-        loadEditorSession();
+        if (!loadEditorSession()) {
+            qWarning() << "[ProjectService] Failed to load editor session, continuing anyway";
+        }
     }
 
     emit projectOpened();
@@ -138,6 +168,10 @@ bool ProjectService::reloadProject() {
 }
 
 QString ProjectService::resolvePath(const QString &projectRelativePath) const {
+    if (!open_ || projectRoot_.isEmpty()) {
+        // Return the path as-is if project is not open
+        return projectRelativePath;
+    }
     if (projectRelativePath.isEmpty()) {
         return projectRelativePath;
     }
@@ -149,6 +183,10 @@ QString ProjectService::resolvePath(const QString &projectRelativePath) const {
 }
 
 QString ProjectService::normalizeProjectPath(const QString &path) const {
+    if (!open_ || projectRoot_.isEmpty()) {
+        // Return the path as-is if project is not open
+        return path;
+    }
     if (path.isEmpty()) {
         return path;
     }
@@ -179,8 +217,13 @@ bool ProjectService::loadUserPreferences() {
         return false;
     }
 
-    QJsonObject obj;
     const auto file = userPrefsFilePath();
+    if (file.isEmpty()) {
+        setLastError("loadUserPreferences: invalid project path");
+        return false;
+    }
+
+    QJsonObject obj;
     if (!QFileInfo::exists(file)) {
         // no prefs yet: treat as success
         userPrefs_ = QJsonObject{};
@@ -203,8 +246,22 @@ bool ProjectService::saveUserPreferences() {
         setLastError("saveUserPreferences: no project opened");
         return false;
     }
-    QDir().mkpath(editorDataDirPath());
-    return writeJsonFile(userPrefsFilePath(), userPrefs_);
+    
+    const auto dataDir = editorDataDirPath();
+    if (dataDir.isEmpty()) {
+        setLastError("saveUserPreferences: invalid project path");
+        return false;
+    }
+    
+    QDir().mkpath(dataDir);
+    
+    const auto file = userPrefsFilePath();
+    if (file.isEmpty()) {
+        setLastError("saveUserPreferences: invalid preferences file path");
+        return false;
+    }
+    
+    return writeJsonFile(file, userPrefs_);
 }
 
 QStringList ProjectService::openedNodeGraphs() const { return openedGraphs_; }
@@ -353,6 +410,11 @@ bool ProjectService::loadEditorSession() {
     }
 
     const auto file = sessionFilePath();
+    if (file.isEmpty()) {
+        setLastError("loadEditorSession: invalid project path");
+        return false;
+    }
+    
     if (!QFileInfo::exists(file)) {
         return true; // no session yet
     }
@@ -407,7 +469,19 @@ bool ProjectService::saveEditorSession() {
         return false;
     }
 
-    QDir().mkpath(editorDataDirPath());
+    const auto dataDir = editorDataDirPath();
+    if (dataDir.isEmpty()) {
+        setLastError("saveEditorSession: invalid project path");
+        return false;
+    }
+    
+    QDir().mkpath(dataDir);
+    
+    const auto file = sessionFilePath();
+    if (file.isEmpty()) {
+        setLastError("saveEditorSession: invalid session file path");
+        return false;
+    }
 
     QJsonObject obj;
     QJsonArray graphsArr;
@@ -422,6 +496,9 @@ bool ProjectService::saveEditorSession() {
 }
 
 QString ProjectService::editorDataDirPath() const {
+    if (!open_ || projectRoot_.isEmpty()) {
+        return QString(); // Return empty string if project is not open
+    }
     // Place editor-only data under intermediate dir; can be changed later.
     const auto intermediate = info_.paths.intermediate.isEmpty() ? ".rbc" : info_.paths.intermediate;
     return join_clean(projectRoot_, join_clean(intermediate, "editor"));
@@ -473,45 +550,81 @@ void ProjectService::setLastError(const QString &msg) {
 bool ProjectService::loadProjectFile(const QString &projectFilePath) {
     setLastError(QString());
 
+    // Validate input path
+    if (projectFilePath.isEmpty()) {
+        setLastError("loadProjectFile: empty project file path");
+        return false;
+    }
+
+    QFileInfo fileInfo(projectFilePath);
+    if (!fileInfo.exists()) {
+        setLastError(QString("loadProjectFile: project file does not exist: %1").arg(projectFilePath));
+        return false;
+    }
+
+    if (!fileInfo.isFile()) {
+        setLastError(QString("loadProjectFile: path is not a file: %1").arg(projectFilePath));
+        return false;
+    }
+
+    // Read JSON file with error handling
     QJsonObject obj;
     if (!readJsonFile(projectFilePath, obj)) {
+        // readJsonFile already set lastError
+        return false;
+    }
+
+    // Validate that we got a valid JSON object
+    if (obj.isEmpty()) {
+        setLastError(QString("loadProjectFile: project file is empty or invalid: %1").arg(projectFilePath));
         return false;
     }
 
     // Fill ProjectInfo (best-effort; tolerate missing fields)
-    ProjectInfo info;
-    info.raw = obj;
-    info.name = obj.value("name").toString();
-    info.version = obj.value("version").toString();
-    info.rbcVersion = obj.value("rbc_version").toString();
-    info.author = obj.value("author").toString();
-    info.description = obj.value("description").toString();
-    info.createdAt = parse_iso_datetime_or_empty(obj.value("created_at"));
-    info.modifiedAt = parse_iso_datetime_or_empty(obj.value("modified_at"));
+    // Use try-catch to handle any potential exceptions during parsing
+    try {
+        ProjectInfo info;
+        info.raw = obj;
+        info.name = obj.value("name").toString();
+        info.version = obj.value("version").toString();
+        info.rbcVersion = obj.value("rbc_version").toString();
+        info.author = obj.value("author").toString();
+        info.description = obj.value("description").toString();
+        info.createdAt = parse_iso_datetime_or_empty(obj.value("created_at"));
+        info.modifiedAt = parse_iso_datetime_or_empty(obj.value("modified_at"));
 
-    const auto pathsVal = obj.value("paths");
-    if (pathsVal.isObject()) {
-        const auto p = pathsVal.toObject();
-        info.paths.assets = p.value("assets").toString(info.paths.assets);
-        info.paths.docs = p.value("docs").toString(info.paths.docs);
-        info.paths.datasets = p.value("datasets").toString(info.paths.datasets);
-        info.paths.pretrained = p.value("pretrained").toString(info.paths.pretrained);
-        info.paths.intermediate = p.value("intermediate").toString(info.paths.intermediate);
+        const auto pathsVal = obj.value("paths");
+        if (pathsVal.isObject()) {
+            const auto p = pathsVal.toObject();
+            info.paths.assets = p.value("assets").toString(info.paths.assets);
+            info.paths.docs = p.value("docs").toString(info.paths.docs);
+            info.paths.datasets = p.value("datasets").toString(info.paths.datasets);
+            info.paths.pretrained = p.value("pretrained").toString(info.paths.pretrained);
+            info.paths.intermediate = p.value("intermediate").toString(info.paths.intermediate);
+        }
+
+        const auto cfgVal = obj.value("config");
+        if (cfgVal.isObject()) {
+            const auto c = cfgVal.toObject();
+            info.config.defaultScene = c.value("default_scene").toString();
+            info.config.startupGraph = c.value("startup_graph").toString();
+            info.config.backend = c.value("backend").toString();
+            info.config.resourceVersion = c.value("resource_version").toString();
+            info.config.extra = c;
+        }
+
+        // Only update info_ if everything succeeded
+        info_ = info;
+        // Don't emit projectInfoChanged here - it will be emitted by openProject after state is set
+        return true;
+    } catch (const std::exception &e) {
+        setLastError(QString("loadProjectFile: exception while parsing project file %1: %2")
+                     .arg(projectFilePath, QString::fromStdString(e.what())));
+        return false;
+    } catch (...) {
+        setLastError(QString("loadProjectFile: unknown exception while parsing project file: %1").arg(projectFilePath));
+        return false;
     }
-
-    const auto cfgVal = obj.value("config");
-    if (cfgVal.isObject()) {
-        const auto c = cfgVal.toObject();
-        info.config.defaultScene = c.value("default_scene").toString();
-        info.config.startupGraph = c.value("startup_graph").toString();
-        info.config.backend = c.value("backend").toString();
-        info.config.resourceVersion = c.value("resource_version").toString();
-        info.config.extra = c;
-    }
-
-    info_ = info;
-    emit projectInfoChanged();
-    return true;
 }
 
 void ProjectService::clearState() {
