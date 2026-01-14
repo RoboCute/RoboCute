@@ -5,7 +5,9 @@ add_rules('lc_basic_settings', {
     enable_exception = true,
     rtti = true
 })
+add_rules("qt.consoleapp")
 set_group("04.targets")
+
 add_files("main.cpp")
 add_deps("rbc_runtime")
 add_deps("argparse")
