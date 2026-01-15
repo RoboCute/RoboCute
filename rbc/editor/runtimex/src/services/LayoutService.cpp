@@ -2,7 +2,6 @@
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include <QJsonDocument>
 #include <QDebug>
-#include <QCoreApplication>
 
 namespace rbc {
 
@@ -279,51 +278,14 @@ void LayoutService::applyDockArrangements(const QJsonObject &arrangements) {
 }
 
 void LayoutService::loadBuiltInLayouts() {
-    // Get the application directory to find layout files
-    QString appDir = QCoreApplication::applicationDirPath();
-    
-    // Try multiple possible paths for layout files
-    QStringList searchPaths = {
-        appDir + "/layouts",
-        appDir + "/../rbc/editor/runtimex/ui/layout",
-        appDir + "/../../rbc/editor/runtimex/ui/layout",
-        appDir + "/../../../rbc/editor/runtimex/ui/layout",
-        // For development/debug builds
-        QStringLiteral(":/layouts"),  // Qt resource path
+    // Built-in layouts are embedded as Qt resources in rbc_editor.qrc
+    // They are located at :/ui/layout/*.json
+    QStringList builtInLayoutFiles = {
+        QStringLiteral(":/ui/layout/scene_editing.json"),
+        QStringLiteral(":/ui/layout/aigc.json"),
     };
     
-    // Also check relative to source (for development)
-#ifdef RBC_SOURCE_DIR
-    QString sourcePath = QStringLiteral(RBC_SOURCE_DIR);
-    if (!sourcePath.isEmpty()) {
-        searchPaths.prepend(sourcePath + "/rbc/editor/runtimex/ui/layout");
-    }
-#endif
-    
-    QString layoutDir;
-    for (const QString &path : searchPaths) {
-        QDir dir(path);
-        if (dir.exists()) {
-            layoutDir = path;
-            qDebug() << "LayoutService::loadBuiltInLayouts: Found layout directory:" << layoutDir;
-            break;
-        }
-    }
-    
-    if (layoutDir.isEmpty()) {
-        qWarning() << "LayoutService::loadBuiltInLayouts: Could not find layout directory";
-        qWarning() << "Searched paths:" << searchPaths;
-        return;
-    }
-    
-    // Load all JSON files from the layout directory
-    QDir dir(layoutDir);
-    QStringList filters;
-    filters << "*.json";
-    QFileInfoList files = dir.entryInfoList(filters, QDir::Files);
-    
-    for (const QFileInfo &fileInfo : files) {
-        QString filePath = fileInfo.absoluteFilePath();
+    for (const QString &filePath : builtInLayoutFiles) {
         QFile file(filePath);
         if (!file.open(QIODevice::ReadOnly)) {
             qWarning() << "LayoutService::loadBuiltInLayouts: Failed to open:" << filePath;
@@ -355,7 +317,7 @@ void LayoutService::loadBuiltInLayouts() {
         }
     }
     
-    qDebug() << "LayoutService::loadBuiltInLayouts: Loaded" << layouts_.size() << "layouts";
+    qDebug() << "LayoutService::loadBuiltInLayouts: Loaded" << layouts_.size() << "built-in layouts";
 }
 
 void LayoutService::loadUserLayouts() {

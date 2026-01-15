@@ -19,9 +19,6 @@
 
 #include <argparse/argparse.hpp>
 
-// Connection Plugin
-// #include "ConnectionPlugin.h"
-
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;
     // 1. Overall Start QApplication
@@ -54,6 +51,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     layoutService->initialize(&windowManager, &pluginManager);
     layoutService->loadBuiltInLayouts();
     qDebug() << "LayoutService initialized";
+
     // 6. Apply UI contributions for all plugins
     // 6.1 Apply QML View Contribution
     QSet<QString> occupiedDockAreas;
@@ -91,7 +89,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
                 qDebug() << "Skipping native view:" << nativeView.viewId << "- will be set as central widget by LayoutService";
                 continue;
             }
-            
+
             qDebug() << "Creating native view:" << nativeView.viewId << "with title" << nativeView.title;
             QWidget *widget = plugin->getNativeWidget(nativeView.viewId);
             if (!widget) {
