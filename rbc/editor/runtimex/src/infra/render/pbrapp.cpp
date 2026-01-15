@@ -68,7 +68,6 @@ void PBRApp::handle_key(luisa::compute::Key key, luisa::compute::Action action) 
 
 void PBRApp::update() {
     handle_reset();
-
     auto &render_device = RenderDevice::instance();
     clear_dx_states(render_device.lc_device_ext());
     add_dx_before_state(

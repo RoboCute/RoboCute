@@ -21,6 +21,7 @@ EditorEngine &EditorEngine::instance() {
 }
 
 void EditorEngine::init(int argc, char **argv) {
+
     if (m_isInitialized) return;
 
     // TODO: parsed from arg or config
@@ -60,14 +61,23 @@ void EditorEngine::init(int argc, char **argv) {
     qDebug() << "============= Register Built-in Plugins Done =================";
 
     auto *viewportPlugin = static_cast<ViewportPlugin *>(pluginManager.getPlugin(ViewportPlugin::staticPluginId()));
-    // viewportPlugin->setRendererFactory([](const ViewportConfig &config) {
-    //     switch (config.type) {
-    //         case ViewportType::Main:
-    //             return static_cast<IRenderer *>(new VisApp());
-    //         default:
-    //             return static_cast<IRenderer *>(new VisApp());
-    //     }
-    // });
+
+    viewportPlugin->setRendererFactory([=](const ViewportConfig &config) {
+        IRenderer *app;
+        switch (config.type) {
+            case ViewportType::Main: {
+                app = static_cast<IRenderer *>(new VisApp());
+                break;
+            }
+            default: {
+                app = static_cast<IRenderer *>(new VisApp());
+                break;
+            }
+        }
+        app->init(m_programPath.c_str(), m_backendName.c_str());
+        return app;
+    });
+    viewportPlugin->createDefaultViewports();
 
     m_isInitialized = true;
 }

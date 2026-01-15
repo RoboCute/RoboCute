@@ -43,7 +43,6 @@ struct RBC_EDITOR_RUNTIME_API RenderAppBase : public IRenderApp {
     using uint2 = luisa::uint2;
     uint2 resolution;
     uint2 dx_adapter_luid;
-    luisa::fiber::scheduler scheduler;
     GraphicsUtils utils;
     RenderPlugin::PipeCtxStub *pipe_ctx{};
     uint64_t frame_index = 0;

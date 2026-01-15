@@ -23,34 +23,31 @@
 
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;
-    EditorEngine::instance().init(argc, argv);
-
+    // 1. Overall Start QApplication
     qputenv("QT_QUICK_CONTROLS_STYLE", "Fusion");
     QApplication app(argc, argv);
+    // 2. Initalize EditorEngine
+
+    EditorEngine::instance().init(argc, argv);
     auto &pluginManager = EditorPluginManager::instance();
-
-    // Register ProjectService
-
-    // 5. Create QML Engine
+    // 3. Create QML Engine
     QQmlEngine *engine = new QQmlEngine(&app);
     pluginManager.setQmlEngine(engine);
     qDebug() << "QML Engine created";
-    // 6. Load Plugins from DLL
+    // 4. Load Plugins from DLL
     if (!pluginManager.loadPluginFromDLL("RBCE_ConnectionPlugin")) {
         qWarning() << "Failed to load ConnectionPlugin";
     }
     if (!pluginManager.loadPluginFromDLL("RBCE_ProjectPlugin")) {
         qWarning() << "Failed to load ProjectPlugin";
     }
-
-    // 7. Create Main Window
+    // 5. Create Main Window
     WindowManager windowManager(&pluginManager, nullptr);
     windowManager.setup_main_window();
     auto *mainWindow = windowManager.main_window();
     qDebug() << "Main window created";
-
-    // 8. Apply UI contributions for all plugins
-    // 8.1 Apply QML View Contribution
+    // 6. Apply UI contributions for all plugins
+    // 6.1 Apply QML View Contribution
     QSet<QString> occupiedDockAreas;
     auto addViewContribution = [&](IEditorPlugin *plugin) {
         if (!plugin) {
@@ -73,8 +70,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
             }
         }
     };
-
-    // 8.2 Apply Native View Contribution
+    // 6.2 Apply Native View Contribution
     auto addNativeViewContribution = [&](IEditorPlugin *plugin) {
         if (!plugin) {
             return;
@@ -98,7 +94,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         }
     };
 
-    // Apply menu contributions
+    // 6.3 Apply menu contributions
     for (auto *plugin : pluginManager.getLoadedPlugins()) {
         qDebug() << "Processing plugin:" << plugin->id();
         QList<MenuContribution> menus = plugin->menu_contributions();
@@ -107,19 +103,19 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         }
     }
 
-    // Apply native view contributions
+    // 6.4 Apply native view contributions
     for (auto *plugin : pluginManager.getLoadedPlugins()) {
         qDebug() << "Processing native views for plugin:" << plugin->id();
         addNativeViewContribution(plugin);
     }
 
-    // Apply view contributions
+    // 6.5 Apply view contributions
     for (auto *plugin : pluginManager.getLoadedPlugins()) {
         qDebug() << "Processing plugin:" << plugin->id();
         addViewContribution(plugin);
     }
 
-    // 9. Fill unused dock areas with placeholders to keep layout stable
+    // 7. Fill unused dock areas with placeholders to keep layout stable
     auto addPlaceholder = [&](const QString &areaName, Qt::DockWidgetArea area) {
         if (occupiedDockAreas.contains(areaName)) {
             return;
@@ -147,52 +143,42 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         mainWindow->setCentralWidget(centralLabel);
     }
 
-    // 10. Show Main Window
+    // 8. Show Main Window
     mainWindow->resize(1920, 1080);
     mainWindow->show();
     qDebug() << "Main window shown";
 
-    // 11. Run Event Loop
+    // 9. Run Event Loop
     int result = app.exec();
 
     // ========================================================================
-    // 12. Cleanup - 严格按照依赖关系逆序清理，这是关键！
+    // 10. Cleanup - 严格按照依赖关系逆序清理，这是关键！
     // ========================================================================
 
-    // 12.1 首先清理 WindowManager：
+    // 10.1 首先清理 WindowManager：
     //      - 隐藏窗口停止渲染
     //      - 清理 QML context 引用（打破对 ViewModel 的引用）
     //      - 释放外部 widget 引用（让 plugin 管理其 widget）
     qDebug() << "Step 1: Cleaning up WindowManager...";
     windowManager.cleanup();
 
-    // 12.2 然后卸载所有 plugin：
+    // 10.2 然后卸载所有 plugin：
     //      - plugin 可以安全地清理自己创建的 widget（WindowManager 已经释放引用）
     //      - ViewModel 可以安全地销毁（QML 已经不再引用它）
     //      - plugin 可以断开与 service 的连接
     qDebug() << "Step 2: Unloading all plugins...";
     pluginManager.unloadAllPlugins();
 
-    // 12.3 清理 PluginManager 的 service 引用：
+    // 10.3 清理 PluginManager 的 service 引用：
     //      - 清空 services_ map 的引用（不调用 disconnect，避免访问已删除对象）
     //      - 这必须在 app 析构前完成！
     //      - 否则 EditorPluginManager 析构时（main 返回后）会访问已被删除的 service
     qDebug() << "Step 3: Clearing PluginManager service references...";
     pluginManager.clearServices();
 
-    // 12.4 关闭 EditorEngine
+    // 10.4 关闭 EditorEngine
     qDebug() << "Step 4: Shutting down EditorEngine...";
     EditorEngine::instance().shutdown();
-
-    // 12.5 函数返回，局部变量自动析构（按创建顺序的逆序）：
-    //      - windowManager 析构（简单删除 main_window_）
-    //      - engine 析构
-    //      - app 析构（删除 projectService, connectionService 等子对象）
-    //      此时 PluginManager 的 services_ 已经被清空，不会访问已删除对象
-    // 12.6 main() 返回后，静态对象析构：
-    //      - EditorPluginManager::instance() 析构（services_ 已清空，安全）
-    //      - EditorEngine::instance() 析构
-
     qDebug() << "Cleanup completed, returning from dll_main...";
     return result;
 }

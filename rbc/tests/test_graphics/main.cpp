@@ -173,6 +173,7 @@ int main(int argc, char *argv[]) {
                 // } break;
         }
     });
+
     Camera *cam = &utils->render_settings(pipe_ctx).read_mut<Camera>();
     CameraController cam_controller;
     cam_controller.camera = cam;

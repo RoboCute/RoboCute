@@ -97,7 +97,7 @@ bool RhiWindow::event(QEvent *e) {
 }
 
 void RhiWindow::init() {
-    // LUISA_ASSERT(renderer, "Renderer must be set before initialization.");
+    LUISA_ASSERT(renderer, "Renderer must be set before initialization.");
     if (m_graphicsApi == QRhi::D3D12) {
         QRhiD3D12NativeHandles handles;
         QRhiD3D12InitParams params;

@@ -20,11 +20,7 @@ void VisApp::handle_key(luisa::compute::Key key, luisa::compute::Action action) 
     } else {
         return;
     }
-
-    // 先处理交互管理器需要的按键（Ctrl等）
     interaction_manager.handle_key(key, action);
-
-    // 然后处理相机控制相关的按键
     switch (key) {
         case Key::KEY_SPACE: {
             camera_input.is_space_down = pressed;
@@ -58,15 +54,8 @@ void VisApp::handle_key(luisa::compute::Key key, luisa::compute::Action action) 
 
 void VisApp::handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy) {
     if (button == MOUSE_BUTTON_LEFT) {
-        // 让交互管理器处理左键事件
-        // 如果返回true，说明事件已被处理（选择/框选）
-        // 如果返回false，说明是拖动已选物体模式（实际拖动逻辑需要后续实现）
         bool handled = interaction_manager.handle_mouse(button, action, xy, resolution);
-        // 注意：拖动已选物体的实际逻辑（移动物体位置）需要后续实现
-        // 当前只是标记为拖动模式，不进行实际拖动操作
-        (void)handled;// 暂时未使用，避免警告
     } else if (button == MOUSE_BUTTON_RIGHT) {
-        // 右键始终用于相机控制（旋转/平移相机）
         if (action == Action::ACTION_PRESSED) {
             camera_input.is_mouse_right_down = true;
         } else if (action == Action::ACTION_RELEASED) {
@@ -76,26 +65,16 @@ void VisApp::handle_mouse(luisa::compute::MouseButton button, luisa::compute::Ac
 }
 
 void VisApp::handle_cursor_position(luisa::float2 xy) {
-    // 更新交互管理器的鼠标位置
     interaction_manager.handle_cursor_position(xy, resolution);
-
-    // 更新相机输入的鼠标位置
     camera_input.mouse_cursor_pos = xy;
 }
 
 void VisApp::update_camera(float delta_time) {
-    auto & cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
+    auto &cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
     camera_input.viewport_size = {(float)(resolution.x), (float)(resolution.y)};
-
-    // 只有在非交互模式或右键拖动时才允许相机控制
-    // 注意：在点击选择、框选模式或左键拖动已选物体时，禁用相机控制以避免冲突
-    // 左键拖动已选物体时，应该让ViewportWidget处理拖放到NodeEditor
     auto interaction_mode = interaction_manager.get_interaction_mode();
     bool allow_camera_control = (interaction_mode == ViewportInteractionManager::InteractionMode::None);
-
-    // 只有在非交互模式时才允许相机控制
-    // Dragging模式（左键拖动已选物体）应该禁用相机控制，以便ViewportWidget可以处理拖放
     if (allow_camera_control) {
         cam_controller.grab_input_from_viewport(camera_input, delta_time);
         if (cam_controller.any_changed())

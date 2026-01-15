@@ -61,18 +61,13 @@ void RenderAppBase::init(const char *program_path, const char *backend_name) {
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() /
         (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
-
-    utils.render_plugin()->update_skybox("../sky.bytes", PixelStorage::FLOAT4, uint2(4096, 2048));
-
-    auto &cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
-    cam.fov = radians(80.f);
-    cam_controller.camera = &cam;
-
+    pipe_ctx = utils.register_render_pipectx({});
+    auto *cam = &utils.render_settings(pipe_ctx).read_mut<Camera>();
+    cam->fov = radians(80.f);
+    cam_controller.camera = cam;
     last_frame_time = clk.toc();
-
     // 调用子类钩子
     on_init();
-
     m_initialized = true;
 }
 
