@@ -106,7 +106,7 @@ void RhiWindow::init() {
 #else
         params.enableDebugLayer = false;
 #endif
-        renderer->init(workspace_path.c_str(), "dx", handles);
+        renderer->process_qt_handle(handles);
         m_rhi.reset(QRhi::create(QRhi::D3D12, &params, {}, &handles));
     }
     // else if (m_graphicsApi == QRhi::Vulkan) {
@@ -149,8 +149,11 @@ void RhiWindow::init() {
     m_fullscreenQuadSrb->create();
 
     m_fullscreenQuadPipeline.reset(m_rhi->newGraphicsPipeline());
-    m_fullscreenQuadPipeline->setShaderStages({{QRhiShaderStage::Vertex, getShader(QLatin1String(":/quad.vert.qsb"))},
-                                               {QRhiShaderStage::Fragment, getShader(QLatin1String(":/quad.frag.qsb"))}});
+    m_fullscreenQuadPipeline->setShaderStages(
+        {{QRhiShaderStage::Vertex,
+          getShader(QLatin1String(":/quad.vert.qsb"))},
+         {QRhiShaderStage::Fragment,
+          getShader(QLatin1String(":/quad.frag.qsb"))}});
     m_fullscreenQuadPipeline->setVertexInputLayout({});
     m_fullscreenQuadPipeline->setShaderResourceBindings(m_fullscreenQuadSrb.get());
     m_fullscreenQuadPipeline->setRenderPassDescriptor(m_rp.get());

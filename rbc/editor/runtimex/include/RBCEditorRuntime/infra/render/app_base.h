@@ -16,7 +16,9 @@ enum struct RenderMode {
 // Binding Wrapper for QRhi
 struct IRenderer {
     using uint = luisa::compute::uint;
-    virtual void init(const char *program_path, const char *backend_name, QRhiNativeHandles &q_rhi_handle) = 0;
+
+    virtual void init(const char *program_path, const char *backend_name) = 0;
+    virtual void process_qt_handle(QRhiNativeHandles &qt_rhi_handle) = 0;
     virtual void update() = 0;
     virtual void handle_key(luisa::compute::Key key, luisa::compute::Action action) = 0;
     virtual void handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy) = 0;
@@ -52,6 +54,7 @@ struct RBC_EDITOR_RUNTIME_API RenderAppBase : public IRenderApp {
     CameraController::Input camera_input;
     CameraController cam_controller;
     QRhi::Implementation m_graphicsApi = QRhi::D3D12;
+    bool m_initialized = false;
 
 public:
     [[nodiscard]] unsigned int GetDXAdapterLUIDHigh() const override { return dx_adapter_luid.x; }
@@ -60,7 +63,8 @@ public:
     [[nodiscard]] void *GetDeviceNativeHandle() const override;
     [[nodiscard]] virtual RenderMode getRenderMode() const = 0;
 
-    void init(const char *program_path, const char *backend_name, QRhiNativeHandles &q_rhi_handle) override;
+    void init(const char *program_path, const char *backend_name) override;
+    void process_qt_handle(QRhiNativeHandles &qt_rhi_handle) override;
     uint64_t get_present_texture(uint width, uint height) override;
     void handle_reset();
     void prepare_dx_states();

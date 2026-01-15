@@ -114,7 +114,6 @@ ViewportWidget::~ViewportWidget() {
         delete m_container;
         m_container = nullptr;
     }
-
     m_rhiWindow = nullptr;
 }
 
@@ -122,7 +121,6 @@ void ViewportWidget::setupUi() {
 
     m_rhiWindow = new RhiWindow(m_graphicsApi);
     m_rhiWindow->renderer = m_renderer;
-
     // 安装事件过滤器到 RhiWindow
     m_rhiWindow->installEventFilter(this);
 

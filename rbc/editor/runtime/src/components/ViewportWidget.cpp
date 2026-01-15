@@ -25,22 +25,22 @@ ViewportContainerWidget::ViewportContainerWidget(RhiWindow *rhiWindow, QWidget *
     m_innerContainer->setFocusPolicy(Qt::NoFocus);
     m_innerContainer->setMinimumSize(400, 300);
     m_innerContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    
+
     // 设置内部容器对鼠标事件透明，这样事件会传递到父widget（ViewportContainerWidget）
     // 然后我们可以在 ViewportContainerWidget 上处理拖动，并手动转发到 RhiWindow
     m_innerContainer->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     m_innerContainer->setMouseTracking(true);
-    
+
     // 安装事件过滤器到实际容器
     m_innerContainer->installEventFilter(this);
-    
+
     // 设置布局
     auto layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     layout->addWidget(m_innerContainer);
     setLayout(layout);
-    
+
     // 启用鼠标跟踪，这样即使鼠标没有按下也能接收到移动事件
     setMouseTracking(true);
     setFocusPolicy(Qt::NoFocus);
@@ -59,19 +59,19 @@ void ViewportContainerWidget::mousePressEvent(QMouseEvent *event) {
                 hasSelection = true;
             }
         }
-        
+
         // If we have selection, allow drag without Ctrl; otherwise require Ctrl for drag selection
         bool shouldRecordDrag = hasSelection || (event->modifiers() & Qt::ControlModifier);
         if (shouldRecordDrag) {
             m_dragStartPos = event->pos();
         }
     }
-    
+
     // 转发事件到 RhiWindow
     if (m_rhiWindow) {
         QCoreApplication::sendEvent(m_rhiWindow, event);
     }
-    
+
     QWidget::mousePressEvent(event);
 }
 
@@ -80,12 +80,12 @@ void ViewportContainerWidget::mouseReleaseEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         m_dragStartPos = QPoint();
     }
-    
+
     // 转发事件到 RhiWindow
     if (m_rhiWindow) {
         QCoreApplication::sendEvent(m_rhiWindow, event);
     }
-    
+
     QWidget::mouseReleaseEvent(event);
 }
 
@@ -101,27 +101,27 @@ void ViewportContainerWidget::mouseMoveEvent(QMouseEvent *event) {
                 hasSelection = true;
             }
         }
-        
+
         // If we have selection, allow drag without Ctrl; otherwise require Ctrl for drag selection
         bool shouldDrag = hasSelection || (event->modifiers() & Qt::ControlModifier);
-        
+
         if (shouldDrag && !m_dragStartPos.isNull()) {
             QPoint delta = event->pos() - m_dragStartPos;
             // Start drag if moved more than 5 pixels
             if (delta.manhattanLength() > 5) {
                 // 发出拖动请求信号
                 emit dragRequested();
-                m_dragStartPos = QPoint(); // Reset to prevent multiple drags
-                return; // 不继续处理事件
+                m_dragStartPos = QPoint();// Reset to prevent multiple drags
+                return;                   // 不继续处理事件
             }
         }
     }
-    
+
     // 转发事件到 RhiWindow
     if (m_rhiWindow) {
         QCoreApplication::sendEvent(m_rhiWindow, event);
     }
-    
+
     QWidget::mouseMoveEvent(event);
 }
 
@@ -157,11 +157,12 @@ ViewportWidget::~ViewportWidget() {
 
 void ViewportWidget::setupUi() {
     // Get API from Engine or default
+
     auto api = EditorEngine::instance().getGraphicsApi();
 
     m_rhiWindow = new RhiWindow(api);
     m_rhiWindow->renderer = m_renderer;
-    
+
     // 安装事件过滤器到 RhiWindow，以便拦截鼠标事件并处理拖动
     m_rhiWindow->installEventFilter(this);
 
@@ -169,10 +170,10 @@ void ViewportWidget::setupUi() {
     m_container = new ViewportContainerWidget(m_rhiWindow, this);
     m_container->setMinimumSize(400, 300);
     m_container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    
+
     // 连接拖动请求信号
     connect(m_container, &ViewportContainerWidget::dragRequested, this, &ViewportWidget::onDragRequested);
-    
+
     auto layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
@@ -220,7 +221,7 @@ bool ViewportWidget::eventFilter(QObject *obj, QEvent *event) {
     if (obj == m_rhiWindow) {
         if (event->type() == QEvent::MouseButtonPress) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-            
+
             if (mouseEvent->button() == Qt::LeftButton) {
                 // Check if we have selected entities
                 bool hasSelection = false;
@@ -231,7 +232,7 @@ bool ViewportWidget::eventFilter(QObject *obj, QEvent *event) {
                         hasSelection = true;
                     }
                 }
-                
+
                 // If we have selection, allow drag without Ctrl; otherwise require Ctrl for drag selection
                 bool shouldRecordDrag = hasSelection || (mouseEvent->modifiers() & Qt::ControlModifier);
                 if (shouldRecordDrag && m_container) {
@@ -240,7 +241,7 @@ bool ViewportWidget::eventFilter(QObject *obj, QEvent *event) {
             }
         } else if (event->type() == QEvent::MouseMove) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-            
+
             if (mouseEvent->buttons() & Qt::LeftButton && m_container) {
                 // Check if we have selected entities
                 bool hasSelection = false;
@@ -251,10 +252,10 @@ bool ViewportWidget::eventFilter(QObject *obj, QEvent *event) {
                         hasSelection = true;
                     }
                 }
-                
+
                 // If we have selection, allow drag without Ctrl; otherwise require Ctrl for drag selection
                 bool shouldDrag = hasSelection || (mouseEvent->modifiers() & Qt::ControlModifier);
-                
+
                 QPoint dragStartPos = m_container->dragStartPos();
                 if (shouldDrag && !dragStartPos.isNull()) {
                     QPoint delta = mouseEvent->pos() - dragStartPos;
@@ -274,7 +275,7 @@ bool ViewportWidget::eventFilter(QObject *obj, QEvent *event) {
             }
         }
     }
-    
+
     // 让事件继续传播
     return QWidget::eventFilter(obj, event);
 }
@@ -287,26 +288,26 @@ void ViewportWidget::startEntityDrag() {
     if (!m_editorContext || !m_editorContext->editorScene) {
         return;
     }
-    
+
     // Get VisApp instance from EditorEngine (only available in Editor mode)
     auto *appBase = EditorEngine::instance().getRenderAppBase();
     if (!appBase || appBase->getRenderMode() != RenderMode::Editor) {
         return;
     }
-    
+
     auto *visApp = static_cast<VisApp *>(appBase);
     if (visApp->dragged_object_ids.empty()) {
         return;
     }
-    
+
     // Convert instance ids to entity ids
     luisa::vector<int> entityIds = m_editorContext->editorScene->getEntityIdsFromInstanceIds(visApp->dragged_object_ids);
     if (entityIds.empty()) {
         return;
     }
-    
-    int entityId = entityIds[0]; // Use first selected entity
-    
+
+    int entityId = entityIds[0];// Use first selected entity
+
     // Get entity name from SceneSync
     QString entityName;
     if (m_editorContext->sceneSyncManager) {
@@ -319,18 +320,18 @@ void ViewportWidget::startEntityDrag() {
             }
         }
     }
-    
+
     // Create drag object
     QDrag *drag = new QDrag(this);
     QMimeData *mimeData = new QMimeData();
-    
+
     // Create MIME data
     QString mimeDataStr = EntityDragDropHelper::createMimeData(entityId, entityName);
     mimeData->setData(EntityDragDropHelper::MIME_TYPE, mimeDataStr.toUtf8());
     mimeData->setText(QString("Entity %1: %2").arg(entityId).arg(entityName.isEmpty() ? QString::number(entityId) : entityName));
-    
+
     drag->setMimeData(mimeData);
-    
+
     // Set drag pixmap
     QPixmap pixmap(100, 30);
     pixmap.fill(Qt::lightGray);
@@ -339,7 +340,7 @@ void ViewportWidget::startEntityDrag() {
     painter.drawText(pixmap.rect(), Qt::AlignCenter, QString("Entity %1").arg(entityId));
     drag->setPixmap(pixmap);
     drag->setHotSpot(QPoint(50, 15));
-    
+
     // Execute drag
     drag->exec(Qt::CopyAction);
 }

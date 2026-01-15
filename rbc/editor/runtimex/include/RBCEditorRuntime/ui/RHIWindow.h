@@ -118,7 +118,6 @@ public:
     // Renderer 由外部设置，RhiWindow 不拥有其生命周期
     IRenderer *renderer = nullptr;
 
-    // Workspace path (可选，用于资源加载)
     std::string workspace_path;
 
 signals:
