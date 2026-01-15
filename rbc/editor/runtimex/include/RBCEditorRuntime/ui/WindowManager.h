@@ -63,6 +63,13 @@ public:
         Qt::DockWidgetAreas allowedAreas = Qt::AllDockWidgetAreas,
         bool isExternalWidget = false);
 
+    // == Create Dockable View from NativeViewContribution
+    // 便捷方法：直接从 NativeViewContribution 创建 DockWidget
+    QDockWidget *createDockableView(
+        const NativeViewContribution &contribution,
+        QWidget *widget,
+        QObject *viewModel = nullptr);
+
     // == Create Standalone Window (for Preview)
     QWidget *createStandaloneView(const QString &qmlSource, QObject *viewModel, const QString &title);
 

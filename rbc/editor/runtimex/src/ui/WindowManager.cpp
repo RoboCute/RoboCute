@@ -273,6 +273,34 @@ QDockWidget *WindowManager::createDockableView(
     return dock;
 }
 
+QDockWidget *WindowManager::createDockableView(
+    const NativeViewContribution &contribution,
+    QWidget *widget,
+    QObject *viewModel) {
+    
+    Q_UNUSED(viewModel); // 可用于未来扩展
+    
+    Qt::DockWidgetArea area = parse_dock_area(contribution.dockArea);
+    
+    QDockWidget::DockWidgetFeatures features = QDockWidget::NoDockWidgetFeatures;
+    if (contribution.closable) 
+        features |= QDockWidget::DockWidgetClosable;
+    if (contribution.movable) 
+        features |= QDockWidget::DockWidgetMovable;
+    if (contribution.floatable) 
+        features |= QDockWidget::DockWidgetFloatable;
+    
+    return createDockableView(
+        contribution.viewId,
+        contribution.title,
+        widget,
+        area,
+        features,
+        Qt::AllDockWidgetAreas,
+        contribution.isExternalManaged
+    );
+}
+
 QWidget *WindowManager::createStandaloneView(const QString &qmlSource, QObject *viewModel, const QString &title) {
     if (!plugin_mng_ || !plugin_mng_->qmlEngine()) {
         qWarning() << "WindowManager::createStandaloneView: QML engine is not available";

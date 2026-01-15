@@ -1,6 +1,4 @@
-#include "RBCEditorRuntime/components/RHIWindow.h"
-#include "qbytearrayview.h"
-
+#include "RBCEditorRuntime/ui/RHIWindow.h"
 #include <QtGui/rhi/qrhi_platform.h>
 #include <QPlatformSurfaceEvent>
 #include <QPainter>
@@ -9,19 +7,19 @@
 #include <QMouseEvent>
 #include <QDebug>
 #include <QtGui/rhi/qshader.h>
+#include <luisa/vstl/common.h>
 
 namespace rbc {
+
 static QShader getShader(const QString &name) {
     QFile f(name);
     if (f.open(QIODevice::ReadOnly))
         return QShader::fromSerialized(f.readAll());
-
     return QShader();
 }
 
 RhiWindow::RhiWindow(QRhi::Implementation graphicsApi)
     : m_graphicsApi(graphicsApi) {
-    // setSurfaceType(Direct3DSurface);
     switch (graphicsApi) {
         case QRhi::D3D12:
             setSurfaceType(Direct3DSurface);
@@ -54,8 +52,7 @@ QString RhiWindow::graphicsApiName() const {
 }
 
 void RhiWindow::exposeEvent(QExposeEvent *) {
-    /// 属于Window的特殊事件，将Window展示出来的时候触发exposeEvent
-    // initialize and start rendering when the window becomes usable for graphics purposes
+    // 当窗口展示时触发
     if (isExposed() && !m_initialized) {
         init();
         resizeSwapChain();
@@ -64,34 +61,31 @@ void RhiWindow::exposeEvent(QExposeEvent *) {
 
     const QSize surfaceSize = m_hasSwapChain ? m_sc->surfacePixelSize() : QSize();
 
-    // stop pushing frames when not exposed (or size is 0)
+    // 停止渲染当窗口不可见或尺寸为0
     if ((!isExposed() || (m_hasSwapChain && surfaceSize.isEmpty())) && m_initialized && !m_notExposed)
         m_notExposed = true;
 
-    // Continue when exposed again and the surface has a valid size. Note that
-    // surfaceSize can be (0, 0) even though size() reports a valid one, hence
-    // trusting surfacePixelSize() and not QWindow.
+    // 窗口再次可见且尺寸有效时继续渲染
     if (isExposed() && m_initialized && m_notExposed && !surfaceSize.isEmpty()) {
         m_notExposed = false;
         m_newlyExposed = true;
     }
 
-    // always render a frame on exposeEvent() (when exposed) in order to update
-    // immediately on window resize.
+    // 在 exposeEvent 时渲染一帧以立即响应窗口调整
     if (isExposed() && !surfaceSize.isEmpty())
         render();
 }
 
 bool RhiWindow::event(QEvent *e) {
-    // 通用事件处理
     switch (e->type()) {
         case QEvent::UpdateRequest:
             render();
             break;
 
         case QEvent::PlatformSurface:
-            // this is the proper time to tear down the swapchain (while the native window and surface are still around)
-            if (static_cast<QPlatformSurfaceEvent *>(e)->surfaceEventType() == QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed)
+            // 在 native window 和 surface 还存在时释放 swapchain
+            if (static_cast<QPlatformSurfaceEvent *>(e)->surfaceEventType() ==
+                QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed)
                 releaseSwapChain();
             break;
 
@@ -103,7 +97,8 @@ bool RhiWindow::event(QEvent *e) {
 }
 
 void RhiWindow::init() {
-    LUISA_ASSERT(renderer, "Initialize callback not setted.");
+    // LUISA_ASSERT(renderer, "Renderer must be set before initialization.");
+
     if (m_graphicsApi == QRhi::D3D12) {
         QRhiD3D12NativeHandles handles;
         QRhiD3D12InitParams params;
@@ -114,15 +109,16 @@ void RhiWindow::init() {
 #endif
         renderer->init(handles);
         m_rhi.reset(QRhi::create(QRhi::D3D12, &params, {}, &handles));
-    } else if (m_graphicsApi == QRhi::Vulkan) {
-        QRhiVulkanInitParams params;
-        QRhiVulkanNativeHandles handles;
-        params.inst = vulkanInstance();
-        params.window = this;
-        renderer->init(handles);
-        handles.inst = vulkanInstance();
-        m_rhi.reset(QRhi::create(QRhi::Vulkan, &params, {}, &handles));
     }
+    // else if (m_graphicsApi == QRhi::Vulkan) {
+    //     QRhiVulkanInitParams params;
+    //     QRhiVulkanNativeHandles handles;
+    //     params.inst = vulkanInstance();
+    //     params.window = this;
+    //     renderer->init(handles);
+    //     handles.inst = vulkanInstance();
+    //     m_rhi.reset(QRhi::create(QRhi::Vulkan, &params, {}, &handles));
+    // }
 
     if (!m_rhi)
         qFatal("Failed to create RHI backend");
@@ -130,7 +126,7 @@ void RhiWindow::init() {
     m_sc.reset(m_rhi->newSwapChain());
     m_ds.reset(m_rhi->newRenderBuffer(
         QRhiRenderBuffer::DepthStencil,
-        QSize(),// no need to set the size here, due to UsedWithSwapChainOnly
+        QSize(),// UsedWithSwapChainOnly 不需要指定尺寸
         1, QRhiRenderBuffer::UsedWithSwapChainOnly));
 
     m_sc->setWindow(this);
@@ -142,15 +138,20 @@ void RhiWindow::init() {
 
     ensureFullscreenTexture(m_sc->surfacePixelSize(), m_initialUpdates);
 
-    m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None, QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
+    m_sampler.reset(m_rhi->newSampler(
+        QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
+        QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
     m_sampler->create();
 
     m_fullscreenQuadSrb.reset(m_rhi->newShaderResourceBindings());
-    m_fullscreenQuadSrb->setBindings({QRhiShaderResourceBinding::sampledTexture(0, QRhiShaderResourceBinding::FragmentStage, m_texture.get(), m_sampler.get())});
+    m_fullscreenQuadSrb->setBindings({QRhiShaderResourceBinding::sampledTexture(
+        0, QRhiShaderResourceBinding::FragmentStage,
+        m_texture.get(), m_sampler.get())});
     m_fullscreenQuadSrb->create();
 
     m_fullscreenQuadPipeline.reset(m_rhi->newGraphicsPipeline());
-    m_fullscreenQuadPipeline->setShaderStages({{QRhiShaderStage::Vertex, getShader(QLatin1String(":/quad.vert.qsb"))}, {QRhiShaderStage::Fragment, getShader(QLatin1String(":/quad.frag.qsb"))}});
+    m_fullscreenQuadPipeline->setShaderStages({{QRhiShaderStage::Vertex, getShader(QLatin1String(":/quad.vert.qsb"))},
+                                               {QRhiShaderStage::Fragment, getShader(QLatin1String(":/quad.frag.qsb"))}});
     m_fullscreenQuadPipeline->setVertexInputLayout({});
     m_fullscreenQuadPipeline->setShaderResourceBindings(m_fullscreenQuadSrb.get());
     m_fullscreenQuadPipeline->setRenderPassDescriptor(m_rp.get());
@@ -158,17 +159,20 @@ void RhiWindow::init() {
 }
 
 void RhiWindow::resizeSwapChain() {
-    m_hasSwapChain = m_sc->createOrResize();// also handles m_ds
+    m_hasSwapChain = m_sc->createOrResize();
 }
+
 void RhiWindow::releaseSwapChain() {
     if (m_hasSwapChain) {
         m_hasSwapChain = false;
         m_sc->destroy();
     }
 }
+
 void RhiWindow::render() {
     if (!m_hasSwapChain || m_notExposed)
         return;
+
     if (m_sc->currentPixelSize() != m_sc->surfacePixelSize() || m_newlyExposed) {
         resizeSwapChain();
         if (!m_hasSwapChain)
@@ -184,6 +188,7 @@ void RhiWindow::render() {
             return;
         result = m_rhi->beginFrame(m_sc.get());
     }
+
     if (result != QRhi::FrameOpSuccess) {
         qWarning("beginFrame failed with %d, will retry", result);
         requestUpdate();
@@ -202,6 +207,7 @@ void RhiWindow::render() {
     const QSize outputSizeInPixels = m_sc->currentPixelSize();
     ensureFullscreenTexture(outputSizeInPixels, resourceUpdates);
 
+    // 更新渲染器
     renderer->update();
 
     cb->beginPass(m_sc->currentFrameRenderTarget(), Qt::black, {1.0f, 0}, resourceUpdates);
@@ -225,42 +231,28 @@ void RhiWindow::ensureFullscreenTexture(const QSize &pixelSize, QRhiResourceUpda
         m_texture->setPixelSize(pixelSize);
 
     uint64_t handle = renderer->get_present_texture(luisa::uint2(pixelSize.width(), pixelSize.height()));
-    // D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
-    // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    // D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE = 128
+    // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL = 5
     m_texture->createFrom({handle, m_graphicsApi == QRhi::Vulkan ? 5 : 128});
 }
 
 void RhiWindow::keyPressEvent(QKeyEvent *event) {
-    QString keyName;
-    // Handle Key Event
+    // 转发给渲染器
     renderer->handle_key(key_map(event->key()), action_map(event->type()));
 
-    // Debug Info handler
+    // 发出信号用于调试
+    QString keyName;
     switch (event->key()) {
-        case Qt::Key_W: {
-            keyName = "W";
-            break;
-        }
-        case Qt::Key_A: {
-            keyName = "A";
-            break;
-        }
-        case Qt::Key_S: {
-            keyName = "S";
-            break;
-        }
-        case Qt::Key_D: {
-            keyName = "D";
-            break;
-        }
+        case Qt::Key_W: keyName = "W"; break;
+        case Qt::Key_A: keyName = "A"; break;
+        case Qt::Key_S: keyName = "S"; break;
+        case Qt::Key_D: keyName = "D"; break;
         default: keyName = QString("Key(%1)").arg(event->key()); break;
     }
 
     QString keyInfo = QString("Key Pressed: %1 (code: %2)").arg(keyName).arg(event->key());
-    qInfo() << keyInfo;
     emit keyPressed(keyInfo);
 
-    // Root Window Handler
     QWindow::keyPressEvent(event);
 }
 
@@ -270,18 +262,17 @@ void RhiWindow::keyReleaseEvent(QKeyEvent *event) {
 }
 
 void RhiWindow::mousePressEvent(QMouseEvent *event) {
-    QString buttonName;
-
-    // Convert logical coordinates to physical pixel coordinates for high-DPI displays
+    // 转换逻辑坐标到物理像素坐标（支持高 DPI）
     qreal dpr = devicePixelRatio();
-    float physicalX = (float)(event->pos().x() * dpr);
-    float physicalY = (float)(event->pos().y() * dpr);
+    float physicalX = static_cast<float>(event->pos().x() * dpr);
+    float physicalY = static_cast<float>(event->pos().y() * dpr);
 
     renderer->handle_mouse(
         mouse_button_map(event->button()),
         action_map(event->type()),
         mouse_pos_map(physicalX, physicalY));
 
+    QString buttonName;
     switch (event->button()) {
         case Qt::LeftButton: buttonName = "Left"; break;
         case Qt::RightButton: buttonName = "Right"; break;
@@ -293,34 +284,32 @@ void RhiWindow::mousePressEvent(QMouseEvent *event) {
                             .arg(buttonName)
                             .arg(event->pos().x())
                             .arg(event->pos().y());
-    qInfo() << mouseInfo;
     emit mouseClicked(mouseInfo);
 
     QWindow::mousePressEvent(event);
 }
 
 void RhiWindow::mouseReleaseEvent(QMouseEvent *event) {
-    // Convert logical coordinates to physical pixel coordinates for high-DPI displays
     qreal dpr = devicePixelRatio();
-    float physicalX = (float)(event->pos().x() * dpr);
-    float physicalY = (float)(event->pos().y() * dpr);
+    float physicalX = static_cast<float>(event->pos().x() * dpr);
+    float physicalY = static_cast<float>(event->pos().y() * dpr);
 
     renderer->handle_mouse(
         mouse_button_map(event->button()),
         action_map(event->type()),
         mouse_pos_map(physicalX, physicalY));
-    qInfo() << "RhiWindow::mouseReleaseEvent - Button:" << event->button();
+
     QWindow::mouseReleaseEvent(event);
 }
 
 void RhiWindow::mouseMoveEvent(QMouseEvent *event) {
-    // Convert logical coordinates to physical pixel coordinates for high-DPI displays
     qreal dpr = devicePixelRatio();
-    float physicalX = (float)(event->pos().x() * dpr);
-    float physicalY = (float)(event->pos().y() * dpr);
+    float physicalX = static_cast<float>(event->pos().x() * dpr);
+    float physicalY = static_cast<float>(event->pos().y() * dpr);
 
     renderer->handle_cursor_position(mouse_pos_map(physicalX, physicalY));
 
     QWindow::mouseMoveEvent(event);
 }
+
 }// namespace rbc

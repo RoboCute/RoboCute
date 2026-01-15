@@ -1,6 +1,17 @@
 CompileFlags:
-  Add: [-Wno-ignored-attributes, -Wno-unused-function]
-  Remove: [-f*, -m*, /Yu*, /FID*, -FI*]
+  Add: 
+    - -Wno-ignored-attributes
+    - -Wno-unused-function
+    - -std=c++20
+    - -fms-compatibility
+    - -D_MSVC_LANG=202002L
+  Remove: 
+    - -f*
+    - -m*
+    - /Yu*
+    - /FID*
+    - -FI*
+    # Explicitly keep -fms-compatibility by not matching it in Remove
 
 Diagnostics:
   Suppress:

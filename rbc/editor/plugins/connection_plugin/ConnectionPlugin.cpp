@@ -10,7 +10,7 @@
 namespace rbc {
 
 ConnectionPlugin::ConnectionPlugin(QObject *parent)
-    : IEditorPlugin() {
+    : IEditorPlugin(parent) {
     qDebug() << "ConnectionPlugin created";
 }
 
