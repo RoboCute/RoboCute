@@ -35,7 +35,7 @@ void RenderAppBase::init(const char *program_path, const char *backend_name) {
 
     utils.render_plugin()->update_skybox("../sky.bytes", PixelStorage::FLOAT4, uint2(4096, 2048));
 
-    auto & cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
+    auto &cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam.fov = radians(80.f);
     cam_controller.camera = &cam;
 
@@ -74,7 +74,7 @@ void RenderAppBase::prepare_dx_states() {
 }
 
 void RenderAppBase::update_camera(float delta_time) {
-    auto & cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
+    auto &cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
     camera_input.viewport_size = {(float)(resolution.x), (float)(resolution.y)};
 

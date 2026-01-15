@@ -102,6 +102,7 @@ public:
     QStringList dependencies() const override { return {}; }
 
     QList<ViewContribution> view_contributions() const override;
+    QList<NativeViewContribution> native_view_contributions() const override;
     QList<MenuContribution> menu_contributions() const override;
     QList<ToolbarContribution> toolbar_contributions() const override { return {}; }
 
@@ -109,8 +110,11 @@ public:
 
     // Get ViewModel for a specific view
     QObject *getViewModel(const QString &viewId) override;
+    
+    // Get native widget for a specific view
+    QWidget *getNativeWidget(const QString &viewId) override;
 
-    // Get file browser widget (for native widget dock)
+    // Get file browser widget (for native widget dock) - deprecated, use getNativeWidget("project_file_browser") instead
     QWidget *fileBrowserWidget() const { return fileBrowserWidget_; }
 
 private slots:
@@ -130,6 +134,9 @@ private:
     ProjectViewModel *viewModel_ = nullptr;
     PluginContext *context_ = nullptr;
     QWidget *fileBrowserWidget_ = nullptr;
+    
+    // 预注册的 Native View Contributions
+    QList<NativeViewContribution> registeredContributions_;
     
     // 保存连接句柄，以便在 unload 时显式断开
     // 这是必要的，因为 lambda 连接如果没有 context 对象，

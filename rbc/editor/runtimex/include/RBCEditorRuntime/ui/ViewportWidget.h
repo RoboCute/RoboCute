@@ -25,11 +25,11 @@ class RBC_EDITOR_RUNTIME_API ViewportContainerWidget : public QWidget {
 
 public:
     explicit ViewportContainerWidget(RhiWindow *rhiWindow, QWidget *parent = nullptr);
-    
+
     void setDragStartPos(const QPoint &pos) { m_dragStartPos = pos; }
     QPoint dragStartPos() const { return m_dragStartPos; }
     void resetDragStartPos() { m_dragStartPos = QPoint(); }
-    
+
     QWidget *innerContainer() const { return m_innerContainer; }
 
 signals:
@@ -63,7 +63,7 @@ private:
  * @code
  * IRenderer* renderer = createRenderer();
  * ViewportWidget* viewport = new ViewportWidget(renderer, parent);
- * // viewport 会管理 RhiWindow 的生命周期
+ * viewport 会管理 RhiWindow 的生命周期
  * @endcode
  */
 class RBC_EDITOR_RUNTIME_API ViewportWidget : public QWidget {
@@ -76,13 +76,13 @@ public:
      * @param graphicsApi RHI 图形 API 类型
      * @param parent 父 widget
      */
-    explicit ViewportWidget(IRenderer *renderer, 
-                           QRhi::Implementation graphicsApi = QRhi::D3D12,
-                           QWidget *parent = nullptr);
+    explicit ViewportWidget(IRenderer *renderer,
+                            QRhi::Implementation graphicsApi = QRhi::D3D12,
+                            QWidget *parent = nullptr);
     ~ViewportWidget() override;
 
     [[nodiscard]] RhiWindow *getRhiWindow() const { return m_rhiWindow; }
-    
+
     /**
      * @brief 获取图形 API 名称
      */
@@ -115,4 +115,4 @@ private:
     QRhi::Implementation m_graphicsApi = QRhi::D3D12;
 };
 
-} // namespace rbc
+}// namespace rbc

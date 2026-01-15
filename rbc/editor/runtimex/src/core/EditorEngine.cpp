@@ -13,10 +13,12 @@ EditorEngine &EditorEngine::instance() {
 void EditorEngine::init(int argc, char **argv) {
     // Register StyleManager service
     auto &pluginManager = EditorPluginManager::instance();
-    StyleManager *styleManager = new StyleManager();
-    styleManager->initialize(argc, argv);
-    pluginManager.registerService(styleManager);
-    qDebug() << "EditorEngine::init: StyleManager service registered";
+    {
+        StyleManager *styleManager = new StyleManager();
+        styleManager->initialize(argc, argv);
+        pluginManager.registerService(styleManager);
+        qDebug() << "EditorEngine::init: StyleManager service registered";
+    }
 }
 
 void EditorEngine::shutdown() {

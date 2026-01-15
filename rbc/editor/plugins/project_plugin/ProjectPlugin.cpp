@@ -182,6 +182,18 @@ bool ProjectPlugin::load(PluginContext *context) {
     layout->addWidget(treeView);
     fileBrowserWidget_->setLayout(layout);
 
+    // Register NativeViewContribution for file browser
+    NativeViewContribution fileBrowserContrib;
+    fileBrowserContrib.viewId = "project_file_browser";
+    fileBrowserContrib.title = "Project Files";
+    fileBrowserContrib.dockArea = "Left";
+    fileBrowserContrib.closable = true;
+    fileBrowserContrib.movable = true;
+    fileBrowserContrib.floatable = true;
+    fileBrowserContrib.isExternalManaged = true; // 由 Plugin 管理生命周期
+    
+    registeredContributions_.append(fileBrowserContrib);
+
     qDebug() << "ProjectPlugin loaded successfully";
     return true;
 }
@@ -241,7 +253,10 @@ bool ProjectPlugin::unload() {
         qDebug() << "ProjectPlugin::unload: Deleted viewModel";
     }
 
-    // 4. 清理引用（不删除 service，它由其他地方管理）
+    // 4. 清理 NativeViewContributions
+    registeredContributions_.clear();
+
+    // 5. 清理引用（不删除 service，它由其他地方管理）
     projectService_ = nullptr;
     context_ = nullptr;
 
@@ -268,6 +283,10 @@ bool ProjectPlugin::reload() {
 QList<ViewContribution> ProjectPlugin::view_contributions() const {
     // We'll create the file browser widget directly, not via QML
     return {};
+}
+
+QList<NativeViewContribution> ProjectPlugin::native_view_contributions() const {
+    return registeredContributions_;
 }
 
 QList<MenuContribution> ProjectPlugin::menu_contributions() const {
@@ -304,6 +323,13 @@ void ProjectPlugin::register_view_models(QQmlEngine *engine) {
 QObject *ProjectPlugin::getViewModel(const QString &viewId) {
     if (viewId == "project_previewer" && viewModel_) {
         return viewModel_;
+    }
+    return nullptr;
+}
+
+QWidget *ProjectPlugin::getNativeWidget(const QString &viewId) {
+    if (viewId == "project_file_browser") {
+        return fileBrowserWidget_;
     }
     return nullptr;
 }

@@ -18,6 +18,7 @@
 #include "RBCEditorRuntime/services/ConnectionService.h"
 #include "RBCEditorRuntime/services/ProjectService.h"
 #include "RBCEditorRuntime/plugins/ViewportPlugin.h"
+
 #include <argparse/argparse.hpp>
 
 // Connection Plugin
@@ -63,7 +64,9 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     windowManager.setup_main_window();
     auto *mainWindow = windowManager.main_window();
     qDebug() << "Main window created";
+
     // 8. Apply UI contributions for all plugins
+    // 8.1 Apply QML View Contribution
     QSet<QString> occupiedDockAreas;
     auto addViewContribution = [&](IEditorPlugin *plugin) {
         if (!plugin) {
@@ -87,6 +90,30 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         }
     };
 
+    // 8.2 Apply Native View Contribution
+    auto addNativeViewContribution = [&](IEditorPlugin *plugin) {
+        if (!plugin) {
+            return;
+        }
+        QList<NativeViewContribution> nativeViews = plugin->native_view_contributions();
+        for (const auto &nativeView : nativeViews) {
+            qDebug() << "Creating native view:" << nativeView.viewId << "with title" << nativeView.title;
+            QWidget *widget = plugin->getNativeWidget(nativeView.viewId);
+            if (!widget) {
+                qWarning() << "Failed to get native widget for view:" << nativeView.viewId;
+                continue;
+            }
+            QObject *viewModel = plugin->getViewModel(nativeView.viewId);
+            QDockWidget *dock = windowManager.createDockableView(nativeView, widget, viewModel);
+            if (dock) {
+                qDebug() << "Created native dock for view:" << nativeView.viewId;
+                occupiedDockAreas.insert(nativeView.dockArea);
+            } else {
+                qWarning() << "Failed to create native dock for view:" << nativeView.viewId;
+            }
+        }
+    };
+
     // Apply menu contributions
     for (auto *plugin : pluginManager.getLoadedPlugins()) {
         qDebug() << "Processing plugin:" << plugin->id();
@@ -96,30 +123,10 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         }
     }
 
-    // Create file browser dock for ProjectPlugin
-    IEditorPlugin *projectPlugin = pluginManager.getPlugin("com.robocute.project_plugin");
-    if (projectPlugin) {
-        // Use QObject property to get the file browser widget
-        QWidget *fileBrowserWidget = projectPlugin->property("fileBrowserWidget").value<QWidget *>();
-        if (fileBrowserWidget) {
-            // 注意：isExternalWidget=true 表示这个 widget 由 plugin 创建和管理
-            // WindowManager 不会在析构时删除它，而是在 cleanup() 时释放引用
-            QDockWidget *fileBrowserDock = windowManager.createDockableView(
-                "project_file_browser",
-                "Project Files",
-                fileBrowserWidget,
-                Qt::LeftDockWidgetArea,
-                QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable,
-                Qt::AllDockWidgetAreas,
-                true /* isExternalWidget */);
-
-            if (fileBrowserDock) {
-                occupiedDockAreas.insert("Left");
-                qDebug() << "Created file browser dock";
-            }
-        } else {
-            qWarning() << "File browser widget not available from ProjectPlugin";
-        }
+    // Apply native view contributions
+    for (auto *plugin : pluginManager.getLoadedPlugins()) {
+        qDebug() << "Processing native views for plugin:" << plugin->id();
+        addNativeViewContribution(plugin);
     }
 
     // Apply view contributions

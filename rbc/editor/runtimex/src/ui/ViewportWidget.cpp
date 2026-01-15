@@ -18,21 +18,21 @@ ViewportContainerWidget::ViewportContainerWidget(RhiWindow *rhiWindow, QWidget *
     m_innerContainer->setFocusPolicy(Qt::NoFocus);
     m_innerContainer->setMinimumSize(400, 300);
     m_innerContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    
+
     // 设置内部容器对鼠标事件透明，这样事件会传递到父widget
     m_innerContainer->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     m_innerContainer->setMouseTracking(true);
-    
+
     // 安装事件过滤器
     m_innerContainer->installEventFilter(this);
-    
+
     // 设置布局
     auto layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     layout->addWidget(m_innerContainer);
     setLayout(layout);
-    
+
     // 启用鼠标跟踪
     setMouseTracking(true);
     setFocusPolicy(Qt::NoFocus);
@@ -47,12 +47,12 @@ void ViewportContainerWidget::mousePressEvent(QMouseEvent *event) {
             m_dragStartPos = event->pos();
         }
     }
-    
+
     // 转发事件到 RhiWindow
     if (m_rhiWindow) {
         QCoreApplication::sendEvent(m_rhiWindow, event);
     }
-    
+
     QWidget::mousePressEvent(event);
 }
 
@@ -60,11 +60,11 @@ void ViewportContainerWidget::mouseReleaseEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         m_dragStartPos = QPoint();
     }
-    
+
     if (m_rhiWindow) {
         QCoreApplication::sendEvent(m_rhiWindow, event);
     }
-    
+
     QWidget::mouseReleaseEvent(event);
 }
 
@@ -75,16 +75,16 @@ void ViewportContainerWidget::mouseMoveEvent(QMouseEvent *event) {
         // 移动超过 5 像素开始拖动
         if (delta.manhattanLength() > 5) {
             emit dragRequested();
-            m_dragStartPos = QPoint(); // 重置防止多次触发
+            m_dragStartPos = QPoint();// 重置防止多次触发
             return;
         }
     }
-    
+
     // 转发事件到 RhiWindow
     if (m_rhiWindow) {
         QCoreApplication::sendEvent(m_rhiWindow, event);
     }
-    
+
     QWidget::mouseMoveEvent(event);
 }
 
@@ -96,12 +96,10 @@ bool ViewportContainerWidget::eventFilter(QObject *obj, QEvent *event) {
 // ViewportWidget Implementation
 // ============================================================================
 
-ViewportWidget::ViewportWidget(IRenderer *renderer, 
+ViewportWidget::ViewportWidget(IRenderer *renderer,
                                QRhi::Implementation graphicsApi,
                                QWidget *parent)
-    : QWidget(parent)
-    , m_renderer(renderer)
-    , m_graphicsApi(graphicsApi) {
+    : QWidget(parent), m_renderer(renderer), m_graphicsApi(graphicsApi) {
     setupUi();
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
@@ -112,10 +110,6 @@ ViewportWidget::~ViewportWidget() {
     if (m_rhiWindow && m_rhiWindow->handle()) {
         m_rhiWindow->releaseSwapChain();
     }
-
-    // CRITICAL: 销毁 container widget 会自动删除 RhiWindow
-    // 根据 Qt 文档：createWindowContainer 会接管 QWindow 的所有权
-    // 因此我们不能手动删除 m_rhiWindow
     if (m_container) {
         delete m_container;
         m_container = nullptr;
@@ -125,9 +119,10 @@ ViewportWidget::~ViewportWidget() {
 }
 
 void ViewportWidget::setupUi() {
+
     m_rhiWindow = new RhiWindow(m_graphicsApi);
     m_rhiWindow->renderer = m_renderer;
-    
+
     // 安装事件过滤器到 RhiWindow
     m_rhiWindow->installEventFilter(this);
 
@@ -135,11 +130,11 @@ void ViewportWidget::setupUi() {
     m_container = new ViewportContainerWidget(m_rhiWindow, this);
     m_container->setMinimumSize(400, 300);
     m_container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    
+
     // 连接拖动请求信号
     connect(m_container, &ViewportContainerWidget::dragRequested,
             this, &ViewportWidget::onDragRequested);
-    
+
     auto layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
@@ -206,14 +201,12 @@ bool ViewportWidget::eventFilter(QObject *obj, QEvent *event) {
             }
         }
     }
-    
+
     return QWidget::eventFilter(obj, event);
 }
 
 void ViewportWidget::onDragRequested() {
-    // 发出实体拖动请求信号
-    // 具体的拖动实现由 ViewportPlugin 或上层处理
     emit entityDragRequested();
 }
 
-} // namespace rbc
+}// namespace rbc

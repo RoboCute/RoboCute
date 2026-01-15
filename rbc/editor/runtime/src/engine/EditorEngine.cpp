@@ -7,6 +7,8 @@
 #include "RBCEditorRuntime/engine/pbrapp.h"
 #include "RBCEditorRuntime/engine/visapp.h"
 
+#include <rbc_core/runtime_static.h>
+
 namespace rbc {
 
 EditorEngine &EditorEngine::instance() {
@@ -33,16 +35,16 @@ std::unique_ptr<AppBase> EditorEngine::createRenderApp(RenderMode mode) {
 
 void EditorEngine::init(int argc, char **argv) {
     if (m_isInitialized) return;
-    
+
     m_backendName = "dx";
     m_programPath = argv[0];
     m_graphicsApi = QRhi::D3D12;
-    
+
     // 默认使用编辑器模式
     m_currentRenderMode = RenderMode::Editor;
     m_renderApp = createRenderApp(m_currentRenderMode);
     m_renderApp->init(m_programPath.c_str(), m_backendName.c_str());
-    
+
     m_isInitialized = true;
 }
 
@@ -128,19 +130,19 @@ void EditorEngine::setRenderMode(RenderMode mode) {
         LUISA_WARNING("Cannot switch render mode: engine not ready");
         return;
     }
-    
+
     if (mode == m_currentRenderMode) {
         return;
     }
-    
-    LUISA_INFO("Switching render mode from {} to {}", 
+
+    LUISA_INFO("Switching render mode from {} to {}",
                m_currentRenderMode == RenderMode::Editor ? "Editor" : "Realistic",
                mode == RenderMode::Editor ? "Editor" : "Realistic");
-    
+
     // 注意：由于GraphicsUtils和RenderDevice是全局单例，
     // 我们不能简单地销毁和重建渲染应用。
     // 当前实现仅记录模式切换，实际的完整切换需要更复杂的状态管理。
-    // 
+    //
     // TODO: 完整的渲染模式切换实现需要：
     // 1. 保存当前相机状态
     // 2. 同步销毁旧应用
@@ -150,7 +152,7 @@ void EditorEngine::setRenderMode(RenderMode mode) {
     //
     // 当前简化实现：仅在启动时切换模式有效
     m_currentRenderMode = mode;
-    
+
     LUISA_WARNING("Runtime render mode switching is not fully implemented yet. "
                   "Please restart the editor with the desired mode.");
 }
