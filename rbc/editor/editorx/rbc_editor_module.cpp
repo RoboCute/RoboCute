@@ -15,9 +15,6 @@
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/ui/WindowManager.h"
-#include "RBCEditorRuntime/services/ConnectionService.h"
-#include "RBCEditorRuntime/services/ProjectService.h"
-#include "RBCEditorRuntime/plugins/ViewportPlugin.h"
 
 #include <argparse/argparse.hpp>
 
@@ -27,36 +24,23 @@
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;
     EditorEngine::instance().init(argc, argv);
+
     qputenv("QT_QUICK_CONTROLS_STYLE", "Fusion");
     QApplication app(argc, argv);
     auto &pluginManager = EditorPluginManager::instance();
-    auto *connectionService = new ConnectionService(&app);
-    pluginManager.registerService(connectionService);
-    qDebug() << "ConnectionService registered";
 
     // Register ProjectService
-    auto *projectService = new ProjectService(&app);
-    pluginManager.registerService(projectService);
-    qDebug() << "ProjectService registered";
 
     // 5. Create QML Engine
     QQmlEngine *engine = new QQmlEngine(&app);
     pluginManager.setQmlEngine(engine);
     qDebug() << "QML Engine created";
-
-    // 6. Load Plugins
-    // 6.1 Register Builtin Factory for builtin Plugins
-    pluginManager.registerPlugin<ViewportPlugin>();
-    // 6.2 Load from DLL
+    // 6. Load Plugins from DLL
     if (!pluginManager.loadPluginFromDLL("RBCE_ConnectionPlugin")) {
         qWarning() << "Failed to load ConnectionPlugin";
     }
     if (!pluginManager.loadPluginFromDLL("RBCE_ProjectPlugin")) {
         qWarning() << "Failed to load ProjectPlugin";
-    }
-    // 6.3 Load Builtin Plugins with registered factory
-    if (!pluginManager.loadPlugin(ViewportPlugin::staticPluginId())) {
-        qWarning() << "Failed to load ViewportPlugin";
     }
 
     // 7. Create Main Window

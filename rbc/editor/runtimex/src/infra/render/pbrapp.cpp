@@ -80,7 +80,7 @@ void PBRApp::update() {
         Argument::Texture{utils.dst_image().handle(), 0},
         D3D12EnhancedResourceUsageType::RasterRead);
 
-    auto & cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
+    auto &cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
 
     auto time = clk.toc();

@@ -18,7 +18,23 @@ void *RenderAppBase::GetDeviceNativeHandle() const {
     return RenderDevice::instance().lc_device().native_handle();
 }
 
-void RenderAppBase::init(const char *program_path, const char *backend_name) {
+void RenderAppBase::init(const char *program_path, const char *backend_name, QRhiNativeHandles &q_rhi_handle) {
+    if (luisa::string(backend_name) == "dx") {
+        m_graphicsApi = QRhi::D3D12;
+    } else {
+        LUISA_ERROR("Backend unsupported.");
+    }
+    if (m_graphicsApi == QRhi::D3D12) {
+        auto &handles = static_cast<QRhiD3D12NativeHandles &>(q_rhi_handle);
+        handles.dev = GetDeviceNativeHandle();
+        handles.minimumFeatureLevel = 0;
+        handles.adapterLuidHigh = (qint32)GetDXAdapterLUIDHigh();
+        handles.adapterLuidLow = (qint32)GetDXAdapterLUIDLow();
+        handles.commandQueue = GetStreamNativeHandle();
+    } else {
+        LUISA_ERROR("Backend unsupported.");
+    }
+
     luisa::string_view backend = backend_name;
     ctx = luisa::make_unique<luisa::compute::Context>(program_path);
 
@@ -45,9 +61,8 @@ void RenderAppBase::init(const char *program_path, const char *backend_name) {
     on_init();
 }
 
-uint64_t RenderAppBase::create_texture(uint width, uint height) {
+uint64_t RenderAppBase::get_present_texture(uint width, uint height) {
     resolution = {width, height};
-
     if (utils.dst_image() && any(resolution != utils.dst_image().size())) {
         utils.resize_swapchain(resolution, 0, invalid_resource_handle);
     }

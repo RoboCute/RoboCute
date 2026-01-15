@@ -15,41 +15,25 @@ enum struct RenderMode {
 
 // Binding Wrapper for QRhi
 struct IRenderer {
-    virtual void init(QRhiNativeHandles &) = 0;
+    using uint = luisa::compute::uint;
+    virtual void init(const char *program_path, const char *backend_name, QRhiNativeHandles &q_rhi_handle) = 0;
     virtual void update() = 0;
-    virtual void pause() = 0;
-    virtual void resume() = 0;
     virtual void handle_key(luisa::compute::Key key, luisa::compute::Action action) = 0;
     virtual void handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy) = 0;
     virtual void handle_cursor_position(luisa::float2 xy) = 0;
+    virtual uint64_t get_present_texture(uint width, uint height) = 0;
 
-    virtual uint64_t get_present_texture(luisa::uint2 resolution) = 0;
     virtual ~IRenderer() = default;
 };
 
-// Background Implementation App
-struct IRenderApp {
-    using uint = luisa::compute::uint;
-
+// LC Impl App Interface
+struct IRenderApp : public IRenderer {
     luisa::unique_ptr<luisa::compute::Context> ctx;
     virtual unsigned int GetDXAdapterLUIDHigh() const = 0;
     virtual unsigned int GetDXAdapterLUIDLow() const = 0;
-
-    virtual void init(const char *program_path, const char *backend_name) = 0;
-    virtual void update() = 0;
-
-    virtual void handle_key(
-        luisa::compute::Key key,
-        luisa::compute::Action action) = 0;
-    virtual void handle_mouse(
-        luisa::compute::MouseButton button,
-        luisa::compute::Action action,
-        luisa::float2 xy) {}
-
-    virtual void handle_cursor_position(luisa::float2 xy) {}
-    virtual uint64_t create_texture(uint width, uint height) = 0;
     virtual void *GetStreamNativeHandle() const = 0;
     virtual void *GetDeviceNativeHandle() const = 0;
+
     virtual ~IRenderApp() {}
 };
 
@@ -59,7 +43,7 @@ struct RBC_EDITOR_RUNTIME_API RenderAppBase : public IRenderApp {
     uint2 dx_adapter_luid;
     luisa::fiber::scheduler scheduler;
     GraphicsUtils utils;
-    RenderPlugin::PipeCtxStub* pipe_ctx{};
+    RenderPlugin::PipeCtxStub *pipe_ctx{};
     uint64_t frame_index = 0;
     double last_frame_time = 0;
     luisa::Clock clk;
@@ -67,14 +51,17 @@ struct RBC_EDITOR_RUNTIME_API RenderAppBase : public IRenderApp {
     // Camera Control
     CameraController::Input camera_input;
     CameraController cam_controller;
+    QRhi::Implementation m_graphicsApi = QRhi::D3D12;
+
 public:
     [[nodiscard]] unsigned int GetDXAdapterLUIDHigh() const override { return dx_adapter_luid.x; }
     [[nodiscard]] unsigned int GetDXAdapterLUIDLow() const override { return dx_adapter_luid.y; }
     [[nodiscard]] void *GetStreamNativeHandle() const override;
     [[nodiscard]] void *GetDeviceNativeHandle() const override;
     [[nodiscard]] virtual RenderMode getRenderMode() const = 0;
-    void init(const char *program_path, const char *backend_name) override;
-    uint64_t create_texture(uint width, uint height) override;
+
+    void init(const char *program_path, const char *backend_name, QRhiNativeHandles &q_rhi_handle) override;
+    uint64_t get_present_texture(uint width, uint height) override;
     void handle_reset();
     void prepare_dx_states();
     ~RenderAppBase() override;

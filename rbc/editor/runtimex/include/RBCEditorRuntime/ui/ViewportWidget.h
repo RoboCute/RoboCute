@@ -2,7 +2,7 @@
 #include <rbc_config.h>
 #include <QWidget>
 #include "RBCEditorRuntime/ui/RHIWindow.h"
-#include "RBCEditorRuntime/core/IRenderer.h"
+#include "RBCEditorRuntime/infra/render/app_base.h"
 
 namespace rbc {
 

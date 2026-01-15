@@ -98,7 +98,6 @@ bool RhiWindow::event(QEvent *e) {
 
 void RhiWindow::init() {
     // LUISA_ASSERT(renderer, "Renderer must be set before initialization.");
-
     if (m_graphicsApi == QRhi::D3D12) {
         QRhiD3D12NativeHandles handles;
         QRhiD3D12InitParams params;
@@ -107,7 +106,7 @@ void RhiWindow::init() {
 #else
         params.enableDebugLayer = false;
 #endif
-        renderer->init(handles);
+        renderer->init(workspace_path.c_str(), "dx", handles);
         m_rhi.reset(QRhi::create(QRhi::D3D12, &params, {}, &handles));
     }
     // else if (m_graphicsApi == QRhi::Vulkan) {
@@ -230,7 +229,8 @@ void RhiWindow::ensureFullscreenTexture(const QSize &pixelSize, QRhiResourceUpda
     else
         m_texture->setPixelSize(pixelSize);
 
-    uint64_t handle = renderer->get_present_texture(luisa::uint2(pixelSize.width(), pixelSize.height()));
+    uint64_t handle = renderer->get_present_texture(
+        pixelSize.width(), pixelSize.height());
     // D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE = 128
     // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL = 5
     m_texture->createFrom({handle, m_graphicsApi == QRhi::Vulkan ? 5 : 128});

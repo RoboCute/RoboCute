@@ -28,12 +28,10 @@ bool ViewportPlugin::load(PluginContext *context) {
 
     if (!sceneService_) {
         qWarning() << "ViewportPlugin::load: SceneService not available";
-        // 允许继续加载，因为 SceneService 可能不是必须的
     }
 
     // 不在 load 时自动创建默认视口
     // 调用者需要先设置 rendererFactory，然后手动调用 createDefaultViewports 或 createViewport
-
     qDebug() << "ViewportPlugin loaded successfully";
     return true;
 }
@@ -67,7 +65,6 @@ void ViewportPlugin::createDefaultViewports() {
     mainConfig.type = ViewportType::Main;
     mainConfig.rendererType = "scene";
     mainConfig.graphicsApi = defaultGraphicsApi_;
-
     mainViewportId_ = createViewport(mainConfig);
 
     if (!mainViewportId_.isEmpty()) {
