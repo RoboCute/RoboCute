@@ -24,7 +24,8 @@ public:
     virtual QString name() const = 0;
     virtual QString version() const = 0;
     virtual QStringList dependencies() const = 0;
-    virtual bool is_dynamic() const = 0;
+    // 注意：is_dynamic() 已移除
+    // PluginManager 通过工厂模式统一管理所有插件的生命周期，无需区分来源
 
     // === UI Contributions ===
     virtual QList<ViewContribution> view_contributions() const = 0;

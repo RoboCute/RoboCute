@@ -75,16 +75,19 @@ public:
     explicit ProjectPlugin(QObject *parent = nullptr);
     ~ProjectPlugin() override;
 
+    // === Static Methods for Factory ===
+    static QString staticPluginId() { return "com.robocute.project_plugin"; }
+    static QString staticPluginName() { return "Project Plugin"; }
+
     // IEditorPlugin interface
     bool load(PluginContext *context) override;
     bool unload() override;
     bool reload() override;
 
-    QString id() const override { return "com.robocute.project_plugin"; }
-    QString name() const override { return "Project Plugin"; }
+    QString id() const override { return staticPluginId(); }
+    QString name() const override { return staticPluginName(); }
     QString version() const override { return "1.0.0"; }
     QStringList dependencies() const override { return {}; }
-    bool is_dynamic() const override { return true; }
 
     QList<ViewContribution> view_contributions() const override;
     QList<MenuContribution> menu_contributions() const override;
@@ -114,6 +117,8 @@ private:
     QMetaObject::Connection treeViewDoubleClickConnection_;
 };
 
-LUISA_EXPORT_API IEditorPlugin *createPlugin();
+// 导出工厂函数（新设计）
+class IPluginFactory;
+LUISA_EXPORT_API IPluginFactory *createPluginFactory();
 
 }// namespace rbc

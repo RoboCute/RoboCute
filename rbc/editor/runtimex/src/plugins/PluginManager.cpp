@@ -1,5 +1,6 @@
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
+#include "RBCEditorRuntime/plugins/IPluginFactory.h"
 #include "RBCEditorRuntime/plugins/PluginContext.h"
 
 #include <QCoreApplication>
@@ -27,56 +28,115 @@ EditorPluginManager::~EditorPluginManager() {
         // 不尝试访问 services，直接清空引用
         services_.clear();
     }
-    
+
     // Unload all plugins
     unloadAllPlugins();
+    
+    // 清空工厂（在插件卸载后）
+    factories_.clear();
 }
 
-bool EditorPluginManager::loadPlugin(const QString &pluginPath) {
+// === 工厂注册 ===
 
-    auto &inst = rbc::PluginManager::instance();
-    try {
-        auto module = inst.load_module(pluginPath.toStdString().c_str());
-        IEditorPlugin *plugin = module->invoke<IEditorPlugin *()>("createPlugin");
-        plugin->plugin_path = pluginPath;
-        QString pluginId = plugin->id();
-        if (!loadPlugin(plugin)) {
-            return false;
-        }
-        // keep the module alive while the plugin instance exists
-        modules_[pluginId] = std::move(module);
-        return true;
-    } catch (std::exception &e) {
-        qFatal() << "Plugin from " << pluginPath << " load failed";
+void EditorPluginManager::registerFactory(std::unique_ptr<IPluginFactory> factory) {
+    if (!factory) {
+        qWarning() << "EditorPluginManager::registerFactory: factory is null";
+        return;
     }
-    return false;
+    
+    QString id = factory->pluginId();
+    if (factories_.find(id) != factories_.end()) {
+        qWarning() << "EditorPluginManager::registerFactory: Factory for" << id << "already registered";
+        return;
+    }
+    
+    qDebug() << "EditorPluginManager::registerFactory: Registered factory for" << id 
+             << "(" << factory->pluginName() << ")";
+    factories_[id] = std::move(factory);
 }
 
-bool EditorPluginManager::loadPlugin(IEditorPlugin *plugin) {
-    if (!plugin) {
-        qWarning() << "EditorPluginManager::loadPlugin: plugin is null";
-        return false;
-    }
+// === Plugin LifeCycle ===
 
-    QString pluginId = plugin->id();
-    if (plugins_.contains(pluginId)) {
+bool EditorPluginManager::loadPlugin(const QString &pluginId) {
+    if (plugins_.find(pluginId) != plugins_.end()) {
         qWarning() << "EditorPluginManager::loadPlugin: Plugin" << pluginId << "already loaded";
         return false;
     }
+    
+    auto factoryIt = factories_.find(pluginId);
+    if (factoryIt == factories_.end()) {
+        qWarning() << "EditorPluginManager::loadPlugin: No factory registered for" << pluginId;
+        return false;
+    }
+    
+    // 通过工厂创建插件
+    auto plugin = factoryIt->second->create();
+    if (!plugin) {
+        qWarning() << "EditorPluginManager::loadPlugin: Factory failed to create plugin" << pluginId;
+        return false;
+    }
+    
+    return loadPluginInternal(std::move(plugin), pluginId);
+}
 
+bool EditorPluginManager::loadPluginFromDLL(const QString &pluginPath) {
+    auto &inst = rbc::PluginManager::instance();
+    try {
+        auto module = inst.load_module(pluginPath.toStdString().c_str());
+        
+        // 新设计：动态库导出 createPluginFactory 函数
+        IPluginFactory *factoryPtr = module->invoke<IPluginFactory *()>("createPluginFactory");
+        if (!factoryPtr) {
+            qWarning() << "EditorPluginManager::loadPluginFromDLL: createPluginFactory returned null from" << pluginPath;
+            return false;
+        }
+        
+        // 接管工厂所有权
+        std::unique_ptr<IPluginFactory> factory(factoryPtr);
+        QString pluginId = factory->pluginId();
+        
+        // 通过工厂创建插件
+        auto plugin = factory->create();
+        if (!plugin) {
+            qWarning() << "EditorPluginManager::loadPluginFromDLL: Factory failed to create plugin from" << pluginPath;
+            return false;
+        }
+        
+        plugin->plugin_path = pluginPath;
+        
+        if (!loadPluginInternal(std::move(plugin), pluginId)) {
+            return false;
+        }
+        
+        // 保持 DLL 模块加载状态，防止插件代码被卸载
+        modules_[pluginId] = std::move(module);
+        
+        // 保存工厂以支持重新加载
+        factories_[pluginId] = std::move(factory);
+        
+        return true;
+    } catch (std::exception &e) {
+        qWarning() << "EditorPluginManager::loadPluginFromDLL: Plugin from" << pluginPath 
+                   << "load failed:" << e.what();
+        return false;
+    }
+}
+
+bool EditorPluginManager::loadPluginInternal(std::unique_ptr<IEditorPlugin> plugin, const QString &pluginId) {
+    if (!plugin) {
+        qWarning() << "EditorPluginManager::loadPluginInternal: plugin is null";
+        return false;
+    }
+    
     // Create PluginContext
     PluginContext *context = new PluginContext(&instance(), this);
 
     // Load plugin
     if (!plugin->load(context)) {
-        qWarning() << "EditorPluginManager::loadPlugin: Failed to load plugin" << pluginId;
+        qWarning() << "EditorPluginManager::loadPluginInternal: Failed to load plugin" << pluginId;
         delete context;
         return false;
     }
-
-    // Register plugin
-    plugins_[pluginId] = plugin;
-    // plugin->setParent(this);
 
     // Register ViewModels
     if (qmlEngine_) {
@@ -84,23 +144,32 @@ bool EditorPluginManager::loadPlugin(IEditorPlugin *plugin) {
     }
 
     // Initialize plugin
-    initializePlugin(plugin);
+    initializePlugin(plugin.get());
 
-    qDebug() << "EditorPluginManager::loadPlugin: Plugin" << pluginId << "(" << plugin->name() << ") loaded successfully";
+    QString pluginName = plugin->name();
+    
+    // 使用 unique_ptr 管理插件生命周期
+    plugins_[pluginId] = std::move(plugin);
+
+    qDebug() << "EditorPluginManager::loadPluginInternal: Plugin" << pluginId 
+             << "(" << pluginName << ") loaded successfully";
     emit pluginLoaded(pluginId);
 
     return true;
 }
 
 bool EditorPluginManager::unloadPlugin(const QString &pluginId) {
-    if (!plugins_.contains(pluginId)) {
+    auto it = plugins_.find(pluginId);
+    if (it == plugins_.end()) {
         qWarning() << "EditorPluginManager::unloadPlugin: Plugin" << pluginId << "not found";
         return false;
     }
 
-    IEditorPlugin *plugin = plugins_[pluginId];
+    IEditorPlugin *plugin = it->second.get();
+    
     // Check dependencies
-    for (auto *otherPlugin : plugins_) {
+    for (auto otherIt = plugins_.begin(); otherIt != plugins_.end(); ++otherIt) {
+        IEditorPlugin *otherPlugin = otherIt->second.get();
         if (otherPlugin != plugin) {
             QStringList deps = otherPlugin->dependencies();
             if (deps.contains(pluginId)) {
@@ -110,41 +179,39 @@ bool EditorPluginManager::unloadPlugin(const QString &pluginId) {
             }
         }
     }
-    luisa::shared_ptr<luisa::DynamicModule> moduleRef;
-    auto pluginPath = plugin->plugin_path;
-    bool is_dynamic = plugin->is_dynamic();
-    if (is_dynamic) {
-        // if is dynamic plugin, safely unload dll
-        auto &inst = rbc::PluginManager::instance();
 
-        // keep DLL loaded while calling virtual methods
-        if (modules_.contains(pluginId)) {
-            moduleRef = modules_[pluginId];
-        } else if (!pluginPath.isEmpty()) {
-            moduleRef = inst.load_module(pluginPath.toStdString().c_str());
-        }
+    // 保存 plugin_path 用于后续卸载 DLL
+    QString pluginPath = plugin->plugin_path;
+    auto moduleIt = modules_.find(pluginId);
+    bool hasDynamicModule = (moduleIt != modules_.end());
+
+    // 如果是动态库插件，保持模块加载以便调用虚函数
+    luisa::shared_ptr<luisa::DynamicModule> moduleRef;
+    if (hasDynamicModule) {
+        moduleRef = moduleIt->second;
     }
 
-    // now it is safe to call virtual functions because the module stays loaded
+    // 调用 unload（此时 DLL 仍然加载）
     if (!plugin->unload()) {
         qWarning() << "EditorPluginManager::unloadPlugin: Failed to unload plugin" << pluginId;
         return false;
     }
 
-    // 从 map 中移除（在删除对象之前）
-    plugins_.remove(pluginId);
+    // 从 map 中移除，unique_ptr 自动 delete 插件对象
+    // 这必须在 DLL 卸载之前完成
+    plugins_.erase(it);
 
-    // 同步删除对象（而不是 deleteLater），确保在 DLL 卸载前完成
-    delete plugin;
-    plugin = nullptr;
-
-    // 最后卸载 DLL 模块（此时对象已删除，不再需要 DLL）
-    if (is_dynamic) {
-        modules_.remove(pluginId);
+    // 卸载 DLL 模块（此时插件对象已删除）
+    if (hasDynamicModule) {
+        modules_.erase(pluginId);
+        
         auto &inst = rbc::PluginManager::instance();
         if (!pluginPath.isEmpty()) {
             inst.unload_module(pluginPath.toStdString().c_str());
         }
+        
+        // 同时移除对应的工厂（因为工厂代码也在 DLL 中）
+        factories_.erase(pluginId);
     }
 
     qDebug() << "EditorPluginManager::unloadPlugin: Plugin" << pluginId << "unloaded";
@@ -154,12 +221,13 @@ bool EditorPluginManager::unloadPlugin(const QString &pluginId) {
 }
 
 bool EditorPluginManager::reloadPlugin(const QString &pluginId) {
-    if (!plugins_.contains(pluginId)) {
+    auto it = plugins_.find(pluginId);
+    if (it == plugins_.end()) {
         qWarning() << "EditorPluginManager::reloadPlugin: Plugin" << pluginId << "not found";
         return false;
     }
 
-    IEditorPlugin *plugin = plugins_[pluginId];
+    IEditorPlugin *plugin = it->second.get();
     if (!plugin->reload()) {
         qWarning() << "EditorPluginManager::reloadPlugin: Failed to reload plugin" << pluginId;
         return false;
@@ -177,25 +245,41 @@ bool EditorPluginManager::reloadPlugin(const QString &pluginId) {
 }
 
 void EditorPluginManager::unloadAllPlugins() {
-    QStringList pluginIds = plugins_.keys();
+    // 收集所有 plugin ID（因为 unloadPlugin 会修改 map）
+    QStringList pluginIds;
+    for (const auto &pair : plugins_) {
+        pluginIds.append(pair.first);
+    }
     for (const QString &pluginId : pluginIds) {
         unloadPlugin(pluginId);
     }
 }
 
+// === Plugin Query ===
+
 IEditorPlugin *EditorPluginManager::getPlugin(const QString &id) const {
-    return plugins_.value(id, nullptr);
+    auto it = plugins_.find(id);
+    if (it != plugins_.end()) {
+        return it->second.get();
+    }
+    return nullptr;
 }
 
 QList<IEditorPlugin *> EditorPluginManager::getLoadedPlugins() const {
-    return plugins_.values();
+    QList<IEditorPlugin *> result;
+    for (auto it = plugins_.begin(); it != plugins_.end(); ++it) {
+        result.append(it->second.get());
+    }
+    return result;
 }
 
 QList<IEditorPlugin *> EditorPluginManager::getPluginsByCategory(const QString &category) const {
     // TODO: Implement category filtering
     Q_UNUSED(category);
-    return plugins_.values();
+    return getLoadedPlugins();
 }
+
+// === Hot Reload Management ===
 
 void EditorPluginManager::enableHotReload(bool enable) {
     hotReloadEnabled_ = enable;
@@ -220,6 +304,8 @@ void EditorPluginManager::watchPluginDirectory(const QString &path) {
     hotReloadWatcher_->addPath(path);
     qDebug() << "EditorPluginManager::watchPluginDirectory: Watching" << path;
 }
+
+// === Service Management ===
 
 void EditorPluginManager::registerService(const QString &serviceId, QObject *service) {
     if (!service) {
@@ -248,29 +334,31 @@ QObject *EditorPluginManager::getService(const QString &serviceId) const {
 
 void EditorPluginManager::clearServices() {
     qDebug() << "EditorPluginManager::clearServices: Clearing all service references";
-    
+
     // 此时所有 plugin 已经 unload，所有 ViewModel 已经被删除
     // ViewModel 在析构时已经显式断开了与 service 的连接
-    // 
+    //
     // 这里只需要：
     // 1. 清空 PluginManager 对 service 的引用
     // 2. 防止 PluginManager 析构时访问已被 app 删除的 service
-    
+
     // 处理所有待处理的事件，确保所有 deleteLater() 的对象已被删除
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-    
+
     // 清空引用 map（不访问 service 对象，避免任何潜在问题）
     services_.clear();
-    
+
     qDebug() << "EditorPluginManager::clearServices: All service references cleared";
 }
+
+// === QML Engine ===
 
 void EditorPluginManager::setQmlEngine(QQmlEngine *engine) {
     qmlEngine_ = engine;
     if (engine) {
         // Re-register all ViewModels for loaded plugins
-        for (auto *plugin : plugins_) {
-            plugin->register_view_models(engine);
+        for (auto it = plugins_.begin(); it != plugins_.end(); ++it) {
+            it->second->register_view_models(engine);
         }
     }
 }
@@ -278,6 +366,8 @@ void EditorPluginManager::setQmlEngine(QQmlEngine *engine) {
 QQmlEngine *EditorPluginManager::qmlEngine() {
     return qmlEngine_;
 }
+
+// === Private Methods ===
 
 void EditorPluginManager::resolvePluginDependencies() {
     // TODO: Implement dependency resolution

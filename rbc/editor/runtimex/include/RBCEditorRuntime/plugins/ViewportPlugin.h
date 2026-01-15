@@ -19,25 +19,32 @@ class ViewportViewModel : public ViewModelBase {
 
 public:
     explicit ViewportViewModel(ISceneService *scenService, QObject *parent = nullptr);
+    ~ViewportViewModel();
+
+private:
+    ISceneService *sceneService_;
 };
 
-class ViewportPlugin : public IEditorPlugin {
+class RBC_EDITOR_RUNTIME_API ViewportPlugin : public IEditorPlugin {
     Q_OBJECT
 
 public:
     explicit ViewportPlugin(QObject *parent = nullptr);
     ~ViewportPlugin() override;
 
+    // === Static Methods for Factory ===
+    static QString staticPluginId() { return "com.robocute.viewport"; }
+    static QString staticPluginName() { return "Viewport Plugin"; }
+
     // === IEditorPlugin Interface ===
     bool load(PluginContext *context) override;
     bool unload() override;
     bool reload() override;
 
-    QString id() const override { return "com.robocute.viewport"; }
-    QString name() const override { return "Viewport Plugin"; }
+    QString id() const override { return staticPluginId(); }
+    QString name() const override { return staticPluginName(); }
     QString version() const override { return "1.0.0"; }
     QStringList dependencies() const override { return {}; }
-    bool is_dynamic() const override { return false; }
     QList<ViewContribution> view_contributions() const override { return {}; }
     QList<MenuContribution> menu_contributions() const override { return {}; }
     QList<ToolbarContribution> toolbar_contributions() const override {

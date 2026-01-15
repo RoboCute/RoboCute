@@ -1,6 +1,7 @@
 #include "ProjectPlugin.h"
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/PluginContext.h"
+#include "RBCEditorRuntime/plugins/IPluginFactory.h"
 
 #include <QQmlEngine>
 #include <QDebug>
@@ -289,10 +290,10 @@ void ProjectPlugin::onOpenProjectTriggered() {
     }
 }
 
-// Extern "C" Interface
-IEditorPlugin *createPlugin() {
-    // let upper parent manage the life cycle
-    return static_cast<IEditorPlugin *>(new ProjectPlugin());
+// 导出工厂函数（新设计）
+// PluginManager 通过工厂统一管理插件生命周期
+IPluginFactory *createPluginFactory() {
+    return new PluginFactory<ProjectPlugin>();
 }
 
 }// namespace rbc

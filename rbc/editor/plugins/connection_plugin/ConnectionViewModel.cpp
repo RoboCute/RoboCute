@@ -14,18 +14,17 @@ ConnectionViewModel::ConnectionViewModel(ConnectionService *connectionService, Q
 
     // Connect to service signals
     QObject::connect(connectionService_, &ConnectionService::serverUrlChanged,
-            this, &ConnectionViewModel::serverUrlChanged);
+                     this, &ConnectionViewModel::serverUrlChanged);
     QObject::connect(connectionService_, &ConnectionService::connectedChanged,
-            this, &ConnectionViewModel::onConnectionStatusChanged);
+                     this, &ConnectionViewModel::onConnectionStatusChanged);
     QObject::connect(connectionService_, &ConnectionService::statusTextChanged,
-            this, &ConnectionViewModel::onStatusTextChanged);
+                     this, &ConnectionViewModel::onStatusTextChanged);
     QObject::connect(connectionService_, &ConnectionService::connectionTested,
-            this, &ConnectionViewModel::onConnectionTested);
+                     this, &ConnectionViewModel::onConnectionTested);
 }
 
 ConnectionViewModel::~ConnectionViewModel() {
-    // 关键：在析构时显式断开与 Service 的信号槽连接
-    // 原因同 ProjectViewModel：Service 生命周期比 ViewModel 长
+    // Service 生命周期比 ViewModel 长，在析构时显式断开与 Service 的信号槽连接
     if (connectionService_) {
         // 断开所有从 connectionService_ 到 this 的连接
         QObject::disconnect(connectionService_, nullptr, this, nullptr);

@@ -2,13 +2,19 @@
 
 namespace rbc {
 
-ViewportViewModel::ViewportViewModel(ISceneService *sceneService, QObject *parent) : ViewModelBase(parent) {
-    if (!sceneService) [[unlikely]] {
-        qWarning() << "ViewportViewModel: sceneService not valid";
+ViewportViewModel::ViewportViewModel(ISceneService *sceneService, QObject *parent) : ViewModelBase(parent), sceneService_(sceneService) {
+    if (!sceneService_) {
+        qWarning() << "ViewportViewModel: sceneService is null";
         return;
     }
 
-    // connect to signals
+    // connect to service signal
+}
+
+ViewportViewModel::~ViewportViewModel() {
+    if (sceneService_) {
+    }
+    sceneService_ = nullptr;
 }
 
 }// namespace rbc

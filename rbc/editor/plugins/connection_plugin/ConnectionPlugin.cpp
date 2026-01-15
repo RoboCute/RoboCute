@@ -1,6 +1,7 @@
 #include "ConnectionPlugin.h"
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/PluginContext.h"
+#include "RBCEditorRuntime/plugins/IPluginFactory.h"
 
 #include <QQmlEngine>
 #include <QDebug>
@@ -116,10 +117,10 @@ QObject *ConnectionPlugin::getViewModel(const QString &viewId) {
     return nullptr;
 }
 
-// Extern "C" Interface
-IEditorPlugin *createPlugin() {
-    // let upper parent manage the life cycle
-    return static_cast<IEditorPlugin *>(new ConnectionPlugin());
+// 导出工厂函数（新设计）
+// PluginManager 通过工厂统一管理插件生命周期
+IPluginFactory *createPluginFactory() {
+    return new PluginFactory<ConnectionPlugin>();
 }
 
 }// namespace rbc
