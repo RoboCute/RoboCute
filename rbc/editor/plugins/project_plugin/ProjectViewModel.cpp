@@ -1,4 +1,10 @@
 #include "ProjectPlugin.h"
+#include <QStandardPaths>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QFile>
+#include <QDir>
 
 namespace rbc {
 
@@ -241,6 +247,42 @@ QModelIndex ProjectViewModel::indexForRow(int row) const {
         return QModelIndex();
     }
     return fileSystemModel_->index(row, 0, rootIdx);
+}
+
+void ProjectViewModel::setProjectListMode(bool enabled) {
+    if (projectListMode_ != enabled) {
+        projectListMode_ = enabled;
+        if (enabled) {
+            // Clear current root path when switching to list mode
+            currentRootPath_.clear();
+            if (fileSystemModel_) {
+                fileSystemModel_->setRootPath(QString());
+            }
+            emit rootIndexChanged();
+        } else {
+            // Restore project root when switching back to tree mode
+            updateRootPath();
+        }
+    }
+}
+
+void ProjectViewModel::openProjectFromList(const QString &projectPath) {
+    if (!projectService_ || projectPath.isEmpty()) {
+        return;
+    }
+
+    ProjectOpenOptions options;
+    options.loadUserPreferences = true;
+    options.loadEditorSession = true;
+
+    if (!projectService_->openProject(projectPath, options)) {
+        qWarning() << "ProjectViewModel::openProjectFromList: Failed to open project:"
+                   << projectService_->lastError();
+        return;
+    }
+
+    // Switch back to tree mode
+    setProjectListMode(false);
 }
 
 }// namespace rbc

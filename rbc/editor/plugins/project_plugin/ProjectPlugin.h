@@ -7,6 +7,9 @@
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include <QFileSystemModel>
 #include <QWidget>
+#include <QJsonObject>
+#include <QStringList>
+#include <QStandardPaths>
 
 namespace rbc {
 
@@ -47,6 +50,13 @@ public:
     // Service access
     IProjectService *projectService() const { return projectService_; }
 
+    // Project list mode support
+    Q_INVOKABLE void setProjectListMode(bool enabled);
+    Q_INVOKABLE bool isProjectListMode() const { return projectListMode_; }
+    Q_INVOKABLE QStringList recentProjects() const { return recentProjects_; }
+    Q_INVOKABLE void setRecentProjects(const QStringList &projects) { recentProjects_ = projects; }
+    Q_INVOKABLE void openProjectFromList(const QString &projectPath);
+
 signals:
     void projectRootChanged();
     void rootIndexChanged();
@@ -65,6 +75,8 @@ private:
     QFileSystemModel *fileSystemModel_ = nullptr;
     QString filter_ = "*";// Default: show all files
     QString currentRootPath_;
+    bool projectListMode_ = false;
+    QStringList recentProjects_;
 };
 
 class RBC_EDITOR_PLUGIN_API ProjectPlugin : public IEditorPlugin {
@@ -105,6 +117,15 @@ private slots:
     void onOpenProjectTriggered();
 
 private:
+    // Project cache management
+    QString getWorkDir() const;
+    QString getCacheFilePath() const;
+    void loadProjectCache();
+    void saveProjectCache();
+    void addProjectToCache(const QString &projectPath);
+    QStringList getRecentProjects() const;
+    QString getLastOpenedProject() const;
+
     IProjectService *projectService_ = nullptr;
     ProjectViewModel *viewModel_ = nullptr;
     PluginContext *context_ = nullptr;
@@ -115,6 +136,7 @@ private:
     // 调用 disconnect(sender, nullptr, this, nullptr) 无法断开它们
     QMetaObject::Connection projectOpenedConnection_;
     QMetaObject::Connection treeViewDoubleClickConnection_;
+    QMetaObject::Connection projectClosingConnection_;
 };
 
 // 导出工厂函数（新设计）

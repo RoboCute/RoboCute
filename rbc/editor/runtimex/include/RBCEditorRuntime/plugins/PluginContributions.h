@@ -7,6 +7,7 @@ namespace rbc {
 enum struct PluginState {
 };
 
+// QML视图贡献，用于基础的组件类和简单交互界面，支持比较方便的热重载
 struct ViewContribution {
     QString viewId;   // the unique identifier
     QString title;    // display title
@@ -41,6 +42,7 @@ struct NativeViewContribution {
     bool isExternalManaged = false;
 };
 
+// Menu接口
 struct MenuContribution {
     QString menuPath;              // e.g., "File", "File/Open", "Edit/Preferences"
     QString actionText;            // Display text for the menu item
@@ -49,6 +51,7 @@ struct MenuContribution {
     std::function<void()> callback;// Callback function to execute when menu item is triggered
 };
 
+// Toolbar接口
 struct ToolbarContribution {
     QString toolbarId;             // Unique identifier for the toolbar
     QString toolbarName;           // Display name for the toolbar

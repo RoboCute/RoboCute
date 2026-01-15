@@ -12,6 +12,15 @@
 #include <QHeaderView>
 #include <QPointer>
 #include <QDockWidget>
+#include <QStandardPaths>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QFile>
+#include <QFileInfo>
+#include <QListWidget>
+#include <QCoreApplication>
+#include <QDateTime>
 
 namespace rbc {
 
@@ -32,6 +41,15 @@ ProjectPlugin::~ProjectPlugin() {
     if (treeViewDoubleClickConnection_) {
         QObject::disconnect(treeViewDoubleClickConnection_);
         treeViewDoubleClickConnection_ = {};
+    }
+    if (projectClosingConnection_) {
+        QObject::disconnect(projectClosingConnection_);
+        projectClosingConnection_ = {};
+    }
+
+    // Save cache before destruction
+    if (projectService_ && projectService_->isOpen()) {
+        saveProjectCache();
     }
 
     if (fileBrowserWidget_ || viewModel_) {
@@ -68,8 +86,32 @@ bool ProjectPlugin::load(PluginContext *context) {
         return false;
     }
 
-    // Create ViewModel
+    // Load project cache
+    loadProjectCache();
+
+    // Create ViewModel first (needed for signal connections)
     viewModel_ = new ProjectViewModel(projectService_, this);
+
+    // Try to open last project if available
+    QString lastProject = getLastOpenedProject();
+    if (!lastProject.isEmpty() && QFileInfo::exists(lastProject)) {
+        ProjectOpenOptions options;
+        options.loadUserPreferences = true;
+        options.loadEditorSession = true;
+        
+        if (projectService_->openProject(lastProject, options)) {
+            qDebug() << "ProjectPlugin: Auto-opened last project:" << lastProject;
+            // ViewModel will be updated via projectOpened signal connection
+        } else {
+            qWarning() << "ProjectPlugin: Failed to auto-open last project:" << projectService_->lastError();
+        }
+    }
+    
+    // If no project is open, show project list
+    if (!projectService_->isOpen()) {
+        viewModel_->setProjectListMode(true);
+        viewModel_->setRecentProjects(getRecentProjects());
+    }
 
     // Create file browser widget
     fileBrowserWidget_ = new QWidget();
@@ -106,10 +148,24 @@ bool ProjectPlugin::load(PluginContext *context) {
         this,// context 对象 - 这是关键！没有它 disconnect(sender, nullptr, this, nullptr) 无法断开 lambda 连接
         [pluginPtr, viewModelPtr, treeViewPtr]() {
             if (pluginPtr && viewModelPtr && treeViewPtr && pluginPtr->projectService_) {
+                // Switch to tree mode when project opens
+                viewModelPtr->setProjectListMode(false);
                 viewModelPtr->setRootPath(pluginPtr->projectService_->projectRoot());
                 if (treeViewPtr) {
                     treeViewPtr->setRootIndex(viewModelPtr->rootIndex());
                 }
+                // Add to cache
+                pluginPtr->addProjectToCache(pluginPtr->projectService_->projectRoot());
+            }
+        });
+    
+    projectClosingConnection_ = QObject::connect(
+        projectService_, &IProjectService::projectClosing,
+        this,
+        [pluginPtr]() {
+            if (pluginPtr && pluginPtr->projectService_) {
+                // Save cache when project is closing
+                pluginPtr->saveProjectCache();
             }
         });
 
@@ -139,6 +195,17 @@ bool ProjectPlugin::unload() {
     }
 
     // 2. 断开其他可能的信号连接（使用 receiver 匹配）
+    if (projectClosingConnection_) {
+        QObject::disconnect(projectClosingConnection_);
+        projectClosingConnection_ = {};
+        qDebug() << "ProjectPlugin::unload: Disconnected projectClosingConnection";
+    }
+    
+    // Save cache before unloading
+    if (projectService_ && projectService_->isOpen()) {
+        saveProjectCache();
+    }
+    
     if (projectService_) {
         QObject::disconnect(projectService_, nullptr, this, nullptr);
     }
@@ -237,11 +304,21 @@ void ProjectPlugin::onOpenProjectTriggered() {
         return;
     }
 
+    // Get last opened project directory as default
+    QString defaultDir;
+    QString lastProject = getLastOpenedProject();
+    if (!lastProject.isEmpty()) {
+        QFileInfo fi(lastProject);
+        if (fi.exists()) {
+            defaultDir = fi.absolutePath();
+        }
+    }
+
     // Open file dialog to select project folder
     QString projectPath = QFileDialog::getExistingDirectory(
         nullptr,
         "选择Project文件夹",
-        QString(),
+        defaultDir,
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
     if (projectPath.isEmpty()) {
@@ -267,6 +344,189 @@ void ProjectPlugin::onOpenProjectTriggered() {
             viewModel_->setRootPath(projectPath);
         }
     }
+}
+
+QString ProjectPlugin::getWorkDir() const {
+    // Use QStandardPaths to get application data directory
+    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (appDataPath.isEmpty()) {
+        // Fallback to application directory
+        appDataPath = QCoreApplication::applicationDirPath();
+    }
+    return appDataPath;
+}
+
+QString ProjectPlugin::getCacheFilePath() const {
+    QDir workDir(getWorkDir());
+    if (!workDir.exists()) {
+        workDir.mkpath(".");
+    }
+    return workDir.filePath("ProjectCache.json");
+}
+
+void ProjectPlugin::loadProjectCache() {
+    QString cacheFile = getCacheFilePath();
+    if (!QFileInfo::exists(cacheFile)) {
+        qDebug() << "ProjectPlugin::loadProjectCache: Cache file does not exist:" << cacheFile;
+        return;
+    }
+
+    QFile file(cacheFile);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "ProjectPlugin::loadProjectCache: Failed to open cache file:" << cacheFile;
+        return;
+    }
+
+    QByteArray data = file.readAll();
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "ProjectPlugin::loadProjectCache: Failed to parse JSON:" << error.errorString();
+        return;
+    }
+
+    QJsonObject obj = doc.object();
+    QJsonArray recentArray = obj.value("recent_projects").toArray();
+    QStringList recentProjects;
+    for (const QJsonValue &value : recentArray) {
+        QString path = value.toString();
+        if (!path.isEmpty() && QFileInfo::exists(path)) {
+            recentProjects.append(path);
+        }
+    }
+    
+    // Store in viewModel if it exists
+    if (viewModel_) {
+        viewModel_->setRecentProjects(recentProjects);
+    }
+    
+    qDebug() << "ProjectPlugin::loadProjectCache: Loaded" << recentProjects.size() << "recent projects";
+}
+
+void ProjectPlugin::saveProjectCache() {
+    QStringList recentProjects = getRecentProjects();
+    
+    QJsonObject obj;
+    QJsonArray recentArray;
+    for (const QString &path : recentProjects) {
+        recentArray.append(path);
+    }
+    obj.insert("recent_projects", recentArray);
+    
+    // Add last opened project
+    if (projectService_ && projectService_->isOpen()) {
+        obj.insert("last_opened_project", projectService_->projectRoot());
+    } else {
+        QString lastProject = getLastOpenedProject();
+        if (!lastProject.isEmpty()) {
+            obj.insert("last_opened_project", lastProject);
+        }
+    }
+    
+    obj.insert("saved_at", QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+
+    QString cacheFile = getCacheFilePath();
+    QFile file(cacheFile);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning() << "ProjectPlugin::saveProjectCache: Failed to open cache file for writing:" << cacheFile;
+        return;
+    }
+
+    QJsonDocument doc(obj);
+    file.write(doc.toJson(QJsonDocument::Indented));
+    qDebug() << "ProjectPlugin::saveProjectCache: Saved cache to:" << cacheFile;
+}
+
+void ProjectPlugin::addProjectToCache(const QString &projectPath) {
+    if (projectPath.isEmpty()) {
+        return;
+    }
+
+    QStringList recentProjects = getRecentProjects();
+    
+    // Remove if already exists
+    recentProjects.removeAll(projectPath);
+    
+    // Add to front
+    recentProjects.prepend(projectPath);
+    
+    // Limit to 20 recent projects
+    while (recentProjects.size() > 20) {
+        recentProjects.removeLast();
+    }
+    
+    // Update viewModel
+    if (viewModel_) {
+        viewModel_->setRecentProjects(recentProjects);
+    }
+    
+    // Save immediately
+    saveProjectCache();
+}
+
+QStringList ProjectPlugin::getRecentProjects() const {
+    if (viewModel_) {
+        return viewModel_->recentProjects();
+    }
+    
+    // Load from cache if viewModel not available
+    QString cacheFile = getCacheFilePath();
+    if (!QFileInfo::exists(cacheFile)) {
+        return QStringList();
+    }
+
+    QFile file(cacheFile);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return QStringList();
+    }
+
+    QByteArray data = file.readAll();
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError) {
+        return QStringList();
+    }
+
+    QJsonObject obj = doc.object();
+    QJsonArray recentArray = obj.value("recent_projects").toArray();
+    QStringList recentProjects;
+    for (const QJsonValue &value : recentArray) {
+        QString path = value.toString();
+        if (!path.isEmpty() && QFileInfo::exists(path)) {
+            recentProjects.append(path);
+        }
+    }
+    
+    return recentProjects;
+}
+
+QString ProjectPlugin::getLastOpenedProject() const {
+    QString cacheFile = getCacheFilePath();
+    if (!QFileInfo::exists(cacheFile)) {
+        return QString();
+    }
+
+    QFile file(cacheFile);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return QString();
+    }
+
+    QByteArray data = file.readAll();
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError) {
+        return QString();
+    }
+
+    QJsonObject obj = doc.object();
+    QString lastProject = obj.value("last_opened_project").toString();
+    
+    // Verify it still exists
+    if (!lastProject.isEmpty() && QFileInfo::exists(lastProject)) {
+        return lastProject;
+    }
+    
+    return QString();
 }
 
 // 导出工厂函数（新设计）

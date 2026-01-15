@@ -18,3 +18,9 @@ Signal
 - sceneChanged
 
 NodeGraph
+
+
+## ISceneService
+
+SceneService的基本接口，后续每一轮更新迭代时候可以使用SceneServiceV2等实现类来继承
+
