@@ -117,7 +117,7 @@ QObject *ConnectionPlugin::getViewModel(const QString &viewId) {
     return nullptr;
 }
 
-// 导出工厂函数（新设计）
+// 导出工厂函数
 // PluginManager 通过工厂统一管理插件生命周期
 IPluginFactory *createPluginFactory() {
     return new PluginFactory<ConnectionPlugin>();

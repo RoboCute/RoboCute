@@ -42,30 +42,23 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     QQmlEngine *engine = new QQmlEngine(&app);
     pluginManager.setQmlEngine(engine);
     qDebug() << "QML Engine created";
-    
-    // 6. Load Plugins (新设计：工厂模式)
-    // PluginManager 通过工厂统一管理所有插件的生命周期，
-    // 避免了栈上对象导致的双重析构问题
 
-    // 6.1 注册内置插件工厂
+    // 6. Load Plugins
+    // 6.1 Register Builtin Factory for builtin Plugins
     pluginManager.registerPlugin<ViewportPlugin>();
-
-    // 6.2 加载动态库插件（从 DLL 导出 createPluginFactory）
+    // 6.2 Load from DLL
     if (!pluginManager.loadPluginFromDLL("RBCE_ConnectionPlugin")) {
         qWarning() << "Failed to load ConnectionPlugin";
     }
     if (!pluginManager.loadPluginFromDLL("RBCE_ProjectPlugin")) {
         qWarning() << "Failed to load ProjectPlugin";
     }
-    
-    // 6.3 加载内置插件
+    // 6.3 Load Builtin Plugins with registered factory
     if (!pluginManager.loadPlugin(ViewportPlugin::staticPluginId())) {
         qWarning() << "Failed to load ViewportPlugin";
     }
 
     // 7. Create Main Window
-    // 重要：WindowManager 是栈上对象，不能设置 parent 为 &app
-    // 否则会导致 double-delete：栈对象析构 + app 析构时删除 children
     WindowManager windowManager(&pluginManager, nullptr);
     windowManager.setup_main_window();
     auto *mainWindow = windowManager.main_window();

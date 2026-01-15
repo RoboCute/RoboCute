@@ -90,7 +90,7 @@ private:
     PluginContext *context_ = nullptr;
 };
 
-// 导出工厂函数（新设计）
+// 导出工厂函数
 class IPluginFactory;
 LUISA_EXPORT_API IPluginFactory *createPluginFactory();
 
