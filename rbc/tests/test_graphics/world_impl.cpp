@@ -25,6 +25,15 @@ namespace rbc {
 vstd::Guid Object::guid(void *this_) {
     return static_cast<world::BaseObject *>(this_)->guid();
 }
+vstd::Guid Object::type_id(void *this_) {
+    return static_cast<world::BaseObject *>(this_)->type_id();
+}
+luisa::string Object::type_name(void *this_) {
+    return static_cast<world::BaseObject *>(this_)->type_name();
+}
+BaseObjectType Object::base_type(void *this_) {
+    return static_cast<BaseObjectType>(static_cast<world::BaseObject *>(this_)->base_type());
+}
 uint64_t Object::instance_id(void *this_) {
     return static_cast<world::BaseObject *>(this_)->instance_id();
 }
@@ -32,8 +41,7 @@ rbc::ResourceLoadStatus Resource::load_status(void *this_) {
     return static_cast<rbc::ResourceLoadStatus>(static_cast<world::Resource *>(this_)->loading_status());
 }
 void Resource::wait_loading(void *this_) {
-    auto c = static_cast<world::Resource *>(this_);
-    c->wait_loading();
+    static_cast<world::Resource *>(this_)->wait_loading();
 }
 luisa::string Resource::path(void *this_) {
     return luisa::to_string(static_cast<world::Resource *>(this_)->path());
@@ -431,7 +439,7 @@ void *Project::scan_project(void *this_) {
     }
     auto request = new AsyncEventImpl{};
     manually_add_ref(request);
-    request->task = luisa::fiber::async([c = RC<ProjectImpl>(c)](){
+    request->task = luisa::fiber::async([c = RC<ProjectImpl>(c)]() {
         c->proj->scan_project();
     });
     return request;
@@ -518,5 +526,40 @@ void *Scene::get_or_add_entity(void *this_, vstd::Guid const &guid) {
 void Scene::update_data(void *this_) {
     auto c = static_cast<world::SceneResource *>(this_);
     c->update_data();
+}
+struct FileMetaImpl : RCBase {
+    vstd::Guid guid;
+    luisa::string meta_info;
+};
+void *FileMeta::_create_() {
+    auto ptr = new FileMetaImpl{};
+    manually_add_ref(ptr);
+    return ptr;
+}
+vstd::Guid FileMeta::guid(void *this_) {
+    return static_cast<FileMetaImpl *>(this_)->guid;
+}
+luisa::string FileMeta::meta_json(void *this_) {
+    return static_cast<FileMetaImpl *>(this_)->meta_info;
+}
+void *Project::get_file_meta(void *this_, vstd::Guid const &type_id, luisa::string_view dest_path) {
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    auto meta = static_cast<FileMetaImpl *>(FileMeta::_create_());
+    meta->guid.reset();
+    luisa::vector<IProject::FileMeta> file_meta;
+    c->proj->read_file_metas(
+        dest_path,
+        file_meta);
+    for (auto &i : file_meta) {
+        if (i.type_id == type_id) {
+            meta->meta_info = i.meta_info;
+            meta->guid = i.guid;
+            break;
+        }
+    }
+    return meta;
 }
 }// namespace rbc

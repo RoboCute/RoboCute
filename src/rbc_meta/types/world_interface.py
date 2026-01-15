@@ -18,6 +18,15 @@ class ResourceLoadStatus(Enum):
     Installed = 4
 
 
+@reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
+class BaseObjectType(Enum):
+    NONE = 0
+    Component = 1
+    Entity = 2
+    Resource = 3
+    Custom = 4
+
+
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
@@ -28,6 +37,9 @@ class ResourceLoadStatus(Enum):
 class Object:
     def instance_id() -> ulong: ...
     def guid() -> GUID: ...
+    def type_name() -> str: ...
+    def type_id() -> GUID: ...
+    def base_type() -> BaseObjectType: ...
 
 
 @reflect(
@@ -262,6 +274,17 @@ class Scene:
     cpp_namespace="rbc",
     module_name="world_interface"
 )
+class FileMeta:
+    def guid() -> GUID: ...
+    def meta_json() -> str: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface"
+)
 class Project():
     def init(assets_root_dir: str) -> None: ...
     def import_texture(path: str, extra_meta: str) -> AsyncRequest: ...
@@ -270,4 +293,6 @@ class Project():
     # TODO: more import
     def load_resource(
         guid: GUID, async_load: bool) -> TextureResource: ...
+
     def scan_project() -> AsyncEvent: ...
+    def get_file_meta(type_id: GUID, dest_path: str) -> FileMeta: ...

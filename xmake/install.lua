@@ -7,14 +7,10 @@ function main(mode)
     local target_dir = path.join(os.projectdir(), 'build', os.host(), os.arch(), mode)
     -- copy targetdir to 
     os.cp(path.join(target_dir, '*.dll'), ext_path, {
-        copy_if_different = true,
-        async = true,
-        detach = true
+        copy_if_different = true
     })
     os.cp(path.join(target_dir, '*.pyd'), ext_path, {
-        copy_if_different = true,
-        async = true,
-        detach = true
+        copy_if_different = true
     })
 
     -- generate "__init__.py"
