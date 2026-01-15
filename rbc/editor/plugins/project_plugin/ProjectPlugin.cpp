@@ -2,6 +2,7 @@
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/PluginContext.h"
 #include "RBCEditorRuntime/plugins/IPluginFactory.h"
+#include "RBCEditorRuntime/services/IStyleManager.h"
 
 #include <QQmlEngine>
 #include <QDebug>
@@ -126,6 +127,15 @@ bool ProjectPlugin::load(PluginContext *context) {
     treeView->setAnimated(true);
     treeView->setIndentation(20);
     treeView->setSortingEnabled(true);
+
+    // Apply unified style using StyleManager
+    IStyleManager *styleManager = context->getService<IStyleManager>();
+    if (styleManager) {
+        styleManager->applyStylePreset(treeView, "FileTree");
+        qDebug() << "ProjectPlugin: Applied FileTree style preset";
+    } else {
+        qWarning() << "ProjectPlugin: StyleManager not found, FileTree will use default style";
+    }
 
     QPointer<ProjectViewModel> viewModelPtr = viewModel_;
     QPointer<QTreeView> treeViewPtr = treeView;
