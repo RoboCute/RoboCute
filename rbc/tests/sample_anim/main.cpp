@@ -28,7 +28,7 @@
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/skelmesh_component.h>
-#include <rbc_world/texture_loader.h>
+#include <rbc_graphics/texture/texture_loader.h>
 #include <rbc_world/util/gltf_scene_loader.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/resource_base.h>
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     {
         world::ExrTextureImporter importer;
         RBCZoneScopedN("Load Skybox");
-        world::TextureLoader tex_loader;
+        TextureLoader tex_loader;
         // Try to load sky.exr from runtime directory or use a default path
         luisa::filesystem::path sky_path = runtime_dir / "sky.exr";
         if (!luisa::filesystem::exists(sky_path)) {

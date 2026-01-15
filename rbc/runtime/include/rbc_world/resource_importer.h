@@ -9,6 +9,7 @@
 namespace rbc {
 struct DeviceMesh;
 struct DeviceResource;
+struct TextureLoader;
 }// namespace rbc
 
 namespace rbc::world {
@@ -17,7 +18,6 @@ namespace rbc::world {
 struct MaterialResource;
 struct MeshResource;
 struct TextureResource;
-struct TextureLoader;
 
 /**
  * @brief Base interface for resource importers

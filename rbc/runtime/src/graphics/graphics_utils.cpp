@@ -15,7 +15,7 @@
 #include <rbc_world/base_object.h>
 #include <rbc_world/component.h>
 #include <rbc_world/resources/mesh.h>
-#include <rbc_world/texture_loader.h>
+#include <rbc_graphics/texture/texture_loader.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_core/state_map.h>
 using namespace rbc;
@@ -73,11 +73,7 @@ void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_v
     _graphics_utils_singleton = this;
     PluginManager::init();
     _render_device.init(program_path, backend_name);
-    init_present_stream();
-    _render_device.set_main_stream(&_present_stream);
-    _compute_event.event = _render_device.lc_device().create_timeline_event();
     _backend_name = backend_name;
-    _tex_loader = luisa::make_unique<world::TextureLoader>();
 }
 void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     auto &cmdlist = _render_device.lc_main_cmd_list();
@@ -92,6 +88,9 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     // init
     {
         luisa::fiber::counter init_counter;
+        init_present_stream();
+        _render_device.set_main_stream(&_present_stream);
+        _compute_event.event = _render_device.lc_device().create_timeline_event();
         _sm->load_shader(init_counter);
         // Build a simple accel to preload driver builtin shaders
         auto buffer = _render_device.lc_device().create_buffer<uint>(4 * 3 + 3);
@@ -120,6 +119,7 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
         _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
             _sm->bindless_allocator(),
             65536);
+        _tex_loader = luisa::make_unique<TextureLoader>();
         init_counter.wait();
     }
     _lights.create();

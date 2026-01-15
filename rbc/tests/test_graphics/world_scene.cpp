@@ -2,7 +2,7 @@
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/light_component.h>
-#include <rbc_world/texture_loader.h>
+#include <rbc_graphics/texture/texture_loader.h>
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_graphics/graphics_utils.h>
 #include <rbc_core/binary_file_writer.h>
@@ -103,7 +103,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         world::StbTextureImporter stb_importer;
 
         RBCZoneScopedN("Load Textures");
-        world::TextureLoader tex_loader;
+        TextureLoader tex_loader;
         // tex = tex_loader.decode_texture(
         //     "test_grid.png",
         //     16,

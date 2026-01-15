@@ -1,10 +1,9 @@
 #pragma once
 #include <rbc_world/resource_importer.h>
-
-namespace rbc::world {
-
+namespace rbc {
 struct TextureLoader;
-
+}// namespace rbc
+namespace rbc::world {
 /**
  * @brief STB image importer for TextureResource (PNG, JPG, BMP, GIF, etc.)
  * Supports: .png, .jpg, .jpeg, .bmp, .gif, .psd, .pnm, .tga

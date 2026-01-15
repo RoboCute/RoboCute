@@ -1,7 +1,7 @@
 #include "RBCEditorRuntime/runtime/EditorScene.h"
 #include "RBCEditorRuntime/engine/EditorEngine.h"
 #include <rbc_world/base_object.h>
-#include <rbc_world/texture_loader.h>
+#include <rbc_graphics/texture/texture_loader.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/device_assets/device_image.h>
@@ -103,7 +103,7 @@ void EditorScene::initSkybox() {
     qDebug("EditorScene: Loading default skybox from sky.exr");
 
     // Create texture loader and importer
-    world::TextureLoader tex_loader;
+    TextureLoader tex_loader;
     world::ExrTextureImporter exr_importer;
 
     // Create skybox texture resource

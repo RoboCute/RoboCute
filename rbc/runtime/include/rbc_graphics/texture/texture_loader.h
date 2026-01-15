@@ -1,10 +1,12 @@
 #pragma once
-#include <rbc_world/resources/texture.h>
 #include <rbc_graphics/texture/pack_texture.h>
 #include <luisa/core/fiber.h>
 #include <luisa/runtime/event.h>
 #include <luisa/vstl/lockfree_array_queue.h>
-namespace rbc::world {
+namespace rbc {
+namespace world {
+struct TextureResource;
+}// namespace world
 struct RBC_RUNTIME_API TextureLoader {
 private:
     vstd::optional<PackTexture> _pack_tex;
@@ -17,7 +19,7 @@ private:
     void _try_execute();
 
 public:
-    void process_texture(RC<TextureResource> const &tex, uint mip_level, bool to_vt);
+    void process_texture(RC<world::TextureResource> const &tex, uint mip_level, bool to_vt);
     void finish_task();
 };
-}// namespace rbc::world
+}// namespace rbc

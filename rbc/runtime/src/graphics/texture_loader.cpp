@@ -10,10 +10,11 @@
 #include <stb/stb_image.h>
 #include <tinytiffreader.h>
 #include <tinyexr.h>
-#include <rbc_world/texture_loader.h>
+#include <rbc_graphics/texture/texture_loader.h>
 #include <luisa/core/binary_io.h>
+#include <rbc_world/resources/texture.h>
 
-namespace rbc::world {
+namespace rbc {
 
 void TextureLoader::_try_execute() {
     std::lock_guard lck{_mtx};
@@ -31,7 +32,7 @@ void TextureLoader::_try_execute() {
     }
 }
 
-void TextureLoader::process_texture(RC<TextureResource> const &tex, uint mip_level, bool to_vt) {
+void TextureLoader::process_texture(RC<world::TextureResource> const &tex, uint mip_level, bool to_vt) {
 
     auto render_device = RenderDevice::instance_ptr();
     if (mip_level > 1 || to_vt) {
@@ -50,7 +51,7 @@ void TextureLoader::process_texture(RC<TextureResource> const &tex, uint mip_lev
     }
 
     uint64_t gpu_fence = 0;
-    auto to_vt_func = [&](RC<TextureResource> const &tex, uint chunk_size) {
+    auto to_vt_func = [&](RC<world::TextureResource> const &tex, uint chunk_size) {
         if (!to_vt) return;
         if (all((tex->size() & (chunk_size - 1u)) != 0u)) {
             LUISA_WARNING("Texture size {} is not aligned as {}", tex->size(), chunk_size);

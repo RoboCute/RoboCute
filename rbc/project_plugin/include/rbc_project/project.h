@@ -17,7 +17,8 @@ struct IProject : RCBase {
     virtual luisa::filesystem::path const &root_path() const = 0;
     virtual RC<world::Resource> import_assets(
         luisa::filesystem::path origin_path,
-        vstd::MD5 type_id) = 0;
+        vstd::MD5 type_id,
+        luisa::string const &meta_json = {}) = 0;
     virtual void scan_project() = 0;
     virtual void read_file_metas(
         luisa::filesystem::path dest_path,

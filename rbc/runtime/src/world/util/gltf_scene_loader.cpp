@@ -1,6 +1,6 @@
 #include <rbc_world/util/gltf_scene_loader.h>
 #include <rbc_world/importers/mesh_importer_gltf.h>
-#include <rbc_world/texture_loader.h>
+#include <rbc_graphics/texture/texture_loader.h>
 #include <rbc_world/resources/material.h>
 
 #include <rbc_world/importers/skel_importer_gltf.h>

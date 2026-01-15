@@ -6,13 +6,13 @@ namespace rbc {
 struct DeviceResource;
 struct DeviceImage;
 struct DeviceSparseImage;
+struct TextureLoader;
 }// namespace rbc
 
 namespace rbc::world {
 struct VTLoadFlag : RCBase {
     std::atomic_bool finished{false};
 };
-struct TextureLoader;
 
 struct RBC_RUNTIME_API TextureResource final : ResourceBaseImpl<TextureResource> {
     friend struct TextureLoader;
@@ -23,7 +23,7 @@ private:
     RC<DeviceResource> _tex;
     mutable rbc::shared_atomic_mutex _async_mtx;
     // meta
-    LCPixelStorage _pixel_storage;
+    LCPixelStorage _pixel_storage{static_cast<LCPixelStorage>(-1)};
     luisa::uint2 _size;
     uint32_t _mip_level{};
     bool _is_vt{};
