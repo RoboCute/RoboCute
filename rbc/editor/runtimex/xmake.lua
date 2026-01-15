@@ -21,6 +21,9 @@ local function rbc_editor_runtime_impl()
     add_headerfiles("include/RBCEditorRuntime/**.h")
 
     add_defines('RBC_EDITOR_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT')
+    
+    -- Define RBC_SOURCE_DIR for finding layout files during development
+    add_defines('RBC_SOURCE_DIR="' .. os.projectdir() .. '"')
 end
 
 interface_target('rbc_editor_runtimex', rbc_editor_runtime_interface, rbc_editor_runtime_impl)

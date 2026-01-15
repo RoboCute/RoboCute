@@ -15,6 +15,7 @@
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/ui/WindowManager.h"
+#include "RBCEditorRuntime/services/LayoutService.h"
 
 #include <argparse/argparse.hpp>
 
@@ -46,6 +47,13 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     windowManager.setup_main_window();
     auto *mainWindow = windowManager.main_window();
     qDebug() << "Main window created";
+
+    // 5.1 Create and initialize LayoutService
+    auto *layoutService = new LayoutService(&app);
+    pluginManager.registerService(layoutService);
+    layoutService->initialize(&windowManager, &pluginManager);
+    layoutService->loadBuiltInLayouts();
+    qDebug() << "LayoutService initialized";
     // 6. Apply UI contributions for all plugins
     // 6.1 Apply QML View Contribution
     QSet<QString> occupiedDockAreas;
@@ -71,12 +79,19 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         }
     };
     // 6.2 Apply Native View Contribution
+    // Note: Views with dockArea="Center" will be handled by LayoutService as central widget
     auto addNativeViewContribution = [&](IEditorPlugin *plugin) {
         if (!plugin) {
             return;
         }
         QList<NativeViewContribution> nativeViews = plugin->native_view_contributions();
         for (const auto &nativeView : nativeViews) {
+            // Skip views marked as "Center" - they will be set as central widget by LayoutService
+            if (nativeView.dockArea == "Center") {
+                qDebug() << "Skipping native view:" << nativeView.viewId << "- will be set as central widget by LayoutService";
+                continue;
+            }
+            
             qDebug() << "Creating native view:" << nativeView.viewId << "with title" << nativeView.title;
             QWidget *widget = plugin->getNativeWidget(nativeView.viewId);
             if (!widget) {
@@ -136,11 +151,19 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     addPlaceholder("Top", Qt::TopDockWidgetArea);
     addPlaceholder("Bottom", Qt::BottomDockWidgetArea);
 
-    // central workspace placeholder
-    if (!mainWindow->centralWidget()) {
-        auto *centralLabel = new QLabel("Workspace placeholder", mainWindow);
-        centralLabel->setAlignment(Qt::AlignCenter);
-        mainWindow->setCentralWidget(centralLabel);
+    // 7.1 Apply the default layout (scene_editing) to set central widget
+    // This will set the main viewport as the central widget
+    if (layoutService->hasLayout("scene_editing")) {
+        qDebug() << "Applying scene_editing layout...";
+        layoutService->applyLayout("scene_editing");
+    } else {
+        qWarning() << "scene_editing layout not found, using placeholder for central widget";
+        // Fallback: central workspace placeholder
+        if (!mainWindow->centralWidget()) {
+            auto *centralLabel = new QLabel("Workspace placeholder", mainWindow);
+            centralLabel->setAlignment(Qt::AlignCenter);
+            mainWindow->setCentralWidget(centralLabel);
+        }
     }
 
     // 8. Show Main Window

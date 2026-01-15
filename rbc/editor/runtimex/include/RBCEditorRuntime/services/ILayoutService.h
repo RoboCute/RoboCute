@@ -12,6 +12,12 @@ class ILayoutService : public QObject {
     Q_OBJECT
 public:
     virtual ~ILayoutService() = default;
+    
+protected:
+    // Constructor for subclasses
+    explicit ILayoutService(QObject *parent = nullptr) : QObject(parent) {}
+    
+public:
     // Layout Management
     virtual QString currentLayoutId() const = 0;
     virtual QStringList availableLayouts() const = 0;

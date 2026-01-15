@@ -76,6 +76,31 @@ public:
     // == Apply Menu Contributions from plugins
     void applyMenuContributions(const QList<MenuContribution> &contributions);
 
+    // == Central Widget Management ==
+    /**
+     * @brief Set or replace the central widget of the main window
+     * 
+     * @param widget The widget to set as central widget. Ownership is transferred to main_window_.
+     *               If nullptr, the current central widget is removed.
+     * @param isExternalWidget If true, the widget is managed externally (e.g., by a plugin).
+     *                         WindowManager will not delete it during cleanup.
+     * @return true if successfully set, false if main_window_ is null
+     */
+    bool setCentralWidget(QWidget *widget, bool isExternalWidget = false);
+
+    /**
+     * @brief Get the current central widget
+     */
+    QWidget *centralWidget() const;
+
+    /**
+     * @brief Take back the central widget without deleting it
+     * 
+     * Removes the central widget from the main window and returns it.
+     * Ownership is transferred to the caller.
+     */
+    QWidget *takeCentralWidget();
+
 private:
     QDockWidget *createDockWidgetCommon(
         const QString &viewId,

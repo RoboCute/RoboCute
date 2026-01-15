@@ -4,7 +4,13 @@
  */
 #include <rbc_config.h>
 #include <QMainWindow>
+#include <QJsonArray>
+#include <QFile>
+#include <QDir>
+#include <QTimer>
 #include "RBCEditorRuntime/services/ILayoutService.h"
+#include "RBCEditorRuntime/ui/WindowManager.h"
+#include "RBCEditorRuntime/plugins/PluginManager.h"
 
 namespace rbc {
 
@@ -20,7 +26,9 @@ struct ViewState {
     int tabIndex = 0;
     QJsonObject properties;
     QDockWidget *dockWidget = nullptr;
+    QWidget *centralWidget = nullptr;// for center widgets not in dock
     QObject *viewModel = nullptr;
+    bool isCentralWidget = false;// true if this view is the central widget
 };
 
 struct LayoutConfig {
@@ -30,6 +38,7 @@ struct LayoutConfig {
     QString version;
     QMap<QString, ViewState> views;// viewId -> ViewState
     QJsonObject dockArrangements;
+    QString centralWidgetId;// viewId of the central widget
     bool isBuiltIn = false;
     bool isModified = false;
 };
@@ -70,7 +79,36 @@ public:
     void loadUserLayouts();   // load from user-setting file
     QString layoutConfigDirectory() const;
 
+    /**
+     * @brief Set central widget for the current layout
+     * 
+     * Finds the plugin that owns the specified viewId and sets its widget as central widget.
+     * 
+     * @param viewId The view ID to set as central widget
+     * @return true if successful, false otherwise
+     */
+    bool setCentralWidget(const QString &viewId);
+
 private:// helpers
+    /**
+     * @brief Parse layout config from JSON object
+     */
+    bool parseLayoutConfig(const QJsonObject &json, LayoutConfig &config);
+
+    /**
+     * @brief Convert dock area string to Qt::DockWidgetArea
+     */
+    static Qt::DockWidgetArea parseDockArea(const QString &dockArea);
+
+    /**
+     * @brief Find plugin that provides the specified view
+     */
+    IEditorPlugin *findPluginForView(const QString &viewId);
+
+    /**
+     * @brief Apply dock arrangements (splits, tabs, etc.)
+     */
+    void applyDockArrangements(const QJsonObject &arrangements);
 
 private:// members
     WindowManager *windowManager_ = nullptr;

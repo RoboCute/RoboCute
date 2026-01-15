@@ -341,6 +341,61 @@ QWidget *WindowManager::createStandaloneView(const QString &qmlSource, QObject *
     return quickWidget;
 }
 
+bool WindowManager::setCentralWidget(QWidget *widget, bool isExternalWidget) {
+    if (!main_window_) {
+        qWarning() << "WindowManager::setCentralWidget: main_window_ is null";
+        return false;
+    }
+
+    // If there's an existing central widget that's external, untrack it
+    QWidget *oldCentral = main_window_->centralWidget();
+    if (oldCentral) {
+        // Check if old central widget was in external_widgets_
+        QString oldViewId;
+        for (auto it = external_widgets_.begin(); it != external_widgets_.end(); ++it) {
+            if (it.value() == oldCentral) {
+                oldViewId = it.key();
+                break;
+            }
+        }
+        if (!oldViewId.isEmpty()) {
+            external_widgets_.remove(oldViewId);
+            qDebug() << "WindowManager::setCentralWidget: Removed old external central widget:" << oldViewId;
+        }
+    }
+
+    // Set the new central widget
+    main_window_->setCentralWidget(widget);
+
+    // Track if it's an external widget
+    if (widget && isExternalWidget) {
+        // Use the widget's objectName or a special key for tracking
+        QString viewId = widget->objectName();
+        if (viewId.isEmpty()) {
+            viewId = QStringLiteral("__central_widget__");
+        }
+        external_widgets_.insert(viewId, QPointer<QWidget>(widget));
+        qDebug() << "WindowManager::setCentralWidget: Registered external central widget:" << viewId;
+    }
+
+    qDebug() << "WindowManager::setCentralWidget: Central widget set successfully";
+    return true;
+}
+
+QWidget *WindowManager::centralWidget() const {
+    if (!main_window_) {
+        return nullptr;
+    }
+    return main_window_->centralWidget();
+}
+
+QWidget *WindowManager::takeCentralWidget() {
+    if (!main_window_) {
+        return nullptr;
+    }
+    return main_window_->takeCentralWidget();
+}
+
 void WindowManager::applyMenuContributions(const QList<MenuContribution> &contributions) {
     if (!main_window_) {
         qWarning() << "WindowManager::applyMenuContributions: main_window_ is null";

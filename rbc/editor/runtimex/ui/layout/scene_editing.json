@@ -4,22 +4,29 @@
     "description": "Default Layout for 3D scene editing with viewport as central widget",
     "version": "1.0",
     "views": [
-        {}
+        {
+            "plugin_id": "com.robocute.viewport",
+            "view_id": "viewport.main",
+            "dock_area": "Center",
+            "visible": true,
+            "size": { "width": -1, "height": -1 }
+        },
+        {
+            "plugin_id": "com.robocute.connection",
+            "view_id": "connection_status",
+            "dock_area": "Left",
+            "visible": true,
+            "size": { "width": 300, "height": -1 }
+        }
     ],
     "dock_arrangements": {
         "Left": {
-            "split_orientation": "verticle",
-            "split_ratio": [
-                0.7,
-                0.3
-            ],
-            "widgets": [
-                "scene_hierarchy",
-                "connection_status"
-            ]
+            "split_orientation": "vertical",
+            "split_ratio": [0.7, 0.3],
+            "widgets": ["scene_hierarchy", "connection_status"]
         },
         "Center": {
-            "central_widget": "viewport"
+            "central_widget": "viewport.main"
         }
     }
 }
