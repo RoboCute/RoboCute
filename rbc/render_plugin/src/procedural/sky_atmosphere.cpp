@@ -67,14 +67,21 @@ SkyAtmosphere::~SkyAtmosphere() {
 // }
 
 void SkyAtmosphere::deallocate(BindlessAllocator &bdls_alloc) {
-    auto collect = [&](uint id) {
+    auto collect = [&](uint &id) {
         if (id != ~0u) {
             bdls_alloc.deallocate_buffer(id);
         }
+        id = ~0u;
     };
-    if (_sky_id != ~0u) {
-        bdls_alloc.deallocate_tex2d(_sky_id);
-    }
+    auto collect_tex = [&](uint &id) {
+        if (id != ~0u) {
+            bdls_alloc.deallocate_tex2d(id);
+        }
+        id = ~0u;
+    };
+
+    collect_tex(_sky_id);
+    collect_tex(_sky_lum_id);
     collect(_sky_alias_id);
     collect(_sky_pdf_id);
 }

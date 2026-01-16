@@ -9,6 +9,29 @@ MaterialsVector = ExternalType(
 )
 
 
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class AsyncRequest:
+    def done() -> bool: ...
+    def get_result() -> VoidPtr: ...
+    def get_result_release() -> VoidPtr: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class AsyncEvent:
+    def done() -> bool: ...
+    def wait() -> None: ...
+
+
 @reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
 class ResourceLoadStatus(Enum):
     Unloaded = 0
@@ -237,29 +260,6 @@ class RenderComponent():
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-)
-class AsyncRequest:
-    def done() -> bool: ...
-    def get_result() -> VoidPtr: ...
-    def get_result_release() -> VoidPtr: ...
-
-
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
-)
-class AsyncEvent:
-    def done() -> bool: ...
-    def wait() -> None: ...
-
-
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
     inherit=Resource
 )
 class Scene:
@@ -290,6 +290,7 @@ class Project():
     def import_texture(path: str, extra_meta: str) -> AsyncRequest: ...
     def import_mesh(path: str, extra_meta: str) -> AsyncRequest: ...
     def import_material(path: str, extra_meta: str) -> AsyncRequest: ...
+    def import_scene(path: str, extra_meta: str) -> AsyncRequest: ...
     # TODO: more import
     def load_resource(
         guid: GUID, async_load: bool) -> TextureResource: ...
