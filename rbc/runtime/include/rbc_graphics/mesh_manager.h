@@ -126,7 +126,7 @@ public:
 
     void execute_build_cmds(CommandList& cmdlist, BindlessAllocator& bdls_alloc, HostBufferManager& temp_buffer);
     void on_frame_end(
-        CommandList& cmdlist,
+        CommandList* cmdlist,
         BindlessAllocator& bdls_alloc
     );
     void execute_compute_bounding(

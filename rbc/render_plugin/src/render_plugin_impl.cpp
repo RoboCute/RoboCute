@@ -99,6 +99,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             hdri.create();
         }
         if (sky_atom) {
+            sky_atom->deallocate(SceneManager::instance().bindless_allocator());
             device.lc_main_stream().synchronize();
             sky_atom.destroy();
         }
@@ -250,6 +251,8 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         _denoisers.remove(stream.handle());
     }
     ~RenderPluginImpl() {
+        if (sky_atom)
+            sky_atom->deallocate(SceneManager::instance().bindless_allocator());
         _denoisers.clear();
         pipelines.clear();
         dispose_skybox();

@@ -1,6 +1,7 @@
 #include <pybind11/pybind11.h>
 #include "module_register.h"
 #include <luisa/core/logging.h>
+#include <rbc_core/type_info.h>
 
 namespace py = pybind11;
 
@@ -35,6 +36,10 @@ void export_guid(py::module &m) {
         .def("__repr__", [](GuidData &self) {
             auto str = reinterpret_cast<vstd::Guid &>(self).to_string();
             return luisa::string(str.data(), str.size());
+        })
+        .def_static("type_id", [](luisa::string_view type_name) -> GuidData {
+            vstd::MD5 type_md5{type_name};
+            return vstd::Guid{rbc::TypeInfo(type_name, type_md5).md5()};
         });
 }
 static ModuleRegister module_register_export_guid(export_guid);

@@ -85,5 +85,6 @@ bool SceneResource::_install() {
     update_data();
     return true;
 }
+
 DECLARE_WORLD_OBJECT_REGISTER(SceneResource)
 }// namespace rbc::world

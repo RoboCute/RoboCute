@@ -114,11 +114,11 @@ RC<Resource> IResourceImporter::import(
         res = create_object_with_guid(reinterpret_cast<vstd::Guid const &>(type_id), guid);
         register_resource_meta(res.get());
     }
-    JsonSerializer ser;
-    rbc::ArchiveWriteJson writer{ser};
-    ObjSerialize obj_ser{
-        .ar = writer};
-    res->serialize_meta(obj_ser);
+    if (!meta_json.empty()) {
+        JsonDeSerializer ser(meta_json);
+        rbc::ArchiveReadJson reader{ser};
+        res->deserialize_meta(ObjDeSerialize{.ar = reader});
+    }
     import(res.get(), path);
     return res;
 }

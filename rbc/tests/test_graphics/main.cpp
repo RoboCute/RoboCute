@@ -29,6 +29,7 @@ using namespace luisa::compute;
 #include <material/mats.inl>
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);
 #ifdef STANDALONE
+// test_graphics_bin #backend_name#  #binary_path#  #assets_path#
 int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
@@ -61,7 +62,15 @@ int main(int argc, char *argv[]) {
     double last_frame_time = 0;
     // vstd::optional<SimpleScene> simple_scene;
     vstd::optional<WorldScene> world_scene;
-    world_scene.create(utils.get());
+    luisa::filesystem::path target_binary_dir;
+    luisa::filesystem::path assets_dir;
+    if (argc > 2) {
+        target_binary_dir = argv[2];
+    }
+    if (argc > 3) {
+        assets_dir = argv[3];
+    }
+    world_scene.create(utils.get(), target_binary_dir, assets_dir);
     // simple_scene.create(*Lights::instance());
     // Test FOV
     bool reset = false;

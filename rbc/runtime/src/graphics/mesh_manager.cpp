@@ -61,7 +61,7 @@ void MeshManager::execute_build_cmds(CommandList &cmdlist, BindlessAllocator &bd
     }
 }
 void MeshManager::on_frame_end(
-    CommandList &cmdlist,
+    CommandList *cmdlist,
     BindlessAllocator &bdls_alloc) {
     luisa::vector<MeshData *> unload_cmds;
     {
@@ -83,11 +83,16 @@ void MeshManager::on_frame_end(
                 mesh_data->bbox_requests->mesh_data = nullptr;
             }
         }
-        cmdlist.add_callback([this, vec = std::move(unload_cmds)]() {
+        auto callback = [this, vec = std::move(unload_cmds)]() {
             for (auto &i : vec) {
                 pool.destroy_lock(_pool_mtx, std::launder(reinterpret_cast<MeshDataPack *>(i)));
             }
-        });
+        };
+        if (cmdlist) {
+            cmdlist->add_callback(std::move(callback));
+        } else {
+            callback();
+        }
     }
 }
 

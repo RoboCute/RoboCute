@@ -1,7 +1,7 @@
 #include "rbc_world/importers/texture_importer_exr.h"
 #include "rbc_graphics/device_assets/device_image.h"
 #include "rbc_world/resources/texture.h"
-#include "rbc_world/texture_loader.h"
+#include "rbc_graphics/texture/texture_loader.h"
 #include <tinyexr.h>
 
 namespace rbc::world {

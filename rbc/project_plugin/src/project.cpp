@@ -6,6 +6,8 @@
 #include <rbc_world/resource_importer.h>
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_project/project_plugin.h>
+#include <rbc_graphics/texture/texture_loader.h>
+#include <rbc_graphics/graphics_utils.h>
 namespace rbc {
 struct Project : IProject {
 private:
@@ -32,9 +34,28 @@ public:
         luisa::span<std::byte const> file_data,
         uint64_t &last_write_time,
         vstd::MD5 &md5);
+    void read_file_metas(
+        luisa::filesystem::path origin_path,
+        luisa::vector<FileMeta> &result) const override {
+        if (origin_path.is_relative()) {
+            origin_path = _assets_path / origin_path;
+        }
+        luisa::vector<std::byte> data;
+        luisa::BinaryFileStream fs(luisa::to_string(origin_path) + ".rbcmt");
+        if (fs.valid()) {
+            data.push_back_uninitialized(fs.length());
+            fs.read(data);
+        } else {
+            return;
+        }
+        vstd::MD5 file_last_md5;
+        uint64_t file_last_write_time;
+        read_file_metas(result, data, file_last_write_time, file_last_md5);
+    }
     RC<world::Resource> import_assets(
         luisa::filesystem::path origin_path,
-        vstd::MD5 type_id) override;
+        vstd::MD5 type_id,
+        luisa::string const &meta_json) override;
     void write_file_meta(luisa::filesystem::path const &origin_path, uint64_t last_write_time, vstd::MD5 file_md5, luisa::span<FileMeta const> file_metas);
     vstd::MD5 compute_md5(luisa::filesystem::path const &path) {
         luisa::string path_str;
@@ -225,10 +246,14 @@ void Project::scan_project() {
                     metas);
             }
         });
+    auto graphics = GraphicsUtils::instance();
+    if (graphics && graphics->tex_loader())
+        graphics->tex_loader()->finish_task();
 }
 RC<world::Resource> Project::import_assets(
     luisa::filesystem::path origin_path,
-    vstd::MD5 type_id) {
+    vstd::MD5 type_id,
+    luisa::string const &meta_json) {
     if (origin_path.is_absolute()) {
         origin_path = luisa::filesystem::relative(origin_path, _assets_path);
     }
@@ -288,6 +313,11 @@ RC<world::Resource> Project::import_assets(
         return {};
     }
     auto new_res = std::move(new_res_base).cast_static<world::Resource>();
+    if (!meta_json.empty()) {
+        JsonDeSerializer ser(meta_json);
+        rbc::ArchiveReadJson reader{ser};
+        new_res->deserialize_meta(rbc::world::ObjDeSerialize{.ar = reader});
+    }
     if (!importer->import(
             new_res.get(),
             origin_path)) {
@@ -340,7 +370,7 @@ void Project::read_file_metas(
         if (meta_count % 3 != 0) [[unlikely]] {
             LUISA_ERROR("Project json is broken.");
         }
-        result.reserve(meta_count / 3);
+        result.reserve(result.size() + meta_count / 3);
         for (auto i : vstd::range(meta_count / 3)) {
             auto &v = result.emplace_back();
             if (!(deser._load(v.guid) && deser._load(v.meta_info) && deser._load(v.type_id))) [[unlikely]] {

@@ -9,10 +9,10 @@
 #include <luisa/core/dynamic_module.h>
 namespace rbc {
 struct DeviceImage;
+struct TextureLoader;
 struct DeviceMesh;
 namespace world {
 struct MeshResource;
-struct TextureLoader;
 }// namespace world
 using namespace rbc;
 using namespace luisa;
@@ -38,7 +38,7 @@ private:
     vstd::optional<SceneManager> _sm;
     // present
     Stream _present_stream;
-    luisa::unique_ptr<world::TextureLoader> _tex_loader;
+    luisa::unique_ptr<TextureLoader> _tex_loader;
     Swapchain _swapchain;
     Image<float> _dst_image;
     luisa::vector<DenoisePack> _denoise_packs;

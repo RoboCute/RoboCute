@@ -1,6 +1,6 @@
 #include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_world/resources/texture.h>
-#include <rbc_world/texture_loader.h>
+#include <rbc_graphics/texture/texture_loader.h>
 #include <rbc_world/resource_importer.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <rbc_graphics/render_device.h>

@@ -16,6 +16,7 @@
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/atmosphere_component.h>
+#include <rbc_graphics/texture/texture_loader.h>
 int main(int argc, char *argv[]) {
     if (argc < 3) {
         LUISA_WARNING("Bad args, must be #backend# #scene path#");
@@ -23,7 +24,7 @@ int main(int argc, char *argv[]) {
     }
     using namespace luisa;
     using namespace rbc;
-    constexpr bool gpu_less_mode = true;
+    constexpr bool gpu_less_mode = false;
     luisa::fiber::scheduler scheduler;
     luisa::unique_ptr<GraphicsUtils> utils;
     if (gpu_less_mode) {
@@ -73,6 +74,7 @@ int main(int argc, char *argv[]) {
     LUISA_ASSERT(sky_tex);
     LUISA_INFO("Importing test_grid.png.");
     LUISA_ASSERT(proj->import_assets("test_grid.png", TypeInfo::get<world::TextureResource>().md5()));
+    utils->tex_loader()->finish_task();
     // load scene
     auto scene = proj->import_assets("test_scene.scene", TypeInfo::get<world::SceneResource>().md5());
     if (!scene)// create_scene
@@ -136,9 +138,8 @@ int main(int argc, char *argv[]) {
             transform->set_pos(double3(0, 3, 2), false);
             transform->set_scale(double3(10), false);
             auto render = entity->add_component<world::RenderComponent>();
-            render->update_object({}, static_cast<world::MeshResource*>(bunny_obj.get()));
+            render->update_object({}, static_cast<world::MeshResource *>(bunny_obj.get()));
         }
-
         scene->save_to_path();
         // copy from binary to assets: TODO: do we have elegant way?
         luisa::filesystem::copy(
