@@ -73,6 +73,7 @@ public:
         if (!fs.valid()) return {};
         vec.clear();
         vec.push_back_uninitialized(fs.length());
+        fs.read(vec);
         return vstd::MD5(
             {reinterpret_cast<uint8_t const *>(vec.data()),
              vec.size()});
@@ -134,11 +135,12 @@ void Project::_reimport(
     if (!importer) {
         return;
     }
-    LUISA_VERBOSE("Importing {}", luisa::to_string(origin_path));
-    importer->import(
+    LUISA_INFO("Importing {} with meta {}", luisa::to_string(origin_path), meta_data);
+    auto res = importer->import(
         binary_guid,
         origin_path,
         meta_data);
+    res->save_to_path();
 }
 void Project::scan_project() {
     luisa::spin_mutex values_mtx;
@@ -201,12 +203,14 @@ void Project::scan_project() {
                     // time not equal, check hash
 
                     auto file_md5 = compute_md5(path);
-
                     if (file_md5 != md5) {
                         md5 = file_md5;
                         return;
                     }
                     file_meta_is_dirty = true;
+                }
+                for (auto &i : metas) {
+                    if (!world::resource_exists(i.guid)) return;
                 }
                 file_is_dirty = false;
             }();

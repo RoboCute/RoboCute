@@ -95,31 +95,24 @@ ResourceImporterRegistry &ResourceImporterRegistry::instance() {
 RC<Resource> IResourceImporter::import(
     vstd::Guid guid,
     luisa::filesystem::path const &path, luisa::string const &meta_json) {
-    auto res = load_resource(guid, false);
-    if (res) {
-#ifndef NDEBUG
-        Clock clk;
-#endif
-        while (res->loading_status() == EResourceLoadingStatus::Loading) {
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
-#ifndef NDEBUG
-            if (clk.toc() > 1000) {
-                LUISA_WARNING("Still waiting for resource {}", res->guid().to_string());
-                clk.tic();
-            }
-#endif
+    bool require_regist{false};
+    auto type_id = resource_type();
+    auto res = RC<Resource>{static_cast<Resource *>(create_object_with_guid(reinterpret_cast<vstd::Guid const &>(type_id), guid))};
+    auto &mtx = get_resource_mutex(guid);
+    {
+        std::lock_guard lck{mtx};
+        require_regist = true;
+        if (!meta_json.empty()) {
+            JsonDeSerializer ser(meta_json);
+            rbc::ArchiveReadJson reader{ser};
+            res->deserialize_meta(ObjDeSerialize{.ar = reader});
         }
-    } else {
-        auto type_id = resource_type();
-        res = create_object_with_guid(reinterpret_cast<vstd::Guid const &>(type_id), guid);
+        import(res.get(), path);
+        res->unsafe_set_loaded();
+    }
+    if (require_regist) {
         register_resource_meta(res.get());
     }
-    if (!meta_json.empty()) {
-        JsonDeSerializer ser(meta_json);
-        rbc::ArchiveReadJson reader{ser};
-        res->deserialize_meta(ObjDeSerialize{.ar = reader});
-    }
-    import(res.get(), path);
     return res;
 }
 bool ITextureImporter::import(Resource *resource, luisa::filesystem::path const &path) {

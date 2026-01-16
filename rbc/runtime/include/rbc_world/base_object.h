@@ -19,24 +19,7 @@ enum struct BaseObjectType {
     Resource,
     Custom
 };
-struct InstanceID {
-    uint64_t _placeholder;
-    constexpr void set_invalid() {
-        _placeholder = ~0ull;
-    }
-    [[nodiscard]] constexpr bool is_invalid() const {
-        return _placeholder == ~0ull;
-    }
-    [[nodiscard]] constexpr operator bool() const {
-        return _placeholder != ~0ull;
-    }
-    [[nodiscard]] constexpr bool operator==(InstanceID i) const {
-        return _placeholder == i._placeholder;
-    }
-    constexpr static InstanceID invalid_resource_handle() {
-        return {~0ull};
-    }
-};
+
 RBC_RUNTIME_API void init_world(luisa::filesystem::path const &meta_path = {}, luisa::filesystem::path const &binary_path = {});
 RBC_RUNTIME_API void destroy_world();
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object(rbc::TypeInfo const &type_info);
@@ -55,9 +38,6 @@ T *create_object_with_guid(vstd::Guid const &guid) {
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object(vstd::Guid const &type_info);
 [[nodiscard]] RBC_RUNTIME_API BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
 [[nodiscard]] RBC_RUNTIME_API BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
-[[nodiscard]] RBC_RUNTIME_API BaseObject *get_object(InstanceID instance_id);
-[[nodiscard]] RBC_RUNTIME_API BaseObject *get_object(vstd::Guid const &guid);
-[[nodiscard]] RBC_RUNTIME_API RC<BaseObject> get_object_ref(InstanceID instance_id);
 [[nodiscard]] RBC_RUNTIME_API RC<BaseObject> get_object_ref(vstd::Guid const &guid);
 [[nodiscard]] RBC_RUNTIME_API uint64_t object_count();
 [[nodiscard]] RBC_RUNTIME_API BaseObjectType base_type_of(vstd::Guid const &type_id);
@@ -90,14 +70,10 @@ protected:
     BaseObject() = default;
 private:
     vstd::Guid _guid;
-    uint64_t _instance_id{~0ull};
     void init();
     void init_with_guid(vstd::Guid const &guid);
 
 public:
-    [[nodiscard]] InstanceID instance_id() const {
-        return InstanceID{_instance_id};
-    }
     [[nodiscard]] auto guid() const { return _guid; }
     [[nodiscard]] virtual BaseObjectType base_type() const = 0;
 
@@ -189,37 +165,3 @@ RBC_RTTI(rbc::world::BaseObject);
     friend void ea525e13_create_##type_name(type_name *);  \
     friend void ea525e13_destroy_##type_name(type_name *); \
     void rbc_rc_delete() override;
-
-namespace luisa {
-template<>
-struct hash<rbc::world::InstanceID> {
-    size_t operator()(rbc::world::InstanceID const &inst, uint64_t seed = luisa::hash64_default_seed) const {
-        return luisa::hash64(&inst, sizeof(rbc::world::InstanceID), seed);
-    }
-};
-}// namespace luisa
-namespace std {
-template<>
-struct hash<rbc::world::InstanceID> {
-    size_t operator()(rbc::world::InstanceID const &inst) const {
-        return luisa::hash64(&inst, sizeof(rbc::world::InstanceID), luisa::hash64_default_seed);
-    }
-};
-}// namespace std
-namespace vstd {
-template<>
-struct hash<rbc::world::InstanceID> {
-    size_t operator()(rbc::world::InstanceID const &inst) const {
-        return luisa::hash64(&inst, sizeof(rbc::world::InstanceID), luisa::hash64_default_seed);
-    }
-};
-template<>
-struct compare<rbc::world::InstanceID> {
-    int operator()(rbc::world::InstanceID const &a, rbc::world::InstanceID const &b) const {
-        if (a._placeholder < b._placeholder) return -1;
-        if (a._placeholder > b._placeholder) return 1;
-        return 0;
-    }
-};
-
-}// namespace vstd

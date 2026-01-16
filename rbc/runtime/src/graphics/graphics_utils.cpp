@@ -60,6 +60,10 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
         _lights.destroy();
     AssetsManager::destroy_instance();
     if (_sm) {
+        _sm->tex_streamer().dispose();
+    }
+    RenderDevice::instance()._dispose_io_service();
+    if (_sm) {
         _sm->mesh_manager().on_frame_end(nullptr, _sm->bindless_allocator());
         _sm.destroy();
     }

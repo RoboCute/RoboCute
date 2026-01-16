@@ -21,7 +21,7 @@ bool Resource::save_to_path() {
 Resource::Resource() = default;
 Resource::~Resource() = default;
 struct LoadingResource {
-    InstanceID res_inst_id;
+    RCWeak<Resource> res_inst;
     coroutine loading_coro;
 };
 enum struct ResourceMetaType : uint8_t {
@@ -38,7 +38,7 @@ struct ResourceLoader : RBCStruct {
     vstd::LMDB _meta_db;
 
     struct ResourceHandle {
-        InstanceID res;
+        RCWeak<Resource> res;
         luisa::spin_mutex mtx;
         ResourceHandle() = default;
         ResourceHandle(ResourceHandle &&rhs) noexcept : res(std::move(rhs.res)) {}
@@ -115,15 +115,18 @@ struct ResourceLoader : RBCStruct {
     }
     void _loading_thread() {
         auto execute = [&](LoadingResource &res) {
-            auto self_ptr_base = get_object_ref(res.res_inst_id);
+            auto self_ptr_base = res.res_inst.lock().rc();
             // already disposed
             if (!self_ptr_base || self_ptr_base->base_type() != BaseObjectType::Resource) [[unlikely]] {
                 res.loading_coro.destroy();
+                res.res_inst.reset();
                 return;
             }
             auto ptr = std::move(self_ptr_base).cast_static<Resource>();
+            auto rc_count = ptr.ref_count();
             res.loading_coro.resume();
             if (!res.loading_coro.done()) {
+                ptr.reset();
                 loading_queue.enqueue(std::move(res));
             } else {
                 ptr->unsafe_set_loaded();
@@ -213,16 +216,17 @@ struct ResourceLoader : RBCStruct {
         if (atomic_max(res->_status, EResourceLoadingStatus::Loading) != EResourceLoadingStatus::Unloaded) {
             return;
         }
-        loading_queue.enqueue(LoadingResource{res->instance_id(), res->_async_load()});
+        loading_queue.enqueue(LoadingResource{RCWeak<Resource>{res}, res->_async_load()});
         _async_mtx.lock();
         _async_mtx.unlock();
         _async_cv.notify_one();
     }
     void try_unload_resource(Resource *res) {
-        coroutine c{[](InstanceID res) -> coroutine {
+        RCWeak<Resource> rc_weak{res};
+        coroutine c{[](RCWeak<Resource> res) -> coroutine {
             while (true) {
                 {
-                    auto res_ptr = get_object_ref(res);
+                    auto res_ptr = res.lock().rc();
                     if (!res_ptr || res_ptr->base_type() != BaseObjectType::Resource) {
                         co_return;
                     }
@@ -231,8 +235,8 @@ struct ResourceLoader : RBCStruct {
                 }
                 co_await std::suspend_always{};
             }
-        }(res->instance_id())};
-        loading_queue.enqueue(LoadingResource{res->instance_id(), std::move(c)});
+        }(rc_weak)};
+        loading_queue.enqueue(LoadingResource{std::move(rc_weak), std::move(c)});
         _async_mtx.lock();
         _async_mtx.unlock();
         _async_cv.notify_one();
@@ -263,6 +267,10 @@ void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::files
     _res_loader->_binary_path = binary_path;
     _res_loader->init_db();
 }
+bool resource_exists(vstd::Guid const &guid) {
+    auto bin = _res_loader->to_binary(guid);
+    return bin.second;
+}
 RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     {
         auto obj = get_object_ref(guid);
@@ -278,9 +286,11 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     }
     std::unique_lock lck{v->mtx};
     RC<Resource> res;
-    auto res_base = get_object_ref(v->res);
-    LUISA_DEBUG_ASSERT(!res_base || res_base->base_type() == BaseObjectType::Resource);
-    res = std::move(res_base).cast_static<Resource>();
+    {
+        auto res_base = v->res.lock().rc();
+        LUISA_DEBUG_ASSERT(!res_base || res_base->base_type() == BaseObjectType::Resource);
+        res = std::move(res_base).cast_static<Resource>();
+    }
     if (res) {
         lck.unlock();
         if (async_load_from_file) {
@@ -309,7 +319,7 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
         return {};
     }
     ObjDeSerialize obj_deser{adapter};
-    v->res = res->instance_id();
+    v->res = res;
     res->deserialize_meta(obj_deser);
     lck.unlock();
     if (async_load_from_file)
@@ -317,9 +327,9 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     return res;
 }
 bool ResourceAwait::await_ready() {
-    if (!_inst_id) [[unlikely]]
+    if (!res_ptr) [[unlikely]]
         return true;
-    auto obj = get_object_ref(_inst_id);
+    auto obj = res_ptr.lock().rc();
     if (!obj || obj->base_type() != BaseObjectType::Resource) [[unlikely]]
         return true;
     return static_cast<Resource *>(obj.get())->loaded();
@@ -335,7 +345,7 @@ void Resource::wait_loading() {
         coro.resume();
         std::this_thread::sleep_for(std::chrono::microseconds(10));
 #ifndef NDEBUG
-        if (clk.toc() > 1000) {
+        if (clk.toc() > 3000) {
             LUISA_WARNING("Still waiting for resource {}", guid().to_string());
             clk.tic();
         }
@@ -344,10 +354,10 @@ void Resource::wait_loading() {
 }
 ResourceAwait Resource::await_loading() {
     if (loaded()) {
-        return {InstanceID::invalid_resource_handle()};
+        return {};
     }
     _res_loader->try_load_resource(this);
-    return {instance_id()};
+    return {RCWeak<Resource>{this}};
 }
 void dispose_resource_loader() {
     if (!_res_loader) return;
@@ -361,6 +371,12 @@ void Resource::unsafe_set_loaded() {
 void Resource::unsafe_set_installed() {
     atomic_max(_status, EResourceLoadingStatus::Installed);
 }
+luisa::spin_mutex &get_resource_mutex(vstd::Guid const &guid) {
+    _res_loader->_resmap_mtx.lock();
+    auto &v = _res_loader->resource_types.emplace(guid).value();
+    _res_loader->_resmap_mtx.unlock();
+    return v.mtx;
+}
 bool Resource::install() {
     if (_status == EResourceLoadingStatus::Installed) return false;
 #ifndef NDEBUG
@@ -369,7 +385,7 @@ bool Resource::install() {
     while (!loaded()) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
 #ifndef NDEBUG
-        if (clk.toc() > 1000) {
+        if (clk.toc() > 3000) {
             LUISA_WARNING("Still waiting for resource {}", guid().to_string());
             clk.tic();
         }

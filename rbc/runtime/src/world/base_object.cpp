@@ -5,11 +5,8 @@
 namespace rbc::world {
 static TypeRegisterBase *_type_register_header{};
 struct BaseObjectStatics : RBCStruct {
-    shared_atomic_mutex _instance_mtx;
     shared_atomic_mutex _guid_mtx;
-    std::atomic_uint64_t _instance_id_counter{};
-    luisa::unordered_map<uint64_t, BaseObject *> _instance_ids;
-    luisa::unordered_map<MD5, BaseObject *> _obj_guids;
+    luisa::unordered_map<MD5, RCWeak<BaseObject>> _obj_guids;
     luisa::unordered_map<MD5, TypeRegisterBase *> _create_funcs;
     void init_register(TypeRegisterBase *p) {
         p->init();
@@ -22,24 +19,28 @@ struct BaseObjectStatics : RBCStruct {
     }
     ~BaseObjectStatics() {
         // collect dangling objects
-        luisa::vector<BaseObject *> remove_obj;
-        if (!_instance_ids.empty()) {
-            for (auto iter = _instance_ids.begin(); iter != _instance_ids.end();) {
-                auto o = iter->second;
+        luisa::vector<RC<BaseObject>> remove_obj;
+        std::lock_guard lck{_guid_mtx};
+        if (!-_obj_guids.empty()) {
+            for (auto iter = _obj_guids.begin(); iter != _obj_guids.end();) {
+                auto o = iter->second.lock().rc();
                 if (o->rbc_rc_count() > 0) {
                     ++iter;
                     continue;
                 }
                 o->_guid.reset();
-                o->_instance_id = ~0ull;
-                remove_obj.emplace_back(o);
-                iter = _instance_ids.erase(iter);
+                remove_obj.emplace_back(std::move(o));
+                iter = _obj_guids.erase(iter);
             }
-            for (auto &o : remove_obj) {
-                o->rbc_rc_delete();
-            }
+            remove_obj.clear();
         }
-        if (!_instance_ids.empty()) {
+        if (!_obj_guids.empty()) {
+            for(auto& i : _obj_guids){
+                auto ptr = i.second.lock().rc();
+                if(ptr) {
+                    LUISA_INFO("{} leaking with rc {}", (size_t)ptr.get(), ptr->rbc_rc_count());
+                }
+            }
             LUISA_ERROR("World object is leaking.");
         }
         for (auto p = _type_register_header; p; p = p->p_next) {
@@ -78,41 +79,12 @@ void destroy_world() {
     _world_inst = nullptr;
 }
 void get_all_objects(vstd::function<void(BaseObject *)> const &callback) {
-    std::shared_lock lck{_world_inst->_instance_mtx};
-    for (auto &i : _world_inst->_instance_ids) {
-        callback(i.second);
-    }
-}
-BaseObject *get_object(InstanceID instance_id) {
-    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    if (instance_id._placeholder == ~0ull) return nullptr;
-    BaseObject *ptr;
-    std::shared_lock lck{_world_inst->_instance_mtx};
-    auto iter = _world_inst->_instance_ids.find(instance_id._placeholder);
-    if (iter != _world_inst->_instance_ids.end()) {
-        return iter->second;
-    }
-    return nullptr;
-}
-BaseObject *get_object(vstd::Guid const &guid) {
-    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     std::shared_lock lck{_world_inst->_guid_mtx};
-    auto iter = _world_inst->_obj_guids.find(reinterpret_cast<MD5 const &>(guid));
-    if (iter == _world_inst->_obj_guids.end()) {
-        return nullptr;
+    for (auto &i : _world_inst->_obj_guids) {
+        auto v = i.second.lock().rc();
+        if (v)
+            callback(v.get());
     }
-    return iter->second;
-}
-RC<BaseObject> get_object_ref(InstanceID instance_id) {
-    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    if (instance_id._placeholder == ~0ull) return {};
-    BaseObject *ptr;
-    std::shared_lock lck{_world_inst->_instance_mtx};
-    auto iter = _world_inst->_instance_ids.find(instance_id._placeholder);
-    if (iter != _world_inst->_instance_ids.end()) {
-        return RC<BaseObject>{iter->second};
-    }
-    return {};
 }
 RC<BaseObject> get_object_ref(vstd::Guid const &guid) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
@@ -121,15 +93,11 @@ RC<BaseObject> get_object_ref(vstd::Guid const &guid) {
     if (iter == _world_inst->_obj_guids.end()) {
         return {};
     }
-    return RC<BaseObject>{iter->second};
+    return iter->second.lock().rc();
 }
 void BaseObject::init() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     _guid.reset();
-    _instance_id = ++_world_inst->_instance_id_counter;
-
-    std::lock_guard lck{_world_inst->_instance_mtx};
-    _world_inst->_instance_ids.force_emplace(_instance_id, this);
 }
 void BaseObject::init_with_guid(vstd::Guid const &guid) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
@@ -146,21 +114,14 @@ void BaseObject::init_with_guid(vstd::Guid const &guid) {
 }
 BaseObject::~BaseObject() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    if (_instance_id != ~0ull) {
-        std::lock_guard lck{_world_inst->_instance_mtx};
-        _world_inst->_instance_ids.erase(_instance_id);
-    }
     if (_guid) {
-        auto &guid = reinterpret_cast<MD5 const &>(_guid);
         std::lock_guard lck{_world_inst->_guid_mtx};
-        auto iter = _world_inst->_obj_guids.find(guid);
-        LUISA_DEBUG_ASSERT(iter->second == this);
-        _world_inst->_obj_guids.erase(iter);
+        _world_inst->_obj_guids.erase(_guid);
     }
 }
 
 luisa::spin_mutex &dirty_trans_mtx();
-luisa::vector<InstanceID> &dirty_transforms();
+luisa::vector<RCWeak<TransformComponent>> &dirty_transforms();
 BaseObjectType get_base_object_type(vstd::Guid const &type_id) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     auto iter = _world_inst->_create_funcs.find((MD5 const &)type_id);
@@ -233,27 +194,27 @@ bool world_transform_dirty() {
 void _zz_clear_dirty_transform() {
     auto &v = dirty_transforms();
     for (auto &i : v) {
-        auto obj = get_object(i);
+        auto obj = i.lock().rc();
         if (!obj) continue;
         LUISA_DEBUG_ASSERT(obj->is_type_of(TypeInfo::get<TransformComponent>()));
-        static_cast<TransformComponent *>(obj)->_dirty = false;
+        static_cast<TransformComponent *>(obj.get())->_dirty = false;
     }
     v.clear();
 }
 uint64_t object_count() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    std::shared_lock lck{_world_inst->_instance_mtx};
-    return _world_inst->_instance_ids.size();
+    std::shared_lock lck{_world_inst->_guid_mtx};
+    return _world_inst->_obj_guids.size();
 }
 
 void _zz_on_before_rendering() {
     _collect_all_materials();
     for (auto &i : dirty_transforms()) {
-        auto tr_obj = get_object(i);
+        auto tr_obj = i.lock().rc();
         if (!tr_obj || !tr_obj->is_type_of(TypeInfo::get<TransformComponent>())) {
             continue;
         }
-        auto tr = static_cast<TransformComponent *>(tr_obj);
+        auto tr = static_cast<TransformComponent *>(tr_obj.get());
         tr->_execute_on_update_event();
     }
     _zz_clear_dirty_transform();

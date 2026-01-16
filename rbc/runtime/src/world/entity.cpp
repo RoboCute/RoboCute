@@ -7,7 +7,7 @@ namespace rbc::world {
 struct GlobalEvents {
     struct Event {
         rbc::shared_atomic_mutex mtx;
-        luisa::unordered_map<uint64_t, coroutine> map;
+        luisa::unordered_map<Component *, std::pair<coroutine, RCWeak<Component>>> map;
     };
     std::array<Event, world_event_count> _events;
 };
@@ -17,9 +17,10 @@ void Component::_zz_invoke_world_event(WorldEventType event_type) {
     auto &map = evt[luisa::to_underlying(event_type)];
     std::shared_lock lck{map.mtx};
     for (auto iter = map.map.begin(); iter != map.map.end();) {
-        InstanceID inst_id{iter->first};
-        auto &coro = iter->second;
-        if (!get_object(inst_id)) {
+        auto inst_id{iter->first};
+        auto &coro = iter->second.first;
+        auto obj = iter->second.second.lock().rc();
+        if (!obj) {
             iter = map.map.erase(iter);
             continue;
         }
@@ -35,26 +36,25 @@ void Component::add_world_event(WorldEventType event_type, rbc::coroutine &&coro
     auto &evt = _entity_events->_events;
     auto &map = evt[luisa::to_underlying(event_type)];
     std::lock_guard lck{map.mtx};
-    map.map.force_emplace(instance_id()._placeholder, std::move(coro));
+    map.map.force_emplace(this, std::move(coro), RCWeak<Component>{this});
 }
 void Component::remove_world_event(WorldEventType event_type) {
     auto &evt = _entity_events->_events;
     auto &map = evt[luisa::to_underlying(event_type)];
     std::lock_guard lck{map.mtx};
-    map.map.erase(instance_id()._placeholder);
+    map.map.erase(this);
 }
 Entity::Entity() {
 }
 Entity::~Entity() {
     for (auto &i : _components) {
-        auto comp = i.second;
+        auto &comp = i.second;
         LUISA_DEBUG_ASSERT(comp->entity() == this || comp->entity() == nullptr);
         if (comp->entity())
             comp->on_destroy();
     }
     for (auto &i : _components) {
-        auto comp = i.second;
-        comp->rbc_rc_delete();
+        i.second->_entity = nullptr;
     }
 }
 void Entity::_add_component(Component *component) {
@@ -69,21 +69,20 @@ void Entity::_add_component(Component *component) {
 bool Entity::remove_component(MD5 const &type_md5) {
     auto iter = _components.find(type_md5);
     if (iter == _components.end()) return false;
-    auto obj = iter->second;
+    auto obj = std::move(iter->second);
     _components.erase(iter);
     LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
-    auto comp = static_cast<Component *>(obj);
+    auto comp = obj.get();
     LUISA_DEBUG_ASSERT(comp->entity() == this);
     comp->_clear_entity();
-    comp->rbc_rc_delete();
     return true;
 }
 Component *Entity::get_component(MD5 const &type_md5) {
     auto iter = _components.find(type_md5);
     if (iter == _components.end()) return nullptr;
-    auto obj = iter->second;
+    auto &obj = iter->second;
     LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
-    auto comp = static_cast<Component *>(obj);
+    auto comp = obj.get();
     LUISA_DEBUG_ASSERT(comp->entity() == this);
     return comp;
 }
@@ -154,7 +153,9 @@ void Component::_clear_entity() {
     _entity = nullptr;
 }
 Component::Component() = default;
-Component::~Component() = default;
+Component::~Component() {
+    int x = 0;
+}
 DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world
 
