@@ -1,5 +1,6 @@
 #pragma once
 
+#include <rbc_config.h>
 #include <QObject>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -14,7 +15,7 @@ namespace rbc {
 /**
  * HTTP client for communicating with the FastAPI backend
  */
-struct HttpClient : public QObject {
+struct RBC_EDITOR_RUNTIME_API HttpClient : public QObject {
     Q_OBJECT
 
 public:

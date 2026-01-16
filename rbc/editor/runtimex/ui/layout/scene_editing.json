@@ -1,8 +1,8 @@
 {
     "layout_id": "scene_editing",
     "layout_name": "3D Scene Editing",
-    "description": "Default Layout for 3D scene editing with viewport as central widget",
-    "version": "1.0",
+    "description": "Default Layout for 3D scene editing with viewport as central widget and node editor at bottom",
+    "version": "1.1",
     "views": [
         {
             "plugin_id": "com.robocute.viewport",
@@ -24,6 +24,13 @@
             "dock_area": "Right",
             "visible": true,
             "size": { "width": 280, "height": -1 }
+        },
+        {
+            "plugin_id": "com.robocute.node_editor",
+            "view_id": "node_editor.main",
+            "dock_area": "Bottom",
+            "visible": true,
+            "size": { "width": -1, "height": 350 }
         }
     ],
     "dock_arrangements": {
@@ -35,6 +42,10 @@
         "Right": {
             "type": "single",
             "widgets": ["layout_manager"]
+        },
+        "Bottom": {
+            "type": "single",
+            "widgets": ["node_editor.main"]
         },
         "Center": {
             "central_widget": "viewport.main"

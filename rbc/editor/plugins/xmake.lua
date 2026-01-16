@@ -2,3 +2,4 @@
 includes("connection_plugin")
 includes("project_plugin")
 includes("layout_plugin")
+includes("node_editor_plugin")

@@ -1,4 +1,5 @@
 #pragma once
+#include <rbc_config.h>
 #include <QWidget>
 #include <QListWidget>
 #include <QToolBar>
@@ -19,7 +20,7 @@ using QtNodes::DataFlowGraphModel;
 using QtNodes::DataFlowGraphicsScene;
 using QtNodes::GraphicsView;
 
-class NodeEditor : public QWidget {
+class RBC_EDITOR_RUNTIME_API NodeEditor : public QWidget {
     Q_OBJECT
 public:
     explicit NodeEditor(QWidget *parent);

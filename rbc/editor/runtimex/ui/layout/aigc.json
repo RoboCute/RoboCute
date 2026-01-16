@@ -1,23 +1,43 @@
 {
     "layout_id": "aigc",
-    "layout_name": "AIGC",
-    "description": "Layout optimized for AIGC",
-    "version": "1.0",
-    "views": [],
-    "doc_arrangements": {
-        "Center": {
-            "central_widget": "node_editor"
+    "layout_name": "AIGC Workflow",
+    "description": "Layout optimized for AIGC workflow with Node Editor as central widget",
+    "version": "1.1",
+    "views": [
+        {
+            "plugin_id": "com.robocute.node_editor",
+            "view_id": "node_editor.main",
+            "dock_area": "Center",
+            "visible": true,
+            "size": { "width": -1, "height": -1 }
+        },
+        {
+            "plugin_id": "com.robocute.viewport",
+            "view_id": "viewport.main",
+            "dock_area": "Right",
+            "visible": true,
+            "size": { "width": 400, "height": -1 }
+        },
+        {
+            "plugin_id": "com.robocute.connection",
+            "view_id": "connection_status",
+            "dock_area": "Left",
+            "visible": true,
+            "size": { "width": 280, "height": -1 }
+        }
+    ],
+    "dock_arrangements": {
+        "Left": {
+            "type": "single",
+            "widgets": ["connection_status"]
         },
         "Right": {
             "split_orientation": "vertical",
-            "split_ratio": [
-                0.4,
-                0.6
-            ],
-            "widgets": [
-                "result_browser",
-                "image_preview"
-            ]
+            "split_ratio": [0.5, 0.5],
+            "widgets": ["viewport.main", "result_browser"]
+        },
+        "Center": {
+            "central_widget": "node_editor.main"
         }
     }
 }

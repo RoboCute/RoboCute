@@ -37,6 +37,9 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     if (!pluginManager.loadPluginFromDLL("RBCE_ProjectPlugin")) {
         qWarning() << "Failed to load ProjectPlugin";
     }
+    if (!pluginManager.loadPluginFromDLL("RBCE_NodeEditorPlugin")) {
+        qWarning() << "Failed to load NodeEditorPlugin";
+    }
     // 5. Create Main Window
     WindowManager windowManager(&pluginManager, nullptr);
     windowManager.setup_main_window();
