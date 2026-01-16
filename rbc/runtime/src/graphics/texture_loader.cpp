@@ -13,6 +13,7 @@
 #include <rbc_graphics/texture/texture_loader.h>
 #include <luisa/core/binary_io.h>
 #include <rbc_world/resources/texture.h>
+#include <rbc_core/utils/thread_waiter.h>
 
 namespace rbc {
 
@@ -151,8 +152,9 @@ void TextureLoader::finish_task() {
             RenderDevice::instance().lc_main_stream() << _cmdlist.commit() << _event.signal(_finished_fence++);
         }
         while (auto v = _after_device_task.pop()) {
+            ThreadWaiter waiter;
             while (!_event.is_completed(v->second)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                waiter.wait(std::chrono::milliseconds(1), "texture load task");
             }
             luisa::fiber::schedule([counter = _counter, func = std::move(v->first)]() {
                 func();
@@ -160,11 +162,13 @@ void TextureLoader::finish_task() {
             });
         }
     }
-    if (_finished_fence > 1)
+    if (_finished_fence > 1) {
+        ThreadWaiter waiter;
         while (!_event.is_completed(_finished_fence - 1)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            waiter.wait(std::chrono::milliseconds(1), "texture load task");
         }
+    }
     _counter.wait();
 }
 
-}// namespace rbc::world
+}// namespace rbc

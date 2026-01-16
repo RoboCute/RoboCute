@@ -23,7 +23,11 @@ private:
 
 public:
     Project(luisa::filesystem::path const &assets_db_path)
-        : _assets_path(assets_db_path) {}
+        : _assets_path(assets_db_path) {
+        if (_assets_path.empty()) {
+            LUISA_ERROR("Assets path must not be empty.");
+        }
+    }
     void scan_project() override;
     ~Project() {
     }
@@ -297,7 +301,7 @@ RC<world::Resource> Project::import_assets(
     read_file_metas(metas, data, file_last_write_time, file_last_md5);
     for (auto &i : metas) {
         if (i.type_id == vstd::Guid{type_id}) {
-            auto res = world::load_resource(i.guid, false);
+            auto res = world::load_resource(i.guid, true);
             if (res) return res;
         }
     }

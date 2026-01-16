@@ -338,6 +338,7 @@ void RenderComponent::update_object(void *this_, luisa::vector<rbc::RC<rbc::RCBa
 struct AsyncEventImpl : RCBase {
     luisa::fiber::event task;
     vstd::function<void()> finished_func;
+    AsyncEventImpl() : task(luisa::fiber::event::Mode::Manual, true) {}
     void call_finished() {
         if (finished_func) {
             finished_func();
@@ -366,7 +367,7 @@ struct AsyncRequestImpl : RCBase {
     RC<world::BaseObject> _result{};
     luisa::fiber::event task;
     vstd::function<void()> finished_func;
-    AsyncRequestImpl() {
+    AsyncRequestImpl() : task(luisa::fiber::event::Mode::Manual, true) {
     }
     void call_finish() {
         if (finished_func) {
@@ -403,10 +404,6 @@ void *AsyncRequest::get_result(void *this_) {
     auto c = static_cast<AsyncRequestImpl *>(this_);
     c->task.wait();
     c->call_finish();
-    if (c->finished_func) {
-        c->finished_func();
-        c->finished_func = {};
-    }
     manually_add_ref(c->_result.get());
     return c->_result.get();
 }
@@ -414,10 +411,6 @@ void *AsyncRequest::get_result_release(void *this_) {
     auto c = static_cast<AsyncRequestImpl *>(this_);
     c->task.wait();
     c->call_finish();
-    if (c->finished_func) {
-        c->finished_func();
-        c->finished_func = {};
-    }
     auto r = c->_result.get();
     rbc::unsafe_forget(std::move(c->_result));
     return r;
@@ -461,8 +454,11 @@ AsyncRequestImpl *project_import(void *this_, luisa::string_view path, luisa::st
     }
     auto request = new AsyncRequestImpl{};
     manually_add_ref(request);
-    request->set_value(c->proj->import_assets(path, TypeInfo::get<T>().md5(), luisa::string{extra_meta})
-                           .cast_static<world::BaseObject>());
+    request->task = luisa::fiber::async([path, extra_meta = luisa::string{extra_meta},
+                                         request = RC<AsyncRequestImpl>{request}, c = RC<ProjectImpl>{c}] {
+        request->set_value(c->proj->import_assets(path, TypeInfo::get<T>().md5(), extra_meta)
+                               .cast_static<world::BaseObject>());
+    });
     return request;
 }
 void *Project::import_material(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
@@ -478,6 +474,9 @@ void *Project::import_texture(void *this_, luisa::string_view path, luisa::strin
         if (utils && utils->tex_loader()) utils->tex_loader()->finish_task();
     };
     return request;
+}
+void *Project::import_scene(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
+    return project_import<world::SceneResource>(this_, path, extra_meta);
 }
 void *Project::load_resource(void *this_, vstd::Guid const &guid, bool async_load) {
     auto res = world::load_resource(guid, async_load);
@@ -503,6 +502,7 @@ void TextureResource::set_skybox(void *this_) {
     }
     auto graphics = GraphicsUtils::instance();
     if (graphics) {
+        t->install();
         graphics->render_plugin()->update_skybox(RC<DeviceImage>{t->get_image()});
     }
 }

@@ -7,6 +7,7 @@
 #include <rbc_graphics/device_assets/device_transforming_mesh.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <rbc_graphics/graphics_utils.h>
+#include <rbc_core/utils/thread_waiter.h>
 namespace rbc::world {
 MeshResource::MeshResource() {
     _origin_mesh.reset();
@@ -145,8 +146,9 @@ void MeshResource::create_empty(
     uint32_t uv_count,
     bool contained_normal,
     bool contained_tangent) {
+    ThreadWaiter waiter;
     while (loading_status() == EResourceLoadingStatus::Loading) {
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
+        waiter.wait(std::chrono::microseconds(10), "Last mesh loading.");
     }
     unsafe_set_loading_status_min(EResourceLoadingStatus::Unloaded);
     std::lock_guard lck{_async_mtx};

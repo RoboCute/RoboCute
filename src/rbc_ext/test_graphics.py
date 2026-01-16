@@ -41,11 +41,10 @@ if "RBC_RUNTIME_DIR" not in os.environ:
 def main():
     backend_name = "vk"
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
-
     program_path = str(runtime_dir.parent / "debug")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
-    cbox_path = str(runtime_dir.parent / "cornell_box.obj")
-    sky_path = str(runtime_dir.parent / "sky.exr")
+    cbox_path = str("cornell_box.obj")
+    sky_path = str("sky.exr")
     world_path = str(runtime_dir.parent / 'world')
 
     ctx = RBCContext()
@@ -53,27 +52,14 @@ def main():
     ctx.init_device(backend_name, program_path, shader_path)
     ctx.init_render()
     project = Project()
-    sky_guid_path = Path(world_path) / "sky_guid.txt"
-    skybox_tex = None
-    if sky_guid_path.exists():
-        sky_guid_file = open(sky_guid_path, "r")
-        sky_guid_str = sky_guid_file.read()
-        sky_guid_file.close()
-        sky_guid = GUID(sky_guid_str)
-        skybox_tex = project.load_resource(sky_guid)
-    if skybox_tex and skybox_tex._handle:
-        skybox_tex.set_skybox()
-    else:
-        print("Skybox not found, importing sky.exr")
-        skybox_tex_request = project.import_texture(str(sky_path))
-        skybox_tex = TextureResource(skybox_tex_request.get_result_release())
-        del skybox_tex_request # handle released, async-request already useless
-        sky_guid_str = str(skybox_tex.guid())
-        skybox_tex.save_to_path()
-        sky_guid_file = open(sky_guid_path, "w")
-        sky_guid_file.write(sky_guid_str)
-        sky_guid_file.close()
-        skybox_tex.set_skybox()
+    project.init(str(runtime_dir.parent / 'project'))
+    # do we need scan?
+    # project.scan_project().wait()
+    cbox_mesh_request = project.import_mesh(cbox_path, "")
+    skybox_tex_request = project.import_texture(sky_path, "")
+    skybox_tex = TextureResource(skybox_tex_request.get_result_release())
+    del skybox_tex_request # handle released, async-request already useless
+    skybox_tex.set_skybox()
     del skybox_tex
     ctx.create_window("py_window", uint2(1920, 1080), True)
     
@@ -87,7 +73,6 @@ def main():
 
     submesh_offsets[1] = triangle_count // 2
     ##################### Load cbox
-    cbox_mesh_request = project.import_mesh(cbox_path)
     cbox_mesh = MeshResource(cbox_mesh_request.get_result_release(), True)
     ##################### Create a test cube
     # cube_mesh = MeshResource()

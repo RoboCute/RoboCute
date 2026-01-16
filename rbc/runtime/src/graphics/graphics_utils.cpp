@@ -175,7 +175,7 @@ void GraphicsUtils::init_display(
                     .wants_vsync = false,
                     .back_buffer_count = 2});
         }
-        _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, true, true);
+        _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, false, true);
         _dst_image.set_name("Dest image");
     }
 }

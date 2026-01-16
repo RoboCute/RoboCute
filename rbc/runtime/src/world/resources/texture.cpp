@@ -8,6 +8,7 @@
 #include <rbc_world/type_register.h>
 #include <rbc_world/resource_importer.h>
 #include <rbc_graphics/graphics_utils.h>
+#include <rbc_core/utils/thread_waiter.h>
 
 namespace rbc::world {
 
@@ -79,8 +80,9 @@ void TextureResource::create_empty(
     luisa::uint2 size,
     uint32_t mip_level,
     bool is_vt) {
+    ThreadWaiter waiter;
     while (loading_status() == EResourceLoadingStatus::Loading) {
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
+        waiter.wait(std::chrono::microseconds(10), "Last texture loading.");
     }
     unsafe_set_loading_status_min(EResourceLoadingStatus::Unloaded);
     std::lock_guard lck{_async_mtx};

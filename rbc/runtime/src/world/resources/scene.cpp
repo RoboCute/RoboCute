@@ -24,6 +24,7 @@ bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
     std::lock_guard lck{_map_mtx};
     LUISA_ASSERT(_entities.empty());// scene must be empty
     BinaryFileStream file_stream(luisa::to_string(path));
+    LUISA_INFO("Loading {}", luisa::to_string(path));
     if (!file_stream.valid()) return false;
     luisa::vector<char> json_vec;
     json_vec.push_back_uninitialized(file_stream.length());

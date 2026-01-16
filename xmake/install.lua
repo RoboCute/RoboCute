@@ -7,16 +7,16 @@ function main(mode)
     local target_dir = path.join(os.projectdir(), 'build', os.host(), os.arch(), mode)
     -- copy targetdir to 
     os.cp(path.join(target_dir, '*.dll'), ext_path, {
-        copy_if_different = true
+        copy_if_different = true,
+        async = true,
+        detach = true
     })
     os.cp(path.join(target_dir, '*.pyd'), ext_path, {
-        copy_if_different = true
+        copy_if_different = true,
+        async = true,
+        detach = true
     })
-
-    -- generate "__init__.py"
-    local file = io.open(path.join(ext_path, "__init__.py"), "w")
-    file:write("# generated __init__.py")
-    file:close()
-
-    os.execv("uv run stub")
+    -- Do this manually
+    -- os.setenv('PYTHONPATH', target_dir)
+    -- os.runv('pybind11-stubgen', {'test_py_codegen', '--output-dir=' .. ext_path})
 end
