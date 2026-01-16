@@ -2,6 +2,7 @@
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include <QJsonDocument>
 #include <QDebug>
+#include <QLabel>
 
 namespace rbc {
 
@@ -133,7 +134,7 @@ void LayoutService::applyLayout(const QString &layoutId) {
         return;
     }
     
-    const LayoutConfig &config = layouts_[layoutId];
+    LayoutConfig &config = layouts_[layoutId];
     qDebug() << "LayoutService::applyLayout: Applying layout:" << layoutId;
     
     // 1. First, handle the central widget if specified
@@ -142,16 +143,34 @@ void LayoutService::applyLayout(const QString &layoutId) {
             qDebug() << "LayoutService::applyLayout: Set central widget:" << config.centralWidgetId;
         } else {
             qWarning() << "LayoutService::applyLayout: Failed to set central widget:" << config.centralWidgetId;
+            // Create placeholder for central widget if not found
+            auto *centralLabel = new QLabel(QString("Central widget '%1' not found").arg(config.centralWidgetId));
+            centralLabel->setAlignment(Qt::AlignCenter);
+            windowManager_->setCentralWidget(centralLabel, false);
         }
     }
     
     // 2. Update current layout ID
     currentLayoutId_ = layoutId;
     
-    // 3. Update view states (for future reference)
+    // 3. Create dock widgets for all views defined in layout (except center)
     for (auto it = config.views.begin(); it != config.views.end(); ++it) {
         const QString &viewId = it.key();
-        const ViewState &viewState = it.value();
+        ViewState &viewState = it.value();
+        
+        // Skip center views (handled as central widget)
+        if (viewState.dockArea == "Center") {
+            currentViewStates_[viewId] = viewState;
+            continue;
+        }
+        
+        // Create dock widget for this view
+        QDockWidget *dock = createViewDock(viewState);
+        if (dock) {
+            viewState.dockWidget = dock;
+            qDebug() << "LayoutService::applyLayout: Created dock for view:" << viewId;
+        }
+        
         currentViewStates_[viewId] = viewState;
     }
     
@@ -436,6 +455,77 @@ IEditorPlugin *LayoutService::findPluginForView(const QString &viewId) {
     }
     
     return nullptr;
+}
+
+QDockWidget *LayoutService::createViewDock(const ViewState &viewState) {
+    if (!windowManager_ || !pluginManager_) {
+        return nullptr;
+    }
+    
+    const QString &viewId = viewState.viewId;
+    
+    // Find the plugin that provides this view
+    IEditorPlugin *plugin = findPluginForView(viewId);
+    if (!plugin) {
+        qWarning() << "LayoutService::createViewDock: Plugin not found for view:" << viewId
+                   << "- creating placeholder";
+        return createPlaceholderDock(viewId, viewId, viewState.dockArea);
+    }
+    
+    // Try to find and create the view from plugin contributions
+    // First, check native view contributions
+    for (const auto &nativeView : plugin->native_view_contributions()) {
+        if (nativeView.viewId == viewId) {
+            QWidget *widget = plugin->getNativeWidget(viewId);
+            if (!widget) {
+                qWarning() << "LayoutService::createViewDock: Widget not available for view:" << viewId
+                           << "- creating placeholder";
+                return createPlaceholderDock(viewId, nativeView.title, viewState.dockArea);
+            }
+            QObject *viewModel = plugin->getViewModel(viewId);
+            return windowManager_->createDockableView(nativeView, widget, viewModel);
+        }
+    }
+    
+    // Check QML view contributions
+    for (const auto &view : plugin->view_contributions()) {
+        if (view.viewId == viewId) {
+            QObject *viewModel = plugin->getViewModel(viewId);
+            if (!viewModel) {
+                qWarning() << "LayoutService::createViewDock: ViewModel not available for view:" << viewId
+                           << "- creating placeholder";
+                return createPlaceholderDock(viewId, view.title, viewState.dockArea);
+            }
+            return windowManager_->createDockableView(view, viewModel);
+        }
+    }
+    
+    // View not found in plugin contributions
+    qWarning() << "LayoutService::createViewDock: View" << viewId << "not found in plugin contributions"
+               << "- creating placeholder";
+    return createPlaceholderDock(viewId, viewId, viewState.dockArea);
+}
+
+QDockWidget *LayoutService::createPlaceholderDock(const QString &viewId, const QString &title, const QString &dockArea) {
+    if (!windowManager_) {
+        return nullptr;
+    }
+    
+    auto *label = new QLabel(QString("View '%1' not available").arg(viewId));
+    label->setAlignment(Qt::AlignCenter);
+    label->setStyleSheet("QLabel { color: #888; font-style: italic; }");
+    
+    Qt::DockWidgetArea area = parseDockArea(dockArea);
+    
+    return windowManager_->createDockableView(
+        viewId,
+        title.isEmpty() ? viewId + " (Placeholder)" : title + " (Placeholder)",
+        label,
+        area,
+        QDockWidget::NoDockWidgetFeatures,  // Placeholder cannot be closed/moved
+        Qt::DockWidgetAreas(area),
+        false  // Not external - we own this widget
+    );
 }
 
 }// namespace rbc

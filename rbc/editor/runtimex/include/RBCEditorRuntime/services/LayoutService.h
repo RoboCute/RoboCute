@@ -89,7 +89,27 @@ public:
      */
     bool setCentralWidget(const QString &viewId);
 
+    /**
+     * @brief Create dock widget for a view
+     * 
+     * If the view's plugin provides a widget, creates a dock with that widget.
+     * Otherwise, creates a placeholder dock.
+     * 
+     * @param viewState The view state from layout config
+     * @return The created QDockWidget, or nullptr if failed
+     */
+    QDockWidget *createViewDock(const ViewState &viewState);
+
 private:// helpers
+    /**
+     * @brief Create a placeholder dock widget for undefined view
+     * 
+     * @param viewId The view ID
+     * @param title The title to display
+     * @param dockArea The dock area
+     * @return The created placeholder QDockWidget
+     */
+    QDockWidget *createPlaceholderDock(const QString &viewId, const QString &title, const QString &dockArea);
     /**
      * @brief Parse layout config from JSON object
      */

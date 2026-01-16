@@ -17,6 +17,13 @@
             "dock_area": "Left",
             "visible": true,
             "size": { "width": 300, "height": -1 }
+        },
+        {
+            "plugin_id": "com.robocute.layout",
+            "view_id": "layout_manager",
+            "dock_area": "Right",
+            "visible": true,
+            "size": { "width": 280, "height": -1 }
         }
     ],
     "dock_arrangements": {
@@ -24,6 +31,10 @@
             "split_orientation": "vertical",
             "split_ratio": [0.7, 0.3],
             "widgets": ["scene_hierarchy", "connection_status"]
+        },
+        "Right": {
+            "type": "single",
+            "widgets": ["layout_manager"]
         },
         "Center": {
             "central_widget": "viewport.main"

@@ -2,11 +2,9 @@
 #include <QGuiApplication>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QWidget>
-#include <QtWidgets/QDockWidget>
 #include <QtWidgets/QLabel>
 #include <QStringList>
 #include <QtGlobal>
-#include <QSet>
 #include <rbc_config.h>
 #include <QQmlEngine>
 #include <QDebug>
@@ -52,105 +50,24 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     layoutService->loadBuiltInLayouts();
     qDebug() << "LayoutService initialized";
 
+    // 5.2 Load LayoutPlugin (depends on LayoutService)
+    if (!pluginManager.loadPluginFromDLL("RBCE_LayoutPlugin")) {
+        qWarning() << "Failed to load LayoutPlugin";
+    }
+
     // 6. Apply UI contributions for all plugins
-    // 6.1 Apply QML View Contribution
-    QSet<QString> occupiedDockAreas;
-    auto addViewContribution = [&](IEditorPlugin *plugin) {
-        if (!plugin) {
-            return;
-        }
-        QList<ViewContribution> views = plugin->view_contributions();
-        for (const auto &view : views) {
-            qDebug() << "Creating view:" << view.viewId << "from" << view.qmlSource;
-            QObject *viewModel = plugin->getViewModel(view.viewId);
-            if (!viewModel) {
-                qWarning() << "Failed to get ViewModel for view:" << view.viewId;
-                continue;
-            }
-            QDockWidget *dock = windowManager.createDockableView(view, viewModel);
-            if (dock) {
-                qDebug() << "Created dock for view:" << view.viewId;
-                occupiedDockAreas.insert(view.dockArea);
-            } else {
-                qWarning() << "Failed to create dock for view:" << view.viewId;
-            }
-        }
-    };
-    // 6.2 Apply Native View Contribution
-    // Note: Views with dockArea="Center" will be handled by LayoutService as central widget
-    auto addNativeViewContribution = [&](IEditorPlugin *plugin) {
-        if (!plugin) {
-            return;
-        }
-        QList<NativeViewContribution> nativeViews = plugin->native_view_contributions();
-        for (const auto &nativeView : nativeViews) {
-            // Skip views marked as "Center" - they will be set as central widget by LayoutService
-            if (nativeView.dockArea == "Center") {
-                qDebug() << "Skipping native view:" << nativeView.viewId << "- will be set as central widget by LayoutService";
-                continue;
-            }
-
-            qDebug() << "Creating native view:" << nativeView.viewId << "with title" << nativeView.title;
-            QWidget *widget = plugin->getNativeWidget(nativeView.viewId);
-            if (!widget) {
-                qWarning() << "Failed to get native widget for view:" << nativeView.viewId;
-                continue;
-            }
-            QObject *viewModel = plugin->getViewModel(nativeView.viewId);
-            QDockWidget *dock = windowManager.createDockableView(nativeView, widget, viewModel);
-            if (dock) {
-                qDebug() << "Created native dock for view:" << nativeView.viewId;
-                occupiedDockAreas.insert(nativeView.dockArea);
-            } else {
-                qWarning() << "Failed to create native dock for view:" << nativeView.viewId;
-            }
-        }
-    };
-
-    // 6.3 Apply menu contributions
+    // 6.1 Apply menu contributions (menus are not managed by LayoutService)
     for (auto *plugin : pluginManager.getLoadedPlugins()) {
-        qDebug() << "Processing plugin:" << plugin->id();
+        qDebug() << "Processing menu contributions for plugin:" << plugin->id();
         QList<MenuContribution> menus = plugin->menu_contributions();
         if (!menus.isEmpty()) {
             windowManager.applyMenuContributions(menus);
         }
     }
 
-    // 6.4 Apply native view contributions
-    for (auto *plugin : pluginManager.getLoadedPlugins()) {
-        qDebug() << "Processing native views for plugin:" << plugin->id();
-        addNativeViewContribution(plugin);
-    }
-
-    // 6.5 Apply view contributions
-    for (auto *plugin : pluginManager.getLoadedPlugins()) {
-        qDebug() << "Processing plugin:" << plugin->id();
-        addViewContribution(plugin);
-    }
-
-    // 7. Fill unused dock areas with placeholders to keep layout stable
-    auto addPlaceholder = [&](const QString &areaName, Qt::DockWidgetArea area) {
-        if (occupiedDockAreas.contains(areaName)) {
-            return;
-        }
-        auto *label = new QLabel(QString("%1 area placeholder").arg(areaName), nullptr);
-        label->setAlignment(Qt::AlignCenter);
-        windowManager.createDockableView(
-            QStringLiteral("Placeholder_") + areaName,
-            areaName + " Placeholder",
-            label,
-            area,
-            QDockWidget::NoDockWidgetFeatures,
-            Qt::DockWidgetAreas(area));
-    };
-
-    addPlaceholder("Left", Qt::LeftDockWidgetArea);
-    addPlaceholder("Right", Qt::RightDockWidgetArea);
-    addPlaceholder("Top", Qt::TopDockWidgetArea);
-    addPlaceholder("Bottom", Qt::BottomDockWidgetArea);
-
-    // 7.1 Apply the default layout (scene_editing) to set central widget
-    // This will set the main viewport as the central widget
+    // 7. Apply the default layout - LayoutService manages all DockArea layouts
+    // LayoutService will create dock widgets for views defined in the layout config
+    // If a viewId is not found in plugins, it will create a placeholder
     if (layoutService->hasLayout("scene_editing")) {
         qDebug() << "Applying scene_editing layout...";
         layoutService->applyLayout("scene_editing");
