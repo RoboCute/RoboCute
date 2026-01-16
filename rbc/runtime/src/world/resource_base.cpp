@@ -19,7 +19,9 @@ bool Resource::save_to_path() {
     return unsafe_save_to_path();
 }
 Resource::Resource() = default;
-Resource::~Resource() = default;
+Resource::~Resource() {
+    int x = 0;
+}
 struct LoadingResource {
     InstanceID res_inst_id;
     coroutine loading_coro;
@@ -122,8 +124,10 @@ struct ResourceLoader : RBCStruct {
                 return;
             }
             auto ptr = std::move(self_ptr_base).cast_static<Resource>();
+            auto rc_count = ptr.ref_count();
             res.loading_coro.resume();
             if (!res.loading_coro.done()) {
+                ptr.reset();
                 loading_queue.enqueue(std::move(res));
             } else {
                 ptr->unsafe_set_loaded();
@@ -263,6 +267,10 @@ void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::files
     _res_loader->_binary_path = binary_path;
     _res_loader->init_db();
 }
+bool resource_exists(vstd::Guid const &guid) {
+    auto bin = _res_loader->to_binary(guid);
+    return bin.second;
+}
 RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     {
         auto obj = get_object_ref(guid);
@@ -335,7 +343,7 @@ void Resource::wait_loading() {
         coro.resume();
         std::this_thread::sleep_for(std::chrono::microseconds(10));
 #ifndef NDEBUG
-        if (clk.toc() > 1000) {
+        if (clk.toc() > 3000) {
             LUISA_WARNING("Still waiting for resource {}", guid().to_string());
             clk.tic();
         }
@@ -361,6 +369,12 @@ void Resource::unsafe_set_loaded() {
 void Resource::unsafe_set_installed() {
     atomic_max(_status, EResourceLoadingStatus::Installed);
 }
+luisa::spin_mutex &get_resource_mutex(vstd::Guid const &guid) {
+    _res_loader->_resmap_mtx.lock();
+    auto &v = _res_loader->resource_types.emplace(guid).value();
+    _res_loader->_resmap_mtx.unlock();
+    return v.mtx;
+}
 bool Resource::install() {
     if (_status == EResourceLoadingStatus::Installed) return false;
 #ifndef NDEBUG
@@ -369,7 +383,7 @@ bool Resource::install() {
     while (!loaded()) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
 #ifndef NDEBUG
-        if (clk.toc() > 1000) {
+        if (clk.toc() > 3000) {
             LUISA_WARNING("Still waiting for resource {}", guid().to_string());
             clk.tic();
         }

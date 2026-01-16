@@ -261,10 +261,6 @@ void AssetsManager::execute_render_thread() {
 }
 
 AssetsManager::~AssetsManager() {
-    for (auto &i : _async_frame_res) {
-        _render_device.io_service()->synchronize(i.disk_io_fence);
-        _render_device.mem_io_service()->synchronize(i.mem_io_fence);
-    }
     _render_device.lc_async_copy_stream().synchronize();
     {
         std::lock_guard lck(_load_thd_mtx);
@@ -272,8 +268,13 @@ AssetsManager::~AssetsManager() {
         _load_thd_frame_index = std::numeric_limits<uint64_t>::max();
         _load_executive_thd_frame_index = std::numeric_limits<uint64_t>::max();
     }
-    _load_thd_cv.notify_one();
+    _load_executive_thd_cv.notify_all();
+    _load_thd_cv.notify_all();
     _load_thd.join();
+    for (auto &i : _async_frame_res) {
+        _render_device.io_service()->synchronize(i.disk_io_fence);
+        _render_device.mem_io_service()->synchronize(i.mem_io_fence);
+    }
     _render_stream_disqueue.force_clear();
     _load_stream_disqueue.force_clear();
 }

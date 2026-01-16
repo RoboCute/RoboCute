@@ -111,7 +111,7 @@ struct RBC_RUNTIME_API RenderDevice {
     };
     std::mutex &async_compute_loop_mtx() { return _async_compute_loop_mtx; };
     void set_main_stream(Stream *main_stream);
-
+    void _dispose_io_service();
 private:
     // context
     vstd::optional<luisa::compute::Context> _context;

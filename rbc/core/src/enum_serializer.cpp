@@ -34,7 +34,7 @@ luisa::string_view EnumSerializer::_get_enum_value_name(
         luisa::string{enum_name},
         value});
     if (iter == r.enum_value_to_name.end()) [[unlikely]] {
-        LUISA_ERROR("Enum {} not serialized properly.", enum_name);
+        LUISA_ERROR("Enum {} with value {} not serialized properly.", enum_name, value);
     }
     return iter->second;
 }

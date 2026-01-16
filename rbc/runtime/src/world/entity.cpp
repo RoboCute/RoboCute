@@ -19,7 +19,7 @@ void Component::_zz_invoke_world_event(WorldEventType event_type) {
     for (auto iter = map.map.begin(); iter != map.map.end();) {
         InstanceID inst_id{iter->first};
         auto &coro = iter->second;
-        if (!get_object(inst_id)) {
+        if (!get_object_ref(inst_id)) {
             iter = map.map.erase(iter);
             continue;
         }

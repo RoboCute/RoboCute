@@ -94,16 +94,22 @@ void RenderDevice::init(
         }
     }
 }
+void RenderDevice::_dispose_io_service() {
+    if (_fallback_mem_io_service && _fallback_mem_io_service != _mem_io_service)
+        IOService::dispose_service(_fallback_mem_io_service);
+    if (_mem_io_service)
+        IOService::dispose_service(_mem_io_service);
+    if (_io_service)
+        IOService::dispose_service(_io_service);
+    IOService::dispose();
+    _fallback_mem_io_service = nullptr;
+    _io_service = nullptr;
+    _mem_io_service = nullptr;
+}
 RenderDevice::~RenderDevice() {
     set_rendering_thread(false);
     if (!_headless) {
-        if (_fallback_mem_io_service && _fallback_mem_io_service != _mem_io_service)
-            IOService::dispose_service(_fallback_mem_io_service);
-        if (_mem_io_service)
-            IOService::dispose_service(_mem_io_service);
-        if (_io_service)
-            IOService::dispose_service(_io_service);
-        IOService::dispose();
+        _dispose_io_service();
         if (_async_stream)
             _async_stream.synchronize();
         if (_async_copy_stream)

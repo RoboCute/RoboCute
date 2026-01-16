@@ -238,5 +238,6 @@ public:
         HostBufferManager &temp_buffer,
         CommandList &cmdlist);
     void force_sync();
+    void dispose();
 };
 }// namespace rbc

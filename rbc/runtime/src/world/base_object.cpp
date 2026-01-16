@@ -8,8 +8,8 @@ struct BaseObjectStatics : RBCStruct {
     shared_atomic_mutex _instance_mtx;
     shared_atomic_mutex _guid_mtx;
     std::atomic_uint64_t _instance_id_counter{};
-    luisa::unordered_map<uint64_t, BaseObject *> _instance_ids;
-    luisa::unordered_map<MD5, BaseObject *> _obj_guids;
+    luisa::unordered_map<uint64_t, RCWeak<BaseObject>> _instance_ids;
+    luisa::unordered_map<MD5, RCWeak<BaseObject>> _obj_guids;
     luisa::unordered_map<MD5, TypeRegisterBase *> _create_funcs;
     void init_register(TypeRegisterBase *p) {
         p->init();
@@ -22,10 +22,11 @@ struct BaseObjectStatics : RBCStruct {
     }
     ~BaseObjectStatics() {
         // collect dangling objects
-        luisa::vector<BaseObject *> remove_obj;
+        luisa::vector<RC<BaseObject>> remove_obj;
+        std::lock_guard lck{_instance_mtx};
         if (!_instance_ids.empty()) {
             for (auto iter = _instance_ids.begin(); iter != _instance_ids.end();) {
-                auto o = iter->second;
+                auto o = iter->second.lock();
                 if (o->rbc_rc_count() > 0) {
                     ++iter;
                     continue;
@@ -80,28 +81,10 @@ void destroy_world() {
 void get_all_objects(vstd::function<void(BaseObject *)> const &callback) {
     std::shared_lock lck{_world_inst->_instance_mtx};
     for (auto &i : _world_inst->_instance_ids) {
-        callback(i.second);
+        auto v = i.second.lock();
+        if (v)
+            callback(v.get());
     }
-}
-BaseObject *get_object(InstanceID instance_id) {
-    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    if (instance_id._placeholder == ~0ull) return nullptr;
-    BaseObject *ptr;
-    std::shared_lock lck{_world_inst->_instance_mtx};
-    auto iter = _world_inst->_instance_ids.find(instance_id._placeholder);
-    if (iter != _world_inst->_instance_ids.end()) {
-        return iter->second;
-    }
-    return nullptr;
-}
-BaseObject *get_object(vstd::Guid const &guid) {
-    LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    std::shared_lock lck{_world_inst->_guid_mtx};
-    auto iter = _world_inst->_obj_guids.find(reinterpret_cast<MD5 const &>(guid));
-    if (iter == _world_inst->_obj_guids.end()) {
-        return nullptr;
-    }
-    return iter->second;
 }
 RC<BaseObject> get_object_ref(InstanceID instance_id) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
@@ -110,7 +93,7 @@ RC<BaseObject> get_object_ref(InstanceID instance_id) {
     std::shared_lock lck{_world_inst->_instance_mtx};
     auto iter = _world_inst->_instance_ids.find(instance_id._placeholder);
     if (iter != _world_inst->_instance_ids.end()) {
-        return RC<BaseObject>{iter->second};
+        return iter->second.lock().rc();
     }
     return {};
 }
@@ -121,7 +104,7 @@ RC<BaseObject> get_object_ref(vstd::Guid const &guid) {
     if (iter == _world_inst->_obj_guids.end()) {
         return {};
     }
-    return RC<BaseObject>{iter->second};
+    return iter->second.lock().rc();
 }
 void BaseObject::init() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
@@ -153,9 +136,7 @@ BaseObject::~BaseObject() {
     if (_guid) {
         auto &guid = reinterpret_cast<MD5 const &>(_guid);
         std::lock_guard lck{_world_inst->_guid_mtx};
-        auto iter = _world_inst->_obj_guids.find(guid);
-        LUISA_DEBUG_ASSERT(iter->second == this);
-        _world_inst->_obj_guids.erase(iter);
+        _world_inst->_obj_guids.erase(vstd::Guid{guid});
     }
 }
 
@@ -233,10 +214,10 @@ bool world_transform_dirty() {
 void _zz_clear_dirty_transform() {
     auto &v = dirty_transforms();
     for (auto &i : v) {
-        auto obj = get_object(i);
+        auto obj = get_object_ref(i);
         if (!obj) continue;
         LUISA_DEBUG_ASSERT(obj->is_type_of(TypeInfo::get<TransformComponent>()));
-        static_cast<TransformComponent *>(obj)->_dirty = false;
+        static_cast<TransformComponent *>(obj.get())->_dirty = false;
     }
     v.clear();
 }
@@ -249,11 +230,11 @@ uint64_t object_count() {
 void _zz_on_before_rendering() {
     _collect_all_materials();
     for (auto &i : dirty_transforms()) {
-        auto tr_obj = get_object(i);
+        auto tr_obj = get_object_ref(i);
         if (!tr_obj || !tr_obj->is_type_of(TypeInfo::get<TransformComponent>())) {
             continue;
         }
-        auto tr = static_cast<TransformComponent *>(tr_obj);
+        auto tr = static_cast<TransformComponent *>(tr_obj.get());
         tr->_execute_on_update_event();
     }
     _zz_clear_dirty_transform();

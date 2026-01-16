@@ -4,8 +4,6 @@
 #include <luisa/vstl/pool.h>
 #include <luisa/vstl/spin_mutex.h>
 namespace rbc::world {
-RBC_RUNTIME_API BaseObject *get_object(InstanceID instance_id);
-RBC_RUNTIME_API BaseObject *get_object(vstd::Guid const &guid);
 struct TypeRegisterBase;
 using CreateFunc = vstd::func_ptr_t<BaseObject *()>;
 struct TypeRegisterBase {

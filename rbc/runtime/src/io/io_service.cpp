@@ -128,7 +128,8 @@ void IOService::_join() {
 }
 
 void IOService::dispose() {
-    ioservice_detail::_thds = nullptr;
+    if (!ioservice_detail::_thds) return;
+    ioservice_detail::_thds.reset();
     switch (_io_service_queue_type) {
         case QueueType::DX12:
             DStorageStream::dispose_dx12();

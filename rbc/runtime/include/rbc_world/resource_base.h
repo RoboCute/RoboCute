@@ -82,6 +82,8 @@ protected:
     ResourceBaseImpl() = default;
     ~ResourceBaseImpl() = default;
 };
+RBC_RUNTIME_API luisa::spin_mutex& get_resource_mutex(vstd::Guid const &guid);
+RBC_RUNTIME_API bool resource_exists(vstd::Guid const &guid);
 RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file = true);
 template<typename T>
     requires std::is_base_of_v<Resource, T>

@@ -259,10 +259,11 @@ void TexStreamManager::_async_logic() {
         }
     }
 }
-
-TexStreamManager::~TexStreamManager() {
+void TexStreamManager::dispose() {
     if (rbc::detail::_tex_mng_inst == this)
         rbc::detail::_tex_mng_inst = nullptr;
+    else
+        return;
     _copy_stream_mtx.lock();
     _enabled = false;
     signalled_fence = last_fence.load();
@@ -281,6 +282,9 @@ TexStreamManager::~TexStreamManager() {
         _io_service.synchronize(_last_io_fence);
     }
     _main_stream_event.synchronize(signalled_fence + 1);
+}
+TexStreamManager::~TexStreamManager() {
+    dispose();
 }
 
 auto TexStreamManager::load_sparse_img(
