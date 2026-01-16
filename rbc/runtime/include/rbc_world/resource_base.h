@@ -19,8 +19,9 @@ struct ResourceAwait : rbc::i_awaitable<ResourceAwait> {
     friend struct Resource;
     RBC_RUNTIME_API bool await_ready();
 private:
-    InstanceID _inst_id;
-    ResourceAwait(InstanceID inst_id) : _inst_id(inst_id) {}
+    RCWeak<Resource> res_ptr;
+    ResourceAwait() = default;
+    ResourceAwait(RCWeak<Resource> &&res_ptr) : res_ptr(std::move(res_ptr)) {}
 };
 struct Resource : BaseObject {
     friend struct ResourceLoader;
@@ -82,7 +83,7 @@ protected:
     ResourceBaseImpl() = default;
     ~ResourceBaseImpl() = default;
 };
-RBC_RUNTIME_API luisa::spin_mutex& get_resource_mutex(vstd::Guid const &guid);
+RBC_RUNTIME_API luisa::spin_mutex &get_resource_mutex(vstd::Guid const &guid);
 RBC_RUNTIME_API bool resource_exists(vstd::Guid const &guid);
 RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file = true);
 template<typename T>

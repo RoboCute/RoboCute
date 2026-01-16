@@ -34,9 +34,6 @@ luisa::string Object::type_name(void *this_) {
 BaseObjectType Object::base_type(void *this_) {
     return static_cast<BaseObjectType>(static_cast<world::BaseObject *>(this_)->base_type());
 }
-uint64_t Object::instance_id(void *this_) {
-    return static_cast<world::BaseObject *>(this_)->instance_id();
-}
 rbc::ResourceLoadStatus Resource::load_status(void *this_) {
     return static_cast<rbc::ResourceLoadStatus>(static_cast<world::Resource *>(this_)->loading_status());
 }

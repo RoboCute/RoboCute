@@ -22,7 +22,7 @@ private:
     bool _decomposed : 1 {true};
     TransformComponent();
     vstd::HashMap<
-        InstanceID,
+        vstd::Guid,
         void (Component::*)()>
         _on_update_events;
 

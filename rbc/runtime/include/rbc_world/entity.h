@@ -8,16 +8,16 @@ struct Component;
 namespace detail {
 }
 struct EntityCompIter {
-    using IterType = luisa::unordered_map<MD5, Component *>::const_iterator;
+    using IterType = luisa::unordered_map<MD5, RC<Component>>::const_iterator;
 private:
     IterType _iter;
 public:
     EntityCompIter(IterType iter) : _iter(iter) {}
     Component *operator*() {
-        return _iter->second;
+        return _iter->second.get();
     }
     Component *operator*() const {
-        return _iter->second;
+        return _iter->second.get();
     }
     void operator++() {
         _iter++;
@@ -31,7 +31,7 @@ struct RBC_RUNTIME_API Entity final : BaseObjectDerive<Entity, BaseObjectType::E
     friend struct Component;
 
 private:
-    luisa::unordered_map<MD5, Component *> _components;
+    luisa::unordered_map<MD5, RC<Component>> _components;
     void _remove_component(Component *component);
     Entity();
     ~Entity();

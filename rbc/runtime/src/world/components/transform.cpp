@@ -5,11 +5,11 @@
 
 namespace rbc::world {
 struct TransformStatic : RBCStruct {
-    luisa::vector<InstanceID> dirty_trans;
+    luisa::vector<RCWeak<TransformComponent>> dirty_trans;
 };
 TransformComponent::TransformComponent() {}
 static RuntimeStatic<TransformStatic> _trans_inst;
-luisa::vector<InstanceID> &dirty_transforms() {
+luisa::vector<RCWeak<TransformComponent>> &dirty_transforms() {
     return _trans_inst->dirty_trans;
 }
 void TransformComponent::serialize_meta(ObjSerialize const &obj) const {
@@ -70,7 +70,7 @@ double3 TransformComponent::scale() {
 void TransformComponent::mark_dirty() {
     if (_dirty) return;
     _dirty = true;
-    dirty_transforms().emplace_back(instance_id());
+    dirty_transforms().emplace_back(this);
 }
 void TransformComponent::traversal(double4x4 const &new_trs) {
     auto old_l2w = _trs;
@@ -171,15 +171,17 @@ TransformComponent::~TransformComponent() {
     }
 }
 void TransformComponent::add_on_update_event(Component *ptr, void (Component::*func_ptr)()) {
-    _on_update_events.force_emplace(ptr->instance_id(), func_ptr);
+    LUISA_ASSERT(get_object_ref(ptr->guid()));
+    _on_update_events.force_emplace(ptr->guid(), func_ptr);
 }
 
 void TransformComponent::_execute_on_update_event() {
-    luisa::vector<InstanceID> invalid_components;
+    luisa::vector<vstd::Guid> invalid_components;
     for (auto &i : _on_update_events) {
         auto obj = get_object_ref(i.first);
         if (!obj || obj->base_type() != BaseObjectType::Component) [[unlikely]] {
             invalid_components.emplace_back(i.first);
+            return;
         }
         auto ptr = static_cast<Component *>(obj.get());
         (ptr->*i.second)();
@@ -190,7 +192,7 @@ void TransformComponent::_execute_on_update_event() {
 }
 
 void TransformComponent::remove_on_update_event(Component *ptr) {
-    _on_update_events.remove(ptr->instance_id());
+    _on_update_events.remove(ptr->guid());
 }
 // clang-format off
 DECLARE_WORLD_OBJECT_REGISTER(TransformComponent)
