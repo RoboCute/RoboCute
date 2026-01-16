@@ -7,7 +7,7 @@ namespace rbc::world {
 struct GlobalEvents {
     struct Event {
         rbc::shared_atomic_mutex mtx;
-        luisa::unordered_map<vstd::Guid, coroutine> map;
+        luisa::unordered_map<Component *, std::pair<coroutine, RCWeak<Component>>> map;
     };
     std::array<Event, world_event_count> _events;
 };
@@ -18,8 +18,9 @@ void Component::_zz_invoke_world_event(WorldEventType event_type) {
     std::shared_lock lck{map.mtx};
     for (auto iter = map.map.begin(); iter != map.map.end();) {
         auto inst_id{iter->first};
-        auto &coro = iter->second;
-        if (!get_object_ref(inst_id)) {
+        auto &coro = iter->second.first;
+        auto obj = iter->second.second.lock().rc();
+        if (!obj) {
             iter = map.map.erase(iter);
             continue;
         }
@@ -35,13 +36,13 @@ void Component::add_world_event(WorldEventType event_type, rbc::coroutine &&coro
     auto &evt = _entity_events->_events;
     auto &map = evt[luisa::to_underlying(event_type)];
     std::lock_guard lck{map.mtx};
-    map.map.force_emplace(guid(), std::move(coro));
+    map.map.force_emplace(this, std::move(coro), RCWeak<Component>{this});
 }
 void Component::remove_world_event(WorldEventType event_type) {
     auto &evt = _entity_events->_events;
     auto &map = evt[luisa::to_underlying(event_type)];
     std::lock_guard lck{map.mtx};
-    map.map.erase(guid());
+    map.map.erase(this);
 }
 Entity::Entity() {
 }
@@ -52,7 +53,7 @@ Entity::~Entity() {
         if (comp->entity())
             comp->on_destroy();
     }
-    for(auto& i : _components){
+    for (auto &i : _components) {
         i.second->_entity = nullptr;
     }
 }

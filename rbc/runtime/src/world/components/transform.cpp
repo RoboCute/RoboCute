@@ -171,20 +171,18 @@ TransformComponent::~TransformComponent() {
     }
 }
 void TransformComponent::add_on_update_event(Component *ptr, void (Component::*func_ptr)()) {
-    LUISA_ASSERT(get_object_ref(ptr->guid()));
-    _on_update_events.force_emplace(ptr->guid(), func_ptr);
+    _on_update_events.force_emplace(ptr, func_ptr, RCWeak<Component>{ptr});
 }
 
 void TransformComponent::_execute_on_update_event() {
-    luisa::vector<vstd::Guid> invalid_components;
+    luisa::vector<Component*> invalid_components;
     for (auto &i : _on_update_events) {
-        auto obj = get_object_ref(i.first);
+        auto obj = i.second.second.lock().rc();
         if (!obj || obj->base_type() != BaseObjectType::Component) [[unlikely]] {
             invalid_components.emplace_back(i.first);
             return;
         }
-        auto ptr = static_cast<Component *>(obj.get());
-        (ptr->*i.second)();
+        (obj.get()->*i.second.first)();
     }
     for (auto &i : invalid_components) {
         _on_update_events.remove(i);
@@ -192,7 +190,7 @@ void TransformComponent::_execute_on_update_event() {
 }
 
 void TransformComponent::remove_on_update_event(Component *ptr) {
-    _on_update_events.remove(ptr->guid());
+    _on_update_events.remove(ptr);
 }
 // clang-format off
 DECLARE_WORLD_OBJECT_REGISTER(TransformComponent)
