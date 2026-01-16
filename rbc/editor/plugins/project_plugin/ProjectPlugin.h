@@ -10,6 +10,7 @@
 #include <QJsonObject>
 #include <QStringList>
 #include <QStandardPaths>
+#include <QPointer>
 
 namespace rbc {
 
@@ -115,7 +116,7 @@ public:
     QWidget *getNativeWidget(const QString &viewId) override;
 
     // Get file browser widget (for native widget dock) - deprecated, use getNativeWidget("project_file_browser") instead
-    QWidget *fileBrowserWidget() const { return fileBrowserWidget_; }
+    QWidget *fileBrowserWidget() const { return fileBrowserWidget_.data(); }
 
 private slots:
     void onOpenProjectTriggered();
@@ -133,7 +134,7 @@ private:
     IProjectService *projectService_ = nullptr;
     ProjectViewModel *viewModel_ = nullptr;
     PluginContext *context_ = nullptr;
-    QWidget *fileBrowserWidget_ = nullptr;
+    QPointer<QWidget> fileBrowserWidget_;  // 使用 QPointer 追踪，自动检测删除
     
     // 预注册的 Native View Contributions
     QList<NativeViewContribution> registeredContributions_;

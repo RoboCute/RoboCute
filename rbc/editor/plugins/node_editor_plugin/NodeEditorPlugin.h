@@ -2,6 +2,7 @@
 #include <rbc_config.h>
 #include "RBCEditorRuntime/mvvm/ViewModelBase.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
+#include <QPointer>
 #include <memory>
 
 namespace rbc {
@@ -90,16 +91,21 @@ private:
 
 /**
  * @brief NodeEditorInstance - 将 Widget 和 ViewModel 组合在一起
+ * 
+ * 注意：widget 使用 QPointer 追踪，因为它可能被 Qt 的 parent-child 机制删除
+ * （例如当 WindowManager 删除 main_window_ 时）
+ * 使用 QPointer 可以安全地检测 widget 是否仍然存在
  */
 struct NodeEditorInstance {
     NodeEditorConfig config;
-    NodeEditor *widget = nullptr;
+    QPointer<NodeEditor> widget;  // 使用 QPointer 追踪，自动检测删除
     NodeEditorViewModel *viewModel = nullptr;
 
     ~NodeEditorInstance() {
         delete viewModel;
         viewModel = nullptr;
-        // widget 生命周期由 Qt parent-child 机制管理
+        // widget 使用 QPointer 追踪，不在这里删除
+        // 由 destroyNodeEditor 显式管理或由 Qt parent-child 机制管理
     }
 };
 

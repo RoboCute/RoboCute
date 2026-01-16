@@ -2,6 +2,7 @@
 #include <rbc_config.h>
 #include <QObject>
 #include <QHash>
+#include <QPointer>
 #include <QtGui/rhi/qrhi.h>
 #include <functional>
 #include "RBCEditorRuntime/services/SceneService.h"
@@ -102,18 +103,21 @@ private:
  * 
  * 每个视口实例包含：
  * - config: 视口配置
- * - widget: ViewportWidget 实例
+ * - widget: ViewportWidget 实例（使用 QPointer 追踪，自动检测删除）
  * - viewModel: ViewportViewModel 实例
  * - renderer: IRenderer 实例
+ * 
+ * 注意：widget 使用 QPointer 追踪，因为它可能被 Qt 的 parent-child 机制删除
+ * （例如当 WindowManager 删除 main_window_ 时）
  */
 struct ViewportInstance {
     ViewportConfig config;
-    ViewportWidget *widget = nullptr;
+    QPointer<ViewportWidget> widget;  // 使用 QPointer 追踪，自动检测删除
     ViewportViewModel *viewModel = nullptr;
     IRenderer *renderer = nullptr;
 
     ~ViewportInstance() {
-        // 注意：widget 的生命周期可能由 Qt parent-child 机制管理
+        // 注意：widget 使用 QPointer 追踪，由 destroyViewport 显式管理或由 Qt parent-child 机制管理
         // 这里只负责清理 viewModel 和 renderer
         delete viewModel;
         viewModel = nullptr;

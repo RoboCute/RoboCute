@@ -119,7 +119,7 @@ QString ViewportPlugin::createViewportWithRenderer(const ViewportConfig &config,
     instance->viewModel = new ViewportViewModel(config, sceneService_, nullptr);
 
     // 连接 Widget 的拖动信号（可以在这里处理实体拖放）
-    connect(instance->widget, &ViewportWidget::entityDragRequested, this, [this, viewportId = config.viewportId]() {
+    connect(instance->widget.data(), &ViewportWidget::entityDragRequested, this, [this, viewportId = config.viewportId]() {
         qDebug() << "ViewportPlugin: Entity drag requested from viewport:" << viewportId;
         // TODO: 实现实体拖放逻辑
     });
@@ -142,9 +142,14 @@ bool ViewportPlugin::destroyViewport(const QString &viewportId) {
     ViewportInstance *instance = it.value();
 
     // 删除 Widget（会触发 RhiWindow 的清理）
+    // 使用 QPointer 检查 widget 是否仍然存在
+    // 如果 Qt 已经删除了 widget（例如通过 parent-child 机制），QPointer 会变成 nullptr
     if (instance->widget) {
-        delete instance->widget;
-        instance->widget = nullptr;
+        qDebug() << "ViewportPlugin::destroyViewport: Deleting widget for:" << viewportId;
+        delete instance->widget.data();
+        // QPointer 会自动变成 nullptr，无需手动设置
+    } else {
+        qDebug() << "ViewportPlugin::destroyViewport: Widget already deleted for:" << viewportId;
     }
 
     // 删除实例（析构函数会清理 viewModel）
@@ -212,7 +217,7 @@ QList<NativeViewContribution> ViewportPlugin::native_view_contributions() const 
 
 QWidget *ViewportPlugin::getNativeWidget(const QString &viewId) {
     if (auto *instance = viewports_.value(viewId, nullptr)) {
-        return instance->widget;
+        return instance->widget.data();  // QPointer::data() 返回原始指针
     }
     return nullptr;
 }

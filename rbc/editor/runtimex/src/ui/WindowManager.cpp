@@ -100,6 +100,8 @@ void WindowManager::cleanup() {
     
     // 3. 释放外部 widget 的引用
     //    外部 widget 由其创建者（plugin）管理，我们只是解除引用
+    //    关键：必须在 WindowManager 析构前将外部 widget 从 dock 中移除
+    //    否则 dock 删除时会一起删除外部 widget，导致 plugin 双重释放
     for (auto it = external_widgets_.begin(); it != external_widgets_.end(); ++it) {
         QString viewId = it.key();
         QPointer<QWidget> widgetPtr = it.value();
@@ -107,12 +109,38 @@ void WindowManager::cleanup() {
         if (widgetPtr) {
             // 找到对应的 dock 并解除关联
             QDockWidget *dock = main_window_->findChild<QDockWidget *>(viewId);
-            if (dock && dock->widget() == widgetPtr) {
-                // 从 dock 中移除外部 widget，但不删除它
-                // 这样 plugin 仍然可以安全地管理它
-                dock->setWidget(nullptr);
-                qDebug() << "WindowManager::cleanup: Released external widget:" << viewId;
+            if (dock) {
+                QWidget *dockWidget = dock->widget();
+                if (dockWidget == widgetPtr) {
+                    // 从 dock 中移除外部 widget，但不删除它
+                    // 这样 plugin 仍然可以安全地管理它
+                    dock->setWidget(nullptr);
+                    widgetPtr->setParent(nullptr);  // 确保完全脱离 parent-child 关系
+                    qDebug() << "WindowManager::cleanup: Released external widget:" << viewId;
+                } else {
+                    // widget 可能被包装在其他容器中
+                    // 尝试直接从 parent 中移除
+                    qWarning() << "WindowManager::cleanup: Widget mismatch for" << viewId
+                               << "- dock->widget() is different, forcing release";
+                    widgetPtr->setParent(nullptr);  // 强制脱离 parent
+                    qDebug() << "WindowManager::cleanup: Force-released external widget:" << viewId;
+                }
+            } else {
+                // Dock 未找到，可能 widget 是 central widget
+                // 检查是否是 central widget
+                if (main_window_->centralWidget() == widgetPtr || 
+                    widgetPtr->parent() == main_window_->centralWidget()) {
+                    widgetPtr->setParent(nullptr);
+                    qDebug() << "WindowManager::cleanup: Released external central widget:" << viewId;
+                } else {
+                    // 无法找到 dock，直接从 parent 脱离
+                    qWarning() << "WindowManager::cleanup: Dock not found for" << viewId
+                               << "- forcing release from parent";
+                    widgetPtr->setParent(nullptr);
+                }
             }
+        } else {
+            qDebug() << "WindowManager::cleanup: External widget already deleted:" << viewId;
         }
     }
     external_widgets_.clear();

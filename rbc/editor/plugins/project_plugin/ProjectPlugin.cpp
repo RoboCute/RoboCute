@@ -59,9 +59,10 @@ ProjectPlugin::~ProjectPlugin() {
             delete viewModel_;
             viewModel_ = nullptr;
         }
+        // fileBrowserWidget_ 使用 QPointer，检查是否已被删除
         if (fileBrowserWidget_) {
-            delete fileBrowserWidget_;
-            fileBrowserWidget_ = nullptr;
+            delete fileBrowserWidget_.data();
+            // QPointer 会自动变成 nullptr
         }
     }
 
@@ -233,6 +234,8 @@ bool ProjectPlugin::unload() {
     }
 
     // 2. 清理 fileBrowserWidget_
+    // 使用 QPointer 检查 widget 是否仍然存在
+    // 如果 Qt 已经删除了 widget（例如通过 parent-child 机制），QPointer 会变成 nullptr
     if (fileBrowserWidget_) {
         // 清理 tree view 的 model 引用
         QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
@@ -241,9 +244,11 @@ bool ProjectPlugin::unload() {
         }
 
         // 删除 widget（如果 WindowManager 正确调用了 cleanup()，widget 应该没有 parent）
-        delete fileBrowserWidget_;
-        fileBrowserWidget_ = nullptr;
-        qDebug() << "ProjectPlugin::unload: Deleted fileBrowserWidget";
+        qDebug() << "ProjectPlugin::unload: Deleting fileBrowserWidget";
+        delete fileBrowserWidget_.data();
+        // QPointer 会自动变成 nullptr，无需手动设置
+    } else {
+        qDebug() << "ProjectPlugin::unload: fileBrowserWidget already deleted";
     }
 
     // 3. 清理 ViewModel
@@ -329,7 +334,7 @@ QObject *ProjectPlugin::getViewModel(const QString &viewId) {
 
 QWidget *ProjectPlugin::getNativeWidget(const QString &viewId) {
     if (viewId == "project_file_browser") {
-        return fileBrowserWidget_;
+        return fileBrowserWidget_.data();  // QPointer::data() 返回原始指针
     }
     return nullptr;
 }

@@ -197,7 +197,7 @@ QString NodeEditorPlugin::createNodeEditor(const NodeEditorConfig &config) {
     instance->widget = new NodeEditor(httpClient_, nullptr);
 
     // Create ViewModel
-    instance->viewModel = new NodeEditorViewModel(config, instance->widget, nullptr);
+    instance->viewModel = new NodeEditorViewModel(config, instance->widget.data(), nullptr);
 
     // Connect HttpClient signals to ViewModel
     connect(httpClient_, &HttpClient::connectionStatusChanged,
@@ -206,7 +206,7 @@ QString NodeEditorPlugin::createNodeEditor(const NodeEditorConfig &config) {
     // Auto-connect if configured
     if (config.autoConnect) {
         // Defer the connection to allow the widget to be fully set up
-        QMetaObject::invokeMethod(instance->widget, "loadNodesDeferred", Qt::QueuedConnection);
+        QMetaObject::invokeMethod(instance->widget.data(), "loadNodesDeferred", Qt::QueuedConnection);
     }
 
     editors_.insert(config.editorId, instance);
@@ -227,9 +227,14 @@ bool NodeEditorPlugin::destroyNodeEditor(const QString &editorId) {
     NodeEditorInstance *instance = it.value();
 
     // Delete Widget
+    // 使用 QPointer 检查 widget 是否仍然存在
+    // 如果 Qt 已经删除了 widget（例如通过 parent-child 机制），QPointer 会变成 nullptr
     if (instance->widget) {
-        delete instance->widget;
-        instance->widget = nullptr;
+        qDebug() << "NodeEditorPlugin::destroyNodeEditor: Deleting widget for:" << editorId;
+        delete instance->widget.data();
+        // QPointer 会自动变成 nullptr，无需手动设置
+    } else {
+        qDebug() << "NodeEditorPlugin::destroyNodeEditor: Widget already deleted for:" << editorId;
     }
 
     // Delete instance (destructor cleans up viewModel)
@@ -288,7 +293,7 @@ QList<NativeViewContribution> NodeEditorPlugin::native_view_contributions() cons
 
 QWidget *NodeEditorPlugin::getNativeWidget(const QString &viewId) {
     if (auto *instance = editors_.value(viewId, nullptr)) {
-        return instance->widget;
+        return instance->widget.data();  // QPointer::data() 返回原始指针
     }
     return nullptr;
 }
