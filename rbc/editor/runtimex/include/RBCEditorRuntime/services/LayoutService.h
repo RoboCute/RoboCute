@@ -8,6 +8,8 @@
 #include <QFile>
 #include <QDir>
 #include <QTimer>
+#include <QSet>
+#include <QVBoxLayout>
 #include "RBCEditorRuntime/services/ILayoutService.h"
 #include "RBCEditorRuntime/ui/WindowManager.h"
 #include "RBCEditorRuntime/plugins/PluginManager.h"
@@ -74,7 +76,18 @@ public:
     void applyLayout(const QString &layoutId) override;
 
 public:
-    // extra plubic
+    // extra public
+    
+    /**
+     * @brief Clear the current layout - remove all dock widgets and reset central widget
+     * 
+     * This must be called before applying a new layout to avoid duplicate dock widgets.
+     * Views that will be reused in the new layout are preserved (hidden, not deleted).
+     * 
+     * @param preserveViews Set of view IDs that should be preserved for reuse
+     */
+    void clearCurrentLayout(const QSet<QString> &preserveViews = {});
+    
     void loadBuiltInLayouts();// from source file
     void loadUserLayouts();   // load from user-setting file
     QString layoutConfigDirectory() const;
@@ -140,6 +153,12 @@ private:// members
     bool isTransitioning_ = false;
     QTimer *transitionTimer_ = nullptr;
     QString configDirectory_;
+    
+    // Central widget container - a stable wrapper for the actual central widget
+    // This prevents Qt from deleting the actual widget when switching layouts
+    QWidget *centralWidgetContainer_ = nullptr;
+    QVBoxLayout *centralContainerLayout_ = nullptr;
+    QString currentCentralViewId_;  // viewId of the current central widget
 };
 
 }// namespace rbc

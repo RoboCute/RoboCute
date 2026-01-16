@@ -28,6 +28,7 @@ bool LayoutService::hasLayout(const QString &layoutId) const {
 
 bool LayoutService::switchToLayout(const QString &layoutId, bool saveCurrentLayout) {
     if (layoutId == currentLayoutId_) {
+        qDebug() << "LayoutService::switchToLayout: Already in layout:" << layoutId;
         return true;// already current layout, nothing to do
     }
     if (!layouts_.contains(layoutId)) {
@@ -45,16 +46,23 @@ bool LayoutService::switchToLayout(const QString &layoutId, bool saveCurrentLayo
     //     saveCurrentLayout();
     // }
 
-    // 3. clear current layout (optional: use fade anim)
-    // clearAllViews();
+    // 3. Calculate which views can be preserved/reused between layouts
+    QSet<QString> viewsToPreserve;
+    const LayoutConfig &newConfig = layouts_[layoutId];
+    for (auto it = newConfig.views.begin(); it != newConfig.views.end(); ++it) {
+        viewsToPreserve.insert(it.key());
+    }
+    
+    // 4. Clear current layout, preserving views that will be reused
+    clearCurrentLayout(viewsToPreserve);
 
-    // 4. apply new layout
+    // 5. apply new layout
     applyLayout(layoutId);
 
-    // 5. update new id
+    // 6. update new id (already done in applyLayout, but ensure consistency)
     currentLayoutId_ = layoutId;
 
-    // 6. Finish Transition and broadcast event
+    // 7. Finish Transition and broadcast event
     isTransitioning_ = false;
     // emit layoutSwitched(layoutId);
 
@@ -66,7 +74,81 @@ bool LayoutService::saveCurrentLayout(const QString &layoutId) {
     return true;
 }
 
-void LayoutService::resetLayout(const QString &layoutId) {}
+void LayoutService::resetLayout(const QString &layoutId) {
+    // Reset to the built-in layout configuration
+    if (!layouts_.contains(layoutId)) {
+        qWarning() << "LayoutService::resetLayout: Layout not found:" << layoutId;
+        return;
+    }
+    
+    // Clear current layout completely
+    clearCurrentLayout();
+    
+    // Re-apply the layout
+    applyLayout(layoutId);
+    
+    qDebug() << "LayoutService::resetLayout: Layout reset:" << layoutId;
+}
+
+void LayoutService::clearCurrentLayout(const QSet<QString> &preserveViews) {
+    if (!windowManager_) {
+        qWarning() << "LayoutService::clearCurrentLayout: WindowManager not initialized";
+        return;
+    }
+    
+    QMainWindow *mainWindow = windowManager_->main_window();
+    if (!mainWindow) {
+        qWarning() << "LayoutService::clearCurrentLayout: MainWindow not available";
+        return;
+    }
+    
+    qDebug() << "LayoutService::clearCurrentLayout: Clearing layout, preserving views:" << preserveViews;
+    
+    // Note: We don't need to handle the central widget here anymore
+    // The central widget container is stable and managed by setCentralWidget()
+    // The actual widget inside will be swapped when applying the new layout
+    
+    // Process all current dock widgets
+    for (auto it = currentViewStates_.begin(); it != currentViewStates_.end(); ++it) {
+        const QString &viewId = it.key();
+        ViewState &viewState = it.value();
+        
+        if (viewState.dockWidget) {
+            if (preserveViews.contains(viewId)) {
+                // This view will be reused - hide it but don't delete
+                viewState.dockWidget->hide();
+                qDebug() << "LayoutService::clearCurrentLayout: Hiding preserved dock:" << viewId;
+            } else {
+                // This view is not needed in new layout - remove it
+                // First, if the dock has a widget from a plugin, detach it
+                QWidget *dockContent = viewState.dockWidget->widget();
+                if (dockContent) {
+                    // IMPORTANT: First detach widget from dock, then set parent to nullptr
+                    // Otherwise deleteLater() will delete the widget as well
+                    viewState.dockWidget->setWidget(nullptr);
+                    dockContent->setParent(nullptr);  // Detach from dock widget's ownership
+                }
+                
+                // Remove the dock widget from main window
+                mainWindow->removeDockWidget(viewState.dockWidget);
+                viewState.dockWidget->deleteLater();
+                viewState.dockWidget = nullptr;
+                qDebug() << "LayoutService::clearCurrentLayout: Removed dock:" << viewId;
+            }
+        }
+    }
+    
+    // 3. Clear view states that are not preserved
+    for (auto it = currentViewStates_.begin(); it != currentViewStates_.end();) {
+        if (!preserveViews.contains(it.key())) {
+            it = currentViewStates_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    qDebug() << "LayoutService::clearCurrentLayout: Layout cleared, remaining views:" << currentViewStates_.keys();
+}
 
 bool LayoutService::createLayout(const QString &layoutId, const QJsonObject &layoutConfig) {
     return true;
@@ -134,41 +216,82 @@ void LayoutService::applyLayout(const QString &layoutId) {
         return;
     }
     
+    QMainWindow *mainWindow = windowManager_->main_window();
+    if (!mainWindow) {
+        qWarning() << "LayoutService::applyLayout: MainWindow not available";
+        return;
+    }
+    
     LayoutConfig &config = layouts_[layoutId];
     qDebug() << "LayoutService::applyLayout: Applying layout:" << layoutId;
     
     // 1. First, handle the central widget if specified
+    // setCentralWidget() now handles everything: extracting from dock, managing container, etc.
     if (!config.centralWidgetId.isEmpty()) {
         if (setCentralWidget(config.centralWidgetId)) {
             qDebug() << "LayoutService::applyLayout: Set central widget:" << config.centralWidgetId;
+            // Update view state - setCentralWidget already updates currentViewStates_ internally
+            // but we also need to sync with config
+            ViewState centralState = config.views.value(config.centralWidgetId);
+            centralState.isCentralWidget = true;
+            centralState.centralWidget = currentViewStates_.contains(config.centralWidgetId) 
+                ? currentViewStates_[config.centralWidgetId].centralWidget 
+                : nullptr;
+            currentViewStates_[config.centralWidgetId] = centralState;
         } else {
             qWarning() << "LayoutService::applyLayout: Failed to set central widget:" << config.centralWidgetId;
-            // Create placeholder for central widget if not found
-            auto *centralLabel = new QLabel(QString("Central widget '%1' not found").arg(config.centralWidgetId));
-            centralLabel->setAlignment(Qt::AlignCenter);
-            windowManager_->setCentralWidget(centralLabel, false);
+            // Don't set a placeholder on the container - it would replace our stable container
+            // The container will just be empty, which is fine
         }
     }
     
     // 2. Update current layout ID
     currentLayoutId_ = layoutId;
     
-    // 3. Create dock widgets for all views defined in layout (except center)
+    // 3. Create or reuse dock widgets for all views defined in layout (except center)
     for (auto it = config.views.begin(); it != config.views.end(); ++it) {
         const QString &viewId = it.key();
-        ViewState &viewState = it.value();
+        ViewState viewState = it.value();
         
         // Skip center views (handled as central widget)
         if (viewState.dockArea == "Center") {
-            currentViewStates_[viewId] = viewState;
+            // Already handled above
             continue;
         }
         
-        // Create dock widget for this view
-        QDockWidget *dock = createViewDock(viewState);
-        if (dock) {
-            viewState.dockWidget = dock;
-            qDebug() << "LayoutService::applyLayout: Created dock for view:" << viewId;
+        // Check if we already have a dock widget for this view from previous layout
+        QDockWidget *existingDock = nullptr;
+        if (currentViewStates_.contains(viewId)) {
+            existingDock = currentViewStates_[viewId].dockWidget;
+        }
+        
+        if (existingDock) {
+            // Reuse existing dock widget - just update its position and show it
+            Qt::DockWidgetArea newArea = parseDockArea(viewState.dockArea);
+            Qt::DockWidgetArea currentArea = mainWindow->dockWidgetArea(existingDock);
+            
+            // Move to correct area if needed
+            if (currentArea != newArea && newArea != Qt::NoDockWidgetArea) {
+                mainWindow->removeDockWidget(existingDock);
+                mainWindow->addDockWidget(newArea, existingDock);
+            }
+            
+            // Show the dock
+            existingDock->show();
+            viewState.dockWidget = existingDock;
+            qDebug() << "LayoutService::applyLayout: Reused existing dock for view:" << viewId;
+        } else {
+            // Create new dock widget for this view
+            QDockWidget *dock = createViewDock(viewState);
+            if (dock) {
+                viewState.dockWidget = dock;
+                qDebug() << "LayoutService::applyLayout: Created new dock for view:" << viewId;
+            }
+        }
+        
+        // Update visibility based on layout config
+        if (viewState.dockWidget) {
+            viewState.dockWidget->setVisible(viewState.visible);
         }
         
         currentViewStates_[viewId] = viewState;
@@ -186,53 +309,109 @@ bool LayoutService::setCentralWidget(const QString &viewId) {
         return false;
     }
     
-    // Find the plugin that provides this view
+    QMainWindow *mainWindow = windowManager_->main_window();
+    if (!mainWindow) {
+        qWarning() << "LayoutService::setCentralWidget: MainWindow not available";
+        return false;
+    }
+    
+    // 1. Ensure central widget container exists (create once, reuse forever)
+    // This container acts as a stable wrapper - the actual widget is placed inside it
+    // This prevents Qt from deleting widgets when we switch central widgets
+    if (!centralWidgetContainer_) {
+        centralWidgetContainer_ = new QWidget();
+        centralWidgetContainer_->setObjectName("CentralWidgetContainer");
+        
+        centralContainerLayout_ = new QVBoxLayout(centralWidgetContainer_);
+        centralContainerLayout_->setContentsMargins(0, 0, 0, 0);
+        centralContainerLayout_->setSpacing(0);
+        
+        // Set container as central widget (only once)
+        // Container is NOT external - we own it
+        windowManager_->setCentralWidget(centralWidgetContainer_, false);
+        
+        qDebug() << "LayoutService::setCentralWidget: Created central widget container";
+    }
+    
+    // 2. If already showing this view, nothing to do
+    if (currentCentralViewId_ == viewId) {
+        qDebug() << "LayoutService::setCentralWidget: Already showing:" << viewId;
+        return true;
+    }
+    
+    // 3. Remove the old widget from container (but don't delete it - plugin owns it)
+    if (!currentCentralViewId_.isEmpty()) {
+        // Update old view state
+        if (currentViewStates_.contains(currentCentralViewId_)) {
+            currentViewStates_[currentCentralViewId_].isCentralWidget = false;
+            currentViewStates_[currentCentralViewId_].centralWidget = nullptr;
+        }
+        
+        // Remove all widgets from layout (without deleting them)
+        while (centralContainerLayout_->count() > 0) {
+            QLayoutItem* item = centralContainerLayout_->takeAt(0);
+            if (item && item->widget()) {
+                // Detach from container but don't delete
+                item->widget()->setParent(nullptr);
+                item->widget()->hide();  // Hide it for now
+            }
+            delete item;  // Delete the layout item, not the widget
+        }
+        
+        qDebug() << "LayoutService::setCentralWidget: Removed old central widget:" << currentCentralViewId_;
+    }
+    
+    // 4. Find the plugin that provides this view
     IEditorPlugin *plugin = findPluginForView(viewId);
     if (!plugin) {
         qWarning() << "LayoutService::setCentralWidget: Could not find plugin for view:" << viewId;
         return false;
     }
     
-    // Try to get the native widget first
+    // 5. Get the widget from plugin
     QWidget *widget = plugin->getNativeWidget(viewId);
     if (!widget) {
         qWarning() << "LayoutService::setCentralWidget: Could not get widget for view:" << viewId;
         return false;
     }
     
-    // Check if the widget is currently in a dock widget
+    // 6. If widget is currently in a dock widget, remove it from there first
     QDockWidget *parentDock = qobject_cast<QDockWidget *>(widget->parent());
     if (parentDock) {
-        // Remove the widget from the dock widget
         parentDock->setWidget(nullptr);
-        // Hide or remove the empty dock widget
+        widget->setParent(nullptr);
+        
+        // Remove and delete the empty dock widget
         parentDock->hide();
-        qDebug() << "LayoutService::setCentralWidget: Removed widget from dock:" << viewId;
-    }
-    
-    // Determine if this is an external widget (managed by plugin)
-    bool isExternal = true;  // Native widgets from plugins are typically external
-    
-    // Check the native view contribution for isExternalManaged flag
-    for (const auto &nativeView : plugin->native_view_contributions()) {
-        if (nativeView.viewId == viewId) {
-            isExternal = nativeView.isExternalManaged;
-            break;
-        }
-    }
-    
-    // Set as central widget
-    bool success = windowManager_->setCentralWidget(widget, isExternal);
-    
-    if (success) {
-        // Update view state
+        mainWindow->removeDockWidget(parentDock);
+        parentDock->deleteLater();
+        
+        // Clear dock widget reference in view state
         if (currentViewStates_.contains(viewId)) {
-            currentViewStates_[viewId].isCentralWidget = true;
-            currentViewStates_[viewId].centralWidget = widget;
+            currentViewStates_[viewId].dockWidget = nullptr;
         }
+        
+        qDebug() << "LayoutService::setCentralWidget: Removed widget from dock:" << viewId;
+    } else if (widget->parent() && widget->parent() != centralWidgetContainer_) {
+        // Detach from any other parent
+        widget->setParent(nullptr);
     }
     
-    return success;
+    // 7. Add widget to central container
+    widget->setParent(centralWidgetContainer_);
+    widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    centralContainerLayout_->addWidget(widget);
+    widget->show();
+    
+    // 8. Update state
+    currentCentralViewId_ = viewId;
+    if (currentViewStates_.contains(viewId)) {
+        currentViewStates_[viewId].isCentralWidget = true;
+        currentViewStates_[viewId].centralWidget = widget;
+    }
+    
+    qDebug() << "LayoutService::setCentralWidget: Set new central widget:" << viewId;
+    return true;
 }
 
 void LayoutService::applyDockArrangements(const QJsonObject &arrangements) {
@@ -462,7 +641,33 @@ QDockWidget *LayoutService::createViewDock(const ViewState &viewState) {
         return nullptr;
     }
     
+    QMainWindow *mainWindow = windowManager_->main_window();
+    if (!mainWindow) {
+        return nullptr;
+    }
+    
     const QString &viewId = viewState.viewId;
+    
+    // Check if this view is currently in the central container - if so, remove it from there
+    if (currentCentralViewId_ == viewId && centralContainerLayout_) {
+        // Remove the widget from central container
+        while (centralContainerLayout_->count() > 0) {
+            QLayoutItem* item = centralContainerLayout_->takeAt(0);
+            if (item && item->widget()) {
+                item->widget()->setParent(nullptr);
+            }
+            delete item;
+        }
+        
+        // Update state
+        currentCentralViewId_.clear();
+        if (currentViewStates_.contains(viewId)) {
+            currentViewStates_[viewId].isCentralWidget = false;
+            currentViewStates_[viewId].centralWidget = nullptr;
+        }
+        
+        qDebug() << "LayoutService::createViewDock: Removed widget from central container:" << viewId;
+    }
     
     // Find the plugin that provides this view
     IEditorPlugin *plugin = findPluginForView(viewId);
@@ -482,8 +687,22 @@ QDockWidget *LayoutService::createViewDock(const ViewState &viewState) {
                            << "- creating placeholder";
                 return createPlaceholderDock(viewId, nativeView.title, viewState.dockArea);
             }
+            
+            // Check if widget is already in another parent - detach it first
+            if (widget->parent()) {
+                QDockWidget *parentDock = qobject_cast<QDockWidget *>(widget->parent());
+                if (parentDock) {
+                    parentDock->setWidget(nullptr);
+                }
+                widget->setParent(nullptr);  // Detach from any parent
+            }
+            
+            // Create a modified contribution with the correct dock area from layout config
+            NativeViewContribution modifiedContrib = nativeView;
+            modifiedContrib.dockArea = viewState.dockArea;
+            
             QObject *viewModel = plugin->getViewModel(viewId);
-            return windowManager_->createDockableView(nativeView, widget, viewModel);
+            return windowManager_->createDockableView(modifiedContrib, widget, viewModel);
         }
     }
     
@@ -496,7 +715,12 @@ QDockWidget *LayoutService::createViewDock(const ViewState &viewState) {
                            << "- creating placeholder";
                 return createPlaceholderDock(viewId, view.title, viewState.dockArea);
             }
-            return windowManager_->createDockableView(view, viewModel);
+            
+            // Create a modified contribution with the correct dock area from layout config
+            ViewContribution modifiedContrib = view;
+            modifiedContrib.dockArea = viewState.dockArea;
+            
+            return windowManager_->createDockableView(modifiedContrib, viewModel);
         }
     }
     
