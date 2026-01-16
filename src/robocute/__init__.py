@@ -29,6 +29,7 @@ from .executor import (
     GraphExecutionResult,
     ExecutionCache,
 )
+import robocute.builtin_nodes
 
 __version__ = "0.2.0"
 __author__ = "RoboCute Team"

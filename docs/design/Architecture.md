@@ -2,7 +2,6 @@
 
 这里我们介绍RoboCute的整体架构
 
-
 - rbc: C++ Project
   - core: rbc_core.dll
   - world: rbc_world.dll for Scena and Resource

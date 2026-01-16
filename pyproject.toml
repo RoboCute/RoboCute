@@ -15,62 +15,10 @@ dependencies = [
     "mypy>=1.19.0",
 ]
 
-
-[tool.uv]
-conflicts = [
-  [
-    { extra = "cu128" },
-    { extra = "cu130" },
-  ],
-]
-
-
-[[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-cu130"
-url = "https://download.pytorch.org/whl/cu130"
-explicit = true
-
 [tool.uv.workspace]
 members = ["packages/*"]
 
-[tool.uv.sources]
-torch = [
-  { index = "pytorch-cu128", extra = "cu128" },
-  { index = "pytorch-cu130", extra = "cu130" },
-]
-torchvision = [
-  { index = "pytorch-cu128", extra = "cu128" },
-  { index = "pytorch-cu130", extra = "cu130" },
-]
-pyuipc = { workspace = true }
-
-
 [project.optional-dependencies]
-robotics = [
-  "usd-core>=25.11",
-]
-uipc = [
-  "pyuipc",
-]
-cu128 = [
-  "torch>=2.9.1",
-  "torchvision>=0.24.0",
-  "diffusers>=0.35.2",
-  "transformers>=4.57.3",
-  "accelerate>=1.12.0",
-]
-cu130 = [
-  "torch>=2.9.1",
-  "torchvision>=0.24.0",
-  "diffusers>=0.35.2",
-  "transformers>=4.57.3",
-  "accelerate>=1.12.0",
-]
 dev = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.0.0",
@@ -78,16 +26,12 @@ dev = [
     "mkdocs-i18n"
 ]
 
-
 [project.scripts]
 prepare = "scripts.main:prepare"
 gen = "scripts.main:generate"
 genx = "scripts.main:generatex"
 stub = "scripts.main:generate_stub"
 install = "scripts.main:install"
-
-
-
 
 [build-system]
 requires = ["setuptools>=61.0"]
