@@ -26,14 +26,14 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
 
     EditorEngine::instance().init(argc, argv);
     auto &pluginManager = EditorPluginManager::instance();
-    
+
     // 3. Create QML Engine
     // 注意：不设置 parent，由我们手动管理生命周期
     // 这样可以确保在所有 QQuickWidget 销毁后再删除 engine
     QQmlEngine *engine = new QQmlEngine();
     pluginManager.setQmlEngine(engine);
     qDebug() << "QML Engine created";
-    
+
     // 4. Load Plugins from DLL
     if (!pluginManager.loadPluginFromDLL("RBCE_ConnectionPlugin")) {
         qWarning() << "Failed to load ConnectionPlugin";
@@ -108,7 +108,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         // ====================================================================
         // 10. Cleanup Phase 1 - WindowManager 作用域内清理
         // ====================================================================
-        // 
+        //
         // QML 生命周期要点：
         // 1. QQuickWidget 内部持有 QQmlContext，QQmlContext 引用 QQmlEngine
         // 2. QQmlEngine 内部持有 QJSEngine，QJSEngine 管理 JavaScript 对象
@@ -122,29 +122,29 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         // 3. 然后在作用域外：卸载 plugins、删除 QQmlEngine
 
         // 10.1 首先清理 WindowManager：
-        //      - 隐藏窗口停止渲染
-        //      - 清理 QML context 引用（打破对 ViewModel 的引用）
-        //      - 释放外部 widget 引用（让 plugin 管理其 widget）
+        //  - 隐藏窗口停止渲染
+        //  - 清理 QML context 引用（打破对 ViewModel 的引用）
+        //  - 释放外部 widget 引用（让 plugin 管理其 widget）
         qDebug() << "Step 1: Cleaning up WindowManager...";
         windowManager.cleanup();
 
         // 处理所有待处理事件
         QCoreApplication::processEvents(QEventLoop::AllEvents);
-        
+
         qDebug() << "Step 2: WindowManager scope ending, destroying all QQuickWidgets...";
         // WindowManager 析构函数将在这里被调用，删除 main_window_ 及其所有子 widget
         // 包括所有 QQuickWidget，确保它们在 QQmlEngine 删除之前被销毁
     }
-    
+
     // ========================================================================
     // 11. Cleanup Phase 2 - WindowManager 作用域外清理
     // ========================================================================
-    // 
+    //
     // 关键：QML 类型注册与 DLL 卸载的顺序
     // ---------------------------------------------------------------
     // 插件通过 qmlRegisterType 注册 QML 类型到 QQmlEngine
     // 这些类型的元信息（vtable、静态函数指针等）存储在插件 DLL 中
-    // 
+    //
     // 如果先卸载插件（DLL 被卸载），再删除 QQmlEngine：
     // - QQmlEngine 析构时会清理已注册的类型
     // - 此时类型的元信息已经失效（DLL 已卸载）
@@ -165,14 +165,14 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     //      - engine 可以安全地清理这些类型
     qDebug() << "Step 3: Cleaning up QML Engine (before plugin unload)...";
     pluginManager.setQmlEngine(nullptr);
-    
+
     // 处理所有待处理事件，确保所有 QML 相关的清理都已完成
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-    
+
     // 显式删除 QML 引擎
     delete engine;
     engine = nullptr;
-    
+
     // 再次处理事件，确保引擎删除完成
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     qDebug() << "QML Engine cleaned up";
@@ -196,6 +196,6 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     qDebug() << "Step 6: Shutting down EditorEngine...";
     EditorEngine::instance().shutdown();
     qDebug() << "Cleanup completed, returning from dll_main...";
-    
+
     return result;
 }

@@ -38,7 +38,6 @@ def main():
     mesh_path = "D:/ws/data/assets/models/bunny.obj"
     scene = rbc.Scene()
     scene.start()  # start resource/scene manager singleton
-
     print("[1] Loading basic resources...")
     # Load a mesh resource
     mesh_id = scene.load_mesh(mesh_path, priority=rbc.LoadPriority.High)
@@ -94,7 +93,6 @@ def main():
 
     if entity_check is not None:
         print(f"    Entity has components: {list(entity_check.components.keys())}")
-
         if "render" in entity_check.components:
             rc = entity_check.components["render"]
             print(f"    Render component mesh_id: {rc.mesh_id}")
@@ -127,7 +125,7 @@ def main():
     print("      - GET  http://127.0.0.1:5555/scene/state")
     print("      - GET  http://127.0.0.1:5555/resources/all")
     print("      - POST http://127.0.0.1:5555/editor/register")
-    print("      - POST http://127.0.0.1:5555/editor/command (Editor commands)")
+    print("      - POST http://127.0.0.1:5555/editor/command")
     print("      - GET  http://127.0.0.1:5555/nodes (Node API)")
     print("      - GET  http://127.0.0.1:5555/graph/create (Node Graph API)")
     print("      - GET  http://127.0.0.1:5555/docs (API Documentation)")
