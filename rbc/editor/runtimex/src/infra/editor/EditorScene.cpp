@@ -3,9 +3,6 @@
 
 namespace rbc {
 
-SceneSync::SceneSync() {}
-SceneSync::~SceneSync() {}
-
 EditorScene::EditorScene() {
     qDebug() << "EditorScene: Initialize with Runtime ECS";
 }
