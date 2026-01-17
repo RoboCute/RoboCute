@@ -15,9 +15,8 @@ luisa::vector<RCWeak<TransformComponent>> &dirty_transforms() {
 void TransformComponent::serialize_meta(ObjSerialize const &obj) const {
     obj.ar.start_array();
     for (auto &child : _children) {
-        auto &&child_guid = child->guid();
-        if (child_guid) {
-            obj.ar.value(child_guid);
+        if (child) {
+            obj.ar.value(child);
         }
     }
     obj.ar.end_array("children");
@@ -36,10 +35,7 @@ void TransformComponent::deserialize_meta(ObjDeSerialize const &deser) {
         _children.reserve(size);
         vstd::Guid child_guid;
         if (deser.ar.value(child_guid)) {
-            auto obj = get_object_ref(child_guid);
-            if (obj && obj->is_type_of(TypeInfo::get<TransformComponent>())) {
-                add_children(static_cast<TransformComponent *>(obj.get()));
-            }
+            _children.emplace(child_guid);
         }
         deser.ar.end_scope();
     }
@@ -75,20 +71,27 @@ void TransformComponent::mark_dirty() {
 void TransformComponent::traversal(double4x4 const &new_trs) {
     auto old_l2w = _trs;
     auto old_w2l = inverse(old_l2w);
-    auto transform = [&](auto &transform, TransformComponent *tr) -> void {
+    auto transform = [&](auto& iterate, auto &transform, TransformComponent *tr) -> void {
         auto curr_l2w = tr->_trs;
         auto child_to_parent = curr_l2w * old_w2l;
         auto new_l2w = child_to_parent * new_trs;
         tr->_trs = new_l2w;
         tr->_decomposed = false;
         mark_dirty();
-        for (auto &i : tr->_children) {
-            transform(transform, i);
+        iterate(iterate, tr);
+    };
+    auto iterate = [&](auto &iterate, TransformComponent *tr) {
+        for (auto iter = tr->_children.begin(); iter != tr->_children.end(); ++iter) {
+            auto &guid = *iter;
+            auto tr_obj = get_object_ref(guid);
+            if (!tr_obj) {
+                iter = tr->_children.erase(iter);
+                continue;
+            }
+            transform(iterate, transform, static_cast<TransformComponent *>(tr_obj.get()));
         }
     };
-    for (auto &i : _children) {
-        transform(transform, i);
-    }
+    iterate(iterate, this);
 }
 void TransformComponent::set_pos(double3 const &position, bool recursive) {
     try_decompose();
@@ -151,18 +154,25 @@ void TransformComponent::add_children(TransformComponent *tr) {
     if (tr->_parent) {
         remove_children(tr);
     }
-    _children.emplace(tr);
+    _children.emplace(tr->guid());
     tr->_parent = this;
 }
 bool TransformComponent::remove_children(TransformComponent *tr) {
-    auto iter = _children.find(tr);
+    auto iter = _children.find(tr->guid());
     if (iter == _children.end()) return false;
     _children.erase(iter);
     tr->_parent = nullptr;
     return true;
 }
 TransformComponent::~TransformComponent() {
-    for (auto &tr : _children) {
+    for (auto iter = _children.begin(); iter != _children.end(); ++iter) {
+        auto &guid = *iter;
+        auto tr_obj = get_object_ref(guid);
+        if (!tr_obj) {
+            iter = _children.erase(iter);
+            continue;
+        }
+        auto tr = static_cast<TransformComponent *>(tr_obj.get());
         LUISA_DEBUG_ASSERT(tr->_parent = this);
         tr->_parent = nullptr;
     }
@@ -175,7 +185,7 @@ void TransformComponent::add_on_update_event(Component *ptr, void (Component::*f
 }
 
 void TransformComponent::_execute_on_update_event() {
-    luisa::vector<Component*> invalid_components;
+    luisa::vector<Component *> invalid_components;
     for (auto &i : _on_update_events) {
         auto obj = i.second.second.lock().rc();
         if (!obj || obj->base_type() != BaseObjectType::Component) [[unlikely]] {

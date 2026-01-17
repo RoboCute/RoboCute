@@ -31,6 +31,7 @@ GraphicsUtils *GraphicsUtils::instance() {
 GraphicsUtils::GraphicsUtils() {
 }
 GraphicsUtils::~GraphicsUtils() {
+    dispose();
 };
 
 void deser_openpbr(
@@ -38,6 +39,7 @@ void deser_openpbr(
     material::OpenPBR &x) {
 }
 void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
+    if (!_graphics_utils_singleton) return;
     if (_tex_loader) {
         _tex_loader->finish_task();
         _tex_loader.reset();
