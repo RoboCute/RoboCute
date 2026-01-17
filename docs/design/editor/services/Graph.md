@@ -261,219 +261,69 @@ GraphService 和 ResultService 是 RoboCute Editor 的核心服务，负责管�
 
 ### 4.1 IGraphService 接口
 
-```cpp
-// services/IGraphService.h
-#pragma once
-#include <QObject>
-#include <QString>
-#include <QStringList>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <functional>
+IGraphService
+- connectToServer
+- disconnectToServer
+- isConnected
+- serverUrl
+- getNodeDefinitions
+- getNodeDefinition
+- getNodeByCategory
+- currentGraphId
+- switchToGraph
+- closeGraph
+- loadGraphDefinition
+- executeCurrentGraph
+- executeGraph
+- cancelExecution
+- getExecutionStatus
+- getActiveExecutions
 
-namespace rbc {
-
-/**
- * 执行状态枚举
- */
-enum class ExecutionStatus {
-    Pending,      // 等待执行
-    Running,      // 正在执行
-    Completed,    // 执行完成
-    Failed,       // 执行失败
-    Cancelled     // 已取消
-};
-
-/**
- * 执行进度信息
- */
-struct ExecutionProgress {
-    QString executionId;
-    ExecutionStatus status;
-    int totalNodes;
-    int completedNodes;
-    QString currentNodeId;
-    QString currentNodeName;
-    double progressPercent;
-    QString message;
-};
-
-/**
- * 节点图服务接口
- */
-class IGraphService : public QObject {
-    Q_OBJECT
-public:
-    virtual ~IGraphService() = default;
-    
-    // === 连接管理 ===
-    
-    /**
-     * 连接到 Remote Server
-     * @param serverUrl 服务器地址
-     */
-    virtual void connectToServer(const QString& serverUrl) = 0;
-    
-    /**
-     * 断开连接
-     */
-    virtual void disconnectFromServer() = 0;
-    
-    /**
-     * 获取连接状态
-     */
-    virtual bool isConnected() const = 0;
-    
-    /**
-     * 获取当前服务器地址
-     */
-    virtual QString serverUrl() const = 0;
-    
-    // === 节点定义管理 ===
-    
-    /**
-     * 刷新节点定义列表
-     */
-    virtual void refreshNodeDefinitions() = 0;
-    
-    /**
-     * 获取所有可用的节点类型
-     */
-    virtual QJsonArray getNodeDefinitions() const = 0;
-    
-    /**
-     * 获取指定节点类型的定义
-     */
-    virtual QJsonObject getNodeDefinition(const QString& nodeType) const = 0;
-    
-    /**
-     * 按分类获取节点定义
-     */
-    virtual QMap<QString, QJsonArray> getNodesByCategory() const = 0;
-    
-    // === 图管理 ===
-    
-    /**
-     * 获取当前活动的图 ID
-     */
-    virtual QString currentGraphId() const = 0;
-    
-    /**
-     * 切换到指定的图
-     */
-    virtual bool switchToGraph(const QString& graphId) = 0;
-    
-    /**
-     * 创建新图
-     */
-    virtual QString createGraph(const QString& name = QString()) = 0;
-    
-    /**
-     * 关闭图
-     */
-    virtual bool closeGraph(const QString& graphId) = 0;
-    
-    /**
-     * 获取图定义（用于保存）
-     */
-    virtual QJsonObject getGraphDefinition(const QString& graphId) const = 0;
-    
-    /**
-     * 加载图定义
-     */
-    virtual bool loadGraphDefinition(const QString& graphId, const QJsonObject& definition) = 0;
-    
-    // === 执行管理 ===
-    
-    /**
-     * 执行当前图
-     * @return 执行 ID
-     */
-    virtual QString executeCurrentGraph() = 0;
-    
-    /**
-     * 执行指定图
-     * @param graphId 图 ID
-     * @return 执行 ID
-     */
-    virtual QString executeGraph(const QString& graphId) = 0;
-    
-    /**
-     * 取消执行
-     */
-    virtual void cancelExecution(const QString& executionId) = 0;
-    
-    /**
-     * 获取执行状态
-     */
-    virtual ExecutionStatus getExecutionStatus(const QString& executionId) const = 0;
-    
-    /**
-     * 获取执行进度
-     */
-    virtual ExecutionProgress getExecutionProgress(const QString& executionId) const = 0;
-    
-    /**
-     * 获取所有活动的执行
-     */
-    virtual QStringList getActiveExecutions() const = 0;
-    
-signals:
-    // === 连接信号 ===
-    void connectionStatusChanged(bool connected);
-    void connectionError(const QString& error);
-    
-    // === 节点定义信号 ===
-    void nodeDefinitionsUpdated();
-    void nodeDefinitionsLoadFailed(const QString& error);
-    
-    // === 图信号 ===
-    void graphCreated(const QString& graphId);
-    void graphClosed(const QString& graphId);
-    void currentGraphChanged(const QString& graphId);
-    void graphModified(const QString& graphId);
-    
-    // === 执行信号 ===
-    void executionStarted(const QString& executionId, const QString& graphId);
-    void executionProgress(const ExecutionProgress& progress);
-    void executionCompleted(const QString& executionId);
-    void executionFailed(const QString& executionId, const QString& error);
-    void executionCancelled(const QString& executionId);
-    
-    // === 节点执行信号 ===
-    void nodeExecutionStarted(const QString& executionId, const QString& nodeId);
-    void nodeExecutionCompleted(const QString& executionId, const QString& nodeId);
-    void nodeExecutionFailed(const QString& executionId, const QString& nodeId, const QString& error);
-};
-
-} // namespace rbc
-```
+signals
+- connectionStatusChanged
+- connectionError
+- nodeDefinitionsUpdated
+- nodeDefinitionsLoadFailed
+- graphCreated
+- graphClosed
+- currentGraphChanged
+- graphModified
+- executionStarted
+- executionProgress
+- executionCompleted
+- executionFailed
+- executionCancelled
+- nodeExecutionStarted
+- nodeExecutionCompleted
+- nodeExecutionFailed
 
 ### 4.2 IResultService 接口
 
-```cpp
-// services/IResultService.h
-#pragma once
-#include <QObject>
-#include <QString>
-#include <QJsonObject>
-#include <QPixmap>
-#include <QImage>
-#include <memory>
+- ResultType
+  - Invalid
+  - Animation
+  - Image
+  - Video
+  - Mesh
+  - PointCloud
+  - Custom
+- ResultMetadata
+  - id
+  - name
+  - type
+  - sourceNode
+  - timestamp
+  - properties
+- AnimationResultData
+  - name
+  - totalFrames
+  - fps
+  - entityIds
+- IResult
 
+```cpp
 namespace rbc {
 
-/**
- * 结果类型枚举
- */
-enum class ResultType {
-    Image,        // 图片
-    Text,         // 文本
-    Scene,        // 3D 场景（未来支持）
-    Animation,    // 动画序列（未来支持）
-    Data,         // 通用数据
-    Unknown
-};
 
 /**
  * 单个输出结果

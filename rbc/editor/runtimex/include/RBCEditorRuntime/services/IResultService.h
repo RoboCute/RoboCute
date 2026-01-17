@@ -18,6 +18,10 @@ enum class ResultType : int {
     Custom = 1000
 };
 
+struct OutputResult {
+    QString resultId;
+};
+
 struct ResultMetadata {
     QString id;
     QString name;
