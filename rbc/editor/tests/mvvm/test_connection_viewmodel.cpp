@@ -84,17 +84,17 @@ void TestConnectionViewModel::test_connect() {
     QSignalSpy connectedSpy(viewModel_, &ConnectionViewModel::connectedChanged);
 
     viewModel_->connect();
-    
+
     // Should be busy immediately
     QCOMPARE(viewModel_->isBusy(), true);
     QVERIFY(busySpy.count() >= 1);
 
     // Simulate successful connection
     mockService_->simulateConnectionSuccess();
-    
+
     // Wait for signals to propagate
     QCoreApplication::processEvents();
-    
+
     QCOMPARE(viewModel_->connected(), true);
     QCOMPARE(viewModel_->isBusy(), false);
     QVERIFY(connectedSpy.count() >= 1);
@@ -108,9 +108,9 @@ void TestConnectionViewModel::test_disconnect() {
     // Then disconnect
     QSignalSpy connectedSpy(viewModel_, &ConnectionViewModel::connectedChanged);
     viewModel_->disconnect();
-    
+
     QCoreApplication::processEvents();
-    
+
     QCOMPARE(viewModel_->connected(), false);
     QCOMPARE(viewModel_->isBusy(), false);
     QVERIFY(connectedSpy.count() >= 1);
@@ -121,13 +121,13 @@ void TestConnectionViewModel::test_testConnection() {
     QSignalSpy testedSpy(mockService_, &MockConnectionService::connectionTested);
 
     viewModel_->testConnection();
-    
+
     QCOMPARE(viewModel_->isBusy(), true);
     QVERIFY(busySpy.count() >= 1);
 
     mockService_->simulateTestSuccess();
     QCoreApplication::processEvents();
-    
+
     QCOMPARE(viewModel_->isBusy(), false);
     QCOMPARE(testedSpy.count(), 1);
 }
@@ -137,7 +137,7 @@ void TestConnectionViewModel::test_serverUrlChanged_signal() {
 
     mockService_->setServerUrl("http://new:9999");
     QCoreApplication::processEvents();
-    
+
     QVERIFY(spy.count() >= 1);
 }
 
@@ -146,7 +146,7 @@ void TestConnectionViewModel::test_connectedChanged_signal() {
 
     mockService_->simulateConnectionSuccess();
     QCoreApplication::processEvents();
-    
+
     QVERIFY(spy.count() >= 1);
 }
 
@@ -155,7 +155,7 @@ void TestConnectionViewModel::test_statusTextChanged_signal() {
 
     mockService_->simulateConnectionSuccess();
     QCoreApplication::processEvents();
-    
+
     QVERIFY(spy.count() >= 1);
 }
 
@@ -167,7 +167,7 @@ void TestConnectionViewModel::test_isBusyChanged_signal() {
 
     mockService_->simulateConnectionSuccess();
     QCoreApplication::processEvents();
-    QVERIFY(spy.count() >= 2); // busy -> not busy
+    QVERIFY(spy.count() >= 2);// busy -> not busy
 }
 
 void TestConnectionViewModel::test_connect_flow() {
@@ -177,13 +177,13 @@ void TestConnectionViewModel::test_connect_flow() {
 
     viewModel_->setServerUrl("http://test:5555");
     viewModel_->connect();
-    
+
     QCOMPARE(viewModel_->isBusy(), true);
     QCOMPARE(viewModel_->statusText(), QString("Connecting ..."));
 
     mockService_->simulateConnectionSuccess();
     QCoreApplication::processEvents();
-    
+
     QCOMPARE(viewModel_->connected(), true);
     QCOMPARE(viewModel_->statusText(), QString("Connected"));
     QCOMPARE(viewModel_->isBusy(), false);
@@ -198,7 +198,7 @@ void TestConnectionViewModel::test_disconnect_flow() {
     // Then disconnect
     viewModel_->disconnect();
     QCoreApplication::processEvents();
-    
+
     QCOMPARE(viewModel_->connected(), false);
     QCOMPARE(viewModel_->statusText(), QString("Disconnected"));
     QCOMPARE(viewModel_->isBusy(), false);
@@ -207,12 +207,12 @@ void TestConnectionViewModel::test_disconnect_flow() {
 void TestConnectionViewModel::test_testConnection_flow() {
     viewModel_->setServerUrl("http://test:5555");
     viewModel_->testConnection();
-    
+
     QCOMPARE(viewModel_->isBusy(), true);
 
     mockService_->simulateTestSuccess();
     QCoreApplication::processEvents();
-    
+
     QCOMPARE(viewModel_->isBusy(), false);
     // Connection status should not change for test
     QCOMPARE(viewModel_->connected(), false);
@@ -222,14 +222,14 @@ void TestConnectionViewModel::test_error_handling() {
     // Test with null service (should not crash)
     ConnectionViewModel *vmWithNull = new ConnectionViewModel(nullptr, this);
     QVERIFY(vmWithNull != nullptr);
-    
+
     // Should handle gracefully
     vmWithNull->setServerUrl("http://test");
     QCOMPARE(vmWithNull->serverUrl(), QString());
-    
+
     vmWithNull->connect();
     QCOMPARE(vmWithNull->isBusy(), false);
-    
+
     delete vmWithNull;
 }
 

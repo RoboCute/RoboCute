@@ -1,10 +1,9 @@
-#pragma once 
+#pragma once
 #include <QtTest/QtTest>
 #include <QObject>
 #include "RBCEditorRuntime/mvvm/ViewModelBase.h"
 #include "../mocks/MockConnectionService.h"
 #include "../../plugins/connection_plugin/ConnectionPlugin.h"
-
 
 class TestConnectionViewModel : public QObject {
     Q_OBJECT
@@ -41,7 +40,5 @@ private slots:
 
 private:
     rbc::MockConnectionService *mockService_;
-    rbc::ConnectionViewModel *viewModel_;
+    rbc::IConnectionViewModel *viewModel_;
 };
-
-

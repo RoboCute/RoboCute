@@ -6,15 +6,13 @@
 namespace rbc {
 
 MockConnectionService::MockConnectionService(QObject *parent)
-    : ConnectionService(parent)
-    , m_delayTimer(new QTimer(this)) {
+    : IConnectionService(parent), m_delayTimer(new QTimer(this)) {
     m_delayTimer->setSingleShot(true);
     QObject::connect(m_delayTimer, &QTimer::timeout, this, &MockConnectionService::onDelayedConnection);
 }
 
 QString MockConnectionService::serverUrl() const {
-    // Use base class implementation (it's not virtual, so this will be called when using MockConnectionService*)
-    return ConnectionService::serverUrl();
+    return "mock.server.url";
 }
 
 bool MockConnectionService::connected() const {
@@ -107,7 +105,7 @@ void MockConnectionService::setAutoConnectDelay(int milliseconds) {
 
 void MockConnectionService::reset() {
     m_delayTimer->stop();
-    ConnectionService::setServerUrl("http://127.0.0.1:5555");
+    setServerUrl("http://127.0.0.1:5555");
     m_mockConnected = false;
     m_mockStatusText = "Disconnected";
     m_autoConnectDelay = 0;
@@ -121,4 +119,3 @@ void MockConnectionService::onDelayedConnection() {
 }
 
 }// namespace rbc
-

@@ -1,6 +1,5 @@
 #pragma once
-
-#include "RBCEditorRuntime/services/ConnectionService.h"
+#include "RBCEditorRuntime/services/IConnectionService.h"
 #include <QTimer>
 #include <QString>
 
@@ -12,7 +11,7 @@ namespace rbc {
  * Provides controllable behavior for testing ConnectionViewModel and ConnectionPlugin
  * Inherits from ConnectionService to ensure compatibility
  */
-class MockConnectionService : public ConnectionService {
+class MockConnectionService : public IConnectionService {
     Q_OBJECT
     Q_PROPERTY(QString serverUrl READ serverUrl WRITE setServerUrl NOTIFY serverUrlChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
@@ -24,16 +23,17 @@ public:
 
     // Property accessors - hide base class methods to return mock state
     // Note: These are not virtual in base class, so we hide them instead
-    QString serverUrl() const;
-    bool connected() const;
-    QString statusText() const;
+    QString serverUrl() const override;
+    bool connected() const override;
+    QString statusText() const override;
+    void setServerUrl(const QString &url) override {};// nothing to do for mock Connection
 
     // Test control methods
     void simulateConnectionSuccess();
     void simulateConnectionFailure(const QString &errorMessage = "Connection failed");
     void simulateTestSuccess();
     void simulateTestFailure();
-    void setAutoConnectDelay(int milliseconds); // Delay before auto-connecting
+    void setAutoConnectDelay(int milliseconds);// Delay before auto-connecting
     void reset();
 
 public slots:
@@ -56,10 +56,9 @@ private:
     // Mock state (shadow base class private members for testing)
     bool m_mockConnected = false;
     QString m_mockStatusText = "Disconnected";
-    
+
     int m_autoConnectDelay = 0;
     QTimer *m_delayTimer = nullptr;
 };
 
 }// namespace rbc
-
