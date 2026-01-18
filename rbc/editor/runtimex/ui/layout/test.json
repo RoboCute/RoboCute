@@ -1,0 +1,42 @@
+{
+    "layout_id": "rbce.layout.test",
+    "layout_name": "Test Layout",
+    "description": "Test Layout for Robocute Editor",
+    "version": "0.2",
+    "views": [
+        {
+            "plugin_id": "com.robocute.connection",
+            "view_id": "connection_status",
+            "dock_area": "Left",
+            "visible": true,
+            "size": {
+                "width": 300,
+                "height": -1
+            }
+        },
+        {
+            "plugin_id": "com.robocute.layout",
+            "view_id": "layout_manager",
+            "dock_area": "Right",
+            "visible": true,
+            "size": {
+                "width": 280,
+                "height": -1
+            }
+        }
+    ],
+    "dock_arrangements": {
+        "Left": {
+            "type": "single",
+            "widgets": [
+                "connection_status"
+            ]
+        },
+        "Right": {
+            "type": "single",
+            "widgets": [
+                "layout_manager"
+            ]
+        }
+    }
+}

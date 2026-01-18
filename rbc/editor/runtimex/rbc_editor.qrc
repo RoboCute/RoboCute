@@ -6,5 +6,6 @@
     <file alias="quad.vert.qsb">shaders/prebuilt/quad.vert.qsb</file>
     <file>ui/layout/scene_editing.json</file>
     <file>ui/layout/aigc.json</file>
+    <file>ui/layout/test.json</file>
   </qresource>
 </RCC>

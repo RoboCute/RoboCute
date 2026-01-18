@@ -1,5 +1,6 @@
 /**
  * RBC Editor Testbed
+ * 共享相似的启动流程，但是支持热更新调整样式
  */
 
 #include <QWindow>
@@ -18,7 +19,6 @@
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/ui/WindowManager.h"
 #include "RBCEditorRuntime/services/LayoutService.h"
-#include <argparse/argparse.hpp>
 
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;
@@ -54,12 +54,12 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     if (!pluginManager.loadPluginFromDLL("RBCE_ConnectionPlugin")) {
         qWarning() << "Failed to load ConnectionPlugin";
     }
-    if (!pluginManager.loadPluginFromDLL("RBCE_ProjectPlugin")) {
-        qWarning() << "Failed to load ProjectPlugin";
-    }
-    if (!pluginManager.loadPluginFromDLL("RBCE_NodeEditorPlugin")) {
-        qWarning() << "Failed to load NodeEditorPlugin";
-    }
+    // if (!pluginManager.loadPluginFromDLL("RBCE_ProjectPlugin")) {
+    //     qWarning() << "Failed to load ProjectPlugin";
+    // }
+    // if (!pluginManager.loadPluginFromDLL("RBCE_NodeEditorPlugin")) {
+    //     qWarning() << "Failed to load NodeEditorPlugin";
+    // }
 
     int result = 0;
     {
@@ -77,6 +77,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         if (!pluginManager.loadPluginFromDLL("RBCE_LayoutPlugin")) {
             qWarning() << "Failed to load LayoutPlugin";
         }
+
         for (auto *plugin : pluginManager.getLoadedPlugins()) {
             qDebug() << "Processing menu contributions for plugin:" << plugin->id();
             QList<MenuContribution> menus = plugin->menu_contributions();
@@ -84,26 +85,18 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
                 windowManager.applyMenuContributions(menus);
             }
         }
-        if (layoutService->hasLayout("scene_editing")) {
-            qDebug() << "Applying scene_editing layout...";
-            layoutService->applyLayout("scene_editing");
-        } else {
-            qWarning() << "scene_editing layout not found, using placeholder for central widget";
-            // Fallback: central workspace placeholder
-            if (!mainWindow->centralWidget()) {
-                auto *centralLabel = new QLabel("Workspace placeholder", mainWindow);
-                centralLabel->setAlignment(Qt::AlignCenter);
-                mainWindow->setCentralWidget(centralLabel);
-            }
+
+        if (layoutService->hasLayout("rbce.layout.test")) {
+            qDebug() << "Applying test layout...";
+            layoutService->applyLayout("rbce.layout.test");
         }
+
         mainWindow->resize(1920, 1080);
         mainWindow->show();
         qDebug() << "Main window shown";
         result = app.exec();
         qDebug() << "Step 1: Cleaning up WindowManager...";
         windowManager.cleanup();
-
-        // 处理所有待处理事件
         QCoreApplication::processEvents(QEventLoop::AllEvents);
         qDebug() << "Step 2: WindowManager scope ending, destroying all QQuickWidgets...";
     }
