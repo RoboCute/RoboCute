@@ -39,3 +39,7 @@ add_test("anim", {"rbc_runtime", "rbc_core"})
 if has_config('rbc_editor') then
     includes("calculator") -- for qt_node_editor
 end
+
+if has_config('rbc_editor') then
+    includes('editor') -- for editor tests
+end
