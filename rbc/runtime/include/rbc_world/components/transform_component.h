@@ -13,7 +13,7 @@ struct RBC_RUNTIME_API TransformComponent final : ComponentDerive<TransformCompo
     RBC_RUNTIME_API friend void _zz_on_before_rendering();
 private:
     TransformComponent *_parent{};
-    luisa::unordered_set<TransformComponent *> _children;
+    luisa::unordered_set<vstd::Guid> _children;
     double3 _position;
     double3 _scale{1, 1, 1};
     Quaternion _rotation;

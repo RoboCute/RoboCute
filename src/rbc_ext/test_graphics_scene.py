@@ -61,6 +61,7 @@ def main():
     print('installed')
     while not ctx.should_close():
         ctx.tick()
+    del scene
 
 
 if __name__ == "__main__":
