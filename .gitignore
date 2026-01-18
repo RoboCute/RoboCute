@@ -120,8 +120,6 @@ uv.lock
 src/rbc_ext/bin
 src/rbc_ext/release
 debug
-!setup.cmd
-!setup.sh
 .pytest_cache
 .venv
 .vscode/*
