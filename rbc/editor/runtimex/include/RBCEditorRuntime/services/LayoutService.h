@@ -77,7 +77,7 @@ public:
 
 public:
     // extra public
-    
+
     /**
      * @brief Clear the current layout - remove all dock widgets and reset central widget
      * 
@@ -87,7 +87,7 @@ public:
      * @param preserveViews Set of view IDs that should be preserved for reuse
      */
     void clearCurrentLayout(const QSet<QString> &preserveViews = {});
-    
+
     void loadBuiltInLayouts();// from source file
     void loadUserLayouts();   // load from user-setting file
     QString layoutConfigDirectory() const;
@@ -153,12 +153,12 @@ private:// members
     bool isTransitioning_ = false;
     QTimer *transitionTimer_ = nullptr;
     QString configDirectory_;
-    
+
     // Central widget container - a stable wrapper for the actual central widget
     // This prevents Qt from deleting the actual widget when switching layouts
     QWidget *centralWidgetContainer_ = nullptr;
     QVBoxLayout *centralContainerLayout_ = nullptr;
-    QString currentCentralViewId_;  // viewId of the current central widget
+    QString currentCentralViewId_;// viewId of the current central widget
 };
 
 }// namespace rbc

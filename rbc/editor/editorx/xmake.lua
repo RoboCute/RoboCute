@@ -14,7 +14,7 @@ do
 end
 target_end()
 
-target("rbc_editor_testbed_module")
+target("rbc_editor_test_module")
 do
     add_rules("lc_basic_settings", {
         project_kind = "shared",
@@ -24,7 +24,7 @@ do
     add_rules('rbc_qt_rule')
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickControls2", "QtNetwork")
 
-    add_files("rbc_editor_testbed_module.cpp") -- module entry
+    add_files("rbc_editor_test_module.cpp") -- module entry
     add_deps("rbc_editor_runtimex", {
         public = true
     })
@@ -38,7 +38,7 @@ do
     })
     set_group("04.targets")
 
-    add_deps('rbc_editor_module', 'rbc_editor_testbed_module', 'rbc_runtime')
+    add_deps('rbc_runtime')
     add_files('main_entry.cpp')
 end
 target_end()

@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
-        if (arg == "-t" || arg == "--testbed") {
+        if (arg == "-t" || arg == "--test") {
             use_testbed = true;
         } else {
             filtered_argv.push_back(argv[i]);
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     // Load appropriate module based on arguments
     std::string module_name;
     if (use_testbed) {
-        module_name = "rbc_editor_testbed_module";
+        module_name = "rbc_editor_test_module";
     } else {
         module_name = "rbc_editor_module";
     }

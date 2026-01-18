@@ -1,5 +1,5 @@
 {
-    "layout_id": "aigc",
+    "layout_id": "rbce.layout.aigc",
     "layout_name": "AIGC Workflow",
     "description": "Layout optimized for AIGC workflow with Node Editor as central widget",
     "version": "1.1",

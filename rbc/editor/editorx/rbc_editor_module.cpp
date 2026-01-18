@@ -82,9 +82,9 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         // 7. Apply the default layout - LayoutService manages all DockArea layouts
         // LayoutService will create dock widgets for views defined in the layout config
         // If a viewId is not found in plugins, it will create a placeholder
-        if (layoutService->hasLayout("scene_editing")) {
-            qDebug() << "Applying scene_editing layout...";
-            layoutService->applyLayout("scene_editing");
+        auto startup_layout = "rbce.layout.scene_editing";
+        if (layoutService->hasLayout(startup_layout)) {
+            layoutService->applyLayout(startup_layout);
         } else {
             qWarning() << "scene_editing layout not found, using placeholder for central widget";
             // Fallback: central workspace placeholder

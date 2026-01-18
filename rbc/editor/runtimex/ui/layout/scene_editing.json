@@ -1,51 +1,73 @@
 {
-    "layout_id": "scene_editing",
-    "layout_name": "3D Scene Editing",
+    "layout_id": "rbce.layout.scene_editing",
+    "layout_name": "3D Scene Editing Workflow",
     "description": "Default Layout for 3D scene editing with viewport as central widget and node editor at bottom",
-    "version": "1.1",
+    "version": "0.2",
     "views": [
         {
             "plugin_id": "com.robocute.viewport",
             "view_id": "viewport.main",
             "dock_area": "Center",
             "visible": true,
-            "size": { "width": -1, "height": -1 }
+            "size": {
+                "width": -1,
+                "height": -1
+            }
         },
         {
             "plugin_id": "com.robocute.connection",
             "view_id": "connection_status",
             "dock_area": "Left",
             "visible": true,
-            "size": { "width": 300, "height": -1 }
+            "size": {
+                "width": 300,
+                "height": -1
+            }
         },
         {
             "plugin_id": "com.robocute.layout",
             "view_id": "layout_manager",
             "dock_area": "Right",
             "visible": true,
-            "size": { "width": 280, "height": -1 }
+            "size": {
+                "width": 280,
+                "height": -1
+            }
         },
         {
             "plugin_id": "com.robocute.node_editor",
             "view_id": "node_editor.main",
             "dock_area": "Bottom",
             "visible": true,
-            "size": { "width": -1, "height": 350 }
+            "size": {
+                "width": -1,
+                "height": 350
+            }
         }
     ],
     "dock_arrangements": {
         "Left": {
             "split_orientation": "vertical",
-            "split_ratio": [0.7, 0.3],
-            "widgets": ["scene_hierarchy", "connection_status"]
+            "split_ratio": [
+                0.7,
+                0.3
+            ],
+            "widgets": [
+                "scene_hierarchy",
+                "connection_status"
+            ]
         },
         "Right": {
             "type": "single",
-            "widgets": ["layout_manager"]
+            "widgets": [
+                "layout_manager"
+            ]
         },
         "Bottom": {
             "type": "single",
-            "widgets": ["node_editor.main"]
+            "widgets": [
+                "node_editor.main"
+            ]
         },
         "Center": {
             "central_widget": "viewport.main"

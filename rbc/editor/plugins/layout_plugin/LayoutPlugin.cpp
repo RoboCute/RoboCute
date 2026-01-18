@@ -121,7 +121,6 @@ void LayoutPlugin::buildMenuContributions() {
         };
         menuContributions_.append(sceneEditing);
     }
-
     if (layoutService_->hasLayout("aigc")) {
         MenuContribution aigc;
         aigc.menuPath = "View/Layouts";
@@ -137,6 +136,7 @@ void LayoutPlugin::buildMenuContributions() {
     }
 
     // === View Menu - Window Visibility ===
+
     // Toggle Layout Manager Panel
     MenuContribution toggleLayoutManager;
     toggleLayoutManager.menuPath = "View/Panels";

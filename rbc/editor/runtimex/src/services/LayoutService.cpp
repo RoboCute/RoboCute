@@ -16,10 +16,18 @@ QString LayoutService::currentLayoutId() const {
     return currentLayoutId_;
 }
 QStringList LayoutService::availableLayouts() const {
-    return {};
+    return layouts_.keys();
 }
 QJsonObject LayoutService::getLayoutMetadata(const QString &layoutId) const {
-    return {};
+    if (!layouts_.contains(layoutId)) {
+        qWarning() << "LayoutService::getLayoutMetadata: Layout not found: " << layoutId;
+        return {};
+    }
+    auto config = layouts_[layoutId];
+    return {
+        {"layout_id", layoutId},
+        {"layout_name", config.layoutName},
+        {"description", config.description}};
 }
 
 bool LayoutService::hasLayout(const QString &layoutId) const {
@@ -477,6 +485,7 @@ void LayoutService::loadBuiltInLayouts() {
         QStringLiteral(":/ui/layout/scene_editing.json"),
         QStringLiteral(":/ui/layout/aigc.json"),
         QStringLiteral(":/ui/layout/test.json"),
+        QStringLiteral(":/ui/layout/graph_dev.json"),
     };
 
     for (const QString &filePath : builtInLayoutFiles) {

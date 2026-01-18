@@ -5,14 +5,13 @@
 namespace rbc {
 
 LayoutViewModel::LayoutViewModel(LayoutService *layoutService, QObject *parent)
-    : ViewModelBase(parent)
-    , layoutService_(layoutService) {
-    
+    : ViewModelBase(parent), layoutService_(layoutService) {
+
     if (layoutService_) {
         // Connect to layout service signals when available
         // For now, we manually update when needed
     }
-    
+
     updateViewStates();
     qDebug() << "LayoutViewModel created";
 }
@@ -29,22 +28,7 @@ QStringList LayoutViewModel::availableLayouts() const {
     if (!layoutService_) {
         return {};
     }
-    
-    // Get available layouts from service
-    QStringList layouts;
-    
-    // Check for known built-in layouts
-    if (layoutService_->hasLayout("scene_editing")) {
-        layouts.append("scene_editing");
-    }
-    if (layoutService_->hasLayout("aigc")) {
-        layouts.append("aigc");
-    }
-    
-    // TODO: Add user layouts when implemented
-    // layouts.append(layoutService_->availableLayouts());
-    
-    return layouts;
+    return layoutService_->availableLayouts();
 }
 
 QVariantList LayoutViewModel::viewStates() const {
@@ -56,7 +40,7 @@ void LayoutViewModel::switchLayout(const QString &layoutId) {
         qWarning() << "LayoutViewModel::switchLayout: layoutService is null";
         return;
     }
-    
+
     if (layoutService_->switchToLayout(layoutId)) {
         qDebug() << "LayoutViewModel: Switched to layout:" << layoutId;
         emit currentLayoutIdChanged();
@@ -72,11 +56,11 @@ void LayoutViewModel::setViewVisible(const QString &viewId, bool visible) {
         qWarning() << "LayoutViewModel::setViewVisible: layoutService is null";
         return;
     }
-    
+
     layoutService_->setViewVisible(viewId, visible);
     updateViewStates();
     emit viewStatesChanged();
-    
+
     qDebug() << "LayoutViewModel: Set view" << viewId << "visible:" << visible;
 }
 
@@ -91,19 +75,11 @@ QString LayoutViewModel::getLayoutName(const QString &layoutId) const {
     if (!layoutService_) {
         return layoutId;
     }
-    
+
     QJsonObject metadata = layoutService_->getLayoutMetadata(layoutId);
     if (metadata.contains("layout_name")) {
         return metadata["layout_name"].toString();
     }
-    
-    // Fallback to formatted layout ID
-    if (layoutId == "scene_editing") {
-        return "3D Scene Editing";
-    } else if (layoutId == "aigc") {
-        return "AIGC Workflow";
-    }
-    
     return layoutId;
 }
 
@@ -111,20 +87,11 @@ QString LayoutViewModel::getLayoutDescription(const QString &layoutId) const {
     if (!layoutService_) {
         return QString();
     }
-    
     QJsonObject metadata = layoutService_->getLayoutMetadata(layoutId);
     if (metadata.contains("description")) {
         return metadata["description"].toString();
     }
-    
-    // Fallback descriptions
-    if (layoutId == "scene_editing") {
-        return "Default layout for 3D scene editing with viewport as central widget";
-    } else if (layoutId == "aigc") {
-        return "Layout optimized for AI-generated content workflow";
-    }
-    
-    return QString();
+    return QString("No Description");
 }
 
 void LayoutViewModel::onLayoutChanged() {
@@ -135,24 +102,23 @@ void LayoutViewModel::onLayoutChanged() {
 
 void LayoutViewModel::updateViewStates() {
     viewStates_.clear();
-    
+
     if (!layoutService_) {
         return;
     }
-    
+
     // Build list of known views with their visibility states
     QStringList knownViews = {
         "layout_manager",
         "connection_status",
         "viewport.main",
-        "project_previewer"
-    };
-    
+        "project_previewer"};
+
     for (const QString &viewId : knownViews) {
         QVariantMap viewInfo;
         viewInfo["viewId"] = viewId;
         viewInfo["visible"] = layoutService_->isViewVisible(viewId);
-        
+
         // Set display name
         if (viewId == "layout_manager") {
             viewInfo["displayName"] = "Layout Manager";
@@ -165,7 +131,7 @@ void LayoutViewModel::updateViewStates() {
         } else {
             viewInfo["displayName"] = viewId;
         }
-        
+
         viewStates_.append(viewInfo);
     }
 }
