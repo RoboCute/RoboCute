@@ -30,9 +30,9 @@ Item {
             // 标题
             Text {
                 text: "Connection Status"
-                font.pixelSize: 14
+                font.pixelSize: 16
                 font.bold: true
-                color: '#b3ff00'
+                color: '#48ff00'
             }
 
             // 状态指示器

@@ -1,4 +1,4 @@
-#include "MockConnectionService.h"
+#include "RBCEditorMock/ConnectionService.h"
 #include <QDebug>
 #include <QTimer>
 #include <QCoreApplication>

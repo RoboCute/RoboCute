@@ -1,8 +1,0 @@
-<!DOCTYPE RCC>
-<RCC version="1.0">
-  <qresource prefix="/">
-    <!-- Qt Quick Test looks for test files in the root of qrc -->
-    <file alias="test_connection_view.qml">qml/test_connection_view.qml</file>
-  </qresource>
-</RCC>
-

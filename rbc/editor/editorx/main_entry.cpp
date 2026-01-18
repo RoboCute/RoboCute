@@ -7,6 +7,7 @@ int main(int argc, char *argv[]) {
     luisa::fiber::scheduler scheduler;
     rbc::RuntimeStaticBase::init_all();
     rbc::PluginManager::init();
+
     auto defer_destroy = vstd::scope_exit([&] {
         rbc::PluginManager::destroy_instance();
         rbc::RuntimeStaticBase::dispose_all();
@@ -14,7 +15,6 @@ int main(int argc, char *argv[]) {
 
     // Parse command line arguments and remove mode flags if present
     bool use_testbed = false;
-    bool use_storybook = false;
     std::vector<char *> filtered_argv;
     filtered_argv.push_back(argv[0]);// Always include program name
 
@@ -22,10 +22,6 @@ int main(int argc, char *argv[]) {
         std::string arg = argv[i];
         if (arg == "-t" || arg == "--testbed") {
             use_testbed = true;
-            // Skip mode flag, don't add it to filtered_argv
-        } else if (arg == "-s" || arg == "--storybook") {
-            use_storybook = true;
-            // Skip mode flag, don't add it to filtered_argv
         } else {
             filtered_argv.push_back(argv[i]);
         }
@@ -35,10 +31,8 @@ int main(int argc, char *argv[]) {
 
     // Load appropriate module based on arguments
     std::string module_name;
-    if (use_storybook) {
-        module_name = "rbc_qml_storybook_module";
-    } else if (use_testbed) {
-        module_name = "rbc_testbed_module";
+    if (use_testbed) {
+        module_name = "rbc_editor_testbed_module";
     } else {
         module_name = "rbc_editor_module";
     }

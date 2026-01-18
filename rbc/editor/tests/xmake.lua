@@ -31,3 +31,6 @@ function add_editor_test(name, deps)
 end
 
 add_editor_test("func")
+
+includes("mock") -- mock services and plugins
+includes("testbed")

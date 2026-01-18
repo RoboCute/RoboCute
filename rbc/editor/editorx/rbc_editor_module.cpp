@@ -15,8 +15,6 @@
 #include "RBCEditorRuntime/ui/WindowManager.h"
 #include "RBCEditorRuntime/services/LayoutService.h"
 
-#include <argparse/argparse.hpp>
-
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;
     // 1. Overall Start QApplication

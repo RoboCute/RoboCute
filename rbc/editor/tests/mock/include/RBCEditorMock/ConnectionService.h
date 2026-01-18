@@ -1,4 +1,5 @@
 #pragma once
+#include <rbc_config.h>
 #include "RBCEditorRuntime/services/IConnectionService.h"
 #include <QTimer>
 #include <QString>
@@ -11,7 +12,7 @@ namespace rbc {
  * Provides controllable behavior for testing ConnectionViewModel and ConnectionPlugin
  * Inherits from ConnectionService to ensure compatibility
  */
-class MockConnectionService : public IConnectionService {
+class RBC_EDITOR_MOCK_API MockConnectionService : public IConnectionService {
     Q_OBJECT
     Q_PROPERTY(QString serverUrl READ serverUrl WRITE setServerUrl NOTIFY serverUrlChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)

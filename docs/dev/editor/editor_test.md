@@ -1,0 +1,7 @@
+# Editor Test 
+
+由于涉及较为复杂的界面逻辑，Editor的开发和测试也一直是难点，我们整体的架构分为如下几层
+
+- RBCEditorMock: 为了避免实际操作的不确定性，在这个模块中会继承RBCEditorRuntime中的接口并实现一些可以控制的MockService，这些MockService的状态功能可以通过特定的代码逻辑控制，从而在长期的开发迭代中保持一个较为稳定的benchmark流程
+- RBCEditorTestbed: 这个系列的工具主要是在开发单独组件时候的测试场所，会通过RBCEditorMock来覆盖真实Service功能
+- rbc_editor -t：在最终的成品Editor阶段，我们依然提供-t接口来分叉到一个调试界面，这个接口会保持和最终editor一致的实现逻辑和Service接口，用于检测最终成品的实现状态，帮助调试顶层的Layout逻辑等

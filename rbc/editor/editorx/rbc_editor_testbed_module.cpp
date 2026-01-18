@@ -2,7 +2,6 @@
  * RBC Editor Testbed
  * 共享相似的启动流程，但是支持热更新调整样式
  */
-
 #include <QWindow>
 #include <QGuiApplication>
 #include <QtWidgets/QApplication>
@@ -24,7 +23,6 @@
 
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;
-    // 1. Overall Start QApplication
     qputenv("QT_QUICK_CONTROLS_STYLE", "Fusion");
     QApplication app(argc, argv);
     QCommandLineParser parser;
@@ -40,14 +38,9 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     QString qmlPath;
     bool enable_hot_reload = parser.isSet(enableHotReloadOption);
     qDebug() << "Hot Reload 【" << (enable_hot_reload ? "enabled" : "disabled") << "】\n";
-    // 2. Initalize EditorEngine
 
     EditorEngine::instance().init(argc, argv);
     auto &pluginManager = EditorPluginManager::instance();
-
-    // 3. Create QML Engine
-    // 注意：不设置 parent，由我们手动管理生命周期
-    // 这样可以确保在所有 QQuickWidget 销毁后再删除 engine
     QQmlEngine *engine = new QQmlEngine();
     pluginManager.setQmlEngine(engine);
     qDebug() << "QML Engine created";
@@ -67,12 +60,12 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     {
         WindowManager windowManager(&pluginManager, nullptr);
         windowManager.setup_main_window();
-        
+
         // 设置热更新模式
         if (enable_hot_reload) {
             windowManager.setHotReloadEnabled(true);
         }
-        
+
         auto *mainWindow = windowManager.main_window();
         qDebug() << "Main window created";
         auto *layoutService = new LayoutService(&app);

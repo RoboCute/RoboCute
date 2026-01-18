@@ -11,12 +11,10 @@ do
         public = true
     })
     add_files("rbc_editor_module.cpp") -- module entry
-    add_deps("argparse")
-    -- plugins 
 end
 target_end()
 
-target("rbc_testbed_module")
+target("rbc_editor_testbed_module")
 do
     add_rules("lc_basic_settings", {
         project_kind = "shared",
@@ -26,27 +24,10 @@ do
     add_rules('rbc_qt_rule')
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickControls2", "QtNetwork")
 
-    add_files("rbc_testbed_module.cpp") -- module entry
+    add_files("rbc_editor_testbed_module.cpp") -- module entry
     add_deps("rbc_editor_runtimex", {
         public = true
     })
-    add_deps("argparse")
-end
-target_end()
-
-target("rbc_qml_storybook_module")
-do
-    add_rules("lc_basic_settings", {
-        project_kind = "shared",
-        rtti = true
-    })
-    add_rules("qt.shared")
-    add_rules('rbc_qt_rule')
-    add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickWidgets", "QtQuickControls2", "QtNetwork")
-    add_deps("rbc_editor_runtimex", {
-        public = true
-    })
-    add_files("rbc_qml_storybook.cpp") -- module entry
 end
 target_end()
 
@@ -57,7 +38,7 @@ do
     })
     set_group("04.targets")
 
-    add_deps('rbc_editor_module', 'rbc_testbed_module', 'rbc_qml_storybook_module', 'rbc_runtime')
+    add_deps('rbc_editor_module', 'rbc_editor_testbed_module', 'rbc_runtime')
     add_files('main_entry.cpp')
 end
 target_end()
