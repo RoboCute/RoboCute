@@ -1,0 +1,39 @@
+{
+    "layout_id": "rbce.layout.render_dev",
+    "layout_name": "Renderer Development",
+    "description": "Layout optimized for Developing Renderer",
+    "version": "0.2",
+    "views": [
+        {
+            "plugin_id": "com.robocute.viewport",
+            "view_id": "viewport.main",
+            "dock_area": "Center",
+            "visible": true,
+            "size": {
+                "width": -1,
+                "height": -1
+            }
+        },
+        {
+            "plugin_id": "com.robocute.layout",
+            "view_id": "layout_manager",
+            "dock_area": "Right",
+            "visible": true,
+            "size": {
+                "width": 280,
+                "height": -1
+            }
+        }
+    ],
+    "dock_arrangements": {
+        "Right": {
+            "type": "single",
+            "widgets": [
+                "layout_manager"
+            ]
+        },
+        "Center": {
+            "central_widget": "viewport.main"
+        }
+    }
+}

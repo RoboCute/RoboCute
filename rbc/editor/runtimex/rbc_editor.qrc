@@ -8,5 +8,6 @@
     <file>ui/layout/aigc.json</file>
     <file>ui/layout/test.json</file>
     <file>ui/layout/graph_dev.json</file>
+    <file>ui/layout/render_dev.json</file>
   </qresource>
 </RCC>

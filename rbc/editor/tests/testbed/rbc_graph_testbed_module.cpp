@@ -53,25 +53,18 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     {
         WindowManager windowManager(&pluginManager, nullptr);
         windowManager.setup_main_window();
-
-        // 设置热更新模式
         if (enable_hot_reload) {
             windowManager.setHotReloadEnabled(true);
         }
-
         auto *mainWindow = windowManager.main_window();
-        qDebug() << "Main window created";
         auto *layoutService = new LayoutService(&app);
         pluginManager.registerService(layoutService);
         layoutService->initialize(&windowManager, &pluginManager);
         layoutService->loadBuiltInLayouts();
-        qDebug() << "LayoutService initialized";
-
-        // 5.2 Load LayoutPlugin (depends on LayoutService)
+        // ui/menu plugin for Layout
         if (!pluginManager.loadPluginFromDLL("RBCE_LayoutPlugin")) {
             qWarning() << "Failed to load LayoutPlugin";
         }
-
         for (auto *plugin : pluginManager.getLoadedPlugins()) {
             qDebug() << "Processing menu contributions for plugin:" << plugin->id();
             QList<MenuContribution> menus = plugin->menu_contributions();
@@ -79,13 +72,10 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
                 windowManager.applyMenuContributions(menus);
             }
         }
-
-        if (layoutService->hasLayout("rbce.layout.test")) {
-            qDebug() << "Applying test layout...";
-            layoutService->applyLayout("rbce.layout.test");
+        auto startup_layout = "rbce.layout.graph_dev";
+        if (layoutService->hasLayout(startup_layout)) {
+            layoutService->applyLayout(startup_layout);
         }
-
-        // 热更新模式：添加 F5 快捷键监听
         QShortcut *reloadShortcut = nullptr;
         if (enable_hot_reload) {
             reloadShortcut = new QShortcut(QKeySequence(Qt::Key_F5), mainWindow);
@@ -100,27 +90,17 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         mainWindow->show();
         qDebug() << "Main window shown";
         result = app.exec();
-        qDebug() << "Step 1: Cleaning up WindowManager...";
         windowManager.cleanup();
         QCoreApplication::processEvents(QEventLoop::AllEvents);
-        qDebug() << "Step 2: WindowManager scope ending, destroying all QQuickWidgets...";
     }
     QCoreApplication::processEvents(QEventLoop::AllEvents);
-    qDebug() << "WindowManager destroyed, all QQuickWidgets deleted";
-    qDebug() << "Step 3: Cleaning up QML Engine (before plugin unload)...";
     pluginManager.setQmlEngine(nullptr);
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     delete engine;
     engine = nullptr;
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-    qDebug() << "QML Engine cleaned up";
-    qDebug() << "Step 4: Unloading all plugins...";
     pluginManager.unloadAllPlugins();
-    qDebug() << "Step 5: Clearing PluginManager service references...";
     pluginManager.clearServices();
-    qDebug() << "Step 6: Shutting down EditorEngine...";
     EditorEngine::instance().shutdown();
-    qDebug() << "Cleanup completed, returning from dll_main...";
-
     return result;
 }

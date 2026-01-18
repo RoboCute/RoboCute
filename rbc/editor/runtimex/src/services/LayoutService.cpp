@@ -486,6 +486,7 @@ void LayoutService::loadBuiltInLayouts() {
         QStringLiteral(":/ui/layout/aigc.json"),
         QStringLiteral(":/ui/layout/test.json"),
         QStringLiteral(":/ui/layout/graph_dev.json"),
+        QStringLiteral(":/ui/layout/render_dev.json"),
     };
 
     for (const QString &filePath : builtInLayoutFiles) {
