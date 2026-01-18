@@ -307,6 +307,18 @@ signals
   - Mesh
   - PointCloud
   - Custom
+- OutputResult
+  - resultId
+  - executionId
+  - nodeId
+  - outputName
+  - type
+  - metadata
+  - filePath
+  - data
+  - thumbnail
+  - hasThumbmail
+  - timestamp
 - ResultMetadata
   - id
   - name
@@ -314,205 +326,21 @@ signals
   - sourceNode
   - timestamp
   - properties
+- ResultQuery
+  - executionId
+  - nodeId
+  - outputName
+  - type
+  - limiit
+  - latestOnly
 - AnimationResultData
   - name
   - totalFrames
   - fps
   - entityIds
-- IResult
-
-```cpp
-namespace rbc {
+- IResultService
 
 
-/**
- * 单个输出结果
- */
-struct OutputResult {
-    QString resultId;           // 结果唯一 ID
-    QString executionId;        // 所属执行 ID
-    QString nodeId;             // 产生结果的节点 ID
-    QString outputName;         // 输出端口名称
-    ResultType type;            // 结果类型
-    QJsonObject metadata;       // 元数据（尺寸、格式等）
-    QString filePath;           // 文件路径（如果已保存）
-    QByteArray data;            // 原始数据（如果在内存中）
-    QImage thumbnail;           // 缩略图
-    bool hasThumbnail;          // 是否有缩略图
-    qint64 timestamp;           // 创建时间戳
-};
-
-/**
- * 结果查询选项
- */
-struct ResultQuery {
-    QString executionId;        // 按执行 ID 查询
-    QString nodeId;             // 按节点 ID 查询
-    QString outputName;         // 按输出名称查询
-    ResultType type;            // 按类型查询
-    int limit = -1;             // 返回数量限制
-    bool latestOnly = false;    // 仅返回最新结果
-};
-
-/**
- * 结果服务接口
- */
-class IResultService : public QObject {
-    Q_OBJECT
-public:
-    virtual ~IResultService() = default;
-    
-    // === 结果存储 ===
-    
-    /**
-     * 存储执行结果
-     * @param executionId 执行 ID
-     * @param nodeId 节点 ID
-     * @param outputName 输出名称
-     * @param resultData 结果数据 JSON
-     * @return 结果 ID
-     */
-    virtual QString storeResult(const QString& executionId,
-                                const QString& nodeId,
-                                const QString& outputName,
-                                const QJsonObject& resultData) = 0;
-    
-    /**
-     * 批量存储执行结果
-     */
-    virtual void storeExecutionResults(const QString& executionId,
-                                       const QJsonObject& allResults) = 0;
-    
-    // === 结果查询 ===
-    
-    /**
-     * 获取单个结果
-     */
-    virtual std::shared_ptr<OutputResult> getResult(const QString& resultId) const = 0;
-    
-    /**
-     * 按查询条件获取结果列表
-     */
-    virtual QList<std::shared_ptr<OutputResult>> queryResults(const ResultQuery& query) const = 0;
-    
-    /**
-     * 获取节点的最新输出结果
-     */
-    virtual std::shared_ptr<OutputResult> getLatestNodeOutput(const QString& nodeId,
-                                                               const QString& outputName) const = 0;
-    
-    /**
-     * 获取执行的所有结果
-     */
-    virtual QList<std::shared_ptr<OutputResult>> getExecutionResults(const QString& executionId) const = 0;
-    
-    // === 缩略图管理 ===
-    
-    /**
-     * 获取结果的缩略图
-     * @param resultId 结果 ID
-     * @param maxSize 最大尺寸
-     * @return 缩略图图像
-     */
-    virtual QImage getThumbnail(const QString& resultId, 
-                                const QSize& maxSize = QSize(128, 128)) const = 0;
-    
-    /**
-     * 异步生成缩略图
-     */
-    virtual void generateThumbnailAsync(const QString& resultId,
-                                        const QSize& maxSize = QSize(128, 128)) = 0;
-    
-    // === 结果数据访问 ===
-    
-    /**
-     * 获取完整的图片数据
-     */
-    virtual QImage getImageData(const QString& resultId) const = 0;
-    
-    /**
-     * 获取文本数据
-     */
-    virtual QString getTextData(const QString& resultId) const = 0;
-    
-    /**
-     * 获取原始数据
-     */
-    virtual QByteArray getRawData(const QString& resultId) const = 0;
-    
-    // === 结果导出 ===
-    
-    /**
-     * 保存结果到文件
-     */
-    virtual bool saveResultToFile(const QString& resultId, 
-                                  const QString& filePath) const = 0;
-    
-    /**
-     * 复制结果到剪贴板
-     */
-    virtual bool copyResultToClipboard(const QString& resultId) const = 0;
-    
-    // === 生命周期管理 ===
-    
-    /**
-     * 清除指定执行的所有结果
-     */
-    virtual void clearExecutionResults(const QString& executionId) = 0;
-    
-    /**
-     * 清除过期结果
-     * @param olderThanSeconds 超过此秒数的结果将被清除
-     */
-    virtual void clearExpiredResults(qint64 olderThanSeconds) = 0;
-    
-    /**
-     * 清除所有结果
-     */
-    virtual void clearAllResults() = 0;
-    
-    /**
-     * 获取缓存大小
-     */
-    virtual qint64 getCacheSize() const = 0;
-    
-    /**
-     * 设置最大缓存大小
-     */
-    virtual void setMaxCacheSize(qint64 bytes) = 0;
-    
-signals:
-    /**
-     * 新结果可用
-     */
-    void resultAvailable(const QString& resultId, 
-                         const QString& executionId,
-                         const QString& nodeId,
-                         const QString& outputName);
-    
-    /**
-     * 缩略图生成完成
-     */
-    void thumbnailReady(const QString& resultId);
-    
-    /**
-     * 结果被清除
-     */
-    void resultCleared(const QString& resultId);
-    
-    /**
-     * 执行结果全部到达
-     */
-    void executionResultsComplete(const QString& executionId);
-    
-    /**
-     * 缓存大小变化
-     */
-    void cacheSizeChanged(qint64 currentSize, qint64 maxSize);
-};
-
-} // namespace rbc
-```
 
 ### 4.3 GraphService 实现类
 
