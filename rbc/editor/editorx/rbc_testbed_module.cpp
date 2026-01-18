@@ -8,12 +8,14 @@
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QLabel>
+#include <QShortcut>
 #include <QStringList>
 #include <QtGlobal>
 #include <rbc_config.h>
 #include <QQmlEngine>
 #include <QDebug>
 #include <QCommandLineParser>
+#include <QKeySequence>
 #include "RBCEditorRuntime/core/EditorEngine.h"
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
@@ -65,6 +67,12 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     {
         WindowManager windowManager(&pluginManager, nullptr);
         windowManager.setup_main_window();
+        
+        // 设置热更新模式
+        if (enable_hot_reload) {
+            windowManager.setHotReloadEnabled(true);
+        }
+        
         auto *mainWindow = windowManager.main_window();
         qDebug() << "Main window created";
         auto *layoutService = new LayoutService(&app);
@@ -89,6 +97,17 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         if (layoutService->hasLayout("rbce.layout.test")) {
             qDebug() << "Applying test layout...";
             layoutService->applyLayout("rbce.layout.test");
+        }
+
+        // 热更新模式：添加 F5 快捷键监听
+        QShortcut *reloadShortcut = nullptr;
+        if (enable_hot_reload) {
+            reloadShortcut = new QShortcut(QKeySequence(Qt::Key_F5), mainWindow);
+            QObject::connect(reloadShortcut, &QShortcut::activated, [&windowManager]() {
+                qDebug() << "F5 pressed - Reloading all QML views...";
+                windowManager.reloadAllQmlViews();
+            });
+            qDebug() << "Hot reload: F5 shortcut registered for QML refresh";
         }
 
         mainWindow->resize(1920, 1080);

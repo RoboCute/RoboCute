@@ -14,7 +14,9 @@ do
     add_deps("rbc_editor_runtimex")
     add_rules('rbc_qt_rule')
     add_defines("RBC_EDITOR_PLUGIN_API=LUISA_DECLSPEC_DLL_EXPORT")
-    add_defines("RBCE_PLUGIN_PATH=\"" .. os.scriptdir() .. "\"")
+
+    -- 将反斜杠替换为正斜杠，避免 C++ 字符串字面量中的转义字符问题
+    add_defines("RBCE_PLUGIN_PATH=" .. os.scriptdir():gsub("\\", "/"))
 
 end
 

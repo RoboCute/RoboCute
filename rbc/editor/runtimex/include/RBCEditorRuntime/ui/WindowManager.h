@@ -101,6 +101,22 @@ public:
      */
     QWidget *takeCentralWidget();
 
+    // == Hot Reload Support ==
+    /**
+     * @brief 设置热更新模式
+     * 
+     * 当启用时，QML 文件将从文件系统 (qmlHotDir) 加载而非 qrc 资源
+     */
+    void setHotReloadEnabled(bool enabled);
+    bool isHotReloadEnabled() const { return hot_reload_enabled_; }
+
+    /**
+     * @brief 刷新所有 QML 视图
+     * 
+     * 重新加载所有已注册的 QML 视图，用于热更新
+     */
+    void reloadAllQmlViews();
+
 private:
     QDockWidget *createDockWidgetCommon(
         const QString &viewId,
@@ -115,10 +131,19 @@ private:
     QMainWindow *main_window_ = nullptr;
     EditorPluginManager *plugin_mng_ = nullptr;
     bool cleaned_up_ = false;
+    bool hot_reload_enabled_ = false;
     
     // 追踪外部传入的 widget（使用 QPointer 安全追踪）
     // Key: viewId, Value: 外部 widget 的弱引用
     QHash<QString, QPointer<QWidget>> external_widgets_;
+    
+    // 存储 QML 视图的贡献信息和 ViewModel，用于热更新刷新
+    struct QmlViewInfo {
+        ViewContribution contribution;
+        QObject *viewModel;
+        QPointer<QWidget> quickWidget;
+    };
+    QHash<QString, QmlViewInfo> qml_views_;
 };
 
 }// namespace rbc

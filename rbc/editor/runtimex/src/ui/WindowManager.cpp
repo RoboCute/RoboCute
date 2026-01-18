@@ -223,10 +223,15 @@ QDockWidget *WindowManager::createDockableView(const ViewContribution &contribut
     QQuickWidget *quickWidget = new QQuickWidget(engine, nullptr);
     quickWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
 
-    // Resolve QML URL (support qrc:/ and file://)
+    // Resolve QML URL (support qrc:/, file://, or hot reload from filesystem)
     QUrl qmlUrl;
 
-    if (contribution.qmlSource.startsWith("qrc:/") || contribution.qmlSource.startsWith(":/")) {
+    if (hot_reload_enabled_ && !contribution.qmlHotDir.isEmpty()) {
+        // 热更新模式：从文件系统加载
+        QString filePath = contribution.qmlHotDir + "/qml/" + contribution.qmlSource;
+        qmlUrl = QUrl::fromLocalFile(filePath);
+        qDebug() << "WindowManager: Hot reload mode - loading QML from:" << filePath;
+    } else if (contribution.qmlSource.startsWith("qrc:/") || contribution.qmlSource.startsWith(":/")) {
         qmlUrl = QUrl(contribution.qmlSource);
     } else if (contribution.qmlSource.startsWith("file://")) {
         qmlUrl = QUrl(contribution.qmlSource);
@@ -276,6 +281,13 @@ QDockWidget *WindowManager::createDockableView(const ViewContribution &contribut
         delete quickWidget;
         return nullptr;
     }
+
+    // 存储 QML 视图信息用于热更新刷新
+    QmlViewInfo viewInfo;
+    viewInfo.contribution = contribution;
+    viewInfo.viewModel = viewModel;
+    viewInfo.quickWidget = quickWidget;
+    qml_views_.insert(contribution.viewId, viewInfo);
 
     qDebug() << "WindowManager::createDockableView: Created dock for" << contribution.viewId;
     return dock;
@@ -509,6 +521,84 @@ void WindowManager::applyMenuContributions(const QList<MenuContribution> &contri
 
         qDebug() << "WindowManager::applyMenuContributions: Added menu item" << contribution.menuPath;
     }
+}
+
+void WindowManager::setHotReloadEnabled(bool enabled) {
+    hot_reload_enabled_ = enabled;
+    qDebug() << "WindowManager: Hot reload" << (enabled ? "enabled" : "disabled");
+}
+
+void WindowManager::reloadAllQmlViews() {
+    if (!plugin_mng_ || !plugin_mng_->qmlEngine()) {
+        qWarning() << "WindowManager::reloadAllQmlViews: QML engine is not available";
+        return;
+    }
+
+    qDebug() << "WindowManager::reloadAllQmlViews: Reloading" << qml_views_.size() << "QML views...";
+
+    QQmlEngine *engine = plugin_mng_->qmlEngine();
+
+    for (auto it = qml_views_.begin(); it != qml_views_.end(); ++it) {
+        const QString &viewId = it.key();
+        QmlViewInfo &viewInfo = it.value();
+
+        if (!viewInfo.quickWidget) {
+            qWarning() << "WindowManager::reloadAllQmlViews: QQuickWidget for" << viewId << "has been deleted";
+            continue;
+        }
+
+        QQuickWidget *quickWidget = qobject_cast<QQuickWidget *>(viewInfo.quickWidget.data());
+        if (!quickWidget) {
+            qWarning() << "WindowManager::reloadAllQmlViews: Widget is not QQuickWidget for" << viewId;
+            continue;
+        }
+
+        // 重新计算 QML URL
+        QUrl qmlUrl;
+        const ViewContribution &contribution = viewInfo.contribution;
+
+        if (hot_reload_enabled_ && !contribution.qmlHotDir.isEmpty()) {
+            QString filePath = contribution.qmlHotDir + "/qml/" + contribution.qmlSource;
+            qmlUrl = QUrl::fromLocalFile(filePath);
+            qDebug() << "WindowManager::reloadAllQmlViews: Reloading" << viewId << "from:" << filePath;
+        } else if (contribution.qmlSource.startsWith("qrc:/") || contribution.qmlSource.startsWith(":/")) {
+            qmlUrl = QUrl(contribution.qmlSource);
+        } else if (contribution.qmlSource.startsWith("file://")) {
+            qmlUrl = QUrl(contribution.qmlSource);
+        } else {
+            qmlUrl = QUrl("qrc:/qml/" + contribution.qmlSource);
+        }
+
+        // 重新设置 ViewModel（确保 context 绑定正确）
+        QQmlContext *context = quickWidget->rootContext();
+        if (context && viewInfo.viewModel) {
+            context->setContextProperty("viewModel", viewInfo.viewModel);
+        }
+
+        // 重新加载 QML
+        // 1. 先清空 source 以确保完全卸载旧内容
+        quickWidget->setSource(QUrl());
+        engine->clearComponentCache();
+        engine->trimComponentCache();
+        // 2. 处理事件确保卸载完成
+        QCoreApplication::processEvents();
+
+        // 3. 重新加载新的 QML
+        qDebug() << "WindowManager::reloadAllQmlViews: Setting source to:" << qmlUrl.toString();
+        quickWidget->setSource(qmlUrl);
+
+        if (quickWidget->status() == QQuickWidget::Error) {
+            qWarning() << "WindowManager::reloadAllQmlViews: Failed to reload QML for" << viewId;
+            qWarning() << "Errors:" << quickWidget->errors();
+        } else {
+            qDebug() << "WindowManager::reloadAllQmlViews: Successfully reloaded" << viewId;
+        }
+    }
+
+    // 处理所有待处理事件，确保缓存清理完成
+    QCoreApplication::processEvents();
+
+    qDebug() << "WindowManager::reloadAllQmlViews: Reload completed";
 }
 
 }// namespace rbc

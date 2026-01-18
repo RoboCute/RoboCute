@@ -32,7 +32,7 @@ Item {
                 text: "Connection Status"
                 font.pixelSize: 14
                 font.bold: true
-                color: "#ffff00"
+                color: '#b3ff00'
             }
 
             // 状态指示器

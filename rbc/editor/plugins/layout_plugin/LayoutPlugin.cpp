@@ -86,6 +86,7 @@ QList<ViewContribution> LayoutPlugin::view_contributions() const {
     view.viewId = "layout_manager";
     view.title = "Layout Manager";
     view.qmlSource = "LayoutView.qml";
+    view.qmlHotDir = STR(RBCE_PLUGIN_PATH);
     view.dockArea = "Right";
     view.preferredSize = "280,300";
     view.closable = true;
@@ -100,7 +101,7 @@ QList<MenuContribution> LayoutPlugin::menu_contributions() const {
 
 void LayoutPlugin::buildMenuContributions() {
     menuContributions_.clear();
-    
+
     if (!layoutService_) {
         return;
     }
