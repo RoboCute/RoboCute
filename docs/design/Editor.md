@@ -1,5 +1,7 @@
 # RoboCute编辑器
 
+这篇文档旨在向Robocute的使用者介绍RBC Editor，一个Robocute自研的场景编辑器的设计思路和使用方法，如果您希望进一步了解源码和开发架构的设计，请参考[RBC Editor开发文档](../dev/EditorDev.md)
+
 和游戏引擎与工业软件的重度编辑器不同，RoboCute的编辑器更类似于一个Debugger或者Inspector，旨在帮助完成一些用代码实现非常繁琐的参数配置，流程配置，提前预览，结果而可视化的部分。
 
 Editor启动流程

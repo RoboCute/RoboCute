@@ -4,6 +4,12 @@
 #include "RBCEditorRuntime/mvvm/ViewModelBase.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 
+#ifndef RBCE_PLUGIN_PATH
+#define RBCE_PLUGIN_PATH ""
+#endif
+#define _STR(x) #x
+#define STR(x) _STR(x)
+
 namespace rbc {
 
 /**

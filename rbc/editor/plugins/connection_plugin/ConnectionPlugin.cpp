@@ -11,7 +11,7 @@ namespace rbc {
 
 ConnectionPlugin::ConnectionPlugin(QObject *parent)
     : IEditorPlugin(parent) {
-    qDebug() << "ConnectionPlugin created";
+    qDebug() << "ConnectionPlugin created" << STR(RBCE_PLUGIN_PATH);
 }
 
 ConnectionPlugin::~ConnectionPlugin() {
@@ -38,6 +38,7 @@ bool ConnectionPlugin::load(PluginContext *context) {
     viewModel_ = new ConnectionViewModel(connectionService_, this);
 
     qDebug() << "ConnectionPlugin loaded successfully";
+    // qDebug() << "ConnectionPlugin loaded at " << STR(RBCE_PLUGIN_PATH);
     return true;
 }
 
@@ -90,6 +91,7 @@ QList<ViewContribution> ConnectionPlugin::view_contributions() const {
     // qml file is compiled into the plugin's qrc under qrc:/qml/
     // keep the relative path minimal so WindowManager resolves it correctly
     view.qmlSource = "ConnectionView.qml";
+    view.qmlHotDir = STR(RBCE_PLUGIN_PATH);
     view.dockArea = "Left";
     view.preferredSize = "300,200";
     view.closable = true;

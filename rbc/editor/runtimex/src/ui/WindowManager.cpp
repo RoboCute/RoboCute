@@ -42,34 +42,34 @@ WindowManager::~WindowManager() {
         qWarning() << "WindowManager::~WindowManager: cleanup() was not called before destruction!";
         cleanup();
     }
-    
+
     // 简单的析构：依赖 Qt 的 parent-child 自动清理机制
     // main_window_ 及其所有子 widget 会被自动删除
     if (main_window_) {
         delete main_window_;
         main_window_ = nullptr;
     }
-    
+
     qDebug() << "WindowManager::~WindowManager: Destroyed";
 }
 
 void WindowManager::cleanupQmlWidget(QWidget *widget) {
     QQuickWidget *quickWidget = qobject_cast<QQuickWidget *>(widget);
     if (!quickWidget) return;
-    
+
     // 隐藏 QQuickWidget 停止渲染
     quickWidget->hide();
-    
+
     // 清理 context properties，打破对 ViewModel 的引用
     // 这是关键：防止 QML 在 ViewModel 销毁后访问它
     QQmlContext *context = quickWidget->rootContext();
     if (context) {
         context->setContextProperty("viewModel", nullptr);
     }
-    
+
     // 清空 source 停止 QML 执行
     quickWidget->setSource(QUrl());
-    
+
     qDebug() << "WindowManager::cleanupQmlWidget: Cleaned up QQuickWidget";
 }
 
@@ -78,16 +78,16 @@ void WindowManager::cleanup() {
         return;
     }
     cleaned_up_ = true;
-    
+
     if (!main_window_) {
         return;
     }
-    
+
     qDebug() << "WindowManager::cleanup: Starting cleanup...";
-    
+
     // 1. 隐藏窗口，停止所有渲染和事件处理
     main_window_->hide();
-    
+
     // 2. 清理所有 dock widget 中的 QML widget
     //    这一步打破 QML 对 ViewModel 的引用，防止 plugin unload 后访问已销毁对象
     QList<QDockWidget *> dockWidgets = main_window_->findChildren<QDockWidget *>();
@@ -97,7 +97,7 @@ void WindowManager::cleanup() {
             cleanupQmlWidget(widget);
         }
     }
-    
+
     // 3. 释放外部 widget 的引用
     //    外部 widget 由其创建者（plugin）管理，我们只是解除引用
     //    关键：必须在 WindowManager 析构前将外部 widget 从 dock 中移除
@@ -105,7 +105,7 @@ void WindowManager::cleanup() {
     for (auto it = external_widgets_.begin(); it != external_widgets_.end(); ++it) {
         QString viewId = it.key();
         QPointer<QWidget> widgetPtr = it.value();
-        
+
         if (widgetPtr) {
             // 找到对应的 dock 并解除关联
             QDockWidget *dock = main_window_->findChild<QDockWidget *>(viewId);
@@ -115,20 +115,20 @@ void WindowManager::cleanup() {
                     // 从 dock 中移除外部 widget，但不删除它
                     // 这样 plugin 仍然可以安全地管理它
                     dock->setWidget(nullptr);
-                    widgetPtr->setParent(nullptr);  // 确保完全脱离 parent-child 关系
+                    widgetPtr->setParent(nullptr);// 确保完全脱离 parent-child 关系
                     qDebug() << "WindowManager::cleanup: Released external widget:" << viewId;
                 } else {
                     // widget 可能被包装在其他容器中
                     // 尝试直接从 parent 中移除
                     qWarning() << "WindowManager::cleanup: Widget mismatch for" << viewId
                                << "- dock->widget() is different, forcing release";
-                    widgetPtr->setParent(nullptr);  // 强制脱离 parent
+                    widgetPtr->setParent(nullptr);// 强制脱离 parent
                     qDebug() << "WindowManager::cleanup: Force-released external widget:" << viewId;
                 }
             } else {
                 // Dock 未找到，可能 widget 是 central widget
                 // 检查是否是 central widget
-                if (main_window_->centralWidget() == widgetPtr || 
+                if (main_window_->centralWidget() == widgetPtr ||
                     widgetPtr->parent() == main_window_->centralWidget()) {
                     widgetPtr->setParent(nullptr);
                     qDebug() << "WindowManager::cleanup: Released external central widget:" << viewId;
@@ -144,7 +144,7 @@ void WindowManager::cleanup() {
         }
     }
     external_widgets_.clear();
-    
+
     // 4. 断开菜单 action 的信号连接
     //    菜单 callback 可能捕获了 plugin 对象的指针，需要在 plugin unload 前断开
     QMenuBar *menuBar = main_window_->menuBar();
@@ -159,14 +159,14 @@ void WindowManager::cleanup() {
                 }
             }
         };
-        
+
         for (QAction *action : menuBar->actions()) {
             if (action->menu()) {
                 disconnectMenuActions(action->menu());
             }
         }
     }
-    
+
     qDebug() << "WindowManager::cleanup: Cleanup completed";
 }
 
@@ -225,6 +225,7 @@ QDockWidget *WindowManager::createDockableView(const ViewContribution &contribut
 
     // Resolve QML URL (support qrc:/ and file://)
     QUrl qmlUrl;
+
     if (contribution.qmlSource.startsWith("qrc:/") || contribution.qmlSource.startsWith(":/")) {
         qmlUrl = QUrl(contribution.qmlSource);
     } else if (contribution.qmlSource.startsWith("file://")) {
@@ -290,14 +291,14 @@ QDockWidget *WindowManager::createDockableView(
     bool isExternalWidget) {
 
     QDockWidget *dock = createDockWidgetCommon(viewId, title, widget, dockArea, features, allowedAreas);
-    
+
     // 如果是外部 widget，使用 QPointer 追踪它
     // 这样在 cleanup() 时可以安全地释放引用，让 plugin 管理其生命周期
     if (dock && isExternalWidget) {
         external_widgets_.insert(viewId, QPointer<QWidget>(widget));
         qDebug() << "WindowManager::createDockableView: Registered external widget:" << viewId;
     }
-    
+
     return dock;
 }
 
@@ -305,19 +306,19 @@ QDockWidget *WindowManager::createDockableView(
     const NativeViewContribution &contribution,
     QWidget *widget,
     QObject *viewModel) {
-    
-    Q_UNUSED(viewModel); // 可用于未来扩展
-    
+
+    Q_UNUSED(viewModel);// 可用于未来扩展
+
     Qt::DockWidgetArea area = parse_dock_area(contribution.dockArea);
-    
+
     QDockWidget::DockWidgetFeatures features = QDockWidget::NoDockWidgetFeatures;
-    if (contribution.closable) 
+    if (contribution.closable)
         features |= QDockWidget::DockWidgetClosable;
-    if (contribution.movable) 
+    if (contribution.movable)
         features |= QDockWidget::DockWidgetMovable;
-    if (contribution.floatable) 
+    if (contribution.floatable)
         features |= QDockWidget::DockWidgetFloatable;
-    
+
     return createDockableView(
         contribution.viewId,
         contribution.title,
@@ -325,8 +326,7 @@ QDockWidget *WindowManager::createDockableView(
         area,
         features,
         Qt::AllDockWidgetAreas,
-        contribution.isExternalManaged
-    );
+        contribution.isExternalManaged);
 }
 
 QWidget *WindowManager::createStandaloneView(const QString &qmlSource, QObject *viewModel, const QString &title) {
@@ -447,7 +447,7 @@ void WindowManager::applyMenuContributions(const QList<MenuContribution> &contri
         // Find or create menu hierarchy
         QMenu *currentMenu = nullptr;
         QString menuName = pathParts.first();
-        
+
         // Find existing menu or create new one
         QList<QAction *> menuBarActions = menuBar->actions();
         for (QAction *action : menuBarActions) {
@@ -456,7 +456,7 @@ void WindowManager::applyMenuContributions(const QList<MenuContribution> &contri
                 break;
             }
         }
-        
+
         if (!currentMenu) {
             currentMenu = menuBar->addMenu(menuName);
         }
@@ -470,7 +470,7 @@ void WindowManager::applyMenuContributions(const QList<MenuContribution> &contri
             for (int i = 1; i < pathParts.size() - 1; ++i) {
                 QString subMenuName = pathParts[i];
                 QMenu *subMenu = nullptr;
-                
+
                 QList<QAction *> menuActions = currentMenu->actions();
                 for (QAction *action : menuActions) {
                     if (action->text() == subMenuName && action->menu()) {
@@ -478,7 +478,7 @@ void WindowManager::applyMenuContributions(const QList<MenuContribution> &contri
                         break;
                     }
                 }
-                
+
                 if (!subMenu) {
                     subMenu = currentMenu->addMenu(subMenuName);
                 }
@@ -490,7 +490,7 @@ void WindowManager::applyMenuContributions(const QList<MenuContribution> &contri
             // Single level menu, use actionText from contribution
             actionText = contribution.actionText;
         }
-        
+
         if (actionText.isEmpty()) {
             qWarning() << "WindowManager::applyMenuContributions: Empty action text for" << contribution.menuPath;
             continue;

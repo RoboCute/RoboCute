@@ -16,6 +16,7 @@ struct ViewContribution {
     QString preferredSize;
     bool closable;
     bool movable;
+    QString qmlHotDir;// hot reload qml directory
 };
 
 /**

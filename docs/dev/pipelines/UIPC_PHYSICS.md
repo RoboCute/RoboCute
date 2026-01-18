@@ -1,3 +1,0 @@
-# UIPC Physics Simulation
-
-(WIP) 
