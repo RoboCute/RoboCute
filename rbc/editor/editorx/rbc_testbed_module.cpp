@@ -25,6 +25,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         QStringList() << "enable_hot_reload",
         QCoreApplication::translate("main", "Enable hot reload for QML files"));
     parser.addOption(enableHotReloadOption);
+
     QCommandLineOption qmlPathOption(
         QStringList() << "qml_path",
         QCoreApplication::translate("main", "Path to QML Root directory to watch"),

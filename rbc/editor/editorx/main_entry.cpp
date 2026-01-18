@@ -12,16 +12,20 @@ int main(int argc, char *argv[]) {
         rbc::RuntimeStaticBase::dispose_all();
     });
 
-    // Parse command line arguments and remove -t if present
+    // Parse command line arguments and remove mode flags if present
     bool use_testbed = false;
+    bool use_storybook = false;
     std::vector<char *> filtered_argv;
     filtered_argv.push_back(argv[0]);// Always include program name
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
-        if (arg == "-t") {
+        if (arg == "-t" || arg == "--testbed") {
             use_testbed = true;
-            // Skip -t, don't add it to filtered_argv
+            // Skip mode flag, don't add it to filtered_argv
+        } else if (arg == "-s" || arg == "--storybook") {
+            use_storybook = true;
+            // Skip mode flag, don't add it to filtered_argv
         } else {
             filtered_argv.push_back(argv[i]);
         }
@@ -30,7 +34,14 @@ int main(int argc, char *argv[]) {
     int filtered_argc = static_cast<int>(filtered_argv.size());
 
     // Load appropriate module based on arguments
-    std::string module_name = use_testbed ? "rbc_testbed_module" : "rbc_editor_module";
+    std::string module_name;
+    if (use_storybook) {
+        module_name = "rbc_qml_storybook_module";
+    } else if (use_testbed) {
+        module_name = "rbc_testbed_module";
+    } else {
+        module_name = "rbc_editor_module";
+    }
     auto module = rbc::PluginManager::instance().load_module(module_name);
     auto value = module->invoke<int(int, char *[])>(
         "dll_main",

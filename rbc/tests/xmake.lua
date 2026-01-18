@@ -1,3 +1,4 @@
+-- Test Framework for RBC Runtime
 includes('test_py_codegen')
 includes('test_graphics')
 includes('test_project')
@@ -34,12 +35,3 @@ end
 add_test("core", {"rbc_core"})
 add_test("world", {"rbc_runtime", "rbc_core"})
 add_test("anim", {"rbc_runtime", "rbc_core"})
-
--- 一些第三方库的测试用例，用来检测第三方库是否稳定
-if has_config('rbc_editor') then
-    includes("calculator") -- for qt_node_editor
-end
-
-if has_config('rbc_editor') then
-    includes('editor') -- for editor tests
-end
