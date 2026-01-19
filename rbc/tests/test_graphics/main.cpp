@@ -261,7 +261,7 @@ int main(int argc, char *argv[]) {
                         dragged_object_ids = std::move(dragging_result);
                 }
             }
-            static constexpr bool offline_mode = false;
+            static constexpr bool offline_mode = true;
             {
                 static uint64_t saved_frame_index = 0;
                 RBCZoneScopedN("Render Tick");
