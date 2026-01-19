@@ -10,7 +10,7 @@ do
     add_files("*.h") -- MOC will automatically process headers with Q_OBJECT
     add_files("*.cpp")
     add_headerfiles("*.h")
-    add_deps("rbc_editor_runtimex", "rbc_editor_runtime") -- depends on runtimex and runtime (for NodeEditor)
+    add_deps("rbc_editor_runtimex")
     add_rules('rbc_qt_rule')
     add_defines("RBC_EDITOR_PLUGIN_API=LUISA_DECLSPEC_DLL_EXPORT")
 end

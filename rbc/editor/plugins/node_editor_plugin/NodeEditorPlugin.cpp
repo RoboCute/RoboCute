@@ -2,8 +2,10 @@
 #include "RBCEditorRuntime/plugins/PluginManager.h"
 #include "RBCEditorRuntime/plugins/PluginContext.h"
 #include "RBCEditorRuntime/plugins/IPluginFactory.h"
-#include "RBCEditorRuntime/components/NodeEditor.h"
-#include "RBCEditorRuntime/runtime/HttpClient.h"
+
+// #include "RBCEditorRuntime/components/NodeEditor.h"
+#include "RBCEditorRuntime/ui/NodeEditor.h"
+// #include "RBCEditorRuntime/runtime/HttpClient.h"
 
 #include <QDebug>
 
@@ -17,13 +19,14 @@ NodeEditorViewModel::NodeEditorViewModel(
     const NodeEditorConfig &config,
     NodeEditor *editor,
     QObject *parent)
-    : ViewModelBase(parent)
-    , config_(config)
-    , editor_(editor)
-    , serverUrl_(config.serverUrl) {
-    
+    : ViewModelBase(parent), config_(config), editor_(editor), serverUrl_(config.serverUrl) {
+
     if (!editor_) {
         qWarning() << "NodeEditorViewModel: editor is null for:" << config.editorId;
+    }
+
+    if (editor_) {
+        editor_->loadNodesDeferred();
     }
 }
 
@@ -64,7 +67,7 @@ void NodeEditorViewModel::executeGraph() {
 void NodeEditorViewModel::refreshNodes() {
     qDebug() << "NodeEditorViewModel:" << config_.editorId << "refreshNodes";
     if (editor_) {
-        editor_->loadNodesDeferred();
+        // editor_->loadNodesDeferred();
     }
 }
 
@@ -122,8 +125,8 @@ bool NodeEditorPlugin::load(PluginContext *context) {
     context_ = context;
 
     // Create shared HttpClient for node editors
-    httpClient_ = new HttpClient(this);
-    httpClient_->setServerUrl("http://127.0.0.1:5555");
+    // httpClient_ = new HttpClient(this);
+    // httpClient_->setServerUrl("http://127.0.0.1:5555");
 
     // Create default node editor
     createDefaultNodeEditor();
@@ -137,18 +140,10 @@ bool NodeEditorPlugin::load(PluginContext *context) {
 
 bool NodeEditorPlugin::unload() {
     qDebug() << "NodeEditorPlugin::unload";
-
     destroyAllNodeEditors();
     registeredContributions_.clear();
     menuContributions_.clear();
-
-    if (httpClient_) {
-        httpClient_->deleteLater();
-        httpClient_ = nullptr;
-    }
-
     context_ = nullptr;
-
     qDebug() << "NodeEditorPlugin unloaded";
     return true;
 }
@@ -164,7 +159,7 @@ void NodeEditorPlugin::createDefaultNodeEditor() {
     mainConfig.editorId = "node_editor.main";
     mainConfig.serverUrl = "http://127.0.0.1:5555";
     mainConfig.autoConnect = true;
-    
+
     mainEditorId_ = createNodeEditor(mainConfig);
 
     if (!mainEditorId_.isEmpty()) {
@@ -172,8 +167,8 @@ void NodeEditorPlugin::createDefaultNodeEditor() {
         NativeViewContribution mainContrib;
         mainContrib.viewId = mainConfig.editorId;
         mainContrib.title = "Node Editor";
-        mainContrib.dockArea = "Bottom";  // Default dock area, layout will override
-        mainContrib.isExternalManaged = true;  // Plugin manages widget lifecycle
+        mainContrib.dockArea = "Bottom";     // Default dock area, layout will override
+        mainContrib.isExternalManaged = true;// Plugin manages widget lifecycle
         mainContrib.closable = true;
         mainContrib.movable = true;
         mainContrib.floatable = true;
@@ -194,14 +189,13 @@ QString NodeEditorPlugin::createNodeEditor(const NodeEditorConfig &config) {
     instance->config = config;
 
     // Create the NodeEditor widget with shared HttpClient
-    instance->widget = new NodeEditor(httpClient_, nullptr);
-
+    instance->widget = new NodeEditor(nullptr);
     // Create ViewModel
     instance->viewModel = new NodeEditorViewModel(config, instance->widget.data(), nullptr);
 
     // Connect HttpClient signals to ViewModel
-    connect(httpClient_, &HttpClient::connectionStatusChanged,
-            instance->viewModel, &NodeEditorViewModel::onConnectionStatusChanged);
+    // connect(httpClient_, &HttpClient::connectionStatusChanged,
+    //         instance->viewModel, &NodeEditorViewModel::onConnectionStatusChanged);
 
     // Auto-connect if configured
     if (config.autoConnect) {
@@ -249,10 +243,11 @@ bool NodeEditorPlugin::destroyNodeEditor(const QString &editorId) {
 
     // Remove from contributions
     registeredContributions_.erase(
-        std::remove_if(registeredContributions_.begin(), registeredContributions_.end(),
-                       [&editorId](const NativeViewContribution &c) {
-                           return c.viewId == editorId;
-                       }),
+        std::remove_if(
+            registeredContributions_.begin(), registeredContributions_.end(),
+            [&editorId](const NativeViewContribution &c) {
+                return c.viewId == editorId;
+            }),
         registeredContributions_.end());
 
     emit nodeEditorDestroyed(editorId);
@@ -293,7 +288,7 @@ QList<NativeViewContribution> NodeEditorPlugin::native_view_contributions() cons
 
 QWidget *NodeEditorPlugin::getNativeWidget(const QString &viewId) {
     if (auto *instance = editors_.value(viewId, nullptr)) {
-        return instance->widget.data();  // QPointer::data() 返回原始指针
+        return instance->widget.data();// QPointer::data() 返回原始指针
     }
     return nullptr;
 }

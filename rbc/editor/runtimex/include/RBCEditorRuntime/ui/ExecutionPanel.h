@@ -10,16 +10,13 @@
 #include <QLabel>
 
 namespace rbc {
-/**
- * Panel for displaying execution results and console output
- */
-struct ExecutionPanel : public QWidget {
-    Q_OBJECT
 
+class ExecutionPanel : public QWidget {
+    Q_OBJECT
 public:
     explicit ExecutionPanel(QWidget *parent = nullptr);
 
-    // Console logging
+    // console logging
     void logMessage(const QString &message);
     void logError(const QString &error);
     void logSuccess(const QString &message);
@@ -37,18 +34,12 @@ signals:
 
 private:
     void setupUI();
-    void addTreeItem(QTreeWidgetItem *parent, const QString &key, const QJsonValue &value);
+    // void addTreeItem(QTreeWidgetItem *parent, const QString &key, const QJsonValue &value);
 
-    QTabWidget *m_tabWidget;
-
-    // Console tab
-    QTextEdit *m_consoleOutput;
-
-    // Results tab
-    QTreeWidget *m_resultsTree;
-
-    // Status widgets
     QLabel *m_statusLabel;
+    QTabWidget *m_tabWidget;
+    QTextEdit *m_consoleOutput;
+    QTreeWidget *m_resultsTree;
     QPushButton *m_cancelButton;
 };
 

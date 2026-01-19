@@ -2,24 +2,19 @@
 #include <rbc_config.h>
 #include "RBCEditorRuntime/mvvm/ViewModelBase.h"
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
+#include "RBCEditorRuntime/ui/NodeEditor.h"
 #include <QPointer>
-#include <memory>
 
 namespace rbc {
-
-// Forward declarations
-class NodeEditor;
-class HttpClient;
-struct PluginContext;
 
 // ============================================================================
 // NodeEditorConfig - 节点编辑器配置
 // ============================================================================
 
 struct NodeEditorConfig {
-    QString editorId;          // uid for this node editor
-    QString serverUrl;         // backend server URL
-    bool autoConnect = true;   // auto connect on load
+    QString editorId;       // uid for this node editor
+    QString serverUrl;      // backend server URL
+    bool autoConnect = true;// auto connect on load
 };
 
 // ============================================================================
@@ -98,7 +93,7 @@ private:
  */
 struct NodeEditorInstance {
     NodeEditorConfig config;
-    QPointer<NodeEditor> widget;  // 使用 QPointer 追踪，自动检测删除
+    QPointer<NodeEditor> widget;// 使用 QPointer 追踪，自动检测删除
     NodeEditorViewModel *viewModel = nullptr;
 
     ~NodeEditorInstance() {
@@ -200,8 +195,6 @@ private:
     void buildMenuContributions();
 
     PluginContext *context_ = nullptr;
-    HttpClient *httpClient_ = nullptr;
-
     // 节点编辑器实例管理
     QHash<QString, NodeEditorInstance *> editors_;
     QString mainEditorId_;

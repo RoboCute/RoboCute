@@ -1,13 +1,11 @@
-#include "RBCEditorRuntime/components/ExecutionPanel.h"
-#include <QDateTime>
-#include <QJsonArray>
-#include <QJsonDocument>
+#include "RBCEditorRuntime/ui/ExecutionPanel.h"
+#include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 
 namespace rbc {
-ExecutionPanel::ExecutionPanel(QWidget *parent)
-    : QWidget(parent) {
+
+ExecutionPanel::ExecutionPanel(QWidget *parent) : QWidget(parent) {
     setupUI();
 }
 
@@ -78,68 +76,6 @@ void ExecutionPanel::displayExecutionResults(const QJsonObject &results) {
     m_resultsTree->clear();
 
     // Add overall status
-    if (results.contains("status")) {
-        auto statusItem = new QTreeWidgetItem(m_resultsTree);
-        statusItem->setText(0, "Status");
-        statusItem->setText(1, results["status"].toString());
-        statusItem->setExpanded(true);
-    }
-
-    // Add graph_id
-    if (results.contains("graph_id")) {
-        auto idItem = new QTreeWidgetItem(m_resultsTree);
-        idItem->setText(0, "Execution ID");
-        idItem->setText(1, results["graph_id"].toString());
-    }
-
-    // Add outputs
-    if (results.contains("outputs")) {
-        auto outputsItem = new QTreeWidgetItem(m_resultsTree);
-        outputsItem->setText(0, "Node Outputs");
-        outputsItem->setExpanded(true);
-
-        QJsonObject outputs = results["outputs"].toObject();
-        for (auto it = outputs.begin(); it != outputs.end(); ++it) {
-            auto nodeItem = new QTreeWidgetItem(outputsItem);
-            nodeItem->setText(0, it.key());
-            nodeItem->setExpanded(true);
-
-            addTreeItem(nodeItem, "", it.value());
-        }
-    }
-
-    // Switch to results tab
-    m_tabWidget->setCurrentIndex(1);
-}
-
-void ExecutionPanel::addTreeItem(QTreeWidgetItem *parent, const QString &key, const QJsonValue &value) {
-    if (value.isObject()) {
-        QJsonObject obj = value.toObject();
-        for (auto it = obj.begin(); it != obj.end(); ++it) {
-            auto item = new QTreeWidgetItem(parent);
-            item->setText(0, it.key());
-
-            if (it.value().isObject() || it.value().isArray()) {
-                addTreeItem(item, it.key(), it.value());
-            } else {
-                item->setText(1, it.value().toVariant().toString());
-            }
-        }
-    } else if (value.isArray()) {
-        QJsonArray arr = value.toArray();
-        for (int i = 0; i < arr.size(); ++i) {
-            auto item = new QTreeWidgetItem(parent);
-            item->setText(0, QString("[%1]").arg(i));
-
-            if (arr[i].isObject() || arr[i].isArray()) {
-                addTreeItem(item, QString::number(i), arr[i]);
-            } else {
-                item->setText(1, arr[i].toVariant().toString());
-            }
-        }
-    } else {
-        parent->setText(1, value.toVariant().toString());
-    }
 }
 
 void ExecutionPanel::clearResults() {
@@ -157,7 +93,7 @@ void ExecutionPanel::setExecutionStatus(const QString &status, bool isRunning) {
     } else if (status.contains("Error") || status.contains("Failed")) {
         m_statusLabel->setStyleSheet("QLabel { font-weight: bold; color: red; }");
     } else {
-        m_statusLabel->setStyleSheet("QLabel { font-weight: bold; }");
+        m_statusLabel->setStyleSheet("QLabel { font-weight: bold;}");
     }
 }
 
