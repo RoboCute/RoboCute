@@ -70,7 +70,7 @@ public:
 
 private:
     void createInputWidgets();
-    static QWidget *createWidgetForInput(const QJsonObject &inputDef);
+    QWidget *createWidgetForInput(const QJsonObject &inputDef);
     void updateOutputData(QtNodes::PortIndex port, const QVariant &value, const QString &typeName);
 
     QString m_nodeType;

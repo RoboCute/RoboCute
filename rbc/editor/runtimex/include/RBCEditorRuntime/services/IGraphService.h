@@ -5,6 +5,8 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <functional>
+#include "RBCEditorRuntime/services/IProjectService.h"
+#include "RBCEditorRuntime/services/IConnectionService.h"
 
 namespace rbc {
 
@@ -33,54 +35,56 @@ struct ExecutionProgress {
     QString message;
 };
 
-class IGraphService : public QObject {
+class RBC_EDITOR_RUNTIME_API IGraphService : public QObject {
     Q_OBJECT
 public:
+    explicit IGraphService(QObject *parent = nullptr) : QObject(parent) {}
     virtual ~IGraphService() = default;
 
-    // === Connection Management ===
-    virtual void connectToServer(const QString &serverUrl) = 0;
-    virtual void disconnectFromServer() = 0;
-    virtual bool isConnected() const = 0;
-    virtual QString serverUrl() const = 0;
+    // === Service Dependencies ===
+    virtual bool isRemoteMode() const = 0;
+    virtual void bindProjectService(IProjectService *proj_service) = 0;
+    virtual void bindConnectionService(IConnectionService *conn_service) = 0;
 
     // == Node Management
     virtual QJsonArray getNodeDefinitions() const = 0;
     virtual QJsonObject getNodeDefinition(const QString &nodeType) const = 0;
     virtual QMap<QString, QJsonArray> getNodesByCategory() const = 0;
 
-    // == Graph Management
-    virtual QString currentGraphId() const = 0;
-    virtual bool switchToGraph(const QString &graphId) = 0;
-    virtual bool closeGraph(const QString &graphId) = 0;
-    virtual bool loadGraphDefinition(const QString &graphId, const QJsonObject &definition) = 0;
+    // // == Graph Management
+    // virtual QString currentGraphId() const = 0;
+    // virtual bool switchToGraph(const QString &graphId) = 0;
+    // virtual bool closeGraph(const QString &graphId) = 0;
+    // virtual bool loadGraphDefinition(const QString &graphId, const QJsonObject &definition) = 0;
 
-    // == Execution Management
-    virtual QString executeCurrentGraph() = 0;
-    virtual QString executeGraph(const QString &graphId) = 0;
-    virtual void cancelExecution(const QString &executionId) = 0;
-    virtual ExecutionStatus getExecutionStatus(const QString &executionId) const = 0;
-    virtual QStringList getActiveExecutions() const = 0;
+    // // == Execution Management
+    // virtual bool IsCurrentGraphExecutable() = 0;// check executable
+    // virtual bool IsGraphExecutable(const QString &graphId);
+    // virtual QString executeCurrentGraph() = 0;
+    // virtual QString executeGraph(const QString &graphId) = 0;
+    // virtual void cancelExecution(const QString &executionId) = 0;
+    // virtual ExecutionStatus getExecutionStatus(const QString &executionId) const = 0;
+    // virtual QStringList getActiveExecutions() const = 0;
 
 signals:
-    void connectionStatusChanged(bool connected);
-    void connectionError(const QString &error);
-    void nodeDefinitionsUpdated();
-    void nodeDefinitionsLoadFailed(const QString &error);
-    void graphCreated(const QString &graphId);
-    void graphClosed(const QString &graphId);
-    void currentGraphChanged(const QString &graphId);
-    void graphModified(const QString &graphId);
+    // void connectionStatusChanged(bool connected);
+    // void connectionError(const QString &error);
+    // void nodeDefinitionsUpdated();
+    // void nodeDefinitionsLoadFailed(const QString &error);
+    // void graphCreated(const QString &graphId);
+    // void graphClosed(const QString &graphId);
+    // void currentGraphChanged(const QString &graphId);
+    // void graphModified(const QString &graphId);
 
-    void executionStarted(const QString &executionId, const QString &graphId);
-    void executionProgress(const ExecutionProgress &progress);
-    void executionCompleted(const QString &executionId);
-    void executionFailed(const QString &executionId, const QString &error);
-    void executionCancelled(const QString &executionId);
+    // void executionStarted(const QString &executionId, const QString &graphId);
+    // void executionProgress(const ExecutionProgress &progress);
+    // void executionCompleted(const QString &executionId);
+    // void executionFailed(const QString &executionId, const QString &error);
+    // void executionCancelled(const QString &executionId);
 
-    void nodeExecutionStarted(const QString &executionId, const QString &nodeId);
-    void nodeExecutionCompleted(const QString &executionId, const QString &nodeId);
-    void nodeExecutionFailed(const QString &executionId, const QString &nodeId, const QString &error);
+    // void nodeExecutionStarted(const QString &executionId, const QString &nodeId);
+    // void nodeExecutionCompleted(const QString &executionId, const QString &nodeId);
+    // void nodeExecutionFailed(const QString &executionId, const QString &nodeId, const QString &error);
 };
 
 }// namespace rbc

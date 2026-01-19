@@ -1,5 +1,5 @@
 #include "RBCEditorRuntime/infra/nodes/DynamicNodeModel.h"
-#include "RBCEditorRuntime/infra/nodes/EntityIdSpinBox.h"
+#include "RBCEditorRuntime/infra/nodes/InputWidgetFactory.h"
 #include <QFormLayout>
 #include <QJsonDocument>
 #include <QVBoxLayout>
@@ -108,64 +108,27 @@ void DynamicNodeModel::createInputWidgets() {
 }
 
 QWidget *DynamicNodeModel::createWidgetForInput(const QJsonObject &inputDef) {
-    QString type = inputDef["type"].toString();
-    QString name = inputDef["name"].toString();
-    QVariant defaultValue = inputDef["default"].toVariant();
-
-    // TODO: change to factory register
-
-    if (type == "number" || type == "float") {
-        auto spinBox = new QDoubleSpinBox();
-        spinBox->setRange(-999999, 999999);
-        spinBox->setValue(defaultValue.toDouble());
-        spinBox->setMinimumWidth(80);
-        return spinBox;
-    } else if (type == "int" || type == "integer") {
-        // Use EntityIdSpinBox for entity_id inputs to support drag and drop
-        if (name == "entity_id") {
-            auto spinBox = new EntityIdSpinBox();
-            spinBox->setValue(defaultValue.toInt());
-            spinBox->setMinimumWidth(80);
-            return spinBox;
-        } else {
-            auto spinBox = new QSpinBox();
-            spinBox->setRange(-999999, 999999);
-            spinBox->setValue(defaultValue.toInt());
-            spinBox->setMinimumWidth(80);
-            return spinBox;
-        }
-    } else if (type == "string" || type == "text") {
-        auto lineEdit = new QLineEdit();
-        lineEdit->setText(defaultValue.toString());
-        lineEdit->setMinimumWidth(100);
-
-        return lineEdit;
-    } else if (type == "bool" || type == "boolean") {
-        auto checkBox = new QCheckBox();
-        checkBox->setChecked(defaultValue.toBool());
-
-        return checkBox;
-    }
-
-    return nullptr;
+    // 使用工厂模式创建组件，支持样式配置和依赖注入
+    InputWidgetFactory &factory = InputWidgetFactory::instance();
+    
+    // 可以从 inputDef 中读取样式配置，或使用默认样式
+    InputWidgetStyle style = InputWidgetStyle::fromJson(inputDef);
+    
+    return factory.createWidget(inputDef, style, m_mainWidget);
 }
 
 QJsonObject DynamicNodeModel::getInputValues() const {
     QJsonObject values;
+    InputWidgetFactory &factory = InputWidgetFactory::instance();
 
     for (auto it = m_inputWidgets.begin(); it != m_inputWidgets.end(); ++it) {
         QString name = it->first;
         QWidget *widget = it->second;
 
-        // TODO: Use Other Identifier
-        if (auto spinBox = qobject_cast<QDoubleSpinBox *>(widget)) {
-            values[name] = spinBox->value();
-        } else if (auto spinBox = qobject_cast<QSpinBox *>(widget)) {
-            values[name] = spinBox->value();
-        } else if (auto lineEdit = qobject_cast<QLineEdit *>(widget)) {
-            values[name] = lineEdit->text();
-        } else if (auto checkBox = qobject_cast<QCheckBox *>(widget)) {
-            values[name] = checkBox->isChecked();
+        // 使用工厂统一获取值
+        QVariant value = factory.getValue(widget);
+        if (value.isValid()) {
+            values[name] = QJsonValue::fromVariant(value);
         }
     }
     return values;
@@ -200,20 +163,14 @@ QJsonObject DynamicNodeModel::save() const {
 void DynamicNodeModel::load(QJsonObject const &p) {
     if (p.contains("input_values")) {
         QJsonObject inputValues = p["input_values"].toObject();
+        InputWidgetFactory &factory = InputWidgetFactory::instance();
 
         for (auto it = inputValues.begin(); it != inputValues.end(); ++it) {
             QString name = it.key();
             if (m_inputWidgets.count(name)) {
                 QWidget *widget = m_inputWidgets[name];
-                if (auto spinBox = qobject_cast<QDoubleSpinBox *>(widget)) {
-                    spinBox->setValue(it.value().toDouble());
-                } else if (auto spinBox = qobject_cast<QSpinBox *>(widget)) {
-                    spinBox->setValue(it.value().toInt());
-                } else if (auto lineEdit = qobject_cast<QLineEdit *>(widget)) {
-                    lineEdit->setText(it.value().toString());
-                } else if (auto checkBox = qobject_cast<QCheckBox *>(widget)) {
-                    checkBox->setChecked(it.value().toBool());
-                }
+                QVariant value = it.value().toVariant();
+                factory.setValue(widget, value);
             }
         }
     }

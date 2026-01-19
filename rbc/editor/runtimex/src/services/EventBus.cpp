@@ -2,10 +2,7 @@
 
 namespace rbc {
 
-// 重要：有 Q_OBJECT 宏的类必须在 .cpp 文件中定义析构器
 EventBus::~EventBus() {
-    // 空实现，但必须在 .cpp 文件中定义
-    // Qt 会在这里正确清理元对象和信号槽系统
 }
 
 void EventBus::publish(const Event &event) {}

@@ -1,13 +1,15 @@
 #pragma once
+#include <rbc_config.h>
 #include "RBCEditorRuntime/services/IGraphService.h"
 
 namespace rbc {
 
-class RBC_EDITOR_RUNTIME_API GraphService : public IGraphService {
+class RBC_EDITOR_MOCK_API MockGraphService : public IGraphService {
     Q_OBJECT
+
 public:
-    explicit GraphService(QObject *parent = nullptr);
-    ~GraphService() override;
+    explicit MockGraphService(QObject *parent = nullptr);
+    ~MockGraphService() override;
 
     // == IGraphService Interface ==
     bool isRemoteMode() const override;

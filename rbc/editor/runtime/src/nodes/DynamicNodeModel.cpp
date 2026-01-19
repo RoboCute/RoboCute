@@ -14,10 +14,12 @@ namespace rbc {
 
 DynamicNodeModel::DynamicNodeModel(const QJsonObject &metadata)
     : m_mainWidget(nullptr) {
+
     m_nodeType = metadata["node_type"].toString();
     m_displayName = metadata["display_name"].toString();
     m_category = metadata["category"].toString();
     m_description = metadata["description"].toString();
+
     m_inputs = metadata["inputs"].toArray();
     m_outputs = metadata["outputs"].toArray();
 
@@ -71,7 +73,6 @@ std::shared_ptr<NodeData> DynamicNodeModel::outData(PortIndex port) {
 
 void DynamicNodeModel::setInData(std::shared_ptr<NodeData> data, PortIndex portIndex) {
     m_inputData[portIndex] = data;
-
     // For nodes with connections, we don't use the widget values
     // The connected data takes precedence
 }
