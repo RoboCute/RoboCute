@@ -23,7 +23,7 @@ function add_editor_test(name, deps)
     end)
     add_files(name .. "/*.cpp")
     add_deps("external_doctest")
-    add_deps("rbc_editor_runtimex")
+    add_deps("rbc_editor_runtime")
 
     add_includedirs("_framework")
     add_files("_framework/test_util.cpp")

@@ -1,4 +1,4 @@
-includes("runtimex")
-includes("editorx")
+includes("runtime")
+includes("editor")
 includes("plugins")
 includes('tests')

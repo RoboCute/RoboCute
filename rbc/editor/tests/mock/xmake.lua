@@ -2,7 +2,7 @@ local function rbc_editor_mock_interface()
     add_includedirs("include", {
         public = true
     })
-    add_deps("rbc_editor_runtimex", {
+    add_deps("rbc_editor_runtime", {
         public = true
     })
 end

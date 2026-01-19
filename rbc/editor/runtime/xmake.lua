@@ -23,7 +23,7 @@ local function rbc_editor_runtime_impl()
     add_defines('RBC_EDITOR_RUNTIME_API=LUISA_DECLSPEC_DLL_EXPORT')
 end
 
-interface_target('rbc_editor_runtimex', rbc_editor_runtime_interface, rbc_editor_runtime_impl)
+interface_target('rbc_editor_runtime', rbc_editor_runtime_interface, rbc_editor_runtime_impl)
 add_defines('RBC_EDITOR_RUNTIME_API=LUISA_DECLSPEC_DLL_IMPORT', {
     public = true
 })
