@@ -1,6 +1,7 @@
 #include <rbc_world/entity.h>
 #include <rbc_world/component.h>
 #include <rbc_world/type_register.h>
+#include <rbc_world/resources/scene.h>
 #include <rbc_core/runtime_static.h>
 
 namespace rbc::world {
@@ -98,9 +99,14 @@ void Entity::serialize_meta(ObjSerialize const &ser) const {
         ser.ar.end_object();
     }
     ser.ar.end_array("components");
+    if (!_name.empty())
+        ser.ar.add(_name, "name");
 }
 void Entity::deserialize_meta(ObjDeSerialize const &ser) {
     uint64_t size;
+    if (!ser.ar.read(_name, "name")) {
+        _name.clear();
+    }
     if (!ser.ar.start_array(size, "components")) return;
     _components.reserve(size);
     for (auto &i : vstd::range(size)) {
@@ -151,6 +157,12 @@ void Component::_clear_entity() {
         return;
     on_destroy();
     _entity = nullptr;
+}
+void Entity::set_name(luisa::string name) {
+    if (_parent_scene) {
+        _parent_scene->_set_entity_name(this, name);
+    }
+    _name = std::move(name);
 }
 Component::Component() = default;
 Component::~Component() {

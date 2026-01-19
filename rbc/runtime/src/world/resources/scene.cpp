@@ -16,7 +16,9 @@ Entity *SceneResource::get_or_add_entity(vstd::Guid guid) {
     auto iter = _entities.try_emplace(
         guid,
         vstd::lazy_eval([&] {
-            return create_object_with_guid<Entity>(guid);
+            auto e = create_object_with_guid<Entity>(guid);
+            e->_parent_scene = this;
+            return e;
         }));
     return iter.first.value().get();
 }
@@ -39,15 +41,22 @@ bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
         vstd::Guid guid;
         LUISA_ASSERT(deser._load(guid));
         auto e =
-            _entities.try_emplace(
-                         guid, vstd::lazy_eval([&] {
-                             return world::create_object_with_guid<world::Entity>(guid);
-                         }))
+            _entities
+                .try_emplace(
+                    guid, vstd::lazy_eval([&] {
+                        auto e = create_object_with_guid<Entity>(guid);
+                        e->_parent_scene = this;
+                        return e;
+                    }))
                 .first.value();
         read_adapter.start_object();
         e->deserialize_meta(world::ObjDeSerialize{read_adapter});
+        if (!e->_name.empty()) {
+            _entities_str_name.emplace(e->_name).value().emplace_back(guid);
+        }
         read_adapter.end_scope();
     }
+    unsafe_set_loaded();
     return true;
 }
 rbc::coroutine SceneResource::_async_load() {
@@ -84,6 +93,26 @@ bool SceneResource::_install() {
     }
     update_data();
     return true;
+}
+void SceneResource::_set_entity_name(Entity *e, luisa::string const &new_name) {
+    if (new_name == e->_name) return;
+    auto old_name = e->_name;
+    if (!old_name.empty()) {
+        auto iter = _entities_str_name.find(old_name);
+        if (iter) {
+            auto &vec = iter.value();
+            for (auto vec_iter = vec.begin(); vec_iter != vec.end(); ++vec_iter) {
+                if (*vec_iter == e->guid()) {
+                    if (vec_iter != vec.end() - 1)
+                        *vec_iter = vec.back();
+                    vec.pop_back();
+                    break;
+                }
+            }
+        }
+    }
+    if (!new_name.empty())
+        _entities_str_name.emplace(new_name).value().emplace_back(e->guid());
 }
 
 DECLARE_WORLD_OBJECT_REGISTER(SceneResource)
