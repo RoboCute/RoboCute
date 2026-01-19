@@ -49,6 +49,7 @@ public:
     void unsafe_set_installed();
     RBC_RUNTIME_API bool install();
     // await until the loading logic finished in both host-side and device-side
+    RBC_RUNTIME_API void load();
     RBC_RUNTIME_API ResourceAwait await_loading();
     RBC_RUNTIME_API void wait_loading();
     // save host_data to Resource::_path

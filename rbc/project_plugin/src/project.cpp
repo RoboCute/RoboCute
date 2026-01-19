@@ -305,7 +305,7 @@ RC<world::Resource> Project::import_assets(
     read_file_metas(metas, data, file_last_write_time, file_last_md5);
     for (auto &i : metas) {
         if (i.type_id == vstd::Guid{type_id}) {
-            auto res = world::load_resource(i.guid, true);
+            auto res = world::load_resource(i.guid, false);
             if (res) return res;
         }
     }

@@ -243,8 +243,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             .external_input = denoise_ext->buffer_from_image<float>(input.inputs[0]),
             .external_output = denoise_ext->buffer_from_image<float>(input.outputs[0]),
             .denoise_callback = [&denoiser, &stream]() {
-                stream << synchronize();
-                denoiser.execute();
+                denoiser.async_execute(stream);
             }};
     }
     void destroy_denoise_task(luisa::compute::Stream &stream) override {

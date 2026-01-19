@@ -5,8 +5,7 @@
 #include <luisa/vstl/ranges.h>
 namespace rbc::world {
 struct Component;
-namespace detail {
-}
+struct SceneResource;
 struct EntityCompIter {
     using IterType = luisa::unordered_map<MD5, RC<Component>>::const_iterator;
 private:
@@ -29,13 +28,20 @@ public:
 struct RBC_RUNTIME_API Entity final : BaseObjectDerive<Entity, BaseObjectType::Entity> {
     DECLARE_WORLD_OBJECT_FRIEND(Entity)
     friend struct Component;
+    friend struct SceneResource;
 
 private:
+    SceneResource *_parent_scene{};
     luisa::unordered_map<MD5, RC<Component>> _components;
+    luisa::string _name;
+    uint64_t _name_idx{~0ull};
     void _remove_component(Component *component);
     Entity();
     ~Entity();
+
 public:
+    void set_name(luisa::string name);
+    luisa::string_view name() const { return _name; }
     Component *_create_component(MD5 const &type);
     void _add_component(Component *component);
     EntityCompIter begin() const {

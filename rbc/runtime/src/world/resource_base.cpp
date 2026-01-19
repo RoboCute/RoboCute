@@ -9,6 +9,7 @@
 #include <rbc_core/atomic.h>
 #include <luisa/vstl/lmdb.hpp>
 #include <luisa/core/clock.h>
+#include <rbc_core/utils/thread_waiter.h>
 
 namespace rbc ::world {
 luisa::filesystem::path Resource::path() const {
@@ -338,19 +339,18 @@ void Resource::wait_loading() {
     auto coro = [](Resource *self) -> rbc::coroutine {
         co_await self->await_loading();
     }(this);
-#ifndef NDEBUG
-    Clock clk;
-#endif
+    ThreadWaiter waiter;
     while (!coro.done()) {
         coro.resume();
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-#ifndef NDEBUG
-        if (clk.toc() > 3000) {
-            LUISA_WARNING("Still waiting for resource {}", guid().to_string());
-            clk.tic();
-        }
-#endif
+        waiter.wait(
+            std::chrono::microseconds(10),
+            [&] {
+                LUISA_WARNING("Still waiting for resource {}", guid().to_string());
+            });
     }
+}
+void Resource::load() {
+    _res_loader->try_load_resource(this);
 }
 ResourceAwait Resource::await_loading() {
     if (loaded()) {
@@ -378,18 +378,16 @@ luisa::spin_mutex &get_resource_mutex(vstd::Guid const &guid) {
     return v.mtx;
 }
 bool Resource::install() {
-    if (_status == EResourceLoadingStatus::Installed) return false;
-#ifndef NDEBUG
-    Clock clk;
-#endif
-    while (!loaded()) {
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-#ifndef NDEBUG
-        if (clk.toc() > 3000) {
+    auto st = loading_status();
+    if (st == EResourceLoadingStatus::Unloaded) [[unlikely]] {
+        LUISA_ERROR("Can not install unloaded resource.");
+    }
+    if (st == EResourceLoadingStatus::Installed) return false;
+    ThreadWaiter waiter;
+    while (loading_status() == EResourceLoadingStatus::Loading) {
+        waiter.wait(std::chrono::microseconds(10), [&]() {
             LUISA_WARNING("Still waiting for resource {}", guid().to_string());
-            clk.tic();
-        }
-#endif
+        });
     }
     atomic_max(_status, EResourceLoadingStatus::Installing);
     auto v = _install();

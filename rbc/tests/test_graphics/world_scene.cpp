@@ -203,12 +203,9 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
             "get_project_plugin");
         auto proj = luisa::unique_ptr<IProject>(project_plugin->create_project(
             luisa::to_string(assets_dir)));
-        luisa::vector<IProject::FileMeta> metas;
-        proj->read_file_metas(
-            "test_scene.scene",
-            metas);
-        LUISA_ASSERT(metas.size() == 1, "Illegal scene");
-        scene = world::load_resource<world::SceneResource>(metas[0].guid);
+        proj->scan_project();
+        scene = proj->import_assets("test_scene.scene", TypeInfo::get<world::SceneResource>().md5());
+        scene->load();
         scene->install();
     } else {
         // load skybox
@@ -572,13 +569,23 @@ WorldScene::~WorldScene() {
     world::destroy_world();
 }
 void WorldScene::tick_skinning(GraphicsUtils *utils, float delta_time) {
+    static Clock clk;
+    if (scene) {
+        auto entity = scene->get_entity("bunny");
+        if (entity) {
+            auto tr = entity->get_component<world::TransformComponent>();
+            if (tr) {
+                tr->set_pos(double3(0, sin(clk.toc() * 1e-3), 0), false);
+            }
+        }
+    }
+
     if (physics_box_entity) {
         world::JoltComponent::update_step(min(delta_time, 1 / 60.0f));
         physics_box_entity->get_component<world::JoltComponent>()->update_pos();
     }
     if (_entities.empty())
         return;
-    static Clock clk;
     auto &sm = SceneManager::instance();
     auto &cmdlist = RenderDevice::instance().lc_main_cmd_list();
     // upload bones to gpu

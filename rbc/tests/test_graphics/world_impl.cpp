@@ -22,6 +22,9 @@
 #include <rbc_world/resources/scene.h>
 #include <rbc_core/utils/forget.h>
 namespace rbc {
+struct EntitiesCollectionImpl : RCBase {
+    luisa::vector<RCWeak<world::Entity>> _entities;
+};
 vstd::Guid Object::guid(void *this_) {
     return static_cast<world::BaseObject *>(this_)->guid();
 }
@@ -207,6 +210,10 @@ bool Resource::install(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
     return c->install();
 }
+void Resource::load(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    c->load();
+}
 bool TextureResource::is_vt(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
     return c->is_vt();
@@ -332,89 +339,16 @@ void RenderComponent::update_object(void *this_, luisa::vector<rbc::RC<rbc::RCBa
             mat_vector.size()},
         static_cast<world::MeshResource *>(mesh));
 }
-struct AsyncEventImpl : RCBase {
-    luisa::fiber::event task;
-    vstd::function<void()> finished_func;
-    AsyncEventImpl() : task(luisa::fiber::event::Mode::Manual, true) {}
-    void call_finished() {
-        if (finished_func) {
-            finished_func();
-            finished_func = {};
-        }
-    }
-    ~AsyncEventImpl() {
-        call_finished();
-    }
-};
-void *AsyncEvent::_create_() {
-    auto ptr = new AsyncEventImpl();
-    manually_add_ref(ptr);
-    return ptr;
-}
-bool AsyncEvent::done(void *this_) {
-    auto c = static_cast<AsyncEventImpl *>(this_);
-    return c->task.test();
-}
-void AsyncEvent::wait(void *this_) {
-    auto c = static_cast<AsyncEventImpl *>(this_);
-    return c->task.wait();
-}
 
-struct AsyncRequestImpl : RCBase {
-    RC<world::BaseObject> _result{};
-    luisa::fiber::event task;
-    vstd::function<void()> finished_func;
-    AsyncRequestImpl() : task(luisa::fiber::event::Mode::Manual, true) {
-    }
-    void call_finish() {
-        if (finished_func) {
-            finished_func();
-            finished_func = {};
-        }
-    }
-    void dispose() {
-        call_finish();
-        _result = nullptr;
-    }
-    void set_value(world::BaseObject *r) {
-        dispose();
-        _result = r;
-    }
-    void set_value(RC<world::BaseObject> &&r) {
-        dispose();
-        _result = std::move(r);
-    }
-    ~AsyncRequestImpl() {
-        dispose();
-    }
-};
-void *AsyncRequest::_create_() {
-    auto ptr = new AsyncRequestImpl();
-    manually_add_ref(ptr);
-    return ptr;
-}
-bool AsyncRequest::done(void *this_) {
-    auto c = static_cast<AsyncRequestImpl *>(this_);
-    return c->task.test();
-}
-void *AsyncRequest::get_result(void *this_) {
-    auto c = static_cast<AsyncRequestImpl *>(this_);
-    c->task.wait();
-    c->call_finish();
-    manually_add_ref(c->_result.get());
-    return c->_result.get();
-}
-void *AsyncRequest::get_result_release(void *this_) {
-    auto c = static_cast<AsyncRequestImpl *>(this_);
-    c->task.wait();
-    c->call_finish();
-    auto r = c->_result.get();
-    rbc::unsafe_forget(std::move(c->_result));
-    return r;
-}
 struct ProjectImpl : RCBase {
     luisa::shared_ptr<luisa::DynamicModule> module;
     luisa::unique_ptr<rbc::IProject> proj;
+    luisa::fiber::counter counter;
+    void sync() {
+        counter.wait();
+        auto utils = GraphicsUtils::instance();
+        if (utils && utils->tex_loader()) utils->tex_loader()->finish_task();
+    }
 };
 
 void *Project::_create_() {
@@ -422,17 +356,13 @@ void *Project::_create_() {
     manually_add_ref(ptr);
     return ptr;
 }
-void *Project::scan_project(void *this_) {
+void Project::scan_project(void *this_) {
     auto c = static_cast<ProjectImpl *>(this_);
     if (!c->proj) [[unlikely]] {
         LUISA_ERROR("Project not initialized.");
     }
-    auto request = new AsyncEventImpl{};
-    manually_add_ref(request);
-    request->task = luisa::fiber::async([c = RC<ProjectImpl>(c)]() {
-        c->proj->scan_project();
-    });
-    return request;
+    c->sync();
+    c->proj->scan_project();
 }
 void Project::init(void *this_, luisa::string_view assets_root_dir) {
     auto c = static_cast<ProjectImpl *>(this_);
@@ -444,38 +374,41 @@ void Project::init(void *this_, luisa::string_view assets_root_dir) {
 }
 // TODO: register guid
 template<typename T>
-AsyncRequestImpl *project_import(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
+void project_import(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
     auto c = static_cast<ProjectImpl *>(this_);
     if (!c->proj) [[unlikely]] {
         LUISA_ERROR("Project not initialized.");
     }
-    auto request = new AsyncRequestImpl{};
-    manually_add_ref(request);
-    request->task = luisa::fiber::async([path, extra_meta = luisa::string{extra_meta},
-                                         request = RC<AsyncRequestImpl>{request}, c = RC<ProjectImpl>{c}] {
-        request->set_value(c->proj->import_assets(path, TypeInfo::get<T>().md5(), extra_meta)
-                               .cast_static<world::BaseObject>());
+    c->counter.add();
+    luisa::fiber::schedule([counter = c->counter, proj = c->proj.get(), path = luisa::string{path}, extra_meta = luisa::string{extra_meta}] {
+        proj->import_assets(path, TypeInfo::get<T>().md5(), extra_meta);
+        counter.done();
     });
-    return request;
 }
-void *Project::import_material(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
-    return project_import<world::MaterialResource>(this_, path, extra_meta);
+void Project::import_material(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
+    project_import<world::MaterialResource>(this_, path, extra_meta);
 }
-void *Project::import_mesh(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
-    return project_import<world::MeshResource>(this_, path, extra_meta);
+void Project::import_mesh(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
+    project_import<world::MeshResource>(this_, path, extra_meta);
 }
-void *Project::import_texture(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
-    auto request = project_import<world::TextureResource>(this_, path, extra_meta);
-    request->finished_func = []() {
-        auto utils = GraphicsUtils::instance();
-        if (utils && utils->tex_loader()) utils->tex_loader()->finish_task();
-    };
-    return request;
+void Project::import_texture(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
+    project_import<world::TextureResource>(this_, path, extra_meta);
 }
 void *Project::import_scene(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
-    return project_import<world::SceneResource>(this_, path, extra_meta);
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    auto ptr = c->proj->import_assets(path, TypeInfo::get<world::SceneResource>().md5(), luisa::string{extra_meta});
+    auto p = ptr.get();
+    p->load();
+    unsafe_forget(std::move(ptr));
+    return p;
 }
 void *Project::load_resource(void *this_, vstd::Guid const &guid, bool async_load) {
+    auto c = static_cast<ProjectImpl *>(this_);
+    c->sync();
     auto res = world::load_resource(guid, async_load);
     if (!res) {
         return nullptr;
@@ -507,6 +440,25 @@ void *Scene::_create_() {
     auto ptr = world::create_object<world::SceneResource>();
     manually_add_ref(ptr);
     return ptr;
+}
+void *Scene::get_entities_by_name(void *this_, luisa::string_view name) {
+    auto c = static_cast<world::SceneResource *>(this_);
+    auto entities = c->get_entities(name);
+    auto e = static_cast<EntitiesCollectionImpl *>(EntitiesCollection::_create_());
+    vstd::push_back_func(e->_entities, entities.size(), [&](size_t i) {
+        return entities[i];
+    });
+    return e;
+}
+void *Scene::get_entity_by_name(void *this_, luisa::string_view name) {
+    auto c = static_cast<world::SceneResource *>(this_);
+    auto ptr = c->get_entity(name);
+    manually_add_ref(ptr);
+    return ptr;
+}
+void Scene::remove_entity(void *this_, vstd::Guid const &guid) {
+    auto c = static_cast<world::SceneResource *>(this_);
+    c->remove_entity(guid);
 }
 void *Scene::get_entity(void *this_, vstd::Guid const &guid) {
     auto c = static_cast<world::SceneResource *>(this_);
@@ -558,5 +510,24 @@ void *Project::get_file_meta(void *this_, vstd::Guid const &type_id, luisa::stri
         }
     }
     return meta;
+}
+
+void *EntitiesCollection::_create_() {
+    auto v = new EntitiesCollectionImpl{};
+    manually_add_ref(v);
+    return v;
+}
+uint64_t EntitiesCollection::count(void *this_) {
+    auto c = static_cast<EntitiesCollectionImpl *>(this_);
+    return c->_entities.size();
+}
+void *EntitiesCollection::get_entity(void *this_, uint64_t index) {
+    auto c = static_cast<EntitiesCollectionImpl *>(this_);
+    LUISA_ASSERT(index < c->_entities.size(), "Index {} out or range {}", index, c->_entities.size());
+    auto v = c->_entities[index].lock().rc();
+    if (!v) return nullptr;
+    auto ptr = v.get();
+    unsafe_forget(std::move(v));
+    return ptr;
 }
 }// namespace rbc

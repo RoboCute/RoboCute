@@ -136,9 +136,9 @@ struct DenoiserExtDerive : public DenoiserExt {
 
 struct Denoiser : public luisa::enable_shared_from_this<Denoiser> {
     virtual void init(DenoiserExt::DenoiserInput const &input) noexcept = 0;
-    virtual void execute(bool async) noexcept = 0;
+    virtual void async_execute(Stream& render_stream) noexcept = 0;
+    virtual void sync_execute() noexcept = 0;
     virtual void reset() noexcept = 0;
-    void execute() noexcept { execute(false); }
     virtual ~Denoiser() noexcept = default;
 };
 

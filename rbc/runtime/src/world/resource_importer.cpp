@@ -97,7 +97,10 @@ RC<Resource> IResourceImporter::import(
     luisa::filesystem::path const &path, luisa::string const &meta_json) {
     bool require_regist{false};
     auto type_id = resource_type();
-    auto res = RC<Resource>{static_cast<Resource *>(create_object_with_guid(reinterpret_cast<vstd::Guid const &>(type_id), guid))};
+    auto res = load_resource(guid, false);
+    if (!res) {
+        res = RC<Resource>{static_cast<Resource *>(create_object_with_guid(reinterpret_cast<vstd::Guid const &>(type_id), guid))};
+    }
     auto &mtx = get_resource_mutex(guid);
     {
         std::lock_guard lck{mtx};
