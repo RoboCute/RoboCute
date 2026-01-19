@@ -47,6 +47,7 @@ void Component::remove_world_event(WorldEventType event_type) {
 }
 Entity::Entity() {
 }
+
 Entity::~Entity() {
     for (auto &i : _components) {
         auto &comp = i.second;
@@ -166,7 +167,6 @@ void Entity::set_name(luisa::string name) {
 }
 Component::Component() = default;
 Component::~Component() {
-    int x = 0;
 }
 DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world

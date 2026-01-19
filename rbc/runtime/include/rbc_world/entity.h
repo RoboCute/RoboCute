@@ -34,6 +34,7 @@ private:
     SceneResource *_parent_scene{};
     luisa::unordered_map<MD5, RC<Component>> _components;
     luisa::string _name;
+    uint64_t _name_idx{~0ull};
     void _remove_component(Component *component);
     Entity();
     ~Entity();

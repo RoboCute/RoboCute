@@ -235,6 +235,17 @@ class RenderComponent():
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
+    module_name="world_interface"
+)
+class EntitiesCollection:
+    def count() -> ulong: ...
+    def get_entity(index: ulong) -> Entity: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
     module_name="world_interface",
     inherit=Resource
 )
@@ -242,6 +253,9 @@ class Scene:
     def get_entity(guid: GUID) -> Entity: ...
     def get_or_add_entity(guid: GUID) -> Entity: ...
     def update_data() -> None: ...
+    def remove_entity(guid: GUID) -> None: ...
+    def get_entity_by_name(name: str) -> Entity: ...
+    def get_entities_by_name(name: str) -> EntitiesCollection: ...
 
 
 @reflect(

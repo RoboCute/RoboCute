@@ -23,7 +23,6 @@ struct RasterBasicParameter {
     float3 cam_pos,
     uint sky_heap_idx,
     uint frame_countdown,
-    float3 light_dir,
     float3 light_color) {
     auto coord = dispatch_id().xy;
     auto id = id_img.read(coord);
@@ -113,7 +112,7 @@ struct RasterBasicParameter {
     if (dot(basic_param.geometry.onb.normal, ray_dir) <= 0) {
         basic_param.geometry.onb.normal = -basic_param.geometry.onb.normal;
     }
-    float3 diffuse_color = light_color * sqrt(saturate(dot(basic_param.geometry.onb.normal, light_dir))) * basic_param.base.color.origin();
+    float3 diffuse_color = light_color * sqrt(saturate(dot(basic_param.geometry.onb.normal, ray_dir))) * basic_param.base.color.origin();
     float3 color = diffuse_color + basic_param.emission.luminance.origin();
     img.write(coord, float4(color, 1));
     return 0;

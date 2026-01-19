@@ -22,6 +22,9 @@
 #include <rbc_world/resources/scene.h>
 #include <rbc_core/utils/forget.h>
 namespace rbc {
+struct EntitiesCollectionImpl : RCBase {
+    luisa::vector<RCWeak<world::Entity>> _entities;
+};
 vstd::Guid Object::guid(void *this_) {
     return static_cast<world::BaseObject *>(this_)->guid();
 }
@@ -438,6 +441,25 @@ void *Scene::_create_() {
     manually_add_ref(ptr);
     return ptr;
 }
+void *Scene::get_entities_by_name(void *this_, luisa::string_view name) {
+    auto c = static_cast<world::SceneResource *>(this_);
+    auto entities = c->get_entities(name);
+    auto e = static_cast<EntitiesCollectionImpl *>(EntitiesCollection::_create_());
+    vstd::push_back_func(e->_entities, entities.size(), [&](size_t i) {
+        return entities[i];
+    });
+    return e;
+}
+void *Scene::get_entity_by_name(void *this_, luisa::string_view name) {
+    auto c = static_cast<world::SceneResource *>(this_);
+    auto ptr = c->get_entity(name);
+    manually_add_ref(ptr);
+    return ptr;
+}
+void Scene::remove_entity(void *this_, vstd::Guid const &guid) {
+    auto c = static_cast<world::SceneResource *>(this_);
+    c->remove_entity(guid);
+}
 void *Scene::get_entity(void *this_, vstd::Guid const &guid) {
     auto c = static_cast<world::SceneResource *>(this_);
     auto ptr = c->get_entity(guid);
@@ -488,5 +510,24 @@ void *Project::get_file_meta(void *this_, vstd::Guid const &type_id, luisa::stri
         }
     }
     return meta;
+}
+
+void *EntitiesCollection::_create_() {
+    auto v = new EntitiesCollectionImpl{};
+    manually_add_ref(v);
+    return v;
+}
+uint64_t EntitiesCollection::count(void *this_) {
+    auto c = static_cast<EntitiesCollectionImpl *>(this_);
+    return c->_entities.size();
+}
+void *EntitiesCollection::get_entity(void *this_, uint64_t index) {
+    auto c = static_cast<EntitiesCollectionImpl *>(this_);
+    LUISA_ASSERT(index < c->_entities.size(), "Index {} out or range {}", index, c->_entities.size());
+    auto v = c->_entities[index].lock().rc();
+    if (!v) return nullptr;
+    auto ptr = v.get();
+    unsafe_forget(std::move(v));
+    return ptr;
 }
 }// namespace rbc
