@@ -237,9 +237,9 @@ void DXOidnDenoiser::reset() noexcept {
     _interop_images.clear();
 }
 void DXOidnDenoiser::async_execute(Stream &render_stream) noexcept {
-    ComputeDevice::instance().compute_to_render_fence(nullptr, render_stream);
-    exec_filters();
     ComputeDevice::instance().render_to_compute_fence(render_stream, nullptr);
+    exec_filters();
+    ComputeDevice::instance().compute_to_render_fence(nullptr, render_stream);
 }
 void DXOidnDenoiser::sync_execute() noexcept {
     exec_filters();

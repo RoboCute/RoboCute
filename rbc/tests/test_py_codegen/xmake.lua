@@ -7,11 +7,14 @@ do
         rtti = true
     })
     add_deps('rbc_core', 'test_graphics')
-    add_deps('rbc_render_plugin', 'lc-backends-dummy', {inherit = false, links = false})
+    add_deps('rbc_render_plugin', 'lc-backends-dummy', {
+        inherit = false,
+        links = false
+    })
 
     set_extension('.pyd')
-    add_files('builtin/**.cpp', 'generated/**.cpp', 'main.cpp')
-    
+    add_files('builtin/**.cpp', 'generated/**.cpp', 'main.cpp', 'luisa_compute/**.cpp')
+
     add_includedirs('builtin')
 
     rbc_set_pch('builtin/zz_pch.h')

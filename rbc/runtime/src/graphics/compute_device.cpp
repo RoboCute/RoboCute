@@ -5,6 +5,7 @@ namespace rbc {
 namespace compute_device_detail {
 struct CudaDeviceConfigExtImpl : public CudaDeviceConfigExt {
     ExternalVkDevice external_device;
+    CudaDeviceConfigExtImpl(ExternalVkDevice external_device) : external_device(external_device) {}
     [[nodiscard]] ExternalVkDevice get_external_vk_device() const noexcept override {
         return external_device;
     }
@@ -23,6 +24,10 @@ ComputeDevice::ComputeDevice() {
     }
     _compute_device_inst_ = this;
 }
+uint ComputeDevice::render_hardware_device_index() {
+    _init_render();
+    return _render_device_idx;
+}
 void ComputeDevice::init(
     luisa::compute::Context &&ctx,
     luisa::compute::Device &&render_device,
@@ -38,17 +43,17 @@ ComputeDevice::~ComputeDevice() {
 void ComputeDevice::_init_render() {
     std::lock_guard lck{_render_mtx};
     if (!device) return;
-    if (!_ext.valid()) {
-        if (auto dx = device.extension<DxCudaInterop>())
-            _ext = dx;
-        else if (auto vk = device.extension<VkCudaInterop>())
-            _ext = vk;
-    }
+    if (_ext.valid()) return;
+    if (auto dx = device.extension<DxCudaInterop>())
+        _ext = dx;
+    else if (auto vk = device.extension<VkCudaInterop>())
+        _ext = vk;
+
     if (!_ext.valid()) {
         return;
     }
     if (_render_device_idx == ~0u) {
-        _render_device_idx = _ext.visit_or(0u, [&](auto &&a) {
+        _render_device_idx = _ext.visit_or(~0u, [&](auto &&a) {
             return (uint)a->cuda_device_index();
         });
     }
@@ -65,7 +70,15 @@ Device *ComputeDevice::get_device(uint32_t device_index) {
     _render_mtx.unlock();
     std::lock_guard lck{v.second};
     if (!v.first) {
-        v.first = _lc_ctx->create_device(_compute_backend_name);
+        DeviceConfig config{.device_index = device_index};
+        if (device_index == _render_device_idx) {
+            auto vk = _ext.try_get<VkCudaInterop *>();
+            if (vk) {
+                config.extension = luisa::make_unique<compute_device_detail::CudaDeviceConfigExtImpl>(
+                    (*vk)->get_external_vk_device());
+            }
+        }
+        v.first = _lc_ctx->create_device(_compute_backend_name, &config);
     }
     return &v.first;
 }

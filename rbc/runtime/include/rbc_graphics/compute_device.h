@@ -49,6 +49,7 @@ public:
     ~ComputeDevice();
     Device *get_render_hardware_device();
     Device *get_device(uint32_t device_index);
+    uint render_hardware_device_index();
     void compute_to_render_fence(
         void *signalled_cu_stream_ptr,
         Stream &wait_render_stream);
@@ -59,6 +60,8 @@ public:
     template<typename T>
     Buffer<T> create_interop_buffer(size_t elem_count) noexcept {
         Buffer<T> b{};
+        _init_render();
+        if (_render_device_idx == ~0u) return {};
         _ext.visit([&](auto &&t) {
             b = t->template create_buffer<T>(elem_count);
         });
@@ -66,6 +69,8 @@ public:
     }
     ByteBuffer create_interop_byte_buffer(size_t size_bytes) noexcept {
         ByteBuffer b;
+        _init_render();
+        if (_render_device_idx == ~0u) return {};
         _ext.visit([&](auto &&t) {
             b = t->create_byte_buffer(size_bytes);
         });
@@ -74,6 +79,8 @@ public:
     template<typename T>
     Image<T> create_interop_image(PixelStorage pixel, uint width, uint height, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) noexcept {
         Image<T> b;
+        _init_render();
+        if (_render_device_idx == ~0u) return {};
         _ext.visit([&](auto &&t) -> ByteBuffer {
             b = t->template create_image<T>(pixel, width, height, mip_levels, simultaneous_access, allow_raster_target);
         });
@@ -82,6 +89,8 @@ public:
     template<typename T>
     Image<T> create_interop_image(PixelStorage pixel, uint2 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) noexcept {
         Image<T> b;
+        _init_render();
+        if (_render_device_idx == ~0u) return {};
         _ext.visit([&](auto &&t) {
             b = t->template create_image<T>(pixel, size, mip_levels, simultaneous_access, allow_raster_target);
         });
@@ -90,6 +99,8 @@ public:
     template<typename T>
     Volume<T> create_interop_volume(PixelStorage pixel, uint width, uint height, uint volume, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) noexcept {
         Image<T> b;
+        _init_render();
+        if (_render_device_idx == ~0u) return {};
         _ext.visit([&](auto &&t) {
             b = t->template create_volume<T>(pixel, width, height, volume, mip_levels, mip_levels, simultaneous_access, allow_raster_target);
         });
@@ -98,6 +109,8 @@ public:
     template<typename T>
     Volume<T> create_interop_volume(PixelStorage pixel, uint3 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) noexcept {
         Image<T> b;
+        _init_render();
+        if (_render_device_idx == ~0u) return {};
         _ext.visit([&](auto &&t) {
             b = t->template create_volume<T>(pixel, size, mip_levels, mip_levels, simultaneous_access, allow_raster_target);
         });

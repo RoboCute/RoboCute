@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from pathlib import Path
 from rbc_ext.generated.rbc_backend import (
@@ -36,6 +37,9 @@ if "RBC_RUNTIME_DIR" not in os.environ:
 
 
 def main():
+    if len(sys.argv) < 2:
+        print('must input scene root-dir')
+        exit(1)
     backend_name = "vk"
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
     program_path = str(runtime_dir.parent / "debug")
@@ -47,7 +51,7 @@ def main():
     ctx.init_device(backend_name, program_path, shader_path)
     ctx.init_render()
     project = Project()
-    project.init("C:/dev/RoboCute/build/download/test_scene_v1.0.1")
+    project.init(sys.argv[1])
     print('scaning')
     project.scan_project()
     print('scanned')
