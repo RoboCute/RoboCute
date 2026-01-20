@@ -8,7 +8,7 @@
 #include <rbc_world/components/light_component.h>
 #include <rbc_world/resources/texture.h>
 #include <rbc_world/resources/mesh.h>
-#include <rbc_graphics/texture/texture_loader.h>
+#include <rbc_world/importers/texture_loader.h>
 #include <rbc_world/resources/material.h>
 #include <rbc_graphics/graphics_utils.h>
 #include <luisa/core/binary_file_stream.h>

@@ -2,7 +2,7 @@
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/light_component.h>
-#include <rbc_graphics/texture/texture_loader.h>
+#include <rbc_world/importers/texture_loader.h>
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_graphics/graphics_utils.h>
 #include <rbc_core/binary_file_writer.h>

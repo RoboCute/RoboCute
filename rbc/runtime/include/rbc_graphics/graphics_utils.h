@@ -1,5 +1,6 @@
 #pragma once
 #include <rbc_graphics/scene_manager.h>
+#include <rbc_graphics/compute_device.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/lights.h>
 #include <luisa/core/clock.h>
@@ -33,6 +34,7 @@ struct RBC_RUNTIME_API RenderView {
 struct RBC_RUNTIME_API GraphicsUtils : RBCStruct {
 private:
     RenderDevice _render_device;
+    ComputeDevice _compute_device;
     luisa::string _backend_name;
     EventFence _compute_event;
     vstd::optional<SceneManager> _sm;

@@ -16,8 +16,8 @@ if has_config('rbc_editor') then
     -- Later need refactor from new rbc-world
     -- includes("ext_c") -- The Pybind Extension rbc_ext_c.pyd
     includes('node_graph')
+    includes("tool")
 end
 if has_config('rbc_tools') then
     includes('ipc') -- 跨进程
-    includes("tool")
 end

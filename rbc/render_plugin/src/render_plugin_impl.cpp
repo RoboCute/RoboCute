@@ -159,30 +159,31 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         std::lock_guard lck{oidn_mtx};
         auto &render_device = RenderDevice::instance();
         auto &lc_ctx = render_device.lc_ctx();
-        if (oidn_support == OidnSupport::UnChecked) {
-            auto checker_path = luisa::to_string(lc_ctx.runtime_directory() / "oidn_checker.exe");
-            checker_path = luisa::format("{} {} {}", checker_path, luisa::to_string(lc_ctx.runtime_directory()), render_device.backend_name());
-            auto result = std::system(checker_path.c_str());
-            oidn_support = OidnSupport::UnSupported;
-            switch (result) {
-                case 0:
-                    LUISA_INFO("OIDN support.");
-                    oidn_support = OidnSupport::Supported;
-                    break;
-                case 1:
-                    LUISA_WARNING("OIDN not support for reason: invalid check args.");
-                    break;
-                case 2:
-                    LUISA_WARNING("OIDN not support for reason: unsupported backend.");
-                    break;
-                case 3:
-                    LUISA_WARNING("OIDN not support for reason: plugin not found.");
-                    break;
-                default:
-                    LUISA_WARNING("OIDN not support for unknown reason.");
-                    break;
-            }
-        }
+        // if (oidn_support == OidnSupport::UnChecked) {
+        //     auto checker_path = luisa::to_string(lc_ctx.runtime_directory() / "oidn_checker.exe");
+        //     checker_path = luisa::format("{} {} {}", checker_path, luisa::to_string(lc_ctx.runtime_directory()), render_device.backend_name());
+        //     auto result = std::system(checker_path.c_str());
+        //     oidn_support = OidnSupport::UnSupported;
+        //     switch (result) {
+        //         case 0:
+        //             LUISA_INFO("OIDN support.");
+        //             oidn_support = OidnSupport::Supported;
+        //             break;
+        //         case 1:
+        //             LUISA_WARNING("OIDN not support for reason: invalid check args.");
+        //             break;
+        //         case 2:
+        //             LUISA_WARNING("OIDN not support for reason: unsupported backend.");
+        //             break;
+        //         case 3:
+        //             LUISA_WARNING("OIDN not support for reason: plugin not found.");
+        //             break;
+        //         default:
+        //             LUISA_WARNING("OIDN not support for unknown reason.");
+        //             break;
+        //     }
+        // }
+        oidn_support = OidnSupport::Supported; // TODO
         if (oidn_support != OidnSupport::Supported) return false;
         oidn_module = PluginManager::instance().load_module("oidn_plugin");
         if (!oidn_module) {

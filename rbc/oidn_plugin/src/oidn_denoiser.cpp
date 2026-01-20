@@ -12,6 +12,7 @@
 #include <luisa/runtime/context.h>
 #include <luisa/backends/ext/cuda_config_ext.h>
 #include <luisa/backends/ext/cuda_external_ext.h>
+#include <rbc_graphics/compute_device.h>
 namespace rbc {
 namespace oidn_detail {
 struct CudaDeviceConfigExtImpl : public CudaDeviceConfigExt {
@@ -47,18 +48,12 @@ public:
 
 struct DXOidnDenoiser : public OidnDenoiser {
     // InteropExt _interop;
-    Device cuda_device;
     DxCudaInterop *_dx_interop_ext;
     VkCudaInterop *_vk_interop_ext;
     struct InteropImage {
         Buffer<uint> shared_buffer;
         bool read;
     };
-    vstd::variant<
-        DxCudaTimelineEvent,
-        TimelineEvent>
-        _interop_event;
-    uint64_t fence_index{};
     luisa::vector<InteropImage> _interop_images;
     oidn::BufferRef get_buffer(DenoiserExt::Image const &img, bool read) noexcept override;
     void reset() noexcept override;
@@ -242,42 +237,9 @@ void DXOidnDenoiser::reset() noexcept {
     _interop_images.clear();
 }
 void DXOidnDenoiser::async_execute(Stream &render_stream) noexcept {
-    ++fence_index;
-    // render signal
-    _interop_event.visit([&]<typename T>(T &t) {
-        if constexpr (std::is_same_v<T, DxCudaTimelineEvent>) {
-            render_stream << t.dx_signal(fence_index);
-        } else {
-            render_stream << _vk_interop_ext->vk_signal(t, fence_index);
-        }
-    });
-    // cuda wait
-    _interop_event.visit([&]<typename T>(T &t) {
-        if constexpr (std::is_same_v<T, DxCudaTimelineEvent>) {
-            t.cuda_wait_external(_dx_interop_ext, /* Use default CUstream */ nullptr, fence_index);
-        } else {
-            cuda_device.extension<CUDAExternalExt>()->cuda_stream_wait(nullptr, t.handle(), fence_index);
-        }
-    });
-
+    ComputeDevice::instance().compute_to_render_fence(nullptr, render_stream);
     exec_filters();
-    ++fence_index;
-    // cuda signal
-    _interop_event.visit([&]<typename T>(T &t) {
-        if constexpr (std::is_same_v<T, DxCudaTimelineEvent>) {
-            t.cuda_signal_external(_dx_interop_ext, /* Use default CUstream */ nullptr, fence_index);
-        } else {
-            cuda_device.extension<CUDAExternalExt>()->cuda_stream_signal(nullptr, t.handle(), fence_index);
-        }
-    });
-    // render wait
-    _interop_event.visit([&]<typename T>(T &t) {
-        if constexpr (std::is_same_v<T, DxCudaTimelineEvent>) {
-            render_stream << t.dx_wait(fence_index);
-        } else {
-            render_stream << _vk_interop_ext->vk_wait(t, fence_index);
-        }
-    });
+    ComputeDevice::instance().render_to_compute_fence(render_stream, nullptr);
 }
 void DXOidnDenoiser::sync_execute() noexcept {
     exec_filters();
@@ -285,14 +247,6 @@ void DXOidnDenoiser::sync_execute() noexcept {
 }
 DXOidnDenoiser::DXOidnDenoiser(Device const &device, int cuda_device_index, oidn::DeviceRef &&oidn_device)
     : OidnDenoiser(static_cast<DeviceInterface *>(_device), std::move(oidn_device)), _dx_interop_ext(device.extension<DxCudaInterop>()), _vk_interop_ext(device.extension<VkCudaInterop>()) {
-    if (_dx_interop_ext) {
-        _interop_event = _dx_interop_ext->create_timeline_event();
-    } else if (_vk_interop_ext) {
-        DeviceConfig cuda_option{.device_index = (uint)cuda_device_index};
-        cuda_option.extension = luisa::make_unique<oidn_detail::CudaDeviceConfigExtImpl>(_vk_interop_ext->get_external_vk_device());
-        cuda_device = device.impl()->context().create_device("cuda", &cuda_option);
-        _interop_event = cuda_device.create_timeline_event();
-    }
 }
 DXOidnDenoiserExt::DXOidnDenoiserExt(Device const &device) noexcept
     : _device{device} {

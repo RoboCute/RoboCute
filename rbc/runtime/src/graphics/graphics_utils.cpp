@@ -15,7 +15,7 @@
 #include <rbc_world/base_object.h>
 #include <rbc_world/component.h>
 #include <rbc_world/resources/mesh.h>
-#include <rbc_graphics/texture/texture_loader.h>
+#include <rbc_world/importers/texture_loader.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_core/state_map.h>
 using namespace rbc;
@@ -78,7 +78,9 @@ void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_v
     LUISA_ASSERT(!_graphics_utils_singleton);
     _graphics_utils_singleton = this;
     PluginManager::init();
-    _render_device.init(program_path, backend_name);
+    Context ctx{program_path};
+    _render_device.init(Context{ctx}, backend_name);
+    _compute_device.init(Context{ctx}, Device{_render_device.lc_device()});
     _backend_name = backend_name;
 }
 void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
