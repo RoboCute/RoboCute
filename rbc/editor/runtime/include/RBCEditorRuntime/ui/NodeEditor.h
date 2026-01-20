@@ -43,11 +43,10 @@ private:
 private:
     std::shared_ptr<DataFlowGraphModel> m_graphModel;
     DataFlowGraphicsScene *m_scene;
-    GraphicsView *m_view;
-
     std::unique_ptr<NodeFactory> m_nodeFactory;
 
     // Widgets
+    GraphicsView *m_view;
     QListWidget *m_nodePalette;
     ExecutionPanel *m_executionPanel;
 

@@ -26,7 +26,6 @@ struct ViewContribution {
  * 与 ViewContribution 区分开，更清晰地表达意图。
  * 使用Native QWidget而非QMLK定义的View Contribution
  */
-
 struct NativeViewContribution {
     QString viewId;
     QString title;

@@ -40,6 +40,7 @@ bool LayoutPlugin::load(PluginContext *context) {
     buildMenuContributions();
 
     qDebug() << "LayoutPlugin loaded successfully";
+
     return true;
 }
 
@@ -106,64 +107,45 @@ void LayoutPlugin::buildMenuContributions() {
         return;
     }
 
+    auto layouts = layoutService_->availableLayouts();
     // === View Menu - Layout Switching ===
     // Add layout switching menu items under "View/Layouts"
-    if (layoutService_->hasLayout("scene_editing")) {
-        MenuContribution sceneEditing;
-        sceneEditing.menuPath = "View/Layouts";
-        sceneEditing.actionText = "Scene Editing";
-        sceneEditing.actionId = "layout.switch.scene_editing";
-        sceneEditing.shortcut = "";
-        sceneEditing.callback = [this]() {
-            if (layoutService_) {
-                layoutService_->switchToLayout("scene_editing");
-            }
-        };
-        menuContributions_.append(sceneEditing);
-    }
-    if (layoutService_->hasLayout("aigc")) {
-        MenuContribution aigc;
-        aigc.menuPath = "View/Layouts";
-        aigc.actionText = "AIGC";
-        aigc.actionId = "layout.switch.aigc";
-        aigc.shortcut = "";
-        aigc.callback = [this]() {
-            if (layoutService_) {
-                layoutService_->switchToLayout("aigc");
-            }
-        };
-        menuContributions_.append(aigc);
-    }
+    for (auto layout : layouts) {
+        auto &config = layoutService_->getLayoutConfig(layout);
 
+        MenuContribution menu;
+        menu.menuPath = "View/Layouts/" + config.layoutName;
+        menu.actionText = config.layoutName;
+        menu.actionId = "layout.switch" + layout;
+        menu.shortcut = "";
+        menu.callback = [this, layout]() {
+            if (layoutService_) {
+                layoutService_->switchToLayout(layout);
+            }
+        };
+        menuContributions_.append(menu);
+    }
     // === View Menu - Window Visibility ===
 
-    // Toggle Layout Manager Panel
-    MenuContribution toggleLayoutManager;
-    toggleLayoutManager.menuPath = "View/Panels";
-    toggleLayoutManager.actionText = "Layout Manager";
-    toggleLayoutManager.actionId = "view.toggle.layout_manager";
-    toggleLayoutManager.shortcut = "";
-    toggleLayoutManager.callback = [this]() {
-        if (layoutService_) {
-            bool visible = layoutService_->isViewVisible("layout_manager");
-            layoutService_->setViewVisible("layout_manager", !visible);
-        }
-    };
-    menuContributions_.append(toggleLayoutManager);
-
     // Toggle Connection Status Panel
-    MenuContribution toggleConnection;
-    toggleConnection.menuPath = "View/Panels";
-    toggleConnection.actionText = "Connection Status";
-    toggleConnection.actionId = "view.toggle.connection_status";
-    toggleConnection.shortcut = "";
-    toggleConnection.callback = [this]() {
-        if (layoutService_) {
-            bool visible = layoutService_->isViewVisible("connection_status");
-            layoutService_->setViewVisible("connection_status", !visible);
-        }
-    };
-    menuContributions_.append(toggleConnection);
+    auto layout = layoutService_->currentLayoutId();
+    auto config = layoutService_->getLayoutConfig(layout);
+
+    for (auto view : config.views) {
+        MenuContribution toggleConnection;
+        toggleConnection.menuPath = "View/Panels/" + view.viewId;
+        toggleConnection.actionText = view.viewId;
+        toggleConnection.actionId = view.viewId;
+        toggleConnection.shortcut = "";
+
+        toggleConnection.callback = [this, view]() {
+            if (layoutService_) {
+                bool visible = layoutService_->isViewVisible(view.viewId);
+                layoutService_->setViewVisible(view.viewId, !visible);
+            }
+        };
+        menuContributions_.append(toggleConnection);
+    }
 
     // === Window Menu - Reset Layout ===
     MenuContribution resetLayout;
@@ -187,10 +169,8 @@ void LayoutPlugin::register_view_models(QQmlEngine *engine) {
         qWarning() << "LayoutPlugin::register_view_models: engine is null";
         return;
     }
-
     // Register LayoutViewModel as QML type
     qmlRegisterType<LayoutViewModel>("RoboCute.Layout", 1, 0, "LayoutViewModel");
-
     qDebug() << "LayoutPlugin: ViewModels registered";
 }
 
