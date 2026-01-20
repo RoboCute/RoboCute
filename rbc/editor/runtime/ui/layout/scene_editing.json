@@ -1,6 +1,6 @@
 {
     "layout_id": "rbce.layout.scene_editing",
-    "layout_name": "3D Scene Editing Workflow",
+    "layout_name": "3D Scene Workflow",
     "description": "Default Layout for 3D scene editing with viewport as central widget and node editor at bottom",
     "version": "0.2",
     "views": [

@@ -15,10 +15,19 @@ LayoutService::~LayoutService() {
 QString LayoutService::currentLayoutId() const {
     return currentLayoutId_;
 }
+
 QStringList LayoutService::availableLayouts() const {
-    return layouts_.keys();
+    // remove ""
+    auto layouts = layouts_.keys();
+
+    layouts.removeIf([](QString item) {
+        return item == "";
+    });
+    return layouts;
 }
+
 QJsonObject LayoutService::getLayoutMetadata(const QString &layoutId) const {
+
     if (!layouts_.contains(layoutId)) {
         qWarning() << "LayoutService::getLayoutMetadata: Layout not found: " << layoutId;
         return {};
@@ -166,15 +175,21 @@ bool LayoutService::loadLayoutFromFile(const QString &filepath) {
     return true;
 }
 
-bool LayoutService::saveLayoutToFile(const QString &layoutId, const QString &filePath) {
+bool LayoutService::saveLayoutToFile(
+    const QString &layoutId,
+    const QString &filePath) {
     return true;
 }
 
-bool LayoutService::deleteLayout(const QString &layoutId) {
+bool LayoutService::deleteLayout(
+    const QString &layoutId) {
     return true;
 }
 
-bool LayoutService::cloneLayout(const QString &sourceId, const QString &newId, const QString &newName) {
+bool LayoutService::cloneLayout(
+    const QString &sourceId,
+    const QString &newId,
+    const QString &newName) {
     return true;
 }
 
@@ -214,6 +229,9 @@ void LayoutService::initialize(WindowManager *windowManager, EditorPluginManager
 }
 
 void LayoutService::applyLayout(const QString &layoutId) {
+    if (layoutId.isEmpty()) {
+        return;
+    }
     if (!layouts_.contains(layoutId)) {
         qWarning() << "LayoutService::applyLayout: Layout not found:" << layoutId;
         return;
@@ -513,6 +531,7 @@ void LayoutService::loadBuiltInLayouts() {
         }
 
         LayoutConfig config;
+
         if (parseLayoutConfig(doc.object(), config)) {
             config.isBuiltIn = true;
             layouts_[config.layoutId] = config;
@@ -545,6 +564,7 @@ QString LayoutService::layoutConfigDirectory() const {
 }
 
 bool LayoutService::parseLayoutConfig(const QJsonObject &json, LayoutConfig &config) {
+
     config.layoutId = json["layout_id"].toString();
     config.layoutName = json["layout_name"].toString();
     config.description = json["description"].toString();
@@ -557,6 +577,7 @@ bool LayoutService::parseLayoutConfig(const QJsonObject &json, LayoutConfig &con
 
     // Parse views array
     QJsonArray viewsArray = json["views"].toArray();
+
     for (const QJsonValue &viewVal : viewsArray) {
         if (!viewVal.isObject()) continue;
 

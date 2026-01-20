@@ -86,10 +86,6 @@ private:
 
 /**
  * @brief NodeEditorInstance - 将 Widget 和 ViewModel 组合在一起
- * 
- * 注意：widget 使用 QPointer 追踪，因为它可能被 Qt 的 parent-child 机制删除
- * （例如当 WindowManager 删除 main_window_ 时）
- * 使用 QPointer 可以安全地检测 widget 是否仍然存在
  */
 struct NodeEditorInstance {
     NodeEditorConfig config;
@@ -199,7 +195,6 @@ private:
     QHash<QString, NodeEditorInstance *> editors_;
     QString mainEditorId_;
 
-    // 预注册的 Native View Contributions
     QList<NativeViewContribution> registeredContributions_;
     QList<MenuContribution> menuContributions_;
 };

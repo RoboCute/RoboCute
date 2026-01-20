@@ -67,7 +67,7 @@ void NodeEditorViewModel::executeGraph() {
 void NodeEditorViewModel::refreshNodes() {
     qDebug() << "NodeEditorViewModel:" << config_.editorId << "refreshNodes";
     if (editor_) {
-        // editor_->loadNodesDeferred();
+        editor_->loadNodesDeferred();
     }
 }
 
@@ -376,7 +376,7 @@ void NodeEditorPlugin::buildMenuContributions() {
     refreshNodes.menuPath = "Graph";
     refreshNodes.actionText = "Refresh Nodes";
     refreshNodes.actionId = "node_editor.refresh_nodes";
-    refreshNodes.shortcut = "F5";
+    refreshNodes.shortcut = "";
     refreshNodes.callback = [this]() {
         if (auto *editor = mainNodeEditor()) {
             if (editor->viewModel) {
