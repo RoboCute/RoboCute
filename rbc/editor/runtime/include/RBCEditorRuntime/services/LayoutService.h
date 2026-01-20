@@ -91,7 +91,9 @@ public:
     void loadBuiltInLayouts();// from source file
     void loadUserLayouts();   // load from user-setting file
     QString layoutConfigDirectory() const;
-
+    LayoutConfig &getLayoutConfig(const QString &layoutId) {
+        return layouts_[layoutId];
+    }
     /**
      * @brief Set central widget for the current layout
      * 

@@ -112,7 +112,7 @@ private:
  */
 struct ViewportInstance {
     ViewportConfig config;
-    QPointer<ViewportWidget> widget;  // 使用 QPointer 追踪，自动检测删除
+    QPointer<ViewportWidget> widget;// 使用 QPointer 追踪，自动检测删除
     ViewportViewModel *viewModel = nullptr;
     IRenderer *renderer = nullptr;
 
@@ -122,7 +122,6 @@ struct ViewportInstance {
         delete viewModel;
         viewModel = nullptr;
         // renderer 通常由外部工厂创建，需要外部销毁
-        // delete renderer;
         renderer = nullptr;
     }
 };
@@ -160,8 +159,6 @@ using RendererFactory = std::function<IRenderer *(const ViewportConfig &config)>
  * viewportPlugin->setRendererFactory([](const ViewportConfig& config) {
  *     return new MyRenderer();
  * });
- * 
- * 创建视口
  * ViewportConfig config;
  * config.viewportId = "my_viewport";
  * viewportPlugin->createViewport(config);

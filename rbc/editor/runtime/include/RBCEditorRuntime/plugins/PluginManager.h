@@ -28,13 +28,13 @@ public:
     static EditorPluginManager &instance();
 
     // === 工厂注册 ===
-    
+
     /**
      * @brief 注册插件工厂
      * @param factory 插件工厂的 unique_ptr，所有权转移给 PluginManager
      */
     void registerFactory(std::unique_ptr<IPluginFactory> factory);
-    
+
     /**
      * @brief 注册内置插件（模板便捷方法）
      * 
@@ -53,14 +53,14 @@ public:
     }
 
     // === Plugin LifeCycle ===
-    
+
     /**
      * @brief 从已注册的工厂创建并加载插件
      * @param pluginId 插件 ID（必须先通过 registerFactory 或 registerPlugin 注册）
      * @return 加载成功返回 true
      */
     bool loadPlugin(const QString &pluginId);
-    
+
     /**
      * @brief 从动态库加载插件
      * @param pluginPath 动态库路径
@@ -69,40 +69,40 @@ public:
      * 动态库必须导出 createPluginFactory() 函数
      */
     bool loadPluginFromDLL(const QString &pluginPath);
-    
+
     /**
      * @brief 卸载插件
      * @param pluginId 插件 ID
      * @return 卸载成功返回 true
      */
     bool unloadPlugin(const QString &pluginId);
-    
+
     /**
      * @brief 重新加载插件
      * @param pluginId 插件 ID
      * @return 重新加载成功返回 true
      */
     bool reloadPlugin(const QString &pluginId);
-    
+
     /**
      * @brief 卸载所有已加载的插件
      */
     void unloadAllPlugins();
 
     // === Plugin Query ===
-    
+
     /**
      * @brief 获取已加载的插件
      * @param id 插件 ID
      * @return 插件指针（不转移所有权），未找到返回 nullptr
      */
     IEditorPlugin *getPlugin(const QString &id) const;
-    
+
     /**
      * @brief 获取所有已加载的插件
      */
     QList<IEditorPlugin *> getLoadedPlugins() const;
-    
+
     /**
      * @brief 按分类获取插件
      */
@@ -115,7 +115,7 @@ public:
 
     // === Service Management ===
     void registerService(const QString &serviceId, QObject *service);
-    
+
     template<typename T>
     void registerService(T *service) {
         // Try to use IService::serviceId() if available
@@ -126,9 +126,9 @@ public:
             registerService(T::staticMetaObject.className(), service);
         }
     }
-    
+
     QObject *getService(const QString &serviceId) const;
-    
+
     /**
      * @brief 清理所有 service 引用
      * 
@@ -190,7 +190,7 @@ private:
 
     void resolvePluginDependencies();
     void initializePlugin(IEditorPlugin *plugin);
-    
+
     /**
      * @brief 内部加载插件实现
      * @param plugin 已创建的插件 unique_ptr
@@ -202,10 +202,10 @@ private:
     // 使用 unique_ptr 管理插件生命周期，统一所有权
     // 注意：使用 std::map 而非 QMap，因为 QMap 不支持 move-only 类型
     std::map<QString, std::unique_ptr<IEditorPlugin>> plugins_;
-    
+
     // 已注册的插件工厂
     std::map<QString, std::unique_ptr<IPluginFactory>> factories_;
-    
+
     // 动态库模块（保持加载状态以防止插件代码被卸载）
     std::map<QString, luisa::shared_ptr<luisa::DynamicModule>> modules_;
 
