@@ -452,13 +452,18 @@ void GraphicsUtils::update_texture(DeviceImage *ptr, uint mip_level) {
     auto &sm = SceneManager::instance();
     sm.dispose_after_sync(RC<DeviceImage>(ptr));
 }
-void GraphicsUtils::denoise() {
-    if (!_denoiser_inited) return;
+bool GraphicsUtils::denoise() {
+    if (!_denoiser_inited) return false;
+    if (_denoise_packs.empty()) {
+        LUISA_WARNING("No denoised frame ready.");
+        return false;
+    }
     for (auto &i : _denoise_packs) {
         if (!i.denoise_callback)
             LUISA_ERROR("Denoiser not ready.");
         i.denoise_callback();
     }
+    return true;
 }
 void GraphicsUtils::create_texture(
     DeviceImage *ptr,

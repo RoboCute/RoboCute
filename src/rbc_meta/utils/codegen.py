@@ -351,7 +351,10 @@ def _print_py_args(
             if (
                 param_type
                 and hasattr(param_type, "_pybind_type_")
-                and param_type._pybind_type_
+                and param_type._pybind_type_ and (
+                    hasattr(param_type, "_is_enum_") and 
+                    not param_type._is_enum_
+                )
             ):
                 arg_close = "._handle" + arg_close
         # type_str = _get_py_type(param_type) if param_type else None

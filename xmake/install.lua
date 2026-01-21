@@ -17,6 +17,6 @@ function main(mode)
         detach = true
     })
     -- Do this manually
-    -- os.setenv('PYTHONPATH', target_dir)
-    -- os.runv('pybind11-stubgen', {'test_py_codegen', '--output-dir=' .. ext_path})
+    os.setenv('PYTHONPATH', target_dir)
+    os.runv('pybind11-stubgen', {'test_py_codegen', '--output-dir=' .. ext_path})
 end

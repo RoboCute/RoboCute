@@ -96,7 +96,7 @@ public:
         uint2 resolution,
         TickStage tick_stage = TickStage::PathTracingPreview,
         bool enable_denoise = false);
-    void denoise();
+    bool denoise();
     void create_texture(
         DeviceImage *ptr,
         PixelStorage storage,
