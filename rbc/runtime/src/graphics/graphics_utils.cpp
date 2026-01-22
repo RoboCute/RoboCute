@@ -286,7 +286,6 @@ void GraphicsUtils::tick(
                 break;
             case TickStage::OffineCapturing:
                 set_denoise_pack();
-                frame_settings.reject_sampling = true;
                 pipe_settings.use_raster = false;
                 pipe_settings.use_raytracing = true;
                 pipe_settings.use_post_filter = false;
