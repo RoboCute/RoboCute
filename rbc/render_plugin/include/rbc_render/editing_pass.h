@@ -22,7 +22,7 @@ private:
     RasterShader<float4x4, Buffer<float4>, PixelArgs> const *_draw_gizmos;
     RasterShader<float4x4,
                  float3,//cam_pos,
-                 float3,//color,
+                 float4,//color,
                  float, //start_decay_dist,
                  float  //decay_length
                  > const *_draw_grid;

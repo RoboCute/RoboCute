@@ -10,7 +10,7 @@ struct GridDrawCmd {
     float3 grid_center;
     uint2 line_count{100, 100};
     float2 interval_size{1, 1};
-    float3 origin_color{1, 1, 1};
+    float4 origin_color{1, 1, 1, 0.5f};
     float start_decay_dist{50};
     float decay_distance{50};
 };

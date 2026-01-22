@@ -293,7 +293,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         if (!_draw_grid_buffer && size > 0) {
             auto align_size = 65536u / sizeof(float4);
             _draw_grid_buffer = render_device.lc_device().create_buffer<float4>(
-                (size + align_size - 1) / align_size);
+                (size + align_size - 1) / align_size * align_size);
         }
         RasterState raster_state{
             .fill_mode = FillMode::WireFrame,

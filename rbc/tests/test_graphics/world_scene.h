@@ -11,6 +11,7 @@
 namespace rbc {
 struct ClickManager;
 struct MeshBuilder;
+struct GridDrawer;
 struct GraphicsUtils;
 struct WorldScene {
     luisa::filesystem::path scene_root_dir;
@@ -58,6 +59,7 @@ struct WorldScene {
         ClickManager &click_mng,
         Camera const &cam);
     void tick_skinning(GraphicsUtils *utils, float delta_time);
+    void draw_grid(Camera &cam, GridDrawer &grid_drawer);
 private:
     RC<Gizmos> _gizmos;
     void _init_scene(GraphicsUtils *utils);

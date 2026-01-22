@@ -17,6 +17,7 @@
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 #include <rbc_render/click_manager.h>
+#include <rbc_render/grid_drawer.h>
 #include <luisa/gui/window.h>
 #include <rbc_app/camera_controller.h>
 #include <rbc_core/runtime_static.h>
@@ -75,6 +76,7 @@ int main(int argc, char *argv[]) {
     // Test FOV
     bool reset = false;
     ClickManager *click_mng = &render_settings.read_mut<ClickManager>();
+    GridDrawer *grid_draw = &render_settings.read_mut<GridDrawer>();
 
     uint2 window_size = window.size();
     float2 start_uv, end_uv;
@@ -213,6 +215,9 @@ int main(int argc, char *argv[]) {
             if (cam && click_mng) {
                 RBCZoneScopedN("Draw Gizmos");
                 auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, utils.get(), make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam->position, cam->far_plane, *click_mng, *cam);
+            }
+            if (cam && grid_draw) {
+                world_scene->draw_grid(*cam, *grid_draw);
             }
 
             if (any(window_size != utils->dst_image().size())) {

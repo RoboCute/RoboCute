@@ -20,12 +20,13 @@ struct v2p {
 [[PIXEL_SHADER]] float4 pixel(
     v2p i,
     float3 cam_pos,
-    float3 color,
+    float4 color,
     float start_decay_dist,
     float decay_length) {
     float4 col;
     auto dist = distance(cam_pos, i.world_pos.xyz);
     auto transparency = saturate(max(dist - start_decay_dist, 0.f) / max(decay_length, 1e-4f));
-    col = float4(lerp(color, float3(0.f), transparency), 1.f);
+    col = color;
+    col.w = lerp(col.w, 0.f, transparency);
     return col;
 }

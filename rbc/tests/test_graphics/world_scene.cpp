@@ -16,6 +16,7 @@
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_project/project.h>
 #include <rbc_project/project_plugin.h>
+#include <rbc_render/grid_drawer.h>
 
 using rbc::ArchiveWriteJson;
 using rbc::ArchiveReadJson;
@@ -567,6 +568,14 @@ WorldScene::~WorldScene() {
     physics_box_entity.reset();
     physics_box_mesh.reset();
     world::destroy_world();
+}
+void WorldScene::draw_grid(Camera& cam, GridDrawer &grid_drawer) {
+    auto& grid = grid_drawer.draw_grids.emplace_back();
+    grid.grid_center = make_float3(floor(cam.position));
+    grid.grid_center.y = 0;
+    grid.origin_color.w = 0.8f;
+    grid.decay_distance = 30.f;
+    grid.start_decay_dist = 2.f;
 }
 void WorldScene::tick_skinning(GraphicsUtils *utils, float delta_time) {
     static Clock clk;
