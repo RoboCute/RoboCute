@@ -4,6 +4,7 @@
 #include <rbc_app/camera_controller.h>
 #include <luisa/dsl/sugar.h>
 #include <luisa/gui/input.h>
+#include <luisa/runtime/context.h>
 #include <QtGui/rhi/qrhi.h>
 
 namespace rbc {

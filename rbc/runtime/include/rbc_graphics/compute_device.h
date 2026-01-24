@@ -1,12 +1,13 @@
 #pragma once
 #include <rbc_config.h>
-#include <luisa/backends/ext/vk_cuda_interop.h>
-#include <luisa/backends/ext/dx_cuda_interop.h>
+#include <luisa/backends/ext/dx_cuda_timeline_event.h>
+#include <luisa/core/spin_mutex.h>
 #include <luisa/runtime/device.h>
 #include <luisa/runtime/buffer.h>
 #include <luisa/runtime/image.h>
 #include <luisa/runtime/volume.h>
 #include <luisa/runtime/byte_buffer.h>
+#include <luisa/runtime/context.h>
 #include <luisa/runtime/event.h>
 #include <luisa/vstl/common.h>
 namespace luisa::compute {
@@ -56,9 +57,13 @@ public:
     void render_to_compute_fence(
         Stream &signalled_render_stream,
         void *wait_cu_stream_ptr);
-
+    BufferCreationInfo create_interop_buffer(const Type *element, size_t elem_count);
+    ResourceCreationInfo create_interop_texture(
+        PixelFormat format, uint dimension,
+        uint width, uint height, uint depth,
+        uint mipmap_levels, bool simultaneous_access, bool allow_raster_target);
     template<typename T>
-    Buffer<T> create_interop_buffer(size_t elem_count) noexcept {
+    Buffer<T> create_interop_buffer(size_t elem_count)  {
         Buffer<T> b{};
         _init_render();
         if (_render_device_idx == ~0u) return {};
@@ -67,17 +72,9 @@ public:
         });
         return b;
     }
-    ByteBuffer create_interop_byte_buffer(size_t size_bytes) noexcept {
-        ByteBuffer b;
-        _init_render();
-        if (_render_device_idx == ~0u) return {};
-        _ext.visit([&](auto &&t) {
-            b = t->create_byte_buffer(size_bytes);
-        });
-        return b;
-    }
+    ByteBuffer create_interop_byte_buffer(size_t size_bytes) ;
     template<typename T>
-    Image<T> create_interop_image(PixelStorage pixel, uint width, uint height, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) noexcept {
+    Image<T> create_interop_image(PixelStorage pixel, uint width, uint height, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false)  {
         Image<T> b;
         _init_render();
         if (_render_device_idx == ~0u) return {};
@@ -87,7 +84,7 @@ public:
         return b;
     }
     template<typename T>
-    Image<T> create_interop_image(PixelStorage pixel, uint2 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) noexcept {
+    Image<T> create_interop_image(PixelStorage pixel, uint2 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false)  {
         Image<T> b;
         _init_render();
         if (_render_device_idx == ~0u) return {};
@@ -97,7 +94,7 @@ public:
         return b;
     }
     template<typename T>
-    Volume<T> create_interop_volume(PixelStorage pixel, uint width, uint height, uint volume, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) noexcept {
+    Volume<T> create_interop_volume(PixelStorage pixel, uint width, uint height, uint volume, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false)  {
         Image<T> b;
         _init_render();
         if (_render_device_idx == ~0u) return {};
@@ -107,7 +104,7 @@ public:
         return b;
     }
     template<typename T>
-    Volume<T> create_interop_volume(PixelStorage pixel, uint3 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) noexcept {
+    Volume<T> create_interop_volume(PixelStorage pixel, uint3 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false)  {
         Image<T> b;
         _init_render();
         if (_render_device_idx == ~0u) return {};

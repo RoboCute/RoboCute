@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     utils->init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils->backend_name()));
     utils->init_render();
-    auto pipe_ctx = utils->register_render_pipectx({});
+    auto pipe_ctx = utils->register_render_pipectx();
     auto &render_settings = utils->render_settings(pipe_ctx);
     Window window{luisa::string{"test_graphics_"} + utils->backend_name(), uint2(1024), true};
     utils->init_display(window.size(), window.native_display(), window.native_handle());

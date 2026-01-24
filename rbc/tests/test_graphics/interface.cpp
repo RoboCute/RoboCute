@@ -27,10 +27,10 @@
 #include <rbc_graphics/camera.h>
 using namespace luisa;
 using namespace luisa::compute;
-#include <material/mats.inl>
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);// implemented save_image.cpp
 
 namespace rbc {
+#include <material/mats.inl>
 struct ContextImpl;
 static ContextImpl *_ctx_inst{};
 struct ContextImpl : RCBase {
@@ -72,7 +72,7 @@ void RBCContext::create_window(void *this_, luisa::string_view name, uint2 size,
     c.window.create(luisa::string{name}, size, resiable);
     c.utils.init_display(size, c.window->native_display(), c.window->native_handle());
     if (!c.pipe_ctx) {
-        c.pipe_ctx = c.utils.register_render_pipectx({});
+        c.pipe_ctx = c.utils.register_render_pipectx();
     }
 }
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
@@ -85,7 +85,7 @@ void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
 void RBCContext::set_view_camera(void *this_, luisa::float3 pos, float roll, float pitch, float yaw) {
     auto &c = *static_cast<ContextImpl *>(this_);
     if (!c.pipe_ctx) {
-        c.pipe_ctx = c.utils.register_render_pipectx({});
+        c.pipe_ctx = c.utils.register_render_pipectx();
     }
     auto &cam = c.utils.render_settings(c.pipe_ctx).read_mut<Camera>();
     cam.position = make_double3(pos);
@@ -103,17 +103,18 @@ bool RBCContext::should_close(void *this_) {
         return c.window->should_close();
     return false;
 }
-void RBCContext::save_image_to(void *this_, luisa::string_view path, bool denoise) {
+void RBCContext::denoise(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
-    if (denoise) {
-        if (c.utils.denoise()) {
-            c.utils.tick(
-                0,
-                c.utils.dst_image().size(),
-                GraphicsUtils::TickStage::PresentOfflineResult,
-                true);
-        }
+    if (c.utils.denoise()) {
+        c.utils.tick(
+            0,
+            c.utils.dst_image().size(),
+            GraphicsUtils::TickStage::PresentOfflineResult,
+            true);
     }
+}
+void RBCContext::save_display_image_to(void *this_, luisa::string_view path) {
+    auto &c = *static_cast<ContextImpl *>(this_);
     save_image(path, c.utils.dst_image());
 }
 void RBCContext::tick(void *this_, float delta_time, luisa::uint2 resolution, uint32_t frame_index, rbc::TickStage tick_stage, bool prepare_denoise) {

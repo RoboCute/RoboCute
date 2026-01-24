@@ -1,6 +1,8 @@
 #include <rbc_graphics/compute_device.h>
 #include <luisa/backends/ext/cuda_external_ext.h>
 #include <luisa/core/logging.h>
+#include <luisa/backends/ext/vk_cuda_interop.h>
+#include <luisa/backends/ext/dx_cuda_interop.h>
 namespace rbc {
 namespace compute_device_detail {
 struct CudaDeviceConfigExtImpl : public CudaDeviceConfigExt {
@@ -39,6 +41,23 @@ void ComputeDevice::init(
 ComputeDevice::~ComputeDevice() {
     if (_compute_device_inst_ != this) return;
     _compute_device_inst_ = nullptr;
+}
+BufferCreationInfo ComputeDevice::create_interop_buffer(const Type *element, size_t elem_count) {
+    BufferCreationInfo r;
+    _ext.visit([&](auto &&t) {
+        r = t->create_interop_buffer(element, elem_count);
+    });
+    return r;
+}
+ResourceCreationInfo ComputeDevice::create_interop_texture(
+    PixelFormat format, uint dimension,
+    uint width, uint height, uint depth,
+    uint mipmap_levels, bool simultaneous_access, bool allow_raster_target) {
+    ResourceCreationInfo r;
+    _ext.visit([&](auto &&t) {
+        r = t->create_interop_texture(format, dimension, width, height, depth, mipmap_levels, simultaneous_access, allow_raster_target);
+    });
+    return r;
 }
 void ComputeDevice::_init_render() {
     std::lock_guard lck{_render_mtx};
@@ -163,5 +182,14 @@ void ComputeDevice::render_to_compute_fence(
             compute_device->extension<CUDAExternalExt>()->cuda_stream_wait(wait_cu_stream_ptr, t.handle(), idx);
         }
     });
+}
+ByteBuffer ComputeDevice::create_interop_byte_buffer(size_t size_bytes) {
+    ByteBuffer b;
+    _init_render();
+    if (_render_device_idx == ~0u) return {};
+    _ext.visit([&](auto &&t) {
+        b = t->create_byte_buffer(size_bytes);
+    });
+    return b;
 }
 }// namespace rbc

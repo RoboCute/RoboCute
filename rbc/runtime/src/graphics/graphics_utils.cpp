@@ -18,11 +18,14 @@
 #include <rbc_world/importers/texture_loader.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_core/state_map.h>
+#include <rbc_graphics/compute_device.h>
+#include <rbc_graphics/lights.h>
+
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
-#include <material/mats.inl>
 namespace rbc {
+#include <material/mats.inl>
 
 static GraphicsUtils *_graphics_utils_singleton{};
 GraphicsUtils *GraphicsUtils::instance() {
@@ -47,19 +50,19 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     LUISA_ASSERT(_graphics_utils_singleton == this);
     _graphics_utils_singleton = nullptr;
     if (_sm) {
-        _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, true);
+        _sm->refresh_pipeline(_render_device->lc_main_cmd_list(), _render_device->lc_main_stream(), false, true);
     }
     if (_compute_event.event)
         _compute_event.event.synchronize(_compute_event.fence_index);
     if (after_sync)
         after_sync();
     for (auto &i : _render_pipe_ctxs) {
-        _render_plugin->destroy_pipeline_context(i.first);
+        _render_plugin->destroy_pipeline_context(i);
     }
     _denoise_packs.clear();
     _render_module.reset();
     if (_lights)
-        _lights.destroy();
+        _lights.reset();
     AssetsManager::destroy_instance();
     if (_sm) {
         _sm->tex_streamer().dispose();
@@ -67,7 +70,7 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     RenderDevice::instance()._dispose_io_service();
     if (_sm) {
         _sm->mesh_manager().on_frame_end(nullptr, _sm->bindless_allocator());
-        _sm.destroy();
+        _sm.reset();
     }
     if (_present_stream) {
         _present_stream.synchronize();
@@ -79,29 +82,31 @@ void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_v
     _graphics_utils_singleton = this;
     PluginManager::init();
     Context ctx{program_path};
-    _render_device.init(Context{ctx}, backend_name);
-    _compute_device.init(Context{ctx}, Device{_render_device.lc_device()});
+    _render_device = vstd::make_unique<RenderDevice>();
+    _compute_device = vstd::make_unique<ComputeDevice>();
+    _render_device->init(Context{ctx}, backend_name);
+    _compute_device->init(Context{ctx}, Device{_render_device->lc_device()});
     _backend_name = backend_name;
 }
 void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
-    auto &cmdlist = _render_device.lc_main_cmd_list();
-    _sm.create(
-        _render_device.lc_ctx(),
-        _render_device.lc_device(),
-        _render_device.lc_async_copy_stream(),
-        *_render_device.io_service(),
+    auto &cmdlist = _render_device->lc_main_cmd_list();
+    _sm = vstd::make_unique<SceneManager>(
+        _render_device->lc_ctx(),
+        _render_device->lc_device(),
+        _render_device->lc_async_copy_stream(),
+        *_render_device->io_service(),
         cmdlist,
         shader_path);
-    AssetsManager::init_instance(_render_device, _sm);
+    AssetsManager::init_instance(*_render_device, _sm.get());
     // init
     {
         luisa::fiber::counter init_counter;
         init_present_stream();
-        _render_device.set_main_stream(&_present_stream);
-        _compute_event.event = _render_device.lc_device().create_timeline_event();
+        _render_device->set_main_stream(&_present_stream);
+        _compute_event.event = _render_device->lc_device().create_timeline_event();
         _sm->load_shader(init_counter);
         // Build a simple accel to preload driver builtin shaders
-        auto buffer = _render_device.lc_device().create_buffer<uint>(4 * 3 + 3);
+        auto buffer = _render_device->lc_device().create_buffer<uint>(4 * 3 + 3);
         auto vb = buffer.view(0, 4 * 3).as<float3>();
         auto ib = buffer.view(4 * 3, 3).as<Triangle>();
         uint tri[] = {0, 1, 2};
@@ -112,15 +117,15 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
             reinterpret_cast<float &>(tri[0]),
             reinterpret_cast<float &>(tri[1]),
             reinterpret_cast<float &>(tri[2])};
-        auto mesh = _render_device.lc_device().create_mesh(vb, ib, AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
-        auto accel = _render_device.lc_device().create_accel(AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
+        auto mesh = _render_device->lc_device().create_mesh(vb, ib, AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
+        auto accel = _render_device->lc_device().create_accel(AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
         accel.emplace_back(mesh);
-        _render_device.lc_main_stream()
+        _render_device->lc_main_stream()
             << buffer.view().copy_from(data)
             << mesh.build()
             << accel.build()
             << [accel = std::move(accel), mesh = std::move(mesh), buffer = std::move(buffer)]() {};
-        _render_device.lc_main_stream().synchronize();
+        _render_device->lc_main_stream().synchronize();
         _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
             _sm->bindless_allocator(),
             65536);
@@ -130,35 +135,30 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
         _tex_loader = luisa::make_unique<TextureLoader>();
         init_counter.wait();
     }
-    _lights.create();
+    _lights = vstd::make_unique<Lights>();
 }
 StateMap &GraphicsUtils::render_settings(RenderPlugin::PipeCtxStub *pipe_ctx) const {
     return *_render_plugin->pipe_ctx_state_map(pipe_ctx);
 }
-RenderPlugin::PipeCtxStub *GraphicsUtils::register_render_pipectx(RenderView const &init_render_view) {
+RenderPlugin::PipeCtxStub *GraphicsUtils::register_render_pipectx() {
     if (!_render_plugin) return nullptr;
     auto pipe_ctx = _render_plugin->create_pipeline_context();
-    _render_pipe_ctxs.emplace(pipe_ctx, init_render_view);
+    _render_pipe_ctxs.emplace(pipe_ctx);
     return pipe_ctx;
-}
-void GraphicsUtils::set_render_view(RenderPlugin::PipeCtxStub *pipe_ctx, RenderView const &render_view) {
-    auto iter = _render_pipe_ctxs.find(pipe_ctx);
-    LUISA_ASSERT(iter);
-    iter.value() = render_view;
 }
 void GraphicsUtils::init_render() {
     _render_module = PluginManager::instance().load_module("rbc_render_plugin");
     LUISA_ASSERT(_render_module, "Render module not found.");
     _render_plugin = _render_module->invoke<RenderPlugin *()>("get_render_plugin");
     LUISA_ASSERT(_render_plugin->initialize_pipeline({}));
-    _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), false, false);
+    _sm->refresh_pipeline(_render_device->lc_main_cmd_list(), _render_device->lc_main_stream(), false, false);
     _sm->prepare_frame();
     _denoiser_inited = _render_plugin->init_oidn();
     _render_plugin->sync_init();
 }
 
 void GraphicsUtils::init_present_stream() {
-    auto &device = _render_device.lc_device();
+    auto &device = _render_device->lc_device();
     if (!_present_stream)
         _present_stream = device.create_stream(StreamTag::GRAPHICS);
 }
@@ -167,7 +167,7 @@ void GraphicsUtils::init_display(
     uint2 resolution,
     uint64_t native_display,
     uint64_t native_handle) {
-    auto &device = _render_device.lc_device();
+    auto &device = _render_device->lc_device();
     init_present_stream();
     if (_dst_image && any(_dst_image.size() != resolution)) {
         resize_swapchain(resolution, native_display, native_handle);
@@ -183,15 +183,15 @@ void GraphicsUtils::init_display(
                     .wants_vsync = false,
                     .back_buffer_count = 2});
         }
-        _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, false, true);
+        _dst_image = _render_device->lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, false, true);
         _dst_image.set_name("Dest image");
     }
 }
 
 void GraphicsUtils::reset_frame() {
-    _sm->refresh_pipeline(_render_device.lc_main_cmd_list(), _render_device.lc_main_stream(), true, true);
+    _sm->refresh_pipeline(_render_device->lc_main_cmd_list(), _render_device->lc_main_stream(), true, true);
     for (auto &i : _render_pipe_ctxs) {
-        _render_plugin->clear_context(i.first);
+        _render_plugin->clear_context(i);
     }
 }
 
@@ -207,9 +207,9 @@ void GraphicsUtils::tick(
     uint2 resolution,
     TickStage tick_stage,
     bool enable_denoise) {
-    AssetsManager::instance()->wake_load_thread();
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeFrame);
-    std::unique_lock render_lck{_render_device.render_loop_mtx()};
+    AssetsManager::instance()->wake_load_thread();
+    std::unique_lock render_lck{_render_device->render_loop_mtx()};
     if (_frame_requires_sync.exchange(false)) {
         _compute_event.event.synchronize(_compute_event.fence_index);
     }
@@ -220,8 +220,8 @@ void GraphicsUtils::tick(
     }
 
     // TODO: later for many context
-    auto &cmdlist = _render_device.lc_main_cmd_list();
-    auto &main_stream = _render_device.lc_main_stream();
+    auto &cmdlist = _render_device->lc_main_cmd_list();
+    auto &main_stream = _render_device->lc_main_stream();
     auto dispose_denoise_pack = vstd::scope_exit([&] {
         for (auto &i : _denoise_packs) {
             if (i.external_albedo)
@@ -236,8 +236,9 @@ void GraphicsUtils::tick(
     });
     _denoise_packs.clear();
     _denoise_packs.reserve(_render_pipe_ctxs.size());
-    auto init_render_ctx = [&](RenderPlugin::PipeCtxStub *pipe_ctx, RenderView const &render_view) {
+    auto init_render_ctx = [&](RenderPlugin::PipeCtxStub *pipe_ctx) {
         auto render_settings = _render_plugin->pipe_ctx_state_map(pipe_ctx);
+        auto const &render_view = render_settings->read<RenderView>();
         auto &frame_settings = render_settings->read_mut<rbc::FrameSettings>();
         auto &pipe_settings = render_settings->read_mut<rbc::PTPipelineSettings>();
         // TODO: camera settings
@@ -252,8 +253,8 @@ void GraphicsUtils::tick(
         frame_settings.radiance_buffer = nullptr;
         frame_settings.resolved_img.reset();
         frame_settings.reject_sampling = false;
-
-        enable_denoise &= _denoiser_inited;
+        auto pt_settings = render_settings->read_if<PathTracerSettings>();
+        enable_denoise &= _denoiser_inited & (!pt_settings || pt_settings->denoise);
         DenoisePack *denoise_pack{};
         if (tick_stage != TickStage::RasterPreview && enable_denoise) {
             denoise_pack = &_denoise_packs.emplace_back();
@@ -303,7 +304,7 @@ void GraphicsUtils::tick(
         }
     };
     for (auto &i : _render_pipe_ctxs) {
-        init_render_ctx(i.first, i.second);
+        init_render_ctx(i);
     }
     rbc::world::_zz_on_before_rendering();
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeRender);
@@ -315,9 +316,9 @@ void GraphicsUtils::tick(
             _sm->set_io_cmdlist_require_sync();
         }
     }
-    _sm->execute_io(_render_device.fallback_mem_io_service(), main_stream, _compute_event.event.handle(), _compute_event.fence_index);
+    _sm->execute_io(_render_device->fallback_mem_io_service(), main_stream, _compute_event.event.handle(), _compute_event.fence_index);
     for (auto &i : _render_pipe_ctxs) {
-        _render_plugin->before_rendering({}, i.first);
+        _render_plugin->before_rendering({}, i);
     }
     auto managed_device = static_cast<ManagedDevice *>(RenderDevice::instance()._lc_managed_device().impl());
     managed_device->begin_managing(cmdlist);
@@ -326,13 +327,13 @@ void GraphicsUtils::tick(
         main_stream);
     // on render
     uint64_t idx = 0;
-    _render_device._pipeline_name_ = {};
+    _render_device->_pipeline_name_ = {};
     for (auto &i : _render_pipe_ctxs) {
-        _render_device._pipeline_name_ = luisa::format("{}\126", idx);
+        _render_device->_pipeline_name_ = luisa::format("{}\126", idx);
         ++idx;
-        _render_plugin->on_rendering({}, i.first);
+        _render_plugin->on_rendering({}, i);
     }
-    _render_device._pipeline_name_ = {};
+    _render_device->_pipeline_name_ = {};
     // TODO: pipeline update
     //////////////// Test
     managed_device->end_managing(cmdlist);
@@ -361,11 +362,11 @@ void GraphicsUtils::resize_swapchain(
     _compute_event.event.synchronize(_compute_event.fence_index);
     _present_stream.synchronize();
     _dst_image.reset();
-    _dst_image = _render_device.lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, size, 1, false, true);
+    _dst_image = _render_device->lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, size, 1, false, true);
     _dst_image.set_name("Dest image");
     _swapchain.reset();
     if (native_handle != invalid_resource_handle)
-        _swapchain = _render_device.lc_device().create_swapchain(
+        _swapchain = _render_device->lc_device().create_swapchain(
             _present_stream,
             SwapchainOption{
                 .display = native_display,

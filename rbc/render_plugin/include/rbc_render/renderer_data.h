@@ -1,6 +1,10 @@
 #pragma once
 #include <rbc_core/type_info.h>
 #include <luisa/core/mathematics.h>
+namespace luisa::compute {
+template<typename T>
+class Image;
+}// namespace luisa::compute
 namespace rbc {
 using namespace luisa;
 struct CameraData {
@@ -36,8 +40,14 @@ struct PTPipelineSettings {
     bool use_editing : 1 {true};
     bool use_post_filter : 1 {true};
 };
+struct RenderView {
+    luisa::compute::Image<float> const *img{};
+    uint2 view_offset_pixels;
+    uint2 view_size_pixels{~0u};
+};
 }// namespace rbc
 RBC_RTTI(rbc::CameraData)
 RBC_RTTI(rbc::JitterData)
 RBC_RTTI(rbc::SkyHeapIndices)
 RBC_RTTI(rbc::PTPipelineSettings)
+RBC_RTTI(rbc::RenderView)

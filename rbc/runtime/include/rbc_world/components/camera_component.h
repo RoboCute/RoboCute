@@ -29,6 +29,7 @@ public:
     void deserialize_meta(ObjDeSerialize const &obj) override;
     void on_awake() override;
     void on_destroy() override;
+    void update_data() override;
     void enable_camera();
     void disable_camera();
 };

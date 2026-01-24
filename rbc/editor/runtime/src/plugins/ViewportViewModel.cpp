@@ -1,5 +1,6 @@
 #include "RBCEditorRuntime/plugins/ViewportPlugin.h"
 #include <QDebug>
+#include <luisa/runtime/context.h>
 
 namespace rbc {
 

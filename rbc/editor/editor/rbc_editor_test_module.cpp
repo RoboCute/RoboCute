@@ -20,6 +20,7 @@
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/ui/WindowManager.h"
 #include "RBCEditorRuntime/services/LayoutService.h"
+#include <luisa/runtime/context.h>
 
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;

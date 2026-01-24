@@ -17,6 +17,7 @@
 #include <rbc_project/project.h>
 #include <rbc_project/project_plugin.h>
 #include <rbc_render/grid_drawer.h>
+#include <rbc_graphics/render_device.h>
 
 using rbc::ArchiveWriteJson;
 using rbc::ArchiveReadJson;
