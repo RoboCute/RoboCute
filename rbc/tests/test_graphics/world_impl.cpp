@@ -8,8 +8,9 @@
 #include <rbc_world/components/light_component.h>
 #include <rbc_world/resources/texture.h>
 #include <rbc_world/resources/mesh.h>
-#include <rbc_graphics/texture/texture_loader.h>
+#include <rbc_world/importers/texture_loader.h>
 #include <rbc_world/resources/material.h>
+#include <rbc_world/components/camera_component.h>
 #include <rbc_graphics/graphics_utils.h>
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_world/importers/texture_importer_exr.h>
@@ -21,6 +22,7 @@
 #include <rbc_project/project.h>
 #include <rbc_world/resources/scene.h>
 #include <rbc_core/utils/forget.h>
+void save_image(luisa::filesystem::path const &path, luisa::compute::Image<float> const &img);// implemented save_image.cpp
 namespace rbc {
 struct EntitiesCollectionImpl : RCBase {
     luisa::vector<RCWeak<world::Entity>> _entities;
@@ -84,6 +86,10 @@ bool Entity::remove_component(void *this_, luisa::string_view name) {
 void *Component::entity(void *this_) {
     auto c = static_cast<world::Component *>(this_);
     return c->entity();
+}
+void Component::update_data(void *this_) {
+    auto c = static_cast<world::Component *>(this_);
+    c->update_data();
 }
 uint64_t TransformComponent::children_count(void *this_) {
     auto c = static_cast<world::TransformComponent *>(this_);
@@ -529,5 +535,88 @@ void *EntitiesCollection::get_entity(void *this_, uint64_t index) {
     auto ptr = v.get();
     unsafe_forget(std::move(v));
     return ptr;
+}
+void *CameraComponent::_create_() {
+    auto entity = world::create_object<world::CameraComponent>();
+    manually_add_ref(entity);
+    return entity;
+}
+double CameraComponent::aperture(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    return c->aperture;
+}
+double CameraComponent::aspect_ratio(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    return c->aspect_ratio;
+}
+double CameraComponent::auto_aspect_ratio(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    return c->auto_aspect_ratio;
+}
+void CameraComponent::disable_camera(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->disable_camera();
+}
+void CameraComponent::enable_camera(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->enable_camera();
+}
+bool CameraComponent::enable_physical_camera(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    return c->enable_physical_camera;
+}
+double CameraComponent::far_plane(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    return c->far_plane;
+}
+double CameraComponent::focus_distance(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    return c->focus_distance;
+}
+double CameraComponent::fov(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    return c->fov;
+}
+double CameraComponent::near_plane(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    return c->near_plane;
+}
+void CameraComponent::save_image_to(void *this_, luisa::string_view path) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    auto graphics = GraphicsUtils::instance();
+    LUISA_ASSERT(graphics);
+    save_image(path, graphics->dst_image());
+}
+void CameraComponent::set_aperture(void *this_, double value) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->aperture = value;
+}
+void CameraComponent::set_aspect_ratio(void *this_, double value) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->aspect_ratio = value;
+}
+void CameraComponent::set_auto_aspect_ratio(void *this_, double value) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->auto_aspect_ratio = value;
+}
+void CameraComponent::set_enable_physical_camera(void *this_, bool value) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->enable_physical_camera = value;
+}
+void CameraComponent::set_far_plane(void *this_, double value) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->far_plane = value;
+}
+void CameraComponent::set_focus_distance(void *this_, double value) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->focus_distance = value;
+}
+void CameraComponent::set_fov(void *this_, double value) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->fov = value;
+}
+void CameraComponent::set_near_plane(void *this_, double value) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    c->near_plane = value;
 }
 }// namespace rbc

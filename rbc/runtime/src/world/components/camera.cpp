@@ -4,6 +4,7 @@
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/type_register.h>
 #include <rbc_graphics/graphics_utils.h>
+#include <rbc_render/renderer_data.h>
 #include <rbc_core/state_map.h>
 
 namespace rbc::world {
@@ -56,23 +57,40 @@ void CameraComponent::_on_transform_update() {
     }
 }
 
+void CameraComponent::update_data() {
+    if (!_render_pipe_ctx) return;
+    auto graphics = GraphicsUtils::instance();
+    if (graphics) return;
+    auto &render_settings = GraphicsUtils::instance()->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(_render_pipe_ctx));
+    auto &rv = render_settings.read_mut<RenderView>();
+    rv = RenderView{
+        dst_image ? &dst_image : nullptr,
+        view_offset_pixels,
+        view_size_pixels};
+}
+
 void CameraComponent::enable_camera() {
     if (_render_pipe_ctx || !GraphicsUtils::instance()) return;
     auto tr = entity()->get_component<TransformComponent>();
     if (tr) {
         tr->add_on_update_event(this, &CameraComponent::_on_transform_update);
     }
-    RenderView rv{
-        dst_image ? &dst_image : nullptr,
-        view_offset_pixels,
-        view_size_pixels};
-    _render_pipe_ctx = GraphicsUtils::instance()->register_render_pipectx(rv);
+    _render_pipe_ctx = GraphicsUtils::instance()->register_render_pipectx();
     _on_transform_update();
+    add_world_event(WorldEventType::BeforeFrame, [](RCWeak<CameraComponent> comp) -> coroutine {
+        while (true) {
+            auto rc = comp.lock().rc();
+            if (!rc || !rc->_render_pipe_ctx) co_return;
+            rc->update_data();
+        }
+        co_return;
+    }(RCWeak<CameraComponent>{this}));
 }
 void CameraComponent::disable_camera() {
     if (!_render_pipe_ctx || !GraphicsUtils::instance()) return;
     GraphicsUtils::instance()->remove_render_pipectx(static_cast<RenderPlugin::PipeCtxStub *>(_render_pipe_ctx));
     _render_pipe_ctx = nullptr;
+    remove_world_event(WorldEventType::BeforeFrame);
 }
 void CameraComponent::on_destroy() {
     auto tr = entity()->get_component<TransformComponent>();

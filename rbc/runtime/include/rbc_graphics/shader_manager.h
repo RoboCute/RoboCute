@@ -23,6 +23,7 @@ struct is_lc_shader {
 RBC_RUNTIME_API void shader_notfound_log(string_view name);
 template<size_t dim, typename... Args>
 struct is_lc_shader<Shader<dim, Args...>> {
+    static constexpr bool is_raster = false;
     static constexpr bool value = true;
     static Shader<dim, Args...> load_shader(Device &device, string_view name) {
         auto shader = device.load_shader<dim, Args...>(name);
@@ -37,6 +38,7 @@ struct is_lc_shader<Shader<dim, Args...>> {
 };
 template<typename... Args>
 struct is_lc_shader<RasterShader<Args...>> {
+    static constexpr bool is_raster = true;
     static constexpr bool value = true;
     static RasterShader<Args...> load_shader(Device &device, string_view name) {
         auto shader = device.load_raster_shader<Args...>(name);
@@ -156,6 +158,7 @@ public:
     template<typename T>
         requires(
             std::is_pointer_v<T> &&
+            std::is_base_of_v<ShaderBase, std::remove_pointer_t<T>> &&
             is_lc_shader<std::remove_cvref_t<std::remove_pointer_t<T>>>::value)
     void async_load(luisa::fiber::counter &counter, luisa::filesystem::path const &shader_path, T &shader_ptr, bool support_preload = true) {
         counter.add(1);

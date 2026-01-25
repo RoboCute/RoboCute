@@ -31,7 +31,7 @@ void RenderDevice::set_main_stream(Stream *main_stream) {
     _render_loop_mtx.unlock();
 }
 void RenderDevice::init(
-    const luisa::filesystem::path &program_path,
+    luisa::compute::Context &&ctx,
     luisa::string_view backend,
     bool headless,
     bool require_async_stream, bool require_io_service, bool gpu_dump, void *external_device,
@@ -42,7 +42,7 @@ void RenderDevice::init(
     _headless = headless;
     _device_index = device_index;
     // create context
-    _context.create(luisa::to_string(program_path));
+    _context.create(std::move(ctx));
 
     // create device
     luisa::unique_ptr<luisa::compute::DeviceConfigExt> ext;

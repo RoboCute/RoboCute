@@ -10,7 +10,7 @@
 #include <stb/stb_image.h>
 #include <tinytiffreader.h>
 #include <tinyexr.h>
-#include <rbc_graphics/texture/texture_loader.h>
+#include <rbc_world/importers/texture_loader.h>
 #include <luisa/core/binary_io.h>
 #include <rbc_world/resources/texture.h>
 #include <rbc_core/utils/thread_waiter.h>

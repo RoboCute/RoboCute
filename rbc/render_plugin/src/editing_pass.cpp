@@ -6,7 +6,7 @@
 #include <rbc_graphics/render_device.h>
 #include <rbc_render/raster_pass.h>
 #include <luisa/backends/ext/raster_ext.hpp>
-
+#include <rbc_render/grid_drawer.h>
 namespace rbc {
 namespace click_pick {
 #include <raster/click_pick.inl>
@@ -37,6 +37,8 @@ void EditingPass::on_enable(
     ShaderManager::instance()->async_load(_init_counter, "path_tracer/clear_buffer.bin", _clear_buffer);
     ShaderManager::instance()->async_load(_init_counter, "raster/contour_reduce.bin", _contour_reduce);
     ShaderManager::instance()->async_load(_init_counter, "raster/draw_frame_selection.bin", _draw_frame_selection);
+    ShaderManager::instance()->async_load(_init_counter, "raster/grid_gen.bin", _grid_gen);
+    ShaderManager::instance()->async_load_raster_shader(_init_counter, "raster/draw_grid.bin", _draw_grid);
 }
 void EditingPass::on_disable(
     Pipeline const &pipeline,
@@ -131,11 +133,78 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &cmdlist = *ctx.cmdlist;
     auto const &frame_settings = ctx.pipeline_settings.read<FrameSettings>();
     auto click_manager = ctx.pipeline_settings.read_if<ClickManager>();
+    auto grid_editor = ctx.pipeline_settings.read_if<GridDrawer>();
     const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
+    const auto &cam = ctx.pipeline_settings.read<Camera>();
     auto id_map = render_device.get_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
     if (!id_map) {
         LUISA_ERROR("ID map is missing, must disable editing pass");
         return;
+    }
+    if (grid_editor) {
+        auto &pass_ctx = ctx.mut.get_pass_context_mut<RasterPassContext>();
+        if (pass_ctx && pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frame_settings.render_resolution)) {
+            sm.dispose_after_sync(std::move(pass_ctx->depth_buffer));
+        }
+        uint64_t size = 0;
+        for (auto &i : grid_editor->draw_grids) {
+            size = std::max<uint64_t>(i.line_count.x * i.line_count.y * 2, size);
+        }
+        if (_draw_grid_buffer && _draw_grid_buffer.size() < size) {
+            sm.dispose_after_sync(std::move(_draw_grid_buffer));
+        }
+        if (!_draw_grid_buffer && size > 0) {
+            auto align_size = 65536u / sizeof(float4);
+            _draw_grid_buffer = render_device.lc_device().create_buffer<float4>(
+                (size + align_size - 1) / align_size * align_size);
+        }
+        RasterState raster_state{
+            .fill_mode = FillMode::WireFrame,
+            .cull_mode = CullMode::None,
+            .blend_state = BlendState{
+                .enable_blend = true,
+                .prim_op = BlendWeight::PrimAlpha,
+                .img_op = BlendWeight::OneMinusPrimAlpha},
+            .topology = TopologyType::Line};
+        DepthBuffer *depth_ptr{};
+        if (pass_ctx && pass_ctx->depth_buffer) {
+            depth_ptr = &pass_ctx->depth_buffer;
+            raster_state.depth_state = DepthState{
+                .enable_depth = true,
+                .comparison = Comparison::Greater,
+                .write = false};
+        }
+        for (auto &i : grid_editor->draw_grids) {
+            auto dst_size = i.line_count.x * i.line_count.y * 2;
+            auto buffer = _draw_grid_buffer.view(0, dst_size);
+            cmdlist << (*_grid_gen)(
+                           buffer,
+                           normalize(i.grid_tangent),
+                           normalize(i.grid_bitangent),
+                           i.grid_center,
+                           i.interval_size,
+                           i.line_count)
+                           .dispatch(i.line_count.x + i.line_count.y);
+            VertexBufferView vbv{
+                buffer};
+            luisa::vector<RasterMesh> scene;
+            scene.emplace_back(
+                luisa::span<VertexBufferView const>{&vbv, 1},
+                (uint)buffer.size(),
+                1,
+                0);
+            cmdlist
+                << (*_draw_grid)(
+                       cam_data.vp,
+                       make_float3(cam.position),
+                       i.origin_color,
+                       i.start_decay_dist,
+                       i.decay_distance)
+                       .draw(std::move(scene),
+                             sm.accel_manager().basic_foramt(),
+                             Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, depth_ptr, *frame_settings.dst_img);
+        }
+        grid_editor->draw_grids.clear();
     }
     if (click_manager) {
         click_manager->_mtx.lock();
@@ -154,15 +223,18 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 .depth_state = DepthState{.enable_depth = true, .comparison = Comparison::Greater, .write = true}};
 
             uint obj_id = 0;
-            auto pass_ctx = ctx.mut.get_pass_context<RasterPassContext>();
-            if (pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frame_settings.render_resolution)) {
-                sm.dispose_after_sync(std::move(pass_ctx->depth_buffer));
+            auto &pass_ctx = ctx.mut.get_pass_context_mut<RasterPassContext>();
+            DepthBuffer* depth_ptr{};
+            if (pass_ctx) {
+                if (pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frame_settings.render_resolution)) {
+                    sm.dispose_after_sync(std::move(pass_ctx->depth_buffer));
+                }
+                if (!pass_ctx->depth_buffer) {
+                    pass_ctx->depth_buffer = render_device.lc_device().create_depth_buffer(DepthFormat::D32, frame_settings.render_resolution);
+                }
+                depth_ptr = &pass_ctx->depth_buffer;
+                cmdlist << pass_ctx->depth_buffer.clear(0.0f);
             }
-            if (!pass_ctx->depth_buffer) {
-                pass_ctx->depth_buffer = render_device.lc_device().create_depth_buffer(DepthFormat::D32, frame_settings.render_resolution);
-            }
-
-            cmdlist << pass_ctx->depth_buffer.clear(0.0f);
             for (auto &i : reqs) {
                 VertexBufferView vbv[2] = {
                     VertexBufferView{i.pos_buffer},
@@ -182,7 +254,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 cmdlist << (*_draw_gizmos)(cam_data.vp * i.transform, result_buffer, pixel_args)
                                .draw(std::move(raster_mesh),
                                      _gizmos_mesh_format,
-                                     Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer,
+                                     Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, depth_ptr,
                                      *frame_settings.dst_img);
             }
 

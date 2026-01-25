@@ -3,6 +3,7 @@
 #include <rbc_graphics/make_device_config.h>
 #include <luisa/backends/ext/native_resource_ext.hpp>
 #include <rbc_core/state_map.h>
+#include <rbc_graphics/render_device.h>
 
 namespace rbc {
 
@@ -61,7 +62,7 @@ void RenderAppBase::init(const char *program_path, const char *backend_name) {
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() /
         (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
-    pipe_ctx = utils.register_render_pipectx({});
+    pipe_ctx = utils.register_render_pipectx();
     auto *cam = &utils.render_settings(pipe_ctx).read_mut<Camera>();
     cam->fov = radians(80.f);
     cam_controller.camera = cam;

@@ -253,11 +253,13 @@ class PathTracerSettings:
     offline_origin_bounce: uint
     offline_indirect_bounce: uint
     resource_color_space: ResourceColorSpace
+    denoise: bool
 
     _cpp_init = {
         "offline_spp": "1",
         "offline_origin_bounce": "2",
         "offline_indirect_bounce": "4",
+        "denoise": "true"
     }
 
 

@@ -20,6 +20,7 @@
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/ui/WindowManager.h"
 #include "RBCEditorRuntime/services/LayoutService.h"
+#include <luisa/runtime/context.h>
 
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;
@@ -34,8 +35,6 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         QCoreApplication::translate("main", "Enable hot reload for QML files"));
     parser.addOption(enableHotReloadOption);
     parser.process(app);
-    // Get QML file path or watch directory path
-    QString qmlPath;
     bool enable_hot_reload = parser.isSet(enableHotReloadOption);
     qDebug() << "Hot Reload 【" << (enable_hot_reload ? "enabled" : "disabled") << "】\n";
 
@@ -76,6 +75,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         if (layoutService->hasLayout(startup_layout)) {
             layoutService->applyLayout(startup_layout);
         }
+
         QShortcut *reloadShortcut = nullptr;
         if (enable_hot_reload) {
             reloadShortcut = new QShortcut(QKeySequence(Qt::Key_F5), mainWindow);
@@ -83,7 +83,7 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
                 qDebug() << "F5 pressed - Reloading all QML views...";
                 windowManager.reloadAllQmlViews();
             });
-            qDebug() << "Hot reload: F5 shortcut registered for QML refresh";
+            qDebug() << "Hot reload: Ctrl+F5 shortcut registered for QML refresh";
         }
 
         mainWindow->resize(1920, 1080);

@@ -20,6 +20,7 @@
 #include "RBCEditorRuntime/plugins/IEditorPlugin.h"
 #include "RBCEditorRuntime/ui/WindowManager.h"
 #include "RBCEditorRuntime/services/LayoutService.h"
+#include <luisa/runtime/context.h>
 
 LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     using namespace rbc;
@@ -34,8 +35,6 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
         QCoreApplication::translate("main", "Enable hot reload for QML files"));
     parser.addOption(enableHotReloadOption);
     parser.process(app);
-    // Get QML file path or watch directory path
-    QString qmlPath;
     bool enable_hot_reload = parser.isSet(enableHotReloadOption);
     qDebug() << "Hot Reload 【" << (enable_hot_reload ? "enabled" : "disabled") << "】\n";
 
@@ -60,8 +59,6 @@ LUISA_EXPORT_API int dll_main(int argc, char *argv[]) {
     {
         WindowManager windowManager(&pluginManager, nullptr);
         windowManager.setup_main_window();
-
-        // 设置热更新模式
         if (enable_hot_reload) {
             windowManager.setHotReloadEnabled(true);
         }

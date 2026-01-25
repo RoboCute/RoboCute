@@ -1,6 +1,7 @@
 #pragma once
 #include <rbc_config.h>
 #include <luisa/core/clock.h>
+#include <luisa/core/stl/string.h>
 #include <thread>
 namespace rbc {
 struct ThreadWaiter {

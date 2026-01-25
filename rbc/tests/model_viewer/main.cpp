@@ -25,7 +25,7 @@
 #include <rbc_world/resources/material.h>
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
-#include <rbc_graphics/texture/texture_loader.h>
+#include <rbc_world/importers/texture_loader.h>
 #include <rbc_world/util/gltf_scene_loader.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/resource_base.h>
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     utils.init_graphics(
         RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
     utils.init_render();
-    auto pipe_ctx = utils.register_render_pipectx({});
+    auto pipe_ctx = utils.register_render_pipectx();
     auto &render_settings = utils.render_settings(pipe_ctx);
     Window window{luisa::string{"model_viewer_"} + utils.backend_name(), uint2(1024), true};
 

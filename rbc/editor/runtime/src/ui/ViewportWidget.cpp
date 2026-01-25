@@ -4,6 +4,7 @@
 #include <QEvent>
 #include <QMouseEvent>
 #include <QDebug>
+#include <luisa/runtime/context.h>
 
 namespace rbc {
 

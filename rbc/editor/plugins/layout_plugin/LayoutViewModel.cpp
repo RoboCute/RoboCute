@@ -28,6 +28,7 @@ QStringList LayoutViewModel::availableLayouts() const {
     if (!layoutService_) {
         return {};
     }
+    qDebug() << "Available Layouts: " << layoutService_->availableLayouts();
     return layoutService_->availableLayouts();
 }
 
@@ -102,37 +103,8 @@ void LayoutViewModel::onLayoutChanged() {
 
 void LayoutViewModel::updateViewStates() {
     viewStates_.clear();
-
     if (!layoutService_) {
         return;
-    }
-
-    // Build list of known views with their visibility states
-    QStringList knownViews = {
-        "layout_manager",
-        "connection_status",
-        "viewport.main",
-        "project_previewer"};
-
-    for (const QString &viewId : knownViews) {
-        QVariantMap viewInfo;
-        viewInfo["viewId"] = viewId;
-        viewInfo["visible"] = layoutService_->isViewVisible(viewId);
-
-        // Set display name
-        if (viewId == "layout_manager") {
-            viewInfo["displayName"] = "Layout Manager";
-        } else if (viewId == "connection_status") {
-            viewInfo["displayName"] = "Connection Status";
-        } else if (viewId == "viewport.main") {
-            viewInfo["displayName"] = "Main Viewport";
-        } else if (viewId == "project_previewer") {
-            viewInfo["displayName"] = "Project Previewer";
-        } else {
-            viewInfo["displayName"] = viewId;
-        }
-
-        viewStates_.append(viewInfo);
     }
 }
 

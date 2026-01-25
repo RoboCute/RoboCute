@@ -6,7 +6,7 @@
 #include <rbc_world/resource_importer.h>
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_project/project_plugin.h>
-#include <rbc_graphics/texture/texture_loader.h>
+#include <rbc_world/importers/texture_loader.h>
 #include <rbc_graphics/graphics_utils.h>
 namespace rbc {
 struct Project : IProject {

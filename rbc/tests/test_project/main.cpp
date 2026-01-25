@@ -16,7 +16,8 @@
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/atmosphere_component.h>
-#include <rbc_graphics/texture/texture_loader.h>
+#include <rbc_world/importers/texture_loader.h>
+#include <rbc_graphics/render_device.h>
 int main(int argc, char *argv[]) {
     if (argc < 3) {
         LUISA_WARNING("Bad args, must be #backend# #scene path#");

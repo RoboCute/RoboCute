@@ -15,9 +15,11 @@ bool SceneService::loadFromLocal(const QString &scenePath) {
 void SceneService::unloadScene() {}
 
 SceneSourceType SceneService::sceneSource() const {
+    return {};
 }
 
 QString SceneService::sceneSourceName() const {
+    return "";
 }
 
 // == scene state

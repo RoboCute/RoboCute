@@ -1,16 +1,8 @@
 import os
+import sys
 import time
 from pathlib import Path
-from rbc_ext.generated.rbc_backend import (
-    RBCContext,
-    uint2,
-    capsule_vector,
-    float4,
-    float3,
-    make_float4x4,
-    make_double4x4,
-    destroy_object,
-)
+from rbc_ext.generated.rbc_backend import *
 from rbc_ext.generated.world import *
 import numpy as np
 import json
@@ -34,8 +26,13 @@ if "RBC_RUNTIME_DIR" not in os.environ:
             f"Searched in: {project_root / 'build' / 'windows' / 'x64' / 'debug'}"
         )
 
+EXPORT = True
+
 
 def main():
+    if len(sys.argv) < 2:
+        print('must input scene root-dir')
+        exit(1)
     backend_name = "vk"
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
     program_path = str(runtime_dir.parent / "debug")
@@ -47,18 +44,37 @@ def main():
     ctx.init_device(backend_name, program_path, shader_path)
     ctx.init_render()
     project = Project()
-    project.init("C:/dev/RoboCute/build/download/test_scene_v1.0.1")
+    project.init(sys.argv[1])
     print('scaning')
     project.scan_project()
     print('scanned')
-    ctx.create_window("py_window", uint2(1920, 1080), True)
+    resolution = uint2(1920, 1080)
+    ctx.create_window("py_window", resolution, True)
     print('importing')
     scene = project.import_scene('test_scene.scene', '')
     print('installing')
     scene.install()
     print('installed')
+    last_time = time.time()
+    frame_index = 0
+    image_index = 0
     while not ctx.should_close():
-        ctx.tick()
+        cur_time = time.time()
+        delta_time = cur_time - last_time
+        last_time = cur_time
+        ctx.tick(
+            delta_time,
+            resolution,
+            frame_index,
+            TickStage.PathTracingPreview,
+            True
+        )
+        frame_index += 1
+        if EXPORT and frame_index == 64:
+            frame_index = 0
+            ctx.save_image_to(str(Path(__file__).parent /
+                              f"screenshot/frame_{image_index}.png"), True)
+            image_index += 1
     del scene
 
 

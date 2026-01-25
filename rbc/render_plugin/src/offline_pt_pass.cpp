@@ -132,7 +132,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     }
 
     Buffer<pt::GBuffer> geo_buffer = render_device.create_transient_buffer<pt::GBuffer>("offline_geo_buffer", frame_settings.display_resolution.x * frame_settings.display_resolution.y);
-    if (all(frame_settings.display_resolution == frame_settings.render_resolution) && accum_pass_ctx->frame_index < 8) {
+    if (all(frame_settings.display_resolution == frame_settings.render_resolution) && accum_pass_ctx->frame_index < 64 && frame_settings.reject_sampling) {
         scene.tex_streamer().force_sync();
     }
 

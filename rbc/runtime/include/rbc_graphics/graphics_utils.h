@@ -1,41 +1,40 @@
 #pragma once
-#include <rbc_graphics/scene_manager.h>
-#include <rbc_graphics/render_device.h>
-#include <rbc_graphics/lights.h>
 #include <luisa/core/clock.h>
 #include <luisa/vstl/functional.h>
 #include <luisa/runtime/swapchain.h>
-#include <rbc_render/render_plugin.h>
+#include <luisa/runtime/stream.h>
 #include <luisa/core/dynamic_module.h>
+#include <rbc_core/base.h>
+#include <rbc_core/quaternion.h>
+#include <rbc_render/render_plugin.h>
 namespace rbc {
+struct RenderDevice;
+struct ComputeDevice;
 struct DeviceImage;
 struct TextureLoader;
 struct DeviceMesh;
+struct SceneManager;
+struct Lights;
 namespace world {
 struct MeshResource;
 }// namespace world
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
-#include <material/mats.inl>
 struct DeviceTransformingMesh;
 struct EventFence {
     TimelineEvent event;
     uint64_t fence_index{};
 };
+struct ComputeDevice;
 struct GraphicsUtils;
-struct RBC_RUNTIME_API RenderView {
-    friend struct GraphicsUtils;
-    Image<float> const *img{};
-    uint2 view_offset_pixels;
-    uint2 view_size_pixels{~0u};
-};
 struct RBC_RUNTIME_API GraphicsUtils : RBCStruct {
 private:
-    RenderDevice _render_device;
+    vstd::unique_ptr<RenderDevice> _render_device;
+    vstd::unique_ptr<ComputeDevice> _compute_device;
     luisa::string _backend_name;
     EventFence _compute_event;
-    vstd::optional<SceneManager> _sm;
+    vstd::unique_ptr<SceneManager> _sm;
     // present
     Stream _present_stream;
     luisa::unique_ptr<TextureLoader> _tex_loader;
@@ -45,8 +44,8 @@ private:
     // render
     luisa::shared_ptr<DynamicModule> _render_module;
     RenderPlugin *_render_plugin{};
-    vstd::HashMap<RenderPlugin::PipeCtxStub *, RenderView> _render_pipe_ctxs{};
-    vstd::optional<rbc::Lights> _lights;
+    vstd::HashMap<RenderPlugin::PipeCtxStub *> _render_pipe_ctxs{};
+    vstd::unique_ptr<rbc::Lights> _lights;
     std::atomic_bool _frame_requires_sync{false};
     bool _require_reset : 1 {false};
     bool _denoiser_inited : 1 {false};
@@ -68,9 +67,8 @@ public:
     void init_graphics(luisa::filesystem::path const &shader_path);
     void init_present_stream();
     void init_render();
-    RenderPlugin::PipeCtxStub *register_render_pipectx(RenderView const &init_render_view);
+    RenderPlugin::PipeCtxStub *register_render_pipectx();
     void remove_render_pipectx(RenderPlugin::PipeCtxStub *pipe_ctx);
-    void set_render_view(RenderPlugin::PipeCtxStub *pipe_ctx, RenderView const &render_view);
     void resize_swapchain(
         uint2 size,
         uint64_t native_display,
@@ -94,7 +92,7 @@ public:
         uint2 resolution,
         TickStage tick_stage = TickStage::PathTracingPreview,
         bool enable_denoise = false);
-    void denoise();
+    bool denoise();
     void create_texture(
         DeviceImage *ptr,
         PixelStorage storage,

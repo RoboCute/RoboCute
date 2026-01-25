@@ -560,7 +560,7 @@ void WindowManager::reloadAllQmlViews() {
         if (hot_reload_enabled_ && !contribution.qmlHotDir.isEmpty()) {
             QString filePath = contribution.qmlHotDir + "/qml/" + contribution.qmlSource;
             qmlUrl = QUrl::fromLocalFile(filePath);
-            qDebug() << "WindowManager::reloadAllQmlViews: Reloading" << viewId << "from:" << filePath;
+            qDebug() << "WindowManager::reloadAllQmlViews: Reloading" << viewId << "from: " << filePath;
         } else if (contribution.qmlSource.startsWith("qrc:/") || contribution.qmlSource.startsWith(":/")) {
             qmlUrl = QUrl(contribution.qmlSource);
         } else if (contribution.qmlSource.startsWith("file://")) {

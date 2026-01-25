@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <QtGui/rhi/qshader.h>
 #include <luisa/vstl/common.h>
+#include <luisa/runtime/context.h>
 
 namespace rbc {
 
