@@ -36,6 +36,7 @@ struct BinaryBlock {
 struct ResourceLoader : RBCStruct {
     luisa::filesystem::path _meta_path;
     luisa::filesystem::path _binary_path;
+    rbc::shared_atomic_mutex _meta_db_mtx;
     vstd::LMDB _meta_db;
 
     struct ResourceHandle {
@@ -85,6 +86,7 @@ struct ResourceLoader : RBCStruct {
         add_block(ResourceMetaType::TYPE_ID,
                   {(std::byte const *)&type_id, sizeof(type_id)},
                   result);
+        std::lock_guard lck{_meta_db_mtx};
         _meta_db.write(
             {(std::byte const *)(&resource_guid),
              sizeof(resource_guid)},
@@ -109,6 +111,7 @@ struct ResourceLoader : RBCStruct {
         add_block(ResourceMetaType::TYPE_ID,
                   {(std::byte const *)&type_id, sizeof(type_id)},
                   result);
+        std::lock_guard lck{_meta_db_mtx};
         _meta_db.write(
             {(std::byte const *)(&resource_guid),
              sizeof(resource_guid)},
@@ -163,9 +166,11 @@ struct ResourceLoader : RBCStruct {
         luisa::string result;
         vstd::Guid type_id;
         type_id.reset();
+        _meta_db_mtx.lock_shared();
         auto sp = _meta_db.read(
             {(std::byte const *)&guid,
              sizeof(guid)});
+        _meta_db_mtx.unlock_shared();
         auto ptr = sp.data();
         auto end = ptr + sp.size();
         while (true) {
