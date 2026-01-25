@@ -31,7 +31,7 @@ EXPORT = False
 
 def main():
     if len(sys.argv) < 2:
-        print('must input scene root-dir')
+        print("must input scene root-dir")
         exit(1)
     backend_name = "vk"
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
@@ -45,16 +45,16 @@ def main():
     ctx.init_render()
     project = Project()
     project.init(str(Path(sys.argv[1]) / "assets"))
-    print('scaning')
+    print("scaning")
     project.scan_project()
-    print('scanned')
+    print("scanned")
     resolution = uint2(1920, 1080)
     ctx.create_window("py_window", resolution, True)
-    print('importing')
-    scene = project.import_scene('test_scene.scene', '')
-    print('installing')
+    print("importing")
+    scene = project.import_scene("test_scene.scene", "")
+    print("installing")
     scene.install()
-    print('installed')
+    print("installed")
     last_time = time.time()
     frame_index = 0
     image_index = 0
@@ -63,18 +63,15 @@ def main():
         delta_time = cur_time - last_time
         last_time = cur_time
         ctx.tick(
-            delta_time,
-            resolution,
-            frame_index,
-            TickStage.PathTracingPreview,
-            True
+            delta_time, resolution, frame_index, TickStage.PathTracingPreview, True
         )
         frame_index += 1
         if EXPORT and frame_index == 64:
             frame_index = 0
             ctx.denoise()
             ctx.save_display_image_to(
-                str(Path(__file__).parent / f"screenshot/frame_{image_index}.png"))
+                str(Path(__file__).parent / f"screenshot/frame_{image_index}.png")
+            )
             image_index += 1
     del scene
 

@@ -250,6 +250,37 @@ def _get_py_type(type_hint: Any) -> Optional[str]:
     f = _PY_NAMES.get(type_hint)
     if f is not None:
         return f
+
+    # Handle Generic types FIRST (before checking _cpp_type_name)
+    # This is important for nested generics like Vector[Vector[int]]
+    if hasattr(type_hint, "__origin__"):
+        origin = type_hint.__origin__
+        args = getattr(type_hint, "__args__", ())
+        return None  # discard containers
+        if (
+            hasattr(origin, "_py_type_name")
+            and hasattr(origin, "_is_container")
+            and origin._is_container
+        ):
+            cpp_name = origin._py_type_name
+            if len(args) == 1:
+                inner_type = _get_py_type(args[0])
+                return f"{cpp_name}[{inner_type}]"
+            elif len(args) == 2:
+                key_type = _get_py_type(args[0])
+                value_type = _get_py_type(args[1])
+                return f"{cpp_name}<{key_type}, {value_type}>"
+
+        # Handle standard Python generic types
+        if isinstance(origin, list):
+            assert len(args) == 1  # vector should have 1 arg
+            return f"List[{_get_py_type(args[0])}]"
+        elif isinstance(origin, dict):
+            assert len(args) == 2  # dict should have key/value pair
+            return f"Dict[{_get_py_type(args[0])}, {_get_py_type(args[1])}]"
+        else:
+            print(f"unsupported generic type: {origin}")
+
     if hasattr(type_hint, "_py_type_name"):
         if len(type_hint._py_type_name) > 0:
             return type_hint._py_type_name
@@ -351,10 +382,8 @@ def _print_py_args(
             if (
                 param_type
                 and hasattr(param_type, "_pybind_type_")
-                and param_type._pybind_type_ and (
-                    hasattr(param_type, "_is_enum_") and 
-                    not param_type._is_enum_
-                )
+                and param_type._pybind_type_
+                and (hasattr(param_type, "_is_enum_") and not param_type._is_enum_)
             ):
                 arg_close = "._handle" + arg_close
         # type_str = _get_py_type(param_type) if param_type else None
@@ -709,6 +738,7 @@ def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
                 INDENT=INDENT, STRUCT_NAME=class_name
             )
         )
+        # C-style static function implementation, no C++ inheritance
         struct_base_expr = ": ::rbc::RBCStruct"
         # TODO: we don't want to inherit in cpp
         # if len(info.base_classes) == 1:
@@ -901,19 +931,19 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
                 STRUCT_NAME=struct_name,
             )
 
-            dispose_method = PY_DISPOSE_METHOD_TEMPLATE.substitute(
-                INDENT=INDENT
-            )
+            dispose_method = PY_DISPOSE_METHOD_TEMPLATE.substitute(INDENT=INDENT)
 
         pybind_methods_list = []
         if info.create_instance:
             pybind_methods_list.append(f"create__{struct_name}__")
 
         def get_method_expr(method: MethodInfo, type: Type):
+            # print(method)
             # Filter out 'self' parameter for Python method declarations
             method_params = {k: v for k, v in method.parameters.items() if k != "self"}
             args_decl = _print_py_args_decl(method_params, False, type)
             args_call = _print_py_args(method_params, False, False)
+
             return_expr = "return " if method.return_type else ""
             return_end = ""
             if (
@@ -943,64 +973,30 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
                 RETURN_END=return_end,
             )
 
-        def get_inherit_method_expr(method: MethodInfo, struct_name: str, type: Type):
-            method_params = {k: v for k, v in method.parameters.items() if k != "self"}
-            args_decl = _print_py_args_decl(method_params, False, type)
-            args_call = _print_py_args(method_params, False, False)
-            return_expr = "return " if method.return_type else ""
-            return_end = ""
-            if (
-                method.return_type
-                and hasattr(method.return_type, "_pybind_type_")
-                and method.return_type._pybind_type_
-                and not method.return_type._is_enum_
-            ):
-                return_expr += _get_py_type(method.return_type) + "("
-                return_end = ")"
-            pybind_method_name = PYBIND_METHOD_NAME_TEMPLATE.substitute(
-                STRUCT_NAME=struct_name,
-                METHOD_NAME=method.name,
-            )
-            return PY_METHOD_TEMPLATE.substitute(
-                INDENT=INDENT,
-                METHOD_NAME=method.name,
-                ARGS_DECL=args_decl,
-                RETURN_EXPR=return_expr,
-                PYBIND_METHOD_NAME=pybind_method_name,
-                ARGS_CALL=args_call,
-                RETURN_END=return_end,
-            )
-
         methods_list = []
         for method in info.methods:
             if _is_rpc_method(method):
-                continue  # Skip RPC methods in Python interface
+                continue  # skip RPC methods in Python interface
+            if method.is_inherit_func:
+                continue  # skip inherit methods in python interface
             methods_list.append(get_method_expr(method, info.cls))
 
-        def print_inherit(info: ClassInfo):
-            inherit_cls_infos = []
-            if info.inherit:
-                if type(info.inherit) != list:
-                    inherit_cls_info = type_to_cls_info.get(info.inherit)
-                    if inherit_cls_info:
-                        inherit_cls_infos.append(inherit_cls_info)
-                else:
-                    for i in info.inherit:
-                        inherit_cls_info = type_to_cls_info.get(i)
-                        if inherit_cls_info:
-                            inherit_cls_infos.append(inherit_cls_info)
-            for inherit_cls_info in inherit_cls_infos:
-                for method in inherit_cls_info.methods:
-                    methods_list.append(
-                        get_inherit_method_expr(method, inherit_cls_info.name, info.cls)
-                    )
-                print_inherit(inherit_cls_info)
-
-        print_inherit(info)
         methods_expr = "".join(methods_list)
+        inherit_expr = ""
+        # print(f"Class {info.name} has {len(info.base_classes)} base classes")
+        if len(info.base_classes) == 1:
+            base_class = info.base_classes[0]
+            assert base_class is not None
+            base_expr = _get_py_type(base_class.cls)
+            inherit_expr = f"({base_expr})"
+            # only on rttr type, valid
+        elif len(info.base_classes) > 1:
+            # should not happen
+            print(f"{info.name} has more than 1 base classes")
 
         return PY_INTERFACE_CLASS_TEMPLATE.substitute(
             CLASS_NAME=info.name,
+            INHERIT_EXPR=inherit_expr,
             INIT_METHOD=init_method,
             DISPOSE_METHOD=dispose_method,
             METHODS_EXPR=methods_expr,
@@ -1011,8 +1007,10 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
 
     # Use original order from registry to preserve module-defined order
     all_classes = registry.get_all_classes().items()
+
     for key, info in all_classes:
         type_to_cls_info[info.cls] = info
+
     for key, info in all_classes:
         if len(module_filter) > 0 and info.module not in module_filter:
             continue

@@ -60,7 +60,8 @@ class ulong:
     _reflected_ = True
     _cpp_type_name = "uint64_t"
     _py_type_name = "int"
-    
+
+
 class long:
     __slot__ = {}
     _reflected_ = True
@@ -78,7 +79,7 @@ class DataBuffer:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "luisa::span<std::byte>"
-    
+
 
 class Callback:
     __slot__ = {}
@@ -179,6 +180,12 @@ class RBCStruct:
     _cpp_type_name = "rbc::RBCStruct"
 
 
+class RCBase:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "rbc::RCBase"
+
+
 # ===================================================
 # ================== CONTAINERS =====================
 # ===================================================
@@ -199,6 +206,14 @@ class Vector(Generic[T]):
     _cpp_type_name = "luisa::vector"
     _is_container = True
     _py_type_name = "List"
+
+
+class RC(Generic[T]):
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "rbc::RC"
+    _is_container = True
+    _py_type_name = "RC"
 
 
 K = TypeVar("K")
@@ -231,6 +246,7 @@ class RenderMesh:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "rbc::RenderMesh"
+
 
 # External type helper
 

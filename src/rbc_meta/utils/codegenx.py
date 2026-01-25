@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Any, Type, get_type_hints, get_origin, get_args
-
+from pathlib import Path
 from rbc_meta.utils.reflect import ReflectionRegistry
 from rbc_meta.utils.reflect import (
     ReflectionRegistry,
@@ -90,9 +90,12 @@ class CodegenResitry:
             print("=========================")
             print(mod.name())
             if mod.enable_cpp_interface_:
-                self.gen_interface_header(mod)
+                self.gen_cpp_interface_header(mod)
                 if mod.enable_cpp_impl_:
                     self.gen_cpp_impl(mod)
+
+            if mod.enable_pybind_:
+                self.gen_pybind_py(mod)
 
     def gen_cpp_impl(self, mod: "CodeModule"):
         reg = ReflectionRegistry()
@@ -192,7 +195,7 @@ class CodegenResitry:
 
         _write_string_to(file_expr, cpp_path)
 
-    def gen_interface_header(self, mod: "CodeModule"):
+    def gen_cpp_interface_header(self, mod: "CodeModule"):
         reg = ReflectionRegistry()
 
         print("Dependencies: [")
@@ -231,6 +234,10 @@ class CodegenResitry:
             STRUCTS_EXPR=structs_expr,
         )
         _write_string_to(file_expr, header_path)
+
+    def gen_pybind_py(self, mod: "CodeModule"):
+        target_filepath = mod.pybind_py_file_path()
+        print("Generating pybind to ", target_filepath)
 
     def cpp_struct_def_gen(self, info: ClassInfo) -> str:
         INDENT = DEFAULT_INDENT
@@ -377,7 +384,6 @@ class CodegenResitry:
             )
         )
         struct_base_expr = ": ::rbc::RBCStruct"
-        # TODO: we don't want to inherit in cpp
         # if len(info.base_classes) == 1:
         #     base_class = info.base_classes[0]
         #     assert base_class is not None
@@ -459,6 +465,9 @@ class CodeModule:
     interface_header_file_: str = ""
     enable_cpp_impl_: bool = False
     cpp_impl_file_: str = ""
+    enable_pybind_: bool = False
+    pybind_py_basedir_: str = "src/rbc_ext/generated/"
+    pybind_py_file_: str = ""
     header_files_: List[str] = []
     deps_: List[Type] = []
 
@@ -474,3 +483,6 @@ class CodeModule:
 
     def add_cls(self, cls: Type):
         self.classes_.append(cls)
+
+    def pybind_py_file_path(self) -> Path:
+        return Path(self.pybind_py_basedir_) / Path(self.pybind_py_file_)

@@ -1,12 +1,23 @@
 from rbc_meta.utils.reflect import reflect
 from rbc_meta.utils.builtin import DataBuffer, ExternalType
-from rbc_meta.utils.builtin import uint, uint2, ulong, float3, float4x4, VoidPtr, GUID, double, double3, float4, double4x4
+from rbc_meta.utils.builtin import (
+    uint,
+    uint2,
+    ulong,
+    float3,
+    float4x4,
+    VoidPtr,
+    GUID,
+    double,
+    double3,
+    float4,
+    double4x4,
+    Vector,
+    RC,
+    RCBase,
+)
 from rbc_meta.types.resource_enums import LCPixelStorage
 from enum import Enum
-
-MaterialsVector = ExternalType(
-    "luisa::vector<rbc::RC<rbc::RCBase>>", False, "Vec<rbc::RC<rbc::RCBase>>"
-)
 
 
 @reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
@@ -46,9 +57,8 @@ class Object:
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-    inherit=Object
 )
-class Entity:
+class Entity(Object):
     def add_component(name: str) -> VoidPtr: ...
     def get_component(name: str) -> VoidPtr: ...
     def remove_component(name: str) -> bool: ...
@@ -59,10 +69,9 @@ class Entity:
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-    inherit=Object,
     create_instance=False,
 )
-class Component:
+class Component(Object):
     def entity() -> Entity: ...
     def update_data() -> None: ...
 
@@ -72,10 +81,9 @@ class Component:
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-    inherit=Component,
     create_instance=False,
 )
-class TransformComponent():
+class TransformComponent(Component):
     def position() -> double3: ...
     def scale() -> double3: ...
     def rotation() -> float4: ...
@@ -87,8 +95,9 @@ class TransformComponent():
     def set_scale(scale: double3, recursive: bool) -> None: ...
     def set_rotation(rotation: float4, recursive: bool) -> None: ...
     def set_trs_matrix(trs: double4x4, recursive: bool) -> None: ...
-    def set_trs(pos: double3, rotation: float4,
-                scale: double3, recursive: bool) -> None: ...
+    def set_trs(
+        pos: double3, rotation: float4, scale: double3, recursive: bool
+    ) -> None: ...
 
 
 @reflect(
@@ -97,14 +106,18 @@ class TransformComponent():
     cpp_namespace="rbc",
     module_name="world_interface",
     create_instance=False,
-    inherit=Component
 )
-class LightComponent():
+class LightComponent(Component):
     def add_area_light(luminance: float3, visible: bool) -> None: ...
     def add_disk_light(luminance: float3, visible: bool) -> None: ...
     def add_point_light(luminance: float3, visible: bool) -> None: ...
-    def add_spot_light(luminance: float3, angle_radians: float,
-                       small_angle_radians: float, angle_atten_pow: float, visible: bool) -> None: ...
+    def add_spot_light(
+        luminance: float3,
+        angle_radians: float,
+        small_angle_radians: float,
+        angle_atten_pow: float,
+        visible: bool,
+    ) -> None: ...
 
     def luminance() -> float3: ...
     def angle_radians() -> float: ...
@@ -120,10 +133,9 @@ class LightComponent():
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-    inherit=Object,
     create_instance=False,
 )
-class Resource:
+class Resource(Object):
     def load_status() -> ResourceLoadStatus: ...
     def load() -> None: ...
     def install() -> bool: ...
@@ -137,9 +149,8 @@ class Resource:
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-    inherit=Resource
 )
-class TextureResource:
+class TextureResource(Resource):
     def is_vt() -> bool: ...
     def pack_to_tile() -> bool: ...
     def pixel_storage() -> LCPixelStorage: ...
@@ -150,7 +161,7 @@ class TextureResource:
         pixel_storage: LCPixelStorage,
         size: uint2,
         mip_level: uint,
-        is_virtual_texture: bool
+        is_virtual_texture: bool,
     ) -> None: ...
     def load_executed() -> bool: ...
     def has_data_buffer() -> bool: ...
@@ -159,21 +170,13 @@ class TextureResource:
     def set_skybox() -> None: ...
 
 
-class MeshResource:
-    pass
-
-
-MeshResource._pybind_type_ = True
-
-
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-    inherit=Resource
 )
-class MeshResource:
+class MeshResource(Resource):
     def vertex_count() -> uint: ...
     def triangle_count() -> uint: ...
     def uv_count() -> uint: ...
@@ -197,7 +200,7 @@ class MeshResource:
         contained_tangent: bool,
     ) -> None: ...
 
-    def create_as_morphing_instance(origin_mesh: MeshResource) -> None: ...
+    def create_as_morphing_instance(origin_mesh: "MeshResource") -> None: ...
 
 
 @reflect(
@@ -205,9 +208,8 @@ class MeshResource:
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-    inherit=Resource
 )
-class MaterialResource:
+class MaterialResource(Resource):
     def mat_code() -> uint: ...
     def load_from_json(json: str) -> None: ...
 
@@ -218,16 +220,14 @@ class MaterialResource:
     cpp_namespace="rbc",
     module_name="world_interface",
     create_instance=False,
-    inherit=Component
 )
-class RenderComponent():
+class RenderComponent(Component):
     def get_tlas_index() -> uint: ...
     def remove_object() -> None: ...
-    def update_object(mat_vector: MaterialsVector,
-                      mesh: MeshResource) -> None: ...
+    def update_object(mat_vector: Vector[RC[RCBase]], mesh: MeshResource) -> None: ...
 
     def update_mesh(mesh: MeshResource) -> None: ...
-    def update_material(mat_vector: MaterialsVector) -> None: ...
+    def update_material(mat_vector: Vector[RC[RCBase]]) -> None: ...
 
 
 @reflect(
@@ -235,9 +235,8 @@ class RenderComponent():
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-    inherit=Component
 )
-class CameraComponent:
+class CameraComponent(Component):
     def fov() -> double: ...
     def set_fov(value: double) -> None: ...
     def aspect_ratio() -> double: ...
@@ -258,6 +257,8 @@ class CameraComponent:
     def enable_camera() -> None: ...
     def disable_camera() -> None: ...
     def save_image_to(path: str) -> None: ...
+
+
 # Import, load and manage project
 
 
@@ -265,7 +266,7 @@ class CameraComponent:
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface"
+    module_name="world_interface",
 )
 class EntitiesCollection:
     def count() -> ulong: ...
@@ -277,9 +278,8 @@ class EntitiesCollection:
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
-    inherit=Resource
 )
-class Scene:
+class Scene(Resource):
     def get_entity(guid: GUID) -> Entity: ...
     def get_or_add_entity(guid: GUID) -> Entity: ...
     def update_data() -> None: ...
@@ -292,7 +292,7 @@ class Scene:
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface"
+    module_name="world_interface",
 )
 class FileMeta:
     def guid() -> GUID: ...
@@ -303,17 +303,16 @@ class FileMeta:
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface"
+    module_name="world_interface",
 )
-class Project():
+class Project:
     def init(assets_root_dir: str) -> None: ...
     def import_texture(path: str, extra_meta: str) -> None: ...
     def import_mesh(path: str, extra_meta: str) -> None: ...
     def import_material(path: str, extra_meta: str) -> None: ...
     def import_scene(path: str, extra_meta: str) -> Scene: ...
     # TODO: more import
-    def load_resource(
-        guid: GUID, async_load: bool) -> TextureResource: ...
+    def load_resource(guid: GUID, async_load: bool) -> TextureResource: ...
 
     def scan_project() -> None: ...
     def get_file_meta(type_id: GUID, dest_path: str) -> FileMeta: ...
