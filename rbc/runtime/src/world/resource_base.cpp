@@ -306,27 +306,24 @@ RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
     }
     auto obj_meta = _res_loader->to_binary(guid);
     if (!obj_meta.second) return {};
-    auto remove_value = [&]() {
-        std::lock_guard lck{_res_loader->_resmap_mtx};
-        _res_loader->resource_types.remove(guid);
-    };
     if (obj_meta.first.empty()) {
         obj_meta.first = "{}";
     }
-    JsonDeSerializer deser{obj_meta.first};
-    if (!deser.valid()) [[unlikely]] {
-        remove_value();
-        return {};
-    }
-    rbc::ArchiveReadJson adapter(deser);
     res = static_cast<Resource *>(_zz_create_object_with_guid_test_base(obj_meta.second, guid, BaseObjectType::Resource));
     if (!res) [[unlikely]] {
-        remove_value();
+        LUISA_ERROR("Create resource {} failed with invalid type_id {}.", guid.to_string(), obj_meta.second.to_string());
         return {};
     }
-    ObjDeSerialize obj_deser{adapter};
+
+    JsonDeSerializer deser{obj_meta.first};
+    if (!deser.valid()) [[unlikely]] {
+        LUISA_WARNING("Deserialize resource {} failed with invalid string {}.", guid.to_string(), obj_meta.first);
+    } else {
+        rbc::ArchiveReadJson adapter(deser);
+        ObjDeSerialize obj_deser{adapter};
+        res->deserialize_meta(obj_deser);
+    }
     v->res = res;
-    res->deserialize_meta(obj_deser);
     lck.unlock();
     if (async_load_from_file)
         _res_loader->try_load_resource(res.get());
