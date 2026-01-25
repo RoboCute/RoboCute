@@ -27,13 +27,26 @@ namespace rbc {
 
 template<typename T>
 static constexpr bool is_rtti_type_v = rbc_rtti_detail::is_rtti_type<T>::value;
-#define RBC_RTTI(ClassName)                                  \
+#define RBC_RTTI(ClassType)                                  \
     namespace rbc_rtti_detail {                              \
     template<>                                               \
-    struct is_rtti_type<ClassName> {                         \
+    struct is_rtti_type<ClassType> {                         \
+        static constexpr bool value = true;                  \
+        static constexpr const char *name{#ClassType};       \
+        static rbc::MD5 get_md5() {                          \
+            static vstd::MD5 _md5{luisa::string_view{name}}; \
+            return _md5;                                     \
+        }                                                    \
+    };                                                       \
+    }
+// For another name (legacy, obsolete, etc) 
+#define RBC_RTTI_WITH_NAME(ClassType, ClassName)             \
+    namespace rbc_rtti_detail {                              \
+    template<>                                               \
+    struct is_rtti_type<ClassType> {                         \
         static constexpr bool value = true;                  \
         static constexpr const char *name{#ClassName};       \
-        static rbc::MD5 get_md5() {                    \
+        static rbc::MD5 get_md5() {                          \
             static vstd::MD5 _md5{luisa::string_view{name}}; \
             return _md5;                                     \
         }                                                    \
