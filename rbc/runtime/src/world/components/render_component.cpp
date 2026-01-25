@@ -79,11 +79,7 @@ void RenderComponent::deserialize_meta(ObjDeSerialize const &deser) {
         auto res = load_resource(guid, true);
         if (res && res->is_type_of(TypeInfo::get<MeshResource>())) {
             _mesh_ref = RC<MeshResource>(std::move(res));
-        } else {
-            LUISA_ERROR("Mesh type mismatch guid {}", guid.to_string());
         }
-    } else {
-        LUISA_ERROR("No mesh guid.");
     }
 }
 
