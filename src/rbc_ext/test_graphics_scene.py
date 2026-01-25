@@ -26,7 +26,7 @@ if "RBC_RUNTIME_DIR" not in os.environ:
             f"Searched in: {project_root / 'build' / 'windows' / 'x64' / 'debug'}"
         )
 
-EXPORT = True
+EXPORT = False
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
     program_path = str(runtime_dir.parent / "debug")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
-    world_path = str(Path(sys.argv[1]) / "datasets")
+    world_path = str(Path(sys.argv[1]) / "library")
 
     ctx = RBCContext()
     ctx.init_world(world_path, world_path)
