@@ -13,7 +13,7 @@ if "RBC_RUNTIME_DIR" not in os.environ:
     project_root = Path(__file__).parent.parent.parent
     # Try to find the build directory
     found = False
-    runtime_dir = project_root / "build" / "windows" / "x64" / "debug"
+    runtime_dir = project_root / "build" / "windows" / "x64" / "release"
     if runtime_dir.exists():
         os.environ["RBC_RUNTIME_DIR"] = str(runtime_dir)
         # Also add to PATH for DLL loading
@@ -23,7 +23,7 @@ if "RBC_RUNTIME_DIR" not in os.environ:
     if not found:
         raise RuntimeError(
             f"Could not auto-detect RBC_RUNTIME_DIR. "
-            f"Searched in: {project_root / 'build' / 'windows' / 'x64' / 'debug'}"
+            f"Searched in: {project_root / 'build' / 'windows' / 'x64' / 'release'}"
         )
 
 EXPORT = False
@@ -35,7 +35,7 @@ def main():
         exit(1)
     backend_name = "vk"
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
-    program_path = str(runtime_dir.parent / "debug")
+    program_path = str(runtime_dir.parent / "release")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
     world_path = str(Path(sys.argv[1]) / "library")
 

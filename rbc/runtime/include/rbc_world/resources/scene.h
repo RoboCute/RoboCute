@@ -29,6 +29,7 @@ private:
     rbc::shared_atomic_mutex _name_map_mtx;
     vstd::HashMap<vstd::Guid, RC<Entity>> _entities;
     vstd::HashMap<luisa::string, luisa::fixed_vector<Entity *, 1>> _entities_str_name;
+    vstd::optional<luisa::vector<char>> json_data;
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::SceneResource)

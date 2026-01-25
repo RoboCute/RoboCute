@@ -214,7 +214,7 @@ struct ResourceLoader : RBCStruct {
         dispose();
     }
     void try_load_resource(Resource *res) {
-        if (atomic_max(res->_status, EResourceLoadingStatus::Loading) != EResourceLoadingStatus::Unloaded) {
+        if (atomic_max(res->_status, EResourceLoadingStatus::Loading) > EResourceLoadingStatus::Unloaded) {
             return;
         }
         loading_queue.enqueue(LoadingResource{RCWeak<Resource>{res}, res->_async_load()});
@@ -384,17 +384,20 @@ bool Resource::install() {
     }
     if (st == EResourceLoadingStatus::Installed) return false;
     ThreadWaiter waiter;
-    while (loading_status() == EResourceLoadingStatus::Loading) {
+    while (loading_status() < EResourceLoadingStatus::Loaded) {
         waiter.wait(std::chrono::microseconds(10), [&]() {
             LUISA_WARNING("Still waiting for resource {}", guid().to_string());
         });
     }
-    atomic_max(_status, EResourceLoadingStatus::Installing);
-    auto v = _install();
-    if (v) {
-        unsafe_set_installed();
+    if (atomic_max(_status, EResourceLoadingStatus::Installing) < EResourceLoadingStatus::Installing) {
+        auto v = _install();
+        if (v) {
+            unsafe_set_installed();
+        }
+        return v;
+    } else {
+        return false;
     }
-    return v;
 }
 EResourceLoadingStatus Resource::unsafe_set_loading_status_min(EResourceLoadingStatus dst_status) {
     return atomic_min(_status, dst_status);
