@@ -72,7 +72,7 @@ class long:
 class GUID:
     __slot__ = {}
     _reflected_ = True
-    _cpp_type_name = "GUID"
+    _cpp_type_name = "vstd::Guid"
 
 
 class DataBuffer:
@@ -242,6 +242,32 @@ class Pointer(Generic[V]):
     _is_container = True
 
 
+class Const(Generic[V]):
+    __slot__ = {}
+    _reflected_ = True
+    _is_container = True
+
+
+class Ref(Generic[V]):
+    __slot__ = {}
+    _reflected_ = True
+    _is_container = True
+
+
+class LCBuffer(Generic[V]):
+    __slot__ = {}
+    _reflected_ = True
+    _is_container = True
+    _cpp_type_name = "luisa::compute::Buffer"
+
+
+class LCImage(Generic[V]):
+    __slot__ = {}
+    _reflected_ = True
+    _is_container = True
+    _cpp_type_name = "luisa::compute::Image"
+
+
 class RenderMesh:
     __slot__ = {}
     _reflected_ = True
@@ -249,30 +275,19 @@ class RenderMesh:
 
 
 # External type helper
+class BuiltInMeshResource:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "world::MeshResource"
 
 
-class ExternalType:
-    """Helper class for external C++ types"""
+class Curve:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "Curve"
 
-    def __init__(
-        self,
-        cpp_type_name: str,
-        is_trivial_type: bool = False,
-        py_codegen_name: str = None,
-    ):
-        self._cpp_type_name = cpp_type_name
-        if py_codegen_name:
-            self._py_codegen_name = py_codegen_name
-        else:
-            self._py_codegen_name = cpp_type_name
-        self._reflected_ = True
-        self._is_trivial_type = is_trivial_type
 
-    def cpp_type_name(self, py_interface: bool = False, is_view: bool = True):
-        if py_interface:
-            name = self._py_codegen_name
-        else:
-            name = self._cpp_type_name
-        if not self._is_trivial_type and is_view:
-            name += " const&"
-        return name
+class SkyAtmosphere:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "SkyAtmosphere"

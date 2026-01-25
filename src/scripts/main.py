@@ -366,7 +366,7 @@ def generate():
         "rbc/runtime/include/rbc_plugin/generated/resource_meta.hpp"
     ).resolve()
     cpp_path = Path("rbc/runtime/src/generated/resource_meta.cpp").resolve()
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, False, include)
 
     include = "#include <rbc_plugin/generated/resource_meta.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
@@ -412,7 +412,7 @@ def generate():
 #include <rbc_core/utils/curve.h>
 #include <rbc_render/procedural/sky_atmosphere.h>"""
 
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, False, include)
     include = "#include <rbc_render/generated/pipeline_settings.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
@@ -432,7 +432,7 @@ def generate():
     include = """#include <rbc_plugin/generated/resource_meta.hpp>
 #include <rbc_core/rc.h>"""
 
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, False, include)
     include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
 
     ut.codegen_to(cpp_path)(
@@ -452,13 +452,14 @@ def generate():
     if not (py_root_path / "__init__.py").exists():
         (py_root_path / "__init__.py").touch()
     py_path = py_root_path / f"{file_name}.py"
+    include = """
+    #include <rbc_plugin/generated/resource_meta.hpp>
+    #include <rbc_core/rc.h>
+    #include <rbc_world/resources/mesh.h>
+    """
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, True, include)
 
-    include = """#include <rbc_plugin/generated/resource_meta.hpp>
-#include <rbc_core/rc.h>"""
-
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
-
     ut.codegen_to(cpp_path)(pybind_codegen, pyd_name, ["world_interface"], include)
     ut.codegen_to(py_path)(py_interface_gen, "test_py_codegen", ["world_interface"])
 

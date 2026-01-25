@@ -1,5 +1,5 @@
 from rbc_meta.utils.reflect import reflect
-from rbc_meta.utils.builtin import DataBuffer, ExternalType
+from rbc_meta.utils.builtin import DataBuffer
 from rbc_meta.utils.builtin import (
     uint,
     uint2,
@@ -15,6 +15,10 @@ from rbc_meta.utils.builtin import (
     Vector,
     RC,
     RCBase,
+    Pointer,
+    Ref,
+    Const,
+    BuiltInMeshResource,
 )
 from rbc_meta.types.resource_enums import LCPixelStorage
 from enum import Enum
@@ -224,10 +228,12 @@ class MaterialResource(Resource):
 class RenderComponent(Component):
     def get_tlas_index() -> uint: ...
     def remove_object() -> None: ...
-    def update_object(mat_vector: Vector[RC[RCBase]], mesh: MeshResource) -> None: ...
+    def update_object(
+        mat_vector: Ref[Const[Vector[RC[RCBase]]]], mesh: MeshResource
+    ) -> None: ...
 
     def update_mesh(mesh: MeshResource) -> None: ...
-    def update_material(mat_vector: Vector[RC[RCBase]]) -> None: ...
+    def update_material(mat_vector: Ref[Const[Vector[RC[RCBase]]]]) -> None: ...
 
 
 @reflect(

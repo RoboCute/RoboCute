@@ -198,6 +198,7 @@ class ReflectionRegistry:
                     is_inherit_func = True
 
                 sig = inspect.signature(func)
+
                 return_type = (
                     sig.return_annotation
                     if sig.return_annotation != inspect.Signature.empty
@@ -492,6 +493,7 @@ def reflect(
 
     def decorator(cls: Type) -> Type:
         registry = ReflectionRegistry()
+
         class_info = registry.register(
             cls,
             module_name=module_name,
@@ -506,8 +508,8 @@ def reflect(
         cls._is_enum_ = class_info.is_enum
         # 添加自定义属性
         cls._pybind_type_ = pybind
-
         cls._cpp_type_name = f"{cpp_namespace}::{cls.__name__}"
+
         return cls
 
     # 支持 @reflect 和 @reflect(...) 两种用法

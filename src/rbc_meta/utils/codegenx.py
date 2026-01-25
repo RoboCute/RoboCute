@@ -322,6 +322,7 @@ class CodegenResitry:
         for method in info.methods:
             if _is_rpc_method(method):
                 continue  # RPC methods are handled separately
+
             ret_type = (
                 _get_full_cpp_type(method.return_type, registry, False, False)
                 if method.return_type

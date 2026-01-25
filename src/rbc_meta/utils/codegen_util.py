@@ -38,3 +38,41 @@ def re_translate(text: str, replacements: dict):
     )
     updated_text = pattern.sub(lambda match: replacements[match.group(0)], text)
     return updated_text
+
+
+def _print_str(t, py_interface: bool = False, is_view: bool = False) -> str:
+    if is_view:
+        return "luisa::string_view"
+    elif py_interface:
+        return "luisa::string"
+    else:
+        return "luisa::string"
+
+
+def _print_guid(t, py_interface: bool = False, is_view: bool = False) -> str:
+    if py_interface:
+        return "GuidData"
+    elif is_view:
+        return "vstd::Guid const&"
+    else:
+        return "vstd::Guid"
+
+
+def _print_data_buffer(t, py_interface: bool = False, is_view: bool = False) -> str:
+    if py_interface:
+        if is_view:
+            return "py::buffer const&"
+        else:
+            return "py::memoryview"
+    else:
+        return "luisa::span<std::byte>"
+
+
+def _print_callback(t, py_interface: bool = False, is_view: bool = False) -> str:
+    if py_interface:
+        if is_view:
+            return "py::function const&"
+        else:
+            raise ImportError("callback from c++ not supported.")
+    else:
+        return "luisa::function<void()> const&"
