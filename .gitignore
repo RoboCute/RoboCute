@@ -111,6 +111,7 @@ xmake/options.json
 xmake/options.lua
 modules/tools/nanogen/builtin/builtin.cpp
 generated/
+generated_bk/
 __pycache__
 *.egg-info
 .env

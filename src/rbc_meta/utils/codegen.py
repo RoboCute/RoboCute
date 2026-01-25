@@ -67,24 +67,16 @@ from rbc_meta.utils.codegen_util import (
     _print_data_buffer,
     _print_callback,
 )
-from rbc_meta.utils.builtin import Pointer, Const, Ref, LCBuffer  # special case
+from rbc_meta.utils.builtin import (
+    Pointer,
+    Const,
+    Ref,
+    LCBuffer,
+    DataBuffer,
+)  # special case
 
-_TYPE_NAME_FUNCTIONS = {
-    str: _print_str,
-}
+_TYPE_NAME_FUNCTIONS = {str: _print_str, DataBuffer: _print_data_buffer}
 
-# Import GUID from builtin to check type
-try:
-    from rbc_meta.utils.builtin import GUID as BuiltinGUID
-    from rbc_meta.utils.builtin import DataBuffer as BuiltinDataBuffer
-    from rbc_meta.utils.builtin import Callback as BuiltinCallback
-
-    _TYPE_NAME_FUNCTIONS[BuiltinGUID] = _print_guid
-    _TYPE_NAME_FUNCTIONS[BuiltinDataBuffer] = _print_data_buffer
-    _TYPE_NAME_FUNCTIONS[BuiltinCallback] = _print_callback
-
-except ImportError:
-    pass
 
 # Python type names for type hints
 _PY_NAMES = {
@@ -92,7 +84,6 @@ _PY_NAMES = {
     float: "float",
     str: "str",
     bool: "bool",
-    BuiltinDataBuffer: "",
 }
 
 
@@ -176,6 +167,9 @@ def _get_cpp_type(
 
     # in most cases it will cover the requirement
     info = registry.get_class_info(type_hint.__name__)
+    if type_hint.__name__ == "Entity":
+        print("Generating Entity", type_hint._pybind_type_, py_interface)
+
     if hasattr(type_hint, "_cpp_type_name"):
         if info is not None and info.is_enum:
             # if enum, directly return
@@ -651,9 +645,9 @@ def cpp_interface_gen(
         for method in info.methods:
             if _is_rpc_method(method):
                 continue  # RPC methods are handled separately
-            # print(method)
+
             ret_type = (
-                _get_full_cpp_type(method.return_type, registry, False, False)
+                _get_full_cpp_type(method.return_type, registry, pybind, False)
                 if method.return_type
                 else "void"
             )
@@ -663,8 +657,8 @@ def cpp_interface_gen(
             args_expr = _print_arg_vars_decl(
                 method_params,
                 False,  # not first, first method is void* _this
-                pybind,  # not py interface
-                True,  # is_view
+                pybind,  # pybind
+                False,  # is_view
                 registry,
             )
             method_expr = CPP_STRUCT_METHOD_DECL_TEMPLATE.substitute(
@@ -720,19 +714,6 @@ def cpp_interface_gen(
         )
         # C-style static function implementation, no C++ inheritance
         struct_base_expr = ": ::rbc::RBCStruct"
-        # TODO: we don't want to inherit in cpp
-        # if len(info.base_classes) == 1:
-        #     base_class = info.base_classes[0]
-        #     assert base_class is not None
-        #     base_expr = _get_cpp_type(base_class.cls)
-        #     struct_base_expr = f": public {base_expr}"
-        #     # only on rttr type, valid
-        # elif len(info.base_classes) > 1:
-        #     # should not happen
-        #     print(f"{class_name} has more than 1 base classes")
-
-        # print(f"{class_name}: {info.base_classes}")
-
         struct_expr = CPP_STRUCT_TEMPLATE.substitute(
             NAMESPACE_NAME=namespace_name or "",
             FUNC_API=func_api,
