@@ -95,16 +95,15 @@ ResourceImporterRegistry &ResourceImporterRegistry::instance() {
 RC<Resource> IResourceImporter::import(
     vstd::Guid guid,
     luisa::filesystem::path const &path, luisa::string const &meta_json) {
-    bool require_regist{false};
     auto type_id = resource_type();
     auto res = load_resource(guid, false);
-    if (!res) {
-        res = RC<Resource>{static_cast<Resource *>(create_object_with_guid(reinterpret_cast<vstd::Guid const &>(type_id), guid))};
+    if (!res || res->loaded()) [[unlikely]] {
+        LUISA_ERROR("Invalid resource.");
     }
+    register_resource_meta(res.get());
     auto &mtx = get_resource_mutex(guid);
     {
         std::lock_guard lck{mtx};
-        require_regist = true;
         if (!meta_json.empty()) {
             JsonDeSerializer ser(meta_json);
             rbc::ArchiveReadJson reader{ser};
@@ -112,9 +111,6 @@ RC<Resource> IResourceImporter::import(
         }
         import(res.get(), path);
         res->unsafe_set_loaded();
-    }
-    if (require_regist) {
-        register_resource_meta(res.get());
     }
     return res;
 }

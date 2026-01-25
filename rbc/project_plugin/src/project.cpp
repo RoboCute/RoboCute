@@ -8,14 +8,22 @@
 #include <rbc_project/project_plugin.h>
 #include <rbc_world/importers/texture_loader.h>
 #include <rbc_graphics/graphics_utils.h>
+#include <rbc_core/containers/rbc_concurrent_queue.h>
 namespace rbc {
 struct Project : IProject {
 private:
 
     luisa::filesystem::path _assets_path;
     vstd::HashMap<luisa::filesystem::path, std::pair<luisa::spin_mutex, std::atomic_uint64_t>> _file_mtx;
+    struct LoadCommand {
+        vstd::Guid type_id;
+        luisa::filesystem::path origin_path;
+        vstd::Guid binary_guid;
+        luisa::string meta;
+    };
+    rbc::ConcurrentQueue<LoadCommand> _import_cmds;
     luisa::spin_mutex _glb_mtx;
-    static void _reimport(
+    void _reimport(
         vstd::Guid binary_guid,
         luisa::string &meta_data,
         vstd::MD5 type_id,
@@ -130,17 +138,13 @@ void Project::_reimport(
     luisa::string &meta_data,
     vstd::MD5 type_id,
     luisa::filesystem::path const &origin_path) {
-    auto &importers = world::ResourceImporterRegistry::instance();
-    auto importer = importers.find_importer(origin_path, type_id);
-    if (!importer) {
-        return;
-    }
-    LUISA_INFO("Importing {} with meta {}", luisa::to_string(origin_path), meta_data);
-    auto res = importer->import(
-        binary_guid,
-        origin_path,
-        meta_data);
-    res->save_to_path();
+    world::register_resource_meta(binary_guid, luisa::string{meta_data}, type_id);
+
+    _import_cmds.enqueue(LoadCommand{
+        .type_id = type_id,
+        .origin_path = origin_path,
+        .binary_guid = binary_guid,
+        .meta = meta_data});
 }
 void Project::scan_project() {
     luisa::spin_mutex values_mtx;
@@ -254,6 +258,22 @@ void Project::scan_project() {
                     metas);
             }
         });
+    // import all
+    luisa::fiber::parallel(_import_cmds.size_approx(), [&](uint idx) {
+        LoadCommand cmd;
+        if (!_import_cmds.try_dequeue(cmd)) return;
+        auto &importers = world::ResourceImporterRegistry::instance();
+        auto importer = importers.find_importer(cmd.origin_path, cmd.type_id);
+        if (!importer) {
+            return;
+        }
+        LUISA_VERBOSE("Importing {} with meta {}", luisa::to_string(cmd.origin_path), cmd.meta);
+        auto res = importer->import(
+            cmd.binary_guid,
+            cmd.origin_path,
+            cmd.meta);
+        res->save_to_path();
+    });
     auto graphics = GraphicsUtils::instance();
     if (graphics && graphics->tex_loader())
         graphics->tex_loader()->finish_task();

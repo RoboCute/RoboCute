@@ -10,36 +10,42 @@ class size_t:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "size_t"
+    _py_type_name = "int"
 
 
 class uint:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "uint32_t"
+    _py_type_name = "int"
 
 
 class u8:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "uint8_t"
+    _py_type_name = "int"
 
 
 class u16:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "uint16_t"
+    _py_type_name = "int"
 
 
 class u32:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "uint32_t"
+    _py_type_name = "int"
 
 
 class u64:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "uint64_t"
+    _py_type_name = "int"
 
 
 class ubyte:
@@ -53,6 +59,12 @@ class ulong:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "uint64_t"
+    _py_type_name = "int"
+    
+class long:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "int64_t"
     _py_type_name = "int"
 
 
@@ -118,6 +130,7 @@ class double4x4:
 class double:
     _reflected_ = True
     _cpp_type_name = "double"
+    _py_type_name = "float"
 
 
 class float2:

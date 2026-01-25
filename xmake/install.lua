@@ -18,5 +18,5 @@ function main(mode)
     })
     -- Do this manually
     os.setenv('PYTHONPATH', target_dir)
-    os.runv('pybind11-stubgen', {'test_py_codegen', '--output-dir=' .. ext_path})
+    -- os.runv('uvx', {'pybind11-stubgen', 'test_py_codegen', '--output-dir=' .. ext_path})
 end

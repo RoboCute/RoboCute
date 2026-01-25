@@ -13,7 +13,7 @@ if "RBC_RUNTIME_DIR" not in os.environ:
     project_root = Path(__file__).parent.parent.parent
     # Try to find the build directory
     found = False
-    runtime_dir = project_root / "build" / "windows" / "x64" / "debug"
+    runtime_dir = project_root / "build" / "windows" / "x64" / "release"
     if runtime_dir.exists():
         os.environ["RBC_RUNTIME_DIR"] = str(runtime_dir)
         # Also add to PATH for DLL loading
@@ -23,10 +23,10 @@ if "RBC_RUNTIME_DIR" not in os.environ:
     if not found:
         raise RuntimeError(
             f"Could not auto-detect RBC_RUNTIME_DIR. "
-            f"Searched in: {project_root / 'build' / 'windows' / 'x64' / 'debug'}"
+            f"Searched in: {project_root / 'build' / 'windows' / 'x64' / 'release'}"
         )
 
-EXPORT = True
+EXPORT = False
 
 
 def main():
@@ -35,16 +35,16 @@ def main():
         exit(1)
     backend_name = "vk"
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
-    program_path = str(runtime_dir.parent / "debug")
+    program_path = str(runtime_dir.parent / "release")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
-    world_path = str(runtime_dir.parent / 'world')
+    world_path = str(Path(sys.argv[1]) / "library")
 
     ctx = RBCContext()
     ctx.init_world(world_path, world_path)
     ctx.init_device(backend_name, program_path, shader_path)
     ctx.init_render()
     project = Project()
-    project.init(sys.argv[1])
+    project.init(str(Path(sys.argv[1]) / "assets"))
     print('scaning')
     project.scan_project()
     print('scanned')
@@ -72,8 +72,9 @@ def main():
         frame_index += 1
         if EXPORT and frame_index == 64:
             frame_index = 0
-            ctx.save_image_to(str(Path(__file__).parent /
-                              f"screenshot/frame_{image_index}.png"), True)
+            ctx.denoise()
+            ctx.save_display_image_to(
+                str(Path(__file__).parent / f"screenshot/frame_{image_index}.png"))
             image_index += 1
     del scene
 
