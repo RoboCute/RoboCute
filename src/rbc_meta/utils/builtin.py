@@ -79,6 +79,7 @@ class DataBuffer:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "luisa::span<std::byte>"
+    _py_type_name = ""
 
 
 class Callback:

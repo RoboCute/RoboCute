@@ -303,7 +303,9 @@ def _print_py_args_decl(
             and self_type.__name__ == param_type.__name__
         ):
             type_str = _get_py_type(param_type) if param_type else None
+
         r += param_name
+
         if type_str:
             r += ": " + type_str
     return r
@@ -901,6 +903,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
             # print(method)
             # Filter out 'self' parameter for Python method declarations
             method_params = {k: v for k, v in method.parameters.items() if k != "self"}
+
             args_decl = _print_py_args_decl(method_params, False, type)
             args_call = _print_py_args(method_params, False, False)
 
@@ -922,6 +925,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
                 STRUCT_NAME=struct_name,
                 METHOD_NAME=method.name,
             )
+
             pybind_methods_list.append(pybind_method_name)
             return PY_METHOD_TEMPLATE.substitute(
                 INDENT=INDENT,

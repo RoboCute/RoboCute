@@ -15,10 +15,8 @@ from rbc_meta.utils.builtin import (
     Vector,
     RC,
     RCBase,
-    Pointer,
     Ref,
     Const,
-    BuiltInMeshResource,
 )
 from rbc_meta.types.resource_enums import LCPixelStorage
 from enum import Enum
