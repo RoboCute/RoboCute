@@ -73,9 +73,14 @@ from rbc_meta.utils.builtin import (
     Ref,
     LCBuffer,
     DataBuffer,
+    GUID,
 )  # special case
 
-_TYPE_NAME_FUNCTIONS = {str: _print_str, DataBuffer: _print_data_buffer}
+_TYPE_NAME_FUNCTIONS = {
+    str: _print_str,
+    DataBuffer: _print_data_buffer,
+    GUID: _print_guid,
+}
 
 
 # Python type names for type hints
@@ -85,12 +90,6 @@ _PY_NAMES = {
     str: "str",
     bool: "bool",
 }
-
-
-# 获取meta类型对应的cpp类型
-# None -> void
-# Specific String
-# _cpp_type_name
 
 
 def _get_cpp_type(
@@ -113,13 +112,11 @@ def _get_cpp_type(
 
     # The Override Type Name Function
     f = _TYPE_NAME_FUNCTIONS.get(type_hint)
-
     if f:
         return f(type_hint, py_interface, is_view)
 
     # Handle Generic types FIRST (before checking _cpp_type_name)
     # This is important for nested generics like Vector[Vector[int]]
-
     if hasattr(type_hint, "__origin__"):
         origin = type_hint.__origin__
         args = getattr(type_hint, "__args__", ())
@@ -135,7 +132,7 @@ def _get_cpp_type(
 
         if origin is Ref:
             cpp_type = _get_cpp_type(args[0], py_interface, is_view, registry)
-            return f"{cpp_type} &"
+            return f"{cpp_type}&"
 
         if (
             hasattr(origin, "_cpp_type_name")
@@ -143,6 +140,8 @@ def _get_cpp_type(
             and origin._is_container
         ):
             cpp_name = origin._cpp_type_name
+            if hasattr(origin, "_pybind_cpp_name") and not is_view:
+                cpp_name = origin._pybind_cpp_name
 
             if len(args) == 1:
                 inner_type = _get_cpp_type(args[0], py_interface, is_view, registry)
@@ -167,17 +166,14 @@ def _get_cpp_type(
 
     # in most cases it will cover the requirement
     info = registry.get_class_info(type_hint.__name__)
-    if type_hint.__name__ == "Entity":
-        print("Generating Entity", type_hint._pybind_type_, py_interface)
 
     if hasattr(type_hint, "_cpp_type_name"):
         if info is not None and info.is_enum:
             # if enum, directly return
             return type_hint._cpp_type_name
         elif (
-            hasattr(type_hint, "_pybind_type_")
-            and type_hint._pybind_type_
-            and py_interface
+            hasattr(type_hint, "_pybind_type_") and type_hint._pybind_type_
+            # and py_interface
         ):
             return "void*"
         else:
@@ -646,8 +642,11 @@ def cpp_interface_gen(
             if _is_rpc_method(method):
                 continue  # RPC methods are handled separately
 
+            if method.is_inherit_func:
+                continue  # cpp donot impl prev func
+
             ret_type = (
-                _get_full_cpp_type(method.return_type, registry, pybind, False)
+                _get_full_cpp_type(method.return_type, registry)
                 if method.return_type
                 else "void"
             )
@@ -657,8 +656,8 @@ def cpp_interface_gen(
             args_expr = _print_arg_vars_decl(
                 method_params,
                 False,  # not first, first method is void* _this
-                pybind,  # pybind
-                False,  # is_view
+                False,  # pybind
+                True,  # is_view
                 registry,
             )
             method_expr = CPP_STRUCT_METHOD_DECL_TEMPLATE.substitute(
@@ -1278,29 +1277,20 @@ def pybind_codegen(
         for method in info.methods:
             if _is_rpc_method(method):
                 continue  # Skip RPC methods
+            if method.is_inherit_func:
+                continue
 
             ret_type = ""
             return_expr = ""
             return_close = ""
+
             if method.return_type:
                 # Get the return type for pybind (py_interface=True)
                 pybind_ret_type = _get_full_cpp_type(
                     method.return_type, registry, True, False
                 )
-                # Get the actual C++ method return type (is_view=True for interface methods)
-
                 ret_type = f" -> {pybind_ret_type}"
                 return_expr = "return "
-
-                # If C++ method returns string_view but pybind expects string, add conversion
-                # if (
-                #     cpp_ret_type == "luisa::string_view"
-                #     and pybind_ret_type == "luisa::string"
-                # ):
-                #     # return_expr += "luisa::string("
-                #     # return_close = ")"
-                #     pass
-                # if C++ method returns DataBuffer
                 arg_parse = _PYBIND_SPECUAL_ARG.get(pybind_ret_type)
                 if arg_parse:
                     return_expr += arg_parse + "("
@@ -1310,7 +1300,9 @@ def pybind_codegen(
 
             # Filter out 'self' parameter for pybind method bindings
             method_params = {k: v for k, v in method.parameters.items() if k != "self"}
+
             args_decl = _print_arg_vars_decl(method_params, False, True, True, registry)
+
             args_call = _print_py_args(method_params, False, True, registry)
 
             method_func = PYBIND_METHOD_FUNC_TEMPLATE.substitute(

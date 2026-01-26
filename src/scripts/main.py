@@ -419,8 +419,10 @@ def generate():
     target_modules = ["backend_interface"]
     file_name = "rbc_backend"
     pyd_name = "test_py_codegen"
+
     header_path = Path("rbc/tests/test_graphics/generated/rbc_backend.h").resolve()
     cpp_path = Path("rbc/tests/test_py_codegen/generated/rbc_backend.cpp").resolve()
+
     py_root_path = Path("src/rbc_ext/generated").resolve()
     # add __init__.py to py_path if not exists
     if not py_root_path.exists():
@@ -432,12 +434,12 @@ def generate():
     include = """#include <rbc_plugin/generated/resource_meta.hpp>
 #include <rbc_core/rc.h>"""
 
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, False, include)
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, True, include)
     include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
 
     ut.codegen_to(cpp_path)(
         pybind_codegen, pyd_name, ["backend_interface", "runtime"], include
-    )  # TODO: 对pybind特殊处理，指定所有导出的module_filter，不太优雅
+    )
     ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["backend_interface", "runtime"])
 
     target_modules = ["world_interface"]
@@ -453,9 +455,9 @@ def generate():
         (py_root_path / "__init__.py").touch()
     py_path = py_root_path / f"{file_name}.py"
     include = """
-    #include <rbc_plugin/generated/resource_meta.hpp>
-    #include <rbc_core/rc.h>
-    #include <rbc_world/resources/mesh.h>
+#include <rbc_plugin/generated/resource_meta.hpp>
+#include <rbc_core/rc.h>
+#include <rbc_world/resources/mesh.h>
     """
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, True, include)
 

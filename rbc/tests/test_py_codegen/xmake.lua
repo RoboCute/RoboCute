@@ -13,7 +13,7 @@ do
     })
 
     set_extension('.pyd')
-    add_files('builtin/**.cpp', 'generated/**.cpp', 'main.cpp')
+    add_files('builtin/*.cpp', 'generated/*.cpp', 'main.cpp')
 
     add_includedirs('builtin')
 

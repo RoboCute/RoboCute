@@ -44,24 +44,6 @@ CPP_IMPL_TEMPLATE = """
 
 """
 
-PYBIND_CPP_INTERFACE_TEMPLATE = """
-//! This File is Generated From Python Def
-//! Modifying This File will not affect final result, checkout src/rbc_meta/ for real defs
-//! ================== GENERATED CODE BEGIN ==================
-#include <pybind11/pybind11.h>
-#include <luisa/core/basic_types.h>
-#include <luisa/core/basic_traits.h>
-#include <luisa/core/logging.h>
-#include <rbc_core/serde.h>
-#include "module_register.h"
-
-namespace py = pybind11;
-
-void $EXPORT_FUNC_NAME (py::module& m)
-
-//! ================== GENERATED CODE END ==================
-"""
-
 PYBIND_CPP_IMPL_TEMPLATE = """
 
 """
@@ -345,6 +327,7 @@ CPP_CLIENT_RETURN_STMT_TEMPLATE = Template(
 # Pybind templates
 PYBIND_CODE_TEMPLATE = Template("""
 //! This File is Generated From Python Def
+//! PYBIND_CODE_TEMPLATE
 //! Modifying This File will not affect final result, checkout src/rbc_meta/ for real defs
 //! ================== GENERATED CODE BEGIN ==================
 
