@@ -33,7 +33,9 @@ uint ComputeDevice::render_hardware_device_index() {
 void ComputeDevice::init(
     luisa::compute::Context &&ctx,
     luisa::compute::Device &&render_device,
-    luisa::string_view compute_backend_name) {
+    luisa::string_view compute_backend_name,
+    bool compute_device_headless) {
+    _compute_device_headless = compute_device_headless;
     _lc_ctx.create(std::move(ctx));
     vstd::reset(device, std::move(render_device));
     _compute_backend_name = compute_backend_name;
@@ -97,6 +99,7 @@ Device *ComputeDevice::get_device(uint32_t device_index) {
                     (*vk)->get_external_vk_device());
             }
         }
+        config.headless = _compute_device_headless;
         v.first = _lc_ctx->create_device(_compute_backend_name, &config);
     }
     return &v.first;

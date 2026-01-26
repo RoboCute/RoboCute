@@ -34,6 +34,7 @@ private:
     luisa::spin_mutex _render_mtx;
     vstd::HashMap<uint, std::pair<Device, luisa::spin_mutex>> _devices;
     uint _render_device_idx{~0u};
+    bool _compute_device_headless{};
     void _init_render();
     Device *_init_interop_event();
 
@@ -44,7 +45,8 @@ public:
     void init(
         luisa::compute::Context &&ctx,
         luisa::compute::Device &&render_device,
-        luisa::string_view compute_backend_name = "cuda"sv);
+        luisa::string_view compute_backend_name = "cuda"sv,
+        bool compute_device_headless = true);
     ComputeDevice(ComputeDevice const &) = delete;
     ComputeDevice(ComputeDevice &&) = delete;
     ~ComputeDevice();
