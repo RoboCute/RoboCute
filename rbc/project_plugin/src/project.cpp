@@ -18,7 +18,7 @@ private:
     struct LoadCommand {
         vstd::Guid type_id;
         luisa::filesystem::path origin_path;
-        vstd::Guid binary_guid;
+        RC<world::Resource> res;
         luisa::string meta;
     };
     rbc::ConcurrentQueue<LoadCommand> _import_cmds;
@@ -138,12 +138,17 @@ void Project::_reimport(
     luisa::string &meta_data,
     vstd::MD5 type_id,
     luisa::filesystem::path const &origin_path) {
+    auto res_base = world::create_object_with_guid(type_id, binary_guid);
+    if (!res_base) {
+        LUISA_WARNING("Trying to load resource {} failed.", binary_guid.to_string());
+        return;
+    }
+    RC<world::Resource> res{static_cast<world::Resource *>(res_base)};
     world::register_resource_meta(binary_guid, luisa::string{meta_data}, type_id);
-
     _import_cmds.enqueue(LoadCommand{
         .type_id = type_id,
         .origin_path = origin_path,
-        .binary_guid = binary_guid,
+        .res = std::move(res),
         .meta = meta_data});
 }
 void Project::scan_project() {
@@ -268,11 +273,11 @@ void Project::scan_project() {
             return;
         }
         LUISA_VERBOSE("Importing {} with meta {}", luisa::to_string(cmd.origin_path), cmd.meta);
-        auto res = importer->import(
-            cmd.binary_guid,
+        importer->import(
+            cmd.res.get(),
             cmd.origin_path,
             cmd.meta);
-        res->save_to_path();
+        cmd.res->save_to_path();
     });
     auto graphics = GraphicsUtils::instance();
     if (graphics && graphics->tex_loader())

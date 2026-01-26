@@ -92,16 +92,15 @@ RuntimeStatic<ResourceImporterRegistry> _resource_importer_registry;
 ResourceImporterRegistry &ResourceImporterRegistry::instance() {
     return *_resource_importer_registry.ptr;
 }
-RC<Resource> IResourceImporter::import(
-    vstd::Guid guid,
+void IResourceImporter::import(
+    Resource *res,
     luisa::filesystem::path const &path, luisa::string const &meta_json) {
     auto type_id = resource_type();
-    auto res = load_resource(guid, false);
-    if (!res || res->loaded()) [[unlikely]] {
-        LUISA_ERROR("Invalid resource.");
+    if (res->loaded()) [[unlikely]] {
+        LUISA_ERROR("Resource already loaded.");
     }
-    register_resource_meta(res.get());
-    auto &mtx = get_resource_mutex(guid);
+    register_resource_meta(res->guid(), luisa::string{meta_json}, res->type_id());
+    auto &mtx = get_resource_mutex(res->guid());
     {
         std::lock_guard lck{mtx};
         if (!meta_json.empty()) {
@@ -109,10 +108,9 @@ RC<Resource> IResourceImporter::import(
             rbc::ArchiveReadJson reader{ser};
             res->deserialize_meta(ObjDeSerialize{.ar = reader});
         }
-        import(res.get(), path);
+        import(res, path);
         res->unsafe_set_loaded();
     }
-    return res;
 }
 bool ITextureImporter::import(Resource *resource, luisa::filesystem::path const &path) {
     auto tex = static_cast<TextureResource *>(resource);

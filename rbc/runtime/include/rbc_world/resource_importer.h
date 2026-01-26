@@ -29,8 +29,8 @@ struct IResourceImporter {
     [[nodiscard]] virtual MD5 resource_type() const = 0;
     [[nodiscard]] virtual bool can_import(luisa::filesystem::path const &path) const;
     [[nodiscard]] virtual bool import(Resource *res, luisa::filesystem::path const &path) = 0;
-    [[nodiscard]] RBC_RUNTIME_API RC<Resource> import(
-        vstd::Guid guid,
+    [[nodiscard]] RBC_RUNTIME_API void import(
+        Resource *resource,
         luisa::filesystem::path const &path,
         luisa::string const &meta_json);
 };
