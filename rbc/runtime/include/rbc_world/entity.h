@@ -1,6 +1,7 @@
 #pragma once
 #include <rbc_core/type_info.h>
 #include <rbc_core/serde.h>
+#include <rbc_core/base.h>
 #include <rbc_world/component.h>
 #include <luisa/vstl/ranges.h>
 namespace rbc::world {
@@ -33,6 +34,7 @@ struct RBC_RUNTIME_API Entity final : BaseObjectDerive<Entity, BaseObjectType::E
 private:
     SceneResource *_parent_scene{};
     luisa::unordered_map<MD5, RC<Component>> _components;
+    luisa::unordered_map<luisa::string, BasicDeserDataType> _data;
     luisa::string _name;
     uint64_t _name_idx{~0ull};
     void _remove_component(Component *component);
@@ -76,6 +78,8 @@ public:
     T *get_component() {
         return static_cast<T *>(get_component(TypeInfo::get<T>().md5()));
     }
+    BasicDeserDataType get_data(luisa::string_view name) const;
+    void set_data(luisa::string name, BasicDeserDataType &&data);
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Entity);

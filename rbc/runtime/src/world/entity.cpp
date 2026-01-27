@@ -100,6 +100,20 @@ void Entity::serialize_meta(ObjSerialize const &ser) const {
         ser.ar.end_object();
     }
     ser.ar.end_array("components");
+    if (!_data.empty()) {
+        ser.ar.start_array();
+        for (auto &i : _data) {
+            ser.ar.add(luisa::string_view{i.first});
+            i.second.visit([&]<typename T>(T const &t) {
+                if constexpr (std::is_same_v<T, luisa::string>) {
+                    ser.ar.add(luisa::string_view{t});
+                } else {
+                    ser.ar.add(t);
+                }
+            });
+        }
+        ser.ar.end_array("data");
+    }
     if (!_name.empty())
         ser.ar.add(_name, "name");
 }
@@ -108,6 +122,24 @@ void Entity::deserialize_meta(ObjDeSerialize const &ser) {
     if (!ser.ar.read(_name, "name")) {
         _name.clear();
     }
+    [&]() {
+        if (!ser.ar.start_array(size, "data")) return;
+        auto d = vstd::scope_exit([&] {
+            ser.ar.end_scope();
+        });
+        if ((size & 1) != 0) {
+            return;
+        }
+        _data.reserve(size / 2);
+        for (auto i : vstd::range(size / 2)) {
+            luisa::string key;
+            BasicDeserDataType value;
+            if (!ser.ar.read(key)) break;
+            if (!ser.ar.read(value)) break;
+            _data.try_emplace(std::move(key), std::move(value));
+        }
+    }();
+
     if (!ser.ar.start_array(size, "components")) return;
     _components.reserve(size);
     for (auto &i : vstd::range(size)) {
@@ -167,6 +199,16 @@ void Entity::set_name(luisa::string name) {
 }
 Component::Component() = default;
 Component::~Component() {
+}
+BasicDeserDataType Entity::get_data(luisa::string_view name) const {
+    auto iter = _data.find(name);
+    if (iter != _data.end()) {
+        return iter->second;
+    }
+    return {};
+}
+void Entity::set_data(luisa::string name, BasicDeserDataType &&data) {
+    _data.force_emplace(std::move(name), std::move(data));
 }
 DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world

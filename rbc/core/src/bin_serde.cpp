@@ -121,7 +121,7 @@ void BinWriter::add_last_scope_to_object(char const *name) {
     auto &parent = _scope.back();
     LUISA_DEBUG_ASSERT(!parent.is_array && parent.in_object);
 
-    // If ObjectStart hasn't been written yet (delayed object in object context), 
+    // If ObjectStart hasn't been written yet (delayed object in object context),
     // write key first, then ObjectStart. This only applies to object scopes, not arrays.
     if (!scope.is_array && !scope.object_start_written) {
         // Save current buffer size (where we'll insert key + ObjectStart)
@@ -178,7 +178,7 @@ void BinWriter::add_last_scope_to_object(char const *name) {
         if (content_size > 0) {
             write_bytes(content_backup.data(), content_size);
         }
-        
+
         // Update the array size at the new position (it shifted due to key insertion)
         uint64_t new_array_size_pos = scope.array_size_pos + (buffer_.size() - array_start_pos - content_size);
         std::memcpy(buffer_.data() + new_array_size_pos, &scope.array_size, sizeof(uint64_t));
@@ -503,7 +503,7 @@ void BinWriter::add_arr(luisa::span<bool const> bool_values, char const *name) {
 void BinWriter::bytes(luisa::span<std::byte const> data) {
     LUISA_DEBUG_ASSERT(!_scope.empty());
     auto &scope = _scope.back();
-    
+
     // For structured access (in array context), write as array element
     if (scope.is_array) {
         scope.array_size++;
@@ -518,7 +518,7 @@ void BinWriter::bytes(luisa::span<std::byte const> data) {
         write_type(BinType::String);
         write_uint64(key.size());
         write_bytes(key.data(), key.size());
-        
+
         write_type(BinType::Bytes);
         write_uint64(data.size());
         write_bytes(data.data(), data.size());
@@ -919,6 +919,59 @@ bool BinReader::read(bool &value) {
     return true;
 }
 
+bool BinReader::read(BasicDeserDataType &value) {
+    LUISA_DEBUG_ASSERT(!_scope.empty());
+    auto &scope = _scope.back();
+    LUISA_DEBUG_ASSERT(scope.is_array);
+
+    if (scope.array_index >= scope.array_size) {
+        return false;
+    }
+
+    BinType type;
+    if (!read_type(type)) {
+        return false;
+    }
+    switch (type) {
+        case BinType::Bool: {
+            uint8_t val;
+            if (!read_bytes_internal(&val, sizeof(uint8_t))) {
+                return false;
+            }
+            value = val != 0;
+            scope.array_index++;
+            return true;
+        }
+        case BinType::UInt64:
+        case BinType::Int64: {
+            int64_t val;
+            if (!read_bytes_internal(&val, sizeof(int64_t))) {
+                return false;
+            }
+            value = val;
+            return true;
+        }
+        case BinType::Double: {
+            double val;
+            if (!read_bytes_internal(&val, sizeof(double))) {
+                return false;
+            }
+            value = val;
+            return true;
+        }
+        case BinType::String: {
+            value.reset_as<luisa::string>();
+            auto &str = value.force_get<luisa::string>();
+            if (!read_string(str)) {
+                value.dispose();
+                return false;
+            }
+            return true;
+        }
+        default: return false;
+    }
+}
+
 bool BinReader::read(int64_t &value) {
     LUISA_DEBUG_ASSERT(!_scope.empty());
     auto &scope = _scope.back();
@@ -1172,6 +1225,96 @@ bool BinReader::read(uint64_t &value, char const *name) {
     }
 }
 
+bool BinReader::read(BasicDeserDataType &value, char const *name) {
+    if (!name) {
+        return read(value);
+    }
+
+    LUISA_DEBUG_ASSERT(!_scope.empty());
+    auto &scope = _scope.back();
+    LUISA_DEBUG_ASSERT(!scope.is_array && scope.in_object);
+
+    // Scan through key-value pairs until we find the matching key
+    while (true) {
+        BinType key_type;
+        uint64_t saved_pos = pos_;
+        if (!read_type(key_type)) {
+            return false;
+        }
+
+        // Check if we've reached the end of the object
+        if (key_type == BinType::ScopeEnd) {
+            pos_ = saved_pos;
+            return false;
+        }
+
+        if (key_type != BinType::String) {
+            return false;
+        }
+
+        luisa::string key;
+        if (!read_string(key)) {
+            return false;
+        }
+
+        if (key == name) {
+            // Found matching key, read value
+            BinType val_type;
+            // TODO
+            if (!read_type(val_type)) {
+                return false;
+            }
+            switch (val_type) {
+                case BinType::Bool: {
+                    uint8_t val;
+                    if (!read_bytes_internal(&val, sizeof(uint8_t))) {
+                        return false;
+                    }
+                    value = val != 0;
+                    scope.array_index++;
+                    scope.last_key = key;
+                    return true;
+                }
+                case BinType::UInt64:
+                case BinType::Int64: {
+                    int64_t val;
+                    if (!read_bytes_internal(&val, sizeof(int64_t))) {
+                        return false;
+                    }
+                    value = val;
+                    scope.last_key = key;
+                    return true;
+                }
+                case BinType::Double: {
+                    double val;
+                    if (!read_bytes_internal(&val, sizeof(double))) {
+                        return false;
+                    }
+                    value = val;
+                    scope.last_key = key;
+                    return true;
+                }
+                case BinType::String: {
+                    value.reset_as<luisa::string>();
+                    auto &str = value.force_get<luisa::string>();
+                    if (!read_string(str)) {
+                        value.dispose();
+                        return false;
+                    }
+                    scope.last_key = key;
+                    return true;
+                }
+                default: return false;
+            }
+        } else {
+            // Key doesn't match, skip value
+            if (!skip_value()) {
+                return false;
+            }
+        }
+    }
+}
+
 bool BinReader::read(double &value, char const *name) {
     if (!name) {
         return read(value);
@@ -1371,7 +1514,7 @@ bool BinReader::bytes(luisa::vector<std::byte> &data, char const *name) {
 bool BinReader::bytes(void *data, uint64_t size) {
     LUISA_DEBUG_ASSERT(!_scope.empty());
     auto &scope = _scope.back();
-    
+
     // For structured access (in array context), read as array element with type marker
     if (scope.is_array) {
         if (scope.array_index >= scope.array_size) {
@@ -1403,7 +1546,7 @@ bool BinReader::bytes(void *data, uint64_t size) {
         // For streamed access in object context, read the named bytes field
         // We need to find the "__stream_data__" field and read its value
         luisa::string_view key("__stream_data__");
-        
+
         // Scan through key-value pairs until we find the matching key
         while (true) {
             BinType key_type;
@@ -1411,43 +1554,43 @@ bool BinReader::bytes(void *data, uint64_t size) {
             if (!read_type(key_type)) {
                 return false;
             }
-            
+
             // Check if we've reached the end of the object
             if (key_type == BinType::ScopeEnd) {
                 pos_ = saved_pos;
                 return false;
             }
-            
+
             if (key_type != BinType::String) {
                 return false;
             }
-            
+
             luisa::string read_key;
             if (!read_string(read_key)) {
                 return false;
             }
-            
+
             if (read_key == key) {
                 // Found matching key, read bytes value
                 BinType bytes_type;
                 if (!read_type(bytes_type) || bytes_type != BinType::Bytes) {
                     return false;
                 }
-                
+
                 uint64_t bytes_size;
                 if (!read_uint64(bytes_size)) {
                     return false;
                 }
-                
+
                 // Check if provided buffer is large enough
                 if (bytes_size > size) {
                     return false;
                 }
-                
+
                 if (!read_bytes_internal(data, bytes_size)) {
                     return false;
                 }
-                
+
                 scope.last_key = read_key;
                 return true;
             } else {
