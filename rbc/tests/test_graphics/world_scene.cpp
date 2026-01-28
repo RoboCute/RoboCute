@@ -209,6 +209,7 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         scene = proj->import_assets("test_scene.scene", TypeInfo::get<world::SceneResource>().md5());
         scene->load();
         scene->install();
+
     } else {
         // load skybox
         {
@@ -560,6 +561,7 @@ WorldScene::~WorldScene() {
     for (auto &i : _entities) {
         i->rbc_rc_delete();
     }
+    scene->save_to_path();
     scene.reset();
     skinning_entity.reset();
     skinning_mesh.reset();
@@ -570,8 +572,8 @@ WorldScene::~WorldScene() {
     physics_box_mesh.reset();
     world::destroy_world();
 }
-void WorldScene::draw_grid(Camera& cam, GridDrawer &grid_drawer) {
-    auto& grid = grid_drawer.draw_grids.emplace_back();
+void WorldScene::draw_grid(Camera &cam, GridDrawer &grid_drawer) {
+    auto &grid = grid_drawer.draw_grids.emplace_back();
     grid.grid_center = make_float3(floor(cam.position));
     grid.grid_center.y = 0;
     grid.origin_color.w = 0.8f;
@@ -588,6 +590,14 @@ void WorldScene::tick_skinning(GraphicsUtils *utils, float delta_time) {
                 tr->set_pos(double3(0, sin(clk.toc() * 1e-3), 0), false);
             }
         }
+        // auto data = entity->get_data("TestData");
+        // if (data.valid()) {
+        //     data.visit([&](auto &&t) {
+        //         LUISA_INFO("Get Data {}", t);
+        //     });
+        // }
+        // data.reset_as<int64_t>(114514);
+        // entity->set_data("TestData", std::move(data));
     }
 
     if (physics_box_entity) {

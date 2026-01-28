@@ -207,8 +207,8 @@ BasicDeserDataType Entity::get_data(luisa::string_view name) const {
     }
     return {};
 }
-void Entity::set_data(luisa::string name, BasicDeserDataType &&data) {
-    _data.force_emplace(std::move(name), std::move(data));
+void Entity::set_data(luisa::string_view name, BasicDeserDataType &&data) {
+    _data.force_emplace(name, std::move(data));
 }
 DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world

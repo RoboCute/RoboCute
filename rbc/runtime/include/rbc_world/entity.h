@@ -79,7 +79,7 @@ public:
         return static_cast<T *>(get_component(TypeInfo::get<T>().md5()));
     }
     BasicDeserDataType get_data(luisa::string_view name) const;
-    void set_data(luisa::string name, BasicDeserDataType &&data);
+    void set_data(luisa::string_view name, BasicDeserDataType &&data);
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::Entity);

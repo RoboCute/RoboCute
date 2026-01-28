@@ -69,6 +69,13 @@ class long:
     _py_type_name = "int"
 
 
+class long:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "int64_t"
+    _py_type_name = "int"
+
+
 class GUID:
     __slot__ = {}
     _reflected_ = True
