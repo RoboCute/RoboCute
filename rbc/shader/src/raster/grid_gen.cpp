@@ -2,7 +2,7 @@
 
 using namespace luisa::shader;
 
-[[kernel_2d(128, 1)]] int kernel(
+[[kernel_1d(128)]] int kernel(
     Buffer<float4> &result_poses,
     float3 grid_tangent,
     float3 grid_bitangent,

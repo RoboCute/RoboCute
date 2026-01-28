@@ -28,10 +28,18 @@ private:
         float3,      // sun_dir,
         float        // sun_angle_radians
         > const *_make_sun;
+
+    Shader2D<Image<float>> const *_gen_cloud_volume{};
+    Shader2D<Image<float>> const *_gen_cloud_lookup{};
+    Shader2D<
+        Image<float>,
+        Image<float>,
+        Image<float>> const *_gen_default_sky{};
     // Shader2D<
     // 	Image<float>,//src_img,
     // 	Image<float> //dst_img,
     // 	> const* _calc_lum;
+    uint2 _size;
     RC<DeviceImage> _src_img;
     Image<float> _img;
     // Image<float> _lum_img;
@@ -41,7 +49,6 @@ private:
     Buffer<float> _pdf_table;
     vstd::LockFreeArrayQueue<luisa::vector<float>> _datas;
     luisa::fiber::counter _event;
-    uint2 _size;
     uint _sky_id = ~0u;
     uint _sky_alias_id = ~0u;
     uint _sky_lum_id = ~0u;
@@ -49,14 +56,17 @@ private:
     HDRI::AliasTable _table;
     bool sky_id_dirty : 1 = false;
 
+    void _init_shader(bool load_gen);
 public:
-    bool dirty: 1 = false;
+    bool dirty : 1 = false;
     [[nodiscard]] bool img_initialized() const { return _img_initialized.load(); }
+    [[nodiscard]] bool contained_src_img() const { return !_src_img.is_empty(); }
     [[nodiscard]] uint sky_id() const { return _img_initialized.load() ? _sky_id : ~0u; }
     [[nodiscard]] uint sky_alias_id() const { return _img_initialized.load() ? _sky_alias_id : ~0u; }
     [[nodiscard]] uint sky_pdf_id() const { return _img_initialized.load() ? _sky_pdf_id : ~0u; }
     [[nodiscard]] uint sky_lum_id() const { return _img_initialized.load() ? _sky_lum_id : ~0u; }
     SkyAtmosphere(Device &device, HDRI &hdri, RC<DeviceImage> src_img);
+    SkyAtmosphere(Device &device, HDRI &hdri, uint2 resolution);
     ~SkyAtmosphere();
     void mark_dirty() {
         _atmosphere_dirty = true;
@@ -66,7 +76,8 @@ public:
     // void calc_lum(CommandList& cmdlist);
     void clamp_light(CommandList &cmdlist, float max_lum, uint blur_pixel);
     void colored(CommandList &cmdlist, float3 color);
-    bool update(CommandList &cmdlist, Stream& stream, BindlessAllocator &bdls_alloc, bool force_sync);
+    void generate_sky(CommandList &cmdlist);
+    bool update(CommandList &cmdlist, Stream &stream, BindlessAllocator &bdls_alloc, bool force_sync);
     void sync();
     void deallocate(BindlessAllocator &bdls_alloc);
 };

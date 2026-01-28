@@ -561,7 +561,8 @@ WorldScene::~WorldScene() {
     for (auto &i : _entities) {
         i->rbc_rc_delete();
     }
-    scene->save_to_path();
+    if (scene)
+        scene->save_to_path();
     scene.reset();
     skinning_entity.reset();
     skinning_mesh.reset();
@@ -583,13 +584,13 @@ void WorldScene::draw_grid(Camera &cam, GridDrawer &grid_drawer) {
 void WorldScene::tick_skinning(GraphicsUtils *utils, float delta_time) {
     static Clock clk;
     if (scene) {
-        auto entity = scene->get_entity("bunny");
-        if (entity) {
-            auto tr = entity->get_component<world::TransformComponent>();
-            if (tr) {
-                tr->set_pos(double3(0, sin(clk.toc() * 1e-3), 0), false);
-            }
-        }
+        // auto entity = scene->get_entity("bunny");
+        // if (entity) {
+        //     auto tr = entity->get_component<world::TransformComponent>();
+        //     if (tr) {
+        //         tr->set_pos(double3(0, sin(clk.toc() * 1e-3), 0), false);
+        //     }
+        // }
         // auto data = entity->get_data("TestData");
         // if (data.valid()) {
         //     data.visit([&](auto &&t) {

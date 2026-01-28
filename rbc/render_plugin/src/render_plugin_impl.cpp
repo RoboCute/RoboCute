@@ -21,6 +21,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
     ////////////////////////////////////////  HDRI
     vstd::optional<HDRI> hdri;
     vstd::optional<SkyAtmosphere> sky_atom;
+    bool sky_dirty{false};
     //////////////////////////////////////// denoise
     enum struct OidnSupport : uint8_t {
         UnChecked,
@@ -83,6 +84,8 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         {
             auto &sky_settings = ctx.pipeline_settings.read_mut<SkySettings>();
             sky_settings.sky_atom = sky_atom.has_value() ? sky_atom.ptr() : nullptr;
+            sky_settings.dirty = sky_dirty;
+            sky_dirty = false;
         }
         ptr->wait_enable();
         ptr->early_update(ctx);
@@ -94,7 +97,24 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         ptr->update(*reinterpret_cast<PipelineContext *>(pipe_ctx));
         return true;
     }
+    void update_skybox(uint2 res) override {
+        sky_dirty = true;
+        auto &device = RenderDevice::instance();
+        if (!hdri) {
+            hdri.create();
+        }
+        if (sky_atom) {
+            sky_atom->deallocate(SceneManager::instance().bindless_allocator());
+            device.lc_main_stream().synchronize();
+            sky_atom.destroy();
+        }
+        sky_atom.create(
+            device.lc_device(),
+            *hdri,
+            res);
+    }
     void update_skybox(RC<DeviceImage> image) override {
+        sky_dirty = true;
         auto &device = RenderDevice::instance();
         if (!hdri) {
             hdri.create();
@@ -114,6 +134,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         compute::PixelStorage pixel_storage,
         uint2 resolution,
         uint64_t file_offset_bytes) override {
+        sky_dirty = true;
         auto &device = RenderDevice::instance();
         if (!hdri) {
             hdri.create();

@@ -4,26 +4,62 @@
 #include <luisa/runtime/buffer.h>
 namespace rbc {
 SkyAtmosphere::SkyAtmosphere(Device &device, HDRI &hdri, RC<DeviceImage> src_img)
-    : _device(device), _hdri(hdri), _src_img(std::move(src_img)),
+    : _device(device), _hdri(hdri),
       //   _lum_img(device.create_image<float>(PixelStorage::FLOAT1, _src_img.size())),
-      _weight_buffer(device.create_buffer<float>(_src_img->get_float_image().size().x * _src_img->get_float_image().size().y)), _size(_src_img->get_float_image().size()), _event() {
+      _size(src_img->get_float_image().size()),
+      _src_img(std::move(src_img)),
+      _weight_buffer(device.create_buffer<float>(_size.x * _size.y)), _event() {
+    _init_shader(false);
+    // sm->load("hdri/calc_lum.bin", _calc_lum);
+}
+SkyAtmosphere::SkyAtmosphere(Device &device, HDRI &hdri, uint2 resolution)
+    : _device(device), _hdri(hdri),
+      _weight_buffer(device.create_buffer<float>(resolution.x * resolution.y)), _size(resolution), _event() {
+    _init_shader(true);
+}
+
+void SkyAtmosphere::_init_shader(bool load_gen) {
     luisa::fiber::counter shader_init_counter;
     ShaderManager::instance()->async_load(shader_init_counter, "hdri/clamp_lum.bin", _blur_radius);
     ShaderManager::instance()->async_load(shader_init_counter, "hdri/color_sky.bin", _color_sky);
     ShaderManager::instance()->async_load(shader_init_counter, "hdri/make_sun.bin", _make_sun);
+    if (load_gen) {
+        ShaderManager::instance()->async_load(shader_init_counter, "hdri/gen_cloud_volume.bin", _gen_cloud_volume);
+        ShaderManager::instance()->async_load(shader_init_counter, "hdri/gen_cloud_lookup.bin", _gen_cloud_lookup);
+        ShaderManager::instance()->async_load(shader_init_counter, "hdri/gen_default_sky.bin", _gen_default_sky);
+    }
     shader_init_counter.wait();
-    // sm->load("hdri/calc_lum.bin", _calc_lum);
+}
+
+void SkyAtmosphere::generate_sky(CommandList &cmdlist) {
+    if (!_img)
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _size);
+    auto lut = _device.create_image<float>(PixelStorage::FLOAT4, _size);
+    Image<float> volume;
+    volume = _device.create_image<float>(PixelStorage::FLOAT1, _size);
+    cmdlist
+        << (*_gen_cloud_lookup)(
+               lut)
+               .dispatch(lut.size())
+        << (*_gen_cloud_volume)(volume).dispatch(volume.size())
+        << (*_gen_default_sky)(
+               lut,
+               volume,
+               _img)
+               .dispatch(_img.size());
+    cmdlist.add_callback([lut = std::move(lut), volume = std::move(volume)] {
+    });
 }
 
 void SkyAtmosphere::copy_img(CommandList &cmdlist) {
     if (!_img)
-        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img->get_float_image().size());
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _size);
     cmdlist << _img.copy_from(_src_img->get_float_image());
 }
 
 void SkyAtmosphere::colored(CommandList &cmdlist, float3 color) {
     if (!_img)
-        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img->get_float_image().size());
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _size);
     cmdlist << (*_color_sky)(
                    _img,
                    color)
@@ -32,7 +68,7 @@ void SkyAtmosphere::colored(CommandList &cmdlist, float3 color) {
 
 void SkyAtmosphere::make_sun(CommandList &cmdlist, float angle_degree, float3 sun_color, float3 sun_dir) {
     if (!_img)
-        _img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img->get_float_image().size());
+        _img = _device.create_image<float>(PixelStorage::FLOAT4, _size);
     cmdlist << (*_make_sun)(
                    _img,
                    sun_color,
@@ -43,7 +79,7 @@ void SkyAtmosphere::make_sun(CommandList &cmdlist, float angle_degree, float3 su
 
 void SkyAtmosphere::clamp_light(CommandList &cmdlist, float max_lum, uint blur_pixel) {
     if (!_temp_img)
-        _temp_img = _device.create_image<float>(PixelStorage::FLOAT4, _src_img->get_float_image().size());
+        _temp_img = _device.create_image<float>(PixelStorage::FLOAT4, _size);
     cmdlist << (*_blur_radius)(
                    _src_img->get_float_image(),
                    _temp_img,

@@ -71,28 +71,32 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
 
         // update sky atom
         if (sky_settings.dirty) {
-            if (sky_settings.sky_max_lum < 65530)
-                sky_atom.clamp_light(*ctx.cmdlist, sky_settings.sky_max_lum, 32);
-            else
-                sky_atom.copy_img(*ctx.cmdlist);
-            sky_atom.colored(*ctx.cmdlist, sky_settings.sky_color);
-            sky_atom.mark_dirty();
-            double sample_pdf = 1.0 / (2.0 * (double)pi * (1.0 - cos(radians(sky_settings.sun_angle))));
-            sample_pdf /= 65536.0f;
+            if (sky_atom.contained_src_img()) {
+                if (sky_settings.sky_max_lum < 65530)
+                    sky_atom.clamp_light(*ctx.cmdlist, sky_settings.sky_max_lum, 32);
+                else
+                    sky_atom.copy_img(*ctx.cmdlist);
+                sky_atom.colored(*ctx.cmdlist, sky_settings.sky_color);
+                sky_atom.mark_dirty();
+                double sample_pdf = 1.0 / (2.0 * (double)pi * (1.0 - cos(radians(sky_settings.sun_angle))));
+                sample_pdf /= 65536.0f;
 
-            float3 sun_radiance = sky_settings.sun_color * sky_settings.sun_intensity * (float)sample_pdf;
-            float len = sun_radiance.x + sun_radiance.y + sun_radiance.z;
-            if (length(sky_settings.sun_dir) < 1e-5f) {
-                sky_settings.sun_dir = float3(0, -1, 0);
-            }
-            if (len > 1e-4f) {
-                sky_atom.make_sun(
-                    *ctx.cmdlist,
-                    sky_settings.sun_angle,
-                    sun_radiance,
-                    normalize(sky_settings.sun_dir));
-            }
+                float3 sun_radiance = sky_settings.sun_color * sky_settings.sun_intensity * (float)sample_pdf;
+                float len = sun_radiance.x + sun_radiance.y + sun_radiance.z;
+                if (length(sky_settings.sun_dir) < 1e-5f) {
+                    sky_settings.sun_dir = float3(0, -1, 0);
+                }
+                if (len > 1e-4f) {
+                    sky_atom.make_sun(
+                        *ctx.cmdlist,
+                        sky_settings.sun_angle,
+                        sun_radiance,
+                        normalize(sky_settings.sun_dir));
+                }
 
+            } else {
+                sky_atom.generate_sky(*ctx.cmdlist);
+            }
             sky_settings.dirty = false;
         }
         if (sky_atom.update(*ctx.cmdlist, *ctx.stream, ctx.scene->bindless_allocator(), sky_settings.force_sync)) {
@@ -108,7 +112,7 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
 
     // update camera settings
     auto &pt_pipe_settings = ctx.pipeline_settings.read_mut<PTPipelineSettings>();
-    if(pt_pipe_settings.use_raster && pt_pipe_settings.use_raytracing) [[unlikely]] {
+    if (pt_pipe_settings.use_raster && pt_pipe_settings.use_raytracing) [[unlikely]] {
         LUISA_ERROR("Can not enable both raster and raytracing.");
     }
     raster_pass->set_actived(pt_pipe_settings.use_raster);
