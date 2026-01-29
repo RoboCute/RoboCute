@@ -175,7 +175,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 .write = false};
         }
         for (auto &i : grid_editor->draw_grids) {
-            auto dst_size = i.line_count.x * i.line_count.y * 2;
+            auto dst_size = (i.line_count.x + i.line_count.y) * 2;
             auto buffer = _draw_grid_buffer.view(0, dst_size);
             cmdlist << (*_grid_gen)(
                            buffer,
@@ -184,7 +184,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                            i.grid_center,
                            i.interval_size,
                            i.line_count)
-                           .dispatch(i.line_count.x * i.line_count.y);
+                           .dispatch(i.line_count.x + i.line_count.y);
             VertexBufferView vbv{buffer};
             luisa::vector<RasterMesh> scene;
             scene.emplace_back(

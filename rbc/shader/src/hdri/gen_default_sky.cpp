@@ -34,14 +34,14 @@ using namespace luisa::shader;
 #define CLOUDS_DETAIL_SCALE 20.f
 #define SUN_DIR normalize(float3(-.3f, .8f, .5f))
 #define SCENE_SCALE 1.f
-#define SUN_COLOR (float3(1.f, .9f, .85f) * 1.4f)
+#define SUN_COLOR (float3(1.f, .9f, .85f) * 10.0f)
 #define HEIGHT_BASED_FOG_C 0.05f
 #define HEIGHT_BASED_FOG_B 0.02f
 
 float3 getSkyColor(float3 rd) {
     rd.y = max(rd.y, 0.f);
     float sundot = clamp(dot(rd, SUN_DIR), 0.0F, 1.0F);
-    float3 col = float3(0.2, 0.5, 0.85) * 1.1f - max(rd.y, 0.01f) * max(rd.y, 0.01F) * 0.5f;
+    float3 col = float3(0.4, 0.6, 0.85) * 1.5f - max(rd.y, 0.01f) * max(rd.y, 0.01F) * 0.5f;
     col = max(col, float3(0.f));
     col = lerp(col, 0.85f * float3(0.7, 0.75, 0.85), pow((1.0f - rd.y), 6.0f));
 
@@ -336,7 +336,7 @@ float4 renderCloudLayer(SampleImage &iChannel0, SampleImage &iChannel3, float3 r
 
     // sun
     if (dot(rd, SUN_DIR) > 0.9999f) {
-        col.rgb = normalize(float3(15, 12, 10)) * 16384.0f;
+        col.rgb = SUN_COLOR * 2000.f;
     }
     img.write(dispatch_id().xy, col);
     return 0;

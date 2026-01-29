@@ -16,6 +16,6 @@ using namespace luisa::shader;
     float c = max(0., 1. - (r + g * .5 + b * .25) / 1.75);
 
     auto fragColor = float4(c, c, c, c);
-    volume.write(dispatch_id().xy, fragColor * 0.5f);
+    volume.write(dispatch_id().xy, fragColor);
     return 0;
 }
