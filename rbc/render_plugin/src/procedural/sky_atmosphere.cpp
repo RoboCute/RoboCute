@@ -24,9 +24,7 @@ void SkyAtmosphere::_init_shader(bool load_gen) {
     ShaderManager::instance()->async_load(shader_init_counter, "hdri/color_sky.bin", _color_sky);
     ShaderManager::instance()->async_load(shader_init_counter, "hdri/make_sun.bin", _make_sun);
     if (load_gen) {
-        ShaderManager::instance()->async_load(shader_init_counter, "hdri/gen_cloud_volume.bin", _gen_cloud_volume);
-        ShaderManager::instance()->async_load(shader_init_counter, "hdri/gen_cloud_lookup.bin", _gen_cloud_lookup);
-        ShaderManager::instance()->async_load(shader_init_counter, "hdri/gen_default_sky.bin", _gen_default_sky);
+        ShaderManager::instance()->async_load(shader_init_counter, "hdri/sky.bin", _sky);
     }
     shader_init_counter.wait();
 }
@@ -37,16 +35,20 @@ void SkyAtmosphere::generate_sky(CommandList &cmdlist) {
     auto lut = _device.create_image<float>(PixelStorage::FLOAT4, _size);
     Image<float> volume;
     volume = _device.create_image<float>(PixelStorage::FLOAT1, _size);
-    cmdlist
-        << (*_gen_cloud_lookup)(
-               lut)
-               .dispatch(lut.size())
-        << (*_gen_cloud_volume)(volume).dispatch(volume.size())
-        << (*_gen_default_sky)(
-               lut,
-               volume,
-               _img)
-               .dispatch(_img.size());
+    // cmdlist
+    //     << (*_gen_cloud_lookup)(
+    //            lut)
+    //            .dispatch(lut.size())
+    //     << (*_gen_cloud_volume)(volume).dispatch(volume.size())
+    //     << (*_gen_default_sky)(
+    //            lut,
+    //            volume,
+    //            _img)
+    //            .dispatch(_img.size());
+    cmdlist << (*_sky)(
+        _img,
+        0.0f
+    )            .dispatch(_img.size());
     cmdlist.add_callback([lut = std::move(lut), volume = std::move(volume)] {
     });
 }

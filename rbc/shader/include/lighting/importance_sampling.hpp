@@ -20,11 +20,11 @@ namespace lighting {
 
 template<class T>
 concept BindlessIndices = requires(T t) {
-    { auto(t.frame_countdown) } -> std::same_as<uint>;
-    { auto(t.light_count) } -> std::same_as<uint>;
-    { auto(t.alias_table_idx) } -> std::same_as<uint>;
-    { auto(t.pdf_table_idx) } -> std::same_as<uint>;
-    { auto(t.sky_heap_idx) } -> std::same_as<uint>;
+    std::is_same_v<decltype(t.frame_countdown), uint>;
+    std::is_same_v<decltype(t.light_count), uint>;
+    std::is_same_v<decltype(t.alias_table_idx), uint>;
+    std::is_same_v<decltype(t.pdf_table_idx), uint>;
+    std::is_same_v<decltype(t.sky_heap_idx), uint>;
 };
 
 using namespace luisa::shader;

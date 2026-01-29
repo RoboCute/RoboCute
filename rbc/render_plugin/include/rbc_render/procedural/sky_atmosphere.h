@@ -29,16 +29,7 @@ private:
         float        // sun_angle_radians
         > const *_make_sun;
 
-    Shader2D<Image<float>> const *_gen_cloud_volume{};
-    Shader2D<Image<float>> const *_gen_cloud_lookup{};
-    Shader2D<
-        Image<float>,
-        Image<float>,
-        Image<float>> const *_gen_default_sky{};
-    // Shader2D<
-    // 	Image<float>,//src_img,
-    // 	Image<float> //dst_img,
-    // 	> const* _calc_lum;
+    Shader2D<Image<float>, float> const *_sky{};
     uint2 _size;
     RC<DeviceImage> _src_img;
     Image<float> _img;

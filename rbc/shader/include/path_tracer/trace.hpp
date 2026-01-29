@@ -24,7 +24,7 @@ using namespace luisa::shader;
 
 template<class T>
 concept TraceIndices = requires(T t) {
-	{ auto(t.frame_countdown) } -> std::same_as<uint>;
+	std::is_same_v<decltype(t.frame_countdown), uint>;
 };
 
 #if defined(RBC_USE_RAYQUERY) || defined(RBC_USE_RAYQUERY_SHADOW)
