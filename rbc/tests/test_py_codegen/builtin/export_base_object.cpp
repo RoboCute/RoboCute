@@ -7,6 +7,7 @@
 #include <rbc_world/base_object.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_core/runtime_static.h>
+#include "ref_counter.h"
 namespace py = pybind11;
 using namespace luisa;
 using namespace rbc;
@@ -16,6 +17,10 @@ struct Disposer {
         if (_disposed) return;
         _disposed = true;
         LUISA_INFO("RBC disposed.");
+        if (luisa::compute::RefCounter::current) {
+            delete luisa::compute::RefCounter::current;
+            luisa::compute::RefCounter::current = nullptr;
+        }
         rbc::world::destroy_world();
         rbc::PluginManager::destroy_instance();
         rbc::RuntimeStaticBase::dispose_all();

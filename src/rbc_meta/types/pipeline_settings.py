@@ -9,26 +9,17 @@ from rbc_meta.utils.builtin import (
     float4,
     float3x3,
     double,
+    Curve,
+    SkyAtmosphere,
+    LCBuffer,
+    LCImage,
+    Pointer,
+    Const,
 )
 from enum import Enum
 
 
 # External type helper
-class ExternalType:
-    """Helper class for external C++ types"""
-
-    def __init__(self, cpp_type_name: str):
-        self._cpp_type_name = cpp_type_name
-        self._reflected_ = True
-
-
-# Define external types
-Curve = ExternalType("Curve")
-
-SkyAtmospherePtr = ExternalType("SkyAtmosphere*")
-BufferFloatConstPtr = ExternalType("luisa::compute::Buffer<float> const*")
-ImageFloatConstPtr = ExternalType("luisa::compute::Image<float> const*")
-ImageFloat = ExternalType("luisa::compute::Image<float>")
 
 
 @reflect(
@@ -162,11 +153,11 @@ class FrameSettings:
     realtime_rendering: bool
     offline_capturing: bool
     reject_sampling: bool
-    albedo_buffer: BufferFloatConstPtr
-    normal_buffer: BufferFloatConstPtr
-    radiance_buffer: BufferFloatConstPtr
-    resolved_img: ImageFloat
-    dst_img: ImageFloatConstPtr
+    albedo_buffer: Pointer[Const[LCBuffer[float]]]
+    normal_buffer: Pointer[Const[LCBuffer[float]]]
+    radiance_buffer: Pointer[Const[LCBuffer[float]]]
+    resolved_img: LCImage[float]
+    dst_img: Pointer[Const[LCImage[float]]]
 
     _cpp_init = {
         "resource_color_space": "ResourceColorSpace::Rec709",
@@ -259,7 +250,7 @@ class PathTracerSettings:
         "offline_spp": "1",
         "offline_origin_bounce": "2",
         "offline_indirect_bounce": "4",
-        "denoise": "true"
+        "denoise": "true",
     }
 
 
@@ -289,7 +280,7 @@ class DisplaySettings:
 @reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
 class SkySettings:
     # Non-serde members (members only, not serialized)
-    sky_atom: Annotated[SkyAtmospherePtr, no_serde_field()]
+    sky_atom: Annotated[Pointer[SkyAtmosphere], no_serde_field()]
     dirty: Annotated[bool, no_serde_field()]
     force_sync: Annotated[bool, no_serde_field()]
 

@@ -20,12 +20,19 @@ void AtmosphereComponent::on_awake() {
 }
 void AtmosphereComponent::update_data() {
     auto graphics = GraphicsUtils::instance();
-    if (!graphics || !hdri) return;
-    hdri->install();
-    auto img = hdri->get_image();
+    if (!graphics) return;
+    DeviceImage *img{};
+    if (hdri) {
+        hdri->install();
+        img = hdri->get_image();
+    }
     auto render_plugin = graphics->render_plugin();
-    if (img && render_plugin)
-        render_plugin->update_skybox(RC<DeviceImage>(img));
+    if (render_plugin) {
+        if (img)
+            render_plugin->update_skybox(RC<DeviceImage>(img));
+        else
+            render_plugin->update_skybox(uint2(2048, 1024));
+    }
 }
 void AtmosphereComponent::on_destroy() {}
 AtmosphereComponent::AtmosphereComponent() {}

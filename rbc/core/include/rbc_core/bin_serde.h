@@ -4,6 +4,7 @@
 #include <luisa/core/stl/vector.h>
 #include <luisa/vstl/meta_lib.h>
 #include <rbc_config.h>
+#include <rbc_core/base.h>
 
 namespace rbc {
 
@@ -120,6 +121,7 @@ struct RBC_CORE_API BinReader {
     bool read(uint64_t &value);
     bool read(double &value);
     bool read(luisa::string &value);
+    bool read(BasicDeserDataType &value);
 
     // primitive with name
     bool read(bool &value, char const *name);
@@ -127,6 +129,7 @@ struct RBC_CORE_API BinReader {
     bool read(uint64_t &value, char const *name);
     bool read(double &value, char const *name);
     bool read(luisa::string &value, char const *name);
+    bool read(BasicDeserDataType &value, char const *name);
 
     // bytes interface
     bool bytes(luisa::vector<std::byte> &data);

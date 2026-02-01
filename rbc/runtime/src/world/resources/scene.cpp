@@ -41,16 +41,42 @@ luisa::span<Entity *const> SceneResource::get_entities(luisa::string_view name) 
 }
 bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
     std::lock_guard lck{_map_mtx};
-    LUISA_ASSERT(_entities.empty() && !json_data);// scene must be empty
+    LUISA_ASSERT(_entities.empty());// scene must be empty
+    luisa::vector<char> json_vec;
     {
         BinaryFileStream file_stream(luisa::to_string(path));
         if (!file_stream.valid()) return false;
-        luisa::vector<char> json_vec;
         json_vec.push_back_uninitialized(file_stream.length());
         file_stream.read(
             {reinterpret_cast<std::byte *>(json_vec.data()),
              json_vec.size()});
-        json_data.create(std::move(json_vec));
+    }
+    JsonDeSerializer deser{luisa::string_view{json_vec.data(), json_vec.size()}};
+    LUISA_ASSERT(deser.valid());
+    ArchiveReadJson read_adapter(deser);
+    uint64_t size = deser.last_array_size();
+    _entities.reserve(size);
+    for (auto i : vstd::range(size / 2)) {
+        vstd::Guid guid;
+        LUISA_ASSERT(deser._load(guid));
+        auto e =
+            _entities
+                .try_emplace(
+                    guid, vstd::lazy_eval([&] {
+                        auto e = create_object_with_guid<Entity>(guid);
+                        e->_parent_scene = this;
+                        return e;
+                    }))
+                .first.value();
+        read_adapter.start_object();
+        e->deserialize_meta(world::ObjDeSerialize{read_adapter});
+        if (!e->_name.empty()) {
+            std::lock_guard lck{_name_map_mtx};
+            auto &vec = _entities_str_name.emplace(e->_name).value();
+            e->_name_idx = vec.size();
+            vec.emplace_back(e.get());
+        }
+        read_adapter.end_scope();
     }
     unsafe_set_loaded();
     return true;
@@ -83,15 +109,6 @@ bool SceneResource::remove_entity(Entity *entity) {
     return remove_entity(entity->guid());
 }
 bool SceneResource::unsafe_save_to_path() const {
-    // still not installed
-    if (json_data) {
-        auto &json_vec = *json_data;
-        BinaryFileWriter file_writer(luisa::to_string(path()));
-        file_writer.write(luisa::span{
-            (std::byte *)json_vec.data(),
-            json_vec.size()});
-        return true;
-    }
     // already installed
     JsonSerializer ser{true};
     ArchiveWriteJson adapter(ser);
@@ -113,41 +130,6 @@ void SceneResource::update_data() {
 }
 
 bool SceneResource::_install() {
-    // deser
-    // TODO: may need move deser to independent function
-    if (json_data) {
-        auto &json_vec = *json_data;
-        auto dsp = vstd::scope_exit([&] {
-            json_data.destroy();
-        });
-        JsonDeSerializer deser{luisa::string_view{json_vec.data(), json_vec.size()}};
-        LUISA_ASSERT(deser.valid());
-        ArchiveReadJson read_adapter(deser);
-        uint64_t size = deser.last_array_size();
-        _entities.reserve(size);
-        for (auto i : vstd::range(size / 2)) {
-            vstd::Guid guid;
-            LUISA_ASSERT(deser._load(guid));
-            auto e =
-                _entities
-                    .try_emplace(
-                        guid, vstd::lazy_eval([&] {
-                            auto e = create_object_with_guid<Entity>(guid);
-                            e->_parent_scene = this;
-                            return e;
-                        }))
-                    .first.value();
-            read_adapter.start_object();
-            e->deserialize_meta(world::ObjDeSerialize{read_adapter});
-            if (!e->_name.empty()) {
-                std::lock_guard lck{_name_map_mtx};
-                auto &vec = _entities_str_name.emplace(e->_name).value();
-                e->_name_idx = vec.size();
-                vec.emplace_back(e.get());
-            }
-            read_adapter.end_scope();
-        }
-    }
     // init
     for (auto &i : _entities) {
         i.second->unsafe_call_awake();

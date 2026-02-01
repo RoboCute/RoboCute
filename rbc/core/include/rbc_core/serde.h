@@ -20,6 +20,7 @@ namespace rbc {
 // Forward declaration for Serialize template
 template<typename T>
 struct Serialize;
+
 namespace concepts {
 template<typename T, size_t N = 0u>
 struct is_matrix_impl : std::false_type {};
@@ -87,12 +88,14 @@ concept SerReader = requires(T t) {
     std::same_as<bool, decltype(t.read(lvalue_declval<uint64_t>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<double>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<luisa::string>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<BasicDeserDataType>()))>;
     // object
     std::same_as<bool, decltype(t.read(lvalue_declval<bool>(), std::declval<char const *>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<int64_t>(), std::declval<char const *>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<uint64_t>(), std::declval<char const *>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<double>(), std::declval<char const *>()))>;
     std::same_as<bool, decltype(t.read(lvalue_declval<luisa::string>(), std::declval<char const *>()))>;
+    std::same_as<bool, decltype(t.read(lvalue_declval<BasicDeserDataType>(), std::declval<char const *>()))>;
     t.end_scope();
 
     // bytes interface
@@ -340,11 +343,13 @@ struct ArchiveRead {
     virtual bool read(uint64_t &v) = 0;
     virtual bool read(double &v) = 0;
     virtual bool read(luisa::string &v) = 0;
+    virtual bool read(BasicDeserDataType &v) = 0;
     virtual bool read(bool &v, char const *name) = 0;
     virtual bool read(int64_t &v, char const *name) = 0;
     virtual bool read(uint64_t &v, char const *name) = 0;
     virtual bool read(double &v, char const *name) = 0;
     virtual bool read(luisa::string &v, char const *name) = 0;
+    virtual bool read(BasicDeserDataType &v, char const *name) = 0;
 
     // Reads bytes into a vector (for structured access)
     virtual bool bytes(luisa::vector<std::byte> &data) = 0;
@@ -674,11 +679,13 @@ struct ArchiveReadAdapter : public ArchiveRead {
     bool read(uint64_t &value) override { return reader.read(value); }
     bool read(double &value) override { return reader.read(value); }
     bool read(luisa::string &value) override { return reader.read(value); }
+    bool read(BasicDeserDataType &value) override { return reader.read(value); }
     bool read(bool &value, char const *name) override { return reader.read(value, name); }
     bool read(int64_t &value, char const *name) override { return reader.read(value, name); }
     bool read(uint64_t &value, char const *name) override { return reader.read(value, name); }
     bool read(double &value, char const *name) override { return reader.read(value, name); }
     bool read(luisa::string &value, char const *name) override { return reader.read(value, name); }
+    bool read(BasicDeserDataType &value, char const *name) override { return reader.read(value, name); }
 
     // bytes interface - structured access (reads into vector)
     bool bytes(luisa::vector<std::byte> &data) override {

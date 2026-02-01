@@ -45,24 +45,24 @@ def main():
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
     cbox_path = str("cornell_box.obj")
     sky_path = str("sky.exr")
-    world_path = str(runtime_dir.parent / 'world')
+    world_path = str(runtime_dir.parent / "world")
 
     ctx = RBCContext()
     ctx.init_world(world_path, world_path)
     ctx.init_device(backend_name, program_path, shader_path)
     ctx.init_render()
     project = Project()
-    project.init(str(runtime_dir.parent / 'project'))
+    project.init(str(runtime_dir.parent / "project"))
     # do we need scan?
     # project.scan_project().wait()
     cbox_mesh_request = project.import_mesh(cbox_path, "")
     skybox_tex_request = project.import_texture(sky_path, "")
     skybox_tex = TextureResource(skybox_tex_request.get_result_release())
-    del skybox_tex_request # handle released, async-request already useless
+    del skybox_tex_request  # handle released, async-request already useless
     skybox_tex.set_skybox()
     del skybox_tex
     ctx.create_window("py_window", uint2(1920, 1080), True)
-    
+
     # ctx.load_skybox(sky_path, uint2(4096, 2048))
 
     # make_submesh
@@ -89,7 +89,7 @@ def main():
     # )
     # create_mesh_array(mesh_array)
     # cube_mesh.install()
-    
+
     # mat_default_json = json.loads("{}")
     # mat_default_json["base_albedo"] = [1, 0.6, 0.7]
     # mat = MaterialResource()
@@ -110,23 +110,25 @@ def main():
     # mat_vector.emplace_back(second_mat._handle)
     # mat_vector.emplace_back(mat._handle)
     # mat_vector.emplace_back(second_mat._handle)
-    
+
     mat0 = '{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]}'
     mat1 = '{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]}'
     mat2 = '{"type": "pbr", "specular_roughness": 0.5, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]}'
-    light_mat_desc = '{"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]}'
+    light_mat_desc = (
+        '{"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]}'
+    )
     basic_mat = MaterialResource()
     basic_mat.load_from_json(mat0)
-    
+
     left_wall_mat = MaterialResource()
     left_wall_mat.load_from_json(mat1)
-    
+
     right_wall_mat = MaterialResource()
     right_wall_mat.load_from_json(mat2)
-    
+
     light_mat = MaterialResource()
     light_mat.load_from_json(light_mat_desc)
-    
+
     mat_vector = capsule_vector()
     mat_vector.emplace_back(basic_mat._handle)
     mat_vector.emplace_back(basic_mat._handle)
@@ -144,16 +146,15 @@ def main():
     trans.set_rotation(float4(0, -1, 0, 0), False)
     render.update_object(mat_vector, cbox_mesh)
     del mat_vector
-    
+
     light_entity = Entity()
     light_trans = TransformComponent(light_entity.add_component("TransformComponent"))
     light = LightComponent(light_entity.add_component("LightComponent"))
     light_trans.set_trs_matrix(
-        make_double4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0.5, 4, 1),
-        False
+        make_double4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0.5, 4, 1), False
     )
-    
-    light.add_area_light(float3(30, 20, 20), True)    
+
+    light.add_area_light(float3(30, 20, 20), True)
     while not ctx.should_close():
         ctx.tick()
 
@@ -162,8 +163,7 @@ def create_mesh_array(mesh_array):
     # create a cube
     if mesh_array.size != vertex_count * 4 + triangle_count * 3:
         raise Exception("Bad mesh-array size")
-    vertex_arr = np.ndarray(
-        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+    vertex_arr = np.ndarray(vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
     indices_arr = np.ndarray(
         shape=triangle_count * 3,
         dtype=np.uint32,

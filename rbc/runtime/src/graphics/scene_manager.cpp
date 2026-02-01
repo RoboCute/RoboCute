@@ -205,6 +205,7 @@ bool SceneManager::on_frame_end(
         managed_device->dispatch(stream.handle(), std::move(cmdlist));
         cmdlist.clear();
     } else {
+        
         stream << cmdlist.commit();
     }
     return true;

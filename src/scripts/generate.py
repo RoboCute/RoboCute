@@ -51,7 +51,6 @@ from rbc_meta.utils.templates import (
     PYBIND_ENUM_BINDING_TEMPLATE,
     PYBIND_ENUM_VALUE_TEMPLATE,
     PYBIND_CREATE_FUNC_TEMPLATE,
-    PYBIND_DISPOSE_FUNC_TEMPLATE,
     PYBIND_METHOD_FUNC_TEMPLATE,
 )
 from rbc_meta.utils.codegen import (
@@ -548,20 +547,6 @@ class PipelineSettingModule(CodeModule):
         DisplaySettings,
         SkySettings,
     ]
-
-
-from rbc_meta.types.test_ipc import Chat
-
-
-# TODO: modify path & client
-# @codegen
-# class TestIPCModule(CodeModule):
-#     enable_cpp_interface_ = True
-#     cpp_base_dir_ = "rbc/tests/test_ipc/"
-#     interface_header_file_ = "generated/server_x.hpp"
-#     enable_cpp_impl_ = True
-#     cpp_impl_file_ = "server_x.cpp"
-#     classes_ = [Chat]
 
 
 def generate_registered():

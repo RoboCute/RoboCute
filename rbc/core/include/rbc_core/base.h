@@ -9,4 +9,9 @@ namespace rbc {
 
 using RBCStruct = vstd::IOperatorNewBase;
 
+using BasicDeserDataType = vstd::variant<
+    int64_t,
+    double,
+    luisa::string,
+    bool>;
 }// namespace rbc

@@ -175,7 +175,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 .write = false};
         }
         for (auto &i : grid_editor->draw_grids) {
-            auto dst_size = i.line_count.x * i.line_count.y * 2;
+            auto dst_size = (i.line_count.x + i.line_count.y) * 2;
             auto buffer = _draw_grid_buffer.view(0, dst_size);
             cmdlist << (*_grid_gen)(
                            buffer,
@@ -185,8 +185,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                            i.interval_size,
                            i.line_count)
                            .dispatch(i.line_count.x + i.line_count.y);
-            VertexBufferView vbv{
-                buffer};
+            VertexBufferView vbv{buffer};
             luisa::vector<RasterMesh> scene;
             scene.emplace_back(
                 luisa::span<VertexBufferView const>{&vbv, 1},
@@ -224,7 +223,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
 
             uint obj_id = 0;
             auto &pass_ctx = ctx.mut.get_pass_context_mut<RasterPassContext>();
-            DepthBuffer* depth_ptr{};
+            DepthBuffer *depth_ptr{};
             if (pass_ctx) {
                 if (pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frame_settings.render_resolution)) {
                     sm.dispose_after_sync(std::move(pass_ctx->depth_buffer));

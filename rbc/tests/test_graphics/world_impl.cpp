@@ -619,4 +619,64 @@ void CameraComponent::set_near_plane(void *this_, double value) {
     auto c = static_cast<world::CameraComponent *>(this_);
     c->near_plane = value;
 }
+struct BasicDataImpl : RCBase {
+    rbc::BasicDeserDataType data;
+};
+void *BasicData::_create_() {
+    auto ptr = new BasicDataImpl();
+    manually_add_ref(ptr);
+    return ptr;
+}
+template<typename Ret>
+Ret basic_type_to_value(void *this_) {
+    Ret v{};
+    static_cast<BasicDataImpl *>(this_)->data.visit([&]<typename T>(T const &t) {
+        if constexpr (requires { v = static_cast<Ret>(t); }) {
+            v = static_cast<Ret>(t);
+        }
+    });
+    return v;
+}
+template<typename Ret>
+void basic_type_from_value(void *this_, Ret &&v) {
+    static_cast<BasicDataImpl *>(this_)->data.reset_as<std::remove_reference_t<Ret>>(std::forward<Ret>(v));
+}
+bool BasicData::get_bool(void *this_) {
+    return basic_type_to_value<bool>(this_);
+}
+double BasicData::get_float(void *this_) {
+    return basic_type_to_value<double>(this_);
+}
+int64_t BasicData::get_int(void *this_) {
+    return basic_type_to_value<int64_t>(this_);
+}
+luisa::string BasicData::get_string(void *this_) {
+    return basic_type_to_value<luisa::string>(this_);
+}
+void BasicData::set_bool(void *this_, bool v) {
+    basic_type_from_value(this_, v);
+}
+void BasicData::set_float(void *this_, double v) {
+    basic_type_from_value(this_, v);
+}
+void BasicData::set_int(void *this_, int64_t v) {
+    basic_type_from_value(this_, v);
+}
+void BasicData::set_string(void *this_, luisa::string_view v) {
+    basic_type_from_value(this_, luisa::string{v});
+}
+void *Entity::get_data(void *this_, luisa::string_view name) {
+    auto ptr = BasicData::_create_();
+    auto e = static_cast<world::Entity *>(this_);
+    static_cast<BasicDataImpl *>(ptr)->data = e->get_data(name);
+    return ptr;
+}
+void Entity::set_data(void *this_, luisa::string_view name, void *data) {
+    auto e = static_cast<world::Entity *>(this_);
+    e->set_data(luisa::string{name}, BasicDeserDataType{static_cast<BasicDataImpl *>(data)->data});
+}
+rbc::BasicDataType BasicData::type(void *this_) {
+    return static_cast<rbc::BasicDataType>(static_cast<BasicDataImpl *>(this_)->data.index());
+}
+
 }// namespace rbc

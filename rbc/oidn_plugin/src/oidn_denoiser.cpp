@@ -15,7 +15,7 @@
 #include <rbc_graphics/compute_device.h>
 namespace rbc {
 namespace oidn_detail {
-struct CudaDeviceConfigExtImpl : public CudaDeviceConfigExt {
+struct CudaDeviceConfigExtImpl : public CUDADeviceConfigExt {
     ExternalVkDevice external_device;
     [[nodiscard]] ExternalVkDevice get_external_vk_device() const noexcept override {
         return external_device;

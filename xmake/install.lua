@@ -8,13 +8,11 @@ function main(mode)
     -- copy targetdir to 
     os.cp(path.join(target_dir, '*.dll'), ext_path, {
         copy_if_different = true,
-        async = true,
-        detach = true
+        async = true
     })
     os.cp(path.join(target_dir, '*.pyd'), ext_path, {
         copy_if_different = true,
-        async = true,
-        detach = true
+        async = true
     })
     -- Do this manually
     os.setenv('PYTHONPATH', target_dir)

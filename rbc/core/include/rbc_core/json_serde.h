@@ -6,6 +6,7 @@
 #include <luisa/core/binary_io.h>
 #include <rbc_config.h>
 #include <yyjson.h>
+#include <rbc_core/base.h>
 #include <luisa/vstl/stack_allocator.h>
 
 namespace rbc {
@@ -76,7 +77,7 @@ public:
 
 public:
     [[nodiscard]] luisa::BinaryBlob write_to() const;
-    [[nodiscard]] void write_to(luisa::string& str) const;
+    [[nodiscard]] void write_to(luisa::string &str) const;
     // Check if current scope is an object (false) or array (true)
     [[nodiscard]] bool is_current_scope_array() const;
 };
@@ -110,12 +111,14 @@ struct RBC_CORE_API JsonReader {
     bool read(uint64_t &value);
     bool read(double &value);
     bool read(luisa::string &value);
+    bool read(BasicDeserDataType &value);
     // primitive with name
     bool read(bool &value, char const *name);
     bool read(int64_t &value, char const *name);
     bool read(uint64_t &value, char const *name);
     bool read(double &value, char const *name);
     bool read(luisa::string &value, char const *name);
+    bool read(BasicDeserDataType &value, char const *name);
     bool valid() const;
 
     // bytes interface (UNSPPORTED for json)

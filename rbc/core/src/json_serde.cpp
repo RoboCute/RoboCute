@@ -363,6 +363,34 @@ JsonReader::~JsonReader() {
     LUISA_ASSERT(_json_scope.size() == 1);
     yyjson_doc_free(json_doc);
 }
+
+bool JsonReader::read(BasicDeserDataType &value, char const *name) {
+    if (!name) {
+        return read(value);
+    }
+    JSON_DESER_INIT_OBJ
+    switch (type) {
+        case YYJSON_TYPE_BOOL:
+            value = unsafe_yyjson_get_bool(val);
+            return true;
+        case YYJSON_TYPE_NONE:
+        case YYJSON_TYPE_NULL:
+            value.dispose();
+            return true;
+        case YYJSON_TYPE_NUM:
+            switch (yyjson_get_subtype(val)) {
+                case YYJSON_SUBTYPE_UINT:
+                case YYJSON_SUBTYPE_SINT:
+                    value = unsafe_yyjson_get_sint(val);
+                    return true;
+                case YYJSON_SUBTYPE_REAL:
+                    value = unsafe_yyjson_get_real(val);
+                    return true;
+                default: return false;
+            }
+        default: return false;
+    }
+}
 bool JsonReader::read(bool &value, char const *name) {
     if (!name) {
         return read(value);
@@ -432,7 +460,30 @@ bool JsonReader::read(double &value) {
     value = unsafe_yyjson_get_num(val);
     return true;
 }
-
+bool JsonReader::read(BasicDeserDataType &value) {
+    JSON_DESER_INIT_ARR
+    switch (type) {
+        case YYJSON_TYPE_BOOL:
+            value = unsafe_yyjson_get_bool(val);
+            return true;
+        case YYJSON_TYPE_NONE:
+        case YYJSON_TYPE_NULL:
+            value.dispose();
+            return true;
+        case YYJSON_TYPE_NUM:
+            switch (yyjson_get_subtype(val)) {
+                case YYJSON_SUBTYPE_UINT:
+                case YYJSON_SUBTYPE_SINT:
+                    value = unsafe_yyjson_get_sint(val);
+                    return true;
+                case YYJSON_SUBTYPE_REAL:
+                    value = unsafe_yyjson_get_real(val);
+                    return true;
+                default: return false;
+            }
+        default: return false;
+    }
+}
 bool JsonReader::read(luisa::string &value) {
     JSON_DESER_INIT_ARR
     if (type != YYJSON_TYPE_STR) return false;

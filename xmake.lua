@@ -19,6 +19,7 @@ lc_options = {
     lc_enable_imgui = false,
     lc_enable_osl = false,
     lc_enable_ir = false,
+    lc_use_rtti = true,
     lc_enable_tests = false,
     lc_sdk_dir = "thirdparty/LuisaCompute/SDKs",
     lc_xrepo_dir = "",
