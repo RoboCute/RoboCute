@@ -909,17 +909,22 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
 
             return_expr = "return " if method.return_type else ""
             return_end = ""
-            if (
-                method.return_type
-                and hasattr(method.return_type, "_pybind_type_")
-                and method.return_type._pybind_type_
-                and (
-                    not hasattr(method.return_type, "_is_enum_")
-                    or not method.return_type._is_enum_
-                )
-            ):
-                return_expr += _get_py_type(method.return_type) + "("
-                return_end = ")"
+            if (method.return_type):
+                if (hasattr(method.return_type, "_pybind_type_")
+                    and method.return_type._pybind_type_
+                    and (
+                        not hasattr(method.return_type, "_is_enum_")
+                        or not method.return_type._is_enum_
+                    )
+                ):
+                    return_expr += _get_py_type(method.return_type)
+                    if hasattr(method.return_type, 'ctor_begin') and method.return_type.ctor_begin:
+                        return_expr += '.'
+                        return_expr += method.return_type.ctor
+                    return_expr += '('
+                    if hasattr(method.return_type, 'ctor_end') and method.return_type.ctor_end:
+                        return_end = method.return_type.ctor_end
+                    return_end += ")"
 
             pybind_method_name = PYBIND_METHOD_NAME_TEMPLATE.substitute(
                 STRUCT_NAME=struct_name,
