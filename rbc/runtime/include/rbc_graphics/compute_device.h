@@ -11,7 +11,8 @@
 #include <luisa/runtime/event.h>
 #include <luisa/vstl/common.h>
 namespace luisa::compute {
-struct Stream;
+class Stream;
+class CUDAExternalExt;
 }// namespace luisa::compute
 namespace rbc {
 using namespace luisa;
@@ -65,7 +66,7 @@ public:
         uint width, uint height, uint depth,
         uint mipmap_levels, bool simultaneous_access, bool allow_raster_target);
     template<typename T>
-    Buffer<T> create_interop_buffer(size_t elem_count)  {
+    Buffer<T> create_interop_buffer(size_t elem_count) {
         Buffer<T> b{};
         _init_render();
         if (_render_device_idx == ~0u) return {};
@@ -74,9 +75,9 @@ public:
         });
         return b;
     }
-    ByteBuffer create_interop_byte_buffer(size_t size_bytes) ;
+    ByteBuffer create_interop_byte_buffer(size_t size_bytes);
     template<typename T>
-    Image<T> create_interop_image(PixelStorage pixel, uint width, uint height, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false)  {
+    Image<T> create_interop_image(PixelStorage pixel, uint width, uint height, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) {
         Image<T> b;
         _init_render();
         if (_render_device_idx == ~0u) return {};
@@ -86,7 +87,7 @@ public:
         return b;
     }
     template<typename T>
-    Image<T> create_interop_image(PixelStorage pixel, uint2 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false)  {
+    Image<T> create_interop_image(PixelStorage pixel, uint2 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) {
         Image<T> b;
         _init_render();
         if (_render_device_idx == ~0u) return {};
@@ -96,7 +97,7 @@ public:
         return b;
     }
     template<typename T>
-    Volume<T> create_interop_volume(PixelStorage pixel, uint width, uint height, uint volume, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false)  {
+    Volume<T> create_interop_volume(PixelStorage pixel, uint width, uint height, uint volume, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) {
         Image<T> b;
         _init_render();
         if (_render_device_idx == ~0u) return {};
@@ -106,7 +107,7 @@ public:
         return b;
     }
     template<typename T>
-    Volume<T> create_interop_volume(PixelStorage pixel, uint3 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false)  {
+    Volume<T> create_interop_volume(PixelStorage pixel, uint3 size, uint mip_levels = 1u, bool simultaneous_access = false, bool allow_raster_target = false) {
         Image<T> b;
         _init_render();
         if (_render_device_idx == ~0u) return {};
@@ -115,5 +116,7 @@ public:
         });
         return b;
     }
+    void cuda_buffer(uint64_t buffer_handle, uint64_t *cuda_ptr, uint64_t *cuda_handle /*CUexternalMemory* */);
+    void unmap(void *cuda_ptr, void *cuda_handle);
 };
 }// namespace rbc

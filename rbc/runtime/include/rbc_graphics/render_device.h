@@ -113,6 +113,10 @@ struct RBC_RUNTIME_API RenderDevice {
     std::mutex &async_compute_loop_mtx() { return _async_compute_loop_mtx; };
     void set_main_stream(Stream *main_stream);
     void _dispose_io_service();
+    void execute_before_cmdlist_commit_task();
+    void execute_after_cmdlist_commit_task();
+    void add_before_cmdlist_commit_task(luisa::move_only_function<void()> &&task);
+    void add_after_cmdlist_commit_task(luisa::move_only_function<void()> &&task);
 private:
     // context
     vstd::optional<luisa::compute::Context> _context;
@@ -128,6 +132,8 @@ private:
 
     // command list
     luisa::compute::CommandList _main_cmd_list;
+    luisa::vector<luisa::move_only_function<void()>> _after_commit_task;
+    luisa::vector<luisa::move_only_function<void()>> _before_commit_task;
 
     // io service
     luisa::compute::Stream _async_copy_stream;

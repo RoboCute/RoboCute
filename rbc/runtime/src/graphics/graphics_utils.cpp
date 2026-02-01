@@ -20,6 +20,9 @@
 #include <rbc_core/state_map.h>
 #include <rbc_graphics/compute_device.h>
 #include <rbc_graphics/lights.h>
+#include <luisa/backends/ext/cuda_external_ext.h>
+#include <luisa/backends/ext/dx_cuda_interop.h>
+#include <luisa/backends/ext/vk_cuda_interop.h>
 
 using namespace rbc;
 using namespace luisa;
@@ -69,7 +72,9 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     }
     RenderDevice::instance()._dispose_io_service();
     if (_sm) {
+        _render_device->execute_before_cmdlist_commit_task();
         _sm->mesh_manager().on_frame_end(nullptr, _sm->bindless_allocator());
+        _render_device->execute_after_cmdlist_commit_task();
         _sm.reset();
     }
     if (_present_stream) {
@@ -337,9 +342,11 @@ void GraphicsUtils::tick(
     // TODO: pipeline update
     //////////////// Test
     managed_device->end_managing(cmdlist);
+    _render_device->execute_before_cmdlist_commit_task();
     _sm->on_frame_end(
         cmdlist,
         main_stream, managed_device);
+    _render_device->execute_after_cmdlist_commit_task();
     main_stream << _compute_event.event.signal(++_compute_event.fence_index);
     if (_compute_event.fence_index > 2)
         _compute_event.event.synchronize(_compute_event.fence_index - 2);

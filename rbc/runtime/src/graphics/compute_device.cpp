@@ -5,7 +5,7 @@
 #include <luisa/backends/ext/dx_cuda_interop.h>
 namespace rbc {
 namespace compute_device_detail {
-struct CudaDeviceConfigExtImpl : public CudaDeviceConfigExt {
+struct CudaDeviceConfigExtImpl : public CUDADeviceConfigExt {
     ExternalVkDevice external_device;
     CudaDeviceConfigExtImpl(ExternalVkDevice external_device) : external_device(external_device) {}
     [[nodiscard]] ExternalVkDevice get_external_vk_device() const noexcept override {
@@ -39,6 +39,7 @@ void ComputeDevice::init(
     _lc_ctx.create(std::move(ctx));
     vstd::reset(device, std::move(render_device));
     _compute_backend_name = compute_backend_name;
+    _init_render();
 }
 ComputeDevice::~ComputeDevice() {
     if (_compute_device_inst_ != this) return;
@@ -195,4 +196,21 @@ ByteBuffer ComputeDevice::create_interop_byte_buffer(size_t size_bytes) {
     });
     return b;
 }
+void ComputeDevice::cuda_buffer(uint64_t buffer_handle, uint64_t *cuda_ptr, uint64_t *cuda_handle /*CUexternalMemory* */) {
+    if (_render_device_idx == ~0u) [[unlikely]] {
+        LUISA_ERROR("Cuda device invalid.");
+    }
+    _ext.visit([&](auto &t) {
+        t->cuda_buffer(buffer_handle, cuda_ptr, cuda_handle);
+    });
+}
+void ComputeDevice::unmap(void *cuda_ptr, void *cuda_handle) {
+    if (_render_device_idx == ~0u) [[unlikely]] {
+        LUISA_ERROR("Cuda device invalid.");
+    }
+    _ext.visit([&](auto &t) {
+        t->unmap(cuda_ptr, cuda_handle);
+    });
+}
+
 }// namespace rbc
