@@ -3,7 +3,7 @@
 #include <luisa/core/dynamic_module.h>
 #include <luisa/core/binary_io.h>
 #include "guid.h"
-#include "res_creation_info.h"
+#include <res_creation_info.h>
 namespace py = pybind11;
 struct ModuleRegister {
 private:

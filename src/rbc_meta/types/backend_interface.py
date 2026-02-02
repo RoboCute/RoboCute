@@ -11,10 +11,26 @@ from enum import Enum
     module_name="backend_interface",
 )
 class TickStage(Enum):
-    RasterPreview = 0
-    PathTracingPreview = 1
-    OffineCapturing = 2
-    PresentOfflineResult = 3
+    NONE = 0
+    RasterPreview = 1
+    PathTracingPreview = 2
+    OffineCapturing = 3
+    PresentOfflineResult = 4
+
+
+class LCPYBuffer:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "luisa::compute::BufferCreationInfoInterop"
+    _py_type_name = "luisa.Buffer"
+    _ctor_begin = "'import_native(int,'"
+
+
+class LCPYImage2D:
+    __slot__ = {}
+    _cpp_type_name = "luisa::compute::TextureCreationInfo"
+    _py_type_name = "luisa.Image2D"
+    _ctor_begin = "import_native(float,"
 
 
 @reflect(
@@ -35,7 +51,8 @@ class RBCContext:
     # render
     def init_render(self) -> None: ...
 
-    def create_window(self, name: str, size: uint2, resizable: bool) -> None: ...
+    def create_window(self, name: str, size: uint2,
+                      resizable: bool) -> None: ...
 
     # view
     def reset_view(self, resolution: uint2) -> None: ...
@@ -56,6 +73,7 @@ class RBCContext:
         prepare_denoise: bool,
     ) -> None: ...
 
-    def denoise() -> None: ...
-    def save_display_image_to(path: str) -> None: ...
+    def denoise(self) -> None: ...
+    def save_display_image_to(self, path: str) -> None: ...
     def should_close(self) -> bool: ...
+    def display_image(self) -> LCPYImage2D: ...

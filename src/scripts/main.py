@@ -432,7 +432,8 @@ def generate():
     py_path = py_root_path / f"{file_name}.py"
 
     include = """#include <rbc_plugin/generated/resource_meta.hpp>
-#include <rbc_core/rc.h>"""
+#include <rbc_core/rc.h>
+#include <res_creation_info.h>"""
 
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, True, include)
     include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
@@ -440,7 +441,7 @@ def generate():
     ut.codegen_to(cpp_path)(
         pybind_codegen, pyd_name, ["backend_interface", "runtime"], include
     )
-    ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["backend_interface", "runtime"])
+    ut.codegen_to(py_path)(py_interface_gen, pyd_name, ["backend_interface", "runtime"], "import rbc_ext.luisa as luisa")
 
     target_modules = ["world_interface"]
     file_name = "world"

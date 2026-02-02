@@ -247,6 +247,11 @@ void GraphicsUtils::tick(
         auto &frame_settings = render_settings->read_mut<rbc::FrameSettings>();
         auto &pipe_settings = render_settings->read_mut<rbc::PTPipelineSettings>();
         // TODO: camera settings
+        frame_settings.resolved_img.reset();
+        if (tick_stage == TickStage::None) {
+            pipe_settings.render = false;
+            return;
+        }
         auto img = render_view.img ? render_view.img : &_dst_image;
         frame_settings.display_offset = min(render_view.view_offset_pixels, img->size() - 1u);
         frame_settings.display_resolution = min(render_view.view_size_pixels, img->size() - frame_settings.display_offset);
@@ -256,7 +261,6 @@ void GraphicsUtils::tick(
         frame_settings.albedo_buffer = nullptr;
         frame_settings.normal_buffer = nullptr;
         frame_settings.radiance_buffer = nullptr;
-        frame_settings.resolved_img.reset();
         frame_settings.reject_sampling = false;
         auto pt_settings = render_settings->read_if<PathTracerSettings>();
         enable_denoise &= _denoiser_inited & (!pt_settings || pt_settings->denoise);
@@ -268,6 +272,8 @@ void GraphicsUtils::tick(
                 pipe_ctx,
                 frame_settings.display_resolution);
         }
+
+        pipe_settings.render = true;
         auto set_denoise_pack = [&]() {
             if (enable_denoise) {
                 frame_settings.albedo_buffer = &denoise_pack->external_albedo;

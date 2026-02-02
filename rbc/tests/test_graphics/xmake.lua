@@ -18,6 +18,9 @@ for target_name, is_standalone in pairs(targets) do
         add_includedirs('generated', {
             interface = true
         })
+        add_includedirs('include', {
+            public = true
+        })
         add_deps('rbc_runtime')
     end
 

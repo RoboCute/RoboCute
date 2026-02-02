@@ -80,6 +80,7 @@ public:
         uint64_t native_handle);
     void reset_frame();
     enum struct TickStage {
+        None,
         RasterPreview,
         PathTracingPreview,
         OffineCapturing,

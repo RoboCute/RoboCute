@@ -71,7 +71,6 @@ from rbc_meta.utils.builtin import (
     Pointer,
     Const,
     Ref,
-    LCBuffer,
     DataBuffer,
     GUID,
 )  # special case
@@ -101,7 +100,6 @@ def _get_cpp_type(
     """Map Python type to C++ type string."""
     if type_hint is None:
         return "void"
-
     # first check if info
 
     if isinstance(type_hint, str):
@@ -850,7 +848,7 @@ JSON_SER_NAME = "b839f6ccb4b74"
 SELF_NAME = "d6922fb0e4bd44549"
 
 
-def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
+def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_import: str = None) -> str:
     """Generate Python interface code."""
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
@@ -910,21 +908,24 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
             return_expr = "return " if method.return_type else ""
             return_end = ""
             if (method.return_type):
-                if (hasattr(method.return_type, "_pybind_type_")
+                if (hasattr(method.return_type, '_ctor_begin') or
+                    (hasattr(method.return_type, "_pybind_type_")
                     and method.return_type._pybind_type_
                     and (
                         not hasattr(method.return_type, "_is_enum_")
                         or not method.return_type._is_enum_
-                    )
+                    ))
                 ):
                     return_expr += _get_py_type(method.return_type)
-                    if hasattr(method.return_type, 'ctor_begin') and method.return_type.ctor_begin:
+                    if hasattr(method.return_type, '_ctor_begin') and method.return_type._ctor_begin:
                         return_expr += '.'
-                        return_expr += method.return_type.ctor
-                    return_expr += '('
-                    if hasattr(method.return_type, 'ctor_end') and method.return_type.ctor_end:
-                        return_end = method.return_type.ctor_end
-                    return_end += ")"
+                        return_expr += method.return_type._ctor_begin
+                    else:
+                        return_expr += '('
+                    if hasattr(method.return_type, '_ctor_end') and method.return_type._ctor_end:
+                        return_end = method.return_type._ctor_end
+                    else:
+                        return_end += ")"
 
             pybind_method_name = PYBIND_METHOD_NAME_TEMPLATE.substitute(
                 STRUCT_NAME=struct_name,
@@ -998,7 +999,9 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
     classes_expr = "\n".join(classes_expr_list)
     enum_exprs = "\n".join(enum_exprs)
     module_expr = f"from rbc_ext._C.{module_name} import *"
-
+    if extra_import is not None:
+        module_expr += '\n'
+        module_expr += extra_import
     result = PY_MODULE_TEMPLATE.substitute(
         MODULE_EXPR=module_expr,
         ENUM_EXPRS=enum_exprs,
@@ -1289,16 +1292,17 @@ def pybind_codegen(
             if method.is_inherit_func:
                 continue
 
-            ret_type = ""
+            # ret_type = ""
             return_expr = ""
             return_close = ""
-
+            # NO need return type
+            
             if method.return_type:
                 # Get the return type for pybind (py_interface=True)
                 pybind_ret_type = _get_full_cpp_type(
                     method.return_type, registry, True, False
                 )
-                ret_type = f" -> {pybind_ret_type}"
+                # ret_type = f" -> {pybind_ret_type}"
                 return_expr = "return "
                 arg_parse = _PYBIND_SPECUAL_ARG.get(pybind_ret_type)
                 if arg_parse:
@@ -1319,7 +1323,7 @@ def pybind_codegen(
                 METHOD_NAME=f"{class_name}__{method.name}__",
                 PTR_NAME=ptr_name,
                 ARGS_DECL=args_decl,
-                RET_TYPE=ret_type,
+                # RET_TYPE=ret_type,
                 RETURN_EXPR=return_expr,
                 STRUCT_NAME=struct_name,
                 METHOD_NAME_CALL=method.name,

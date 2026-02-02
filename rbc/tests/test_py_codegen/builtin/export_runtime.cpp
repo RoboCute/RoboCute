@@ -19,7 +19,6 @@
 #include <rbc_graphics/render_device.h>
 #include "module_register.h"
 #include "ref_counter.h"
-#include "res_creation_info.h"
 namespace luisa::compute {
 template<typename T>
 struct std_make_literal_value {
@@ -62,8 +61,8 @@ struct halfN<luisa::Vector<half, n>> {
 void execute_stream() {
     auto ptr= rbc::RenderDevice::instance_ptr();
     if(!ptr) return;
-    ptr->execute_before_cmdlist_commit_task();
     if(!ptr->lc_main_cmd_list().empty()) {
+        ptr->execute_before_cmdlist_commit_task();
         ptr->lc_main_stream() << ptr->lc_main_cmd_list().commit();
     }
     ptr->execute_after_cmdlist_commit_task();

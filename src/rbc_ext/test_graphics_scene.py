@@ -7,6 +7,7 @@ from rbc_ext.generated.world import *
 import numpy as np
 import json
 import math
+from rbc_ext.luisa import *
 
 # Auto-setup RBC_RUNTIME_DIR if not set
 if "RBC_RUNTIME_DIR" not in os.environ:
@@ -29,6 +30,7 @@ if "RBC_RUNTIME_DIR" not in os.environ:
 EXPORT = False
 
 
+
 def main():
     if len(sys.argv) < 2:
         print("must input scene root-dir")
@@ -42,6 +44,7 @@ def main():
     ctx = RBCContext()
     ctx.init_world(world_path, world_path)
     ctx.init_device(backend_name, program_path, shader_path)
+    luisa.init()
     ctx.init_render()
     project = Project()
     project.init(str(Path(sys.argv[1]) / "assets"))
@@ -58,20 +61,33 @@ def main():
     last_time = time.time()
     frame_index = 0
     image_index = 0
+    tick_stage = TickStage.PathTracingPreview
+    @luisa.func
+    def make_img_purple(img):
+        set_block_size(16, 8, 1)
+        img.write(dispatch_id().xy, img.read(
+            dispatch_id().xy) * float4(1, 0, 1, 1))
+
+
     while not ctx.should_close():
         cur_time = time.time()
         delta_time = cur_time - last_time
         last_time = cur_time
         ctx.tick(
-            delta_time, resolution, frame_index, TickStage.PathTracingPreview, True
+            delta_time, resolution, frame_index, tick_stage, True
         )
         frame_index += 1
-        if EXPORT and frame_index == 64:
-            frame_index = 0
+        if EXPORT and frame_index == 128:
+            # frame_index = 0
             ctx.denoise()
+            img = ctx.display_image()
+            ###### Make frame purple
+            make_img_purple(img, dispatch_size=(img.width, img.height, 1))
             ctx.save_display_image_to(
-                str(Path(__file__).parent / f"screenshot/frame_{image_index}.png")
+                str(Path(__file__).parent /
+                    f"screenshot/frame_{image_index}.png")
             )
+            tick_stage = TickStage.NONE
             image_index += 1
     del scene
 

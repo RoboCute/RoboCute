@@ -115,6 +115,12 @@ void RBCContext::denoise(void *this_) {
 }
 void RBCContext::save_display_image_to(void *this_, luisa::string_view path) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    auto &rd = RenderDevice::instance();
+    if (!rd.lc_main_cmd_list().empty()) {
+        rd.execute_before_cmdlist_commit_task();
+        auto &stream = rbc::RenderDevice::instance().lc_main_stream();
+        stream << rd.lc_main_cmd_list().commit();
+    }
     save_image(path, c.utils.dst_image());
 }
 void RBCContext::tick(void *this_, float delta_time, luisa::uint2 resolution, uint32_t frame_index, rbc::TickStage tick_stage, bool prepare_denoise) {
@@ -165,5 +171,23 @@ void *RBCContext::_create_() {
     auto ptr = new ContextImpl{};
     manually_add_ref(ptr);
     return ptr;
+}
+luisa::compute::TextureCreationInfo RBCContext::display_image(void *this_) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    auto &img = c.utils.dst_image();
+    luisa::compute::TextureCreationInfo r{};
+    if (!img) {
+        r.invalidate();
+        return r;
+    }
+    r.handle = img.handle();
+    r.native_handle = img.native_handle();
+    r.format = img.format();
+    r.dimension = 2;
+    r.width = img.size().x;
+    r.height = img.size().y;
+    r.depth = 1;
+    r.mipmap_levels = img.mip_levels();
+    return r;
 }
 }// namespace rbc

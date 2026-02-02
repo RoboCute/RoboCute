@@ -472,9 +472,7 @@ def reflect(
     serde: bool = False,
     pybind: bool = False,
     create_instance: bool = True,
-    cpp_prefix: Optional[str] = "",
-    ctor_begin = None, #  example: ctor_begin = 'Type.create_self('
-    ctor_end = None  # example: ctor_begin = ')'
+    cpp_prefix: Optional[str] = ""
 ) -> Type:
     """
     反射装饰器，用于标记需要反射的类
@@ -510,8 +508,6 @@ def reflect(
         cls._is_enum_ = class_info.is_enum
         # 添加自定义属性
         cls._pybind_type_ = pybind
-        cls.ctor_begin = ctor_begin
-        cls.ctor_end = ctor_end
         cls._cpp_type_name = f"{cpp_namespace}::{cls.__name__}"
 
         return cls

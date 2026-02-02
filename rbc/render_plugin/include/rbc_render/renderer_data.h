@@ -35,6 +35,7 @@ struct JitterData {
     float2 jitter;
 };
 struct PTPipelineSettings {
+    bool render : 1 {false};
     bool use_raster : 1 {false};
     bool use_raytracing : 1 {true};
     bool use_editing : 1 {true};

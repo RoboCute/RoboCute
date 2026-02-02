@@ -25,6 +25,10 @@ void RefCounter::InRef(Handle handle) noexcept {
 void RefCounter::DeRef(Handle handle) noexcept {
     std::lock_guard lck(mtx);
     auto ite = refCounts.find(handle);
+    if (ite == refCounts.end()) {
+        LUISA_VERBOSE("Handle {} not tracked by ref-counter, ignored.", handle);
+        return;
+    }
     if (--ite->second.first <= 0) {
         auto &disp = ite->second.second;
         disp.first(disp.second.get(), handle);

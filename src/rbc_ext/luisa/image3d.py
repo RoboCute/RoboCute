@@ -48,6 +48,8 @@ class Image3D:
 
     @staticmethod
     def import_native(dtype, info):
+        # luisa.init()
+        assert get_global_device() is not None
         return Image3D(info.width(), info.height(), info.depth(), info.channel(), dtype, info.mipmap_levels(), info.storage(), info)
 
     def __del__(self):
