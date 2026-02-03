@@ -13,7 +13,7 @@
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <rbc_graphics/graphics_utils.h>
-#include "generated/rbc_backend.h"
+#include "generated/world.h"
 #include <rbc_graphics/mat_manager.h>
 #include <rbc_graphics/materials.h>
 #include <rbc_render/click_manager.h>
@@ -21,7 +21,9 @@
 #include <rbc_core/runtime_static.h>
 #include <luisa/gui/window.h>
 #include <rbc_core/runtime_static.h>
-#include <rbc_world/base_object.h>
+#include <rbc_world/entity.h>
+#include <rbc_world/components/transform_component.h>
+#include <rbc_world/components/camera_component.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_core/state_map.h>
 #include <rbc_graphics/camera.h>
@@ -37,7 +39,8 @@ struct ContextImpl : RCBase {
     luisa::fiber::scheduler scheduler;
     GraphicsUtils utils;
     vstd::optional<Window> window;
-    RenderPlugin::PipeCtxStub *pipe_ctx{};
+    RC<world::Entity> display_cam_entity;
+    uint2 window_size;
     ContextImpl() {
         if (_ctx_inst) [[unlikely]] {
             LUISA_ERROR("Context can only have one.");
@@ -70,10 +73,11 @@ void RBCContext::init_render(void *this_) {
 void RBCContext::create_window(void *this_, luisa::string_view name, uint2 size, bool resiable) {
     auto &c = *static_cast<ContextImpl *>(this_);
     c.window.create(luisa::string{name}, size, resiable);
+    c.window_size = size;
+    c.window->set_window_size_callback([&c](uint2 size) {
+        c.window_size = size;
+    });
     c.utils.init_display(size, c.window->native_display(), c.window->native_handle());
-    if (!c.pipe_ctx) {
-        c.pipe_ctx = c.utils.register_render_pipectx();
-    }
 }
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
     auto &c = *static_cast<ContextImpl *>(this_);
@@ -81,17 +85,6 @@ void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
         c.utils.resize_swapchain(resolution, c.window->native_display(), c.window->native_handle());
     else
         c.utils.resize_swapchain(resolution, invalid_resource_handle, invalid_resource_handle);
-}
-void RBCContext::set_view_camera(void *this_, luisa::float3 pos, float roll, float pitch, float yaw) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    if (!c.pipe_ctx) {
-        c.pipe_ctx = c.utils.register_render_pipectx();
-    }
-    auto &cam = c.utils.render_settings(c.pipe_ctx).read_mut<Camera>();
-    cam.position = make_double3(pos);
-    cam.rotation_roll = roll;
-    cam.rotation_pitch = pitch;
-    cam.rotation_yaw = yaw;
 }
 void RBCContext::disable_view(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
@@ -107,8 +100,6 @@ void RBCContext::denoise(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     if (c.utils.denoise()) {
         c.utils.tick(
-            0,
-            c.utils.dst_image().size(),
             GraphicsUtils::TickStage::PresentOfflineResult,
             true);
     }
@@ -123,7 +114,7 @@ void RBCContext::save_display_image_to(void *this_, luisa::string_view path) {
     }
     save_image(path, c.utils.dst_image());
 }
-void RBCContext::tick(void *this_, float delta_time, luisa::uint2 resolution, uint32_t frame_index, rbc::TickStage tick_stage, bool prepare_denoise) {
+void RBCContext::tick(void *this_, rbc::TickStage tick_stage, bool prepare_denoise) {
     auto &c = *static_cast<ContextImpl *>(this_);
     RBCFrameMark;// Mark frame boundary
 
@@ -132,38 +123,39 @@ void RBCContext::tick(void *this_, float delta_time, luisa::uint2 resolution, ui
     if (c.window) {
         RBCZoneScopedN("Poll Events");
         c.window->poll_events();
-    }
-    StateMap *render_settings{};
-    if (c.pipe_ctx) {
-        render_settings = &c.utils.render_settings(c.pipe_ctx);
+        if (c.utils.dst_image() && any(c.window_size != c.utils.dst_image().size())) {
+            reset_view(this_, c.window_size);
+        }
     }
     {
         RBCZoneScopedN("Update Camera");
-        if (render_settings) {
-            auto &cam = render_settings->read_mut<Camera>();
-            if (any(resolution != c.utils.dst_image().size())) {
-                reset_view(this_, resolution);
-            }
-            cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
-        }
-        RBCPlot("Frame Time (ms)", delta_time * 1000.0);
-        if (render_settings) {
-            auto &frame_settings = render_settings->read_mut<FrameSettings>();
-            frame_settings.frame_index = frame_index;
-        }
         {
             RBCZoneScopedN("Render Tick");
             c.utils.tick(
-                static_cast<float>(delta_time),
-                resolution,
                 static_cast<GraphicsUtils::TickStage>(tick_stage),
                 prepare_denoise);
         }
-
-        ++frame_index;
-        RBCPlot("Frame Index", static_cast<float>(frame_index));
     }
 }
+void *RBCContext::create_display_cam(void *this_) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    if (!c.display_cam_entity) {
+        c.display_cam_entity = world::create_object<world::Entity>();
+        c.display_cam_entity->add_component<world::TransformComponent>();
+        c.display_cam_entity->add_component<world::CameraComponent>();
+    }
+    auto ptr = c.display_cam_entity->get_component<world::CameraComponent>();
+    if (!ptr) [[unlikely]] {
+        ptr = c.display_cam_entity->add_component<world::CameraComponent>();
+    }
+    manually_add_ref(ptr);
+    return ptr;
+}
+void RBCContext::destroy_display_cam(void *this_) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    c.display_cam_entity.reset();
+}
+
 void *RBCContext::_create_() {
     LUISA_ASSERT(!_ctx_inst);
     rbc::RuntimeStaticBase::init_all();
@@ -171,23 +163,5 @@ void *RBCContext::_create_() {
     auto ptr = new ContextImpl{};
     manually_add_ref(ptr);
     return ptr;
-}
-luisa::compute::TextureCreationInfo RBCContext::display_image(void *this_) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    auto &img = c.utils.dst_image();
-    luisa::compute::TextureCreationInfo r{};
-    if (!img) {
-        r.invalidate();
-        return r;
-    }
-    r.handle = img.handle();
-    r.native_handle = img.native_handle();
-    r.format = img.format();
-    r.dimension = 2;
-    r.width = img.size().x;
-    r.height = img.size().y;
-    r.depth = 1;
-    r.mipmap_levels = img.mip_levels();
-    return r;
 }
 }// namespace rbc

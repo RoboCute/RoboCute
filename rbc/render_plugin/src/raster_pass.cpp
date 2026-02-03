@@ -82,7 +82,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             .write = true},
     };
     auto raster_ext = render_device.lc_device().extension<RasterExt>();
-    Image<float> emission = render_device.create_transient_image<float>("emission", PixelStorage::HALF4, frame_settings.render_resolution, 1, false, true);
+    Image<float> emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution, 1, false, true);
     auto id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
     cmdlist << pass_ctx->depth_buffer.clear(0.0f)
             << (*_clear_id)(id_map, uint4(-1, -1, 0, 0)).dispatch(frame_settings.render_resolution);

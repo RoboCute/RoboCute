@@ -232,6 +232,9 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
 
         // rebuild denoiser data
         if (init) {
+            input.inputs.clear();
+            input.outputs.clear();
+            input.features.clear();
             input.push_noisy_image(DenoiserExt::ImageFormat::FLOAT3);
             input.push_feature_image("albedo", DenoiserExt::ImageFormat::FLOAT3);
             input.push_feature_image("normal", DenoiserExt::ImageFormat::FLOAT3);

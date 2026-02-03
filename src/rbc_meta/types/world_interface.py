@@ -23,6 +23,21 @@ from rbc_meta.types.resource_enums import LCPixelStorage
 from enum import Enum
 
 
+class LCPYBuffer:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "luisa::compute::BufferCreationInfoInterop"
+    _py_type_name = "luisa.Buffer"
+    _ctor_begin = "'import_native(int,'"
+
+
+class LCPYImage2D:
+    __slot__ = {}
+    _cpp_type_name = "luisa::compute::TextureCreationInfo"
+    _py_type_name = "luisa.Image2D"
+    _ctor_begin = "import_native(float,"
+
+
 @reflect(cpp_namespace='rbc', module_name='world_interface', pybind=True)
 class BasicDataType(Enum):
     INT = 0
@@ -289,8 +304,13 @@ class CameraComponent(Component):
     def set_enable_physical_camera(value: bool) -> None: ...
     def focus_distance() -> double: ...
     def set_focus_distance(value: double) -> None: ...
-    def auto_aspect_ratio() -> double: ...
-    def set_auto_aspect_ratio(value: double) -> None: ...
+    def auto_aspect_ratio() -> bool: ...
+    def set_auto_aspect_ratio(value: bool) -> None: ...
+
+    def display_image(self) -> LCPYImage2D: ...
+    def config_display_image(size: uint2, storage: LCPixelStorage) -> None: ...
+    def release_display_image() -> None: ...
+    def set_frame_data(frame_index: ulong, delta_time: float) -> None: ...
 
     def enable_camera() -> None: ...
     def disable_camera() -> None: ...
@@ -354,3 +374,56 @@ class Project:
 
     def scan_project() -> None: ...
     def get_file_meta(type_id: GUID, dest_path: str) -> FileMeta: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class TickStage(Enum):
+    NONE = 0
+    RasterPreview = 1
+    PathTracingPreview = 2
+    OffineCapturing = 3
+    PresentOfflineResult = 4
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class RBCContext:
+    def init_world(self, meta_path: str, binary_path: str) -> None: ...
+
+    # frame
+
+    def init_device(
+        self, rhi_backend: str, program_path: str, shader_path: str
+    ) -> None: ...
+
+    # render
+    def init_render(self) -> None: ...
+
+    def create_window(self, name: str, size: uint2,
+                      resizable: bool) -> None: ...
+
+    def create_display_cam() -> CameraComponent: ...
+    def destroy_display_cam() -> None: ...
+    # view
+    def reset_view(self, resolution: uint2) -> None: ...
+
+    def disable_view(self) -> None: ...
+
+    def tick(
+        self,
+        tick_stage: TickStage,
+        prepare_denoise: bool,
+    ) -> None: ...
+
+    def denoise(self) -> None: ...
+    def save_display_image_to(self, path: str) -> None: ...
+    def should_close(self) -> bool: ...

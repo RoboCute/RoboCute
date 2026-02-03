@@ -963,7 +963,6 @@ def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_impo
         elif len(info.base_classes) > 1:
             # should not happen
             print(f"{info.name} has more than 1 base classes")
-
         return PY_INTERFACE_CLASS_TEMPLATE.substitute(
             CLASS_NAME=info.name,
             INHERIT_EXPR=inherit_expr,
@@ -984,10 +983,8 @@ def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_impo
     for key, info in all_classes:
         if len(module_filter) > 0 and info.module not in module_filter:
             continue
-
         if not info.pybind:  # filter out classes marked pybind
             continue
-
         # enum_expr = get_enum_expr(key, info)
         # if enum_expr:
         #     enum_exprs.append(enum_expr)
@@ -1233,7 +1230,6 @@ def pybind_codegen(
                 for field in info.fields
             ]
         )
-
         return PYBIND_ENUM_BINDING_TEMPLATE.substitute(
             INDENT=INDENT,
             NAMESPACE_NAME=namespace_name,
@@ -1339,7 +1335,6 @@ def pybind_codegen(
     for key, info in all_classes:
         if len(module_filter) > 0 and info.module not in module_filter:
             continue
-
         enum_binding = get_enum_binding(key, info)
         if enum_binding:
             enum_bindings.append(enum_binding)

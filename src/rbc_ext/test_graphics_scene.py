@@ -2,7 +2,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from rbc_ext.generated.rbc_backend import *
+import rbc_ext.luisa as luisa
 from rbc_ext.generated.world import *
 import numpy as np
 import json
@@ -67,14 +67,17 @@ def main():
         set_block_size(16, 8, 1)
         img.write(dispatch_id().xy, img.read(
             dispatch_id().xy) * float4(1, 0, 1, 1))
-
-
+    display_cam = ctx.create_display_cam()
+    transform = TransformComponent(display_cam.entity().get_component("TransformComponent"))
+    transform.set_pos(double3(0, 0, -2), False)
+    display_cam.enable_camera()
     while not ctx.should_close():
         cur_time = time.time()
         delta_time = cur_time - last_time
         last_time = cur_time
+        display_cam.set_frame_data(frame_index, delta_time)
         ctx.tick(
-            delta_time, resolution, frame_index, tick_stage, True
+            tick_stage, True
         )
         frame_index += 1
         if EXPORT and frame_index == 128:
@@ -90,6 +93,8 @@ def main():
             tick_stage = TickStage.NONE
             image_index += 1
     del scene
+    del display_cam
+    del ctx
 
 
 if __name__ == "__main__":

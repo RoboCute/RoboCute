@@ -13,6 +13,14 @@ struct GlobalEvents {
     std::array<Event, world_event_count> _events;
 };
 static RuntimeStatic<GlobalEvents> _entity_events;
+void dispose_entity_events() {
+    if (!_entity_events) [[unlikely]]
+        return;
+    for (auto &i : _entity_events->_events) {
+        std::lock_guard lck{i.mtx};
+        i.map.clear();
+    }
+}
 void Component::_zz_invoke_world_event(WorldEventType event_type) {
     auto &evt = _entity_events->_events;
     auto &map = evt[luisa::to_underlying(event_type)];
@@ -175,8 +183,8 @@ void Entity::_remove_component(Component *component) {
     LUISA_DEBUG_ASSERT(component->entity() == this);
     auto iter = _components.find(component->type_id());
     LUISA_DEBUG_ASSERT(iter != _components.end());
-    _components.erase(iter);
     component->_clear_entity();
+    _components.erase(iter);
 }
 
 void Component::_remove_self_from_entity() {

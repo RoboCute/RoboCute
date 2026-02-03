@@ -1,5 +1,5 @@
 #include "ref_counter.h"
-
+#include <luisa/core/logging.h>
 namespace luisa::compute {
 
 RefCounter::~RefCounter() noexcept {

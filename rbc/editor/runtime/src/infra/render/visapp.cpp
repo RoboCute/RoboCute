@@ -127,8 +127,6 @@ void VisApp::update() {
     click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
 
     utils.tick(
-        (float)delta_time,
-        resolution,
         GraphicsUtils::TickStage::RasterPreview);
 }
 

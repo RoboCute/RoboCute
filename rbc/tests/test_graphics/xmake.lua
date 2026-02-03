@@ -29,7 +29,7 @@ for target_name, is_standalone in pairs(targets) do
         on_load(function(target)
             if is_standalone then
                 local ignore_files = {
-                    interface = true,
+                    rbc_context_impl = true,
                     world_impl = true,
                 }
                 for _, v in ipairs(os.files(path.join(os.scriptdir(), '**.cpp'))) do

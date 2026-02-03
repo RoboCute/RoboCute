@@ -98,8 +98,6 @@ void PBRApp::update() {
     }
 
     utils.tick(
-        (float)delta_time,
-        resolution,
         GraphicsUtils::TickStage::PresentOfflineResult);
 
     ++frame_index;

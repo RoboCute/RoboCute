@@ -188,7 +188,7 @@ void GraphicsUtils::init_display(
                     .wants_vsync = false,
                     .back_buffer_count = 2});
         }
-        _dst_image = _render_device->lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, false, true);
+        _dst_image = _render_device->lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::FLOAT4, resolution, 1, false, true);
         _dst_image.set_name("Dest image");
     }
 }
@@ -208,8 +208,6 @@ void GraphicsUtils::remove_render_pipectx(RenderPlugin::PipeCtxStub *pipe_ctx) {
 }
 
 void GraphicsUtils::tick(
-    float delta_time,
-    uint2 resolution,
     TickStage tick_stage,
     bool enable_denoise) {
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeFrame);
@@ -257,7 +255,6 @@ void GraphicsUtils::tick(
         frame_settings.display_resolution = min(render_view.view_size_pixels, img->size() - frame_settings.display_offset);
         frame_settings.render_resolution = frame_settings.display_resolution;// desired for super-sampling
         frame_settings.dst_img = img;
-        frame_settings.delta_time = delta_time;
         frame_settings.albedo_buffer = nullptr;
         frame_settings.normal_buffer = nullptr;
         frame_settings.radiance_buffer = nullptr;

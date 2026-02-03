@@ -6,7 +6,6 @@ from . import (
     test_ipc,
     test_serde,
     pipeline_settings,
-    backend_interface,
     world_interface,
     resource_loader,
 )

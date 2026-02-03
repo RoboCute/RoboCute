@@ -89,8 +89,6 @@ public:
     void build_mesh(DeviceMesh *mesh);
     void build_transforming_mesh(DeviceTransformingMesh *mesh);
     void tick(
-        float delta_time,
-        uint2 resolution,
         TickStage tick_stage = TickStage::PathTracingPreview,
         bool enable_denoise = false);
     bool denoise();
