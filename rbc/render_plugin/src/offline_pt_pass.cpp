@@ -179,11 +179,8 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     if (accum_pass_ctx->frame_index == 0) {
         cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, 0).dispatch(key_buffer.size());
     }
-    if (frame_settings.frame_index == 0)
-        pass_ctx->gbuffer_accumed_frame = 0;
     for (auto i : vstd::range(ptSettings.offline_spp)) {
         pt_args.bounce = ptSettings.offline_origin_bounce;
-        pt_args.gbuffer_temporal_weight = 1.0f - (1.0f / float(pass_ctx->gbuffer_accumed_frame + 1));
         pt_args.reset_emission = i == 0;
         pt_args.frame_index = accum_pass_ctx->frame_index * ptSettings.offline_spp + i;
         uint max_accum = (1 + pt_args.frame_index) * 1024;
@@ -234,6 +231,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 ctx.scene->accel_manager().triangle_vis_buffer(),
                 accel,
                 emission,
+                accum_pass_ctx->hdr,
                 geo_buffer.view(),
                 *frame_settings.albedo_buffer,
                 *frame_settings.normal_buffer,
@@ -242,9 +240,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 multibounce_buffer_counter,
                 pt_args,
                 frame_settings.render_resolution);
-            pass_ctx->gbuffer_accumed_frame++;
         } else {
-
             cmdlist << offline_pt_shader::dispatch_shader(
                 pt_shader, ((frame_settings.render_resolution + 1u) / 2u) * 2u,
                 scene.tex_streamer().level_buffer(),
@@ -254,6 +250,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 ctx.scene->accel_manager().triangle_vis_buffer(),
                 accel,
                 emission,
+                accum_pass_ctx->hdr,
                 id_map,
                 geo_buffer.view(),
                 frame_settings.pt_geometry_buffer ? frame_settings.pt_geometry_buffer : multibounce_buffer_counter.view().as<float>(),
@@ -261,7 +258,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 multibounce_buffer_counter,
                 pt_args,
                 frame_settings.render_resolution);
-            pass_ctx->gbuffer_accumed_frame = 0;
         }
         pt_args.bounce = ptSettings.offline_indirect_bounce;
         cmdlist << offline_multibounce::dispatch_shader(

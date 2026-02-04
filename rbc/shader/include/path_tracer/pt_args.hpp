@@ -26,7 +26,6 @@ struct PTArgs {
     // 4-byte aligned (float/uint/bool)
     float focus_distance;
     float lens_radius;
-    float gbuffer_temporal_weight;
     uint sky_heap_idx;
     uint alias_table_idx;
     uint pdf_table_idx;

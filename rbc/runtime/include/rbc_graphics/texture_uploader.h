@@ -16,16 +16,6 @@ struct RBC_RUNTIME_API TextureUploader {
     Shader2D<Buffer<uint>, Image<float>> const *_copy_byte_tex;
     Shader2D<Buffer<half>, Image<float>> const *_copy_half_tex;
     Shader2D<Buffer<float>, Image<float>> const *_copy_float_tex;
-    using ImageTensorCopy = Shader2D<
-        Buffer<uint>,//&buffer,
-        Image<float>,//&img,
-        uint2,       //pixel_offset,
-        uint,        //channel_map,
-        uint,        //channel_idx_scale,
-        uint         //channel_idx_offset
-        >;
-    ImageTensorCopy const *_buffer_to_image;
-    ImageTensorCopy const *_image_to_buffer;
     Shader2D<
         Image<float>,
         Image<float>,
@@ -81,22 +71,6 @@ public:
         ArrayOfStructure,
         StructureOfArray
     };
-    void copy_image_to_buffer(
-        CommandList &cmdlist,
-        BufferView<uint> buffer,
-        ImageView<float> img,
-        uint2 pixel_offset,
-        uint2 pixel_size,
-        luisa::span<Swizzle const> swizzles,
-        BufferLayout buffer_layout);
-    void copy_buffer_to_image(
-        CommandList &cmdlist,
-        BufferView<uint> buffer,
-        ImageView<float> img,
-        uint2 pixel_offset,
-        uint2 pixel_size,
-        luisa::span<Swizzle const> swizzles,
-        BufferLayout buffer_layout);
     void blit(
         CommandList &cmdlist,
         ImageView<float> src_img,
@@ -106,15 +80,5 @@ public:
         uint2 dst_pixel_offset,
         uint2 dst_blit_size);
     ~TextureUploader();
-private:
-    void _call_buffer_image_copy(
-        ImageTensorCopy const *shader,
-        CommandList &cmdlist,
-        BufferView<uint> buffer,
-        ImageView<float> img,
-        uint2 pixel_offset,
-        uint2 pixel_size,
-        luisa::span<Swizzle const> swizzles,
-        BufferLayout buffer_layout);
 };
 }// namespace rbc

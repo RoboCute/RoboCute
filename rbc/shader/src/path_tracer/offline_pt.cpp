@@ -27,6 +27,7 @@ using namespace luisa::shader;
 
 [[kernel_2d(16, 8)]] int kernel(
     Image<float> &emission_img,
+    Image<float> &last_img,
 #ifndef OFFLINE_DENOISER
     Image<uint> &id_map,
 #endif
@@ -101,7 +102,6 @@ using namespace luisa::shader;
     id_map.write(coord, primary_hit);
 #endif
     float3 addition_color = float3(0);
-    float addition_alpha = 0;
     float3 emission_sum = float3(0);
     float3 albedo_sum = float3(0);
     float4 normal_rough = float4(0);
@@ -126,21 +126,32 @@ using namespace luisa::shader;
         gbuffer.beta = std::array<float, 3>(write_beta.x, write_beta.y, write_beta.z);
         gbuffer.radiance = std::array<float, 3>(radiance.x, radiance.y, radiance.z);
         gbuffers.write(buffer_id, gbuffer);
+        float alpha = reject ? 0.f : 1.f;
+        addition_color = reject ? float3(0.f) : addition_color;
+        if (!args.reset_emission) {
+            auto old_val = emission_img.read(coord);
+            addition_color += old_val.xyz;
+            alpha += old_val.w;
+        }
+        emission_img.write(coord, float4(addition_color, alpha));
+        if (reject) return;
+
+        alpha = args.frame_index == 0 ? 1.0f : (alpha / (last_img.read(coord).w + alpha));
 #ifdef OFFLINE_DENOISER
         {
             auto origin_buffer_id = buffer_id;
             buffer_id *= 3;
-            if (args.gbuffer_temporal_weight > 1e-8f) {
+            if (alpha < 0.999f) {
                 float3 old_albedo;
                 old_albedo.x = albedo_buffer.read(buffer_id);
                 old_albedo.y = albedo_buffer.read(buffer_id + 1);
                 old_albedo.z = albedo_buffer.read(buffer_id + 2);
-                albedo_sum = lerp(albedo_sum, old_albedo, float3(args.gbuffer_temporal_weight));
+                albedo_sum = lerp(old_albedo, albedo_sum, float3(alpha));
                 float3 old_normal;
                 old_normal.x = normal_buffer.read(buffer_id);
                 old_normal.y = normal_buffer.read(buffer_id + 1);
                 old_normal.z = normal_buffer.read(buffer_id + 2);
-                normal_rough.xyz = lerp(normal_rough.xyz, old_normal, float3(args.gbuffer_temporal_weight));
+                normal_rough.xyz = lerp(old_normal, normal_rough.xyz, float3(alpha));
                 auto norm_len = length(normal_rough.xyz);
                 if (norm_len < 1e-5f) {
                     normal_rough.xyz = old_normal;
@@ -157,6 +168,7 @@ using namespace luisa::shader;
             buffer_id = origin_buffer_id;
         }
 #endif
+
         uint byte_offset = 0;
         const uint pixel_count = size.x * size.y;
         if ((args.geometry_mask & (1 << 0)) != 0)// Depth
@@ -164,8 +176,8 @@ using namespace luisa::shader;
             const uint element_size = 1;// sizeof(float)
             float value = to_cam_dist;
             uint read_index = byte_offset + buffer_id * element_size;
-            if (args.frame_index > 0) {
-                value = lerp(geometry_buffer.read(read_index), value, 1.0 / (float(args.frame_index) + 1.f));
+            if (alpha < 0.999f) {
+                value = lerp(geometry_buffer.read(read_index), value, alpha);
             }
             geometry_buffer.write(read_index, value);
             byte_offset += element_size * pixel_count;
@@ -175,12 +187,12 @@ using namespace luisa::shader;
             const uint element_size = 3;//  3
             float3 value = normal_rough.xyz * 0.5f + 0.5f;
             uint read_index = byte_offset + buffer_id * element_size;
-            if (args.frame_index > 0) {
+            if (alpha < 0.999f) {
                 float3 old_value;
                 old_value.x = geometry_buffer.read(read_index);
                 old_value.y = geometry_buffer.read(read_index + 1);
                 old_value.z = geometry_buffer.read(read_index + 2);
-                value = lerp(old_value, value, 1.0 / (float(args.frame_index) + 1.f));
+                value = lerp(old_value, value, alpha);
             }
             geometry_buffer.write(read_index, value.x);
             geometry_buffer.write(read_index + 1, value.y);
@@ -202,12 +214,12 @@ using namespace luisa::shader;
             const uint element_size = 3;//  3
             float3 value = emission_sum;
             uint read_index = byte_offset + buffer_id * element_size;
-            if (args.frame_index > 0) {
+            if (alpha < 0.999f) {
                 float3 old_value;
                 old_value.x = geometry_buffer.read(read_index);
                 old_value.y = geometry_buffer.read(read_index + 1);
                 old_value.z = geometry_buffer.read(read_index + 2);
-                value = lerp(old_value, value, 1.0 / (float(args.frame_index) + 1.f));
+                value = lerp(old_value, value, alpha);
             }
             geometry_buffer.write(read_index, value.x);
             geometry_buffer.write(read_index + 1, value.y);
@@ -219,26 +231,18 @@ using namespace luisa::shader;
             const uint element_size = 3;//  3
             float3 value = albedo_sum;
             uint read_index = byte_offset + buffer_id * element_size;
-            if (args.frame_index > 0) {
+            if (alpha < 0.999f) {
                 float3 old_value;
                 old_value.x = geometry_buffer.read(read_index);
                 old_value.y = geometry_buffer.read(read_index + 1);
                 old_value.z = geometry_buffer.read(read_index + 2);
-                value = lerp(old_value, value, 1.0 / (float(args.frame_index) + 1.f));
+                value = lerp(old_value, value, alpha);
             }
             geometry_buffer.write(read_index, value.x);
             geometry_buffer.write(read_index + 1, value.y);
             geometry_buffer.write(read_index + 2, value.z);
             byte_offset += element_size * pixel_count;
         }
-        addition_alpha = reject ? 0.f : 1.f;
-        addition_color = reject ? float3(0.f) : addition_color;
-        if (!args.reset_emission) {
-            auto old_val = emission_img.read(coord);
-            addition_color += old_val.xyz;
-            addition_alpha += old_val.w;
-        }
-        emission_img.write(coord, float4(addition_color, addition_alpha));
     };
 
     std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;

@@ -94,7 +94,6 @@ public:
 };
 struct PTPassContext : public PassContext {
 public:
-    uint gbuffer_accumed_frame{};
     PTPassContext();
     ~PTPassContext();
 };
