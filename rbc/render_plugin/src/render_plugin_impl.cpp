@@ -7,6 +7,7 @@
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <oidn_denoiser.h>
+#include <rbc_render/renderer_data.h>
 namespace rbc {
 
 struct DenoiserStream {
@@ -87,6 +88,8 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             sky_settings.dirty = sky_dirty;
             sky_dirty = false;
         }
+        auto &pipe_settings = ctx.pipeline_settings.read<rbc::PTPipelineSettings>();
+        if (!pipe_settings.render) return false;
         ptr->wait_enable();
         ptr->early_update(ctx);
         return true;
@@ -94,6 +97,9 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
     bool on_rendering(luisa::string_view pipeline_name, PipeCtxStub *pipe_ctx) override {
         auto ptr = get_pipe(pipeline_name);
         if (!ptr) return false;
+        auto &ctx = *reinterpret_cast<PipelineContext *>(pipe_ctx);
+        auto &pipe_settings = ctx.pipeline_settings.read<rbc::PTPipelineSettings>();
+        if (!pipe_settings.render) return false;
         ptr->update(*reinterpret_cast<PipelineContext *>(pipe_ctx));
         return true;
     }
@@ -226,6 +232,9 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
 
         // rebuild denoiser data
         if (init) {
+            input.inputs.clear();
+            input.outputs.clear();
+            input.features.clear();
             input.push_noisy_image(DenoiserExt::ImageFormat::FLOAT3);
             input.push_feature_image("albedo", DenoiserExt::ImageFormat::FLOAT3);
             input.push_feature_image("normal", DenoiserExt::ImageFormat::FLOAT3);

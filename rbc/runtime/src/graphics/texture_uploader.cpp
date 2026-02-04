@@ -10,8 +10,7 @@ void TextureUploader::load_shader(luisa::fiber::counter &counter) {
     if (RenderDevice::instance().backend_name() != "vk")
         ShaderManager::instance()->async_load(counter, "texture_process/copy_half_tex.bin", _copy_half_tex, false);
     ShaderManager::instance()->async_load(counter, "texture_process/copy_float_tex.bin", _copy_float_tex);
-    ShaderManager::instance()->async_load(counter, "texture_process/buffer_to_image.bin", _buffer_to_image);
-    ShaderManager::instance()->async_load(counter, "texture_process/image_to_buffer.bin", _image_to_buffer);
+    ShaderManager::instance()->async_load(counter, "texture_process/blit_shader.bin", _blit_shader);
 }
 void TextureUploader::upload(
     CommandList &cmdlist,
@@ -136,49 +135,24 @@ void TextureUploader::copy(
             break;
     }
 }
-void TextureUploader::_call_buffer_image_copy(
-    ImageTensorCopy const *shader,
+void TextureUploader::blit(
     CommandList &cmdlist,
-    BufferView<uint> buffer,
-    ImageView<float> img,
-    uint2 pixel_offset,
-    uint2 pixel_size,
-    luisa::span<Swizzle const> swizzles,
-    BufferLayout buffer_layout) {
-    LUISA_ASSERT(swizzles.size() <= 4, "Swizzle {} out or range 4", swizzles.size());
-    LUISA_ASSERT(all(pixel_size <= (img.size() - pixel_offset)), "Pixel size {} out of range {}-{}", pixel_size, img.size(), pixel_offset);
-    uint swizzle{~0u};
-    for (auto idx : vstd::range(swizzles.size())) {
-        swizzle |= ((uint)swizzles[idx]) << (uint)(idx * 8);
+    ImageView<float> src_img,
+    ImageView<float> dst_img,
+    float2 src_uv_scale,
+    float2 src_uv_offset,
+    uint2 dst_pixel_offset,
+    uint2 dst_blit_size) {
+    if (any(dst_pixel_offset + dst_blit_size > dst_img.size())) [[unlikely]] {
+        LUISA_ERROR("Blit offset {} + dest size {} > dest-image size {}", dst_pixel_offset, dst_blit_size, dst_img.size());
     }
-    cmdlist << (*shader)(
-                   buffer,
-                   img,
-                   pixel_offset,
-                   swizzle,
-                   (buffer_layout == BufferLayout::ArrayOfStructure) ? (uint)(swizzles.size()) : (uint)(1),
-                   (buffer_layout == BufferLayout::StructureOfArray) ? (uint)(pixel_size.x * pixel_size.y) : (uint)(1))
-                   .dispatch(pixel_size);
-}
-void TextureUploader::copy_image_to_buffer(
-    CommandList &cmdlist,
-    BufferView<uint> buffer,
-    ImageView<float> img,
-    uint2 pixel_offset,
-    uint2 pixel_size,
-    luisa::span<Swizzle const> swizzles,
-    BufferLayout buffer_layout) {
-    _call_buffer_image_copy(_image_to_buffer, cmdlist, buffer, img, pixel_offset, pixel_size, swizzles, buffer_layout);
-}
-void TextureUploader::copy_buffer_to_image(
-    CommandList &cmdlist,
-    BufferView<uint> buffer,
-    ImageView<float> img,
-    uint2 pixel_offset,
-    uint2 pixel_size,
-    luisa::span<Swizzle const> swizzles,
-    BufferLayout buffer_layout) {
-    _call_buffer_image_copy(_buffer_to_image, cmdlist, buffer, img, pixel_offset, pixel_size, swizzles, buffer_layout);
+    cmdlist << (*_blit_shader)(
+                   src_img,
+                   dst_img,
+                   src_uv_scale,
+                   src_uv_offset,
+                   dst_pixel_offset)
+                   .dispatch(dst_blit_size);
 }
 TextureUploader::~TextureUploader() {}
 }// namespace rbc

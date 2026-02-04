@@ -1,14 +1,16 @@
 #pragma once
 #include <luisa/runtime/rhi/resource.h>
+namespace luisa::compute {
 struct BufferCreationInfoInterop : luisa::compute::BufferCreationInfo {
     bool interop{false};
 };
 
 struct TextureCreationInfo : luisa::compute::ResourceCreationInfo {
     luisa::compute::PixelFormat format;
-    uint32_t dimension;
-    uint32_t width;
-    uint32_t height;
-    uint32_t depth;
-    uint32_t mipmap_levels;
+    uint32_t dimension{};
+    uint32_t width{};
+    uint32_t height{};
+    uint32_t depth{};
+    uint32_t mipmap_levels{};
 };
+}// namespace luisa::compute

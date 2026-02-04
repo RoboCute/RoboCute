@@ -153,23 +153,23 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     };
     ////////// Physical camera
 
-    offline::PTArgs pt_args{
-        .resource_to_rec2020_mat = frame_settings.to_rec2020_matrix,
-        .world_2_sky_mat = cam_data.world_to_sky,
-        .sky_heap_idx = sky_heap.sky_heap_idx,
-        .alias_table_idx = sky_heap.alias_heap_idx,
-        .pdf_table_idx = sky_heap.pdf_heap_idx,
-        .cam_pos = make_float3(cam.position),
-        .inv_view = cam_data.inv_view,
-        .view = cam_data.view,
-        .inv_vp = cam_data.inv_vp,
-        .frame_countdown = scene.tex_streamer().countdown(),
-        .light_count = static_cast<uint>(scene.light_accel().light_count()),
-        .tex_grad_scale = float2(1),
-        .enable_physical_camera = cam.enable_physical_camera,
-        // .srgb_to_fourier_even_idx = prepare_pass->srgb_to_fourier_even_idx,
-        // .bmese_phase_idx = prepare_pass->bmese_phase_idx,
-        .require_reject = frame_settings.reject_sampling};
+    offline::PTArgs pt_args{};
+    pt_args.resource_to_rec2020_mat = frame_settings.to_rec2020_matrix;
+    pt_args.world_2_sky_mat = cam_data.world_to_sky;
+    pt_args.sky_heap_idx = sky_heap.sky_heap_idx;
+    pt_args.alias_table_idx = sky_heap.alias_heap_idx;
+    pt_args.pdf_table_idx = sky_heap.pdf_heap_idx;
+    pt_args.cam_pos = make_float3(cam.position);
+    pt_args.inv_view = cam_data.inv_view;
+    pt_args.view = cam_data.view;
+    pt_args.inv_vp = cam_data.inv_vp;
+    pt_args.frame_countdown = scene.tex_streamer().countdown();
+    pt_args.light_count = static_cast<uint>(scene.light_accel().light_count());
+    pt_args.tex_grad_scale = float2(1);
+    pt_args.enable_physical_camera = cam.enable_physical_camera;
+    // .srgb_to_fourier_even_idx = prepare_pass->srgb_to_fourier_even_idx,
+    // .bmese_phase_idx = prepare_pass->bmese_phase_idx,
+    pt_args.require_reject = frame_settings.reject_sampling;
     if (cam.enable_physical_camera) {
         auto lens_radius = static_cast<float>(0.05 / cam.aperture);
         auto resolution = make_float2(frame_settings.render_resolution);
@@ -179,11 +179,8 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     if (accum_pass_ctx->frame_index == 0) {
         cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, 0).dispatch(key_buffer.size());
     }
-    if (frame_settings.frame_index == 0)
-        pass_ctx->gbuffer_accumed_frame = 0;
     for (auto i : vstd::range(ptSettings.offline_spp)) {
         pt_args.bounce = ptSettings.offline_origin_bounce;
-        pt_args.gbuffer_temporal_weight = 1.0f - (1.0f / float(pass_ctx->gbuffer_accumed_frame + 1));
         pt_args.reset_emission = i == 0;
         pt_args.frame_index = accum_pass_ctx->frame_index * ptSettings.offline_spp + i;
         uint max_accum = (1 + pt_args.frame_index) * 1024;
@@ -193,7 +190,32 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         if ((bool)frame_settings.albedo_buffer != (bool)frame_settings.normal_buffer) [[unlikely]] {
             LUISA_ERROR("normal_buffer and albedo_buffer must be provided together.");
         }
-
+        pt_args.geometry_mask = 0;
+        const uint geometry_byte_size[5] = {
+            4, // depth
+            12,// normal
+            16,// object id
+            12,// emission
+            12,// albedo
+        };
+        uint64_t buffer_dst_size = 0;
+        if (frame_settings.pt_geometry_buffer) {
+            for (auto i : vstd::range(vstd::array_count(geometry_byte_size))) {
+                if ((luisa::to_underlying(frame_settings.geometry_channel) & (1 << i)) == 0) continue;
+                buffer_dst_size += geometry_byte_size[i];
+                pt_args.geometry_mask |= (1 << i);
+            }
+            auto desired_size = buffer_dst_size * frame_settings.render_resolution.x * frame_settings.render_resolution.y;
+            if (frame_settings.pt_geometry_buffer.size_bytes() < desired_size) [[unlikely]] {
+                LUISA_ERROR(
+                    "Geometry buffer size {} less than desired size (dest_size_bytes {}) x (width {}) x (height {}) = {}",
+                    frame_settings.pt_geometry_buffer.size_bytes(),
+                    buffer_dst_size,
+                    frame_settings.render_resolution.x,
+                    frame_settings.render_resolution.y,
+                    desired_size);
+            }
+        }
         if (frame_settings.albedo_buffer && frame_settings.normal_buffer) {
             auto desired_buffer_size = frame_settings.render_resolution.x * frame_settings.render_resolution.y * 3 * sizeof(float);
             if (frame_settings.albedo_buffer->size_bytes() != desired_buffer_size ||
@@ -209,17 +231,16 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 ctx.scene->accel_manager().triangle_vis_buffer(),
                 accel,
                 emission,
+                accum_pass_ctx->hdr,
                 geo_buffer.view(),
                 *frame_settings.albedo_buffer,
                 *frame_settings.normal_buffer,
-                scene.accel_manager().last_trans_buffer(),
+                frame_settings.pt_geometry_buffer ? frame_settings.pt_geometry_buffer : multibounce_buffer_counter.view().as<float>(),
                 multibounce_buffer.view(),
                 multibounce_buffer_counter,
                 pt_args,
                 frame_settings.render_resolution);
-            pass_ctx->gbuffer_accumed_frame++;
         } else {
-
             cmdlist << offline_pt_shader::dispatch_shader(
                 pt_shader, ((frame_settings.render_resolution + 1u) / 2u) * 2u,
                 scene.tex_streamer().level_buffer(),
@@ -229,14 +250,14 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 ctx.scene->accel_manager().triangle_vis_buffer(),
                 accel,
                 emission,
+                accum_pass_ctx->hdr,
                 id_map,
                 geo_buffer.view(),
-                scene.accel_manager().last_trans_buffer(),
+                frame_settings.pt_geometry_buffer ? frame_settings.pt_geometry_buffer : multibounce_buffer_counter.view().as<float>(),
                 multibounce_buffer.view(),
                 multibounce_buffer_counter,
                 pt_args,
                 frame_settings.render_resolution);
-            pass_ctx->gbuffer_accumed_frame = 0;
         }
         pt_args.bounce = ptSettings.offline_indirect_bounce;
         cmdlist << offline_multibounce::dispatch_shader(

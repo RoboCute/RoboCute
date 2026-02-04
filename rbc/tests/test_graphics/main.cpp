@@ -287,10 +287,9 @@ int main(int argc, char *argv[]) {
                 {
                     auto &frame_settings = render_settings.read_mut<FrameSettings>();
                     frame_settings.frame_index = frame_index;
+                    frame_settings.delta_time = static_cast<float>(delta_time);
                 }
                 utils->tick(
-                    static_cast<float>(delta_time),
-                    window_size,
                     tick_stage,
                     offline_mode);
                 if constexpr (offline_mode) {

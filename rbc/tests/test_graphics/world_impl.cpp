@@ -22,6 +22,9 @@
 #include <rbc_project/project.h>
 #include <rbc_world/resources/scene.h>
 #include <rbc_core/utils/forget.h>
+#include <rbc_core/state_map.h>
+#include <rbc_render/generated/pipeline_settings.hpp>
+#include <rbc_graphics/render_device.h>
 void save_image(luisa::filesystem::path const &path, luisa::compute::Image<float> const &img);// implemented save_image.cpp
 namespace rbc {
 struct EntitiesCollectionImpl : RCBase {
@@ -85,7 +88,9 @@ bool Entity::remove_component(void *this_, luisa::string_view name) {
 }
 void *Component::entity(void *this_) {
     auto c = static_cast<world::Component *>(this_);
-    return c->entity();
+    auto entity = c->entity();
+    manually_add_ref(entity);
+    return entity;
 }
 void Component::update_data(void *this_) {
     auto c = static_cast<world::Component *>(this_);
@@ -549,7 +554,7 @@ double CameraComponent::aspect_ratio(void *this_) {
     auto c = static_cast<world::CameraComponent *>(this_);
     return c->aspect_ratio;
 }
-double CameraComponent::auto_aspect_ratio(void *this_) {
+bool CameraComponent::auto_aspect_ratio(void *this_) {
     auto c = static_cast<world::CameraComponent *>(this_);
     return c->auto_aspect_ratio;
 }
@@ -595,7 +600,7 @@ void CameraComponent::set_aspect_ratio(void *this_, double value) {
     auto c = static_cast<world::CameraComponent *>(this_);
     c->aspect_ratio = value;
 }
-void CameraComponent::set_auto_aspect_ratio(void *this_, double value) {
+void CameraComponent::set_auto_aspect_ratio(void *this_, bool value) {
     auto c = static_cast<world::CameraComponent *>(this_);
     c->auto_aspect_ratio = value;
 }
@@ -619,6 +624,56 @@ void CameraComponent::set_near_plane(void *this_, double value) {
     auto c = static_cast<world::CameraComponent *>(this_);
     c->near_plane = value;
 }
+void CameraComponent::config_display_image(void *this_, luisa::uint2 size, rbc::LCPixelStorage storage) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    if (c->dst_image && all(size == c->dst_image.size()) && (PixelStorage)storage == c->dst_image.storage()) {
+        return;
+    }
+    release_display_image(this_);
+    auto rd = RenderDevice::instance_ptr();
+    if (!rd) [[unlikely]] {
+        LUISA_ERROR("Render device not initialized.");
+    }
+    c->dst_image = rd->lc_device().create_image<float>((PixelStorage)storage, size);
+}
+void CameraComponent::release_display_image(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    if (!c->dst_image) return;
+    auto rd = RenderDevice::instance_ptr();
+    if (rd) {
+        rd->lc_main_cmd_list().add_callback([i = std::move(c->dst_image)] {});
+    } else {
+        c->dst_image.reset();
+    }
+}
+luisa::compute::TextureCreationInfo CameraComponent::display_image(void *this_) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    luisa::compute::TextureCreationInfo r;
+    auto &img = c->dst_image;
+    if (!img) {
+        r.invalidate();
+        return r;
+    }
+    r.handle = img.handle();
+    r.native_handle = img.native_handle();
+    r.format = img.format();
+    r.dimension = 2;
+    r.width = img.size().x;
+    r.height = img.size().y;
+    r.depth = 1;
+    r.mipmap_levels = img.mip_levels();
+    return r;
+}
+void CameraComponent::set_frame_data(void *this_, uint64_t frame_index, float delta_time) {
+    auto c = static_cast<world::CameraComponent *>(this_);
+    auto graphics = GraphicsUtils::instance();
+    if (c->render_pipe_ctx() && graphics) {
+        auto &fs = graphics->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(c->render_pipe_ctx())).read_mut<FrameSettings>();
+        fs.frame_index = frame_index;
+        fs.delta_time = delta_time;
+    }
+}
+
 struct BasicDataImpl : RCBase {
     rbc::BasicDeserDataType data;
 };

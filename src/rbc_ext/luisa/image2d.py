@@ -47,6 +47,10 @@ class Image2D:
 
     @staticmethod
     def import_native(dtype, info):
+        if info.handle() == 18446744073709551615:
+            return None
+        # luisa.init()
+        assert get_global_device() is not None
         return Image2D(info.width(), info.height(), info.channel(), dtype, info.mipmap_levels(), info.storage(), info)
 
     def __del__(self):

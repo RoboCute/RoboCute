@@ -81,6 +81,7 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
         _present_stream.synchronize();
     }
     _dst_image.reset();
+    _present_image.reset();
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
     LUISA_ASSERT(!_graphics_utils_singleton);
@@ -174,22 +175,12 @@ void GraphicsUtils::init_display(
     uint64_t native_handle) {
     auto &device = _render_device->lc_device();
     init_present_stream();
-    if (_dst_image && any(_dst_image.size() != resolution)) {
+    if (
+        !_dst_image || (_dst_image && any(_dst_image.size() != resolution)) ||
+        !_present_image || (_present_image && any(_present_image.size() != resolution))
+
+    ) {
         resize_swapchain(resolution, native_display, native_handle);
-    } else if (!_dst_image) {
-        if (!_swapchain && native_handle != invalid_resource_handle) {
-            _swapchain = device.create_swapchain(
-                _present_stream,
-                SwapchainOption{
-                    .display = native_display,
-                    .window = native_handle,
-                    .size = resolution,
-                    .wants_hdr = false,
-                    .wants_vsync = false,
-                    .back_buffer_count = 2});
-        }
-        _dst_image = _render_device->lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, resolution, 1, false, true);
-        _dst_image.set_name("Dest image");
     }
 }
 
@@ -208,8 +199,6 @@ void GraphicsUtils::remove_render_pipectx(RenderPlugin::PipeCtxStub *pipe_ctx) {
 }
 
 void GraphicsUtils::tick(
-    float delta_time,
-    uint2 resolution,
     TickStage tick_stage,
     bool enable_denoise) {
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeFrame);
@@ -247,16 +236,19 @@ void GraphicsUtils::tick(
         auto &frame_settings = render_settings->read_mut<rbc::FrameSettings>();
         auto &pipe_settings = render_settings->read_mut<rbc::PTPipelineSettings>();
         // TODO: camera settings
+        frame_settings.resolved_img.reset();
+        if (tick_stage == TickStage::None) {
+            pipe_settings.render = false;
+            return;
+        }
         auto img = render_view.img ? render_view.img : &_dst_image;
         frame_settings.display_offset = min(render_view.view_offset_pixels, img->size() - 1u);
         frame_settings.display_resolution = min(render_view.view_size_pixels, img->size() - frame_settings.display_offset);
         frame_settings.render_resolution = frame_settings.display_resolution;// desired for super-sampling
         frame_settings.dst_img = img;
-        frame_settings.delta_time = delta_time;
         frame_settings.albedo_buffer = nullptr;
         frame_settings.normal_buffer = nullptr;
         frame_settings.radiance_buffer = nullptr;
-        frame_settings.resolved_img.reset();
         frame_settings.reject_sampling = false;
         auto pt_settings = render_settings->read_if<PathTracerSettings>();
         enable_denoise &= _denoiser_inited & (!pt_settings || pt_settings->denoise);
@@ -268,6 +260,8 @@ void GraphicsUtils::tick(
                 pipe_ctx,
                 frame_settings.display_resolution);
         }
+
+        pipe_settings.render = true;
         auto set_denoise_pack = [&]() {
             if (enable_denoise) {
                 frame_settings.albedo_buffer = &denoise_pack->external_albedo;
@@ -342,6 +336,10 @@ void GraphicsUtils::tick(
     // TODO: pipeline update
     //////////////// Test
     managed_device->end_managing(cmdlist);
+    // blit
+    if (_swapchain) {
+        _sm->tex_uploader().blit(cmdlist, _dst_image, _present_image, float2(1), float2(), uint2(), _present_image.size());
+    }
     _render_device->execute_before_cmdlist_commit_task();
     _sm->on_frame_end(
         cmdlist,
@@ -352,8 +350,9 @@ void GraphicsUtils::tick(
         _compute_event.event.synchronize(_compute_event.fence_index - 2);
     _sm->prepare_frame();
     /////////// Present
-    if (_swapchain)
-        _present_stream << _swapchain.present(_dst_image);
+    if (_swapchain) {
+        _present_stream << _swapchain.present(_present_image);
+    }
     render_lck.unlock();
     world::Component::_zz_invoke_world_event(world::WorldEventType::AfterFrame);
     // for (auto &i : rpc_hook.shared_window.swapchains) {
@@ -368,11 +367,15 @@ void GraphicsUtils::resize_swapchain(
     _frame_requires_sync = false;
     _compute_event.event.synchronize(_compute_event.fence_index);
     _present_stream.synchronize();
+
     _dst_image.reset();
-    _dst_image = _render_device->lc_device().create_image<float>(_swapchain ? _swapchain.backend_storage() : PixelStorage::BYTE4, size, 1, false, true);
-    _dst_image.set_name("Dest image");
     _swapchain.reset();
-    if (native_handle != invalid_resource_handle)
+    _present_image.reset();
+
+    _dst_image = _render_device->lc_device().create_image<float>(PixelStorage::FLOAT4, size, 1, false, true);
+    _dst_image.set_name("Dest image");
+
+    if (native_handle != invalid_resource_handle) {
         _swapchain = _render_device->lc_device().create_swapchain(
             _present_stream,
             SwapchainOption{
@@ -382,6 +385,10 @@ void GraphicsUtils::resize_swapchain(
                 .wants_hdr = false,
                 .wants_vsync = false,
                 .back_buffer_count = 1});
+        _present_image.reset();
+        _present_image = _render_device->lc_device().create_image<float>(_swapchain.backend_storage(), size, 1, false, true);
+        _present_image.set_name("Dest image");
+    }
 }
 void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
     mesh->wait_finished();
@@ -523,5 +530,14 @@ void GraphicsUtils::update_skinning(
         weight_buffer,
         index_buffer);
     build_transforming_mesh(device_mesh);
+}
+void GraphicsUtils::set_pipeline_ctx_geometry(
+    RenderPlugin::PipeCtxStub *pipe_ctx,
+    BufferView<float> buffer,
+    GeometryType type) {
+    auto &map = render_settings(pipe_ctx);
+    auto &s = map.read_mut<FrameSettings>();
+    s.geometry_channel = type;
+    s.pt_geometry_buffer = buffer;
 }
 }// namespace rbc

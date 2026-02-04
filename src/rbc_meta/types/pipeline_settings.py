@@ -12,6 +12,7 @@ from rbc_meta.utils.builtin import (
     Curve,
     SkyAtmosphere,
     LCBuffer,
+    LCBufferView,
     LCImage,
     Pointer,
     Const,
@@ -44,6 +45,17 @@ class LpmColorSpace(Enum):
     P3 = 1
     REC2020 = 2
     Display = 3
+    
+@reflect(cpp_namespace="rbc", module_name="rbc_render")
+class GeometryType(Enum):
+    NONE = 0
+    Depth = 1 << 0   # float: Distance to camera
+    Normal = 1 << 1  # packed float3: normal-xyz
+    # packed uint4:  X: object id  Y: primitive id ZW: triangle bary-centric (float2)
+    ObjectID = 1 << 2
+
+    Emission = 1 << 3  # packed float3: emission color (sampled from spectrum)
+    Albedo = 1 << 4  # packed float3: albedo color (sampled from spectrum)
 
 
 @reflect(cpp_namespace="rbc", module_name="rbc_render")
@@ -156,12 +168,15 @@ class FrameSettings:
     albedo_buffer: Pointer[Const[LCBuffer[float]]]
     normal_buffer: Pointer[Const[LCBuffer[float]]]
     radiance_buffer: Pointer[Const[LCBuffer[float]]]
+    pt_geometry_buffer:  LCBufferView[float]
+    geometry_channel: GeometryType
     resolved_img: LCImage[float]
     dst_img: Pointer[Const[LCImage[float]]]
 
     _cpp_init = {
         "resource_color_space": "ResourceColorSpace::Rec709",
         "realtime_rendering": "true",
+        "geometry_channel": "GeometryType::NONE"
     }
 
 

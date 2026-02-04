@@ -37,7 +37,7 @@ from .func import func
 from .mathtypes import *
 from .array import array, ArrayType, SharedArrayType
 from .struct import struct, StructType
-from .buffer import buffer, Buffer, ByteBuffer, BufferType, ByteBufferType, IndirectDispatchBuffer
+from .buffer import buffer, Buffer, ByteBuffer, BufferType, ByteBufferType
 from .image2d import image2d, Image2D, Texture2DType
 from .image3d import image3d, Image3D, Texture3DType
 from rbc_ext._C.test_py_codegen import PixelStorage

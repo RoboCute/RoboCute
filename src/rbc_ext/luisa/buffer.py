@@ -39,7 +39,15 @@ class Buffer:
                        
         self.handle = info.handle()
         self.native_handle = info.native_handle()
-
+    def info(self):
+        info = lcapi.BufferCreationInfo()
+        info.set_handle(self.handle)
+        info.set_native_handle(self.native_handle)
+        info.set_element_stride(self.stride)
+        info.set_interop(self._interop)
+        info.set_total_size_bytes(self.bytesize)
+        return info
+        
     def __del__(self):
         if self.handle is not None:
             device = get_global_device()
@@ -47,6 +55,10 @@ class Buffer:
                 device.destroy_buffer(self.handle)
     @staticmethod
     def import_native(dtype, info):
+        # luisa.init()
+        if info.handle() == 18446744073709551615:
+            return None
+        assert get_global_device() is not None
         return Buffer(info.element_size(), dtype, info, info.interop())
     @staticmethod
     def buffer(arr):
@@ -417,24 +429,3 @@ class ByteBuffer:
         elsize = to_lctype(self.dtype).size()
         return [from_bytes(self.dtype, packed_bytes[elsize * i: elsize * (i + 1)]) for i in range(self.size)]
 
-
-class IndirectDispatchBuffer:
-    def __init__(self, size: int):
-        buffer = get_global_device().create_dispatch_buffer(size)
-        self.size = size
-        self.bytesize = buffer.size_bytes()
-        self.stride = buffer.element_stride()
-        # instantiate buffer on device
-        self.handle = buffer.handle()
-
-    @BuiltinFuncBuilder
-    def set_dispatch_count(self, count):
-        check_exact_signature([uint], [count], "set_dispatch_count")
-        return None, lcapi.builder().call(lcapi.CallOp.INDIRECT_SET_DISPATCH_COUNT, [self.expr, count.expr])
-
-    @BuiltinFuncBuilder
-    def set_kernel(self, offset, block_size, size, kernel_id):
-        check_exact_signature([uint, uint3, uint3, uint], [
-                              offset, block_size, size, kernel_id], "set_kernel")
-        return None, lcapi.builder().call(lcapi.CallOp.INDIRECT_SET_DISPATCH_KERNEL,
-                                          [self.expr, offset.expr, block_size.expr, size.expr, kernel_id.expr])

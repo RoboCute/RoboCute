@@ -472,7 +472,7 @@ def reflect(
     serde: bool = False,
     pybind: bool = False,
     create_instance: bool = True,
-    cpp_prefix: Optional[str] = "",
+    cpp_prefix: Optional[str] = ""
 ) -> Type:
     """
     反射装饰器，用于标记需要反射的类

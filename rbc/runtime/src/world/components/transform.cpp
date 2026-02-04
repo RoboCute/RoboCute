@@ -71,7 +71,7 @@ void TransformComponent::mark_dirty() {
 void TransformComponent::traversal(double4x4 const &new_trs) {
     auto old_l2w = _trs;
     auto old_w2l = inverse(old_l2w);
-    auto transform = [&](auto& iterate, auto &transform, TransformComponent *tr) -> void {
+    auto transform = [&](auto &iterate, auto &transform, TransformComponent *tr) -> void {
         auto curr_l2w = tr->_trs;
         auto child_to_parent = curr_l2w * old_w2l;
         auto new_l2w = child_to_parent * new_trs;

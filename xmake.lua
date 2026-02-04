@@ -12,7 +12,6 @@ lc_options = {
     lc_dx_backend = is_host("windows"),
     lc_vk_backend = true,
     lc_enable_mimalloc = true,
-    lc_enable_cuda = false,
     lc_enable_api = false,
     lc_enable_dsl = true,
     lc_enable_gui = true,

@@ -4,12 +4,14 @@
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/type_register.h>
 #include <rbc_graphics/graphics_utils.h>
+#include <rbc_graphics/render_device.h>
 #include <rbc_render/renderer_data.h>
 #include <rbc_core/state_map.h>
 
 namespace rbc::world {
 CameraComponent::CameraComponent() {}
-CameraComponent::~CameraComponent() {}
+CameraComponent::~CameraComponent() {
+}
 void CameraComponent::serialize_meta(ObjSerialize const &obj) const {
     obj.ar.value(fov, "fov");
     if (auto_aspect_ratio)
@@ -79,14 +81,25 @@ void CameraComponent::enable_camera() {
     _on_transform_update();
     add_world_event(WorldEventType::BeforeFrame, [](RCWeak<CameraComponent> comp) -> coroutine {
         while (true) {
-            auto rc = comp.lock().rc();
-            if (!rc || !rc->_render_pipe_ctx) co_return;
-            rc->update_data();
+            {
+                auto rc = comp.lock().rc();
+                if (!rc || !rc->_render_pipe_ctx) co_return;
+                rc->update_data();
+            }
+            co_await std::suspend_always{};
         }
         co_return;
     }(RCWeak<CameraComponent>{this}));
 }
 void CameraComponent::disable_camera() {
+    if (dst_image) {
+        auto rd = RenderDevice::instance_ptr();
+        if (rd) {
+            rd->lc_main_cmd_list().add_callback([i = std::move(dst_image)] {});
+        } else {
+            dst_image.reset();
+        }
+    }
     if (!_render_pipe_ctx || !GraphicsUtils::instance()) return;
     GraphicsUtils::instance()->remove_render_pipectx(static_cast<RenderPlugin::PipeCtxStub *>(_render_pipe_ctx));
     _render_pipe_ctx = nullptr;

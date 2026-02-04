@@ -35,9 +35,9 @@ struct BaseObjectStatics : RBCStruct {
             remove_obj.clear();
         }
         if (!_obj_guids.empty()) {
-            for(auto& i : _obj_guids){
+            for (auto &i : _obj_guids) {
                 auto ptr = i.second.lock().rc();
-                if(ptr) {
+                if (ptr) {
                     LUISA_INFO("{} leaking with rc {}", (size_t)ptr.get(), ptr->rbc_rc_count());
                 }
             }
@@ -60,6 +60,7 @@ void TypeRegisterBase::_base_init() {
 void _collect_all_materials();
 void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::filesystem::path const &binary_path);// in resource_base.cpp
 void dispose_resource_loader();                                                                                 // in resource_base.cpp
+void dispose_entity_events();                                                                                   // in resource_base.cpp
 void init_world(
     luisa::filesystem::path const &meta_path,
     luisa::filesystem::path const &binary_path) {
@@ -75,6 +76,7 @@ void destroy_world() {
         return;
     }
     dispose_resource_loader();
+    dispose_entity_events();
     delete _world_inst;
     _world_inst = nullptr;
 }

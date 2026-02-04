@@ -27,6 +27,7 @@ using namespace luisa::shader;
 
 [[kernel_2d(16, 8)]] int kernel(
     Image<float> &emission_img,
+    Image<float> &last_img,
 #ifndef OFFLINE_DENOISER
     Image<uint> &id_map,
 #endif
@@ -35,7 +36,7 @@ using namespace luisa::shader;
     Buffer<float> albedo_buffer,
     Buffer<float> normal_buffer,
 #endif
-    Buffer<float4x4> &last_transform_buffer,
+    Buffer<float> &geometry_buffer,
     Buffer<MultiBouncePixel> &multi_bounce_pixel,
     Buffer<uint> &multi_bounce_pixel_counter,
     PTArgs args,
@@ -96,14 +97,18 @@ using namespace luisa::shader;
         primary_hit.z = bit_cast<uint>(hit.bary.x);
         primary_hit.w = bit_cast<uint>(hit.bary.y);
     } else if (hit.hit_procedural()) {
-        // TODO: procedural to id_map
+        // procedural to id_map
     }
     id_map.write(coord, primary_hit);
 #endif
-    float3 addition_color;
-    float addition_alpha = 0;
-    float3 albedo_sum;
-    float4 normal_rough;
+    float3 addition_color = float3(0);
+    float3 emission_sum = float3(0);
+    float3 albedo_sum = float3(0);
+    float4 normal_rough = float4(0);
+    float to_cam_dist = 1e28f;
+    uint2 obj_id(max_uint32, max_uint32);
+    float2 obj_bary;
+
     float4 hitpos;// xyz: pos, w: hit normal
     const int MAX_DEPTH = args.bounce + 1;
 
@@ -121,42 +126,123 @@ using namespace luisa::shader;
         gbuffer.beta = std::array<float, 3>(write_beta.x, write_beta.y, write_beta.z);
         gbuffer.radiance = std::array<float, 3>(radiance.x, radiance.y, radiance.z);
         gbuffers.write(buffer_id, gbuffer);
-#ifdef OFFLINE_DENOISER
-        buffer_id *= 3;
-        if (args.gbuffer_temporal_weight > 1e-8f) {
-            float3 old_albedo;
-            old_albedo.x = albedo_buffer.read(buffer_id);
-            old_albedo.y = albedo_buffer.read(buffer_id + 1);
-            old_albedo.z = albedo_buffer.read(buffer_id + 2);
-            albedo_sum = lerp(albedo_sum, old_albedo, float3(args.gbuffer_temporal_weight));
-            float3 old_normal;
-            old_normal.x = normal_buffer.read(buffer_id);
-            old_normal.y = normal_buffer.read(buffer_id + 1);
-            old_normal.z = normal_buffer.read(buffer_id + 2);
-            normal_rough.xyz = lerp(normal_rough.xyz, old_normal, float3(args.gbuffer_temporal_weight));
-            auto norm_len = length(normal_rough.xyz);
-            if (norm_len < 1e-5f) {
-                normal_rough.xyz = old_normal;
-            } else {
-                normal_rough.xyz /= norm_len;
-            }
-        }
-        albedo_buffer.write(buffer_id, albedo_sum.x);
-        albedo_buffer.write(buffer_id + 1, albedo_sum.y);
-        albedo_buffer.write(buffer_id + 2, albedo_sum.z);
-        normal_buffer.write(buffer_id, normal_rough.x);
-        normal_buffer.write(buffer_id + 1, normal_rough.y);
-        normal_buffer.write(buffer_id + 2, normal_rough.z);
-#endif
-
-        addition_alpha = reject ? 0.f : 1.f;
+        float alpha = reject ? 0.f : 1.f;
         addition_color = reject ? float3(0.f) : addition_color;
         if (!args.reset_emission) {
             auto old_val = emission_img.read(coord);
             addition_color += old_val.xyz;
-            addition_alpha += old_val.w;
+            alpha += old_val.w;
         }
-        emission_img.write(coord, float4(addition_color, addition_alpha));
+        emission_img.write(coord, float4(addition_color, alpha));
+        if (reject) return;
+
+        alpha = args.frame_index == 0 ? 1.0f : (alpha / (last_img.read(coord).w + alpha));
+#ifdef OFFLINE_DENOISER
+        {
+            auto origin_buffer_id = buffer_id;
+            buffer_id *= 3;
+            if (alpha < 0.999f) {
+                float3 old_albedo;
+                old_albedo.x = albedo_buffer.read(buffer_id);
+                old_albedo.y = albedo_buffer.read(buffer_id + 1);
+                old_albedo.z = albedo_buffer.read(buffer_id + 2);
+                albedo_sum = lerp(old_albedo, albedo_sum, float3(alpha));
+                float3 old_normal;
+                old_normal.x = normal_buffer.read(buffer_id);
+                old_normal.y = normal_buffer.read(buffer_id + 1);
+                old_normal.z = normal_buffer.read(buffer_id + 2);
+                normal_rough.xyz = lerp(old_normal, normal_rough.xyz, float3(alpha));
+                auto norm_len = length(normal_rough.xyz);
+                if (norm_len < 1e-5f) {
+                    normal_rough.xyz = old_normal;
+                } else {
+                    normal_rough.xyz /= norm_len;
+                }
+            }
+            albedo_buffer.write(buffer_id, albedo_sum.x);
+            albedo_buffer.write(buffer_id + 1, albedo_sum.y);
+            albedo_buffer.write(buffer_id + 2, albedo_sum.z);
+            normal_buffer.write(buffer_id, normal_rough.x);
+            normal_buffer.write(buffer_id + 1, normal_rough.y);
+            normal_buffer.write(buffer_id + 2, normal_rough.z);
+            buffer_id = origin_buffer_id;
+        }
+#endif
+
+        uint byte_offset = 0;
+        const uint pixel_count = size.x * size.y;
+        if ((args.geometry_mask & (1 << 0)) != 0)// Depth
+        {
+            const uint element_size = 1;// sizeof(float)
+            float value = to_cam_dist;
+            uint read_index = byte_offset + buffer_id * element_size;
+            if (alpha < 0.999f) {
+                value = lerp(geometry_buffer.read(read_index), value, alpha);
+            }
+            geometry_buffer.write(read_index, value);
+            byte_offset += element_size * pixel_count;
+        }
+        if ((args.geometry_mask & (1 << 1)) != 0)// Normal
+        {
+            const uint element_size = 3;//  3
+            float3 value = normal_rough.xyz * 0.5f + 0.5f;
+            uint read_index = byte_offset + buffer_id * element_size;
+            if (alpha < 0.999f) {
+                float3 old_value;
+                old_value.x = geometry_buffer.read(read_index);
+                old_value.y = geometry_buffer.read(read_index + 1);
+                old_value.z = geometry_buffer.read(read_index + 2);
+                value = lerp(old_value, value, alpha);
+            }
+            geometry_buffer.write(read_index, value.x);
+            geometry_buffer.write(read_index + 1, value.y);
+            geometry_buffer.write(read_index + 2, value.z);
+            byte_offset += element_size * pixel_count;
+        }
+        if ((args.geometry_mask & (1 << 2)) != 0)// ObjectID
+        {
+            const uint element_size = 4;//  4
+            uint read_index = byte_offset + buffer_id * element_size;
+            geometry_buffer.write(read_index, bit_cast<float>(obj_id.x));
+            geometry_buffer.write(read_index + 1, bit_cast<float>(obj_id.y));
+            geometry_buffer.write(read_index + 2, obj_bary.x);
+            geometry_buffer.write(read_index + 3, obj_bary.y);
+            byte_offset += element_size * pixel_count;
+        }
+        if ((args.geometry_mask & (1 << 3)) != 0)// Emission
+        {
+            const uint element_size = 3;//  3
+            float3 value = emission_sum;
+            uint read_index = byte_offset + buffer_id * element_size;
+            if (alpha < 0.999f) {
+                float3 old_value;
+                old_value.x = geometry_buffer.read(read_index);
+                old_value.y = geometry_buffer.read(read_index + 1);
+                old_value.z = geometry_buffer.read(read_index + 2);
+                value = lerp(old_value, value, alpha);
+            }
+            geometry_buffer.write(read_index, value.x);
+            geometry_buffer.write(read_index + 1, value.y);
+            geometry_buffer.write(read_index + 2, value.z);
+            byte_offset += element_size * pixel_count;
+        }
+        if ((args.geometry_mask & (1 << 4)) != 0)// Albedo
+        {
+            const uint element_size = 3;//  3
+            float3 value = albedo_sum;
+            uint read_index = byte_offset + buffer_id * element_size;
+            if (alpha < 0.999f) {
+                float3 old_value;
+                old_value.x = geometry_buffer.read(read_index);
+                old_value.y = geometry_buffer.read(read_index + 1);
+                old_value.z = geometry_buffer.read(read_index + 2);
+                value = lerp(old_value, value, alpha);
+            }
+            geometry_buffer.write(read_index, value.x);
+            geometry_buffer.write(read_index + 1, value.y);
+            geometry_buffer.write(read_index + 2, value.z);
+            byte_offset += element_size * pixel_count;
+        }
     };
 
     std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;
@@ -164,13 +250,13 @@ using namespace luisa::shader;
     spectrum_arg.lambda = spectrum::sample_xyz(g_image_heap, fract(sampler.next(g_buffer_heap) + pcg_sampler.next() / 255.f));
     spectrum_arg.hero_index = pcg_sampler.nextui() % 3;
     if (hit.miss()) {
-
         normal_rough = float4(0, 0, 1, 0);
         if (args.sky_heap_idx != max_uint32) {
             addition_color = g_image_heap.uniform_idx_image_sample(args.sky_heap_idx, sampling::sphere_direction_to_uv(args.world_2_sky_mat, dir), Filter::LINEAR_POINT, Address::EDGE).xyz;
             addition_color = args.resource_to_rec2020_mat * addition_color;
             addition_color = spectrum::emission_to_spectrum(g_image_heap, g_volume_heap, spectrum_arg, addition_color);
         }
+        emission_sum = addition_color;
         write_tex();
         return 0;
     }
@@ -194,6 +280,7 @@ using namespace luisa::shader;
     vt_meta.frame_countdown = args.frame_countdown;
     float3 last_beta(0.f);
     float3 current_weight(0.f);
+    // (args.geometry_mask & 1)
     // sampling::PCGSampler block_sampler(uint3(dispatch_id().xy / 8u, args.frame_index));
     while (depth < MAX_DEPTH) {
         float3 di_result;
@@ -254,7 +341,13 @@ using namespace luisa::shader;
         if (!write_gbuffer) {
             ///////////// Record gbuffer in primary ray
             albedo_sum = result.albedo + spectrum::spectrum_to_tristimulus(result.emission);
+            emission_sum = result.emission;
             normal_rough = float4(result.normal, result.roughness);
+            to_cam_dist = hit.ray_t;
+            obj_id.x = result.user_id;
+            obj_id.y = hit.prim;
+            obj_bary = hit.bary;
+
         } else if (depth == args.bounce) {
             auto encoded_normal = sampling::encode_unit_vector(result.plane_normal);
             hitpos = float4(result.world_pos, bit_cast<float>((uint(encoded_normal.x * float(0xffff)) & 0xffff) + (uint(encoded_normal.y * float(0xffff)) << 16)));
@@ -329,8 +422,9 @@ using namespace luisa::shader;
     }
     if (depth < 0 && transparent_depth < TRANS_MAX_DEPTH) {
         if (args.sky_heap_idx != max_uint32 && reduce_sum(beta) > 1e-5f) {
-            float3 sky_col = g_image_heap.uniform_idx_image_sample(args.sky_heap_idx,
-                                                                   sampling::sphere_direction_to_uv(args.world_2_sky_mat, new_dir), Filter::LINEAR_POINT, Address::EDGE)
+            float3 sky_col = g_image_heap.uniform_idx_image_sample(
+                                             args.sky_heap_idx,
+                                             sampling::sphere_direction_to_uv(args.world_2_sky_mat, new_dir), Filter::LINEAR_POINT, Address::EDGE)
                                  .xyz;
             sky_col = args.resource_to_rec2020_mat * sky_col;
             sky_col = spectrum::emission_to_spectrum(g_image_heap, g_volume_heap, spectrum_arg, sky_col);

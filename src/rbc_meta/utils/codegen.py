@@ -71,7 +71,6 @@ from rbc_meta.utils.builtin import (
     Pointer,
     Const,
     Ref,
-    LCBuffer,
     DataBuffer,
     GUID,
 )  # special case
@@ -101,7 +100,6 @@ def _get_cpp_type(
     """Map Python type to C++ type string."""
     if type_hint is None:
         return "void"
-
     # first check if info
 
     if isinstance(type_hint, str):
@@ -850,7 +848,7 @@ JSON_SER_NAME = "b839f6ccb4b74"
 SELF_NAME = "d6922fb0e4bd44549"
 
 
-def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
+def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_import: str = None) -> str:
     """Generate Python interface code."""
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
@@ -909,17 +907,25 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
 
             return_expr = "return " if method.return_type else ""
             return_end = ""
-            if (
-                method.return_type
-                and hasattr(method.return_type, "_pybind_type_")
-                and method.return_type._pybind_type_
-                and (
-                    not hasattr(method.return_type, "_is_enum_")
-                    or not method.return_type._is_enum_
-                )
-            ):
-                return_expr += _get_py_type(method.return_type) + "("
-                return_end = ")"
+            if (method.return_type):
+                if (hasattr(method.return_type, '_ctor_begin') or
+                    (hasattr(method.return_type, "_pybind_type_")
+                    and method.return_type._pybind_type_
+                    and (
+                        not hasattr(method.return_type, "_is_enum_")
+                        or not method.return_type._is_enum_
+                    ))
+                ):
+                    return_expr += _get_py_type(method.return_type)
+                    if hasattr(method.return_type, '_ctor_begin') and method.return_type._ctor_begin:
+                        return_expr += '.'
+                        return_expr += method.return_type._ctor_begin
+                    else:
+                        return_expr += '('
+                    if hasattr(method.return_type, '_ctor_end') and method.return_type._ctor_end:
+                        return_end = method.return_type._ctor_end
+                    else:
+                        return_end += ")"
 
             pybind_method_name = PYBIND_METHOD_NAME_TEMPLATE.substitute(
                 STRUCT_NAME=struct_name,
@@ -957,7 +963,6 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
         elif len(info.base_classes) > 1:
             # should not happen
             print(f"{info.name} has more than 1 base classes")
-
         return PY_INTERFACE_CLASS_TEMPLATE.substitute(
             CLASS_NAME=info.name,
             INHERIT_EXPR=inherit_expr,
@@ -978,10 +983,8 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
     for key, info in all_classes:
         if len(module_filter) > 0 and info.module not in module_filter:
             continue
-
         if not info.pybind:  # filter out classes marked pybind
             continue
-
         # enum_expr = get_enum_expr(key, info)
         # if enum_expr:
         #     enum_exprs.append(enum_expr)
@@ -993,7 +996,9 @@ def py_interface_gen(module_name: str, module_filter: List[str] = []) -> str:
     classes_expr = "\n".join(classes_expr_list)
     enum_exprs = "\n".join(enum_exprs)
     module_expr = f"from rbc_ext._C.{module_name} import *"
-
+    if extra_import is not None:
+        module_expr += '\n'
+        module_expr += extra_import
     result = PY_MODULE_TEMPLATE.substitute(
         MODULE_EXPR=module_expr,
         ENUM_EXPRS=enum_exprs,
@@ -1225,7 +1230,6 @@ def pybind_codegen(
                 for field in info.fields
             ]
         )
-
         return PYBIND_ENUM_BINDING_TEMPLATE.substitute(
             INDENT=INDENT,
             NAMESPACE_NAME=namespace_name,
@@ -1284,16 +1288,17 @@ def pybind_codegen(
             if method.is_inherit_func:
                 continue
 
-            ret_type = ""
+            # ret_type = ""
             return_expr = ""
             return_close = ""
-
+            # NO need return type
+            
             if method.return_type:
                 # Get the return type for pybind (py_interface=True)
                 pybind_ret_type = _get_full_cpp_type(
                     method.return_type, registry, True, False
                 )
-                ret_type = f" -> {pybind_ret_type}"
+                # ret_type = f" -> {pybind_ret_type}"
                 return_expr = "return "
                 arg_parse = _PYBIND_SPECUAL_ARG.get(pybind_ret_type)
                 if arg_parse:
@@ -1314,7 +1319,7 @@ def pybind_codegen(
                 METHOD_NAME=f"{class_name}__{method.name}__",
                 PTR_NAME=ptr_name,
                 ARGS_DECL=args_decl,
-                RET_TYPE=ret_type,
+                # RET_TYPE=ret_type,
                 RETURN_EXPR=return_expr,
                 STRUCT_NAME=struct_name,
                 METHOD_NAME_CALL=method.name,
@@ -1330,7 +1335,6 @@ def pybind_codegen(
     for key, info in all_classes:
         if len(module_filter) > 0 and info.module not in module_filter:
             continue
-
         enum_binding = get_enum_binding(key, info)
         if enum_binding:
             enum_bindings.append(enum_binding)

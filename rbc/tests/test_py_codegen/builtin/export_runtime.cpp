@@ -19,7 +19,6 @@
 #include <rbc_graphics/render_device.h>
 #include "module_register.h"
 #include "ref_counter.h"
-#include "res_creation_info.h"
 namespace luisa::compute {
 template<typename T>
 struct std_make_literal_value {
@@ -62,8 +61,8 @@ struct halfN<luisa::Vector<half, n>> {
 void execute_stream() {
     auto ptr= rbc::RenderDevice::instance_ptr();
     if(!ptr) return;
-    ptr->execute_before_cmdlist_commit_task();
     if(!ptr->lc_main_cmd_list().empty()) {
+        ptr->execute_before_cmdlist_commit_task();
         ptr->lc_main_stream() << ptr->lc_main_cmd_list().commit();
     }
     ptr->execute_after_cmdlist_commit_task();
@@ -239,12 +238,19 @@ void export_runtime(py::module &m) {
         .def("native_handle", [](ResourceCreationInfo &self) { return reinterpret_cast<uint64_t>(self.native_handle); });
     py::class_<BufferCreationInfoInterop>(m, "BufferCreationInfo")
         .def(py::init<>())
-        .def("handle", [](BufferCreationInfoInterop &self) { return self.handle; })
+        .def("handle", [](BufferCreationInfoInterop &self) { return self.handle; })        
         .def("native_handle", [](BufferCreationInfoInterop &self) { return reinterpret_cast<uint64_t>(self.native_handle); })
         .def("element_size", [](BufferCreationInfoInterop &self) { return self.total_size_bytes / self.element_stride; })
         .def("element_stride", [](BufferCreationInfoInterop &self) { return self.element_stride; })
         .def("total_size_bytes", [](BufferCreationInfoInterop &self) { return self.total_size_bytes; })
-        .def("interop", [](BufferCreationInfoInterop &self) { return self.interop; });
+        .def("interop", [](BufferCreationInfoInterop &self) { return self.interop; })
+        
+        .def("set_handle", [](BufferCreationInfoInterop &self, uint64_t handle) { self.handle = handle; })
+        .def("set_native_handle", [](BufferCreationInfoInterop &self, uint64_t native_handle) { self.native_handle = reinterpret_cast<void*>(native_handle); })
+        .def("set_element_stride", [](BufferCreationInfoInterop &self, size_t element_stride) { self.element_stride = element_stride; })
+        .def("set_total_size_bytes", [](BufferCreationInfoInterop &self, size_t total_size_bytes) { self.total_size_bytes = total_size_bytes; })
+        .def("set_interop", [](BufferCreationInfoInterop &self, bool interop) { self.interop = interop; })
+        ;
     py::class_<TextureCreationInfo>(m, "TextureCreationInfo")
         .def(py::init<>())
         .def("handle", [](TextureCreationInfo &self) { return self.handle; })
