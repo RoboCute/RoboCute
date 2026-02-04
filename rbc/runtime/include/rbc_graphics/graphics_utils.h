@@ -7,6 +7,7 @@
 #include <rbc_core/base.h>
 #include <rbc_core/quaternion.h>
 #include <rbc_render/render_plugin.h>
+#include <rbc_render/generated/pipeline_settings.hpp>
 namespace rbc {
 struct RenderDevice;
 struct ComputeDevice;
@@ -40,6 +41,7 @@ private:
     luisa::unique_ptr<TextureLoader> _tex_loader;
     Swapchain _swapchain;
     Image<float> _dst_image;
+    Image<float> _present_image;
     luisa::vector<DenoisePack> _denoise_packs;
     // render
     luisa::shared_ptr<DynamicModule> _render_module;
@@ -106,5 +108,9 @@ public:
     void update_skinning(
         world::MeshResource *skinning_mesh,
         BufferView<DualQuaternion> bones);
+    void set_pipeline_ctx_geometry(
+        RenderPlugin::PipeCtxStub *pipe_ctx,
+        BufferView<float> buffer,
+        GeometryType type);
 };
 }// namespace rbc

@@ -270,6 +270,13 @@ class LCBuffer(Generic[V]):
     _cpp_type_name = "luisa::compute::Buffer"
 
 
+class LCBufferView(Generic[V]):
+    __slot__ = {}
+    _reflected_ = True
+    _is_container = True
+    _cpp_type_name = "luisa::compute::BufferView"
+
+
 class LCImage(Generic[V]):
     __slot__ = {}
     _reflected_ = True

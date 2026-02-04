@@ -30,6 +30,13 @@ class LCPYBuffer:
     _py_type_name = "luisa.Buffer"
     _ctor_begin = "'import_native(int,'"
 
+class LCPYBufferInfo:
+    __slot__ = {}
+    _reflected_ = True
+    _cpp_type_name = "luisa::compute::BufferCreationInfoInterop"
+    _py_type_name = "luisa.lcapi.BufferCreationInfo"
+    _ctor_begin = "'import_native(int,'"
+
 
 class LCPYImage2D:
     __slot__ = {}
@@ -54,6 +61,18 @@ class ResourceLoadStatus(Enum):
     Loaded = 2
     Installing = 3
     Installed = 4
+
+
+@reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
+class RendererGeometryType(Enum):
+    NONE = 0
+    Depth = 1 << 0   # float: Distance to camera
+    Normal = 1 << 1  # packed float3: normal-xyz
+    # packed uint4:  X: object id  Y: primitive id ZW: triangle bary-centric (float2)
+    ObjectID = 1 << 2
+
+    Emission = 1 << 3  # packed float3: emission color (sampled from spectrum)
+    Albedo = 1 << 4  # packed float3: albedo color (sampled from spectrum)
 
 
 @reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
@@ -408,8 +427,8 @@ class RBCContext:
     # render
     def init_render(self) -> None: ...
 
-    def create_window(self, name: str, size: uint2,
-                      resizable: bool) -> None: ...
+    def init_display(self, name: str, size: uint2,
+                     create_window: bool, window_resizable: bool) -> None: ...
 
     def create_display_cam() -> CameraComponent: ...
     def destroy_display_cam() -> None: ...
@@ -427,3 +446,8 @@ class RBCContext:
     def denoise(self) -> None: ...
     def save_display_image_to(self, path: str) -> None: ...
     def should_close(self) -> bool: ...
+    def display_image(self) -> LCPYImage2D: ...
+
+    def set_geometry_export_buffer(
+        self, buffer: LCPYBufferInfo, channel_type: RendererGeometryType) -> None: ...
+    def clear_geometry_export_buffer() -> None: ...

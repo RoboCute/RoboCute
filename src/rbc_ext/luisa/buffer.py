@@ -39,7 +39,15 @@ class Buffer:
                        
         self.handle = info.handle()
         self.native_handle = info.native_handle()
-
+    def info(self):
+        info = lcapi.BufferCreationInfo()
+        info.set_handle(self.handle)
+        info.set_native_handle(self.native_handle)
+        info.set_element_stride(self.stride)
+        info.set_interop(self._interop)
+        info.set_total_size_bytes(self.bytesize)
+        return info
+        
     def __del__(self):
         if self.handle is not None:
             device = get_global_device()

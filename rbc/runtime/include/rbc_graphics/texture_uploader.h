@@ -26,6 +26,13 @@ struct RBC_RUNTIME_API TextureUploader {
         >;
     ImageTensorCopy const *_buffer_to_image;
     ImageTensorCopy const *_image_to_buffer;
+    Shader2D<
+        Image<float>,
+        Image<float>,
+        float2,// src uv scale
+        float2,// src uv offset
+        uint2  // dst write pixel offset
+        > const *_blit_shader;
 
 public:
     TextureUploader();
@@ -90,7 +97,14 @@ public:
         uint2 pixel_size,
         luisa::span<Swizzle const> swizzles,
         BufferLayout buffer_layout);
-
+    void blit(
+        CommandList &cmdlist,
+        ImageView<float> src_img,
+        ImageView<float> dst_img,
+        float2 src_uv_scale,
+        float2 src_uv_offset,
+        uint2 dst_pixel_offset,
+        uint2 dst_blit_size);
     ~TextureUploader();
 private:
     void _call_buffer_image_copy(

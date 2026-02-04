@@ -27,6 +27,7 @@
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_core/state_map.h>
 #include <rbc_graphics/camera.h>
+#include <rbc_render/renderer_data.h>
 using namespace luisa;
 using namespace luisa::compute;
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);// implemented save_image.cpp
@@ -70,14 +71,25 @@ void RBCContext::init_render(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     c.utils.init_render();
 }
-void RBCContext::create_window(void *this_, luisa::string_view name, uint2 size, bool resiable) {
+void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, bool create_window, bool window_resizable) {
     auto &c = *static_cast<ContextImpl *>(this_);
-    c.window.create(luisa::string{name}, size, resiable);
+    uint64_t native_display, native_handle;
     c.window_size = size;
-    c.window->set_window_size_callback([&c](uint2 size) {
-        c.window_size = size;
-    });
-    c.utils.init_display(size, c.window->native_display(), c.window->native_handle());
+    if (create_window && !c.window) {
+        if (any(size == 0u)) [[unlikely]] {
+            LUISA_ERROR("Size must be non-zero.");
+        }
+        c.window.create(luisa::string{name}, size, window_resizable);
+        c.window->set_window_size_callback([&c](uint2 size) {
+            c.window_size = size;
+        });
+        native_display = c.window->native_display();
+        native_handle = c.window->native_handle();
+    } else {
+        native_display = invalid_resource_handle;
+        native_handle = invalid_resource_handle;
+    }
+    c.utils.init_display(size, native_display, native_handle);
 }
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
     auto &c = *static_cast<ContextImpl *>(this_);
@@ -114,6 +126,24 @@ void RBCContext::save_display_image_to(void *this_, luisa::string_view path) {
     }
     save_image(path, c.utils.dst_image());
 }
+luisa::compute::TextureCreationInfo RBCContext::display_image(void *this_) {
+    auto c = static_cast<ContextImpl *>(this_);
+    luisa::compute::TextureCreationInfo r;
+    auto &img = c->utils.dst_image();
+    if (!img) {
+        r.invalidate();
+        return r;
+    }
+    r.handle = img.handle();
+    r.native_handle = img.native_handle();
+    r.format = img.format();
+    r.dimension = 2;
+    r.width = img.size().x;
+    r.height = img.size().y;
+    r.depth = 1;
+    r.mipmap_levels = img.mip_levels();
+    return r;
+}
 void RBCContext::tick(void *this_, rbc::TickStage tick_stage, bool prepare_denoise) {
     auto &c = *static_cast<ContextImpl *>(this_);
     RBCFrameMark;// Mark frame boundary
@@ -139,6 +169,9 @@ void RBCContext::tick(void *this_, rbc::TickStage tick_stage, bool prepare_denoi
 }
 void *RBCContext::create_display_cam(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    if (any(c.window_size == 0u) || !c.utils.dst_image()) [[unlikely]] {
+        LUISA_ERROR("Display not initialized.");
+    }
     if (!c.display_cam_entity) {
         c.display_cam_entity = world::create_object<world::Entity>();
         c.display_cam_entity->add_component<world::TransformComponent>();
@@ -150,6 +183,44 @@ void *RBCContext::create_display_cam(void *this_) {
     }
     manually_add_ref(ptr);
     return ptr;
+}
+void RBCContext::clear_geometry_export_buffer(void *this_) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    if (!c.display_cam_entity) [[unlikely]] {
+        LUISA_ERROR("Display camera uninitialized.");
+    }
+    auto cam = c.display_cam_entity->get_component<world::CameraComponent>();
+    if (!cam) [[unlikely]] {
+        LUISA_ERROR("Display camera uninitialized.");
+    }
+    auto &map = c.utils.render_settings((RenderPlugin::PipeCtxStub *)cam->render_pipe_ctx());
+    auto &s = map.read_mut<FrameSettings>();
+    s.geometry_channel = GeometryType::NONE;
+    s.pt_geometry_buffer = {};
+}
+void RBCContext::set_geometry_export_buffer(void *this_, luisa::compute::BufferCreationInfoInterop buffer, rbc::RendererGeometryType channel_type) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    if (!c.display_cam_entity) [[unlikely]] {
+        LUISA_ERROR("Display camera uninitialized.");
+    }
+    auto cam = c.display_cam_entity->get_component<world::CameraComponent>();
+    if (!cam) [[unlikely]] {
+        LUISA_ERROR("Display camera uninitialized.");
+    }
+    auto &map = c.utils.render_settings((RenderPlugin::PipeCtxStub *)cam->render_pipe_ctx());
+    auto &s = map.read_mut<FrameSettings>();
+    s.geometry_channel = (rbc::GeometryType)channel_type;
+    s.pt_geometry_buffer =
+        (buffer.native_handle == 0 ||
+         buffer.handle == invalid_resource_handle) ?
+            BufferView<float>{} :
+            BufferView<float>(
+                buffer.native_handle,
+                buffer.handle,
+                sizeof(float),
+                0,
+                buffer.total_size_bytes / sizeof(float),
+                buffer.total_size_bytes / sizeof(float));
 }
 void RBCContext::destroy_display_cam(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);

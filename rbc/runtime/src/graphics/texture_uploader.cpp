@@ -12,6 +12,7 @@ void TextureUploader::load_shader(luisa::fiber::counter &counter) {
     ShaderManager::instance()->async_load(counter, "texture_process/copy_float_tex.bin", _copy_float_tex);
     ShaderManager::instance()->async_load(counter, "texture_process/buffer_to_image.bin", _buffer_to_image);
     ShaderManager::instance()->async_load(counter, "texture_process/image_to_buffer.bin", _image_to_buffer);
+    ShaderManager::instance()->async_load(counter, "texture_process/blit_shader.bin", _blit_shader);
 }
 void TextureUploader::upload(
     CommandList &cmdlist,
@@ -179,6 +180,25 @@ void TextureUploader::copy_buffer_to_image(
     luisa::span<Swizzle const> swizzles,
     BufferLayout buffer_layout) {
     _call_buffer_image_copy(_buffer_to_image, cmdlist, buffer, img, pixel_offset, pixel_size, swizzles, buffer_layout);
+}
+void TextureUploader::blit(
+    CommandList &cmdlist,
+    ImageView<float> src_img,
+    ImageView<float> dst_img,
+    float2 src_uv_scale,
+    float2 src_uv_offset,
+    uint2 dst_pixel_offset,
+    uint2 dst_blit_size) {
+    if (any(dst_pixel_offset + dst_blit_size > dst_img.size())) [[unlikely]] {
+        LUISA_ERROR("Blit offset {} + dest size {} > dest-image size {}", dst_pixel_offset, dst_blit_size, dst_img.size());
+    }
+    cmdlist << (*_blit_shader)(
+                   src_img,
+                   dst_img,
+                   src_uv_scale,
+                   src_uv_offset,
+                   dst_pixel_offset)
+                   .dispatch(dst_blit_size);
 }
 TextureUploader::~TextureUploader() {}
 }// namespace rbc
