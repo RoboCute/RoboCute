@@ -8,7 +8,11 @@ namespace rbc {
 #define RBC_FTELL ftello
 #endif
 BinaryFileWriter::BinaryFileWriter(luisa::string const &name, bool append) {
+#ifdef _WIN32
+    fopen_s(&_file, name.c_str(), append ? "rb+" : "wb");
+#else
     _file = fopen(name.c_str(), append ? "rb+" : "wb");
+#endif
 }
 BinaryFileWriter::BinaryFileWriter(BinaryFileWriter &&rhs) {
     _file = rhs._file;

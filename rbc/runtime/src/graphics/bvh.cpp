@@ -234,7 +234,7 @@ auto BVH::build(
 			v.min_v[i] = ele.min[i];
 			v.max_v[i] = ele.max[i];
 		}
-		v.index = ele.index;
+		v.index = static_cast<uint>(ele.index);
 		v.lum = ele.weight;
 		v.cone = ele.cone;
 
@@ -264,7 +264,7 @@ auto BVH::build(
 		volumes,
 		root_bounding,
 		Axis::None,
-		std::max(boundings.size() / 8ull, 256ull));
+		std::max<size_t>(boundings.size() / 8ull, 256ull));
 	thd_data.fiber_counter.wait();
 	packed_nodes.push_back_uninitialized(thd_data.node_idx_counter * 2);
 	auto calc_weight = [&](auto&& calc_weight, Node* node) {
@@ -307,7 +307,7 @@ auto BVH::build(
 
 		auto bary_center = (node->left_node.visit_or(float3(0), func) +
 							node->right_node.visit_or(float3(0), func));
-		bary_center /= std::max<float>(sum_weight, 1e-4);
+		bary_center /= std::max<float>(sum_weight, 1e-4f);
 		node->bary_center = bary_center;
 		return bary_center;
 	};

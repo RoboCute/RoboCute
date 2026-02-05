@@ -184,44 +184,7 @@ void *RBCContext::create_display_cam(void *this_) {
     manually_add_ref(ptr);
     return ptr;
 }
-void RBCContext::clear_geometry_export_buffer(void *this_) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    if (!c.display_cam_entity) [[unlikely]] {
-        LUISA_ERROR("Display camera uninitialized.");
-    }
-    auto cam = c.display_cam_entity->get_component<world::CameraComponent>();
-    if (!cam) [[unlikely]] {
-        LUISA_ERROR("Display camera uninitialized.");
-    }
-    auto &map = c.utils.render_settings((RenderPlugin::PipeCtxStub *)cam->render_pipe_ctx());
-    auto &s = map.read_mut<FrameSettings>();
-    s.geometry_channel = GeometryType::NONE;
-    s.pt_geometry_buffer = {};
-}
-void RBCContext::set_geometry_export_buffer(void *this_, luisa::compute::BufferCreationInfoInterop buffer, rbc::RendererGeometryType channel_type) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    if (!c.display_cam_entity) [[unlikely]] {
-        LUISA_ERROR("Display camera uninitialized.");
-    }
-    auto cam = c.display_cam_entity->get_component<world::CameraComponent>();
-    if (!cam) [[unlikely]] {
-        LUISA_ERROR("Display camera uninitialized.");
-    }
-    auto &map = c.utils.render_settings((RenderPlugin::PipeCtxStub *)cam->render_pipe_ctx());
-    auto &s = map.read_mut<FrameSettings>();
-    s.geometry_channel = (rbc::GeometryType)channel_type;
-    s.pt_geometry_buffer =
-        (buffer.native_handle == 0 ||
-         buffer.handle == invalid_resource_handle) ?
-            BufferView<float>{} :
-            BufferView<float>(
-                buffer.native_handle,
-                buffer.handle,
-                sizeof(float),
-                0,
-                buffer.total_size_bytes / sizeof(float),
-                buffer.total_size_bytes / sizeof(float));
-}
+
 void RBCContext::destroy_display_cam(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     c.display_cam_entity.reset();

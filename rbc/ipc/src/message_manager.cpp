@@ -50,14 +50,14 @@ bool AsyncTypedMessagePop::next_step() {
     auto push_to_cache = [&](size_t size) {
         auto sz = _cache.size();
         _cache.push_back_uninitialized(size);
-        LUISA_DEBUG_ASSERT(size <= (buf_end - buf_data), "push cache overflow");
+        LUISA_DEBUG_ASSERT(size <= static_cast<size_t>(buf_end - buf_data), "push cache overflow");
         std::memcpy(_cache.data() + sz, buf_data, size);
         buf_data += size;
     };
     auto push_to_data = [&](size_t size) {
         auto sz = data.size();
         data.push_back_uninitialized(size);
-        LUISA_DEBUG_ASSERT(size <= (buf_end - buf_data), "push data overflow");
+        LUISA_DEBUG_ASSERT(size <= static_cast<size_t>(buf_end - buf_data), "push data overflow");
         std::memcpy(data.data() + sz, buf_data, size);
         buf_data += size;
     };
@@ -162,14 +162,14 @@ uint8_t IMessageReceiver::pop_typed_message(luisa::vector<std::byte> &data) {
     auto push_to_cache = [&](size_t size) {
         auto sz = _cache.size();
         _cache.push_back_uninitialized(size);
-        LUISA_DEBUG_ASSERT(size <= (buf_end - buf_data), "push cache overflow");
+        LUISA_DEBUG_ASSERT(size <= static_cast<size_t>(buf_end - buf_data), "push cache overflow");
         std::memcpy(_cache.data() + sz, buf_data, size);
         buf_data += size;
     };
     auto push_to_data = [&](size_t size) {
         auto sz = data.size();
         data.push_back_uninitialized(size);
-        LUISA_DEBUG_ASSERT(size <= (buf_end - buf_data), "push data overflow");
+        LUISA_DEBUG_ASSERT(size <= static_cast<size_t>(buf_end - buf_data), "push data overflow");
         std::memcpy(data.data() + sz, buf_data, size);
         buf_data += size;
     };

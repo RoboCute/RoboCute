@@ -98,7 +98,7 @@ def main():
     display_cam.enable_camera()
     if EXPORT:
         geometry_buffer = Buffer(resolution.x * resolution.y * (1 + 3 + 3 + 3), float)
-        ctx.set_geometry_export_buffer(
+        display_cam.set_geometry_export_buffer(
             geometry_buffer.info(),
             RendererGeometryType(int(RendererGeometryType.Depth) | int(RendererGeometryType.Normal) | int(RendererGeometryType.Emission) | int(RendererGeometryType.Albedo))
         )
@@ -157,7 +157,7 @@ def main():
             
             tick_stage = TickStage.NONE
             image_index += 1
-            ctx.clear_geometry_export_buffer()
+            display_cam.clear_geometry_export_buffer()
             del geometry_buffer
             
     del scene

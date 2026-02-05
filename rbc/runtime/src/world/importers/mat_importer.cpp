@@ -3,7 +3,7 @@
 #include <luisa/core/binary_file_stream.h>
 namespace rbc::world {
 luisa::string_view MatJsonImporter::extension() const {
-    return ".json";
+    return ".mat";
 }
 bool MatJsonImporter::import(Resource *resource_base, luisa::filesystem::path const &path) {
     auto resource = static_cast<MaterialResource *>(resource_base);

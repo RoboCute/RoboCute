@@ -70,7 +70,7 @@ bool InputWidgetFactory::setValue(QWidget *widget, const QVariant &value) const 
             QVariant checkValue = creator->getValue(widget);
             if (checkValue.isValid()) {
                 // 对于浮点数，允许小的误差
-                if (checkValue.type() == QVariant::Double || value.type() == QVariant::Double) {
+                if (checkValue.typeId() == QMetaType::Double || value.typeId() == QMetaType::Double) {
                     if (qAbs(checkValue.toDouble() - value.toDouble()) < 1e-6) {
                         return true;
                     }

@@ -70,9 +70,6 @@ int main(int argc, char *argv[]) {
     LUISA_INFO("Importing cornell_box.obj.");
     auto cbox_mesh = proj->import_assets("cornell_box.obj", TypeInfo::get<world::MeshResource>().md5()).cast_static<world::MeshResource>();
     LUISA_ASSERT(cbox_mesh);
-    LUISA_INFO("Importing sky.exr.");
-    auto sky_tex = proj->import_assets("sky.exr", TypeInfo::get<world::TextureResource>().md5());
-    LUISA_ASSERT(sky_tex);
     LUISA_INFO("Importing test_grid.png.");
     LUISA_ASSERT(proj->import_assets("test_grid.png", TypeInfo::get<world::TextureResource>().md5()));
     utils->tex_loader()->finish_task();
@@ -84,53 +81,50 @@ int main(int argc, char *argv[]) {
         auto s = world::create_object<world::SceneResource>();
         scene = s;
         // add cbox
-        {
-            cbox_mesh->wait_loading();
-            luisa::vector<RC<world::MaterialResource>> mats;
-            mats.resize(cbox_mesh->submesh_count());
-            LUISA_ASSERT(cbox_mesh->submesh_count() == 8);
-            auto mat0 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]})"sv;
-            auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
-            auto mat2 = R"({"type": "pbr", "specular_roughness": 0.2, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]})"sv;
-            auto light_mat_desc = R"({"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]})"sv;
+        cbox_mesh->wait_loading();
+        luisa::vector<RC<world::MaterialResource>> mats;
+        mats.resize(cbox_mesh->submesh_count());
+        LUISA_ASSERT(cbox_mesh->submesh_count() == 8);
+        auto mat0 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]})"sv;
+        auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
+        auto mat2 = R"({"type": "pbr", "specular_roughness": 0.2, "weight_metallic": 1.0, "base_albedo": [0.630, 0.065, 0.050]})"sv;
+        auto light_mat_desc = R"({"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]})"sv;
 
-            auto basic_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
-            auto left_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
-            auto right_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
-            auto light_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
-            basic_mat->load_from_json(mat0);
-            left_wall_mat->load_from_json(mat1);
-            right_wall_mat->load_from_json(mat2);
-            light_mat->load_from_json(light_mat_desc);
-            basic_mat->save_to_path();
-            light_mat->save_to_path();
-            left_wall_mat->save_to_path();
-            right_wall_mat->save_to_path();
+        auto basic_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+        auto left_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+        auto right_wall_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+        auto light_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+        basic_mat->load_from_json(mat0);
+        left_wall_mat->load_from_json(mat1);
+        right_wall_mat->load_from_json(mat2);
+        light_mat->load_from_json(light_mat_desc);
+        basic_mat->save_to_path();
+        light_mat->save_to_path();
+        left_wall_mat->save_to_path();
+        right_wall_mat->save_to_path();
 
-            mats[0] = basic_mat;
-            mats[1] = basic_mat;
-            mats[2] = basic_mat;
-            mats[3] = std::move(left_wall_mat);
-            mats[4] = std::move(right_wall_mat);
-            mats[5] = basic_mat;
-            mats[6] = basic_mat;
-            mats[7] = light_mat;
-            // material not loaded from assets, but generated
+        mats[0] = basic_mat;
+        mats[1] = basic_mat;
+        mats[2] = basic_mat;
+        mats[3] = left_wall_mat;
+        mats[4] = right_wall_mat;
+        mats[5] = basic_mat;
+        mats[6] = basic_mat;
+        mats[7] = light_mat;
+        // material not loaded from assets, but generated
 
-            auto entity = s->get_or_add_entity(vstd::Guid{true});
-            auto atmo_component = entity->add_component<world::AtmosphereComponent>();
-            atmo_component->hdri = std::move(sky_tex);
-            auto transform = entity->add_component<world::TransformComponent>();
-            transform->set_pos(double3(0, -1, 2), true);
-            auto rot = quaternion(
-                make_float3x3(
-                    -1, 0, 0,
-                    0, 1, 0,
-                    0, 0, -1));
-            transform->set_rotation(rot, true);
-            auto render = entity->add_component<world::RenderComponent>();
-            render->update_object(mats, cbox_mesh.get());
-        }
+        auto entity = s->get_or_add_entity(vstd::Guid{true});
+        auto atmo_component = entity->add_component<world::AtmosphereComponent>();
+        auto transform = entity->add_component<world::TransformComponent>();
+        transform->set_pos(double3(0, -1, 2), true);
+        auto rot = quaternion(
+            make_float3x3(
+                -1, 0, 0,
+                0, 1, 0,
+                0, 0, -1));
+        transform->set_rotation(rot, true);
+        auto render = entity->add_component<world::RenderComponent>();
+        render->update_object(mats, cbox_mesh.get());
         // add bunny
         {
             bunny_obj->wait_loading();
@@ -143,16 +137,23 @@ int main(int argc, char *argv[]) {
         }
         scene->save_to_path();
         // copy from binary to assets: TODO: do we have elegant way?
-        luisa::filesystem::copy(
-            scene->path(),
-            proj->root_path() / "test_scene.scene");
-        IProject::FileMeta file_meta{
-            .guid = scene->guid(),
-            .meta_info = "{}",
-            .type_id = scene->type_id()};
-        proj->unsafe_write_file_meta(
-            "test_scene.scene",
-            {&file_meta, 1});
+        auto write_bin_assets = [&](world::Resource *res, luisa::string_view name) {
+            luisa::filesystem::copy(
+                res->path(),
+                proj->root_path() / name);
+            IProject::FileMeta file_meta{
+                .guid = res->guid(),
+                .meta_info = "{}",
+                .type_id = res->type_id()};
+            proj->unsafe_write_file_meta(
+                name,
+                {&file_meta, 1});
+        };
+        write_bin_assets(scene.get(), "test_scene.scene");
+        write_bin_assets(basic_mat.get(), "basic_mat.mat");
+        write_bin_assets(left_wall_mat.get(), "left_wall_mat.mat");
+        write_bin_assets(right_wall_mat.get(), "right_wall_mat.mat");
+        write_bin_assets(light_mat.get(), "light_mat.mat");
     }
     return 0;
 }

@@ -13,7 +13,7 @@
 
 namespace rbc {
 
-class GraphicsUtils;
+struct GraphicsUtils;
 
 /**
  * RenderSceneView - Provides render-specific access to EditorScene

@@ -13,7 +13,7 @@
 
 namespace rbc {
 
-class GraphicsUtils;
+struct GraphicsUtils;
 
 /**
  * Scene source type - determines data origin

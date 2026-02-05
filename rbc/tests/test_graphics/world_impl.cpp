@@ -383,7 +383,6 @@ void Project::init(void *this_, luisa::string_view assets_root_dir) {
                                                             "get_project_plugin")
                                                    ->create_project(assets_root_dir));
 }
-// TODO: register guid
 template<typename T>
 void project_import(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
     auto c = static_cast<ProjectImpl *>(this_);
@@ -541,6 +540,31 @@ void *EntitiesCollection::get_entity(void *this_, uint64_t index) {
     unsafe_forget(std::move(v));
     return ptr;
 }
+void CameraComponent::set_geometry_export_buffer(void *this_, luisa::compute::BufferCreationInfoInterop buffer, rbc::RendererGeometryType channel_type) {
+    auto cam = static_cast<world::CameraComponent *>(this_);
+    auto &map = GraphicsUtils::instance()->render_settings((RenderPlugin::PipeCtxStub *)cam->render_pipe_ctx());
+    auto &s = map.read_mut<FrameSettings>();
+    s.geometry_channel = (rbc::GeometryType)channel_type;
+    s.pt_geometry_buffer =
+        (buffer.native_handle == 0 ||
+         buffer.handle == invalid_resource_handle) ?
+            BufferView<float>{} :
+            BufferView<float>(
+                buffer.native_handle,
+                buffer.handle,
+                sizeof(float),
+                0,
+                buffer.total_size_bytes / sizeof(float),
+                buffer.total_size_bytes / sizeof(float));
+}
+void CameraComponent::clear_geometry_export_buffer(void *this_) {
+    auto cam = static_cast<world::CameraComponent *>(this_);
+    auto &map = GraphicsUtils::instance()->render_settings((RenderPlugin::PipeCtxStub *)cam->render_pipe_ctx());
+    auto &s = map.read_mut<FrameSettings>();
+    s.geometry_channel = GeometryType::NONE;
+    s.pt_geometry_buffer = {};
+}
+
 void *CameraComponent::_create_() {
     auto entity = world::create_object<world::CameraComponent>();
     manually_add_ref(entity);
