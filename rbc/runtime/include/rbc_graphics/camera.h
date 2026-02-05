@@ -2,6 +2,7 @@
 #include <luisa/core/mathematics.h>
 #include <luisa/core/stl/optional.h>
 #include <luisa/core/stl/memory.h>
+#include <luisa/vstl/meta_lib.h>
 #include <rbc_config.h>
 #include <rbc_core/quaternion.h>
 #include <rbc_core/type_info.h>
@@ -19,8 +20,6 @@ enum struct TwoPointPerspectiveType : int {
 struct RBC_RUNTIME_API Camera {
     // clang-format on
     // help setter
-    void set_rotation_towards(double3 target_pos);
-    void set_rotation_from_direction(double3 dir);
     void set_aspect_ratio_from_resolution(double width, double height);
 
     // matrix getter
@@ -45,20 +44,16 @@ struct RBC_RUNTIME_API Camera {
 
     ////////// Legacy two point perspective
     // shift & pitch
-    void pump_pitch_to_shift();
-    void pump_shift_to_pitch();
-    double2 shift = {0, 0};
-    double2 scale = {1, 1};
 
     ////////// Legacy two point perspective
 
     double3 position = double3::zero();
     double3 global_offset = double3::zero();
 
-    double rotation_yaw = 0.0f;
-    double rotation_pitch = 0.0f;
-    double rotation_roll = 0.0f;
-    luisa::optional<Quaternion> rotation_quaternion;
+    vstd::variant<
+        double3x3,
+        Quaternion>
+        rotation_data;
 
     double fov = radians(60.0f);
     double aspect_ratio = 1;

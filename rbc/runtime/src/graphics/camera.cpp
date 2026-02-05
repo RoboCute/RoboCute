@@ -1,33 +1,27 @@
 #include <rbc_graphics/camera.h>
 #include <rbc_graphics/frustum.h>
+#include <rbc_core/quaternion.h>
 
 namespace rbc {
 // help setter
-void Camera::set_rotation_towards(double3 target_pos) {
-    set_rotation_from_direction(make_double3(make_double3(target_pos) - position));
-}
-void Camera::set_rotation_from_direction(double3 dir) {
-    dir = normalize(dir);
-    rotation_pitch = asin(dir.y);
-    rotation_yaw = atan2f(-dir.x, dir.z);
-}
+
 void Camera::set_aspect_ratio_from_resolution(double width, double height) {
     if (auto_aspect_ratio)
         aspect_ratio = width / height;
 }
 // matrix getter
 double4x4 Camera::rotation_matrix() const {
-    auto result = [&] {
-        if (rotation_quaternion.has_value()) {
-            return rotation(double3(0), rotation_quaternion.value(), double3(1));
+    auto result = rotation_data.visit_or(double4x4::eye(1), [&]<typename T>(T const &t) {
+        if constexpr (std::is_same_v<T, double3x3>) {
+            return make_double4x4(
+                make_double4(t[0], 0.f),
+                make_double4(t[1], 0.f),
+                make_double4(t[2], 0.f),
+                make_double4(t[3], 1.f));
         } else {
-            auto result = transpose(
-                rotation(double3(0, 0, 1), rotation_roll) *
-                rotation(double3(1, 0, 0), rotation_pitch) *
-                rotation(double3(0, 1, 0), rotation_yaw));
-            return result;
+            return rotation(double3(0), t, double3(1));
         }
-    }();
+    });
     result.cols[1] *= -1.0;
     return result;
 }
@@ -39,24 +33,6 @@ double4x4 Camera::projection_matrix() const {
         near_plane);
 
     return result;
-}
-
-// shift & pitch
-void Camera::pump_pitch_to_shift() {
-    double vertical_fov = fov / aspect_ratio;
-    double factor = (pi / 4) / (vertical_fov / 2);
-    double pitch_from_shift = atan(shift.y / factor);
-
-    shift.y = tan(pitch_from_shift + rotation_pitch) * factor;
-    rotation_pitch = 0.0f;
-}
-void Camera::pump_shift_to_pitch() {
-    double vertical_fov = fov / aspect_ratio;
-    double factor = (pi / 4) / (vertical_fov / 2);
-    double pitch_from_shift = atan(shift.y / factor);
-
-    rotation_pitch += pitch_from_shift;
-    shift.y = 0.0f;
 }
 
 // coordinate transform

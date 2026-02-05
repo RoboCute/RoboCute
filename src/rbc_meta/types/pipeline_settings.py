@@ -160,7 +160,6 @@ class FrameSettings:
     display_resolution: uint2
     display_offset: uint2
     frame_index: ulong
-    delta_time: double
     resource_color_space: ResourceColorSpace
     realtime_rendering: bool
     offline_capturing: bool

@@ -96,6 +96,9 @@ def main():
         display_cam.entity().get_component("TransformComponent"))
     transform.set_pos(double3(0, 0, -1), False)
     display_cam.enable_camera()
+    
+    ctx.enable_camera_control()
+    
     if EXPORT:
         geometry_buffer = Buffer(resolution.x * resolution.y * (1 + 3 + 3 + 3), float)
         display_cam.set_geometry_export_buffer(
@@ -106,11 +109,13 @@ def main():
         cur_time = time.time()
         delta_time = cur_time - last_time
         last_time = cur_time
-        display_cam.set_frame_data(frame_index, delta_time)
-        ctx.tick(
-            tick_stage, True
-        )
-        frame_index += 1
+        display_cam.set_frame_index(frame_index)
+        if ctx.tick(
+            delta_time, tick_stage, True
+        ):
+            frame_index = 0
+        else:
+            frame_index += 1
         if EXPORT and frame_index == 128:
             # frame_index = 0
             ctx.denoise()

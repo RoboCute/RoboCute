@@ -1,7 +1,17 @@
 #include <rbc_app/camera_controller.h>
 #include <luisa/core/logging.h>
+#include <rbc_world/components/transform_component.h>
 namespace rbc {
 // phase
+void CameraController::set_rotation_towards(double3 target_pos) {
+    set_rotation_from_direction(make_double3(make_double3(target_pos) - camera->position));
+}
+void CameraController::set_rotation_from_direction(double3 dir) {
+    dir = normalize(dir);
+    rotation_pitch = asin(dir.y);
+    rotation_yaw = atan2f(-dir.x, dir.z);
+}
+
 void CameraController::grab_input_from_viewport(Input const &input, float delta_time) {
     LUISA_ASSERT(camera != nullptr);
 
@@ -90,16 +100,24 @@ void CameraController::_update(float delta_time) {
     double3 forward = camera->dir_forward();
     double3 right = camera->dir_right();
     double3 up = camera->dir_up();
-
     // rotate & pan
     if (_is_rotating) {
-        camera->rotation_yaw -= _mouse_delta.x / _viewport_size.x * rotation_speed;
-        camera->rotation_pitch -= _mouse_delta.y / _viewport_size.y * rotation_speed;
-        camera->rotation_pitch = clamp(camera->rotation_pitch, -pi * 0.48, pi * 0.48);
+        rotation_yaw -= _mouse_delta.x / _viewport_size.x * rotation_speed;
+        rotation_pitch -= _mouse_delta.y / _viewport_size.y * rotation_speed;
+        rotation_pitch = clamp(rotation_pitch, -pi * 0.48, pi * 0.48);
     } else if (_is_panning) {
         camera->position -= make_double3(_mouse_delta.x / _viewport_size.x * (double)move_speed * right);
         camera->position -= make_double3(_mouse_delta.y / _viewport_size.y * (double)move_speed * up);
     }
+    auto mat = transpose(
+        rotation(double3(0, 0, 1), rotation_roll) *
+        rotation(double3(1, 0, 0), rotation_pitch) *
+        rotation(double3(0, 1, 0), rotation_yaw));
+    auto mat_3x3 = make_double3x3(
+        mat[0].xyz(),
+        mat[1].xyz(),
+        mat[2].xyz());
+    camera->rotation_data = mat_3x3;
 
     // wsad control
     double move_speed_real = _shift_down ? move_speed_fast : (_space_down ? move_speed_slow : move_speed);
@@ -126,6 +144,13 @@ void CameraController::_update(float delta_time) {
     // zoom
     if (_mouse_wheel) {
         camera->position += make_double3(forward * (double)_mouse_wheel * move_speed_real * (double)wheel_move_scale / 100.0);
+    }
+    if (transform) {
+        transform->set_trs(
+            camera->position,
+            quaternion(mat_3x3),
+            double3(1, 1, 1),
+            false);
     }
 }
 }// namespace rbc

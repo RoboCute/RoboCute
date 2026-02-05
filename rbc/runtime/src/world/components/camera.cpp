@@ -40,9 +40,11 @@ void CameraComponent::on_awake() {
 void CameraComponent::_on_transform_update() {
     if (!_render_pipe_ctx) return;
     auto tr = entity()->get_component<TransformComponent>();
-    auto &render_settings = GraphicsUtils::instance()->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(_render_pipe_ctx));
+    auto graphics = GraphicsUtils::instance();
+    if (!graphics) return;
+    auto &render_settings = graphics->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(_render_pipe_ctx));
     auto &cam = render_settings.read_mut<Camera>();
-    cam.rotation_quaternion = tr->rotation();
+    cam.rotation_data = tr->rotation();
     cam.position = tr->position();
     fov = clamp(fov, (double)radians(0.001f), (double)radians(179.f));
     cam.fov = fov;
@@ -62,8 +64,8 @@ void CameraComponent::_on_transform_update() {
 void CameraComponent::update_data() {
     if (!_render_pipe_ctx) return;
     auto graphics = GraphicsUtils::instance();
-    if (graphics) return;
-    auto &render_settings = GraphicsUtils::instance()->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(_render_pipe_ctx));
+    if (!graphics) return;
+    auto &render_settings = graphics->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(_render_pipe_ctx));
     auto &rv = render_settings.read_mut<RenderView>();
     rv = RenderView{
         dst_image ? &dst_image : nullptr,

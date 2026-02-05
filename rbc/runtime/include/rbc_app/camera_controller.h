@@ -5,6 +5,9 @@
 #include <rbc_graphics/camera.h>
 
 namespace rbc {
+namespace world {
+struct TransformComponent;
+}// namespace world
 using namespace luisa;
 
 struct RBC_RUNTIME_API CameraController {
@@ -39,7 +42,8 @@ private:
 public:
 
     // camera state
-    Camera *camera;
+    Camera *camera{};
+    world::TransformComponent* transform{};
 
     // camera config
     float move_speed_fast = 2.0f;
@@ -47,9 +51,16 @@ public:
     float move_speed_slow = 0.3f;
     float wheel_move_scale = 4.f;
     float rotation_speed = 4.0f;
+
+    double rotation_yaw = 0.0f;
+    double rotation_pitch = 0.0f;
+    double rotation_roll = 0.0f;
+
     void set_controlling(bool value) {
         _controlling = value;
     }
+    void set_rotation_towards(double3 target_pos);
+    void set_rotation_from_direction(double3 dir);
     [[nodiscard]] auto controlling() const { return _controlling; }
 
 private:

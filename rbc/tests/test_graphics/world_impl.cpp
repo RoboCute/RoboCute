@@ -688,13 +688,12 @@ luisa::compute::TextureCreationInfo CameraComponent::display_image(void *this_) 
     r.mipmap_levels = img.mip_levels();
     return r;
 }
-void CameraComponent::set_frame_data(void *this_, uint64_t frame_index, float delta_time) {
+void CameraComponent::set_frame_index(void *this_, uint64_t frame_index) {
     auto c = static_cast<world::CameraComponent *>(this_);
     auto graphics = GraphicsUtils::instance();
     if (c->render_pipe_ctx() && graphics) {
         auto &fs = graphics->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(c->render_pipe_ctx())).read_mut<FrameSettings>();
         fs.frame_index = frame_index;
-        fs.delta_time = delta_time;
     }
 }
 

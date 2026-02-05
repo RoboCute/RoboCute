@@ -1,4 +1,4 @@
-function main(mode)
+function main(mode, build_stubgen)
     if not mode then
         mode = 'release'
     end
@@ -15,6 +15,8 @@ function main(mode)
         async = true
     })
     -- Do this manually
-    os.setenv('PYTHONPATH', target_dir)
-    -- os.runv('uvx', {'pybind11-stubgen', 'test_py_codegen', '--output-dir=' .. ext_path})
+    if build_stubgen then
+        os.setenv('PYTHONPATH', target_dir)
+        os.runv('uvx', {'pybind11-stubgen', 'test_py_codegen', '--output-dir=' .. ext_path})
+    end
 end
