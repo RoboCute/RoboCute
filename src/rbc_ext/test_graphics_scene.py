@@ -29,7 +29,6 @@ if "RBC_RUNTIME_DIR" not in os.environ:
 
 EXPORT = False
 
-
 def main():
     if len(sys.argv) < 2:
         print("must input scene root-dir")
@@ -61,13 +60,8 @@ def main():
     frame_index = 0
     image_index = 0
     tick_stage = TickStage.PathTracingPreview
-
-    @luisa.func
-    def make_img_purple(img):
-        set_block_size(16, 8, 1)
-        img.write(dispatch_id().xy, img.read(
-            dispatch_id().xy) * float4(1, 1, 0, 1))
-
+    entity = make_mesh()
+    
     @luisa.func
     def write_buffer_vec3_to_img(buffer, element_offset, img):
         set_block_size(16, 8, 1)
@@ -81,6 +75,7 @@ def main():
             buffer.read(idx + 2)
         )
         img.write(id, float4(value, 1.0))
+
     @luisa.func
     def write_buffer_vec1_to_img(buffer, scale, element_offset, img):
         set_block_size(16, 8, 1)
@@ -90,19 +85,20 @@ def main():
         idx = id.x + id.y * dispatch_size().x
         value = float4(buffer.read(idx) * scale)
         img.write(id, value)
-        
+
     display_cam = ctx.create_display_cam()
     transform = TransformComponent(
         display_cam.entity().get_component("TransformComponent"))
     display_cam.enable_camera()
-    
-    
+
     transform.set_pos(double3(0, 0, -1), False)
     if EXPORT:
-        geometry_buffer = Buffer(resolution.x * resolution.y * (1 + 3 + 3 + 3), float)
+        geometry_buffer = Buffer(
+            resolution.x * resolution.y * (1 + 3 + 3 + 3), float)
         display_cam.set_geometry_export_buffer(
             geometry_buffer.info(),
-            RendererGeometryType(int(RendererGeometryType.Depth) | int(RendererGeometryType.Normal) | int(RendererGeometryType.Emission) | int(RendererGeometryType.Albedo))
+            RendererGeometryType(int(RendererGeometryType.Depth) | int(RendererGeometryType.Normal) | int(
+                RendererGeometryType.Emission) | int(RendererGeometryType.Albedo))
         )
     else:
         ctx.enable_camera_control()
@@ -117,6 +113,12 @@ def main():
             frame_index = 0
         else:
             frame_index += 1
+        if frame_index == 64:
+            if entity is not None:
+                print('deleting entity')
+                entity.dispose()
+                entity = None
+                frame_index = 0
         if EXPORT and frame_index == 128:
             # frame_index = 0
             ctx.denoise()
@@ -128,47 +130,185 @@ def main():
             )
             img = ctx.display_image()
             element_offset = 0
-            write_buffer_vec1_to_img(geometry_buffer, 0.2, element_offset, img, dispatch_size=(img.width, img.height, 1))
+            write_buffer_vec1_to_img(
+                geometry_buffer, 0.2, element_offset, img, dispatch_size=(img.width, img.height, 1))
             pixel_size = img.width * img.height
             ctx.save_display_image_to(
                 str(Path(__file__).parent /
                     f"screenshot/depth_{image_index}.png")
             )
             element_offset += pixel_size
-            
-            write_buffer_vec3_to_img(geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
+
+            write_buffer_vec3_to_img(
+                geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
             pixel_size = img.width * img.height
             ctx.save_display_image_to(
                 str(Path(__file__).parent /
                     f"screenshot/normal_{image_index}.png")
             )
             element_offset += pixel_size * 3
-            
-            write_buffer_vec3_to_img(geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
+
+            write_buffer_vec3_to_img(
+                geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
             pixel_size = img.width * img.height
             ctx.save_display_image_to(
                 str(Path(__file__).parent /
                     f"screenshot/emission_{image_index}.png")
             )
             element_offset += pixel_size * 3
-            
-            write_buffer_vec3_to_img(geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
+
+            write_buffer_vec3_to_img(
+                geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
             pixel_size = img.width * img.height
             ctx.save_display_image_to(
                 str(Path(__file__).parent /
                     f"screenshot/albedo_{image_index}.png")
             )
             element_offset += pixel_size * 3
-            
-            
+
             tick_stage = TickStage.NONE
             image_index += 1
             display_cam.clear_geometry_export_buffer()
-            del geometry_buffer
-            
-    del scene
-    del display_cam
-    del ctx
+            geometry_buffer.dispose()
+
+vertex_count = 16
+triangle_count = 24
+
+def make_mesh():
+    mat0 = MaterialResource()
+    mat0.load_from_json('{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]}')
+    mat1 = MaterialResource()
+    mat1.load_from_json('{"type": "pbr", "specular_roughness": 0.5, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]}')
+    mat_vector = capsule_vector()
+    mat_vector.emplace_back(mat0._handle)
+    mat_vector.emplace_back(mat1._handle)
+    entity = Entity()
+    trans = TransformComponent(entity.add_component("TransformComponent"))
+    render = RenderComponent(entity.add_component("RenderComponent"))
+    trans.set_pos(double3(0, -1, 1), False)
+    trans.set_rotation(float4(0, -1, 0, 0), False)
+    cube_mesh = MeshResource()
+    submesh_offsets = np.empty(shape=2, dtype=np.uint32)
+    # first submesh start at 0
+    submesh_offsets[0] = 0
+    # first submesh start at 'last_tri_size'
+
+    submesh_offsets[1] = triangle_count // 2
+    
+    cube_mesh.create_empty(
+        submesh_offsets,
+        vertex_count,
+        triangle_count,
+        0, False, False
+    )
+    mesh_array = np.ndarray(
+        vertex_count * 4 + triangle_count * 3,
+        dtype=np.float32,
+        buffer=cube_mesh.data_buffer()
+    )
+    create_mesh_array(mesh_array)
+    cube_mesh.install()
+    render.update_object(mat_vector, cube_mesh)
+    return entity
+    
+    
+def create_mesh_array(mesh_array):
+
+    # create a cube
+    if mesh_array.size != vertex_count * 4 + triangle_count * 3:
+        raise Exception("Bad mesh-array size")
+    vertex_arr = np.ndarray(
+        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+    indices_arr = np.ndarray(
+        shape=triangle_count * 3,
+        dtype=np.uint32,
+        buffer=mesh_array.data,
+        offset=vertex_arr.size * vertex_arr.itemsize,
+    )
+    size = 0
+    offset = float4(0)
+    scale = float4(1)
+
+    def push_vec4(x, y, z):
+        nonlocal size, offset, scale
+        vec = float4(x, y, z, 0) * scale + offset
+        for i in range(4):
+            vertex_arr[size + i] = vec[i]
+        size += 4
+
+    def push_indices(idx: int):
+        nonlocal size
+        indices_arr[size] = idx
+        size += 1
+
+    def push_vert():
+        push_vec4(-0.5, -0.5, -0.5)  # 0: Left Bottom Back
+        push_vec4(-0.5, -0.5, 0.5)  # 1: Left Bottom Front
+        push_vec4(0.5, -0.5, -0.5)  # 2: Right Buttom Back
+        push_vec4(0.5, -0.5, 0.5)  # 3: Right Buttom Front
+        push_vec4(-0.5, 0.5, -0.5)  # 4: Left Up Back
+        push_vec4(-0.5, 0.5, 0.5)  # 5: Left Up Front
+        push_vec4(0.5, 0.5, -0.5)  # 6: Right Up Back
+        push_vec4(0.5, 0.5, 0.5)  # 7: Right Up Front
+
+    push_vert()
+    last_vert_size = size
+    offset = float4(0, 1, 0, 0)
+    scale = float4(0.4, 0.4, 0.4, 0)
+    push_vert()
+    size = 0
+    # Buttom face
+
+    def push_cube_triangles():
+        push_indices(0)
+        push_indices(1)
+        push_indices(2)
+        push_indices(1)
+        push_indices(3)
+        push_indices(2)
+        # Up face
+        push_indices(4)
+        push_indices(5)
+        push_indices(6)
+        push_indices(5)
+        push_indices(7)
+        push_indices(6)
+        # Left face
+        push_indices(0)
+        push_indices(1)
+        push_indices(4)
+        push_indices(1)
+        push_indices(5)
+        push_indices(4)
+        # Right face
+        push_indices(2)
+        push_indices(3)
+        push_indices(6)
+        push_indices(3)
+        push_indices(7)
+        push_indices(6)
+        # Back face
+        push_indices(0)
+        push_indices(2)
+        push_indices(4)
+        push_indices(2)
+        push_indices(6)
+        push_indices(4)
+        # Front face
+        push_indices(1)
+        push_indices(3)
+        push_indices(5)
+        push_indices(3)
+        push_indices(7)
+        push_indices(5)
+
+    push_cube_triangles()
+    last_index_size = size
+    # index size to triangle size
+    last_tri_size = last_index_size // 3
+    push_cube_triangles()
+    for i in range(last_index_size, size):
+        indices_arr[i] += last_vert_size // 4
 
 
 if __name__ == "__main__":

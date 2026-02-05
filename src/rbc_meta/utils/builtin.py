@@ -214,7 +214,7 @@ class Vector(Generic[T]):
     _cpp_type_name = "luisa::vector"
     _is_container = True
     _py_type_name = "List"
-    _pybind_cpp_name = "Vec"
+    # _pybind_cpp_name = "Vec"
 
 
 class RC(Generic[T]):

@@ -171,6 +171,10 @@ ${INDENT}${INDENT}self._handle = handle
 PY_DISPOSE_METHOD_TEMPLATE = Template("""${INDENT}def __del__(self):
 ${INDENT}${INDENT}if self._handle:
 ${INDENT}${INDENT}${INDENT}rbc_release(self._handle)
+${INDENT}def dispose(self):
+${INDENT}${INDENT}if self._handle:
+${INDENT}${INDENT}${INDENT}rbc_release(self._handle)
+${INDENT}${INDENT}${INDENT}self._handle = None
 """)
 
 PY_METHOD_TEMPLATE = Template("""${INDENT}def ${METHOD_NAME}(self${ARGS_DECL}):
