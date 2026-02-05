@@ -51,7 +51,7 @@ def main():
     project.scan_project()
     print("scanned")
     resolution = uint2(1920, 1080)
-    ctx.init_display("py_window", resolution, True, False)
+    ctx.init_display("py_window", resolution, True, True)
     print("importing")
     scene = project.import_scene("test_scene.scene", "")
     print("installing")
@@ -82,29 +82,30 @@ def main():
         )
         img.write(id, float4(value, 1.0))
     @luisa.func
-    def write_buffer_vec1_to_img(buffer, element_offset, img):
+    def write_buffer_vec1_to_img(buffer, scale, element_offset, img):
         set_block_size(16, 8, 1)
         id = dispatch_id().xy
         idx = id.x + id.y * dispatch_size().x
         idx += element_offset
         idx = id.x + id.y * dispatch_size().x
-        value = float4(buffer.read(idx))
+        value = float4(buffer.read(idx) * scale)
         img.write(id, value)
         
     display_cam = ctx.create_display_cam()
     transform = TransformComponent(
         display_cam.entity().get_component("TransformComponent"))
-    transform.set_pos(double3(0, 0, -1), False)
     display_cam.enable_camera()
     
-    ctx.enable_camera_control()
     
+    transform.set_pos(double3(0, 0, -1), False)
     if EXPORT:
         geometry_buffer = Buffer(resolution.x * resolution.y * (1 + 3 + 3 + 3), float)
         display_cam.set_geometry_export_buffer(
             geometry_buffer.info(),
             RendererGeometryType(int(RendererGeometryType.Depth) | int(RendererGeometryType.Normal) | int(RendererGeometryType.Emission) | int(RendererGeometryType.Albedo))
         )
+    else:
+        ctx.enable_camera_control()
     while not ctx.should_close():
         cur_time = time.time()
         delta_time = cur_time - last_time
@@ -127,7 +128,7 @@ def main():
             )
             img = ctx.display_image()
             element_offset = 0
-            write_buffer_vec1_to_img(geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
+            write_buffer_vec1_to_img(geometry_buffer, 0.2, element_offset, img, dispatch_size=(img.width, img.height, 1))
             pixel_size = img.width * img.height
             ctx.save_display_image_to(
                 str(Path(__file__).parent /

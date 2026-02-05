@@ -95,7 +95,9 @@ bool CameraController::any_changed() const {
 void CameraController::_update(float delta_time) {
     if (!_controlling) return;
     LUISA_ASSERT(camera != nullptr);
-
+    if (transform) {
+        camera->position = transform->position();
+    }
     // camera dirs
     double3 forward = camera->dir_forward();
     double3 right = camera->dir_right();

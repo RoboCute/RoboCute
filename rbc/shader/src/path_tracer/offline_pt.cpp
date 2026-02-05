@@ -103,7 +103,10 @@ using namespace luisa::shader;
 #endif
     float3 addition_color = float3(0);
     float3 emission_sum = float3(0);
+    float3 gbuffer_albedo = float3(0);
+#ifdef OFFLINE_DENOISER
     float3 albedo_sum = float3(0);
+#endif
     float4 normal_rough = float4(0);
     float to_cam_dist = 1e28f;
     uint2 obj_id(max_uint32, max_uint32);
@@ -229,7 +232,7 @@ using namespace luisa::shader;
         if ((args.geometry_mask & (1 << 4)) != 0)// Albedo
         {
             const uint element_size = 3;//  3
-            float3 value = albedo_sum;
+            float3 value = gbuffer_albedo;
             uint read_index = byte_offset + buffer_id * element_size;
             if (alpha < 0.999f) {
                 float3 old_value;
@@ -340,7 +343,10 @@ using namespace luisa::shader;
         current_weight = beta / max(float3(1e-4f), last_beta);
         if (!write_gbuffer) {
             ///////////// Record gbuffer in primary ray
+            gbuffer_albedo = result.albedo;
+#ifdef OFFLINE_DENOISER
             albedo_sum = result.albedo + spectrum::spectrum_to_tristimulus(result.emission);
+#endif
             emission_sum = result.emission;
             normal_rough = float4(result.normal, result.roughness);
             to_cam_dist = hit.ray_t;

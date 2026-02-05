@@ -166,6 +166,7 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
         c.window->poll_events();
         if (c.utils->dst_image() && any(c.window_size != c.utils->dst_image().size())) {
             reset_view(this_, c.window_size);
+            any_changed = true;
         }
         if (c.cam_controller) {
             c.camera_input.viewport_size = make_float2(c.window_size);
