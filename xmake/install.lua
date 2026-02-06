@@ -17,6 +17,10 @@ function main(mode, build_stubgen)
     -- Do this manually
     if build_stubgen then
         os.setenv('PYTHONPATH', target_dir)
-        os.runv('uvx', {'pybind11-stubgen', 'test_py_codegen', '--output-dir=' .. ext_path})
+        if build_stubgen == 'uv' then
+            os.runv('uvx', {'pybind11-stubgen', 'test_py_codegen', '--output-dir=' .. ext_path})
+        else
+            os.runv('pybind11-stubgen', {'test_py_codegen', '--output-dir=' .. ext_path})
+        end
     end
 end

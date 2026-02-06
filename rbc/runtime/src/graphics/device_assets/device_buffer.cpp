@@ -34,7 +34,8 @@ void DeviceBuffer::async_load_from_file(
                 LUISA_ERROR("Buffer file size {} less than required size {}", file_size, desire_file_size);
             }
             LUISA_ASSERT(desire_file_size & (sizeof(uint) - 1) == 0);
-            ptr->_buffer = inst->lc_device().create_buffer<uint>(desire_file_size / sizeof(uint));
+            if (load_type != FileLoadType::HostOnly)
+                ptr->_buffer = inst->lc_device().create_buffer<uint>(desire_file_size / sizeof(uint));
             switch (load_type) {
                 case FileLoadType::All: {
                     if (ptr->_host_data.size() != desire_file_size) {

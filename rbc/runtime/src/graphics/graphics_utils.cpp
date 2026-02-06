@@ -340,6 +340,7 @@ void GraphicsUtils::tick(
     if (_swapchain) {
         _sm->tex_uploader().blit(cmdlist, _dst_image, _present_image, float2(1), float2(), uint2(), _present_image.size());
     }
+    AssetsManager::instance()->execute_render_thread();
     _render_device->execute_before_cmdlist_commit_task();
     _sm->on_frame_end(
         cmdlist,
