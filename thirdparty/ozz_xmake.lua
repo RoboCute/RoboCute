@@ -4,14 +4,18 @@ target('ozz_animation_include')
 target_end()
 
 target("ozz_animation_base")
-    set_kind("static")
+    add_rules('lc_basic_settings', {
+        project_kind = 'static'
+    })
     add_headerfiles("ozz_animation/include/**.h")
     add_files("ozz_animation/src/base/**.cc")
     add_deps('ozz_animation_include')
 target_end()
 
 target("ozz_animation_runtime_static")
-    set_kind("static")
+    add_rules('lc_basic_settings', {
+        project_kind = 'static'
+    })
     add_deps("ozz_animation_base")
     add_includedirs("ozz_animation/src", { private = true})
     add_files("ozz_animation/src/animation/runtime/*.cc")
@@ -21,7 +25,9 @@ target("ozz_animation_runtime_static")
 target_end()
 
 target("ozz_json_cpp")
-    set_kind("shared")
+    add_rules('lc_basic_settings', {
+        project_kind = 'shared'
+    })
     add_files("ozz_animation/extern/jsoncpp/dist/jsoncpp.cpp")
     add_includedirs("ozz_animation/extern/jsoncpp/dist/", { public = true })
     add_defines("JSON_DLL_BUILD", { private = true });
@@ -30,7 +36,9 @@ target_end()
 
 
 target("ozz_animation_offline_static")
-    set_kind("static")
+    add_rules('lc_basic_settings', {
+        project_kind = 'static'
+    })
     add_deps("ozz_animation_base")
     add_includedirs("ozz_animation/src", { private = true})
     -- jsoncpp

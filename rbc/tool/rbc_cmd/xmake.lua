@@ -3,7 +3,7 @@ target("rbc")
 add_rules('lc_basic_settings', {
     project_kind = 'binary',
     enable_exception = true,
-    rtti = true
+    
 })
 add_rules("qt.console")
 set_group("04.targets")

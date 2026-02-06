@@ -8,7 +8,7 @@ end
 local function rbc_editor_runtime_impl()
     add_rules("lc_basic_settings", {
         project_kind = "shared",
-        rtti = true
+        
     })
     add_rules("qt.rbc_shared")
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtQml", "QtQuick", "QtQuickWidgets", "QtQuickControls2", "QtNetwork")

@@ -2,7 +2,7 @@ target("RBCE_ProjectPlugin")
 do
     add_rules("lc_basic_settings", {
         project_kind = "shared",
-        rtti = true
+        
     })
     set_group("RBCEditorPlugins")
     add_rules("qt.shared")

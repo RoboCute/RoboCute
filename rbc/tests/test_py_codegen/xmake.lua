@@ -4,7 +4,7 @@ do
     add_rules('lc_basic_settings', {
         project_kind = 'shared',
         enable_exception = true,
-        rtti = true
+        
     })
     add_deps('rbc_core', 'test_graphics')
     add_deps('rbc_render_plugin', 'lc-backends-dummy', {

@@ -8,7 +8,7 @@ local function rbc_ext_c_impl()
     add_rules('lc_basic_settings', {
         project_kind = 'shared',
         enable_exception = true,
-        rtti = true
+        
     })
     add_deps('lc-core')
     add_rules('pybind')

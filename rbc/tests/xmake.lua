@@ -14,7 +14,9 @@ includes("model_viewer")
 function add_test(name, deps)
     deps = deps or {}
     target("test_" .. name)
-    set_kind("binary")
+    add_rules('lc_basic_settings', {
+        project_kind = 'binary'
+    })
     set_group("02.tests")
     on_load(function(target)
         for k, v in pairs(opt) do

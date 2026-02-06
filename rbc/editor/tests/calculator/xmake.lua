@@ -2,7 +2,7 @@ target("calculator_module")
 do
     add_rules("lc_basic_settings", {
         project_kind = "shared",
-        rtti = true
+        
     })
     add_rules("qt.shared")
     add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")

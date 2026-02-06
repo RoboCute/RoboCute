@@ -2,7 +2,7 @@ target("rbc_editor_module")
 do
     add_rules("lc_basic_settings", {
         project_kind = "shared",
-        rtti = true
+        
     })
     add_rules("qt.shared")
     add_rules('rbc_qt_rule')
@@ -18,7 +18,7 @@ target("rbc_editor_test_module")
 do
     add_rules("lc_basic_settings", {
         project_kind = "shared",
-        rtti = true
+        
     })
     add_rules("qt.shared")
     add_rules('rbc_qt_rule')

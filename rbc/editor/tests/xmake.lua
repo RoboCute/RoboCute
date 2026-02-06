@@ -10,7 +10,9 @@ includes("calculator") -- for qt_node_editor 第三方测试库
 function add_editor_test(name, deps)
     deps = deps or {}
     target("test_editor_" .. name)
-    set_kind("binary")
+    add_rules('lc_basic_settings', {
+        project_kind = 'binary'
+    })
     set_group("02.tests")
     on_load(function(target)
         for k, v in pairs(opt) do
