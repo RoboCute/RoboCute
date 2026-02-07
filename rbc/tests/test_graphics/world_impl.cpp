@@ -12,6 +12,7 @@
 #include <rbc_world/resources/material.h>
 #include <rbc_world/resources/buffer.h>
 #include <rbc_world/components/camera_component.h>
+#include <rbc_world/components/data_component.h>
 #include <rbc_graphics/graphics_utils.h>
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_world/importers/texture_importer_exr.h>
@@ -389,15 +390,6 @@ void project_import(void *this_, luisa::string_view path, luisa::string_view ext
         counter.done();
     });
 }
-void Project::import_material(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
-    project_import<world::MaterialResource>(this_, path, extra_meta);
-}
-void Project::import_mesh(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
-    project_import<world::MeshResource>(this_, path, extra_meta);
-}
-void Project::import_texture(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
-    project_import<world::TextureResource>(this_, path, extra_meta);
-}
 void *Project::import_scene(void *this_, luisa::string_view path, luisa::string_view extra_meta) {
     auto c = static_cast<ProjectImpl *>(this_);
     if (!c->proj) [[unlikely]] {
@@ -551,12 +543,6 @@ void CameraComponent::clear_geometry_export_buffer(void *this_) {
     auto &s = map.read_mut<FrameSettings>();
     s.geometry_channel = GeometryType::NONE;
     s.pt_geometry_buffer = {};
-}
-
-void *CameraComponent::_create_() {
-    auto c = world::create_object<world::CameraComponent>();
-    manually_add_ref(c);
-    return c;
 }
 double CameraComponent::aperture(void *this_) {
     auto c = static_cast<world::CameraComponent *>(this_);
@@ -790,5 +776,77 @@ luisa::compute::BufferCreationInfoInterop BufferResource::buffer(void *this_) {
 void BufferResource::create_empty(void *this_, uint64_t size_bytes, bool create_device_buffer) {
     auto c = static_cast<world::BufferResource *>(this_);
     c->create_empty(size_bytes, create_device_buffer);
+}
+// DataComponent implementation
+void *DataComponent::get_info(void *this_, luisa::string_view name) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    auto iter = c->_infos.find(name);
+    if (!~iter) {
+        return nullptr;
+    }
+    auto ptr = BasicData::_create_();
+    static_cast<BasicDataImpl *>(ptr)->data = iter.value();
+    return ptr;
+}
+void DataComponent::set_info(void *this_, luisa::string_view name, void *data) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    c->_infos.try_emplace(luisa::string{name}, static_cast<BasicDataImpl *>(data)->data);
+}
+bool DataComponent::has_info(void *this_, luisa::string_view name) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    return c->_infos.find(name);
+}
+bool DataComponent::remove_info(void *this_, luisa::string_view name) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    auto iter = c->_infos.find(name);
+    if (iter) {
+        c->_infos.remove(iter);
+        return true;
+    }
+    return false;
+}
+uint64_t DataComponent::info_count(void *this_) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    return c->_infos.size();
+}
+void DataComponent::clear_infos(void *this_) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    c->_infos.clear();
+}
+void *DataComponent::get_resource(void *this_, vstd::Guid const &guid) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    auto iter = c->_resources.find(guid);
+    if (!iter) {
+        return nullptr;
+    }
+    auto ptr = iter.value().get();
+    manually_add_ref(ptr);
+    return ptr;
+}
+void DataComponent::set_resource(void *this_, vstd::Guid const &guid, void *resource) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    auto res = static_cast<world::Resource *>(resource);
+    c->_resources.try_emplace(guid, RC<world::Resource>{res});
+}
+bool DataComponent::has_resource(void *this_, vstd::Guid const &guid) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    return c->_resources.find(guid);
+}
+bool DataComponent::remove_resource(void *this_, vstd::Guid const &guid) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    auto iter = c->_resources.find(guid);
+    if (iter) {
+        c->_resources.remove(iter);
+        return true;
+    }
+    return false;
+}
+uint64_t DataComponent::resource_count(void *this_) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    return c->_resources.size();
+}
+void DataComponent::clear_resources(void *this_) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    c->_resources.clear();
 }
 }// namespace rbc

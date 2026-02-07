@@ -199,7 +199,6 @@ void *RBCContext::create_display_cam(void *this_) {
     if (!ptr) [[unlikely]] {
         ptr = c.display_cam_entity->add_component<world::CameraComponent>();
     }
-    manually_add_ref(ptr);
     return ptr;
 }
 

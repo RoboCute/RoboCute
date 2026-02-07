@@ -75,7 +75,8 @@ Entity::~Entity() {
 void Entity::_add_component(Component *component) {
     component->_remove_self_from_entity();
     auto result = _components.try_emplace(component->type_id(), component).second;
-    LUISA_ASSERT(result, "Component already exists.");
+    if (!result) [[unlikely]]
+        LUISA_ERROR("Component already exists.");
     LUISA_DEBUG_ASSERT(component->entity() == nullptr);
     component->_entity = this;
     component->on_awake();
@@ -168,7 +169,8 @@ void Entity::deserialize_meta(ObjDeSerialize const &ser) {
         if (comp) {
             comp->deserialize_meta(ser);
             auto result = _components.try_emplace(comp->type_id(), comp).second;
-            LUISA_ASSERT(result, "Component already exists.");
+            if (!result) [[unlikely]]
+                LUISA_ERROR("Component already exists.");
             comp->_entity = this;
         }
     }

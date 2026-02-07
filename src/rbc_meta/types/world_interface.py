@@ -301,6 +301,56 @@ class MaterialResource(Resource):
     def load_from_json(json: str) -> None: ...
 
 
+# @reflect(
+#     pybind=True,
+#     cpp_prefix="TEST_GRAPHICS_API",
+#     cpp_namespace="rbc",
+#     module_name="world_interface",
+# )
+# class SkeletonResource(Resource):
+#     pass
+
+
+# @reflect(
+#     pybind=True,
+#     cpp_prefix="TEST_GRAPHICS_API",
+#     cpp_namespace="rbc",
+#     module_name="world_interface",
+# )
+# class SkinResource(Resource):
+#     pass
+
+
+# @reflect(
+#     pybind=True,
+#     cpp_prefix="TEST_GRAPHICS_API",
+#     cpp_namespace="rbc",
+#     module_name="world_interface",
+# )
+# class SkelMeshResource(Resource):
+#     pass
+
+
+# @reflect(
+#     pybind=True,
+#     cpp_prefix="TEST_GRAPHICS_API",
+#     cpp_namespace="rbc",
+#     module_name="world_interface",
+# )
+# class AnimSequenceResource(Resource):
+#     pass
+
+
+# @reflect(
+#     pybind=True,
+#     cpp_prefix="TEST_GRAPHICS_API",
+#     cpp_namespace="rbc",
+#     module_name="world_interface",
+# )
+# class AnimGraphResource(Resource):
+#     pass
+
+
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
@@ -326,6 +376,7 @@ class RenderComponent(Component):
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
+    create_instance=False,
 )
 class CameraComponent(Component):
     def fov() -> double: ...
@@ -361,6 +412,26 @@ class CameraComponent(Component):
 
 
 # Import, load and manage project
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+    create_instance=False,
+)
+class DataComponent(Component):
+    def get_info(name: str) -> BasicData: ...
+    def set_info(name: str, data: BasicData) -> None: ...
+    def has_info(name: str) -> bool: ...
+    def remove_info(name: str) -> bool: ...
+    def info_count() -> ulong: ...
+    def clear_infos() -> None: ...
+    def get_resource(guid: GUID) -> Resource: ...
+    def set_resource(guid: GUID, resource: Resource) -> None: ...
+    def has_resource(guid: GUID) -> bool: ...
+    def remove_resource(guid: GUID) -> bool: ...
+    def resource_count() -> ulong: ...
+    def clear_resources() -> None: ...
 
 
 @reflect(
@@ -409,13 +480,8 @@ class FileMeta:
 )
 class Project:
     def init(assets_root_dir: str) -> None: ...
-    def import_texture(path: str, extra_meta: str) -> None: ...
-    def import_mesh(path: str, extra_meta: str) -> None: ...
-    def import_material(path: str, extra_meta: str) -> None: ...
     def import_scene(path: str, extra_meta: str) -> Scene: ...
-    # TODO: more import
-    def load_resource(guid: GUID, async_load: bool) -> TextureResource: ...
-
+    def load_resource(guid: GUID, async_load: bool) -> Resource: ...
     def scan_project() -> None: ...
     def get_file_meta(type_id: GUID, dest_path: str) -> FileMeta: ...
 

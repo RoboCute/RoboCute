@@ -1,4 +1,4 @@
-
+#pragma once
 // clang-format off
 
 template<typename T>

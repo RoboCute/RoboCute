@@ -1,3 +1,4 @@
+#pragma once
 #include <rbc_world/base_object.h>
 #include <rbc_world/component.h>
 #include <luisa/runtime/image.h>

@@ -278,7 +278,7 @@ struct ArchiveWrite {
             start_object();
             Serialize<T>::write(*this, v);
             end_object(name);
-        } else if constexpr (std::is_same_v<T, bool>) {
+        } else if constexpr (std::is_same_v<T, bool> || std::is_same_v<T, BasicDeserDataType>) {
             add(v, name);
         } else if constexpr (std::is_enum_v<T>) {
             // Enum types - serialize as string
@@ -371,7 +371,7 @@ struct ArchiveRead {
             bool result = Serialize<T>::read(*this, v);
             end_scope();
             return result;
-        } else if constexpr (std::is_same_v<T, bool>) {
+        } else if constexpr (std::is_same_v<T, bool> || std::is_same_v<T, BasicDeserDataType>) {
             return read(v);
         } else if constexpr (std::is_enum_v<T>) {
             // Enum types - deserialize from string
