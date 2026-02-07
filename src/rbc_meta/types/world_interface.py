@@ -28,7 +28,7 @@ class LCPYBuffer:
     _reflected_ = True
     _cpp_type_name = "luisa::compute::BufferCreationInfoInterop"
     _py_type_name = "luisa.Buffer"
-    _ctor_begin = "'import_native(int,'"
+    _ctor_begin = 'import_native(int,'
 
 
 class LCPYBufferInfo:
@@ -36,7 +36,7 @@ class LCPYBufferInfo:
     _reflected_ = True
     _cpp_type_name = "luisa::compute::BufferCreationInfoInterop"
     _py_type_name = "luisa.lcapi.BufferCreationInfo"
-    _ctor_begin = "'import_native(int,'"
+    _ctor_begin = 'import_native(int,'
 
 
 class LCPYImage2D:
@@ -122,6 +122,7 @@ class Object:
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
+    create_instance=False
 )
 class Entity(Object):
     def add_component(name: str) -> VoidPtr: ...
@@ -129,6 +130,9 @@ class Entity(Object):
     def remove_component(name: str) -> bool: ...
     def get_data(name: str) -> BasicData: ...
     def set_data(name: str, data: BasicData) -> None: ...
+    def name() -> str: ...
+    def set_name(name: str) -> None: ...
+    def dispose() -> None: ...
 
 
 @reflect(
@@ -278,6 +282,20 @@ class MeshResource(Resource):
     cpp_namespace="rbc",
     module_name="world_interface",
 )
+class BufferResource(Resource):
+    def size_bytes() -> ulong: ...
+    def buffer() -> LCPYBuffer: ...
+    def host_data() -> DataBuffer: ...
+    def create_empty(size_bytes: ulong,
+                     create_device_buffer: bool) -> None: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
 class MaterialResource(Resource):
     def mat_code() -> uint: ...
     def load_from_json(json: str) -> None: ...
@@ -365,6 +383,7 @@ class EntitiesCollection:
 class Scene(Resource):
     def get_entity(guid: GUID) -> Entity: ...
     def get_or_add_entity(guid: GUID) -> Entity: ...
+    def add_entity() -> Entity: ...
     def update_data() -> None: ...
     def remove_entity(guid: GUID) -> None: ...
     def get_entity_by_name(name: str) -> Entity: ...

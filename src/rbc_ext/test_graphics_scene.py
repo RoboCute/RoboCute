@@ -106,7 +106,7 @@ def main():
     frame_index = 0
     image_index = 0
     tick_stage = TickStage.PathTracingPreview
-    entity = make_cube_mesh()
+    entity = make_cube_mesh(scene)
     
     @luisa.func
     def write_buffer_vec3_to_img(buffer, element_offset, img):
@@ -237,7 +237,7 @@ def main():
             geometry_buffer.dispose()
 
 
-def make_cube_mesh():
+def make_cube_mesh(scene : Scene):
     """
     创建一个包含两个立方体的动态网格实体
     
@@ -261,7 +261,12 @@ def make_cube_mesh():
     mat_vector = capsule_vector()
     mat_vector.emplace_back(mat0._handle)
     mat_vector.emplace_back(mat1._handle)
-    entity = Entity()
+    entity = scene.add_entity()
+    # Test entity by name
+    entity.set_name('test_cube')
+    del entity
+    entity = scene.get_entity_by_name('test_cube')
+    assert entity._handle is not None
     trans = TransformComponent(entity.add_component("TransformComponent"))
     render = RenderComponent(entity.add_component("RenderComponent"))
     trans.set_pos(double3(0, -1, 1), False)

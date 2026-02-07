@@ -16,10 +16,6 @@ private:
     RC<DeviceBuffer> _device_buffer;
     uint64_t _size_bytes{};
     bool _create_device_buffer{};
-    luisa::unordered_map<
-        luisa::string,
-        BasicDeserDataType>
-        _infos;
     mutable rbc::shared_atomic_mutex _async_mtx;
 
     BufferResource();

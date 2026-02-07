@@ -10,6 +10,7 @@
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/importers/texture_loader.h>
 #include <rbc_world/resources/material.h>
+#include <rbc_world/resources/buffer.h>
 #include <rbc_world/components/camera_component.h>
 #include <rbc_graphics/graphics_utils.h>
 #include <luisa/core/binary_file_stream.h>
@@ -28,7 +29,7 @@
 void save_image(luisa::filesystem::path const &path, luisa::compute::Image<float> const &img);// implemented save_image.cpp
 namespace rbc {
 struct EntitiesCollectionImpl : RCBase {
-    luisa::vector<RCWeak<world::Entity>> _entities;
+    luisa::vector<RC<world::Entity>> _entities;
 };
 vstd::Guid Object::guid(void *this_) {
     return static_cast<world::BaseObject *>(this_)->guid();
@@ -53,11 +54,6 @@ luisa::string Resource::path(void *this_) {
 }
 bool Resource::save_to_path(void *this_) {
     return static_cast<world::Resource *>(this_)->save_to_path();
-}
-void *Entity::_create_() {
-    auto entity = world::create_object<world::Entity>();
-    manually_add_ref(entity);
-    return entity;
 }
 void *Entity::add_component(void *this_, luisa::string_view name) {
     luisa::string class_name{"rbc::world::"};
@@ -88,9 +84,7 @@ bool Entity::remove_component(void *this_, luisa::string_view name) {
 }
 void *Component::entity(void *this_) {
     auto c = static_cast<world::Component *>(this_);
-    auto entity = c->entity();
-    manually_add_ref(entity);
-    return entity;
+    return c->entity();
 }
 void Component::update_data(void *this_) {
     auto c = static_cast<world::Component *>(this_);
@@ -462,9 +456,7 @@ void *Scene::get_entities_by_name(void *this_, luisa::string_view name) {
 }
 void *Scene::get_entity_by_name(void *this_, luisa::string_view name) {
     auto c = static_cast<world::SceneResource *>(this_);
-    auto ptr = c->get_entity(name);
-    manually_add_ref(ptr);
-    return ptr;
+    return c->get_entity(name);
 }
 void Scene::remove_entity(void *this_, vstd::Guid const &guid) {
     auto c = static_cast<world::SceneResource *>(this_);
@@ -472,15 +464,15 @@ void Scene::remove_entity(void *this_, vstd::Guid const &guid) {
 }
 void *Scene::get_entity(void *this_, vstd::Guid const &guid) {
     auto c = static_cast<world::SceneResource *>(this_);
-    auto ptr = c->get_entity(guid);
-    manually_add_ref(ptr);
-    return ptr;
+    return c->get_entity(guid);
 }
 void *Scene::get_or_add_entity(void *this_, vstd::Guid const &guid) {
     auto c = static_cast<world::SceneResource *>(this_);
-    auto ptr = c->get_or_add_entity(guid);
-    manually_add_ref(ptr);
-    return ptr;
+    return c->get_or_add_entity(guid);
+}
+void *Scene::add_entity(void *this_) {
+    auto c = static_cast<world::SceneResource *>(this_);
+    return c->add_entity();
 }
 void Scene::update_data(void *this_) {
     auto c = static_cast<world::SceneResource *>(this_);
@@ -534,11 +526,7 @@ uint64_t EntitiesCollection::count(void *this_) {
 void *EntitiesCollection::get_entity(void *this_, uint64_t index) {
     auto c = static_cast<EntitiesCollectionImpl *>(this_);
     LUISA_ASSERT(index < c->_entities.size(), "Index {} out or range {}", index, c->_entities.size());
-    auto v = c->_entities[index].lock().rc();
-    if (!v) return nullptr;
-    auto ptr = v.get();
-    unsafe_forget(std::move(v));
-    return ptr;
+    return c->_entities[index].get();
 }
 void CameraComponent::set_geometry_export_buffer(void *this_, luisa::compute::BufferCreationInfoInterop buffer, rbc::RendererGeometryType channel_type) {
     auto cam = static_cast<world::CameraComponent *>(this_);
@@ -566,9 +554,9 @@ void CameraComponent::clear_geometry_export_buffer(void *this_) {
 }
 
 void *CameraComponent::_create_() {
-    auto entity = world::create_object<world::CameraComponent>();
-    manually_add_ref(entity);
-    return entity;
+    auto c = world::create_object<world::CameraComponent>();
+    manually_add_ref(c);
+    return c;
 }
 double CameraComponent::aperture(void *this_) {
     auto c = static_cast<world::CameraComponent *>(this_);
@@ -743,6 +731,18 @@ void BasicData::set_int(void *this_, int64_t v) {
 void BasicData::set_string(void *this_, luisa::string_view v) {
     basic_type_from_value(this_, luisa::string{v});
 }
+luisa::string Entity::name(void *this_) {
+    auto e = static_cast<world::Entity *>(this_);
+    return luisa::string{e->name()};
+}
+void Entity::dispose(void *this_) {
+    auto e = static_cast<world::Entity *>(this_);
+    e->remove_self_from_scene();
+}
+void Entity::set_name(void *this_, luisa::string_view name) {
+    auto e = static_cast<world::Entity *>(this_);
+    e->set_name(luisa::string{name});
+}
 void *Entity::get_data(void *this_, luisa::string_view name) {
     auto ptr = BasicData::_create_();
     auto e = static_cast<world::Entity *>(this_);
@@ -757,4 +757,38 @@ rbc::BasicDataType BasicData::type(void *this_) {
     return static_cast<rbc::BasicDataType>(static_cast<BasicDataImpl *>(this_)->data.index());
 }
 
+// BufferResource implementation
+void *BufferResource::_create_() {
+    auto p = world::create_object<world::BufferResource>();
+    manually_add_ref(p);
+    return p;
+}
+uint64_t BufferResource::size_bytes(void *this_) {
+    auto c = static_cast<world::BufferResource *>(this_);
+    return c->size_bytes();
+}
+luisa::span<std::byte> BufferResource::host_data(void *this_) {
+    auto c = static_cast<world::BufferResource *>(this_);
+    auto data = c->host_data();
+    if (!data) return {};
+    return *data;
+}
+luisa::compute::BufferCreationInfoInterop BufferResource::buffer(void *this_) {
+    auto c = static_cast<world::BufferResource *>(this_);
+    luisa::compute::BufferCreationInfoInterop r;
+    auto buf = c->buffer();
+    if (!buf) {
+        r.invalidate();
+        return r;
+    }
+    r.handle = buf.handle();
+    r.native_handle = buf.native_handle();
+    r.total_size_bytes = buf.size_bytes();
+    r.element_stride = 4;
+    return r;
+}
+void BufferResource::create_empty(void *this_, uint64_t size_bytes, bool create_device_buffer) {
+    auto c = static_cast<world::BufferResource *>(this_);
+    c->create_empty(size_bytes, create_device_buffer);
+}
 }// namespace rbc

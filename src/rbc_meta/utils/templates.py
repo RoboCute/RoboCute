@@ -181,6 +181,12 @@ PY_METHOD_TEMPLATE = Template("""${INDENT}def ${METHOD_NAME}(self${ARGS_DECL}):
 ${INDENT}${INDENT}${RETURN_EXPR}${PYBIND_METHOD_NAME}(self._handle${ARGS_CALL})${RETURN_END}
 """)
 
+PY_METHOD_DISPOSE_TEMPLATE = Template("""${INDENT}def ${METHOD_NAME}(self${ARGS_DECL}):
+${INDENT}${INDENT}hhfae4d451=self._handle
+${INDENT}${INDENT}self._handle=None
+${INDENT}${INDENT}${RETURN_EXPR}${PYBIND_METHOD_NAME}(hhfae4d451${ARGS_CALL})${RETURN_END}
+""")
+
 PYBIND_METHOD_NAME_TEMPLATE = Template("${STRUCT_NAME}__${METHOD_NAME}__")
 # C++ implementation templates
 CPP_IMPL_TEMPLATE = Template("""

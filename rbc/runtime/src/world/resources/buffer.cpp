@@ -50,16 +50,6 @@ void BufferResource::serialize_meta(ObjSerialize const &obj) const {
     std::shared_lock lck{_async_mtx};
     obj.ar.value(_size_bytes, "size_bytes");
     obj.ar.value(_create_device_buffer, "create_device_buffer");
-    if (!_infos.empty()) {
-        obj.ar.start_array();
-        for (auto &i : _infos) {
-            obj.ar.value(i.first.c_str());
-            i.second.visit([&](auto &&t) {
-                obj.ar.value(t);
-            });
-        }
-        obj.ar.end_array("infos");
-    }
 }
 
 void BufferResource::deserialize_meta(ObjDeSerialize const &obj) {
@@ -75,22 +65,6 @@ void BufferResource::deserialize_meta(ObjDeSerialize const &obj) {
         _create_device_buffer = create_device_buffer;
     } else {
         _create_device_buffer = false;
-    }
-    uint64_t infos_size;
-    if (obj.ar.start_array(infos_size, "infos")) {
-        auto d = vstd::scope_exit([&] {
-            obj.ar.end_scope();
-        });
-        if ((infos_size & 1) == 0) {
-            _infos.reserve(infos_size / 2);
-            for (auto i : vstd::range(infos_size / 2)) {
-                luisa::string key;
-                BasicDeserDataType value;
-                if (!obj.ar.read(key)) break;
-                if (!obj.ar.read(value)) break;
-                _infos.try_emplace(std::move(key), std::move(value));
-            }
-        }
     }
 }
 

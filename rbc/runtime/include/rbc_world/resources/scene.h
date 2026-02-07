@@ -13,6 +13,7 @@ struct RBC_RUNTIME_API SceneResource : ResourceBaseImpl<SceneResource> {
     void update_data();
     Entity *get_entity(vstd::Guid guid);
     Entity *get_or_add_entity(vstd::Guid guid);
+    Entity *add_entity();
     Entity *get_entity(luisa::string_view name);
     bool remove_entity(vstd::Guid guid);
     bool remove_entity(Entity *entity);

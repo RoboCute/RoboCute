@@ -11,6 +11,14 @@ Entity *SceneResource::get_entity(vstd::Guid guid) {
     auto iter = _entities.find(guid);
     return iter ? iter.value().get() : nullptr;
 }
+Entity *SceneResource::add_entity() {
+    std::shared_lock lck{_map_mtx};
+    auto entity = create_object<Entity>();
+    auto iter = _entities.try_emplace(
+        entity->guid(), entity);
+    entity->_parent_scene = this;
+    return iter.first.value().get();
+}
 Entity *SceneResource::get_or_add_entity(vstd::Guid guid) {
     std::shared_lock lck{_map_mtx};
     auto iter = _entities.try_emplace(

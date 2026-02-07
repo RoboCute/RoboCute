@@ -21,6 +21,11 @@ void dispose_entity_events() {
         i.map.clear();
     }
 }
+void Entity::remove_self_from_scene() {
+    if (_parent_scene) {
+        _parent_scene->remove_entity(this->guid());
+    }
+}
 void Component::_zz_invoke_world_event(WorldEventType event_type) {
     auto &evt = _entity_events->_events;
     auto &map = evt[luisa::to_underlying(event_type)];

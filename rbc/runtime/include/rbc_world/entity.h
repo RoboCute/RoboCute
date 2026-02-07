@@ -68,6 +68,7 @@ public:
     void deserialize_meta(ObjDeSerialize const &ser) override;
     void unsafe_call_awake();
     void unsafe_call_update();
+    void remove_self_from_scene();
     template<typename T>
         requires(rbc_rtti_detail::is_rtti_type<T>::value && std::is_base_of_v<Component, T>)
     bool remove_component() {

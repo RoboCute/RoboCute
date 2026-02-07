@@ -45,6 +45,7 @@ from rbc_meta.utils.templates import (
     PY_INIT_METHOD_TEMPLATE_EXTERNAL,
     PY_DISPOSE_METHOD_TEMPLATE,
     PY_METHOD_TEMPLATE,
+    PY_METHOD_DISPOSE_TEMPLATE,
     PYBIND_CODE_TEMPLATE,
     PYBIND_METHOD_NAME_TEMPLATE,
     PYBIND_ENUM_BINDING_TEMPLATE,
@@ -933,6 +934,16 @@ def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_impo
             )
 
             pybind_methods_list.append(pybind_method_name)
+            if method.name == 'dispose':
+                return PY_METHOD_DISPOSE_TEMPLATE.substitute(
+                    INDENT=INDENT,
+                    METHOD_NAME=method.name,
+                    ARGS_DECL=args_decl,
+                    RETURN_EXPR=return_expr,
+                    PYBIND_METHOD_NAME=pybind_method_name,
+                    ARGS_CALL=args_call,
+                    RETURN_END=return_end,
+                )
             return PY_METHOD_TEMPLATE.substitute(
                 INDENT=INDENT,
                 METHOD_NAME=method.name,
