@@ -73,7 +73,7 @@ Entity::~Entity() {
     }
 }
 void Entity::_add_component(Component *component) {
-    component->_remove_self_from_entity();
+    component->remove_self_from_entity();
     auto result = _components.try_emplace(component->type_id(), component).second;
     if (!result) [[unlikely]]
         LUISA_ERROR("Component already exists.");
@@ -194,10 +194,10 @@ void Entity::_remove_component(Component *component) {
     _components.erase(iter);
 }
 
-void Component::_remove_self_from_entity() {
-    if (_entity) {
-        _entity->_remove_component(static_cast<Component *>(this));
-    }
+void Component::remove_self_from_entity() {
+    if (!_entity) return;
+    _entity->_remove_component(static_cast<Component *>(this));
+    _entity = nullptr;
 }
 
 void Component::_clear_entity() {

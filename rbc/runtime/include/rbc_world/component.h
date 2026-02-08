@@ -17,13 +17,13 @@ struct RBC_RUNTIME_API Component : BaseObject {
     friend struct ComponentDerive;
 private:
     Entity *_entity{};
-    void _remove_self_from_entity();
     Component();
     ~Component();
 
     void _clear_entity();
 public:
     // should only be called internally
+    void remove_self_from_entity();
     static void _zz_invoke_world_event(WorldEventType event_type);
     void add_world_event(WorldEventType event_type, rbc::coroutine &&coro);
     void remove_world_event(WorldEventType event_type);
@@ -53,7 +53,6 @@ struct ComponentDerive : Component {
 protected:
     ComponentDerive() = default;
     ~ComponentDerive() {
-        Component::_remove_self_from_entity();
     }
 };
 }// namespace rbc::world

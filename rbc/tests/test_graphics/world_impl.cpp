@@ -91,6 +91,10 @@ void Component::update_data(void *this_) {
     auto c = static_cast<world::Component *>(this_);
     c->update_data();
 }
+void Component::dispose(void *this_) {
+    auto c = static_cast<world::Component *>(this_);
+    c->remove_self_from_entity();
+}
 uint64_t TransformComponent::children_count(void *this_) {
     auto c = static_cast<world::TransformComponent *>(this_);
     return c->children().size();
@@ -780,73 +784,60 @@ void BufferResource::create_empty(void *this_, uint64_t size_bytes, bool create_
 // DataComponent implementation
 void *DataComponent::get_info(void *this_, luisa::string_view name) {
     auto c = static_cast<world::DataComponent *>(this_);
-    auto iter = c->_infos.find(name);
-    if (!~iter) {
-        return nullptr;
-    }
+    auto data = c->get_info(name);
     auto ptr = BasicData::_create_();
-    static_cast<BasicDataImpl *>(ptr)->data = iter.value();
+    static_cast<BasicDataImpl *>(ptr)->data = std::move(data);
     return ptr;
 }
 void DataComponent::set_info(void *this_, luisa::string_view name, void *data) {
     auto c = static_cast<world::DataComponent *>(this_);
-    c->_infos.try_emplace(luisa::string{name}, static_cast<BasicDataImpl *>(data)->data);
+    c->set_info(luisa::string{name}, static_cast<BasicDataImpl *>(data)->data);
 }
 bool DataComponent::has_info(void *this_, luisa::string_view name) {
     auto c = static_cast<world::DataComponent *>(this_);
-    return c->_infos.find(name);
+    return c->has_info(name);
 }
 bool DataComponent::remove_info(void *this_, luisa::string_view name) {
     auto c = static_cast<world::DataComponent *>(this_);
-    auto iter = c->_infos.find(name);
-    if (iter) {
-        c->_infos.remove(iter);
-        return true;
-    }
-    return false;
+    return c->remove_info(name);
 }
 uint64_t DataComponent::info_count(void *this_) {
     auto c = static_cast<world::DataComponent *>(this_);
-    return c->_infos.size();
+    return c->info_count();
 }
 void DataComponent::clear_infos(void *this_) {
     auto c = static_cast<world::DataComponent *>(this_);
-    c->_infos.clear();
+    c->clear_infos();
 }
 void *DataComponent::get_resource(void *this_, vstd::Guid const &guid) {
     auto c = static_cast<world::DataComponent *>(this_);
-    auto iter = c->_resources.find(guid);
-    if (!iter) {
+    auto res = c->get_resource(guid);
+    if (!res) {
         return nullptr;
     }
-    auto ptr = iter.value().get();
-    manually_add_ref(ptr);
-    return ptr;
+    manually_add_ref(res.get());
+    return res.get();
 }
-void DataComponent::set_resource(void *this_, vstd::Guid const &guid, void *resource) {
+void DataComponent::set_resource(void *this_, void *resource) {
     auto c = static_cast<world::DataComponent *>(this_);
     auto res = static_cast<world::Resource *>(resource);
-    c->_resources.try_emplace(guid, RC<world::Resource>{res});
+    c->set_resource(RC<world::Resource>{res});
 }
 bool DataComponent::has_resource(void *this_, vstd::Guid const &guid) {
     auto c = static_cast<world::DataComponent *>(this_);
-    return c->_resources.find(guid);
+    return c->has_resource(guid);
 }
-bool DataComponent::remove_resource(void *this_, vstd::Guid const &guid) {
+void DataComponent::remove_resource(void *this_, vstd::Guid const &guid) {
     auto c = static_cast<world::DataComponent *>(this_);
-    auto iter = c->_resources.find(guid);
-    if (iter) {
-        c->_resources.remove(iter);
-        return true;
-    }
-    return false;
+    c->remove_resource(guid);
 }
 uint64_t DataComponent::resource_count(void *this_) {
     auto c = static_cast<world::DataComponent *>(this_);
-    return c->_resources.size();
+    return c->resource_count();
 }
 void DataComponent::clear_resources(void *this_) {
     auto c = static_cast<world::DataComponent *>(this_);
-    c->_resources.clear();
+    c->clear_resources();
 }
+
 }// namespace rbc

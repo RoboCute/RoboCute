@@ -27,8 +27,6 @@ class LCPYBuffer:
     __slot__ = {}
     _reflected_ = True
     _cpp_type_name = "luisa::compute::BufferCreationInfoInterop"
-    _py_type_name = "luisa.Buffer"
-    _ctor_begin = 'import_native(int,'
 
 
 class LCPYBufferInfo:
@@ -36,14 +34,11 @@ class LCPYBufferInfo:
     _reflected_ = True
     _cpp_type_name = "luisa::compute::BufferCreationInfoInterop"
     _py_type_name = "luisa.lcapi.BufferCreationInfo"
-    _ctor_begin = 'import_native(int,'
 
 
 class LCPYImage2D:
     __slot__ = {}
     _cpp_type_name = "luisa::compute::TextureCreationInfo"
-    _py_type_name = "luisa.Image2D"
-    _ctor_begin = "import_native(float,"
 
 
 @reflect(cpp_namespace='rbc', module_name='world_interface', pybind=True)
@@ -145,6 +140,7 @@ class Entity(Object):
 class Component(Object):
     def entity() -> Entity: ...
     def update_data() -> None: ...
+    def dispose() -> None: ...
 
 
 @reflect(
@@ -427,9 +423,9 @@ class DataComponent(Component):
     def info_count() -> ulong: ...
     def clear_infos() -> None: ...
     def get_resource(guid: GUID) -> Resource: ...
-    def set_resource(guid: GUID, resource: Resource) -> None: ...
+    def set_resource(resource: Resource) -> None: ...
     def has_resource(guid: GUID) -> bool: ...
-    def remove_resource(guid: GUID) -> bool: ...
+    def remove_resource(guid: GUID) -> None: ...
     def resource_count() -> ulong: ...
     def clear_resources() -> None: ...
 

@@ -59,6 +59,7 @@ _PYBIND_SPECUAL_ARG = {
     "luisa::span<std::byte>": "to_span_5d4636ab",
     "luisa::function<void()> const&": "to_cppfunc_5d4636ab",
     "py::memoryview": "to_memoryview_5d4636ab",
+    "GuidData": "GuidData"
 }
 
 # Type name functions for special types

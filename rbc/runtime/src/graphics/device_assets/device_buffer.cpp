@@ -33,7 +33,9 @@ void DeviceBuffer::async_load_from_file(
             if (file_size < desire_file_size) [[unlikely]] {
                 LUISA_ERROR("Buffer file size {} less than required size {}", file_size, desire_file_size);
             }
-            LUISA_ASSERT(desire_file_size & (sizeof(uint) - 1) == 0);
+            if (!((desire_file_size & 3) == 0)) {
+                LUISA_ERROR("size_bytes myst be align of 4 bytes.");
+            }
             if (load_type != FileLoadType::HostOnly)
                 ptr->_buffer = inst->lc_device().create_buffer<uint>(desire_file_size / sizeof(uint));
             switch (load_type) {
@@ -113,7 +115,9 @@ void DeviceBuffer::async_load_from_memory(BinaryBlob &&blob) {
             if (ptr->_gpu_load_frame != std::numeric_limits<uint64_t>::max()) return;
             ptr->_gpu_load_frame = args.load_frame;
             auto inst = AssetsManager::instance();
-            LUISA_ASSERT((blob.size() & (sizeof(uint) - 1)) == 0);
+            if (!((blob.size() & 3) == 0)) {
+                LUISA_ERROR("size_bytes myst be align of 4 bytes.");
+            }
             ptr->_buffer = inst->lc_device().create_buffer<uint>(blob.size() / sizeof(uint));
             args.mem_io_cmdlist << IOCommand{
                 blob.data(),
