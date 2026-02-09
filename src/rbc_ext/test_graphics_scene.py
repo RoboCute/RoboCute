@@ -37,6 +37,7 @@ import numpy as np
 import json
 import math
 from rbc_ext.luisa import *
+import rbc_ext.tri_to_tet as tri_to_tet
 
 # Auto-setup RBC_RUNTIME_DIR if not set
 if "RBC_RUNTIME_DIR" not in os.environ:
@@ -108,6 +109,11 @@ def main():
     image_index = 0
     tick_stage = TickStage.PathTracingPreview
     entity = make_cube_mesh(scene)
+    # Test tri_to_tet: convert triangle mesh to tetrahedral mesh
+    ################### 
+    # render = RenderComponent(entity.get_component("RenderComponent"))
+    # test_tri_to_tet(entity)
+    ################### 
     @luisa.func
     def write_buffer_vec3_to_img(buffer, element_offset, img):
         """
@@ -235,6 +241,79 @@ def main():
             image_index += 1
             display_cam.clear_geometry_export_buffer()
             geometry_buffer.dispose()
+
+
+def test_tri_to_tet(entity):
+    """
+    测试 tri_to_tet 功能: 从实体中提取网格数据并进行四面体化
+
+    流程:
+        1. 从实体的 RenderComponent 获取 MeshResource
+        2. 从 MeshResource 提取顶点数据和面索引数据
+        3. 调用 tri_to_tet.tetrahedralize() 将三角网格转换为四面体网格
+        4. 输出四面体网格的统计信息
+
+    Args:
+        entity: 包含 RenderComponent 的实体对象
+    """
+    print("\n=== Testing tri_to_tet tetrahedralization ===")
+    
+    # Get RenderComponent and MeshResource from entity
+    render = RenderComponent(entity.get_component("RenderComponent"))
+    mesh = render.mesh()
+    
+    # Get mesh statistics
+    vert_count = mesh.vertex_count()
+    tri_count = mesh.triangle_count()
+    print(f"Mesh info: {vert_count} vertices, {tri_count} triangles")
+    
+    # Get mesh data buffer
+    
+    # Extract vertices from buffer (each vertex is float4: x, y, z, w)
+    vertex_data = np.ndarray(
+        shape=vert_count * 4,
+        dtype=np.float32,
+        buffer=mesh.pos_buffer()
+    )
+    vertices = vertex_data.reshape(-1, 4)[:, :3]  # Take only x, y, z
+    
+    indices_data = np.ndarray(
+        shape=tri_count * 3,
+        dtype=np.uint32,
+        buffer=mesh.triangle_indices_buffer()
+    )
+    faces = indices_data.reshape(-1, 3)
+    
+    print(f"Extracted {vertices.shape[0]} vertices, {faces.shape[0]} faces")
+    
+    try:
+        # Perform tetrahedralization
+        tet_vertices, tet_cells = tri_to_tet.tetrahedralize(
+            vertices, faces,
+            cell_size=None,  # Auto-compute cell size
+            radius_edge_ratio=2.0
+        )
+        
+        print(f"Tetrahedralization successful!")
+        print(f"  - Tetrahedron vertices: {tet_vertices.shape}")
+        print(f"  - Tetrahedron cells: {tet_cells.shape}")
+        print(f"  - Number of tetrahedra: {len(tet_cells)}")
+        
+        # Print first few tetrahedra for verification
+        if len(tet_cells) > 0:
+            print(f"\nFirst tetrahedron cell (vertex indices): {tet_cells[0]}")
+            print(f"First tetrahedron vertex positions:")
+            for i, idx in enumerate(tet_cells[0]):
+                print(f"  v{i}: {tet_vertices[idx]}")
+        
+    except ImportError as e:
+        print(f"Skipped tetrahedralization: {e}")
+    except RuntimeError as e:
+        print(f"Tetrahedralization failed: {e}")
+    except Exception as e:
+        print(f"Unexpected error during tetrahedralization: {e}")
+    
+    print("=== End of tri_to_tet test ===\n")
 
 
 def make_cube_mesh(scene: Scene):

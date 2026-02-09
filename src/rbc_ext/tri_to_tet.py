@@ -8,17 +8,15 @@ from rbc_ext._C.test_py_codegen import *
 
 
 def tetrahedralize(vertices: np.ndarray, faces: np.ndarray,
-                   cell_size = None,
-                   radius_edge_ratio = 2.0,
-                   facet_distance = None,
-                   facet_angle = 25.0,
-                   edge_size = None
+                   cell_size=None,
+                   radius_edge_ratio=2.0
                    ) -> Tuple[np.ndarray, np.ndarray]:
 
     def float4_array_to_float3_array(array):
         array = np.asarray(array)
         if array.shape[-1] != 4:
-            raise ValueError(f"Expected last dimension to be 4, got {array.shape[-1]}")
+            raise ValueError(
+                f"Expected last dimension to be 4, got {array.shape[-1]}")
         return array[..., :3]
     """
     使用 tetgen 将三角面模型转换为四面体网格
@@ -74,7 +72,7 @@ def tetrahedralize(vertices: np.ndarray, faces: np.ndarray,
     try:
         # 创建 tetgen 网格
         tet = tetgen.TetGen(vertices, faces)
-        
+
         # 构建四面体网格
         # switches 参数控制 tetgen 的行为:
         # -p: 从分段平面网格生成四面体网格
@@ -85,15 +83,15 @@ def tetrahedralize(vertices: np.ndarray, faces: np.ndarray,
         if cell_size is not None:
             max_volume = cell_size ** 3
             switches += f"a{max_volume}"
-        
+
         tet.tetrahedralize(switches=switches)
-        
+
         # 提取结果
         # tet.node 是节点数组，包含所有顶点
         # tet.elem 是元素数组，每个元素包含4个顶点索引
         tet_vertices = tet.node.astype(np.float32)
         tet_cells = tet.elem.astype(np.int32)
-        
+
     except Exception as e:
         raise RuntimeError(f"Tetrahedralization failed: {e}")
 
@@ -207,16 +205,10 @@ def create_mesh_array():
     #     indices_arr[i] += last_vert_size // 4
     return vertex_arr, indices_arr
 
-
-def main():
+if __name__ == "__main__":
     vertex_arr, indices_arr = create_mesh_array()
     vertices = vertex_arr.reshape(-1, 4)
     faces = indices_arr.reshape(-1, 3)
     tet_vertices, tet_cells = tetrahedralize(vertices, faces)
     print(tet_vertices)
     print(tet_cells)
-
-
-if __name__ == "__main__":
-    main()
-    print('finish')
