@@ -16,6 +16,7 @@ dependencies = [
     "mypy>=1.19.0",
     "pybind11-stubgen>=2.5.5",
     "pillow>=12.1.0",
+    "tetgen>=0.8.2",
 ]
 
 [tool.uv.workspace]

@@ -65,10 +65,11 @@ vertex_count = 16
 triangle_count = 24
 """网格三角形总数(两个立方体, 每个12个三角形)"""
 
+
 def main():
     """
     主函数: 初始化渲染环境并运行场景测试
-    
+
     流程:
         1. 解析命令行参数, 获取场景根目录
         2. 初始化 RBC 上下文、世界、渲染设备和显示窗口
@@ -76,7 +77,7 @@ def main():
         4. 创建动态立方体网格实体
         5. 进入渲染循环, 处理帧更新和相机控制
         6. 当 EXPORT=True 时, 导出几何缓冲区数据
-    
+
     退出条件:
         - 用户关闭窗口 (ctx.should_close())
         - 发生异常错误
@@ -107,14 +108,13 @@ def main():
     image_index = 0
     tick_stage = TickStage.PathTracingPreview
     entity = make_cube_mesh(scene)
-    
     @luisa.func
     def write_buffer_vec3_to_img(buffer, element_offset, img):
         """
         Luisa kernel: 将 float3 数据从缓冲区写入图像
-        
+
         用于将几何缓冲区中的 vec3 数据 (如 normal albedo) 可视化为图像
-        
+
         Args:
             buffer: 源数据缓冲区
             element_offset: 在缓冲区中的起始偏移量
@@ -136,9 +136,9 @@ def main():
     def write_buffer_vec1_to_img(buffer, scale, element_offset, img):
         """
         Luisa kernel: 将 float 数据从缓冲区写入图像
-        
+
         用于将几何缓冲区中的标量数据(如深度)可视化为灰度图像
-        
+
         Args:
             buffer: 源数据缓冲区
             scale: 缩放因子, 用于调整数据范围到可视范围
@@ -237,34 +237,35 @@ def main():
             geometry_buffer.dispose()
 
 
-def make_cube_mesh(scene : Scene):
+def make_cube_mesh(scene: Scene):
     """
     创建一个包含两个立方体的动态网格实体
-    
+
     创建的实体包含: 
         - TransformComponent: 控制实体位置和旋转
         - RenderComponent: 包含网格和材质渲染信息
         - MeshResource: 包含两个子网格的立方体数据
         - 两种 PBR 材质: 白色粗糙材质(mat0)和绿色金属材质(mat1)
-    
+
     网格结构:
         - 第一个立方体位于原点, 缩放为1.0
         - 第二个立方体位于 (0, 1, 0), 缩放为0.4
-    
+
     Returns:
         Entity: 创建的实体对象, 包含完整的渲染组件
     """
     mat0 = MaterialResource()
-    mat0.load_from_json('{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]}')
+    mat0.load_from_json(
+        '{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]}')
     mat1 = MaterialResource()
-    mat1.load_from_json('{"type": "pbr", "specular_roughness": 0.5, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]}')
+    mat1.load_from_json(
+        '{"type": "pbr", "specular_roughness": 0.5, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]}')
     mat_vector = capsule_vector()
     mat_vector.emplace_back(mat0._handle)
     mat_vector.emplace_back(mat1._handle)
     entity = scene.add_entity()
     # Test entity by name
     entity.set_name('test_cube')
-    del entity
     entity = scene.get_entity_by_name('test_cube')
     assert entity._handle is not None
     trans = TransformComponent(entity.add_component("TransformComponent"))
@@ -278,7 +279,7 @@ def make_cube_mesh(scene : Scene):
     # first submesh start at 'last_tri_size'
 
     submesh_offsets[1] = triangle_count // 2
-    
+
     cube_mesh.create_empty(
         submesh_offsets,
         vertex_count,
@@ -294,28 +295,28 @@ def make_cube_mesh(scene : Scene):
     cube_mesh.install()
     render.update_object(mat_vector, cube_mesh)
     return entity
-    
-    
+
+
 def create_mesh_array(mesh_array):
     """
     生成两个立方体的顶点数据和索引数据
-    
+
     数据布局:
         - 顶点数据: 每个顶点4个float(x, y, z, w), 共16个顶点
         - 索引数据: 每个三角形3个uint32索引, 共24个三角形
-    
+
     顶点缓冲区格式 (vertex_count * 4 floats):
         [cube1_vert0_x, cube1_vert0_y, cube1_vert0_z, 0, ...]
-    
+
     索引缓冲区格式 (triangle_count * 3 uint32s):
         位于顶点数据之后, 每个三角形3个顶点索引
-    
+
     Args:
         mesh_array: numpy 数组, 用于存储生成的网格数据
-        
+
     Raises:
         Exception: 当 mesh_array 大小不匹配预期时抛出
-    
+
     立方体顶点索引定义:
         0: 左下后 (-0.5, -0.5, -0.5)
         1: 左下前 (-0.5, -0.5, 0.5)
@@ -344,7 +345,7 @@ def create_mesh_array(mesh_array):
 
     def push_vec4(x, y, z):
         """向顶点缓冲区添加一个 float4 顶点
-        
+
         Args:
             x, y, z: 顶点坐标分量
         """
@@ -356,7 +357,7 @@ def create_mesh_array(mesh_array):
 
     def push_indices(idx: int):
         """向索引缓冲区添加一个顶点索引
-        
+
         Args:
             idx: 顶点索引值
         """

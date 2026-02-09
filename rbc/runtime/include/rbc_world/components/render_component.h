@@ -12,6 +12,7 @@ struct RBC_RUNTIME_API RenderComponent final : ComponentDerive<RenderComponent> 
 private:
     RenderComponent();
     ~RenderComponent();
+    RC<MeshResource> _mesh_ref;
     ObjectRenderType _type{};
     luisa::vector<MatCode> _material_codes;
     luisa::vector<RC<MaterialResource>> _materials;
@@ -23,12 +24,12 @@ private:
 
     void _on_transform_update();
 public:
-    RC<MeshResource> _mesh_ref;
     void on_awake() override;
     void on_destroy() override;
     void serialize_meta(ObjSerialize const &ser) const override;
     void deserialize_meta(ObjDeSerialize const &ser) override;
-
+    MeshResource *mesh_ref() const { return _mesh_ref.get(); }
+    luisa::span<RC<MaterialResource> const> materials() const { return _materials; }
     // draw
     uint get_tlas_index() const;
     void remove_object();

@@ -249,6 +249,85 @@ luisa::uint2 TextureResource::size(void *this_) {
     return c->size();
 }
 
+// luisa::span<std::byte> MeshResource::vertex_buffer(void *this_) {
+//     auto c = static_cast<world::MeshResource *>(this_);
+//     auto data = c->host_data();
+//     if (!data) return {};
+//     auto tri_count = c->triangle_count();
+//     auto tri_size_bytes = tri_count * sizeof(Triangle);
+//     auto basic_size = c->basic_size_bytes();
+//     auto vertex_size = basic_size - tri_size_bytes;
+//     if (data->size() < vertex_size) return {};
+//     return luisa::span{data->data(), vertex_size};
+// }
+luisa::span<std::byte> MeshResource::pos_buffer(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    auto data = c->host_data();
+    if (!data) return {};
+    auto vert_count = c->vertex_count();
+    auto size_bytes = vert_count * sizeof(luisa::float3);
+    if (data->size() < size_bytes) return {};
+    return luisa::span{data->data(), size_bytes};
+}
+luisa::span<std::byte> MeshResource::normal_buffer(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    if (!c->contained_normal()) return {};
+    auto data = c->host_data();
+    if (!data) return {};
+    auto vert_count = c->vertex_count();
+    auto offset = vert_count * sizeof(luisa::float3);
+    auto size_bytes = vert_count * sizeof(luisa::float3);
+    if (data->size() < offset + size_bytes) return {};
+    return luisa::span{data->data() + offset, size_bytes};
+}
+luisa::span<std::byte> MeshResource::tangent_buffer(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    if (!c->contained_tangent()) return {};
+    auto data = c->host_data();
+    if (!data) return {};
+    auto vert_count = c->vertex_count();
+    auto offset = vert_count * sizeof(luisa::float3);
+    if (c->contained_normal()) {
+        offset += vert_count * sizeof(luisa::float3);
+    }
+    auto size_bytes = vert_count * sizeof(luisa::float4);
+    if (data->size() < offset + size_bytes) return {};
+    return luisa::span{data->data() + offset, size_bytes};
+}
+luisa::span<std::byte> MeshResource::uv_buffer(void *this_, uint32_t uv_index) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    auto data = c->host_data();
+    if (!data) return {};
+    auto vert_count = c->vertex_count();
+    auto uv_count = c->uv_count();
+    if (uv_index >= uv_count) [[unlikely]] {
+        LUISA_ERROR("UV index {} out or range {}", uv_index, uv_count);
+    }
+
+    auto offset = vert_count * sizeof(luisa::float3);
+    if (c->contained_normal()) {
+        offset += vert_count * sizeof(luisa::float3);
+    }
+    if (c->contained_tangent()) {
+        offset += vert_count * sizeof(luisa::float4);
+    }
+    offset += uv_index * vert_count * sizeof(luisa::float2);
+    auto size_bytes = vert_count * sizeof(luisa::float2);
+
+    if (data->size() < offset + size_bytes) return {};
+    return luisa::span{data->data() + offset, size_bytes};
+}
+luisa::span<std::byte> MeshResource::triangle_indices_buffer(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    auto data = c->host_data();
+    if (!data) return {};
+    auto tri_count = c->triangle_count();
+    auto tri_size_bytes = tri_count * sizeof(Triangle);
+    auto basic_size = c->basic_size_bytes();
+    if (data->size() < basic_size) return {};
+    auto offset = basic_size - tri_size_bytes;
+    return luisa::span{data->data() + offset, tri_size_bytes};
+}
 uint64_t MeshResource::basic_size_bytes(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     return c->basic_size_bytes();
@@ -321,7 +400,32 @@ uint32_t MaterialResource::mat_code(void *this_) {
     auto c = static_cast<world::MaterialResource *>(this_);
     return c->mat_code().value;
 }
-
+void *RenderComponent::get_material(void *this_, uint64_t idx) {
+    auto c = static_cast<world::RenderComponent *>(this_);
+    auto materials = c->materials();
+    if (idx >= materials.size()) [[unlikely]] {
+        LUISA_ERROR("get_material index {} out of range {}", idx, materials.size());
+    }
+    auto mat = materials[idx].get();
+    if (!mat) {
+        return nullptr;
+    }
+    manually_add_ref(mat);
+    return mat;
+}
+uint64_t RenderComponent::mat_count(void *this_) {
+    auto c = static_cast<world::RenderComponent *>(this_);
+    return c->materials().size();
+}
+void *RenderComponent::mesh(void *this_) {
+    auto c = static_cast<world::RenderComponent *>(this_);
+    auto m = c->mesh_ref();
+    if (!m) {
+        return nullptr;
+    }
+    manually_add_ref(m);
+    return m;
+}
 uint32_t RenderComponent::get_tlas_index(void *this_) {
     auto c = static_cast<world::RenderComponent *>(this_);
     return c->get_tlas_index();

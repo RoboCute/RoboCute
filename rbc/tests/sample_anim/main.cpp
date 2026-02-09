@@ -351,8 +351,8 @@ int main(int argc, char *argv[]) {
             if (false) {
                 // direct change original render component
                 auto *render_comp = entity->get_component<world::RenderComponent>();
-                auto vert_count = render_comp->_mesh_ref->vertex_count();
-                auto *host_data = render_comp->_mesh_ref->host_data();
+                auto vert_count = render_comp->mesh_ref()->vertex_count();
+                auto *host_data = render_comp->mesh_ref()->host_data();
                 int32_t pos_offset = 0;
                 luisa::span<float3> pos_{(float3 *)host_data->data(), vert_count};
 
@@ -360,7 +360,7 @@ int main(int argc, char *argv[]) {
                     pos.x += sin(delta_time);
                 }
 
-                utils.update_mesh_data(render_comp->_mesh_ref->device_mesh(), true);
+                utils.update_mesh_data(render_comp->mesh_ref()->device_mesh(), true);
             }
 
             ++frame_index;
