@@ -11,7 +11,6 @@ struct PostPassContext : public PassContext {
     // FrameGen frame_gen;
     ACES aces;
     Exposure exposure;
-    Clock delta_time_clk;
     bool reset : 1 {true};
     bool aces_lut_dirty : 1 {true};
     PostPassContext(
@@ -178,9 +177,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         exposureSettings,
         cmdlist,
         read_tex(),
-        frame_settings.display_resolution,
-        post_ctx->reset, post_ctx->delta_time_clk.toc() * 1e-3f);
-    post_ctx->delta_time_clk.tic();
+        frame_settings.display_resolution);
     if (post_ctx->aces_lut_dirty) {
         post_ctx->aces.dispatch(toneMappingSettings.aces, cmdlist);
         post_ctx->aces_lut_dirty = false;

@@ -19,7 +19,6 @@ auto post_process_exposure(
     ExposureSettings const &desc,
     uint2 resolution,
     uint2 histogram_block_size,
-    float delta_time,
     float4 &out_scale_offset_res,
     uint2 &out_histogram_disp_size,
     float4 &out_exposure_Params1,
@@ -39,7 +38,10 @@ auto post_process_exposure(
 
     // Clamp min/max adaptation values as well
     out_exposure_Params1 = float4(lowPercent * 0.01f, highPercent * 0.01f, exp2(desc.minLuminance), exp2(desc.maxLuminance));
-    out_exposure_Params2 = float4(desc.speedDown, desc.speedUp, desc.globalExposure, delta_time);
+    out_exposure_Params2 = float4(
+        0, 0// desc.speedDown, desc.speedUp
+        ,
+        desc.globalExposure, 0.0f);
 }
 }// namespace exposure_detail
 Exposure::Exposure(Device &device, luisa::fiber::counter &counter, uint2 res)
@@ -56,15 +58,13 @@ void Exposure::generate(
     ExposureSettings const &desc,
     CommandList &cmdlist,
     ImageView<float> img,
-    uint2 res,
-    bool reset,
-    float delta_time) {
+    uint2 res) {
     Buffer<uint> histogram_buffer = RenderDevice::instance().create_transient_buffer<uint>("histogram", k_Bins);
     ///////// Histogram
     float4 scaleOffsetRes;
     uint2 histogram_dispatch_size;
     float4 exposure_Params1, exposure_Params2;
-    exposure_detail::post_process_exposure(desc, res, _histogram_shader->block_size().xy(), delta_time, scaleOffsetRes, histogram_dispatch_size, exposure_Params1, exposure_Params2);
+    exposure_detail::post_process_exposure(desc, res, _histogram_shader->block_size().xy(), scaleOffsetRes, histogram_dispatch_size, exposure_Params1, exposure_Params2);
     cmdlist << (*_clear_shader)(histogram_buffer, 0).dispatch(histogram_buffer.size())
             << (*_histogram_shader)(
                    histogram_buffer,
@@ -79,7 +79,6 @@ void Exposure::generate(
                    exposure_Params1,
                    exposure_Params2,
                    scaleOffsetRes,
-                   !reset,
                    histogram_buffer,
                    exposure_buffer)
                    .dispatch(_auto_exposure->block_size().xy());

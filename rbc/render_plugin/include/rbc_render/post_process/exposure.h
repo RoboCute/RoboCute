@@ -25,7 +25,6 @@ private:
         float4,       // _Params1,	   // x: lowPercent, y: highPercent, z: minBrightness, w: maxBrightness
         float4,       //_Params2,	   // x: speed down, y: speed up, z: exposure compensation, w: delta time
         float4,       //_ScaleOffsetRes,// x: scale, y: offset, w: histogram pass width, h: histogram pass height
-        bool,         // progressive,
         Buffer<uint>, //& _HistogramBuffer,
         Buffer<float> //& SrcDst
         > const* _auto_exposure;
@@ -44,9 +43,7 @@ public:
         ExposureSettings const& desc,
         CommandList& cmdlist,
         ImageView<float> img,
-        uint2 res,
-        bool reset,
-        float delta_time
+        uint2 res
     );
     ~Exposure();
 };

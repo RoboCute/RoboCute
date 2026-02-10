@@ -12,7 +12,7 @@
 
 namespace rbc {
 PTPipeline::PTPipeline() = default;
-
+void clamp_render_settings(StateMap &map);
 void PTPipeline::initialize() {
     auto &device = RenderDevice::instance();
 
@@ -51,6 +51,7 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // tms.aces.tone_mapping.hdr_display_multiplier = monitor_info->max_luminance / 80.0f;
 
     // get settings
+    clamp_render_settings(ctx.pipeline_settings);
     auto &sky_settings = ctx.pipeline_settings.read_mut<SkySettings>();
     auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &sky_heap = ctx.pipeline_settings.read_mut<SkyHeapIndices>();

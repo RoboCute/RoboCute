@@ -238,17 +238,13 @@ class ExposureSettings:
     minLuminance: float
     maxLuminance: float
     globalExposure: float
-    speedUp: float
-    speedDown: float
 
     _cpp_init = {
         "use_auto_exposure": "true",
         "filtering": "1.0f, 95.0f",
         "minLuminance": "-9",
         "maxLuminance": "9",
-        "globalExposure": "0.5",
-        "speedUp": "16",
-        "speedDown": "16",
+        "globalExposure": "0.5"
     }
 
 
