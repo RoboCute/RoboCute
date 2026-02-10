@@ -25,7 +25,7 @@ public:
     luisa::compute::Image<float> dst_image;
     luisa::uint2 view_offset_pixels{};
     luisa::uint2 view_size_pixels{~0u};
-    void *render_pipe_ctx() const { return _render_pipe_ctx; }
+    void *render_pipe_ctx() const;
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
     void on_awake() override;

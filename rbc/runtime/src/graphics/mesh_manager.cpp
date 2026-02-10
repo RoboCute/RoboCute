@@ -161,7 +161,10 @@ auto MeshManager::load_mesh(
     m->triangle_size = ib.size();
     m->meta.heap_idx = bdls_alloc.allocate_buffer(m->pack.data);
     m->meta.mutable_heap_idx = std::numeric_limits<uint>::max();
-    if (!submesh_offset.empty()) {
+    if (submesh_offset.size() == 1 && submesh_offset[0] == 0) {
+        LUISA_ASSERT(submesh_offset[0] == 0, "First element must be 0.");
+        submesh_offset.clear();
+    } else if (!submesh_offset.empty()) {
         LUISA_ASSERT(submesh_offset.size() > 1, "Should have more than one submesh-offset.");
         LUISA_ASSERT(submesh_offset[0] == 0, "First element must be 0.");
         m->submesh_offset = std::move(submesh_offset);

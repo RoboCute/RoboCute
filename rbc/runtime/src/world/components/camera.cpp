@@ -12,6 +12,13 @@ namespace rbc::world {
 CameraComponent::CameraComponent() {}
 CameraComponent::~CameraComponent() {
 }
+void *CameraComponent::render_pipe_ctx() const {
+    if (_render_pipe_ctx == nullptr) [[unlikely]] {
+        LUISA_ERROR("Camera not enabled.");
+    }
+    return _render_pipe_ctx;
+}
+
 void CameraComponent::serialize_meta(ObjSerialize const &obj) const {
     obj.ar.value(fov, "fov");
     if (auto_aspect_ratio)
