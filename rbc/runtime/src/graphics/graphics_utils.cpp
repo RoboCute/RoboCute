@@ -508,8 +508,15 @@ void GraphicsUtils::update_skinning(
     BufferView<DualQuaternion> bones) {
     auto origin_mesh = skinning_mesh->origin_mesh();
     auto origin_mesh_data = origin_mesh->mesh_data();
+
     auto device_mesh = skinning_mesh->device_transforming_mesh();
-    LUISA_ASSERT(origin_mesh && device_mesh, "Invalid skinning mesh.");
+    if (!(origin_mesh && device_mesh)) {
+        if (!skinning_mesh->is_transforming_mesh()) [[unlikely]] {
+            LUISA_ERROR("Updating to non-skinning mesh.");
+        } else {
+            LUISA_ERROR("Invalid skinning mesh.");
+        }
+    }
     auto weight_index_buffer = origin_mesh->get_or_create_property_buffer("skinning_weight_index");
     if (!weight_index_buffer) [[unlikely]] {
         LUISA_ERROR("Static mesh must have \"skinning_weight_index\" property.");

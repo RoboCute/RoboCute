@@ -194,7 +194,7 @@ CPP_IMPL_TEMPLATE = Template("""
 //! Modifying This File will not affect final result, checkout src/rbc_meta/ for real defs
 //! ================== GENERATED CODE BEGIN ==================
 
-#include <rbc_core/serde.h>
+#include <rbc_core/class_serializer.h>
 ${EXTRA_INCLUDES}
 
 ${ENUM_INITERS_EXPR}
@@ -221,6 +221,12 @@ namespace ${NAMESPACE_NAME} {
 void ${CLASS_NAME}::rbc_objdeser(rbc::JsonDeSerializer& obj) {
 ${LOAD_STMTS}
 }
+}// ${NAMESPACE_NAME}
+""")
+
+CPP_STRUCT_REGIST_TEMPLATE = Template("""
+namespace ${NAMESPACE_NAME} {
+RBC_DECLARE_SERDE_CLASS(${CLASS_NAME})
 }// ${NAMESPACE_NAME}
 """)
 

@@ -131,6 +131,8 @@ def main():
         # 获取当前位置,只修改 Y 坐标
         current_pos = transform.position()
         transform.set_pos(double3(current_pos.x, new_y, current_pos.z), False)
+        render = RenderComponent(entity.get_component("RenderComponent"))
+        move_mesh_vertices(ctx, cur_time * move_speed, render.mesh())
         
         # 渲染一帧
         display_cam.set_frame_index(frame_index)
@@ -190,6 +192,53 @@ def make_cube_mesh(scene: Scene):
     
     return entity
 
+def move_mesh_vertices(ctx: RBCContext, time: float, mesh: MeshResource):
+    """
+    动态修改立方体网格顶点位置,使右侧顶点沿 X 轴周期性移动
+
+    通过正弦波控制右侧顶点(2, 3, 6, 7)的 X 坐标,产生呼吸/变形动画效果
+
+    Args:
+        ctx: RBC 上下文
+        time: 当前时间(用于计算正弦波)
+        mesh: 网格资源对象
+    """
+    # 获取网格数据缓冲区
+    mesh_array = np.ndarray(
+        mesh.vertex_count() * 4,
+        dtype=np.float32,
+        buffer=mesh.pos_buffer()
+    )
+    
+    # 顶点数据开始位置,每个顶点4个float(x,y,z,w)
+    # 右侧顶点索引: 2, 3, 6, 7
+    # 对应的x坐标在数组中的位置: 2*4=8, 3*4=12, 6*4=24, 7*4=28
+    right_side_indices = [8, 12, 24, 28]  # 右侧顶点的 x 坐标索引
+    
+    # 基础 x 坐标和变形幅度
+    base_x_right = 0.5
+    base_x_left = -0.5
+    amplitude = 0.3
+    
+    # 计算新的 x 偏移量
+    offset = math.sin(time) * amplitude
+    
+    # 左侧顶点索引: 0, 1, 4, 5
+    # 对应的x坐标在数组中的位置: 0*4=0, 1*4=4, 4*4=16, 5*4=20
+    left_side_indices = [0, 4, 16, 20]  # 左侧顶点的 x 坐标索引
+    
+    # 更新右侧顶点的 x 坐标 (向右扩展)
+    new_x_right = base_x_right + offset
+    for idx in right_side_indices:
+        mesh_array[idx] = new_x_right
+    
+    # 更新左侧顶点的 x 坐标 (向左扩展,即负方向)
+    new_x_left = base_x_left - offset
+    for idx in left_side_indices:
+        mesh_array[idx] = new_x_left
+    
+    ctx.upload_mesh_data(mesh)
+        
 
 def create_mesh_array(mesh_array):
     """

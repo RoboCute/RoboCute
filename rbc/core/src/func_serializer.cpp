@@ -1,15 +1,7 @@
 #include <rbc_core/func_serializer.h>
 namespace rbc {
 namespace func_ser_detail {
-struct GuidHash {
-    size_t operator()(vstd::Guid::GuidData const &v) const {
-        return luisa::hash64(&v, sizeof(vstd::Guid::GuidData), luisa::hash64_default_seed);
-    }
-    bool operator()(vstd::Guid::GuidData const a, vstd::Guid::GuidData const b) const {
-        return a.data0 == b.data0 && a.data1 == b.data1;
-    }
-};
-static luisa::unordered_map<vstd::Guid::GuidData, luisa::unique_ptr<FuncSerializer::FuncCall>, GuidHash, GuidHash> func_maps;
+static vstd::HashMap<vstd::Guid::GuidData, FuncSerializer::FuncCall> func_maps;
 }// namespace func_ser_detail
 
 FuncSerializer::FuncSerializer(
@@ -23,20 +15,19 @@ FuncSerializer::FuncSerializer(
     for (size_t i = 0; i < names.size(); ++i) {
         auto guid = vstd::Guid::TryParseGuid(names.begin()[i]);
         LUISA_DEBUG_ASSERT(guid);
-        func_ser_detail::func_maps.try_emplace(
+        func_ser_detail::func_maps.emplace(
             guid->to_binary(),
-            luisa::make_unique<FuncCall>(
-                funcs.begin()[i],
-                args_meta.begin()[i],
-                ret_value_meta.begin()[i],
-                is_static.begin()[i]));
+            funcs.begin()[i],
+            args_meta.begin()[i],
+            ret_value_meta.begin()[i],
+            is_static.begin()[i]);
     }
 }
 FuncSerializer::~FuncSerializer() {}
 auto FuncSerializer::get_call_meta(vstd::Guid const &name) -> FuncCall const * {
     auto iter = func_ser_detail::func_maps.find(name.to_binary());
-    if (iter == func_ser_detail::func_maps.end()) [[unlikely]]
+    if (!iter) [[unlikely]]
         return nullptr;
-    return iter->second.get();
+    return &iter.value();
 }
 }// namespace rbc

@@ -14,6 +14,7 @@ void StateMap::init_json(luisa::string_view json) {
 }
 
 void StateMap::_deser(TypeInfo const &type_info, HeapObject &heap_obj) {
+    std::lock_guard lck{_deser_mtx};
     if (!_json_reader.valid() || !heap_obj.json_reader) return;
     if (_json_reader.is_type_of<luisa::string>()) {
         auto str = std::move(_json_reader.force_get<luisa::string>());

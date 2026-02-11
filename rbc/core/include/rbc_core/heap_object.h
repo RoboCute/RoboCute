@@ -1,7 +1,7 @@
 #pragma once
 #include <luisa/core/spin_mutex.h>
 #include <rbc_config.h>
-#include <rbc_core/serde.h>
+#include <rbc_core/class_serializer.h>
 namespace rbc {
 struct HeapObjectMeta {
     uint64_t size{};
@@ -10,8 +10,8 @@ struct HeapObjectMeta {
     vstd::func_ptr_t<void(void *dst, void *src)> copy_ctor{};
     vstd::func_ptr_t<void(void *dst, void *src)> move_ctor{};
     vstd::func_ptr_t<void(void *src)> deleter{};
-    vstd::func_ptr_t<void(void const *src, JsonSerializer *)> json_writer{};
-    vstd::func_ptr_t<void(void *src, JsonDeSerializer *)> json_reader{};
+    vstd::func_ptr_t<void(void const *src, ::rbc::JsonSerializer *)> json_writer{};
+    vstd::func_ptr_t<void(void *src, ::rbc::JsonDeSerializer *)> json_reader{};
     bool is_trivial_constructible : 1 {false};
     bool is_trivial_copyable : 1 {false};
     bool is_trivial_movable : 1 {false};
@@ -45,24 +45,12 @@ struct HeapObjectMeta {
                 std::destroy_at(static_cast<T *>(ptr));
             };
         }
-        if constexpr (requires { std::declval<T const>().rbc_objser(lvalue_declval<JsonSerializer>()); }) {
-            json_writer = +[](void const *src, JsonSerializer *json_writer) {
-                static_cast<T const *>(src)->rbc_objser(*json_writer);
-            };
-        } else if constexpr (requires { std::declval<JsonSerializer>()._store(std::declval<T>()); }) {
-            json_writer = +[](void const *src, JsonSerializer *json_writer) {
-                json_writer->_store(*static_cast<T const *>(src));
-            };
+        ClassSerializer::SerdeFuncs serde_funcs;
+        if constexpr (concepts::RTTIType<T>) {
+            serde_funcs = ClassSerializer::template get_serde_funcs<T>();
         }
-        if constexpr (requires { lvalue_declval<T>().rbc_objdeser(lvalue_declval<JsonDeSerializer>()); }) {
-            json_reader = +[](void *src, JsonDeSerializer *json_reader) {
-                static_cast<T *>(src)->rbc_objdeser(*json_reader);
-            };
-        } else if constexpr (requires { std::declval<JsonDeSerializer>()._load(lvalue_declval<T>()); }) {
-            json_reader = +[](void *src, JsonDeSerializer *json_reader) {
-                json_reader->_load(*static_cast<T *>(src));
-            };
-        }
+        json_writer = serde_funcs.rbc_objser;
+        json_reader = serde_funcs.rbc_objdeser;
     }
     template<typename T>
     static HeapObjectMeta create() {

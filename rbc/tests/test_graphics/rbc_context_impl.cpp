@@ -22,6 +22,8 @@
 #include <luisa/gui/window.h>
 #include <rbc_core/runtime_static.h>
 #include <rbc_world/entity.h>
+#include <rbc_world/resources/mesh.h>
+#include <rbc_world/resources/texture.h>
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/camera_component.h>
 #include <rbc_plugin/plugin_manager.h>
@@ -29,6 +31,7 @@
 #include <rbc_graphics/camera.h>
 #include <rbc_render/renderer_data.h>
 #include <rbc_app/camera_controller.h>
+#include <luisa/runtime/buffer.h>
 using namespace luisa;
 using namespace luisa::compute;
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);// implemented save_image.cpp
@@ -286,6 +289,52 @@ void RBCContext::disable_camera_control(void *this_) {
     }
     c.clear_window_event();
     c.cam_controller.reset();
+}
+
+void RBCContext::upload_texture_data(void *this_, void *tex) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    auto *tex_res = static_cast<world::TextureResource *>(tex);
+    auto *device_img = tex_res->get_image();
+    if (!device_img) [[unlikely]] {
+        if (tex_res->is_vt()) {
+            LUISA_ERROR("Uploading to virtual-texture.");
+        } else {
+            LUISA_ERROR("Uploading to texture not created or installed.");
+        }
+    }
+    c.utils->update_texture(device_img, ~0u);// Update all mip levels
+}
+
+void RBCContext::upload_mesh_data(void *this_, void *mesh) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    auto *mesh_res = static_cast<world::MeshResource *>(mesh);
+
+    auto *device_mesh = mesh_res->device_mesh();
+    if (!device_mesh) [[unlikely]] {
+        if (mesh_res->is_transforming_mesh()) {
+            LUISA_ERROR("Uploading to skinning-mesh.");
+        } else {
+            LUISA_ERROR("Uploading to mesh not created or installed.");
+        }
+    }
+    c.utils->update_mesh_data(device_mesh, false);// Update all data, not just vertex
+}
+
+void RBCContext::update_skinning_mesh(void *this_, void *skinning_mesh, luisa::compute::BufferCreationInfoInterop dual_quaternion_buffer) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    auto *mesh_res = static_cast<world::MeshResource *>(skinning_mesh);
+    if (dual_quaternion_buffer.element_stride != sizeof(DualQuaternion)) [[unlikely]] {
+        LUISA_ERROR("Skinning buffer stride is not sizeof(DualQuaternion)");
+    }
+    auto elem_size = dual_quaternion_buffer.total_size_bytes / dual_quaternion_buffer.element_stride;
+    c.utils->update_skinning(
+        mesh_res,
+        luisa::compute::BufferView<DualQuaternion>{
+            (void *)dual_quaternion_buffer.native_handle,
+            dual_quaternion_buffer.handle,
+            dual_quaternion_buffer.element_stride,
+            0,
+            elem_size, elem_size});
 }
 
 void *RBCContext::_create_() {

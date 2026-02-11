@@ -22,6 +22,7 @@ from rbc_meta.utils.templates import (
     CPP_IMPL_TEMPLATE,
     CPP_STRUCT_SER_IMPL_TEMPLATE,
     CPP_STRUCT_DESER_IMPL_TEMPLATE,
+    CPP_STRUCT_REGIST_TEMPLATE,
     CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE,
     CPP_RPC_ARG_STRUCT_TEMPLATE,
     CPP_RPC_ARG_MEMBER_TEMPLATE,
@@ -826,9 +827,14 @@ def cpp_impl_gen(module_filter: List[str] = [], *extra_includes) -> str:
                 LOAD_STMTS=load_stmts,
                 NAMESPACE_NAME=namespace_name,
             )
+            regist_impl = CPP_STRUCT_REGIST_TEMPLATE.substitute(
+                NAMESPACE_NAME=namespace_name,
+                CLASS_NAME=class_name,
+            )
 
             struct_impls_list.append(ser_impl)
             struct_impls_list.append(deser_impl)
+            struct_impls_list.append(regist_impl)
 
         # RPC serializer
         rpc_serializer = _print_rpc_serializer(info, registry)
@@ -1434,9 +1440,15 @@ def pybind_codegen(
                     LOAD_STMTS=load_stmts,
                     NAMESPACE_NAME=namespace_expr,
                 )
+                
+                regist_impl = CPP_STRUCT_REGIST_TEMPLATE.substitute(
+                    NAMESPACE_NAME=namespace_expr,
+                    CLASS_NAME=class_name,
+                )
 
                 struct_impls_list.append(ser_impl)
                 struct_impls_list.append(deser_impl)
+                struct_impls_list.append(regist_impl)
 
             rpc_serializer = _print_rpc_serializer(info, registry)
             if rpc_serializer:
