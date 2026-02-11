@@ -1,14 +1,3 @@
-target('test_graphics_scene')
-set_kind('phony')
-add_rules('lc_install_sdk', {
-    sdk_dir = 'build/download',
-    libnames = {
-        name = 'test_scene_v1.0.1.7z',
-        address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/',
-    }
-})
-target_end()
-
 local targets = {
     test_graphics = false,
     test_graphics_bin = true
@@ -52,7 +41,6 @@ for target_name, is_standalone in pairs(targets) do
             end
             target:add('deps', 'Jolt', 'stb-image')
             target:add('deps', 'rbc_render_plugin', 'lc-gui', 'compile_shaders', 'rbc_project_plugin')
-            target:add('deps', 'test_graphics_scene', {inherit = false})
             target:add('defines', 'TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
         end)
     end
