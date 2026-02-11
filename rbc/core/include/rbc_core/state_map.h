@@ -23,7 +23,8 @@ protected:
 
     vstd::HashMap<rbc::TypeInfo, HeapObject> _map;
     mutable luisa::spin_mutex _map_mtx;
-    vstd::optional<JsonDeSerializer> _json_reader;
+    mutable luisa::spin_mutex _deser_mtx;
+    vstd::variant<JsonDeSerializer, luisa::string> _json_reader;
     void _deser(TypeInfo const &type_info, HeapObject &heap_obj);
     static void _log_err_no_copy(luisa::string_view name);
 public:

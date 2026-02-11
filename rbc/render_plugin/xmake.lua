@@ -9,7 +9,7 @@ local function rbc_render_impl()
     })
     rbc_set_pch('src/zz_pch.h')
     add_deps('rbc_runtime')
-    add_deps("compile_shaders_hostgen", {
+    add_deps('compile_shaders_hostgen', {
         inherit = false
     })
     add_deps('oidn_plugin', {
@@ -23,6 +23,9 @@ local function rbc_render_impl()
         links = false
     })
     add_files('src/**.cpp')
+    -- bin 2 obj
+    add_rules('utils.bin2obj', {extensions = {'.json'}})
+    add_files('src/render_settings.json')
 end
 
 interface_target('rbc_render_plugin', rbc_render_interface, rbc_render_impl, true)

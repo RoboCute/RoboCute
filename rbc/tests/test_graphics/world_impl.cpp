@@ -944,4 +944,784 @@ void DataComponent::clear_resources(void *this_) {
     c->clear_resources();
 }
 
+struct RenderSettingsImpl : RCBase {
+    StateMap *map{};
+};
+
+// ========== SkySettings Getters/Setters ==========
+float RenderSettings::get_sky_angle(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    return settings ? settings->sky_angle : 0.0f;
+}
+void RenderSettings::set_sky_angle(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    LUISA_ASSERT(settings, "Sky settings not found.");
+    settings->sky_angle = value;
+}
+float RenderSettings::get_sky_max_lum(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    return settings ? settings->sky_max_lum : 65535.0f;
+}
+void RenderSettings::set_sky_max_lum(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    LUISA_ASSERT(settings, "Sky settings not found.");
+    settings->sky_max_lum = value;
+}
+luisa::float3 RenderSettings::get_sky_color(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    return settings ? settings->sky_color : luisa::float3{1.0f, 1.0f, 1.0f};
+}
+void RenderSettings::set_sky_color(void *this_, luisa::float3 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    LUISA_ASSERT(settings, "Sky settings not found.");
+    settings->sky_color = value;
+}
+luisa::float3 RenderSettings::get_sun_color(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    return settings ? settings->sun_color : luisa::float3{1.0f, 1.0f, 1.0f};
+}
+void RenderSettings::set_sun_color(void *this_, luisa::float3 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    LUISA_ASSERT(settings, "Sky settings not found.");
+    settings->sun_color = value;
+}
+luisa::float3 RenderSettings::get_sun_dir(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    return settings ? settings->sun_dir : luisa::float3{0.0f, -1.0f, 0.0f};
+}
+void RenderSettings::set_sun_dir(void *this_, luisa::float3 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    LUISA_ASSERT(settings, "Sky settings not found.");
+    settings->sun_dir = value;
+}
+float RenderSettings::get_sun_intensity(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    return settings ? settings->sun_intensity : 0.0f;
+}
+void RenderSettings::set_sun_intensity(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    LUISA_ASSERT(settings, "Sky settings not found.");
+    settings->sun_intensity = value;
+}
+float RenderSettings::get_sun_angle(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    return settings ? settings->sun_angle : 0.5f;
+}
+void RenderSettings::set_sun_angle(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<SkySettings>();
+    LUISA_ASSERT(settings, "Sky settings not found.");
+    settings->sun_angle = value;
+}
+
+// ========== DisplaySettings Getters/Setters ==========
+bool RenderSettings::get_use_linear_sdr(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    return settings ? settings->use_linear_sdr : true;
+}
+void RenderSettings::set_use_linear_sdr(void *this_, bool value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    LUISA_ASSERT(settings, "Display settings not found.");
+    settings->use_linear_sdr = value;
+}
+bool RenderSettings::get_use_hdr_display(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    return settings ? settings->use_hdr_display : false;
+}
+void RenderSettings::set_use_hdr_display(void *this_, bool value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    LUISA_ASSERT(settings, "Display settings not found.");
+    settings->use_hdr_display = value;
+}
+bool RenderSettings::get_use_hdr_10(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    return settings ? settings->use_hdr_10 : false;
+}
+void RenderSettings::set_use_hdr_10(void *this_, bool value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    LUISA_ASSERT(settings, "Display settings not found.");
+    settings->use_hdr_10 = value;
+}
+float RenderSettings::get_gamma(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    return settings ? settings->gamma : 2.2f;
+}
+void RenderSettings::set_gamma(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    LUISA_ASSERT(settings, "Display settings not found.");
+    settings->gamma = value;
+}
+float RenderSettings::get_chromatic_aberration(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    return settings ? settings->chromatic_aberration : 0.001f;
+}
+void RenderSettings::set_chromatic_aberration(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    LUISA_ASSERT(settings, "Display settings not found.");
+    settings->chromatic_aberration = value;
+}
+
+// ========== ExposureSettings Getters/Setters ==========
+bool RenderSettings::get_use_auto_exposure(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    return settings ? settings->use_auto_exposure : true;
+}
+void RenderSettings::set_use_auto_exposure(void *this_, bool value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    LUISA_ASSERT(settings, "Exposure settings not found.");
+    settings->use_auto_exposure = value;
+}
+luisa::float2 RenderSettings::get_filtering(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    return settings ? settings->filtering : luisa::float2{1.0f, 95.0f};
+}
+void RenderSettings::set_filtering(void *this_, luisa::float2 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    LUISA_ASSERT(settings, "Exposure settings not found.");
+    settings->filtering = value;
+}
+float RenderSettings::get_min_luminance(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    return settings ? settings->minLuminance : -9.0f;
+}
+void RenderSettings::set_min_luminance(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    LUISA_ASSERT(settings, "Exposure settings not found.");
+    settings->minLuminance = value;
+}
+float RenderSettings::get_max_luminance(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    return settings ? settings->maxLuminance : 9.0f;
+}
+void RenderSettings::set_max_luminance(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    LUISA_ASSERT(settings, "Exposure settings not found.");
+    settings->maxLuminance = value;
+}
+float RenderSettings::get_global_exposure(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    return settings ? settings->globalExposure : 0.5f;
+}
+void RenderSettings::set_global_exposure(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ExposureSettings>();
+    LUISA_ASSERT(settings, "Exposure settings not found.");
+    settings->globalExposure = value;
+}
+
+// ========== PathTracerSettings Getters/Setters ==========
+uint32_t RenderSettings::get_offline_spp(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->offline_spp : 1;
+}
+void RenderSettings::set_offline_spp(void *this_, uint32_t value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    LUISA_ASSERT(settings, "PathTracer settings not found.");
+    settings->offline_spp = value;
+}
+uint32_t RenderSettings::get_offline_origin_bounce(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->offline_origin_bounce : 2;
+}
+void RenderSettings::set_offline_origin_bounce(void *this_, uint32_t value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    LUISA_ASSERT(settings, "PathTracer settings not found.");
+    settings->offline_origin_bounce = value;
+}
+uint32_t RenderSettings::get_offline_indirect_bounce(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->offline_indirect_bounce : 4;
+}
+void RenderSettings::set_offline_indirect_bounce(void *this_, uint32_t value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    LUISA_ASSERT(settings, "PathTracer settings not found.");
+    settings->offline_indirect_bounce = value;
+}
+bool RenderSettings::get_denoise(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->denoise : true;
+}
+void RenderSettings::set_denoise(void *this_, bool value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    LUISA_ASSERT(settings, "PathTracer settings not found.");
+    settings->denoise = value;
+}
+
+// ========== DistortionSettings Getters/Setters ==========
+float RenderSettings::get_distortion_scale(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DistortionSettings>();
+    return settings ? settings->scale : 1.0f;
+}
+void RenderSettings::set_distortion_scale(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DistortionSettings>();
+    LUISA_ASSERT(settings, "Distortion settings not found.");
+    settings->scale = value;
+}
+float RenderSettings::get_distortion_intensity(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DistortionSettings>();
+    return settings ? settings->intensity : 0.0f;
+}
+void RenderSettings::set_distortion_intensity(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DistortionSettings>();
+    LUISA_ASSERT(settings, "Distortion settings not found.");
+    settings->intensity = value;
+}
+luisa::float2 RenderSettings::get_distortion_intensity_multiplier(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DistortionSettings>();
+    return settings ? settings->intensity_multiplier : luisa::float2{1.0f, 1.0f};
+}
+void RenderSettings::set_distortion_intensity_multiplier(void *this_, luisa::float2 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DistortionSettings>();
+    LUISA_ASSERT(settings, "Distortion settings not found.");
+    settings->intensity_multiplier = value;
+}
+luisa::float2 RenderSettings::get_distortion_center(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DistortionSettings>();
+    return settings ? settings->center : luisa::float2{0.0f, 0.0f};
+}
+void RenderSettings::set_distortion_center(void *this_, luisa::float2 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DistortionSettings>();
+    LUISA_ASSERT(settings, "Distortion settings not found.");
+    settings->center = value;
+}
+
+// ========== ToneMappingSettings - LPM Getters/Setters ==========
+bool RenderSettings::get_lpm_shoulder(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.shoulder : true;
+}
+void RenderSettings::set_lpm_shoulder(void *this_, bool value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.shoulder = value;
+}
+float RenderSettings::get_lpm_soft_gap(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.softGap : 0.0f;
+}
+void RenderSettings::set_lpm_soft_gap(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.softGap = value;
+}
+float RenderSettings::get_lpm_hdr_max(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.hdrMax : 1847.0f;
+}
+void RenderSettings::set_lpm_hdr_max(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.hdrMax = value;
+}
+float RenderSettings::get_lpm_exposure(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.lpmExposure : 10.0f;
+}
+void RenderSettings::set_lpm_exposure(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.lpmExposure = value;
+}
+float RenderSettings::get_lpm_contrast(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.contrast : 0.0f;
+}
+void RenderSettings::set_lpm_contrast(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.contrast = value;
+}
+float RenderSettings::get_lpm_shoulder_contrast(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.shoulderContrast : 1.0f;
+}
+void RenderSettings::set_lpm_shoulder_contrast(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.shoulderContrast = value;
+}
+luisa::float3 RenderSettings::get_lpm_saturation(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.saturation : luisa::float3{0.0f, 0.0f, 0.0f};
+}
+void RenderSettings::set_lpm_saturation(void *this_, luisa::float3 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.saturation = value;
+}
+luisa::float3 RenderSettings::get_lpm_crosstalk(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.crosstalk : luisa::float3{1.0f, 1.0f, 1.0f};
+}
+void RenderSettings::set_lpm_crosstalk(void *this_, luisa::float3 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.crosstalk = value;
+}
+float RenderSettings::get_lpm_display_min_luminance(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.displayMinLuminance : 0.001f;
+}
+void RenderSettings::set_lpm_display_min_luminance(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.displayMinLuminance = value;
+}
+float RenderSettings::get_lpm_display_max_luminance(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->lpm.displayMaxLuminance : 1000.0f;
+}
+void RenderSettings::set_lpm_display_max_luminance(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->lpm.displayMaxLuminance = value;
+}
+
+// ========== ToneMappingSettings - ACES Getters/Setters ==========
+float RenderSettings::get_aces_temperature(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.temperature : 6500.0f;
+}
+void RenderSettings::set_aces_temperature(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.temperature = value;
+}
+float RenderSettings::get_aces_tint(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.tint : 0.0f;
+}
+void RenderSettings::set_aces_tint(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.tint = value;
+}
+bool RenderSettings::get_aces_use_white_balance_mode(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.use_white_balance_mode : false;
+}
+void RenderSettings::set_aces_use_white_balance_mode(void *this_, bool value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.use_white_balance_mode = value;
+}
+float RenderSettings::get_aces_hue_shift(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.hueShift : 0.0f;
+}
+void RenderSettings::set_aces_hue_shift(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.hueShift = value;
+}
+float RenderSettings::get_aces_saturation(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.saturation : 0.0f;
+}
+void RenderSettings::set_aces_saturation(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.saturation = value;
+}
+float RenderSettings::get_aces_contrast(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.contrast : 0.0f;
+}
+void RenderSettings::set_aces_contrast(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.contrast = value;
+}
+float RenderSettings::get_aces_mixer_red_out_red_in(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.mixerRedOutRedIn : 100.0f;
+}
+void RenderSettings::set_aces_mixer_red_out_red_in(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.mixerRedOutRedIn = value;
+}
+float RenderSettings::get_aces_mixer_red_out_green_in(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.mixerRedOutGreenIn : 0.0f;
+}
+void RenderSettings::set_aces_mixer_red_out_green_in(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.mixerRedOutGreenIn = value;
+}
+float RenderSettings::get_aces_mixer_red_out_blue_in(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.mixerRedOutBlueIn : 0.0f;
+}
+void RenderSettings::set_aces_mixer_red_out_blue_in(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.mixerRedOutBlueIn = value;
+}
+float RenderSettings::get_aces_mixer_green_out_red_in(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.mixerGreenOutRedIn : 0.0f;
+}
+void RenderSettings::set_aces_mixer_green_out_red_in(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.mixerGreenOutRedIn = value;
+}
+float RenderSettings::get_aces_mixer_green_out_green_in(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.mixerGreenOutGreenIn : 100.0f;
+}
+void RenderSettings::set_aces_mixer_green_out_green_in(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.mixerGreenOutGreenIn = value;
+}
+float RenderSettings::get_aces_mixer_green_out_blue_in(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.mixerGreenOutBlueIn : 0.0f;
+}
+void RenderSettings::set_aces_mixer_green_out_blue_in(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.mixerGreenOutBlueIn = value;
+}
+float RenderSettings::get_aces_mixer_blue_out_red_in(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.mixerBlueOutRedIn : 0.0f;
+}
+void RenderSettings::set_aces_mixer_blue_out_red_in(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.mixerBlueOutRedIn = value;
+}
+float RenderSettings::get_aces_mixer_blue_out_green_in(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.mixerBlueOutGreenIn : 0.0f;
+}
+void RenderSettings::set_aces_mixer_blue_out_green_in(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.mixerBlueOutGreenIn = value;
+}
+float RenderSettings::get_aces_mixer_blue_out_blue_in(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.mixerBlueOutBlueIn : 100.0f;
+}
+void RenderSettings::set_aces_mixer_blue_out_blue_in(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.mixerBlueOutBlueIn = value;
+}
+luisa::float4 RenderSettings::get_aces_lift(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.lift : luisa::float4{1.0f, 1.0f, 1.0f, 0.0f};
+}
+void RenderSettings::set_aces_lift(void *this_, luisa::float4 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.lift = value;
+}
+luisa::float4 RenderSettings::get_aces_gamma(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.gamma : luisa::float4{1.0f, 1.0f, 1.0f, 0.0f};
+}
+void RenderSettings::set_aces_gamma(void *this_, luisa::float4 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.gamma = value;
+}
+luisa::float4 RenderSettings::get_aces_gain(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.gain : luisa::float4{1.0f, 1.0f, 1.0f, 0.0f};
+}
+void RenderSettings::set_aces_gain(void *this_, luisa::float4 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.gain = value;
+}
+luisa::float4 RenderSettings::get_aces_color_filter(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.colorFilter : luisa::float4{1.0f, 1.0f, 1.0f, 1.0f};
+}
+void RenderSettings::set_aces_color_filter(void *this_, luisa::float4 value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.colorFilter = value;
+}
+float RenderSettings::get_aces_hdr_display_multiplier(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.tone_mapping.hdr_display_multiplier : 5.0f;
+}
+void RenderSettings::set_aces_hdr_display_multiplier(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.tone_mapping.hdr_display_multiplier = value;
+}
+float RenderSettings::get_aces_hdr_paper_white(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    return settings ? settings->aces.tone_mapping.hdr_paper_white : 80.0f;
+}
+void RenderSettings::set_aces_hdr_paper_white(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<ToneMappingSettings>();
+    LUISA_ASSERT(settings, "ToneMapping settings not found.");
+    settings->aces.tone_mapping.hdr_paper_white = value;
+}
+
+luisa::string RenderSettings::serialize_to_json(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto blob = impl->map->serialize_to_json();
+    if (!blob.data()) {
+        return {};
+    }
+    return luisa::string{(char const *)blob.data(), blob.size()};
+}
+
+void RenderSettings::deserialize_from_json(void *this_, luisa::string_view json) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    impl->map->init_json(json);
+}
+
+void *RenderSettings::_create_() {
+    auto ptr = new RenderSettingsImpl{};
+    manually_add_ref(ptr);
+    return ptr;
+}
+
+void *CameraComponent::render_settings(void *this_) {
+    auto cam = static_cast<world::CameraComponent *>(this_);
+    auto render_settings = cam->render_pipe_ctx();
+    auto graphics = GraphicsUtils::instance();
+    if (!graphics) [[unlikely]] {
+        LUISA_ERROR("GraphicsUtils not initialized.");
+    }
+    auto &map = graphics->render_settings((RenderPlugin::PipeCtxStub *)render_settings);
+    auto settings = static_cast<RenderSettingsImpl *>(RenderSettings::_create_());
+    settings->map = &map;
+    return settings;
+}
 }// namespace rbc

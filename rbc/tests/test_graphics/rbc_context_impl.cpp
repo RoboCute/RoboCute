@@ -288,34 +288,6 @@ void RBCContext::disable_camera_control(void *this_) {
     c.cam_controller.reset();
 }
 
-luisa::string RBCContext::get_render_settings(void *this_) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    if (!c.display_cam_entity) [[unlikely]] {
-        LUISA_ERROR("Display camera not initialized.");
-    }
-    auto cam_comp = c.display_cam_entity->get_component<world::CameraComponent>();
-    if (!cam_comp) [[unlikely]] {
-        LUISA_ERROR("Display camera component not found.");
-    }
-    auto &render_settings = c.utils->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(cam_comp->render_pipe_ctx()));
-    auto blob = render_settings.serialize_to_json();
-    return luisa::string{reinterpret_cast<const char *>(blob.data()), blob.size()};
-}
-
-void RBCContext::set_render_settings(void *this_, luisa::string_view json) {
-    auto &c = *static_cast<ContextImpl *>(this_);
-    if (!c.display_cam_entity) [[unlikely]] {
-        LUISA_ERROR("Display camera not initialized.");
-    }
-    auto cam_comp = c.display_cam_entity->get_component<world::CameraComponent>();
-    if (!cam_comp) [[unlikely]] {
-        LUISA_ERROR("Display camera component not found.");
-    }
-    auto &render_settings = c.utils->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(cam_comp->render_pipe_ctx()));
-    // TODO init_json is wrong here
-    render_settings.init_json(json);
-}
-
 void *RBCContext::_create_() {
     LUISA_ASSERT(!_ctx_inst);
     rbc::RuntimeStaticBase::init_all();

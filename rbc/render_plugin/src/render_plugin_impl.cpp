@@ -17,6 +17,12 @@ struct DenoiserStream {
         : denoiser(std::move(denoiser)) {
     }
 };
+#define BIN_2_OBJ_DECLARE(VAR_NAME)                        \
+    extern "C" const uint8_t _binary_##VAR_NAME##_start[]; \
+    extern "C" const uint8_t _binary_##VAR_NAME##_end[];
+#define BIN_2_OBJ_SPAN(VAR_NAME) luisa::span<uint8_t const>(_binary_##VAR_NAME##_start, size_t(_binary_##VAR_NAME##_end - _binary_##VAR_NAME##_start))
+
+BIN_2_OBJ_DECLARE(render_settings_json)
 
 struct RenderPluginImpl : RenderPlugin, RBCStruct {
     ////////////////////////////////////////  HDRI
@@ -45,6 +51,8 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             RenderDevice::instance().lc_main_stream(),
             SceneManager::instance(),
             RenderDevice::instance().lc_main_cmd_list()};
+        auto default_settings = BIN_2_OBJ_SPAN(render_settings_json);
+        ctx->pipeline_settings.init_json(luisa::string_view((char const *)default_settings.data(), default_settings.size()));
         return reinterpret_cast<PipeCtxStub *>(ctx);
     }
     StateMap *pipe_ctx_state_map(PipeCtxStub *ctx) override {
