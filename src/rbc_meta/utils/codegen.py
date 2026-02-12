@@ -58,7 +58,6 @@ from rbc_meta.utils.templates import (
 
 _PYBIND_SPECUAL_ARG = {
     "luisa::span<std::byte>": "to_span_5d4636ab",
-    "luisa::function<void()> const&": "to_cppfunc_5d4636ab",
     "py::memoryview": "to_memoryview_5d4636ab",
     "GuidData": "GuidData"
 }
@@ -68,7 +67,6 @@ from rbc_meta.utils.codegen_util import (
     _print_str,
     _print_guid,
     _print_data_buffer,
-    _print_callback,
 )
 from rbc_meta.utils.builtin import (
     Pointer,
@@ -140,7 +138,11 @@ def _get_cpp_type(
             and hasattr(origin, "_is_container")
             and origin._is_container
         ):
-            cpp_name = origin._cpp_type_name
+            if origin._cpp_type_name is not None and callable(origin._cpp_type_name):
+                cpp_name = origin._cpp_type_name(py_interface, is_view)
+            else:
+                cpp_name = origin._cpp_type_name
+                
             if hasattr(origin, "_pybind_cpp_name") and not is_view:
                 cpp_name = origin._pybind_cpp_name
 
@@ -171,14 +173,20 @@ def _get_cpp_type(
     if hasattr(type_hint, "_cpp_type_name"):
         if info is not None and info.is_enum:
             # if enum, directly return
-            return type_hint._cpp_type_name
+            if type_hint._cpp_type_name is not None and callable(type_hint._cpp_type_name):
+                return type_hint._cpp_type_name(py_interface, is_view)
+            else:
+                return type_hint._cpp_type_name
         elif (
             hasattr(type_hint, "_pybind_type_") and type_hint._pybind_type_
             # and py_interface
         ):
             return "void*"
         else:
-            return type_hint._cpp_type_name
+            if type_hint._cpp_type_name is not None and callable(type_hint._cpp_type_name):
+                return type_hint._cpp_type_name(py_interface, is_view)
+            else:
+                return type_hint._cpp_type_name
 
     if type_hint is bool:
         return "bool"
@@ -333,7 +341,11 @@ def _print_py_args(
                 else None,
                 registry,
             )
-            arg_parse = _PYBIND_SPECUAL_ARG.get(type_name)
+            arg_parse = None
+            if hasattr(param.annotation, '_cpp_arg_call'):
+                arg_parse = param.annotation._cpp_arg_call
+            if arg_parse is None:
+                arg_parse = _PYBIND_SPECUAL_ARG.get(type_name)
             if arg_parse:
                 arg_open = arg_parse + "("
                 arg_close = ")"

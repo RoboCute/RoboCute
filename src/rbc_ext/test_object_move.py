@@ -100,7 +100,7 @@ def main():
     
     last_time = time.time()
     frame_index = 0
-    tick_stage = TickStage.PathTracingPreview
+    tick_stage = TickStage.RasterPreview
     
     # 创建立方体实体
     entity = make_cube_mesh(scene)

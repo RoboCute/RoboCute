@@ -65,12 +65,19 @@ Entity::~Entity() {
     for (auto &i : _components) {
         auto &comp = i.second;
         LUISA_DEBUG_ASSERT(comp->entity() == this || comp->entity() == nullptr);
-        if (comp->entity())
-            comp->on_destroy();
+        comp->_call_on_destroy();
     }
     for (auto &i : _components) {
         i.second->_entity = nullptr;
     }
+}
+void Component::_call_on_awake() {
+    if (!_enabled.exchange(true)) [[likely]]
+        on_awake();
+}
+void Component::_call_on_destroy() {
+    if (_enabled.exchange(false)) [[likely]]
+        on_destroy();
 }
 void Entity::_add_component(Component *component) {
     component->remove_self_from_entity();
@@ -79,7 +86,7 @@ void Entity::_add_component(Component *component) {
         LUISA_ERROR("Component already exists.");
     LUISA_DEBUG_ASSERT(component->entity() == nullptr);
     component->_entity = this;
-    component->on_awake();
+    component->_call_on_awake();
 }
 
 bool Entity::remove_component(MD5 const &type_md5) {
@@ -114,20 +121,6 @@ void Entity::serialize_meta(ObjSerialize const &ser) const {
         ser.ar.end_object();
     }
     ser.ar.end_array("components");
-    if (!_data.empty()) {
-        ser.ar.start_array();
-        for (auto &i : _data) {
-            ser.ar.add(luisa::string_view{i.first});
-            i.second.visit([&]<typename T>(T const &t) {
-                if constexpr (std::is_same_v<T, luisa::string>) {
-                    ser.ar.add(luisa::string_view{t});
-                } else {
-                    ser.ar.add(t);
-                }
-            });
-        }
-        ser.ar.end_array("data");
-    }
     if (!_name.empty())
         ser.ar.add(_name, "name");
 }
@@ -136,23 +129,6 @@ void Entity::deserialize_meta(ObjDeSerialize const &ser) {
     if (!ser.ar.read(_name, "name")) {
         _name.clear();
     }
-    [&]() {
-        if (!ser.ar.start_array(size, "data")) return;
-        auto d = vstd::scope_exit([&] {
-            ser.ar.end_scope();
-        });
-        if ((size & 1) != 0) {
-            return;
-        }
-        _data.reserve(size / 2);
-        for (auto i : vstd::range(size / 2)) {
-            luisa::string key;
-            BasicDeserDataType value;
-            if (!ser.ar.read(key)) break;
-            if (!ser.ar.read(value)) break;
-            _data.try_emplace(std::move(key), std::move(value));
-        }
-    }();
 
     if (!ser.ar.start_array(size, "components")) return;
     _components.reserve(size);
@@ -178,7 +154,7 @@ void Entity::deserialize_meta(ObjDeSerialize const &ser) {
 }
 void Entity::unsafe_call_awake() {
     for (auto &i : _components) {
-        i.second->on_awake();
+        i.second->_call_on_awake();
     }
 }
 void Entity::unsafe_call_update() {
@@ -203,7 +179,7 @@ void Component::remove_self_from_entity() {
 void Component::_clear_entity() {
     if (!_entity) [[unlikely]]
         return;
-    on_destroy();
+    _call_on_destroy();
     _entity = nullptr;
 }
 void Entity::set_name(luisa::string name) {
@@ -214,16 +190,6 @@ void Entity::set_name(luisa::string name) {
 }
 Component::Component() = default;
 Component::~Component() {
-}
-BasicDeserDataType Entity::get_data(luisa::string_view name) const {
-    auto iter = _data.find(name);
-    if (iter != _data.end()) {
-        return iter->second;
-    }
-    return {};
-}
-void Entity::set_data(luisa::string_view name, BasicDeserDataType &&data) {
-    _data.force_emplace(name, std::move(data));
 }
 DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world

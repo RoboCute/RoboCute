@@ -89,13 +89,6 @@ class DataBuffer:
     _py_type_name = ""
 
 
-class Callback:
-    __slot__ = {}
-    _reflected_ = True
-    _cpp_type_name = "luisa::function<void()>"
-    _py_type_name = ""
-
-
 class float4:
     _reflected_ = True
     _cpp_type_name = "luisa::float4"

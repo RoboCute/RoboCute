@@ -780,7 +780,7 @@ void CameraComponent::set_frame_index(void *this_, uint64_t frame_index) {
 }
 
 struct BasicDataImpl : RCBase {
-    rbc::BasicDeserDataType data;
+    rbc::world::DataComponent::DataType data;
 };
 void *BasicData::_create_() {
     auto ptr = new BasicDataImpl();
@@ -825,6 +825,20 @@ void BasicData::set_int(void *this_, int64_t v) {
 void BasicData::set_string(void *this_, luisa::string_view v) {
     basic_type_from_value(this_, luisa::string{v});
 }
+void *BasicData::get_resource(void *this_) {
+    auto impl = static_cast<BasicDataImpl *>(this_);
+    void *res = nullptr;
+    impl->data.visit([&]<typename T>(T const &t) {
+        if constexpr (std::is_same_v<T, RC<world::Resource>>) {
+            res = t.get();
+        }
+    });
+    return res;
+}
+void BasicData::set_resource(void *this_, void *res) {
+    auto impl = static_cast<BasicDataImpl *>(this_);
+    impl->data.reset_as<RC<world::Resource>>(RC<world::Resource>{static_cast<world::Resource *>(res)});
+}
 luisa::string Entity::name(void *this_) {
     auto e = static_cast<world::Entity *>(this_);
     return luisa::string{e->name()};
@@ -836,16 +850,6 @@ void Entity::dispose(void *this_) {
 void Entity::set_name(void *this_, luisa::string_view name) {
     auto e = static_cast<world::Entity *>(this_);
     e->set_name(luisa::string{name});
-}
-void *Entity::get_data(void *this_, luisa::string_view name) {
-    auto ptr = BasicData::_create_();
-    auto e = static_cast<world::Entity *>(this_);
-    static_cast<BasicDataImpl *>(ptr)->data = e->get_data(name);
-    return ptr;
-}
-void Entity::set_data(void *this_, luisa::string_view name, void *data) {
-    auto e = static_cast<world::Entity *>(this_);
-    e->set_data(luisa::string{name}, BasicDeserDataType{static_cast<BasicDataImpl *>(data)->data});
 }
 rbc::BasicDataType BasicData::type(void *this_) {
     return static_cast<rbc::BasicDataType>(static_cast<BasicDataImpl *>(this_)->data.index());
@@ -912,36 +916,6 @@ uint64_t DataComponent::info_count(void *this_) {
 void DataComponent::clear_infos(void *this_) {
     auto c = static_cast<world::DataComponent *>(this_);
     c->clear_infos();
-}
-void *DataComponent::get_resource(void *this_, vstd::Guid const &guid) {
-    auto c = static_cast<world::DataComponent *>(this_);
-    auto res = c->get_resource(guid);
-    if (!res) {
-        return nullptr;
-    }
-    manually_add_ref(res.get());
-    return res.get();
-}
-void DataComponent::set_resource(void *this_, void *resource) {
-    auto c = static_cast<world::DataComponent *>(this_);
-    auto res = static_cast<world::Resource *>(resource);
-    c->set_resource(RC<world::Resource>{res});
-}
-bool DataComponent::has_resource(void *this_, vstd::Guid const &guid) {
-    auto c = static_cast<world::DataComponent *>(this_);
-    return c->has_resource(guid);
-}
-void DataComponent::remove_resource(void *this_, vstd::Guid const &guid) {
-    auto c = static_cast<world::DataComponent *>(this_);
-    c->remove_resource(guid);
-}
-uint64_t DataComponent::resource_count(void *this_) {
-    auto c = static_cast<world::DataComponent *>(this_);
-    return c->resource_count();
-}
-void DataComponent::clear_resources(void *this_) {
-    auto c = static_cast<world::DataComponent *>(this_);
-    c->clear_resources();
 }
 
 struct RenderSettingsImpl : RCBase {

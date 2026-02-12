@@ -32,6 +32,7 @@
 #include <rbc_render/renderer_data.h>
 #include <rbc_app/camera_controller.h>
 #include <luisa/runtime/buffer.h>
+#include <rbc_world/callback_serializer.h>
 using namespace luisa;
 using namespace luisa::compute;
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);// implemented save_image.cpp
@@ -336,7 +337,16 @@ void RBCContext::update_skinning_mesh(void *this_, void *skinning_mesh, luisa::c
             0,
             elem_size, elem_size});
 }
-
+void RBCContext::regist_callback(void *this_, luisa::string_view name, luisa::move_only_function<void(rbc::RCBase *)> &&callback) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    rbc::world::regist_callback(
+        name,
+        reinterpret_cast<luisa::move_only_function<void(void *)> &&>(callback));
+}
+void RBCContext::unregist_callback(void *this_, luisa::string_view name) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    rbc::world::unregist_callback(name);
+}
 void *RBCContext::_create_() {
     LUISA_ASSERT(!_ctx_inst);
     rbc::RuntimeStaticBase::init_all();

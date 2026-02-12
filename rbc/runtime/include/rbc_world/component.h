@@ -17,11 +17,15 @@ struct RBC_RUNTIME_API Component : BaseObject {
     friend struct ComponentDerive;
 private:
     Entity *_entity{};
+    std::atomic_bool _enabled{false};
     Component();
     ~Component();
 
     void _clear_entity();
+    void _call_on_awake();
+    void _call_on_destroy();
 public:
+    bool enabled() const { return _enabled; }
     // should only be called internally
     void remove_self_from_entity();
     static void _zz_invoke_world_event(WorldEventType event_type);

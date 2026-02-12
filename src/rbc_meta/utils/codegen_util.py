@@ -66,13 +66,3 @@ def _print_data_buffer(t, py_interface: bool = False, is_view: bool = False) -> 
             return "py::memoryview"
     else:
         return "luisa::span<std::byte>"
-
-
-def _print_callback(t, py_interface: bool = False, is_view: bool = False) -> str:
-    if py_interface:
-        if is_view:
-            return "py::function const&"
-        else:
-            raise ImportError("callback from c++ not supported.")
-    else:
-        return "luisa::function<void()> const&"

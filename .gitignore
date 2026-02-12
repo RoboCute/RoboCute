@@ -131,3 +131,4 @@ rbc/shader/host
 
 site
 AGENTS.md
+*-agent.py

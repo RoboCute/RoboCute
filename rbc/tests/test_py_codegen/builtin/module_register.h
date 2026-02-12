@@ -16,8 +16,13 @@ public:
     void (*_callback)(py::module &);
     explicit ModuleRegister(void (*callback)(py::module &));
 };
-
-luisa::function<void()> to_cppfunc_5d4636ab(py::function const &f);
+template<typename... Args>
+luisa::move_only_function<void(Args...)> to_cppfunc_5d4636ab(py::function const &f) {
+    return [f](Args... args) {
+        py::gil_scoped_acquire acquire;
+        f(std::forward<Args>(args)...);
+    };
+}
 
 inline luisa::span<std::byte> to_span_5d4636ab(py::buffer const &b) {
     auto r = b.request();
