@@ -19,9 +19,11 @@ from rbc_meta.utils.templates import (
     CPP_STRUCT_METHOD_DECL_TEMPLATE,
     CPP_INTERFACE_TEMPLATE,
     CPP_IMPL_TEMPLATE,
+    CPP_STRUCT_REGIST_TEMPLATE,
     CPP_STRUCT_SER_IMPL_TEMPLATE,
     CPP_STRUCT_DESER_IMPL_TEMPLATE,
     CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE,
+    
     CPP_RPC_ARG_STRUCT_TEMPLATE,
     CPP_RPC_ARG_MEMBER_TEMPLATE,
     CPP_RPC_SER_STMT_TEMPLATE,
@@ -174,9 +176,14 @@ class CodegenResitry:
                     LOAD_STMTS=load_stmts,
                     NAMESPACE_NAME=namespace_name,
                 )
+                regist_impl = CPP_STRUCT_REGIST_TEMPLATE.substitute(
+                    NAMESPACE_NAME=namespace_name,
+                    CLASS_NAME=class_name,
+                )
 
                 struct_impls_list.append(ser_impl)
                 struct_impls_list.append(deser_impl)
+                struct_impls_list.append(regist_impl)
 
             # RPC serializer
             rpc_serializer = _print_rpc_serializer(info, reg)
