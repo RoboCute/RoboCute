@@ -16,11 +16,15 @@ public:
     void (*_callback)(py::module &);
     explicit ModuleRegister(void (*callback)(py::module &));
 };
+struct PtrInt64 {
+    uint64_t value;
+    PtrInt64(uint64_t value) : value(value) {}
+};
 template<typename... Args>
 luisa::move_only_function<void(Args...)> to_cppfunc_5d4636ab(py::function const &f) {
     return [f](Args... args) {
         py::gil_scoped_acquire acquire;
-        f(std::forward<Args>(args)...);
+        f(PtrInt64{reinterpret_cast<uint64_t>(std::forward<Args>(args))}...);
     };
 }
 

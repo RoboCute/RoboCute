@@ -103,7 +103,7 @@ def main():
     tick_stage = TickStage.RasterPreview
     
     # 创建立方体实体
-    entity = make_cube_mesh(scene)
+    entity = make_cube_mesh(scene, ctx)
     
     # 获取变换组件用于后续移动
     transform = TransformComponent(entity.get_component("TransformComponent"))
@@ -140,8 +140,10 @@ def main():
         ctx.tick(delta_time, tick_stage, True)
         frame_index = 0
 
-
-def make_cube_mesh(scene: Scene):
+def test_callback(handle):
+    print('callback')
+    
+def make_cube_mesh(scene: Scene, ctx: RBCContext):
     """
     创建一个立方体动态网格实体
 
@@ -165,6 +167,9 @@ def make_cube_mesh(scene: Scene):
     
     trans = TransformComponent(entity.add_component("TransformComponent"))
     render = RenderComponent(entity.add_component("RenderComponent"))
+    data = DataComponent(entity.add_component("DataComponent"))
+    ctx.regist_callback('test_callback', test_callback)
+    data.bind_event(DataComponentEventType.OnAwake, 'test_callback')
     
     # 设置初始位置
     trans.set_pos(double3(0, -1, 1), False)

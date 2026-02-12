@@ -890,6 +890,14 @@ void BufferResource::create_empty(void *this_, uint64_t size_bytes, bool create_
     c->create_empty(size_bytes, create_device_buffer);
 }
 // DataComponent implementation
+void DataComponent::bind_event(void *this_, rbc::DataComponentEventType event_type, luisa::string_view callback_name) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    c->bind_event(static_cast<world::DataComponent::EventType>(event_type), callback_name);
+}
+void DataComponent::unbind_event(void *this_, rbc::DataComponentEventType event_type) {
+    auto c = static_cast<world::DataComponent *>(this_);
+    c->unbind_event(static_cast<world::DataComponent::EventType>(event_type));
+}
 void *DataComponent::get_info(void *this_, luisa::string_view name) {
     auto c = static_cast<world::DataComponent *>(this_);
     auto data = c->get_info(name);

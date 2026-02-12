@@ -123,7 +123,9 @@ void DataComponent::bind_event(
                 while (true) {
                     {
                         auto func_ptr = get_callback(name);
-                        if (!func_ptr) co_return;
+                        if (!func_ptr) {
+                            co_return;
+                        }
                         (*func_ptr)(this);
                     }
                     co_await std::suspend_always{};

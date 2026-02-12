@@ -566,6 +566,20 @@ class CameraComponent(Component):
     def clear_geometry_export_buffer() -> None: ...
     def render_settings() -> RenderSettings: ...
 
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class DataComponentEventType(Enum):
+    OnAwake = 0
+    OnDestroy = 1
+    BeforeFrame = 2
+    BeforeRender = 3
+    AfterFrame = 4
+    OnTransformChange = 5
+
 
 # Import, load and manage project
 @reflect(
@@ -582,6 +596,9 @@ class DataComponent(Component):
     def remove_info(name: str) -> bool: ...
     def info_count() -> ulong: ...
     def clear_infos() -> None: ...
+    
+    def bind_event(event_type: DataComponentEventType, callback_name: str) -> None:...
+    def unbind_event(event_type: DataComponentEventType) -> None:...
 
 
 @reflect(
