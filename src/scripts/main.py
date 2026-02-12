@@ -371,37 +371,6 @@ def generate():
     include = "#include <rbc_plugin/generated/resource_meta.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
-    target_modules = ["test_ipc"]
-    header_path = Path("rbc/tests/test_ipc/generated").resolve()
-    ut.codegen_to(header_path / "server.hpp")(cpp_interface_gen, target_modules)
-
-    include = '#include "server.hpp"'
-    ut.codegen_to(header_path / "server.cpp")(cpp_impl_gen, target_modules, include)
-
-    client_path = header_path / "client.hpp"
-    ut.codegen_to(client_path)(cpp_client_interface_gen, target_modules)
-
-    include = '#include "client.hpp"'
-
-    client_path = header_path / "client.cpp"
-    ut.codegen_to(client_path)(cpp_client_impl_gen, target_modules, include)
-
-    target_modules = ["test_serde"]
-    header_path = Path("rbc/tests/test_serde/generated/generated.hpp").resolve()
-
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules)
-
-    include = f'#include "{header_path.name}"'
-    ut.codegen_to(header_path.parent / "enum_ser.cpp")(
-        cpp_impl_gen, target_modules, include
-    )
-
-    client_path = header_path.parent / "client.hpp"
-    ut.codegen_to(client_path)(cpp_client_interface_gen, target_modules)
-    include = '#include "client.hpp"'
-    client_path = header_path.parent / "client.cpp"
-    ut.codegen_to(client_path)(cpp_client_impl_gen, target_modules, include)
-
     target_modules = ["rbc_render"]
     header_path = Path(
         "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.hpp"
