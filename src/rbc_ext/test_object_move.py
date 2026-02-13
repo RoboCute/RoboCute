@@ -140,8 +140,17 @@ def main():
         ctx.tick(delta_time, tick_stage, True)
         frame_index = 0
 
-def test_callback(handle):
-    print('callback')
+last_time = time.time()
+def test_callback(ptr):
+    global last_time
+    comp = DataComponent(ptr.handle)
+    entity = comp.entity()
+    trans = TransformComponent(entity.get_component("TransformComponent"))
+    pos = trans.position()
+    cur_time = time.time()
+    if cur_time - last_time > 1.0:
+        print(f"Before-Frame event, transform pos: {pos.x}, {pos.y}, {pos.z}")
+        last_time = cur_time
     
 def make_cube_mesh(scene: Scene, ctx: RBCContext):
     """
@@ -169,7 +178,7 @@ def make_cube_mesh(scene: Scene, ctx: RBCContext):
     render = RenderComponent(entity.add_component("RenderComponent"))
     data = DataComponent(entity.add_component("DataComponent"))
     ctx.regist_callback('test_callback', test_callback)
-    data.bind_event(DataComponentEventType.OnAwake, 'test_callback')
+    data.bind_event(DataComponentEventType.BeforeFrame, 'test_callback')
     
     # 设置初始位置
     trans.set_pos(double3(0, -1, 1), False)

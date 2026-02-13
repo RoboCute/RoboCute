@@ -2,7 +2,7 @@
 #include "module_register.h"
 #include <luisa/core/logging.h>
 #include <rbc_core/type_info.h>
-
+#include "guid.h"
 namespace py = pybind11;
 
 GuidData::GuidData(luisa::string_view str) {

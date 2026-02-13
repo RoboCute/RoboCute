@@ -8,6 +8,8 @@
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_core/runtime_static.h>
 #include "ref_counter.h"
+#include "guid.h"
+
 namespace py = pybind11;
 using namespace luisa;
 using namespace rbc;
@@ -35,8 +37,9 @@ static Disposer _disposer;
 void export_base_obj(py::module &m) {
     // Bind PtrInt64
     py::class_<PtrInt64>(m, "PtrInt64")
-        .def(py::init<uint64_t>())
-        .def_readwrite("value", &PtrInt64::value);
+        .def(py::init<void*>())
+        .def_readwrite("value", &PtrInt64::value)
+        .def_readwrite("handle", &PtrInt64::value);
     m.def("rbc_add_ref", [](void *ptr) {
         manually_add_ref(static_cast<RCBase *>(ptr));
     });
