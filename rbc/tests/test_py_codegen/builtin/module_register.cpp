@@ -7,6 +7,7 @@ ModuleRegister::ModuleRegister(void (*callback)(py::module &))
     next = header;
     header = this;
 }
+
 void ModuleRegister::init(py::module &m) {
     auto ptr = header;
     while (ptr) {

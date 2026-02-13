@@ -264,7 +264,7 @@ auto BVH::build(
 		volumes,
 		root_bounding,
 		Axis::None,
-		std::max<size_t>(boundings.size() / 8ull, 256ull));
+		static_cast<uint>(std::max<size_t>(boundings.size() / 8ull, 256ull)));
 	thd_data.fiber_counter.wait();
 	packed_nodes.push_back_uninitialized(thd_data.node_idx_counter * 2);
 	auto calc_weight = [&](auto&& calc_weight, Node* node) {
@@ -336,7 +336,7 @@ auto BVH::build(
 					max_v[0] = t->max[0];
 					max_v[1] = t->max[1];
 					max_v[2] = t->max[2];
-					index = t->index;
+					index = static_cast<uint>(t->index);
 				}
 				cone = t->cone;
 				weight = t->weight;

@@ -592,13 +592,13 @@ void Lights::update_spot_light(
 
 void Lights::update_mesh_light_sync(
     CommandList &cmdlist,
-    uint data_index,
+    uint light_index,
     float4x4 local_to_world,
     luisa::span<float const> material_emissions,
     luisa::span<MatCode const> material_codes,
     RC<DeviceMesh> const *new_mesh) {
     auto &scene = SceneManager::instance();
-    auto &v = mesh_lights.light_data[data_index];
+    auto &v = mesh_lights.light_data[light_index];
     if (new_mesh) {
         v.device_mesh = *new_mesh;
     }
@@ -672,7 +672,7 @@ void Lights::update_mesh_light_sync(
                 cmdlist,
                 scene,
                 mesh_light,
-                data_index);
+                light_index);
         }
     } else {
         if (v.light_id != ~0u) {
@@ -970,7 +970,7 @@ void Lights::remove_mesh_light(uint light_index) {
     mesh_lights.removed_list.emplace_back(light_index);
 }
 
-void Lights::dispose() {
+void Lights::dispose() const {
     auto &scene = SceneManager::instance();
     if (quad_mesh)
         scene.mesh_manager().emplace_unload_mesh_cmd(quad_mesh);

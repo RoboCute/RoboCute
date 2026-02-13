@@ -98,7 +98,7 @@ void SkeletalMesh::TickAnimation(float InDeltaTime_s, bool bNeedsValidRootMotion
     // Conditionally Dispatch Events
 }
 
-void SkeletalMesh::TickAnimInstances(float InDeltaTime_s, bool bNeedsValidRootMotion) {
+void SkeletalMesh::TickAnimInstances(float InDeltaTime_s, bool bNeedsValidRootMotion) const {
     if (!bAnimationEnabled) { return; }
     // {PreUpdateLinkedInstances}
     // {LinkedInstance->UpdateAnimation}
@@ -276,7 +276,7 @@ void SkeletalMesh::PerformAnimationProcessing(SkeletalMesh *InSkeletalMesh, Anim
     }
 }
 
-void SkeletalMesh::EvaluateAnimation(SkeletalMesh *InSkelMesh, AnimInstance *InAnimInstance, bool bInForceRefPose, CompactPose &OutPose) const {
+void SkeletalMesh::EvaluateAnimation(SkeletalMesh *InSkelMesh, AnimInstance *InAnimInstance, bool bInForceRefPose, CompactPose &OutPose) {
     // OutputRootBoneTranslation
     // OutCurve
     // OutPose
@@ -363,7 +363,7 @@ void SkeletalMesh::FinalizePoseEvaluationResult(const SkeletalMesh *InSkelMesh, 
         };
 
         int32_t last_pose_index = 0;
-        const int32_t bone_count = ref_bone_pose.size();
+        const int32_t bone_count = static_cast<int32_t>(ref_bone_pose.size());
         // OutBoneSpaceTransforms.resize_default(bone_count);
         for (auto i = 0; i < bone_count; i++) {
             OutBoneSpaceTransforms[i] = InFinalPose.GetBones()[i];

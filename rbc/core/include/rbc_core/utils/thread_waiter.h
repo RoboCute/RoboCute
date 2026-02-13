@@ -9,7 +9,7 @@ struct ThreadWaiter {
     ThreadWaiter() = default;
     ~ThreadWaiter() = default;
 private:
-    RBC_CORE_API void _waiting_sign(luisa::string_view name);
+    static RBC_CORE_API void _waiting_sign(luisa::string_view name);
 public:
     template<class Rep, class Period>
     void wait(const std::chrono::duration<Rep, Period> &duration, luisa::string_view name, uint64_t interval_ms = 3000) {

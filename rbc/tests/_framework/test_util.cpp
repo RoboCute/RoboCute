@@ -26,7 +26,7 @@ const char *const *argv() noexcept {
 }
 
 bool float_span_equal(std::span<float> a, std::span<float> b) {
-    int N = a.size();
+    auto N = static_cast<int>(a.size());
     if (N != b.size()) {
         return false;
     }

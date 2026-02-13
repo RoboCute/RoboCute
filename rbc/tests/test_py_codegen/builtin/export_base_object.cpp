@@ -8,6 +8,8 @@
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_core/runtime_static.h>
 #include "ref_counter.h"
+#include "guid.h"
+
 namespace py = pybind11;
 using namespace luisa;
 using namespace rbc;
@@ -30,7 +32,14 @@ struct Disposer {
     }
 };
 static Disposer _disposer;
+
+// Then bind with:
 void export_base_obj(py::module &m) {
+    // Bind PtrInt64
+    py::class_<PtrInt64>(m, "PtrInt64")
+        .def(py::init<void*>())
+        .def_readwrite("value", &PtrInt64::value)
+        .def_readwrite("handle", &PtrInt64::value);
     m.def("rbc_add_ref", [](void *ptr) {
         manually_add_ref(static_cast<RCBase *>(ptr));
     });
@@ -45,6 +54,7 @@ void export_base_obj(py::module &m) {
         if (ptr->base_type() != world::BaseObjectType::Resource) [[unlikely]] {
             LUISA_ERROR("Trying to create a non-resource object.");
         }
+        return ptr;
     });
     m.def("_create_resource_guid", [&](luisa::string_view type_info, GuidData guid) -> void * {
         vstd::MD5 md5{type_info};
@@ -54,7 +64,9 @@ void export_base_obj(py::module &m) {
         if (ptr->base_type() != world::BaseObjectType::Resource) [[unlikely]] {
             LUISA_ERROR("Trying to create a non-resource object.");
         }
+        return ptr;
     });
+
 }
 
 static ModuleRegister module_register_export_base_obj(export_base_obj);

@@ -49,7 +49,7 @@ struct RBC_CORE_API EnumSerializer {
 };
 struct RBC_CORE_API EnumSerIniter {
     EnumSerIniter(
-        luisa::string_view enun_name,
+        luisa::string_view enum_name,
         std::initializer_list<char const *> names,
         std::initializer_list<uint64_t> numbers);
 };

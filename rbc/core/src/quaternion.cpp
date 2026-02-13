@@ -145,10 +145,10 @@ DualQuaternion encode_dual_quaternion(
     r.rotation_quaternion = rotation.v;
     auto &dq = reinterpret_cast<float4 &>(r.translation_quaternion);
     auto const &q0 = reinterpret_cast<float4 &>(rotation);
-    dq[0] = -0.5 * (position[0] * q0[1] + position[1] * q0[2] + position[2] * q0[3]);
-    dq[1] = 0.5 * (position[0] * q0[0] + position[1] * q0[3] - position[2] * q0[2]);
-    dq[2] = 0.5 * (-position[0] * q0[3] + position[1] * q0[0] + position[2] * q0[1]);
-    dq[3] = 0.5 * (position[0] * q0[2] - position[1] * q0[1] + position[2] * q0[0]);
+    dq[0] = -0.5f * (position[0] * q0[1] + position[1] * q0[2] + position[2] * q0[3]);
+    dq[1] = 0.5f * (position[0] * q0[0] + position[1] * q0[3] - position[2] * q0[2]);
+    dq[2] = 0.5f * (-position[0] * q0[3] + position[1] * q0[0] + position[2] * q0[1]);
+    dq[3] = 0.5f * (position[0] * q0[2] - position[1] * q0[1] + position[2] * q0[0]);
     return r;
 }
 
@@ -158,9 +158,9 @@ std::pair<float3, Quaternion> decode_dual_quaternion(
     r.second = dual_quaternion.rotation_quaternion;
     float4 *dq = &dual_quaternion.rotation_quaternion;
     auto &t = r.first;
-    t[0] = 2.0 * (-dq[1][0] * dq[0][1] + dq[1][1] * dq[0][0] - dq[1][2] * dq[0][3] + dq[1][3] * dq[0][2]);
-    t[1] = 2.0 * (-dq[1][0] * dq[0][2] + dq[1][1] * dq[0][3] + dq[1][2] * dq[0][0] - dq[1][3] * dq[0][1]);
-    t[2] = 2.0 * (-dq[1][0] * dq[0][3] - dq[1][1] * dq[0][2] + dq[1][2] * dq[0][1] + dq[1][3] * dq[0][0]);
+    t[0] = 2.0f * (-dq[1][0] * dq[0][1] + dq[1][1] * dq[0][0] - dq[1][2] * dq[0][3] + dq[1][3] * dq[0][2]);
+    t[1] = 2.0f * (-dq[1][0] * dq[0][2] + dq[1][1] * dq[0][3] + dq[1][2] * dq[0][0] - dq[1][3] * dq[0][1]);
+    t[2] = 2.0f * (-dq[1][0] * dq[0][3] - dq[1][1] * dq[0][2] + dq[1][2] * dq[0][1] + dq[1][3] * dq[0][0]);
     return r;
 }
 

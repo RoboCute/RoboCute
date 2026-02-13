@@ -74,11 +74,12 @@ void MeshManager::on_frame_end(
             if (!mesh_data->is_vertex_instance) {
                 if (mesh_data->meta.submesh_heap_idx != std::numeric_limits<uint>::max())
                     bdls_alloc.deallocate_buffer(mesh_data->meta.submesh_heap_idx);
+
                 bdls_alloc.deallocate_buffer(mesh_data->meta.heap_idx);
             }
-            if (mesh_data->meta.mutable_heap_idx != std::numeric_limits<uint>::max()) {
+            if (mesh_data->meta.mutable_heap_idx != std::numeric_limits<uint>::max())
                 bdls_alloc.deallocate_buffer(mesh_data->meta.mutable_heap_idx);
-            }
+
             if (mesh_data->bbox_requests) {
                 mesh_data->bbox_requests->mesh_data = nullptr;
             }
@@ -161,6 +162,7 @@ auto MeshManager::load_mesh(
     m->triangle_size = ib.size();
     m->meta.heap_idx = bdls_alloc.allocate_buffer(m->pack.data);
     m->meta.mutable_heap_idx = std::numeric_limits<uint>::max();
+    m->meta.submesh_heap_idx = std::numeric_limits<uint>::max();
     if (submesh_offset.size() == 1 && submesh_offset[0] == 0) {
         LUISA_ASSERT(submesh_offset[0] == 0, "First element must be 0.");
         submesh_offset.clear();
@@ -169,8 +171,6 @@ auto MeshManager::load_mesh(
         LUISA_ASSERT(submesh_offset[0] == 0, "First element must be 0.");
         m->submesh_offset = std::move(submesh_offset);
         _create_submesh_buffer(cmdlist, bdls_alloc, temp_buffer, m);
-    } else {
-        m->meta.submesh_heap_idx = std::numeric_limits<uint>::max();
     }
     return m;
 }

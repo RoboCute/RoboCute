@@ -9,10 +9,11 @@
 #include <rbc_world/importers/texture_loader.h>
 #include <rbc_graphics/graphics_utils.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>
+#include <luisa/vstl/lmdb.hpp>
 namespace rbc {
 struct Project : IProject {
 private:
-
+    vstd::LMDB _meta_db;
     luisa::filesystem::path _assets_path;
     vstd::HashMap<luisa::filesystem::path, std::pair<luisa::spin_mutex, std::atomic_uint64_t>> _file_mtx;
     struct LoadCommand {
@@ -31,7 +32,8 @@ private:
 
 public:
     Project(luisa::filesystem::path const &assets_db_path)
-        : _assets_path(assets_db_path) {
+        : _meta_db(assets_db_path.parent_path() / ".temp_db"),
+          _assets_path(assets_db_path) {
         if (_assets_path.empty()) {
             LUISA_ERROR("Assets path must not be empty.");
         }
@@ -120,7 +122,11 @@ void Project::write_file_meta(luisa::filesystem::path const &origin_path, uint64
         json_ser._store(i.type_id);
     }
     json_ser.add_last_scope_to_object("metas");
-    json_ser._store(last_write_time, "last_time");
+    luisa::filesystem::path relative_path = origin_path.is_relative() ? origin_path : luisa::filesystem::relative(origin_path, _assets_path);
+    auto key = luisa::to_string(relative_path.lexically_normal());
+    _meta_db.write(
+        {(std::byte const *)key.data(), key.size()},
+        {(std::byte const *)&last_write_time, sizeof(last_write_time)});
     json_ser._store(reinterpret_cast<vstd::Guid const &>(file_md5), "md5");
     auto blob = json_ser.write_to();
     luisa::string path_str;
@@ -184,18 +190,14 @@ void Project::scan_project() {
                     return;
                 }
                 uint64_t last_write_time;
-                if (!deser.read(last_write_time, "last_time")) [[unlikely]]
-                    return;
-                if (!deser._load(md5, "md5")) [[unlikely]] {
-                    md5.reset();
-                    return;
-                }
+                ///////////////////////////
+                luisa::filesystem::path relative_path = path.is_relative() ? path : luisa::filesystem::relative(path, _assets_path);
+                auto key = luisa::to_string(relative_path.lexically_normal());
                 uint64_t meta_count;
                 if (deser.start_array(meta_count, "metas")) {
                     auto d = vstd::scope_exit([&] {
                         deser.end_scope();
                     });
-                    // TODO: deal with error
                     if (meta_count % 3 != 0) [[unlikely]] {
                         LUISA_ERROR("Project json is broken.");
                     }
@@ -206,6 +208,19 @@ void Project::scan_project() {
                             LUISA_ERROR("Project json is broken.");
                         }
                     }
+                }
+                {
+                    auto time_span = _meta_db.read(
+                        {(std::byte const *)key.data(), key.size()});
+                    if (time_span.size() == sizeof(uint64_t)) {
+                        std::memcpy(&last_write_time, time_span.data(), sizeof(uint64_t));
+                    } else {
+                        return;
+                    }
+                }
+                if (!deser._load(md5, "md5")) [[unlikely]] {
+                    md5.reset();
+                    return;
                 }
                 file_last_write_time = luisa::filesystem::last_write_time(path).time_since_epoch().count();
                 if (file_last_write_time != last_write_time) [[unlikely]] {
@@ -399,7 +414,6 @@ void Project::read_file_metas(
         auto d = vstd::scope_exit([&] {
             deser.end_scope();
         });
-        // TODO: deal with error
         if (meta_count % 3 != 0) [[unlikely]] {
             LUISA_ERROR("Project json is broken.");
         }

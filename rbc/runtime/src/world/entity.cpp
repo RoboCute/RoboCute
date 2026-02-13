@@ -132,12 +132,12 @@ void Entity::deserialize_meta(ObjDeSerialize const &ser) {
 
     if (!ser.ar.start_array(size, "components")) return;
     _components.reserve(size);
-    for (auto &i : vstd::range(size)) {
+    for (auto &i : vstd::range(static_cast<int64_t>(size))) {
         if (!ser.ar.start_object()) break;
         auto d = vstd::scope_exit([&] {
             ser.ar.end_scope();
         });
-        vstd::Guid type_id;
+        vstd::Guid type_id{};
         if (!ser.ar.value(type_id, "__typeid__")) {
             continue;
         }

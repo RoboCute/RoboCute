@@ -49,7 +49,7 @@ void BaseCompactPose::SetBoneContainer(const BoneContainer *InBoneContainer) {
     // CheckSlow
     bone_container = InBoneContainer;
 
-    this->InitBones(bone_container->GetBoneIndices().size());
+    this->InitBones(static_cast<int>(bone_container->GetBoneIndices().size()));
 }
 
 }// namespace rbc

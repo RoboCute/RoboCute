@@ -119,44 +119,48 @@ void DataComponent::bind_event(
             break;
         }
         case EventType::BeforeFrame: {
-            add_world_event(WorldEventType::BeforeFrame, [this](luisa::string name) -> rbc::coroutine {
+            add_world_event(WorldEventType::BeforeFrame, [](luisa::string name, void *self_) -> rbc::coroutine {
                 while (true) {
                     {
                         auto func_ptr = get_callback(name);
-                        if (!func_ptr) co_return;
-                        (*func_ptr)(this);
+                        if (!func_ptr) {
+                            co_return;
+                        }
+                        (*func_ptr)(self_);
                     }
                     co_await std::suspend_always{};
                 }
-            }(_events[idx]));
+            }(_events[idx], this));
             break;
         }
         case EventType::BeforeRender: {
-            add_world_event(WorldEventType::BeforeRender, [this](luisa::string name) -> rbc::coroutine {
+            add_world_event(WorldEventType::BeforeRender, [](luisa::string name, void *self_) -> rbc::coroutine {
                 while (true) {
                     {
                         auto func_ptr = get_callback(name);
                         if (!func_ptr) co_return;
-                        (*func_ptr)(this);
+                        (*func_ptr)(self_);
                     }
                     co_await std::suspend_always{};
                 }
-            }(_events[idx]));
+            }(_events[idx], this));
             break;
         }
         case EventType::AfterFrame: {
-            add_world_event(WorldEventType::AfterFrame, [this](luisa::string name) -> rbc::coroutine {
+            add_world_event(WorldEventType::AfterFrame, [](luisa::string name, void *self_) -> rbc::coroutine {
                 while (true) {
                     {
                         auto func_ptr = get_callback(name);
                         if (!func_ptr) co_return;
-                        (*func_ptr)(this);
+                        (*func_ptr)(self_);
                     }
                     co_await std::suspend_always{};
                 }
-            }(_events[idx]));
+            }(_events[idx], this));
             break;
         }
+            // OnDestroy is handled in on_destroy(), no immediate action needed here
+
         default:
             break;
     }
@@ -194,44 +198,44 @@ void DataComponent::on_awake() {
     // BeforeFrame event
     auto &before_frame_name = _events[luisa::to_underlying(EventType::BeforeFrame)];
     if (!before_frame_name.empty()) {
-        add_world_event(WorldEventType::BeforeFrame, [this](luisa::string name) -> rbc::coroutine {
+        add_world_event(WorldEventType::BeforeFrame, [](luisa::string name, void *self_) -> rbc::coroutine {
             while (true) {
                 {
                     auto func_ptr = get_callback(name);
                     if (!func_ptr) co_return;
-                    (*func_ptr)(this);
+                    (*func_ptr)(self_);
                 }
                 co_await std::suspend_always{};
             }
-        }(before_frame_name));
+        }(before_frame_name, this));
     }
     // BeforeRender event
     auto &before_render_name = _events[luisa::to_underlying(EventType::BeforeRender)];
     if (!before_render_name.empty()) {
-        add_world_event(WorldEventType::BeforeRender, [this](luisa::string name) -> rbc::coroutine {
+        add_world_event(WorldEventType::BeforeRender, [](luisa::string name, void *self_) -> rbc::coroutine {
             while (true) {
                 {
                     auto func_ptr = get_callback(name);
                     if (!func_ptr) co_return;
-                    (*func_ptr)(this);
+                    (*func_ptr)(self_);
                 }
                 co_await std::suspend_always{};
             }
-        }(before_render_name));
+        }(before_render_name, this));
     }
     // AfterFrame event
     auto &after_frame_name = _events[luisa::to_underlying(EventType::AfterFrame)];
     if (!after_frame_name.empty()) {
-        add_world_event(WorldEventType::AfterFrame, [this](luisa::string name) -> rbc::coroutine {
+        add_world_event(WorldEventType::AfterFrame, [](luisa::string name, void *self_) -> rbc::coroutine {
             while (true) {
                 {
                     auto func_ptr = get_callback(name);
                     if (!func_ptr) co_return;
-                    (*func_ptr)(this);
+                    (*func_ptr)(self_);
                 }
                 co_await std::suspend_always{};
             }
-        }(after_frame_name));
+        }(after_frame_name, this));
     }
 }
 void DataComponent::on_destroy() {

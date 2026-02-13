@@ -29,7 +29,7 @@ public:
     void Reset();
     void InitializeTo(luisa::span<const BoneIndexType> InRequiredBoneIndices, SkeletalMesh *InSkelMesh /*Config Placeholder*/);
 
-    const bool IsValid() const;
+    bool IsValid() const;
     luisa::vector<BoneIndexType> &GetBoneIndices();
     const luisa::vector<AnimSOATransform> &GetRefPoses();
     const luisa::vector<BoneIndexType> &GetBoneIndices() const;

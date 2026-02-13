@@ -2,7 +2,7 @@
 #include <luisa/core/logging.h>
 
 namespace rbc {
-coroutine::coroutine(coroutine &&rhs)
+coroutine::coroutine(coroutine &&rhs) noexcept
     : _base(rhs._base) {
     rhs._base = nullptr;
 }

@@ -60,8 +60,10 @@ vertex_count = 8
 triangle_count = 12
 """单个立方体三角形数"""
 
-
+ctx = None
+delta_time = None
 def main():
+    global ctx, delta_time
     """
     主函数: 初始化渲染环境并运行物体移动测试
 
@@ -103,7 +105,7 @@ def main():
     tick_stage = TickStage.RasterPreview
     
     # 创建立方体实体
-    entity = make_cube_mesh(scene)
+    entity = make_cube_mesh(scene, ctx)
     
     # 获取变换组件用于后续移动
     transform = TransformComponent(entity.get_component("TransformComponent"))
@@ -113,26 +115,11 @@ def main():
     display_cam.enable_camera()
     ctx.enable_camera_control()
     
-    # 移动动画参数
-    move_speed = 2.0  # 移动速度
-    move_range = 1.0  # 移动范围 (上下各 1 单位)
-    base_y = -1.0     # Y 轴基准位置
-    
     while not ctx.should_close():
         cur_time = time.time()
         delta_time = cur_time - last_time
         last_time = cur_time
         
-        # 计算新的 Y 位置 (正弦波周期性移动)
-        # 使用当前时间计算位置,实现平滑的周期性上下移动
-        new_y = base_y + math.sin(cur_time * move_speed) * move_range
-        
-        # 更新实体位置
-        # 获取当前位置,只修改 Y 坐标
-        current_pos = transform.position()
-        transform.set_pos(double3(current_pos.x, new_y, current_pos.z), False)
-        render = RenderComponent(entity.get_component("RenderComponent"))
-        move_mesh_vertices(ctx, cur_time * move_speed, render.mesh())
         
         # 渲染一帧
         display_cam.set_frame_index(frame_index)
@@ -140,8 +127,30 @@ def main():
         ctx.tick(delta_time, tick_stage, True)
         frame_index = 0
 
-
-def make_cube_mesh(scene: Scene):
+last_time = time.time()
+def test_callback(ptr):
+    global last_time
+    comp = DataComponent(ptr.handle)
+    entity = comp.entity()
+    transform = TransformComponent(entity.get_component("TransformComponent"))
+    cur_time = time.time()
+    # 移动动画参数
+    move_speed = 2.0  # 移动速度
+    move_range = 1.0  # 移动范围 (上下各 1 单位)
+    base_y = -1.0     # Y 轴基准位置
+    # 计算新的 Y 位置 (正弦波周期性移动)
+    # 使用当前时间计算位置,实现平滑的周期性上下移动
+    new_y = base_y + math.sin(cur_time * move_speed) * move_range
+    
+    # 更新实体位置
+    # 获取当前位置,只修改 Y 坐标
+    current_pos = transform.position()
+    transform.set_pos(double3(current_pos.x, new_y, current_pos.z), False)
+    render = RenderComponent(entity.get_component("RenderComponent"))
+    move_mesh_vertices(ctx, cur_time * move_speed, render.mesh())
+    
+    
+def make_cube_mesh(scene: Scene, ctx: RBCContext):
     """
     创建一个立方体动态网格实体
 
@@ -165,6 +174,9 @@ def make_cube_mesh(scene: Scene):
     
     trans = TransformComponent(entity.add_component("TransformComponent"))
     render = RenderComponent(entity.add_component("RenderComponent"))
+    data = DataComponent(entity.add_component("DataComponent"))
+    ctx.regist_callback('test_callback', test_callback)
+    data.bind_event(DataComponentEventType.BeforeFrame, 'test_callback')
     
     # 设置初始位置
     trans.set_pos(double3(0, -1, 1), False)
@@ -356,3 +368,4 @@ def create_mesh_array(mesh_array):
 
 if __name__ == "__main__":
     main()
+    del ctx
