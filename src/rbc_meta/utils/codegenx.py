@@ -55,15 +55,12 @@ from rbc_meta.utils.templates import (
 )
 from rbc_meta.utils.codegen import (
     _get_full_cpp_type,
-    _is_rpc_method,
     _print_arg_vars_decl,
-    _get_rpc_methods,
-    _print_rpc_serializer,
 )
 from rbc_meta.utils.codegen_util import _write_string_to
 import hashlib
 from pathlib import Path
-
+from rbc_meta.utils.pybind_codegen import pybind_enum_binding, pybind_struct_bindings, _print_py_args, _get_py_type, _print_py_args_decl
 
 def to_include_expr(x):
     return f"#include <{x}>"
@@ -99,6 +96,124 @@ class CodegenResitry:
             if mod.enable_pybind_:
                 self.gen_pybind_py(mod)
 
+            if mod.enable_pybind_cpp_def_:
+                self.gen_pybind_cpp_impl(mod)
+
+    def gen_pybind_cpp_impl(self, mod: "CodeModule"):
+        reg = ReflectionRegistry()
+        INDENT = DEFAULT_INDENT
+
+
+        extra_includes_expr = to_include_expr(mod.interface_header_file_)
+
+        enum_bindings = []
+        struct_bindings = []
+        enum_initers_list = []
+        struct_impls_list = []
+        export_func_name = f"export_{mod.name()}"
+
+        for cls in mod.classes_:
+            print(f"Generating {cls.__name__}")
+            info = reg.get_class_info(cls.__name__)
+            namespace_name = info.cpp_namespace or ""
+            enum_binding = pybind_enum_binding(info)
+            if enum_binding:
+                enum_bindings.append(enum_binding)
+
+            struct_binding = pybind_struct_bindings(info, reg)
+            if struct_binding:
+                struct_bindings.append(struct_binding)   
+            
+            class_name = info.name
+
+            if info.is_enum:
+                full_name = (
+                    f"{namespace_name}::{class_name}" if namespace_name else class_name
+                )
+                m = hashlib.md5(full_name.encode("ascii"))
+                digest = m.hexdigest()
+
+                enum_names = ", ".join([f'"{field.name}"' for field in info.fields])
+                enum_values = ", ".join(
+                    [
+                        f"(uint64_t){field.default}"
+                        if field.default is not None
+                        else f"(uint64_t){i}"
+                        for i, field in enumerate(info.fields)
+                    ]
+                )
+
+                initer = f'"{full_name}", std::initializer_list<char const*>{{{enum_names}}}, std::initializer_list<uint64_t>{{{enum_values}}}'
+
+                enum_initer = CPP_ENUM_INITER_TEMPLATE.substitute(
+                    DIGEST=digest,
+                    INITER=initer,
+                )
+                enum_initers_list.append(enum_initer)
+
+            else:
+                if info.serde and len(info.fields) > 0:
+                    store_stmts_list = []
+                    load_stmts_list = []
+
+                    for field in info.fields:
+                        # 检查字段级别的 serde 设置
+                        # field.serde == None 表示使用类级别的 serde 设置
+                        # field.serde == True 表示序列化
+                        # field.serde == False 表示不序列化
+                        should_serde = info.serde
+                        if field.serde is not None:
+                            should_serde = field.serde
+
+                        if should_serde:
+                            store_stmts_list.append(
+                                f"{INDENT}{INDENT}obj._store(this->{field.name});"
+                            )
+                            load_stmts_list.append(
+                                f"{INDENT}{INDENT}obj._load(this->{field.name});"
+                            )
+
+                    store_stmts = "\n".join(store_stmts_list)
+                    load_stmts = "\n".join(load_stmts_list)
+
+                    namespace_expr = (
+                        f"namespace {namespace_name} {{" if namespace_name else ""
+                    )
+
+                    ser_impl = CPP_STRUCT_SER_IMPL_TEMPLATE.substitute(
+                        NAMESPACE_NAME=namespace_expr,
+                        CLASS_NAME=class_name,
+                        STORE_STMTS=store_stmts,
+                    )
+
+                    deser_impl = CPP_STRUCT_DESER_IMPL_TEMPLATE.substitute(
+                        CLASS_NAME=class_name,
+                        LOAD_STMTS=load_stmts,
+                        NAMESPACE_NAME=namespace_expr,
+                    )
+                    
+                    regist_impl = CPP_STRUCT_REGIST_TEMPLATE.substitute(
+                        NAMESPACE_NAME=namespace_expr,
+                        CLASS_NAME=class_name,
+                    )
+
+                    struct_impls_list.append(ser_impl)
+                    struct_impls_list.append(deser_impl)
+                    struct_impls_list.append(regist_impl)
+
+        enum_bindings_expr = "\n".join(enum_bindings)
+        struct_bindings_expr = "\n".join(struct_bindings)
+
+
+        file_expr = PYBIND_CODE_TEMPLATE.substitute(
+            EXTRA_INCLUDES=extra_includes_expr,
+            EXPORT_FUNC_NAME=export_func_name,
+            ENUM_BINDINGS=enum_bindings_expr,
+            STRUCT_BINDINGS=struct_bindings_expr,
+        )
+        pybind_cpp_path = Path(mod.pybind_cpp_def_file_).resolve()
+        _write_string_to(file_expr, pybind_cpp_path)
+
     def gen_cpp_impl(self, mod: "CodeModule"):
         reg = ReflectionRegistry()
         INDENT = DEFAULT_INDENT
@@ -107,9 +222,9 @@ class CodegenResitry:
         enum_initers_list = []
         extra_includes_expr = to_include_expr(mod.interface_header_file_)
 
-        for cls in mod.classes_:
-            print(f"Generating {cls.__name__}")
-            info = reg.get_class_info(cls.__name__)
+        for info in mod.classes_:
+            print(f"Generating {info.__name__}")
+            info = reg.get_class_info(info.__name__)
             namespace_name = info.cpp_namespace or ""
             class_name = info.name
             if info.is_enum:
@@ -185,11 +300,6 @@ class CodegenResitry:
                 struct_impls_list.append(deser_impl)
                 struct_impls_list.append(regist_impl)
 
-            # RPC serializer
-            rpc_serializer = _print_rpc_serializer(info, reg)
-            if rpc_serializer:
-                struct_impls_list.append(rpc_serializer)
-
         struct_impls_expr = "\n".join(struct_impls_list)
         enum_initers_expr = "\n".join(enum_initers_list)
 
@@ -201,6 +311,7 @@ class CodegenResitry:
         cpp_path = Path(mod.cpp_base_dir_ + "/src/" + mod.cpp_impl_file_).resolve()
 
         _write_string_to(file_expr, cpp_path)
+
 
     def gen_cpp_interface_header(self, mod: "CodeModule"):
         reg = ReflectionRegistry()
@@ -222,9 +333,9 @@ class CodegenResitry:
         enums_expr = []
         extra_include_expr = "\n".join([to_include_expr(x) for x in extra_headers])
 
-        for cls in mod.classes_:
-            print(f"Generating {cls.__name__}")
-            info = reg.get_class_info(cls.__name__)
+        for info in mod.classes_:
+            print(f"Generating {info.__name__}")
+            info = reg.get_class_info(info.__name__)
             # print(cls_info)
             if info.is_enum:
                 enums_expr.append(self.enum_gen(info))
@@ -244,7 +355,7 @@ class CodegenResitry:
         _write_string_to(file_expr, header_path)
 
     def gen_pybind_py(self, mod: "CodeModule"):
-        target_filepath = mod.pybind_py_file_path()
+        target_filepath = mod.pybind_py_file_
         print("Generating pybind to ", target_filepath)
 
     def cpp_struct_def_gen(self, info: ClassInfo) -> str:
@@ -328,8 +439,6 @@ class CodegenResitry:
         # Methods
         methods_list = []
         for method in info.methods:
-            if _is_rpc_method(method):
-                continue  # RPC methods are handled separately
             if method.is_inherit_func:
                 continue  # cpp donot impl prev func
             
@@ -358,36 +467,7 @@ class CodegenResitry:
             methods_list.append(method_expr)
 
         methods_decl = "\n".join(methods_list)
-
-        # RPC methods
-        rpc_methods = _get_rpc_methods(info)
-        rpc_list = []
-        for func_name, method_list in rpc_methods.items():
-            for method in method_list:
-                is_static = method.is_static
-                # Filter out 'self' parameter for RPC declarations
-                rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
-                args = _print_arg_vars_decl(rpc_params, True, False, False, registry)
-                static = "static " if is_static else ""
-                ret_type = (
-                    _get_full_cpp_type(method.return_type, registry)
-                    if method.return_type
-                    else "void"
-                )
-
-                # rpc_list.append(f"{static}{ret_type} {func_name}({args});")
-                rpc_list.append(
-                    CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE.substitute(
-                        INDENT=INDENT,
-                        STATIC_EXPR=static,
-                        RET_TYPE=ret_type,
-                        FUNC_NAME=func_name,
-                        ARGS_EXPR=args,
-                    )
-                )
-
-        rpc_expr = "\n".join(rpc_list)
-
+        rpc_expr = ""
         # MD5 Digest
         full_name = f"{namespace_name}::{class_name}" if namespace_name else class_name
         m = hashlib.md5(full_name.encode("ascii"))
@@ -444,6 +524,9 @@ class CodegenResitry:
         return enum_expr
 
 
+
+
+
 def codegen(
     cls: Optional[Type] = None, *, interface_gen=True, interface_header_path=""
 ) -> Type:
@@ -472,10 +555,13 @@ class CodeModule:
     enable_cpp_impl_: bool = False
     cpp_impl_file_: str = ""
     enable_pybind_: bool = False
-    pybind_py_basedir_: str = "src/rbc_ext/generated/"
     pybind_py_file_: str = ""
+
     header_files_: List[str] = []
     deps_: List[Type] = []
+
+    enable_pybind_cpp_def_: bool = False
+    pybind_cpp_def_file_: str = ""
 
     def set_name(self, name):
         self.name_ = name
@@ -483,12 +569,5 @@ class CodeModule:
     def name(self):
         return self.name_
 
-    def cpp_interface_gen(self):
-        if not self.enable_cpp_interface_:
-            return
-
     def add_cls(self, cls: Type):
         self.classes_.append(cls)
-
-    def pybind_py_file_path(self) -> Path:
-        return Path(self.pybind_py_basedir_) / Path(self.pybind_py_file_)

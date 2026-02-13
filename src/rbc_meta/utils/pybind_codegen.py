@@ -235,8 +235,6 @@ def pybind_struct_bindings(info: ClassInfo, registry: ReflectionRegistry, INDENT
 
         return "\n".join(result_parts)
 
-
-
 def pybind_enum_binding(info: ClassInfo, INDENT: str = DEFAULT_INDENT):
     if not info.is_enum:
         return ""

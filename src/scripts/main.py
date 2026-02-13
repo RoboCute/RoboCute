@@ -397,7 +397,9 @@ def generate():
         py_root_path.mkdir(parents=True, exist_ok=True)
     if not (py_root_path / "__init__.py").exists():
         (py_root_path / "__init__.py").touch()
+
     py_path = py_root_path / f"{file_name}.py"
+
     include = """
 #include <rbc_plugin/generated/resource_meta.hpp>
 #include <rbc_core/rc.h>

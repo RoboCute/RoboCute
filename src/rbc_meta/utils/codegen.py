@@ -530,8 +530,6 @@ def pybind_codegen(
 
     enum_bindings = []
     struct_bindings = []
-
-
     # Use original order from registry to preserve module-defined order
     all_classes = registry.get_all_classes().items()
     for key, info in all_classes:
