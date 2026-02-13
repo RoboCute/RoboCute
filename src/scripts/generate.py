@@ -102,7 +102,7 @@ EXT_CLASSES.extend(RESOURCE_CLASSES)
 
 @codegen
 class WorldInterfacePybindModule(CodeModule):
-    name_="world_interface"
+    name_="test_py_codegen"
     header_files_ = ["generated/world.h"]
 
     enable_pybind_cpp_def_ = True

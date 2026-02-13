@@ -79,7 +79,7 @@ class CodegenResitry:
     def register(self, cls: Type) -> Type:
         # register a module instance once
         cls_inst = cls()
-        cls_inst.set_name(cls.__name__)
+        # cls_inst.set_name(cls.__name__)
         self._modules[cls.__name__] = cls_inst
         return cls
 
