@@ -60,8 +60,10 @@ vertex_count = 8
 triangle_count = 12
 """单个立方体三角形数"""
 
-
+ctx = None
+delta_time = None
 def main():
+    global ctx, delta_time
     """
     主函数: 初始化渲染环境并运行物体移动测试
 
@@ -113,26 +115,11 @@ def main():
     display_cam.enable_camera()
     ctx.enable_camera_control()
     
-    # 移动动画参数
-    move_speed = 2.0  # 移动速度
-    move_range = 1.0  # 移动范围 (上下各 1 单位)
-    base_y = -1.0     # Y 轴基准位置
-    
     while not ctx.should_close():
         cur_time = time.time()
         delta_time = cur_time - last_time
         last_time = cur_time
         
-        # 计算新的 Y 位置 (正弦波周期性移动)
-        # 使用当前时间计算位置,实现平滑的周期性上下移动
-        new_y = base_y + math.sin(cur_time * move_speed) * move_range
-        
-        # 更新实体位置
-        # 获取当前位置,只修改 Y 坐标
-        current_pos = transform.position()
-        transform.set_pos(double3(current_pos.x, new_y, current_pos.z), False)
-        render = RenderComponent(entity.get_component("RenderComponent"))
-        move_mesh_vertices(ctx, cur_time * move_speed, render.mesh())
         
         # 渲染一帧
         display_cam.set_frame_index(frame_index)
@@ -145,12 +132,23 @@ def test_callback(ptr):
     global last_time
     comp = DataComponent(ptr.handle)
     entity = comp.entity()
-    trans = TransformComponent(entity.get_component("TransformComponent"))
-    pos = trans.position()
+    transform = TransformComponent(entity.get_component("TransformComponent"))
     cur_time = time.time()
-    if cur_time - last_time > 1.0:
-        print(f"Before-Frame event, transform pos: {pos.x}, {pos.y}, {pos.z}")
-        last_time = cur_time
+    # 移动动画参数
+    move_speed = 2.0  # 移动速度
+    move_range = 1.0  # 移动范围 (上下各 1 单位)
+    base_y = -1.0     # Y 轴基准位置
+    # 计算新的 Y 位置 (正弦波周期性移动)
+    # 使用当前时间计算位置,实现平滑的周期性上下移动
+    new_y = base_y + math.sin(cur_time * move_speed) * move_range
+    
+    # 更新实体位置
+    # 获取当前位置,只修改 Y 坐标
+    current_pos = transform.position()
+    transform.set_pos(double3(current_pos.x, new_y, current_pos.z), False)
+    render = RenderComponent(entity.get_component("RenderComponent"))
+    move_mesh_vertices(ctx, cur_time * move_speed, render.mesh())
+    
     
 def make_cube_mesh(scene: Scene, ctx: RBCContext):
     """
@@ -370,3 +368,4 @@ def create_mesh_array(mesh_array):
 
 if __name__ == "__main__":
     main()
+    del ctx
