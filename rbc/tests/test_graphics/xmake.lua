@@ -4,9 +4,6 @@ local targets = {
 }
 for target_name, is_standalone in pairs(targets) do
     local function test_graphics_interface()
-        add_includedirs('generated', {
-            interface = true
-        })
         add_includedirs('include', {
             public = true
         })

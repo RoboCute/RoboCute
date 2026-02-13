@@ -81,9 +81,12 @@ class PipelineSettingModule(CodeModule):
 @codegen
 class WorldInterfacePyModule(CodeModule):
     enable_cpp_interface_ = True
-    cpp_base_dir_ = "rbc/ext_c"
-    interface_header_file_ = "ext_c/generated/world.h"
-    header_files_ = ["res_creation_info.h"]
+    cpp_base_dir_ = "rbc/tests/test_graphics"
+    interface_header_file_ = "generated/world_x.h"
+
+    header_files_ = ["res_creation_info.h", "rbc_plugin/generated/resource_meta.hpp", "rbc_world/resources/mesh.h"]
+
+
     classes_ = [
         BasicDataType, ResourceLoadStatus, RendererGeometryType, BaseObjectType, Object, Entity, Component, TransformComponent, LightComponent, Resource, BasicData, TextureResource, MeshResource, BufferResource, MaterialResource, RenderComponent, RenderSettings, CameraComponent, DataComponent, EntitiesCollection, Scene, FileMeta, Project, TickStage, RBCContext
     ]

@@ -76,6 +76,9 @@ from rbc_meta.utils.builtin import (
     GUID,
 )  # special case
 
+from rbc_meta.utils.pybind_codegen import pybind_enum_binding
+
+
 _TYPE_NAME_FUNCTIONS = {
     str: _print_str,
     DataBuffer: _print_data_buffer,
@@ -529,7 +532,7 @@ def _print_rpc_serializer(struct_type: ClassInfo, registry: ReflectionRegistry) 
 
 
 def cpp_interface_gen(
-    module_filter: List[str] = [], pybind=False, *extra_includes
+    module_filter: List[str] = [], *extra_includes
 ) -> str:
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
@@ -872,29 +875,6 @@ def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_impo
     """Generate Python interface code."""
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
-
-    # def get_enum_expr(key: str, info: ClassInfo):
-    #     print(f"Generating Enum for {info.name}")
-    #     if not info.is_enum:
-    #         return ""
-
-    #     enum_name = info.name
-    #     enum_values = "\n".join(
-    #         [
-    #             PY_ENUM_VALUE_TEMPLATE.substitute(
-    #                 INDENT=INDENT,
-    #                 VALUE_NAME=info.fields[i].name,
-    #                 VALUE_EXPR=f"= {info.fields[i].default}"
-    #                 if info.fields[i].default is not None
-    #                 else "",
-    #             )
-    #             for i in range(len(info.fields))
-    #         ]
-    #     )
-
-    #     return PY_ENUM_EXPR_TEMPLATE.substitute(
-    #         ENUM_NAME=enum_name, ENUM_VALUES=enum_values
-    #     )
     type_to_cls_info = {}
 
     def get_class_expr(key: str, info: ClassInfo):
@@ -1036,204 +1016,6 @@ def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_impo
     )
 
     return result
-
-
-def _print_client_code(struct_type: ClassInfo, registry: ReflectionRegistry) -> str:
-    """Generate C++ client interface code."""
-    INDENT = DEFAULT_INDENT
-    rpc_methods = _get_rpc_methods(struct_type)
-    if len(rpc_methods) == 0:
-        return ""
-
-    def get_method_decl(method: MethodInfo):
-        # Filter out 'self' parameter for client method declarations
-        rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
-        args_decl = ", ".join(
-            [
-                f"{_get_full_cpp_type(param.annotation if param.annotation != inspect.Signature.empty else None, registry)} {param_name}"
-                for param_name, param in rpc_params.items()
-            ]
-        )
-        if args_decl:
-            args_decl = ", " + args_decl
-
-        ret_type = "void"
-        if method.return_type and method.return_type is not type(None):
-            ret_type = (
-                f"rbc::RPCFuture<{_get_full_cpp_type(method.return_type, registry)}>"
-            )
-
-        is_static = method.is_static
-        self_param = ", void*" if not is_static else ""
-
-        return CPP_CLIENT_METHOD_DECL_TEMPLATE.substitute(
-            INDENT=INDENT,
-            RET_TYPE=ret_type,
-            METHOD_NAME=method.name,
-            SELF_PARAM=self_param,
-            ARGS_DECL=args_decl,
-        )
-
-    method_decls = []
-    for func_name, method_list in rpc_methods.items():
-        for method in method_list:
-            method_decls.append(get_method_decl(method))
-
-    methods_decl = "\n".join(method_decls)
-
-    namespace_name = struct_type.cpp_namespace or ""
-
-    return CPP_CLIENT_CLASS_TEMPLATE.substitute(
-        NAMESPACE_NAME=namespace_name,
-        CLASS_NAME=struct_type.name,
-        METHOD_DECLS=methods_decl,
-    )
-
-
-def _print_client_impl(struct_type: ClassInfo, registry: ReflectionRegistry) -> str:
-    """Generate C++ client implementation code."""
-    INDENT = DEFAULT_INDENT
-    rpc_methods = _get_rpc_methods(struct_type)
-    if len(rpc_methods) == 0:
-        return ""
-
-    class_name = struct_type.name
-    namespace_name = struct_type.cpp_namespace
-    namespace_expr = (
-        "" if not struct_type.cpp_namespace else struct_type.cpp_namespace + "::"
-    )
-
-    full_name = (
-        f"{struct_type.cpp_namespace}::{class_name}"
-        if struct_type.cpp_namespace
-        else class_name
-    )
-    method_impls = []
-
-    for func_name, method_list in rpc_methods.items():
-        for method in method_list:
-            func_hasher_name = hashlib.md5(
-                str(full_name + "->" + func_name + "|" + str(method.signature)).encode(
-                    "ascii"
-                )
-            ).hexdigest()
-
-            # Filter out 'self' parameter for client method declarations
-            rpc_params = {k: v for k, v in method.parameters.items() if k != "self"}
-            args_decl = ", ".join(
-                [
-                    f"{_get_full_cpp_type(param.annotation if param.annotation != inspect.Signature.empty else None, registry)} {param_name}"
-                    for param_name, param in rpc_params.items()
-                ]
-            )
-            if args_decl:
-                args_decl = ", " + args_decl
-
-            ret_type_name = _get_full_cpp_type(method.return_type, registry)
-            ret_type = "void"
-            if method.return_type and method.return_type is not type(None):
-                ret_type = f"rbc::RPCFuture<{ret_type_name}>"
-
-            is_static = method.is_static
-            self_param = f", void* {SELF_NAME}" if not is_static else ""
-            self_arg = f", {SELF_NAME}" if not is_static else ""
-
-            add_args_stmts = "\n".join(
-                [
-                    CPP_CLIENT_ADD_ARG_STMT_TEMPLATE.substitute(
-                        INDENT=INDENT,
-                        JSON_SER_NAME=JSON_SER_NAME,
-                        ARG_NAME=param_name,
-                    )
-                    for param_name in rpc_params
-                ]
-            )
-
-            return_stmt = ""
-            if method.return_type and method.return_type is not type(None):
-                return_stmt = CPP_CLIENT_RETURN_STMT_TEMPLATE.substitute(
-                    INDENT=INDENT,
-                    JSON_SER_NAME=JSON_SER_NAME,
-                    RET_TYPE=ret_type_name,
-                )
-
-            method_impl = CPP_CLIENT_METHOD_IMPL_TEMPLATE.substitute(
-                INDENT=INDENT,
-                RET_TYPE=ret_type,
-                NAMESPACE_EXPR=namespace_expr,
-                CLASS_NAME=class_name,
-                METHOD_NAME=func_name,
-                JSON_SER_NAME=JSON_SER_NAME,
-                SELF_PARAM=self_param,
-                ARGS_DECL=args_decl,
-                FUNC_HASH=func_hasher_name,
-                SELF_ARG=self_arg,
-                ADD_ARGS_STMTS=add_args_stmts,
-                RETURN_STMT=return_stmt,
-            )
-            method_impls.append(method_impl)
-
-    return "\n".join(method_impls)
-
-
-def cpp_client_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
-    """Generate C++ client interface header."""
-    registry = ReflectionRegistry()
-    extra_includes_expr = "\n".join(extra_includes)
-
-    # Check if any struct has RPC methods
-    use_rpc = False
-    for key, info in registry.get_all_classes().items():
-        if len(module_filter) > 0 and info.module not in module_filter:
-            continue
-        if len(_get_rpc_methods(info)) > 0:
-            use_rpc = True
-            break
-
-    rpc_include = "#include <rbc_ipc/command_list.h>" if use_rpc else ""
-
-    client_classes = []
-    # Use original order from registry to preserve module-defined order
-    all_classes = registry.get_all_classes().items()
-    for key, info in all_classes:
-        if module_filter and info.module not in module_filter:
-            continue
-        client_code = _print_client_code(info, registry)
-        if client_code:
-            client_classes.append(client_code)
-
-    client_classes_expr = "\n".join(client_classes)
-
-    return CPP_CLIENT_INTERFACE_TEMPLATE.substitute(
-        RPC_INCLUDE=rpc_include,
-        EXTRA_INCLUDES=extra_includes_expr,
-        CLIENT_CLASSES_EXPR=client_classes_expr,
-    )
-
-
-def cpp_client_impl_gen(module_filter: List[str] = [], *extra_includes) -> str:
-    """Generate C++ client implementation."""
-    registry = ReflectionRegistry()
-    extra_includes_expr = "\n".join(extra_includes)
-
-    client_impls = []
-    # Use original order from registry to preserve module-defined order
-    all_classes = registry.get_all_classes().items()
-
-    for key, info in all_classes:
-        if len(module_filter) > 0 and info.module not in module_filter:
-            continue
-        client_impl = _print_client_impl(info, registry)
-        if client_impl:
-            client_impls.append(client_impl)
-
-    client_impls_expr = "\n".join(client_impls)
-
-    return CPP_CLIENT_IMPL_TEMPLATE.substitute(
-        EXTRA_INCLUDES=extra_includes_expr,
-        CLIENT_IMPLS_EXPR=client_impls_expr,
-    )
-
 
 def pybind_codegen(
     module_name: str, module_filter: List[str] = [], *extra_includes

@@ -366,7 +366,7 @@ def generate():
         "rbc/runtime/include/rbc_plugin/generated/resource_meta.hpp"
     ).resolve()
     cpp_path = Path("rbc/runtime/src/generated/resource_meta.cpp").resolve()
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, False, include)
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
 
     include = "#include <rbc_plugin/generated/resource_meta.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
@@ -381,7 +381,7 @@ def generate():
 #include <rbc_core/utils/curve.h>
 #include <rbc_render/procedural/sky_atmosphere.h>"""
 
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, False, include)
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
     include = "#include <rbc_render/generated/pipeline_settings.hpp>"
     ut.codegen_to(cpp_path)(cpp_impl_gen, target_modules, include)
 
@@ -391,7 +391,7 @@ def generate():
     target_modules = ["world_interface"]
     file_name = "world"
     pyd_name = "test_world"
-    header_path = Path("rbc/tests/test_graphics/generated/world.h").resolve()
+    header_path = Path("rbc/tests/test_graphics/include/generated/world.h").resolve()
     cpp_path = Path("rbc/tests/test_py_codegen/generated/world.cpp").resolve()
     py_root_path = Path("src/rbc_ext/generated").resolve()
     # add __init__.py to py_path if not exists
@@ -406,9 +406,11 @@ def generate():
 #include <res_creation_info.h>
 #include <rbc_world/resources/mesh.h>
     """
-    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, True, include)
+    ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
 
-    include = f'#include "{file_name}.h"\n#include <rbc_core/rc.h>'
+
+
+    include = f'#include "generated/{file_name}.h"\n#include <rbc_core/rc.h>'
     ut.codegen_to(cpp_path)(pybind_codegen, pyd_name, ["world_interface", "runtime"], include)
     ut.codegen_to(py_path)(py_interface_gen, "test_py_codegen", ["world_interface", "runtime"], "import rbc_ext.luisa as luisa")
 

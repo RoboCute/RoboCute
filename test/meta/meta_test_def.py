@@ -1,7 +1,12 @@
 from rbc_meta.utils.reflect import reflect
 from rbc_meta.utils.codegenx import codegen, CodeModule, CodegenResitry
 from rbc_meta.utils.builtin import uint, Vector
+from enum import Enum
 
+@reflect(cpp_namespace="rbc")
+class DummyEnum(Enum):
+    a: int = 1
+    b: float = 2.0
 
 @reflect(
     cpp_namespace="rbc",

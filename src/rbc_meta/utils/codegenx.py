@@ -230,6 +230,7 @@ class CodegenResitry:
                 enums_expr.append(self.enum_gen(info))
             else:
                 structs_expr.append(self.cpp_struct_def_gen(info))
+
         enums_expr = "\n".join(enums_expr)
         structs_expr = "\n".join(structs_expr)
         header_path = Path(
@@ -329,16 +330,24 @@ class CodegenResitry:
         for method in info.methods:
             if _is_rpc_method(method):
                 continue  # RPC methods are handled separately
-
+            if method.is_inherit_func:
+                continue  # cpp donot impl prev func
+            
             ret_type = (
                 _get_full_cpp_type(method.return_type, registry, False, False)
                 if method.return_type
                 else "void"
             )
+
+
             # Filter out 'self' parameter for C++ method declarations
             method_params = {k: v for k, v in method.parameters.items() if k != "self"}
             args_expr = _print_arg_vars_decl(
-                method_params, False, False, True, registry
+                method_params,
+                False,  # not first, first method is void* _this
+                False,  # pybind
+                True,  # is_view
+                registry,
             )
             method_expr = CPP_STRUCT_METHOD_DECL_TEMPLATE.substitute(
                 INDENT=INDENT,
@@ -392,17 +401,6 @@ class CodegenResitry:
             )
         )
         struct_base_expr = ": ::rbc::RBCStruct"
-        # if len(info.base_classes) == 1:
-        #     base_class = info.base_classes[0]
-        #     assert base_class is not None
-        #     base_expr = _get_cpp_type(base_class.cls)
-        #     struct_base_expr = f": public {base_expr}"
-        #     # only on rttr type, valid
-        # elif len(info.base_classes) > 1:
-        #     # should not happen
-        #     print(f"{class_name} has more than 1 base classes")
-
-        # print(f"{class_name}: {info.base_classes}")
 
         struct_expr = CPP_STRUCT_TEMPLATE.substitute(
             NAMESPACE_NAME=namespace_name or "",
