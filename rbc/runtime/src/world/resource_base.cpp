@@ -59,7 +59,7 @@ struct ResourceLoader : RBCStruct {
         }
         vstd::reset(_meta_db, luisa::to_string(_meta_path / ".meta_db"));
     }
-    void add_block(
+    static void add_block(
         ResourceMetaType type,
         luisa::span<std::byte const> data,
         luisa::fixed_vector<std::byte, 64> &result) {
@@ -164,7 +164,7 @@ struct ResourceLoader : RBCStruct {
     // meta, type-id
     std::pair<luisa::string, vstd::Guid> to_binary(vstd::Guid guid) {
         luisa::string result;
-        vstd::Guid type_id;
+        vstd::Guid type_id{};
         type_id.reset();
         _meta_db_mtx.lock_shared();
         auto sp = _meta_db.read(
@@ -177,7 +177,7 @@ struct ResourceLoader : RBCStruct {
             if ((int64_t)(end - ptr) < sizeof(BinaryBlock)) {
                 break;
             }
-            BinaryBlock b;
+            BinaryBlock b{};
             std::memcpy(&b, ptr, sizeof(BinaryBlock));
             ptr += sizeof(BinaryBlock);
             if ((int64_t)(end - ptr) < b.size) {

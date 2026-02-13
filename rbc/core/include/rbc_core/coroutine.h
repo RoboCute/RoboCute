@@ -18,7 +18,7 @@ public:
     coroutine() = default;
     coroutine(base_type &&rhs) : _base(rhs) {}
     coroutine(coroutine const &) = delete;
-    RBC_CORE_API coroutine(coroutine &&rhs);
+    RBC_CORE_API coroutine(coroutine &&rhs) noexcept;
     static auto from_promise(promise &prom) {
         return base_type::from_promise(prom);
     }

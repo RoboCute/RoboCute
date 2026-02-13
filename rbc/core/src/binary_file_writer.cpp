@@ -7,14 +7,15 @@ namespace rbc {
 #define RBC_FSEEK fseeko
 #define RBC_FTELL ftello
 #endif
-BinaryFileWriter::BinaryFileWriter(luisa::string const &name, bool append) {
+BinaryFileWriter::BinaryFileWriter(luisa::string const &name, bool append)
+    : _file(nullptr) {
 #ifdef _WIN32
     fopen_s(&_file, name.c_str(), append ? "rb+" : "wb");
 #else
     _file = fopen(name.c_str(), append ? "rb+" : "wb");
 #endif
 }
-BinaryFileWriter::BinaryFileWriter(BinaryFileWriter &&rhs) {
+BinaryFileWriter::BinaryFileWriter(BinaryFileWriter &&rhs) noexcept {
     _file = rhs._file;
     rhs._file = nullptr;
 }
@@ -24,13 +25,13 @@ BinaryFileWriter::~BinaryFileWriter() {
     }
 }
 void BinaryFileWriter::set_pos(size_t pos) const {
-    RBC_FSEEK(_file, pos, SEEK_CUR);
+    RBC_FSEEK(_file, static_cast<int64_t>(pos), SEEK_CUR);
 }
 
 size_t BinaryFileWriter::pos() const {
     return RBC_FTELL(_file);
 }
-void BinaryFileWriter::write(luisa::span<std::byte const> data) {
+void BinaryFileWriter::write(luisa::span<std::byte const> data) const {
     fwrite(data.data(), data.size_bytes(), 1, _file);
 }
 #undef RBC_FSEEK

@@ -116,7 +116,7 @@ private:
         // get next light id
         uint _get_next_id() const
         {
-            return host_data.size();
+            return static_cast<uint>(host_data.size());
         }
     };
     struct InstIndex {

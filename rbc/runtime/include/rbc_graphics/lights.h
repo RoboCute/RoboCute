@@ -136,7 +136,7 @@ struct RBC_RUNTIME_API Lights : public SceneManagerEvent {
     void remove_mesh_light(uint light_index);
     void remove_disk_light(uint light_index);
 
-    void dispose();
+    void dispose() const;
     void scene_manager_tick() override;
     ~Lights();
     static Lights *instance();

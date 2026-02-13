@@ -43,7 +43,7 @@ private:
 public:
     void set_name(luisa::string name);
     luisa::string_view name() const { return _name; }
-    Component *_create_component(MD5 const &type);
+    static Component *_create_component(MD5 const &type);
     void _add_component(Component *component);
     EntityCompIter begin() const {
         return EntityCompIter{_components.begin()};

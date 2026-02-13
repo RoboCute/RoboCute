@@ -7,7 +7,7 @@ vstd::optional<int64_t> parse_string_to_int(luisa::string_view string, uint32_t 
     const char *end = start + string.size();
     {
         int64_t result;
-        auto err = std::from_chars(start, end, result, base);
+        auto err = std::from_chars(start, end, result, static_cast<int>(base));
         if (err.ec == std::errc{}) {
             return result;
         }

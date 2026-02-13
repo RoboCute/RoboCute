@@ -1,6 +1,6 @@
 
 #include "rbc_core/memory.h"
-#include "rbc_world/base_object.h"
+// #include "rbc_world/base_object.h"  // Unused include
 #include "rbc_anim/bone_container.h"
 #include "rbc_anim/anim_instance.h"
 #include "rbc_anim/graph/AnimGraph.h"
@@ -113,11 +113,11 @@ void AnimInstance::ParallelEvaluateAnimation(bool bForceRefPose, const SkeletalM
 namespace rbc {
 
 AnimInstanceProxy::AnimInstanceProxy()
-    : AnimInstanceObject(nullptr), current_delta_seconds(0.0f) {
+    : AnimInstanceObject(nullptr), skeleton(nullptr), skeletal_mesh(nullptr), anim_graph(nullptr), root_node(nullptr), MainInstanceProxy(nullptr), current_delta_seconds(0.0f), bUpdatingRoot(false) {
 }
 
 AnimInstanceProxy::AnimInstanceProxy(AnimInstance *InAnimInstance)
-    : AnimInstanceObject(InAnimInstance), current_delta_seconds(0.0f) {
+    : AnimInstanceObject(InAnimInstance), skeleton(nullptr), skeletal_mesh(nullptr), anim_graph(nullptr), root_node(nullptr), MainInstanceProxy(nullptr), current_delta_seconds(0.0f), bUpdatingRoot(false) {
 }
 
 AnimInstanceProxy::AnimInstanceProxy(const AnimInstanceProxy &) = default;
@@ -156,18 +156,14 @@ void AnimInstanceProxy::InitializeRootNode_WithRoot(AnimNode *InRootNode) {
         AnimationUpdateSharedContext shared_context;
         AnimationInitializationContext init_context{this, &shared_context};
 
-        if (InRootNode == root_node) {
-            // TODO: Increment counter
-            InRootNode->Initialize_AnyThread(init_context);
-        } else {
-            InRootNode->Initialize_AnyThread(init_context);
-        }
+        // Initialize the node regardless of whether it's the root node
+        InRootNode->Initialize_AnyThread(init_context);
     }
 }
 
-void AnimInstanceProxy::PreUpdate(AnimInstance *InAnimInstance, float DeltaSeconds) {
+void AnimInstanceProxy::PreUpdate(AnimInstance *InAnimInstance, float DeltaTimeSeconds) {
     InitializeObjects(InAnimInstance);
-    current_delta_seconds = DeltaSeconds;
+    current_delta_seconds = DeltaTimeSeconds;
     // allocate blend weights and state machines
     // TODO: Collect Transform Here
     // GameThreadPreUpdateNodes => PreUpdate

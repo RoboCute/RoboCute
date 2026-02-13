@@ -148,11 +148,11 @@ void SceneManager::before_rendering(
 }
 void SceneManager::add_before_render_event(vstd::string_view name, SceneManagerEvent *func) {
     std::lock_guard lck{_evt_mtx};
-    _before_render_evts.try_emplace(name, std::move(func));
+    _before_render_evts.try_emplace(name, func);
 }
 void SceneManager::add_on_frame_end_event(vstd::string_view name, SceneManagerEvent *func) {
     std::lock_guard lck{_evt_mtx};
-    _before_render_evts.try_emplace(name, std::move(func));
+    _before_render_evts.try_emplace(name, func);
 }
 void SceneManager::prepare_frame() {
     if (!_temp_buffer) {

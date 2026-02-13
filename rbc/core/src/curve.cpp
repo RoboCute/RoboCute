@@ -24,10 +24,10 @@ void Curve::add_node(float time, float value) {
 float Curve::sample_node(float time) const {
     if (_key_nodes.empty()) return 0;
     if (_key_nodes.size() == 1) return _key_nodes[0].y;
-    int64_t next_idx = curve_detail::_get_idx(*this, time);
-    int64_t idx = next_idx - 1;
-    next_idx = std::clamp<int64_t>(next_idx, 0, _key_nodes.size() - 1);
-    idx = std::clamp<int64_t>(idx, 0, _key_nodes.size() - 1);
+    auto next_idx = static_cast<int64_t>(curve_detail::_get_idx(*this, time));
+    auto idx = next_idx - 1;
+    next_idx = std::clamp<int64_t>(next_idx, 0, static_cast<int64_t>(_key_nodes.size()) - 1);
+    idx = std::clamp<int64_t>(idx, 0, static_cast<int64_t>(_key_nodes.size()) - 1);
     if (next_idx == idx) {
         return _key_nodes[idx].y;
     }
@@ -38,8 +38,8 @@ Curve::Curve() {}
 Curve::~Curve() {}
 void Curve::_sync_range() {
     for (auto &i : _key_nodes) {
-        _range.x = std::min<double>(i.x, _range.x);
-        _range.y = std::max<double>(i.x, _range.y);
+        _range.x = std::min(i.x, _range.x);
+        _range.y = std::max(i.x, _range.y);
     }
 }
 Curve::Curve(std::initializer_list<float2> key_nodes) : _key_nodes(key_nodes) {
@@ -93,7 +93,7 @@ float CubicBezier2D::length(int sample_count) const {
     float len = 0;
     float2 last_point = p0;
     for (int i = 0; i <= sample_count; ++i) {
-        float2 point = eval((float)i / sample_count);
+        float2 point = eval(static_cast<float>(i) / static_cast<float>(sample_count));
         len += distance(last_point, point);
         last_point = point;
     }
@@ -105,7 +105,7 @@ Rect CubicBezier2D::bound_box(int sample_count) const {
 
     result.extend(p0);
     for (int i = 1; i <= sample_count; ++i) {
-        float2 point = eval((float)i / sample_count);
+        float2 point = eval(static_cast<float>(i) / static_cast<float>(sample_count));
         result.extend(point);
     }
 
@@ -164,7 +164,7 @@ bool CubicBezier2D::intersect_bb_from_ctrl_points(CubicBezier2D &rhs) const {
 //  step 1. sample points and find search range
 //  step 2. binary search in the range
 float CubicBezier2D::nearest(float2 pos, int sample_count, int binary_count) const {
-    float step = 1.0f / (sample_count - 1);
+    float step = 1.0f / (static_cast<float>(sample_count) - 1.0f);
 
     float begin = 0;
     float end = 0;
@@ -173,7 +173,7 @@ float CubicBezier2D::nearest(float2 pos, int sample_count, int binary_count) con
     {
         float min_dis = std::numeric_limits<float>::max();
         for (int i = 0; i < sample_count; ++i) {
-            float cur_time = i * step;
+            float cur_time = static_cast<float>(i) * step;
             float cur_dis = _lengthsq(eval(cur_time) - pos);
             if (cur_dis < min_dis) {
                 begin = cur_time;
@@ -201,7 +201,7 @@ float CubicBezier2D::nearest(float2 pos, int sample_count, int binary_count) con
     return begin + end;
 }
 float CubicBezier2D::nearest_x(float x, int sample_count, int binary_count) const {
-    float step = 1.0f / (sample_count - 1);
+    float step = 1.0f / (static_cast<float>(sample_count) - 1.0f);
 
     float begin = 0;
     float end = 0;
@@ -210,7 +210,7 @@ float CubicBezier2D::nearest_x(float x, int sample_count, int binary_count) cons
     {
         float min_dis = std::numeric_limits<float>::max();
         for (int i = 0; i < sample_count; ++i) {
-            float cur_time = i * step;
+            float cur_time = static_cast<float>(i) * step;
             float cur_dis = abs(eval(cur_time).x - x);
             if (cur_dis < min_dis) {
                 begin = cur_time;

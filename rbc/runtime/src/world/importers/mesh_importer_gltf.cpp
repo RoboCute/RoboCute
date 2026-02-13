@@ -7,7 +7,7 @@
 #include <luisa/core/binary_io.h>
 #include <luisa/core/logging.h>
 #include <cstring>
-#include <algorithm>
+// #include <algorithm>  // Unused include
 #include "rbc_world/util/gltf_scene_loader.h"
 #include "rbc_world/util/gltf.h"
 

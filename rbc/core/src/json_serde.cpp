@@ -33,7 +33,7 @@ namespace rbc {
     if (!val) return false;                            \
     auto type = yyjson_get_type(val);
 JsonWriter::JsonWriter(bool root_array)
-    : _alloc(4096, &_alloc_callback, 2) {
+    : _alloc(4096, &_alloc_callback, 2), alc{} {
     alc = yyjson_alc{
         .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
     json_doc = yyjson_mut_doc_new(&alc);
@@ -293,7 +293,8 @@ JsonWriter::~JsonWriter() {
 bool JsonReader::valid() const {
     return json_doc != nullptr;
 }
-JsonReader::JsonReader(luisa::string_view str) {
+JsonReader::JsonReader(luisa::string_view str)
+    : alc{} {
     alc = yyjson_alc{
         .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
     json_doc = yyjson_read_opts(const_cast<char *>(str.data()), str.size(), 0, &alc, nullptr);

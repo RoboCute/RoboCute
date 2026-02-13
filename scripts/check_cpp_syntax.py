@@ -38,7 +38,7 @@ class ClangdLSPClient:
             self.clangd_path,
             "--compile-commands-dir=" + self.compile_commands_dir,
             "--log=error",
-            "--clang-tidy=false",
+            "--clang-tidy=true",
             "--completion-style=bundled",
             "--pch-storage=memory",
             "--cross-file-rename=false",

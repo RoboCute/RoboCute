@@ -3,7 +3,8 @@
 
 namespace rbc {
 
-BoneContainer::BoneContainer() {}
+BoneContainer::BoneContainer()
+    : ref_skeleton(nullptr) {}
 
 }// namespace rbc
 
@@ -26,7 +27,7 @@ void BoneContainer::InitializeTo(luisa::span<const BoneIndexType> InRequiredBone
     Initialize();
 }
 
-const bool BoneContainer::IsValid() const {
+bool BoneContainer::IsValid() const {
     // Asset is Valid
     // RefSkeleton != nullptr
     // BoneIndices.size() > 0

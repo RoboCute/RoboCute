@@ -77,7 +77,7 @@ public:
     void Tick(float InDeltaTime_s);    // Tick entry for each system calls
     void TickPose(float InDeltaTime_s);// Tick Pose
     void TickAnimation(float InDeltaTime_s, bool bNeedsValidRootMotion);
-    void TickAnimInstances(float InDeltaTime_s, bool bNeedsValidRootMotion);
+    void TickAnimInstances(float InDeltaTime_s, bool bNeedsValidRootMotion) const;
 
     void PostInitMeshObject(SkeletalMeshRenderObject *) {}
 
@@ -118,10 +118,10 @@ public:// Utilities
 
     void RefreshBoneTransforms();
     void ResetToRefPose();
-    void EvaluateAnimation(SkeletalMesh *InSkelMesh, AnimInstance *InAnimInstance, bool bInForceRefPose, CompactPose &OutPose) const;
+    static void EvaluateAnimation(SkeletalMesh *InSkelMesh, AnimInstance *InAnimInstance, bool bInForceRefPose, CompactPose &OutPose);
     void EvaluatePostProcessMeshInstance();
     void RecalcRequiredBones(int32_t);
-    void RecalcRequiredCurves();
+    static void RecalcRequiredCurves();
 
     void PostAnimEvaluation();// share the same anim evaluation context
 
@@ -142,7 +142,7 @@ public:
     void EnableAnimation();
     void DisableAnimation();
     bool IsAnimationEnabled() const;
-    bool ShouldBlendPhysicsBones();
+    static bool ShouldBlendPhysicsBones();
     void SetUseGPUSkin(bool InSetUseGPUSkin) { bUseGPUSkin = InSetUseGPUSkin; }
     bool IsUseGPUSkin() const { return bUseGPUSkin; }
     bool IsInitialized() const { return bInitialized; }

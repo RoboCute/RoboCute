@@ -43,14 +43,14 @@
 #include <luisa/core/logging.h>
 namespace {
 
-template<typename _VectorType>
-bool FixupNames(_VectorType &_data, const char *_pretty_name, const char *_prefix_name) {
+template<typename VectorType>
+bool FixupNames(VectorType &_data, const char *_pretty_name, const char *_prefix_name) {
     ozz::set<std::string> names;
     for (size_t i = 0; i < _data.size(); ++i) {
         bool renamed = false;
-        typename _VectorType::const_reference data = _data[i];
+        typename VectorType::const_reference data = _data[i];
 
-        std::string name(data.name.c_str());
+        std::string name(data.name);
 
         // Fixes unnamed animations.
         if (name.length() == 0) {
@@ -112,8 +112,8 @@ ozz::span<const T> GetGltfBufferView(const tinygltf::Model &_model, const tinygl
 // Samples a linear animation channel
 // There is an exact mapping between gltf and ozz keyframes so we just copy
 // everything over.
-template<typename _KeyframesType>
-bool SampleLinearChannel(const tinygltf::Model &_model, const tinygltf::Accessor &_output, const ozz::span<const float> &_timestamps, _KeyframesType *_keyframes) {
+template<typename KeyframesType>
+bool SampleLinearChannel(const tinygltf::Model &_model, const tinygltf::Accessor &_output, const ozz::span<const float> &_timestamps, KeyframesType *_keyframes) {
     const size_t gltf_keys_count = _output.count;
 
     if (gltf_keys_count == 0) {
@@ -121,7 +121,7 @@ bool SampleLinearChannel(const tinygltf::Model &_model, const tinygltf::Accessor
         return true;
     }
 
-    typedef typename _KeyframesType::value_type::Value ValueType;
+    typedef typename KeyframesType::value_type::Value ValueType;
     const ozz::span<const ValueType> values =
         GetGltfBufferView<ValueType>(_model, _output);
     if (values.size_bytes() / sizeof(ValueType) != gltf_keys_count ||
@@ -133,7 +133,7 @@ bool SampleLinearChannel(const tinygltf::Model &_model, const tinygltf::Accessor
 
     _keyframes->reserve(_output.count);
     for (size_t i = 0; i < _output.count; ++i) {
-        const typename _KeyframesType::value_type key{_timestamps[i], values[i]};
+        const typename KeyframesType::value_type key{_timestamps[i], values[i]};
         _keyframes->push_back(key);
     }
 
@@ -142,8 +142,8 @@ bool SampleLinearChannel(const tinygltf::Model &_model, const tinygltf::Accessor
 
 // Samples a step animation channel
 // There are twice-1 as many ozz keyframes as gltf keyframes
-template<typename _KeyframesType>
-bool SampleStepChannel(const tinygltf::Model &_model, const tinygltf::Accessor &_output, const ozz::span<const float> &_timestamps, _KeyframesType *_keyframes) {
+template<typename KeyframesType>
+bool SampleStepChannel(const tinygltf::Model &_model, const tinygltf::Accessor &_output, const ozz::span<const float> &_timestamps, KeyframesType *_keyframes) {
     const size_t gltf_keys_count = _output.count;
 
     if (gltf_keys_count == 0) {
@@ -151,7 +151,7 @@ bool SampleStepChannel(const tinygltf::Model &_model, const tinygltf::Accessor &
         return true;
     }
 
-    typedef typename _KeyframesType::value_type::Value ValueType;
+    typedef typename KeyframesType::value_type::Value ValueType;
     const ozz::span<const ValueType> values =
         GetGltfBufferView<ValueType>(_model, _output);
     if (values.size_bytes() / sizeof(ValueType) != gltf_keys_count ||
@@ -166,12 +166,12 @@ bool SampleStepChannel(const tinygltf::Model &_model, const tinygltf::Accessor &
     _keyframes->resize(numKeyframes);
 
     for (size_t i = 0; i < _output.count; i++) {
-        typename _KeyframesType::reference key = _keyframes->at(i * 2);
+        typename KeyframesType::reference key = _keyframes->at(i * 2);
         key.time = _timestamps[i];
         key.value = values[i];
 
         if (i < _output.count - 1) {
-            typename _KeyframesType::reference next_key = _keyframes->at(i * 2 + 1);
+            typename KeyframesType::reference next_key = _keyframes->at(i * 2 + 1);
             next_key.time = nexttowardf(_timestamps[i + 1], 0.f);
             next_key.value = values[i];
         }
@@ -212,8 +212,8 @@ T SampleHermiteSpline(float _alpha, const T &p0, const T &m0, const T &p1, const
 // Samples a cubic-spline channel
 // the number of keyframes is determined from the animation duration and given
 // sample rate
-template<typename _KeyframesType>
-bool SampleCubicSplineChannel(const tinygltf::Model &_model, const tinygltf::Accessor &_output, const ozz::span<const float> &_timestamps, float _sampling_rate, float _duration, _KeyframesType *_keyframes) {
+template<typename KeyframesType>
+bool SampleCubicSplineChannel(const tinygltf::Model &_model, const tinygltf::Accessor &_output, const ozz::span<const float> &_timestamps, float _sampling_rate, float _duration, KeyframesType *_keyframes) {
     (void)_duration;
 
     LUISA_ASSERT(_output.count % 3 == 0);
@@ -224,7 +224,7 @@ bool SampleCubicSplineChannel(const tinygltf::Model &_model, const tinygltf::Acc
         return true;
     }
 
-    typedef typename _KeyframesType::value_type::Value ValueType;
+    typedef typename KeyframesType::value_type::Value ValueType;
     const ozz::span<const ValueType> values =
         GetGltfBufferView<ValueType>(_model, _output);
     if (values.size_bytes() / (sizeof(ValueType) * 3) != gltf_keys_count ||
@@ -244,7 +244,7 @@ bool SampleCubicSplineChannel(const tinygltf::Model &_model, const tinygltf::Acc
         const float time = fixed_it.time(k) + _timestamps[0];
 
         // Creates output key.
-        typename _KeyframesType::value_type key;
+        typename KeyframesType::value_type key;
         key.time = time;
 
         // Makes sure time is in between the correct cubic keyframes.
@@ -270,8 +270,8 @@ bool SampleCubicSplineChannel(const tinygltf::Model &_model, const tinygltf::Acc
     return true;
 }
 
-template<typename _KeyframesType>
-bool SampleChannel(const tinygltf::Model &_model, const std::string &_interpolation, const tinygltf::Accessor &_output, const ozz::span<const float> &_timestamps, float _sampling_rate, float _duration, _KeyframesType *_keyframes) {
+template<typename KeyframesType>
+bool SampleChannel(const tinygltf::Model &_model, const std::string &_interpolation, const tinygltf::Accessor &_output, const ozz::span<const float> &_timestamps, float _sampling_rate, float _duration, KeyframesType *_keyframes) {
     bool valid = false;
     if (_interpolation == "LINEAR") {
         valid = SampleLinearChannel(_model, _output, _timestamps, _keyframes);
@@ -287,7 +287,7 @@ bool SampleChannel(const tinygltf::Model &_model, const std::string &_interpolat
 
     // Check if sorted (increasing time, might not be stricly increasing).
     if (valid) {
-        valid = std::is_sorted(_keyframes->begin(), _keyframes->end(), [](typename _KeyframesType::const_reference _a, typename _KeyframesType::const_reference _b) {
+        valid = std::is_sorted(_keyframes->begin(), _keyframes->end(), [](typename KeyframesType::const_reference _a, typename KeyframesType::const_reference _b) {
             return _a.time < _b.time;
         });
         if (!valid) {
@@ -299,7 +299,7 @@ bool SampleChannel(const tinygltf::Model &_model, const std::string &_interpolat
 
     // Remove keyframes with strictly equal times, keeping the first one.
     if (valid) {
-        auto new_end = std::unique(_keyframes->begin(), _keyframes->end(), [](typename _KeyframesType::const_reference _a, typename _KeyframesType::const_reference _b) {
+        auto new_end = std::unique(_keyframes->begin(), _keyframes->end(), [](typename KeyframesType::const_reference _a, typename KeyframesType::const_reference _b) {
             return _a.time == _b.time;
         });
         if (new_end != _keyframes->end()) {
@@ -569,7 +569,7 @@ bool GltfOzzImporter::Import(ozz::animation::offline::RawSkeleton *_skeleton, co
 // Recursively import a node's children
 bool GltfOzzImporter::ImportNode(const tinygltf::Node &_node, ozz::animation::offline::RawSkeleton::Joint *_joint) {
     // Names joint.
-    _joint->name = _node.name.c_str();
+    _joint->name = _node.name;
 
     // Fills transform.
     if (!CreateNodeTransform(_node, &_joint->transform)) {
@@ -627,7 +627,7 @@ bool GltfOzzImporter::Import(const char *_animation_name, const ozz::animation::
         });
     LUISA_ASSERT(gltf_animation != end(m_model.animations));
 
-    _animation->name = gltf_animation->name.c_str();
+    _animation->name = gltf_animation->name;
 
     // Animation duration is determined during sampling from the duration of the
     // longest channel
