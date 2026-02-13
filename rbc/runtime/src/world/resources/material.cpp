@@ -259,7 +259,6 @@ bool MaterialResource::unsafe_save_to_path() const {
                         t._store((*iter)->guid(), name);
                     } else {
                         vstd::Guid guid;
-                        guid.reset();
                         t._store(guid, name);
                     }
                     ++iter;
