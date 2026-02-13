@@ -408,8 +408,6 @@ def generate():
     """
     ut.codegen_to(header_path)(cpp_interface_gen, target_modules, include)
 
-
-
     include = f'#include "generated/{file_name}.h"\n#include <rbc_core/rc.h>'
     ut.codegen_to(cpp_path)(pybind_codegen, pyd_name, ["world_interface", "runtime"], include)
     ut.codegen_to(py_path)(py_interface_gen, "test_py_codegen", ["world_interface", "runtime"], "import rbc_ext.luisa as luisa")

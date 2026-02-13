@@ -40,6 +40,7 @@ from rbc_meta.utils.templates import (
     CPP_STRUCT_BUILTIN_METHODS_TEMPLATE,
     PY_MODULE_TEMPLATE,
     PY_INTERFACE_CLASS_TEMPLATE,
+    PY_METHOD_DISPOSE_TEMPLATE,
     PY_ENUM_EXPR_TEMPLATE,
     PY_ENUM_VALUE_TEMPLATE,
     PY_INIT_METHOD_TEMPLATE,
@@ -357,6 +358,144 @@ class CodegenResitry:
     def gen_pybind_py(self, mod: "CodeModule"):
         target_filepath = mod.pybind_py_file_
         print("Generating pybind to ", target_filepath)
+        registry = ReflectionRegistry()
+        INDENT = DEFAULT_INDENT
+        type_to_cls_info = {}
+
+        def get_class_expr(info: ClassInfo):
+            if info.is_enum:
+                return "", []
+
+            struct_name = info.name  # Use class name as struct name for C++ binding
+            if not info.pybind or not info.create_instance:
+                init_method = PY_INIT_METHOD_TEMPLATE_EXTERNAL.substitute(INDENT=INDENT)
+                dispose_method = ""
+            else:
+                init_method = PY_INIT_METHOD_TEMPLATE.substitute(
+                    INDENT=INDENT,
+                    STRUCT_NAME=struct_name,
+                )
+
+                dispose_method = PY_DISPOSE_METHOD_TEMPLATE.substitute(INDENT=INDENT)
+
+            pybind_methods_list = []
+            if info.create_instance:
+                pybind_methods_list.append(f"create__{struct_name}__")
+
+            def get_method_expr(method: MethodInfo, type: Type):
+                # print(method)
+                # Filter out 'self' parameter for Python method declarations
+                method_params = {k: v for k, v in method.parameters.items() if k != "self"}
+
+                args_decl = _print_py_args_decl(method_params, False, type)
+                args_call = _print_py_args(method_params, False, False)
+
+                return_expr = "return " if method.return_type else ""
+                return_end = ""
+                if (method.return_type):
+                    if (hasattr(method.return_type, '_ctor_begin') or
+                        (hasattr(method.return_type, "_pybind_type_")
+                        and method.return_type._pybind_type_
+                        and (
+                            not hasattr(method.return_type, "_is_enum_")
+                            or not method.return_type._is_enum_
+                        ))
+                    ):
+                        return_expr += _get_py_type(method.return_type)
+                        if hasattr(method.return_type, '_ctor_begin') and method.return_type._ctor_begin:
+                            return_expr += '.'
+                            return_expr += method.return_type._ctor_begin
+                        else:
+                            return_expr += '('
+                        if hasattr(method.return_type, '_ctor_end') and method.return_type._ctor_end:
+                            return_end = method.return_type._ctor_end
+                        else:
+                            return_end += ")"
+
+                pybind_method_name = PYBIND_METHOD_NAME_TEMPLATE.substitute(
+                    STRUCT_NAME=struct_name,
+                    METHOD_NAME=method.name,
+                )
+
+                pybind_methods_list.append(pybind_method_name)
+                if method.name == 'dispose':
+                    return PY_METHOD_DISPOSE_TEMPLATE.substitute(
+                        INDENT=INDENT,
+                        METHOD_NAME=method.name,
+                        ARGS_DECL=args_decl,
+                        RETURN_EXPR=return_expr,
+                        PYBIND_METHOD_NAME=pybind_method_name,
+                        ARGS_CALL=args_call,
+                        RETURN_END=return_end,
+                    )
+                return PY_METHOD_TEMPLATE.substitute(
+                    INDENT=INDENT,
+                    METHOD_NAME=method.name,
+                    ARGS_DECL=args_decl,
+                    RETURN_EXPR=return_expr,
+                    PYBIND_METHOD_NAME=pybind_method_name,
+                    ARGS_CALL=args_call,
+                    RETURN_END=return_end,
+                )
+
+            methods_list = []
+            for method in info.methods:
+                if method.is_inherit_func:
+                    continue  # skip inherit methods in python interface
+                methods_list.append(get_method_expr(method, info.cls))
+
+            methods_expr = "".join(methods_list)
+            inherit_expr = ""
+            # print(f"Class {info.name} has {len(info.base_classes)} base classes")
+            if len(info.base_classes) == 1:
+                base_class = info.base_classes[0]
+                assert base_class is not None
+                base_expr = _get_py_type(base_class.cls)
+                inherit_expr = f"({base_expr})"
+                # only on rttr type, valid
+            elif len(info.base_classes) > 1:
+                # should not happen
+                print(f"{info.name} has more than 1 base classes")
+            return PY_INTERFACE_CLASS_TEMPLATE.substitute(
+                CLASS_NAME=info.name,
+                INHERIT_EXPR=inherit_expr,
+                INIT_METHOD=init_method,
+                DISPOSE_METHOD=dispose_method,
+                METHODS_EXPR=methods_expr,
+            ), pybind_methods_list
+
+        classes_expr_list = []
+        enum_exprs = []
+
+        # Use original order from registry to preserve module-defined order
+        all_classes = registry.get_all_classes().items()
+
+        for cls in mod.classes_:
+            info = registry.get_class_info(cls.__name__)
+            type_to_cls_info[info.cls] = info
+            if not info.pybind:  # filter out classes marked pybind
+                continue
+
+            class_expr, pybind_methods_list = get_class_expr(info)
+            if class_expr:
+                classes_expr_list.append(class_expr)
+
+        classes_expr = "\n".join(classes_expr_list)
+        enum_exprs = "\n".join(enum_exprs)
+        module_expr = f"from rbc_ext._C.{mod.name()} import *"
+        extra_import = "import rbc_ext.luisa as luisa"
+        if extra_import is not None:
+            module_expr += '\n'
+            module_expr += extra_import
+
+        file_expr = PY_MODULE_TEMPLATE.substitute(
+            MODULE_EXPR=module_expr,
+            ENUM_EXPRS=enum_exprs,
+            CLASS_EXPRS=classes_expr,
+        )
+        _write_string_to(file_expr, mod.pybind_py_file_)
+
+
 
     def cpp_struct_def_gen(self, info: ClassInfo) -> str:
         INDENT = DEFAULT_INDENT
