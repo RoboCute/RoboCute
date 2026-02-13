@@ -36,6 +36,9 @@ class RBCCoreModule(CodeModule):
     header_files_ = ["rbc_core/utils/curve.h"]
 
 
+RESOURCE_CLASSES =[LCPixelStorage, LCPixelFormat, SamplerFilter, SamplerAddress, MeshMeta, TextureMeta]
+
+
 @codegen
 class ResourceMetaModule(CodeModule):
     enable_cpp_interface_ = True
@@ -47,8 +50,26 @@ class ResourceMetaModule(CodeModule):
     cpp_impl_file_ = "generated/resource_meta_x.cpp"
     
     deps_ = [LuisaResourceModule]
-    classes_ = [LCPixelStorage, LCPixelFormat, SamplerFilter, SamplerAddress, MeshMeta, TextureMeta]
+    classes_ = RESOURCE_CLASSES
 
+PIPELINE_SETTING_CLASSES = [
+    ToneMappingParameters,
+    LpmColorSpace,
+    GeometryType,
+    ResourceColorSpace,
+    LpmDisplayMode,
+    NRD_CheckerboardMode,
+    NRD_HitDistanceReconstructionMode,
+    DistortionSettings,
+    LpmDispatchParameters,
+    FrameSettings,
+    ACESParameters,
+    ExposureSettings,
+    PathTracerSettings,
+    ToneMappingSettings,
+    DisplaySettings,
+    SkySettings,
+]
 
 @codegen
 class PipelineSettingModule(CodeModule):
@@ -59,47 +80,36 @@ class PipelineSettingModule(CodeModule):
     cpp_impl_file_ = "generated/pipeline_settings_x.cpp"
     header_files_ = ["rbc_render/procedural/sky_atmosphere.h"]
     deps_ = [LuisaResourceModule, RBCCoreModule]
-    classes_ = [
-        ToneMappingParameters,
-        LpmColorSpace,
-        GeometryType,
-        ResourceColorSpace,
-        LpmDisplayMode,
-        NRD_CheckerboardMode,
-        NRD_HitDistanceReconstructionMode,
-        DistortionSettings,
-        LpmDispatchParameters,
-        FrameSettings,
-        ACESParameters,
-        ExposureSettings,
-        PathTracerSettings,
-        ToneMappingSettings,
-        DisplaySettings,
-        SkySettings,
-    ]
+    classes_ = PIPELINE_SETTING_CLASSES
+
+WORLD_INTERFACE_CLASSES = [
+    BasicDataType, ResourceLoadStatus, RendererGeometryType, BaseObjectType, Object, Entity, Component, TransformComponent, LightComponent, Resource, BasicData, TextureResource, MeshResource, BufferResource, MaterialResource, RenderComponent, RenderSettings, CameraComponent, DataComponent, EntitiesCollection, Scene, FileMeta, Project, TickStage, RBCContext
+]
 
 @codegen
-class WorldInterfacePyModule(CodeModule):
+class WorldInterfaceModule(CodeModule):
     name_="world_interface"
-
     cpp_base_dir_ = "rbc/tests/test_graphics"
     header_files_ = ["res_creation_info.h", "rbc_plugin/generated/resource_meta.hpp", "rbc_world/resources/mesh.h"]
-
     enable_cpp_interface_ = True
     interface_header_file_ = "generated/world_x.h"
-
-    enable_pybind_cpp_def_ = True
-    pybind_cpp_def_file_ = "rbc/tests/test_py_codegen/generated/world_x.cpp"
-
-    enable_pybind_ = True
-    pybind_py_file_ = "src/rbc_ext/generated/world_x.py"
-
-    classes_ = [
-        BasicDataType, ResourceLoadStatus, RendererGeometryType, BaseObjectType, Object, Entity, Component, TransformComponent, LightComponent, Resource, BasicData, TextureResource, MeshResource, BufferResource, MaterialResource, RenderComponent, RenderSettings, CameraComponent, DataComponent, EntitiesCollection, Scene, FileMeta, Project, TickStage, RBCContext
-    ]
+    classes_ = WORLD_INTERFACE_CLASSES
     deps_ = [ResourceMetaModule]
 
+EXT_CLASSES = []
+EXT_CLASSES.extend(WORLD_INTERFACE_CLASSES)
+EXT_CLASSES.extend(RESOURCE_CLASSES)
 
+@codegen
+class WorldInterfacePybindModule(CodeModule):
+    name_="world_interface"
+    header_files_ = ["res_creation_info.h", "rbc_plugin/generated/resource_meta.hpp", "rbc_world/resources/mesh.h"]
+    enable_pybind_cpp_def_ = True
+    pybind_cpp_def_file_ = "rbc/tests/test_py_codegen/generated/world_x.cpp"
+    enable_pybind_ = True
+    pybind_py_file_ = "src/rbc_ext/generated/world_x.py"
+    classes_ = EXT_CLASSES
+    deps_ = [ResourceMetaModule]
 
 def generate_registered():
     r = CodegenResitry()
