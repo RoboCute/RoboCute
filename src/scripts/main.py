@@ -347,7 +347,6 @@ def run_generation_task(module_name, function_name, *args):
 def generatex():
     import scripts.generate
     from scripts.generate import generate_registered
-
     generate_registered()
 
 

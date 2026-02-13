@@ -103,9 +103,20 @@ class CodegenResitry:
     def gen_pybind_cpp_impl(self, mod: "CodeModule"):
         reg = ReflectionRegistry()
         INDENT = DEFAULT_INDENT
+        print("Dependencies: [")
+        extra_headers = mod.header_files_
 
+        for dep in mod.deps_:
+            dep_mod = self._modules[dep.__name__]
+            print("- " + dep_mod.name())
+            extra_headers.extend(dep_mod.header_files_)
+        print("]")
 
-        extra_includes_expr = to_include_expr(mod.interface_header_file_)
+        print(f"Collected {len(extra_headers)} Header Files")
+        for header in extra_headers:
+            print("- " + header)
+
+        extra_include_expr = "\n".join([to_include_expr(x) for x in extra_headers])
 
         enum_bindings = []
         struct_bindings = []
@@ -207,7 +218,7 @@ class CodegenResitry:
 
 
         file_expr = PYBIND_CODE_TEMPLATE.substitute(
-            EXTRA_INCLUDES=extra_includes_expr,
+            EXTRA_INCLUDES=extra_include_expr,
             EXPORT_FUNC_NAME=export_func_name,
             ENUM_BINDINGS=enum_bindings_expr,
             STRUCT_BINDINGS=struct_bindings_expr,
