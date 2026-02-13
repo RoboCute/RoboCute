@@ -19,6 +19,14 @@
 - [ ] Writing to D:\ws\repos\RoboCute-repo\RoboCute\rbc\tests\test_py_codegen\generated\world.cpp
 - [ ] Writing to D:\ws\repos\RoboCute-repo\RoboCute\src\rbc_ext\generated\world.py
 
+World Interface的需求复杂且重要，需要仔细设计一下
+
+enum需求
+
+export_xxx
+py::enum_<Enum>(m, "name").value("name", value)..
+static ModuleRegister export_test_world_(export_test_world);
+
 ## Serde
 
 DEPRECATED
