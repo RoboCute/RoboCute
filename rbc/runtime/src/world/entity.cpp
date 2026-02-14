@@ -80,27 +80,35 @@ void Component::_call_on_destroy() {
         on_destroy();
 }
 void Entity::_add_component(Component *component) {
-    component->remove_self_from_entity();
-    auto result = _components.try_emplace(component->type_id(), component).second;
-    if (!result) [[unlikely]]
-        LUISA_ERROR("Component already exists.");
-    LUISA_DEBUG_ASSERT(component->entity() == nullptr);
-    component->_entity = this;
+    {
+        // std::lock_guard lck{_add_comp_mtx};
+        component->remove_self_from_entity();
+        auto result = _components.try_emplace(component->type_id(), component).second;
+        if (!result) [[unlikely]]
+            LUISA_ERROR("Component already exists.");
+        LUISA_DEBUG_ASSERT(component->entity() == nullptr);
+        component->_entity = this;
+    }
     component->_call_on_awake();
 }
 
 bool Entity::remove_component(MD5 const &type_md5) {
-    auto iter = _components.find(type_md5);
-    if (iter == _components.end()) return false;
-    auto obj = std::move(iter->second);
-    _components.erase(iter);
-    LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
-    auto comp = obj.get();
-    LUISA_DEBUG_ASSERT(comp->entity() == this);
+    Component *comp;
+    {
+        // std::lock_guard lck{_add_comp_mtx};
+        auto iter = _components.find(type_md5);
+        if (iter == _components.end()) return false;
+        auto obj = std::move(iter->second);
+        _components.erase(iter);
+        LUISA_DEBUG_ASSERT(obj->base_type() == BaseObjectType::Component);
+        comp = obj.get();
+        LUISA_DEBUG_ASSERT(comp->entity() == this);
+    }
     comp->_clear_entity();
     return true;
 }
 Component *Entity::get_component(MD5 const &type_md5) {
+    // std::shared_lock lck{_add_comp_mtx};
     auto iter = _components.find(type_md5);
     if (iter == _components.end()) return nullptr;
     auto &obj = iter->second;
@@ -163,24 +171,27 @@ void Entity::unsafe_call_update() {
     }
 }
 void Entity::_remove_component(Component *component) {
-    LUISA_DEBUG_ASSERT(component->entity() == this);
-    auto iter = _components.find(component->type_id());
-    LUISA_DEBUG_ASSERT(iter != _components.end());
+    
+        // std::lock_guard lck{_add_comp_mtx};
+        LUISA_DEBUG_ASSERT(component->entity() == this);
+        auto iter = _components.find(component->type_id());
+        LUISA_DEBUG_ASSERT(iter != _components.end());
     component->_clear_entity();
-    _components.erase(iter);
+        _components.erase(iter);    
 }
 
 void Component::remove_self_from_entity() {
-    if (!_entity) return;
-    _entity->_remove_component(static_cast<Component *>(this));
-    _entity = nullptr;
+    auto e = _entity.exchange(nullptr);
+    if (!e) [[unlikely]]
+        return;
+    e->_remove_component(static_cast<Component *>(this));
 }
 
 void Component::_clear_entity() {
-    if (!_entity) [[unlikely]]
+    auto e = _entity.exchange(nullptr);
+    if (!e) [[unlikely]]
         return;
     _call_on_destroy();
-    _entity = nullptr;
 }
 void Entity::set_name(luisa::string name) {
     if (_parent_scene) {

@@ -16,6 +16,7 @@ luisa::filesystem::path Resource::path() const {
     return binary_root_path() / (guid().to_string() + ".rbcb");
 }
 bool Resource::save_to_path() {
+    // std::lock_guard lck{_save_mtx};
     register_resource_meta(this);
     return unsafe_save_to_path();
 }
