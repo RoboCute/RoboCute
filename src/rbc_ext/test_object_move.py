@@ -102,7 +102,7 @@ def main():
     
     last_time = time.time()
     frame_index = 0
-    tick_stage = TickStage.RasterPreview
+    tick_stage = TickStage.PathTracingPreview
     
     # 创建立方体实体
     entity = make_cube_mesh(scene, ctx)
@@ -113,8 +113,9 @@ def main():
     # 启用相机控制
     display_cam = ctx.create_display_cam()
     display_cam.enable_camera()
+    render_settings = display_cam.render_settings()
+    render_settings.set_offline_spp(1)
     ctx.enable_camera_control()
-    
     while not ctx.should_close():
         cur_time = time.time()
         delta_time = cur_time - last_time

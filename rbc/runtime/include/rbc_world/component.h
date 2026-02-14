@@ -16,7 +16,7 @@ struct RBC_RUNTIME_API Component : BaseObject {
     template<typename T>
     friend struct ComponentDerive;
 private:
-    Entity *_entity{};
+    std::atomic<Entity *> _entity{};
     std::atomic_bool _enabled{false};
     Component();
     ~Component();
@@ -40,7 +40,7 @@ public:
     virtual void on_destroy() {};
     static constexpr BaseObjectType base_object_type_v = BaseObjectType::Component;
     [[nodiscard]] Entity *entity() const {
-        return _entity;
+        return _entity.load(std::memory_order_relaxed);
     }
     [[nodiscard]] BaseObjectType base_type() const override {
         return BaseObjectType::Component;

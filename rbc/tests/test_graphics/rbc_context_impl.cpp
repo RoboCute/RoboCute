@@ -42,6 +42,7 @@ namespace rbc {
 struct ContextImpl;
 static ContextImpl *_ctx_inst{};
 struct ContextImpl : RCBase {
+    luisa::spin_mutex _ctx_mtx;
     luisa::fiber::scheduler scheduler;
     CameraController::Input camera_input{};
     vstd::unique_ptr<GraphicsUtils> utils;
@@ -69,12 +70,14 @@ struct ContextImpl : RCBase {
         utils.reset();
     }
 };
-
 void RBCContext::init_world(void *this_, luisa::string_view meta_path, luisa::string_view binary_path) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     rbc::world::init_world(meta_path, binary_path);
 }
 void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa::string_view program_path, luisa::string_view shader_path) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     c.utils = vstd::make_unique<GraphicsUtils>();
     c.utils->init_device(
         program_path,
@@ -84,10 +87,12 @@ void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa:
 
 void RBCContext::init_render(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     c.utils->init_render();
 }
 void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, bool create_window, bool window_resizable) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     uint64_t native_display, native_handle;
     c.window_size = size;
     if (create_window && !c.window) {
@@ -108,6 +113,7 @@ void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, 
 }
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     if (c.window)
         c.utils->resize_swapchain(resolution, c.window->native_display(), c.window->native_handle());
     else
@@ -115,16 +121,19 @@ void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
 }
 void RBCContext::disable_view(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     c.window.reset();
 }
 bool RBCContext::should_close(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     if (c.window)
         return c.window->should_close();
     return false;
 }
 void RBCContext::denoise(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     if (c.utils->denoise()) {
         c.utils->tick(
             GraphicsUtils::TickStage::PresentOfflineResult,
@@ -133,6 +142,7 @@ void RBCContext::denoise(void *this_) {
 }
 void RBCContext::save_display_image_to(void *this_, luisa::string_view path) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     auto &rd = RenderDevice::instance();
     if (!rd.lc_main_cmd_list().empty()) {
         rd.execute_before_cmdlist_commit_task();
@@ -143,6 +153,7 @@ void RBCContext::save_display_image_to(void *this_, luisa::string_view path) {
 }
 luisa::compute::TextureCreationInfo RBCContext::display_image(void *this_) {
     auto c = static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c->_ctx_mtx};
     luisa::compute::TextureCreationInfo r;
     auto &img = c->utils->dst_image();
     if (!img) {
@@ -161,6 +172,7 @@ luisa::compute::TextureCreationInfo RBCContext::display_image(void *this_) {
 }
 bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, bool prepare_denoise) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::unique_lock lck{c._ctx_mtx};
     RBCFrameMark;// Mark frame boundary
     bool any_changed{false};
     RBCZoneScopedN("ContextImpl::tick");
@@ -181,6 +193,7 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
     {
         RBCZoneScopedN("Update Camera");
         {
+            lck.unlock();
             RBCZoneScopedN("Render Tick");
             c.utils->tick(
                 static_cast<GraphicsUtils::TickStage>(tick_stage),
@@ -191,6 +204,7 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
 }
 void *RBCContext::create_display_cam(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     if (any(c.window_size == 0u) || !c.utils->dst_image()) [[unlikely]] {
         LUISA_ERROR("Display not initialized.");
     }
@@ -208,12 +222,14 @@ void *RBCContext::create_display_cam(void *this_) {
 
 void RBCContext::destroy_display_cam(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     c.clear_window_event();
     c.cam_controller.reset();
     c.display_cam_entity.reset();
 }
 void RBCContext::enable_camera_control(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     if (c.cam_controller) return;
     if (!c.window) [[unlikely]] {
         LUISA_ERROR("Window instance required for camera control.");
@@ -282,6 +298,7 @@ void RBCContext::enable_camera_control(void *this_) {
 }
 void RBCContext::disable_camera_control(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     if (!c.window) [[unlikely]] {
         LUISA_ERROR("Window instance required for camera control.");
     }
@@ -294,6 +311,7 @@ void RBCContext::disable_camera_control(void *this_) {
 
 void RBCContext::upload_texture_data(void *this_, void *tex) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     auto *tex_res = static_cast<world::TextureResource *>(tex);
     auto *device_img = tex_res->get_image();
     if (!device_img) [[unlikely]] {
@@ -308,6 +326,7 @@ void RBCContext::upload_texture_data(void *this_, void *tex) {
 
 void RBCContext::upload_mesh_data(void *this_, void *mesh) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     auto *mesh_res = static_cast<world::MeshResource *>(mesh);
 
     auto *device_mesh = mesh_res->device_mesh();
@@ -323,6 +342,7 @@ void RBCContext::upload_mesh_data(void *this_, void *mesh) {
 
 void RBCContext::update_skinning_mesh(void *this_, void *skinning_mesh, luisa::compute::BufferCreationInfoInterop dual_quaternion_buffer) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     auto *mesh_res = static_cast<world::MeshResource *>(skinning_mesh);
     if (dual_quaternion_buffer.element_stride != sizeof(DualQuaternion)) [[unlikely]] {
         LUISA_ERROR("Skinning buffer stride is not sizeof(DualQuaternion)");
@@ -339,12 +359,15 @@ void RBCContext::update_skinning_mesh(void *this_, void *skinning_mesh, luisa::c
 }
 void RBCContext::regist_callback(void *this_, luisa::string_view name, luisa::move_only_function<void(rbc::RCBase *)> &&callback) {
     auto &c = *static_cast<ContextImpl *>(this_);
+
+    std::lock_guard lck{c._ctx_mtx};
     rbc::world::regist_callback(
         name,
         reinterpret_cast<luisa::move_only_function<void(void *)> &&>(callback));
 }
 void RBCContext::unregist_callback(void *this_, luisa::string_view name) {
     auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
     rbc::world::unregist_callback(name);
 }
 void *RBCContext::_create_() {

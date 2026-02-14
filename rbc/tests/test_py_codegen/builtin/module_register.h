@@ -4,6 +4,7 @@
 #include <luisa/core/binary_io.h>
 #include "guid.h"
 #include <res_creation_info.h>
+#include <luisa/core/spin_mutex.h>
 namespace py = pybind11;
 struct ModuleRegister {
 private:
@@ -11,19 +12,17 @@ private:
     ModuleRegister *next;
 
 public:
-
     static void init(py::module &m);
     void (*_callback)(py::module &);
     explicit ModuleRegister(void (*callback)(py::module &));
 };
 struct PtrInt64 {
-    void* value;
-    PtrInt64(void* value) : value(value) {}
+    void *value;
+    PtrInt64(void *value) : value(value) {}
 };
 template<typename... Args>
 luisa::move_only_function<void(Args...)> to_cppfunc_5d4636ab(py::function const &f) {
     return [f](Args... args) {
-        py::gil_scoped_acquire acquire;
         f(PtrInt64{std::forward<Args>(args)}...);
     };
 }

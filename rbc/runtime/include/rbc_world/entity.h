@@ -32,6 +32,7 @@ struct RBC_RUNTIME_API Entity final : BaseObjectDerive<Entity, BaseObjectType::E
     friend struct SceneResource;
 
 private:
+    rbc::shared_atomic_mutex _add_comp_mtx;
     SceneResource *_parent_scene{};
     luisa::unordered_map<MD5, RC<Component>> _components;
     luisa::string _name;

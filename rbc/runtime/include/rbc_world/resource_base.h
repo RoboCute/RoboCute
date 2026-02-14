@@ -30,6 +30,7 @@ struct Resource : BaseObject {
     friend struct ResourceBaseImpl;
 private:
     std::atomic<EResourceLoadingStatus> _status{EResourceLoadingStatus::Unloaded};
+    luisa::spin_mutex _save_mtx;
 protected:
     RBC_RUNTIME_API Resource();
     RBC_RUNTIME_API ~Resource();
