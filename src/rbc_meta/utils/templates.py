@@ -130,11 +130,29 @@ CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE = Template(
 
 # Python interface templates
 
+PY_MODULE_IMPORT_TEMPLATE = Template("""
+# =================BUILTIN IMPORTS (START)==========================    
+from rbc_ext._C.${MODE_NAME} import rbc_release, rbc_add_ref, _create_resource, _create_resource_guid, PtrInt64
+from rbc_ext._C.${MODE_NAME} import double2, double3, double4, double4x4, float2, float3, float4, float4x4, uint2, uint3, uint4, GUID
+import rbc_ext.luisa as luisa
+# =================BUILTIN IMPORTS (END)  ==========================
+
+# =================IMPORT ALL METHODS (START)=======================                        
+from rbc_ext._C.${MODE_NAME} import ${PYBIND_METHODS_EXPR}
+# =================IMPORT ALL METHODS (END)  =======================
+
+# =================IMPORT ALL CLASS (START)=========================                          
+from rbc_ext._C.${MODE_NAME} import ${PYBIND_CLS_EXPR}
+                                     
+# =================IMPORT ALL CLASS (END)  =========================
+                                                            
+""")
+
 PY_MODULE_TEMPLATE = Template("""
 # This File is Generated From Python Def
 # Modifying This File will not affect final result, checkout src/rbc_meta/ for real defs
 # ================== GENERATED CODE BEGIN ==================
-${MODULE_EXPR}
+${IMPORT_MODULE_EXPR}
 
 ${ENUM_EXPRS}
 

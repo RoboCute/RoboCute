@@ -23,7 +23,6 @@ from rbc_meta.utils.templates import (
     CPP_STRUCT_SER_IMPL_TEMPLATE,
     CPP_STRUCT_DESER_IMPL_TEMPLATE,
     CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE,
-    
     CPP_RPC_ARG_STRUCT_TEMPLATE,
     CPP_RPC_ARG_MEMBER_TEMPLATE,
     CPP_RPC_SER_STMT_TEMPLATE,
@@ -43,6 +42,7 @@ from rbc_meta.utils.templates import (
     PY_METHOD_DISPOSE_TEMPLATE,
     PY_ENUM_EXPR_TEMPLATE,
     PY_ENUM_VALUE_TEMPLATE,
+    PY_MODULE_IMPORT_TEMPLATE,
     PY_INIT_METHOD_TEMPLATE,
     PY_INIT_METHOD_TEMPLATE_EXTERNAL,
     PY_DISPOSE_METHOD_TEMPLATE,
@@ -61,7 +61,14 @@ from rbc_meta.utils.codegen import (
 from rbc_meta.utils.codegen_util import _write_string_to
 import hashlib
 from pathlib import Path
-from rbc_meta.utils.pybind_codegen import pybind_enum_binding, pybind_struct_bindings, _print_py_args, _get_py_type, _print_py_args_decl
+from rbc_meta.utils.pybind_codegen import (
+    pybind_enum_binding,
+    pybind_struct_bindings,
+    _print_py_args,
+    _get_py_type,
+    _print_py_args_decl,
+)
+
 
 def to_include_expr(x):
     return f"#include <{x}>"
@@ -134,8 +141,8 @@ class CodegenResitry:
 
             struct_binding = pybind_struct_bindings(info, reg)
             if struct_binding:
-                struct_bindings.append(struct_binding)   
-            
+                struct_bindings.append(struct_binding)
+
             class_name = info.name
 
             if info.is_enum:
@@ -203,7 +210,7 @@ class CodegenResitry:
                         LOAD_STMTS=load_stmts,
                         NAMESPACE_NAME=namespace_expr,
                     )
-                    
+
                     regist_impl = CPP_STRUCT_REGIST_TEMPLATE.substitute(
                         NAMESPACE_NAME=namespace_expr,
                         CLASS_NAME=class_name,
@@ -215,7 +222,6 @@ class CodegenResitry:
 
         enum_bindings_expr = "\n".join(enum_bindings)
         struct_bindings_expr = "\n".join(struct_bindings)
-
 
         file_expr = PYBIND_CODE_TEMPLATE.substitute(
             EXTRA_INCLUDES=extra_include_expr,
@@ -324,7 +330,6 @@ class CodegenResitry:
 
         _write_string_to(file_expr, cpp_path)
 
-
     def gen_cpp_interface_header(self, mod: "CodeModule"):
         reg = ReflectionRegistry()
 
@@ -396,29 +401,37 @@ class CodegenResitry:
             def get_method_expr(method: MethodInfo, type: Type):
                 # print(method)
                 # Filter out 'self' parameter for Python method declarations
-                method_params = {k: v for k, v in method.parameters.items() if k != "self"}
+                method_params = {
+                    k: v for k, v in method.parameters.items() if k != "self"
+                }
 
                 args_decl = _print_py_args_decl(method_params, False, type)
                 args_call = _print_py_args(method_params, False, False)
 
                 return_expr = "return " if method.return_type else ""
                 return_end = ""
-                if (method.return_type):
-                    if (hasattr(method.return_type, '_ctor_begin') or
-                        (hasattr(method.return_type, "_pybind_type_")
+                if method.return_type:
+                    if hasattr(method.return_type, "_ctor_begin") or (
+                        hasattr(method.return_type, "_pybind_type_")
                         and method.return_type._pybind_type_
                         and (
                             not hasattr(method.return_type, "_is_enum_")
                             or not method.return_type._is_enum_
-                        ))
+                        )
                     ):
                         return_expr += _get_py_type(method.return_type)
-                        if hasattr(method.return_type, '_ctor_begin') and method.return_type._ctor_begin:
-                            return_expr += '.'
+                        if (
+                            hasattr(method.return_type, "_ctor_begin")
+                            and method.return_type._ctor_begin
+                        ):
+                            return_expr += "."
                             return_expr += method.return_type._ctor_begin
                         else:
-                            return_expr += '('
-                        if hasattr(method.return_type, '_ctor_end') and method.return_type._ctor_end:
+                            return_expr += "("
+                        if (
+                            hasattr(method.return_type, "_ctor_end")
+                            and method.return_type._ctor_end
+                        ):
                             return_end = method.return_type._ctor_end
                         else:
                             return_end += ")"
@@ -429,7 +442,7 @@ class CodegenResitry:
                 )
 
                 pybind_methods_list.append(pybind_method_name)
-                if method.name == 'dispose':
+                if method.name == "dispose":
                     return PY_METHOD_DISPOSE_TEMPLATE.substitute(
                         INDENT=INDENT,
                         METHOD_NAME=method.name,
@@ -467,6 +480,7 @@ class CodegenResitry:
             elif len(info.base_classes) > 1:
                 # should not happen
                 print(f"{info.name} has more than 1 base classes")
+
             return PY_INTERFACE_CLASS_TEMPLATE.substitute(
                 CLASS_NAME=info.name,
                 INHERIT_EXPR=inherit_expr,
@@ -479,34 +493,50 @@ class CodegenResitry:
         enum_exprs = []
 
         # Use original order from registry to preserve module-defined order
-        all_classes = registry.get_all_classes().items()
-
+        import_reqs = []
+        import_cls_reqs = []
         for cls in mod.classes_:
             info = registry.get_class_info(cls.__name__)
             type_to_cls_info[info.cls] = info
             if not info.pybind:  # filter out classes marked pybind
                 continue
 
+            if info.is_enum:
+                import_cls_reqs.append(info.name)
+
             class_expr, pybind_methods_list = get_class_expr(info)
             if class_expr:
                 classes_expr_list.append(class_expr)
 
+            import_reqs.extend(pybind_methods_list)
+
+        import_reqs_expr = "*"
+        if len(import_reqs) > 0:
+            import_reqs_expr = ",".join(import_reqs)
+        import_cls_reqs_expr = "*"
+        if len(import_cls_reqs) > 0:
+            import_cls_reqs_expr = ",".join(import_cls_reqs)
+
         classes_expr = "\n".join(classes_expr_list)
         enum_exprs = "\n".join(enum_exprs)
-        module_expr = f"from rbc_ext._C.{mod.name()} import *"
-        extra_import = "import rbc_ext.luisa as luisa"
-        if extra_import is not None:
-            module_expr += '\n'
-            module_expr += extra_import
+
+        import_module_expr = PY_MODULE_IMPORT_TEMPLATE.substitute(
+            MODE_NAME=mod.name(),
+            PYBIND_METHODS_EXPR=import_reqs_expr,
+            PYBIND_CLS_EXPR=import_cls_reqs_expr,
+        )
+        # module_expr = f"from rbc_ext._C.{mod.name()} import {import_reqs_expr}"
+        # extra_import = "import rbc_ext.luisa as luisa"
+        # if extra_import is not None:
+        #     module_expr += "\n"
+        #     module_expr += extra_import
 
         file_expr = PY_MODULE_TEMPLATE.substitute(
-            MODULE_EXPR=module_expr,
+            IMPORT_MODULE_EXPR=import_module_expr,
             ENUM_EXPRS=enum_exprs,
             CLASS_EXPRS=classes_expr,
         )
         _write_string_to(file_expr, mod.pybind_py_file_)
-
-
 
     def cpp_struct_def_gen(self, info: ClassInfo) -> str:
         INDENT = DEFAULT_INDENT
@@ -591,13 +621,12 @@ class CodegenResitry:
         for method in info.methods:
             if method.is_inherit_func:
                 continue  # cpp donot impl prev func
-            
+
             ret_type = (
                 _get_full_cpp_type(method.return_type, registry, False, False)
                 if method.return_type
                 else "void"
             )
-
 
             # Filter out 'self' parameter for C++ method declarations
             method_params = {k: v for k, v in method.parameters.items() if k != "self"}
@@ -672,9 +701,6 @@ class CodegenResitry:
         )
 
         return enum_expr
-
-
-
 
 
 def codegen(
