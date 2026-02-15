@@ -7,9 +7,13 @@ includes('runtime') -- （图像，动画，物理，插件等）运行时功能
 includes('render_plugin')
 includes('oidn_plugin')
 includes('project_plugin')
+
+includes("ext_c") -- python extension
+
 if has_config('rbc_tests') then
     includes('tests')
 end
+
 -- Targets
 if has_config('rbc_editor') then
     includes('editor')

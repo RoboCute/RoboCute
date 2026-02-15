@@ -1,5 +1,6 @@
 -- Test Framework for RBC Runtime
-includes('test_py_codegen')
+
+
 includes('test_graphics')
 includes('test_project')
 -- has_config('rbc_tools') then
@@ -7,6 +8,8 @@ includes('test_project')
 -- includes("test_coro")
 -- includes("test_sql")
 -- end
+includes('test_py_codegen')
+
 includes("sample_anim")
 includes("model_viewer")
 

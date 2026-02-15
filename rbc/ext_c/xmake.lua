@@ -1,20 +1,22 @@
-local function rbc_ext_c_interface()
+target("rbc_ext_c")
+do
+    add_rules('lc_basic_settings', {
+        project_kind = 'shared',
+        enable_exception = true
+    })
+
+    add_deps('rbc_core', 'test_graphics')
+    add_deps('rbc_render_plugin', 'lc-backends-dummy', {
+        inherit = false,
+        links = false
+    })
+    set_extension('.pyd')
+    add_rules('pybind')
+
     add_includedirs("include", {
         public = true
     })
+    add_files("src/**.cpp")
+    rbc_set_pch('src/zz_pch.h')
 end
-
-local function rbc_ext_c_impl()
-    add_rules('lc_basic_settings', {
-        project_kind = 'shared',
-        enable_exception = true,
-        
-    })
-    add_deps('lc-core')
-    add_rules('pybind')
-    set_extension('.pyd')
-    -- add_deps("rbc_world_v2")
-    add_files("src/*.cpp")
-end
-
-interface_target('rbc_ext_c', rbc_ext_c_interface, rbc_ext_c_impl)
+target_end()

@@ -132,7 +132,7 @@ CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE = Template(
 
 PY_MODULE_IMPORT_TEMPLATE = Template("""
 # =================BUILTIN IMPORTS (START)==========================    
-from rbc_ext._C.${MODE_NAME} import rbc_release, rbc_add_ref, _create_resource, _create_resource_guid, PtrInt64
+from rbc_ext._C.${MODE_NAME} import rbc_release, rbc_add_ref, _create_resource, _create_resource_guid, PtrInt64, capsule_vector
 from rbc_ext._C.${MODE_NAME} import double2, double3, double4, double4x4, float2, float3, float4, float4x4, uint2, uint3, uint4, GUID
 import rbc_ext.luisa as luisa
 # =================BUILTIN IMPORTS (END)  ==========================

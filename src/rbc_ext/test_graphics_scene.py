@@ -1,7 +1,7 @@
 """
 图形场景测试脚本
 
-本脚本用于测试 RoboCute 渲染引擎的图形场景功能, 包括: 
+本脚本用于测试 RoboCute 渲染引擎的图形场景功能, 包括:
 - 场景加载与渲染
 - 动态网格创建与管理
 - 几何缓冲区导出(深度、法线、发射、反照率)
@@ -37,7 +37,6 @@ import numpy as np
 import json
 import math
 from rbc_ext.luisa import *
-import rbc_ext.tri_to_tet as tri_to_tet
 
 # Auto-setup RBC_RUNTIME_DIR if not set
 if "RBC_RUNTIME_DIR" not in os.environ:
@@ -109,11 +108,8 @@ def main():
     image_index = 0
     tick_stage = TickStage.PathTracingPreview
     entity = make_cube_mesh(scene)
-    # Test tri_to_tet: convert triangle mesh to tetrahedral mesh
-    ################### 
-    # render = RenderComponent(entity.get_component("RenderComponent"))
-    # test_tri_to_tet(entity)
-    ################### 
+
+    ###################
     @luisa.func
     def write_buffer_vec3_to_img(buffer, element_offset, img):
         """
@@ -131,11 +127,7 @@ def main():
         idx = id.x + id.y * dispatch_size().x
         idx *= 3
         idx += element_offset
-        value = float3(
-            buffer.read(idx),
-            buffer.read(idx + 1),
-            buffer.read(idx + 2)
-        )
+        value = float3(buffer.read(idx), buffer.read(idx + 1), buffer.read(idx + 2))
         img.write(id, float4(value, 1.0))
 
     @luisa.func
@@ -161,17 +153,21 @@ def main():
 
     display_cam = ctx.create_display_cam()
     transform = TransformComponent(
-        display_cam.entity().get_component("TransformComponent"))
+        display_cam.entity().get_component("TransformComponent")
+    )
     display_cam.enable_camera()
 
     transform.set_pos(double3(0, 0, -1), False)
     if EXPORT:
-        geometry_buffer = Buffer(
-            resolution.x * resolution.y * (1 + 3 + 3 + 3), float)
+        geometry_buffer = Buffer(resolution.x * resolution.y * (1 + 3 + 3 + 3), float)
         display_cam.set_geometry_export_buffer(
             geometry_buffer.info(),
-            RendererGeometryType(int(RendererGeometryType.Depth) | int(RendererGeometryType.Normal) | int(
-                RendererGeometryType.Emission) | int(RendererGeometryType.Albedo))
+            RendererGeometryType(
+                int(RendererGeometryType.Depth)
+                | int(RendererGeometryType.Normal)
+                | int(RendererGeometryType.Emission)
+                | int(RendererGeometryType.Albedo)
+            ),
         )
     else:
         ctx.enable_camera_control()
@@ -180,15 +176,13 @@ def main():
         delta_time = cur_time - last_time
         last_time = cur_time
         display_cam.set_frame_index(frame_index)
-        if ctx.tick(
-            delta_time, tick_stage, True
-        ):
+        if ctx.tick(delta_time, tick_stage, True):
             frame_index = 0
         else:
             frame_index += 1
         if frame_index == 64:
             if entity is not None:
-                print('deleting entity')
+                print("deleting entity")
                 entity.dispose()
                 entity = None
                 frame_index = 0
@@ -196,44 +190,56 @@ def main():
             # frame_index = 0
             ctx.denoise()
             ctx.save_display_image_to(
-                str(Path(__file__).parent /
-                    f"screenshot/frame_{image_index}.png")
+                str(Path(__file__).parent / f"screenshot/frame_{image_index}.png")
             )
             img = ctx.display_image()
             element_offset = 0
             write_buffer_vec1_to_img(
-                geometry_buffer, 0.2, element_offset, img, dispatch_size=(img.width, img.height, 1))
+                geometry_buffer,
+                0.2,
+                element_offset,
+                img,
+                dispatch_size=(img.width, img.height, 1),
+            )
             pixel_size = img.width * img.height
             ctx.save_display_image_to(
-                str(Path(__file__).parent /
-                    f"screenshot/depth_{image_index}.png")
+                str(Path(__file__).parent / f"screenshot/depth_{image_index}.png")
             )
             element_offset += pixel_size
 
             write_buffer_vec3_to_img(
-                geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
+                geometry_buffer,
+                element_offset,
+                img,
+                dispatch_size=(img.width, img.height, 1),
+            )
             pixel_size = img.width * img.height
             ctx.save_display_image_to(
-                str(Path(__file__).parent /
-                    f"screenshot/normal_{image_index}.png")
+                str(Path(__file__).parent / f"screenshot/normal_{image_index}.png")
             )
             element_offset += pixel_size * 3
 
             write_buffer_vec3_to_img(
-                geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
+                geometry_buffer,
+                element_offset,
+                img,
+                dispatch_size=(img.width, img.height, 1),
+            )
             pixel_size = img.width * img.height
             ctx.save_display_image_to(
-                str(Path(__file__).parent /
-                    f"screenshot/emission_{image_index}.png")
+                str(Path(__file__).parent / f"screenshot/emission_{image_index}.png")
             )
             element_offset += pixel_size * 3
 
             write_buffer_vec3_to_img(
-                geometry_buffer, element_offset, img, dispatch_size=(img.width, img.height, 1))
+                geometry_buffer,
+                element_offset,
+                img,
+                dispatch_size=(img.width, img.height, 1),
+            )
             pixel_size = img.width * img.height
             ctx.save_display_image_to(
-                str(Path(__file__).parent /
-                    f"screenshot/albedo_{image_index}.png")
+                str(Path(__file__).parent / f"screenshot/albedo_{image_index}.png")
             )
             element_offset += pixel_size * 3
 
@@ -243,84 +249,11 @@ def main():
             geometry_buffer.dispose()
 
 
-def test_tri_to_tet(entity):
-    """
-    测试 tri_to_tet 功能: 从实体中提取网格数据并进行四面体化
-
-    流程:
-        1. 从实体的 RenderComponent 获取 MeshResource
-        2. 从 MeshResource 提取顶点数据和面索引数据
-        3. 调用 tri_to_tet.tetrahedralize() 将三角网格转换为四面体网格
-        4. 输出四面体网格的统计信息
-
-    Args:
-        entity: 包含 RenderComponent 的实体对象
-    """
-    print("\n=== Testing tri_to_tet tetrahedralization ===")
-    
-    # Get RenderComponent and MeshResource from entity
-    render = RenderComponent(entity.get_component("RenderComponent"))
-    mesh = render.mesh()
-    
-    # Get mesh statistics
-    vert_count = mesh.vertex_count()
-    tri_count = mesh.triangle_count()
-    print(f"Mesh info: {vert_count} vertices, {tri_count} triangles")
-    
-    # Get mesh data buffer
-    
-    # Extract vertices from buffer (each vertex is float4: x, y, z, w)
-    vertex_data = np.ndarray(
-        shape=vert_count * 4,
-        dtype=np.float32,
-        buffer=mesh.pos_buffer()
-    )
-    vertices = vertex_data.reshape(-1, 4)[:, :3]  # Take only x, y, z
-    
-    indices_data = np.ndarray(
-        shape=tri_count * 3,
-        dtype=np.uint32,
-        buffer=mesh.triangle_indices_buffer()
-    )
-    faces = indices_data.reshape(-1, 3)
-    
-    print(f"Extracted {vertices.shape[0]} vertices, {faces.shape[0]} faces")
-    
-    try:
-        # Perform tetrahedralization
-        tet_vertices, tet_cells = tri_to_tet.tetrahedralize(
-            vertices, faces,
-            cell_size=None,  # Auto-compute cell size
-            radius_edge_ratio=2.0
-        )
-        
-        print(f"Tetrahedralization successful!")
-        print(f"  - Tetrahedron vertices: {tet_vertices.shape}")
-        print(f"  - Tetrahedron cells: {tet_cells.shape}")
-        print(f"  - Number of tetrahedra: {len(tet_cells)}")
-        
-        # Print first few tetrahedra for verification
-        if len(tet_cells) > 0:
-            print(f"\nFirst tetrahedron cell (vertex indices): {tet_cells[0]}")
-            print(f"First tetrahedron vertex positions:")
-            for i, idx in enumerate(tet_cells[0]):
-                print(f"  v{i}: {tet_vertices[idx]}")
-        
-    except ImportError as e:
-        print(f"Skipped tetrahedralization: {e}")
-    except RuntimeError as e:
-        print(f"Tetrahedralization failed: {e}")
-    except Exception as e:
-        print(f"Unexpected error during tetrahedralization: {e}")
-    
-    print("=== End of tri_to_tet test ===\n")
-
-
 def make_cube_mesh(scene: Scene):
     """
     创建一个包含两个立方体的动态网格实体
 
-    创建的实体包含: 
+    创建的实体包含:
         - TransformComponent: 控制实体位置和旋转
         - RenderComponent: 包含网格和材质渲染信息
         - MeshResource: 包含两个子网格的立方体数据
@@ -335,17 +268,19 @@ def make_cube_mesh(scene: Scene):
     """
     mat0 = MaterialResource()
     mat0.load_from_json(
-        '{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]}')
+        '{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]}'
+    )
     mat1 = MaterialResource()
     mat1.load_from_json(
-        '{"type": "pbr", "specular_roughness": 0.5, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]}')
+        '{"type": "pbr", "specular_roughness": 0.5, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]}'
+    )
     mat_vector = capsule_vector()
     mat_vector.emplace_back(mat0._handle)
     mat_vector.emplace_back(mat1._handle)
     entity = scene.add_entity()
     # Test entity by name
-    entity.set_name('test_cube')
-    entity = scene.get_entity_by_name('test_cube')
+    entity.set_name("test_cube")
+    entity = scene.get_entity_by_name("test_cube")
     assert entity._handle is not None
     trans = TransformComponent(entity.add_component("TransformComponent"))
     render = RenderComponent(entity.add_component("RenderComponent"))
@@ -360,15 +295,12 @@ def make_cube_mesh(scene: Scene):
     submesh_offsets[1] = triangle_count // 2
 
     cube_mesh.create_empty(
-        submesh_offsets,
-        vertex_count,
-        triangle_count,
-        0, False, False
+        submesh_offsets, vertex_count, triangle_count, 0, False, False
     )
     mesh_array = np.ndarray(
         vertex_count * 4 + triangle_count * 3,
         dtype=np.float32,
-        buffer=cube_mesh.data_buffer()
+        buffer=cube_mesh.data_buffer(),
     )
     create_mesh_array(mesh_array)
     cube_mesh.install()
@@ -410,8 +342,7 @@ def create_mesh_array(mesh_array):
     # create a cube
     if mesh_array.size != vertex_count * 4 + triangle_count * 3:
         raise Exception("Bad mesh-array size")
-    vertex_arr = np.ndarray(
-        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+    vertex_arr = np.ndarray(vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
     indices_arr = np.ndarray(
         shape=triangle_count * 3,
         dtype=np.uint32,
@@ -447,13 +378,13 @@ def create_mesh_array(mesh_array):
     def push_vert():
         """向顶点缓冲区添加8个立方体顶点(应用当前 offset 和 scale 变换)"""
         push_vec4(-0.5, -0.5, -0.5)  # 0: 左下后
-        push_vec4(-0.5, -0.5, 0.5)   # 1: 左下前
-        push_vec4(0.5, -0.5, -0.5)   # 2: 右下后
-        push_vec4(0.5, -0.5, 0.5)    # 3: 右下前
-        push_vec4(-0.5, 0.5, -0.5)   # 4: 左上后
-        push_vec4(-0.5, 0.5, 0.5)    # 5: 左上前
-        push_vec4(0.5, 0.5, -0.5)    # 6: 右上后
-        push_vec4(0.5, 0.5, 0.5)     # 7: 右上前
+        push_vec4(-0.5, -0.5, 0.5)  # 1: 左下前
+        push_vec4(0.5, -0.5, -0.5)  # 2: 右下后
+        push_vec4(0.5, -0.5, 0.5)  # 3: 右下前
+        push_vec4(-0.5, 0.5, -0.5)  # 4: 左上后
+        push_vec4(-0.5, 0.5, 0.5)  # 5: 左上前
+        push_vec4(0.5, 0.5, -0.5)  # 6: 右上后
+        push_vec4(0.5, 0.5, 0.5)  # 7: 右上前
 
     push_vert()
     last_vert_size = size
