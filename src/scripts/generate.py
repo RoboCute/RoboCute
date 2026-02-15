@@ -181,7 +181,7 @@ class WorldInterfacePybindModule(CodeModule):
     enable_pybind_cpp_def_ = True
     pybind_cpp_def_file_ = "rbc/tests/test_py_codegen/generated/world.cpp"
     enable_pybind_ = True
-    pybind_py_file_ = "src/rbc_ext/generated/world.py"
+    pybind_py_file_ = "src/robocute/rbc_ext/generated/world.py"
     classes_ = EXT_CLASSES
     deps_ = [WorldInterfaceModule]
 
@@ -193,7 +193,7 @@ class WorldInterfacePybindModuleX(CodeModule):
     enable_pybind_cpp_def_ = True
     pybind_cpp_def_file_ = "rbc/ext_c/src/generated/world.cpp"
     enable_pybind_ = True
-    pybind_py_file_ = "src/rbc_ext/generated/world_v2.py"
+    pybind_py_file_ = "src/robocute/rbc_ext/generated/world_v2.py"
     classes_ = EXT_CLASSES
     deps_ = [WorldInterfaceModule]
 

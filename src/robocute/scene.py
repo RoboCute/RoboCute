@@ -10,8 +10,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 
-from rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
-
+from robocute.rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
 from .animation import AnimationClip
 
 

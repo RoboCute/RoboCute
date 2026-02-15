@@ -56,9 +56,6 @@ if "RBC_RUNTIME_DIR" not in os.environ:
             f"Searched in: {project_root / 'build' / 'windows' / 'x64' / 'debug'}"
         )
 
-EXPORT = False
-"""是否导出几何缓冲区数据为图片, 设为 True 时启用导出功能"""
-
 vertex_count = 16
 """网格顶点总数(两个立方体, 每个8个顶点)"""
 
@@ -89,11 +86,13 @@ def main():
     runtime_dir = Path(os.getenv("RBC_RUNTIME_DIR"))
     program_path = str(runtime_dir.parent / "debug")
     shader_path = str(runtime_dir.parent / f"shader_build_{backend_name}")
+
     world_path = str(Path(sys.argv[1]) / "library")
 
     ctx = RBCContext()
     ctx.init_world(world_path, world_path)
     ctx.init_device(backend_name, program_path, shader_path)
+
     luisa.init()
     ctx.init_render()
     project = Project()

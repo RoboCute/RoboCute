@@ -65,36 +65,36 @@ class StatusResponse(BaseModel):
 class NodeGraphService(Service):
     """
     Node Graph API Service
-    
+
     Provides HTTP endpoints for node management, graph creation and execution.
     """
 
     def __init__(self, scene: Optional[Scene] = None):
         """
         Initialize NodeGraphService
-        
+
         Args:
             scene: Optional scene reference for graph execution context
         """
         super().__init__("NodeGraphService")
         self.scene = scene
-        
+
         # In-memory storage
         self._graphs: Dict[str, NodeGraph] = {}
         self._execution_results: Dict[str, GraphExecutionResult] = {}
-    
+
     def set_scene(self, scene: Scene) -> None:
         """
         Set the scene reference for graph execution context.
-        
+
         Args:
             scene: Scene instance
         """
         self.scene = scene
-    
+
     def register_routes(self, app: FastAPI) -> None:
         """Register Node Graph API routes with the FastAPI application"""
-        
+
         @app.get("/")
         async def root():
             """根路径"""
@@ -180,7 +180,8 @@ class NodeGraphService(Service):
                 # 检查图ID是否已存在
                 if graph_id in self._graphs:
                     raise HTTPException(
-                        status_code=400, detail=f"Graph with id '{graph_id}' already exists"
+                        status_code=400,
+                        detail=f"Graph with id '{graph_id}' already exists",
                     )
 
                 # 创建图
@@ -189,7 +190,9 @@ class NodeGraphService(Service):
                 # 验证图
                 is_valid, error = graph.validate()
                 if not is_valid:
-                    raise HTTPException(status_code=400, detail=f"Invalid graph: {error}")
+                    raise HTTPException(
+                        status_code=400, detail=f"Invalid graph: {error}"
+                    )
 
                 # 存储图
                 self._graphs[graph_id] = graph
@@ -229,7 +232,8 @@ class NodeGraphService(Service):
                     # 执行已创建的图
                     if request.graph_id not in self._graphs:
                         raise HTTPException(
-                            status_code=404, detail=f"Graph '{request.graph_id}' not found"
+                            status_code=404,
+                            detail=f"Graph '{request.graph_id}' not found",
                         )
 
                     graph = self._graphs[request.graph_id]
@@ -240,11 +244,15 @@ class NodeGraphService(Service):
                     execution_id = f"exec_{uuid.uuid4()}"
                     print(f"[API] Creating graph from definition: {execution_id}")
                     print(f"[API] Nodes: {len(request.graph_definition.nodes)}")
-                    print(f"[API] Connections: {len(request.graph_definition.connections)}")
+                    print(
+                        f"[API] Connections: {len(request.graph_definition.connections)}"
+                    )
 
                     # Log node details
                     for node_def in request.graph_definition.nodes:
-                        print(f"  Node: {node_def.node_id} (type: {node_def.node_type})")
+                        print(
+                            f"  Node: {node_def.node_id} (type: {node_def.node_type})"
+                        )
                         print(f"    Inputs: {node_def.inputs}")
 
                     # Create scene context BEFORE creating graph
@@ -254,7 +262,9 @@ class NodeGraphService(Service):
                         )
                         scene_context = SceneContext(self.scene)
                     else:
-                        print("[API] WARNING: No scene available, graph will have no context")
+                        print(
+                            "[API] WARNING: No scene available, graph will have no context"
+                        )
                         scene_context = None
 
                     # Create graph WITH scene context
@@ -267,7 +277,9 @@ class NodeGraphService(Service):
                     is_valid, error = graph.validate()
                     if not is_valid:
                         print(f"[API] ✗ Graph validation failed: {error}")
-                        raise HTTPException(status_code=400, detail=f"Invalid graph: {error}")
+                        raise HTTPException(
+                            status_code=400, detail=f"Invalid graph: {error}"
+                        )
                     print("[API] ✓ Graph validation passed")
                 else:
                     raise HTTPException(
@@ -289,7 +301,9 @@ class NodeGraphService(Service):
                 else:
                     # For graph_definition case, scene_context was already created and passed to graph
                     scene_context = graph.scene_context
-                    print(f"[API] Using scene context from graph: {scene_context is not None}")
+                    print(
+                        f"[API] Using scene context from graph: {scene_context is not None}"
+                    )
 
                 print("[API] Creating executor...")
                 executor = GraphExecutor(graph, scene_context)
@@ -309,7 +323,9 @@ class NodeGraphService(Service):
                     status_icon = (
                         "✓" if node_result.status == ExecutionStatus.COMPLETED else "✗"
                     )
-                    print(f"  {status_icon} Node '{node_id}': {node_result.status.value}")
+                    print(
+                        f"  {status_icon} Node '{node_id}': {node_result.status.value}"
+                    )
                     if node_result.error:
                         print(f"      Error: {node_result.error}")
 
@@ -347,12 +363,15 @@ class NodeGraphService(Service):
             """
             if graph_id not in self._execution_results:
                 raise HTTPException(
-                    status_code=404, detail=f"Execution result for '{graph_id}' not found"
+                    status_code=404,
+                    detail=f"Execution result for '{graph_id}' not found",
                 )
 
             result = self._execution_results[graph_id]
 
-            return StatusResponse(status=result.status.value, result=result.model_dump())
+            return StatusResponse(
+                status=result.status.value, result=result.model_dump()
+            )
 
         @app.get("/graph/{graph_id}/outputs")
         async def get_graph_outputs(graph_id: str):
@@ -367,7 +386,8 @@ class NodeGraphService(Service):
             """
             if graph_id not in self._execution_results:
                 raise HTTPException(
-                    status_code=404, detail=f"Execution result for '{graph_id}' not found"
+                    status_code=404,
+                    detail=f"Execution result for '{graph_id}' not found",
                 )
 
             result = self._execution_results[graph_id]
@@ -377,7 +397,11 @@ class NodeGraphService(Service):
             for node_id, node_result in result.node_results.items():
                 outputs[node_id] = node_result.outputs
 
-            return {"graph_id": graph_id, "status": result.status.value, "outputs": outputs}
+            return {
+                "graph_id": graph_id,
+                "status": result.status.value,
+                "outputs": outputs,
+            }
 
         @app.delete("/graph/{graph_id}")
         async def delete_graph(graph_id: str):
@@ -391,7 +415,9 @@ class NodeGraphService(Service):
                 删除结果
             """
             if graph_id not in self._graphs:
-                raise HTTPException(status_code=404, detail=f"Graph '{graph_id}' not found")
+                raise HTTPException(
+                    status_code=404, detail=f"Graph '{graph_id}' not found"
+                )
 
             del self._graphs[graph_id]
 
@@ -438,7 +464,9 @@ class NodeGraphService(Service):
                         "start_time": result.start_time.isoformat()
                         if result.start_time
                         else None,
-                        "end_time": result.end_time.isoformat() if result.end_time else None,
+                        "end_time": result.end_time.isoformat()
+                        if result.end_time
+                        else None,
                         "duration_ms": result.duration_ms,
                     }
                 )
@@ -521,7 +549,9 @@ class NodeGraphService(Service):
             try:
                 clip = self.scene.get_animation(name)
                 if clip is None:
-                    raise HTTPException(status_code=404, detail=f"Animation '{name}' not found")
+                    raise HTTPException(
+                        status_code=404, detail=f"Animation '{name}' not found"
+                    )
 
                 return {"animation": clip.to_dict()}
             except HTTPException:
@@ -530,4 +560,3 @@ class NodeGraphService(Service):
                 raise HTTPException(
                     status_code=500, detail=f"Error fetching animation: {str(e)}"
                 )
-
