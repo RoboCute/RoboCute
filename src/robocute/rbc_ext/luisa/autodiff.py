@@ -1,5 +1,5 @@
 from .types import BuiltinFuncBuilder, basic_dtypes, to_lctype
-from rbc_ext._C import test_py_codegen as lcapi
+from robocute.rbc_ext._C import lcapi_c as lcapi
 
 
 def autodiff():
@@ -15,11 +15,15 @@ def requires_grad(*x):
 
 @BuiltinFuncBuilder
 def grad(x):
-    return x.dtype, lcapi.builder().call(to_lctype(x.dtype), lcapi.CallOp.GRADIENT, [x.expr])
+    return x.dtype, lcapi.builder().call(
+        to_lctype(x.dtype), lcapi.CallOp.GRADIENT, [x.expr]
+    )
+
 
 @BuiltinFuncBuilder
 def one(dtype):
     return dtype, lcapi.builder().call(to_lctype(dtype), lcapi.CallOp.ONE, [])
+
 
 @BuiltinFuncBuilder
 def zero(dtype):

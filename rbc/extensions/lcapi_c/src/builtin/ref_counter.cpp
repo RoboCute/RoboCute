@@ -1,6 +1,6 @@
 #include "ref_counter.h"
 #include <luisa/core/logging.h>
-namespace rbc::ext_c {
+namespace rbc::lcapi_c {
 
 RefCounter::~RefCounter() noexcept {
     for (auto &&i : refCounts) {
@@ -38,4 +38,4 @@ void RefCounter::DeRef(Handle handle) noexcept {
 
 RefCounter *RefCounter::current = new RefCounter();
 
-}// namespace rbc::ext_c
+}// namespace rbc::lcapi_c

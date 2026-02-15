@@ -8,7 +8,7 @@ includes('render_plugin')
 includes('oidn_plugin')
 includes('project_plugin')
 
-includes("ext_c") -- python extension
+includes("extensions") -- python extension
 
 if has_config('rbc_tests') then
     includes('tests')

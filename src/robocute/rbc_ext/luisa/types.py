@@ -1,6 +1,19 @@
-from rbc_ext._C import test_py_codegen as lcapi
-from rbc_ext._C.test_py_codegen import int2, float2, bool2, uint2, int3, float3, bool3, uint3, int4, float4, bool4, uint4
-from rbc_ext._C.test_py_codegen import float2x2, float3x3, float4x4
+from robocute.rbc_ext._C import lcapi_c as lcapi
+from robocute.rbc_ext._C.lcapi_c import (
+    int2,
+    float2,
+    bool2,
+    uint2,
+    int3,
+    float3,
+    bool3,
+    uint3,
+    int4,
+    float4,
+    bool4,
+    uint4,
+)
+from robocute.rbc_ext._C.lcapi_c import float2x2, float3x3, float4x4
 
 
 class uint:
@@ -87,34 +100,130 @@ class ulong4:
     pass
 
 
-_bit16_types = {ushort, half, short, short2, half2, ushort2, short3, half3, ushort3, short4, half4, ushort4}
+_bit16_types = {
+    ushort,
+    half,
+    short,
+    short2,
+    half2,
+    ushort2,
+    short3,
+    half3,
+    ushort3,
+    short4,
+    half4,
+    ushort4,
+}
 _bit64_types = {long, ulong, long2, ulong2, long3, ulong3, long4, ulong4}
 
 
 def is_bit16_types(dtype):
     return dtype in _bit16_types
 
+
 def is_bit64_types(dtype):
     return dtype in _bit64_types
 
 
 scalar_dtypes = {int, float, bool, uint, ushort, half, short, long, ulong}
-vector_dtypes = {int2, float2, bool2, uint2, int3, float3, bool3, uint3, int4, float4, bool4, uint4, short2, half2,
-                 ushort2, short3, half3, ushort3, short4, half4, ushort4, long2, ulong2, long3, ulong3, long4, ulong4}
+vector_dtypes = {
+    int2,
+    float2,
+    bool2,
+    uint2,
+    int3,
+    float3,
+    bool3,
+    uint3,
+    int4,
+    float4,
+    bool4,
+    uint4,
+    short2,
+    half2,
+    ushort2,
+    short3,
+    half3,
+    ushort3,
+    short4,
+    half4,
+    ushort4,
+    long2,
+    ulong2,
+    long3,
+    ulong3,
+    long4,
+    ulong4,
+}
 matrix_dtypes = {float2x2, float3x3, float4x4}
-integer_scalar_vector_dtypes = {int, int2, int3, int4, uint, uint2, uint3, uint4, short, short2, short3, short4, ushort, ushort2, ushort3, ushort4,long, long2, long3, long4, ulong, ulong2, ulong3, ulong4}
+integer_scalar_vector_dtypes = {
+    int,
+    int2,
+    int3,
+    int4,
+    uint,
+    uint2,
+    uint3,
+    uint4,
+    short,
+    short2,
+    short3,
+    short4,
+    ushort,
+    ushort2,
+    ushort3,
+    ushort4,
+    long,
+    long2,
+    long3,
+    long4,
+    ulong,
+    ulong2,
+    ulong3,
+    ulong4,
+}
 
 scalar_and_vector_dtypes = {*scalar_dtypes, *vector_dtypes}
 vector_and_matrix_dtypes = {*vector_dtypes, *matrix_dtypes}
 basic_dtypes = {*scalar_dtypes, *vector_dtypes, *matrix_dtypes}
-arithmetic_dtypes = {int, uint, float, short, ushort, long, ulong, half,
-                     int2, uint2, float2, int3, uint3, float3, int4, uint4, float4, short2, half2,
-                     ushort2, short3, half3, ushort3, short4, half4, ushort4,
-                     long2, ulong2, long3, ulong3, long4, ulong4}
+arithmetic_dtypes = {
+    int,
+    uint,
+    float,
+    short,
+    ushort,
+    long,
+    ulong,
+    half,
+    int2,
+    uint2,
+    float2,
+    int3,
+    uint3,
+    float3,
+    int4,
+    uint4,
+    float4,
+    short2,
+    half2,
+    ushort2,
+    short3,
+    half3,
+    ushort3,
+    short4,
+    half4,
+    ushort4,
+    long2,
+    ulong2,
+    long3,
+    ulong3,
+    long4,
+    ulong4,
+}
 
 
 def nameof(dtype):
-    return getattr(dtype, '__name__', None) or repr(dtype)
+    return getattr(dtype, "__name__", None) or repr(dtype)
 
 
 def vector16(dtype, length):  # (float, 2) -> float2
@@ -141,7 +250,7 @@ def vector32(dtype, length):  # (float, 2) -> float2
 
 
 def length_of(dtype):  # float2 -> 2
-    if hasattr(dtype, 'size'):
+    if hasattr(dtype, "size"):
         return dtype.size
     if dtype in scalar_dtypes:
         return 1
@@ -151,23 +260,24 @@ def length_of(dtype):  # float2 -> 2
 
 # Note: matrix subscripted is vector, not its element
 def element_of(dtype):  # float2 -> float
-    if hasattr(dtype, 'dtype'):
+    if hasattr(dtype, "dtype"):
         return dtype.dtype
     if dtype in scalar_dtypes:
         return dtype
     if dtype in matrix_dtypes:
         return float
     assert dtype in vector_dtypes
-    return {'int': int,
-            'float': float,
-            'bool': bool,
-            'uint': uint,
-            'short': short,
-            'half': half,
-            'ushort': ushort,
-            'long': long,
-            'ulong': ulong}[
-        dtype.__name__[:-1]]
+    return {
+        "int": int,
+        "float": float,
+        "bool": bool,
+        "uint": uint,
+        "short": short,
+        "half": half,
+        "ushort": ushort,
+        "long": long,
+        "ulong": ulong,
+    }[dtype.__name__[:-1]]
 
 
 basic_dtype_to_lctype_dict = {
@@ -219,6 +329,7 @@ basic_lctype_to_dtype_dict = {
 
 # dtype: {int, ..., int3, ..., ArrayType(...), StructType(...), BufferType(...), type}
 
+
 class CallableType:
     pass
 
@@ -268,16 +379,37 @@ def dtype_of(val):
         return type(val)
     if type(val) is list:
         raise Exception("list is unsupported. Convert to Array instead.")
-    if type(val).__name__ in {"ArrayType", "StructType", "BufferType", "RayQueryAllType",
-                              "RayQueryAnyType", "SharedArrayType"} or val in basic_dtypes:
+    if (
+        type(val).__name__
+        in {
+            "ArrayType",
+            "StructType",
+            "BufferType",
+            "RayQueryAllType",
+            "RayQueryAnyType",
+            "SharedArrayType",
+        }
+        or val in basic_dtypes
+    ):
         return type
     if type(val).__name__ == "function":
-        raise Exception(f"dtype_of ({val}): unrecognized type. Did you forget to decorate with luisa.func?")
+        raise Exception(
+            f"dtype_of ({val}): unrecognized type. Did you forget to decorate with luisa.func?"
+        )
 
 
 def to_lctype(dtype):
-    if type(dtype).__name__ in {"ArrayType", "StructType", "BufferType", "Texture2DType", "Texture3DType", "CustomType",
-                                "RayQueryAllType", "RayQueryAnyType", "SharedArrayType"}:
+    if type(dtype).__name__ in {
+        "ArrayType",
+        "StructType",
+        "BufferType",
+        "Texture2DType",
+        "Texture3DType",
+        "CustomType",
+        "RayQueryAllType",
+        "RayQueryAnyType",
+        "SharedArrayType",
+    }:
         return dtype.luisa_type
     if not hasattr(dtype, "__name__"):
         raise TypeError(f"{dtype} is not a valid data type")
@@ -331,6 +463,7 @@ _implicit_map = {
 
 def implicit_convertible(src, dst):
     return (src == dst) or (
-            _implicit_map.get(src) is not None and \
-            _implicit_map.get(src) is not None and \
-            length_of(src) == length_of(dst))
+        _implicit_map.get(src) is not None
+        and _implicit_map.get(src) is not None
+        and length_of(src) == length_of(dst)
+    )

@@ -11,7 +11,7 @@ class DeviceInterface;
 
 }// namespace luisa::compute
 
-namespace rbc::ext_c {
+namespace rbc::lcapi_c {
 
 class RefCounter : public vstd::IOperatorNewBase {
 public:
@@ -33,4 +33,4 @@ public:
     void DeRef(Handle handle) noexcept;
 };
 
-}// namespace rbc::ext_c
+}// namespace rbc::lcapi_c

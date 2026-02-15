@@ -1,4 +1,4 @@
-from rbc_ext._C import test_py_codegen as lcapi
+from robocute.rbc_ext._C import lcapi_c as lcapi
 from .types import dtype_of, to_lctype, nameof
 
 
@@ -31,19 +31,23 @@ class Struct:
             self.structType = deduce_struct_type(kwargs, alignment=alignment)
             self.values = [value for name, value in kwargs.items()]
             for name in kwargs:
-                setattr(Struct, name, property(self.make_getter(name), self.make_setter(name)))
+                setattr(
+                    Struct,
+                    name,
+                    property(self.make_getter(name), self.make_setter(name)),
+                )
 
     def copy(self):
         return Struct(copy_source=self)
 
     def to_bytes(self):
-        packed_bytes = b''
+        packed_bytes = b""
         for idx, value in enumerate(self.values):
             dtype = self.structType.membertype[idx]
             lctype = to_lctype(dtype)
             curr_align = lctype.alignment()
             while len(packed_bytes) % curr_align != 0:
-                packed_bytes += b'\0'
+                packed_bytes += b"\0"
             if lctype.is_basic():
                 packed_bytes += lcapi.to_bytes(value)
             elif lctype.is_array():
@@ -53,20 +57,24 @@ class Struct:
             else:
                 assert False
         while len(packed_bytes) % self.structType.alignment != 0:
-            packed_bytes += b'\0'
+            packed_bytes += b"\0"
         assert len(packed_bytes) == self.structType.luisa_type.size()
         return packed_bytes
 
     def __repr__(self):
         idd = self.structType.idx_dict
-        return '{' + ', '.join([name + ':' + repr(self.values[idd[name]]) for name in idd]) + '}'
-    
+        return (
+            "{"
+            + ", ".join([name + ":" + repr(self.values[idd[name]]) for name in idd])
+            + "}"
+        )
+
     def __hash__(self):
         return hash(repr(self))
 
 
 def struct(alignment=1, **kwargs):
-    assert 'copy_source' not in kwargs
+    assert "copy_source" not in kwargs
     return Struct(alignment=alignment, **kwargs)
 
 
@@ -88,8 +96,11 @@ class StructType:
             self.membertype.append(dtype)
             self.alignment = max(self.alignment, lctype.alignment())
         # compute lcapi.Type
-        type_string = f'struct<{self.alignment},' + ','.join(
-            [to_lctype(x).description() for x in self.membertype]) + '>'
+        type_string = (
+            f"struct<{self.alignment},"
+            + ",".join([to_lctype(x).description() for x in self.membertype])
+            + ">"
+        )
         self.luisa_type = lcapi.Type.from_(type_string)
         self.size_bytes = self.luisa_type.size()
 
@@ -101,12 +112,24 @@ class StructType:
         return t
 
     def __repr__(self):
-        return f'StructType[{self.alignment}](' + ', '.join(
-            [f'{x}:{nameof(self.membertype[self.idx_dict[x]])}' for x in self.idx_dict]) + ')'
+        return (
+            f"StructType[{self.alignment}]("
+            + ", ".join(
+                [
+                    f"{x}:{nameof(self.membertype[self.idx_dict[x]])}"
+                    for x in self.idx_dict
+                ]
+            )
+            + ")"
+        )
 
     def __eq__(self, other):
-        return type(
-            other) is StructType and self.idx_dict == other.idx_dict and self.membertype == other.membertype and self.alignment == other.alignment
+        return (
+            type(other) is StructType
+            and self.idx_dict == other.idx_dict
+            and self.membertype == other.membertype
+            and self.alignment == other.alignment
+        )
 
     def __hash__(self):
         return hash(self.luisa_type.description()) ^ 7178987438397

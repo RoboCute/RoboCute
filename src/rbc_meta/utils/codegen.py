@@ -56,10 +56,7 @@ from rbc_meta.utils.templates import (
 )
 
 # Type name functions for special types
-from rbc_meta.utils.codegen_util import (
-    _get_full_cpp_type,
-     _print_arg_vars_decl
-)
+from rbc_meta.utils.codegen_util import _get_full_cpp_type, _print_arg_vars_decl
 from rbc_meta.utils.builtin import (
     Pointer,
     Const,
@@ -68,11 +65,16 @@ from rbc_meta.utils.builtin import (
     GUID,
 )  # special case
 
-from rbc_meta.utils.pybind_codegen import pybind_enum_binding, pybind_struct_bindings, _print_py_args, _get_py_type, _print_py_args_decl
+from rbc_meta.utils.pybind_codegen import (
+    pybind_enum_binding,
+    pybind_struct_bindings,
+    _print_py_args,
+    _get_py_type,
+    _print_py_args_decl,
+)
 
-def cpp_interface_gen(
-    module_filter: List[str] = [], *extra_includes
-) -> str:
+
+def cpp_interface_gen(module_filter: List[str] = [], *extra_includes) -> str:
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
 
@@ -359,7 +361,6 @@ def cpp_impl_gen(module_filter: List[str] = [], *extra_includes) -> str:
             struct_impls_list.append(deser_impl)
             struct_impls_list.append(regist_impl)
 
-
     struct_impls_expr = "\n".join(struct_impls_list)
     enum_initers_expr = "\n".join(enum_initers_list)
 
@@ -375,7 +376,9 @@ JSON_SER_NAME = "b839f6ccb4b74"
 SELF_NAME = "d6922fb0e4bd44549"
 
 
-def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_import: str = None) -> str:
+def py_interface_gen(
+    module_name: str, module_filter: List[str] = [], extra_import: str = None
+) -> str:
     """Generate Python interface code."""
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
@@ -411,22 +414,28 @@ def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_impo
 
             return_expr = "return " if method.return_type else ""
             return_end = ""
-            if (method.return_type):
-                if (hasattr(method.return_type, '_ctor_begin') or
-                    (hasattr(method.return_type, "_pybind_type_")
+            if method.return_type:
+                if hasattr(method.return_type, "_ctor_begin") or (
+                    hasattr(method.return_type, "_pybind_type_")
                     and method.return_type._pybind_type_
                     and (
                         not hasattr(method.return_type, "_is_enum_")
                         or not method.return_type._is_enum_
-                    ))
+                    )
                 ):
                     return_expr += _get_py_type(method.return_type)
-                    if hasattr(method.return_type, '_ctor_begin') and method.return_type._ctor_begin:
-                        return_expr += '.'
+                    if (
+                        hasattr(method.return_type, "_ctor_begin")
+                        and method.return_type._ctor_begin
+                    ):
+                        return_expr += "."
                         return_expr += method.return_type._ctor_begin
                     else:
-                        return_expr += '('
-                    if hasattr(method.return_type, '_ctor_end') and method.return_type._ctor_end:
+                        return_expr += "("
+                    if (
+                        hasattr(method.return_type, "_ctor_end")
+                        and method.return_type._ctor_end
+                    ):
                         return_end = method.return_type._ctor_end
                     else:
                         return_end += ")"
@@ -437,7 +446,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_impo
             )
 
             pybind_methods_list.append(pybind_method_name)
-            if method.name == 'dispose':
+            if method.name == "dispose":
                 return PY_METHOD_DISPOSE_TEMPLATE.substitute(
                     INDENT=INDENT,
                     METHOD_NAME=method.name,
@@ -507,9 +516,9 @@ def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_impo
 
     classes_expr = "\n".join(classes_expr_list)
     enum_exprs = "\n".join(enum_exprs)
-    module_expr = f"from rbc_ext._C.{module_name} import *"
+    module_expr = f"from robocute.rbc_ext._C.{module_name} import *"
     if extra_import is not None:
-        module_expr += '\n'
+        module_expr += "\n"
         module_expr += extra_import
     result = PY_MODULE_TEMPLATE.substitute(
         MODULE_EXPR=module_expr,
@@ -518,6 +527,7 @@ def py_interface_gen(module_name: str, module_filter: List[str] = [], extra_impo
     )
 
     return result
+
 
 def pybind_codegen(
     module_name: str, module_filter: List[str] = [], *extra_includes
@@ -624,7 +634,7 @@ def pybind_codegen(
                     LOAD_STMTS=load_stmts,
                     NAMESPACE_NAME=namespace_expr,
                 )
-                
+
                 regist_impl = CPP_STRUCT_REGIST_TEMPLATE.substitute(
                     NAMESPACE_NAME=namespace_expr,
                     CLASS_NAME=class_name,

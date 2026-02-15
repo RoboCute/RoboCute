@@ -1,4 +1,4 @@
-from rbc_ext._C import test_py_codegen as lcapi
+from robocute.rbc_ext._C import lcapi_c as lcapi
 
 
 class MeshFormat:
@@ -16,7 +16,9 @@ class MeshFormat:
         self.handle = lcapi.MeshFormat()
         for attributes in streams:
             for i in attributes:
-                assert type(i[0]) == lcapi.VertexAttributeType and type(
-                    i[1]) == lcapi.VertexElementFormat
+                assert (
+                    type(i[0]) == lcapi.VertexAttributeType
+                    and type(i[1]) == lcapi.VertexElementFormat
+                )
                 self.handle.add_attribute(i[0], i[1])
             self.handle.add_stream()
