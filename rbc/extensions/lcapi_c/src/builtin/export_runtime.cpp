@@ -334,7 +334,7 @@ void export_runtime(py::module &m) {
         })
         .def("create_shader", [](DeviceInterface &self, Function kernel) {
                 auto handle = self.create_shader({}, kernel).handle;
-                rbc::ext_c::RefCounter::current->AddObject(
+                rbc::lcapi_c::RefCounter::current->AddObject(
                     handle, 
                     {[](DeviceInterface *d, uint64 handle) { d->destroy_shader(handle); }, 
                         self.shared_from_this()
@@ -366,12 +366,12 @@ void export_runtime(py::module &m) {
         5: not callable
         6: illegal vertex first arguments
         */
-        .def("destroy_shader", [](DeviceInterface &self, uint64_t handle) { rbc::ext_c::RefCounter::current->DeRef(handle); })
+        .def("destroy_shader", [](DeviceInterface &self, uint64_t handle) { rbc::lcapi_c::RefCounter::current->DeRef(handle); })
         .def("create_buffer", [](DeviceInterface &d, const Type *type, size_t size) -> BufferCreationInfoInterop{
                 BufferCreationInfoInterop info;
                 vstd::reset(info, d.create_buffer(type, size, nullptr));
                 info.interop = false;
-                rbc::ext_c::RefCounter::current->AddObject(
+                rbc::lcapi_c::RefCounter::current->AddObject(
                     info.handle,
                     {[](DeviceInterface *d, uint64 handle) {
                          d->destroy_buffer(handle);
@@ -383,7 +383,7 @@ void export_runtime(py::module &m) {
             BufferCreationInfoInterop info;
             vstd::reset(info, compute_device.create_interop_buffer(type, size));
             info.interop = true;
-            rbc::ext_c::RefCounter::current->AddObject(
+            rbc::lcapi_c::RefCounter::current->AddObject(
                 info.handle,
                 {[](DeviceInterface *d, uint64 handle) {
                     sync_stream();
@@ -395,7 +395,7 @@ void export_runtime(py::module &m) {
             BufferCreationInfoInterop info;
             vstd::reset(info, d.create_buffer(type, elem_count, reinterpret_cast<void *>(native_address)));
             info.interop = false;
-            rbc::ext_c::RefCounter::current->AddObject(info.handle, {[](DeviceInterface *d, uint64 handle) {
+            rbc::lcapi_c::RefCounter::current->AddObject(info.handle, {[](DeviceInterface *d, uint64 handle) {
                sync_stream();
                  d->destroy_buffer(handle); }, d.shared_from_this()});
             return info; })
@@ -405,7 +405,7 @@ void export_runtime(py::module &m) {
         .def("interop_buffer_copy_to", [](DeviceInterface &d, uint64_t interop_buffer, uint64_t interop_buffer_offset_bytes, uint64_t cu_stream_ptr, uint64_t cu_buffer, size_t size_bytes) { 
             interop_copy(d, interop_buffer, interop_buffer_offset_bytes,  reinterpret_cast<void*>(cu_stream_ptr), reinterpret_cast<void*>(cu_buffer), size_bytes, true); 
         })
-        .def("destroy_buffer", [](DeviceInterface &d, uint64_t handle) { rbc::ext_c::RefCounter::current->DeRef(handle); })
+        .def("destroy_buffer", [](DeviceInterface &d, uint64_t handle) { rbc::lcapi_c::RefCounter::current->DeRef(handle); })
         .def("create_texture", [](DeviceInterface &d, PixelFormat format, uint32_t dimension, uint32_t width, uint32_t height, uint32_t depth, uint32_t mipmap_levels)->TextureCreationInfo {
                 TextureCreationInfo info;
                 vstd::reset(info, d.create_texture(format, dimension, width, height, depth, mipmap_levels, nullptr, false, false));
@@ -415,12 +415,12 @@ void export_runtime(py::module &m) {
                 info.height = height;
                 info.depth = depth;
                 info.mipmap_levels = mipmap_levels;
-                rbc::ext_c::RefCounter::current->AddObject(info.handle, {[](DeviceInterface *d, uint64 handle) {
+                rbc::lcapi_c::RefCounter::current->AddObject(info.handle, {[](DeviceInterface *d, uint64 handle) {
                     sync_stream();
                     d->destroy_texture(handle); }, d.shared_from_this()});
                     return info; 
                 }, pyref)
-        .def("destroy_texture", [](DeviceInterface &d, uint64_t handle) { rbc::ext_c::RefCounter::current->DeRef(handle); })
+        .def("destroy_texture", [](DeviceInterface &d, uint64_t handle) { rbc::lcapi_c::RefCounter::current->DeRef(handle); })
         .def(
             "synchronize", [](DeviceInterface &self) { sync_stream(); }, pyref)
         .def(

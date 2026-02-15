@@ -1,8 +1,8 @@
-from rbc_ext._C import test_py_codegen as lcapi
+from robocute.rbc_ext._C import lcapi_c as lcapi
 from .types import to_lctype, from_lctype
 
 
-# Note: vector & matrix types are directly imported from rbc_ext._C.test_py_codegen
+# Note: vector & matrix types are directly imported from robocute.rbc_ext._C.test_py_codegen
 
 # class Vector:
 # def __init__(self, data, dtype = float):
@@ -16,12 +16,13 @@ from .types import to_lctype, from_lctype
 #         raise Exception('vector len must be 2/3/4')
 #     self.size = self.data.size
 
+
 # @staticmethod
 def is_swizzle_name(sw):
     if len(sw) > 4:
         return False
     for ch in sw:
-        if not ch in {'x', 'y', 'z', 'w'}:
+        if not ch in {"x", "y", "z", "w"}:
             return False
     return True
 
@@ -30,15 +31,15 @@ def is_swizzle_name(sw):
 def get_swizzle_code(sw, maxlen):
     code = 0
     codemap = {
-        'x': 0,
-        'y': 1,
-        'z': 2,
-        'w': 3,
+        "x": 0,
+        "y": 1,
+        "z": 2,
+        "w": 3,
     }
     for idx, ch in enumerate(sw):
         c = codemap[ch]
         if c >= maxlen:
-            raise Exception('swizzle index exceeding length of vector')
+            raise Exception("swizzle index exceeding length of vector")
         code |= c << (idx * 4)
     return code
 
@@ -48,4 +49,6 @@ def get_swizzle_resulttype(dtype, len):
     if len == 1:
         return from_lctype(lctype.element())
     else:
-        return from_lctype(lcapi.Type.from_(f'vector<{lctype.element().description()},{len}>'))
+        return from_lctype(
+            lcapi.Type.from_(f"vector<{lctype.element().description()},{len}>")
+        )

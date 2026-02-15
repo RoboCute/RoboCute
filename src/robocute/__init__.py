@@ -31,6 +31,10 @@ from .executor import (
 )
 import robocute.builtin_nodes
 import os
+from .rbc_ext import world
+
+
+import robocute.app as app
 
 __version__ = "0.2.0"
 __author__ = "RoboCute Team"
@@ -39,6 +43,9 @@ __builtin_runtime_dir__ = (
 )  # Built-In Runtime Path
 
 __all__ = [
+    # Project
+    "world",
+    "app",
     # Scene
     "Scene",
     "Entity",

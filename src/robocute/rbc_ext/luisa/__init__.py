@@ -1,4 +1,4 @@
-from rbc_ext._C import test_py_codegen as lcapi
+from robocute.rbc_ext._C import lcapi_c as lcapi
 
 
 # callback: (level: string, message: string) -> None
@@ -10,7 +10,6 @@ try:
     shell = get_ipython().__class__.__name__
     if shell != "TerminalInteractiveShell":
         from datetime import datetime
-
 
         def _default_log_callback(level, message):
             now = datetime.now()
@@ -25,13 +24,25 @@ try:
                     color, level = 91, "error"
             print(f"[{now}] [luisa] [\033[{color}m{level}\033[00m] {message}")
 
-
         set_log_callback(_default_log_callback)
 except NameError:
     pass
 
 from . import globalvars
-from .types import half, short, ushort, half2, short2, ushort2, half3, short3, ushort3, half4, short4, ushort4
+from .types import (
+    half,
+    short,
+    ushort,
+    half2,
+    short2,
+    ushort2,
+    half3,
+    short3,
+    ushort3,
+    half4,
+    short4,
+    ushort4,
+)
 
 from .func import func
 from .mathtypes import *
@@ -40,20 +51,23 @@ from .struct import struct, StructType
 from .buffer import buffer, Buffer, ByteBuffer, BufferType, ByteBufferType
 from .image2d import image2d, Image2D, Texture2DType
 from .image3d import image3d, Image3D, Texture3DType
-from rbc_ext._C.test_py_codegen import PixelStorage
 
 from .hit import TriangleHit, CommittedHit, ProceduralHit
 from .rayquery import RayQueryAllType, RayQueryAnyType, is_triangle, is_procedural, Ray
 from .util import RandomSampler
 from .meshformat import MeshFormat
 
-from rbc_ext._C.test_py_codegen  import log_level_verbose, log_level_info, log_level_warning, log_level_error
+from robocute.rbc_ext._C.lcapi_c import (
+    log_level_verbose,
+    log_level_info,
+    log_level_warning,
+    log_level_error,
+)
 from os.path import realpath
 import platform
 import sys
 from os import environ
 import inspect
-
 
 
 def verbose(fmt: str, *args, **kwargs):

@@ -1,13 +1,15 @@
 try:
     import sourceinspect
 except ImportError:
-    print('sourceinspect not installed. This may cause issues in interactive mode (REPL).')
+    print(
+        "sourceinspect not installed. This may cause issues in interactive mode (REPL)."
+    )
     import inspect as sourceinspect
     # need sourceinspect for getting source. see (#10)
 import inspect
 import ast
 
-from rbc_ext._C import test_py_codegen as lcapi
+from robocute.rbc_ext._C import lcapi_c as lcapi
 from . import globalvars, astbuilder
 from .builtin import builtin_func_names
 from .globalvars import get_global_device
@@ -43,7 +45,7 @@ def annotation_type_check(funcname, parameters, argtypes):
     def anno_str(anno):
         if anno == inspect._empty:
             return ""
-        if hasattr(anno, '__name__'):
+        if hasattr(anno, "__name__"):
             return ":" + anno.__name__
         return ":" + repr(anno)
 
@@ -53,8 +55,17 @@ def annotation_type_check(funcname, parameters, argtypes):
             break
         anno = parameters[name].annotation
         if anno != inspect._empty and not implicit_convertible(anno, argtypes[idx]):
-            hint = funcname + '(' + ', '.join([n + anno_str(parameters[n].annotation) for n in parameters]) + ')'
-            raise TypeError(f"argument '{name}' expects {anno}, got {argtypes[idx]}. calling {hint}")
+            hint = (
+                funcname
+                + "("
+                + ", ".join(
+                    [n + anno_str(parameters[n].annotation) for n in parameters]
+                )
+                + ")"
+            )
+            raise TypeError(
+                f"argument '{name}' expects {anno}, got {argtypes[idx]}. calling {hint}"
+            )
 
 
 # variables, information and compiled result are stored per func instance (argument type specialization)
@@ -70,7 +81,7 @@ class FuncInstanceInfo:
         self.closure_variable = {
             **_closure_vars.globals,
             **_closure_vars.nonlocals,
-            **_closure_vars.builtins
+            **_closure_vars.builtins,
         }
         self.local_variable = {}  # dict: name -> VariableInfo(dtype, expr, is_arg)
         self.default_arg_values = self._capture_default_arg_values(func.pyfunc)
@@ -85,19 +96,24 @@ class FuncInstanceInfo:
 
     def _capture_default_arg_values(self, pyfunc):
         sig = inspect.signature(pyfunc)
-        return {param.name: param.default for param in sig.parameters.values()
-                if param.default is not inspect.Parameter.empty}
-    
+        return {
+            param.name: param.default
+            for param in sig.parameters.values()
+            if param.default is not inspect.Parameter.empty
+        }
+
     def build_arguments(self, allow_ref: bool, arg_info=None):
         if arg_info is None:
             for idx, name in enumerate(self.func.parameters):
-                if idx >= len(self.argtypes): break
+                if idx >= len(self.argtypes):
+                    break
                 dtype = self.argtypes[idx]
                 expr = create_arg_expr(dtype, allow_ref=allow_ref)
                 self.local_variable[name] = VariableInfo(dtype, expr, is_arg=True)
         else:
             for idx, name in enumerate(self.func.parameters):
-                if idx >= len(self.argtypes): break
+                if idx >= len(self.argtypes):
+                    break
                 var_info = arg_info.get(idx)
                 dtype = self.argtypes[idx]
                 if var_info is not None:
@@ -110,7 +126,10 @@ class FuncInstanceInfo:
 class CompileError(Exception):
     pass
 
+
 type_idx = 0
+
+
 class func:
     # creates a luisa function with given function
     # A luisa function can be run on accelarated device (CPU/GPU).
@@ -127,6 +146,7 @@ class func:
         frameinfo = inspect.getframeinfo(inspect.stack()[1][0])
         self.filename = frameinfo.filename
         self.lineno = frameinfo.lineno
+
     # compiles an argument-type-specialized callable/kernel
     # returns FuncInstanceInfo
     def compile(self, func_type: int, allow_ref: bool, argtypes: tuple, arg_info=None):
@@ -134,17 +154,23 @@ class func:
         # get python AST & context
         self.sourcelines = sourceinspect.getsourcelines(self.pyfunc)[0]
         uses_autodiff = "autodiff():" in "".join(self.sourcelines)
-        self.sourcelines = [textwrap.fill(line, tabsize=4, width=9999) for line in self.sourcelines]
+        self.sourcelines = [
+            textwrap.fill(line, tabsize=4, width=9999) for line in self.sourcelines
+        ]
         self.tree = ast.parse(textwrap.dedent("\n".join(self.sourcelines)))
         self.parameters = inspect.signature(self.pyfunc).parameters
         if len(argtypes) > len(self.parameters):
             raise Exception(
-                f"calling {self.__name__} with {len(argtypes)} arguments ({len(self.parameters)} or less expected).")
+                f"calling {self.__name__} with {len(argtypes)} arguments ({len(self.parameters)} or less expected)."
+            )
         # Check for too few arguments (considering default values)
-        min_required_args = sum(1 for p in self.parameters.values() if p.default is inspect.Parameter.empty)
+        min_required_args = sum(
+            1 for p in self.parameters.values() if p.default is inspect.Parameter.empty
+        )
         if len(argtypes) < min_required_args:
             raise Exception(
-                f"calling {self.__name__} with {len(argtypes)} arguments ({min_required_args} or more expected).")
+                f"calling {self.__name__} with {len(argtypes)} arguments ({min_required_args} or more expected)."
+            )
         annotation_type_check(self.__name__, self.parameters, argtypes)
         f = FuncInstanceInfo(self, call_from_host, argtypes)
 
@@ -179,7 +205,14 @@ class func:
 
     # looks up arg_type_tuple; compile if not existing
     # returns FuncInstanceInfo
-    def get_compiled(self, func_type: int, allow_ref: bool, argtypes: tuple, arg_info=None, custom_key=None):
+    def get_compiled(
+        self,
+        func_type: int,
+        allow_ref: bool,
+        argtypes: tuple,
+        arg_info=None,
+        custom_key=None,
+    ):
         if custom_key != None and self.fence_idx < custom_key:
             self.fence_idx = custom_key
             self.compiled_results.clear()
@@ -187,7 +220,9 @@ class func:
         arg_features = (func_type,) + argtypes
         if arg_features not in self.compiled_results:
             try:
-                self.compiled_results[arg_features] = self.compile(func_type, allow_ref, argtypes, arg_info)
+                self.compiled_results[arg_features] = self.compile(
+                    func_type, allow_ref, argtypes, arg_info
+                )
             except Exception as e:
                 if hasattr(e, "already_printed"):
                     # hide the verbose traceback in AST builder
@@ -199,7 +234,14 @@ class func:
         return self.compiled_results[arg_features]
 
     # dispatch shader to stream
-    def __call__(self, *args, dispatch_size=None, stream=None, dispatch_buffer_offset:int=0, max_dispatch_size:int=(2**32-1)):
+    def __call__(
+        self,
+        *args,
+        dispatch_size=None,
+        stream=None,
+        dispatch_buffer_offset: int = 0,
+        max_dispatch_size: int = (2**32 - 1),
+    ):
         get_global_device()  # check device is initialized
         if stream is None:
             stream = globalvars.device
@@ -207,7 +249,9 @@ class func:
         is_buffer = False
         if type(dispatch_size) is int:
             dispatch_size = (dispatch_size, 1, 1)
-        elif (type(dispatch_size) == tuple or type(dispatch_size) == list) and (len(dispatch_size) in (1, 2, 3)):
+        elif (type(dispatch_size) == tuple or type(dispatch_size) == list) and (
+            len(dispatch_size) in (1, 2, 3)
+        ):
             dispatch_size = (*dispatch_size, *[1] * (3 - len(dispatch_size)))
         else:
             is_buffer = True
@@ -215,12 +259,16 @@ class func:
         argtypes = tuple(dtype_of(a) for a in args)
         f = self.get_compiled(func_type=0, allow_ref=False, argtypes=argtypes)
         # create command
-        command = lcapi.ComputeDispatchCmdEncoder.create(f.function.argument_size(), f.shader_handle, f.function)
+        command = lcapi.ComputeDispatchCmdEncoder.create(
+            f.function.argument_size(), f.shader_handle, f.function
+        )
         # push arguments
         for a in args:
             lctype = to_lctype(dtype_of(a))
             if lctype.is_basic():
-                command.encode_uniform(lcapi.to_bytes(a), lctype.size(), lctype.alignment())
+                command.encode_uniform(
+                    lcapi.to_bytes(a), lctype.size(), lctype.alignment()
+                )
             elif lctype.is_array() or lctype.is_structure():
                 command.encode_uniform(a.to_bytes(), lctype.size(), lctype.alignment())
             elif lctype.is_buffer() or lctype.is_custom_buffer():
@@ -231,7 +279,9 @@ class func:
                 assert False
         # dispatch
         if is_buffer:
-            command.set_dispatch_buffer(dispatch_size.handle, dispatch_buffer_offset, max_dispatch_size)
+            command.set_dispatch_buffer(
+                dispatch_size.handle, dispatch_buffer_offset, max_dispatch_size
+            )
         else:
             command.set_dispatch_size(*dispatch_size)
         stream.add(command.build())

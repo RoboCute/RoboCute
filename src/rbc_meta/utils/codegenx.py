@@ -525,8 +525,8 @@ class CodegenResitry:
             PYBIND_METHODS_EXPR=import_reqs_expr,
             PYBIND_CLS_EXPR=import_cls_reqs_expr,
         )
-        # module_expr = f"from rbc_ext._C.{mod.name()} import {import_reqs_expr}"
-        # extra_import = "import rbc_ext.luisa as luisa"
+        # module_expr = f"from robocute.rbc_ext._C.{mod.name()} import {import_reqs_expr}"
+        # extra_import = "import robocute.rbc_ext.luisa as luisa"
         # if extra_import is not None:
         #     module_expr += "\n"
         #     module_expr += extra_import

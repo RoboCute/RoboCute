@@ -132,17 +132,38 @@ CPP_STRUCT_RPC_METHOD_DECL_TEMPLATE = Template(
 
 PY_MODULE_IMPORT_TEMPLATE = Template("""
 # =================BUILTIN IMPORTS (START)==========================    
-from rbc_ext._C.${MODE_NAME} import rbc_release, rbc_add_ref, _create_resource, _create_resource_guid, PtrInt64, capsule_vector
-from rbc_ext._C.${MODE_NAME} import double2, double3, double4, double4x4, float2, float3, float4, float4x4, uint2, uint3, uint4, GUID
-import rbc_ext.luisa as luisa
+from robocute.rbc_ext._C.rbc_ext_c import (
+    rbc_release,
+    rbc_add_ref,
+    _create_resource,
+    _create_resource_guid,
+    PtrInt64,
+    GUID,
+)
+                                     
+from robocute.rbc_ext._C.lcapi_c import (
+    double2,
+    double3,
+    double4,
+    double4x4,
+    float2,
+    float3,
+    float4,
+    float4x4,
+    uint2,
+    uint3,
+    uint4,
+    capsule_vector,
+)
+import robocute.rbc_ext.luisa as luisa
 # =================BUILTIN IMPORTS (END)  ==========================
 
 # =================IMPORT ALL METHODS (START)=======================                        
-from rbc_ext._C.${MODE_NAME} import ${PYBIND_METHODS_EXPR}
+from robocute.rbc_ext._C.${MODE_NAME} import ${PYBIND_METHODS_EXPR}
 # =================IMPORT ALL METHODS (END)  =======================
 
 # =================IMPORT ALL CLASS (START)=========================                          
-from rbc_ext._C.${MODE_NAME} import ${PYBIND_CLS_EXPR}
+from robocute.rbc_ext._C.${MODE_NAME} import ${PYBIND_CLS_EXPR}
                                      
 # =================IMPORT ALL CLASS (END)  =========================
                                                             
