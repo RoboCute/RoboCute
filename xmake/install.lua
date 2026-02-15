@@ -12,6 +12,15 @@ function main(mode, build_stubgen)
     os.cp(path.join(target_dir, '*.pyd'), ext_path, {
         copy_if_different = true
     })
+    os.cp(path.join(target_dir, '*.coeff'), ext_path, {
+        copy_if_different = true
+    })
+    os.cp(path.join(target_dir, '*.bytes'), ext_path, {
+        copy_if_different = true
+    })
+    os.cp(path.join(target_dir, '*.bin'), ext_path, {
+        copy_if_different = true
+    })
     -- copy builtin-assets
     os.cp(path.join(target_dir, "../shader_build_dx"), ext_path, {
         copy_if_different = true

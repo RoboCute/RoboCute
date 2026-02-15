@@ -29,10 +29,20 @@ except NameError:
     pass
 
 from . import globalvars
+
 from .types import (
     half,
     short,
     ushort,
+    uint2,
+    uint3,
+    uint4,
+    float2,
+    float3,
+    float4,
+    double2,
+    double3,
+    double4,
     half2,
     short2,
     ushort2,
@@ -128,3 +138,22 @@ def execute(stream=None):
     if stream is None:
         stream = globalvars.device
     stream.execute()
+
+
+capsule_vector = lcapi.capsule_vector
+
+__all__ = [
+    "init",
+    "del_device",
+    "execute",
+    "uint2",
+    "uint3",
+    "uint4",
+    "float2",
+    "float3",
+    "float4",
+    "double2",
+    "double3",
+    "double4",
+    "capsule_vector",
+]
