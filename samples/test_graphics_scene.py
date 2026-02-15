@@ -1,5 +1,6 @@
 import robocute as rbc
 import argparse
+from pathlib import Path
 
 
 def main():
@@ -21,6 +22,9 @@ def main():
     args = parser.parse_args()
 
     print(args.scene)
+
+    scene_path = Path(args.scene)
+    print(rbc.__builtin_runtime_dir__)
 
 
 if __name__ == "__main__":

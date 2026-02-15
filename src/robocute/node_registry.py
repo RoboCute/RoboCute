@@ -7,9 +7,6 @@
 from typing import Dict, Type, List, Optional, TYPE_CHECKING
 from .node_base import RBCNode, NodeMetadata
 
-if TYPE_CHECKING:
-    from .scene_context import SceneContext
-
 
 class NodeRegistry:
     """
@@ -80,7 +77,9 @@ class NodeRegistry:
         """
         return self._registry.get(node_type)
 
-    def create_node(self, node_type: str, node_id: str, context: Optional['SceneContext'] = None) -> Optional[RBCNode]:
+    def create_node(
+        self, node_type: str, node_id: str, context: Optional["SceneContext"] = None
+    ) -> Optional[RBCNode]:
         """
         创建节点实例
 
@@ -100,7 +99,7 @@ class NodeRegistry:
 
         print(f"[NodeRegistry] Creating instance of {node_class.__name__}")
         print(f"[NodeRegistry]   Context provided: {context is not None}")
-        
+
         try:
             node = node_class(node_id, context)
             print(f"[NodeRegistry] ✓ Node instance created successfully")
@@ -108,6 +107,7 @@ class NodeRegistry:
         except Exception as e:
             print(f"[NodeRegistry] ✗ Failed to instantiate node: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 

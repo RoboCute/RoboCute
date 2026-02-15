@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
+from robocute.rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
 from .scene import Scene
 from .service import Service
 
@@ -108,7 +108,7 @@ class EditorService(Service):
 
     def register_routes(self, app: FastAPI) -> None:
         """Register Editor Service routes with the FastAPI application"""
-        
+
         @app.get("/scene/state")
         def get_scene_state():
             """Get current scene state"""
@@ -184,9 +184,11 @@ class EditorService(Service):
         def editor_command(request: EditorCommandRequest):
             """Handle editor command (for direct HTTP requests)"""
             try:
-                print(f"[EditorService] Received command: {request.command_type} from editor {request.editor_id}")
+                print(
+                    f"[EditorService] Received command: {request.command_type} from editor {request.editor_id}"
+                )
                 print(f"[EditorService] Command params: {request.params}")
-                
+
                 command = EditorCommand(
                     type=request.command_type,
                     params=request.params,
@@ -194,15 +196,20 @@ class EditorService(Service):
                     editor_id=request.editor_id,
                 )
                 self.submit_command(command)
-                
+
                 # Process command immediately
                 self.process_commands()
-                
-                print(f"[EditorService] Command {request.command_type} processed successfully")
+
+                print(
+                    f"[EditorService] Command {request.command_type} processed successfully"
+                )
                 return {"success": True, "command_type": request.command_type}
             except Exception as e:
-                print(f"[EditorService] Error processing command {request.command_type}: {e}")
+                print(
+                    f"[EditorService] Error processing command {request.command_type}: {e}"
+                )
                 import traceback
+
                 traceback.print_exc()
                 raise HTTPException(status_code=500, detail=str(e))
 
@@ -445,16 +452,22 @@ class EditorService(Service):
                 component_type = params["component_type"]
                 component_data = params["component_data"]
 
-                print(f"[EditorService] modify_component: entity_id={entity_id}, component_type={component_type}")
+                print(
+                    f"[EditorService] modify_component: entity_id={entity_id}, component_type={component_type}"
+                )
                 print(f"[EditorService] component_data: {component_data}")
 
                 # Deserialize component based on type
                 if component_type == "transform":
                     from .scene import TransformComponent
+
                     component = TransformComponent(**component_data)
-                    print(f"[EditorService] Created TransformComponent: position={component.position}, rotation={component.rotation}, scale={component.scale}")
+                    print(
+                        f"[EditorService] Created TransformComponent: position={component.position}, rotation={component.rotation}, scale={component.scale}"
+                    )
                 elif component_type == "render":
                     from .scene import RenderComponent
+
                     component = RenderComponent(**component_data)
                 else:
                     component = component_data
@@ -466,7 +479,9 @@ class EditorService(Service):
                     raise ValueError(f"Entity {entity_id} not found")
 
                 self.scene.add_component(entity_id, component_type, component)
-                print(f"[EditorService] Component added successfully to entity {entity_id}")
+                print(
+                    f"[EditorService] Component added successfully to entity {entity_id}"
+                )
 
                 self._send_to_editor(
                     command.editor_id,

@@ -1,4 +1,3 @@
-# Python 端定义 (src/rbc_ext/resource.py)
 from enum import IntEnum
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, Callable, List

@@ -30,9 +30,13 @@ from .executor import (
     ExecutionCache,
 )
 import robocute.builtin_nodes
+import os
 
 __version__ = "0.2.0"
 __author__ = "RoboCute Team"
+__builtin_runtime_dir__ = (
+    os.path.dirname(__file__) + "/rbc_ext/_C"
+)  # Built-In Runtime Path
 
 __all__ = [
     # Scene
@@ -91,4 +95,5 @@ __all__ = [
     # 模块信息
     "__version__",
     "__author__",
+    "__builtin_runtime_dir__",
 ]
