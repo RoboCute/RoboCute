@@ -39,15 +39,18 @@ def main():
         help="rbc project path, the directory containing rbc_project.json",
         required=True,
     )
+    parser.add_argument("-o", "--output", action="store_true", help="Export")
     args = parser.parse_args()
 
     print(args.project)
 
     project_path = Path(args.project)
 
-    print(rbc.__builtin_runtime_dir__)
     app = rbc.app.App()
     app.init(project_path)
+    app.init_display()
+
+    app.run()
 
 
 if __name__ == "__main__":

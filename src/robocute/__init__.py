@@ -36,7 +36,7 @@ from .rbc_ext import world
 
 import robocute.app as app
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __author__ = "RoboCute Team"
 __builtin_runtime_dir__ = (
     os.path.dirname(__file__) + "/rbc_ext/_C"

@@ -2,17 +2,21 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
 from robocute.rbc_ext._C.lcapi_c import (
     int2,
     float2,
+    double2,
     bool2,
     uint2,
     int3,
     float3,
+    double3,
     bool3,
     uint3,
     int4,
     float4,
+    double4,
     bool4,
     uint4,
 )
+
 from robocute.rbc_ext._C.lcapi_c import float2x2, float3x3, float4x4
 
 
