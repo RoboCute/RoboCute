@@ -81,7 +81,7 @@ void Component::_call_on_destroy() {
 }
 void Entity::_add_component(Component *component) {
     {
-        // std::lock_guard lck{_add_comp_mtx};
+        std::lock_guard lck{_add_comp_mtx};
         component->remove_self_from_entity();
         auto result = _components.try_emplace(component->type_id(), component).second;
         if (!result) [[unlikely]]
@@ -95,7 +95,7 @@ void Entity::_add_component(Component *component) {
 bool Entity::remove_component(MD5 const &type_md5) {
     Component *comp;
     {
-        // std::lock_guard lck{_add_comp_mtx};
+        std::lock_guard lck{_add_comp_mtx};
         auto iter = _components.find(type_md5);
         if (iter == _components.end()) return false;
         auto obj = std::move(iter->second);
@@ -108,7 +108,7 @@ bool Entity::remove_component(MD5 const &type_md5) {
     return true;
 }
 Component *Entity::get_component(MD5 const &type_md5) {
-    // std::shared_lock lck{_add_comp_mtx};
+    std::shared_lock lck{_add_comp_mtx};
     auto iter = _components.find(type_md5);
     if (iter == _components.end()) return nullptr;
     auto &obj = iter->second;
@@ -171,13 +171,15 @@ void Entity::unsafe_call_update() {
     }
 }
 void Entity::_remove_component(Component *component) {
-    
-        // std::lock_guard lck{_add_comp_mtx};
+
+    {
+        std::lock_guard lck{_add_comp_mtx};
         LUISA_DEBUG_ASSERT(component->entity() == this);
         auto iter = _components.find(component->type_id());
         LUISA_DEBUG_ASSERT(iter != _components.end());
+        _components.erase(iter);
+    }
     component->_clear_entity();
-        _components.erase(iter);    
 }
 
 void Component::remove_self_from_entity() {
