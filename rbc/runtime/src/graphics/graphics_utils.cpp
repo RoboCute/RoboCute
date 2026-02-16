@@ -147,7 +147,9 @@ StateMap &GraphicsUtils::render_settings(RenderPlugin::PipeCtxStub *pipe_ctx) co
     return *_render_plugin->pipe_ctx_state_map(pipe_ctx);
 }
 RenderPlugin::PipeCtxStub *GraphicsUtils::register_render_pipectx() {
-    if (!_render_plugin) return nullptr;
+    if (!_render_plugin) [[unlikely]] {
+        LUISA_ERROR("Render plugin not initialized.");
+    }
     auto pipe_ctx = _render_plugin->create_pipeline_context();
     _render_pipe_ctxs.emplace(pipe_ctx);
     return pipe_ctx;
@@ -192,7 +194,9 @@ void GraphicsUtils::reset_frame() {
 }
 
 void GraphicsUtils::remove_render_pipectx(RenderPlugin::PipeCtxStub *pipe_ctx) {
-    LUISA_DEBUG_ASSERT(_render_plugin);
+    if (!_render_plugin) [[unlikely]] {
+        LUISA_ERROR("Render plugin not initialized.");
+    }
     _render_pipe_ctxs.remove(pipe_ctx);
     _frame_requires_sync = true;
     _render_plugin->destroy_pipeline_context(pipe_ctx);

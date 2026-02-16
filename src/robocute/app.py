@@ -28,13 +28,16 @@ class App:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def init(self, project_path: Path):
-        world_path = project_path / "library"
+    def init(self, project_path: Optional[Path], require_render: bool = True):
         self.init_ctx()
-        self.init_world(world_path)
         self.init_device()
         lc.init()
-        self.init_project(project_path)
+        if require_render:
+            self.init_render()
+        if project_path:
+            world_path = project_path / "library"
+            self.init_world(world_path)
+            self.init_project(project_path)
 
         self._initialized = True
 
@@ -46,13 +49,18 @@ class App:
             self._ctx.init_world(str(world_path), str(world_path))
 
     def init_device(
+        # TODO  use vk backend_name in non-windows platform
         self, backend_name: str = "dx", program_path: Path = BUILTIN_PROGRAM_PATH
     ):
         shader_path = program_path / f"shader_build_{backend_name}"
 
         if self._ctx is not None:
             print(str(shader_path))
-            self._ctx.init_device(backend_name, str(program_path), str(shader_path))
+            self._ctx.init_device(backend_name, str(
+                program_path), str(shader_path))
+
+    def init_render(self):
+        if self._ctx is not None:
             self._ctx.init_render()
 
     def init_project(self, project_path: Path):

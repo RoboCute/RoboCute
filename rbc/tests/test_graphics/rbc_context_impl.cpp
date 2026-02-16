@@ -88,11 +88,17 @@ void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa:
 void RBCContext::init_render(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
+    if (!RenderDevice::instance_ptr()) [[unlikely]] {
+        LUISA_ERROR("init_device required before init_render.");
+    }
     c.utils->init_render();
 }
 void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, bool create_window, bool window_resizable) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
+    if (!RenderDevice::instance_ptr()) [[unlikely]] {
+        LUISA_ERROR("init_device required before init_display.");
+    }
     uint64_t native_display, native_handle;
     c.window_size = size;
     if (create_window && !c.window) {

@@ -46,9 +46,6 @@ class Image3D:
 
         self.bytesize = lcapi.pixel_storage_size(self.storage, width, height, volume)
         self.texture3DType = Texture3DType(dtype, channel)
-        self.read = self.texture3DType.read
-        self.texture_size = self.texture3DType.texture_size
-        self.write = self.texture3DType.write
         # instantiate texture on device
         if external_memory is not None:
             info = external_memory
@@ -182,9 +179,6 @@ class Texture3DType:
         self.vectype = (
             dtype if channel == 1 else getattr(lcapi, dtype.__name__ + str(channel))
         )
-        self.luisa_type = lcapi.Type.from_("texture<3," + dtype.__name__ + ">")
-        self.read = self.get_read_method(self.vectype)
-        self.write = self.get_write_method(self.vectype)
 
     def __eq__(self, other):
         return (

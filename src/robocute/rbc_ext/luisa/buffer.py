@@ -16,8 +16,6 @@ class Buffer:
         }:
             raise TypeError("Invalid buffer element type")
         self.bufferType = BufferType(dtype)
-        self.read = self.bufferType.read
-        self.write = self.bufferType.write
         self.dtype = dtype
         lc_type = to_lctype(self.dtype)
         self.stride = lc_type.size()
@@ -237,8 +235,6 @@ class BufferType:
         self.luisa_type = lcapi.Type.from_(
             "buffer<" + to_lctype(dtype).description() + ">"
         )
-        self.read = self.get_read_method(self.dtype)
-        self.write = self.get_write_method(self.dtype)
     
     def __eq__(self, other):
         return type(other) is BufferType and self.dtype == other.dtype
