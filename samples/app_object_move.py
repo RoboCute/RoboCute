@@ -9,6 +9,7 @@ import robocute as rbc
 import robocute.rbc_ext.luisa as lc
 import robocute.rbc_ext as re
 
+
 vertex_count = 16
 """网格顶点总数(两个立方体, 每个8个顶点)"""
 
@@ -51,8 +52,11 @@ def make_cube_mesh(scene: re.world.Scene):
     assert entity._handle is not None
     trans = re.world.TransformComponent(entity.add_component("TransformComponent"))
     render = re.world.RenderComponent(entity.add_component("RenderComponent"))
+
     trans.set_pos(lc.double3(0, -1, 1), False)
     trans.set_rotation(lc.float4(0, -1, 0, 0), False)
+
+    # bind mesh resource
     cube_mesh = re.world.MeshResource()
     submesh_offsets = np.empty(shape=2, dtype=np.uint32)
     # first submesh start at 0
@@ -216,7 +220,10 @@ def create_mesh_array(mesh_array):
 
 
 def test_callback(ptr):
-    global last_time
+    app = rbc.app.App()  # singleton
+    if not app.ctx:
+        # Callback called when context is invalid
+        return
     comp = re.world.DataComponent(ptr.handle)
     entity = comp.entity()
     transform = re.world.TransformComponent(entity.get_component("TransformComponent"))
@@ -234,30 +241,17 @@ def test_callback(ptr):
     current_pos = transform.position()
     transform.set_pos(lc.double3(current_pos.x, new_y, current_pos.z), False)
     render = re.world.RenderComponent(entity.get_component("RenderComponent"))
-    move_mesh_vertices(ctx, cur_time * move_speed, render.mesh())
+    move_mesh_vertices(app.ctx, cur_time * move_speed, render.mesh())
 
 
 def move_mesh_vertices(
     ctx: re.world.RBCContext, time: float, mesh: re.world.MeshResource
 ):
-    """
-    动态修改立方体网格顶点位置,使右侧顶点沿 X 轴周期性移动
-
-    通过正弦波控制右侧顶点(2, 3, 6, 7)的 X 坐标,产生呼吸/变形动画效果
-
-    Args:
-        ctx: RBC 上下文
-        time: 当前时间(用于计算正弦波)
-        mesh: 网格资源对象
-    """
-    # 获取网格数据缓冲区
+    # get mesh data buffer
     mesh_array = np.ndarray(
         mesh.vertex_count() * 4, dtype=np.float32, buffer=mesh.pos_buffer()
     )
-
-    # 顶点数据开始位置,每个顶点4个float(x,y,z,w)
-    # 右侧顶点索引: 2, 3, 6, 7
-    # 对应的x坐标在数组中的位置: 2*4=8, 3*4=12, 6*4=24, 7*4=28
+    right_side_indices = [8, 12, 24, 28]  # 右侧顶点的 x 坐标索引
     right_side_indices = [8, 12, 24, 28]  # 右侧顶点的 x 坐标索引
 
     # 基础 x 坐标和变形幅度
@@ -308,14 +302,40 @@ def main():
 
     app = rbc.app.App()  # rbc app singleton
     app.init(project_path)
-    app.init_display()
+    if not app.ctx:
+        print("Context not Valid!")
+        return
 
-    # set initial transform for display camera
+    app.init_display()
+    if not app.display_cam:
+        print("Display not Valid!")
+        return
+
     transform = app.get_display_transform()
     if transform:
         transform.set_pos(lc.double3(0, 0, -1), False)
 
-    app.run()
+    if not app.scene:
+        print("Scene not Valid!")
+        return
+
+    entity = make_cube_mesh(app.scene)
+    data = re.world.DataComponent(entity.add_component("DataComponent"))
+    app.ctx.regist_callback("test_callback", test_callback)
+    data.bind_event(re.world.DataComponentEventType.BeforeFrame, "test_callback")
+
+    last_time = time.time()
+    frame_index = 0
+    tick_stage = re.world.TickStage.PathTracingPreview
+    # app.run()
+    while not app.ctx.should_close():
+        cur_time = time.time()
+        delta_time = cur_time - last_time
+        last_time = cur_time
+        # only render one frame
+        app.display_cam.set_frame_index(frame_index)
+        app.ctx.tick(delta_time, tick_stage, True)
+        frame_index = 0
 
 
 if __name__ == "__main__":

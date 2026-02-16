@@ -21,6 +21,7 @@ class App:
     _resolution: lc.uint2 = lc.uint2(1920, 1080)
     _scene: Optional[re.world.Scene] = None
     _display_cam: Optional[re.world.CameraComponent] = None
+    _last_frame_time: float
 
     def __new__(cls):
         if cls._instance is None:
@@ -72,6 +73,7 @@ class App:
         self._display_cam = self._ctx.create_display_cam()
         self._display_cam.enable_camera()
         self._ctx.enable_camera_control()
+        self._last_frame_time = time.time()
 
     def get_display_transform(self):
         if not self._display_cam:
@@ -93,6 +95,10 @@ class App:
     def display_cam(self):
         return self._display_cam
 
+    @property
+    def last_frame_time(self):
+        return self._last_frame_time
+
     def initialized(self):
         return self._initialized
 
@@ -112,3 +118,7 @@ class App:
                 frame_index = 0
             else:
                 frame_index += 1
+
+    def upload_mesh_data(self, mesh: re.world.MeshResource):
+        if self._ctx:
+            self._ctx.upload_mesh_data(mesh)
