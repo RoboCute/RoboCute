@@ -1,16 +1,5 @@
 """
 图形场景测试脚本
-用法:
-    python test_graphics_scene.py <scene_root_dir>
-
-参数:
-    scene_root_dir: 场景根目录路径, 应包含 library 和 assets 子目录
-
-环境变量:
-    RBC_RUNTIME_DIR: 运行时目录路径, 若未设置则自动检测
-
-示例:
-    python test_graphics_scene.py C:/dev/RoboCute/samples/graphics
 
 功能说明:
     - 初始化 RBC 上下文、渲染设备和显示窗口

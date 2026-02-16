@@ -256,7 +256,6 @@ class App:
         if self._ctx is not None:
             print(str(shader_path))
             self._ctx.init_device(backend_name, str(program_path), str(shader_path))
-            input()
             self._ctx.init_render()
 
     def init_project(self, project_path: Path):
@@ -287,9 +286,7 @@ class App:
         transform = re.world.TransformComponent(
             display_cam.entity().get_component("TransformComponent")
         )
-        hello = input("Hello")
         display_cam.enable_camera()
-        hello = input("Hello")
         transform.set_pos(lc.double3(0, 0, -1), False)
         self._ctx.enable_camera_control()
         last_time = time.time()
