@@ -191,7 +191,7 @@ class WorldInterfacePybindModuleX(CodeModule):
     name_ = "rbc_ext_c"
     header_files_ = ["generated/world.h"]
     enable_pybind_cpp_def_ = True
-    pybind_cpp_def_file_ = "rbc/ext_c/src/generated/world.cpp"
+    pybind_cpp_def_file_ = "rbc/extensions/ext_c/src/generated/world.cpp"
     enable_pybind_ = True
     pybind_py_file_ = "src/robocute/rbc_ext/generated/world_v2.py"
     classes_ = EXT_CLASSES
