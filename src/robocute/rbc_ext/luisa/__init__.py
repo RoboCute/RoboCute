@@ -5,29 +5,6 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
 def set_log_callback(callback):
     lcapi.set_log_callback(callback)
 
-
-try:
-    shell = get_ipython().__class__.__name__
-    if shell != "TerminalInteractiveShell":
-        from datetime import datetime
-
-        def _default_log_callback(level, message):
-            now = datetime.now()
-            match level:
-                case "D":
-                    color, level = 96, "debug"
-                case "I":
-                    color, level = 92, "info"
-                case "W":
-                    color, level = 93, "warning"
-                case _:
-                    color, level = 91, "error"
-            print(f"[{now}] [luisa] [\033[{color}m{level}\033[00m] {message}")
-
-        set_log_callback(_default_log_callback)
-except NameError:
-    pass
-
 from . import globalvars
 
 from .types import (
@@ -54,18 +31,11 @@ from .types import (
     ushort4,
 )
 
-from .func import func
 from .mathtypes import *
-from .array import array, ArrayType, SharedArrayType
-from .struct import struct, StructType
 from .buffer import buffer, Buffer, ByteBuffer, BufferType, ByteBufferType
 from .image2d import image2d, Image2D, Texture2DType
 from .image3d import image3d, Image3D, Texture3DType
 
-from .hit import TriangleHit, CommittedHit, ProceduralHit
-from .rayquery import RayQueryAllType, RayQueryAnyType, is_triangle, is_procedural, Ray
-from .util import RandomSampler
-from .meshformat import MeshFormat
 
 from robocute.rbc_ext._C.lcapi_c import (
     log_level_verbose,
@@ -142,8 +112,6 @@ def execute(stream=None):
 
 capsule_vector = lcapi.capsule_vector
 
-
-from .builtin import set_block_size, sync_block
 
 __all__ = [
     "init",

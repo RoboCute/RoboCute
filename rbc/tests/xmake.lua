@@ -1,6 +1,6 @@
 -- Test Framework for RBC Runtime
 
-includes('test_py_codegen')
+-- includes('test_py_codegen')
 includes('test_graphics')
 includes('test_project')
 -- has_config('rbc_tools') then

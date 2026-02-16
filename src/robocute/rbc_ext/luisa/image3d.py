@@ -3,10 +3,8 @@ from . import globalvars
 from .globalvars import get_global_device
 from .types import length_of, element_of, vector, to_lctype
 from functools import cache
-from .func import func
-from .builtin import _builtin_call, check_exact_signature
 from .mathtypes import *
-from .types import uint, uint3, BuiltinFuncBuilder
+from .types import uint, uint3
 
 
 class Image3D:
@@ -197,79 +195,3 @@ class Texture3DType:
 
     def __hash__(self):
         return hash(self.dtype) ^ hash(self.channel) ^ 127858794396757894
-
-    @BuiltinFuncBuilder
-    def texture_size(self):
-        return uint3, lcapi.builder().call(
-            to_lctype(uint3), lcapi.CallOp.TEXTURE_SIZE, [self.expr]
-        )
-
-    @staticmethod
-    @cache
-    def get_read_method(dtype):
-        dtype4 = vector(element_of(dtype), 4)
-        if length_of(dtype) == 4:
-
-            @BuiltinFuncBuilder
-            def read(self, coord):
-                check_exact_signature([uint3], [coord], "read")
-                return dtype, lcapi.builder().call(
-                    to_lctype(dtype), lcapi.CallOp.TEXTURE_READ, [self.expr, coord.expr]
-                )
-
-            return read
-        elif length_of(dtype) == 2:
-
-            @func
-            def read(self, coord: uint3):
-                return _builtin_call(dtype4, "TEXTURE_READ", self, (coord)).xy
-
-            return read
-        elif length_of(dtype) == 1:
-
-            @func
-            def read(self, coord: uint3):
-                return _builtin_call(dtype4, "TEXTURE_READ", self, (coord)).x
-
-            return read
-        else:
-            assert False
-
-    @staticmethod
-    @cache
-    def get_write_method(dtype):
-        if length_of(dtype) == 4:
-
-            @BuiltinFuncBuilder
-            def write(self, coord, value):
-                check_exact_signature([uint3, dtype], [coord, value], "write")
-                return None, lcapi.builder().call(
-                    lcapi.CallOp.TEXTURE_WRITE, [self.expr, coord.expr, value.expr]
-                )
-
-            return write
-        else:
-            # convert to vector4
-            dtype4 = vector(element_of(dtype), 4)
-            opstr = "MAKE_" + dtype4.__name__.upper()
-            if element_of(dtype) == uint:
-                zero = 0
-            else:
-                zero = element_of(dtype)(0)
-            if length_of(dtype) == 2:
-
-                @func
-                def write(self, coord: uint3, value: dtype):
-                    tmp = _builtin_call(dtype4, opstr, value, zero, zero)
-                    _builtin_call("TEXTURE_WRITE", self, (coord), tmp)
-
-                return write
-            if length_of(dtype) == 1:
-
-                @func
-                def write(self, coord: uint3, value: dtype):
-                    tmp = _builtin_call(dtype4, opstr, value, zero, zero, zero)
-                    _builtin_call("TEXTURE_WRITE", self, (coord), tmp)
-
-                return write
-            assert False

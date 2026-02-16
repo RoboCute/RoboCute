@@ -1,14 +1,11 @@
 from robocute.rbc_ext._C import lcapi_c as lcapi
 from . import globalvars
 from .globalvars import get_global_device
-from .types import to_lctype, from_lctype, basic_dtypes, dtype_of, BuiltinFuncBuilder
+from .types import to_lctype, from_lctype, basic_dtypes, dtype_of
 from .types import vector_dtypes, matrix_dtypes, element_of, length_of
 from functools import cache
 from .mathtypes import *
-from .builtin import check_exact_signature
 from .types import uint, uint, uint3, short, ushort, long, ulong
-from .struct import CustomType
-from .atomic import int_atomic_functions, float_atomic_functions
 
 
 class Buffer:
@@ -242,44 +239,12 @@ class BufferType:
         )
         self.read = self.get_read_method(self.dtype)
         self.write = self.get_write_method(self.dtype)
-        # disable atomic operations if it's not an int buffer
-        if dtype in {int, uint, short, ushort}:
-            for f in int_atomic_functions:
-                setattr(self, f.__name__, f)
-        if dtype == float:
-            for f in float_atomic_functions:
-                setattr(self, f.__name__, f)
-
+    
     def __eq__(self, other):
         return type(other) is BufferType and self.dtype == other.dtype
 
     def __hash__(self):
         return hash(self.dtype) ^ 8965828349193294
-
-    @staticmethod
-    @cache
-    def get_read_method(dtype):
-        @BuiltinFuncBuilder
-        def read(self, idx):
-            check_exact_signature([uint], [idx], "read")
-            return dtype, lcapi.builder().call(
-                to_lctype(dtype), lcapi.CallOp.BUFFER_READ, [self.expr, idx.expr]
-            )
-
-        return read
-
-    @staticmethod
-    @cache
-    def get_write_method(dtype):
-        @BuiltinFuncBuilder
-        def write(self, idx, value):
-            check_exact_signature([uint, dtype], [idx, value], "write")
-            return None, lcapi.builder().call(
-                lcapi.CallOp.BUFFER_WRITE, [self.expr, idx.expr, value.expr]
-            )
-
-        return write
-
 
 def from_bytes(dtype, packed):
     import struct
@@ -331,21 +296,6 @@ class ByteBufferType:
 
     def __hash__(self):
         return 415937298919836672
-
-    @BuiltinFuncBuilder
-    def read(self, ele_type, idx):
-        check_exact_signature([type, uint], [ele_type, idx], "byte_read")
-        dtype = ele_type.expr
-        return dtype, lcapi.builder().call(
-            to_lctype(dtype), lcapi.CallOp.BYTE_BUFFER_READ, [self.expr, idx.expr]
-        )
-
-    @BuiltinFuncBuilder
-    def write(self, idx, value):
-        check_exact_signature([uint], [idx], "byte_write")
-        return None, lcapi.builder().call(
-            lcapi.CallOp.BYTE_BUFFER_WRITE, [self.expr, idx.expr, value.expr]
-        )
 
 
 class ByteBuffer:

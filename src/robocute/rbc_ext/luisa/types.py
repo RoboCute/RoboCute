@@ -342,15 +342,6 @@ class BuiltinFuncType:
     pass
 
 
-class BuiltinFuncBuilder:
-    def __init__(self, builder):
-        self.builder = builder
-        self.__name__ = builder.__name__
-
-    def __call__(self, *args):
-        pass
-
-
 # class ref:
 #     def __init__(self, dtype):
 #         self.dtype = dtype
@@ -363,23 +354,13 @@ def dtype_of(val):
         return str
     if type(val) in basic_dtypes:
         return type(val)
-    if type(val).__name__ == "Array":
-        return val.arrayType
-    if type(val).__name__ == "Struct":
-        return val.structType
     if type(val).__name__ == "Buffer" or type(val).__name__ == "ByteBuffer":
         return val.bufferType
-    if type(val).__name__ == "RayQuery":
-        return val.queryType
     if type(val).__name__ == "Image2D":
         return val.texture2DType
     if type(val).__name__ == "Image3D":
         return val.texture3DType
     if type(val).__name__ == "ByteBufferType":
-        return type(val)
-    if type(val).__name__ == "func":
-        return CallableType
-    if type(val).__name__ == "BuiltinFuncBuilder":
         return type(val)
     if type(val) is list:
         raise Exception("list is unsupported. Convert to Array instead.")
