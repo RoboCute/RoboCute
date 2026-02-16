@@ -4,11 +4,12 @@ from pathlib import Path
 import numpy as np
 import math
 import argparse
+from typing import Optional
 
 import robocute as rbc
 import robocute.rbc_ext.luisa as lc
 import robocute.rbc_ext as re
-
+from robocute.rbc_ext._C import lcapi_c as lcapi
 
 vertex_count = 16
 """网格顶点总数(两个立方体, 每个8个顶点)"""
@@ -236,6 +237,49 @@ def main():
     args = parser.parse_args()
 
     project_path = Path(args.project)
+    EXPORT = args.output
+
+    # ###################
+    # @lc.func
+    # def write_buffer_vec3_to_img(buffer, element_offset, img):
+    #     """
+    #     Luisa kernel: 将 float3 数据从缓冲区写入图像
+
+    #     用于将几何缓冲区中的 vec3 数据 (如 normal albedo) 可视化为图像
+
+    #     Args:
+    #         buffer: 源数据缓冲区
+    #         element_offset: 在缓冲区中的起始偏移量
+    #         img: 目标图像
+    #     """
+    #     lset_block_size(16, 8, 1)
+    #     id = dispatch_id().xy
+    #     idx = id.x + id.y * dispatch_size().x
+    #     idx *= 3
+    #     idx += element_offset
+    #     value = lc.float3(buffer.read(idx), buffer.read(idx + 1), buffer.read(idx + 2))
+    #     img.write(id, lc.float4(value.x, value.y, value.z, 1.0))
+
+    # @lc.func
+    # def write_buffer_vec1_to_img(buffer, scale, element_offset, img):
+    #     """
+    #     Luisa kernel: 将 float 数据从缓冲区写入图像
+
+    #     用于将几何缓冲区中的标量数据(如深度)可视化为灰度图像
+
+    #     Args:
+    #         buffer: 源数据缓冲区
+    #         scale: 缩放因子, 用于调整数据范围到可视范围
+    #         element_offset: 在缓冲区中的起始偏移量
+    #         img: 目标图像
+    #     """
+    #     lc.set_block_size(16, 8, 1)
+    #     id = dispatch_id().xy
+    #     idx = id.x + id.y * dispatch_size().x
+    #     idx += element_offset
+    #     idx = id.x + id.y * dispatch_size().x
+    #     value = lc.float4(buffer.read(idx) * scale)
+    #     img.write(id, value)
 
     app = rbc.app.App()  # rbc app singleton
     app.init(project_path)
@@ -243,7 +287,8 @@ def main():
         print("Context not Valid!")
         return
 
-    app.init_display()
+    resolution = lc.uint2(1920, 1080)
+    app.init_display(resolution.x, resolution.y)
     if not app.display_cam:
         print("Display not Valid!")
         return
@@ -252,6 +297,24 @@ def main():
     if transform:
         transform.set_pos(lc.double3(0, 0, -1), False)
 
+    geometry_buffer: Optional[lc.Buffer] = None
+
+    # if EXPORT:
+    #     geometry_buffer = lc.Buffer(
+    #         resolution.x * resolution.y * (1 + 3 + 3 + 3), float
+    #     )
+    #     app.display_cam.set_geometry_export_buffer(
+    #         geometry_buffer.info(),
+    #         re.world.RendererGeometryType(
+    #             int(re.world.RendererGeometryType.Depth)
+    #             | int(re.world.RendererGeometryType.Normal)
+    #             | int(re.world.RendererGeometryType.Emission)
+    #             | int(re.world.RendererGeometryType.Albedo)
+    #         ),
+    #     )
+    # else:
+    app.ctx.enable_camera_control()
+
     if not app.scene:
         print("Scene not Valid!")
         return
@@ -259,6 +322,7 @@ def main():
     entity = make_cube_mesh(app.scene)
     last_time = time.time()
     frame_index = 0
+    image_index = 0
     tick_stage = re.world.TickStage.PathTracingPreview
     # app.run()
     while not app.ctx.should_close():
@@ -270,6 +334,67 @@ def main():
             frame_index = 0
         else:
             frame_index += 1
+
+        # if EXPORT and frame_index == 128:
+        #     # frame_index = 0
+        #     app.ctx.denoise()
+        #     app.ctx.save_display_image_to(
+        #         str(Path(__file__).parent / f"screenshot/frame_{image_index}.png")
+        #     )
+        #     img = app.ctx.display_image()
+        #     element_offset = 0
+        #     write_buffer_vec1_to_img(
+        #         geometry_buffer,
+        #         0.2,
+        #         element_offset,
+        #         img,
+        #         dispatch_size=(img.width, img.height, 1),
+        #     )
+        #     pixel_size = img.width * img.height
+        #     app.ctx.save_display_image_to(
+        #         str(Path(__file__).parent / f"screenshot/depth_{image_index}.png")
+        #     )
+        #     element_offset += pixel_size
+
+        #     write_buffer_vec3_to_img(
+        #         geometry_buffer,
+        #         element_offset,
+        #         img,
+        #         dispatch_size=(img.width, img.height, 1),
+        #     )
+        #     pixel_size = img.width * img.height
+        #     app.ctx.save_display_image_to(
+        #         str(Path(__file__).parent / f"screenshot/normal_{image_index}.png")
+        #     )
+        #     element_offset += pixel_size * 3
+
+        #     write_buffer_vec3_to_img(
+        #         geometry_buffer,
+        #         element_offset,
+        #         img,
+        #         dispatch_size=(img.width, img.height, 1),
+        #     )
+        #     pixel_size = img.width * img.height
+        #     app.ctx.save_display_image_to(
+        #         str(Path(__file__).parent / f"screenshot/emission_{image_index}.png")
+        #     )
+        #     element_offset += pixel_size * 3
+
+        #     write_buffer_vec3_to_img(
+        #         geometry_buffer,
+        #         element_offset,
+        #         img,
+        #         dispatch_size=(img.width, img.height, 1),
+        #     )
+        #     pixel_size = img.width * img.height
+        #     app.ctx.save_display_image_to(
+        #         str(Path(__file__).parent / f"screenshot/albedo_{image_index}.png")
+        #     )
+        #     element_offset += pixel_size * 3
+
+        #     tick_stage = re.world.TickStage.NONE
+        #     image_index += 1
+        #     app.display_cam.clear_geometry_export_buffer()
 
 
 if __name__ == "__main__":

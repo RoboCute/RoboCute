@@ -142,6 +142,9 @@ def execute(stream=None):
 
 capsule_vector = lcapi.capsule_vector
 
+
+from .builtin import set_block_size, sync_block
+
 __all__ = [
     "init",
     "del_device",
@@ -156,4 +159,7 @@ __all__ = [
     "double3",
     "double4",
     "capsule_vector",
+    "func",
+    "set_block_size",
+    "sync_block",
 ]

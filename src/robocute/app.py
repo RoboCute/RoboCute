@@ -72,7 +72,6 @@ class App:
         self._ctx.init_display(display_title, self._resolution, True, True)
         self._display_cam = self._ctx.create_display_cam()
         self._display_cam.enable_camera()
-        self._ctx.enable_camera_control()
         self._last_frame_time = time.time()
 
     def get_display_transform(self):
