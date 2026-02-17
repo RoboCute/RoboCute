@@ -162,7 +162,8 @@ luisa::compute::TextureCreationInfo RBCContext::display_image(void *this_) {
     std::lock_guard lck{c->_ctx_mtx};
     luisa::compute::TextureCreationInfo r;
     auto &img = c->utils->dst_image();
-    if (!img) {
+    if (!img) [[unlikely]] {
+        LUISA_ERROR("display not initialized.");
         r.invalidate();
         return r;
     }

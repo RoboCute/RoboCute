@@ -57,8 +57,7 @@ class Buffer:
     @staticmethod
     def import_native(dtype, info):
         # luisa.init()
-        if info.handle() == 18446744073709551615:
-            return None
+        assert info.handle() != 18446744073709551615
         assert get_global_device() is not None
         return Buffer(info.element_size(), dtype, info, info.interop())
 

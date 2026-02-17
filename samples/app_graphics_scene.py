@@ -335,12 +335,17 @@ def main():
         else:
             frame_index += 1
 
-        # if EXPORT and frame_index == 128:
+        if EXPORT and frame_index == 128:
+            display_img = app.ctx.display_image()
+            print(display_img.handle())
+            img = lc.Image2D.import_native(float, display_img)
+            print(img.width)
+            print(img.height)
         #     # frame_index = 0
-        #     app.ctx.denoise()
-        #     app.ctx.save_display_image_to(
-        #         str(Path(__file__).parent / f"screenshot/frame_{image_index}.png")
-        #     )
+            app.ctx.denoise()
+            app.ctx.save_display_image_to(
+                str(Path(__file__).parent / f"screenshot/frame_{image_index}.png")
+            )
         #     img = app.ctx.display_image()
         #     element_offset = 0
         #     write_buffer_vec1_to_img(

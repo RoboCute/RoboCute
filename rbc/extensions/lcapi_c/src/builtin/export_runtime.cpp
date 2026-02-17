@@ -35,11 +35,6 @@ namespace py = pybind11;
 using namespace luisa;
 using namespace luisa::compute;
 constexpr auto pyref = py::return_value_policy::reference;
-using luisa::compute::detail::FunctionBuilder;
-struct IntEval {
-    int32_t value;
-    bool exist;
-};
 
 class ManagedMeshFormat {
 public:
@@ -332,31 +327,17 @@ void export_runtime(py::module &m) {
         .def("backend_name", [](DeviceInterface &self) {
             return self.backend_name();
         })
-        .def("create_shader", [](DeviceInterface &self, Function kernel) {
-                auto handle = self.create_shader({}, kernel).handle;
-                rbc::lcapi_c::RefCounter::current->AddObject(
-                    handle, 
-                    {[](DeviceInterface *d, uint64 handle) { d->destroy_shader(handle); }, 
-                        self.shared_from_this()
-                    }
-                ); return handle;
-            }, pyref)
-        .def("save_shader", [](DeviceInterface &self, Function kernel, luisa::string_view str) {
-            luisa::string_view str_view;
-            luisa::string dst_path_str;
-            if (!output_path.empty()) {
-                auto dst_path = output_path / std::filesystem::path{str};
-                dst_path_str = to_string(dst_path);
-                str_view = dst_path_str;
-            } else {
-                str_view = str;
-            }
-            ShaderOption option{
-                .enable_fast_math = true,
-                .enable_debug_info = false,
-                .compile_only = true,
-                .name = luisa::string{str_view}};
-            auto useless = self.create_shader(option, kernel); })
+        // TODO load shader
+        // .def("load_shader", [](DeviceInterface &self,) {
+        //         auto handle = self.create_shader({}, kernel).handle;
+        //         rbc::lcapi_c::RefCounter::current->AddObject(
+        //             handle, 
+        //             {[](DeviceInterface *d, uint64 handle) { d->destroy_shader(handle); }, 
+        //                 self.shared_from_this()
+        //             }
+        //         ); return handle;
+        //     }, pyref)
+
         /*
         0: legal shader
         1: vertex return != pixel arg0
@@ -443,195 +424,5 @@ void export_runtime(py::module &m) {
         luisa::shared_ptr<DeviceInterface> handle = ptr->lc_device().impl_shared();
         return handle;
     });
-    m.def("builder", &FunctionBuilder::current, pyref);
-
-    py::class_<Function>(m, "Function")
-        .def("argument_size", [](Function &func) { return func.arguments().size() - func.bound_arguments().size(); });
-    py::class_<IntEval>(m, "IntEval")
-        .def("value", [](IntEval &self) { return self.value; })
-        .def("exist", [](IntEval &self) { return self.exist; });
-    py::class_<CallableLibrary>(m, "CallableLibrary")
-        .def(py::init<>())
-        .def("add_callable", &CallableLibrary::add_callable)
-        .def("serialize", [](CallableLibrary &self, luisa::string_view path) {
-            auto vec = self.serialize();
-            luisa::string path_str{path};
-            auto f = fopen(path_str.c_str(), "wb");
-            if (f) {
-                fwrite(vec.data(), vec.size(), 1, f);
-                LUISA_INFO("Save serialized callable with size: {} bytes.", vec.size());
-                fclose(f);
-            }
-        })
-        .def("load", [](CallableLibrary &self, luisa::string_view path) {
-            BinaryFileStream file_stream{luisa::string{path}};
-            std::vector<std::byte> vec;
-            if (file_stream.valid()) {
-                vec.resize(vec.size() + file_stream.length());
-                file_stream.read(vec);
-            }
-            self.load(vec);
-        });
-    py::class_<FunctionBuilder, luisa::shared_ptr<FunctionBuilder>>(m, "FunctionBuilder")
-        .def("define_kernel", &FunctionBuilder::define_kernel<const std::function<void()> &>)
-        .def("define_callable", &FunctionBuilder::define_callable<const std::function<void()> &>)
-        .def("define_raster_stage", &FunctionBuilder::define_raster_stage<const std::function<void()> &>)
-        .def("set_block_size", [](FunctionBuilder &self, uint32_t sx, uint32_t sy, uint32_t sz) { self.set_block_size(uint3(sx, sy, sz)); })
-        .def("dimension", [](FunctionBuilder &self) {
-            if (self.block_size().z > 1) {
-                return 3;
-            } else if (self.block_size().y > 1) {
-                return 2;
-            }
-            return 1;
-        })
-        // .def("try_eval_int", [](FunctionBuilder &self, Expression const *expr) {
-        //     ASTEvaluator::Result eval;
-        //     if (auto &&a = analyzer.back()) { eval = a->try_eval(expr); }
-        //     return visit(
-        //         [&]<typename T>(T const &t) -> IntEval {
-        //             if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
-        //                 return {
-        //                     .value = static_cast<int32_t>(t),
-        //                     .exist = true};
-        //             } else {
-        //                 return {.value = 0, .exist = false};
-        //             }
-        //         },
-        //         eval);
-        // })
-
-        .def("thread_id", &FunctionBuilder::thread_id, pyref)
-        .def("block_id", &FunctionBuilder::block_id, pyref)
-        .def("dispatch_id", &FunctionBuilder::dispatch_id, pyref)
-        .def("kernel_id", &FunctionBuilder::kernel_id, pyref)
-        .def("warp_lane_count", &FunctionBuilder::warp_lane_count, pyref)
-        .def("warp_lane_id", &FunctionBuilder::warp_lane_id, pyref)
-        .def("dispatch_size", &FunctionBuilder::dispatch_size, pyref)
-
-        .def("local", &FunctionBuilder::local, pyref)
-        .def("shared", &FunctionBuilder::shared, pyref)
-        // .def("shared")
-        // .def("constant")
-        .def("buffer_binding", &FunctionBuilder::buffer_binding, pyref)
-        .def("texture_binding", &FunctionBuilder::texture_binding, pyref)
-        .def("bindless_array_binding", &FunctionBuilder::bindless_array_binding, pyref)
-        .def("accel_binding", &FunctionBuilder::accel_binding, pyref)
-
-        .def("argument", &FunctionBuilder::argument, pyref)
-        .def("reference", &FunctionBuilder::reference, pyref)
-        .def("buffer", &FunctionBuilder::buffer, pyref)
-        .def("texture", &FunctionBuilder::texture, pyref)
-        .def("bindless_array", &FunctionBuilder::bindless_array, pyref)
-        .def("accel", &FunctionBuilder::accel, pyref)
-
-        .def("literal", [](FunctionBuilder &self, const Type *type, const StdLiteralType &value)
-
-             {
-                LiteralExpr::Value::variant_type value_ptr;
-                std::visit(
-                    [&](auto&& t){
-                        value_ptr = t;
-                    },
-                    value
-                );
-                 return luisa::visit(
-                   [&self, type]<typename T>(T v) {
-                       // we do not allow conversion between vector/matrix/bool types
-                       if (type->is_vector() || type->is_matrix() ||
-                           type == Type::of<bool>() || type == Type::of<T>()) {
-                           return self.literal(type, v);
-                       }
-                       auto print_v = [&]() {
-                           if constexpr (std::is_same_v<std::decay_t<T>, half>) {
-                               return (float)v;
-                           } else if constexpr (halfN<T>::value) {
-                               constexpr auto dim = halfN<T>::dimension;
-                               if constexpr (dim == 2) {
-                                   return float2((float)v.x, (float)v.y);
-                               } else if constexpr (dim == 3) {
-                                   return float3((float)v.x, (float)v.y, (float)v.z);
-                               } else {
-                                   return float4((float)v.x, (float)v.y, (float)v.z, (float)v.z);
-                               }
-                           } else {
-                               return v;
-                           }
-                       };
-                       if constexpr (is_scalar_v<T>) {
-                           // we are less strict here to allow implicit conversion
-                           // between integral or between floating-point types,
-                           // since python does not distinguish them
-                           auto safe_convert = [v = print_v()]<typename U>(U /* for tagged dispatch */) noexcept {
-                               auto u = static_cast<U>(v);
-                               LUISA_ASSERT(static_cast<T>(u) == v,
-                                            "Cannot convert literal value {} to type {}.",
-                                            v, Type::of<U>()->description());
-                               return u;
-                           };
-                           switch (type->tag()) {
-                               case Type::Tag::INT16: return self.literal(type, safe_convert(short{}));
-                               case Type::Tag::UINT16: return self.literal(type, safe_convert(luisa::ushort{}));
-                               case Type::Tag::INT32: return self.literal(type, safe_convert(int{}));
-                               case Type::Tag::UINT32: return self.literal(type, safe_convert(luisa::uint{}));
-                               case Type::Tag::INT64: return self.literal(type, safe_convert(luisa::slong{}));
-                               case Type::Tag::UINT64: return self.literal(type, safe_convert(luisa::ulong{}));
-                               case Type::Tag::FLOAT16: return self.literal(type, static_cast<luisa::half>(v));
-                               case Type::Tag::FLOAT32: return self.literal(type, static_cast<float>(v));
-                               case Type::Tag::FLOAT64: return self.literal(type, static_cast<double>(v));
-                               default: break;
-                           }
-                       }
-
-                       LUISA_ERROR_WITH_LOCATION(
-                           "Cannot convert literal value {} to type {}.",
-                           print_v(), type->description());
-                   },
-                   LiteralExpr::Value{value_ptr}); },
-             pyref)
-        .def("unary", &FunctionBuilder::unary, pyref)
-        .def("binary", &FunctionBuilder::binary, pyref)
-        .def("member", &FunctionBuilder::member, pyref)
-        .def("access", &FunctionBuilder::access, pyref)
-        .def("swizzle", &FunctionBuilder::swizzle, pyref)
-        .def("cast", &FunctionBuilder::cast, pyref)
-
-        .def("call", [](FunctionBuilder &self, const Type *type, CallOp call_op, const std::vector<const Expression *> &args) { return self.call(type, call_op, std::move(args)); }, pyref)
-        .def("call", [](FunctionBuilder &self, const Type *type, Function custom, const std::vector<const Expression *> &args) { return self.call(type, custom, std::move(args)); }, pyref)
-        .def("call", [](FunctionBuilder &self, CallOp call_op, const std::vector<const Expression *> &args) { self.call(call_op, std::move(args)); })
-        .def("call", [](FunctionBuilder &self, Function custom, const std::vector<const Expression *> &args) { self.call(custom, std::move(args)); })
-
-        .def("break_", &FunctionBuilder::break_)
-        .def("continue_", &FunctionBuilder::continue_)
-        .def("return_", &FunctionBuilder::return_)
-        .def("assign", [](FunctionBuilder &self, Expression const *l, Expression const *r) { self.assign(l, r); }, pyref)
-
-        .def("if_", &FunctionBuilder::if_, pyref)
-        .def("switch_", &FunctionBuilder::switch_, pyref)
-        .def("ray_query_", &FunctionBuilder::ray_query_, pyref)
-        .def("case_", &FunctionBuilder::case_, pyref)
-        .def("loop_", &FunctionBuilder::loop_, pyref)
-        // .def("switch_")
-        // .def("case_")
-        .def("default_", &FunctionBuilder::default_, pyref)
-        .def("for_", [](FunctionBuilder &self, const Expression *var, const Expression *condition, const Expression *update) {
-                auto ptr = self.for_(var, condition, update);
-                return ptr; }, pyref)
-        .def("autodiff_", &FunctionBuilder::autodiff_, pyref)
-        .def("print_", [](FunctionBuilder &self, luisa::string_view format, const std::vector<const Expression *> &args) { self.print_(luisa::string{format}, args); }, pyref)
-        // .def("meta") // unused
-        .def("function", &FunctionBuilder::function);// returning object
-
-    py::class_<AtomicAccessChain>(m, "AtomicAccessChain")
-        .def(py::init<>())
-        .def(
-            "create", [&](AtomicAccessChain &self, RefExpr const *buffer_expr) {
-                LUISA_ASSERT(self.node == nullptr, "Re-create chain not allowed");
-                self.node = AtomicAccessChain::Node::create(buffer_expr);
-            },
-            pyref)
-        .def("access", [&](AtomicAccessChain &self, Expression const *expr) { self.node = self.node->access(expr); }, pyref)
-        .def("member", [&](AtomicAccessChain &self, size_t member_index) { self.node = self.node->access(member_index); }, pyref)
-        .def("operate", [&](AtomicAccessChain &self, CallOp op, const std::vector<const Expression *> &args) -> Expression const * { return self.node->operate(op, luisa::span<Expression const *const>{args}); }, pyref);
 }
 static ModuleRegister module_register_export_runtime(export_runtime);

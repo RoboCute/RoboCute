@@ -41,6 +41,9 @@ class App:
 
         self._initialized = True
 
+    def display_image(self, dtype=float):
+        return lc.Image2D.import_native(dtype, self.ctx.display_image())
+
     def init_ctx(self):
         self._ctx = re.world.RBCContext()
 

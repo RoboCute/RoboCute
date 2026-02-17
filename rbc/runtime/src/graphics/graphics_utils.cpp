@@ -104,43 +104,19 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
         cmdlist,
         shader_path);
     AssetsManager::init_instance(*_render_device, _sm.get());
-    // init
-    {
-        luisa::fiber::counter init_counter;
-        init_present_stream();
-        _render_device->set_main_stream(&_present_stream);
-        _compute_event.event = _render_device->lc_device().create_timeline_event();
-        _sm->load_shader(init_counter);
-        // Build a simple accel to preload driver builtin shaders
-        auto buffer = _render_device->lc_device().create_buffer<uint>(4 * 3 + 3);
-        auto vb = buffer.view(0, 4 * 3).as<float3>();
-        auto ib = buffer.view(4 * 3, 3).as<Triangle>();
-        uint tri[] = {0, 1, 2};
-        float data[] = {
-            0, 0, 0, 0,
-            0, 1, 0, 0,
-            1, 1, 0, 0,
-            reinterpret_cast<float &>(tri[0]),
-            reinterpret_cast<float &>(tri[1]),
-            reinterpret_cast<float &>(tri[2])};
-        auto mesh = _render_device->lc_device().create_mesh(vb, ib, AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
-        auto accel = _render_device->lc_device().create_accel(AccelOption{.hint = AccelUsageHint::FAST_BUILD, .allow_compaction = false});
-        accel.emplace_back(mesh);
-        _render_device->lc_main_stream()
-            << buffer.view().copy_from(data)
-            << mesh.build()
-            << accel.build()
-            << [accel = std::move(accel), mesh = std::move(mesh), buffer = std::move(buffer)]() {};
-        _render_device->lc_main_stream().synchronize();
-        _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
-            _sm->bindless_allocator(),
-            65536);
-        _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
-            _sm->bindless_allocator(),
-            65536);
-        _tex_loader = luisa::make_unique<TextureLoader>();
-        init_counter.wait();
-    }
+    init_present_stream();
+    luisa::fiber::counter init_counter;
+    _render_device->set_main_stream(&_present_stream);
+    _compute_event.event = _render_device->lc_device().create_timeline_event();
+    _sm->load_shader(init_counter);
+    _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
+        _sm->bindless_allocator(),
+        65536);
+    _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
+        _sm->bindless_allocator(),
+        65536);
+    _tex_loader = luisa::make_unique<TextureLoader>();
+    init_counter.wait();
     _lights = vstd::make_unique<Lights>();
 }
 StateMap &GraphicsUtils::render_settings(RenderPlugin::PipeCtxStub *pipe_ctx) const {

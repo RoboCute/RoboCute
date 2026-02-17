@@ -58,8 +58,8 @@ class Image3D:
 
     @staticmethod
     def import_native(dtype, info):
-        if info.handle() == 18446744073709551615:
-            return None
+        assert info.handle() != 18446744073709551615
+
         assert get_global_device() is not None
         return Image3D(
             info.width(),

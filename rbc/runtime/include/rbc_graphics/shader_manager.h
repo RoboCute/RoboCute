@@ -131,6 +131,7 @@ private:
 public:
     ShaderManager(Device &device, luisa::filesystem::path const &shader_path);
     ~ShaderManager();
+    [[nodiscard]] auto const &shader_path() const { return _shader_path; }
     void get_preload_progress(uint64_t &all_shader_count, uint64_t &finished_shader_count);
     [[nodiscard]] ShaderBase unload_shader(luisa::filesystem::path const &shader_path);
 

@@ -764,7 +764,8 @@ luisa::compute::TextureCreationInfo CameraComponent::display_image(void *this_) 
     auto c = static_cast<world::CameraComponent *>(this_);
     luisa::compute::TextureCreationInfo r;
     auto &img = c->dst_image;
-    if (!img) {
+    if (!img) [[unlikely]] {
+        LUISA_ERROR("Camera not enabled or on display calling display_image.");
         r.invalidate();
         return r;
     }
