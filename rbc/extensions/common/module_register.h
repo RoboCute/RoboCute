@@ -23,6 +23,20 @@ luisa::move_only_function<void(Args...)> to_cppfunc_5d4636ab(py::function const 
     };
 }
 
+template<typename T>
+class raw_ptr {
+
+private:
+    T *_p;
+
+public:
+    [[nodiscard]] raw_ptr(T *p) noexcept : _p{p} {}
+    [[nodiscard]] T *get() const noexcept { return _p; }
+    [[nodiscard]] T *operator->() const noexcept { return _p; }
+    [[nodiscard]] T &operator*() const noexcept { return *_p; }
+    [[nodiscard]] explicit operator bool() const noexcept { return _p != nullptr; }
+};
+
 inline luisa::span<std::byte> to_span_5d4636ab(py::buffer const &b) {
     auto r = b.request();
     return {

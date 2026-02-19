@@ -390,9 +390,6 @@ def to_lctype(dtype):
         "BufferType",
         "Texture2DType",
         "Texture3DType",
-        "CustomType",
-        "RayQueryAllType",
-        "RayQueryAnyType",
         "SharedArrayType",
     }:
         return dtype.luisa_type

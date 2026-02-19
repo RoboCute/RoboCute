@@ -219,6 +219,7 @@ class Texture2DType:
         self.vectype = (
             dtype if channel == 1 else getattr(lcapi, dtype.__name__ + str(channel))
         )
+        self.luisa_type = lcapi.Type.from_("texture<2," + dtype.__name__ + ">")
 
     def __eq__(self, other):
         return (

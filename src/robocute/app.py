@@ -42,7 +42,9 @@ class App:
         self._initialized = True
 
     def display_image(self, dtype=float):
-        return lc.Image2D.import_native(dtype, self.ctx.display_image())
+        display_img = self.ctx.display_image()
+        assert display_img.handle() != 18446744073709551615
+        return lc.Image2D.import_native(dtype, display_img)
 
     def init_ctx(self):
         self._ctx = re.world.RBCContext()

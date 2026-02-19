@@ -17,6 +17,8 @@
 #include <rbc_graphics/compute_device.h>
 #include <rbc_graphics/render_device.h>
 #include "module_register.h"
+#include "arg_types.h"
+#include <rbc_graphics/shader_manager.h>
 
 namespace luisa::compute {
 template<typename T>
@@ -327,12 +329,16 @@ void export_runtime(py::module &m) {
         .def("backend_name", [](DeviceInterface &self) {
             return self.backend_name();
         })
-        .def("load_shader", [](DeviceInterface &self, luisa::string_view path, std::vector<raw_ptr<Type>> const& vec) -> uint64_t {
-            auto info = self.load_shader(path, {
-                reinterpret_cast<Type const* const* const>(vec.data()),
-                vec.size()
-            });
+        .def("load_shader", [](DeviceInterface &self, luisa::string_view path, ArgTypes const& vec) -> uint64_t {
+            luisa::filesystem::path relative_path{path};
+            if (relative_path.is_relative()) {
+                relative_path = rbc::ShaderManager::instance()->shader_path() / relative_path;
+            }
+            auto info = self.load_shader(luisa::to_string(relative_path), vec.types);
             auto handle = info.handle;
+            if(handle == invalid_resource_handle) [[unlikely]] {
+                LUISA_ERROR("Shader {} invalid.", path);
+            }
             rbc::lcapi_c::RefCounter::current->AddObject(
                 handle,
                 {[](DeviceInterface *d, uint64_t h) { d->destroy_shader(h); },

@@ -298,6 +298,8 @@ def main():
         transform.set_pos(lc.double3(0, 0, -1), False)
 
     geometry_buffer: Optional[lc.Buffer] = None
+    
+    # clear_shader = lc.Shader('gui/clear_shader.bin')
 
     # if EXPORT:
     #     geometry_buffer = lc.Buffer(
@@ -336,9 +338,7 @@ def main():
             frame_index += 1
 
         if EXPORT and frame_index == 128:
-            display_img = app.ctx.display_image()
-            print(display_img.handle())
-            img = lc.Image2D.import_native(float, display_img)
+            img = app.display_image()
             print(img.width)
             print(img.height)
         #     # frame_index = 0
@@ -346,6 +346,8 @@ def main():
             app.ctx.save_display_image_to(
                 str(Path(__file__).parent / f"screenshot/frame_{image_index}.png")
             )
+            tick_stage = re.world.TickStage.NONE
+            # clear_shader(img, lc.float4(1, 0, 1, 1), dispatch_size=(img.width, img.height, 1))
         #     img = app.ctx.display_image()
         #     element_offset = 0
         #     write_buffer_vec1_to_img(
@@ -397,7 +399,6 @@ def main():
         #     )
         #     element_offset += pixel_size * 3
 
-        #     tick_stage = re.world.TickStage.NONE
         #     image_index += 1
         #     app.display_cam.clear_geometry_export_buffer()
 

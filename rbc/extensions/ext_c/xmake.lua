@@ -12,10 +12,7 @@ do
     })
     set_extension('.pyd')
     add_rules('pybind')
-
-    add_includedirs("include", {
-        public = true
-    })
+    add_deps('rbc_ext_common')
     add_files("src/**.cpp")
     rbc_set_pch('src/zz_pch.h')
 end

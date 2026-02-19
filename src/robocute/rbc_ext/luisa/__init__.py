@@ -6,7 +6,8 @@ def set_log_callback(callback):
     lcapi.set_log_callback(callback)
 
 from . import globalvars
-
+from .array import *
+from .struct import *
 from .types import (
     half,
     short,
@@ -35,7 +36,7 @@ from .mathtypes import *
 from .buffer import buffer, Buffer, ByteBuffer, BufferType, ByteBufferType
 from .image2d import image2d, Image2D, Texture2DType
 from .image3d import image3d, Image3D, Texture3DType
-
+from .shader import Shader
 
 from robocute.rbc_ext._C.lcapi_c import (
     log_level_verbose,
