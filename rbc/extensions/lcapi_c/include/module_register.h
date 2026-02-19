@@ -16,16 +16,26 @@ public:
     void (*_callback)(py::module &);
     explicit ModuleRegister(void (*callback)(py::module &));
 };
-struct PtrInt64 {
-    void *value;
-    PtrInt64(void *value) : value(value) {}
-};
 template<typename... Args>
 luisa::move_only_function<void(Args...)> to_cppfunc_5d4636ab(py::function const &f) {
     return [f](Args... args) {
-        f(PtrInt64{std::forward<Args>(args)}...);
+        f(static_cast<void*>(std::forward<Args>(args))...);
     };
 }
+
+template<typename T>
+class raw_ptr {
+
+private:
+    T *_p;
+
+public:
+    [[nodiscard]] raw_ptr(T *p) noexcept : _p{p} {}
+    [[nodiscard]] T *get() const noexcept { return _p; }
+    [[nodiscard]] T *operator->() const noexcept { return _p; }
+    [[nodiscard]] T &operator*() const noexcept { return *_p; }
+    [[nodiscard]] explicit operator bool() const noexcept { return _p != nullptr; }
+};
 
 inline luisa::span<std::byte> to_span_5d4636ab(py::buffer const &b) {
     auto r = b.request();

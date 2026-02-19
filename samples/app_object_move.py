@@ -224,7 +224,7 @@ def test_callback(ptr):
     if not app.ctx:
         # Callback called when context is invalid
         return
-    comp = re.world.DataComponent(ptr.handle)
+    comp = re.world.DataComponent(ptr)
     entity = comp.entity()
     transform = re.world.TransformComponent(entity.get_component("TransformComponent"))
     cur_time = time.time()

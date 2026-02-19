@@ -35,11 +35,6 @@ static Disposer _disposer;
 
 // Then bind with:
 void export_base_obj(py::module &m) {
-    // Bind PtrInt64
-    py::class_<PtrInt64>(m, "PtrInt64")
-        .def(py::init<void*>())
-        .def_readwrite("value", &PtrInt64::value)
-        .def_readwrite("handle", &PtrInt64::value);
     m.def("rbc_add_ref", [](void *ptr) {
         manually_add_ref(static_cast<RCBase *>(ptr));
     });

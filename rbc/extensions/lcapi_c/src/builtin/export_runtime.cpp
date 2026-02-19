@@ -327,16 +327,18 @@ void export_runtime(py::module &m) {
         .def("backend_name", [](DeviceInterface &self) {
             return self.backend_name();
         })
-        // TODO load shader
-        // .def("load_shader", [](DeviceInterface &self,) {
-        //         auto handle = self.create_shader({}, kernel).handle;
-        //         rbc::lcapi_c::RefCounter::current->AddObject(
-        //             handle, 
-        //             {[](DeviceInterface *d, uint64 handle) { d->destroy_shader(handle); }, 
-        //                 self.shared_from_this()
-        //             }
-        //         ); return handle;
-        //     }, pyref)
+        .def("load_shader", [](DeviceInterface &self, luisa::string_view path, std::vector<raw_ptr<Type>> const& vec) -> uint64_t {
+            auto info = self.load_shader(path, {
+                reinterpret_cast<Type const* const* const>(vec.data()),
+                vec.size()
+            });
+            auto handle = info.handle;
+            rbc::lcapi_c::RefCounter::current->AddObject(
+                handle,
+                {[](DeviceInterface *d, uint64_t h) { d->destroy_shader(h); },
+                 self.shared_from_this()});
+            return handle;
+        })
 
         /*
         0: legal shader

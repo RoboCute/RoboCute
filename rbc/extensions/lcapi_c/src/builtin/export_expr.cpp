@@ -8,21 +8,6 @@ namespace py = pybind11;
 using namespace luisa;
 using namespace luisa::compute;
 constexpr auto pyref = py::return_value_policy::reference;
-using luisa::compute::detail::FunctionBuilder;
-
-template<typename T>
-class raw_ptr {
-
-private:
-    T *_p;
-
-public:
-    [[nodiscard]] raw_ptr(T *p) noexcept : _p{p} {}
-    [[nodiscard]] T *get() const noexcept { return _p; }
-    [[nodiscard]] T *operator->() const noexcept { return _p; }
-    [[nodiscard]] T &operator*() const noexcept { return *_p; }
-    [[nodiscard]] explicit operator bool() const noexcept { return _p != nullptr; }
-};
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, raw_ptr<T>, true)
 void export_expr(py::module &m) {

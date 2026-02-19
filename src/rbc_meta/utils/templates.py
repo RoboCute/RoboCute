@@ -137,7 +137,6 @@ from robocute.rbc_ext._C.rbc_ext_c import (
     rbc_add_ref,
     _create_resource,
     _create_resource_guid,
-    PtrInt64,
     GUID,
 )
                                      

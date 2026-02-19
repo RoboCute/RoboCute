@@ -14,8 +14,10 @@ void export_commands(py::module &m) {
     py::class_<ShaderDispatchCommand, Command>(m, "ShaderDispatchCommand");
     py::class_<ComputeDispatchCmdEncoder>(m, "ComputeDispatchCmdEncoder")
         .def_static(
-            "create", [](size_t arg_size, uint64_t handle, Function func) {
-                auto uniform_size = ComputeDispatchCmdEncoder::compute_uniform_size(func.arguments());
+            "create", [](size_t arg_size, uint64_t handle, std::vector<raw_ptr<Type>> const &vec) {
+                auto uniform_size = ComputeDispatchCmdEncoder::compute_uniform_size(
+                    {reinterpret_cast<Type const *const *const>(vec.data()),
+                     vec.size()});
                 return make_unique<ComputeDispatchCmdEncoder>(handle, arg_size, uniform_size).release();
             },
             pyref)
