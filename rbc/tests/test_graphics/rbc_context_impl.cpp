@@ -33,6 +33,7 @@
 #include <rbc_app/camera_controller.h>
 #include <luisa/runtime/buffer.h>
 #include <rbc_world/callback_serializer.h>
+#include "builtin_shader.h"
 using namespace luisa;
 using namespace luisa::compute;
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);// implemented save_image.cpp
@@ -385,5 +386,170 @@ void *RBCContext::_create_() {
     manually_add_ref(ptr);
     return ptr;
 }
+void *BuiltinKernels::_create_() {
+    auto ptr = new BuiltinShaders();
+    manually_add_ref(ptr);
+    return ptr;
+}
+// BuiltinKernels implementations
+void BuiltinKernels::buffer_to_image(void *this_, luisa::compute::BufferCreationInfoInterop input_buffer, luisa::compute::TextureCreationInfo output_image, luisa::uint2 pixel_offset, luisa::uint2 pixel_size, luisa::uint4 swizzle) {
+    auto &shaders = *static_cast<BuiltinShaders *>(this_);
+    auto storage = luisa::compute::pixel_format_to_storage(output_image.format);
+    auto &cmdlist = rbc::RenderDevice::instance().lc_main_cmd_list();
 
+    uint swizzle_bytes = BuiltinShaders::compact_swizzle(swizzle);
+
+    // Determine image type based on format
+    // Create Buffer<half> or Buffer<float> based on element stride
+    auto create_buffer = [&]<typename T>(auto elem) {
+        return luisa::compute::BufferView<T>{
+            elem.native_handle,
+            elem.handle,
+            sizeof(T), 0,
+            elem.total_size_bytes / sizeof(T),
+            elem.total_size_bytes / sizeof(T)};
+    };
+    switch (storage) {
+        case luisa::compute::PixelStorage::SHORT1:
+        case luisa::compute::PixelStorage::SHORT2:
+        case luisa::compute::PixelStorage::SHORT4:
+        case luisa::compute::PixelStorage::BC1:
+        case luisa::compute::PixelStorage::BC2:
+        case luisa::compute::PixelStorage::BC3:
+        case luisa::compute::PixelStorage::BC4:
+        case luisa::compute::PixelStorage::BC5:
+        case luisa::compute::PixelStorage::BC6:
+        case luisa::compute::PixelStorage::BC7:
+        case luisa::compute::PixelStorage::BC7_SRGB:
+        case luisa::compute::PixelStorage::BYTE4_SRGB:
+        case luisa::compute::PixelStorage::R10G10B10A2:
+        case luisa::compute::PixelStorage::R11G11B10:
+        case luisa::compute::PixelStorage::BYTE1:
+        case luisa::compute::PixelStorage::BYTE2:
+        case luisa::compute::PixelStorage::BYTE4:
+        case luisa::compute::PixelStorage::HALF1:
+        case luisa::compute::PixelStorage::HALF2:
+        case luisa::compute::PixelStorage::HALF4:
+        case luisa::compute::PixelStorage::FLOAT1:
+        case luisa::compute::PixelStorage::FLOAT2:
+        case luisa::compute::PixelStorage::FLOAT4: {
+            // Float image - create from external handle
+            luisa::compute::ImageView<float> output_img(
+                output_image.native_handle,
+                output_image.handle,
+                storage,
+                output_image.mipmap_levels,
+                luisa::uint2(output_image.width, output_image.height));
+
+            if (input_buffer.element_stride == sizeof(luisa::half)) {
+                auto input_buf = create_buffer.operator()<half>(input_buffer);
+                shaders.dispatch_buffer_to_image<half>(input_buf, output_img, pixel_offset, pixel_size, swizzle);
+            } else {
+                auto input_buf = create_buffer.operator()<float>(input_buffer);
+                shaders.dispatch_buffer_to_image<float>(input_buf, output_img, pixel_offset, pixel_size, swizzle);
+            }
+        } break;
+        case luisa::compute::PixelStorage::INT1:
+        case luisa::compute::PixelStorage::INT2:
+        case luisa::compute::PixelStorage::INT4: {
+            // Int image - treat as uint for shader
+            luisa::compute::ImageView<uint> output_img(
+                output_image.native_handle,
+                output_image.handle,
+                storage,
+                output_image.mipmap_levels,
+                luisa::uint2(output_image.width, output_image.height));
+            if (input_buffer.element_stride == sizeof(uint16_t)) {
+                auto input_buf = create_buffer.operator()<uint16_t>(input_buffer);
+                shaders.dispatch_buffer_to_image<uint16_t>(input_buf, output_img, pixel_offset, pixel_size, swizzle);
+            } else {
+                auto input_buf = create_buffer.operator()<uint32_t>(input_buffer);
+                shaders.dispatch_buffer_to_image<uint32_t>(input_buf, output_img, pixel_offset, pixel_size, swizzle);
+            }
+        } break;
+        default:
+            LUISA_ERROR("Unsupported pixel storage for buffer_to_image");
+    }
+}
+
+void BuiltinKernels::image_to_buffer(void *this_, luisa::compute::TextureCreationInfo input_image, luisa::compute::BufferCreationInfoInterop output_buffer, luisa::uint2 pixel_offset, luisa::uint2 pixel_size, luisa::uint4 swizzle) {
+    auto &shaders = *static_cast<BuiltinShaders *>(this_);
+    auto storage = luisa::compute::pixel_format_to_storage(input_image.format);
+    auto &cmdlist = rbc::RenderDevice::instance().lc_main_cmd_list();
+
+    uint swizzle_bytes = BuiltinShaders::compact_swizzle(swizzle);
+
+    // Determine image type based on format
+    // Create Buffer<half> or Buffer<float> based on element stride
+    auto create_buffer = [&]<typename T>(auto elem) {
+        return luisa::compute::BufferView<T>{
+            elem.native_handle,
+            elem.handle,
+            sizeof(T), 0,
+            elem.total_size_bytes / sizeof(T),
+            elem.total_size_bytes / sizeof(T)};
+    };
+    switch (storage) {
+        case luisa::compute::PixelStorage::SHORT1:
+        case luisa::compute::PixelStorage::SHORT2:
+        case luisa::compute::PixelStorage::SHORT4:
+        case luisa::compute::PixelStorage::BC1:
+        case luisa::compute::PixelStorage::BC2:
+        case luisa::compute::PixelStorage::BC3:
+        case luisa::compute::PixelStorage::BC4:
+        case luisa::compute::PixelStorage::BC5:
+        case luisa::compute::PixelStorage::BC6:
+        case luisa::compute::PixelStorage::BC7:
+        case luisa::compute::PixelStorage::BC7_SRGB:
+        case luisa::compute::PixelStorage::BYTE4_SRGB:
+        case luisa::compute::PixelStorage::R10G10B10A2:
+        case luisa::compute::PixelStorage::R11G11B10:
+        case luisa::compute::PixelStorage::BYTE1:
+        case luisa::compute::PixelStorage::BYTE2:
+        case luisa::compute::PixelStorage::BYTE4:
+        case luisa::compute::PixelStorage::HALF1:
+        case luisa::compute::PixelStorage::HALF2:
+        case luisa::compute::PixelStorage::HALF4:
+        case luisa::compute::PixelStorage::FLOAT1:
+        case luisa::compute::PixelStorage::FLOAT2:
+        case luisa::compute::PixelStorage::FLOAT4: {
+            // Float image - create from external handle
+            luisa::compute::ImageView<float> input_img(
+                input_image.native_handle,
+                input_image.handle,
+                storage,
+                input_image.mipmap_levels,
+                luisa::uint2(input_image.width, input_image.height));
+
+            if (output_buffer.element_stride == sizeof(luisa::half)) {
+                auto output_buf = create_buffer.operator()<half>(output_buffer);
+                shaders.dispatch_image_to_buffer<half>(input_img, output_buf, pixel_offset, pixel_size, swizzle);
+            } else {
+                auto output_buf = create_buffer.operator()<float>(output_buffer);
+                shaders.dispatch_image_to_buffer<float>(input_img, output_buf, pixel_offset, pixel_size, swizzle);
+            }
+        } break;
+        case luisa::compute::PixelStorage::INT1:
+        case luisa::compute::PixelStorage::INT2:
+        case luisa::compute::PixelStorage::INT4: {
+            // Int image - treat as uint for shader
+            luisa::compute::ImageView<uint> input_img(
+                input_image.native_handle,
+                input_image.handle,
+                storage,
+                input_image.mipmap_levels,
+                luisa::uint2(input_image.width, input_image.height));
+            if (output_buffer.element_stride == sizeof(uint16_t)) {
+                auto output_buf = create_buffer.operator()<uint16_t>(output_buffer);
+                shaders.dispatch_image_to_buffer<uint16_t>(input_img, output_buf, pixel_offset, pixel_size, swizzle);
+            } else {
+                auto output_buf = create_buffer.operator()<uint32_t>(output_buffer);
+                shaders.dispatch_image_to_buffer<uint32_t>(input_img, output_buf, pixel_offset, pixel_size, swizzle);
+            }
+        } break;
+
+        default:
+            LUISA_ERROR("Unsupported pixel storage for buffer_to_image");
+    }
+}
 }// namespace rbc

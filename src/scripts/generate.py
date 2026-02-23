@@ -52,6 +52,7 @@ from rbc_meta.types.world_interface import (
     Project,
     TickStage,
     RBCContext,
+    BuiltinKernels
 )
 
 
@@ -150,6 +151,7 @@ WORLD_INTERFACE_CLASSES = [
     Project,
     TickStage,
     RBCContext,
+    BuiltinKernels
 ]
 
 

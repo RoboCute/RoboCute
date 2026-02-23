@@ -312,7 +312,7 @@ Examples:
     parser.add_argument("file", help="C++ file to check")
     parser.add_argument(
         "--project-root",
-        default=Path(__file__).parent.parent,
+        default=Path(__file__).parent,
         help="Project root directory (default: current directory)",
     )
     parser.add_argument(

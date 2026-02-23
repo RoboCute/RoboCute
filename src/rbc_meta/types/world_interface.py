@@ -3,6 +3,7 @@ from rbc_meta.utils.builtin import DataBuffer
 from rbc_meta.utils.builtin import (
     uint,
     uint2,
+    uint4,
     ulong,
     float3,
     float4x4,
@@ -53,6 +54,12 @@ class Callback:
 class LCPYImage2D:
     __slot__ = {}
     _cpp_type_name = "luisa::compute::TextureCreationInfo"
+
+
+class LCPYImage2DInfo:
+    __slot__ = {}
+    _cpp_type_name = "luisa::compute::TextureCreationInfo"
+    _py_type_name = "luisa.lcapi.TextureCreationInfo"
 
 
 @reflect(cpp_namespace='rbc', module_name='world_interface', pybind=True)
@@ -566,6 +573,7 @@ class CameraComponent(Component):
     def clear_geometry_export_buffer() -> None: ...
     def render_settings() -> RenderSettings: ...
 
+
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
@@ -596,9 +604,11 @@ class DataComponent(Component):
     def remove_info(name: str) -> bool: ...
     def info_count() -> ulong: ...
     def clear_infos() -> None: ...
-    
-    def bind_event(event_type: DataComponentEventType, callback_name: str) -> None:...
-    def unbind_event(event_type: DataComponentEventType) -> None:...
+
+    def bind_event(event_type: DataComponentEventType,
+                   callback_name: str) -> None: ...
+
+    def unbind_event(event_type: DataComponentEventType) -> None: ...
 
 
 @reflect(
@@ -665,6 +675,30 @@ class TickStage(Enum):
     PathTracingPreview = 2
     OffineCapturing = 3
     PresentOfflineResult = 4
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class BuiltinKernels:
+    def buffer_to_image(
+        input_buffer: LCPYBufferInfo,
+        output_image: LCPYImage2DInfo,
+        pixel_offset: uint2,
+        pixel_size: uint2,
+        swizzle: uint4
+    ) -> None: ...
+
+    def image_to_buffer(
+        input_image: LCPYImage2DInfo,
+        output_buffer: LCPYBufferInfo,
+        pixel_offset: uint2,
+        pixel_size: uint2,
+        swizzle: uint4
+    ) -> None: ...
 
 
 @reflect(
