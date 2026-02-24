@@ -18,21 +18,18 @@ enum struct HeitzSobolSPP {
     SPP256,
 };
 luisa::compute::Buffer<uint> heitz_sobol_256d(
-    luisa::string const& path,
+    luisa::span<uint8_t const> file_data,
     luisa::compute::Device &device,
-    luisa::compute::CommandList &cmdlist,
-    rbc::DisposeQueue &after_commit_dspqueue);
+    luisa::compute::CommandList &cmdlist);
 
 luisa::compute::Buffer<uint> heitz_sobol_scrambling(
-    luisa::string const& path,
+    luisa::span<uint8_t const> file_data,
     luisa::compute::Device &device,
     luisa::compute::CommandList &cmdlist,
-    rbc::DisposeQueue &after_commit_dspqueue,
     HeitzSobolSPP spp);
 
 luisa::compute::Buffer<uint> heitz_sobol_ranking(
-    luisa::string const& path,
+    luisa::span<uint8_t const> file_data,
     luisa::compute::Device &device,
     luisa::compute::CommandList &cmdlist,
-    rbc::DisposeQueue &after_commit_dspqueue,
     HeitzSobolSPP spp);

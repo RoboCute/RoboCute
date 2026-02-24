@@ -21,6 +21,10 @@ struct PreparePassContext : PassContext {
 };
 }// namespace rbc
 RBC_RTTI(rbc::PreparePassContext);
+RBC_BIN_2_OBJ_DECLARE(heitz_sobol_bytes)
+RBC_BIN_2_OBJ_DECLARE(rec2020_bytes)
+RBC_BIN_2_OBJ_DECLARE(trans_ggx_bytes)
+
 namespace rbc {
 namespace preparepass_detail {
 
@@ -133,30 +137,16 @@ void PreparePass::on_enable(
     static const size_t transmission_ggx_energy_size_bytes = transmission_ggx_energy_size.x * transmission_ggx_energy_size.y * transmission_ggx_energy_size.z * sizeof(float4);
     auto runtime_dir = RenderDevice::instance().lc_ctx().runtime_directory();
     {
-        luisa::vector<std::byte> vec;
-        vec.resize_uninitialized(lut3d_size);
-        _lut_load_cmds.emplace_back(
-            luisa::fiber::async([&device, runtime_dir, this, ptr = vec.data()]() {
-                BinaryFileStream file_stream{luisa::to_string(runtime_dir / "rec2020.coeff")};
-                LUISA_ASSERT(file_stream.length() == lut3d_size);
-                file_stream.read({ptr, lut3d_size});
-                spectrum_lut_3d = device.create_volume<float>(PixelStorage::FLOAT4, uint3(spectrum::spectrum_lut3d_res * 3, spectrum::spectrum_lut3d_res, spectrum::spectrum_lut3d_res));
-            }),
-            std::move(vec),
-            &spectrum_lut_3d);
+        spectrum_lut_3d = device.create_volume<float>(PixelStorage::FLOAT4, uint3(spectrum::spectrum_lut3d_res * 3, spectrum::spectrum_lut3d_res, spectrum::spectrum_lut3d_res));
+        auto rec2020_bytes = RBC_BIN_2_OBJ_SPAN(rec2020_bytes);
+        LUISA_ASSERT(rec2020_bytes.size_bytes() == lut3d_size);
+        cmdlist << spectrum_lut_3d.copy_from(rec2020_bytes.data());
     }
     {
-        luisa::vector<std::byte> vec;
-        vec.resize_uninitialized(transmission_ggx_energy_size_bytes);
-        _lut_load_cmds.emplace_back(
-            luisa::fiber::async([&device, runtime_dir, this, ptr = vec.data()]() {
-                BinaryFileStream file_stream{luisa::to_string(runtime_dir / "trans_ggx.bytes")};
-                LUISA_ASSERT(file_stream.length() == transmission_ggx_energy_size_bytes);
-                file_stream.read({ptr, transmission_ggx_energy_size_bytes});
-                transmission_ggx_energy = device.create_volume<float>(PixelStorage::FLOAT4, transmission_ggx_energy_size);
-            }),
-            std::move(vec),
-            &transmission_ggx_energy);
+        auto trans_ggx_bytes = RBC_BIN_2_OBJ_SPAN(trans_ggx_bytes);
+        LUISA_ASSERT(trans_ggx_bytes.size_bytes() == transmission_ggx_energy_size_bytes);
+        transmission_ggx_energy = device.create_volume<float>(PixelStorage::FLOAT4, transmission_ggx_energy_size);
+        cmdlist << transmission_ggx_energy.copy_from(trans_ggx_bytes.data());
     }
 
     // {
@@ -210,10 +200,10 @@ void PreparePass::on_enable(
         }
         LUISA_ASSERT(spectrum::illum_d65_size == lut_resolution);
     }
-    auto sobol_path = luisa::to_string(runtime_dir / "heitz_sobol.bin");
-    sobol_256d = heitz_sobol_256d(sobol_path, device, cmdlist, scene.after_commit_dsp_queue());
-    sobol_scrambling = heitz_sobol_scrambling(sobol_path, device, cmdlist, scene.after_commit_dsp_queue(), HeitzSobolSPP::SPP256);
-    sobol_ranking = heitz_sobol_ranking(sobol_path, device, cmdlist, scene.after_commit_dsp_queue(), HeitzSobolSPP::SPP256);
+    auto heitz_bytes = RBC_BIN_2_OBJ_SPAN(heitz_sobol_bytes);
+    sobol_256d = heitz_sobol_256d(heitz_bytes, device, cmdlist);
+    sobol_scrambling = heitz_sobol_scrambling(heitz_bytes, device, cmdlist, HeitzSobolSPP::SPP256);
+    sobol_ranking = heitz_sobol_ranking(heitz_bytes, device, cmdlist, HeitzSobolSPP::SPP256);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_256d_heap_idx, sobol_256d);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_scrambling_heap_idx, sobol_scrambling);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_ranking_heap_idx, sobol_ranking);
@@ -243,13 +233,7 @@ void PreparePass::wait_enable() {
 }
 
 void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    for (auto &i : _lut_load_cmds) {
-        i.evt.wait();
-        (*ctx.cmdlist) << i.tex->copy_from(i.data.data());
-        ctx.scene->dispose_after_commit(std::move(i.data));
-    }
-    _lut_load_cmds.clear();
-    auto & cam = ctx.pipeline_settings.read_mut<Camera>();
+    auto &cam = ctx.pipeline_settings.read_mut<Camera>();
     auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(cam);
 
     auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
@@ -341,7 +325,7 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     }
 }
 void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    auto & cam = ctx.pipeline_settings.read_mut<Camera>();
+    auto &cam = ctx.pipeline_settings.read_mut<Camera>();
     auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(cam);
     auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
     pass_ctx->last_jitter = jitter_data.jitter;
@@ -359,9 +343,5 @@ void PreparePass::on_disable(
     auto &&alloc = scene.bindless_allocator();
 }
 PreparePass::~PreparePass() {
-    for (auto &i : _lut_load_cmds) {
-        i.evt.wait();
-    }
-    _lut_load_cmds.clear();
 }
 }// namespace rbc

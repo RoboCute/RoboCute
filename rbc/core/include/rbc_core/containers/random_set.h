@@ -1,5 +1,6 @@
 #pragma once
-#include <luisa/core/stl.h>
+#include <luisa/core/stl/vector.h>
+
 
 // A Simple RandomSet that keeps single value at a time, support random fetch
 template<typename T>

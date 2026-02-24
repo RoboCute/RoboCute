@@ -1,34 +1,4 @@
 includes('generate.lua')
-target('install_clangcxx')
-set_kind('phony')
-add_rules('lc_install_sdk', {
-    sdk_dir = 'build/download',
-    libnames = {
-        name = clangcxx_filename,
-        -- download in python
-        -- address = 'https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/',
-        copy_dir = '',
-        extract_dir = 'build/tool/clangcxx_compiler'
-
-    }
-})
-set_policy('build.fence', true)
-target_end()
-
-target('install_runtime_depends')
-set_kind('phony')
-add_rules('lc_install_sdk', {
-    sdk_dir = 'build/download',
-    libnames = {{
-        name = clangd_filename,
-        copy_dir = '',
-        extract_dir = 'build/tool/clangd'
-    }, {
-        name = render_resources
-    }}
-})
-target_end()
-
 target('install_oidn')
 set_kind('phony')
 add_rules('lc_install_sdk', {
@@ -42,9 +12,6 @@ target_end()
 
 target('compile_shaders')
 set_kind('phony')
-add_deps('install_clangcxx', {
-    inherit = false
-})
 before_build(function(target)
     local builddir = path.directory(target:targetdir())
     local compiler_path = 'clangcxx_compiler'
@@ -79,9 +46,6 @@ target_end()
 
 target('compile_shaders_hostgen')
 set_kind('phony')
-add_deps('install_clangcxx', {
-    inherit = false
-})
 before_build(function(target)
     local builddir = path.directory(target:targetdir())
     local compiler_path = 'clangcxx_compiler'

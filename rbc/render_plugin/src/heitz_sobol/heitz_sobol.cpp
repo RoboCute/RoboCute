@@ -1,7 +1,7 @@
 #include <rbc_render/utils/heitz_sobol.h>
 #include <rbc_core/binary_file_writer.h>
 #include <luisa/core/logging.h>
-#include <luisa/core/binary_file_stream.h>
+#include <cstring>
 // export heitz-sobol binary data
 /*
 extern int spp1_scramblingTile[128 * 128 * 8];
@@ -82,10 +82,10 @@ constexpr size_t spp256_rankingTile_offset = 8388608;
 constexpr size_t sobol_256d_offset = 8912896;
 
 luisa::compute::Buffer<uint> heitz_sobol_scrambling(
-    luisa::string const& path,
+    luisa::span<uint8_t const> file_data,
     luisa::compute::Device &device,
     luisa::compute::CommandList &cmdlist,
-    rbc::DisposeQueue &after_commit_dspqueue,
+
     HeitzSobolSPP spp) {
     auto ptr_offset = [&]() -> size_t {
         switch (spp) {
@@ -112,25 +112,16 @@ luisa::compute::Buffer<uint> heitz_sobol_scrambling(
                 return 0;
         }
     }();
-    luisa::BinaryFileStream file_stream(
-        path);
-    file_stream.set_pos(ptr_offset);
-    luisa::vector<uint> data;
-    data.push_back_uninitialized(128 * 128 * 8);
-    file_stream.read(
-        {(std::byte *)data.data(),
-         data.size_bytes()});
-
-    auto buffer = device.create_buffer<uint>(data.size());
-    cmdlist << buffer.view().copy_from(data.data());
-    after_commit_dspqueue.dispose_after_queue(std::move(data));
+    auto ptr = (file_data.data() + ptr_offset);
+    const auto size = 128 * 128 * 8;
+    auto buffer = device.create_buffer<uint>(size);
+    cmdlist << buffer.view().copy_from(ptr);
     return buffer;
 }
 luisa::compute::Buffer<uint> heitz_sobol_ranking(
-    luisa::string const& path,
+    luisa::span<uint8_t const> file_data,
     luisa::compute::Device &device,
     luisa::compute::CommandList &cmdlist,
-    rbc::DisposeQueue &after_commit_dspqueue,
     HeitzSobolSPP spp) {
     auto ptr_offset = [&]() -> size_t {
         switch (spp) {
@@ -158,34 +149,19 @@ luisa::compute::Buffer<uint> heitz_sobol_ranking(
                 return 0;
         }
     }();
-    luisa::BinaryFileStream file_stream(
-        path);
-    file_stream.set_pos(ptr_offset);
-    luisa::vector<uint> data;
-    data.push_back_uninitialized(128 * 128 * 8);
-    file_stream.read(
-        {(std::byte *)data.data(),
-         data.size_bytes()});
-    auto buffer = device.create_buffer<uint>(data.size());
-    cmdlist << buffer.view().copy_from(data.data());
-    after_commit_dspqueue.dispose_after_queue(std::move(data));
+    auto ptr = (file_data.data() + ptr_offset);
+    const auto size = 128 * 128 * 8;
+    auto buffer = device.create_buffer<uint>(size);
+    cmdlist << buffer.view().copy_from(ptr);
     return buffer;
 }
 luisa::compute::Buffer<uint> heitz_sobol_256d(
-    luisa::string const& path,
+    luisa::span<uint8_t const> file_data,
     luisa::compute::Device &device,
-    luisa::compute::CommandList &cmdlist,
-    rbc::DisposeQueue &after_commit_dspqueue) {
-    luisa::BinaryFileStream file_stream(
-        path);
-    file_stream.set_pos(sobol_256d_offset);
-    luisa::vector<uint> data;
-    data.push_back_uninitialized(256 * 256);
-    file_stream.read(
-        {(std::byte *)data.data(),
-         data.size_bytes()});
-    auto buffer = device.create_buffer<uint>(data.size());
-    cmdlist << buffer.view().copy_from(data.data());
-    after_commit_dspqueue.dispose_after_queue(std::move(data));
+    luisa::compute::CommandList &cmdlist) {
+    auto ptr = (file_data.data() + sobol_256d_offset);
+    const auto size = 256 * 256;
+    auto buffer = device.create_buffer<uint>(size);
+    cmdlist << buffer.view().copy_from(ptr);
     return buffer;
 }

@@ -48,11 +48,91 @@ def find_process_path(process_name):
     return None
 
 
+def find_7z_executable():
+    """Find 7z executable for extracting archives."""
+    possible_paths = [
+        "C:/Program Files/7-Zip/7z.exe",
+        "C:/Program Files (x86)/7-Zip/7z.exe",
+        shutil.which("7z"),
+        shutil.which("7za"),
+    ]
+
+    for path in possible_paths:
+        if path and os.path.exists(path):
+            return path
+
+    return None
+
+
+def unzip_dir(
+    zip_path: Path,
+    extract_to: Path
+):
+    """Extract archive to specified directory. Supports 7z, rar, and zip formats.
+
+    Args:
+        zip_dir: Path to the archive file
+        unziped_dir: Directory to extract files to
+    """
+    from pathlib import Path
+    import zipfile
+
+    if not zip_path.exists():
+        print(f"ERROR: Archive file not found: {zip_path}")
+        sys.exit(1)
+
+    # Ensure extract directory exists
+    extract_to.mkdir(parents=True, exist_ok=True)
+
+    # Get file extension
+    suffix = zip_path.suffix.lower()
+
+    if suffix == '.zip':
+        # Use standard library zipfile for zip archives
+        print(f"Extracting {zip_path.name} to {extract_to}...")
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                zf.extractall(extract_to)
+            print(f"✓ Successfully extracted {zip_path.name}")
+        except zipfile.BadZipFile:
+            print(f"ERROR: Invalid or corrupted zip file: {zip_path.name}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"ERROR: Failed to extract {zip_path.name}: {e}")
+            sys.exit(1)
+
+    elif suffix in ['.7z', '.rar']:
+        # Use 7z executable for 7z and rar archives
+        seven_zip = find_7z_executable()
+        if not seven_zip:
+            print(
+                f"ERROR: 7z executable not found. Please install 7-Zip to extract {suffix} files.")
+            print("  Download from: https://www.7-zip.org/")
+            sys.exit(1)
+
+        print(f"Extracting {zip_path.name} to {extract_to}...")
+        try:
+            subprocess.check_call(
+                [seven_zip, "x", str(zip_path), f"-o{extract_to}", "-y"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE
+            )
+            print(f"✓ Successfully extracted {zip_path.name}")
+        except subprocess.CalledProcessError:
+            print(f"ERROR: Failed to extract {zip_path.name}")
+            print(f"  Command: {seven_zip} x {zip_path} -o{extract_to} -y")
+            sys.exit(1)
+
+    else:
+        print(f"ERROR: Unsupported archive format: {suffix}")
+        print("  Supported formats: .zip, .7z, .rar")
+        sys.exit(1)
+
+
 def write_shader_compile_cmd():
     clangcxx_dir = rel(CLANGCXX_PATH)
     shader_dir = rel(SHADER_PATH)
     in_dir = shader_dir / "src"
-    # TODO: different platform
     host_dir = shader_dir / "host"
     include_dir = shader_dir / "include"
     cache_dir = ""
@@ -69,13 +149,15 @@ def write_shader_compile_cmd():
     # write files
     for backend in backends:
         cache_dir = shader_dir / ".cache" / backend
-        out_dir = Path(PROJECT_ROOT) / f"build/{PLATFORM}/{ARCH}/shader_build_{backend}"
+        out_dir = Path(PROJECT_ROOT) / \
+            f"build/{PLATFORM}/{ARCH}/shader_build_{backend}"
         f = open(shader_dir / f"{backend}_compile.cmd", "w")
         f.write("@echo off\n" + build_cmd() + f" -backend={backend}")
         f.close()
 
         f = open(shader_dir / f"{backend}_clean_compile.cmd", "w")
-        f.write("@echo off\n" + build_cmd() + f" -backend={backend}" + " -rebuild")
+        f.write("@echo off\n" + build_cmd() +
+                f" -backend={backend}" + " -rebuild")
         f.close()
 
     out_dir = shader_dir / ".vscode/compile_commands.json"
@@ -120,6 +202,7 @@ def git_clone_or_pull(git_address, subdir, branch=None):
 
 def download_packages():
     download_path = Path(PROJECT_ROOT) / "build/download"
+    tool_path = Path(PROJECT_ROOT) / "build/tool"
     download_path.mkdir(parents=True, exist_ok=True)
     address = RBC_SDK_ADDRESS
     lc_address = LC_SDK_ADDRESS
@@ -128,10 +211,14 @@ def download_packages():
         CLANGCXX_NAME: {
             "address": address,
             "path": download_path,
+            "unzip": [download_path / CLANGCXX_NAME,
+                      tool_path / 'clangcxx_compiler']
         },
         CLANGD_NAME: {
             "address": address,
             "path": download_path,
+            "unzip": [download_path / CLANGD_NAME,
+                      tool_path / 'clangd']
         },
         OIDN_NAME: {
             "address": address,
@@ -140,24 +227,25 @@ def download_packages():
         RENDER_RESOURCE_NAME: {
             "address": address,
             "path": download_path,
+            "unzip": [download_path / RENDER_RESOURCE_NAME,
+                      Path(PROJECT_ROOT) / 'rbc/render_plugin/src']
         },
         LC_DX_SDK: {
             "address": lc_address,
             "path": lc_path,
         },
     }
-    lua_file = f'''clangd_filename = "{CLANGD_NAME}"
-clangcxx_filename = "{CLANGCXX_NAME}"
-oidn = "{OIDN_NAME}"
-render_resources = "{RENDER_RESOURCE_NAME}"
+    lua_file = f'''oidn = "{OIDN_NAME}"
 '''
     ut._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
 
     def download_file(file: str, map: dict):
-        print(file)
+        unzip = map.get('unzip')
         dst_path = str(map["path"] / file)
         if os.path.exists(dst_path):
             print(f"'{dst_path}' exists, skip download.")
+            if unzip:
+                unzip_dir(unzip[0], unzip[1])
             return
         print(f"Downloading '{dst_path}'...")
         response = requests.get(map["address"] + file)
@@ -169,11 +257,15 @@ render_resources = "{RENDER_RESOURCE_NAME}"
         with open(dst_path, "wb") as f:
             f.write(response.content)
         print(f"Download '{dst_path}' successfully!")
+        unzip = map.get('unzip')
+        if unzip:
+            unzip_dir(unzip[0], unzip[1])
 
     executor = ThreadPoolExecutor(max_workers=8)
     futures1 = [
         executor.submit(download_file, name, downloads[name]) for name in downloads
     ]
+    # unzip render resource
     return executor, futures1
 
 
@@ -182,8 +274,10 @@ def run_git_tasks():
     tasks = GIT_TASKS
     # Group by stages based on dependencies
     stage1 = [k for k, v in tasks.items() if not v["deps"]]
-    stage2 = [k for k, v in tasks.items() if any(d in stage1 for d in v["deps"])]
-    stage3 = [k for k, v in tasks.items() if any(d in stage2 for d in v["deps"])]
+    stage2 = [k for k, v in tasks.items() if any(
+        d in stage1 for d in v["deps"])]
+    stage3 = [k for k, v in tasks.items() if any(
+        d in stage2 for d in v["deps"])]
 
     def run_task(name):
         t = tasks[name]
@@ -263,7 +357,8 @@ def prepare():
             def to_slash(p):
                 return p.replace("\\", "/")
 
-            options["lc_py_include"] = to_slash(os.path.join(py_path, "include"))
+            options["lc_py_include"] = to_slash(
+                os.path.join(py_path, "include"))
             options["rbc_py_bin"] = to_slash(py_path)
 
             lc_py_linkdir = os.path.join(py_path, "libs")

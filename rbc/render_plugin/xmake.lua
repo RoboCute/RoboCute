@@ -23,9 +23,12 @@ local function rbc_render_impl()
         links = false
     })
     add_files('src/**.cpp')
+
     -- bin 2 obj
-    add_rules('utils.bin2obj', {extensions = {'.json'}})
-    add_files('src/render_settings.json')
+    add_rules('utils.bin2obj', {
+        extensions = {'.json', '.bytes'}
+    })
+    add_files('src/render_settings.json', 'src/*.bytes')
 end
 
 interface_target('rbc_render_plugin', rbc_render_interface, rbc_render_impl, true)
