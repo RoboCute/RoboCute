@@ -52,7 +52,12 @@ from rbc_meta.types.world_interface import (
     Project,
     TickStage,
     RBCContext,
-    BuiltinKernels
+    BuiltinKernels,
+    SkeletonResource,
+    SkinResource,
+    AnimSequenceResource,
+    AnimGraphResource,
+    SkelMeshResource,
 )
 
 
@@ -151,7 +156,12 @@ WORLD_INTERFACE_CLASSES = [
     Project,
     TickStage,
     RBCContext,
-    BuiltinKernels
+    BuiltinKernels,
+    SkeletonResource,
+    SkinResource,
+    AnimSequenceResource,
+    AnimGraphResource,
+    SkelMeshResource,
 ]
 
 

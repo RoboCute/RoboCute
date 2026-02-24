@@ -322,56 +322,6 @@ class MaterialResource(Resource):
     def load_from_json(json: str) -> None: ...
 
 
-# @reflect(
-#     pybind=True,
-#     cpp_prefix="TEST_GRAPHICS_API",
-#     cpp_namespace="rbc",
-#     module_name="world_interface",
-# )
-# class SkeletonResource(Resource):
-#     pass
-
-
-# @reflect(
-#     pybind=True,
-#     cpp_prefix="TEST_GRAPHICS_API",
-#     cpp_namespace="rbc",
-#     module_name="world_interface",
-# )
-# class SkinResource(Resource):
-#     pass
-
-
-# @reflect(
-#     pybind=True,
-#     cpp_prefix="TEST_GRAPHICS_API",
-#     cpp_namespace="rbc",
-#     module_name="world_interface",
-# )
-# class SkelMeshResource(Resource):
-#     pass
-
-
-# @reflect(
-#     pybind=True,
-#     cpp_prefix="TEST_GRAPHICS_API",
-#     cpp_namespace="rbc",
-#     module_name="world_interface",
-# )
-# class AnimSequenceResource(Resource):
-#     pass
-
-
-# @reflect(
-#     pybind=True,
-#     cpp_prefix="TEST_GRAPHICS_API",
-#     cpp_namespace="rbc",
-#     module_name="world_interface",
-# )
-# class AnimGraphResource(Resource):
-#     pass
-
-
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
@@ -636,6 +586,68 @@ class Scene(Resource):
     def remove_entity(guid: GUID) -> None: ...
     def get_entity_by_name(name: str) -> Entity: ...
     def get_entities_by_name(name: str) -> EntitiesCollection: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class SkeletonResource(Resource):
+    def ref_skel() -> VoidPtr: ...
+    def log_brief() -> None: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class SkinResource(Resource):
+    def ref_skel() -> SkeletonResource: ...
+    def ref_mesh() -> MeshResource: ...
+    def generate_LUT() -> None: ...
+    def log_brief() -> None: ...
+    def JointRemaps() -> Vector[str]: ...
+    def InverseBindPoses() -> Vector[float4x4]: ...
+    def JointRemapsLUT() -> Vector[uint]: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class AnimSequenceResource(Resource):
+    def ref_seq() -> VoidPtr: ...
+    def ref_skel() -> SkeletonResource: ...
+    def log_brief() -> None: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class AnimGraphResource(Resource):
+    def graph() -> VoidPtr: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
+class SkelMeshResource(Resource):
+    def GetSkinResource() -> SkinResource: ...
+    def ref_skin() -> SkinResource: ...
+    def ref_skeleton() -> SkeletonResource: ...
+    def ref_anim_graph() -> AnimGraphResource: ...
 
 
 @reflect(

@@ -3,7 +3,7 @@
 #include "rbc_core/serde.h"
 #include "rbc_anim/graph/AnimNodeContext.h"
 
-namespace rbc {
+namespace rbc::world {
 
 struct AnimOptimizationOverride {};
 
@@ -34,15 +34,15 @@ public:
 
 
 private:
-    friend class rbc::Serialize<rbc::AnimSequence>;
+    friend class rbc::Serialize<AnimSequence>;
     AnimSequenceRuntimeAsset animation;
     float rate_scale = 1.0f;
 };
 
-}// namespace rbc
+}// namespace rbc::world
 
 template<>
-struct rbc::Serialize<rbc::AnimSequence> {
-    static RBC_RUNTIME_API bool write(rbc::ArchiveWrite &w, const rbc::AnimSequence &v);
-    static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::AnimSequence &v);
+struct rbc::Serialize<rbc::world::AnimSequence> {
+    static RBC_RUNTIME_API bool write(rbc::ArchiveWrite &w, const rbc::world::AnimSequence &v);
+    static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::world::AnimSequence &v);
 };

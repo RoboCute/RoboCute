@@ -54,50 +54,109 @@ void export_vectors(py::module &m) {
                 }
                 return vec[idx] = (RCBase *)(ptr);
             });
+        auto create_vector = [&]<typename T>(char const *name) {
+            py::class_<Vec<T>>(m, name)
+                .def(py::init<>())
+                .def("clear", [&](Vec<T> &vec) {
+                    vec.clear();
+                })
+                .def("__len__", [&](Vec<T> &vec) {
+                    return vec.size();
+                })
+                .def_property_readonly("capacity", [&](Vec<T> &vec) {
+                    return vec.capacity();
+                })
+                .def_property_readonly("empty", [&](Vec<T> &vec) {
+                    return vec.empty();
+                })
+                .def("reserve", [&](Vec<T> &vec, uint64_t capacity) {
+                    vec.reserve(capacity);
+                })
+                .def("emplace_back", [&](Vec<T> &vec, T ptr) {
+                    vec.emplace_back(ptr);
+                })
+                .def("pop_back", [&](Vec<T> &vec) {
+                    if (vec.empty()) [[unlikely]] {
+                        LUISA_ERROR("call pop_back() in empty vector.");
+                    }
+                    vec.pop_back();
+                })
+                .def("back", [&](Vec<T> &vec) -> T {
+                    if (vec.empty()) [[unlikely]] {
+                        LUISA_ERROR("call back() in empty vector.");
+                    }
+                    return vec.back();
+                })
+                .def("__getitem__", [&](Vec<T> &vec, uint64_t idx) -> T {
+                    if (idx >= vec.size()) [[unlikely]] {
+                        LUISA_ERROR("index out of range");
+                    }
+                    return vec[idx];
+                })
+                .def("__setitem__", [&](Vec<T> &vec, uint64_t idx, T ptr) {
+                    if (idx >= vec.size()) [[unlikely]] {
+                        LUISA_ERROR("index out of range");
+                    }
+                    return vec[idx] = ptr;
+                });
+        };
+        auto create_vector_cast = [&]<typename T, typename ElemT, typename ToElem, typename FromElem>(char const *name, ToElem &&to_elem, FromElem &&from_elem) {
+            py::class_<Vec<T>>(m, name)
+                .def(py::init<>())
+                .def("clear", [&](Vec<T> &vec) {
+                    vec.clear();
+                })
+                .def("__len__", [&](Vec<T> &vec) {
+                    return vec.size();
+                })
+                .def_property_readonly("capacity", [&](Vec<T> &vec) {
+                    return vec.capacity();
+                })
+                .def_property_readonly("empty", [&](Vec<T> &vec) {
+                    return vec.empty();
+                })
+                .def("reserve", [&](Vec<T> &vec, uint64_t capacity) {
+                    vec.reserve(capacity);
+                })
+                .def("emplace_back", [&](Vec<T> &vec, ElemT ptr) {
+                    vec.emplace_back(from_elem(ptr));
+                })
+                .def("pop_back", [&](Vec<T> &vec) {
+                    if (vec.empty()) [[unlikely]] {
+                        LUISA_ERROR("call pop_back() in empty vector.");
+                    }
+                    vec.pop_back();
+                })
+                .def("back", [&](Vec<T> &vec) -> ElemT {
+                    if (vec.empty()) [[unlikely]] {
+                        LUISA_ERROR("call back() in empty vector.");
+                    }
+                    return to_elem(vec.back());
+                })
+                .def("__getitem__", [&](Vec<T> &vec, uint64_t idx) -> ElemT {
+                    if (idx >= vec.size()) [[unlikely]] {
+                        LUISA_ERROR("index out of range");
+                    }
+                    return to_elem(vec[idx]);
+                })
+                .def("__setitem__", [&](Vec<T> &vec, uint64_t idx, ElemT ptr) {
+                    if (idx >= vec.size()) [[unlikely]] {
+                        LUISA_ERROR("index out of range");
+                    }
+                    return vec[idx] = from_elem(ptr);
+                });
+        };
 
-        py::class_<Vec<int>>(m, "int_vector")
-            .def(py::init<>())
-            .def("clear", [&](Vec<int> &vec) {
-                vec.clear();
-            })
-            .def("__len__", [&](Vec<int> &vec) {
-                return vec.size();
-            })
-            .def_property_readonly("capacity", [&](Vec<int> &vec) {
-                return vec.capacity();
-            })
-            .def_property_readonly("empty", [&](Vec<int> &vec) {
-                return vec.empty();
-            })
-            .def("reserve", [&](Vec<int> &vec, uint64_t capacity) {
-                vec.reserve(capacity);
-            })
-            .def("emplace_back", [&](Vec<int> &vec, int ptr) {
-                vec.emplace_back(ptr);
-            })
-            .def("pop_back", [&](Vec<int> &vec) {
-                if (vec.empty()) [[unlikely]] {
-                    LUISA_ERROR("call pop_back() in empty vector.");
-                }
-                vec.pop_back();
-            })
-            .def("back", [&](Vec<int> &vec) -> int {
-                if (vec.empty()) [[unlikely]] {
-                    LUISA_ERROR("call back() in empty vector.");
-                }
-                return vec.back();
-            })
-            .def("__getitem__", [&](Vec<int> &vec, uint64_t idx) -> int {
-                if (idx >= vec.size()) [[unlikely]] {
-                    LUISA_ERROR("index out of range");
-                }
-                return vec[idx];
-            })
-            .def("__setitem__", [&](Vec<int> &vec, uint64_t idx, int ptr) {
-                if (idx >= vec.size()) [[unlikely]] {
-                    LUISA_ERROR("index out of range");
-                }
-                return vec[idx] = ptr;
+        create_vector.operator()<int>("int_vector");
+        create_vector.operator()<uint>("uint_vector");
+        create_vector.operator()<float4x4>("float4x4_vector");
+        create_vector_cast.operator()<luisa::string, const char *>(
+            "string_vector",
+            [](luisa::string const &str) {
+                return str.c_str();
+            },
+            [](const char *str) {
+                return luisa::string(str);
             });
     }
 }

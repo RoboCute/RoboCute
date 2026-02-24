@@ -9,7 +9,7 @@
 
 namespace rbc {
 
-void AnimInstance::InitAnimInstance(RC<AnimGraphResource> &InAnimGraph) {
+void AnimInstance::InitAnimInstance(RC<world::AnimGraphResource> &InAnimGraph) {
     LUISA_INFO("Init AnimInstance");
     anim_graph = InAnimGraph;
 }

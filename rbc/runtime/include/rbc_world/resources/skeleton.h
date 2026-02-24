@@ -5,7 +5,7 @@
 #include "rbc_anim/types.h"
 #include "rbc_anim/asset/reference_skeleton.h"
 
-namespace rbc {
+namespace rbc::world {
 
 struct RBC_RUNTIME_API SkeletonResource : world::ResourceBaseImpl<SkeletonResource> {
 
@@ -34,10 +34,10 @@ private:
     ReferenceSkeleton skeleton;
 };
 
-}// namespace rbc
-RBC_RTTI(rbc::SkeletonResource)
+}// namespace rbc::world
+RBC_RTTI(rbc::world::SkeletonResource)
 
-namespace rbc {
+namespace rbc::world {
 
 struct RBC_RUNTIME_API ISkeletonImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<SkeletonResource>().md5(); }
@@ -46,10 +46,10 @@ protected:
     ReferenceSkeleton &ref_skel(SkeletonResource *resource) { return resource->skeleton; }
 };
 
-}// namespace rbc
+}// namespace rbc::world
 
 template<>
-struct rbc::Serialize<rbc::SkeletonResource> {
-    static RBC_RUNTIME_API bool write(rbc::ArchiveWrite &w, const rbc::SkeletonResource &v);
-    static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::SkeletonResource &v);
+struct rbc::Serialize<rbc::world::SkeletonResource> {
+    static RBC_RUNTIME_API bool write(rbc::ArchiveWrite &w, const rbc::world::SkeletonResource &v);
+    static RBC_RUNTIME_API bool read(rbc::ArchiveRead &r, rbc::world::SkeletonResource &v);
 };

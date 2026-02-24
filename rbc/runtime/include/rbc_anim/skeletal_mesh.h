@@ -152,12 +152,12 @@ public:
     const ReferenceSkeleton &GetRefSkeleton() const { return ref_skeleton->ref_skel(); }
     ReferenceSkeleton &GetRefSkeleton() { return ref_skeleton->ref_skel(); }
 
-    const SkeletonResource &GetRefSkeletonResource() const { return *ref_skeleton; }
+    const world::SkeletonResource &GetRefSkeletonResource() const { return *ref_skeleton; }
 
-    SkinResource &GetSkinResource() { return *ref_skin; }
-    const SkinResource &GetSkinResource() const { return *ref_skin; }
+    world::SkinResource &GetSkinResource() { return *ref_skin; }
+    const world::SkinResource &GetSkinResource() const { return *ref_skin; }
 
-    SkelMeshResource *GetSkelMeshResource() const { return ref_skelmesh.get(); }
+    world::SkelMeshResource *GetSkelMeshResource() const { return ref_skelmesh.get(); }
 
     int32_t GetPredictedLODLevel() const { return PredictedLODLevel; }
     luisa::vector<AnimFloat4x4> &GetEditableComponentSpaceTransforms();
@@ -169,9 +169,9 @@ public:
 
 public:
     // resources
-    RC<SkeletonResource> ref_skeleton;
-    RC<SkinResource> ref_skin;
-    RC<SkelMeshResource> ref_skelmesh;
+    RC<world::SkeletonResource> ref_skeleton;
+    RC<world::SkinResource> ref_skin;
+    RC<world::SkelMeshResource> ref_skelmesh;
 
     RC<AnimInstance> anim_instance;
     luisa::shared_ptr<BoneContainer> shared_required_bones = nullptr;

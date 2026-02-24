@@ -23,7 +23,7 @@ void AnimNode_SequencePlayer::Evaluate_AnyThread(PoseContext &Output) {
         LUISA_ERROR("Sampling on an Invalid AnimSequence!");
         Output.ResetToRefPose();
     }
-    AnimSequenceResource *anim_seq = anim_seq_resource.get();
+    world::AnimSequenceResource *anim_seq = anim_seq_resource.get();
     if (anim_seq != nullptr) {
         AnimationPoseData pose_data{Output};
         AnimExtractContext extract_ctx;
@@ -49,7 +49,7 @@ void AnimNode_SequencePlayer::UpdateAssetPlayer(const AnimationUpdateContext &In
     if (anim_seq_resource) {
         // temp: direct add and loop
         internal_time_accumulator += InContext.GetDeltaTime();
-        AnimSequenceResource *anim = anim_seq_resource.get();
+        world::AnimSequenceResource *anim = anim_seq_resource.get();
         if (internal_time_accumulator > anim->ref_seq().GetRawAnim().duration()) {
             internal_time_accumulator = 0.0f;
         }
@@ -58,7 +58,7 @@ void AnimNode_SequencePlayer::UpdateAssetPlayer(const AnimationUpdateContext &In
         // CreateTickRecordForNode(InContext, anim_seq_resource.get_installed(), is_looping, false);
     }
 }
-void AnimNode_SequencePlayer::CreateTickRecordForNode(const AnimationUpdateContext &InContext, AnimSequenceResource *InAnimSeqResource, bool bLooping, bool bIsEvaluator) {
+void AnimNode_SequencePlayer::CreateTickRecordForNode(const AnimationUpdateContext &InContext, world::AnimSequenceResource *InAnimSeqResource, bool bLooping, bool bIsEvaluator) {
     // 假设AnimSeqResource已经install
     // auto tick_record = AnimTickRecord(
     //     &(InAnimSeqResource->animation),
@@ -70,11 +70,11 @@ void AnimNode_SequencePlayer::CreateTickRecordForNode(const AnimationUpdateConte
 }
 
 void AnimNode_SequencePlayer::Serialize(rbc::ArchiveWrite &w) {
-    w.value<AnimSequenceResource>(*anim_seq_resource, "ref_resource");
+    w.value<world::AnimSequenceResource>(*anim_seq_resource, "ref_resource");
 }
 
 void AnimNode_SequencePlayer::Deserialize(rbc::ArchiveRead &r) {
-    r.value<AnimSequenceResource>(*anim_seq_resource, "ref_resource");
+    r.value<world::AnimSequenceResource>(*anim_seq_resource, "ref_resource");
 }
 
 }// namespace rbc

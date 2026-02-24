@@ -27,6 +27,11 @@
 #include <rbc_core/state_map.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_graphics/render_device.h>
+#include <rbc_world/resources/anim_graph.h>
+#include <rbc_world/resources/anim_sequence.h>
+#include <rbc_world/resources/skin.h>
+#include <rbc_world/resources/skeleton.h>
+#include <rbc_world/resources/skelmesh.h>
 void save_image(luisa::filesystem::path const &path, luisa::compute::Image<float> const &img);// implemented save_image.cpp
 namespace rbc {
 struct EntitiesCollectionImpl : RCBase {
@@ -452,6 +457,147 @@ void RenderComponent::update_object(void *this_, luisa::vector<rbc::RC<rbc::RCBa
             reinterpret_cast<RC<world::MaterialResource> const *>(mat_vector.data()),
             mat_vector.size()},
         static_cast<world::MeshResource *>(mesh));
+}
+// SkeletonResource implementation
+void *SkeletonResource::_create_() {
+    auto p = world::create_object<rbc::world::SkeletonResource>();
+    manually_add_ref(p);
+    return p;
+}
+void *SkeletonResource::ref_skel(void *this_) {
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    return &c->ref_skel();
+}
+void SkeletonResource::log_brief(void *this_) {
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    c->log_brief();
+}
+
+// SkinResource implementation
+void *SkinResource::_create_() {
+    auto p = world::create_object<rbc::world::SkinResource>();
+    manually_add_ref(p);
+    return p;
+}
+void *SkinResource::ref_skel(void *this_) {
+    auto c = static_cast<rbc::world::SkinResource *>(this_);
+    auto skel = c->ref_skel.get();
+    if (!skel) return nullptr;
+    manually_add_ref(skel);
+    return skel;
+}
+void *SkinResource::ref_mesh(void *this_) {
+    auto c = static_cast<rbc::world::SkinResource *>(this_);
+    auto mesh = c->ref_mesh.get();
+    if (!mesh) return nullptr;
+    manually_add_ref(mesh);
+    return mesh;
+}
+void SkinResource::generate_LUT(void *this_) {
+    auto c = static_cast<rbc::world::SkinResource *>(this_);
+    c->generate_LUT();
+}
+void SkinResource::log_brief(void *this_) {
+    auto c = static_cast<rbc::world::SkinResource *>(this_);
+    c->log_brief();
+}
+luisa::vector<luisa::string> SkinResource::JointRemaps(void *this_) {
+    auto c = static_cast<rbc::world::SkinResource *>(this_);
+    auto remaps = c->JointRemaps();
+    luisa::vector<luisa::string> result;
+    result.reserve(remaps.size());
+    for (auto &r : remaps) {
+        result.push_back(luisa::string{r});
+    }
+    return result;
+}
+luisa::vector<luisa::float4x4> SkinResource::InverseBindPoses(void *this_) {
+    auto c = static_cast<rbc::world::SkinResource *>(this_);
+    auto poses = c->InverseBindPoses();
+    luisa::vector<luisa::float4x4> result;
+    result.reserve(poses.size());
+    for (auto &p : poses) {
+        result.push_back(reinterpret_cast<luisa::float4x4 const &>(p));
+    }
+    return result;
+}
+luisa::vector<uint32_t> SkinResource::JointRemapsLUT(void *this_) {
+    auto c = static_cast<rbc::world::SkinResource *>(this_);
+    auto lut = c->JointRemapsLUT();
+    luisa::vector<uint32_t> result;
+    result.reserve(lut.size());
+    for (auto &l : lut) {
+        result.push_back(static_cast<uint32_t>(l));
+    }
+    return result;
+}
+
+// AnimSequenceResource implementation
+void *AnimSequenceResource::_create_() {
+    auto p = world::create_object<rbc::world::AnimSequenceResource>();
+    manually_add_ref(p);
+    return p;
+}
+void *AnimSequenceResource::ref_seq(void *this_) {
+    auto c = static_cast<rbc::world::AnimSequenceResource *>(this_);
+    return const_cast<void *>(static_cast<const void *>(&c->ref_seq()));
+}
+void *AnimSequenceResource::ref_skel(void *this_) {
+    auto c = static_cast<rbc::world::AnimSequenceResource *>(this_);
+    auto skel = c->ref_skel.get();
+    if (!skel) return nullptr;
+    manually_add_ref(skel);
+    return skel;
+}
+void AnimSequenceResource::log_brief(void *this_) {
+    auto c = static_cast<rbc::world::AnimSequenceResource *>(this_);
+    c->log_brief();
+}
+
+// AnimGraphResource implementation
+void *AnimGraphResource::_create_() {
+    auto p = world::create_object<rbc::world::AnimGraphResource>();
+    manually_add_ref(p);
+    return p;
+}
+void *AnimGraphResource::graph(void *this_) {
+    auto c = static_cast<rbc::world::AnimGraphResource *>(this_);
+    return &c->graph;
+}
+
+// SkelMeshResource implementation
+void *SkelMeshResource::_create_() {
+    auto p = world::create_object<rbc::world::SkelMeshResource>();
+    manually_add_ref(p);
+    return p;
+}
+void *SkelMeshResource::GetSkinResource(void *this_) {
+    auto c = static_cast<rbc::world::SkelMeshResource *>(this_);
+    auto skin = c->GetSkinResource().get();
+    if (!skin) return nullptr;
+    manually_add_ref(skin);
+    return skin;
+}
+void *SkelMeshResource::ref_skin(void *this_) {
+    auto c = static_cast<rbc::world::SkelMeshResource *>(this_);
+    auto skin = c->ref_skin.get();
+    if (!skin) return nullptr;
+    manually_add_ref(skin);
+    return skin;
+}
+void *SkelMeshResource::ref_skeleton(void *this_) {
+    auto c = static_cast<rbc::world::SkelMeshResource *>(this_);
+    auto skel = c->ref_skeleton.get();
+    if (!skel) return nullptr;
+    manually_add_ref(skel);
+    return skel;
+}
+void *SkelMeshResource::ref_anim_graph(void *this_) {
+    auto c = static_cast<rbc::world::SkelMeshResource *>(this_);
+    auto graph = c->ref_anim_graph.get();
+    if (!graph) return nullptr;
+    manually_add_ref(graph);
+    return graph;
 }
 
 struct ProjectImpl : RCBase {

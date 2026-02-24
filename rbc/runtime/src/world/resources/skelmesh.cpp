@@ -1,7 +1,7 @@
 #include "rbc_world/resources/skelmesh.h"
 #include "rbc_world/type_register.h"
 
-namespace rbc {
+namespace rbc::world {
 
 void SkelMeshResource::serialize_meta(world::ObjSerialize const &ser) const {
 }

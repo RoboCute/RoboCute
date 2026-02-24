@@ -2,7 +2,7 @@
 #include "rbc_anim/asset/ozz_stream.h"
 #include <ozz/base/io/archive.h>
 
-namespace rbc {
+namespace rbc::world {
 
 AnimSequence::AnimSequence() {}
 AnimSequence::~AnimSequence() {}
@@ -29,7 +29,9 @@ void AnimSequence::log_brief() const {
                animation.duration());
 }
 
-bool rbc::Serialize<rbc::AnimSequence>::write(rbc::ArchiveWrite &w, const rbc::AnimSequence &v) {
+}// namespace rbc::world
+namespace rbc {
+bool rbc::Serialize<rbc::world::AnimSequence>::write(rbc::ArchiveWrite &w, const rbc::world::AnimSequence &v) {
     // Use OzzStream in write mode - buffers all data internally
     OzzStream ozz_stream;
     ozz::io::OArchive archive(&ozz_stream);
@@ -41,7 +43,7 @@ bool rbc::Serialize<rbc::AnimSequence>::write(rbc::ArchiveWrite &w, const rbc::A
     return true;
 }
 
-bool rbc::Serialize<rbc::AnimSequence>::read(rbc::ArchiveRead &r, rbc::AnimSequence &v) {
+bool rbc::Serialize<rbc::world::AnimSequence>::read(rbc::ArchiveRead &r, rbc::world::AnimSequence &v) {
     // Read the entire bytes blob first
     luisa::vector<std::byte> data;
     if (!r.bytes(data, "data")) {

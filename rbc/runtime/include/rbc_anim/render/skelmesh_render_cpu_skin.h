@@ -26,7 +26,7 @@ public:
 public:// interface
     [[nodiscard]] void InitResources(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) override;
     [[nodiscard]] void ReleaseResources() override;
-    [[nodiscard]] void Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const SkinResource *InRefSkin) override;
+    [[nodiscard]] void Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin) override;
     [[nodiscard]] SkelMeshRenderDataLOD &GetLODRenderData() override;
 
 private:

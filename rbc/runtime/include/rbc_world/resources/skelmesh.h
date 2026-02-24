@@ -16,7 +16,7 @@
 #include "rbc_world/resources/skeleton.h"
 #include "rbc_world/resources/anim_graph.h"
 
-namespace rbc {
+namespace rbc::world {
 
 struct RBC_RUNTIME_API SkelMeshResource : world::ResourceBaseImpl<SkelMeshResource> {
 
@@ -39,12 +39,12 @@ protected:
 };
 
 }// namespace rbc
-RBC_RTTI(rbc::SkelMeshResource)
+RBC_RTTI(rbc::world::SkelMeshResource)
 
-namespace rbc {
+namespace rbc::world{
 
 struct ISkelMeshImporter : world::IResourceImporter {
-    [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<rbc::SkelMeshResource>().md5(); }
+    [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<SkelMeshResource>().md5(); }
 
 protected:
 };

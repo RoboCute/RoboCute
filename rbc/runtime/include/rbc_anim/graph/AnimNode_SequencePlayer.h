@@ -24,10 +24,10 @@ public:
 public:
     // Interface
     void UpdateAssetPlayer(const AnimationUpdateContext &InContext);
-    void CreateTickRecordForNode(const AnimationUpdateContext &InContext, AnimSequenceResource *InAnimSeqResource, bool bLooping, bool bIsEvaluator);
+    void CreateTickRecordForNode(const AnimationUpdateContext &InContext, world::AnimSequenceResource *InAnimSeqResource, bool bLooping, bool bIsEvaluator);
 
 public:// temp public
-    RC<AnimSequenceResource> anim_seq_resource;
+    RC<world::AnimSequenceResource> anim_seq_resource;
     bool is_looping = true;
     float blend_weight = 0.0f;
     float internal_time_accumulator = 0.0f;

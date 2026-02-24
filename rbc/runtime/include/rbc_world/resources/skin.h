@@ -6,7 +6,7 @@
 #include "rbc_world/resources/skeleton.h"
 #include "rbc_world/resources/mesh.h"
 
-namespace rbc {
+namespace rbc::world {
 
 struct RBC_RUNTIME_API SkinResource : world::ResourceBaseImpl<SkinResource> {
 
@@ -45,9 +45,9 @@ private:
 };
 
 }// namespace rbc
-RBC_RTTI(rbc::SkinResource)
+RBC_RTTI(rbc::world::SkinResource)
 
-namespace rbc {
+namespace rbc::world {
 
 struct ISkinImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<SkinResource>().md5(); }

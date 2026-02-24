@@ -141,7 +141,7 @@ SkelMeshRenderDataLOD &SkeletalMeshRenderObjectCPUSkin::GetLODRenderData() {
  * * 将ReferenceToLocal矩阵和对应LOD的渲染数据进行CPU蒙皮，得到更新后的VertexBuffer
  * * 将更新后的VertexBuffer缓存并上传到GPU，方便渲染器调用
  */
-void SkeletalMeshRenderObjectCPUSkin::Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const SkinResource *InRefSkin) {
+void SkeletalMeshRenderObjectCPUSkin::Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin) {
     LUISA_INFO("Updating SkeletalMesh CPUSkin RenderObject");
 
     UpdateRefToLocalMatrices(LOD.skin_matrices, InDynamicData, InRefSkin);

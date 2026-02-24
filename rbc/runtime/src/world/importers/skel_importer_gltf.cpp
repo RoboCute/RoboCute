@@ -8,7 +8,7 @@
 
 namespace rbc {
 bool GltfSkeletonImporter::import(world::Resource *resource_base, luisa::filesystem::path const &path) {
-    auto resource = static_cast<SkeletonResource *>(resource_base);
+    auto resource = static_cast<world::SkeletonResource *>(resource_base);
     GltfOzzImporter impl;
     ozz::animation::offline::OzzImporter &importer = impl;
     ozz::animation::offline::OzzImporter::NodeType types = {};

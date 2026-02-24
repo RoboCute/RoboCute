@@ -4,7 +4,7 @@
 #include "rbc_world/resource_importer.h"
 #include "rbc_anim/graph/AnimGraph.h"
 
-namespace rbc {
+namespace rbc::world {
 
 struct RBC_RUNTIME_API AnimGraphResource : world::ResourceBaseImpl<AnimGraphResource> {
 
@@ -22,10 +22,10 @@ protected:
     bool unsafe_save_to_path() const override;
 };
 
-}// namespace rbc
-RBC_RTTI(rbc::AnimGraphResource)
+}// namespace rbc::world
+RBC_RTTI(rbc::world::AnimGraphResource)
 
-namespace rbc {
+namespace rbc::world {
 
 struct RBC_RUNTIME_API IAnimGraphImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<AnimGraphResource>().md5(); }

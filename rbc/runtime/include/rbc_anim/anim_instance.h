@@ -4,11 +4,12 @@
 #include "rbc_anim/bone_pose.h"
 #include "rbc_anim/graph/AnimNode.h"
 #include "rbc_anim/graph/AnimGraph.h"
-
+namespace rbc::world {
+struct AnimGraphResource;
+}// namespace rbc::world
 namespace rbc {
 struct AnimInstance;
 struct AnimInstanceProxy;
-struct AnimGraphResource;
 struct AnimationUpdateContext;
 struct PoseContext;
 struct BoneContainer;
@@ -34,7 +35,7 @@ struct ParallelEvaluationData {
 struct RBC_RUNTIME_API AnimInstance : RCBase {
 
 public:
-    void InitAnimInstance(RC<AnimGraphResource> &InAnimGraph);
+    void InitAnimInstance(RC<world::AnimGraphResource> &InAnimGraph);
 
     void BindSkelMesh(SkeletalMesh *InSkelMesh);
     SkeletalMesh *GetSkeletalMesh() const;
@@ -100,7 +101,7 @@ public:
     void ParallelUpdateAnimation();
 
 private:
-    RC<AnimGraphResource> anim_graph;
+    RC<world::AnimGraphResource> anim_graph;
     SkeletalMesh *skel_mesh;
     mutable AnimInstanceProxy *proxy = nullptr;
     bool bUpdateAnimationEnabled = true;

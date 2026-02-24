@@ -5,7 +5,7 @@
 #include "rbc_world/resources/skeleton.h"
 #include "rbc_anim/types.h"
 
-namespace rbc {
+namespace rbc::world {
 
 struct RBC_RUNTIME_API AnimSequenceResource : world::ResourceBaseImpl<AnimSequenceResource> {
 
@@ -31,21 +31,21 @@ protected:
 
 private:
     friend class IAnimSequenceImporter;
-    friend class rbc::Serialize<rbc::AnimSequenceResource>;
+    friend class rbc::Serialize<AnimSequenceResource>;
     AnimSequence anim_sequence;
 };
 
-}// namespace rbc
+}// namespace rbc::world
 
 template<>
-struct RBC_RUNTIME_API rbc::Serialize<rbc::AnimSequenceResource> {
-    static bool write(rbc::ArchiveWrite &w, const rbc::AnimSequenceResource &v);
-    static bool read(rbc::ArchiveRead &r, rbc::AnimSequenceResource &v);
+struct RBC_RUNTIME_API rbc::Serialize<rbc::world::AnimSequenceResource> {
+    static bool write(rbc::ArchiveWrite &w, const rbc::world::AnimSequenceResource &v);
+    static bool read(rbc::ArchiveRead &r, rbc::world::AnimSequenceResource &v);
 };
 
-RBC_RTTI(rbc::AnimSequenceResource)
+RBC_RTTI(rbc::world::AnimSequenceResource)
 
-namespace rbc {
+namespace rbc::world {
 
 struct RBC_RUNTIME_API IAnimSequenceImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<AnimSequenceResource>().md5(); }
@@ -55,4 +55,4 @@ protected:
     RC<SkeletonResource> skel_ref(AnimSequenceResource *resource) { return resource->ref_skel; }
 };
 
-}// namespace rbc
+}// namespace rbc::world

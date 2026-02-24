@@ -246,7 +246,7 @@ void SkeletalMesh::SendRenderDynamicData_Concurrent(AnimRenderState &state) {
         // cycle counter
         int32_t useLOD = GetPredictedLODLevel();
 
-        SkinResource &ref_skin = GetSkinResource();
+        world::SkinResource &ref_skin = GetSkinResource();
         if (ref_skin.loaded()) {
             SkeletalMeshSceneProxyDynamicData data{this};
             render_object_->Update(state, 0, data, &ref_skin);

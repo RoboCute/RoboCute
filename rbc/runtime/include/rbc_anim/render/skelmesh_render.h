@@ -18,11 +18,11 @@ namespace rbc {
 struct SkeletalMeshSceneProxyDesc {
     explicit SkeletalMeshSceneProxyDesc(const SkeletalMesh *InSkelMesh);
 
-    SkinResource *skin_resource;
+    world::SkinResource *skin_resource;
     world::MeshResource *mesh_resource;
-    SkeletonResource *skel_resource;
+    world::SkeletonResource *skel_resource;
     SkeletalMeshRenderData *render_data;
-    SkelMeshResource *skelmesh_resource;
+    world::SkelMeshResource *skelmesh_resource;
 };
 
 // 给Renderer的统一动态数据接口
@@ -74,7 +74,7 @@ public:
      * * 将ReferenceToLocal矩阵和对应LOD的渲染数据进行CPU/GPU蒙皮，得到更新后的VertexBuffer
      * * 将更新后的VertexBuffer缓存并上传到GPU，后续渲染器调用
      */
-    virtual void Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const SkinResource *InRefSkin) = 0;
+    virtual void Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin) = 0;
 
     virtual bool IsCPUSkinned() { return true; }
     virtual bool IsGPUSkinned() { return false; }
@@ -95,6 +95,6 @@ protected:
  * * Evaluated Bones (InDynamicData)
  * * Inverse Binding Matrices from Reference Skin Resource
  */
-void UpdateRefToLocalMatrices(luisa::vector<AnimFloat4x4> &ReferenceToLocal, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const SkinResource *InRefSkin);
+void UpdateRefToLocalMatrices(luisa::vector<AnimFloat4x4> &ReferenceToLocal, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin);
 
 }// namespace rbc

@@ -1,7 +1,7 @@
 #include "rbc_world/resources/anim_sequence.h"
 #include "rbc_world/type_register.h"
 
-namespace rbc {
+namespace rbc::world {
 
 AnimSequenceResource::AnimSequenceResource() = default;
 AnimSequenceResource::~AnimSequenceResource() {}
@@ -48,18 +48,20 @@ void AnimSequence::GetAnimationPose(AnimationPoseData &OutPoseData, const AnimEx
     }
 }
 
-bool rbc::Serialize<rbc::AnimSequenceResource>::write(rbc::ArchiveWrite &w, const rbc::AnimSequenceResource &v) {
-    w.value<rbc::AnimSequence>(v.anim_sequence, "ref_seq");
-    w.value<rbc::SkeletonResource>(*v.ref_skel, "ref_skel");
-    return true;
-}
-bool rbc::Serialize<rbc::AnimSequenceResource>::read(rbc::ArchiveRead &r, rbc::AnimSequenceResource &v) {
-    r.value<rbc::AnimSequence>(v.anim_sequence, "ref_seq");
-    r.value<rbc::SkeletonResource>(*v.ref_skel, "ref_skel");
-    return true;
-}
-
 // dispose declared here
 DECLARE_WORLD_OBJECT_REGISTER(AnimSequenceResource)
 
+}// namespace rbc::world
+
+namespace rbc {
+bool rbc::Serialize<rbc::world::AnimSequenceResource>::write(rbc::ArchiveWrite &w, const rbc::world::AnimSequenceResource &v) {
+    w.value<rbc::world::AnimSequence>(v.anim_sequence, "ref_seq");
+    w.value<rbc::world::SkeletonResource>(*v.ref_skel, "ref_skel");
+    return true;
+}
+bool rbc::Serialize<rbc::world::AnimSequenceResource>::read(rbc::ArchiveRead &r, rbc::world::AnimSequenceResource &v) {
+    r.value<rbc::world::AnimSequence>(v.anim_sequence, "ref_seq");
+    r.value<rbc::world::SkeletonResource>(*v.ref_skel, "ref_skel");
+    return true;
+}
 }// namespace rbc

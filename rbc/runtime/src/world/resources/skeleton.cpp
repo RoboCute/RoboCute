@@ -2,7 +2,7 @@
 #include "rbc_world/type_register.h"
 #include <rbc_core/binary_file_writer.h>
 
-namespace rbc {
+namespace rbc::world {
 
 void SkeletonResource::serialize_meta(world::ObjSerialize const &ser) const {
     ser.ar.value(skeleton, "skeleton");
@@ -40,15 +40,15 @@ void SkeletonResource::log_brief() {
 // dispose declared here
 DECLARE_WORLD_OBJECT_REGISTER(SkeletonResource)
 
-}// namespace rbc
+}// namespace rbc::world
 
-bool rbc::Serialize<rbc::SkeletonResource>::write(rbc::ArchiveWrite &w, const rbc::SkeletonResource &v) {
+bool rbc::Serialize<rbc::world::SkeletonResource>::write(rbc::ArchiveWrite &w, const rbc::world::SkeletonResource &v) {
     rbc::world::ObjSerialize ser_obj{w};
     v.serialize_meta(ser_obj);
     return true;
 }
 
-bool rbc::Serialize<rbc::SkeletonResource>::read(rbc::ArchiveRead &r, rbc::SkeletonResource &v) {
+bool rbc::Serialize<rbc::world::SkeletonResource>::read(rbc::ArchiveRead &r, rbc::world::SkeletonResource &v) {
     rbc::world::ObjDeSerialize deser_obj{r};
     v.deserialize_meta(deser_obj);
     return true;

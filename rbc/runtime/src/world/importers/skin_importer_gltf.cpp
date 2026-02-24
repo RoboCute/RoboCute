@@ -4,7 +4,7 @@
 namespace rbc {
 
 bool GltfSkinImporter::import(world::Resource *resource_base, luisa::filesystem::path const &path) {
-    auto resource = static_cast<SkinResource *>(resource_base);
+    auto resource = static_cast<world::SkinResource *>(resource_base);
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;
@@ -38,6 +38,10 @@ bool GltfSkinImporter::import(world::Resource *resource_base, luisa::filesystem:
     return true;
 }
 
+}// namespace rbc
+
+namespace rbc::world {
+
 void SkinResource::generate_LUT() {
     if (!ref_skel || !ref_mesh) {
         LUISA_ERROR("Skeleton or mesh not set");
@@ -58,4 +62,5 @@ void SkinResource::generate_LUT() {
         joint_remaps_LUT[i] = static_cast<BoneIndexType>(it - skel->ref_skel().RawJointNames().begin());
     }
 }
-}// namespace rbc
+
+}// namespace rbc::world

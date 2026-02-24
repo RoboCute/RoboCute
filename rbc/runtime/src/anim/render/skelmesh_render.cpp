@@ -69,7 +69,7 @@ SkeletalMeshRenderObject::~SkeletalMeshRenderObject() {}
  * * Inverse Binding Matrices from Reference Skin Resource
  */
 //! IMPORTANT: ComponentSpaceTransform -> RefToLocal
-void UpdateRefToLocalMatrices(luisa::vector<AnimFloat4x4> &ReferenceToLocal, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const SkinResource *InRefSkin) {
+void UpdateRefToLocalMatrices(luisa::vector<AnimFloat4x4> &ReferenceToLocal, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin) {
     RBCZoneScopedN("UpdateRefToLocalMatrices");
     const auto component_space_transforms = InDynamicData.GetComponentSpaceTransforms();
     auto NumBones = component_space_transforms.size();

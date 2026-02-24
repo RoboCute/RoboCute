@@ -1,7 +1,7 @@
 #include "rbc_world/resources/anim_graph.h"
 #include "rbc_world/type_register.h"
 
-namespace rbc {
+namespace rbc::world {
 
 void AnimGraphResource::serialize_meta(world::ObjSerialize const &ser) const {
 }
@@ -20,4 +20,4 @@ bool AnimGraphResource::unsafe_save_to_path() const {
 // dispose declared here
 DECLARE_WORLD_OBJECT_REGISTER(AnimGraphResource)
 
-}// namespace rbc
+}// namespace rbc::world
