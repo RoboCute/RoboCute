@@ -24,7 +24,7 @@ from scripts.prepare import (
     OIDN_NAME,
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
-from scripts.utils import is_empty_folder, get_project_root, rel
+from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info
 from scripts.install import install_resources
 
 import rbc_meta.utils.codegen_util as ut
@@ -38,95 +38,6 @@ from rbc_meta.utils.codegen import (
 
 
 PROJECT_ROOT = get_project_root()
-
-
-def find_process_path(process_name):
-    # mimicks finding executable in PATH
-    path = shutil.which(process_name)
-    if path:
-        return os.path.dirname(path)
-    return None
-
-
-def find_7z_executable():
-    """Find 7z executable for extracting archives."""
-    possible_paths = [
-        "C:/Program Files/7-Zip/7z.exe",
-        "C:/Program Files (x86)/7-Zip/7z.exe",
-        shutil.which("7z"),
-        shutil.which("7za"),
-    ]
-
-    for path in possible_paths:
-        if path and os.path.exists(path):
-            return path
-
-    return None
-
-
-def unzip_dir(
-    zip_path: Path,
-    extract_to: Path
-):
-    """Extract archive to specified directory. Supports 7z, rar, and zip formats.
-
-    Args:
-        zip_dir: Path to the archive file
-        unziped_dir: Directory to extract files to
-    """
-    from pathlib import Path
-    import zipfile
-
-    if not zip_path.exists():
-        print(f"ERROR: Archive file not found: {zip_path}")
-        sys.exit(1)
-
-    # Ensure extract directory exists
-    extract_to.mkdir(parents=True, exist_ok=True)
-
-    # Get file extension
-    suffix = zip_path.suffix.lower()
-
-    if suffix == '.zip':
-        # Use standard library zipfile for zip archives
-        print(f"Extracting {zip_path.name} to {extract_to}...")
-        try:
-            with zipfile.ZipFile(zip_path, 'r') as zf:
-                zf.extractall(extract_to)
-            print(f"✓ Successfully extracted {zip_path.name}")
-        except zipfile.BadZipFile:
-            print(f"ERROR: Invalid or corrupted zip file: {zip_path.name}")
-            sys.exit(1)
-        except Exception as e:
-            print(f"ERROR: Failed to extract {zip_path.name}: {e}")
-            sys.exit(1)
-
-    elif suffix in ['.7z', '.rar']:
-        # Use 7z executable for 7z and rar archives
-        seven_zip = find_7z_executable()
-        if not seven_zip:
-            print(
-                f"ERROR: 7z executable not found. Please install 7-Zip to extract {suffix} files.")
-            print("  Download from: https://www.7-zip.org/")
-            sys.exit(1)
-
-        print(f"Extracting {zip_path.name} to {extract_to}...")
-        try:
-            subprocess.check_call(
-                [seven_zip, "x", str(zip_path), f"-o{extract_to}", "-y"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE
-            )
-            print(f"✓ Successfully extracted {zip_path.name}")
-        except subprocess.CalledProcessError:
-            print(f"ERROR: Failed to extract {zip_path.name}")
-            print(f"  Command: {seven_zip} x {zip_path} -o{extract_to} -y")
-            sys.exit(1)
-
-    else:
-        print(f"ERROR: Unsupported archive format: {suffix}")
-        print("  Supported formats: .zip, .7z, .rar")
-        sys.exit(1)
 
 
 def write_shader_compile_cmd():
@@ -175,13 +86,13 @@ def git_clone_or_pull(git_address, subdir, branch=None):
         if branch:
             args.extend(["-b", branch])
         args.append(abs_subdir)
-        print(f"pulling {git_address} to {abs_subdir}")
+        print_info(f"pulling {git_address} to {abs_subdir}")
     else:
         # Pull
         args = ["git", "-C", abs_subdir, "pull"]
         if branch:
             args.extend(["origin", branch])
-        print(f"pulling {git_address} to {abs_subdir}")
+        print_info(f"pulling {git_address} to {abs_subdir}")
 
     done = False
     for i in range(4):
@@ -196,13 +107,31 @@ def git_clone_or_pull(git_address, subdir, branch=None):
             continue
 
     if not done:
-        print(f"git clone {git_address} error.")
+        print_error(f"git clone {git_address} error.")
         sys.exit(1)
 
 
+new_file_hash = {}
+download_path = Path(PROJECT_ROOT) / "build/download"
+hash_json_path = download_path / "file_hash.json"
+tool_path = Path(PROJECT_ROOT) / "build/tool"
+download_file_hashes: dict = {}
+
+
+def write_download_hash():
+    global new_file_hash, download_file_hashes
+    if len(new_file_hash) == 0:
+        return
+    # Merge download_file_hashes to new_file_hash, if key exists do not cover
+    # This preserves existing hashes while adding new ones
+    download_file_hashes.update(new_file_hash)
+    with open(hash_json_path, "w") as f:
+        json.dump(download_file_hashes, f, indent=0)
+        print_success('file_hash.json dumped.')
+
+
 def download_packages():
-    download_path = Path(PROJECT_ROOT) / "build/download"
-    tool_path = Path(PROJECT_ROOT) / "build/tool"
+    global new_file_hash, download_file_hashes
     download_path.mkdir(parents=True, exist_ok=True)
     address = RBC_SDK_ADDRESS
     lc_address = LC_SDK_ADDRESS
@@ -228,7 +157,7 @@ def download_packages():
             "address": address,
             "path": download_path,
             "unzip": [download_path / RENDER_RESOURCE_NAME,
-                      Path(PROJECT_ROOT) / 'rbc/render_plugin/src']
+                      Path(PROJECT_ROOT) / 'rbc/render_plugin/bin']
         },
         LC_DX_SDK: {
             "address": lc_address,
@@ -238,16 +167,40 @@ def download_packages():
     lua_file = f'''oidn = "{OIDN_NAME}"
 '''
     ut._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
+    if hash_json_path.exists():
+        with open(hash_json_path, "r") as f:
+            download_file_hashes = json.load(f)
 
     def download_file(file: str, map: dict):
-        unzip = map.get('unzip')
-        dst_path = str(map["path"] / file)
+        global new_file_hash, download_file_hashes
+        dst_path = map["path"] / file
+        _curr_hash = None
+
+        def get_curr_path():
+            nonlocal _curr_hash
+            if _curr_hash:
+                return _curr_hash
+            _curr_hash = compute_hash(dst_path)
+            return _curr_hash
+
+        def unzip():
+            nonlocal map
+            unzip = map.get('unzip')
+            if not unzip:
+                return
+            if not is_empty_folder(str(unzip[1])):
+                last_hash = download_file_hashes.get(file)
+                if last_hash and last_hash == get_curr_path():
+                    print_success(f"{file} skip extracting.")
+                    return
+            new_file_hash[file] = get_curr_path()
+            unzip_dir(unzip[0], unzip[1])
+
         if os.path.exists(dst_path):
-            print(f"'{dst_path}' exists, skip download.")
-            if unzip:
-                unzip_dir(unzip[0], unzip[1])
+            print_success(f"'{dst_path}' exists, skip download.")
+            unzip()
             return
-        print(f"Downloading '{dst_path}'...")
+        print_info(f"Downloading '{dst_path}'...")
         response = requests.get(map["address"] + file)
         response.raise_for_status()
         # check if parent directory exists, else mkdir -p
@@ -256,10 +209,8 @@ def download_packages():
 
         with open(dst_path, "wb") as f:
             f.write(response.content)
-        print(f"Download '{dst_path}' successfully!")
-        unzip = map.get('unzip')
-        if unzip:
-            unzip_dir(unzip[0], unzip[1])
+        print_success(f"Download '{dst_path}' successfully!")
+        unzip()
 
     executor = ThreadPoolExecutor(max_workers=8)
     futures1 = [
@@ -283,7 +234,6 @@ def run_git_tasks():
         t = tasks[name]
         git_clone_or_pull(t["url"], t["subdir"], t["branch"])
 
-    print("git...")
     # Use ThreadPoolExecutor to run tasks in parallel
     with ThreadPoolExecutor(max_workers=8) as executor:
         # Stage 1
@@ -306,30 +256,30 @@ def run_git_tasks():
 
 
 def prepare():
+    download_executor, download_future = download_packages()
+    wait(download_future)
+    write_download_hash()
+    for f in download_future:
+        f.result()  # Raise exceptions if any
+    del download_executor
     # ------------------------------ git ------------------------------
-    print("Download, git-clone and git-pull? (y/n)")
+    print_warning("Download, git-clone and git-pull? (y/n)")
     try:
         clone_lc = input().strip()
     except EOFError:
         clone_lc = "n"
 
     if clone_lc.lower() == "y":
-        download_executor, download_future = download_packages()
         run_git_tasks()
-        wait(download_future)
-        for f in download_future:
-            f.result()  # Raise exceptions if any
-        del download_executor
-
     lc_path = os.path.join(PROJECT_ROOT, "thirdparty/LuisaCompute")
     if is_empty_folder(lc_path):
-        print("LuisaCompute not installed.")
+        print_error("LuisaCompute not installed.")
         sys.exit(1)
 
     # ------------------------------ llvm/options ------------------------------
     # We skip the builddir variable as it's dead code in the Lua source provided.
 
-    print("Write options? (y/n)")
+    print_warning("Write options? (y/n)")
     try:
         write_opt = input().strip()
     except EOFError:
@@ -376,14 +326,14 @@ def prepare():
 
         # Write to xmake/options.json
         opt_json_path = rel("xmake/options.json")
-        print(f"Write Options to {opt_json_path}")
+        print_success(f"Write Options to {opt_json_path}")
         with open(opt_json_path, "w") as f:
             json.dump(options, f, indent=4)
         # Write to xmake/options.lua
         lua_sentence = f"""set_config('toolchain', '{XMAKE_GLOBAL_TOOLCHAIN}')
 """
         opt_lua_path = rel("xmake/options.lua")
-        print(f"Write Options to {opt_lua_path}")
+        print_success(f"Write Options to {opt_lua_path}")
         with open(opt_lua_path, "w") as f:
             f.write(lua_sentence)
         write_shader_compile_cmd()
@@ -391,7 +341,7 @@ def prepare():
     # ------------------------------ Clean Up ------------------------------
     # Cleanup previous generated code to prevent disturbation
     # iterate all "generated" directories in the rbc/
-    print("Clean up previous generated code? (y/n)")
+    print_warning("Clean up previous generated code? (y/n)")
     try:
         clean_up = input().strip()
     except EOFError:
@@ -404,9 +354,9 @@ def clean_up_generated_code():
     for generated_dir in Path("rbc").glob("**/generated"):
         if generated_dir.is_dir():
             shutil.rmtree(generated_dir)
-            print(f"Cleaned up {generated_dir}")
+            print_success(f"Cleaned up {generated_dir}")
         else:
-            print(f"{generated_dir} is not a directory")
+            print_error(f"{generated_dir} is not a directory")
             sys.exit(1)
 
 
@@ -424,18 +374,18 @@ def run_generation_task(module_name, function_name, *args):
 
         if hasattr(module, function_name):
             func = getattr(module, function_name)
-            print(f"[{module_name}] Starting generation...")
+            print_info(f"[{module_name}] Starting generation...")
             func(*args)
-            print(f"[{module_name}] Completed successfully.")
+            print_success(f"[{module_name}] Completed successfully.")
         else:
-            print(f"[{module_name}] Error: Function '{function_name}' not found.")
+            print_error(f"[{module_name}] Error: Function '{function_name}' not found.")
             sys.exit(1)
 
     except ImportError as e:
-        print(f"[{module_name}] Error: Failed to import module. {e}")
+        print_error(f"[{module_name}] Error: Failed to import module. {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"[{module_name}] Error: An unexpected error occurred. {e}")
+        print_error(f"[{module_name}] Error: An unexpected error occurred. {e}")
         sys.exit(1)
 
 
@@ -469,10 +419,10 @@ def generate_stub_impl(module_name: str, pyd_dir: Path, output_dir: Path):
     # Verify module can be imported
     try:
         __import__(module_name)
-        print(f"  ✓ Module {module_name} imported successfully")
+        print_success(f"  ✓ Module {module_name} imported successfully")
     except ImportError as e:
-        print(f"  ✗ Error: Cannot import module {module_name}")
-        print(f"    {e}")
+        print_error(f"  ✗ Error: Cannot import module {module_name}")
+        print_error(f"    {e}")
         sys.exit(1)
 
     options = stubgen.Options(
@@ -497,11 +447,11 @@ def generate_stub_impl(module_name: str, pyd_dir: Path, output_dir: Path):
     try:
         stubgen.generate_stubs(options)
     except Exception as e:
-        print(f"Error generating stubs: {e}")
+        print_error(f"Error generating stubs: {e}")
         sys.exit(1)
 
-    print(f"Stub generated for module: {module_name}")
-    print(f"  Output directory: {output_dir.resolve()}")
+    print_success(f"Stub generated for module: {module_name}")
+    print_success(f"  Output directory: {output_dir.resolve()}")
 
 
 def generate_stub():
@@ -511,7 +461,7 @@ def generate_stub():
             task["module_name"], rel(task["pyd_dir"]), rel(task["stub_output"])
         )
     duration = time.time() - start_time
-    print(f"Stub generation finished in {duration:.2f} seconds.")
+    print_success(f"Stub generation finished in {duration:.2f} seconds.")
 
 
 def install():
