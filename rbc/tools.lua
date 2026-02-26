@@ -1,15 +1,3 @@
-includes('generate.lua')
-target('install_oidn')
-set_kind('phony')
-add_rules('lc_install_sdk', {
-    sdk_dir = 'build/download',
-    libnames = {
-        name = oidn
-    }
-})
-set_policy('build.fence', true)
-target_end()
-
 target('compile_shaders')
 set_kind('phony')
 before_build(function(target)

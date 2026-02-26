@@ -28,9 +28,9 @@ class App:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def init(self, project_path: Optional[Path], require_render: bool = True):
+    def init(self, backend_name: str, project_path: Optional[Path], require_render: bool = True):
         self.init_ctx()
-        self.init_device()
+        self.init_device(backend_name)
         lc.init()
         if require_render:
             self.init_render()
@@ -54,8 +54,7 @@ class App:
             self._ctx.init_world(str(world_path), str(world_path))
 
     def init_device(
-        # TODO  use vk backend_name in non-windows platform
-        self, backend_name: str = "dx", program_path: Path = BUILTIN_PROGRAM_PATH
+        self, backend_name:str, program_path: Path = BUILTIN_PROGRAM_PATH
     ):
         shader_path = program_path / f"shader_build_{backend_name}"
 

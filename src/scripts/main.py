@@ -24,7 +24,7 @@ from scripts.prepare import (
     OIDN_NAME,
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
-from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info
+from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug
 from scripts.install import install_resources
 
 import rbc_meta.utils.codegen_util as ut
@@ -152,6 +152,8 @@ def download_packages():
         OIDN_NAME: {
             "address": address,
             "path": download_path,
+            "unzip": [download_path / OIDN_NAME,
+                      download_path / 'oidn']
         },
         RENDER_RESOURCE_NAME: {
             "address": address,
@@ -164,9 +166,6 @@ def download_packages():
             "path": lc_path,
         },
     }
-    lua_file = f'''oidn = "{OIDN_NAME}"
-'''
-    ut._write_string_to(lua_file, PROJECT_ROOT / "rbc/generate.lua")
     if hash_json_path.exists():
         with open(hash_json_path, "r") as f:
             download_file_hashes = json.load(f)
@@ -191,13 +190,13 @@ def download_packages():
             if not is_empty_folder(str(unzip[1])):
                 last_hash = download_file_hashes.get(file)
                 if last_hash and last_hash == get_curr_path():
-                    print_success(f"{file} skip extracting.")
+                    print_debug(f"{file} skip extracting.")
                     return
             new_file_hash[file] = get_curr_path()
             unzip_dir(unzip[0], unzip[1])
 
         if os.path.exists(dst_path):
-            print_success(f"'{dst_path}' exists, skip download.")
+            print_debug(f"'{dst_path}' exists, skip download.")
             unzip()
             return
         print_info(f"Downloading '{dst_path}'...")
@@ -378,14 +377,16 @@ def run_generation_task(module_name, function_name, *args):
             func(*args)
             print_success(f"[{module_name}] Completed successfully.")
         else:
-            print_error(f"[{module_name}] Error: Function '{function_name}' not found.")
+            print_error(
+                f"[{module_name}] Error: Function '{function_name}' not found.")
             sys.exit(1)
 
     except ImportError as e:
         print_error(f"[{module_name}] Error: Failed to import module. {e}")
         sys.exit(1)
     except Exception as e:
-        print_error(f"[{module_name}] Error: An unexpected error occurred. {e}")
+        print_error(
+            f"[{module_name}] Error: An unexpected error occurred. {e}")
         sys.exit(1)
 
 

@@ -17,6 +17,7 @@ for target_name, is_standalone in pairs(targets) do
                 local ignore_files = {
                     rbc_context_impl = true,
                     world_impl = true,
+                    mat_impl = true,
                 }
                 for _, v in ipairs(os.files(path.join(os.scriptdir(), '**.cpp'))) do
                     if not ignore_files[path.basename(v)]then

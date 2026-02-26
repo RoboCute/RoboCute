@@ -22,7 +22,7 @@ RC<RenderComponent> RenderComponent::try_get_component(uint user_id) {
     if (iter == render_comp_lists->accel_ids.end()) return {};
     auto obj_ref = get_object_ref(iter->second);
     if (!obj_ref || !obj_ref->is_type_of<RenderComponent>()) return {};
-    return obj_ref.cast_static<RenderComponent>();
+    return std::move(obj_ref).cast_static<RenderComponent>();
 }
 void RenderComponent::_on_transform_update() {
     if (_mesh_tlas_idx != ~0u) {

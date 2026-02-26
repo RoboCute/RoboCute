@@ -96,6 +96,10 @@ def print_success(text: str, end: str = "\n") -> None:
     """Print success message in green."""
     colorful_print(text, fg=Color.GREEN, styles=[Style.BOLD], end=end)
 
+def print_debug(text: str, end: str = "\n") -> None:
+    """Print success message in green."""
+    colorful_print(text, fg=Color.BLUE, styles=[Style.BOLD], end=end)
+
 
 def print_error(text: str, end: str = "\n") -> None:
     """Print error message in red."""
@@ -109,7 +113,7 @@ def print_warning(text: str, end: str = "\n") -> None:
 
 def print_info(text: str, end: str = "\n") -> None:
     """Print info message in blue."""
-    colorful_print(text, fg=Color.CYAN, end=end)
+    print(text, end=end)
 
 # Global project root (initialized on import)
 _PROJECT_ROOT = None

@@ -34,14 +34,25 @@ def make_cube_mesh(scene: re.world.Scene):
     Returns:
         Entity: 创建的实体对象, 包含完整的渲染组件
     """
+    
+    mat0_json = re.world.OpenPBRInterface()
+    mat0_json.set_specular_roughness(0.8)
+    mat0_json.set_weight_metallic(0.3)
+    mat0_json.set_base_albedo(re.world.float3(1.0, 0.710, 0.680))
+    
     mat0 = re.world.MaterialResource()
-    mat0.load_from_json(
-        '{"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.725, 0.710, 0.680]}'
-    )
+    mat0.load_from_json(mat0_json.dump_to_json())
+    del mat0_json
+    
     mat1 = re.world.MaterialResource()
-    mat1.load_from_json(
-        '{"type": "pbr", "specular_roughness": 0.5, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]}'
-    )
+    mat1_json = re.world.OpenPBRInterface()
+    mat1_json.set_specular_roughness(0.5)
+    mat1_json.set_weight_metallic(0.3)
+    mat1_json.set_base_albedo(re.world.float3(0.140, 0.450, 0.091))
+    
+    mat1.load_from_json(mat1_json.dump_to_json())
+    del mat1_json
+    
     mat_vector = lc.capsule_vector()
     mat_vector.emplace_back(mat0._handle)
     mat_vector.emplace_back(mat1._handle)
@@ -301,7 +312,7 @@ def main():
     project_path = Path(args.project)
 
     app = rbc.app.App()  # rbc app singleton
-    app.init(project_path)
+    app.init(project_path=project_path, backend_name=args.backend)
     if not app.ctx:
         print("Context not Valid!")
         return
@@ -314,7 +325,7 @@ def main():
     transform = app.get_display_transform()
     if transform:
         transform.set_pos(lc.double3(0, 0, -1), False)
-
+    app.ctx.enable_camera_control()
     if not app.scene:
         print("Scene not Valid!")
         return
