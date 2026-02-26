@@ -4,7 +4,6 @@
 includes('test_graphics')
 includes('test_project')
 -- has_config('rbc_tools') then
--- includes("test_resource")
 -- includes("test_coro")
 -- includes("test_sql")
 -- end

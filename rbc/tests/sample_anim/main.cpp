@@ -50,7 +50,9 @@ int main(int argc, char *argv[]) {
 
     luisa::fiber::scheduler scheduler;
     RuntimeStaticBase::init_all();
+    PluginManager::init();
     auto dispose_runtime_static = vstd::scope_exit([] {
+        PluginManager::destroy_instance();
         RuntimeStaticBase::dispose_all();
     });
 
@@ -59,18 +61,17 @@ int main(int argc, char *argv[]) {
         backend = argv[1];
     }
 
-    GraphicsUtils utils;
-    PluginManager::init();
-    utils.init_device(
+    auto utils = luisa::make_unique<GraphicsUtils>();
+    utils->init_device(
         argv[0],
         backend.c_str());
-    utils.init_graphics(
-        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils.backend_name()));
-    utils.init_render();
-    auto pipe_ctx = utils.register_render_pipectx();
-    auto &render_settings = utils.render_settings(pipe_ctx);
-    Window window{luisa::string{"sample_anim_"} + utils.backend_name(), uint2(1024), true};
-    utils.init_display(window.size(), window.native_display(), window.native_handle());
+    utils->init_graphics(
+        RenderDevice::instance().lc_ctx().runtime_directory().parent_path() / (luisa::string("shader_build_") + utils->backend_name()));
+    utils->init_render();
+    auto pipe_ctx = utils->register_render_pipectx();
+    auto &render_settings = utils->render_settings(pipe_ctx);
+    Window window{luisa::string{"sample_anim_"} + utils->backend_name(), uint2(1024), true};
+    utils->init_display(window.size(), window.native_display(), window.native_handle());
 
     uint64_t frame_index = 0;
     Clock clk;
@@ -84,7 +85,9 @@ int main(int argc, char *argv[]) {
         luisa::filesystem::create_directories(resource_dir);
     }
 
-    world::init_world(resource_dir);
+    // New init_world API with meta_path and binary_path
+    world::init_world(resource_dir, resource_dir);
+
     // Load skybox
     RC<world::TextureResource> skybox;
     {
@@ -104,9 +107,9 @@ int main(int argc, char *argv[]) {
             if (skybox) {
                 tex_loader.finish_task();
                 skybox->install();
-                utils.update_texture(skybox->get_image());
+                utils->update_texture(skybox->get_image());
                 RC<DeviceImage> image{skybox->get_image()};
-                utils.render_plugin()->update_skybox(image);
+                utils->render_plugin()->update_skybox(image);
                 LUISA_INFO("Skybox loaded from: {}", luisa::to_string(sky_path));
             }
         } else {
@@ -184,12 +187,12 @@ int main(int argc, char *argv[]) {
 
         // Initialize mesh device resource
         loaded_mesh->install();
-        utils.update_mesh_data(loaded_mesh->device_mesh(), false);
+        utils->update_mesh_data(loaded_mesh->device_mesh(), false);
 
         // Initialize texture device resources
         for (auto &tex : scene_data.textures) {
             if (tex) {
-                utils.update_texture(tex->get_image());
+                utils->update_texture(tex->get_image());
             }
         }
 
@@ -230,7 +233,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Camera setup
-    auto &cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
+    auto &cam = utils->render_settings(pipe_ctx).read_mut<Camera>();
     CameraController cam_controller;
     cam_controller.camera = &cam;
     cam.fov = radians(80.f);
@@ -302,10 +305,10 @@ int main(int argc, char *argv[]) {
                     window.poll_events();
             }
 
-            auto &cam = utils.render_settings(pipe_ctx).read_mut<Camera>();
-            if (any(window_size != utils.dst_image().size())) {
+            auto &cam = utils->render_settings(pipe_ctx).read_mut<Camera>();
+            if (any(window_size != utils->dst_image().size())) {
                 RBCZoneScopedN("Resize Swapchain");
-                utils.resize_swapchain(window_size, window.native_display(), window.native_handle());
+                utils->resize_swapchain(window_size, window.native_display(), window.native_handle());
                 frame_index = 0;
             }
 
@@ -335,7 +338,7 @@ int main(int argc, char *argv[]) {
                 // skelmesh->time += delta_time;
                 skelmesh->update_render();
                 // update BLAS
-                utils.build_transforming_mesh(skelmesh->GetRuntimeMesh()->device_transforming_mesh());
+                utils->build_transforming_mesh(skelmesh->GetRuntimeMesh()->device_transforming_mesh());
             }
             {
                 auto &frame_settings = render_settings.read_mut<FrameSettings>();
@@ -344,7 +347,7 @@ int main(int argc, char *argv[]) {
             {
                 RBCZoneScopedN("Render Tick");
                 auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
-                utils.tick(
+                utils->tick(
                     tick_stage);
             }
 
@@ -360,7 +363,7 @@ int main(int argc, char *argv[]) {
                     pos.x += sin(delta_time);
                 }
 
-                utils.update_mesh_data(render_comp->mesh_ref()->device_mesh(), true);
+                utils->update_mesh_data(render_comp->mesh_ref()->device_mesh(), true);
             }
 
             ++frame_index;
@@ -368,7 +371,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    utils.dispose([&]() {
+    utils->dispose([&]() {
         // remove ref-counted resources
         loaded_materials.clear();
         loaded_mesh.reset();
@@ -381,6 +384,8 @@ int main(int argc, char *argv[]) {
         // Destroy world (this will check for leaks)
         world::destroy_world();
     });
+
+    utils.reset();
 
     return 0;
 }
