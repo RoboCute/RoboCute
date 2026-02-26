@@ -4,6 +4,7 @@
 #include <rbc_render/utils/heitz_sobol.h>
 #include <rbc_render/accum_pass.h>
 #include <rbc_render/renderer_data.h>
+#include <rbc_render/editing_pass.h>
 #include <rbc_graphics/texture/tex_stream_manager.h>
 #include <rbc_graphics/render_device.h>
 
@@ -103,11 +104,20 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     const auto &cam = ctx.pipeline_settings.read<Camera>();
 
     const auto &sky_heap = ctx.pipeline_settings.read<SkyHeapIndices>();
-    Image<uint> id_map = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
+    Image<uint> id_map_val;
+    Image<uint> const *id_map;
+    if (!frame_settings.id_img) {
+        id_map_val = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
+        id_map = &id_map_val;
+    } else {
+        id_map = frame_settings.id_img;
+    };
+    auto edit = pipeline.get_pass<EditingPass>();
+    bool write_id_map = (edit && edit->actived()) || frame_settings.id_img;
     if (!accel || accel.size() == 0) {
         cmdlist << (*draw_sky_shader)(
                        emission,
-                       id_map,
+                       *id_map,
                        scene.image_heap(),
                        scene.volume_heap(),
                        sky_heap.sky_heap_idx,
@@ -116,7 +126,8 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                        cam_data.inv_vp,
                        make_float3(cam.position),
                        jitter_data.jitter,
-                       frame_settings.frame_index)
+                       frame_settings.frame_index,
+                       write_id_map)
                        .dispatch(frame_settings.render_resolution);
         return;
     }
@@ -154,6 +165,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     ////////// Physical camera
 
     offline::PTArgs pt_args{};
+    pt_args.write_id_map = write_id_map;
     pt_args.resource_to_rec2020_mat = frame_settings.to_rec2020_matrix;
     pt_args.world_2_sky_mat = cam_data.world_to_sky;
     pt_args.sky_heap_idx = sky_heap.sky_heap_idx;
@@ -232,7 +244,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 accel,
                 emission,
                 accum_pass_ctx->hdr,
-                id_map,
+                *id_map,
                 geo_buffer.view(),
                 *frame_settings.albedo_buffer,
                 *frame_settings.normal_buffer,
@@ -252,7 +264,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 accel,
                 emission,
                 accum_pass_ctx->hdr,
-                id_map,
+                *id_map,
                 geo_buffer.view(),
                 frame_settings.pt_geometry_buffer ? frame_settings.pt_geometry_buffer : multibounce_buffer_counter.view().as<float>(),
                 multibounce_buffer.view(),

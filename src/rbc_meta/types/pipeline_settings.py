@@ -171,6 +171,7 @@ class FrameSettings:
     geometry_channel: GeometryType
     resolved_img: LCImage[float]
     dst_img: Pointer[Const[LCImage[float]]]
+    id_img: Pointer[Const[LCImage[uint]]]
 
     _cpp_init = {
         "resource_color_space": "ResourceColorSpace::Rec709",

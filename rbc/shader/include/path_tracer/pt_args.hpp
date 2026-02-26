@@ -37,6 +37,7 @@ struct PTArgs {
     bool enable_physical_camera;
     bool reset_emission;
     bool require_reject;
+    bool write_id_map;
 };
 struct MultiBouncePixel {
     std::array<float, 3> beta;

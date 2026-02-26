@@ -43,6 +43,7 @@ struct PTPipelineSettings {
 };
 struct RenderView {
     luisa::compute::Image<float> const *img{};
+    luisa::compute::Image<uint> const *id_img{};
     uint2 view_offset_pixels;
     uint2 view_size_pixels{~0u};
 };

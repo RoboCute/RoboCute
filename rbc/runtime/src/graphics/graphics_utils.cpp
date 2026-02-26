@@ -226,6 +226,7 @@ void GraphicsUtils::tick(
         frame_settings.display_resolution = min(render_view.view_size_pixels, img->size() - frame_settings.display_offset);
         frame_settings.render_resolution = frame_settings.display_resolution;// desired for super-sampling
         frame_settings.dst_img = img;
+        frame_settings.id_img = render_view.id_img;
         frame_settings.albedo_buffer = nullptr;
         frame_settings.normal_buffer = nullptr;
         frame_settings.radiance_buffer = nullptr;

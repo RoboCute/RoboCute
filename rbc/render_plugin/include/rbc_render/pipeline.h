@@ -28,7 +28,7 @@ public:
     template<typename T>
         requires(std::is_base_of_v<Pass, T>)
     T *get_pass() const {
-        return static_cast<T *>(_get_pass(TypeInfo::get()));
+        return static_cast<T *>(_get_pass(TypeInfo::template get<T>()));
     }
 
     Pipeline();

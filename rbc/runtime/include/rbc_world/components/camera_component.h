@@ -23,6 +23,7 @@ public:
     double aperture = 1.4f;
     double focus_distance = 2.0f;
     luisa::compute::Image<float> dst_image;
+    luisa::compute::Image<uint> id_image;
     luisa::uint2 view_offset_pixels{};
     luisa::uint2 view_size_pixels{~0u};
     void *render_pipe_ctx() const;

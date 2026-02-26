@@ -136,7 +136,16 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto grid_editor = ctx.pipeline_settings.read_if<GridDrawer>();
     const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
     const auto &cam = ctx.pipeline_settings.read<Camera>();
-    auto id_map = render_device.get_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
+    Image<uint> id_map_val;
+    Image<uint> const *id_map{};
+    if (!frame_settings.id_img) {
+        id_map_val = render_device.get_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
+        if (id_map_val)
+            id_map = &id_map_val;
+    } else {
+        id_map = frame_settings.id_img;
+    };
+
     if (grid_editor) {
         auto &pass_ctx = ctx.mut.get_pass_context_mut<RasterPassContext>();
         if (pass_ctx && pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frame_settings.render_resolution)) {
@@ -285,7 +294,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 return reqs[i].second.screen_uv;
             });
             std::memcpy(require_buffer.mapped_ptr(), req_coords.data(), req_coords.size_bytes());
-            cmdlist << click_pick::dispatch_shader(_click_pick, reqs.size(), sm.buffer_heap(), require_buffer.view, id_map, result_buffer.view())
+            cmdlist << click_pick::dispatch_shader(_click_pick, reqs.size(), sm.buffer_heap(), require_buffer.view, *id_map, result_buffer.view())
                     << result_buffer.view().copy_to(result.data());
             cmdlist.add_callback([&ctx,
                                   reqs = std::move(reqs),

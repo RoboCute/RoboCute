@@ -96,7 +96,8 @@ using namespace luisa::shader;
     } else if (hit.hit_procedural()) {
         // procedural to id_map
     }
-    id_map.write(coord, primary_hit);
+    if (args.write_id_map)
+        id_map.write(coord, primary_hit);
     float3 addition_color = float3(0);
     float3 emission_sum = float3(0);
     float3 gbuffer_albedo = float3(0);

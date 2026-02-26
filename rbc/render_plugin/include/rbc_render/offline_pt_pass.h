@@ -49,7 +49,7 @@ private:
         >;
     using DrawSkyShader = Shader2D<
         Image<float>, // _emission,
-        Image<uint>, // _emission,
+        Image<uint>,  // _emission,
         BindlessArray,//& image_heap,
         BindlessArray,//& volume_heap,
         uint,         //sky_idx,
@@ -58,7 +58,8 @@ private:
         float4x4,     //inv_vp,
         float3,       //cam_pos,
         float2,       //jitter
-        uint          // frame_index
+        uint,         // frame_index
+        bool          //write_id_map
         >;
     DrawSkyShader const *draw_sky_shader;
     ShaderBase const *pt_shader;

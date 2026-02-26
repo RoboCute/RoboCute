@@ -76,6 +76,7 @@ void CameraComponent::update_data() {
     auto &rv = render_settings.read_mut<RenderView>();
     rv = RenderView{
         dst_image ? &dst_image : nullptr,
+        id_image ? &id_image : nullptr,
         view_offset_pixels,
         view_size_pixels};
 }
