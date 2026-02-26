@@ -87,6 +87,10 @@ public:
         auto &&src = type.md5();
         return src == dst;
     }
+    template<concepts::RTTIType T>
+    bool is_type_of() const {
+        return is_type_of(TypeInfo::template get<T>());
+    }
     [[nodiscard]] virtual const char *type_name() const = 0;
     [[nodiscard]] virtual vstd::MD5 type_id() const = 0;
     static void *operator new(

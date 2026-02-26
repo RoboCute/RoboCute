@@ -719,7 +719,7 @@ inline RC<U> RC<T>::cast_static() const & {
     if (_ptr) {
         return RC<U>(static_cast<U *>(_ptr));
     } else {
-        return nullptr;
+        return {};
     }
 }
 template<typename T>
@@ -1092,10 +1092,10 @@ inline RCWeak<U> RCWeak<T>::cast_static() const {
         if (auto locker = lock()) {
             return RCWeak<U>(static_cast<U *>(_ptr));
         } else {
-            return nullptr;
+            return {};
         }
     } else {
-        return nullptr;
+        return {};
     }
 }
 

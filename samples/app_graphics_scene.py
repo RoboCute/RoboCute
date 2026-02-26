@@ -336,7 +336,13 @@ def main():
             frame_index = 0
         else:
             frame_index += 1
-
+        # EDITING example
+        
+        # app.ctx.editing_add_click_requires("my_click", lc.float2(0.5))
+        # render_comp = app.ctx.editing_query_click_requires("my_click")
+        # if render_comp:
+        #     print(re.world.TransformComponent(render_comp.entity().get_component('TransformComponent')).position())
+        
         if EXPORT and frame_index == 128:
             img = app.display_image()
             print(img.width)

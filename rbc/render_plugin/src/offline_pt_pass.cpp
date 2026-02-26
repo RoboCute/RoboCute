@@ -232,6 +232,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 accel,
                 emission,
                 accum_pass_ctx->hdr,
+                id_map,
                 geo_buffer.view(),
                 *frame_settings.albedo_buffer,
                 *frame_settings.normal_buffer,

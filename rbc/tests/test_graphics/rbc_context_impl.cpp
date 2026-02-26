@@ -25,6 +25,7 @@
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/texture.h>
 #include <rbc_world/components/transform_component.h>
+#include <rbc_world/components/render_component.h>
 #include <rbc_world/components/camera_component.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_core/state_map.h>
@@ -532,5 +533,45 @@ void BuiltinKernels::image_to_buffer(void *this_, luisa::compute::TextureCreatio
             LUISA_ERROR("Buffer stride must be 2 bytes (int-16) or 4 bytes (int-32).");
         }
     }
+}
+void RBCContext::editing_add_click_requires(void *this_, luisa::string_view name, luisa::float2 uv) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
+    if (!c.display_cam_entity) [[unlikely]] {
+        LUISA_ERROR("Display camera not initialized.");
+    }
+    auto *cam_comp = c.display_cam_entity->get_component<world::CameraComponent>();
+    if (!cam_comp) [[unlikely]] {
+        LUISA_ERROR("Display camera component not found.");
+    }
+    auto &render_settings = c.utils->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(cam_comp->render_pipe_ctx()));
+    auto *click_mng = &render_settings.read_mut<ClickManager>();
+    click_mng->add_require(luisa::string{name}, ClickRequire{.screen_uv = uv});
+}
+void *RBCContext::editing_query_click_requires(void *this_, luisa::string_view name) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
+    if (!c.display_cam_entity) [[unlikely]] {
+        LUISA_ERROR("Display camera not initialized.");
+    }
+    auto *cam_comp = c.display_cam_entity->get_component<world::CameraComponent>();
+    if (!cam_comp) [[unlikely]] {
+        LUISA_ERROR("Display camera component not found.");
+    }
+    auto &render_settings = c.utils->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(cam_comp->render_pipe_ctx()));
+    auto *click_mng = &render_settings.read_mut<ClickManager>();
+    auto click_result = click_mng->query_result(name);
+    if (!click_result) {
+        return nullptr;
+    }
+    auto elem = SceneManager::instance().accel_manager().try_get_accel_element(click_result->inst_id);
+    if (!elem) {
+        return nullptr;
+    }
+    auto ptr = world::RenderComponent::try_get_component(elem->user_id);
+    if (!ptr) {
+        return nullptr;
+    }
+    return ptr.get();
 }
 }// namespace rbc

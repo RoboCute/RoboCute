@@ -28,9 +28,7 @@ using namespace luisa::shader;
 [[kernel_2d(16, 8)]] int kernel(
     Image<float> &emission_img,
     Image<float> &last_img,
-#ifndef OFFLINE_DENOISER
     Image<uint> &id_map,
-#endif
     Buffer<GBuffer> gbuffers,
 #ifdef OFFLINE_DENOISER
     Buffer<float> albedo_buffer,
@@ -89,7 +87,6 @@ using namespace luisa::shader;
     }
     ProceduralGeometry procedural_geometry;
     auto hit = rbc_trace_closest(ray, args, sampler, procedural_geometry);
-#ifndef OFFLINE_DENOISER
     uint4 primary_hit(max_uint32, max_uint32, 0, 0);
     if (hit.hit_triangle()) {
         primary_hit.x = hit.inst;
@@ -100,7 +97,6 @@ using namespace luisa::shader;
         // procedural to id_map
     }
     id_map.write(coord, primary_hit);
-#endif
     float3 addition_color = float3(0);
     float3 emission_sum = float3(0);
     float3 gbuffer_albedo = float3(0);

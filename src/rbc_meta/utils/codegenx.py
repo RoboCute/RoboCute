@@ -46,6 +46,7 @@ from rbc_meta.utils.templates import (
     PY_INIT_METHOD_TEMPLATE,
     PY_INIT_METHOD_TEMPLATE_EXTERNAL,
     PY_DISPOSE_METHOD_TEMPLATE,
+    PY_BOOL_METHOD_TEMPLATE,
     PY_METHOD_TEMPLATE,
     PYBIND_CODE_TEMPLATE,
     PYBIND_METHOD_NAME_TEMPLATE,
@@ -393,7 +394,7 @@ class CodegenResitry:
                 )
 
                 dispose_method = PY_DISPOSE_METHOD_TEMPLATE.substitute(INDENT=INDENT)
-
+            dispose_method += PY_BOOL_METHOD_TEMPLATE.substitute(INDENT=INDENT)
             pybind_methods_list = []
             if info.create_instance:
                 pybind_methods_list.append(f"create__{struct_name}__")

@@ -47,6 +47,7 @@ from rbc_meta.utils.templates import (
     PY_DISPOSE_METHOD_TEMPLATE,
     PY_METHOD_TEMPLATE,
     PY_METHOD_DISPOSE_TEMPLATE,
+    PY_BOOL_METHOD_TEMPLATE,
     PYBIND_CODE_TEMPLATE,
     PYBIND_METHOD_NAME_TEMPLATE,
     PYBIND_ENUM_BINDING_TEMPLATE,
@@ -383,7 +384,6 @@ def py_interface_gen(
     registry = ReflectionRegistry()
     INDENT = DEFAULT_INDENT
     type_to_cls_info = {}
-
     def get_class_expr(key: str, info: ClassInfo):
         if info.is_enum:
             return "", []
@@ -399,7 +399,6 @@ def py_interface_gen(
             )
 
             dispose_method = PY_DISPOSE_METHOD_TEMPLATE.substitute(INDENT=INDENT)
-
         pybind_methods_list = []
         if info.create_instance:
             pybind_methods_list.append(f"create__{struct_name}__")

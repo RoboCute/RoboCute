@@ -24,6 +24,8 @@
 #include <rbc_plugin/plugin_manager.h>
 #include <tracy_wrapper.h>
 #include <rbc_core/state_map.h>
+#include <rbc_world/components/transform_component.h>
+#include <rbc_world/components/render_component.h>
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
@@ -259,6 +261,14 @@ int main(int argc, char *argv[]) {
                 if (stage == MouseStage::Clicked) {
                     auto click_result = click_mng->query_result("click");
                     if (click_result) {
+                        // Click result to world component example
+                        auto elem = SceneManager::instance().accel_manager().try_get_accel_element(click_result->inst_id);
+                        if (elem) {
+                            auto ptr = world::RenderComponent::try_get_component(elem->user_id);
+                            if(ptr){
+                                LUISA_INFO("Clicked RenderComponent {}", ptr->entity()->get_component<world::TransformComponent>()->position());
+                            }
+                        }
                         dragged_object_ids.push_back(click_result->inst_id);
                     }
                 } else if (stage == MouseStage::Dragging) {

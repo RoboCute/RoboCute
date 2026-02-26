@@ -194,7 +194,9 @@ ${INIT_METHOD}
 ${DISPOSE_METHOD}
 ${METHODS_EXPR}
 """)
-
+PY_BOOL_METHOD_TEMPLATE = Template("""${INDENT}def __bool__(self):
+${INDENT}${INDENT}return self._handle is not None
+""")
 PY_INIT_METHOD_TEMPLATE = Template("""${INDENT}def __init__(self, *args):
 ${INDENT}${INDENT}if len(args) == 0:
 ${INDENT}${INDENT}${INDENT}self._handle = create__${STRUCT_NAME}__()

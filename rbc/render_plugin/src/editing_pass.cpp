@@ -137,10 +137,6 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
     const auto &cam = ctx.pipeline_settings.read<Camera>();
     auto id_map = render_device.get_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
-    if (!id_map) {
-        LUISA_ERROR("ID map is missing, must disable editing pass");
-        return;
-    }
     if (grid_editor) {
         auto &pass_ctx = ctx.mut.get_pass_context_mut<RasterPassContext>();
         if (pass_ctx && pass_ctx->depth_buffer && any(pass_ctx->depth_buffer.size() != frame_settings.render_resolution)) {
@@ -275,7 +271,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 }
             });
         }
-        if (!click_manager->_requires.empty()) {
+        if (!click_manager->_requires.empty() && id_map) {
             // click
             auto &reqs = click_manager->_requires;
             auto require_buffer = sm.host_upload_buffer().allocate_upload_buffer<float2>(reqs.size());
@@ -302,6 +298,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 }
             });
         }
+        click_manager->_requires.clear();
         // frame selection
         luisa::vector<uint> selection_result;
         luisa::spin_mutex selection_mtx;

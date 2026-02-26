@@ -16,11 +16,8 @@ private:
     ObjectRenderType _type{};
     luisa::vector<MatCode> _material_codes;
     luisa::vector<RC<MaterialResource>> _materials;
-    union {
-        uint _mesh_tlas_idx;
-        uint _mesh_light_idx;
-        uint _procedural_idx;
-    };
+    uint _mesh_tlas_idx{~0u};
+    uint _mesh_light_idx{~0u};
 
     void _on_transform_update();
 public:
@@ -35,7 +32,10 @@ public:
     void remove_object();
     void update_object(luisa::span<RC<MaterialResource> const> materials = {}, MeshResource *mesh = nullptr);
     void update_data() override;
+    static RC<RenderComponent> try_get_component(uint user_id);
 private:
+    void _remove_tlas_idx();
+    void _add_tlas_idx();
     void _update_object_pos(float4x4 matrix);
 };
 }// namespace rbc::world

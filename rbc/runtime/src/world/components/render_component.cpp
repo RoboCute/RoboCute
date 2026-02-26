@@ -6,10 +6,24 @@
 #include <rbc_world/resources/mesh.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_world/entity.h>
+#include <rbc_core/runtime_static.h>
 /*
 TODO: only should update light bvh while in ray-tracing mode
 */
 namespace rbc::world {
+struct RenderComponentLists {
+    rbc::shared_atomic_mutex _mtx;
+    luisa::unordered_map<uint32_t, vstd::Guid> accel_ids;// user_id : RenderComponent
+};
+static RuntimeStatic<RenderComponentLists> render_comp_lists;
+RC<RenderComponent> RenderComponent::try_get_component(uint user_id) {
+    std::shared_lock lck{render_comp_lists->_mtx};
+    auto iter = render_comp_lists->accel_ids.find(user_id);
+    if (iter == render_comp_lists->accel_ids.end()) return {};
+    auto obj_ref = get_object_ref(iter->second);
+    if (!obj_ref || !obj_ref->is_type_of<RenderComponent>()) return {};
+    return obj_ref.cast_static<RenderComponent>();
+}
 void RenderComponent::_on_transform_update() {
     if (_mesh_tlas_idx != ~0u) {
         auto tr = entity()->get_component<TransformComponent>();
@@ -140,15 +154,29 @@ static luisa::vector<float> material_emissions(luisa::span<RC<MaterialResource> 
 RenderComponent::~RenderComponent() {
     remove_object();
 }
+void RenderComponent::_remove_tlas_idx() {
+    std::lock_guard lck{render_comp_lists->_mtx};
+    render_comp_lists->accel_ids.erase(_mesh_tlas_idx);
+}
+void RenderComponent::_add_tlas_idx() {
+    std::lock_guard lck{render_comp_lists->_mtx};
+    render_comp_lists->accel_ids.try_emplace(_mesh_tlas_idx, guid());
+}
+
 void RenderComponent::remove_object() {
     auto sm = SceneManager::instance_ptr();
     if (_mesh_ref && _mesh_ref->device_mesh()) {
         _mesh_ref.reset();
     }
     auto dsp = vstd::scope_exit([&]() {
+        if (_mesh_tlas_idx != ~0u) {
+            _remove_tlas_idx();
+        }
         _mesh_tlas_idx = ~0u;
+        _mesh_light_idx = ~0u;
     });
     if (!sm || _mesh_tlas_idx == ~0u) return;
+
     switch (_type) {
         case ObjectRenderType::Mesh:
             sm->accel_manager().remove_mesh_instance(
@@ -166,7 +194,7 @@ void RenderComponent::remove_object() {
                 sm->buffer_allocator(),
                 sm->buffer_uploader(),
                 sm->dispose_queue(),
-                _procedural_idx);
+                _mesh_tlas_idx);
             break;
     }
 }
@@ -245,6 +273,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                         sm.buffer_allocator(),
                         sm.buffer_uploader(),
                         _mesh_tlas_idx);
+                    _remove_tlas_idx();
                     auto emissions = material_emissions(_materials);
                     _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                         render_device->lc_main_cmd_list(),
@@ -252,6 +281,8 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                         matrix,
                         emissions,
                         _material_codes);
+                    _mesh_tlas_idx = Lights::instance()->mesh_lights.light_data[_mesh_light_idx].tlas_id;
+                    _add_tlas_idx();
                     _type = ObjectRenderType::EmissionMesh;
                 } else {
                     sm.accel_manager().set_mesh_instance(
@@ -264,11 +295,14 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                         mesh->mesh_data(),
                         _material_codes,
                         matrix);
+                    _mesh_light_idx = ~0u;
                 }
                 break;
             case ObjectRenderType::EmissionMesh:
                 if (!is_emission) {
                     Lights::instance()->remove_mesh_light(_mesh_light_idx);
+                    _mesh_light_idx = ~0u;
+                    _remove_tlas_idx();
                     _mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
                         render_device->lc_main_cmd_list(),
                         sm.host_upload_buffer(),
@@ -278,6 +312,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                         mesh->mesh_data(),
                         _material_codes,
                         matrix);
+                    _add_tlas_idx();
                     _type = ObjectRenderType::Mesh;
                 } else {
                     auto emissions = material_emissions(_materials);
@@ -289,6 +324,9 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                         emissions,
                         _material_codes,
                         &m);
+                    _remove_tlas_idx();
+                    _mesh_tlas_idx = Lights::instance()->mesh_lights.light_data[_mesh_light_idx].tlas_id;
+                    _add_tlas_idx();
                 }
                 break;
             case ObjectRenderType::Procedural: {
@@ -306,6 +344,8 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                 matrix,
                 emissions,
                 _material_codes);
+            _mesh_tlas_idx = Lights::instance()->mesh_lights.light_data[_mesh_light_idx].tlas_id;
+            _add_tlas_idx();
             _type = ObjectRenderType::EmissionMesh;
         } else {
             _mesh_tlas_idx = sm.accel_manager().emplace_mesh_instance(
@@ -317,6 +357,8 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                 mesh->mesh_data(),
                 _material_codes,
                 matrix);
+            _mesh_light_idx = ~0u;
+            _add_tlas_idx();
             _type = ObjectRenderType::Mesh;
         }
     }
@@ -347,7 +389,7 @@ void RenderComponent::_update_object_pos(float4x4 matrix) {
         } break;
         case ObjectRenderType::Procedural:
             sm.accel_manager().set_procedural_instance(
-                _procedural_idx,
+                _mesh_tlas_idx,
                 matrix,
                 0xffu,
                 true);
@@ -356,16 +398,7 @@ void RenderComponent::_update_object_pos(float4x4 matrix) {
 }
 
 uint RenderComponent::get_tlas_index() const {
-    switch (_type) {
-        case ObjectRenderType::Mesh:
-            return _mesh_tlas_idx;
-        case ObjectRenderType::EmissionMesh:
-            return Lights::instance()->mesh_lights.light_data[_mesh_light_idx].tlas_id;
-        case ObjectRenderType::Procedural:
-            return _procedural_idx;
-        default:
-            return ~0u;
-    }
+    return _mesh_tlas_idx;
 }
 
 DECLARE_WORLD_OBJECT_REGISTER(RenderComponent);
