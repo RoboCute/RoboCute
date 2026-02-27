@@ -1,20 +1,18 @@
-import robocute as rbc
-import robocute.rbc_ext.luisa as lc
-import robocute.rbc_ext as re
+import inspect
 
 
 def _reflect_function(func, func_name):
-    import inspect
     sig = inspect.signature(func)
-    d = []
-    ret_anno = sig.return_annotation
+    types = []
+    names = []
     for name, param in sig.parameters.items():
         anno = param.annotation
+        names.append(name)
         if anno == inspect._empty:
             raise Exception(
                 f"Error: function '{func_name}' argument '{param.name}' has no annotation.")
-        d.append(param.annotation)
-    return d
+        types.append(param.annotation)
+    return types, names
 
 
 def _parse_function(code: str):
@@ -120,6 +118,57 @@ class CLITable:
         # name : [function: func, {arg_count}]
         self._func_table = {}
         self._context = {}
+        exec('''
+from robocute.rbc_ext.luisa import (
+    # Vector types
+    float2,
+    float3,
+    float4,
+    int2,
+    int3,
+    int4,
+    uint2,
+    uint3,
+    uint4,
+    double2,
+    double3,
+    double4,
+    bool2,
+    bool3,
+    bool4,
+    half2,
+    half3,
+    half4,
+    short2,
+    short3,
+    short4,
+    ushort2,
+    ushort3,
+    ushort4,
+    # Matrix types
+    float2x2,
+    float3x3,
+    float4x4,
+    # make functions for vectors and matrices
+    make_float2,
+    make_float3,
+    make_float4,
+    make_int2,
+    make_int3,
+    make_int4,
+    make_bool2,
+    make_bool3,
+    make_bool4,
+    make_float2x2,
+    make_float3x3,
+    make_float4x4,
+)
+
+import robocute as rbc
+import robocute.rbc_ext.luisa as lc
+import robocute.rbc_ext as re
+from robocute.rbc_ext._C import lcapi_c as lcapi
+''', self._context)
         pass
 
     def _check_cmd(
@@ -147,33 +196,105 @@ class CLITable:
         for i in values:
             value_types.append(type(eval(i, ctx)))
         _check_args(func_name, types, value_types)
-        return func_name, func_value
+        return func_name, func_value, cmd_infos[0]
 
-    def add_function(self, name: str, func):
+    def add_function(self, name: str, func, doc: str = None):
         if not callable(func):
             raise Exception(f"Error: function '{name}' not callable.")
         # {'name': <class 'str'>, 'age': <class 'int'>, 'return': <class 'bool'>}
-        reflected = _reflect_function(func, name)
-        self._func_table[name] = [reflected, func]
+        reflected, arg_names = _reflect_function(func, name)
+        self._func_table[name] = [reflected, func, doc, arg_names]
 
     def execute_cli(self, input_func, end_func):
         while True:
-            command: str = input_func('Input next call: ')
+            command: str = None
+            command_coro = input_func('Input next call:\n')
+            if inspect.isgenerator(command_coro):
+                while True:
+                    try:
+                        v = next(command_coro)
+                        if type(v) == str:
+                            command = v
+                            break
+                        yield None
+                    except StopIteration:
+                        break
+            assert type(command) == str
             command = command.strip()
             if end_func(command):
                 break
             try:
-                _func_nameac70bb6f, _func_valuec9003d9f, = self._check_cmd(
+                func_name, func_value, ret_name = self._check_cmd(
                     command, self._context)
-                self._context[_func_nameac70bb6f] = _func_valuec9003d9f[1]
+                self._context[func_name] = func_value[1]
                 exec(command, self._context)
-                del self._context[_func_nameac70bb6f]
-                yield ''
+                ret_val = self._context[ret_name]
+                if ret_val and inspect.isgenerator(ret_val):
+                    while True:
+                        try:
+                            next(ret_val)
+                        except StopIteration:
+                            break
+                        yield None
+                del self._context[func_name]
+                yield None
             except Exception as e:
                 yield str(e)
 
+    def dump_func_table(self):
+        s = ''
+        for k, v in self._func_table.items():
+            s += f"'{k}': ["
+            is_first = True
+            for t in v[0]:
+                if not is_first:
+                    s += ', '
+                is_first = False
+                s += t.__name__
+            s += ']'
+            if len(v) >= 2 and v[2] is not None:
+                s += '    # Description: ' + v[2]
+            s += '\n'
+        return s
+
+
+def async_input(prompt: str = ''):
+    """
+    Asynchronous input using yield as coroutine.
+
+    This function yields None while waiting for input, allowing other
+    tasks to run concurrently. When input is available, it yields the
+    input string.
+
+    Args:
+        prompt: The prompt string to display to the user.
+
+    Yields:
+        None while waiting for input.
+        str when input is received.
+    """
+    import sys
+    import threading
+    import queue
+
+    user_input = None
+
+    def read_input():
+        nonlocal user_input
+        user_input = input(prompt)
+    # Start input thread
+    thread = threading.Thread(target=read_input, daemon=True)
+    thread.start()
+
+    # Yield None while waiting for input
+    while thread.is_alive():
+        yield None
+    yield user_input
+
 
 if __name__ == '__main__':
+    import time
+
     def example(name: str, value: float, age: int = 18):
         value = (str(value) + ' ' + name + ' ' + str(age))
         return value
@@ -183,18 +304,21 @@ if __name__ == '__main__':
 
     tb = CLITable()
 
-    def add_func(tb: CLITable, name: str):
-        tb.add_function(name, eval(name))
+    def add_func(tb: CLITable, name: str, doc: str = None):
+        tb.add_function(name, eval(name), doc)
 
-    add_func(tb, 'example')
-    add_func(tb, 'my_print')
+    add_func(tb, 'example', 'This is an example function')
+    add_func(tb, 'my_print', 'This is a printer')
     f = tb.execute_cli(
-        input,
+        async_input,
         lambda c: c == 'exit'
     )
+    print(tb.dump_func_table())
     while True:
         try:
             value = next(f)
-            print('Result: ' + str(value))
+            if value:
+                print(value)
+            time.sleep(0.01)
         except StopIteration as e:
             break

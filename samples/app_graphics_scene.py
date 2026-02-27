@@ -10,6 +10,7 @@ import robocute as rbc
 import robocute.rbc_ext.luisa as lc
 import robocute.rbc_ext as re
 from robocute.rbc_ext._C import lcapi_c as lcapi
+import samples.cli as cli
 
 vertex_count = 16
 """网格顶点总数(两个立方体, 每个8个顶点)"""
@@ -36,25 +37,25 @@ def make_cube_mesh(scene: re.world.Scene):
         Entity: 创建的实体对象, 包含完整的渲染组件
     """
     mat0 = re.world.MaterialResource()
-    
+
     mat0_json = re.world.OpenPBRInterface()
     mat0_json.set_specular_roughness(0.8)
     mat0_json.set_weight_metallic(0.3)
     mat0_json.set_base_albedo(re.world.float3(1.0, 0.710, 0.680))
-    
+
     mat0.load_from_json(mat0_json.dump_to_json())
     del mat0_json
-    
+
     mat1 = re.world.MaterialResource()
-    
+
     mat1_json = re.world.OpenPBRInterface()
     mat1_json.set_specular_roughness(0.5)
     mat1_json.set_weight_metallic(0.3)
     mat1_json.set_base_albedo(re.world.float3(0.140, 0.450, 0.091))
-    
+
     mat1.load_from_json(mat1_json.dump_to_json())
     del mat1_json
-    
+
     mat_vector = lc.capsule_vector()
     mat_vector.emplace_back(mat0._handle)
     mat_vector.emplace_back(mat1._handle)
@@ -63,9 +64,10 @@ def make_cube_mesh(scene: re.world.Scene):
     entity.set_name("test_cube")
     entity = scene.get_entity_by_name("test_cube")
     assert entity._handle is not None
-    trans = re.world.TransformComponent(entity.add_component("TransformComponent"))
+    trans = re.world.TransformComponent(
+        entity.add_component("TransformComponent"))
     render = re.world.RenderComponent(entity.add_component("RenderComponent"))
-    
+
     trans.set_pos(lc.double3(0, -1, 1), False)
     trans.set_rotation(lc.float4(0, -1, 0, 0), False)
     cube_mesh = re.world.MeshResource()
@@ -124,7 +126,8 @@ def create_mesh_array(mesh_array):
     # create a cube
     if mesh_array.size != vertex_count * 4 + triangle_count * 3:
         raise Exception("Bad mesh-array size")
-    vertex_arr = np.ndarray(vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+    vertex_arr = np.ndarray(
+        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
     indices_arr = np.ndarray(
         shape=triangle_count * 3,
         dtype=np.uint32,
@@ -309,8 +312,23 @@ def main():
     transform = app.get_display_transform()
     if transform:
         transform.set_pos(lc.double3(0, 0, -1), False)
+    # TUI test
+    tui_table = cli.executor.CLITable()
+    frame_index = 0
+    image_index = 0
 
-    
+    def move_camera(x: float, y: float, z: float) -> None:
+        nonlocal transform, frame_index
+        transform.set_pos(
+            transform.position() + lc.double3(x, y, z), False
+        )
+        frame_index = 0
+    tui_table.add_function('move_camera', move_camera, 'Move the camera.')
+    tui_exec = tui_table.execute_cli(
+        cli.executor.async_input,
+        lambda c: c == 'exit'
+    )
+
     # clear_shader = lc.Shader('gui/clear_shader.bin')
 
     # if EXPORT:
@@ -335,8 +353,7 @@ def main():
 
     entity = make_cube_mesh(app.scene)
     last_time = time.time()
-    frame_index = 0
-    image_index = 0
+
     tick_stage = re.world.TickStage.PathTracingPreview
     # app.run()
     while not app.ctx.should_close():
@@ -349,12 +366,12 @@ def main():
         else:
             frame_index += 1
         # EDITING example
-        
+
         # app.ctx.editing_add_click_requires("my_click", lc.float2(0.5))
         # render_comp = app.ctx.editing_query_click_requires("my_click")
         # if render_comp:
         #     print(re.world.TransformComponent(render_comp.entity().get_component('TransformComponent')).position())
-        
+
         if EXPORT and frame_index == 128:
             img = app.display_image()
             print(img.width)
@@ -362,7 +379,8 @@ def main():
         #     # frame_index = 0
             app.ctx.denoise()
             app.ctx.save_display_image_to(
-                str(Path(__file__).parent / f"screenshot/frame_{image_index}.png")
+                str(Path(__file__).parent /
+                    f"screenshot/frame_{image_index}.png")
             )
             tick_stage = re.world.TickStage.NONE
             # clear_shader(img, lc.float4(1, 0, 1, 1), dispatch_size=(img.width, img.height, 1))
@@ -419,6 +437,13 @@ def main():
 
         #     image_index += 1
         #     app.display_cam.clear_geometry_export_buffer()
+        try:
+            value = next(tui_exec)
+            if value:
+                print(value)
+        except StopIteration:
+            print('Exit from TUI!')
+            break
 
 
 if __name__ == "__main__":
