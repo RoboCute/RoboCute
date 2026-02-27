@@ -29,7 +29,7 @@ from .executor import (
     GraphExecutionResult,
     ExecutionCache,
 )
-import robocute.builtin_nodes
+# import robocute.builtin_nodes
 import os
 from .rbc_ext import world
 
