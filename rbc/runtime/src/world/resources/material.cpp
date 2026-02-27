@@ -101,47 +101,57 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
         unsafe_set_loaded();
     }
 }
+void MaterialResource::_write_content_to(JsonSerializer &json_ser) {
+    std::lock_guard lck{_async_mtx};
+    auto iter = _depended_resources.begin();
+    auto ser_pbr = [&]<typename U>(U &u, char const *name) {
+        using PureU = std::remove_cvref_t<U>;
+        constexpr bool is_index = requires { u.index; };
+        constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
+        if constexpr (is_index) {
+            LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
+            auto res = *iter;
+            if (res && res->base_type() == BaseObjectType::Resource) {
+                auto guid = res->guid();
+                if (guid) {
+                    json_ser._store(guid, name);
+                }
+            }
+            ++iter;
+        } else if constexpr (is_array) {
+            json_ser.start_array();
+            for (auto &i : u) {
+                json_ser._store(i);
+            }
+            json_ser.add_last_scope_to_object(name);
+        } else {
+            json_ser._store(u, name);
+        }
+    };
+    _mat_data.visit([&]<typename T>(T const &t) {
+        if constexpr (std::is_same_v<T, material::OpenPBR>) {
+            json_ser._store("type"sv, "pbr");
+            rbc::detail::serde_openpbr(t, ser_pbr);
+        } else {
+            LUISA_ERROR("Unknown material type.");
+            // TODO: serialize_meta other type
+        }
+    });
+    LUISA_ASSERT(iter == _depended_resources.end(), "Material type mismatch.");
+}
+
 luisa::BinaryBlob MaterialResource::write_content_to() {
     JsonSerializer json_ser;
-    {
-        std::lock_guard lck{_async_mtx};
-        auto iter = _depended_resources.begin();
-        auto ser_pbr = [&]<typename U>(U &u, char const *name) {
-            using PureU = std::remove_cvref_t<U>;
-            constexpr bool is_index = requires { u.index; };
-            constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
-            if constexpr (is_index) {
-                LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
-                auto res = *iter;
-                if (res && res->base_type() == BaseObjectType::Resource) {
-                    auto guid = res->guid();
-                    if (guid) {
-                        json_ser._store(guid, name);
-                    }
-                }
-                ++iter;
-            } else if constexpr (is_array) {
-                json_ser.start_array();
-                for (auto &i : u) {
-                    json_ser._store(i);
-                }
-                json_ser.add_last_scope_to_object(name);
-            } else {
-                json_ser._store(u, name);
-            }
-        };
-        _mat_data.visit([&]<typename T>(T const &t) {
-            if constexpr (std::is_same_v<T, material::OpenPBR>) {
-                json_ser._store("type"sv, "pbr");
-                rbc::detail::serde_openpbr(t, ser_pbr);
-            } else {
-                LUISA_ERROR("Unknown material type.");
-                // TODO: serialize_meta other type
-            }
-        });
-        LUISA_ASSERT(iter == _depended_resources.end(), "Material type mismatch.");
-    }
+    _write_content_to(json_ser);
     return json_ser.write_to();
+}
+
+luisa::string MaterialResource::write_content_to_str() {
+    JsonSerializer json_ser;
+    _write_content_to(json_ser);
+    luisa::string s;
+    json_ser.write_to(s);
+    return s;
 }
 bool MaterialResource::_async_load_from_file() {
     auto path = this->path();

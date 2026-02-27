@@ -1,4 +1,33 @@
 import numpy as np
+import math
+
+
+def euler_to_quaternion(euler_x: float, euler_y: float, euler_z: float) -> np.ndarray:
+    """
+    Convert euler angles (in radians) to quaternion.
+    Rotation order: ZYX (intrinsic rotations, equivalent to XYZ extrinsic).
+
+    Args:
+        euler_x: Rotation around X axis in radians.
+        euler_y: Rotation around Y axis in radians.
+        euler_z: Rotation around Z axis in radians.
+
+    Returns:
+        Quaternion as numpy array [x, y, z, w].
+    """
+    cx = math.cos(euler_x * 0.5)
+    sx = math.sin(euler_x * 0.5)
+    cy = math.cos(euler_y * 0.5)
+    sy = math.sin(euler_y * 0.5)
+    cz = math.cos(euler_z * 0.5)
+    sz = math.sin(euler_z * 0.5)
+
+    x = sx * cy * cz - cx * sy * sz
+    y = cx * sy * cz + sx * cy * sz
+    z = cx * cy * sz - sx * sy * cz
+    w = cx * cy * cz + sx * sy * sz
+
+    return np.array([x, y, z, w])
 
 
 def q2R33(q):

@@ -16,12 +16,14 @@ private:
     MatCode _mat_code;
     bool _loaded : 1 {false};
     bool _dirty : 1 {true};
+    void _write_content_to(JsonSerializer &json_ser);
 public:
     static MatCode default_mat_code();
     auto &mat_code() const { return _mat_code; }
     auto &mat_data() const { return _mat_data; }
     // prepare host data and emplace
     luisa::BinaryBlob write_content_to();
+    luisa::string write_content_to_str();
 
     rbc::coroutine _async_load() override;
     void load_from_json(luisa::string_view json_vec);

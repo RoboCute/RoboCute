@@ -14,7 +14,6 @@ def _reflect_function(func, func_name):
         types.append(param.annotation)
     return types, names
 
-
 def _parse_function(code: str):
     """
     Parse a Python-style function call string.
@@ -113,6 +112,14 @@ def _check_args(
             )
 
 
+class FuncMeta:
+    def __init__(self):
+        self.arg_types = []
+        self.func = None
+        self.doc = None
+        self.arg_names = []
+
+
 class CLITable:
     def __init__(self):
         # name : [function: func, {arg_count}]
@@ -183,12 +190,12 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
                 'Error: invalid function call. Please check your '
                 'command syntax.'
             )
-        func_value = self._func_table.get(func_name)
+        func_value: FuncMeta = self._func_table.get(func_name)
         if func_value is None:
             raise Exception(
                 f"Error: function '{func_name}' not found. "
             )
-        types = func_value[0]
+        types = func_value.arg_types
         # types: {'name': <class 'str'>, 'value': <class 'float'>, 'age': <class 'int'>, 'return': None}
         values = cmd_infos[2]
         # arg_values: ['1.0f', '2.0', 'adfadsf', '33', "'''aabb'''", 'lc.float4(1, 2, 3, 4)']
@@ -202,8 +209,13 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
         if not callable(func):
             raise Exception(f"Error: function '{name}' not callable.")
         # {'name': <class 'str'>, 'age': <class 'int'>, 'return': <class 'bool'>}
-        reflected, arg_names = _reflect_function(func, name)
-        self._func_table[name] = [reflected, func, doc, arg_names]
+        arg_types, arg_names = _reflect_function(func, name)
+        meta = FuncMeta()
+        meta.arg_types = arg_types
+        meta.func = func
+        meta.doc = doc
+        meta.arg_names = arg_names
+        self._func_table[name] = meta
 
     def execute_cli(self, input_func, end_func):
         while True:
@@ -224,20 +236,27 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
             if end_func(command):
                 break
             try:
-                func_name, func_value, ret_name = self._check_cmd(
+                func_name, func_meta, assign_name = self._check_cmd(
                     command, self._context)
-                self._context[func_name] = func_value[1]
-                exec(command, self._context)
-                ret_val = self._context[ret_name]
+                self._context[func_name] = func_meta.func
+                if assign_name is not None:
+                    exec(command, self._context)
+                    ret_val = self._context[assign_name]
+                else:
+                    ret_val = eval(command, self._context)
+                del self._context[func_name]
+                    
                 if ret_val and inspect.isgenerator(ret_val):
                     while True:
                         try:
-                            next(ret_val)
+                            value = next(ret_val)
+                            if value:
+                                yield value
                         except StopIteration:
                             break
                         yield None
-                del self._context[func_name]
-                yield None
+                else:
+                    yield ret_val
             except Exception as e:
                 yield str(e)
 
@@ -246,14 +265,14 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
         for k, v in self._func_table.items():
             s += f"'{k}': ["
             is_first = True
-            for t in v[0]:
+            for t in v.arg_types:
                 if not is_first:
                     s += ', '
                 is_first = False
                 s += t.__name__
             s += ']'
-            if len(v) >= 2 and v[2] is not None:
-                s += '    # Description: ' + v[2]
+            if v.doc:
+                s += '    # Description: ' + v.doc
             s += '\n'
         return s
 
@@ -297,7 +316,9 @@ if __name__ == '__main__':
 
     def example(name: str, value: float, age: int = 18):
         value = (str(value) + ' ' + name + ' ' + str(age))
-        return value
+        yield 'waiting'
+        yield 'waiting'
+        yield 'waiting'
 
     def my_print(s: str):
         print(s)

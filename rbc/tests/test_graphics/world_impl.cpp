@@ -401,6 +401,10 @@ void MaterialResource::load_from_json(void *this_, luisa::string_view json) {
     auto c = static_cast<world::MaterialResource *>(this_);
     c->load_from_json(json);
 }
+luisa::string MaterialResource::dump_json(void *this_) {
+    auto c = static_cast<world::MaterialResource *>(this_);
+    return c->write_content_to_str();
+}
 uint32_t MaterialResource::mat_code(void *this_) {
     auto c = static_cast<world::MaterialResource *>(this_);
     return c->mat_code().value;

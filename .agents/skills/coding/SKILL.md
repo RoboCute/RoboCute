@@ -10,4 +10,6 @@ name: coding
 - 函数名使用 snake_case
 - 每个函数都需要 docstring
 - 单行不超过 100 字符
-- 编写完成后，除非额外要求，不要尝试编译
+- 编写 C++ 完成后，不要尝试编译
+- Python 函数必须写 Type Hints
+- 使用 `uv run <file_path>` 运行测试 Python
