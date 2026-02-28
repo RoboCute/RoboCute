@@ -27,6 +27,7 @@ public:
 
     rbc::coroutine _async_load() override;
     void load_from_json(luisa::string_view json_vec);
+    static RC<MaterialResource> try_get_resource(MatCode code);
 protected:
     bool _install() override;
     void _load_from_json(luisa::string_view json_vec, bool set_to_loaded);

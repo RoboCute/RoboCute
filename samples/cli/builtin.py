@@ -8,6 +8,8 @@ def rbc_app_register(cli_table: executor.CLITable):
     cli_table.add_function('display_cam_add_pos', app.display_cam_add_pos)
     cli_table.add_function('display_cam_rotate', app.display_cam_rotate)
     cli_table.add_function('editing_select_object', app.editing_select_object)
+    cli_table.add_function('editing_select_material', app.editing_select_material)
+    cli_table.add_function('editing_select_submesh_index', app.editing_select_submesh_index)
     cli_table.add_function('entity_transform_set_position',
                            app.entity_transform_set_position)
     cli_table.add_function('entity_transform_get_position',

@@ -24,6 +24,7 @@
 #include <rbc_world/entity.h>
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/texture.h>
+#include <rbc_world/resources/material.h>
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/camera_component.h>
@@ -550,6 +551,10 @@ void RBCContext::editing_add_click_requires(void *this_, luisa::string_view name
 }
 struct SelectQueryImpl : RCBase {
     RC<world::RenderComponent> _comp;
+    RC<world::MaterialResource> _mat;
+    float2 bary;
+    uint submesh_idx{~0u};
+    uint prim_id{~0u};
     bool _valid{};
 };
 void *SelectQuery::_create_() {
@@ -562,10 +567,28 @@ bool SelectQuery::valid(void *this_) {
     auto p = static_cast<SelectQueryImpl *>(this_);
     return p->_valid;
 }
-void *SelectQuery::get(void *this_) {
+void *SelectQuery::get_component(void *this_) {
     auto p = static_cast<SelectQueryImpl *>(this_);
-    // if (!p->_valid) return nullptr;
     return p->_comp.get();
+}
+void *SelectQuery::get_material(void *this_) {
+    auto p = static_cast<SelectQueryImpl *>(this_);
+    auto mat = p->_mat.get();
+    if (!mat) return nullptr;
+    manually_add_ref(mat);
+    return mat;
+}
+luisa::float2 SelectQuery::barycentric(void *this_) {
+    auto p = static_cast<SelectQueryImpl *>(this_);
+    return p->bary;
+}
+uint32_t SelectQuery::get_submesh_index(void *this_) {
+    auto p = static_cast<SelectQueryImpl *>(this_);
+    return p->submesh_idx;
+}
+uint32_t SelectQuery::prim_id(void *this_) {
+    auto p = static_cast<SelectQueryImpl *>(this_);
+    return p->prim_id;
 }
 void *RBCContext::editing_query_click_requires(void *this_, luisa::string_view name) {
     auto &c = *static_cast<ContextImpl *>(this_);
@@ -585,7 +608,13 @@ void *RBCContext::editing_query_click_requires(void *this_, luisa::string_view n
         return r;
     }
     r->_valid = true;
-    if (click_result->inst_id == ~0u) return r;
+    if (click_result->inst_id == ~0u) {
+        return r;
+    }
+    r->bary = click_result->triangle_bary;
+    r->submesh_idx = click_result->submesh_index;
+    r->prim_id = click_result->prim_id;
+    r->_mat = world::MaterialResource::try_get_resource(MatCode{click_result->mat_code});
     auto elem = SceneManager::instance().accel_manager().try_get_accel_element(click_result->inst_id);
     if (!elem) {
         return r;

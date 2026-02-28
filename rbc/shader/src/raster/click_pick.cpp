@@ -19,11 +19,14 @@ struct RayCastResult {
     Buffer<RayCastResult> &out_buffer) {
     auto id = dispatch_id().x;
     uint2 coord = click_buffer.read(id) * float2(img.size());
+    coord = clamp(coord, uint2(0), uint2(img.size() - 1u));
     auto hit_id = img.read(coord);
     RayCastResult r;
     if (hit_id.x == max_uint32 || hit_id.y == max_uint32) {
         r.inst_id = max_uint32;
         r.prim_id = max_uint32;
+        r.mat_code = max_uint32;
+        r.submesh_index = max_uint32;
     } else {
         r.inst_id = hit_id.x;
         r.prim_id = hit_id.y;

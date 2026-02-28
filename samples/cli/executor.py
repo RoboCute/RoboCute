@@ -254,18 +254,16 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
                     while True:
                         try:
                             value = next(ret_val)
-                            if value:
-                                if assign_name is not None:
-                                    self._context[assign_name] = value
+                            if assign_name is not None:
+                                self._context[assign_name] = value
+                            if value is not None:
                                 yield value
                         except StopIteration:
                             break
-                        yield 0
+                        yield None
                 else:
-                    if ret_val:
+                    if ret_val is not None:
                         yield ret_val
-                    else:
-                        yield 0
             except Exception as e:
                 yield str(e)
 
@@ -347,7 +345,7 @@ if __name__ == '__main__':
     while True:
         try:
             value = next(f)
-            if value:
+            if value is not None:
                 print(value)
             time.sleep(0.01)
         except StopIteration as e:

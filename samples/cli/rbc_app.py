@@ -89,7 +89,7 @@ def editing_select_object(uv_x: float, uv_y: float) -> Generator[Optional[re.wor
         yield None
         return
 
-    click_name = "__tui_agent_click__"
+    click_name = "__tui_agent_obj_click__"
     app.ctx.editing_add_click_requires(click_name, lc.float2(uv_x, uv_y))
 
     select_query: re.world.SelectQuery = None
@@ -99,11 +99,58 @@ def editing_select_object(uv_x: float, uv_y: float) -> Generator[Optional[re.wor
             yield None
         else:
             break
-    comp = select_query.get()
+    comp = select_query.get_component()
     if not comp:
         yield None
     else:
         yield comp.entity()
+
+
+def editing_select_material(uv_x: float, uv_y: float) -> Generator[Optional[re.world.MaterialResource], None, None]:
+    global app
+    if app is None:
+        app = rbc.app.App()
+    if app.ctx is None:
+        yield None
+        return
+
+    click_name = "__tui_agent_mat_click__"
+    app.ctx.editing_add_click_requires(click_name, lc.float2(uv_x, uv_y))
+
+    select_query: re.world.SelectQuery = None
+    while True:
+        select_query = app.ctx.editing_query_click_requires(click_name)
+        if not select_query.valid():
+            yield None
+        else:
+            break
+    comp = select_query.get_material()
+    if not comp:
+        yield None
+    else:
+        yield comp
+
+
+def editing_select_submesh_index(uv_x: float, uv_y: float) -> Generator[int, None, None]:
+    global app
+    if app is None:
+        app = rbc.app.App()
+    if app.ctx is None:
+        yield None
+        return
+
+    click_name = "__tui_agent_submesh_click__"
+    app.ctx.editing_add_click_requires(click_name, lc.float2(uv_x, uv_y))
+
+    select_query: re.world.SelectQuery = None
+    while True:
+        select_query = app.ctx.editing_query_click_requires(click_name)
+        if not select_query.valid():
+            yield None
+        else:
+            break
+    yield select_query.get_submesh_index()
+
 
 def entity_transform_set_position(
     entity: re.world.Entity, x: float, y: float, z: float

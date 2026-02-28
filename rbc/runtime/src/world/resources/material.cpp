@@ -12,11 +12,20 @@
 
 namespace rbc::world {
 struct MaterialInst : RBCStruct {
-    luisa::spin_mutex _mat_mtx;
+    rbc::shared_atomic_mutex _mat_mtx;
     luisa::vector<uint> _disposed_mat;
     MatCode _default_mat_code{};
+    luisa::unordered_map<uint32_t, vstd::Guid> mat_code_to_mat;
 };
 static RuntimeStatic<MaterialInst> _mat_inst;
+RC<MaterialResource> MaterialResource::try_get_resource(MatCode code) {
+    std::shared_lock lck{_mat_inst->_mat_mtx};
+    auto iter = _mat_inst->mat_code_to_mat.find(code.value);
+    if (iter == _mat_inst->mat_code_to_mat.end()) return {};
+    auto obj_ref = get_object_ref(iter->second);
+    if (!obj_ref || !obj_ref->is_type_of<MaterialResource>()) return {};
+    return std::move(obj_ref).cast_static<MaterialResource>();
+}
 MatCode MaterialResource::default_mat_code() {
     if (RenderDevice::instance_ptr() && !RenderDevice::is_rendering_thread()) [[unlikely]] {
         LUISA_ERROR("Renderer::update_object can only be called in render-thread.");
@@ -181,6 +190,7 @@ MaterialResource::~MaterialResource() {
     if (_mat_inst) [[likely]] {
         std::lock_guard lck1{_mat_inst->_mat_mtx};
         _mat_inst->_disposed_mat.emplace_back(value);
+        _mat_inst->mat_code_to_mat.erase(value);
     }
 }
 bool MaterialResource::_install() {
@@ -229,6 +239,10 @@ bool MaterialResource::_install() {
                 sm.bindless_allocator(),
                 sm.buffer_uploader(),
                 sm.dispose_queue());
+            {
+                std::lock_guard lck1{_mat_inst->_mat_mtx};
+                _mat_inst->mat_code_to_mat.force_emplace(_mat_code.value, guid());
+            }
         } else {
             sm.mat_manager().set_mat_instance(
                 _mat_code,

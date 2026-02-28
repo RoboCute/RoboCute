@@ -490,7 +490,7 @@ def main():
         #     app.display_cam.clear_geometry_export_buffer()
         try:
             value = next(tui_exec)
-            if value:
+            if value is not None:
                 print(value)
         except StopIteration:
             print('Exit from TUI!')

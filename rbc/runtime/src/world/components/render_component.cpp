@@ -160,7 +160,7 @@ void RenderComponent::_remove_tlas_idx() {
 }
 void RenderComponent::_add_tlas_idx() {
     std::lock_guard lck{render_comp_lists->_mtx};
-    render_comp_lists->accel_ids.try_emplace(_mesh_tlas_idx, guid());
+    render_comp_lists->accel_ids.force_emplace(_mesh_tlas_idx, guid());
 }
 
 void RenderComponent::remove_object() {
