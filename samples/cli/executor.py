@@ -121,7 +121,7 @@ class FuncMeta:
         self.func = None
         self.doc = None
         self.return_type = None
-        self.arg_names = []
+        self.arg_names = None
 
 
 class CLITable:
@@ -281,11 +281,13 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
         for k, v in self._func_table.items():
             s += f"'{k}': ["
             is_first = True
-            for t in v.arg_types:
+            for i in range(len(v.arg_types)):
+                t = v.arg_types[i]
+                name = v.arg_names[i]
                 if not is_first:
                     s += ', '
                 is_first = False
-                s += t.__name__
+                s += f"{name}: {t.__name__}"
             s += ']'
             s += ' -> '
             if v.return_type is not None:
