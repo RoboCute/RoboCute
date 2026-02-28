@@ -1,15 +1,17 @@
 import json
 from typing import Dict, Any, Optional
 import robocute.rbc_ext as re
+import robocute.rbc_ext._C.rbc_ext_c as rbc
 import robocute.rbc_ext.luisa as lc
 
 
 class OpenPBRInterface:
 
-    def ___init__(self):
+    def __init__(self, project: re.world.Project):
         """Initialize an empty OpenPBR material interface."""
         self._data: Dict[str, Any] = {}
         self._data['type'] = 'pbr'
+        self._project = project
 
 
 def _clamp_01(value: float) -> float:
@@ -20,6 +22,26 @@ def _clamp_01(value: float) -> float:
 def _clamp_01_tuple(values: tuple) -> tuple:
     """Clamp each element in a tuple to [0.0, 1.0] range."""
     return tuple(max(0.0, min(1.0, v)) for v in values)
+
+
+def _clamp_neg1_1(value: float) -> float:
+    """Clamp a float value to [-1.0, 1.0] range."""
+    return max(-1.0, min(1.0, value))
+
+
+def _clamp_range(value: float, min_val: float, max_val: float) -> float:
+    """Clamp a float value to [min_val, max_val] range."""
+    return max(min_val, min(max_val, value))
+
+
+def _clamp_int_range(value: int, min_val: int, max_val: int) -> int:
+    """Clamp an int value to [min_val, max_val] range."""
+    return max(min_val, min(max_val, value))
+
+
+def _guid_str_to_tex(self: OpenPBRInterface, guid_str: str) -> re.world.TextureResource:
+    return _guid_str_to_tex(self, guid_str)
+
 
 def openpbr_get_weight_base(self: OpenPBRInterface) -> float:
     """Get the base weight of the material."""
@@ -65,14 +87,15 @@ def openpbr_get_weight_metallic_roughness_tex(
     self: OpenPBRInterface,
 ) -> re.world.TextureResource:
     """Get the metallic roughness texture."""
-    return self._data.get('weight_metallic_roughness_tex', re.world.TextureResource(None))
+    guid_str = self._data.get('weight_metallic_roughness_tex', None)
+    return _guid_str_to_tex(self, guid_str)
 
 
 def openpbr_set_weight_metallic_roughness_tex(
     self: OpenPBRInterface, value: re.world.TextureResource
 ) -> None:
     """Set the metallic roughness texture."""
-    self._data['weight_metallic_roughness_tex'] = value
+    self._data['weight_metallic_roughness_tex'] = str(value.guid())
 
 
 def openpbr_get_weight_subsurface(self: OpenPBRInterface) -> float:
@@ -159,14 +182,15 @@ def openpbr_get_geometry_opacity_tex(
     self: OpenPBRInterface,
 ) -> re.world.TextureResource:
     """Get the geometry opacity texture."""
-    return self._data.get('geometry_opacity_tex', re.world.TextureResource(None))
+    guid_str = self._data.get('geometry_opacity_tex', None)
+    return _guid_str_to_tex(self, guid_str)
 
 
 def openpbr_set_geometry_opacity_tex(
     self: OpenPBRInterface, value: re.world.TextureResource
 ) -> None:
     """Set the geometry opacity texture."""
-    self._data['geometry_opacity_tex'] = value
+    self._data['geometry_opacity_tex'] = str(value.guid())
 
 
 def openpbr_get_geometry_thickness(self: OpenPBRInterface) -> float:
@@ -176,7 +200,7 @@ def openpbr_get_geometry_thickness(self: OpenPBRInterface) -> float:
 
 def openpbr_set_geometry_thickness(self: OpenPBRInterface, value: float) -> None:
     """Set the geometry thickness."""
-    self._data['geometry_thickness'] = value
+    self._data['geometry_thickness'] = _clamp_range(value, 0.0, 50.0)
 
 
 def openpbr_get_geometry_thin_walled(self: OpenPBRInterface) -> bool:
@@ -196,7 +220,7 @@ def openpbr_get_geometry_nested_priority(self: OpenPBRInterface) -> int:
 
 def openpbr_set_geometry_nested_priority(self: OpenPBRInterface, value: int) -> None:
     """Set the geometry nested priority."""
-    self._data['geometry_nested_priority'] = value
+    self._data['geometry_nested_priority'] = _clamp_int_range(value, -5, 5)
 
 
 def openpbr_get_geometry_bump_scale(self: OpenPBRInterface) -> float:
@@ -206,21 +230,22 @@ def openpbr_get_geometry_bump_scale(self: OpenPBRInterface) -> float:
 
 def openpbr_set_geometry_bump_scale(self: OpenPBRInterface, value: float) -> None:
     """Set the geometry bump scale."""
-    self._data['geometry_bump_scale'] = value
+    self._data['geometry_bump_scale'] = _clamp_range(value, 0.0, 5.0)
 
 
 def openpbr_get_geometry_normal_tex(
     self: OpenPBRInterface,
 ) -> re.world.TextureResource:
     """Get the geometry normal texture."""
-    return self._data.get('geometry_normal_tex', re.world.TextureResource(None))
+    guid_str = self._data.get('geometry_normal_tex', None)
+    return _guid_str_to_tex(self, guid_str)
 
 
 def openpbr_set_geometry_normal_tex(
     self: OpenPBRInterface, value: re.world.TextureResource
 ) -> None:
     """Set the geometry normal texture."""
-    self._data['geometry_normal_tex'] = value
+    self._data['geometry_normal_tex'] = str(value.guid())
 
 
 def openpbr_get_uvs_scale(self: OpenPBRInterface) -> tuple:
@@ -280,35 +305,38 @@ def openpbr_get_specular_roughness_anisotropy_angle(self: OpenPBRInterface) -> f
 
 def openpbr_set_specular_roughness_anisotropy_angle(self: OpenPBRInterface, value: float) -> None:
     """Set the specular roughness anisotropy angle."""
-    self._data['specular_roughness_anisotropy_angle'] = value
+    self._data['specular_roughness_anisotropy_angle'] = _clamp_range(
+        value, 0.0, 6.2831855)
 
 
 def openpbr_get_specular_anisotropy_level_tex(
     self: OpenPBRInterface,
 ) -> re.world.TextureResource:
     """Get the specular anisotropy level texture."""
-    return self._data.get('specular_anisotropy_level_tex', re.world.TextureResource(None))
+    guid_str = self._data.get('specular_anisotropy_level_tex', None)
+    return _guid_str_to_tex(self, guid_str)
 
 
 def openpbr_set_specular_anisotropy_level_tex(
     self: OpenPBRInterface, value: re.world.TextureResource
 ) -> None:
     """Set the specular anisotropy level texture."""
-    self._data['specular_anisotropy_level_tex'] = value
+    self._data['specular_anisotropy_level_tex'] = str(value.guid())
 
 
 def openpbr_get_specular_anisotropy_angle_tex(
     self: OpenPBRInterface,
 ) -> re.world.TextureResource:
     """Get the specular anisotropy angle texture."""
-    return self._data.get('specular_anisotropy_angle_tex', re.world.TextureResource(None))
+    guid_str = self._data.get('specular_anisotropy_angle_tex', None)
+    return _guid_str_to_tex(self, guid_str)
 
 
 def openpbr_set_specular_anisotropy_angle_tex(
     self: OpenPBRInterface, value: re.world.TextureResource
 ) -> None:
     """Set the specular anisotropy angle texture."""
-    self._data['specular_anisotropy_angle_tex'] = value
+    self._data['specular_anisotropy_angle_tex'] = str(value.guid())
 
 
 def openpbr_get_specular_ior(self: OpenPBRInterface) -> float:
@@ -318,7 +346,7 @@ def openpbr_get_specular_ior(self: OpenPBRInterface) -> float:
 
 def openpbr_set_specular_ior(self: OpenPBRInterface, value: float) -> None:
     """Set the specular index of refraction."""
-    self._data['specular_ior'] = value
+    self._data['specular_ior'] = _clamp_range(value, 1.0, 50.0)
 
 
 def openpbr_get_emission_luminance(self: OpenPBRInterface) -> tuple:
@@ -335,14 +363,15 @@ def openpbr_get_emission_emission_tex(
     self: OpenPBRInterface,
 ) -> re.world.TextureResource:
     """Get the emission texture."""
-    return self._data.get('emission_emission_tex', re.world.TextureResource(None))
+    guid_str = self._data.get('emission_emission_tex', None)
+    return _guid_str_to_tex(self, guid_str)
 
 
 def openpbr_set_emission_emission_tex(
     self: OpenPBRInterface, value: re.world.TextureResource
 ) -> None:
     """Set the emission texture."""
-    self._data['emission_emission_tex'] = value
+    self._data['emission_emission_tex'] = str(value.guid())
 
 
 def openpbr_get_base_albedo(self: OpenPBRInterface) -> tuple:
@@ -359,14 +388,15 @@ def openpbr_get_base_albedo_tex(
     self: OpenPBRInterface,
 ) -> re.world.TextureResource:
     """Get the base albedo texture."""
-    return self._data.get('base_albedo_tex', re.world.TextureResource(None))
+    guid_str = self._data.get('base_albedo_tex', None)
+    return _guid_str_to_tex(self, guid_str)
 
 
 def openpbr_set_base_albedo_tex(
     self: OpenPBRInterface, value: re.world.TextureResource
 ) -> None:
     """Set the base albedo texture."""
-    self._data['base_albedo_tex'] = value
+    self._data['base_albedo_tex'] = str(value.guid())
 
 
 def openpbr_get_subsurface_color(self: OpenPBRInterface) -> tuple:
@@ -386,7 +416,7 @@ def openpbr_get_subsurface_radius(self: OpenPBRInterface) -> float:
 
 def openpbr_set_subsurface_radius(self: OpenPBRInterface, value: float) -> None:
     """Set the subsurface radius."""
-    self._data['subsurface_radius'] = value
+    self._data['subsurface_radius'] = _clamp_range(value, 0.0, 1.0)
 
 
 def openpbr_get_subsurface_radius_scale(self: OpenPBRInterface) -> tuple:
@@ -406,7 +436,7 @@ def openpbr_get_subsurface_scatter_anisotropy(self: OpenPBRInterface) -> float:
 
 def openpbr_set_subsurface_scatter_anisotropy(self: OpenPBRInterface, value: float) -> None:
     """Set the subsurface scatter anisotropy."""
-    self._data['subsurface_scatter_anisotropy'] = _clamp_01(value)
+    self._data['subsurface_scatter_anisotropy'] = _clamp_neg1_1(value)
 
 
 def openpbr_get_transmission_color(self: OpenPBRInterface) -> tuple:
@@ -426,7 +456,7 @@ def openpbr_get_transmission_depth(self: OpenPBRInterface) -> float:
 
 def openpbr_set_transmission_depth(self: OpenPBRInterface, value: float) -> None:
     """Set the transmission depth."""
-    self._data['transmission_depth'] = value
+    self._data['transmission_depth'] = _clamp_range(value, 0.0, 50.0)
 
 
 def openpbr_get_transmission_scatter(self: OpenPBRInterface) -> tuple:
@@ -446,7 +476,7 @@ def openpbr_get_transmission_scatter_anisotropy(self: OpenPBRInterface) -> float
 
 def openpbr_set_transmission_scatter_anisotropy(self: OpenPBRInterface, value: float) -> None:
     """Set the transmission scatter anisotropy."""
-    self._data['transmission_scatter_anisotropy'] = _clamp_01(value)
+    self._data['transmission_scatter_anisotropy'] = _clamp_neg1_1(value)
 
 
 def openpbr_get_transmission_dispersion_scale(self: OpenPBRInterface) -> float:
@@ -466,7 +496,8 @@ def openpbr_get_transmission_dispersion_abbe_number(self: OpenPBRInterface) -> f
 
 def openpbr_set_transmission_dispersion_abbe_number(self: OpenPBRInterface, value: float) -> None:
     """Set the transmission dispersion Abbe number."""
-    self._data['transmission_dispersion_abbe_number'] = value
+    self._data['transmission_dispersion_abbe_number'] = _clamp_range(
+        value, 0.0, 100.0)
 
 
 def openpbr_get_coat_color(self: OpenPBRInterface) -> tuple:
@@ -506,7 +537,8 @@ def openpbr_get_coat_roughness_anisotropy_angle(self: OpenPBRInterface) -> float
 
 def openpbr_set_coat_roughness_anisotropy_angle(self: OpenPBRInterface, value: float) -> None:
     """Set the coat roughness anisotropy angle."""
-    self._data['coat_roughness_anisotropy_angle'] = value
+    self._data['coat_roughness_anisotropy_angle'] = _clamp_range(
+        value, 0.0, 6.2831855)
 
 
 def openpbr_get_coat_ior(self: OpenPBRInterface) -> float:
@@ -516,7 +548,7 @@ def openpbr_get_coat_ior(self: OpenPBRInterface) -> float:
 
 def openpbr_set_coat_ior(self: OpenPBRInterface, value: float) -> None:
     """Set the coat index of refraction."""
-    self._data['coat_ior'] = value
+    self._data['coat_ior'] = _clamp_range(value, 1.0, 3.0)
 
 
 def openpbr_get_coat_darkening(self: OpenPBRInterface) -> float:
@@ -576,7 +608,7 @@ def openpbr_get_diffraction_thickness(self: OpenPBRInterface) -> float:
 
 def openpbr_set_diffraction_thickness(self: OpenPBRInterface, value: float) -> None:
     """Set the diffraction thickness."""
-    self._data['diffraction_thickness'] = value
+    self._data['diffraction_thickness'] = _clamp_range(value, 0.0, 2.0)
 
 
 def openpbr_get_diffraction_inv_pitch_x(self: OpenPBRInterface) -> float:
@@ -586,7 +618,7 @@ def openpbr_get_diffraction_inv_pitch_x(self: OpenPBRInterface) -> float:
 
 def openpbr_set_diffraction_inv_pitch_x(self: OpenPBRInterface, value: float) -> None:
     """Set the diffraction inverse pitch X."""
-    self._data['diffraction_inv_pitch_x'] = value
+    self._data['diffraction_inv_pitch_x'] = _clamp_01(value)
 
 
 def openpbr_get_diffraction_inv_pitch_y(self: OpenPBRInterface) -> float:
@@ -596,7 +628,7 @@ def openpbr_get_diffraction_inv_pitch_y(self: OpenPBRInterface) -> float:
 
 def openpbr_set_diffraction_inv_pitch_y(self: OpenPBRInterface, value: float) -> None:
     """Set the diffraction inverse pitch Y."""
-    self._data['diffraction_inv_pitch_y'] = value
+    self._data['diffraction_inv_pitch_y'] = _clamp_01(value)
 
 
 def openpbr_get_diffraction_angle(self: OpenPBRInterface) -> float:
@@ -606,7 +638,7 @@ def openpbr_get_diffraction_angle(self: OpenPBRInterface) -> float:
 
 def openpbr_set_diffraction_angle(self: OpenPBRInterface, value: float) -> None:
     """Set the diffraction angle."""
-    self._data['diffraction_angle'] = value
+    self._data['diffraction_angle'] = _clamp_range(value, 0.0, 6.2831855)
 
 
 def openpbr_get_diffraction_lobe_count(self: OpenPBRInterface) -> int:
@@ -616,7 +648,7 @@ def openpbr_get_diffraction_lobe_count(self: OpenPBRInterface) -> int:
 
 def openpbr_set_diffraction_lobe_count(self: OpenPBRInterface, value: int) -> None:
     """Set the diffraction lobe count."""
-    self._data['diffraction_lobe_count'] = value
+    self._data['diffraction_lobe_count'] = _clamp_int_range(value, 1, 7)
 
 
 def openpbr_get_diffraction_type(self: OpenPBRInterface) -> int:
@@ -626,7 +658,7 @@ def openpbr_get_diffraction_type(self: OpenPBRInterface) -> int:
 
 def openpbr_set_diffraction_type(self: OpenPBRInterface, value: int) -> None:
     """Set the diffraction type."""
-    self._data['diffraction_type'] = value
+    self._data['diffraction_type'] = _clamp_int_range(value, 0, 1)
 
 
 def openpbr_get_thin_film_thickness(self: OpenPBRInterface) -> float:
@@ -636,7 +668,7 @@ def openpbr_get_thin_film_thickness(self: OpenPBRInterface) -> float:
 
 def openpbr_set_thin_film_thickness(self: OpenPBRInterface, value: float) -> None:
     """Set the thin film thickness."""
-    self._data['thin_film_thickness'] = value
+    self._data['thin_film_thickness'] = _clamp_range(value, 0.0, 2.0)
 
 
 def openpbr_get_thin_film_ior(self: OpenPBRInterface) -> float:
@@ -646,7 +678,7 @@ def openpbr_get_thin_film_ior(self: OpenPBRInterface) -> float:
 
 def openpbr_set_thin_film_ior(self: OpenPBRInterface, value: float) -> None:
     """Set the thin film index of refraction."""
-    self._data['thin_film_ior'] = value
+    self._data['thin_film_ior'] = _clamp_range(value, 1.0, 3.0)
 
 
 def openpbr_dump_to_json(self: OpenPBRInterface) -> str:

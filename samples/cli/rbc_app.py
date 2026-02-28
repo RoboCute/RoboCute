@@ -47,6 +47,7 @@ import samples.cli as cli
 from robocute.utils.rotation import euler_to_quaternion
 from typing import Optional, Generator
 import math
+import mat_builtin as mat
 
 app: rbc.app.App = None
 
@@ -64,6 +65,7 @@ def display_cam_add_pos(x: float, y: float, z: float) -> None:
             current_pos.z + z
         )
         transform.set_pos(new_pos, False)
+    app._requires_reset = True
 
 
 def display_cam_rotate(euler_x: float, euler_y: float, euler_z: float) -> None:
@@ -75,8 +77,9 @@ def display_cam_rotate(euler_x: float, euler_y: float, euler_z: float) -> None:
         quat = euler_to_quaternion(euler_x, euler_y, euler_z)
         new_rotation = lc.float4(quat[0], quat[1], quat[2], quat[3])
         transform.set_rotation(new_rotation, False)
+    app._requires_reset = True
+# Entity
 
-####################### Entity
 
 def editing_select_object(uv_x: float, uv_y: float) -> Generator[Optional[re.world.Entity], None, None]:
     global app
@@ -412,6 +415,39 @@ def entity_render_remove_object(entity: re.world.Entity) -> None:
     else:
         raise Exception("RenderComponent not found.")
 
-####################### Resources
 
-# TODO 
+def resource_material_load_from_openpbr(
+    mat_res: re.world.MaterialResource, openpbr: mat.OpenPBRInterface
+) -> None:
+    """Load material properties from a JSON string.
+
+    Args:
+        mat_res: The MaterialResource to load data into.
+        json_str: A JSON string containing material properties.
+
+    Raises:
+        Exception: If the material resource is invalid or JSON parsing fails.
+    """
+    if not mat_res:
+        raise Exception("Invalid MaterialResource.")
+    mat_res.load_from_json(mat.openpbr_dump_to_json(openpbr))
+
+
+def resource_material_dump_openpbr(mat_res: re.world.MaterialResource) -> mat.OpenPBRInterface:
+    """Dump material properties to a JSON string.
+
+    Args:
+        mat: The MaterialResource to dump data from.
+
+    Returns:
+        A JSON string containing all material properties.
+
+    Raises:
+        Exception: If the material resource is invalid.
+    """
+    if not mat_res:
+        raise Exception("Invalid MaterialResource.")
+    js = mat_res.dump_json()
+    pbr = mat.OpenPBRInterface()
+    mat.openpbr_load_from_json(pbr, js)
+    return pbr

@@ -14,6 +14,7 @@ def _reflect_function(func, func_name):
         types.append(param.annotation)
     return types, names
 
+
 def _parse_function(code: str):
     """
     Parse a Python-style function call string.
@@ -217,6 +218,9 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
         meta.arg_names = arg_names
         self._func_table[name] = meta
 
+    def set_doc(self, name: str, doc: str):
+        self._func_table[name].doc = doc
+
     def execute_cli(self, input_func, end_func):
         while True:
             command: str = None
@@ -245,7 +249,7 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
                 else:
                     ret_val = eval(command, self._context)
                 del self._context[func_name]
-                    
+
                 if ret_val and inspect.isgenerator(ret_val):
                     while True:
                         try:
@@ -254,9 +258,12 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
                                 yield value
                         except StopIteration:
                             break
-                        yield None
+                        yield 0
                 else:
-                    yield ret_val
+                    if ret_val:
+                        yield ret_val
+                    else:
+                        yield 0
             except Exception as e:
                 yield str(e)
 

@@ -11,6 +11,7 @@ import robocute.rbc_ext.luisa as lc
 import robocute.rbc_ext as re
 from robocute.rbc_ext._C import lcapi_c as lcapi
 import samples.cli as cli
+import mat_builtin as mat
 
 vertex_count = 16
 """网格顶点总数(两个立方体, 每个8个顶点)"""
@@ -18,8 +19,10 @@ vertex_count = 16
 triangle_count = 24
 """网格三角形总数(两个立方体, 每个12个三角形)"""
 
+app: rbc.app.App = None
 
-def make_cube_mesh(scene: re.world.Scene):
+
+def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
     """
     创建一个包含两个立方体的动态网格实体
 
@@ -38,22 +41,24 @@ def make_cube_mesh(scene: re.world.Scene):
     """
     mat0 = re.world.MaterialResource()
 
-    mat0_json = re.world.OpenPBRInterface()
-    mat0_json.set_specular_roughness(0.8)
-    mat0_json.set_weight_metallic(0.3)
-    mat0_json.set_base_albedo(re.world.float3(1.0, 0.710, 0.680))
+    mat0_json = mat.OpenPBRInterface(app._project)
+    mat.openpbr_set_specular_roughness(mat0_json, 0.8)
+    mat.openpbr_set_weight_metallic(mat0_json, 0.3)
+    mat.openpbr_set_base_albedo(mat0_json, (0.8, 0.8, 0.8))
+    mat.openpbr_set_base_albedo_tex(mat0_json, tex)
 
-    mat0.load_from_json(mat0_json.dump_to_json())
+    mat0.load_from_json(mat.openpbr_dump_to_json(mat0_json))
     del mat0_json
 
     mat1 = re.world.MaterialResource()
 
-    mat1_json = re.world.OpenPBRInterface()
-    mat1_json.set_specular_roughness(0.5)
-    mat1_json.set_weight_metallic(0.3)
-    mat1_json.set_base_albedo(re.world.float3(0.140, 0.450, 0.091))
+    mat1_json = mat.OpenPBRInterface(app._project)
+    mat.openpbr_set_specular_roughness(mat1_json, 0.5)
+    mat.openpbr_set_weight_metallic(mat1_json, 0.3)
+    mat.openpbr_set_base_albedo(mat1_json, (0.140, 0.450, 0.091))
+    mat.openpbr_set_base_albedo_tex(mat1_json, tex)
 
-    mat1.load_from_json(mat1_json.dump_to_json())
+    mat1.load_from_json(mat.openpbr_dump_to_json(mat1_json))
     del mat1_json
 
     mat_vector = lc.capsule_vector()
@@ -79,10 +84,12 @@ def make_cube_mesh(scene: re.world.Scene):
     submesh_offsets[1] = triangle_count // 2
 
     cube_mesh.create_empty(
-        submesh_offsets, vertex_count, triangle_count, 0, False, False
+        submesh_offsets, vertex_count, triangle_count, 1, False, False
     )
+    # Data layout: positions (vertex_count * 4 floats) + UVs (vertex_count * 2 floats)
+    # + indices (triangle_count * 3 uint32s)
     mesh_array = np.ndarray(
-        vertex_count * 4 + triangle_count * 3,
+        vertex_count * 4 + vertex_count * 2 + triangle_count * 3,
         dtype=np.float32,
         buffer=cube_mesh.data_buffer(),
     )
@@ -97,14 +104,14 @@ def create_mesh_array(mesh_array):
     生成两个立方体的顶点数据和索引数据
 
     数据布局:
-        - 顶点数据: 每个顶点4个float(x, y, z, w), 共16个顶点
+        - 位置数据: 每个顶点4个float(x, y, z, w), 共16个顶点
+        - UV数据: 每个顶点2个float(u, v), 共16个顶点
         - 索引数据: 每个三角形3个uint32索引, 共24个三角形
 
-    顶点缓冲区格式 (vertex_count * 4 floats):
-        [cube1_vert0_x, cube1_vert0_y, cube1_vert0_z, 0, ...]
-
-    索引缓冲区格式 (triangle_count * 3 uint32s):
-        位于顶点数据之后, 每个三角形3个顶点索引
+    顶点缓冲区格式:
+        [position_data (vertex_count * 4 floats)]
+        [uv_data (vertex_count * 2 floats)]
+        [index_data (triangle_count * 3 uint32s)]
 
     Args:
         mesh_array: numpy 数组, 用于存储生成的网格数据
@@ -124,17 +131,33 @@ def create_mesh_array(mesh_array):
     """
 
     # create a cube
-    if mesh_array.size != vertex_count * 4 + triangle_count * 3:
-        raise Exception("Bad mesh-array size")
+    expected_size = vertex_count * 4 + vertex_count * 2 + triangle_count * 3
+    if mesh_array.size != expected_size:
+        raise Exception(
+            f"Bad mesh-array size: {mesh_array.size} != {expected_size}")
+
+    # Position data: vertex_count * 4 floats
     vertex_arr = np.ndarray(
         vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+
+    # UV data: vertex_count * 2 floats, after position data
+    uv_arr = np.ndarray(
+        vertex_count * 2,
+        dtype=np.float32,
+        buffer=mesh_array.data,
+        offset=vertex_arr.size * vertex_arr.itemsize,
+    )
+
+    # Index data: after UV data
     indices_arr = np.ndarray(
         shape=triangle_count * 3,
         dtype=np.uint32,
         buffer=mesh_array.data,
-        offset=vertex_arr.size * vertex_arr.itemsize,
+        offset=vertex_arr.size * vertex_arr.itemsize + uv_arr.size * uv_arr.itemsize,
     )
-    size = 0
+    vert_size = 0
+    uv_size = 0
+    index_size = 0
     offset = lc.float4(0)
     scale = lc.float4(1)
 
@@ -144,11 +167,11 @@ def create_mesh_array(mesh_array):
         Args:
             x, y, z: 顶点坐标分量
         """
-        nonlocal size, offset, scale
+        nonlocal vert_size, offset, scale
         vec = lc.float4(x, y, z, 0) * scale + offset
         for i in range(4):
-            vertex_arr[size + i] = vec[i]
-        size += 4
+            vertex_arr[vert_size + i] = vec[i]
+        vert_size += 4
 
     def push_indices(idx: int):
         """向索引缓冲区添加一个顶点索引
@@ -156,9 +179,9 @@ def create_mesh_array(mesh_array):
         Args:
             idx: 顶点索引值
         """
-        nonlocal size
-        indices_arr[size] = idx
-        size += 1
+        nonlocal index_size
+        indices_arr[index_size] = idx
+        index_size += 1
 
     def push_vert():
         """向顶点缓冲区添加8个立方体顶点(应用当前 offset 和 scale 变换)"""
@@ -171,14 +194,44 @@ def create_mesh_array(mesh_array):
         push_vec4(0.5, 0.5, -0.5)  # 6: 右上后
         push_vec4(0.5, 0.5, 0.5)  # 7: 右上前
 
+    def push_uvs():
+        """向UV缓冲区添加8个立方体顶点的UV坐标
+
+        UV映射基于立方体展开,为每个顶点分配适当的UV坐标:
+            底面顶点(0-3): y=0, v=0
+            顶面顶点(4-7): y=1, v=1
+            前后左右根据x/z坐标分配u坐标
+        """
+        nonlocal uv_size
+        # UV coordinates for 8 vertices of a cube
+        # Mapping based on vertex positions for consistent texture mapping
+        uv_coords = [
+            (0.0, 0.0),  # 0: 左下后 (-0.5, -0.5, -0.5)
+            (0.0, 1.0),  # 1: 左下前 (-0.5, -0.5, 0.5)
+            (1.0, 0.0),  # 2: 右下后 (0.5, -0.5, -0.5)
+            (1.0, 1.0),  # 3: 右下前 (0.5, -0.5, 0.5)
+            (0.0, 0.0),  # 4: 左上后 (-0.5, 0.5, -0.5)
+            (0.0, 1.0),  # 5: 左上前 (-0.5, 0.5, 0.5)
+            (1.0, 0.0),  # 6: 右上后 (0.5, 0.5, -0.5)
+            (1.0, 1.0),  # 7: 右上前 (0.5, 0.5, 0.5)
+        ]
+        for u, v in uv_coords:
+            uv_arr[uv_size] = u
+            uv_arr[uv_size + 1] = v
+            uv_size += 2
+
+    # First cube: positions and UVs
     push_vert()
-    last_vert_size = size
+    last_vert_size = vert_size
+    push_uvs()
+
+    # Second cube: positions and UVs
     offset = lc.float4(0, 1, 0, 0)
     scale = lc.float4(0.4, 0.4, 0.4, 0)
     push_vert()
-    size = 0
-    # Buttom face
+    push_uvs()
 
+    # Triangle indices
     def push_cube_triangles():
         """向索引缓冲区添加一个立方体的12个三角形(6个面, 每个面2个三角形)"""
         # 底面 (0, 1, 2) 和 (1, 3, 2)
@@ -225,11 +278,11 @@ def create_mesh_array(mesh_array):
         push_indices(5)
 
     push_cube_triangles()
-    last_index_size = size
+    last_index_size = index_size
     # index size to triangle size
     last_tri_size = last_index_size // 3
     push_cube_triangles()
-    for i in range(last_index_size, size):
+    for i in range(last_index_size, index_size):
         indices_arr[i] += last_vert_size // 4
 
 
@@ -297,8 +350,11 @@ def main():
     #     value = lc.float4(buffer.read(idx) * scale)
     #     img.write(id, value)
 
+    global app
     app = rbc.app.App()  # rbc app singleton
     app.init(project_path=project_path, backend_name=args.backend)
+    tex = app._project.import_texture('test_grid.png', 4, True)
+    print(tex.size())
     if not app.ctx:
         print("Context not Valid!")
         return
@@ -316,14 +372,8 @@ def main():
     tui_table = cli.executor.CLITable()
     frame_index = 0
     image_index = 0
-
-    def move_camera(x: float, y: float, z: float) -> None:
-        nonlocal transform, frame_index
-        transform.set_pos(
-            transform.position() + lc.double3(x, y, z), False
-        )
-        frame_index = 0
-    tui_table.add_function('move_camera', move_camera, 'Move the camera.')
+    cli.rbc_app.app = app
+    cli.builtin.rbc_app_register(tui_table)
     tui_exec = tui_table.execute_cli(
         cli.executor.async_input,
         lambda c: c == 'exit'
@@ -351,7 +401,7 @@ def main():
         print("Scene not Valid!")
         return
 
-    entity = make_cube_mesh(app.scene)
+    entity = make_cube_mesh(app.scene, tex=tex)
     last_time = time.time()
 
     tick_stage = re.world.TickStage.PathTracingPreview
@@ -361,8 +411,9 @@ def main():
         delta_time = cur_time - last_time
         last_time = cur_time
         app.display_cam.set_frame_index(frame_index)
-        if app.ctx.tick(delta_time, tick_stage, True):
+        if app.ctx.tick(delta_time, tick_stage, True) or app._requires_reset:
             frame_index = 0
+            app._requires_reset = False
         else:
             frame_index += 1
         # EDITING example

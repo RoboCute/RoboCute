@@ -22,6 +22,7 @@ class App:
     _scene: Optional[re.world.Scene] = None
     _display_cam: Optional[re.world.CameraComponent] = None
     _last_frame_time: float
+    _requires_reset: bool = False
 
     def __new__(cls):
         if cls._instance is None:

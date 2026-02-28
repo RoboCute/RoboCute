@@ -614,6 +614,57 @@ struct ProjectImpl : RCBase {
         if (utils && utils->tex_loader()) utils->tex_loader()->finish_task();
     }
 };
+void *Project::import_material(void *this_, luisa::string_view path) {
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    auto ptr = c->proj->import_assets(
+        path, TypeInfo::get<world::MaterialResource>().md5(), luisa::string{});
+    auto p = ptr.get();
+    if (!p) {
+        return nullptr;
+    }
+    unsafe_forget(std::move(ptr));
+    return p;
+}
+
+void *Project::import_mesh(void *this_, luisa::string_view path) {
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    auto ptr = c->proj->import_assets(
+        path, TypeInfo::get<world::MeshResource>().md5(), luisa::string{});
+    auto p = ptr.get();
+    if (!p) {
+        return nullptr;
+    }
+    unsafe_forget(std::move(ptr));
+    return p;
+}
+
+void *Project::import_texture(
+    void *this_, luisa::string_view path, uint32_t mip_level, bool to_vt) {
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    // Build meta json for texture import parameters
+    luisa::string meta_json = luisa::format(
+        "{{\"mip_level\":{},\"to_vt\":{}}}", mip_level, to_vt ? "true" : "false");
+    auto ptr = c->proj->import_assets(
+        path, TypeInfo::get<world::TextureResource>().md5(), meta_json);
+    auto p = ptr.get();
+    if (!p) {
+        return nullptr;
+    }
+    unsafe_forget(std::move(ptr));
+    return p;
+}
 
 void *Project::_create_() {
     auto ptr = new ProjectImpl();
