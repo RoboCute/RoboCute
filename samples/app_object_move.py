@@ -9,6 +9,8 @@ import robocute as rbc
 import robocute.rbc_ext.luisa as lc
 import robocute.rbc_ext as re
 
+import mat_builtin as mat
+app:rbc.app.App = None  # singleton
 
 vertex_count = 16
 """网格顶点总数(两个立方体, 每个8个顶点)"""
@@ -18,6 +20,7 @@ triangle_count = 24
 
 
 def make_cube_mesh(scene: re.world.Scene):
+    global app
     """
     创建一个包含两个立方体的动态网格实体
 
@@ -35,22 +38,22 @@ def make_cube_mesh(scene: re.world.Scene):
         Entity: 创建的实体对象, 包含完整的渲染组件
     """
     
-    mat0_json = re.world.OpenPBRInterface()
-    mat0_json.set_specular_roughness(0.8)
-    mat0_json.set_weight_metallic(0.3)
-    mat0_json.set_base_albedo(re.world.float3(1.0, 0.710, 0.680))
+ 
+    mat0_json = mat.OpenPBRInterface(app._project)
+    mat.openpbr_set_specular_roughness(mat0_json, 0.8)
+    mat.openpbr_set_weight_metallic(mat0_json, 0.3)
+    mat.openpbr_set_base_albedo(mat0_json, (0.8, 0.8, 0.8))
     
     mat0 = re.world.MaterialResource()
-    mat0.load_from_json(mat0_json.dump_to_json())
+    mat0.load_from_json(mat.openpbr_dump_to_json(mat0_json))
     del mat0_json
     
     mat1 = re.world.MaterialResource()
-    mat1_json = re.world.OpenPBRInterface()
-    mat1_json.set_specular_roughness(0.5)
-    mat1_json.set_weight_metallic(0.3)
-    mat1_json.set_base_albedo(re.world.float3(0.140, 0.450, 0.091))
-    
-    mat1.load_from_json(mat1_json.dump_to_json())
+    mat1_json = mat.OpenPBRInterface(app._project)
+    mat.openpbr_set_specular_roughness(mat1_json, 0.5)
+    mat.openpbr_set_weight_metallic(mat1_json, 0.3)
+    mat.openpbr_set_base_albedo(mat1_json, (0.140, 0.450, 0.091))
+    mat1.load_from_json(mat.openpbr_dump_to_json(mat1_json))
     del mat1_json
     
     mat_vector = lc.capsule_vector()
@@ -231,7 +234,6 @@ def create_mesh_array(mesh_array):
 
 
 def test_callback(ptr):
-    app = rbc.app.App()  # singleton
     if not app.ctx:
         # Callback called when context is invalid
         return
@@ -291,6 +293,7 @@ def move_mesh_vertices(
 
 
 def main():
+    global app
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-b",

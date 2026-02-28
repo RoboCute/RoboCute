@@ -374,10 +374,9 @@ def main():
     image_index = 0
     cli.rbc_app.app = app
     cli.builtin.rbc_app_register(tui_table)
-    tui_exec = tui_table.execute_cli(
-        cli.executor.async_input,
-        lambda c: c == 'exit'
-    )
+    # print(tui_table.dump_func_table())
+    
+    tui_exec = None
 
     # clear_shader = lc.Shader('gui/clear_shader.bin')
 
@@ -488,6 +487,11 @@ def main():
 
         #     image_index += 1
         #     app.display_cam.clear_geometry_export_buffer()
+        if tui_exec is None:
+            tui_exec = tui_table.execute_cli(
+                cli.executor.async_input,
+                lambda c: c == 'exit'
+            )
         try:
             value = next(tui_exec)
             if value is not None:

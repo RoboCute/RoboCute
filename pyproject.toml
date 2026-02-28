@@ -17,6 +17,7 @@ dependencies = [
     "pybind11-stubgen>=2.5.5",
     "pillow>=12.1.0",
     "tetgen>=0.8.2",
+    "kimi_agent_sdk>=0.0.4"
 ]
 
 [tool.uv.workspace]

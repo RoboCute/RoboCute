@@ -66,12 +66,13 @@ void *Entity::add_component(void *this_, luisa::string_view name) {
     class_name += name;
     vstd::MD5 md5{luisa::string_view{class_name}};
     auto e = static_cast<world::Entity *>(this_);
-    auto comp = world::Entity::_create_component(md5);
-    if (!comp) {
-        return nullptr;
-    }
-    e->_add_component(comp);
-    return comp;
+    return e->_get_or_add_component(md5, [&]() {
+        auto comp = world::Entity::_create_component(md5);
+        if (!comp) [[unlikely]] {
+            LUISA_ERROR("Try create type {} failed.", class_name);
+        }
+        return rbc::RC<world::Component>(comp);
+    });
 }
 void *Entity::get_component(void *this_, luisa::string_view name) {
     auto e = static_cast<world::Entity *>(this_);

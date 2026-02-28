@@ -2,7 +2,20 @@ import numpy as np
 import math
 
 
-def euler_to_quaternion(euler_x: float, euler_y: float, euler_z: float) -> np.ndarray:
+def degrees_to_radians(degrees: float) -> float:
+    """Convert degrees to radians.
+
+    Args:
+        degrees: Angle in degrees.
+
+    Returns:
+        Angle in radians.
+    """
+    import math
+    return degrees * math.pi / 180
+
+
+def euler_to_quaternion(euler_x: float, euler_y: float, euler_z: float) -> tuple:
     """
     Convert euler angles (in radians) to quaternion.
     Rotation order: ZYX (intrinsic rotations, equivalent to XYZ extrinsic).
@@ -27,7 +40,84 @@ def euler_to_quaternion(euler_x: float, euler_y: float, euler_z: float) -> np.nd
     z = cx * cy * sz - sx * sy * cz
     w = cx * cy * cz + sx * sy * sz
 
-    return np.array([x, y, z, w])
+    return (x, y, z, w)
+
+
+def quaternion_multiply(q1: tuple, q2: tuple) -> tuple:
+    """
+    Multiply two quaternions (Hamilton product).
+    Quaternion format: q = (x, y, z, w)
+
+    Args:
+        q1: First quaternion (x, y, z, w)
+        q2: Second quaternion (x, y, z, w)
+
+    Returns:
+        Quaternion product q1 * q2 as tuple (x, y, z, w)
+    """
+    x1, y1, z1, w1 = q1
+    x2, y2, z2, w2 = q2
+
+    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
+    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
+    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+
+    return (x, y, z, w)
+
+
+def quaternion_conjugate(q: tuple) -> tuple:
+    """
+    Compute the conjugate of a quaternion.
+    Quaternion format: q = (x, y, z, w)
+
+    Args:
+        q: Quaternion (x, y, z, w)
+
+    Returns:
+        Conjugate quaternion (-x, -y, -z, w)
+    """
+    x, y, z, w = q
+    return (-x, -y, -z, w)
+
+
+def quaternion_normalize(q: tuple) -> tuple:
+    """
+    Normalize a quaternion to unit length.
+    Quaternion format: q = (x, y, z, w)
+
+    Args:
+        q: Quaternion (x, y, z, w)
+
+    Returns:
+        Normalized quaternion as tuple (x, y, z, w)
+    """
+    x, y, z, w = q
+    norm = math.sqrt(x * x + y * y + z * z + w * w)
+    if norm < 1e-10:
+        return (0.0, 0.0, 0.0, 1.0)
+    return (x / norm, y / norm, z / norm, w / norm)
+
+
+def quaternion_rotate_vector(q: tuple, v: tuple) -> tuple:
+    """
+    Rotate a 3D vector by a quaternion.
+    Quaternion format: q = (x, y, z, w)
+
+    Args:
+        q: Quaternion (x, y, z, w)
+        v: Vector (vx, vy, vz)
+
+    Returns:
+        Rotated vector as tuple (vx', vy', vz')
+    """
+    # Convert vector to pure quaternion (x, y, z, 0)
+    v_quat = (v[0], v[1], v[2], 0.0)
+    q_conj = quaternion_conjugate(q)
+    # q * v * q_conj
+    temp = quaternion_multiply(q, v_quat)
+    result = quaternion_multiply(temp, q_conj)
+    return (result[0], result[1], result[2])
 
 
 def q2R33(q):
@@ -98,23 +188,24 @@ def TRS2R33(t, r, s):
     """
     将平移、旋转、缩放组合成4x4变换矩阵
     变换顺序：先缩放，再旋转，最后平移
-    
+
     Args:
         t: 平移向量 [x, y, z]
         r: 旋转四元数 [w, x, y, z]
         s: 缩放向量 [sx, sy, sz]
-    
+
     Returns:
         4x4变换矩阵
     """
     R = q2R33(r)  # 3x3旋转矩阵
     S = np.diag(s)  # 3x3缩放矩阵
-    
+
     # 构建4x4矩阵：先缩放，再旋转，最后平移
     M = np.eye(4)
     M[:3, :3] = S @ R  # 缩放和旋转的组合
     M[:3, 3] = t  # 平移
     return M
+
 
 def R332TRS(A_):
     t = A_[:3, 3]

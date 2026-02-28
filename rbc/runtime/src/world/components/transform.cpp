@@ -106,11 +106,12 @@ void TransformComponent::set_pos(double3 const &position, bool recursive) {
 }
 void TransformComponent::set_rotation(Quaternion const &rotation, bool recursive) {
     try_decompose();
-    auto new_trs = rbc::rotation(_position, rotation, _scale);
+    auto norm_rot = normalize(rotation);
+    auto new_trs = rbc::rotation(_position, norm_rot, _scale);
     if (recursive) {
         traversal(new_trs);
     }
-    _rotation = rotation;
+    _rotation = norm_rot;
     _trs = new_trs;
     _decomposed = true;
     mark_dirty();
@@ -139,12 +140,13 @@ void TransformComponent::set_trs(
     Quaternion const &rotation,
     double3 const &scale,
     bool recursive) {
-    auto new_trs = rbc::rotation(position, rotation, scale);
+    auto norm_rot = normalize(rotation);
+    auto new_trs = rbc::rotation(position, norm_rot, scale);
     if (recursive) {
         traversal(new_trs);
     }
     _position = position;
-    _rotation = rotation;
+    _rotation = norm_rot;
     _scale = scale;
     _trs = new_trs;
     _decomposed = true;

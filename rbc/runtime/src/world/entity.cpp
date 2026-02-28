@@ -79,18 +79,6 @@ void Component::_call_on_destroy() {
     if (_enabled.exchange(false)) [[likely]]
         on_destroy();
 }
-void Entity::_add_component(Component *component) {
-    {
-        std::lock_guard lck{_add_comp_mtx};
-        component->remove_self_from_entity();
-        auto result = _components.try_emplace(component->type_id(), component).second;
-        if (!result) [[unlikely]]
-            LUISA_ERROR("Component already exists.");
-        LUISA_DEBUG_ASSERT(component->entity() == nullptr);
-        component->_entity = this;
-    }
-    component->_call_on_awake();
-}
 
 bool Entity::remove_component(MD5 const &type_md5) {
     Component *comp;
@@ -107,6 +95,23 @@ bool Entity::remove_component(MD5 const &type_md5) {
     comp->_clear_entity();
     return true;
 }
+Component *Entity::_get_or_add_component(vstd::MD5 type_id, luisa::move_only_function<RC<Component>()> const &create_func) {
+    Component *p;
+    bool new_value;
+    {
+        std::lock_guard lck{_add_comp_mtx};
+        auto iter = _components.try_emplace(type_id, vstd::lazy_eval(create_func));
+        p = iter.first->second.get();
+        new_value = iter.second;
+    }
+    if (new_value) {
+        p->remove_self_from_entity();
+        p->_entity = this;
+        p->_call_on_awake();
+    }
+    return p;
+}
+
 Component *Entity::get_component(MD5 const &type_md5) {
     std::shared_lock lck{_add_comp_mtx};
     auto iter = _components.find(type_md5);

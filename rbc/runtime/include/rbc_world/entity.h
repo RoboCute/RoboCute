@@ -45,7 +45,7 @@ public:
     void set_name(luisa::string name);
     luisa::string_view name() const { return _name; }
     static Component *_create_component(MD5 const &type);
-    void _add_component(Component *component);
+    Component *_get_or_add_component(vstd::MD5 type_id, luisa::move_only_function<RC<Component>()> const &create_func);
     EntityCompIter begin() const {
         return EntityCompIter{_components.begin()};
     }
@@ -58,9 +58,10 @@ public:
     template<typename T>
         requires(std::is_base_of_v<Component, T>)
     T *add_component() {
-        auto ptr = _create_component(rbc_rtti_detail::is_rtti_type<T>::get_md5());
-        _add_component(ptr);
-        return static_cast<T *>(ptr);
+        auto type_id = rbc_rtti_detail::is_rtti_type<T>::get_md5();
+        return static_cast<T *>(_get_or_add_component(type_id, [&]() {
+            return RC<Component>(_create_component(type_id));
+        }));
     }
     bool remove_component(MD5 const &type_md5);
     Component *get_component(MD5 const &type_md5);

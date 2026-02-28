@@ -51,7 +51,6 @@ struct ContextImpl : RCBase {
     vstd::unique_ptr<GraphicsUtils> utils;
     vstd::unique_ptr<Window> window;
     vstd::unique_ptr<CameraController> cam_controller;
-    // vstd::unique_ptr<Ca
     RC<world::Entity> display_cam_entity;
     uint2 window_size;
     void clear_window_event() {
@@ -71,6 +70,12 @@ struct ContextImpl : RCBase {
         if (_ctx_inst == this) [[likely]]
             _ctx_inst = nullptr;
         utils.reset();
+    }
+    void reset_view(uint2 resolution) {
+        if (window)
+            utils->resize_swapchain(resolution, window->native_display(), window->native_handle());
+        else
+            utils->resize_swapchain(resolution, invalid_resource_handle, invalid_resource_handle);
     }
 };
 void RBCContext::init_world(void *this_, luisa::string_view meta_path, luisa::string_view binary_path) {
@@ -123,10 +128,7 @@ void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, 
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
-    if (c.window)
-        c.utils->resize_swapchain(resolution, c.window->native_display(), c.window->native_handle());
-    else
-        c.utils->resize_swapchain(resolution, invalid_resource_handle, invalid_resource_handle);
+    c.reset_view(resolution);
 }
 void RBCContext::disable_view(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
@@ -191,7 +193,7 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
         RBCZoneScopedN("Poll Events");
         c.window->poll_events();
         if (c.utils->dst_image() && any(c.window_size != c.utils->dst_image().size())) {
-            reset_view(this_, c.window_size);
+            c.reset_view(c.window_size);
             any_changed = true;
         }
         if (c.cam_controller) {
@@ -317,6 +319,32 @@ void RBCContext::disable_camera_control(void *this_) {
     }
     c.clear_window_event();
     c.cam_controller.reset();
+}
+
+void RBCContext::control_camera_add_pos(void *this_, luisa::float3 pos) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
+    if (!c.cam_controller) [[unlikely]] {
+        LUISA_ERROR("Camera control not enabled.");
+    }
+    if (!c.cam_controller->camera) [[unlikely]] {
+        LUISA_ERROR("Camera not initialized.");
+    }
+    c.cam_controller->camera->position += make_double3(pos.x, pos.y, pos.z);
+}
+
+void RBCContext::control_camera_add_rotate(void *this_, float yaw, float pitch, float roll) {
+    auto &c = *static_cast<ContextImpl *>(this_);
+    std::lock_guard lck{c._ctx_mtx};
+    if (!c.cam_controller) [[unlikely]] {
+        LUISA_ERROR("Camera control not enabled.");
+    }
+    c.cam_controller->rotation_yaw += yaw;
+    pitch = clamp(pitch, -pi * 0.48f, pi * 0.48f);
+    c.cam_controller->rotation_pitch += pitch;
+    c.cam_controller->rotation_pitch = clamp(c.cam_controller->rotation_pitch, -pi * 0.48, pi * 0.48);
+
+    c.cam_controller->rotation_roll += roll;
 }
 
 void RBCContext::upload_texture_data(void *this_, void *tex) {

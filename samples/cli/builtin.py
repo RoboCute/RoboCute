@@ -71,6 +71,22 @@ def rbc_app_register(cli_table: executor.CLITable):
     cli_table.add_function('entity_render_get_mat', app.entity_render_get_mat)
     cli_table.add_function('entity_render_remove_object',
                            app.entity_render_remove_object)
+    cli_table.add_function('entity_add_transform_component',
+                           app.entity_add_transform_component)
+    cli_table.add_function('entity_add_render_component',
+                           app.entity_add_render_component)
+    cli_table.add_function('entity_add_light_component',
+                           app.entity_add_light_component)
+    cli_table.add_function('entity_add_camera_component',
+                           app.entity_add_camera_component)
+    cli_table.add_function('entity_remove_transform_component',
+                           app.entity_remove_transform_component)
+    cli_table.add_function('entity_remove_render_component',
+                           app.entity_remove_render_component)
+    cli_table.add_function('entity_remove_light_component',
+                           app.entity_remove_light_component)
+    cli_table.add_function('entity_remove_camera_component',
+                           app.entity_remove_camera_component)
     cli_table.add_function('resource_material_load_from_openpbr',
                            app.resource_material_load_from_openpbr)
     cli_table.add_function('resource_material_dump_openpbr',

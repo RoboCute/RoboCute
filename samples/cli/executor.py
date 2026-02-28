@@ -5,6 +5,9 @@ def _reflect_function(func, func_name):
     sig = inspect.signature(func)
     types = []
     names = []
+    ret_anno = sig.return_annotation
+    if ret_anno == inspect._empty:
+        ret_anno = None
     for name, param in sig.parameters.items():
         anno = param.annotation
         names.append(name)
@@ -12,7 +15,7 @@ def _reflect_function(func, func_name):
             raise Exception(
                 f"Error: function '{func_name}' argument '{param.name}' has no annotation.")
         types.append(param.annotation)
-    return types, names
+    return types, names, ret_anno
 
 
 def _parse_function(code: str):
@@ -29,7 +32,6 @@ def _parse_function(code: str):
     """
     import ast
 
-    code = code.strip()
     if not code:
         return [None, None, []]
 
@@ -118,6 +120,7 @@ class FuncMeta:
         self.arg_types = []
         self.func = None
         self.doc = None
+        self.return_type = None
         self.arg_names = []
 
 
@@ -210,11 +213,12 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
         if not callable(func):
             raise Exception(f"Error: function '{name}' not callable.")
         # {'name': <class 'str'>, 'age': <class 'int'>, 'return': <class 'bool'>}
-        arg_types, arg_names = _reflect_function(func, name)
+        arg_types, arg_names, ret_type = _reflect_function(func, name)
         meta = FuncMeta()
         meta.arg_types = arg_types
         meta.func = func
         meta.doc = doc
+        meta.return_type = ret_type
         meta.arg_names = arg_names
         self._func_table[name] = meta
 
@@ -223,49 +227,54 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
 
     def execute_cli(self, input_func, end_func):
         while True:
-            command: str = None
             command_coro = input_func('Input next call:\n')
+            commands = []
             if inspect.isgenerator(command_coro):
                 while True:
                     try:
                         v = next(command_coro)
-                        if type(v) == str:
-                            command = v
-                            break
+                        if v is not None and type(v) == str:
+                            commands.append(v)
                         yield None
                     except StopIteration:
                         break
-            assert type(command) == str
-            command = command.strip()
-            if end_func(command):
-                break
-            try:
-                func_name, func_meta, assign_name = self._check_cmd(
-                    command, self._context)
-                self._context[func_name] = func_meta.func
-                if assign_name is not None:
-                    exec(command, self._context)
-                    ret_val = self._context[assign_name]
-                else:
-                    ret_val = eval(command, self._context)
-                del self._context[func_name]
+            should_close = False
+            for command in commands:
+                command = command.strip()
+                if end_func(command):
+                    should_close = True
+                    break
+                if len(command) == 0 or command.startswith('#'):
+                    continue
+                try:
+                    func_name, func_meta, assign_name = self._check_cmd(
+                        command, self._context)
+                    self._context[func_name] = func_meta.func
+                    if assign_name is not None:
+                        exec(command, self._context)
+                        ret_val = self._context[assign_name]
+                    else:
+                        ret_val = eval(command, self._context)
+                    del self._context[func_name]
 
-                if ret_val and inspect.isgenerator(ret_val):
-                    while True:
-                        try:
-                            value = next(ret_val)
-                            if assign_name is not None:
-                                self._context[assign_name] = value
-                            if value is not None:
-                                yield value
-                        except StopIteration:
-                            break
-                        yield None
-                else:
-                    if ret_val is not None:
-                        yield ret_val
-            except Exception as e:
-                yield str(e)
+                    if ret_val and inspect.isgenerator(ret_val):
+                        while True:
+                            try:
+                                value = next(ret_val)
+                                if assign_name is not None:
+                                    self._context[assign_name] = value
+                                if value is not None:
+                                    yield value
+                            except StopIteration:
+                                break
+                            yield None
+                    else:
+                        if ret_val is not None:
+                            yield ret_val
+                except Exception as e:
+                    yield str(e)
+            if should_close:
+                break
 
     def dump_func_table(self):
         s = ''
@@ -278,6 +287,11 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
                 is_first = False
                 s += t.__name__
             s += ']'
+            s += ' -> '
+            if v.return_type is not None:
+                s += v.return_type.__name__
+            else:
+                s += 'None'
             if v.doc:
                 s += '    # Description: ' + v.doc
             s += '\n'
