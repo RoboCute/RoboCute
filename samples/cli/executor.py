@@ -255,6 +255,8 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
                         try:
                             value = next(ret_val)
                             if value:
+                                if assign_name is not None:
+                                    self._context[assign_name] = value
                                 yield value
                         except StopIteration:
                             break

@@ -548,6 +548,25 @@ void RBCContext::editing_add_click_requires(void *this_, luisa::string_view name
     auto *click_mng = &render_settings.read_mut<ClickManager>();
     click_mng->add_require(luisa::string{name}, ClickRequire{.screen_uv = uv});
 }
+struct SelectQueryImpl : RCBase {
+    RC<world::RenderComponent> _comp;
+    bool _valid{};
+};
+void *SelectQuery::_create_() {
+    auto p = new SelectQueryImpl{};
+    manually_add_ref(p);
+    return p;
+}
+
+bool SelectQuery::valid(void *this_) {
+    auto p = static_cast<SelectQueryImpl *>(this_);
+    return p->_valid;
+}
+void *SelectQuery::get(void *this_) {
+    auto p = static_cast<SelectQueryImpl *>(this_);
+    // if (!p->_valid) return nullptr;
+    return p->_comp.get();
+}
 void *RBCContext::editing_query_click_requires(void *this_, luisa::string_view name) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
@@ -561,17 +580,18 @@ void *RBCContext::editing_query_click_requires(void *this_, luisa::string_view n
     auto &render_settings = c.utils->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(cam_comp->render_pipe_ctx()));
     auto *click_mng = &render_settings.read_mut<ClickManager>();
     auto click_result = click_mng->query_result(name);
+    auto r = static_cast<SelectQueryImpl *>(SelectQuery::_create_());
     if (!click_result) {
-        return nullptr;
+        return r;
     }
+    r->_valid = true;
+    if (click_result->inst_id == ~0u) return r;
     auto elem = SceneManager::instance().accel_manager().try_get_accel_element(click_result->inst_id);
     if (!elem) {
-        return nullptr;
+        return r;
     }
     auto ptr = world::RenderComponent::try_get_component(elem->user_id);
-    if (!ptr) {
-        return nullptr;
-    }
-    return ptr.get();
+    r->_comp = std::move(ptr);
+    return r;
 }
 }// namespace rbc

@@ -92,24 +92,31 @@ def editing_select_object(uv_x: float, uv_y: float) -> Generator[Optional[re.wor
     click_name = "__tui_agent_click__"
     app.ctx.editing_add_click_requires(click_name, lc.float2(uv_x, uv_y))
 
-    render_comp = None
-    while render_comp is None:
-        render_comp = app.ctx.editing_query_click_requires(click_name)
-        if render_comp is None:
+    select_query: re.world.SelectQuery = None
+    while True:
+        select_query = app.ctx.editing_query_click_requires(click_name)
+        if not select_query.valid():
             yield None
-
-    entity = render_comp.entity()
-    yield entity
-
+        else:
+            break
+    comp = select_query.get()
+    if not comp:
+        yield None
+    else:
+        yield comp.entity()
 
 def entity_transform_set_position(
     entity: re.world.Entity, x: float, y: float, z: float
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     transform = re.world.TransformComponent(
         entity.get_component("TransformComponent")
     )
     if transform:
         transform.set_pos(lc.double3(x, y, z), False)
+        app._requires_reset = True
     else:
         raise Exception("TransformComponent not found.")
 
@@ -127,6 +134,9 @@ def entity_transform_get_position(entity: re.world.Entity) -> lc.double3:
 def entity_transform_add_position(
     entity: re.world.Entity, x: float, y: float, z: float
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     transform = re.world.TransformComponent(
         entity.get_component("TransformComponent")
     )
@@ -135,6 +145,7 @@ def entity_transform_add_position(
         new_pos = lc.double3(
             current_pos.x + x, current_pos.y + y, current_pos.z + z)
         transform.set_pos(new_pos, False)
+        app._requires_reset = True
     else:
         raise Exception("TransformComponent not found.")
 
@@ -142,11 +153,15 @@ def entity_transform_add_position(
 def entity_transform_set_rotation(
     entity: re.world.Entity, x: float, y: float, z: float, w: float
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     transform = re.world.TransformComponent(
         entity.get_component("TransformComponent")
     )
     if transform:
         transform.set_rotation(lc.float4(x, y, z, w), False)
+        app._requires_reset = True
     else:
         raise Exception("TransformComponent not found.")
 
@@ -164,6 +179,9 @@ def entity_transform_get_rotation(entity: re.world.Entity) -> lc.float4:
 def entity_transform_set_rotation_euler(
     entity: re.world.Entity, euler_x: float, euler_y: float, euler_z: float
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     transform = re.world.TransformComponent(
         entity.get_component("TransformComponent")
     )
@@ -171,6 +189,7 @@ def entity_transform_set_rotation_euler(
         quat = euler_to_quaternion(euler_x, euler_y, euler_z)
         transform.set_rotation(
             lc.float4(quat[0], quat[1], quat[2], quat[3]), False)
+        app._requires_reset = True
     else:
         raise Exception("TransformComponent not found.")
 
@@ -178,11 +197,15 @@ def entity_transform_set_rotation_euler(
 def entity_transform_set_scale(
     entity: re.world.Entity, x: float, y: float, z: float
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     transform = re.world.TransformComponent(
         entity.get_component("TransformComponent")
     )
     if transform:
         transform.set_scale(lc.double3(x, y, z), False)
+        app._requires_reset = True
     else:
         raise Exception("TransformComponent not found.")
 
@@ -200,6 +223,9 @@ def entity_transform_get_scale(entity: re.world.Entity) -> lc.double3:
 def entity_transform_add_scale(
     entity: re.world.Entity, x: float, y: float, z: float
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     transform = re.world.TransformComponent(
         entity.get_component("TransformComponent")
     )
@@ -209,6 +235,7 @@ def entity_transform_add_scale(
             current_scale.x + x, current_scale.y + y, current_scale.z + z
         )
         transform.set_scale(new_scale, False)
+        app._requires_reset = True
     else:
         raise Exception("TransformComponent not found.")
 
@@ -216,9 +243,13 @@ def entity_transform_add_scale(
 def entity_light_add_point_light(
     entity: re.world.Entity, r: float, g: float, b: float, visible: bool
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     light = re.world.LightComponent(entity.get_component("LightComponent"))
     if light:
         light.add_point_light(lc.float3(r, g, b), visible)
+        app._requires_reset = True
     else:
         raise Exception("LightComponent not found.")
 
@@ -226,9 +257,13 @@ def entity_light_add_point_light(
 def entity_light_add_area_light(
     entity: re.world.Entity, r: float, g: float, b: float, visible: bool
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     light = re.world.LightComponent(entity.get_component("LightComponent"))
     if light:
         light.add_area_light(lc.float3(r, g, b), visible)
+        app._requires_reset = True
     else:
         raise Exception("LightComponent not found.")
 
@@ -236,9 +271,13 @@ def entity_light_add_area_light(
 def entity_light_add_disk_light(
     entity: re.world.Entity, r: float, g: float, b: float, visible: bool
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     light = re.world.LightComponent(entity.get_component("LightComponent"))
     if light:
         light.add_disk_light(lc.float3(r, g, b), visible)
+        app._requires_reset = True
     else:
         raise Exception("LightComponent not found.")
 
@@ -251,6 +290,9 @@ def entity_light_add_spot_light(
     angle_atten_pow: float,
     visible: bool
 ) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     light = re.world.LightComponent(entity.get_component("LightComponent"))
     if light:
         light.add_spot_light(
@@ -260,6 +302,7 @@ def entity_light_add_spot_light(
             angle_atten_pow,
             visible
         )
+        app._requires_reset = True
     else:
         raise Exception("LightComponent not found.")
 
@@ -305,9 +348,13 @@ def entity_camera_get_fov(entity: re.world.Entity) -> float:
 
 
 def entity_camera_set_fov(entity: re.world.Entity, value: float) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     cam = re.world.CameraComponent(entity.get_component("CameraComponent"))
     if cam:
         cam.set_fov(value)
+        app._requires_reset = True
     else:
         raise Exception("CameraComponent not found.")
 
@@ -321,9 +368,13 @@ def entity_camera_get_near_plane(entity: re.world.Entity) -> float:
 
 
 def entity_camera_set_near_plane(entity: re.world.Entity, value: float) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     cam = re.world.CameraComponent(entity.get_component("CameraComponent"))
     if cam:
         cam.set_near_plane(value)
+        app._requires_reset = True
     else:
         raise Exception("CameraComponent not found.")
 
@@ -337,9 +388,13 @@ def entity_camera_get_far_plane(entity: re.world.Entity) -> float:
 
 
 def entity_camera_set_far_plane(entity: re.world.Entity, value: float) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     cam = re.world.CameraComponent(entity.get_component("CameraComponent"))
     if cam:
         cam.set_far_plane(value)
+        app._requires_reset = True
     else:
         raise Exception("CameraComponent not found.")
 
@@ -353,9 +408,13 @@ def entity_camera_get_focus_distance(entity: re.world.Entity) -> float:
 
 
 def entity_camera_set_focus_distance(entity: re.world.Entity, value: float) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     cam = re.world.CameraComponent(entity.get_component("CameraComponent"))
     if cam:
         cam.set_focus_distance(value)
+        app._requires_reset = True
     else:
         raise Exception("CameraComponent not found.")
 
@@ -369,9 +428,13 @@ def entity_camera_get_aperture(entity: re.world.Entity) -> float:
 
 
 def entity_camera_set_aperture(entity: re.world.Entity, value: float) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     cam = re.world.CameraComponent(entity.get_component("CameraComponent"))
     if cam:
         cam.set_aperture(value)
+        app._requires_reset = True
     else:
         raise Exception("CameraComponent not found.")
 
@@ -385,9 +448,13 @@ def entity_camera_get_aspect_ratio(entity: re.world.Entity) -> float:
 
 
 def entity_camera_set_aspect_ratio(entity: re.world.Entity, value: float) -> None:
+    global app
+    if app is None:
+        app = rbc.app.App()
     cam = re.world.CameraComponent(entity.get_component("CameraComponent"))
     if cam:
         cam.set_aspect_ratio(value)
+        app._requires_reset = True
     else:
         raise Exception("CameraComponent not found.")
 

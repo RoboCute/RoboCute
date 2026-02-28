@@ -725,6 +725,17 @@ class BuiltinKernels:
     cpp_namespace="rbc",
     module_name="world_interface",
 )
+class SelectQuery:
+    def valid() -> bool: ...
+    def get() -> RenderComponent: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
+)
 class RBCContext:
     def init_world(self, meta_path: str, binary_path: str) -> None: ...
 
@@ -773,4 +784,4 @@ class RBCContext:
 
     # editing (no results in offline-rendering mode), can be used in headless mode with renderer
     def editing_add_click_requires(name: str, uv: float2) -> None: ...
-    def editing_query_click_requires(name: str) -> RenderComponent: ...
+    def editing_query_click_requires(name: str) -> SelectQuery: ...

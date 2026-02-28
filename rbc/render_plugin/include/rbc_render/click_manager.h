@@ -65,9 +65,6 @@ struct ClickManager {
             auto disp = vstd::scope_exit([&]() {
                 _results.remove(kvp);
             });
-            if (kvp.value().inst_id == ~0u) {
-                return {};
-            }
             return kvp.value();
         }
         return {};
@@ -78,9 +75,6 @@ struct ClickManager {
             auto disp = vstd::scope_exit([&]() {
                 _gizmos_clicked_result.remove(kvp);
             });
-            if (kvp.value().primitive_id == ~0u) {
-                return {};
-            }
             return kvp.value();
         }
         return {};
