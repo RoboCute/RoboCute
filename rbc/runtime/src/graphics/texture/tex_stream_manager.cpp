@@ -6,6 +6,7 @@
 #include <rbc_graphics/shader_manager.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_core/binary_file_writer.h>
+#include <rbc_core/atomic.h>
 namespace rbc::detail {
 template<typename Load, typename UnLoad, typename Check>
     requires(
@@ -184,7 +185,7 @@ void TexStreamManager::_async_logic() {
     }
     SparseCommandList sparse_cmdlist;
     IOCommandList io_cmdlist;
-    if (auto readback_data = _frame_datas.pop()) {
+    if (auto readback_data = _frame_readback_buffer.pop()) {
         io_cmdlist = _process_readback(*readback_data, sparse_cmdlist);
     }
     {
@@ -235,16 +236,16 @@ void TexStreamManager::_async_logic() {
     if (inqueue_frame >= 2) {
         return;
     }
-    inqueue_frame++;
     ///////////////// Process async commands
-    if (_readback_size > 0) {
-        vector<uint> readback;
-        readback.push_back_uninitialized(_readback_size / sizeof(uint));
-        cmdlist << _level_buffer.buffer().view(0, readback.size()).copy_to(readback.data());
-        cmdlist.add_callback([this, readback = std::move(readback)]() mutable {
-            _frame_datas.push(std::move(readback));
-        });
-    }
+    if (_readback_size == 0) return;
+    inqueue_frame++;
+    vector<uint> readback;
+    readback.push_back_uninitialized(_readback_size / sizeof(uint));
+    cmdlist << _level_buffer.buffer().view(0, readback.size()).copy_to(readback.data());
+    cmdlist.add_callback([this, readback = std::move(readback)]() mutable {
+        _frame_readback_buffer.push(std::move(readback));
+    });
+
     _countdown--;
     if (_countdown == 0) {
         _countdown = (1u << 28u) - 1u;
@@ -336,7 +337,7 @@ auto TexStreamManager::load_sparse_img(
             BufferAllocator::AllocateType::BestFit);
         auto host_ptr = _uploader.emplace_copy_cmd(v->node.view<uint>(_level_buffer));
         auto offset_ptr = _uploader.emplace_copy_cmd(_chunk_offset_buffer.view(bindless_idx, 1));
-        _readback_size = std::max<size_t>(_readback_size, v->node.offset_bytes() + v->node.size_bytes());
+        atomic_max(_readback_size, v->node.offset_bytes() + v->node.size_bytes());
         const uint value = (_countdown << 4u) | 15u;
         for (auto end_ptr = host_ptr + tile_count.x * tile_count.y; host_ptr != end_ptr; ++host_ptr) {
             *host_ptr = value;

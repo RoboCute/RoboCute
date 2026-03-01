@@ -56,7 +56,6 @@ public:
 
 protected:
     bool _install() override;
-    bool _async_load_from_file();
     bool _load_finished() const;
     bool unsafe_save_to_path() const override;
 };

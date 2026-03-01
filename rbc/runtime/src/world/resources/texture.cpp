@@ -158,49 +158,6 @@ bool TextureResource::_install() {
     }
     return true;
 }
-bool TextureResource::_async_load_from_file() {
-    auto render_device = RenderDevice::instance_ptr();
-    if (!render_device) return false;
-    auto file_size = desire_size_bytes();
-    auto path = this->path();
-    if (path.empty()) {
-        return false;
-    }
-    std::lock_guard lck{_async_mtx};
-    if (_tex) {
-        return false;
-    }
-    if (is_vt()) {
-        auto tex = new DeviceSparseImage();
-        _tex = tex;
-        // _vt_finished = new VTLoadFlag{};
-        tex->load(
-            TexStreamManager::instance(),
-            // [vt_finished = this->_vt_finished]() {
-            //     vt_finished->finished = true;
-            // },
-            {},
-            path,
-            0,
-            {},
-            (PixelStorage)_pixel_storage,
-            _size,
-            _mip_level);
-    } else {
-        auto tex = new DeviceImage();
-        _tex = tex;
-        tex->async_load_from_file(
-            path,
-            0,
-            {},
-            (PixelStorage)_pixel_storage,
-            _size,
-            _mip_level,
-            DeviceImage::ImageType::Float,
-            !tex->host_data_ref().empty());
-    }
-    return true;
-}
 
 uint32_t TextureResource::heap_index() const {
     std::shared_lock lck{_async_mtx};
@@ -212,12 +169,65 @@ uint32_t TextureResource::heap_index() const {
     }
 }
 rbc::coroutine TextureResource::_async_load() {
-    if (!_async_load_from_file()) {
+    bool loaded = false;
+    do {
+        auto render_device = RenderDevice::instance_ptr();
+        if (!render_device) {
+            loaded = false;
+            break;
+        }
+        auto file_size = desire_size_bytes();
+        auto path = this->path();
+        if (path.empty()) {
+            loaded = false;
+            break;
+        }
+        std::lock_guard lck{_async_mtx};
+        if (_tex) {
+            loaded = false;
+            break;
+        }
+        if (is_vt()) {
+            auto tex = new DeviceSparseImage();
+            _tex = tex;
+            // _vt_finished = new VTLoadFlag{};
+            tex->load(
+                TexStreamManager::instance(),
+                // [vt_finished = this->_vt_finished]() {
+                //     vt_finished->finished = true;
+                // },
+                {},
+                path,
+                0,
+                {},
+                (PixelStorage)_pixel_storage,
+                _size,
+                _mip_level);
+            while (!tex->load_executed()) {
+                co_await std::suspend_always{};
+            }
+        } else {
+            auto tex = new DeviceImage();
+            _tex = tex;
+            tex->async_load_from_file(
+                path,
+                0,
+                {},
+                (PixelStorage)_pixel_storage,
+                _size,
+                _mip_level,
+                DeviceImage::ImageType::Float,
+                !tex->host_data_ref().empty());
+            while (!tex->load_finished()) {
+                co_await std::suspend_always{};
+            }
+        }
+        loaded = true;
+        break;
+    } while (false);
+    if (!loaded) {
         unsafe_set_loading_status_min(EResourceLoadingStatus::Unloaded);
         co_return;
-    }
-    while (!_load_finished()) {
-        co_await std::suspend_always{};
     }
     unsafe_set_installed();
     co_return;

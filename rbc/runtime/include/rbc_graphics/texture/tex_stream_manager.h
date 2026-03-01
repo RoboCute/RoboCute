@@ -147,8 +147,10 @@ private:
         vector<LoadCommand<weak_ptr>> unload_cmds;
         vstd::vector<shared_ptr<TexIndex>> depended_texs;
     };
+
+    // _frame_res: A loading frame's data and commands
     vstd::LockFreeArrayQueue<FrameResource> _frame_res;
-    vstd::LockFreeArrayQueue<vstd::vector<uint>> _frame_datas;
+    vstd::LockFreeArrayQueue<vstd::vector<uint>> _frame_readback_buffer;
     struct UInt3Equal {
         bool operator()(uint3 const &a, uint3 const &b) const {
             return all(a == b);
@@ -164,7 +166,7 @@ private:
     vector<TexIndex *> _tex_indices;
 
     ////////////// callback thread
-    size_t _readback_size{};
+    std::atomic_size_t _readback_size{};
     mutable std::atomic_size_t _allocated_size{0};
     // Make sure readback processor serial with load & unload
     luisa::spin_mutex _uploader_mtx;

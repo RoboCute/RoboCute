@@ -656,7 +656,7 @@ void *Project::import_texture(
     c->sync();
     // Build meta json for texture import parameters
     luisa::string meta_json = luisa::format(
-        "{{\"mip_level\":{},\"to_vt\":{}}}", mip_level, to_vt ? "true" : "false");
+        "{{\"mip_level\":{},\"is_vt\":{}}}", mip_level, to_vt ? "true" : "false");
     auto ptr = c->proj->import_assets(
         path, TypeInfo::get<world::TextureResource>().md5(), meta_json);
     auto p = ptr.get();

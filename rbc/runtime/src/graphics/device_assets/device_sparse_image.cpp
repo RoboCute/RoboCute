@@ -29,14 +29,14 @@ void DeviceSparseImage::load(
     while (allowed_level > 1 && any((size >> (allowed_level - 1)) < TexStreamManager::chunk_resolution)) {
         allowed_level--;
     }
-    auto sparse_img = AssetsManager::instance()->lc_device().create_sparse_image<float>(storage, size, allowed_level);
-    auto bindless_index = SceneManager::instance().bindless_allocator().allocate_tex2d(sparse_img, {});
-    _heap_idx = bindless_index;
+
     AssetsManager::instance()->load_thd_queue.push(
-        [this_shared = RC{this}, tex_stream, path, file_offset, sparse_img = std::move(sparse_img), init_callback = std::move(init_callback)](LoadTaskArgs const &args) mutable {
+        [this_shared = RC{this}, tex_stream, path, file_offset, init_callback = std::move(init_callback), storage, size, allowed_level](LoadTaskArgs const &args) mutable {
             auto ptr = static_cast<DeviceSparseImage *>(this_shared.get());
             if (ptr->_gpu_load_frame != std::numeric_limits<uint64_t>::max())
                 return;
+            auto sparse_img = AssetsManager::instance()->lc_device().create_sparse_image<float>(storage, size, allowed_level);
+            ptr->_heap_idx = SceneManager::instance().bindless_allocator().allocate_tex2d(sparse_img, {});
             ptr->_gpu_load_frame = args.load_frame;
             auto result = tex_stream->load_sparse_img(std::move(sparse_img), TexStreamManager::FilePath{luisa::to_string(path), file_offset}, ptr->_heap_idx, *args.disp_queue, args.cmdlist, std::move(init_callback));
             ptr->_sparse_img = result.img_ptr;
