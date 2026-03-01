@@ -159,7 +159,7 @@ def download_packages():
             "address": address,
             "path": download_path,
             "unzip": [download_path / RENDER_RESOURCE_NAME,
-                      Path(PROJECT_ROOT) / 'rbc/render_plugin/bin']
+                      download_path / 'render_resources']
         },
         LC_DX_SDK: {
             "address": lc_address,

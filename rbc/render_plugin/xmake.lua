@@ -28,7 +28,14 @@ local function rbc_render_impl()
     add_rules('utils.bin2obj', {
         extensions = {'.json', '.bytes'}
     })
-    add_files('src/render_settings.json', 'bin/*.bytes')
+    add_files('src/render_settings.json')
+    after_build(function(target)
+        os.cp(path.join(os.projectdir(), 'build/download/render_resources/*'), target:targetdir(), {
+            copy_if_different = true,
+            async = true,
+            detach = true
+        })
+    end)
 end
 
 interface_target('rbc_render_plugin', rbc_render_interface, rbc_render_impl, true)

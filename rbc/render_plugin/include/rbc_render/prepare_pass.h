@@ -6,6 +6,14 @@
 #include <rbc_render/renderer_data.h>
 namespace rbc {
 struct PreparePass : public Pass {
+    struct LutLoadCmd {
+        luisa::fiber::event evt;
+        luisa::vector<std::byte> data;
+        Volume<float> const *tex;
+    };
+    luisa::vector<LutLoadCmd> _lut_load_cmds;
+
+public:
     Buffer<uint> sobol_256d;
     Buffer<uint> sobol_scrambling;
     Buffer<uint> sobol_ranking;

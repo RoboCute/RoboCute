@@ -1,3 +1,6 @@
+import('async.jobgraph')
+import('async.runjobs')
+
 function main(mode, build_stubgen)
     if not mode then
         mode = 'release'
@@ -6,29 +9,29 @@ function main(mode, build_stubgen)
     os.mkdir(ext_path)
     local target_dir = path.join(os.projectdir(), 'build', os.host(), os.arch(), mode)
     -- copy targetdir to 
-    os.cp(path.join(target_dir, '*.dll'), ext_path, {
-        copy_if_different = true
+    local copy_options = {
+        copy_if_different = true,
+        async = true
+    }
+    local jobs = jobgraph.new()
+    local function copy_ext(name)
+        jobs:add(name .. '_copy', function()
+            os.cp(path.join(target_dir, '*.' .. name), ext_path, copy_options)
+        end)
+    end
+    local function copy_shader(name)
+        jobs:add('shader_' .. name .. '_copy', function()
+            os.cp(path.join(target_dir, '../shader_build_' .. name), ext_path, copy_options)
+        end)
+    end
+    copy_ext('dll')
+    copy_ext('pyd')
+    copy_ext('bytes')
+    copy_shader('dx')
+    copy_shader('vk')
+    runjobs('copy', jobs, {
+        comax = 1000
     })
-    os.cp(path.join(target_dir, '*.pyd'), ext_path, {
-        copy_if_different = true
-    })
-    os.cp(path.join(target_dir, '*.coeff'), ext_path, {
-        copy_if_different = true
-    })
-    os.cp(path.join(target_dir, '*.bytes'), ext_path, {
-        copy_if_different = true
-    })
-    os.cp(path.join(target_dir, '*.bin'), ext_path, {
-        copy_if_different = true
-    })
-    -- copy builtin-assets
-    os.cp(path.join(target_dir, "../shader_build_dx"), ext_path, {
-        copy_if_different = true
-    })
-    os.cp(path.join(target_dir, "../shader_build_vk"), ext_path, {
-        copy_if_different = true
-    })
-
     -- Do this manually
     if build_stubgen then
         os.setenv('PYTHONPATH', ext_path)
