@@ -852,6 +852,7 @@ void CameraComponent::set_geometry_export_buffer(void *this_, luisa::compute::Bu
                 0,
                 buffer.total_size_bytes / sizeof(float),
                 buffer.total_size_bytes / sizeof(float));
+    RenderDevice::instance().lc_main_stream().synchronize();
 }
 void CameraComponent::clear_geometry_export_buffer(void *this_) {
     auto cam = static_cast<world::CameraComponent *>(this_);
@@ -859,6 +860,7 @@ void CameraComponent::clear_geometry_export_buffer(void *this_) {
     auto &s = map.read_mut<FrameSettings>();
     s.geometry_channel = GeometryType::NONE;
     s.pt_geometry_buffer = {};
+    RenderDevice::instance().lc_main_stream().synchronize();
 }
 double CameraComponent::aperture(void *this_) {
     auto c = static_cast<world::CameraComponent *>(this_);

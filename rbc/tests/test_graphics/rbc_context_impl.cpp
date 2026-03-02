@@ -330,7 +330,12 @@ void RBCContext::control_camera_add_pos(void *this_, luisa::float3 pos) {
     if (!c.cam_controller->camera) [[unlikely]] {
         LUISA_ERROR("Camera not initialized.");
     }
-    c.cam_controller->camera->position += make_double3(pos.x, pos.y, pos.z);
+    if (c.cam_controller->transform)
+        c.cam_controller->transform->set_pos(
+            c.cam_controller->transform->position() + make_double3(pos.x, pos.y, pos.z),
+            false);
+    else
+        c.cam_controller->camera->position += make_double3(pos.x, pos.y, pos.z);
 }
 
 void RBCContext::control_camera_add_rotate(void *this_, float yaw, float pitch, float roll) {

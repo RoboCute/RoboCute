@@ -5,6 +5,7 @@ import numpy as np
 import math
 import argparse
 from typing import Optional
+from PIL import Image
 
 import robocute as rbc
 import robocute.rbc_ext.luisa as lc
@@ -380,20 +381,19 @@ def main():
 
     # clear_shader = lc.Shader('gui/clear_shader.bin')
 
-    # if EXPORT:
-    #     geometry_buffer = lc.Buffer(
-    #         resolution.x * resolution.y * (1 + 3 + 3 + 3), float
-    #     )
-    #     app.display_cam.set_geometry_export_buffer(
-    #         geometry_buffer.info(),
-    #         re.world.RendererGeometryType(
-    #             int(re.world.RendererGeometryType.Depth)
-    #             | int(re.world.RendererGeometryType.Normal)
-    #             | int(re.world.RendererGeometryType.Emission)
-    #             | int(re.world.RendererGeometryType.Albedo)
-    #         ),
-    #     )
-    # else:
+    if EXPORT:
+        geometry_buffer = lc.Buffer(
+            resolution.x * resolution.y * (1 + 3 + 3 + 3), float
+        )
+        app.display_cam.set_geometry_export_buffer(
+            geometry_buffer.info(),
+            re.world.RendererGeometryType(
+                int(re.world.RendererGeometryType.Depth)
+                | int(re.world.RendererGeometryType.Normal)
+                | int(re.world.RendererGeometryType.Emission)
+                | int(re.world.RendererGeometryType.Albedo)
+            ),
+        )
     app.ctx.enable_camera_control()
 
     if not app.scene:
@@ -423,70 +423,69 @@ def main():
         #     print(re.world.TransformComponent(render_comp.entity().get_component('TransformComponent')).position())
 
         if EXPORT and frame_index == 128:
+            EXPORT = False
             img = app.display_image()
-            print(img.width)
-            print(img.height)
-        #     # frame_index = 0
             app.ctx.denoise()
             app.ctx.save_display_image_to(
                 str(Path(__file__).parent /
                     f"screenshot/frame_{image_index}.png")
             )
-            tick_stage = re.world.TickStage.NONE
-            # clear_shader(img, lc.float4(1, 0, 1, 1), dispatch_size=(img.width, img.height, 1))
-        #     img = app.ctx.display_image()
-        #     element_offset = 0
-        #     write_buffer_vec1_to_img(
-        #         geometry_buffer,
-        #         0.2,
-        #         element_offset,
-        #         img,
-        #         dispatch_size=(img.width, img.height, 1),
-        #     )
-        #     pixel_size = img.width * img.height
-        #     app.ctx.save_display_image_to(
-        #         str(Path(__file__).parent / f"screenshot/depth_{image_index}.png")
-        #     )
-        #     element_offset += pixel_size
+            expected_size = resolution.x * resolution.y * (1 + 3 + 3 + 3)
+            geometry_array = np.empty(shape=expected_size, dtype=np.float32)
+            # Assert geometry_array's size same as geometry_buffer's size
+            assert geometry_buffer.size == expected_size, (
+                f"geometry_array size mismatch: {geometry_buffer.size} != {expected_size}"
+            )
+            geometry_buffer.copy_to(geometry_array)
+            print(geometry_buffer.size)
+            offset = 0
+            pixel_size = resolution.x * resolution.y
+            depth_array = geometry_array[offset:offset + pixel_size]  # float 1-channel buffer
+            offset += pixel_size
+            normal_array = geometry_array[offset:offset + pixel_size * 3]  # float 3-channel buffer
+            offset += pixel_size * 3
+            emission_array = geometry_array[offset:offset + pixel_size * 3]  # float 3-channel buffer
+            offset += pixel_size * 3
+            albedo_array = geometry_array[offset:offset + pixel_size * 3]  # float 3-channel buffer
+            offset += pixel_size * 3
+            # Save depth, normal, emission, albedo as PNG images
+            screenshot_dir = Path(__file__).parent / "screenshot"
+            screenshot_dir.mkdir(exist_ok=True)
 
-        #     write_buffer_vec3_to_img(
-        #         geometry_buffer,
-        #         element_offset,
-        #         img,
-        #         dispatch_size=(img.width, img.height, 1),
-        #     )
-        #     pixel_size = img.width * img.height
-        #     app.ctx.save_display_image_to(
-        #         str(Path(__file__).parent / f"screenshot/normal_{image_index}.png")
-        #     )
-        #     element_offset += pixel_size * 3
+            # Reshape arrays to image dimensions
+            height, width = resolution.y, resolution.x
 
-        #     write_buffer_vec3_to_img(
-        #         geometry_buffer,
-        #         element_offset,
-        #         img,
-        #         dispatch_size=(img.width, img.height, 1),
-        #     )
-        #     pixel_size = img.width * img.height
-        #     app.ctx.save_display_image_to(
-        #         str(Path(__file__).parent / f"screenshot/emission_{image_index}.png")
-        #     )
-        #     element_offset += pixel_size * 3
+            # Depth: normalize to 0-255 for visualization
+            depth_img = depth_array.reshape(height, width)
+            depth_min, depth_max = depth_img.min(), depth_img.max()
+            if depth_max > depth_min:
+                depth_norm = (depth_img - depth_min) / (depth_max - depth_min) * 255
+            else:
+                depth_norm = np.zeros_like(depth_img)
+            depth_pil = Image.fromarray(depth_norm.astype(np.uint8), mode='L')
+            depth_pil.save(screenshot_dir / f"depth_{image_index}.png")
 
-        #     write_buffer_vec3_to_img(
-        #         geometry_buffer,
-        #         element_offset,
-        #         img,
-        #         dispatch_size=(img.width, img.height, 1),
-        #     )
-        #     pixel_size = img.width * img.height
-        #     app.ctx.save_display_image_to(
-        #         str(Path(__file__).parent / f"screenshot/albedo_{image_index}.png")
-        #     )
-        #     element_offset += pixel_size * 3
+            # Normal: reshape and convert to 0-255 range
+            normal_img = normal_array.reshape(height, width, 3)
+            normal_norm = np.clip((normal_img + 1.0) * 127.5, 0, 255).astype(np.uint8)
+            normal_pil = Image.fromarray(normal_norm, mode='RGB')
+            normal_pil.save(screenshot_dir / f"normal_{image_index}.png")
 
-        #     image_index += 1
-        #     app.display_cam.clear_geometry_export_buffer()
+            # Emission: reshape and convert to 0-255 range
+            emission_img = emission_array.reshape(height, width, 3)
+            emission_norm = np.clip(emission_img * 255, 0, 255).astype(np.uint8)
+            emission_pil = Image.fromarray(emission_norm, mode='RGB')
+            emission_pil.save(screenshot_dir / f"emission_{image_index}.png")
+
+            # Albedo: reshape and convert to 0-255 range
+            albedo_img = albedo_array.reshape(height, width, 3)
+            albedo_norm = np.clip(albedo_img * 255, 0, 255).astype(np.uint8)
+            albedo_pil = Image.fromarray(albedo_norm, mode='RGB')
+            albedo_pil.save(screenshot_dir / f"albedo_{image_index}.png")
+            app.display_cam.clear_geometry_export_buffer()
+            del geometry_buffer
+            geometry_buffer = None
+            print('Channel saved.')
         if tui_exec is None:
             tui_exec = tui_table.execute_cli(
                 cli.executor.async_input,
@@ -499,7 +498,7 @@ def main():
         except StopIteration:
             print('Exit from TUI!')
             break
-
+    lc.synchronize()
 
 if __name__ == "__main__":
     main()
