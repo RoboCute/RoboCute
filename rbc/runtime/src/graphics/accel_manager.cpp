@@ -1,6 +1,7 @@
 #include <rbc_graphics/accel_manager.h>
 #include <luisa/core/fiber.h>
 #include <luisa/runtime/raster/raster_scene.h>
+#include <luisa/runtime/rtx/procedural_primitive.h>
 #include <rbc_graphics/shader_manager.h>
 namespace rbc {
 
@@ -481,7 +482,7 @@ void AccelManager::_swap_last(BufferUploader &uploader, auto &inst, DisposeQueue
     _dirty = true;
     // swap last element
     auto &accel_ele = _accel_elements[inst.accel_id];
-    auto procedural = accel_ele.mesh_data.try_get<ProceduralPrimitive>();
+    auto procedural = accel_ele.mesh_data.template try_get<ProceduralPrimitive>();
     if (procedural && *procedural) {
         if (!disp_queue) {
             LUISA_ERROR("Remove accel type mismatch.");

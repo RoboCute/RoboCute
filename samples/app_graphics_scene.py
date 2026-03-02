@@ -587,7 +587,6 @@ def main():
         except StopIteration:
             print('Exit from TUI!')
             break
-    lc.synchronize()
 
 
 if __name__ == "__main__":

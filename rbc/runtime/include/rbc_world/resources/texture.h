@@ -15,7 +15,7 @@ struct VTLoadFlag : RCBase {
 };
 
 struct RBC_RUNTIME_API TextureResource final : ResourceBaseImpl<TextureResource> {
-    friend struct TextureLoader;
+    friend struct ::rbc::TextureLoader;
     DECLARE_WORLD_OBJECT_FRIEND(TextureResource)
     using BaseType = ResourceBaseImpl<TextureResource>;
 

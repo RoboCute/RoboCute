@@ -53,9 +53,9 @@ static constexpr bool is_rtti_type_v = rbc_rtti_detail::is_rtti_type<T>::value;
     };                                                       \
     }
 
-template<class _Ty>
-static _Ty &lvalue_declval() noexcept {
-    static_assert(false, "Calling declval is ill-formed, see N4950 [declval]/2.");
+template<class T>
+static T &lvalue_declval() noexcept {
+    static_assert(luisa::always_false_v<T>, "Calling declval is ill-formed, see N4950 [declval]/2.");
 }
 namespace concepts {
 template<typename T>

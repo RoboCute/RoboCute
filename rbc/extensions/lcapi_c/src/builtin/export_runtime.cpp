@@ -363,7 +363,8 @@ void export_runtime(py::module &m) {
                 rbc::lcapi_c::RefCounter::current->AddObject(
                     info.handle,
                     {[](DeviceInterface *d, uint64 handle) {
-                         d->destroy_buffer(handle);
+                        sync_stream();
+                        d->destroy_buffer(handle);
                      },
                      d.shared_from_this()});
                 return info; }, pyref)
@@ -385,8 +386,8 @@ void export_runtime(py::module &m) {
             vstd::reset(info, d.create_buffer(type, elem_count, reinterpret_cast<void *>(native_address)));
             info.interop = false;
             rbc::lcapi_c::RefCounter::current->AddObject(info.handle, {[](DeviceInterface *d, uint64 handle) {
-               sync_stream();
-                 d->destroy_buffer(handle); }, d.shared_from_this()});
+                sync_stream();
+                d->destroy_buffer(handle); }, d.shared_from_this()});
             return info; })
         .def("interop_buffer_copy_from", [](DeviceInterface &d, uint64_t interop_buffer, uint64_t interop_buffer_offset_bytes, uint64_t cu_stream_ptr, uint64_t cu_buffer, size_t size_bytes) { 
             interop_copy(d, interop_buffer, interop_buffer_offset_bytes, reinterpret_cast<void*>(cu_stream_ptr), reinterpret_cast<void*>(cu_buffer), size_bytes, false); 

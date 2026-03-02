@@ -860,7 +860,6 @@ void CameraComponent::clear_geometry_export_buffer(void *this_) {
     auto &s = map.read_mut<FrameSettings>();
     s.geometry_channel = GeometryType::NONE;
     s.pt_geometry_buffer = {};
-    RenderDevice::instance().lc_main_stream().synchronize();
 }
 double CameraComponent::aperture(void *this_) {
     auto c = static_cast<world::CameraComponent *>(this_);

@@ -43,7 +43,7 @@ void create_alias_table(luisa::span<const float> values, luisa::span<HDRI::Alias
     else [[likely]]
     {
         auto inv_sum = 1.0 / sum;
-        luisa::fiber::parallel(0ull, values.size(), 1024, [&](auto begin, auto end) {
+        luisa::fiber::parallel<uint64_t>(0ull, values.size(), 1024, [&](auto begin, auto end) {
 			for (auto i = begin; i != end; ++i) {
 				pdf[i] = static_cast<float>(std::abs(values[i]) * inv_sum);
 			} }, inplace);
@@ -55,7 +55,7 @@ void create_alias_table(luisa::span<const float> values, luisa::span<HDRI::Alias
     under.push_back_uninitialized(next_pow2(values.size()));
     std::atomic_size_t over_size = 0;
     std::atomic_size_t under_size = 0;
-    luisa::fiber::parallel(0ull, values.size(), 1024, [&](size_t beg, size_t end) {
+    luisa::fiber::parallel<uint64_t>(0ull, values.size(), 1024, [&](size_t beg, size_t end) {
 		for (auto i = beg; i < end; i++) {
 			auto p = static_cast<float>(values[i] * ratio);
 			table[i] = {p, static_cast<uint>(i)};
@@ -151,7 +151,7 @@ auto HDRI::compute_alias_table(luisa::span<float> scale_map, uint2 size) -> Alia
     luisa::vector<float> row_averages(size.y);
     luisa::vector<float> pdfs(pixel_count);
     luisa::vector<HDRI::AliasEntry> aliases(size.y + pixel_count);
-    luisa::fiber::parallel(0u, size.y, 8, [&](uint beg, uint end) {
+    luisa::fiber::parallel<uint64_t>(0u, size.y, 8, [&](uint beg, uint end) {
         for (auto i = beg; i != end; ++i)
         {
             auto sum = 0.;
@@ -173,7 +173,7 @@ auto HDRI::compute_alias_table(luisa::span<float> scale_map, uint2 size) -> Alia
     luisa::vector<float> pdf_table;
     pdf_table.push_back_uninitialized(row_averages.size());
     rbc::detail::create_alias_table(row_averages, luisa::span{ aliases }.subspan(0, size.y), pdf_table, true);
-    luisa::fiber::parallel(0u, size.y, 32, [&](auto beg, auto end) {
+    luisa::fiber::parallel<uint64_t>(0u, size.y, 32, [&](auto beg, auto end) {
         for (auto y = beg; y < end; ++y)
         {
             auto offset = y * size.x;

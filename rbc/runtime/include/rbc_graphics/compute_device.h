@@ -13,6 +13,8 @@
 namespace luisa::compute {
 class Stream;
 class CUDAExternalExt;
+class DxCudaInterop;
+class VkCudaInterop;
 }// namespace luisa::compute
 namespace rbc {
 using namespace luisa;

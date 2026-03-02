@@ -118,7 +118,7 @@ BaseObject::~BaseObject() {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
     if (_guid) {
         std::lock_guard lck{_world_inst->_guid_mtx};
-        _world_inst->_obj_guids.erase(_guid);
+        _world_inst->_obj_guids.erase(reinterpret_cast<MD5 const &>(_guid));
     }
 }
 

@@ -1,7 +1,8 @@
 #include <rbc_graphics/make_device_config.h>
+#include <luisa/core/logging.h>
+#ifdef _WIN32
 #include "dx_device_info.h"
 #include <wrl/client.h>
-#include <luisa/core/logging.h>
 #ifndef ThrowIfFailed
 #define ThrowIfFailed(x)                                                                          \
     do {                                                                                          \
@@ -203,11 +204,18 @@ auto DXDeviceInfo::GetGPUAllocatorSettings() noexcept -> luisa::optional<GPUAllo
 }
 DXDeviceInfo::~DXDeviceInfo() {
 }
+}// namespace rbc
+#endif
+namespace rbc {
 RBC_RUNTIME_API void clear_dx_states(
     luisa::compute::DeviceConfigExt *device_config_ext) {
+#ifdef _WIN32
     auto ptr = static_cast<DXDeviceInfo *>(device_config_ext);
     ptr->resource_before_states.clear();
     ptr->resource_after_states.clear();
+#else
+    LUISA_ERROR("DX not supported.");
+#endif
 }
 RBC_RUNTIME_API void add_dx_before_state(
     luisa::compute::DeviceConfigExt *device_config_ext,
@@ -216,10 +224,14 @@ RBC_RUNTIME_API void add_dx_before_state(
         luisa::compute::Argument::Texture,
         luisa::compute::Argument::BindlessArray> const &resource,
     D3D12EnhancedResourceUsageType resource_type) {
+#ifdef _WIN32
     auto ptr = static_cast<DXDeviceInfo *>(device_config_ext);
     ptr->resource_before_states.emplace_back(
         resource,
         (DXCustomCmd::EnhancedResourceUsageType)resource_type);
+#else
+    LUISA_ERROR("DX not supported.");
+#endif
 }
 
 RBC_RUNTIME_API void add_dx_after_state(
@@ -229,21 +241,29 @@ RBC_RUNTIME_API void add_dx_after_state(
         luisa::compute::Argument::Texture,
         luisa::compute::Argument::BindlessArray> const &resource,
     D3D12EnhancedResourceUsageType resource_type) {
+#ifdef _WIN32
     auto ptr = static_cast<DXDeviceInfo *>(device_config_ext);
     ptr->resource_after_states.emplace_back(
         resource,
         (DXCustomCmd::EnhancedResourceUsageType)resource_type);
+#else
+    LUISA_ERROR("DX not supported.");
+#endif
 }
 
 RBC_RUNTIME_API void get_dx_device(
     luisa::compute::DeviceConfigExt *device_config_ext,
     void *&device,
     luisa::uint2 &adaptor_luid) {
+#ifdef _WIN32
     auto ptr = static_cast<DXDeviceInfo *>(device_config_ext);
     device = ptr->device;
     DXGI_ADAPTER_DESC1 desc;
     ptr->adapter->GetDesc1(&desc);
     adaptor_luid = uint2(desc.AdapterLuid.HighPart, desc.AdapterLuid.LowPart);
+#else
+    LUISA_ERROR("DX not supported.");
+#endif
 }
 }// namespace rbc
 #undef ThrowIfFailed
