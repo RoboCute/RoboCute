@@ -23,6 +23,52 @@ triangle_count = 24
 app: rbc.app.App = None
 
 
+def int_array_to_rgb(int_array: np.ndarray) -> np.ndarray:
+    """Convert an array of integer IDs to RGB image array using PCG hash.
+
+    Args:
+        int_array: 2D array of integer IDs with shape (height, width)
+
+    Returns:
+        3D RGB array with shape (height, width, 3) and dtype uint8
+    """
+    height, width = int_array.shape
+    rgb_array = np.zeros((height, width, 3), dtype=np.uint8)
+
+    # PCG constants from pcg.hpp
+    PRIME32_2 = np.uint32(2246822519)
+    PRIME32_3 = np.uint32(3266489917)
+    PRIME32_4 = np.uint32(668265263)
+    PRIME32_5 = np.uint32(374761393)
+
+    # Flatten for vectorized processing
+    flat_ids = int_array.flatten().astype(np.uint32)
+
+    # PCGSampler(uint v) constructor - initialize state from seed
+    h32 = flat_ids + PRIME32_5
+    h32 = PRIME32_4 * ((h32 << 17) | (h32 >> (32 - 17)))
+    h32 = PRIME32_2 * (h32 ^ (h32 >> 15))
+    h32 = PRIME32_3 * (h32 ^ (h32 >> 13))
+    state = h32 ^ (h32 >> 16)
+
+    # Generate 3 random values for RGB channels using PCG nextui()
+    for i in range(3):
+        # nextui(): generate next random uint
+        old_state = state.copy()
+        state = state * np.uint32(747796405) + np.uint32(2891336453)
+        word = ((old_state >> ((old_state >> 28) + 4))
+                ^ old_state) * np.uint32(277803737)
+        rand_val = (word >> 22) ^ word
+
+        # Convert to float in [0, 1) then to uint8 in [0, 255]
+        # Using division by 2^32 for uniform distribution
+        rgb_array[:, :, i] = (rand_val / np.float32(4294967296.0) * 255.0).astype(
+            np.uint8
+        ).reshape(height, width)
+
+    return rgb_array
+
+
 def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
     """
     创建一个包含两个立方体的动态网格实体
@@ -376,20 +422,23 @@ def main():
     cli.rbc_app.app = app
     cli.builtin.rbc_app_register(tui_table)
     # print(tui_table.dump_func_table())
-    
+
     tui_exec = None
 
     # clear_shader = lc.Shader('gui/clear_shader.bin')
 
     if EXPORT:
         geometry_buffer = lc.Buffer(
-            resolution.x * resolution.y * (1 + 3 + 3 + 3), float
+            resolution.x * resolution.y * (1 + 3 + 4 + 3 + 3), float
         )
         app.display_cam.set_geometry_export_buffer(
             geometry_buffer.info(),
             re.world.RendererGeometryType(
                 int(re.world.RendererGeometryType.Depth)
                 | int(re.world.RendererGeometryType.Normal)
+                | int(re.world.RendererGeometryType.ObjectID)
+                | int(re.world.RendererGeometryType.PrimID)
+                | int(re.world.RendererGeometryType.Barycentric)
                 | int(re.world.RendererGeometryType.Emission)
                 | int(re.world.RendererGeometryType.Albedo)
             ),
@@ -415,7 +464,7 @@ def main():
             app._requires_reset = False
         else:
             frame_index += 1
-        # EDITING example
+        # EDITING exam-ple
 
         # app.ctx.editing_add_click_requires("my_click", lc.float2(0.5))
         # render_comp = app.ctx.editing_query_click_requires("my_click")
@@ -430,7 +479,7 @@ def main():
                 str(Path(__file__).parent /
                     f"screenshot/frame_{image_index}.png")
             )
-            expected_size = resolution.x * resolution.y * (1 + 3 + 3 + 3)
+            expected_size = resolution.x * resolution.y * (1 + 3 + 4 + 3 + 3)
             geometry_array = np.empty(shape=expected_size, dtype=np.float32)
             # Assert geometry_array's size same as geometry_buffer's size
             assert geometry_buffer.size == expected_size, (
@@ -440,13 +489,23 @@ def main():
             print(geometry_buffer.size)
             offset = 0
             pixel_size = resolution.x * resolution.y
-            depth_array = geometry_array[offset:offset + pixel_size]  # float 1-channel buffer
+            # float 1-channel buffer
+            depth_array = geometry_array[offset:offset + pixel_size]
             offset += pixel_size
-            normal_array = geometry_array[offset:offset + pixel_size * 3]  # float 3-channel buffer
+            # float 3-channel buffer
+            normal_array = geometry_array[offset:offset + pixel_size * 3]
             offset += pixel_size * 3
-            emission_array = geometry_array[offset:offset + pixel_size * 3]  # float 3-channel buffer
+            object_id_array = geometry_array[offset:offset + pixel_size].view(dtype=np.uint32)
+            offset += pixel_size
+            prim_id_array = geometry_array[offset:offset+pixel_size].view(dtype=np.uint32)
+            offset += pixel_size
+            bary_array = geometry_array[offset:offset+pixel_size * 2]
+            offset += pixel_size * 2
+            # float 3-channel buffer
+            emission_array = geometry_array[offset:offset + pixel_size * 3]
             offset += pixel_size * 3
-            albedo_array = geometry_array[offset:offset + pixel_size * 3]  # float 3-channel buffer
+            # float 3-channel buffer
+            albedo_array = geometry_array[offset:offset + pixel_size * 3]
             offset += pixel_size * 3
             # Save depth, normal, emission, albedo as PNG images
             screenshot_dir = Path(__file__).parent / "screenshot"
@@ -457,9 +516,10 @@ def main():
 
             # Depth: normalize to 0-255 for visualization
             depth_img = depth_array.reshape(height, width)
-            depth_min, depth_max = depth_img.min(), depth_img.max()
+            depth_min, depth_max = 0.01, 10.0
             if depth_max > depth_min:
-                depth_norm = (depth_img - depth_min) / (depth_max - depth_min) * 255
+                depth_norm = (depth_img - depth_min) / \
+                    (depth_max - depth_min) * 255
             else:
                 depth_norm = np.zeros_like(depth_img)
             depth_pil = Image.fromarray(depth_norm.astype(np.uint8), mode='L')
@@ -467,13 +527,15 @@ def main():
 
             # Normal: reshape and convert to 0-255 range
             normal_img = normal_array.reshape(height, width, 3)
-            normal_norm = np.clip((normal_img + 1.0) * 127.5, 0, 255).astype(np.uint8)
+            normal_norm = np.clip((normal_img + 1.0) *
+                                  127.5, 0, 255).astype(np.uint8)
             normal_pil = Image.fromarray(normal_norm, mode='RGB')
             normal_pil.save(screenshot_dir / f"normal_{image_index}.png")
 
             # Emission: reshape and convert to 0-255 range
             emission_img = emission_array.reshape(height, width, 3)
-            emission_norm = np.clip(emission_img * 255, 0, 255).astype(np.uint8)
+            emission_norm = np.clip(
+                emission_img * 255, 0, 255).astype(np.uint8)
             emission_pil = Image.fromarray(emission_norm, mode='RGB')
             emission_pil.save(screenshot_dir / f"emission_{image_index}.png")
 
@@ -482,6 +544,33 @@ def main():
             albedo_norm = np.clip(albedo_img * 255, 0, 255).astype(np.uint8)
             albedo_pil = Image.fromarray(albedo_norm, mode='RGB')
             albedo_pil.save(screenshot_dir / f"albedo_{image_index}.png")
+            # Export object_id and prim_id as RGB PNG images
+            # Using a simple hash-based color generation for integer IDs
+
+            # Reshape object_id and prim_id to 2D image dimensions
+            object_id_img = object_id_array.reshape(height, width)
+            prim_id_img = prim_id_array.reshape(height, width)
+
+            # Convert to RGB using vectorized operation
+            object_id_rgb = int_array_to_rgb(object_id_img)
+            prim_id_rgb = int_array_to_rgb(prim_id_img)
+
+            # Save as PNG images
+            object_id_pil = Image.fromarray(object_id_rgb, mode='RGB')
+            object_id_pil.save(screenshot_dir / f"object_id_{image_index}.png")
+
+            prim_id_pil = Image.fromarray(prim_id_rgb, mode='RGB')
+            prim_id_pil.save(screenshot_dir / f"prim_id_{image_index}.png")
+
+            # Barycentric: reshape and convert to 0-255 range (2 channels: RGB with B=0)
+            bary_img = bary_array.reshape(height, width, 2)
+            bary_norm = np.clip(bary_img * 255, 0, 255).astype(np.uint8)
+            # Convert to 3-channel RGB
+            bary_rgb = np.zeros((height, width, 3), dtype=np.uint8)
+            bary_rgb[:, :, 0] = bary_norm[:, :, 0]  # R channel
+            bary_rgb[:, :, 1] = bary_norm[:, :, 1]  # G channel
+            bary_pil = Image.fromarray(bary_rgb, mode='RGB')
+            bary_pil.save(screenshot_dir / f"bary_{image_index}.png")
             app.display_cam.clear_geometry_export_buffer()
             del geometry_buffer
             geometry_buffer = None
@@ -499,6 +588,7 @@ def main():
             print('Exit from TUI!')
             break
     lc.synchronize()
+
 
 if __name__ == "__main__":
     main()

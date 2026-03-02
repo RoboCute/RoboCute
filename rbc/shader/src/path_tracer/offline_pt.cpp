@@ -201,15 +201,27 @@ using namespace luisa::shader;
         }
         if ((args.geometry_mask & (1 << 2)) != 0)// ObjectID
         {
-            const uint element_size = 4;//  4
+            const uint element_size = 1;
             uint read_index = byte_offset + buffer_id * element_size;
             geometry_buffer.write(read_index, bit_cast<float>(obj_id.x));
-            geometry_buffer.write(read_index + 1, bit_cast<float>(obj_id.y));
-            geometry_buffer.write(read_index + 2, obj_bary.x);
-            geometry_buffer.write(read_index + 3, obj_bary.y);
             byte_offset += element_size * pixel_count;
         }
-        if ((args.geometry_mask & (1 << 3)) != 0)// Emission
+        if ((args.geometry_mask & (1 << 3)) != 0)// PrimID
+        {
+            const uint element_size = 1;//  1
+            uint read_index = byte_offset + buffer_id * element_size;
+            geometry_buffer.write(read_index, bit_cast<float>(obj_id.y));
+            byte_offset += element_size * pixel_count;
+        }
+        if ((args.geometry_mask & (1 << 4)) != 0)// Barycentric
+        {
+            const uint element_size = 2;
+            uint read_index = byte_offset + buffer_id * element_size;
+            geometry_buffer.write(read_index, obj_bary.x);
+            geometry_buffer.write(read_index + 1, obj_bary.y);
+            byte_offset += element_size * pixel_count;
+        }
+        if ((args.geometry_mask & (1 << 5)) != 0)// Emission
         {
             const uint element_size = 3;//  3
             float3 value = emission_sum;
@@ -226,7 +238,7 @@ using namespace luisa::shader;
             geometry_buffer.write(read_index + 2, value.z);
             byte_offset += element_size * pixel_count;
         }
-        if ((args.geometry_mask & (1 << 4)) != 0)// Albedo
+        if ((args.geometry_mask & (1 << 6)) != 0)// Albedo
         {
             const uint element_size = 3;//  3
             float3 value = gbuffer_albedo;

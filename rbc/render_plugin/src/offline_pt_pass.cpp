@@ -203,10 +203,12 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
             LUISA_ERROR("normal_buffer and albedo_buffer must be provided together.");
         }
         pt_args.geometry_mask = 0;
-        const uint geometry_byte_size[5] = {
+        const uint geometry_byte_size[] = {
             4, // depth
             12,// normal
-            16,// object id
+            4, // object id
+            4, // prim id
+            8, // bary
             12,// emission
             12,// albedo
         };

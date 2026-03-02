@@ -87,9 +87,11 @@ class RendererGeometryType(Enum):
     Normal = 1 << 1  # packed float3: normal-xyz
     # packed uint4:  X: object id  Y: primitive id ZW: triangle bary-centric (float2)
     ObjectID = 1 << 2
+    PrimID = 1 << 3
+    Barycentric = 1 << 4
 
-    Emission = 1 << 3  # packed float3: emission color (sampled from spectrum)
-    Albedo = 1 << 4  # packed float3: albedo color (sampled from spectrum)
+    Emission = 1 << 5  # packed float3: emission color (sampled from spectrum)
+    Albedo = 1 << 6  # packed float3: albedo color (sampled from spectrum)
 
 
 @reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
