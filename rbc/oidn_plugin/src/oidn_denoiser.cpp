@@ -3,7 +3,7 @@
 #include <oidn_denoiser.h>
 #include <luisa/core/logging.h>
 #include <luisa/runtime/stream.h>
-#include <luisa/backends/ext/dx_custom_cmd.h>
+// #include <luisa/backends/ext/dx_custom_cmd.h>
 #include <shared_mutex>
 // #include <dxcuda_interop/interop_ext.h>
 #include <luisa/backends/ext/dx_cuda_interop.h>

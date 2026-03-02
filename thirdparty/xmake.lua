@@ -23,7 +23,7 @@ includes('tinygltf_xmake.lua')
 -- includes('nlohmann_json_xmake.lua')
 -- includes('libuipc')
 includes("doctest")
-includes('jolt_xmake.lua')
+-- includes('jolt_xmake.lua')
 includes('ozz_xmake.lua')
 if has_config('rbc_editor') then
     includes('qt_xmake.lua')

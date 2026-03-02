@@ -28,10 +28,10 @@ struct WorldScene {
     RC<world::MeshResource> skinning_mesh;
     RC<world::Entity> skinning_entity;// make it independent, no save to file
     // jolt physics
-    RC<world::MaterialResource> physics_mat;
-    RC<world::Entity> physics_floor_entity;// make it independent, no save to file
-    RC<world::Entity> physics_box_entity;  // make it independent, no save to file
-    RC<world::MeshResource> physics_box_mesh;
+    // RC<world::MaterialResource> physics_mat;
+    // RC<world::Entity> physics_floor_entity;// make it independent, no save to file
+    // RC<world::Entity> physics_box_entity;  // make it independent, no save to file
+    // RC<world::MeshResource> physics_box_mesh;
     RC<world::SceneResource> scene;
 
     struct Gizmos : RCBase {
@@ -64,7 +64,7 @@ private:
     RC<Gizmos> _gizmos;
     void _init_scene(GraphicsUtils *utils);
     void _init_skinning(GraphicsUtils *utils);
-    void _init_physics(GraphicsUtils *utils);
+    // void _init_physics(GraphicsUtils *utils);
     void _set_gizmos();
     void _write_scene();
     void _create_cube(MeshBuilder &mesh_builder, float3 offset, float3 scale);

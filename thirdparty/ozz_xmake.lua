@@ -26,7 +26,8 @@ target_end()
 
 target("ozz_json_cpp")
     add_rules('lc_basic_settings', {
-        project_kind = 'shared'
+        project_kind = 'shared',
+        enable_exception = true
     })
     add_files("ozz_animation/extern/jsoncpp/dist/jsoncpp.cpp")
     add_includedirs("ozz_animation/extern/jsoncpp/dist/", { public = true })

@@ -1,6 +1,9 @@
 target('compile_shaders')
 set_kind('phony')
 before_build(function(target)
+    if not os.is_host('windows') then
+        return nil
+    end
     local builddir = path.directory(target:targetdir())
     local compiler_path = 'clangcxx_compiler'
     if os.is_host('windows') then
@@ -35,6 +38,9 @@ target_end()
 target('compile_shaders_hostgen')
 set_kind('phony')
 before_build(function(target)
+    if not os.is_host('windows') then
+        return nil
+    end
     local builddir = path.directory(target:targetdir())
     local compiler_path = 'clangcxx_compiler'
     if os.is_host('windows') then

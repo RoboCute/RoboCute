@@ -11,7 +11,6 @@
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_graphics/device_assets/device_image.h>
-#include "jolt_component.h"
 #include <tracy_wrapper.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_project/project.h>
@@ -283,45 +282,45 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
     //         });
     // }
 }
-void WorldScene::_init_physics(GraphicsUtils *utils) {
-    MeshBuilder cube_mesh_builder;
-    _create_cube(cube_mesh_builder, float3(-0.5f), float3(1));
-    luisa::vector<uint> submesh_offsets;
-    luisa::vector<std::byte> cube_bytes;
-    cube_mesh_builder.write_to(cube_bytes, submesh_offsets);
-    // create static origin mesh
-    auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
+// void WorldScene::_init_physics(GraphicsUtils *utils) {
+//     MeshBuilder cube_mesh_builder;
+//     _create_cube(cube_mesh_builder, float3(-0.5f), float3(1));
+//     luisa::vector<uint> submesh_offsets;
+//     luisa::vector<std::byte> cube_bytes;
+//     cube_mesh_builder.write_to(cube_bytes, submesh_offsets);
+//     // create static origin mesh
+//     auto mat1 = R"({"type": "pbr", "specular_roughness": 0.8, "weight_metallic": 0.3, "base_albedo": [0.140, 0.450, 0.091]})"sv;
 
-    physics_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
-    {
-        physics_box_mesh = world::create_object<world::MeshResource>();
-        physics_box_mesh->create_empty(std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
+//     physics_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+//     {
+//         physics_box_mesh = world::create_object<world::MeshResource>();
+//         physics_box_mesh->create_empty(std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
 
-        *physics_box_mesh->host_data() = std::move(cube_bytes);
-        physics_box_mesh->install();
-        utils->update_mesh_data(physics_box_mesh->device_mesh(), false);// update through render-thread
-    }
-    // floor
-    {
-        physics_floor_entity = world::create_object<world::Entity>();
-        auto tr = physics_floor_entity->add_component<world::TransformComponent>();
-        auto render = physics_floor_entity->add_component<world::RenderComponent>();
-        auto jolt = physics_floor_entity->add_component<world::JoltComponent>();
-        jolt->init(true);
-        render->update_object({}, physics_box_mesh.get());
-    }
-    // box
-    {
-        physics_box_entity = world::create_object<world::Entity>();
-        auto tr = physics_box_entity->add_component<world::TransformComponent>();
-        auto render = physics_box_entity->add_component<world::RenderComponent>();
-        auto jolt = physics_box_entity->add_component<world::JoltComponent>();
-        jolt->init(false);
-        auto mats = {physics_mat};
-        physics_mat->load_from_json(mat1);
-        render->update_object(mats, physics_box_mesh.get());
-    }
-}
+//         *physics_box_mesh->host_data() = std::move(cube_bytes);
+//         physics_box_mesh->install();
+//         utils->update_mesh_data(physics_box_mesh->device_mesh(), false);// update through render-thread
+//     }
+//     // floor
+//     {
+//         physics_floor_entity = world::create_object<world::Entity>();
+//         auto tr = physics_floor_entity->add_component<world::TransformComponent>();
+//         auto render = physics_floor_entity->add_component<world::RenderComponent>();
+//         auto jolt = physics_floor_entity->add_component<world::JoltComponent>();
+//         jolt->init(true);
+//         render->update_object({}, physics_box_mesh.get());
+//     }
+//     // box
+//     {
+//         physics_box_entity = world::create_object<world::Entity>();
+//         auto tr = physics_box_entity->add_component<world::TransformComponent>();
+//         auto render = physics_box_entity->add_component<world::RenderComponent>();
+//         auto jolt = physics_box_entity->add_component<world::JoltComponent>();
+//         jolt->init(false);
+//         auto mats = {physics_mat};
+//         physics_mat->load_from_json(mat1);
+//         render->update_object(mats, physics_box_mesh.get());
+//     }
+// }
 void WorldScene::_init_skinning(GraphicsUtils *utils) {
     auto &render_device = RenderDevice::instance();
     auto &device = render_device.lc_device();
@@ -567,10 +566,10 @@ WorldScene::~WorldScene() {
     skinning_entity.reset();
     skinning_mesh.reset();
     skinning_origin_mesh.reset();
-    physics_mat.reset();
-    physics_floor_entity.reset();
-    physics_box_entity.reset();
-    physics_box_mesh.reset();
+    // physics_mat.reset();
+    // physics_floor_entity.reset();
+    // physics_box_entity.reset();
+    // physics_box_mesh.reset();
     world::destroy_world();
 }
 void WorldScene::draw_grid(Camera &cam, GridDrawer &grid_drawer) {
@@ -601,10 +600,10 @@ void WorldScene::tick_skinning(GraphicsUtils *utils, float delta_time) {
         // entity->set_data("TestData", std::move(data));
     }
 
-    if (physics_box_entity) {
-        world::JoltComponent::update_step(min(delta_time, 1 / 60.0f));
-        physics_box_entity->get_component<world::JoltComponent>()->update_pos();
-    }
+    // if (physics_box_entity) {
+    //     world::JoltComponent::update_step(min(delta_time, 1 / 60.0f));
+    //     physics_box_entity->get_component<world::JoltComponent>()->update_pos();
+    // }
     if (_entities.empty())
         return;
     auto &sm = SceneManager::instance();
