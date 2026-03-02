@@ -43,6 +43,12 @@ vstd::Guid Object::guid(void *this_) {
 vstd::Guid Object::type_id(void *this_) {
     return static_cast<world::BaseObject *>(this_)->type_id();
 }
+bool Object::is_type(void *this_, luisa::string_view name) {
+    luisa::string class_name{"rbc::world::"};
+    class_name += name;
+    vstd::MD5 md5{luisa::string_view{class_name}};
+    return static_cast<world::BaseObject *>(this_)->type_id() == md5;
+}
 luisa::string Object::type_name(void *this_) {
     return static_cast<world::BaseObject *>(this_)->type_name();
 }

@@ -40,20 +40,20 @@ def make_cube_mesh(scene: re.world.Scene):
     
  
     mat0_json = mat.OpenPBRInterface(app._project)
-    mat.openpbr_set_specular_roughness(mat0_json, 0.8)
-    mat.openpbr_set_weight_metallic(mat0_json, 0.3)
-    mat.openpbr_set_base_albedo(mat0_json, (0.8, 0.8, 0.8))
+    mat0_json.set_specular_roughness(0.8)
+    mat0_json.set_weight_metallic(0.3)
+    mat0_json.set_base_albedo((0.8, 0.8, 0.8))
     
     mat0 = re.world.MaterialResource()
-    mat0.load_from_json(mat.openpbr_dump_to_json(mat0_json))
+    mat0.load_from_json(mat0_json.dump_to_json())
     del mat0_json
     
     mat1 = re.world.MaterialResource()
     mat1_json = mat.OpenPBRInterface(app._project)
-    mat.openpbr_set_specular_roughness(mat1_json, 0.5)
-    mat.openpbr_set_weight_metallic(mat1_json, 0.3)
-    mat.openpbr_set_base_albedo(mat1_json, (0.140, 0.450, 0.091))
-    mat1.load_from_json(mat.openpbr_dump_to_json(mat1_json))
+    mat1_json.set_specular_roughness(0.5)
+    mat1_json.set_weight_metallic(0.3)
+    mat1_json.set_base_albedo((0.140, 0.450, 0.091))
+    mat1.load_from_json(mat1_json.dump_to_json())
     del mat1_json
     
     mat_vector = lc.capsule_vector()

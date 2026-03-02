@@ -471,7 +471,7 @@ def resource_material_load_from_openpbr(
     """
     if not mat_res:
         raise Exception("Invalid MaterialResource.")
-    mat_res.load_from_json(mat.openpbr_dump_to_json(openpbr))
+    mat_res.load_from_json(openpbr.dump_to_json())
 
 
 def resource_material_dump_openpbr(mat_res: re.world.MaterialResource) -> mat.OpenPBRInterface:
@@ -490,7 +490,7 @@ def resource_material_dump_openpbr(mat_res: re.world.MaterialResource) -> mat.Op
         raise Exception("Invalid MaterialResource.")
     js = mat_res.dump_json()
     pbr = mat.OpenPBRInterface()
-    mat.openpbr_load_from_json(pbr, js)
+    pbr.load_from_json(js)
     return pbr
 # Entity Add/Remove Components
 

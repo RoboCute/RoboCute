@@ -36,13 +36,12 @@ function main(mode, build_stubgen)
     if build_stubgen then
         os.setenv('PYTHONPATH', ext_path)
         if build_stubgen == 'uv' then
-            os.runv('uvx', {'pybind11-stubgen', 'test_py_codegen', '--output-dir=' .. ext_path})
             os.runv('uvx', {'pybind11-stubgen', 'rbc_ext_c', '--output-dir=' .. ext_path})
             os.runv('uvx', {'pybind11-stubgen', 'lcapi_c', '--output-dir=' .. ext_path})
         else
-            os.runv('pybind11-stubgen', {'test_py_codegen', '--output-dir=' .. ext_path})
             os.runv('pybind11-stubgen', {'rbc_ext_c', '--output-dir=' .. ext_path})
-            -- os.runv('pybind11-stubgen', {'pyuipc', '--output-dir=' .. ext_path})
+            os.runv('pybind11-stubgen', {'lcapi_c', '--output-dir=' .. ext_path})
         end
+        -- os.runv('pybind11-stubgen', {'pyuipc', '--output-dir=' .. ext_path})
     end
 end
