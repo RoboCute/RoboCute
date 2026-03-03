@@ -253,16 +253,16 @@ def run_git_tasks():
         for f in futures3:
             f.result()
 
-
-def prepare():
+def run_package_download():
     download_executor, download_future = download_packages()
     wait(download_future)
     write_download_hash()
     for f in download_future:
         f.result()  # Raise exceptions if any
-    del download_executor
+
+def prepare():
     # ------------------------------ git ------------------------------
-    print_warning("Download, git-clone and git-pull? (y/n)")
+    print_warning("Git-clone and git-pull? (y/n)")
     try:
         clone_lc = input().strip()
     except EOFError:
@@ -270,11 +270,21 @@ def prepare():
 
     if clone_lc.lower() == "y":
         run_git_tasks()
+        
     lc_path = os.path.join(PROJECT_ROOT, "thirdparty/LuisaCompute")
     if is_empty_folder(lc_path):
         print_error("LuisaCompute not installed.")
         sys.exit(1)
+        
+    print_warning("Download package? (y/n)")
+    try:
+        download_package = input().strip()
+    except EOFError:
+        download_package = "n"
 
+    if download_package.lower() == "y":
+        run_package_download()
+        
     # ------------------------------ llvm/options ------------------------------
     # We skip the builddir variable as it's dead code in the Lua source provided.
 
@@ -340,13 +350,14 @@ def prepare():
     # ------------------------------ Clean Up ------------------------------
     # Cleanup previous generated code to prevent disturbation
     # iterate all "generated" directories in the rbc/
-    print_warning("Clean up previous generated code? (y/n)")
+    print_warning("Generate code? (y/n)")
     try:
         clean_up = input().strip()
     except EOFError:
         clean_up = "n"
     if clean_up.lower() == "y":
         clean_up_generated_code()
+        generate()
 
 
 def clean_up_generated_code():
