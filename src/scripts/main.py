@@ -497,7 +497,8 @@ def pre_pack():
     parser.add_argument('mode', nargs='?', default='release', 
                         choices=['debug', 'release', 'releasedbg'],
                         help='Build mode (default: release)')
-    parser.add_argument('build_stubgen', nargs='?', default=None,
+
+    parser.add_argument('build_stubgen', nargs='?', default="uv",
                         help='Stub generator to use ("uv" for uvx, or omit to skip)')
     
     args = parser.parse_args()
