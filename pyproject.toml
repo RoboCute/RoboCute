@@ -35,6 +35,7 @@ gen = "scripts.main:generate"
 install = "scripts.main:install"
 prepare = "scripts.main:prepare"
 stub = "scripts.main:generate_stub"
+pre-pack = "scripts.main:pre_pack"
 
 [build-system]
 build-backend = "uv_build"

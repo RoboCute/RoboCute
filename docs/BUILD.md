@@ -39,7 +39,7 @@ Python在robocute中扮演双重角色：首先robocute最终会形成一个pyth
 xmake版本：
 1. `xmake f -m release -c` 配置编译目标
 2. `xmake` 执行编译 
-3. `xmake l /xmake/install.lua` 将cpp release结果复制安装到希望的py ext位置 
+
 
 cmake版本
 
@@ -47,6 +47,21 @@ cmake版本
 2. `cmake .. -DQt6_ROOT=D:/tools/Qt/6.9.3/msvc2022_64/lib/cmake/Qt6`：寻找Qt6中`Qt6Config.cmake`的文件目录并通过`Qt6_ROOT`变量设置给cmake
 3. `cmake --build . --config Release`：构建项目
 4. `uv run install`：后处理，将必须的shader、默认场景、渲染默认资源复制到target
+
+
+## 安装python exntesion
+
+使用默认参数 (release 模式，不生成 stub)
+`uv run pre-pack`
+
+debug 模式，使用 uvx 生成 stub
+`uv run pre-pack debug uv`
+
+release 模式，使用系统 pybind11-stubgen 生成 stub
+`uv run pre-pack release`
+
+releasedbg 模式，不生成 stub
+`uv run pre-pack releasedbg`
 
 ## 测试用例
 

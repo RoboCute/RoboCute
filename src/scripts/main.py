@@ -480,6 +480,146 @@ def install():
     install_resources()
 
 
+def pre_pack():
+    """
+    Pre-packaging script: Copy C++ build artifacts (dll, pyd, bytes) and shader builds
+    to src/robocute/rbc_ext/_C for packaging. Optionally generate stub files.
+    
+    Usage: uv run pre-pack <mode> <build_stubgen>
+    
+    Args:
+        mode: Build mode (debug, release, releasedbg). Defaults to 'release'.
+        build_stubgen: Stub generator to use ('uv' for uvx, or None to skip).
+    """
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Pre-packaging script for RoboCute')
+    parser.add_argument('mode', nargs='?', default='release', 
+                        choices=['debug', 'release', 'releasedbg'],
+                        help='Build mode (default: release)')
+    parser.add_argument('build_stubgen', nargs='?', default=None,
+                        help='Stub generator to use ("uv" for uvx, or omit to skip)')
+    
+    args = parser.parse_args()
+    
+    mode = args.mode
+    build_stubgen = args.build_stubgen
+    
+    # Determine target directory
+    target_dir = rel(f"build/{PLATFORM}/{ARCH}/{mode}")
+    ext_path = rel("src/robocute/rbc_ext/_C")
+    
+    print("=" * 60)
+    print("RoboCute Pre-Pack")
+    print("=" * 60)
+    print(f"Mode: {mode}")
+    print(f"Source: {target_dir}")
+    print(f"Destination: {ext_path}")
+    print()
+    
+    # Check if source directory exists
+    if not target_dir.exists():
+        print_error(f"Build directory not found: {target_dir}")
+        print("Please build the project first with xmake.")
+        sys.exit(1)
+    
+    # Ensure destination directory exists
+    ext_path.mkdir(parents=True, exist_ok=True)
+    
+    # Copy files by extension
+    extensions = ['dll', 'pyd', 'bytes']
+    copied_files = []
+    
+    for ext in extensions:
+        pattern = f"*.{ext}"
+        files = list(target_dir.glob(pattern))
+        for src_file in files:
+            dst_file = ext_path / src_file.name
+            try:
+                shutil.copy2(src_file, dst_file)
+                copied_files.append(src_file.name)
+            except Exception as e:
+                print_error(f"Failed to copy {src_file.name}: {e}")
+    
+    if copied_files:
+        print_success(f"Copied {len(copied_files)} files:")
+        for f in copied_files[:10]:  # Show first 10
+            print(f"  - {f}")
+        if len(copied_files) > 10:
+            print(f"  ... and {len(copied_files) - 10} more")
+    else:
+        print_warning("No dll/pyd/bytes files found to copy.")
+    print()
+    
+    # Copy shader build directories
+    shader_names = ['shader_build_dx', 'shader_build_vk']
+    shader_base = rel(f"build/{PLATFORM}/{ARCH}")
+    copied_shaders = []
+    
+    for shader_name in shader_names:
+        shader_dir = shader_base / shader_name
+        if shader_dir.exists() and shader_dir.is_dir():
+            dst_shader_dir = ext_path / shader_name
+            
+            # Remove existing directory if present
+            if dst_shader_dir.exists():
+                shutil.rmtree(dst_shader_dir)
+            
+            try:
+                shutil.copytree(shader_dir, dst_shader_dir)
+                copied_shaders.append(shader_name)
+            except Exception as e:
+                print_error(f"Failed to copy {shader_name}: {e}")
+    
+    if copied_shaders:
+        print_success(f"Copied shader builds: {', '.join(copied_shaders)}")
+    else:
+        print_warning("No shader build directories found.")
+    print()
+    
+    # Generate stub files if requested
+    if build_stubgen:
+        print("Generating stub files...")
+        os.environ['PYTHONPATH'] = str(ext_path)
+        
+        modules = ['rbc_ext_c', 'lcapi_c']
+        
+        for module in modules:
+            # Check if .pyd file exists before generating stub
+            pyd_file = ext_path / f"{module}.pyd"
+            if not pyd_file.exists():
+                print_warning(f"Skipping stub for {module}: {pyd_file.name} not found")
+                continue
+            
+            try:
+                if build_stubgen == 'uv':
+                    subprocess.run(
+                        ['uvx', 'pybind11-stubgen', module, f'--output-dir={ext_path}'],
+                        check=True,
+                        capture_output=True,
+                        text=True
+                    )
+                else:
+                    subprocess.run(
+                        ['pybind11-stubgen', module, f'--output-dir={ext_path}'],
+                        check=True,
+                        capture_output=True,
+                        text=True
+                    )
+                print_success(f"Generated stub for {module}")
+            except subprocess.CalledProcessError as e:
+                print_error(f"Failed to generate stub for {module}")
+                if e.stderr:
+                    print(f"  Error: {e.stderr}")
+            except FileNotFoundError:
+                print_error(f"pybind11-stubgen not found. Please install it or use 'uv' option.")
+        print()
+    
+    print("=" * 60)
+    print("Pre-pack completed successfully!")
+    print("=" * 60)
+
+
 if __name__ == "__main__":
     # main()
     print(PROJECT_ROOT)
