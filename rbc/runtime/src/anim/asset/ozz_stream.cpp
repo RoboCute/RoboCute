@@ -24,16 +24,16 @@ bool OzzStream::opened() const {
 
 size_t OzzStream::Read(void *_buffer, size_t _size) {
     LUISA_ASSERT(!is_write_mode_, "OzzStream: Cannot read in write mode");
-    
+
     if (_size == 0) return 0;
-    
+
     // Check if we have enough data
     if (pos_ + _size > buffer_.size()) {
-        LUISA_WARNING("OzzStream: Read past end of buffer (pos={}, size={}, buffer_size={})", 
+        LUISA_WARNING("OzzStream: Read past end of buffer (pos={}, size={}, buffer_size={})",
                       pos_, _size, buffer_.size());
         return 0;
     }
-    
+
     std::memcpy(_buffer, buffer_.data() + pos_, _size);
     pos_ += _size;
     return _size;
@@ -41,9 +41,9 @@ size_t OzzStream::Read(void *_buffer, size_t _size) {
 
 size_t OzzStream::Write(const void *_buffer, size_t _size) {
     LUISA_ASSERT(is_write_mode_, "OzzStream: Cannot write in read mode");
-    
+
     if (_size == 0) return 0;
-    
+
     // Append to buffer
     auto old_size = buffer_.size();
     buffer_.resize(old_size + _size);
@@ -67,11 +67,11 @@ int OzzStream::Seek(int _offset, Origin _origin) {
         default:
             return -1;
     }
-    
+
     if (new_pos < 0 || new_pos > static_cast<int64_t>(buffer_.size())) {
         return -1;
     }
-    
+
     pos_ = static_cast<uint64_t>(new_pos);
     return 0;
 }

@@ -43,6 +43,7 @@ compile_commands.json
 /build-wasi
 /build_*
 /build-*
+/dist
 
 # visual studio
 /.vs
@@ -63,6 +64,7 @@ compile_commands.json
 # resource file
 *.7z
 *.zip
+*.patch 
 
 # engine
 

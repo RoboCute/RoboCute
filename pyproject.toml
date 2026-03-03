@@ -1,46 +1,46 @@
 [project]
-name = "robocute"
-version = "0.2.1"
-description = "Make Robotics Cute!"
-readme = "README.md"
-license = {file = "Licenses/Apache-2.0.txt"}
-requires-python = ">=3.12"
 dependencies = [
-    "requests",
-    "pytest>=9.0.1",
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "pydantic>=2.0.0",
-    "numpy>=2.3.5",
-    "sourceinspect>=0.0.4",
-    "mypy>=1.19.0",
-    "pybind11-stubgen>=2.5.5",
-    "pillow>=12.1.0",
-    "tetgen>=0.8.2",
+  "requests",
+  "pytest>=9.0.1",
+  "fastapi>=0.104.0",
+  "uvicorn[standard]>=0.24.0",
+  "pydantic>=2.0.0",
+  "numpy>=2.3.5",
+  "sourceinspect>=0.0.4",
+  "mypy>=1.19.0",
+  "pybind11-stubgen>=2.5.5",
+  "pillow>=12.1.0",
+  "tetgen>=0.8.2",
 ]
+description = "Make Robotics Cute!"
+license = {file = "Licenses/Apache-2.0.txt"}
+name = "robocute"
+readme = "README.md"
+requires-python = ">=3.12"
+version = "0.2.1"
 
 [tool.uv.workspace]
 members = ["packages/*"]
 
 [project.optional-dependencies]
 dev = [
-    "mkdocs>=1.6.1",
-    "mkdocs-material>=9.0.0",
-    "pymdown-extensions>=10.0.0",
-    "mkdocs-i18n"
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.0.0",
+  "pymdown-extensions>=10.0.0",
+  "mkdocs-i18n",
 ]
 
 [project.scripts]
-prepare = "scripts.main:prepare"
 gen = "scripts.main:generate"
-stub = "scripts.main:generate_stub"
 install = "scripts.main:install"
+prepare = "scripts.main:prepare"
+stub = "scripts.main:generate_stub"
 
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+build-backend = "uv_build"
+requires = ["uv_build>=0.8.15"]
 
 [tool.pytest.ini_options]
 testpaths = [
-    "test",
+  "test",
 ]

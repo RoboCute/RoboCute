@@ -20,7 +20,6 @@
 #include <rbc_plugin/plugin_manager.h>
 #include <tracy_wrapper.h>
 #include <rbc_core/state_map.h>
-
 #include <rbc_world/entity.h>
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/texture.h>
@@ -33,9 +32,7 @@
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/resource_base.h>
 #include <rbc_world/base_object.h>
-
 #include <rbc_world/resources/skeleton.h>
-
 #include <luisa/core/logging.h>
 
 using namespace rbc;
@@ -47,7 +44,6 @@ int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;
-
     luisa::fiber::scheduler scheduler;
     RuntimeStaticBase::init_all();
     PluginManager::init();
@@ -72,7 +68,6 @@ int main(int argc, char *argv[]) {
     auto &render_settings = utils->render_settings(pipe_ctx);
     Window window{luisa::string{"sample_anim_"} + utils->backend_name(), uint2(1024), true};
     utils->init_display(window.size(), window.native_display(), window.native_handle());
-
     uint64_t frame_index = 0;
     Clock clk;
     double last_frame_time = 0;

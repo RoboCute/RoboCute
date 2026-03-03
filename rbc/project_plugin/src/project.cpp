@@ -11,6 +11,7 @@
 #include <rbc_core/containers/rbc_concurrent_queue.h>
 #include <luisa/vstl/lmdb.hpp>
 namespace rbc {
+
 struct Project : IProject {
 private:
     vstd::LMDB _meta_db;
@@ -43,11 +44,13 @@ public:
     }
     Project(Project const &) = delete;
     Project(Project &&) = delete;
+
     static void read_file_metas(
         luisa::vector<FileMeta> &result,
         luisa::span<std::byte const> file_data,
         uint64_t &last_write_time,
         vstd::MD5 &md5);
+
     void read_file_metas(
         luisa::filesystem::path origin_path,
         luisa::vector<FileMeta> &result) const override {

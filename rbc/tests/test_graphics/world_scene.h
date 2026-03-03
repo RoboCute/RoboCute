@@ -47,6 +47,7 @@ struct WorldScene {
         GraphicsUtils *utils,
         luisa::filesystem::path const &target_binary_dir,
         luisa::filesystem::path const &assets_dir);
+
     ~WorldScene();
     bool draw_gizmos(
         bool dragging,

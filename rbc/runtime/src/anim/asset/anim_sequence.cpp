@@ -30,6 +30,7 @@ void AnimSequence::log_brief() const {
 }
 
 }// namespace rbc::world
+
 namespace rbc {
 bool rbc::Serialize<rbc::world::AnimSequence>::write(rbc::ArchiveWrite &w, const rbc::world::AnimSequence &v) {
     // Use OzzStream in write mode - buffers all data internally
