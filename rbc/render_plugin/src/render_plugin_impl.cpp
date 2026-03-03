@@ -6,10 +6,13 @@
 #include <rbc_graphics/compute_device.h>
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/device_assets/device_image.h>
+#ifdef RBC_RENDER_ENABLE_OIDN
 #include <oidn_denoiser.h>
+#endif
 #include <rbc_render/renderer_data.h>
 namespace rbc {
 
+#ifdef RBC_RENDER_ENABLE_OIDN
 struct DenoiserStream {
     luisa::shared_ptr<Denoiser> denoiser;
     DenoiserStream(
@@ -17,6 +20,7 @@ struct DenoiserStream {
         : denoiser(std::move(denoiser)) {
     }
 };
+#endif
 
 RBC_BIN_2_OBJ_DECLARE(render_settings_json)
 
@@ -34,8 +38,10 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
     OidnSupport oidn_support{OidnSupport::UnChecked};
     std::mutex oidn_mtx;
     luisa::shared_ptr<DynamicModule> oidn_module;
+#ifdef RBC_RENDER_ENABLE_OIDN
     rbc::DenoiserExt *oidn_ext{};
     vstd::HashMap<uint64, DenoiserStream> _denoisers;
+#endif
     //////////////////////////////////////// pipeline
     luisa::unordered_map<luisa::string, luisa::unique_ptr<Pipeline>> pipelines;
     RenderPluginImpl() {
@@ -188,6 +194,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         }
     }
     bool init_oidn() override {
+#ifdef RBC_RENDER_ENABLE_OIDN
         std::lock_guard lck{oidn_mtx};
         auto &render_device = RenderDevice::instance();
         auto &lc_ctx = render_device.lc_ctx();
@@ -206,11 +213,16 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             return false;
         }
         return true;
+#else
+        LUISA_WARNING("OIDN not enabled in this build.");
+        return false;
+#endif
     }
     DenoisePack create_denoise_task(
         luisa::compute::Stream &stream,
         PipeCtxStub *ctx,
         uint2 render_resolution) override {
+#ifdef RBC_RENDER_ENABLE_OIDN
         if (oidn_support != OidnSupport::Supported) {
             LUISA_ERROR("Denoiser not supported.");
         }
@@ -257,17 +269,28 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             .denoise_callback = [&denoiser, &stream]() {
                 denoiser.async_execute(stream);
             }};
+#else
+        return {};
+#endif
     }
     void destroy_denoise_task(luisa::compute::Stream &stream) override {
+#ifdef RBC_RENDER_ENABLE_OIDN
         _denoisers.remove(stream.handle());
+        #else
+        LUISA_WARNING("OIDN not enabled in this build.");
+#endif
     }
     ~RenderPluginImpl() {
         if (sky_atom)
             sky_atom->deallocate(SceneManager::instance().bindless_allocator());
+#ifdef RBC_RENDER_ENABLE_OIDN
         _denoisers.clear();
+#endif
         pipelines.clear();
         dispose_skybox();
+#ifdef RBC_RENDER_ENABLE_OIDN
         delete oidn_ext;
+#endif
     }
 };
 LUISA_EXPORT_API RenderPlugin *get_render_plugin() {

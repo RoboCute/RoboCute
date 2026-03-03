@@ -12,9 +12,12 @@ local function rbc_render_impl()
     add_deps('compile_shaders_hostgen', {
         inherit = false
     })
-    add_deps('oidn_plugin', {
-        links = false
-    })
+    if has_config('rbc_oidn') then
+        add_deps('oidn_plugin', {
+            links = false
+        })
+        add_defines('RBC_RENDER_ENABLE_OIDN')
+    end
     add_includedirs('../shader/host', {
         public = true
     })

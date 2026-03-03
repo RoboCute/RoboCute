@@ -93,16 +93,6 @@ inline int ComputeIntersectionArea(int ax1, int ay1, int ax2, int ay2, int bx1, 
 }
 }// namespace dx_detail
 using Microsoft::WRL::ComPtr;
-RBC_RUNTIME_API luisa::unique_ptr<luisa::compute::DeviceConfigExt> make_dx_device_config(
-    void *device,
-    bool gpu_dump) {
-    auto ptr = luisa::make_unique<rbc::DXDeviceInfo>((ID3D12Device *)device);
-    ptr->gpu_dump = gpu_dump;
-    if (gpu_dump) {
-        LUISA_WARNING("GPU Dump emabled.");
-    }
-    return ptr;
-}
 
 void DXDeviceInfo::ReadbackDX12Device(
     ID3D12Device *device,
@@ -265,5 +255,20 @@ RBC_RUNTIME_API void get_dx_device(
     LUISA_ERROR("DX not supported.");
 #endif
 }
+RBC_RUNTIME_API luisa::unique_ptr<luisa::compute::DeviceConfigExt> make_dx_device_config(
+    void *device,
+    bool gpu_dump) {
+#ifdef _WIN32
+    auto ptr = luisa::make_unique<rbc::DXDeviceInfo>((ID3D12Device *)device);
+    ptr->gpu_dump = gpu_dump;
+    if (gpu_dump) {
+        LUISA_WARNING("GPU Dump emabled.");
+    }
+    return ptr;
+#else
+    return nullptr;
+#endif
+}
+
 }// namespace rbc
 #undef ThrowIfFailed

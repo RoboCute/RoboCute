@@ -78,7 +78,7 @@ void TinyTIFF_memset_s(void *dest, unsigned long destsz, char ch, unsigned long 
 unsigned long TinyTIFF_strlen_s(const char *str, unsigned long strsz)
 {
 #ifdef HAVE_STRLEN_S
-    return strnlen_s(str, strsz);
+    return strnlen(str, strsz);
 #else
     if (str==NULL) return 0;
     #if defined(TINYTIFF_HASOBJSIZE)

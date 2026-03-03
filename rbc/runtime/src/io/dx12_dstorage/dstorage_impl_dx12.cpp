@@ -1,12 +1,13 @@
 #include "dstorage_config.h"
-#if defined(_WIN32) && (!defined(RBC_DSTORAGE_FALLBACK))
 #include <luisa/core/logging.h>
-#include "dstorage.h"
-#include <rbc_io//dstorage_interface.h>
-#include <d3d12.h>
-#include <wrl/client.h>
 #include <luisa/vstl/common.h>
 #include <luisa/backends/ext/native_resource_ext.hpp>
+#include <rbc_io//dstorage_interface.h>
+
+#if defined(_WIN32) && (!defined(RBC_DSTORAGE_FALLBACK))
+#include "dstorage.h"
+#include <d3d12.h>
+#include <wrl/client.h>
 
 namespace rbc {
 using Microsoft::WRL::ComPtr;
@@ -473,6 +474,29 @@ void DStorageStreamDX12Impl::sync_event(
         ThrowIfFailed(fence->SetEventOnCompletion(idx, eventHandle));
         WaitForSingleObject(eventHandle, INFINITE);
     }
+}
+}// namespace rbc
+#else
+// DirectStorage not supported on this platform
+namespace rbc {
+DStorageStream *DStorageStream::create_dx12(Device &device, DStorageSrcType src_type) {
+    LUISA_WARNING("DirectStorage is not supported on this platform.");
+    return nullptr;
+}
+IOFile::Handle IOFile::_init_dx12(luisa::string_view path) {
+    LUISA_WARNING("DirectStorage file operations are not supported on this platform.");
+    return {};
+}
+void DStorageStream::dispose_dx12() {
+    LUISA_WARNING("DirectStorage dispose is not supported on this platform.");
+}
+void IOFile::_dispose_dx12(IOFile::Handle &handle) {
+    LUISA_WARNING("DirectStorage file dispose is not supported on this platform.");
+}
+void DStorageStream::init_dx12(
+    luisa::filesystem::path const &runtime_dir,
+    bool force_hdd) {
+    LUISA_WARNING("DirectStorage initialization is not supported on this platform.");
 }
 }// namespace rbc
 #endif

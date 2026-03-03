@@ -1,6 +1,4 @@
 #include <rbc_render/post_process/lpm.h>
-#include <dxgi1_6.h>
-#include <wrl/client.h>
 #include <rbc_graphics/scene_manager.h>
 namespace rbc {
 namespace ffx {

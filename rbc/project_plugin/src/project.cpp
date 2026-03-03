@@ -174,8 +174,7 @@ void Project::scan_project() {
             bool file_is_dirty{true};
             bool file_meta_is_dirty{false};
             luisa::vector<FileMeta> metas;
-            vstd::Guid md5;
-            md5.reset();
+            vstd::MD5 md5{};
             uint64_t file_last_write_time{};
             luisa::vector<std::byte> vec;
             [&] {
@@ -218,8 +217,8 @@ void Project::scan_project() {
                         return;
                     }
                 }
-                if (!deser._load(md5, "md5")) [[unlikely]] {
-                    md5.reset();
+                if (!deser._load(reinterpret_cast<vstd::Guid &>(md5), "md5")) [[unlikely]] {
+                    md5 = {};
                     return;
                 }
                 file_last_write_time = luisa::filesystem::last_write_time(path).time_since_epoch().count();
@@ -241,7 +240,7 @@ void Project::scan_project() {
             if (!(file_meta_is_dirty || file_is_dirty)) return;// file is clean
             file_meta_is_dirty |= file_is_dirty;
             auto update = [&] {
-                if (!md5) {
+                if (md5 == vstd::MD5{}) {
                     luisa::BinaryFileStream fs{luisa::to_string(path)};
                     if (!fs.valid()) return;
                     vec.clear();
@@ -311,7 +310,7 @@ RC<world::Resource> Project::import_assets(
     }
     luisa::spin_mutex *mtx{};
     std::atomic_uint64_t *rc{};
-    auto origin_path_str = luisa::to_string(origin_path);
+    auto origin_path_str = origin_path;
     origin_path = _assets_path / origin_path;
     decltype(_file_mtx)::Index iter;
     {
@@ -354,7 +353,7 @@ RC<world::Resource> Project::import_assets(
     if (!importer) {
         return {};
     }
-    LUISA_VERBOSE("Importing {}", origin_path_str);
+    LUISA_VERBOSE("Importing {}", luisa::to_string(origin_path_str));
     RC<world::BaseObject> new_res_base{world::create_object(type_id)};
     if (!new_res_base) return {};
     if (new_res_base->base_type() != world::BaseObjectType::Resource) {

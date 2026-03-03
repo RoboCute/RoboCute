@@ -5,7 +5,9 @@ includes('core') -- 底层数据结构
 includes('runtime') -- （图像，动画，物理，插件等）运行时功能
 -- Plugins
 includes('render_plugin')
-includes('oidn_plugin')
+if has_config('rbc_oidn') then
+    includes('oidn_plugin')
+end
 includes('project_plugin')
 
 includes("extensions") -- python extension
