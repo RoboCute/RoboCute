@@ -350,14 +350,13 @@ def prepare():
     # ------------------------------ Clean Up ------------------------------
     # Cleanup previous generated code to prevent disturbation
     # iterate all "generated" directories in the rbc/
-    print_warning("Generate code? (y/n)")
+    print_warning("clean up previous generated code? (y/n)")
     try:
         clean_up = input().strip()
     except EOFError:
         clean_up = "n"
     if clean_up.lower() == "y":
         clean_up_generated_code()
-        generate()
 
 
 def clean_up_generated_code():
