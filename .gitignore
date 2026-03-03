@@ -134,3 +134,4 @@ AGENTS.md
 *-agent.py
 *.bytes
 samples/screenshot/*
+src/uipc
