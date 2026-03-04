@@ -26,6 +26,7 @@ import robocute as rbc
 import robocute.rbc_ext.luisa as lc
 import robocute.rbc_ext as re
 import samples.mat_builtin as mat
+from robocute.utils.rotation import euler_to_quaternion, degrees_to_radians
 
 # UIPC imports
 from uipc import Logger
@@ -387,7 +388,7 @@ def main():
         "--project",
         type=str,
         help="rbc project path, the directory containing rbc_project.json",
-        required=True,
+        required=False,
     )
     parser.add_argument(
         "-o",
@@ -396,14 +397,17 @@ def main():
         help="Export mode (no GUI)"
     )
     args = parser.parse_args()
-
-    project_path = Path(args.project)
+    project_path = None
+    if args.project:
+        project_path = Path(args.project)
 
     # Initialize RoboCute app
     app = rbc.app.App()
     app.init(
         backend_name=args.backend,
         project_path=project_path,
+        world_path=project_path if project_path is not None else Path(
+            __file__).parent,
         require_render=True
     )
 
@@ -420,13 +424,17 @@ def main():
     # Setup camera
     transform = app.get_display_transform()
     if transform:
-        transform.set_pos(lc.double3(0, 5, -10), False)
+        transform.set_pos(lc.double3(6, 12, -15), False)
+        rot = euler_to_quaternion(degrees_to_radians(15), degrees_to_radians(-15), 0)
+        transform.set_rotation(lc.float4(rot[0], rot[1], rot[2], rot[3]), False)
 
     # app.ctx.enable_camera_control()
 
     if not app.scene:
         print("Scene not valid!")
-        return
+        app._scene = re.world.Scene()
+        atmo = re.world.AtmosphereComponent(app._scene.add_entity().add_component('AtmosphereComponent'))
+        atmo.update_data()
 
     # Initialize physics simulation
     print("Initializing UIPC ABD+FEM physics simulation...")
@@ -470,7 +478,8 @@ def main():
             if physics_frame >= RENDER_FRAME:
                 physics_frame = 0
                 physics_should_step = True
-            if app.ctx.tick(delta_time, tick_stage, True) or physics_should_step:
+            app.ctx.tick(delta_time, tick_stage, True)
+            if physics_should_step:
                 frame_index = 0
                 physics_should_step = False
                 # Denoise, save and export image to screenshot/
@@ -478,9 +487,11 @@ def main():
                 screenshot_dir = Path(__file__).parent / "screenshot"
                 screenshot_dir.mkdir(exist_ok=True)
                 app.ctx.save_display_image_to(
-                    str(screenshot_dir / f"frame_{physics_app.frame_count:04d}.png")
+                    str(screenshot_dir /
+                        f"frame_{physics_app.frame_count:04d}.png")
                 )
-                print(f"Saved screenshot to {screenshot_dir}/frame_{physics_app.frame_count:04d}.png")
+                print(
+                    f"Saved screenshot to {screenshot_dir}/frame_{physics_app.frame_count:04d}.png")
             else:
                 frame_index += 1
 

@@ -32,6 +32,7 @@
 #include <rbc_world/resources/skin.h>
 #include <rbc_world/resources/skeleton.h>
 #include <rbc_world/resources/skelmesh.h>
+#include <rbc_world/components/atmosphere_component.h>
 void save_image(luisa::filesystem::path const &path, luisa::compute::Image<float> const &img);// implemented save_image.cpp
 namespace rbc {
 struct EntitiesCollectionImpl : RCBase {
@@ -2048,5 +2049,16 @@ void *CameraComponent::render_settings(void *this_) {
     auto settings = static_cast<RenderSettingsImpl *>(RenderSettings::_create_());
     settings->map = &map;
     return settings;
+}
+void *AtmosphereComponent::texture(void *this_) {
+    auto c = static_cast<rbc::world::AtmosphereComponent *>(this_);
+    auto tex = c->hdri.get();
+    if (!tex) return nullptr;
+    manually_add_ref(tex);
+    return tex;
+}
+void AtmosphereComponent::update_texture(void *this_, void *tex) {
+    auto c = static_cast<rbc::world::AtmosphereComponent *>(this_);
+    c->hdri = static_cast<rbc::world::TextureResource *>(tex);
 }
 }// namespace rbc

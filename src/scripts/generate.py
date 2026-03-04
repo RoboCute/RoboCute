@@ -59,6 +59,7 @@ from rbc_meta.types.world_interface import (
     AnimSequenceResource,
     AnimGraphResource,
     SkelMeshResource,
+    AtmosphereComponent,
 )
 
 
@@ -164,6 +165,7 @@ WORLD_INTERFACE_CLASSES = [
     AnimSequenceResource,
     AnimGraphResource,
     SkelMeshResource,
+    AtmosphereComponent,
 ]
 
 

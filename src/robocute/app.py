@@ -29,16 +29,21 @@ class App:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def init(self, backend_name: str, project_path: Optional[Path], require_render: bool = True):
+    def init(self, backend_name: str, project_path: Optional[Path], world_path: Optional[Path] = None, require_render: bool = True):
         self.init_ctx()
         self.init_device(backend_name)
         lc.init()
         if require_render:
             self.init_render()
         if project_path:
-            world_path = project_path / "library"
+            if not world_path:
+                world_path = project_path / "library"
             self.init_world(world_path)
             self.init_project(project_path)
+        elif world_path:
+            self.init_world(world_path)
+        else:
+            raise Exception('world_path or project_path required.')
 
         self._initialized = True
 

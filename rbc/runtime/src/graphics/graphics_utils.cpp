@@ -345,6 +345,7 @@ void GraphicsUtils::resize_swapchain(
     uint2 size,
     uint64_t native_display,
     uint64_t native_handle) {
+    if (any(size == 0u)) return;
     reset_frame();
     _frame_requires_sync = false;
     _compute_event.event.synchronize(_compute_event.fence_index);
@@ -353,7 +354,6 @@ void GraphicsUtils::resize_swapchain(
     _dst_image.reset();
     _swapchain.reset();
     _present_image.reset();
-
     _dst_image = _render_device->lc_device().create_image<float>(PixelStorage::FLOAT4, size, 1, false, true);
     _dst_image.set_name("Dest image");
 

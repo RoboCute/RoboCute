@@ -570,6 +570,18 @@ class DataComponent(Component):
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     module_name="world_interface",
+    create_instance=False,
+)
+class AtmosphereComponent(Component):
+    def texture() -> TextureResource: ...
+    def update_texture(tex: TextureResource) -> None: ...
+
+
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+    module_name="world_interface",
 )
 class EntitiesCollection:
     def count() -> ulong: ...
