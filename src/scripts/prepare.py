@@ -91,6 +91,32 @@ GIT_TASKS = {
         "branch": None,
         "deps": [],
     },
+    # robotics
+    # "urdfdom_headers": {
+    #     "subdir": "thirdparty/urdfdom_headers",
+    #     "url": "https://github.com/ros/urdfdom_headers.git",
+    #     "branch": None,
+    #     "deps": [],
+    # },
+    # "tinyxml2": {
+    #     "subdir": "thirdparty/tinyxml2",
+    #     "url": "https://github.com/leethomason/tinyxml2.git",
+    #     "branch": None,
+    #     "deps": [],
+    # },
+    # "console_bridge": {
+    #     "subdir": "thirdparty/console_bridge",
+    #     "url": "https://github.com/ros/console_bridge.git",
+    #     "branch": None,
+    #     "deps": [],
+    # },
+    # "urdfdom": {
+    #     "subdir": "thirdparty/urdfdom",
+    #     "url": "https://github.com/ros/urdfdom.git",
+    #     "branch": None,
+    #     "deps": ["urdfdom_headers", "tinyxml2", "console_bridge"],
+    # },
+    
     # "jolt_physics": {
     #     "subdir": "thirdparty/jolt_physics",
     #     "url": "https://github.com/RoboCute/JoltPhysics.git",

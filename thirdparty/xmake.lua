@@ -32,6 +32,9 @@ includes('oidn')
 includes('tracy_xmake.lua')
 -- includes('sqlite3')
 includes('argparse')
+if has_config('rbc_urdf') then
+    includes('urdfdom_xmake.lua')
+end
 -- target('magic_enum')
 -- set_kind('headeronly')
 -- on_load(function(target)

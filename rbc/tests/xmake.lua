@@ -1,13 +1,14 @@
 -- Test Framework for RBC Runtime
-
 -- includes('test_py_codegen')
 includes('test_graphics')
 includes('test_project')
+if has_config('rbc_urdf') then
+    includes('test_urdf')
+end
 -- has_config('rbc_tools') then
 -- includes("test_coro")
 -- includes("test_sql")
 -- end
-
 
 includes("sample_anim")
 includes("model_viewer")

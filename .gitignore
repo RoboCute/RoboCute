@@ -108,6 +108,9 @@ thirdparty/ozz_animation
 thirdparty/jolt_physics
 thirdparty/cppitertools
 thirdparty/dylib
+thirdparty/console_bridge
+thirdparty/tinyxml2
+thirdparty/urdfdom_headers
 
 xmake/options.json
 xmake/options.lua
