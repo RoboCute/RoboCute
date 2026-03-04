@@ -281,3 +281,136 @@ def unzip_dir(
         print_error(f"ERROR: Unsupported archive format: {suffix}")
         print("  Supported formats: .zip, .7z, .rar")
         sys.exit(1)
+
+def _get_git_error_explanation(returncode: int, stderr: str) -> str:
+    """Get human-readable explanation for common git error codes.
+
+    Args:
+        returncode: The exit code from git command
+        stderr: Standard error output from git command
+
+    Returns:
+        Human-readable explanation of the error
+    """
+    explanations = {
+        2: "Misuse of shell builtins or incorrect arguments.",
+        126: "Command invoked cannot execute - permission denied or not an executable.",
+        127: "Command not found - git executable not found in PATH.",
+        128: "Fatal error - usually indicates repository not found, invalid ref, or "
+             "network connectivity issues.",
+        129: "Usage error - invalid command-line arguments or bad flag.",
+        130: "Command terminated by Ctrl+C (SIGINT).",
+        137: "Command killed (SIGKILL) - possibly out of memory.",
+        143: "Command terminated (SIGTERM).",
+    }
+
+    base_explanation = explanations.get(
+        returncode,
+        f"Unknown error code {returncode}. See https://git-scm.com/docs for more info."
+    )
+
+    # Add specific hints based on stderr content
+    hints = []
+    stderr_lower = stderr.lower()
+
+    if "could not resolve host" in stderr_lower:
+        hints.append(
+            "Network issue: Unable to resolve hostname. "
+            "Check your internet connection and DNS settings."
+        )
+    elif "authentication failed" in stderr_lower or "403" in stderr:
+        hints.append(
+            "Authentication failed: Check your credentials, token, or repository permissions. "
+            "For HTTPS, ensure your password/token is correct. "
+            "For SSH, ensure your SSH key is properly configured."
+        )
+    elif "could not read from remote repository" in stderr_lower:
+        hints.append(
+            "Cannot access remote repository. Possible causes:\n"
+            "  - Repository doesn't exist or is private\n"
+            "  - Network connectivity issues\n"
+            "  - SSH key not configured (for SSH URLs)\n"
+            "  - Invalid credentials (for HTTPS URLs)"
+        )
+    elif "merge conflict" in stderr_lower or "conflict" in stderr_lower:
+        hints.append(
+            "Merge conflicts detected. Resolve conflicts manually and commit the result."
+        )
+    elif "already exists" in stderr_lower:
+        hints.append(
+            "The target already exists. Use 'git clone' into an empty directory "
+            "or remove the existing directory first."
+        )
+    elif "not a git repository" in stderr_lower:
+        hints.append(
+            "Not a git repository. Run 'git init' to create one, "
+            "or ensure you're in the correct directory."
+        )
+    elif "failed to connect" in stderr_lower:
+        hints.append(
+            "Failed to connect to remote server. Check your internet connection, "
+            "proxy settings, or firewall configuration."
+        )
+    elif "ssl certificate problem" in stderr_lower:
+        hints.append(
+            "SSL certificate verification failed. Possible solutions:\n"
+            "  - Update CA certificates\n"
+            "  - Check system time is correct\n"
+            "  - Configure git to use correct SSL backend"
+        )
+
+    result = base_explanation
+    if hints:
+        result += "\nHints:\n" + "\n".join(f"  • {hint}" for hint in hints)
+
+    return result
+
+
+def run_git_command(args: list[str], cwd: Optional[Path] = None) -> tuple[bool, str]:
+    """Run a git command and return success status and output log.
+
+    Args:
+        args: List of git command arguments (e.g., ['clone', 'url'])
+        cwd: Optional working directory to run the command in
+
+    Returns:
+        A tuple of (success: bool, log: str). If the command fails,
+        success is False and log contains stderr output.
+    """
+    cmd = ['git'] + args
+    error_log = None
+    for i in range(3):
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                encoding='utf-8'
+            )
+            if result.returncode == 0:
+                return True, result.stdout
+            else:
+                explanation = _get_git_error_explanation(
+                    result.returncode, result.stderr)
+                error_log = f"Command failed with exit code {result.returncode}\n"
+                error_log += f"Explanation: {explanation}\n"
+                if result.stderr:
+                    error_log += f"stderr: {result.stderr}\n"
+                if result.stdout:
+                    error_log += f"stdout: {result.stdout}\n"
+                error_log += (
+                    "\nFor more information about git error codes, visit:\n"
+                    "  - https://git-scm.com/docs\n"
+                    "  - https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables"
+                )
+                continue
+        except FileNotFoundError:
+            return False, (
+                "Git command not found. Please ensure git is installed.\n"
+                "Download from: https://git-scm.com/downloads"
+            )
+        except Exception as e:
+            error_log =f"Unexpected error running git command: {e}"
+            continue
+    return False, error_log

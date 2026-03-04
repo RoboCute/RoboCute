@@ -24,7 +24,7 @@ from scripts.prepare import (
     OIDN_NAME,
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
-from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug
+from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug, run_git_command
 from scripts.install import install_resources
 
 import rbc_meta.utils.codegen_util as ut
@@ -82,32 +82,24 @@ def git_clone_or_pull(git_address, subdir, branch=None):
     args = []
     if is_empty_folder(abs_subdir):
         # Clone
-        args = ["git", "clone", git_address]
+        args = ["clone", git_address]
         if branch:
             args.extend(["-b", branch])
         args.append(abs_subdir)
         print_info(f"pulling {git_address} to {abs_subdir}")
     else:
         # Pull
-        args = ["git", "-C", abs_subdir, "pull"]
+        args = ["-C", abs_subdir, "pull"]
         if branch:
             args.extend(["origin", branch])
         print_info(f"pulling {git_address} to {abs_subdir}")
 
-    done = False
-    for i in range(4):
-        try:
-            subprocess.check_call(
-                args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
-            done = True
-            break
-        except subprocess.CalledProcessError:
-            # Retry logic handled by loop
-            continue
-
-    if not done:
-        print_error(f"git clone {git_address} error.")
+    done, log = run_git_command(args)
+    log = log.strip()
+    if done:
+        print_success(log)
+    else:
+        print_error(log)
         sys.exit(1)
 
 
@@ -135,7 +127,6 @@ def download_packages():
     download_path.mkdir(parents=True, exist_ok=True)
     address = RBC_SDK_ADDRESS
     lc_address = LC_SDK_ADDRESS
-    lc_path = rel("thirdparty/LuisaCompute/SDKs")
     downloads = {
         CLANGCXX_NAME: {
             "address": address,
@@ -161,11 +152,17 @@ def download_packages():
             "unzip": [download_path / RENDER_RESOURCE_NAME,
                       download_path / 'render_resources']
         },
-        LC_DX_SDK: {
-            "address": lc_address,
-            "path": lc_path,
-        },
     }
+    if LC_DX_SDK:
+        downloads[LC_DX_SDK] = {
+            "address": lc_address,
+            "path": download_path,
+            "unzip": [
+                download_path / LC_DX_SDK,
+                download_path / "dx_sdk"
+            ]
+        }
+
     if hash_json_path.exists():
         with open(hash_json_path, "r") as f:
             download_file_hashes = json.load(f)
@@ -253,12 +250,14 @@ def run_git_tasks():
         for f in futures3:
             f.result()
 
+
 def run_package_download():
     download_executor, download_future = download_packages()
     wait(download_future)
     write_download_hash()
     for f in download_future:
         f.result()  # Raise exceptions if any
+
 
 def prepare():
     # ------------------------------ git ------------------------------
@@ -270,12 +269,12 @@ def prepare():
 
     if clone_lc.lower() == "y":
         run_git_tasks()
-        
+
     lc_path = os.path.join(PROJECT_ROOT, "thirdparty/LuisaCompute")
     if is_empty_folder(lc_path):
         print_error("LuisaCompute not installed.")
         sys.exit(1)
-        
+
     print_warning("Download package? (y/n)")
     try:
         download_package = input().strip()
@@ -284,7 +283,7 @@ def prepare():
 
     if download_package.lower() == "y":
         run_package_download()
-        
+
     # ------------------------------ llvm/options ------------------------------
     # We skip the builddir variable as it's dead code in the Lua source provided.
 
@@ -484,32 +483,33 @@ def pre_pack():
     """
     Pre-packaging script: Copy C++ build artifacts (dll, pyd, bytes) and shader builds
     to src/robocute/rbc_ext/_C for packaging. Optionally generate stub files.
-    
+
     Usage: uv run pre-pack <mode> <build_stubgen>
-    
+
     Args:
         mode: Build mode (debug, release, releasedbg). Defaults to 'release'.
         build_stubgen: Stub generator to use ('uv' for uvx, or None to skip).
     """
     import argparse
-    
-    parser = argparse.ArgumentParser(description='Pre-packaging script for RoboCute')
-    parser.add_argument('mode', nargs='?', default='release', 
+
+    parser = argparse.ArgumentParser(
+        description='Pre-packaging script for RoboCute')
+    parser.add_argument('mode', nargs='?', default='release',
                         choices=['debug', 'release', 'releasedbg'],
                         help='Build mode (default: release)')
 
     parser.add_argument('build_stubgen', nargs='?', default="uv",
                         help='Stub generator to use ("uv" for uvx, or omit to skip)')
-    
+
     args = parser.parse_args()
-    
+
     mode = args.mode
     build_stubgen = args.build_stubgen
-    
+
     # Determine target directory
     target_dir = rel(f"build/{PLATFORM}/{ARCH}/{mode}")
     ext_path = rel("src/robocute/rbc_ext/_C")
-    
+
     print("=" * 60)
     print("RoboCute Pre-Pack")
     print("=" * 60)
@@ -517,20 +517,20 @@ def pre_pack():
     print(f"Source: {target_dir}")
     print(f"Destination: {ext_path}")
     print()
-    
+
     # Check if source directory exists
     if not target_dir.exists():
         print_error(f"Build directory not found: {target_dir}")
         print("Please build the project first with xmake.")
         sys.exit(1)
-    
+
     # Ensure destination directory exists
     ext_path.mkdir(parents=True, exist_ok=True)
-    
+
     # Copy files by extension
     extensions = ['dll', 'pyd', 'bytes']
     copied_files = []
-    
+
     for ext in extensions:
         pattern = f"*.{ext}"
         files = list(target_dir.glob(pattern))
@@ -541,7 +541,7 @@ def pre_pack():
                 copied_files.append(src_file.name)
             except Exception as e:
                 print_error(f"Failed to copy {src_file.name}: {e}")
-    
+
     if copied_files:
         print_success(f"Copied {len(copied_files)} files:")
         for f in copied_files[:10]:  # Show first 10
@@ -551,58 +551,61 @@ def pre_pack():
     else:
         print_warning("No dll/pyd/bytes files found to copy.")
     print()
-    
+
     # Copy shader build directories
     shader_names = ['shader_build_dx', 'shader_build_vk']
     shader_base = rel(f"build/{PLATFORM}/{ARCH}")
     copied_shaders = []
-    
+
     for shader_name in shader_names:
         shader_dir = shader_base / shader_name
         if shader_dir.exists() and shader_dir.is_dir():
             dst_shader_dir = ext_path / shader_name
-            
+
             # Remove existing directory if present
             if dst_shader_dir.exists():
                 shutil.rmtree(dst_shader_dir)
-            
+
             try:
                 shutil.copytree(shader_dir, dst_shader_dir)
                 copied_shaders.append(shader_name)
             except Exception as e:
                 print_error(f"Failed to copy {shader_name}: {e}")
-    
+
     if copied_shaders:
         print_success(f"Copied shader builds: {', '.join(copied_shaders)}")
     else:
         print_warning("No shader build directories found.")
     print()
-    
+
     # Generate stub files if requested
     if build_stubgen:
         print("Generating stub files...")
         os.environ['PYTHONPATH'] = str(ext_path)
-        
+
         modules = ['rbc_ext_c', 'lcapi_c']
-        
+
         for module in modules:
             # Check if .pyd file exists before generating stub
             pyd_file = ext_path / f"{module}.pyd"
             if not pyd_file.exists():
-                print_warning(f"Skipping stub for {module}: {pyd_file.name} not found")
+                print_warning(
+                    f"Skipping stub for {module}: {pyd_file.name} not found")
                 continue
-            
+
             try:
                 if build_stubgen == 'uv':
                     subprocess.run(
-                        ['uvx', 'pybind11-stubgen', module, f'--output-dir={ext_path}'],
+                        ['uvx', 'pybind11-stubgen', module,
+                            f'--output-dir={ext_path}'],
                         check=True,
                         capture_output=True,
                         text=True
                     )
                 else:
                     subprocess.run(
-                        ['pybind11-stubgen', module, f'--output-dir={ext_path}'],
+                        ['pybind11-stubgen', module,
+                            f'--output-dir={ext_path}'],
                         check=True,
                         capture_output=True,
                         text=True
@@ -613,9 +616,10 @@ def pre_pack():
                 if e.stderr:
                     print(f"  Error: {e.stderr}")
             except FileNotFoundError:
-                print_error(f"pybind11-stubgen not found. Please install it or use 'uv' option.")
+                print_error(
+                    f"pybind11-stubgen not found. Please install it or use 'uv' option.")
         print()
-    
+
     print("=" * 60)
     print("Pre-pack completed successfully!")
     print("=" * 60)

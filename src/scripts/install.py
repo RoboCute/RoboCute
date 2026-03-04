@@ -75,7 +75,7 @@ def find_cmake_target_dir():
         if target_dir.exists() and any(target_dir.iterdir()):
             # Check if it contains executables or DLLs
             has_binaries = any(
-                f.suffix in [".exe", ".dll", ".pyd"] for f in target_dir.iterdir()
+                f.suffix in [".exe", ".dll", ".pyd", ".bytes"] for f in target_dir.iterdir()
             )
             if has_binaries:
                 return target_dir
@@ -93,7 +93,7 @@ def find_xmake_target_dir():
         if target_dir.exists() and any(target_dir.iterdir()):
             # Check if it contains executables or DLLs
             has_binaries = any(
-                f.suffix in [".exe", ".dll", ".pyd"] for f in target_dir.iterdir()
+                f.suffix in [".exe", ".dll", ".pyd", ".bytes"] for f in target_dir.iterdir()
             )
             if has_binaries:
                 return target_dir

@@ -1,3 +1,5 @@
+import platform as _platform
+
 GIT_TASKS = {
     "lc": {
         "subdir": "thirdparty/LuisaCompute",
@@ -144,14 +146,39 @@ RBC_SDK_ADDRESS = (
 LC_DX_SDK = "dx_sdk_20250816.zip"
 RENDER_RESOURCE_NAME = "render_resources-v1.0.1.7z"
 XMAKE_GLOBAL_TOOLCHAIN = "clang-cl"
-PLATFORM = "windows"
-ARCH = "x64"
+
+# Detect system platform and architecture
+_system = _platform.system().lower()
+_machine = _platform.machine().lower()
+
+if _system == "windows":
+    PLATFORM = "windows"
+elif _system == "linux":
+    PLATFORM = "linux"
+elif _system == "darwin":
+    PLATFORM = "macos"
+else:
+    PLATFORM = _system
+
+# Normalize architecture names
+if _machine in ("amd64", "x86_64", "x64"):
+    ARCH = "x64"
+elif _machine in ("aarch64", "arm64"):
+    ARCH = "arm64"
+elif _machine in ("i386", "i686", "x86"):
+    ARCH = "x86"
+else:
+    ARCH = _machine
 
 
-# TODO: platform
 def _to_platform_spec(name):
     return f"{name}-{PLATFORM}-{ARCH}.7z"
 
+    
+if PLATFORM == 'linux':
+    LC_DX_SDK = "linux_dxc_2025_07_14.x86_64.zip"
+elif PLATFORM != 'windows':
+    LC_DX_SDK = None
 
 OIDN_NAME = _to_platform_spec(OIDN_NAME)
 CLANGCXX_NAME = _to_platform_spec(CLANGCXX_NAME)

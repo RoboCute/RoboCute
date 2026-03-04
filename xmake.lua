@@ -20,14 +20,13 @@ lc_options = {
     lc_enable_ir = false,
     lc_rtti = true,
     lc_enable_tests = false,
-    lc_sdk_dir = "thirdparty/LuisaCompute/SDKs",
-    lc_xrepo_dir = "",
+    lc_sdk_dir = "",
     -- lc_win_runtime = "MD",
     lc_metal_backend = is_host("macosx"),
     lc_dx_cuda_interop = true,
     lc_vk_cuda_interop = true,
     lc_enable_py = false,
-    lc_enable_unity_build = true
+    lc_enable_unity_build = true,
     -- lc_toy_c_backend = true
 }
 

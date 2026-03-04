@@ -33,11 +33,16 @@ local function rbc_render_impl()
     })
     add_files('src/render_settings.json')
     after_build(function(target)
-        os.cp(path.join(os.projectdir(), 'build/download/render_resources/*'), target:targetdir(), {
+        local copy_opts = {
             copy_if_different = true,
             async = true,
             detach = true
-        })
+        }
+        os.cp(path.join(os.projectdir(), 'build/download/render_resources/*'), target:targetdir(), copy_opts)
+        local dx_sdk_srcdir = path.join(os.projectdir(), 'build/download/dx_sdk')
+        if os.exists(dx_sdk_srcdir) then
+            os.cp(path.join(dx_sdk_srcdir, '*'), target:targetdir(), copy_opts)
+        end
     end)
 end
 
