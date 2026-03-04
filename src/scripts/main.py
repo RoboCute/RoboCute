@@ -366,38 +366,6 @@ def clean_up_generated_code():
             print_error(f"{generated_dir} is not a directory")
             sys.exit(1)
 
-
-def run_generation_task(module_name, function_name, *args):
-    """
-    Imports a module and executes its specified entry point function.
-
-    Args:
-        module_name (str): The name of the module to import.
-        function_name (str): The name of the function to call within the module.
-    """
-    try:
-        # Dynamic import replaces the unsafe exec()
-        module = importlib.import_module(module_name)
-
-        if hasattr(module, function_name):
-            func = getattr(module, function_name)
-            print_info(f"[{module_name}] Starting generation...")
-            func(*args)
-            print_success(f"[{module_name}] Completed successfully.")
-        else:
-            print_error(
-                f"[{module_name}] Error: Function '{function_name}' not found.")
-            sys.exit(1)
-
-    except ImportError as e:
-        print_error(f"[{module_name}] Error: Failed to import module. {e}")
-        sys.exit(1)
-    except Exception as e:
-        print_error(
-            f"[{module_name}] Error: An unexpected error occurred. {e}")
-        sys.exit(1)
-
-
 def generate():
     import scripts.generate
     from scripts.generate import generate_registered
