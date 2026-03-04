@@ -162,7 +162,10 @@ else:
 
 # Normalize architecture names
 if _machine in ("amd64", "x86_64", "x64"):
-    ARCH = "x64"
+    if PLATFORM == "windows":
+        ARCH = "x64"
+    else:
+        ARCH = "x86_x64"
 elif _machine in ("aarch64", "arm64"):
     ARCH = "arm64"
 elif _machine in ("i386", "i686", "x86"):

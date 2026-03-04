@@ -39,6 +39,7 @@ Python在robocute中扮演双重角色：首先robocute最终会形成一个pyth
 xmake版本：
 1. `xmake f -m release -c` 配置编译目标
 2. `xmake` 执行编译 
+3. 若需编译后测试 Python 脚本，第2步可以改为 `uv run scripts/build_and_copy.py debug`, 后续加任何参数以启动 pybind-stubgen
 
 
 cmake版本

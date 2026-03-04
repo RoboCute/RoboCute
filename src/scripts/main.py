@@ -25,7 +25,6 @@ from scripts.prepare import (
 )
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug, run_git_command
-from scripts.install import install_resources
 
 import rbc_meta.utils.codegen_util as ut
 
@@ -472,11 +471,6 @@ def generate_stub():
         )
     duration = time.time() - start_time
     print_success(f"Stub generation finished in {duration:.2f} seconds.")
-
-
-def install():
-    """Install resources after build (test_scene and shader build results)."""
-    install_resources()
 
 
 def pre_pack():
