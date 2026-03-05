@@ -414,7 +414,9 @@ void RBCContext::unregist_callback(void *this_, luisa::string_view name) {
     rbc::world::unregist_callback(name);
 }
 void *RBCContext::_create_() {
-    LUISA_ASSERT(!_ctx_inst);
+    if (_ctx_inst) [[unlikely]] {
+        LUISA_ERROR("Context must be singleton.");
+    }
     rbc::RuntimeStaticBase::init_all();
     rbc::PluginManager::init();
     auto ptr = new ContextImpl{};
