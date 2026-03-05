@@ -1,5 +1,5 @@
 from rbc_meta.utils.reflect import reflect
-from rbc_meta.utils.codegenx import codegen, CodeModule, CodegenResitry
+from rbc_meta.utils.codegenx import codegen, CodeModule, CodegenRegistry
 from rbc_meta.utils.builtin import uint, Vector
 from enum import Enum
 
