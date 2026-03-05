@@ -99,7 +99,6 @@ class ProjectPluginModule(CodeModule):
     cpp_interface_header = "rbc/project_plugin/include/rbc_project/generated/project.h"
     classes = OUT_PROJECT_PLUGIN_CLASSES
 
-
 def generate_registered():
     r = CodegenRegistry()
     r.generate()
