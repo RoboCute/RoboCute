@@ -16,10 +16,15 @@
     "--pch-storage=memory"
   ],
   "files.eol": "\n",
-  "python.analysis.extraPaths": [
-    "packages/pyuipc/src/"
-  ],
+  "python.analysis.extraPaths": [],
   "cursorpyright.analysis.extraPaths": [
     "packages/pyuipc/src/"
+  ],
+  "python-envs.pythonProjects": [
+    {
+      "path": ".",
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip"
+    }
   ]
 }

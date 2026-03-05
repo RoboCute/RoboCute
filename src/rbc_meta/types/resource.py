@@ -1,6 +1,6 @@
 from rbc_meta.utils.reflect import reflect
 from enum import Enum
-
+from rbc_meta.utils.builtin import uint, Vector
 
 @reflect(cpp_namespace="rbc", module_name="runtime", pybind=True)
 class LCPixelStorage(Enum):
@@ -95,3 +95,44 @@ class SamplerAddress(Enum):
     REPEAT = 1
     MIRROR = 2
     ZERO = 3
+
+
+@reflect(
+    cpp_namespace="rbc",
+    serde=True,
+    module_name="runtime",
+    cpp_prefix="RBC_RUNTIME_API",
+)
+class MeshMeta:
+    vertex_count: uint
+    normal: bool
+    tangent: bool
+    uv_count: uint
+    submesh_offset: Vector[uint]
+
+
+@reflect(
+    cpp_namespace="rbc",
+    serde=True,
+    module_name="runtime",
+    cpp_prefix="RBC_RUNTIME_API",
+)
+class TextureMeta:
+    width: uint
+    height: uint
+    storage: LCPixelStorage
+    mip_level: uint
+
+
+OUT_CLASSES = [
+    LCPixelStorage,
+    LCPixelFormat,
+    SamplerFilter,
+    SamplerAddress,
+    MeshMeta,
+    TextureMeta,
+]
+
+__all__ = [
+    "OUT_CLASSES"
+]

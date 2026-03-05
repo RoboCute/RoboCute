@@ -21,7 +21,7 @@ from rbc_meta.utils.builtin import (
     Const,
     long
 )
-from rbc_meta.types.resource_enums import LCPixelStorage
+from rbc_meta.types.resource import LCPixelStorage
 from enum import Enum
 
 
@@ -807,3 +807,45 @@ class RBCContext:
     # editing (no results in offline-rendering mode), can be used in headless mode with renderer
     def editing_add_click_requires(name: str, uv: float2) -> None: ...
     def editing_query_click_requires(name: str) -> SelectQuery: ...
+
+
+OUT_CLASSES = [
+    BasicDataType,
+    ResourceLoadStatus,
+    RendererGeometryType,
+    BaseObjectType,
+    Object,
+    Entity,
+    Component,
+    TransformComponent,
+    LightComponent,
+    Resource,
+    BasicData,
+    TextureResource,
+    MeshResource,
+    BufferResource,
+    MaterialResource,
+    RenderComponent,
+    RenderSettings,
+    CameraComponent,
+    DataComponent,
+    DataComponentEventType,
+    EntitiesCollection,
+    Scene,
+    FileMeta,
+    Project,
+    TickStage,
+    SelectQuery,
+    RBCContext,
+    BuiltinKernels,
+    SkeletonResource,
+    SkinResource,
+    AnimSequenceResource,
+    AnimGraphResource,
+    SkelMeshResource,
+    AtmosphereComponent,
+]
+
+__all__ = [
+    "OUT_CLASSES"
+]

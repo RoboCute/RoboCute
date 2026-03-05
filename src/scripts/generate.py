@@ -1,124 +1,34 @@
 from rbc_meta.utils.codegenx import CodegenResitry, codegen, CodeModule
 
-from rbc_meta.types.resource_meta import MeshMeta, TextureMeta
-from rbc_meta.types.resource_enums import (
-    LCPixelStorage,
-    LCPixelFormat,
-    SamplerFilter,
-    SamplerAddress,
-)
-from rbc_meta.types.pipeline_settings import (
-    ToneMappingParameters,
-    LpmColorSpace,
-    GeometryType,
-    ResourceColorSpace,
-    LpmDisplayMode,
-    NRD_CheckerboardMode,
-    NRD_HitDistanceReconstructionMode,
-    DistortionSettings,
-    LpmDispatchParameters,
-    FrameSettings,
-    ACESParameters,
-    ExposureSettings,
-    PathTracerSettings,
-    ToneMappingSettings,
-    DisplaySettings,
-    SkySettings,
-)
-from rbc_meta.types.world_interface import (
-    BasicDataType,
-    ResourceLoadStatus,
-    RendererGeometryType,
-    BaseObjectType,
-    Object,
-    Entity,
-    Component,
-    TransformComponent,
-    LightComponent,
-    Resource,
-    BasicData,
-    TextureResource,
-    MeshResource,
-    BufferResource,
-    MaterialResource,
-    RenderComponent,
-    RenderSettings,
-    CameraComponent,
-    DataComponent,
-    DataComponentEventType,
-    EntitiesCollection,
-    Scene,
-    FileMeta,
-    Project,
-    TickStage,
-    SelectQuery,
-    RBCContext,
-    BuiltinKernels,
-    SkeletonResource,
-    SkinResource,
-    AnimSequenceResource,
-    AnimGraphResource,
-    SkelMeshResource,
-    AtmosphereComponent,
-)
-
-
 @codegen
 class LuisaResourceModule(CodeModule):
+    name_ = "luisa_resource_module"
     header_files_ = [
         "luisa/runtime/image.h",
         "luisa/runtime/buffer.h",
         "luisa/runtime/rhi/pixel.h",
     ]
 
-
 @codegen
 class RBCCoreModule(CodeModule):
+    name_ = "rbc_core_module"
     header_files_ = ["rbc_core/utils/curve.h"]
 
 
-RESOURCE_CLASSES = [
-    LCPixelStorage,
-    LCPixelFormat,
-    SamplerFilter,
-    SamplerAddress,
-    MeshMeta,
-    TextureMeta,
-]
-
-
+from rbc_meta.types.resource import OUT_CLASSES as OUT_RESOURCE_CLASSES
 @codegen
 class ResourceMetaModule(CodeModule):
+    name_ = "resource_meta_module"
     enable_cpp_interface_ = True
     cpp_base_dir_ = "rbc/runtime/"
     interface_header_file_ = "rbc_plugin/generated/resource_meta.hpp"
     enable_cpp_impl_ = True
     cpp_impl_file_ = "generated/resource_meta.cpp"
-
     deps_ = [LuisaResourceModule]
-    classes_ = RESOURCE_CLASSES
+    classes_ = OUT_RESOURCE_CLASSES
 
 
-PIPELINE_SETTING_CLASSES = [
-    ToneMappingParameters,
-    LpmColorSpace,
-    GeometryType,
-    ResourceColorSpace,
-    LpmDisplayMode,
-    NRD_CheckerboardMode,
-    NRD_HitDistanceReconstructionMode,
-    DistortionSettings,
-    LpmDispatchParameters,
-    FrameSettings,
-    ACESParameters,
-    ExposureSettings,
-    PathTracerSettings,
-    ToneMappingSettings,
-    DisplaySettings,
-    SkySettings,
-]
-
-
+from rbc_meta.types.pipeline_settings import OUT_CLASSES as PIPELINE_SETTING_CLASSES
 @codegen
 class PipelineSettingModule(CodeModule):
     enable_cpp_interface_ = True
@@ -131,44 +41,7 @@ class PipelineSettingModule(CodeModule):
     classes_ = PIPELINE_SETTING_CLASSES
 
 
-WORLD_INTERFACE_CLASSES = [
-    BasicDataType,
-    ResourceLoadStatus,
-    RendererGeometryType,
-    BaseObjectType,
-    Object,
-    Entity,
-    Component,
-    TransformComponent,
-    LightComponent,
-    Resource,
-    BasicData,
-    TextureResource,
-    MeshResource,
-    BufferResource,
-    MaterialResource,
-    RenderComponent,
-    RenderSettings,
-    CameraComponent,
-    DataComponentEventType,
-    DataComponent,
-    EntitiesCollection,
-    Scene,
-    FileMeta,
-    Project,
-    TickStage,
-    SelectQuery,
-    RBCContext,
-    BuiltinKernels,
-    SkeletonResource,
-    SkinResource,
-    AnimSequenceResource,
-    AnimGraphResource,
-    SkelMeshResource,
-    AtmosphereComponent,
-]
-
-
+from rbc_meta.types.world_interface import OUT_CLASSES as OUT_WORLD_INTERFACE_CLASSES
 @codegen
 class WorldInterfaceModule(CodeModule):
     name_ = "world_interface"
@@ -180,20 +53,19 @@ class WorldInterfaceModule(CodeModule):
     ]
     enable_cpp_interface_ = True
     interface_header_file_ = "generated/world.h"
-    classes_ = WORLD_INTERFACE_CLASSES
+    classes_ = OUT_WORLD_INTERFACE_CLASSES
     deps_ = [ResourceMetaModule]
 
 
 EXT_CLASSES = []
-EXT_CLASSES.extend(WORLD_INTERFACE_CLASSES)
-EXT_CLASSES.extend(RESOURCE_CLASSES)
+EXT_CLASSES.extend(OUT_WORLD_INTERFACE_CLASSES)
+EXT_CLASSES.extend(OUT_RESOURCE_CLASSES)
 
 
 @codegen
 class WorldInterfacePybindModule(CodeModule):
     name_ = "test_py_codegen"
     header_files_ = ["generated/world.h"]
-
     enable_pybind_cpp_def_ = True
     pybind_cpp_def_file_ = "rbc/tests/test_py_codegen/generated/world.cpp"
     enable_pybind_ = True
@@ -213,6 +85,15 @@ class WorldInterfacePybindModuleX(CodeModule):
     classes_ = EXT_CLASSES
     deps_ = [WorldInterfaceModule]
 
+from rbc_meta.types.project_plugin import OUT_CLASSES as OUT_PROJECT_PLUGIN_CLASSES
+
+@codegen
+class ProjectPluginMoudle(CodeModule):
+    name_ = "project_plugin"
+    enable_cpp_interface_ = True 
+    cpp_base_dir_ = "rbc/project_plugin"
+    interface_header_file_ = "rbc_project/generated/project.h"
+    classes_ = OUT_PROJECT_PLUGIN_CLASSES
 
 def generate_registered():
     r = CodegenResitry()

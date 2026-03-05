@@ -314,3 +314,26 @@ class SkySettings:
         "sun_dir": "0, -1, 0",
         "sun_angle": "0.5",
     }
+
+OUT_CLASSES = [
+    ToneMappingParameters,
+    LpmColorSpace,
+    GeometryType,
+    ResourceColorSpace,
+    LpmDisplayMode,
+    NRD_CheckerboardMode,
+    NRD_HitDistanceReconstructionMode,
+    DistortionSettings,
+    LpmDispatchParameters,
+    FrameSettings,
+    ACESParameters,
+    ExposureSettings,
+    PathTracerSettings,
+    ToneMappingSettings,
+    DisplaySettings,
+    SkySettings,
+]
+
+__all__ = [
+    "OUT_CLASSES"
+]

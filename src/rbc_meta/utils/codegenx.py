@@ -83,13 +83,12 @@ class CodegenResitry:
     def register(self, cls: Type) -> Type:
         # register a module instance once
         cls_inst = cls()
-        # cls_inst.set_name(cls.__name__)
         self._modules[cls.__name__] = cls_inst
         return cls
 
     def generate(self):
         print(f"Generating {len(self._modules)} modules")
-
+        
         for name, mod in self._modules.items():
             print("=========================")
             print(mod.name())
@@ -108,8 +107,7 @@ class CodegenResitry:
         reg = ReflectionRegistry()
         INDENT = DEFAULT_INDENT
         print("Dependencies: [")
-        extra_headers = mod.header_files_
-
+        extra_headers = list(mod.header_files_)
         for dep in mod.deps_:
             dep_mod = self._modules[dep.__name__]
             print("- " + dep_mod.name())
@@ -129,7 +127,7 @@ class CodegenResitry:
         export_func_name = f"export_{mod.name()}"
 
         for cls in mod.classes_:
-            print(f"Generating {cls.__name__}")
+            # print(f"Generating {cls.__name__}")
             info = reg.get_class_info(cls.__name__)
             namespace_name = info.cpp_namespace or ""
             enum_binding = pybind_enum_binding(info)
@@ -238,7 +236,7 @@ class CodegenResitry:
         extra_includes_expr = to_include_expr(mod.interface_header_file_)
 
         for info in mod.classes_:
-            print(f"Generating {info.__name__}")
+            # print(f"Generating {info.__name__}")
             info = reg.get_class_info(info.__name__)
             namespace_name = info.cpp_namespace or ""
             class_name = info.name
@@ -331,14 +329,12 @@ class CodegenResitry:
         reg = ReflectionRegistry()
 
         print("Dependencies: [")
-        extra_headers = mod.header_files_
-
+        extra_headers = list(mod.header_files_)
         for dep in mod.deps_:
             dep_mod = self._modules[dep.__name__]
             print("- " + dep_mod.name())
             extra_headers.extend(dep_mod.header_files_)
         print("]")
-
         print(f"Collected {len(extra_headers)} Header Files")
         for header in extra_headers:
             print("- " + header)
@@ -348,7 +344,7 @@ class CodegenResitry:
         extra_include_expr = "\n".join([to_include_expr(x) for x in extra_headers])
 
         for info in mod.classes_:
-            print(f"Generating {info.__name__}")
+            # print(f"Generating {info.__name__}")
             info = reg.get_class_info(info.__name__)
             # print(cls_info)
             if info.is_enum:
@@ -719,9 +715,9 @@ def codegen(
 
 
 class CodeModule:
-    # Override Method
+    # Override Method - 使用 None 作为默认值，避免可变默认值的坑
     name_: str = "CodeModule"
-    classes_: List[str] = []
+    classes_: Optional[List[str]] = None
     enable_cpp_interface_: bool = False
     cpp_base_dir_: str = ""
     interface_header_file_: str = ""
@@ -730,11 +726,17 @@ class CodeModule:
     enable_pybind_: bool = False
     pybind_py_file_: str = ""
 
-    header_files_: List[str] = []
-    deps_: List[Type] = []
+    header_files_: Optional[List[str]] = None
+    deps_: Optional[List[Type]] = None
 
     enable_pybind_cpp_def_: bool = False
     pybind_cpp_def_file_: str = ""
+
+    def __init__(self):
+        # 在每个实例创建时初始化列表，确保彼此独立
+        self.classes_ = list(self.classes_) if self.classes_ is not None else []
+        self.header_files_ = list(self.header_files_) if self.header_files_ is not None else []
+        self.deps_ = list(self.deps_) if self.deps_ is not None else []
 
     def set_name(self, name):
         self.name_ = name

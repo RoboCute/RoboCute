@@ -23,7 +23,6 @@ from scripts.prepare import (
     XMAKE_GLOBAL_TOOLCHAIN,
     OIDN_NAME,
 )
-from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug, run_git_command
 
 PROJECT_ROOT = get_project_root()
@@ -361,74 +360,6 @@ def generate():
     from scripts.generate import generate_registered
 
     generate_registered()
-
-
-def generate_stub_impl(module_name: str, pyd_dir: Path, output_dir: Path):
-    """
-    Generate .pyi stub file for a given .pyd module.
-
-    Args:
-        module_name: Name of the module (without .pyd extension)
-        pyd_dir: Directory containing the .pyd file
-        output_dir: Directory where .pyi file should be generated
-    """
-    from mypy import stubgen
-
-    # Add pyd directory to Python path
-    pyd_dir_abs = pyd_dir.resolve()
-    if str(pyd_dir_abs) not in sys.path:
-        sys.path.insert(0, str(pyd_dir_abs))
-
-    print(f"Generating stub for module: {module_name}")
-    print(f"  .pyd location: {pyd_dir_abs}")
-    print(f"  Output directory: {output_dir.resolve()}")
-
-    # Verify module can be imported
-    try:
-        __import__(module_name)
-        print_success(f"  ✓ Module {module_name} imported successfully")
-    except ImportError as e:
-        print_error(f"  ✗ Error: Cannot import module {module_name}")
-        print_error(f"    {e}")
-        sys.exit(1)
-
-    options = stubgen.Options(
-        pyversion=sys.version_info[:2],
-        no_import=False,
-        inspect=True,
-        doc_dir="",
-        search_path=[str(pyd_dir)],
-        interpreter=sys.executable,
-        parse_only=False,
-        ignore_errors=False,
-        include_private=False,
-        output_dir=str(output_dir),
-        modules=[module_name],
-        packages=[],
-        files=[],
-        verbose=True,
-        quiet=False,
-        export_less=False,
-        include_docstrings=False,
-    )
-    try:
-        stubgen.generate_stubs(options)
-    except Exception as e:
-        print_error(f"Error generating stubs: {e}")
-        sys.exit(1)
-
-    print_success(f"Stub generated for module: {module_name}")
-    print_success(f"  Output directory: {output_dir.resolve()}")
-
-
-def generate_stub():
-    start_time = time.time()
-    for task in GENERATE_SUB_TASKS:
-        generate_stub_impl(
-            task["module_name"], rel(task["pyd_dir"]), rel(task["stub_output"])
-        )
-    duration = time.time() - start_time
-    print_success(f"Stub generation finished in {duration:.2f} seconds.")
 
 
 def pre_pack():

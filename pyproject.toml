@@ -1,29 +1,28 @@
 [project]
 dependencies = [
   "requests",
-  "pytest>=9.0.1",
   "fastapi>=0.104.0",
   "uvicorn[standard]>=0.24.0",
   "pydantic>=2.0.0",
   "numpy>=2.3.5",
-  "sourceinspect>=0.0.4",
-  "mypy>=1.19.0",
-  "pybind11-stubgen>=2.5.5",
-  "pillow>=12.1.0",
-  "tetgen>=0.8.2",
 ]
 description = "Make Robotics Cute!"
 license = {file = "Licenses/Apache-2.0.txt"}
 name = "robocute"
 readme = "README.md"
-requires-python = ">=3.12"
-version = "0.2.1"
+requires-python = ">=3.13"
+version = "0.2.2"
 
 [tool.uv.workspace]
 members = ["packages/*"]
 
 [project.optional-dependencies]
 dev = [
+  "pytest>=9.0.1",
+  "mypy>=1.19.0",
+  "pybind11-stubgen>=2.5.5",
+]
+publish = [
   "mkdocs>=1.6.1",
   "mkdocs-material>=9.0.0",
   "pymdown-extensions>=10.0.0",
@@ -32,10 +31,8 @@ dev = [
 
 [project.scripts]
 gen = "scripts.main:generate"
-install = "scripts.main:install"
-prepare = "scripts.main:prepare"
-stub = "scripts.main:generate_stub"
 pre-pack = "scripts.main:pre_pack"
+prepare = "scripts.main:prepare"
 
 [build-system]
 build-backend = "uv_build"
