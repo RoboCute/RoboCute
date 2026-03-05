@@ -61,7 +61,7 @@ static std::string create_simple_urdf() {
    * 底座连杆 base_link
    * 形状：长方体 0.5 x 0.5 x 0.1 米
    * 质量：1.0 kg
-   */
+   -->
   <link name="base_link">
     <visual>
       <geometry>
@@ -85,7 +85,7 @@ static std::string create_simple_urdf() {
    * 形状：圆柱体，半径0.05米，长度1.0米
    * 视觉原点偏移：(0, 0, 0.5)，使圆柱从底部向上延伸
    * 质量：0.5 kg
-   */
+   -->
   <link name="arm_link">
     <visual>
       <geometry>
@@ -112,7 +112,7 @@ static std::string create_simple_urdf() {
    * 类型：revolute（旋转关节）
    * 旋转轴：Z轴 (0, 0, 1)
    * 限位：-π 到 +π 弧度
-   */
+   -->
   <joint name="base_to_arm" type="revolute">
     <parent link="base_link"/>
     <child link="arm_link"/>
@@ -148,7 +148,7 @@ static std::string create_hierarchy_urdf() {
   <!-- 
    * 关节1：连续旋转关节
    * 绕Z轴无限旋转
-   */
+   -->
   <joint name="joint1" type="continuous">
     <parent link="base"/>
     <child link="link1"/>
@@ -161,7 +161,7 @@ static std::string create_hierarchy_urdf() {
   <!-- 
    * 关节2：旋转关节
    * 绕Y轴旋转，范围 -90° 到 +90°
-   */
+   -->
   <joint name="joint2" type="revolute">
     <parent link="link1"/>
     <child link="link2"/>
@@ -175,7 +175,7 @@ static std::string create_hierarchy_urdf() {
   <!-- 
    * 关节3：移动关节
    * 沿X轴直线移动，范围 0 到 0.5 米
-   */
+   -->
   <joint name="joint3" type="prismatic">
     <parent link="link2"/>
     <child link="link3"/>
