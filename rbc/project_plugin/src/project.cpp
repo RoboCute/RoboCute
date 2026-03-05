@@ -94,6 +94,7 @@ public:
     luisa::filesystem::path const &root_path() const override {
         return _assets_path;
     }
+
     void unsafe_write_file_meta(
         luisa::filesystem::path dest_path,
         luisa::span<FileMeta const> metas) override {

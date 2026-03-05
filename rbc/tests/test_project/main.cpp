@@ -18,6 +18,7 @@
 #include <rbc_world/components/atmosphere_component.h>
 #include <rbc_world/importers/texture_loader.h>
 #include <rbc_graphics/render_device.h>
+
 int main(int argc, char *argv[]) {
     if (argc < 3) {
         LUISA_WARNING("Bad args, must be #backend# #scene path#");
@@ -25,6 +26,7 @@ int main(int argc, char *argv[]) {
     }
     using namespace luisa;
     using namespace rbc;
+
     constexpr bool gpu_less_mode = false;
     luisa::fiber::scheduler scheduler;
     luisa::unique_ptr<GraphicsUtils> utils;
@@ -58,11 +60,12 @@ int main(int argc, char *argv[]) {
         luisa::filesystem::create_directories(binary_dir);
     }
     world::init_world(binary_dir);
-    // TODO: test project
     auto project_plugin_module = PluginManager::instance().load_module("rbc_project_plugin");
+
     auto project_plugin = project_plugin_module->invoke<ProjectPlugin *()>(
         "get_project_plugin");
     auto proj = luisa::unique_ptr<IProject>(project_plugin->create_project(argv[2]));
+
     proj->scan_project();
     auto bunny_obj = proj->import_assets("bunny.obj", TypeInfo::get<world::MeshResource>().md5());
     LUISA_INFO("Importing bunny.obj.");
@@ -75,6 +78,7 @@ int main(int argc, char *argv[]) {
     utils->tex_loader()->finish_task();
     // load scene
     auto scene = proj->import_assets("test_scene.scene", TypeInfo::get<world::SceneResource>().md5());
+
     if (!scene)// create_scene
     {
         LUISA_INFO("Scene not found, start init scene.");
@@ -155,5 +159,6 @@ int main(int argc, char *argv[]) {
         write_bin_assets(right_wall_mat.get(), "right_wall_mat.mat");
         write_bin_assets(light_mat.get(), "light_mat.mat");
     }
+
     return 0;
 }

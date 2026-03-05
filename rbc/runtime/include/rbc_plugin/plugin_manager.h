@@ -6,6 +6,7 @@
 #include <luisa/vstl/common.h>
 #include <luisa/core/fiber.h>
 namespace rbc {
+
 struct RBC_RUNTIME_API PluginManager {
 private:
     vstd::HashMap<
@@ -22,4 +23,5 @@ public:
     static void init();
     static void destroy_instance();
 };
+
 }// namespace rbc

@@ -1,5 +1,6 @@
 #pragma once
 #include <rbc_plugin/plugin.h>
+#include <luisa/core/stl/filesystem.h>
 
 namespace rbc {
 struct IProject;

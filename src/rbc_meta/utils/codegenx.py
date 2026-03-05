@@ -55,11 +55,7 @@ from rbc_meta.utils.templates import (
     PYBIND_CREATE_FUNC_TEMPLATE,
     PYBIND_METHOD_FUNC_TEMPLATE,
 )
-from rbc_meta.utils.codegen import (
-    _get_full_cpp_type,
-    _print_arg_vars_decl,
-)
-from rbc_meta.utils.codegen_util import _write_string_to
+from rbc_meta.utils.codegen_util import _write_string_to, _get_full_cpp_type, _print_arg_vars_decl
 import hashlib
 from pathlib import Path
 from rbc_meta.utils.pybind_codegen import (

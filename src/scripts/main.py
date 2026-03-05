@@ -26,16 +26,6 @@ from scripts.prepare import (
 from scripts.generate_stub import GENERATE_SUB_TASKS
 from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug, run_git_command
 
-import rbc_meta.utils.codegen_util as ut
-
-from rbc_meta.utils.codegen import (
-    cpp_interface_gen,
-    cpp_impl_gen,
-    pybind_codegen,
-    py_interface_gen,
-)
-
-
 PROJECT_ROOT = get_project_root()
 
 

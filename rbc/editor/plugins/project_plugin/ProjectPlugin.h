@@ -111,7 +111,7 @@ public:
 
     // Get ViewModel for a specific view
     QObject *getViewModel(const QString &viewId) override;
-    
+
     // Get native widget for a specific view
     QWidget *getNativeWidget(const QString &viewId) override;
 
@@ -134,11 +134,11 @@ private:
     IProjectService *projectService_ = nullptr;
     ProjectViewModel *viewModel_ = nullptr;
     PluginContext *context_ = nullptr;
-    QPointer<QWidget> fileBrowserWidget_;  // 使用 QPointer 追踪，自动检测删除
-    
+    QPointer<QWidget> fileBrowserWidget_;// 使用 QPointer 追踪，自动检测删除
+
     // 预注册的 Native View Contributions
     QList<NativeViewContribution> registeredContributions_;
-    
+
     // 保存连接句柄，以便在 unload 时显式断开
     // 这是必要的，因为 lambda 连接如果没有 context 对象，
     // 调用 disconnect(sender, nullptr, this, nullptr) 无法断开它们
