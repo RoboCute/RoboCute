@@ -26,7 +26,6 @@ from enum import Enum
 @reflect(
     cpp_namespace="rbc",
     serde=True,
-    module_name="rbc_render",
 )
 class ToneMappingParameters:
     hdr_display_multiplier: float
@@ -39,14 +38,14 @@ class ToneMappingParameters:
 
 
 # Enums
-@reflect(cpp_namespace="rbc", module_name="rbc_render")
+@reflect(cpp_namespace="rbc")
 class LpmColorSpace(Enum):
     REC709 = 0
     P3 = 1
     REC2020 = 2
     Display = 3
     
-@reflect(cpp_namespace="rbc", module_name="rbc_render")
+@reflect(cpp_namespace="rbc")
 class GeometryType(Enum):
     NONE = 0
     Depth = 1 << 0   # float: Distance to camera
@@ -60,7 +59,7 @@ class GeometryType(Enum):
     Albedo = 1 << 6  # packed float3: albedo color (sampled from spectrum)
 
 
-@reflect(cpp_namespace="rbc", module_name="rbc_render")
+@reflect(cpp_namespace="rbc")
 class ResourceColorSpace(Enum):
     Rec709 = 0
     AdobeRGB = 1
@@ -69,7 +68,7 @@ class ResourceColorSpace(Enum):
     Rec2020 = 4
 
 
-@reflect(cpp_namespace="rbc", module_name="rbc_render")
+@reflect(cpp_namespace="rbc")
 class LpmDisplayMode(Enum):
     LDR = 0
     HDR10_2084 = 1
@@ -78,7 +77,7 @@ class LpmDisplayMode(Enum):
     FSHDR_SCRGB = 4
 
 
-@reflect(cpp_namespace="rbc", module_name="rbc_render")
+@reflect(cpp_namespace="rbc")
 class NRD_CheckerboardMode(Enum):
     OFF = None
     BLACK = None
@@ -86,7 +85,7 @@ class NRD_CheckerboardMode(Enum):
     MAX_NUM = None
 
 
-@reflect(cpp_namespace="rbc", module_name="rbc_render")
+@reflect(cpp_namespace="rbc")
 class NRD_HitDistanceReconstructionMode(Enum):
     # Probabilistic split at primary hit is not used, hence hit distance is always valid (reconstruction is not needed)
     OFF = None
@@ -102,8 +101,7 @@ class NRD_HitDistanceReconstructionMode(Enum):
 # Structs
 @reflect(
     cpp_namespace="rbc",
-    serde=True,
-    module_name="rbc_render",
+    serde=True
 )
 class DistortionSettings:
     scale: float
@@ -121,8 +119,7 @@ class DistortionSettings:
 
 @reflect(
     cpp_namespace="rbc",
-    serde=True,
-    module_name="rbc_render",
+    serde=True
 )
 class LpmDispatchParameters:
     shoulder: bool
@@ -155,7 +152,7 @@ class LpmDispatchParameters:
     }
 
 
-@reflect(cpp_namespace="rbc", module_name="rbc_render")
+@reflect(cpp_namespace="rbc")
 class FrameSettings:
     to_rec2020_matrix: float3x3
     render_resolution: uint2
@@ -182,7 +179,7 @@ class FrameSettings:
     }
 
 
-@reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
+@reflect(cpp_namespace="rbc", serde=True)
 class ACESParameters:
     # Non-serde members (members only, not serialized)
     hueVsHueCurve: Annotated[Curve, no_serde_field()]
@@ -234,7 +231,7 @@ class ACESParameters:
     }
 
 
-@reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
+@reflect(cpp_namespace="rbc", serde=True)
 class ExposureSettings:
     use_auto_exposure: bool
     filtering: float2
@@ -251,7 +248,7 @@ class ExposureSettings:
     }
 
 
-@reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
+@reflect(cpp_namespace="rbc", serde=True)
 class PathTracerSettings:
     offline_spp: uint
     offline_origin_bounce: uint
@@ -267,13 +264,13 @@ class PathTracerSettings:
     }
 
 
-@reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
+@reflect(cpp_namespace="rbc", serde=True)
 class ToneMappingSettings:
     lpm: LpmDispatchParameters
     aces: ACESParameters
 
 
-@reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
+@reflect(cpp_namespace="rbc", serde=True)
 class DisplaySettings:
     use_linear_sdr: bool
     use_hdr_display: bool
@@ -290,7 +287,7 @@ class DisplaySettings:
     }
 
 
-@reflect(cpp_namespace="rbc", serde=True, module_name="rbc_render")
+@reflect(cpp_namespace="rbc", serde=True)
 class SkySettings:
     # Non-serde members (members only, not serialized)
     sky_atom: Annotated[Pointer[SkyAtmosphere], no_serde_field()]

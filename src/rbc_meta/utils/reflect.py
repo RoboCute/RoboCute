@@ -430,19 +430,10 @@ class ReflectionRegistry:
         return generic_info
 
     def get_class_info(
-        self, class_name: str, module_name: Optional[str] = None
+        self, class_name: str
     ) -> Optional[ClassInfo]:
         """获取类信息"""
-        if module_name:
-            key = f"{module_name}.{class_name}"
-        else:
-            # 搜索所有已注册的类
-            for key, info in self._registered_classes.items():
-                if info.name == class_name:
-                    return info
-            return None
-
-        return self._registered_classes.get(key)
+        return self._registered_classes.get(class_name)
 
     def get_all_classes(self) -> Dict[str, ClassInfo]:
         """获取所有已注册的类"""

@@ -2,7 +2,7 @@ from rbc_meta.utils.reflect import reflect
 from enum import Enum
 from rbc_meta.utils.builtin import uint, Vector
 
-@reflect(cpp_namespace="rbc", module_name="runtime", pybind=True)
+@reflect(cpp_namespace="rbc", pybind=True)
 class LCPixelStorage(Enum):
     BYTE1 = 0
     BYTE2 = 1
@@ -32,7 +32,7 @@ class LCPixelStorage(Enum):
     BYTE4_SRGB = 25
 
 
-@reflect(cpp_namespace="rbc", module_name="runtime", pybind=True)
+@reflect(cpp_namespace="rbc", pybind=True)
 class LCPixelFormat(Enum):
     R8SInt = 0
     R8UInt = 1
@@ -81,7 +81,7 @@ class LCPixelFormat(Enum):
     RGBA8SRGB = 44
 
 
-@reflect(cpp_namespace="rbc", module_name="runtime")
+@reflect(cpp_namespace="rbc")
 class SamplerFilter(Enum):
     POINT = 0
     LINEAR_POINT = 1
@@ -89,7 +89,7 @@ class SamplerFilter(Enum):
     ANISOTROPIC = 3
 
 
-@reflect(cpp_namespace="rbc", module_name="runtime")
+@reflect(cpp_namespace="rbc")
 class SamplerAddress(Enum):
     EDGE = 0
     REPEAT = 1
@@ -100,7 +100,6 @@ class SamplerAddress(Enum):
 @reflect(
     cpp_namespace="rbc",
     serde=True,
-    module_name="runtime",
     cpp_prefix="RBC_RUNTIME_API",
 )
 class MeshMeta:
@@ -114,7 +113,6 @@ class MeshMeta:
 @reflect(
     cpp_namespace="rbc",
     serde=True,
-    module_name="runtime",
     cpp_prefix="RBC_RUNTIME_API",
 )
 class TextureMeta:

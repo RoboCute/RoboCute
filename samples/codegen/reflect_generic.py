@@ -103,7 +103,6 @@ def test_builtin_generic_types():
     if class_info:
         print(f"\n内置Vector类型信息:")
         print(f"  类名: {class_info.name}")
-        print(f"  模块: {class_info.module}")
         print(f"  基类: {class_info.base_classes}")
 
 

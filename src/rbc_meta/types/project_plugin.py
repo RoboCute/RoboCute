@@ -2,16 +2,14 @@ from rbc_meta.utils.reflect import reflect
 from typing import List, Optional
 
 @reflect(
-    cpp_namespace="rbc",
-    module_name="rbc_project_plugin"
+    cpp_namespace="rbc"
 )
 class ProjectSettingPaths:
     assets: Optional[str]
     intermediate: Optional[str] 
     
 @reflect(
-    cpp_namespace="rbc",
-    module_name="rbc_project_plugin"
+    cpp_namespace="rbc"
 )
 class ProjectDefaultConfig:
     default_scene: Optional[str]
@@ -20,8 +18,7 @@ class ProjectDefaultConfig:
     resource_version: Optional[str]
 
 @reflect(
-    cpp_namespace="rbc",
-    module_name="rbc_project_plugin"
+    cpp_namespace="rbc"
 )
 class ProjectMetaData:
     tags: List[str]
@@ -29,8 +26,7 @@ class ProjectMetaData:
     repository: Optional[str] 
 
 @reflect(
-    cpp_namespace="rbc",
-    module_name="rbc_project_plugin"
+    cpp_namespace="rbc"
 )
 class ProjectSetting:
     name: str

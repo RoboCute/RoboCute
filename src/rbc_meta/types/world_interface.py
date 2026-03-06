@@ -71,7 +71,7 @@ class BasicDataType(Enum):
     NONE = 4
 
 
-@reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
+@reflect(cpp_namespace="rbc", pybind=True)
 class ResourceLoadStatus(Enum):
     Unloaded = 0
     Loading = 1
@@ -80,7 +80,7 @@ class ResourceLoadStatus(Enum):
     Installed = 4
 
 
-@reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
+@reflect(cpp_namespace="rbc", pybind=True)
 class RendererGeometryType(Enum):
     NONE = 0
     Depth = 1 << 0   # float: Distance to camera
@@ -94,7 +94,7 @@ class RendererGeometryType(Enum):
     Albedo = 1 << 6  # packed float3: albedo color (sampled from spectrum)
 
 
-@reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
+@reflect(cpp_namespace="rbc", pybind=True)
 class BaseObjectType(Enum):
     NONE = 0
     Component = 1
@@ -107,7 +107,6 @@ class BaseObjectType(Enum):
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False,
 )
 class Object:
@@ -122,7 +121,6 @@ class Object:
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False
 )
 class Entity(Object):
@@ -138,7 +136,6 @@ class Entity(Object):
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False,
 )
 class Component(Object):
@@ -151,7 +148,6 @@ class Component(Object):
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False,
 )
 class TransformComponent(Component):
@@ -176,7 +172,6 @@ class TransformComponent(Component):
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False,
 )
 class LightComponent(Component):
@@ -205,7 +200,6 @@ class LightComponent(Component):
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False,
 )
 class Resource(Object):
@@ -220,8 +214,7 @@ class Resource(Object):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface"
+    cpp_namespace="rbc"
 )
 class BasicData:
     def type() -> BasicDataType: ...
@@ -240,8 +233,7 @@ class BasicData:
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class TextureResource(Resource):
     def is_vt() -> bool: ...
@@ -266,8 +258,7 @@ class TextureResource(Resource):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class MeshResource(Resource):
     def vertex_count() -> uint: ...
@@ -303,8 +294,7 @@ class MeshResource(Resource):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class BufferResource(Resource):
     def size_bytes() -> ulong: ...
@@ -317,8 +307,7 @@ class BufferResource(Resource):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class MaterialResource(Resource):
     def mat_code() -> uint: ...
@@ -330,7 +319,6 @@ class MaterialResource(Resource):
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False,
 )
 class RenderComponent(Component):
@@ -353,8 +341,7 @@ class RenderComponent(Component):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class RenderSettings:
     # ========== SkySettings ==========
@@ -491,7 +478,6 @@ class RenderSettings:
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False,
 )
 class CameraComponent(Component):
@@ -531,8 +517,7 @@ class CameraComponent(Component):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class DataComponentEventType(Enum):
     OnAwake = 0
@@ -548,7 +533,6 @@ class DataComponentEventType(Enum):
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False,
 )
 class DataComponent(Component):
@@ -569,7 +553,6 @@ class DataComponent(Component):
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    module_name="world_interface",
     create_instance=False,
 )
 class AtmosphereComponent(Component):
@@ -580,8 +563,7 @@ class AtmosphereComponent(Component):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class EntitiesCollection:
     def count() -> ulong: ...
@@ -591,8 +573,7 @@ class EntitiesCollection:
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class Scene(Resource):
     def get_entity(guid: GUID) -> Entity: ...
@@ -607,8 +588,7 @@ class Scene(Resource):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class SkeletonResource(Resource):
     def ref_skel() -> VoidPtr: ...
@@ -618,8 +598,7 @@ class SkeletonResource(Resource):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class SkinResource(Resource):
     def ref_skel() -> SkeletonResource: ...
@@ -634,8 +613,7 @@ class SkinResource(Resource):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class AnimSequenceResource(Resource):
     def ref_seq() -> VoidPtr: ...
@@ -646,8 +624,7 @@ class AnimSequenceResource(Resource):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class AnimGraphResource(Resource):
     def graph() -> VoidPtr: ...
@@ -656,8 +633,7 @@ class AnimGraphResource(Resource):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class SkelMeshResource(Resource):
     def GetSkinResource() -> SkinResource: ...
@@ -669,8 +645,7 @@ class SkelMeshResource(Resource):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class FileMeta:
     def guid() -> GUID: ...
@@ -680,8 +655,7 @@ class FileMeta:
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class Project:
     def init(assets_root_dir: str) -> None: ...
@@ -699,8 +673,7 @@ class Project:
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class TickStage(Enum):
     NONE = 0
@@ -713,8 +686,7 @@ class TickStage(Enum):
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class BuiltinKernels:
     def buffer_to_image(
@@ -737,8 +709,7 @@ class BuiltinKernels:
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class SelectQuery:
     def valid() -> bool: ...
@@ -752,8 +723,7 @@ class SelectQuery:
 @reflect(
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc",
-    module_name="world_interface",
+    cpp_namespace="rbc"
 )
 class RBCContext:
     def init_world(self, meta_path: str, binary_path: str) -> None: ...
