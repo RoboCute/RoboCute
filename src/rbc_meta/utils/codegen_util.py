@@ -232,3 +232,5 @@ def _print_arg_vars_decl(
     return r
 
 
+def to_include_expr(x):
+    return f"#include <{x}>"

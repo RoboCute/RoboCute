@@ -2,11 +2,12 @@ from rbc_meta.utils.reflect import reflect
 from typing import List, Optional
 
 @reflect(
-    cpp_namespace="rbc"
+    cpp_namespace="rbc",
+    serde=True
 )
 class ProjectSettingPaths:
     assets: Optional[str]
-    intermediate: Optional[str] 
+    intermediate: Optional[str]
     
 @reflect(
     cpp_namespace="rbc"

@@ -65,7 +65,6 @@ class MethodInfo:
 @dataclass
 class FieldInfo:
     """字段信息"""
-
     name: str
     type: Type
     generic_info: Optional["GenericInfo"] = None  # 字段类型的泛型信息
@@ -78,7 +77,6 @@ class FieldInfo:
 @dataclass
 class ClassInfo:
     """类信息"""
-
     name: str
     cls: Type
     module: Optional[str]
@@ -187,7 +185,6 @@ class ReflectionRegistry:
                     is_static = len(parameters) == 0 or "self" not in parameters
                 else:  # is_method
                     func = attr.__func__ if hasattr(attr, "__func__") else attr
-
                     # print("Method: ", func)
                     is_static = False
 
@@ -269,22 +266,16 @@ class ReflectionRegistry:
         else:
             # 普通类的字段提取
             try:
-                # 使用 include_extras=True 来保留 Annotated 类型信息
                 hints = get_type_hints(cls, include_extras=True)
-
                 # 获取 C++ 初始化表达式字典（如果存在）
                 cpp_init_dict = getattr(cls, "_cpp_init", {})
                 # 获取字段级别的 serde 设置字典（如果存在）
                 serde_fields = getattr(cls, "_serde_fields", set())
-
                 for name, type_hint in hints.items():
                     default = None
                     if hasattr(cls, name):
                         default = getattr(cls, name, None)
-
-                    # 获取 C++ 初始化表达式
                     cpp_init_expr = cpp_init_dict.get(name)
-
                     # 检查类型注解中是否有 serde 标记（优先使用注解标记）
                     field_serde = _is_serde_field_annotation(type_hint)
 
@@ -302,10 +293,8 @@ class ReflectionRegistry:
 
                     # 提取实际类型（如果是 Annotated，提取内部类型）
                     actual_type = _extract_annotated_type(type_hint)
-
                     # 解析字段类型的泛型信息（使用实际类型）
                     generic_info = self._parse_generic_type(actual_type)
-
                     fields.append(
                         FieldInfo(
                             name=name,
@@ -654,7 +643,6 @@ def _extract_annotated_type(type_hint: Any) -> Type:
     Returns:
         实际的类型，如果不是 Annotated 则返回原类型
     """
-    # Python 3.8 不支持 Annotated
     if Annotated is None:
         return type_hint
 

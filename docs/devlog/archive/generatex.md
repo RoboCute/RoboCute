@@ -19,9 +19,9 @@ pybind_codegen
 - get_enum_binding
 - get_struct_binding
 
-- [ ] Writing to D:\ws\repos\RoboCute-repo\RoboCute\rbc\tests\test_graphics\generated\world.h
-- [ ] Writing to D:\ws\repos\RoboCute-repo\RoboCute\rbc\tests\test_py_codegen\generated\world.cpp
-- [ ] Writing to D:\ws\repos\RoboCute-repo\RoboCute\src\rbc_ext\generated\world.py
+- [x] Writing to D:\ws\repos\RoboCute-repo\RoboCute\rbc\tests\test_graphics\generated\world.h
+- [x] Writing to D:\ws\repos\RoboCute-repo\RoboCute\rbc\tests\test_py_codegen\generated\world.cpp
+- [x] Writing to D:\ws\repos\RoboCute-repo\RoboCute\src\rbc_ext\generated\world.py
 
 World Interface的需求复杂且重要，需要仔细设计一下
 
