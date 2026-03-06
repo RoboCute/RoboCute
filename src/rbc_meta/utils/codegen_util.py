@@ -234,3 +234,12 @@ def _print_arg_vars_decl(
 
 def to_include_expr(x):
     return f"#include <{x}>"
+
+def _get_interface_header_from_path(header_path: str) -> str:
+    """从完整路径中提取接口头文件包含路径（用于 #include）"""
+    path = Path(header_path)
+    parts = list(path.parts)
+    if "include" in parts:
+        idx = parts.index("include")
+        return "/".join(parts[idx+1:])
+    return header_path
