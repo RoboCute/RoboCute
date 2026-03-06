@@ -366,7 +366,7 @@ void GraphicsUtils::resize_swapchain(
                 .size = size,
                 .wants_hdr = false,
                 .wants_vsync = false,
-                .back_buffer_count = 1});
+                .back_buffer_count = 2});
         _present_image.reset();
         _present_image = _render_device->lc_device().create_image<float>(_swapchain.backend_storage(), size, 1, false, true);
         _present_image.set_name("Dest image");

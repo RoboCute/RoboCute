@@ -26,6 +26,7 @@ struct TransparentWindowConfig {
     float opacity{0.8f};      ///< Window opacity (0.0 - 1.0)
     bool topmost{false};      ///< Whether window stays on top
     bool click_through{false};///< Whether window is click-through
+    bool swapchain_mode{false};///< Whether window is click-through
 };
 LUISA_EXPORT_API TransparentWindow *create_transparent_window(const TransparentWindowConfig &config);
 
@@ -119,7 +120,23 @@ public:
     virtual bool process_messages() = 0;
     virtual uint64_t display_handle() = 0;
     virtual uint64_t window_handle() = 0;
-    virtual void update_layered_window() = 0;
+
+    /**
+     * @brief Enable or disable swapchain mode for GPU rendering
+     * 
+     * When swapchain mode is enabled, the window uses DWM composition
+     * instead of WS_EX_LAYERED, which is required for DirectX/Vulkan
+     * swapchain attachment. Call this before connecting a swapchain.
+     * 
+     * @param enable true to enable swapchain-compatible transparency
+     */
+    virtual void set_swapchain_mode(bool enable) = 0;
+
+    /**
+     * @brief Check if swapchain mode is enabled
+     * @return true if swapchain mode is active
+     */
+    virtual bool is_swapchain_mode() const = 0;
 };
 
 }// namespace rbc

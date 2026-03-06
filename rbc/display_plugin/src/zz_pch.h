@@ -61,8 +61,8 @@
 #include <rbc_core/type_info.h>
 #include <rbc_core/enum_serializer.h>
 
-// System includes for Windows transparent window
-#ifdef _WIN32
-#include <windows.h>
-#include <dwmapi.h>
-#endif
+// // System includes for Windows transparent window
+// #ifdef _WIN32
+// #include <windows.h>
+// #include <dwmapi.h>
+// #endif

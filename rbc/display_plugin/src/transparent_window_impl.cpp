@@ -1,4 +1,11 @@
 #pragma once
+#include "zz_pch.h"
+#ifdef _WIN32
+#include <windows.h>
+#include <windowsx.h>
+#include <dwmapi.h>
+#endif
+
 #include <rbc_display/to_str.h>
 #include <rbc_display/transparent_window.h>
 #include <rbc_core/base.h>
@@ -19,9 +26,6 @@
 #ifndef GWLP_EXSTYLE
 #define GWLP_EXSTYLE (-20)
 #endif
-#include <windows.h>
-#include <windowsx.h>
-#include <dwmapi.h>
 
 namespace rbc {
 
@@ -54,16 +58,21 @@ public:
         return reinterpret_cast<uint64_t &>(hwnd_);
     }
 
-    void update_layered_window() override;
+    void set_swapchain_mode(bool enable) override;
+    bool is_swapchain_mode() const override { return config_.swapchain_mode; }
+
 private:
-    static LRESULT CALLBACK window_proc(
+    void _update_layered_window();
+    static LRESULT CALLBACK _window_proc(
         HWND hwnd,
         UINT msg,
         WPARAM w_param,
         LPARAM l_param);
 
-    bool create_window();
-    void apply_transparency();
+    bool _create_window();
+    void _apply_transparency();
+    void _apply_swapchain_transparency();
+    void _apply_layered_transparency();
 
     HWND hwnd_{nullptr};
     HDC mem_dc_{nullptr};
@@ -86,18 +95,18 @@ std::mutex TransparentWindowWin32::map_mutex_;
 
 TransparentWindowWin32::TransparentWindowWin32(const TransparentWindowConfig &config)
     : config_(config) {
-    if (!create_window()) {
+    if (!_create_window()) {
         LUISA_ERROR("Failed to create transparent window");
         return;
     }
-    apply_transparency();
+    _apply_transparency();
 }
 
 TransparentWindowWin32::~TransparentWindowWin32() {
     close();
 }
 
-bool TransparentWindowWin32::create_window() {
+bool TransparentWindowWin32::_create_window() {
     // Register window class
     static const wchar_t *class_name = L"RoboCuteTransparentWindow";
     static bool registered = false;
@@ -105,7 +114,7 @@ bool TransparentWindowWin32::create_window() {
     if (!registered) {
         WNDCLASSEXW wcex{};
         wcex.cbSize = sizeof(WNDCLASSEXW);
-        wcex.lpfnWndProc = window_proc;
+        wcex.lpfnWndProc = _window_proc;
         wcex.hInstance = GetModuleHandle(nullptr);
         wcex.lpszClassName = class_name;
         wcex.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
@@ -158,25 +167,89 @@ bool TransparentWindowWin32::create_window() {
     return true;
 }
 
-void TransparentWindowWin32::apply_transparency() {
+void TransparentWindowWin32::_apply_layered_transparency() {
     if (!hwnd_) return;
 
-    // Enable DWM blur behind (Windows Vista+)
+    // Add layered style
+    LONG_PTR ex_style = GetWindowLongPtr(hwnd_, GWLP_EXSTYLE);
+    if (!(ex_style & WS_EX_LAYERED)) {
+        ex_style |= WS_EX_LAYERED;
+        SetWindowLongPtr(hwnd_, GWLP_EXSTYLE, ex_style);
+    }
+
+    // Remove NOREDIRECTIONBITMAP if present (for layered mode)
+    ex_style = GetWindowLongPtr(hwnd_, GWLP_EXSTYLE);
+    if (ex_style & WS_EX_NOREDIRECTIONBITMAP) {
+        ex_style &= ~WS_EX_NOREDIRECTIONBITMAP;
+        SetWindowLongPtr(hwnd_, GWLP_EXSTYLE, ex_style);
+    }
+
+    // Set initial opacity using layered window
+    set_opacity(config_.opacity);
+
+    // Force style update
+    SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+}
+
+void TransparentWindowWin32::_apply_swapchain_transparency() {
+    if (!hwnd_) return;
+
+    // Remove layered style (incompatible with swapchain)
+    LONG_PTR ex_style = GetWindowLongPtr(hwnd_, GWLP_EXSTYLE);
+    if (ex_style & WS_EX_LAYERED) {
+        ex_style &= ~WS_EX_LAYERED;
+        SetWindowLongPtr(hwnd_, GWLP_EXSTYLE, ex_style);
+    }
+
+    // Add NOREDIRECTIONBITMAP for DirectComposition/swapchain transparency
+    ex_style = GetWindowLongPtr(hwnd_, GWLP_EXSTYLE);
+    if (!(ex_style & WS_EX_NOREDIRECTIONBITMAP)) {
+        ex_style |= WS_EX_NOREDIRECTIONBITMAP;
+        SetWindowLongPtr(hwnd_, GWLP_EXSTYLE, ex_style);
+    }
+
+    // Disable DWM blur behind to enable true transparency
     DWM_BLURBEHIND bb{};
     bb.dwFlags = DWM_BB_ENABLE;
-    bb.fEnable = TRUE;
+    bb.fEnable = FALSE;
     DwmEnableBlurBehindWindow(hwnd_, &bb);
 
-    // Set extended window attributes for transparency
+    // Extend frame into client area for transparent background
+    // Margins of {-1} extends the window frame to cover the entire window
     MARGINS margins{-1};
     DwmExtendFrameIntoClientArea(hwnd_, &margins);
-
-    // Set initial opacity
     set_opacity(config_.opacity);
+
+    // Force style update
+    SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+}
+
+void TransparentWindowWin32::_apply_transparency() {
+    if (config_.swapchain_mode) {
+        _apply_swapchain_transparency();
+    } else {
+        _apply_layered_transparency();
+    }
 
     // Apply click-through if enabled
     if (config_.click_through) {
         set_click_through(true);
+    }
+}
+
+void TransparentWindowWin32::set_swapchain_mode(bool enable) {
+    if (config_.swapchain_mode == enable || !hwnd_) return;
+
+    config_.swapchain_mode = enable;
+
+    if (enable) {
+        // Switch to swapchain-compatible transparency
+        _apply_swapchain_transparency();
+    } else {
+        // Switch back to layered window mode
+        _apply_layered_transparency();
     }
 }
 
@@ -270,10 +343,10 @@ void TransparentWindowWin32::update_content(
     memcpy(bmp.bmBits, pixel_data, width * height * 4);
 
     // Update layered window
-    update_layered_window();
+    _update_layered_window();
 }
 
-void TransparentWindowWin32::update_layered_window() {
+void TransparentWindowWin32::_update_layered_window() {
     if (!hwnd_ || !mem_dc_) return;
 
     HDC screen_dc = GetDC(nullptr);
@@ -333,7 +406,21 @@ void TransparentWindowWin32::set_size(uint32_t width, uint32_t height) {
 
 void TransparentWindowWin32::set_opacity(float opacity) {
     config_.opacity = std::clamp(opacity, 0.0f, 1.0f);
-    update_layered_window();
+
+    if (config_.swapchain_mode) {
+        // In swapchain mode, use SetLayeredWindowAttributes with LWA_ALPHA
+        // Note: This requires WS_EX_LAYERED, but we can't use it with swapchain
+        // Instead, we use window opacity via SetWindowOpacity if available,
+        // or rely on the swapchain content having alpha
+        // For now, just store the opacity value
+        BYTE alpha = static_cast<BYTE>(config_.opacity * 255);
+        // Use UpdateLayeredWindow with ULW_ALPHA if layered, otherwise ignore
+        if (GetWindowLongPtr(hwnd_, GWLP_EXSTYLE) & WS_EX_LAYERED) {
+            SetLayeredWindowAttributes(hwnd_, 0, alpha, LWA_ALPHA);
+        }
+    } else {
+        _update_layered_window();
+    }
 }
 
 void TransparentWindowWin32::set_click_through(bool enable) {
@@ -376,7 +463,7 @@ bool TransparentWindowWin32::process_messages() {
     return !closed_;
 }
 
-LRESULT CALLBACK TransparentWindowWin32::window_proc(
+LRESULT CALLBACK TransparentWindowWin32::_window_proc(
     HWND hwnd,
     UINT msg,
     WPARAM w_param,
@@ -435,6 +522,16 @@ LRESULT CALLBACK TransparentWindowWin32::window_proc(
 
             // Default: allow dragging from caption area
             return HTCAPTION;
+        }
+
+        case WM_LBUTTONDOWN: {
+            // Enable dragging for borderless window
+            if (!window->config_.click_through) {
+                ReleaseCapture();
+                SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+                return 0;
+            }
+            return DefWindowProcW(hwnd, msg, w_param, l_param);
         }
 
         case WM_KEYDOWN: {

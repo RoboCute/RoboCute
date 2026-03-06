@@ -46,13 +46,13 @@ namespace rbc {
 struct ContextImpl;
 static ContextImpl *_ctx_inst{};
 struct ContextImpl : RCBase {
+    luisa::shared_ptr<luisa::DynamicModule> display_module;
     luisa::spin_mutex _ctx_mtx;
     luisa::fiber::scheduler scheduler;
     CameraController::Input camera_input{};
     vstd::unique_ptr<GraphicsUtils> utils;
     vstd::unique_ptr<Window> window;
     luisa::unique_ptr<TransparentWindow> transparent_window;
-    luisa::shared_ptr<luisa::DynamicModule> display_module;
     vstd::unique_ptr<CameraController> cam_controller;
     RC<world::Entity> display_cam_entity;
     uint2 window_size;
@@ -160,6 +160,7 @@ void RBCContext::init_transparent_display(
     config.opacity = opacity;
     config.topmost = topmost;
     config.click_through = click_through;
+    config.swapchain_mode = true;
 
     c.transparent_window = luisa::unique_ptr<TransparentWindow>(
         c.display_module->invoke<TransparentWindow *(const TransparentWindowConfig &)>(
@@ -258,7 +259,6 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
     }
     if(c.transparent_window){
         c.transparent_should_close = !c.transparent_window->process_messages();
-        c.transparent_window->update_layered_window();
     }
     {
         RBCZoneScopedN("Update Camera");
