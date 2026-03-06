@@ -1,23 +1,23 @@
 from rbc_meta.utils.reflect import reflect
-from typing import List
+from typing import List, Optional
 
 @reflect(
     cpp_namespace="rbc",
     module_name="rbc_project_plugin"
 )
 class ProjectSettingPaths:
-    assets: str
-    intermediate: str 
+    assets: Optional[str]
+    intermediate: Optional[str] 
     
 @reflect(
     cpp_namespace="rbc",
     module_name="rbc_project_plugin"
 )
 class ProjectDefaultConfig:
-    default_scene: str
-    startup_graph: str 
-    graphics_backend: str 
-    resource_version: str
+    default_scene: Optional[str]
+    startup_graph: Optional[str] 
+    graphics_backend: Optional[str] 
+    resource_version: Optional[str]
 
 @reflect(
     cpp_namespace="rbc",
@@ -25,8 +25,8 @@ class ProjectDefaultConfig:
 )
 class ProjectMetaData:
     tags: List[str]
-    license: str
-    repository: str 
+    license: Optional[str]
+    repository: Optional[str] 
 
 @reflect(
     cpp_namespace="rbc",
@@ -36,10 +36,10 @@ class ProjectSetting:
     name: str
     version: str
     rbc_version: str
-    author: str
-    description: str
-    paths: ProjectSettingPaths
-    config: ProjectDefaultConfig
+    author: Optional[str]
+    description: Optional[str]
+    paths: Optional[ProjectSettingPaths]
+    config: Optional[ProjectDefaultConfig]
 
 OUT_CLASSES = [
     ProjectDefaultConfig,

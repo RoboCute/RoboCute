@@ -3,7 +3,9 @@
 #include <rbc_core/serde.h>
 #include <luisa/vstl/functional.h>
 #include <luisa/vstl/md5.h>
+
 namespace rbc {
+
 struct RBC_CORE_API ClassSerializer {
     using SerFunc = vstd::func_ptr_t<void(void const *, ::rbc::JsonSerializer *)>;
     using DeserFunc = vstd::func_ptr_t<void(void *, ::rbc::JsonDeSerializer *)>;

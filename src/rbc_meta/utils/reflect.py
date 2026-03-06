@@ -393,7 +393,7 @@ class ReflectionRegistry:
                 # Optional类型
                 generic_info.origin = Optional
                 generic_info.args = (non_none_args[0],)
-                generic_info.cpp_name = "std::optional"
+                generic_info.cpp_name = "vstd::optional"
                 generic_info.is_optional = True
                 return generic_info
 

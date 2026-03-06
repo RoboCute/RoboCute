@@ -34,7 +34,6 @@ void ConfigResource::SetType(GUID type) {
 
 `auto resource = skr::IResource::SerdeReadWithTypeAs<IResource>(reader)`
 
-
 ### MeshResource
 
 

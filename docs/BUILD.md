@@ -70,8 +70,7 @@ xmake:
 - rbc-editor
   - 启动开发服务器`uv run main.py`
   - 启动editor `xmake run rbc-editor`
-- Graphics特性测试`xmake run test_graphics_bin`
-- Serde特性测试`xmake run test_serde`
+- Graphics特性测试`xmake run test_graphics_bin <backend> <asset_dir> <intermediate_dir>`
 
 cmake:
 - 确认Qt6的`bin`文件夹存在于系统`PATH`变量中
