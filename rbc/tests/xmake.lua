@@ -2,6 +2,9 @@
 -- includes('test_py_codegen')
 includes('test_graphics')
 includes('test_project')
+if is_host('windows') then
+    includes('test_transparent_window')
+end
 if has_config('rbc_urdf') then
     includes('test_urdf')
 end
