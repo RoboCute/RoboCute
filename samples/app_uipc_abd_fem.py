@@ -353,17 +353,16 @@ class UIPCABDFEMApp:
 
 
 physics_app = UIPCABDFEMApp()
-physics_should_step = False
 
 
-def physics_callback(ptr):
+def physics_callback():
     """
     Callback function called every frame to update physics.
 
     Args:
         ptr: Component pointer from RoboCute
     """
-    if not app.ctx or not physics_should_step:
+    if not app.ctx:
         return
 
     physics_app.step()
@@ -445,10 +444,6 @@ def main():
     data = re.world.DataComponent(
         physics_app.mesh_entity.add_component("DataComponent")
     )
-    app.ctx.regist_callback("physics_update", physics_callback)
-    data.bind_event(
-        re.world.DataComponentEventType.BeforeFrame, "physics_update")
-
     # Start simulation immediately
     physics_app.is_running = True
 
@@ -466,7 +461,7 @@ def main():
     render_settings.set_offline_spp(4)
     physics_frame = 0
     RENDER_FRAME = 64
-    global physics_should_step
+    physics_should_step = None
     try:
         while not app.ctx.should_close():
             cur_time = time.time()
@@ -477,6 +472,7 @@ def main():
             physics_frame += 1
             if physics_frame >= RENDER_FRAME:
                 physics_frame = 0
+                physics_callback()
                 physics_should_step = True
             app.ctx.tick(delta_time, tick_stage, True)
             if physics_should_step:
