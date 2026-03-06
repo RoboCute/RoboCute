@@ -12,6 +12,13 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600
+#endif
+// GWLP_EXSTYLE may not be defined in older Windows SDKs or certain compiler settings
+#ifndef GWLP_EXSTYLE
+#define GWLP_EXSTYLE (-20)
+#endif
 #include <windows.h>
 #include <windowsx.h>
 #include <dwmapi.h>
@@ -110,7 +117,9 @@ bool TransparentWindowWin32::create_window() {
     }
 
     // Create window
-    DWORD ex_style = WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW;
+    // WS_EX_LAYERED: Required for UpdateLayeredWindow and transparency
+    // WS_EX_APPWINDOW: Forces window to appear on taskbar
+    DWORD ex_style = WS_EX_LAYERED | WS_EX_APPWINDOW;
     if (config_.topmost) {
         ex_style |= WS_EX_TOPMOST;
     }
@@ -329,13 +338,16 @@ void TransparentWindowWin32::set_click_through(bool enable) {
     if (!hwnd_) return;
     config_.click_through = enable;
 
-    LONG ex_style = GetWindowLong(hwnd_, GWL_EXSTYLE);
+    LONG_PTR ex_style = GetWindowLongPtr(hwnd_, GWLP_EXSTYLE);
     if (enable) {
         ex_style |= WS_EX_TRANSPARENT;
     } else {
         ex_style &= ~WS_EX_TRANSPARENT;
     }
-    SetWindowLong(hwnd_, GWL_EXSTYLE, ex_style);
+    SetWindowLongPtr(hwnd_, GWLP_EXSTYLE, ex_style);
+    // Force window to update its style
+    SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
 bool TransparentWindowWin32::is_visible() const {
