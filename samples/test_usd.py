@@ -358,10 +358,372 @@ def gf_vec3d_to_lc_float4_rotation(rotation: Gf.Vec3d) -> lc.float4:
     return lc.float4(qx, qy, qz, qw)
 
 
-def create_cube_mesh_entity(
+def create_sphere_mesh(
+    radius: float = 1.0,
+    stacks: int = 16,
+    slices: int = 16,
+) -> re.world.MeshResource:
+    """
+    创建球体网格资源
+
+    Args:
+        radius: 球体半径
+        stacks: 垂直方向分段数 (纬度)
+        slices: 水平方向分段数 (经度)
+
+    Returns:
+        网格资源
+    """
+    # 球体: (stacks + 1) * (slices + 1) 个顶点, stacks * slices * 2 个三角形
+    vertex_count = (stacks + 1) * (slices + 1)
+    triangle_count = stacks * slices * 2
+    
+    mesh = re.world.MeshResource()
+    submesh_offsets = np.array([0], dtype=np.uint32)
+    mesh.create_empty(submesh_offsets, vertex_count, triangle_count, 1, False, False)
+    
+    # 数据布局: positions + UVs + indices
+    mesh_array = np.ndarray(
+        vertex_count * 4 + vertex_count * 2 + triangle_count * 3,
+        dtype=np.float32,
+        buffer=mesh.data_buffer(),
+    )
+    vertex_arr = np.ndarray(
+        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+
+    uv_arr = np.ndarray(
+        vertex_count * 2,
+        dtype=np.float32,
+        buffer=mesh_array.data,
+        offset=vertex_arr.size * vertex_arr.itemsize,
+    )
+
+    indices_arr = np.ndarray(
+        shape=triangle_count * 3,
+        dtype=np.uint32,
+        buffer=mesh_array.data,
+        offset=vertex_arr.size * vertex_arr.itemsize + uv_arr.size * uv_arr.itemsize,
+    )
+    
+    # 生成顶点位置和 UV
+    v_idx = 0
+    uv_idx = 0
+    for stack in range(stacks + 1):
+        phi = math.pi * stack / stacks  # 0 to pi (从北极到南极)
+        for slice_ in range(slices + 1):
+            theta = 2 * math.pi * slice_ / slices  # 0 to 2pi (经度)
+            
+            # 球坐标转笛卡尔坐标
+            x = math.sin(phi) * math.cos(theta)
+            y = math.cos(phi)
+            z = math.sin(phi) * math.sin(theta)
+            
+            # 应用半径
+            vertex_arr[v_idx] = x * radius
+            vertex_arr[v_idx + 1] = y * radius
+            vertex_arr[v_idx + 2] = z * radius
+            vertex_arr[v_idx + 3] = 1.0
+            v_idx += 4
+            
+            # UV 坐标
+            u = slice_ / slices
+            v = 1.0 - stack / stacks  # 翻转 V 使纹理正向
+            uv_arr[uv_idx] = u
+            uv_arr[uv_idx + 1] = v
+            uv_idx += 2
+    
+    # 生成索引
+    i_idx = 0
+    for stack in range(stacks):
+        for slice_ in range(slices):
+            # 当前四边形的四个顶点索引
+            v0 = stack * (slices + 1) + slice_
+            v1 = stack * (slices + 1) + slice_ + 1
+            v2 = (stack + 1) * (slices + 1) + slice_
+            v3 = (stack + 1) * (slices + 1) + slice_ + 1
+            
+            # 两个三角形组成一个四边形
+            # 第一个三角形
+            indices_arr[i_idx] = v0
+            indices_arr[i_idx + 1] = v2
+            indices_arr[i_idx + 2] = v1
+            i_idx += 3
+            
+            # 第二个三角形
+            indices_arr[i_idx] = v1
+            indices_arr[i_idx + 1] = v2
+            indices_arr[i_idx + 2] = v3
+            i_idx += 3
+    
+    mesh.install()
+    return mesh
+
+
+def create_cylinder_mesh(
+    radius: float = 0.5,
+    height: float = 2.0,
+    slices: int = 16,
+) -> re.world.MeshResource:
+    """
+    创建圆柱体网格资源
+
+    Args:
+        radius: 圆柱体半径
+        height: 圆柱体高度
+        slices: 圆周方向分段数
+
+    Returns:
+        网格资源
+    """
+    # 圆柱体: 2 个圆形端面 (slices+1 个顶点) + 侧面 (slices+1)*2 个顶点
+    # 实际上我们使用 (slices+1)*2 个顶点用于侧面 + 中心点用于端面
+    # 简化方案: (slices+1)*2 个顶点 (上下两圈)
+    vertex_count = (slices + 1) * 2 + 2  # 上下两圈 + 两个中心点用于端面
+    # 侧面: slices * 2 个三角形, 两个端面: slices 个三角形每个
+    triangle_count = slices * 2 + slices * 2  # 侧面 + 两个端面
+    
+    mesh = re.world.MeshResource()
+    submesh_offsets = np.array([0], dtype=np.uint32)
+    mesh.create_empty(submesh_offsets, vertex_count, triangle_count, 1, False, False)
+    
+    # 数据布局: positions + UVs + indices
+    mesh_array = np.ndarray(
+        vertex_count * 4 + vertex_count * 2 + triangle_count * 3,
+        dtype=np.float32,
+        buffer=mesh.data_buffer(),
+    )
+    vertex_arr = np.ndarray(
+        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+
+    uv_arr = np.ndarray(
+        vertex_count * 2,
+        dtype=np.float32,
+        buffer=mesh_array.data,
+        offset=vertex_arr.size * vertex_arr.itemsize,
+    )
+
+    indices_arr = np.ndarray(
+        shape=triangle_count * 3,
+        dtype=np.uint32,
+        buffer=mesh_array.data,
+        offset=vertex_arr.size * vertex_arr.itemsize + uv_arr.size * uv_arr.itemsize,
+    )
+    
+    half_height = height * 0.5
+    
+    v_idx = 0
+    uv_idx = 0
+    
+    # 顶部圆周顶点 (索引 0 到 slices)
+    for i in range(slices + 1):
+        theta = 2 * math.pi * i / slices
+        x = math.cos(theta) * radius
+        z = math.sin(theta) * radius
+        
+        vertex_arr[v_idx] = x
+        vertex_arr[v_idx + 1] = half_height
+        vertex_arr[v_idx + 2] = z
+        vertex_arr[v_idx + 3] = 1.0
+        v_idx += 4
+        
+        uv_arr[uv_idx] = i / slices
+        uv_arr[uv_idx + 1] = 1.0
+        uv_idx += 2
+    
+    # 底部圆周顶点 (索引 slices+1 到 2*slices+1)
+    for i in range(slices + 1):
+        theta = 2 * math.pi * i / slices
+        x = math.cos(theta) * radius
+        z = math.sin(theta) * radius
+        
+        vertex_arr[v_idx] = x
+        vertex_arr[v_idx + 1] = -half_height
+        vertex_arr[v_idx + 2] = z
+        vertex_arr[v_idx + 3] = 1.0
+        v_idx += 4
+        
+        uv_arr[uv_idx] = i / slices
+        uv_arr[uv_idx + 1] = 0.0
+        uv_idx += 2
+    
+    # 顶部中心点
+    top_center_idx = (slices + 1) * 2
+    vertex_arr[v_idx] = 0.0
+    vertex_arr[v_idx + 1] = half_height
+    vertex_arr[v_idx + 2] = 0.0
+    vertex_arr[v_idx + 3] = 1.0
+    v_idx += 4
+    uv_arr[uv_idx] = 0.5
+    uv_arr[uv_idx + 1] = 0.5
+    uv_idx += 2
+    
+    # 底部中心点
+    bottom_center_idx = top_center_idx + 1
+    vertex_arr[v_idx] = 0.0
+    vertex_arr[v_idx + 1] = -half_height
+    vertex_arr[v_idx + 2] = 0.0
+    vertex_arr[v_idx + 3] = 1.0
+    v_idx += 4
+    uv_arr[uv_idx] = 0.5
+    uv_arr[uv_idx + 1] = 0.5
+    uv_idx += 2
+    
+    # 生成索引
+    i_idx = 0
+    
+    # 侧面三角形
+    for i in range(slices):
+        top_current = i
+        top_next = i + 1
+        bottom_current = (slices + 1) + i
+        bottom_next = (slices + 1) + i + 1
+        
+        # 第一个三角形 (上-下-右上)
+        indices_arr[i_idx] = top_current
+        indices_arr[i_idx + 1] = bottom_current
+        indices_arr[i_idx + 2] = top_next
+        i_idx += 3
+        
+        # 第二个三角形 (右上-下-右下)
+        indices_arr[i_idx] = top_next
+        indices_arr[i_idx + 1] = bottom_current
+        indices_arr[i_idx + 2] = bottom_next
+        i_idx += 3
+    
+    # 顶部端面三角形
+    for i in range(slices):
+        indices_arr[i_idx] = top_center_idx
+        indices_arr[i_idx + 1] = i + 1
+        indices_arr[i_idx + 2] = i
+        i_idx += 3
+    
+    # 底部端面三角形 (注意顺序以朝向正确)
+    for i in range(slices):
+        indices_arr[i_idx] = bottom_center_idx
+        indices_arr[i_idx + 1] = (slices + 1) + i
+        indices_arr[i_idx + 2] = (slices + 1) + i + 1
+        i_idx += 3
+    
+    mesh.install()
+    return mesh
+
+
+def create_cone_mesh(
+    radius: float = 0.5,
+    height: float = 2.0,
+    slices: int = 16,
+) -> re.world.MeshResource:
+    """
+    创建圆锥体网格资源
+
+    Args:
+        radius: 圆锥体底部半径
+        height: 圆锥体高度
+        slices: 圆周方向分段数
+
+    Returns:
+        网格资源
+    """
+    # 圆锥体: 底部圆周 (slices+1) + 顶点 + 底部中心点
+    vertex_count = (slices + 1) + 1 + 1  # 底部圆周 + 顶点 + 底部中心
+    # 侧面: slices 个三角形, 底部: slices 个三角形
+    triangle_count = slices + slices
+    
+    mesh = re.world.MeshResource()
+    submesh_offsets = np.array([0], dtype=np.uint32)
+    mesh.create_empty(submesh_offsets, vertex_count, triangle_count, 1, False, False)
+    
+    # 数据布局: positions + UVs + indices
+    mesh_array = np.ndarray(
+        vertex_count * 4 + vertex_count * 2 + triangle_count * 3,
+        dtype=np.float32,
+        buffer=mesh.data_buffer(),
+    )
+    vertex_arr = np.ndarray(
+        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+
+    uv_arr = np.ndarray(
+        vertex_count * 2,
+        dtype=np.float32,
+        buffer=mesh_array.data,
+        offset=vertex_arr.size * vertex_arr.itemsize,
+    )
+
+    indices_arr = np.ndarray(
+        shape=triangle_count * 3,
+        dtype=np.uint32,
+        buffer=mesh_array.data,
+        offset=vertex_arr.size * vertex_arr.itemsize + uv_arr.size * uv_arr.itemsize,
+    )
+    
+    half_height = height * 0.5
+    
+    v_idx = 0
+    uv_idx = 0
+    
+    # 底部圆周顶点 (索引 0 到 slices)
+    for i in range(slices + 1):
+        theta = 2 * math.pi * i / slices
+        x = math.cos(theta) * radius
+        z = math.sin(theta) * radius
+        
+        vertex_arr[v_idx] = x
+        vertex_arr[v_idx + 1] = -half_height
+        vertex_arr[v_idx + 2] = z
+        vertex_arr[v_idx + 3] = 1.0
+        v_idx += 4
+        
+        uv_arr[uv_idx] = math.cos(theta) * 0.5 + 0.5
+        uv_arr[uv_idx + 1] = math.sin(theta) * 0.5 + 0.5
+        uv_idx += 2
+    
+    # 顶点 (索引 slices+1)
+    apex_idx = slices + 1
+    vertex_arr[v_idx] = 0.0
+    vertex_arr[v_idx + 1] = half_height
+    vertex_arr[v_idx + 2] = 0.0
+    vertex_arr[v_idx + 3] = 1.0
+    v_idx += 4
+    uv_arr[uv_idx] = 0.5
+    uv_arr[uv_idx + 1] = 0.5
+    uv_idx += 2
+    
+    # 底部中心点 (索引 slices+2)
+    bottom_center_idx = slices + 2
+    vertex_arr[v_idx] = 0.0
+    vertex_arr[v_idx + 1] = -half_height
+    vertex_arr[v_idx + 2] = 0.0
+    vertex_arr[v_idx + 3] = 1.0
+    v_idx += 4
+    uv_arr[uv_idx] = 0.5
+    uv_arr[uv_idx + 1] = 0.5
+    uv_idx += 2
+    
+    # 生成索引
+    i_idx = 0
+    
+    # 侧面三角形
+    for i in range(slices):
+        indices_arr[i_idx] = apex_idx
+        indices_arr[i_idx + 1] = i
+        indices_arr[i_idx + 2] = i + 1
+        i_idx += 3
+    
+    # 底部端面三角形
+    for i in range(slices):
+        indices_arr[i_idx] = bottom_center_idx
+        indices_arr[i_idx + 1] = i + 1
+        indices_arr[i_idx + 2] = i
+        i_idx += 3
+    
+    mesh.install()
+    return mesh
+
+
+def create_mesh_entity(
     scene: re.world.Scene,
     name: str,
-    size: float,
+    mesh: re.world.MeshResource,
     translation: Gf.Vec3d,
     rotation: Gf.Vec3d = Gf.Vec3d(0, 0, 0),
     scale: Gf.Vec3d = Gf.Vec3d(1, 1, 1),
@@ -369,12 +731,12 @@ def create_cube_mesh_entity(
     tex: Optional[re.world.TextureResource] = None,
 ) -> re.world.Entity:
     """
-    在 RoboCute 场景中创建立方体网格实体
+    在 RoboCute 场景中创建网格实体
 
     Args:
         scene: RoboCute 场景
         name: 实体名称
-        size: 立方体大小
+        mesh: 网格资源
         translation: 位置
         rotation: 旋转角度 (Euler angles, degrees)
         scale: 缩放
@@ -417,11 +779,45 @@ def create_cube_mesh_entity(
         rot_quat = gf_vec3d_to_lc_float4_rotation(rotation)
         trans.set_rotation(rot_quat, False)
     
-    # 创建立方体网格
-    cube_mesh = create_cube_mesh(size, scale)
-    render.update_object(mat_vector, cube_mesh)
+    # 应用缩放
+    trans.set_scale(lc.double3(scale), False)
+    
+    # 设置网格
+    render.update_object(mat_vector, mesh)
     
     return entity
+
+
+def create_cube_mesh_entity(
+    scene: re.world.Scene,
+    name: str,
+    size: float,
+    translation: Gf.Vec3d,
+    rotation: Gf.Vec3d = Gf.Vec3d(0, 0, 0),
+    scale: Gf.Vec3d = Gf.Vec3d(1, 1, 1),
+    color: Optional[Gf.Vec3f] = None,
+    tex: Optional[re.world.TextureResource] = None,
+) -> re.world.Entity:
+    """
+    在 RoboCute 场景中创建立方体网格实体
+
+    Args:
+        scene: RoboCute 场景
+        name: 实体名称
+        size: 立方体大小
+        translation: 位置
+        rotation: 旋转角度 (Euler angles, degrees)
+        scale: 缩放
+        color: 颜色
+        tex: 纹理资源
+
+    Returns:
+        创建的实体
+    """
+    cube_mesh = create_cube_mesh(size, scale)
+    return create_mesh_entity(
+        scene, name, cube_mesh, translation, rotation, Gf.Vec3d(1, 1, 1), color, tex
+    )
 
 
 def create_cube_mesh(size: float, scale: Gf.Vec3d = Gf.Vec3d(1, 1, 1)) -> re.world.MeshResource:
@@ -622,19 +1018,19 @@ def render_usd_scene(
                 )
                 print(f"Created cube: {prim_name} at {translation}")
             elif prim_type == "Sphere":
-                # 使用立方体近似球体 (或者可以创建更复杂的球体网格)
                 sphere_geom = UsdGeom.Sphere(child)
                 radius = sphere_geom.GetRadiusAttr().Get()
                 if radius is None:
                     radius = 1.0
-                # 使用立方体作为球体的近似，缩放为球体大小
+                # 创建球体网格
+                sphere_mesh = create_sphere_mesh(radius=1.0)
                 sphere_scale = Gf.Vec3d(
-                    scale[0] * radius * 2,
-                    scale[1] * radius * 2,
-                    scale[2] * radius * 2
+                    scale[0] * radius,
+                    scale[1] * radius,
+                    scale[2] * radius
                 )
-                create_cube_mesh_entity(
-                    app.scene, str(prim_name), 1.0,
+                create_mesh_entity(
+                    app.scene, str(prim_name), sphere_mesh,
                     translation, rotation, sphere_scale, color, tex
                 )
                 print(f"Created sphere: {prim_name} at {translation}")
@@ -642,13 +1038,15 @@ def render_usd_scene(
                 cylinder_geom = UsdGeom.Cylinder(child)
                 radius = cylinder_geom.GetRadiusAttr().Get() or 0.5
                 height = cylinder_geom.GetHeightAttr().Get() or 2.0
+                # 创建圆柱体网格
+                cylinder_mesh = create_cylinder_mesh(radius=1.0, height=1.0)
                 cyl_scale = Gf.Vec3d(
-                    scale[0] * radius * 2,
+                    scale[0] * radius,
                     scale[1] * height,
-                    scale[2] * radius * 2
+                    scale[2] * radius
                 )
-                create_cube_mesh_entity(
-                    app.scene, str(prim_name), 1.0,
+                create_mesh_entity(
+                    app.scene, str(prim_name), cylinder_mesh,
                     translation, rotation, cyl_scale, color, tex
                 )
                 print(f"Created cylinder: {prim_name} at {translation}")
@@ -656,13 +1054,15 @@ def render_usd_scene(
                 cone_geom = UsdGeom.Cone(child)
                 radius = cone_geom.GetRadiusAttr().Get() or 0.5
                 height = cone_geom.GetHeightAttr().Get() or 2.0
+                # 创建圆锥体网格
+                cone_mesh = create_cone_mesh(radius=1.0, height=1.0)
                 cone_scale = Gf.Vec3d(
-                    scale[0] * radius * 2,
+                    scale[0] * radius,
                     scale[1] * height,
-                    scale[2] * radius * 2
+                    scale[2] * radius
                 )
-                create_cube_mesh_entity(
-                    app.scene, str(prim_name), 1.0,
+                create_mesh_entity(
+                    app.scene, str(prim_name), cone_mesh,
                     translation, rotation, cone_scale, color, tex
                 )
                 print(f"Created cone: {prim_name} at {translation}")

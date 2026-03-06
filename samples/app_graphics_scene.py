@@ -354,49 +354,6 @@ def main():
 
     project_path = Path(args.project)
     EXPORT = args.output
-
-    # ###################
-    # @lc.func
-    # def write_buffer_vec3_to_img(buffer, element_offset, img):
-    #     """
-    #     Luisa kernel: 将 float3 数据从缓冲区写入图像
-
-    #     用于将几何缓冲区中的 vec3 数据 (如 normal albedo) 可视化为图像
-
-    #     Args:
-    #         buffer: 源数据缓冲区
-    #         element_offset: 在缓冲区中的起始偏移量
-    #         img: 目标图像
-    #     """
-    #     lset_block_size(16, 8, 1)
-    #     id = dispatch_id().xy
-    #     idx = id.x + id.y * dispatch_size().x
-    #     idx *= 3
-    #     idx += element_offset
-    #     value = lc.float3(buffer.read(idx), buffer.read(idx + 1), buffer.read(idx + 2))
-    #     img.write(id, lc.float4(value.x, value.y, value.z, 1.0))
-
-    # @lc.func
-    # def write_buffer_vec1_to_img(buffer, scale, element_offset, img):
-    #     """
-    #     Luisa kernel: 将 float 数据从缓冲区写入图像
-
-    #     用于将几何缓冲区中的标量数据(如深度)可视化为灰度图像
-
-    #     Args:
-    #         buffer: 源数据缓冲区
-    #         scale: 缩放因子, 用于调整数据范围到可视范围
-    #         element_offset: 在缓冲区中的起始偏移量
-    #         img: 目标图像
-    #     """
-    #     lc.set_block_size(16, 8, 1)
-    #     id = dispatch_id().xy
-    #     idx = id.x + id.y * dispatch_size().x
-    #     idx += element_offset
-    #     idx = id.x + id.y * dispatch_size().x
-    #     value = lc.float4(buffer.read(idx) * scale)
-    #     img.write(id, value)
-
     global app
     app = rbc.app.App()  # rbc app singleton
     app.init(project_path=project_path, backend_name=args.backend)

@@ -19,6 +19,36 @@ DeviceMesh::~DeviceMesh() {
     }
 }
 
+void DeviceMesh::_check_indices(
+    luisa::span<std::byte const> mesh_data,
+    uint vertex_count,
+    uint triangle_count) {
+    if(triangle_count * sizeof(Triangle) + vertex_count * sizeof(float3) > mesh_data.size()) [[unlikely]] {
+        LUISA_ERROR("Mesh data size too small: expected at least {} bytes ({} triangles + {} vertices), but got {} bytes.",
+                    triangle_count * sizeof(Triangle) + vertex_count * sizeof(float3),
+                    triangle_count, vertex_count, mesh_data.size());
+    }
+    auto indices = luisa::span{
+        reinterpret_cast<uint32_t const *>(mesh_data.data() + mesh_data.size() - triangle_count * sizeof(Triangle)),
+        triangle_count * 3};
+    auto call = [&](uint32_t i) {
+        auto const &tri = indices[i];
+        if (tri >= vertex_count) {
+            LUISA_ERROR("Mesh index out of bounds: triangle {} has index {} but vertex_count is {}.", i, tri, vertex_count);
+        }
+    };
+    if (indices.size() < 4096) {
+        for (size_t i = 0; i < indices.size(); ++i) {
+            call(i);
+        }
+    } else {
+        luisa::fiber::parallel(indices.size(), [&](uint32_t start_idx, uint32_t end_idx) {
+            for(auto i = start_idx ; i < end_idx; ++i){
+                call(i);
+            } }, 4096);
+    }
+}
+
 template<typename LoadType>
 void DeviceMesh::_async_load(
     LoadType &&load_type,
@@ -97,6 +127,7 @@ void DeviceMesh::_async_load(
                 if (data.size() < desired_size + extra_data_size) [[unlikely]] {
                     LUISA_ERROR("Mesh memory size {} less than required size {}", data.size(), desired_size + extra_data_size);
                 }
+                _check_indices(luisa::span{reinterpret_cast<std::byte const *>(data.data()), data.size()}, vertex_count, triangle_size);
                 auto data_buffer = inst->lc_device().create_buffer<uint>(desired_size / sizeof(uint));
                 args.mem_io_cmdlist << IOCommand(
                     data.data(),

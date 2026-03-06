@@ -17,7 +17,11 @@ private:
         uint vertex_count, bool normal, bool tangent, uint uv_count, vstd::vector<uint> &&submesh_triangle_offset,
         bool build_mesh, bool calculate_bound,
         uint32_t triangle_size, bool copy_to_host = false, uint64_t extra_data_size = 0);
-
+    static void _check_indices(
+        luisa::span<std::byte const> mesh_data,
+        uint vertex_count,
+        uint triangle_count
+    );
 public:
     Type resource_type() const override { return Type::Mesh; }
     // extra data not for rendering but for computing (skin_weights, vertex_color, etc..)
