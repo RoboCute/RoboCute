@@ -21,6 +21,7 @@ dev = [
   "pytest>=9.0.1",
   "mypy>=1.19.0",
   "pybind11-stubgen>=2.5.5",
+  "usd-core>=26.3",
 ]
 publish = [
   "mkdocs>=1.6.1",

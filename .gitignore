@@ -136,7 +136,8 @@ rbc/shader/host
 
 site
 AGENTS.md
-*agent.py
+agent*.*
+*agent.*
 *.bytes
 samples/screenshot/*
 src/uipc
