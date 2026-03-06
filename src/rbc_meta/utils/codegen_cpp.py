@@ -82,7 +82,10 @@ def gen_cpp_impl(mod: "CodeModule"):
             store_stmts_list = []
             load_stmts_list = []
             for field in info.fields:
-                should_serde = info.serde and field.serde is not None  # no override
+                should_serde = info.serde
+                if field.serde is not None:
+                    should_serde = field.serde
+                    
                 if should_serde:
                     store_stmts_list.append(
                         f'{INDENT}{INDENT}obj._store(this->{field.name}, "{field.name}");'

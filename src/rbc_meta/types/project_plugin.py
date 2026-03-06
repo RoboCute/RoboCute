@@ -3,7 +3,7 @@ from typing import List, Optional
 
 @reflect(
     cpp_namespace="rbc",
-    serde=True
+    # serde=True
 )
 class ProjectSettingPaths:
     assets: Optional[str]
