@@ -117,6 +117,9 @@ public:
      * @return false if window was closed
      */
     virtual bool process_messages() = 0;
+    virtual uint64_t display_handle() = 0;
+    virtual uint64_t window_handle() = 0;
+    virtual void update_layered_window() = 0;
 };
 
 }// namespace rbc

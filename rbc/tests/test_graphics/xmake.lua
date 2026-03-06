@@ -39,7 +39,7 @@ for target_name, is_standalone in pairs(targets) do
             end
             -- target:add('deps', 'Jolt')
             target:add('deps', 'stb-image')
-            target:add('deps', 'rbc_render_plugin', 'lc-gui', 'compile_shaders', 'rbc_project_plugin')
+            target:add('deps', 'rbc_render_plugin', 'lc-gui', 'compile_shaders', 'rbc_project_plugin', 'rbc_display_plugin')
             target:add('defines', 'TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
         end)
     end

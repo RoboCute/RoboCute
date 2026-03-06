@@ -10,6 +10,7 @@ local function rbc_display_impl()
     rbc_set_pch('src/zz_pch.h')
     add_deps('rbc_runtime')
     add_includedirs('include')
+    add_syslinks('dwmapi', 'user32', 'gdi32')
     add_deps('lc-backends-dummy', {
         inherit = false,
         links = false

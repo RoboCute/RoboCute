@@ -60,7 +60,7 @@ class App:
             self._ctx.init_world(str(world_path), str(world_path))
 
     def init_device(
-        self, backend_name:str, program_path: Path = BUILTIN_PROGRAM_PATH
+        self, backend_name: str, program_path: Path = BUILTIN_PROGRAM_PATH
     ):
         shader_path = program_path / f"shader_build_{backend_name}"
 
@@ -88,6 +88,19 @@ class App:
             return
 
         self._ctx.init_display(display_title, self._resolution, True, True)
+        self._display_cam = self._ctx.create_display_cam()
+        self._display_cam.enable_camera()
+        self._last_frame_time = time.time()
+
+    def init_transparent_display(
+        self, x: int = 1920, y: int = 1080, offset_x: int = 0, offset_y: int = 0, opacity: float = 0.5, topmost: bool = True, click_through: bool = False, display_title: str = "py_window"
+    ):
+        self._resolution = lc.uint2(x, y)
+        if not self._ctx:
+            return
+
+        self._ctx.init_transparent_display(display_title, self._resolution, lc.uint2(
+            offset_x, offset_y), opacity, topmost, click_through)
         self._display_cam = self._ctx.create_display_cam()
         self._display_cam.enable_camera()
         self._last_frame_time = time.time()

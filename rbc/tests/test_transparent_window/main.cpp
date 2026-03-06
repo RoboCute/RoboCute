@@ -243,9 +243,9 @@ int main() {
     TransparentWindowConfig config;
     config.title = "Test Transparent Window";
     config.rect = {100, 100, 400, 300};
-    config.opacity = 0.9f;
+    config.opacity = 0.5f;
     config.topmost = true;
-    config.click_through = false;
+    config.click_through = true;
 
     auto window =
         luisa::unique_ptr<TransparentWindow>(display_module->invoke<TransparentWindow *(const TransparentWindowConfig &config)>(
@@ -301,7 +301,7 @@ int main() {
                 pixel_data[idx + 0] = static_cast<uint8_t>(255 * (0.3f + 0.3f * std::sin(u * 3.14159f * 2 + time)));
                 pixel_data[idx + 1] = static_cast<uint8_t>(255 * (0.3f + 0.3f * std::sin(v * 3.14159f * 2 + time * 1.3f)));
                 pixel_data[idx + 2] = static_cast<uint8_t>(255 * (0.5f + 0.3f * std::sin((u + v) * 3.14159f + time * 0.7f)));
-                pixel_data[idx + 3] = 200;// Semi-transparent alpha
+                pixel_data[idx + 3] = 255;// Semi-transparent alpha
             }
         }
 

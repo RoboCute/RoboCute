@@ -23,10 +23,6 @@
 #include <windowsx.h>
 #include <dwmapi.h>
 
-#pragma comment(lib, "dwmapi.lib")
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "gdi32.lib")
-
 namespace rbc {
 
 /**
@@ -51,7 +47,14 @@ public:
     bool is_visible() const override;
     WindowRect get_rect() const override;
     bool process_messages() override;
+    uint64_t display_handle() override {
+        return reinterpret_cast<uint64_t &>(hwnd_);
+    }
+    uint64_t window_handle() override {
+        return reinterpret_cast<uint64_t &>(hwnd_);
+    }
 
+    void update_layered_window() override;
 private:
     static LRESULT CALLBACK window_proc(
         HWND hwnd,
@@ -61,7 +64,6 @@ private:
 
     bool create_window();
     void apply_transparency();
-    void update_layered_window();
 
     HWND hwnd_{nullptr};
     HDC mem_dc_{nullptr};
