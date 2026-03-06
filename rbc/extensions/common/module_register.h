@@ -38,6 +38,7 @@ public:
 };
 
 inline luisa::span<std::byte> to_span_5d4636ab(py::buffer const &b) {
+    py::gil_scoped_acquire gil_acquired;
     auto r = b.request();
     return {
         (std::byte *)r.ptr,
@@ -45,6 +46,7 @@ inline luisa::span<std::byte> to_span_5d4636ab(py::buffer const &b) {
 }
 
 inline py::memoryview to_memoryview_5d4636ab(luisa::span<std::byte> const &sp) {
+    py::gil_scoped_acquire gil_acquired;
     return py::memoryview::from_memory(
         sp.data(),
         sp.size());

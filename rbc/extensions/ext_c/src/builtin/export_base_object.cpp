@@ -42,6 +42,7 @@ void export_base_obj(py::module &m) {
         manually_release_ref(static_cast<RCBase *>(ptr));
     });
     m.def("_create_resource", [&](luisa::string_view type_info) -> void * {
+        py::gil_scoped_release gil_released;
         vstd::MD5 md5{type_info};
         rbc::TypeInfo type{type_info, md5};
         auto ptr = world::create_object(type);
@@ -52,6 +53,7 @@ void export_base_obj(py::module &m) {
         return ptr;
     });
     m.def("_create_resource_guid", [&](luisa::string_view type_info, GuidData guid) -> void * {
+        py::gil_scoped_release gil_released;
         vstd::MD5 md5{type_info};
         rbc::TypeInfo type{type_info, md5};
         auto ptr = world::create_object_with_guid(type, reinterpret_cast<vstd::Guid const &>(guid));

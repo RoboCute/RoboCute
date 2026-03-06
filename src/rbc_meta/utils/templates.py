@@ -419,11 +419,13 @@ PYBIND_ENUM_VALUE_TEMPLATE = Template(
 
 PYBIND_CREATE_FUNC_TEMPLATE = Template("""
 ${INDENT}m.def("${CREATE_NAME}", []() -> void* {
+${INDENT}${INDENT}py::gil_scoped_release gil_released;
 ${INDENT}${INDENT}return ${STRUCT_NAME}::_create_();
 ${INDENT}});
 """)
 
 PYBIND_METHOD_FUNC_TEMPLATE = Template("""
 ${INDENT}m.def("${METHOD_NAME}", [](void* ${PTR_NAME}${ARGS_DECL}) {
+${INDENT}${INDENT}py::gil_scoped_release gil_released;
 ${INDENT}${INDENT}${RETURN_EXPR}${STRUCT_NAME}::${METHOD_NAME_CALL}(${PTR_NAME}${ARGS_CALL})${RETURN_CLOSE};
 ${INDENT}});""")

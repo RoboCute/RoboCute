@@ -330,6 +330,7 @@ void export_runtime(py::module &m) {
             return self.backend_name();
         })
         .def("load_shader", [](DeviceInterface &self, luisa::string_view path, ArgTypes const& vec) -> uint64_t {
+            py::gil_scoped_release gil_released;
             luisa::filesystem::path relative_path{path};
             if (relative_path.is_relative()) {
                 relative_path = rbc::ShaderManager::instance()->shader_path() / relative_path;
@@ -357,6 +358,7 @@ void export_runtime(py::module &m) {
         */
         .def("destroy_shader", [](DeviceInterface &self, uint64_t handle) { rbc::lcapi_c::RefCounter::current->DeRef(handle); })
         .def("create_buffer", [](DeviceInterface &d, const Type *type, size_t size) -> BufferCreationInfoInterop{
+                py::gil_scoped_release gil_released;
                 BufferCreationInfoInterop info;
                 vstd::reset(info, d.create_buffer(type, size, nullptr));
                 info.interop = false;
@@ -369,6 +371,7 @@ void export_runtime(py::module &m) {
                      d.shared_from_this()});
                 return info; }, pyref)
         .def("create_interop_buffer", [](DeviceInterface &d, const Type *type, size_t size)-> BufferCreationInfoInterop {
+            py::gil_scoped_release gil_released;
             auto &compute_device =  rbc::ComputeDevice::instance();
             BufferCreationInfoInterop info;
             vstd::reset(info, compute_device.create_interop_buffer(type, size));
@@ -382,6 +385,7 @@ void export_runtime(py::module &m) {
                 d.shared_from_this()});
             return info; }, pyref)
         .def("import_external_buffer", [](DeviceInterface &d, const Type *type, uint64_t native_address, size_t elem_count) noexcept -> BufferCreationInfoInterop {
+            py::gil_scoped_release gil_released;
             BufferCreationInfoInterop info;
             vstd::reset(info, d.create_buffer(type, elem_count, reinterpret_cast<void *>(native_address)));
             info.interop = false;
@@ -397,6 +401,7 @@ void export_runtime(py::module &m) {
         })
         .def("destroy_buffer", [](DeviceInterface &d, uint64_t handle) { rbc::lcapi_c::RefCounter::current->DeRef(handle); })
         .def("create_texture", [](DeviceInterface &d, PixelFormat format, uint32_t dimension, uint32_t width, uint32_t height, uint32_t depth, uint32_t mipmap_levels)->TextureCreationInfo {
+                py::gil_scoped_release gil_released;
                 TextureCreationInfo info;
                 vstd::reset(info, d.create_texture(format, dimension, width, height, depth, mipmap_levels, nullptr, false, false));
                 info.format = format;
@@ -412,7 +417,9 @@ void export_runtime(py::module &m) {
                 }, pyref)
         .def("destroy_texture", [](DeviceInterface &d, uint64_t handle) { rbc::lcapi_c::RefCounter::current->DeRef(handle); })
         .def(
-            "synchronize", [](DeviceInterface &self) { sync_stream(); }, pyref)
+            "synchronize", [](DeviceInterface &self) { 
+                py::gil_scoped_release gil_released;
+                sync_stream(); }, pyref)
         .def(
             "add", [](DeviceInterface &self, Command *cmd) { 
                 rbc::RenderDevice::instance().lc_main_cmd_list() << luisa::unique_ptr<Command>(cmd);
@@ -424,7 +431,9 @@ void export_runtime(py::module &m) {
                     buf = {};
                 });
              }, pyref)
-        .def("execute", [](DeviceInterface &self) { execute_stream(); }, pyref);
+        .def("execute", [](DeviceInterface &self) { 
+            py::gil_scoped_release gil_released;
+            execute_stream(); }, pyref);
     m.def("get_default_lc_device", [](){
         auto ptr = rbc::RenderDevice::instance_ptr();
         if(!ptr) [[unlikely]] {
