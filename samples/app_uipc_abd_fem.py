@@ -426,7 +426,7 @@ def main():
     if transform:
         transform.set_pos(lc.double3(6, 12, -15), False)
         rot = euler_to_quaternion(degrees_to_radians(15), degrees_to_radians(-15), 0)
-        transform.set_rotation(lc.float4(rot[0], rot[1], rot[2], rot[3]), False)
+        transform.set_rotation(lc.float4(rot), False)
 
     # app.ctx.enable_camera_control()
 

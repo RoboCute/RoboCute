@@ -707,8 +707,7 @@ class RobotArmVisualizer:
 
             # 递归更新子连杆
             print(child_name)
-            new_pos = lc.double3(parent_pos[0], parent_pos[1], parent_pos[2]) + lc.double3(
-                joint_pos[0], joint_pos[1], joint_pos[2])
+            new_pos = lc.double3(parent_pos) + lc.double3(joint_pos)
             self._update_link_transform(child_name,
                                         new_pos,
                                         parent_rot)

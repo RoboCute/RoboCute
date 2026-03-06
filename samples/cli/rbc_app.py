@@ -198,7 +198,7 @@ def entity_transform_set_rotation_euler(
         euler_z = degrees_to_radians(euler_z)
         quat = euler_to_quaternion(euler_x, euler_y, euler_z)
         transform.set_rotation(
-            lc.float4(quat[0], quat[1], quat[2], quat[3]), False)
+            lc.float4(quat), False)
         app._requires_reset = True
     else:
         raise Exception("TransformComponent not found.")

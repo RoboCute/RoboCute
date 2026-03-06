@@ -1,10 +1,23 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include <luisa/core/logging.h>
 #include <luisa/core/mathematics.h>
 #include "module_register.h"
 
 namespace py = pybind11;
 using namespace luisa;
+
+template<typename T>
+Vector<T, 2> vector2_from_sequence(py::sequence seq) {
+    if (seq.size() != 2) {
+        LUISA_ERROR("expected sequence of length 2, got {}", seq.size());
+    }
+    return Vector<T, 2>(
+        seq[0].cast<T>(),
+        seq[1].cast<T>()
+    );
+}
 
 #define LUISA_EXPORT_ARITHMETIC_OP(T)                                                                              \
     m##T                                                                                                           \
@@ -92,6 +105,14 @@ using namespace luisa;
                     .def(py::init<T>())                                                                        \
                     .def(py::init<T, T>())                                                                     \
                     .def(py::init<Vector<T, 2>>())                                                             \
+                    .def(py::init([](py::sequence seq) { return vector2_from_sequence<T>(seq); }))             \
+                    .def(py::init([](py::array_t<T> arr) {                                                     \
+                        if (arr.size() != 2) {                                                                 \
+                            LUISA_ERROR("expected numpy array of size 2, got {}", arr.size());                 \
+                        }                                                                                      \
+                        auto r = arr.unchecked<1>();                                                           \
+                        return Vector<T, 2>(r(0), r(1));                                                       \
+                    }))                                                             \
                     .def("__repr__", [](Vector<T, 2> &self) { return format(#T "2({},{})", self.x, self.y); }) \
                     .def("__getitem__", [](Vector<T, 2> &self, size_t i) { return self[i]; })                  \
                     .def("__setitem__", [](Vector<T, 2> &self, size_t i, T k) { self[i] = k; })                \
@@ -128,7 +149,15 @@ using namespace luisa;
                     .def_property_readonly("yyyy", &Vector<T, 2>::yyyy);                                       \
     m.def("make_" #T "2", [](T a) { return make_##T##2(a); });                                                 \
     m.def("make_" #T "2", [](T a, T b) { return make_##T##2(a, b); });                                         \
-    m.def("make_" #T "2", [](Vector<T, 2> a) { return make_##T##2(a); });
+    m.def("make_" #T "2", [](Vector<T, 2> a) { return make_##T##2(a); });                                      \
+    m.def("make_" #T "2", [](py::sequence seq) { return vector2_from_sequence<T>(seq); });                     \
+    m.def("make_" #T "2", [](py::array_t<T> arr) {                                                             \
+        if (arr.size() != 2) {                                                                                 \
+            LUISA_ERROR("expected numpy array of size 2, got {}", arr.size());                                 \
+        }                                                                                                      \
+        auto r = arr.unchecked<1>();                                                                           \
+        return make_##T##2(r(0), r(1));                                                                        \
+    });
 
 void export_vector2(py::module& m)
 {

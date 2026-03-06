@@ -1,10 +1,24 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include <luisa/core/logging.h>
 #include <luisa/core/mathematics.h>
 #include "module_register.h"
 
 namespace py = pybind11;
 using namespace luisa;
+
+template<typename T>
+Vector<T, 3> vector3_from_sequence(py::sequence seq) {
+    if (seq.size() != 3) {
+        LUISA_ERROR("expected sequence of length 3, got {}", seq.size());
+    }
+    return Vector<T, 3>(
+        seq[0].cast<T>(),
+        seq[1].cast<T>(),
+        seq[2].cast<T>()
+    );
+}
 
 #define LUISA_EXPORT_ARITHMETIC_OP(T)                                                                              \
     m##T                                                                                                           \
@@ -97,6 +111,14 @@ using namespace luisa;
                     .def(py::init<T>())                                                                                   \
                     .def(py::init<T, T, T>())                                                                             \
                     .def(py::init<Vector<T, 3>>())                                                                        \
+                    .def(py::init([](py::sequence seq) { return vector3_from_sequence<T>(seq); }))                        \
+                    .def(py::init([](py::array_t<T> arr) {                                                              \
+                        if (arr.size() != 3) {                                                                          \
+                            LUISA_ERROR("expected numpy array of size 3, got {}", arr.size());                          \
+                        }                                                                                               \
+                        auto r = arr.unchecked<1>();                                                                    \
+                        return Vector<T, 3>(r(0), r(1), r(2));                                                          \
+                    }))                                                                        \
                     .def("__repr__", [](Vector<T, 3> &self) { return format(#T "3({},{},{})", self.x, self.y, self.z); }) \
                     .def("__getitem__", [](Vector<T, 3> &self, size_t i) { return self[i]; })                             \
                     .def("__setitem__", [](Vector<T, 3> &self, size_t i, T k) { self[i] = k; })                           \
@@ -223,7 +245,15 @@ using namespace luisa;
                     .def_property_readonly("zzzz", &Vector<T, 3>::zzzz);                                                  \
     m.def("make_" #T "3", [](T a) { return make_##T##3(a); });                                                            \
     m.def("make_" #T "3", [](T a, T b, T c) { return make_##T##3(a, b, c); });                                            \
-    m.def("make_" #T "3", [](Vector<T, 3> a) { return make_##T##3(a); });
+    m.def("make_" #T "3", [](Vector<T, 3> a) { return make_##T##3(a); });                                                 \
+    m.def("make_" #T "3", [](py::sequence seq) { return vector3_from_sequence<T>(seq); });                                \
+    m.def("make_" #T "3", [](py::array_t<T> arr) {                                                                        \
+        if (arr.size() != 3) {                                                                                            \
+            LUISA_ERROR("expected numpy array of size 3, got {}", arr.size());                                            \
+        }                                                                                                                 \
+        auto r = arr.unchecked<1>();                                                                                      \
+        return make_##T##3(r(0), r(1), r(2));                                                                             \
+    });
 
 void export_vector3(py::module &m) {
     LUISA_EXPORT_VECTOR3(bool)

@@ -1,4 +1,6 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include <luisa/ast/function.h>
 #include <luisa/core/logging.h>
 #include <luisa/core/mathematics.h>
@@ -6,6 +8,19 @@
 
 namespace py = pybind11;
 using namespace luisa;
+
+template<typename T>
+Vector<T, 4> vector4_from_sequence(py::sequence seq) {
+    if (seq.size() != 4) {
+        LUISA_ERROR("expected sequence of length 4, got {}", seq.size());
+    }
+    return Vector<T, 4>(
+        seq[0].cast<T>(),
+        seq[1].cast<T>(),
+        seq[2].cast<T>(),
+        seq[3].cast<T>()
+    );
+}
 
 #define LUISA_EXPORT_ARITHMETIC_OP(T)                                                                              \
     m##T                                                                                                           \
@@ -93,6 +108,14 @@ using namespace luisa;
                     .def(py::init<T>())                                                                                              \
                     .def(py::init<T, T, T, T>())                                                                                     \
                     .def(py::init<Vector<T, 4>>())                                                                                   \
+                    .def(py::init([](py::sequence seq) { return vector4_from_sequence<T>(seq); }))                                   \
+                    .def(py::init([](py::array_t<T> arr) {                                                                           \
+                        if (arr.size() != 4) {                                                                                       \
+                            LUISA_ERROR("expected numpy array of size 4, got {}", arr.size());                                       \
+                        }                                                                                                            \
+                        auto r = arr.unchecked<1>();                                                                                 \
+                        return Vector<T, 4>(r(0), r(1), r(2), r(3));                                                                 \
+                    }))                                                                                   \
                     .def("__repr__", [](Vector<T, 4> &self) { return format(#T "4({},{},{},{})", self.x, self.y, self.z, self.w); }) \
                     .def("__getitem__", [](Vector<T, 4> &self, size_t i) { return self[i]; })                                        \
                     .def("__setitem__", [](Vector<T, 4> &self, size_t i, T k) { self[i] = k; })                                      \
@@ -439,7 +462,15 @@ using namespace luisa;
                     .def_property_readonly("wwww", &Vector<T, 4>::wwww);                                                             \
     m.def("make_" #T "4", [](T a) { return make_##T##4(a); });                                                                       \
     m.def("make_" #T "4", [](T a, T b, T c, T d) { return make_##T##4(a, b, c, d); });                                               \
-    m.def("make_" #T "4", [](Vector<T, 4> a) { return make_##T##4(a); });
+    m.def("make_" #T "4", [](Vector<T, 4> a) { return make_##T##4(a); });                                                            \
+    m.def("make_" #T "4", [](py::sequence seq) { return vector4_from_sequence<T>(seq); });                                           \
+    m.def("make_" #T "4", [](py::array_t<T> arr) {                                                                                   \
+        if (arr.size() != 4) {                                                                                                       \
+            LUISA_ERROR("expected numpy array of size 4, got {}", arr.size());                                                       \
+        }                                                                                                                            \
+        auto r = arr.unchecked<1>();                                                                                                 \
+        return make_##T##4(r(0), r(1), r(2), r(3));                                                                                  \
+    });
 
 void export_vector4(py::module& m)
 {
