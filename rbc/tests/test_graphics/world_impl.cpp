@@ -544,6 +544,25 @@ luisa::vector<uint32_t> SkinResource::JointRemapsLUT(void *this_) {
     return result;
 }
 
+
+// AnimSequence implementation
+void *AnimSequence::_create_() {
+    auto p = luisa::make_unique<rbc::world::AnimSequence>();
+    return p.release();
+}
+int AnimSequence::get_num_soa_tracks(void *this_) {
+    auto c = static_cast<rbc::world::AnimSequence *>(this_);
+    return c->GetNumSoaTracks();
+}
+int AnimSequence::get_num_tracks(void *this_) {
+    auto c = static_cast<rbc::world::AnimSequence *>(this_);
+    return c->GetNumTracks();
+}
+void AnimSequence::log_brief(void *this_) {
+    auto c = static_cast<rbc::world::AnimSequence *>(this_);
+    c->log_brief();
+}
+
 // AnimSequenceResource implementation
 void *AnimSequenceResource::_create_() {
     auto p = world::create_object<rbc::world::AnimSequenceResource>();

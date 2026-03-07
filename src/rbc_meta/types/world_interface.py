@@ -609,6 +609,20 @@ class SkinResource(Resource):
     def InverseBindPoses() -> Vector[float4x4]: ...
     def JointRemapsLUT() -> Vector[uint]: ...
 
+@reflect(
+    pybind=True,
+    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_namespace="rbc",
+)
+class AnimSequence:
+    def get_num_soa_tracks() -> int: ...
+    def get_num_tracks() -> int: ...
+    def log_brief() -> None: ...
+    def get_animation_pose(
+        pose_data: VoidPtr,
+        extract_context: VoidPtr
+    ) -> None: ...
+
 
 @reflect(
     pybind=True,
@@ -616,7 +630,7 @@ class SkinResource(Resource):
     cpp_namespace="rbc"
 )
 class AnimSequenceResource(Resource):
-    def ref_seq() -> VoidPtr: ...
+    def ref_seq() -> AnimSequence: ...
     def ref_skel() -> SkeletonResource: ...
     def log_brief() -> None: ...
 
@@ -814,6 +828,7 @@ OUT_CLASSES = [
     BuiltinKernels,
     SkeletonResource,
     SkinResource,
+    AnimSequence,
     AnimSequenceResource,
     AnimGraphResource,
     SkelMeshResource,

@@ -8,7 +8,7 @@ namespace rbc::world {
 struct AnimOptimizationOverride {};
 
 // The Runtime AnimSequence Asset
-struct AnimSequence final {
+struct RBC_RUNTIME_API AnimSequence final {
 public:
     AnimSequence();
     ~AnimSequence();
