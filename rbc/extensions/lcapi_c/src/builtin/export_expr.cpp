@@ -3,6 +3,7 @@
 #include <pybind11/stl.h>
 #include <luisa/ast/function_builder.h>
 #include <luisa/runtime/dispatch_buffer.h>
+#include <luisa/core/logging.h>
 #include "module_register.h"
 #include "arg_types.h"
 namespace py = pybind11;

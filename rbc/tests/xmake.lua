@@ -2,6 +2,7 @@
 -- includes('test_py_codegen')
 includes('test_graphics')
 includes('test_project')
+includes('test_model')
 if is_host('windows') then
     includes('test_transparent_window')
 end

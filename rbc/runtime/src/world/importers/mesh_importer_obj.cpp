@@ -112,6 +112,7 @@ bool ObjMeshImporter::import(Resource* resource_base, luisa::filesystem::path co
     resource->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     *(resource->host_data()) = std::move(resource_bytes);
 
+
     // skinning
     if (!attri.skin_weights.empty()) {
         size_t weight_size = 0;

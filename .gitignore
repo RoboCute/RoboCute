@@ -111,6 +111,15 @@ thirdparty/dylib
 thirdparty/console_bridge
 thirdparty/tinyxml2
 thirdparty/urdfdom_headers
+thirdparty/alembic
+thirdparty/argparse
+thirdparty/Imath
+thirdparty/lib3ds
+thirdparty/lwo
+thirdparty/tinyoff
+thirdparty/tinyply
+thirdparty/tinystl
+thirdparty/tracy
 
 xmake/options.json
 xmake/options.lua

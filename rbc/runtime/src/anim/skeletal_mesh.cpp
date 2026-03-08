@@ -4,7 +4,7 @@
 #include "rbc_anim/animation_runtime.h"
 #include "rbc_anim/render/skelmesh_render_cpu_skin.h"
 #include "rbc_core/memory.h"
-
+#include <luisa/core/stl/algorithm.h>
 namespace rbc {
 
 bool SkeletalMesh::InitAnim() {

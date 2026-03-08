@@ -91,16 +91,58 @@ GIT_TASKS = {
         "branch": None,
         "deps": [],
     },
+    "alembic": {
+        "subdir": "thirdparty/alembic",
+        "url": "https://github.com/alembic/alembic.git",
+        "branch": None,
+        "deps": [],
+    },
+    "Imath": {
+        "subdir": "thirdparty/Imath",
+        "url": "https://github.com/AcademySoftwareFoundation/Imath.git",
+        "branch": None,
+        "deps": [],
+    },
+    "lib3ds": {
+        "subdir": "thirdparty/lib3ds",
+        "url": "https://github.com/imneme/lib3ds.git",
+        "branch": None,
+        "deps": [],
+    },
+    "lwo": {
+        "subdir": "thirdparty/lwo",
+        "url": "https://github.com/maqao/lwo.git",
+        "branch": None,
+        "deps": [],
+    },
+    "tinyoff": {
+        "subdir": "thirdparty/tinyoff",
+        "url": "https://github.com/syoyo/tinyoff.git",
+        "branch": None,
+        "deps": [],
+    },
+    "tinyply": {
+        "subdir": "thirdparty/tinyply",
+        "url": "https://github.com/ddiakopoulos/tinyply.git",
+        "branch": None,
+        "deps": [],
+    },
+    "tinystl": {
+        "subdir": "thirdparty/tinystl",
+        "url": "https://github.com/bkaradzic/tinystl.git",
+        "branch": None,
+        "deps": [],
+    },
+    "tinyxml2": {
+        "subdir": "thirdparty/tinyxml2",
+        "url": "https://github.com/leethomason/tinyxml2.git",
+        "branch": None,
+        "deps": [],
+    },
     # robotics
     # "urdfdom_headers": {
     #     "subdir": "thirdparty/urdfdom_headers",
     #     "url": "https://github.com/ros/urdfdom_headers.git",
-    #     "branch": None,
-    #     "deps": [],
-    # },
-    # "tinyxml2": {
-    #     "subdir": "thirdparty/tinyxml2",
-    #     "url": "https://github.com/leethomason/tinyxml2.git",
     #     "branch": None,
     #     "deps": [],
     # },
@@ -116,7 +158,7 @@ GIT_TASKS = {
     #     "branch": None,
     #     "deps": ["urdfdom_headers", "tinyxml2", "console_bridge"],
     # },
-    
+
     # "jolt_physics": {
     #     "subdir": "thirdparty/jolt_physics",
     #     "url": "https://github.com/RoboCute/JoltPhysics.git",
@@ -203,7 +245,7 @@ else:
 def _to_platform_spec(name):
     return f"{name}-{PLATFORM}-{ARCH}.7z"
 
-    
+
 if PLATFORM == 'linux':
     LC_DX_SDK = "linux_dxc_2025_07_14.x86_64.zip"
 elif PLATFORM != 'windows':

@@ -1,6 +1,14 @@
 #include <rbc_world/resource_importer.h>
 #include <rbc_world/importers/mesh_importer_obj.h>
 #include <rbc_world/importers/mesh_importer_gltf.h>
+#include <rbc_world/importers/mesh_importer_ply.h>
+#include <rbc_world/importers/mesh_importer_fbx.h>
+#include <rbc_world/importers/mesh_importer_stl.h>
+#include <rbc_world/importers/mesh_importer_3ds.h>
+#include <rbc_world/importers/mesh_importer_off.h>
+#include <rbc_world/importers/mesh_importer_collada.h>
+#include <rbc_world/importers/mesh_importer_abc.h>
+#include <rbc_world/importers/mesh_importer_lwo.h>
 #include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_hdr.h>
@@ -25,6 +33,30 @@ RBC_RUNTIME_API void register_builtin_importers() {
 
     static GlbMeshImporter glb_mesh_importer;
     registry.register_importer(&glb_mesh_importer);
+
+    static FbxMeshImporter fbx_mesh_importer;
+    registry.register_importer(&fbx_mesh_importer);
+
+    static PlyMeshImporter ply_mesh_importer;
+    registry.register_importer(&ply_mesh_importer);
+
+    static StlMeshImporter stl_mesh_importer;
+    registry.register_importer(&stl_mesh_importer);
+
+    static ThreeDSMeshImporter threeds_mesh_importer;
+    registry.register_importer(&threeds_mesh_importer);
+
+    static OffMeshImporter off_mesh_importer;
+    registry.register_importer(&off_mesh_importer);
+
+    static ColladaMeshImporter collada_mesh_importer;
+    registry.register_importer(&collada_mesh_importer);
+
+    static AbcMeshImporter abc_mesh_importer;
+    registry.register_importer(&abc_mesh_importer);
+
+    static LwoMeshImporter lwo_mesh_importer;
+    registry.register_importer(&lwo_mesh_importer);
 
     // Register texture importers
     // StbTextureImporter handles multiple formats (.png, .jpg, .jpeg, .bmp, .gif, .psd, .pnm, .tga)
