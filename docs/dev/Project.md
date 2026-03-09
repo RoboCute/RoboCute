@@ -1,5 +1,7 @@
 # Robocute Project
 
+RBC存在工作项目的概念，需要本地的资源和缓存，需要导入与导出，这虽然不像USD那样可以移动，但是给效率，可用性与扩展性带来了便利。尽管project会带有一定的spec，我们还是会兼容标准的python project，让robocute能插入嵌入任何现有的python工作流。
+
 Project-Level Development
 
 config
