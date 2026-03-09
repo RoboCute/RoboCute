@@ -63,7 +63,9 @@ bool FbxMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
                                              geom_data.getUVs(3)};
 
         if (positions.count == 0) continue;
-        LUISA_ASSERT(positions.values_count == normals.values_count);
+
+        // Track the starting vertex offset for this mesh
+        size_t vertex_offset = mesh_builder.position.size();
 
         // Add positions
         for (int i = 0; i < positions.values_count; ++i) {
@@ -73,7 +75,7 @@ bool FbxMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
                                                         static_cast<float>(pos.z)));
         }
 
-        // Add normals if available
+        // Add normals if available, resize to match position size if needed
         if (normals.values && normals.values_count > 0) {
             for (int i = 0; i < normals.values_count; ++i) {
                 ofbx::Vec3 n = normals.values[i];
@@ -81,23 +83,31 @@ bool FbxMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
                                                           static_cast<float>(n.y),
                                                           static_cast<float>(n.z)));
             }
+            if (mesh_builder.normal.size() < static_cast<size_t>(positions.values_count)) {
+                mesh_builder.normal.resize(positions.values_count, make_float3(0.0f, 0.0f, 1.0f));
+            }
         }
 
-        // Add UVs if available
+        // Add UVs if available, resize to match position size if needed
         if (mesh_builder.uvs.empty()) {
             mesh_builder.uvs.resize(vstd::array_count(uv_groups));
         }
         auto iter = mesh_builder.uvs.begin();
         for (auto uvs : uv_groups) {
-            if (uvs.values && positions.values_count > 0) {
-                auto &uv_vec = *iter;
-                ++iter;
+            auto &uv_vec = *iter;
+            ++iter;
+            if (uvs.values && uvs.count > 0) {
                 uv_vec.reserve(positions.values_count);
-                for (int i = 0; i < positions.values_count; ++i) {
+                int count = std::min(uvs.count, positions.values_count);
+                for (int i = 0; i < count; ++i) {
                     ofbx::Vec2 uv = uvs.values[i];
                     uv_vec.emplace_back(static_cast<float>(uv.x),
                                         static_cast<float>(uv.y));
                 }
+            }
+            // Resize to match position size if needed
+            if (uv_vec.size() < static_cast<size_t>(positions.values_count)) {
+                uv_vec.resize(positions.values_count, make_float2(0.0f, 0.0f));
             }
         }
 
@@ -116,12 +126,14 @@ bool FbxMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
                                                         reinterpret_cast<int *>(tri_indices.data()),
                                                         nullptr);
                 tri_indices.resize(tri_count);
-                // Add triangle indices
+                // Add triangle indices with vertex offset
+                // ofbx::triangulate returns indices into positions.indices array
+                // (i.e., tri_indices values already include polygon.from_vertex)
                 for (ofbx::u32 i = 0; i < tri_count; ++i) {
-                    int idx0 = tri_indices[i];
-                    indices.emplace_back(
-                        positions.indices ? positions.indices[polygon.from_vertex + idx0] :
-                                            polygon.from_vertex + idx0);
+                    int global_idx = tri_indices[i];
+                    // Get the actual vertex index from the positions indices array
+                    int vertex_idx = positions.indices ? positions.indices[global_idx] : global_idx;
+                    indices.emplace_back(static_cast<uint>(vertex_offset + vertex_idx));
                 }
             }
         }

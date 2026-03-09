@@ -36,6 +36,26 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
         return false;
     }
 
+    // Size check: ensure all vertex attributes have the same size as positions
+    size_t position_size = mesh_builder.position.size();
+
+    // Resize normals to match position size if needed
+    if (!mesh_builder.normal.empty() && mesh_builder.normal.size() != position_size) {
+        mesh_builder.normal.resize(position_size, float3(0.0f, 0.0f, 0.0f));
+    }
+
+    // Resize tangents to match position size if needed
+    if (!mesh_builder.tangent.empty() && mesh_builder.tangent.size() != position_size) {
+        mesh_builder.tangent.resize(position_size, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    }
+
+    // Resize UVs to match position size if needed
+    for (auto &uv_set : mesh_builder.uvs) {
+        if (!uv_set.empty() && uv_set.size() != position_size) {
+            uv_set.resize(position_size, float2(0.0f, 0.0f));
+        }
+    }
+
     luisa::vector<uint> submesh_offsets;
     luisa::vector<std::byte> resource_bytes;
     mesh_builder.write_to(resource_bytes, submesh_offsets);
@@ -95,6 +115,26 @@ bool GlbMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
 
     if (mesh_builder.position.empty()) {
         return false;
+    }
+
+    // Size check: ensure all vertex attributes have the same size as positions
+    size_t position_size = mesh_builder.position.size();
+
+    // Resize normals to match position size if needed
+    if (!mesh_builder.normal.empty() && mesh_builder.normal.size() != position_size) {
+        mesh_builder.normal.resize(position_size, float3(0.0f, 0.0f, 0.0f));
+    }
+
+    // Resize tangents to match position size if needed
+    if (!mesh_builder.tangent.empty() && mesh_builder.tangent.size() != position_size) {
+        mesh_builder.tangent.resize(position_size, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    }
+
+    // Resize UVs to match position size if needed
+    for (auto &uv_set : mesh_builder.uvs) {
+        if (!uv_set.empty() && uv_set.size() != position_size) {
+            uv_set.resize(position_size, float2(0.0f, 0.0f));
+        }
     }
 
     luisa::vector<uint> submesh_offsets;

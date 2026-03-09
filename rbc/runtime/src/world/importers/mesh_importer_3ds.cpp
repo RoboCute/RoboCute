@@ -508,6 +508,26 @@ bool ThreeDSMeshImporter::import(Resource *resource_base,
         return false;
     }
 
+    // Validate and resize vertex attributes to match position count
+    const size_t vertex_count = mesh_builder.position.size();
+    if (!mesh_builder.normal.empty() && mesh_builder.normal.size() != vertex_count) {
+        LUISA_WARNING("Normal count ({}) does not match position count ({}), resizing to match",
+                      mesh_builder.normal.size(), vertex_count);
+        mesh_builder.normal.resize(vertex_count, make_float3(0.0f, 1.0f, 0.0f));
+    }
+    if (!mesh_builder.tangent.empty() && mesh_builder.tangent.size() != vertex_count) {
+        LUISA_WARNING("Tangent count ({}) does not match position count ({}), resizing to match",
+                      mesh_builder.tangent.size(), vertex_count);
+        mesh_builder.tangent.resize(vertex_count, make_float4(1.0f, 0.0f, 0.0f, 1.0f));
+    }
+    for (size_t i = 0; i < mesh_builder.uvs.size(); ++i) {
+        if (mesh_builder.uvs[i].size() != vertex_count) {
+            LUISA_WARNING("UV layer {} count ({}) does not match position count ({}), resizing to match",
+                          i, mesh_builder.uvs[i].size(), vertex_count);
+            mesh_builder.uvs[i].resize(vertex_count, make_float2(0.0f, 0.0f));
+        }
+    }
+
     // Calculate normals if not present
     if (mesh_builder.normal.empty()) {
         calculate_normals(mesh_builder);

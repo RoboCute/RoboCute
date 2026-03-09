@@ -27,7 +27,7 @@ polyscope.show()
 ### RoboCute - Explicit
 ```python
 app = rbc.app.App()
-polyscope.set_ground_plane_mode('shadow_only', scale=100, height=0) # scale: plane size,  height: y-axis value
+polyscope.set_ground_plane_mode('shadow_only', scale=100, height=0) # scale: plane size,  height: y-axis value, "none" for clear
 app.set_user_callback(tick_function)
 app.init(project_path=path, backend_name="dx")
 app.init_display(1920, 1080, "Title")
@@ -55,7 +55,7 @@ mesh.set_edge_width(1.0)
 ### RoboCute - ECS approach
 ```python
 import samples.mat_builtin as mat
-
+# Create a material as mat0
 mat0_json = mat.OpenPBRInterface(app._project)
 mat0_json.set_specular_roughness(0.5)
 mat0_json.set_weight_metallic(0.3)
@@ -63,9 +63,10 @@ mat0_json.set_base_albedo((0.8, 0.8, 0.8))  # Blue-ish color
 mat0 = re.world.MaterialResource()
 mat0.load_from_json(mat0_json.dump_to_json())
 
+# Create a material array and insert mat0 
 mat_vector = lc.capsule_vector()
 mat_vector.emplace_back(mat0._handle)
-
+# Creat eentity and component
 entity = scene.add_entity()
 entity.set_name("object")
 trans = re.world.TransformComponent(entity.add_component("TransformComponent"))

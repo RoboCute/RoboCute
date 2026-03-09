@@ -175,6 +175,20 @@ bool OffMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
         return false;
     }
     
+    // Size check: ensure all vertex attributes have the same size as position
+    size_t position_count = mesh_builder.position.size();
+    if (mesh_builder.normal.size() != position_count) {
+        mesh_builder.normal.resize(position_count);
+    }
+    if (mesh_builder.tangent.size() != position_count) {
+        mesh_builder.tangent.resize(position_count);
+    }
+    for (auto &uvs : mesh_builder.uvs) {
+        if (uvs.size() != position_count) {
+            uvs.resize(position_count);
+        }
+    }
+    
     // Build the mesh resource
     luisa::vector<uint> submesh_offsets;
     luisa::vector<std::byte> resource_bytes;

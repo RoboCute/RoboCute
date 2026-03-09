@@ -335,6 +335,7 @@ TEST_SUITE("vstd::variant") {
         
         int visited = 0;
         v.visit([&visited](auto& value) {
+            // If v is default constructed, this function will never be called
             visited = 1;
             if constexpr (std::is_same_v<decltype(value), int&>) {
                 CHECK(value == 42);
@@ -347,6 +348,7 @@ TEST_SUITE("vstd::variant") {
         vstd::variant<int, std::string> v2(std::string("test"));
         std::string result;
         std::move(v2).visit([&result](auto&& value) {
+            // If v2 is default constructed, this function will never be called
             using T = decltype(value);
             if constexpr (std::is_same_v<std::remove_reference_t<T>, std::string>) {
                 result = std::forward<T>(value);
@@ -359,6 +361,7 @@ TEST_SUITE("vstd::variant") {
         vstd::variant<int, double, std::string> v(3.14);
         
         std::string result;
+        // If v is default constructed, this function will never be called
         v.multi_visit(
             [&result](int& i) { result = "int: " + std::to_string(i); },
             [&result](double& d) { result = "double: " + std::to_string(d); },

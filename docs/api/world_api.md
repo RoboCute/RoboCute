@@ -1,0 +1,786 @@
+# RoboCute World API Documentation
+
+This document describes the Python API for interacting with the RoboCute world system.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [App Class](#app-class)
+- [Core Classes](#core-classes)
+  - [RBCContext](#rbccontext)
+  - [Scene](#scene)
+  - [Project](#project)
+  - [Entity](#entity)
+  - [Component](#component)
+- [Components](#components)
+  - [TransformComponent](#transformcomponent)
+  - [RenderComponent](#rendercomponent)
+  - [CameraComponent](#cameracomponent)
+  - [LightComponent](#lightcomponent)
+  - [DataComponent](#datacomponent)
+  - [AtmosphereComponent](#atmospherecomponent)
+- [Resources](#resources)
+  - [Resource](#resource)
+  - [MeshResource](#meshresource)
+  - [TextureResource](#textureresource)
+  - [MaterialResource](#materialresource)
+  - [BufferResource](#bufferresource)
+  - [SkeletonResource](#skeletonresource)
+  - [SkinResource](#skinresource)
+  - [AnimSequence](#animsequence)
+  - [AnimSequenceResource](#animsequenceresource)
+  - [AnimGraphResource](#animgraphresource)
+  - [SkelMeshResource](#skelmeshresource)
+- [Supporting Classes](#supporting-classes)
+  - [BasicData](#basicdata)
+  - [RenderSettings](#rendersettings)
+  - [EntitiesCollection](#entitiescollection)
+  - [FileMeta](#filemeta)
+  - [SelectQuery](#selectquery)
+  - [BuiltinKernels](#builtinkernels)
+- [Enums](#enums)
+  - [BasicDataType](#basicdatatype)
+  - [ResourceLoadStatus](#resourceloadstatus)
+  - [RendererGeometryType](#renderergeometrytype)
+  - [BaseObjectType](#baseobjecttype)
+  - [DataComponentEventType](#datacomponenteventtype)
+  - [TickStage](#tickstage)
+  - [LCPixelStorage](#lcpixelstorage)
+  - [LCPixelFormat](#lcpixelformat)
+
+---
+
+## Overview
+
+The RoboCute World API provides a Python interface for creating and managing 3D scenes, entities, components, and resources. The API is organized into two layers:
+
+1. **High-level API**: The `App` class provides a simplified interface for common operations
+2. **Low-level API**: Direct access to world objects through `robocute.rbc_ext.world`
+
+### Basic Usage
+
+```python
+import robocute.rbc_ext as re
+from robocute.app import App
+from pathlib import Path
+
+# Using the App singleton
+app = App()
+app.init("cuda", Path("./my_project"))
+app.init_display(1920, 1080)
+app.run()
+```
+
+---
+
+## App Class
+
+The `App` class is a singleton that provides a high-level interface for initializing and running the RoboCute application.
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `scene` | `Scene` | The current active scene |
+| `ctx` | `RBCContext` | The RBC context instance |
+| `display_cam` | `CameraComponent` | The display camera component |
+| `last_frame_time` | `float` | Timestamp of the last frame |
+
+### Methods
+
+#### `init(backend_name, project_path, world_path=None, require_render=True)`
+
+Initialize the application with the specified backend and project.
+
+**Parameters:**
+- `backend_name` (str): The rendering backend to use (e.g., "cuda", "dx12")
+- `project_path` (Path): Path to the project directory
+- `world_path` (Path, optional): Path to the world library. Defaults to `project_path/library`
+- `require_render` (bool): Whether to initialize rendering
+
+#### `init_ctx()`
+
+Initialize the RBC context.
+
+#### `init_world(world_path)`
+
+Initialize the world system.
+
+**Parameters:**
+- `world_path` (Path): Path to the world library
+
+#### `init_device(backend_name, program_path=BUILTIN_PROGRAM_PATH)`
+
+Initialize the rendering device.
+
+**Parameters:**
+- `backend_name` (str): The rendering backend
+- `program_path` (Path): Path to shader programs
+
+#### `init_render()`
+
+Initialize the rendering system.
+
+#### `init_project(project_path)`
+
+Initialize and load a project.
+
+**Parameters:**
+- `project_path` (Path): Path to the project directory
+
+#### `init_display(x=1920, y=1080, display_title="py_window")`
+
+Initialize the display window.
+
+**Parameters:**
+- `x` (int): Width of the display
+- `y` (int): Height of the display
+- `display_title` (str): Window title
+
+#### `init_transparent_display(x=1920, y=1080, offset_x=0, offset_y=0, opacity=0.5, topmost=True, click_through=False, display_title="py_window")`
+
+Initialize a transparent display window.
+
+**Parameters:**
+- `x`, `y` (int): Display dimensions
+- `offset_x`, `offset_y` (int): Window position offset
+- `opacity` (float): Window opacity (0.0 - 1.0)
+- `topmost` (bool): Keep window on top
+- `click_through` (bool): Enable click-through
+- `display_title` (str): Window title
+
+#### `display_image(dtype=float)`
+
+Get the display image as a Luisa Compute Image2D.
+
+**Returns:** `lc.Image2D` - The display image
+
+#### `get_display_transform()`
+
+Get the transform of the display camera.
+
+**Returns:** `TransformComponent` - The camera's transform
+
+#### `initialized()`
+
+Check if the application has been initialized.
+
+**Returns:** `bool` - True if initialized
+
+#### `set_user_callback(callback)`
+
+Set a callback function to be called every frame.
+
+**Parameters:**
+- `callback` (callable): Function to call each frame
+
+#### `call_exit()`
+
+Signal the application to exit on the next frame.
+
+#### `run()`
+
+Run the main application loop.
+
+#### `upload_mesh_data(mesh)`
+
+Upload mesh data to the GPU.
+
+**Parameters:**
+- `mesh` (`MeshResource`): The mesh to upload
+
+#### `set_ground_plane_mode(mode, scale=100, height=0)`
+
+Configure the ground plane visualization.
+
+**Parameters:**
+- `mode` (str): Mode type ('none' to disable, or other values)
+- `scale` (float): Plane scale
+- `height` (float): Plane height
+
+---
+
+## Core Classes
+
+### RBCContext
+
+The main context for managing the RoboCute runtime environment.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `control_camera_add_pos(pos: float3)` | Add position offset to controlled camera |
+| `control_camera_add_rotate(yaw, pitch, roll)` | Add rotation to controlled camera |
+| `create_display_cam()` | Create a display camera |
+| `denoise()` | Apply denoising |
+| `destroy_display_cam()` | Destroy the display camera |
+| `disable_camera_control()` | Disable camera controls |
+| `disable_view()` | Disable view rendering |
+| `display_image()` | Get the display image resource |
+| `editing_add_click_requires(name, uv)` | Add click requirement for editing |
+| `editing_query_click_requires(name)` | Query click result |
+| `enable_camera_control()` | Enable camera controls |
+| `init_device(rhi_backend, program_path, shader_path)` | Initialize rendering device |
+| `init_display(name, size, create_window, window_resizable)` | Initialize display |
+| `init_render()` | Initialize rendering |
+| `init_transparent_display(name, size, pos, opacity, topmost, click_through)` | Initialize transparent window |
+| `init_world(meta_path, binary_path)` | Initialize world system |
+| `regist_callback(name, callback)` | Register a callback |
+| `reset_view(resolution)` | Reset the view |
+| `save_display_image_to(path)` | Save display image to file |
+| `should_close()` | Check if window should close |
+| `tick(delta_time, tick_stage, prepare_denoise)` | Process one frame tick |
+| `unregist_callback(name)` | Unregister a callback |
+| `update_skinning_mesh(skinning_mesh, dual_quaternion_buffer)` | Update skinning mesh |
+| `upload_mesh_data(mesh)` | Upload mesh data to GPU |
+| `upload_texture_data(tex)` | Upload texture data to GPU |
+
+---
+
+### Scene
+
+Represents a scene containing entities.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `add_entity()` | Add a new entity to the scene |
+| `get_entities_by_name(name)` | Get all entities with the given name |
+| `get_entity(guid)` | Get entity by GUID |
+| `get_entity_by_name(name)` | Get first entity with the given name |
+| `get_or_add_entity(guid)` | Get existing or create new entity |
+| `remove_entity(guid)` | Remove entity by GUID |
+| `update_data()` | Update scene data |
+
+---
+
+### Project
+
+Manages project assets and resource importing.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `init(assets_root_dir)` | Initialize project with assets directory |
+| `scan_project()` | Scan project for resources |
+| `import_scene(path, extra_meta)` | Import a scene file |
+| `import_material(path)` | Import a material |
+| `import_mesh(path)` | Import a mesh |
+| `import_texture(path, mip_level, to_vt)` | Import a texture |
+| `load_resource(guid, load_content_async)` | Load a resource by GUID |
+| `get_file_meta(type_id, dest_path)` | Get file metadata |
+
+---
+
+### Entity
+
+Represents an object in the scene that can have components attached.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `add_component(name)` | Add a component by name |
+| `remove_component(name)` | Remove a component by name |
+| `get_component(name)` | Get a component by name |
+| `set_name(name)` | Set the entity name |
+| `name()` | Get the entity name |
+| `dispose()` | Dispose of the entity |
+
+---
+
+### Component
+
+Base class for all components that can be attached to entities.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `entity()` | Get the owning entity |
+| `update_data()` | Update component data |
+| `dispose()` | Dispose of the component |
+
+---
+
+## Components
+
+### TransformComponent
+
+Handles position, rotation, and scale of an entity.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `position()` | Get position as `double3` |
+| `rotation()` | Get rotation as `float4` (quaternion) |
+| `scale()` | Get scale as `double3` |
+| `trs()` | Get TRS matrix as `double4x4` |
+| `trs_float()` | Get TRS matrix as `float4x4` |
+| `set_pos(pos, recursive)` | Set position |
+| `set_rotation(rotation, recursive)` | Set rotation quaternion |
+| `set_scale(scale, recursive)` | Set scale |
+| `set_trs(pos, rotation, scale, recursive)` | Set all transform properties |
+| `set_trs_matrix(trs, recursive)` | Set transform from matrix |
+| `children_count()` | Get number of child transforms |
+| `remove_children(children)` | Remove child transforms |
+
+---
+
+### RenderComponent
+
+Manages mesh and material rendering for an entity.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `mesh()` | Get the mesh resource |
+| `get_material(idx)` | Get material at index |
+| `mat_count()` | Get material count |
+| `get_tlas_index()` | Get TLAS index |
+| `update_mesh(mesh)` | Update the mesh |
+| `update_material(mat_vector)` | Update materials |
+| `update_object(mat_vector, mesh)` | Update both mesh and materials |
+| `remove_object()` | Remove the render object |
+
+---
+
+### CameraComponent
+
+Controls camera settings and rendering.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `enable_camera()` | Enable the camera |
+| `disable_camera()` | Disable the camera |
+| `fov()` / `set_fov(value)` | Field of view in degrees |
+| `aspect_ratio()` / `set_aspect_ratio(value)` | Aspect ratio |
+| `auto_aspect_ratio()` / `set_auto_aspect_ratio(value)` | Auto aspect ratio |
+| `near_plane()` / `set_near_plane(value)` | Near clipping plane |
+| `far_plane()` / `set_far_plane(value)` | Far clipping plane |
+| `focus_distance()` / `set_focus_distance(value)` | Focus distance |
+| `aperture()` / `set_aperture(value)` | Aperture size |
+| `enable_physical_camera()` / `set_enable_physical_camera(value)` | Physical camera mode |
+| `set_frame_index(frame_index)` | Set frame index for accumulation |
+| `render_settings()` | Get render settings |
+| `display_image()` | Get display image resource |
+| `config_display_image(size, storage)` | Configure display image |
+| `release_display_image()` | Release display image |
+| `save_image_to(path)` | Save image to file |
+| `clear_geometry_export_buffer()` | Clear geometry export buffer |
+| `set_geometry_export_buffer(buffer, channel_type)` | Set geometry export buffer |
+
+---
+
+### LightComponent
+
+Manages light sources.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `add_point_light(luminance, visible)` | Add a point light |
+| `add_spot_light(luminance, angle_radians, small_angle_radians, angle_atten_pow, visible)` | Add a spot light |
+| `add_area_light(luminance, visible)` | Add an area light |
+| `add_disk_light(luminance, visible)` | Add a disk light |
+| `luminance()` | Get light luminance |
+| `angle_radians()` | Get spot light angle |
+| `small_angle_radians()` | Get spot light inner angle |
+| `angle_atten_pow()` | Get angle attenuation power |
+
+---
+
+### DataComponent
+
+Stores and manages custom data for entities.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `set_info(name, data)` | Set data value |
+| `get_info(name)` | Get data value |
+| `has_info(name)` | Check if data exists |
+| `remove_info(name)` | Remove data |
+| `clear_infos()` | Clear all data |
+| `info_count()` | Get number of data entries |
+| `bind_event(event_type, callback_name)` | Bind event handler |
+| `unbind_event(event_type)` | Unbind event handler |
+
+---
+
+### AtmosphereComponent
+
+Manages atmosphere/sky rendering.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `texture()` | Get atmosphere texture |
+| `update_texture(tex)` | Update atmosphere texture |
+
+---
+
+## Resources
+
+### Resource
+
+Base class for all resources.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `install()` | Install the resource |
+| `load()` | Load the resource |
+| `wait_loading()` | Wait for async loading to complete |
+| `load_status()` | Get current load status |
+| `path()` | Get resource path |
+| `save_to_path()` | Save resource to its path |
+
+---
+
+### MeshResource
+
+Represents a 3D mesh with vertices and triangles.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `create_empty(submesh_offsets, vertex_count, triangle_count, uv_count, contained_normal, contained_tangent)` | Create empty mesh |
+| `create_as_morphing_instance(origin_mesh)` | Create as morphing instance |
+| `data_buffer()` | Get raw data buffer |
+| `pos_buffer()` | Get position buffer |
+| `normal_buffer()` | Get normal buffer |
+| `tangent_buffer()` | Get tangent buffer |
+| `triangle_indices_buffer()` | Get triangle indices buffer |
+| `uv_buffer(uv_count)` | Get UV buffer |
+| `vertex_count()` | Get vertex count |
+| `triangle_count()` | Get triangle count |
+| `submesh_count()` | Get submesh count |
+| `uv_count()` | Get UV layer count |
+| `basic_size_bytes()` | Get basic data size |
+| `desire_size_bytes()` | Get desired data size |
+| `extra_size_bytes()` | Get extra data size |
+| `has_data_buffer()` | Check if data buffer exists |
+| `contained_normal()` | Check if contains normals |
+| `contained_tangent()` | Check if contains tangents |
+| `is_transforming_mesh()` | Check if transforming mesh |
+
+---
+
+### TextureResource
+
+Represents a 2D texture.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `create_empty(pixel_storage, size, mip_level, is_virtual_texture)` | Create empty texture |
+| `data_buffer()` | Get data buffer |
+| `size()` | Get texture size |
+| `mip_level()` | Get mip level count |
+| `pixel_storage()` | Get pixel storage format |
+| `heap_index()` | Get heap index |
+| `is_vt()` | Check if virtual texture |
+| `has_data_buffer()` | Check if has data buffer |
+| `load_executed()` | Check if load was executed |
+| `pack_to_tile()` | Pack to tile format |
+| `set_skybox()` | Set as skybox |
+
+---
+
+### MaterialResource
+
+Represents a material for rendering.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `load_from_json(json)` | Load material from JSON string |
+| `dump_json()` | Dump material to JSON string |
+| `mat_code()` | Get material code |
+
+---
+
+### BufferResource
+
+Represents a generic GPU buffer.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `create_empty(size_bytes, create_device_buffer)` | Create empty buffer |
+| `buffer()` | Get buffer handle |
+| `host_data()` | Get host data pointer |
+| `size_bytes()` | Get buffer size |
+
+---
+
+### SkeletonResource
+
+Represents a skeleton for skinned meshes.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `ref_skel()` | Get skeleton reference |
+| `log_brief()` | Log skeleton info |
+
+---
+
+### SkinResource
+
+Represents skinning data for skeletal animation.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `ref_skel()` | Get skeleton reference |
+| `ref_mesh()` | Get mesh reference |
+| `InverseBindPoses()` | Get inverse bind poses |
+| `JointRemaps()` | Get joint remaps |
+| `JointRemapsLUT()` | Get joint remaps LUT |
+| `generate_LUT()` | Generate lookup table |
+| `log_brief()` | Log skin info |
+
+---
+
+### AnimSequence
+
+Represents an animation sequence.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `get_animation_pose(pose_data, extract_context)` | Get animation pose |
+| `get_num_tracks()` | Get number of tracks |
+| `get_num_soa_tracks()` | Get number of SOA tracks |
+| `log_brief()` | Log sequence info |
+
+---
+
+### AnimSequenceResource
+
+Resource wrapper for animation sequences.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `ref_seq()` | Get animation sequence |
+| `ref_skel()` | Get skeleton reference |
+| `log_brief()` | Log resource info |
+
+---
+
+### AnimGraphResource
+
+Represents an animation graph.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `graph()` | Get animation graph |
+
+---
+
+### SkelMeshResource
+
+Represents a skeletal mesh.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `ref_skeleton()` | Get skeleton |
+| `ref_skin()` / `GetSkinResource()` | Get skin resource |
+| `ref_anim_graph()` | Get animation graph |
+
+---
+
+## Supporting Classes
+
+### BasicData
+
+Stores primitive data values.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `type()` | Get data type |
+| `set_bool(v)` / `get_bool()` | Boolean value |
+| `set_int(v)` / `get_int()` | Integer value |
+| `set_float(v)` / `get_float()` | Float value |
+| `set_string(v)` / `get_string()` | String value |
+| `set_resource(res)` / `get_resource()` | Resource reference |
+
+---
+
+### RenderSettings
+
+Configuration for rendering parameters.
+
+#### Camera Settings
+- `fov`, `aspect_ratio`, `near_plane`, `far_plane`
+- `focus_distance`, `aperture`
+
+#### Exposure & Tonemapping
+- `global_exposure`, `gamma`, `max_luminance`, `min_luminance`
+- `use_auto_exposure`, `use_hdr_display`, `use_hdr_10`, `use_linear_sdr`
+
+#### ACES Tonemapping
+- `aces_contrast`, `aces_saturation`, `aces_temperature`, `aces_tint`
+- `aces_lift`, `aces_gain`, `aces_gamma`, `aces_color_filter`
+- `aces_hue_shift`, `aces_hdr_paper_white`, `aces_hdr_display_multiplier`
+- Color mixer settings for RGB channels
+
+#### LPM (Local Photographic Mapping)
+- `lpm_exposure`, `lpm_contrast`, `lpm_saturation`
+- `lpm_shoulder`, `lpm_shoulder_contrast`, `lpm_soft_gap`
+- `lpm_crosstalk`, `lpm_hdr_max`
+- `lpm_display_max_luminance`, `lpm_display_min_luminance`
+
+#### Sun & Sky
+- `sun_dir`, `sun_color`, `sun_intensity`, `sun_angle`
+- `sky_color`, `sky_angle`, `sky_max_lum`
+
+#### Offline Rendering
+- `offline_spp`, `offline_origin_bounce`, `offline_indirect_bounce`
+
+#### Post-Processing
+- `denoise`, `chromatic_aberration`
+- `distortion_center`, `distortion_intensity`, `distortion_scale`, `distortion_intensity_multiplier`
+- `filtering`
+
+#### Serialization
+- `serialize_to_json()` - Serialize to JSON
+- `deserialize_from_json(json)` - Deserialize from JSON
+
+---
+
+### EntitiesCollection
+
+Collection of entities returned by queries.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `count()` | Get entity count |
+| `get_entity(index)` | Get entity at index |
+
+---
+
+### FileMeta
+
+Metadata for project files.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `guid()` | Get file GUID |
+| `meta_json()` | Get metadata as JSON |
+
+---
+
+### SelectQuery
+
+Result of a selection query (e.g., mouse picking).
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `valid()` | Check if query is valid |
+| `prim_id()` | Get primitive ID |
+| `barycentric()` | Get barycentric coordinates |
+| `get_component()` | Get render component |
+| `get_material()` | Get material |
+| `get_submesh_index()` | Get submesh index |
+
+---
+
+### BuiltinKernels
+
+Built-in compute kernels for data conversion.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `buffer_to_image(input_buffer, output_image, pixel_offset, pixel_size, swizzle)` | Convert buffer to image |
+| `image_to_buffer(input_image, output_buffer, pixel_offset, pixel_size, swizzle)` | Convert image to buffer |
+
+---
+
+## Enums
+
+### BasicDataType
+
+Types for `BasicData`:
+- `Bool`, `Int`, `Float`, `String`, `Resource`
+
+### ResourceLoadStatus
+
+Resource loading states:
+- `Unloaded`, `Loading`, `Loaded`, `Failed`
+
+### RendererGeometryType
+
+Geometry export types:
+- `Position`, `Normal`, `Albedo`, `Index`
+
+### BaseObjectType
+
+Object type categories:
+- `Object`, `Entity`, `Component`, `Resource`
+
+### DataComponentEventType
+
+Data component event types:
+- `OnSet`, `OnGet`, `OnRemove`
+
+### TickStage
+
+Rendering stages:
+- `PathTracingPreview`, `PathTracingOffline`, `Rasterization`
+
+### LCPixelStorage
+
+Pixel storage formats (Luisa Compute).
+
+### LCPixelFormat
+
+Pixel formats (Luisa Compute).
+
+---
+
+## Type Aliases
+
+The following vector/matrix types are imported from `robocute.rbc_ext.luisa`:
+
+- `float2`, `float3`, `float4`
+- `double2`, `double3`, `double4`
+- `uint2`, `uint3`, `uint4`
+- `float4x4`, `double4x4`
+- `GUID` - Global unique identifier type
