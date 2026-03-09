@@ -7,7 +7,7 @@
 #include <rbc_world/importers/mesh_importer_3ds.h>
 #include <rbc_world/importers/mesh_importer_off.h>
 #include <rbc_world/importers/mesh_importer_collada.h>
-#include <rbc_world/importers/mesh_importer_abc.h>
+// #include <rbc_world/importers/mesh_importer_abc.h>
 #include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/importers/texture_importer_hdr.h>
@@ -51,8 +51,8 @@ RBC_RUNTIME_API void register_builtin_importers() {
     static ColladaMeshImporter collada_mesh_importer;
     registry.register_importer(&collada_mesh_importer);
 
-    static AbcMeshImporter abc_mesh_importer;
-    registry.register_importer(&abc_mesh_importer);
+    // static AbcMeshImporter abc_mesh_importer;
+    // registry.register_importer(&abc_mesh_importer);
     // Register texture importers
     // StbTextureImporter handles multiple formats (.png, .jpg, .jpeg, .bmp, .gif, .psd, .pnm, .tga)
     // We need to register it for each extension since vstd::HashMap doesn't support iteration

@@ -1,4 +1,4 @@
-includes("Imath_xmake.lua")
+-- includes("Imath_xmake.lua")
 includes("LuisaCompute")
 
 target('rbc_dllexport_include') -- to include dll_export.h
@@ -37,7 +37,7 @@ includes('oidn')
 includes('tracy_xmake.lua')
 -- includes('sqlite3')
 includes('argparse')
-includes('alembic_xmake.lua')
+-- includes('alembic_xmake.lua')
 if has_config('rbc_urdf') then
     includes('urdfdom_xmake.lua')
 end

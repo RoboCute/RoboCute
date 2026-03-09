@@ -39,7 +39,6 @@ static void traverse_alembic_object(
         if (!mesh.valid()) {
             return;
         }
-
         // Get schema and data
         AbcGeom::IPolyMeshSchema &schema = mesh.getSchema();
 

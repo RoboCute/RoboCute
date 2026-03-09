@@ -91,18 +91,18 @@ GIT_TASKS = {
         "branch": None,
         "deps": [],
     },
-    "alembic": {
-        "subdir": "thirdparty/alembic",
-        "url": "https://github.com/alembic/alembic.git",
-        "branch": None,
-        "deps": [],
-    },
-    "Imath": {
-        "subdir": "thirdparty/Imath",
-        "url": "https://github.com/AcademySoftwareFoundation/Imath.git",
-        "branch": None,
-        "deps": [],
-    },
+    # "alembic": {
+    #     "subdir": "thirdparty/alembic",
+    #     "url": "https://github.com/RoboCute/alembic.git",
+    #     "branch": None,
+    #     "deps": [],
+    # },
+    # "Imath": {
+    #     "subdir": "thirdparty/Imath",
+    #     "url": "https://github.com/AcademySoftwareFoundation/Imath.git",
+    #     "branch": None,
+    #     "deps": [],
+    # },
     "lib3ds": {
         "subdir": "thirdparty/lib3ds",
         "url": "https://github.com/vkocheryzhkin/lib3ds.git",
