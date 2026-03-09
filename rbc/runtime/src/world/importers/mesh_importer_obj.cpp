@@ -11,15 +11,16 @@ namespace rbc::world {
 using namespace luisa;
 using namespace luisa::compute;
 
-bool ObjMeshImporter::import(Resource* resource_base, luisa::filesystem::path const &path) {
-    auto resource = static_cast<MeshResource*>(resource_base);
+bool ObjMeshImporter::import(Resource *resource_base, luisa::filesystem::path const &path) {
+    auto resource = static_cast<MeshResource *>(resource_base);
     if (!resource || resource->empty() == false) [[unlikely]] {
         LUISA_WARNING("Can not create on exists mesh.");
         return false;
     }
 
     luisa::BinaryFileStream file_stream(luisa::to_string(path));
-    if (!file_stream.valid()) return false;
+    if (!file_stream.valid())
+        return false;
 
     tinyobj::ObjReaderConfig obj_reader_config;
     obj_reader_config.triangulate = true;
@@ -111,7 +112,6 @@ bool ObjMeshImporter::import(Resource* resource_base, luisa::filesystem::path co
     mesh_builder.write_to(resource_bytes, submesh_offsets);
     resource->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     *(resource->host_data()) = std::move(resource_bytes);
-
 
     // skinning
     if (!attri.skin_weights.empty()) {

@@ -409,25 +409,8 @@ def main():
     entity = make_cube_mesh(app.scene, tex=tex)
     last_time = time.time()
 
-    tick_stage = re.world.TickStage.PathTracingPreview
-    # app.run()
-    while not app.ctx.should_close():
-        cur_time = time.time()
-        delta_time = cur_time - last_time
-        last_time = cur_time
-        app.display_cam.set_frame_index(frame_index)
-        if app.ctx.tick(delta_time, tick_stage, True) or app._requires_reset:
-            frame_index = 0
-            app._requires_reset = False
-        else:
-            frame_index += 1
-        # EDITING exam-ple
-
-        # app.ctx.editing_add_click_requires("my_click", lc.float2(0.5))
-        # render_comp = app.ctx.editing_query_click_requires("my_click")
-        # if render_comp:
-        #     print(re.world.TransformComponent(render_comp.entity().get_component('TransformComponent')).position())
-
+    def tick_logic():  # run every frame
+        nonlocal EXPORT, tui_exec
         if EXPORT and frame_index == 128:
             EXPORT = False
             img = app.display_image()
@@ -452,9 +435,11 @@ def main():
             # float 3-channel buffer
             normal_array = geometry_array[offset:offset + pixel_size * 3]
             offset += pixel_size * 3
-            object_id_array = geometry_array[offset:offset + pixel_size].view(dtype=np.uint32)
+            object_id_array = geometry_array[offset:offset +
+                                             pixel_size].view(dtype=np.uint32)
             offset += pixel_size
-            prim_id_array = geometry_array[offset:offset+pixel_size].view(dtype=np.uint32)
+            prim_id_array = geometry_array[offset:offset +
+                                           pixel_size].view(dtype=np.uint32)
             offset += pixel_size
             bary_array = geometry_array[offset:offset+pixel_size * 2]
             offset += pixel_size * 2
@@ -543,8 +528,10 @@ def main():
                 print(value)
         except StopIteration:
             print('Exit from TUI!')
-            break
-
+            app.call_exit()  # End the loop
+    app.set_user_callback(tick_logic)
+    app.set_ground_plane_mode('yes')
+    app.run()
 
 if __name__ == "__main__":
     main()

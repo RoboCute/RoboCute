@@ -107,6 +107,10 @@ void MeshBuilderBase<Derive>::write_to(luisa::filesystem::path const &dst_path, 
         writer.write({reinterpret_cast<const std::byte *>(uv.data()), uv.size_bytes()});
     }
     for (auto &i : triangle_indices) {
+        for (auto &idx : i) {
+            if (idx >= position.size()) [[unlikely]]
+                LUISA_ERROR("Index {} out of bound {}", idx, position.size());
+        }
         writer.write({reinterpret_cast<const std::byte *>(i.data()), i.size_bytes()});
     }
     _gen_submesh_offsets(submesh_offsets);
@@ -140,6 +144,10 @@ void MeshBuilderBase<Derive>::write_to(luisa::vector<std::byte> &buffer, luisa::
         vstd::push_back_all(buffer, {reinterpret_cast<const std::byte *>(uv.data()), uv.size_bytes()});
     }
     for (auto &i : triangle_indices) {
+        for (auto &idx : i) {
+            if (idx >= position.size()) [[unlikely]]
+                LUISA_ERROR("Index {} out of bound {}", idx, position.size());
+        }
         vstd::push_back_all(buffer, {reinterpret_cast<const std::byte *>(i.data()), i.size_bytes()});
     }
     _gen_submesh_offsets(submesh_offsets);

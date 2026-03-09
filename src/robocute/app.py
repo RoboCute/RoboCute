@@ -11,7 +11,47 @@ BUILTIN_PROGRAM_PATH = Path(
 )  # Built-In Runtime Path
 
 
+def _create_visualization_mesh(
+    positions,
+    indices
+):
+    vcount = len(positions)
+    tcount = len(indices)
+    assert tcount % 3 == 0
+    tcount = tcount // 3
+    # Create mesh with actual surface dimensions
+    mesh = re.world.MeshResource()
+    submesh_offsets = np.array([0], dtype=np.uint32)
+    mesh.create_empty(submesh_offsets, vcount,
+                      tcount, 0, False, False)
+
+    # Initialize mesh data buffer with actual surface data
+    # Data layout: positions (vcount * 4 floats) + indices (tcount * 3 uint32s)
+    mesh_array = np.ndarray(
+        vcount * 4 + tcount * 3,
+        dtype=np.float32,
+        buffer=mesh.data_buffer(),
+    )
+
+    # Fill vertex positions
+    for i in range(len(positions)):
+        pos = positions[i]
+        mesh_array[i * 4 + 0] = float(pos[0])
+        mesh_array[i * 4 + 1] = float(pos[1])
+        mesh_array[i * 4 + 2] = float(pos[2])
+        mesh_array[i * 4 + 3] = 1.0  # w component
+
+    # Fill triangle indices (as uint32 view)
+    idx_view = mesh_array[vcount * 4:].view(dtype=np.uint32)
+    for i in range(len(indices)):
+        idx_view[i] = int(indices[i])
+
+    mesh.install()
+    return mesh
+
 # Python-Side Application
+
+
 class App:
     _ctx: Optional[re.world.RBCContext] = None
     _initialized = False
@@ -23,6 +63,11 @@ class App:
     _display_cam: Optional[re.world.CameraComponent] = None
     _last_frame_time: float
     _requires_reset: bool = False
+    _callback = None
+    _tick_stage: re.world.TickStage = re.world.TickStage.PathTracingPreview
+    _delta_time: float = 0
+    _exit: bool = False
+    _plane_entity: re.world.Entity = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -132,23 +177,84 @@ class App:
     def initialized(self):
         return self._initialized
 
+    def set_user_callback(self, callback):
+        assert callable(callback)
+        self._callback = callback
+
+    def call_exit(self):
+        self._exit = True
+
     def run(self):
         if not self._ctx or not self._scene or not self._display_cam:
             return
         last_time = time.time()
         frame_index = 0
-        tick_stage = re.world.TickStage.PathTracingPreview
         # entity = make_cube_mesh(self._scene)
-        while not self._ctx.should_close():
+        while not self._ctx.should_close() and not self._exit:
             cur_time = time.time()
-            delta_time = cur_time - last_time
+            self._delta_time = cur_time - last_time
             last_time = cur_time
             self._display_cam.set_frame_index(frame_index)
-            if self._ctx.tick(delta_time, tick_stage, True):
+            if self._callback is not None:
+                value = self._callback()
+                if value is not None and not value:
+                    self._requires_reset = False
+                    frame_index = 0
+
+            if self._ctx.tick(self._delta_time, self._tick_stage, True) or self._requires_reset:
                 frame_index = 0
+                self._requires_reset = False
             else:
                 frame_index += 1
+        self._exit = False
 
     def upload_mesh_data(self, mesh: re.world.MeshResource):
         if self._ctx:
             self._ctx.upload_mesh_data(mesh)
+
+    def set_ground_plane_mode(self, mode: str, scale: float = 100, height: float = 0):
+        import samples.mat_builtin as mat
+        if mode is None or mode == 'none':
+            if self._plane_entity:
+                del self._plane_entity
+                self._plane_entity = None
+            return
+        if self._plane_entity:
+            return
+        mat0_json = mat.OpenPBRInterface(self._project)
+        mat0_json.set_specular_roughness(0.5)
+        mat0_json.set_weight_metallic(0.3)
+        mat0_json.set_base_albedo((0.8, 0.8, 0.8))  # Blue-ish color
+        mat0 = re.world.MaterialResource()
+        mat0.load_from_json(mat0_json.dump_to_json())
+        del mat0_json
+        mat_vector = lc.capsule_vector()
+        mat_vector.emplace_back(mat0._handle)
+        scene = self.scene
+        if not scene:
+            print('app.scene not initialized first.')
+            exit(1)
+        entity = scene.add_entity()
+        self._plane_entity = entity
+        entity.set_name("__app_plane_entity")
+
+        trans = re.world.TransformComponent(
+            entity.add_component("TransformComponent"))
+        render = re.world.RenderComponent(
+            entity.add_component("RenderComponent"))
+
+        trans.set_pos(lc.double3(0, 0, 0), False)
+        trans.set_rotation(lc.float4(0, 0, 0, 1), False)
+        mesh = _create_visualization_mesh(
+            [
+                (-scale, height, -scale),
+                (scale, height, -scale),
+                (-scale, height, scale),
+                (scale, height, scale)
+            ],
+            [
+                0, 1, 2,
+                1, 3, 2
+            ]
+        )
+        render.update_object(mat_vector, mesh)

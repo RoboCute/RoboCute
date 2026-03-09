@@ -151,54 +151,11 @@ def create_uipc_scene() -> tuple[Scene, SceneIO]:
 
 
 def create_visualization_mesh(
-    scene: re.world.Scene,
-    sio: SceneIO
-) -> tuple[re.world.Entity, re.world.MeshResource]:
-    """
-    Create a mesh entity for visualizing the physics simulation.
-
-    Args:
-        scene: RoboCute scene
-        sio: UIPC SceneIO for extracting surface dimensions
-
-    Returns:
-        Tuple of (entity, mesh_resource) for visualization
-    """
-    # Create material
-    mat0_json = mat.OpenPBRInterface(app._project)
-    mat0_json.set_specular_roughness(0.5)
-    mat0_json.set_weight_metallic(0.3)
-    mat0_json.set_base_albedo((0.2, 0.6, 0.9))  # Blue-ish color
-
-    mat0 = re.world.MaterialResource()
-    mat0.load_from_json(mat0_json.dump_to_json())
-    del mat0_json
-
-    mat_vector = lc.capsule_vector()
-    mat_vector.emplace_back(mat0._handle)
-
-    # Create entity
-    entity = scene.add_entity()
-    entity.set_name("abd_fem_object")
-    entity = scene.get_entity_by_name("abd_fem_object")
-
-    trans = re.world.TransformComponent(
-        entity.add_component("TransformComponent"))
-    render = re.world.RenderComponent(entity.add_component("RenderComponent"))
-
-    trans.set_pos(lc.double3(0, 0, 0), False)
-    trans.set_rotation(lc.float4(0, 0, 0, 1), False)
-
-    # Get surface dimensions from UIPC
-    surface = sio.simplicial_surface()
-    positions = surface.positions().view().reshape(-1, 3)
-    triangles = surface.triangles().topo().view().reshape(-1, 3)
-
+    positions,
+    triangles
+):
     vcount = len(positions)
     tcount = len(triangles)
-
-    print(f"Creating mesh with {vcount} vertices, {tcount} triangles")
-
     # Create mesh with actual surface dimensions
     cube_mesh = re.world.MeshResource()
     submesh_offsets = np.array([0], dtype=np.uint32)
@@ -227,6 +184,68 @@ def create_visualization_mesh(
         idx_view[i * 3 + 2] = int(tri[2])
 
     cube_mesh.install()
+    return cube_mesh
+
+def create_visualization_mat(
+    roughness: float = 0.5,
+    metallic: float = 0.3,
+    color: tuple = (0.5, 0.5, 0.5)
+):
+    mat0_json = mat.OpenPBRInterface(app._project)
+    mat0_json.set_specular_roughness(roughness)
+    mat0_json.set_weight_metallic(metallic)
+    mat0_json.set_base_albedo(color)  # Blue-ish color
+    mat0 = re.world.MaterialResource()
+    mat0.load_from_json(mat0_json.dump_to_json())
+    del mat0_json
+    return mat0
+
+
+
+def create_visualization_model(
+    scene: re.world.Scene,
+    sio: SceneIO
+) -> tuple[re.world.Entity, re.world.MeshResource]:
+    """
+    Create a mesh entity for visualizing the physics simulation.
+
+    Args:
+        scene: RoboCute scene
+        sio: UIPC SceneIO for extracting surface dimensions
+
+    Returns:
+        Tuple of (entity, mesh_resource) for visualization
+    """
+    # Create material
+    material = create_visualization_mat()
+
+    mat_vector = lc.capsule_vector()
+    mat_vector.emplace_back(material._handle)
+
+    # Create entity
+    entity = scene.add_entity()
+    entity.set_name("abd_fem_object")
+    entity = scene.get_entity_by_name("abd_fem_object")
+
+    trans = re.world.TransformComponent(
+        entity.add_component("TransformComponent"))
+    render = re.world.RenderComponent(entity.add_component("RenderComponent"))
+
+    trans.set_pos(lc.double3(0, 0, 0), False)
+    trans.set_rotation(lc.float4(0, 0, 0, 1), False)
+
+    # Get surface dimensions from UIPC
+    surface = sio.simplicial_surface()
+    positions = surface.positions().view().reshape(-1, 3)
+    triangles = surface.triangles().topo().view().reshape(-1, 3)
+
+    vcount = len(positions)
+    tcount = len(triangles)
+
+    print(f"Creating mesh with {vcount} vertices, {tcount} triangles")
+    
+    cube_mesh = create_visualization_mesh(positions, triangles)
+    
     render.update_object(mat_vector, cube_mesh)
 
     return entity, cube_mesh
@@ -332,7 +351,7 @@ class UIPCABDFEMApp:
         """
         if not self.sio:
             return
-        self.mesh_entity, self.mesh_resource = create_visualization_mesh(
+        self.mesh_entity, self.mesh_resource = create_visualization_model(
             rbc_scene, self.sio
         )
 
@@ -424,15 +443,17 @@ def main():
     transform = app.get_display_transform()
     if transform:
         transform.set_pos(lc.double3(6, 12, -15), False)
-        rot = euler_to_quaternion(degrees_to_radians(15), degrees_to_radians(-15), 0)
+        rot = euler_to_quaternion(
+            degrees_to_radians(15), degrees_to_radians(-15), 0)
         transform.set_rotation(lc.float4(rot), False)
 
-    # app.ctx.enable_camera_control()
+    app.ctx.enable_camera_control()
 
     if not app.scene:
         print("Scene not valid!")
         app._scene = re.world.Scene()
-        atmo = re.world.AtmosphereComponent(app._scene.add_entity().add_component('AtmosphereComponent'))
+        atmo = re.world.AtmosphereComponent(
+            app._scene.add_entity().add_component('AtmosphereComponent'))
         atmo.update_data()
 
     # Initialize physics simulation
@@ -460,8 +481,9 @@ def main():
     render_settings = app.display_cam.render_settings()
     render_settings.set_offline_spp(4)
     physics_frame = 0
-    RENDER_FRAME = 64
+    RENDER_FRAME = 1
     physics_should_step = None
+    app.set_ground_plane_mode('', height=-1.2)
     try:
         while not app.ctx.should_close():
             cur_time = time.time()
@@ -478,16 +500,18 @@ def main():
             if physics_should_step:
                 frame_index = 0
                 physics_should_step = False
+                # Do This: Export mode
+                
                 # Denoise, save and export image to screenshot/
-                app.ctx.denoise()
-                screenshot_dir = Path(__file__).parent / "screenshot"
-                screenshot_dir.mkdir(exist_ok=True)
-                app.ctx.save_display_image_to(
-                    str(screenshot_dir /
-                        f"frame_{physics_app.frame_count:04d}.png")
-                )
-                print(
-                    f"Saved screenshot to {screenshot_dir}/frame_{physics_app.frame_count:04d}.png")
+                # app.ctx.denoise()
+                # screenshot_dir = Path(__file__).parent / "screenshot"
+                # screenshot_dir.mkdir(exist_ok=True)
+                # app.ctx.save_display_image_to(
+                #     str(screenshot_dir /
+                #         f"frame_{physics_app.frame_count:04d}.png")
+                # )
+                # print(
+                #     f"Saved screenshot to {screenshot_dir}/frame_{physics_app.frame_count:04d}.png")
             else:
                 frame_index += 1
 

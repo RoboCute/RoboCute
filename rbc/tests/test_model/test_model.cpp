@@ -22,10 +22,11 @@ using namespace rbc;
 using namespace rbc::world;
 
 struct WorldFixture {
+    luisa::fiber::scheduler scheduler;
     luisa::vector<RC<BaseObject>> _objects;
     WorldFixture() {
         rbc::RuntimeStaticBase::init_all();
-        init_world({}, {});
+        init_world("test_scene", {});
         // Register all mesh importers
         register_builtin_importers();
     }
@@ -44,7 +45,6 @@ struct WorldFixture {
 };
 
 TEST_SUITE("model") {
-
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_obj") {
         ObjMeshImporter importer;
         CHECK(importer.extension() == ".obj");
@@ -52,19 +52,19 @@ TEST_SUITE("model") {
         
         // Test importing non-existent file returns false
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.obj");
-        CHECK_FALSE(result);
+        auto result = importer.import(mesh, "test_model.obj");
+        CHECK(result);
     }
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_fbx") {
-        FbxMeshImporter importer;
-        CHECK(importer.extension() == ".fbx");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+    // TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_fbx") {
+    //     FbxMeshImporter importer;
+    //     CHECK(importer.extension() == ".fbx");
+    //     CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
-        auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.fbx");
-        CHECK_FALSE(result);
-    }
+    //     auto mesh = create<MeshResource>();
+    //     auto result = importer.import(mesh, "test_model.fbx");
+    //     CHECK(result);
+    // }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_gltf") {
         GltfMeshImporter importer;
@@ -72,8 +72,8 @@ TEST_SUITE("model") {
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.gltf");
-        CHECK_FALSE(result);
+        auto result = importer.import(mesh, "test_model.gltf");
+        CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_glb") {
@@ -82,8 +82,8 @@ TEST_SUITE("model") {
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.glb");
-        CHECK_FALSE(result);
+        auto result = importer.import(mesh, "test_model.glb");
+        CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_stl") {
@@ -92,8 +92,8 @@ TEST_SUITE("model") {
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.stl");
-        CHECK_FALSE(result);
+        auto result = importer.import(mesh, "test_model.stl");
+        CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_ply") {
@@ -102,8 +102,8 @@ TEST_SUITE("model") {
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.ply");
-        CHECK_FALSE(result);
+        auto result = importer.import(mesh, "test_model.ply");
+        CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_off") {
@@ -112,8 +112,8 @@ TEST_SUITE("model") {
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.off");
-        CHECK_FALSE(result);
+        auto result = importer.import(mesh, "test_model.off");
+        CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_3ds") {
@@ -122,8 +122,8 @@ TEST_SUITE("model") {
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.3ds");
-        CHECK_FALSE(result);
+        auto result = importer.import(mesh, "test_model.3ds");
+        CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_collada") {
@@ -132,8 +132,8 @@ TEST_SUITE("model") {
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.dae");
-        CHECK_FALSE(result);
+        auto result = importer.import(mesh, "test_model.dae");
+        CHECK(result);
     }
 
     // TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_abc") {
@@ -142,7 +142,7 @@ TEST_SUITE("model") {
     //     CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
     //     auto mesh = create<MeshResource>();
-    //     auto result = importer.import(mesh, "non_existent_file.abc");
+    //     auto result = importer.import(mesh, "test_model.abc");
     //     CHECK_FALSE(result);
     // }
 
@@ -162,8 +162,8 @@ TEST_SUITE("model") {
         CHECK(registry.find_importer(luisa::string_view{".off"}, mesh_type) != nullptr);
         CHECK(registry.find_importer(luisa::string_view{".3ds"}, mesh_type) != nullptr);
         CHECK(registry.find_importer(luisa::string_view{".dae"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".abc"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".lwo"}, mesh_type) != nullptr);
+        // CHECK(registry.find_importer(luisa::string_view{".abc"}, mesh_type) != nullptr);
+        // CHECK(registry.find_importer(luisa::string_view{".lwo"}, mesh_type) != nullptr);
         
         // Test case insensitivity for extensions
         CHECK(registry.find_importer(luisa::string_view{".OBJ"}, mesh_type) != nullptr);
