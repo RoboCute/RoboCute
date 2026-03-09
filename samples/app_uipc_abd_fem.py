@@ -47,19 +47,16 @@ class AssetDir:
     """Helper class to locate UIPC assets."""
 
     this_file = Path(os.path.dirname(__file__)).resolve()
-    _assets_path = Path(this_file.parent / 'thirdparty' /
-                        'uipc' / 'assets').resolve()
-    _tetmesh_path = _assets_path / 'sim_data' / 'tetmesh'
+    _assets_path = Path(this_file).resolve()
+    _tetmesh_path = _assets_path / 'tetmesh'
 
     @staticmethod
     def tetmesh_path() -> str:
         """Return path to tetmesh directory."""
         # Fallback to a relative path if not found
         if not AssetDir._tetmesh_path.exists():
-            # Try to find in libuipc location
-            libuipc_path = Path("C:/dev/libuipc/assets/sim_data/tetmesh")
-            if libuipc_path.exists():
-                return str(libuipc_path)
+            print('tetmesh unfound.')
+            exit(1)
         return str(AssetDir._tetmesh_path)
 
 

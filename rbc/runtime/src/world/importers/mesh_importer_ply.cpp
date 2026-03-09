@@ -659,6 +659,36 @@ bool PlyMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
         }
     }
     
+    // Validate and fix vertex attribute sizes
+    // All vertex attributes must have the same size as positions
+    size_t vertex_count = mesh_builder.position.size();
+    
+    // Check and resize normals
+    if (!mesh_builder.normal.empty() && mesh_builder.normal.size() != vertex_count) {
+        LUISA_WARNING("PLY file normal count (", mesh_builder.normal.size(), 
+                      ") does not match position count (", vertex_count, 
+                      "). Resizing normals to match positions.");
+        mesh_builder.normal.resize(vertex_count);
+    }
+    
+    // Check and resize tangents (if already populated)
+    if (!mesh_builder.tangent.empty() && mesh_builder.tangent.size() != vertex_count) {
+        LUISA_WARNING("PLY file tangent count (", mesh_builder.tangent.size(), 
+                      ") does not match position count (", vertex_count, 
+                      "). Resizing tangents to match positions.");
+        mesh_builder.tangent.resize(vertex_count);
+    }
+    
+    // Check and resize UVs
+    for (size_t i = 0; i < mesh_builder.uvs.size(); i++) {
+        if (!mesh_builder.uvs[i].empty() && mesh_builder.uvs[i].size() != vertex_count) {
+            LUISA_WARNING("PLY file UV[", i, "] count (", mesh_builder.uvs[i].size(), 
+                          ") does not match position count (", vertex_count, 
+                          "). Resizing UVs to match positions.");
+            mesh_builder.uvs[i].resize(vertex_count);
+        }
+    }
+    
     // Validate mesh data
     if (mesh_builder.position.empty()) {
         LUISA_WARNING("PLY file contains no vertices");

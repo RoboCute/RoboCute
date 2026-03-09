@@ -279,6 +279,44 @@ static bool parse_mesh(tinyxml2::XMLElement *mesh_elem, MeshBuilder &mesh_builde
         }
     }
 
+    // Size check: ensure all vertex elements have the same size as positions
+    const size_t position_size = mesh_builder.position.size();
+
+    // Check and resize normals to match position size
+    if (mesh_builder.normal.size() != position_size) {
+        if (mesh_builder.normal.empty()) {
+            mesh_builder.normal.resize(position_size, make_float3(0.0f, 0.0f, 1.0f));
+        } else {
+            LUISA_WARNING("COLLADA mesh normal count ({}) does not match position count ({}), resizing",
+                          mesh_builder.normal.size(), position_size);
+            mesh_builder.normal.resize(position_size);
+        }
+    }
+
+    // Check and resize tangents to match position size
+    if (mesh_builder.tangent.size() != position_size) {
+        if (mesh_builder.tangent.empty()) {
+            mesh_builder.tangent.resize(position_size, make_float4(1.0f, 0.0f, 0.0f, 1.0f));
+        } else {
+            LUISA_WARNING("COLLADA mesh tangent count ({}) does not match position count ({}), resizing",
+                          mesh_builder.tangent.size(), position_size);
+            mesh_builder.tangent.resize(position_size);
+        }
+    }
+
+    // Check and resize UVs to match position size
+    for (size_t i = 0; i < mesh_builder.uvs.size(); ++i) {
+        if (mesh_builder.uvs[i].size() != position_size) {
+            if (mesh_builder.uvs[i].empty()) {
+                mesh_builder.uvs[i].resize(position_size, make_float2(0.0f, 0.0f));
+            } else {
+                LUISA_WARNING("COLLADA mesh UV[{}] count ({}) does not match position count ({}), resizing",
+                              i, mesh_builder.uvs[i].size(), position_size);
+                mesh_builder.uvs[i].resize(position_size);
+            }
+        }
+    }
+
     return !mesh_builder.position.empty() && !mesh_builder.triangle_indices.empty();
 }
 

@@ -71,6 +71,22 @@ bool ObjMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
             }
         }
     }
+
+    // Size check: ensure all vertex attributes have the same size as position
+    size_t position_count = mesh_builder.position.size();
+    if (mesh_builder.normal.size() != position_count) {
+        mesh_builder.normal.resize(position_count);
+    }
+    for (auto &uvs : mesh_builder.uvs) {
+        if (uvs.size() != position_count) {
+            uvs.resize(position_count);
+        }
+    }
+    // Tangents will be calculated later, but ensure size matches if already populated
+    if (mesh_builder.tangent.size() != position_count) {
+        mesh_builder.tangent.resize(position_count);
+    }
+
     {
         auto &shapes = obj_reader.GetShapes();
         for (auto &i : shapes) {

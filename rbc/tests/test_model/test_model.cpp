@@ -1,5 +1,10 @@
 #include "test_util.h"
 
+// Define SKIP_IF for doctest versions that don't have it
+#ifndef SKIP_IF
+#define SKIP_IF(cond) if (cond) { return; }
+#endif
+
 #include <rbc_core/type_info.h>
 #include <rbc_core/rc.h>
 #include <rbc_core/runtime_static.h>
@@ -20,6 +25,20 @@
 
 using namespace rbc;
 using namespace rbc::world;
+
+// Helper to check if a specific model type should be tested
+// Usage: --test-model=obj (or --test-model=fbx, gltf, glb, stl, ply, off, 3ds, dae)
+// If not specified, all tests run
+static bool should_test_model_type(luisa::string_view type) {
+    for (int i = 0; i < sail::test::argc(); ++i) {
+        luisa::string_view arg(sail::test::argv()[i]);
+        if (arg.starts_with("--test-model=")) {
+            auto model_type = arg.substr(13); // length of "--test-model="
+            return model_type == type;
+        }
+    }
+    return true; // No filter specified, test all
+}
 
 struct WorldFixture {
     luisa::fiber::scheduler scheduler;
@@ -46,6 +65,7 @@ struct WorldFixture {
 
 TEST_SUITE("model") {
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_obj") {
+        SKIP_IF(!should_test_model_type("obj"));
         ObjMeshImporter importer;
         CHECK(importer.extension() == ".obj");
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
@@ -56,17 +76,19 @@ TEST_SUITE("model") {
         CHECK(result);
     }
 
-    // TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_fbx") {
-    //     FbxMeshImporter importer;
-    //     CHECK(importer.extension() == ".fbx");
-    //     CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_fbx") {
+        SKIP_IF(!should_test_model_type("fbx"));
+        FbxMeshImporter importer;
+        CHECK(importer.extension() == ".fbx");
+        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
         
-    //     auto mesh = create<MeshResource>();
-    //     auto result = importer.import(mesh, "test_model.fbx");
-    //     CHECK(result);
-    // }
+        auto mesh = create<MeshResource>();
+        auto result = importer.import(mesh, "test_model.fbx");
+        CHECK(result);
+    }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_gltf") {
+        SKIP_IF(!should_test_model_type("gltf"));
         GltfMeshImporter importer;
         CHECK(importer.extension() == ".gltf");
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
@@ -77,6 +99,7 @@ TEST_SUITE("model") {
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_glb") {
+        SKIP_IF(!should_test_model_type("glb"));
         GlbMeshImporter importer;
         CHECK(importer.extension() == ".glb");
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
@@ -87,6 +110,7 @@ TEST_SUITE("model") {
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_stl") {
+        SKIP_IF(!should_test_model_type("stl"));
         StlMeshImporter importer;
         CHECK(importer.extension() == ".stl");
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
@@ -97,6 +121,7 @@ TEST_SUITE("model") {
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_ply") {
+        SKIP_IF(!should_test_model_type("ply"));
         PlyMeshImporter importer;
         CHECK(importer.extension() == ".ply");
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
@@ -107,6 +132,7 @@ TEST_SUITE("model") {
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_off") {
+        SKIP_IF(!should_test_model_type("off"));
         OffMeshImporter importer;
         CHECK(importer.extension() == ".off");
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
@@ -117,6 +143,7 @@ TEST_SUITE("model") {
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_3ds") {
+        SKIP_IF(!should_test_model_type("3ds"));
         ThreeDSMeshImporter importer;
         CHECK(importer.extension() == ".3ds");
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
@@ -127,6 +154,7 @@ TEST_SUITE("model") {
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_collada") {
+        SKIP_IF(!should_test_model_type("dae"));
         ColladaMeshImporter importer;
         CHECK(importer.extension() == ".dae");
         CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
