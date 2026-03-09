@@ -105,31 +105,13 @@ GIT_TASKS = {
     },
     "lib3ds": {
         "subdir": "thirdparty/lib3ds",
-        "url": "https://github.com/imneme/lib3ds.git",
-        "branch": None,
-        "deps": [],
-    },
-    "lwo": {
-        "subdir": "thirdparty/lwo",
-        "url": "https://github.com/maqao/lwo.git",
-        "branch": None,
-        "deps": [],
-    },
-    "tinyoff": {
-        "subdir": "thirdparty/tinyoff",
-        "url": "https://github.com/syoyo/tinyoff.git",
+        "url": "https://github.com/vkocheryzhkin/lib3ds.git",
         "branch": None,
         "deps": [],
     },
     "tinyply": {
         "subdir": "thirdparty/tinyply",
         "url": "https://github.com/ddiakopoulos/tinyply.git",
-        "branch": None,
-        "deps": [],
-    },
-    "tinystl": {
-        "subdir": "thirdparty/tinystl",
-        "url": "https://github.com/bkaradzic/tinystl.git",
         "branch": None,
         "deps": [],
     },

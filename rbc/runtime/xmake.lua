@@ -9,7 +9,8 @@ end
 
 local function rbc_runtime_impl()
     add_rules('lc_basic_settings', {
-        project_kind = 'shared'
+        project_kind = 'shared',
+        enable_exception = true
     })
     rbc_unity_build(8)
     add_files('src/**.cpp')

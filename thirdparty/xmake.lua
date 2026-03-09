@@ -12,14 +12,12 @@ includes("rtm")
 includes("tiny_obj_loader")
 includes("tinyexr")
 includes("tinytiff")
-includes("tinystl_xmake.lua")
 includes("tinyply_xmake.lua")
-includes("tinyoff_xmake.lua")
 includes("tinyxml2_xmake.lua")
-includes("lib3ds_xmake.lua")
-includes("lwo_xmake.lua")
 includes("open_fbx")
-includes("cpp-ipc")
+if has_config('rbc_tools') then
+    includes("cpp-ipc")
+end
 
 -- includes('cppitertools_xmake.lua')
 includes('tinygltf_xmake.lua')

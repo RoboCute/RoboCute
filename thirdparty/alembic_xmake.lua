@@ -1,6 +1,6 @@
 target('alembic')
 add_rules('lc_basic_settings', {
-    project_kind = 'static',
+    project_kind = 'shared',
     enable_exception = true
 })
 
@@ -19,22 +19,17 @@ add_files('alembic/lib/Alembic/Abc/*.cpp', 'alembic/lib/Alembic/AbcCollection/*.
 -- Dependencies
 add_deps('Imath')
 
--- Defines
-add_defines('ALEMBIC_VERSION=\"1.8.10\"')
-
 -- Platform defines
-if is_plat('windows') then
-    add_defines('PLATFORM_WINDOWS', 'PLATFORM=WINDOWS')
-elseif is_plat('macosx') then
-    add_defines('PLATFORM_DARWIN', 'PLATFORM=DARWIN')
-else
-    add_defines('PLATFORM_LINUX', 'PLATFORM=LINUX')
-end
+on_load(function(target)
+    if target:is_plat('windows') then
+        target:add('defines', 'ALEMBIC_DLL', {
+            public = true
+        })
+    end
+    target:add('defines', 'ALEMBIC_EXPORTS')
+    if not target:is_plat('windows') then
+        target:add('syslinks', 'pthread')
+    end
+end)
 
--- Thread support (only on non-Windows platforms)
-if not is_plat('windows') then
-    add_syslinks('pthread', {
-        public = false
-    })
-end
 target_end()

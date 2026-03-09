@@ -12,7 +12,6 @@
 #include <rbc_world/importers/mesh_importer_3ds.h>
 #include <rbc_world/importers/mesh_importer_collada.h>
 #include <rbc_world/importers/mesh_importer_abc.h>
-#include <rbc_world/importers/mesh_importer_lwo.h>
 #include <rbc_world/importers/register_importers.h>
 #include <rbc_world/resource_importer.h>
 #include <rbc_world/resources/mesh.h>
@@ -147,16 +146,7 @@ TEST_SUITE("model") {
         CHECK_FALSE(result);
     }
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_lwo") {
-        LwoMeshImporter importer;
-        CHECK(importer.extension() == ".lwo");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
-        
-        auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "non_existent_file.lwo");
-        CHECK_FALSE(result);
-    }
-
+    
     TEST_CASE_FIXTURE(WorldFixture, "importer_registry") {
         auto &registry = ResourceImporterRegistry::instance();
         

@@ -17,10 +17,10 @@ for target_name, is_standalone in pairs(targets) do
                 local ignore_files = {
                     rbc_context_impl = true,
                     world_impl = true,
-                    mat_impl = true,
+                    mat_impl = true
                 }
                 for _, v in ipairs(os.files(path.join(os.scriptdir(), '**.cpp'))) do
-                    if not ignore_files[path.basename(v)]then
+                    if not ignore_files[path.basename(v)] then
                         target:add('files', v)
                     end
                 end
@@ -39,7 +39,11 @@ for target_name, is_standalone in pairs(targets) do
             end
             -- target:add('deps', 'Jolt')
             target:add('deps', 'stb-image')
-            target:add('deps', 'rbc_render_plugin', 'lc-gui', 'compile_shaders', 'rbc_project_plugin', 'rbc_display_plugin')
+            target:add('deps', 'rbc_render_plugin', 'lc-gui', 'compile_shaders', 'rbc_project_plugin')
+            if target:is_plat('windows') then
+                target:add('deps', 'rbc_display_plugin')
+                target:add('defines', 'SUPPORT_TRANSPARENT_WINDOW')
+            end
             target:add('defines', 'TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
         end)
     end

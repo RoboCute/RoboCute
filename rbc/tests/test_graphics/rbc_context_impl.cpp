@@ -36,7 +36,9 @@
 #include <luisa/runtime/buffer.h>
 #include <rbc_world/callback_serializer.h>
 #include "builtin_shader.h"
+#ifdef SUPPORT_TRANSPARENT_WINDOW
 #include <rbc_display/transparent_window.h>
+#endif
 using namespace luisa;
 using namespace luisa::compute;
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);// implemented save_image.cpp
@@ -46,13 +48,17 @@ namespace rbc {
 struct ContextImpl;
 static ContextImpl *_ctx_inst{};
 struct ContextImpl : RCBase {
+#ifdef SUPPORT_TRANSPARENT_WINDOW
     luisa::shared_ptr<luisa::DynamicModule> display_module;
+#endif
     luisa::spin_mutex _ctx_mtx;
     luisa::fiber::scheduler scheduler;
     CameraController::Input camera_input{};
     vstd::unique_ptr<GraphicsUtils> utils;
     vstd::unique_ptr<Window> window;
+#ifdef SUPPORT_TRANSPARENT_WINDOW
     luisa::unique_ptr<TransparentWindow> transparent_window;
+#endif
     vstd::unique_ptr<CameraController> cam_controller;
     RC<world::Entity> display_cam_entity;
     uint2 window_size;
@@ -137,6 +143,7 @@ void RBCContext::init_transparent_display(
     float opacity,
     bool topmost,
     bool click_through) {
+#ifdef SUPPORT_TRANSPARENT_WINDOW
     auto &c = *static_cast<ContextImpl *>(this_);
     c.transparent_should_close = false;
     std::lock_guard lck{c._ctx_mtx};
@@ -173,6 +180,9 @@ void RBCContext::init_transparent_display(
     c.window_size = size;
     // Initialize display with invalid handles (transparent window doesn't use swapchain)
     c.utils->init_display(size, c.transparent_window->display_handle(), c.transparent_window->window_handle());
+#else
+    LUISA_ERROR("Transparent unsupported.");
+#endif
 }
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
     auto &c = *static_cast<ContextImpl *>(this_);
@@ -183,18 +193,22 @@ void RBCContext::disable_view(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     c.window.reset();
+#ifdef SUPPORT_TRANSPARENT_WINDOW
     if (c.transparent_window) {
         c.transparent_window->close();
         c.transparent_window.reset();
     }
+#endif
 }
 bool RBCContext::should_close(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (c.window)
         return c.window->should_close();
+#ifdef SUPPORT_TRANSPARENT_WINDOW
     if (c.transparent_window)
-        return c.transparent_should_close;;
+        return c.transparent_should_close;
+#endif
     return false;
 }
 void RBCContext::denoise(void *this_) {
@@ -257,9 +271,11 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
             any_changed = c.cam_controller->any_changed();
         }
     }
-    if(c.transparent_window){
+#ifdef SUPPORT_TRANSPARENT_WINDOW
+    if (c.transparent_window) {
         c.transparent_should_close = !c.transparent_window->process_messages();
     }
+#endif
     {
         RBCZoneScopedN("Update Camera");
         {

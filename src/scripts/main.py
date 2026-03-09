@@ -8,6 +8,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
 import importlib
+from scripts.thirdparty_config import make_alembic_config, make_imath_config
 from scripts.prepare import (
     GIT_TASKS,
     CLANGCXX_NAME,
@@ -247,7 +248,7 @@ def run_package_download():
         f.result()  # Raise exceptions if any
 
 
-def prepare():
+def _run_prepare():
     # ------------------------------ git ------------------------------
     print_warning("Git-clone and git-pull? (y/n)")
     try:
@@ -262,7 +263,8 @@ def prepare():
     if is_empty_folder(lc_path):
         print_error("LuisaCompute not installed.")
         sys.exit(1)
-
+    make_alembic_config(PROJECT_ROOT)
+    make_imath_config(PROJECT_ROOT)
     print_warning("Download package? (y/n)")
     try:
         download_package = input().strip()
@@ -344,7 +346,13 @@ def prepare():
         clean_up = "n"
     if clean_up.lower() == "y":
         clean_up_generated_code()
-
+def prepare():
+    try:
+        _run_prepare()
+    except KeyboardInterrupt as e:
+        print_warning('quit.')
+    except EOFError as e:
+        print_warning('eof.')
 
 def clean_up_generated_code():
     for generated_dir in Path("rbc").glob("**/generated"):
