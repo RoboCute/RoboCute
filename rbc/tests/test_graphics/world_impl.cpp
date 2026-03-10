@@ -1523,7 +1523,7 @@ void RenderSettings::set_offline_spp(void *this_, uint32_t value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // offline_spp: 1 ~ 4
-    clamp_value_warn(value, 1u, 4u, "offline_spp");
+    clamp_value_warn(value, 1u, 16u, "offline_spp");
     impl->map->read_mut<PathTracerSettings>().offline_spp = value;
 }
 uint32_t RenderSettings::get_offline_origin_bounce(void *this_) {

@@ -12,6 +12,7 @@ Based on:
 - test_abd_fem.py (UIPC physics: ABD + FEM combined simulation)
 - app_uipc_physics.py (RoboCute rendering integration)
 """
+import json
 import os
 import time
 from pathlib import Path
@@ -75,6 +76,100 @@ def process_surface(sc: SimplicialComplex) -> SimplicialComplex:
     sc = flip_inward_triangles(sc)
     return sc
 
+def save_cam_transform(display_cam: re.world.CameraComponent) -> None:
+    """
+    Save camera's transform and settings as a JSON file to current directory.
+
+    Args:
+        display_cam: The CameraComponent to save settings from.
+    """
+    # Get transform component from the camera's entity
+    entity = display_cam.entity()
+    transform = re.world.TransformComponent(entity.get_component("TransformComponent"))
+
+    # Build camera data dictionary
+    cam_data = {
+        "position": [
+            transform.position().x,
+            transform.position().y,
+            transform.position().z,
+        ],
+        "rotation": [
+            transform.rotation().x,
+            transform.rotation().y,
+            transform.rotation().z,
+            transform.rotation().w,
+        ],
+        "fov": display_cam.fov(),
+        "aspect_ratio": display_cam.aspect_ratio(),
+        "near_plane": display_cam.near_plane(),
+        "far_plane": display_cam.far_plane(),
+        "aperture": display_cam.aperture(),
+        "focus_distance": display_cam.focus_distance(),
+        "enable_physical_camera": display_cam.enable_physical_camera(),
+        "auto_aspect_ratio": display_cam.auto_aspect_ratio(),
+    }
+
+    # Save to JSON file in current directory
+    save_path = Path(__file__).parent / "cam_transform.json"
+    with open(save_path, "w", encoding="utf-8") as f:
+        json.dump(cam_data, f, indent=2)
+    print(f"Saved camera transform to {save_path}")
+
+
+def load_cam_transform(display_cam: re.world.CameraComponent) -> None:
+    """
+    Load camera's transform and settings from a JSON file in current directory.
+    Skips if the file does not exist.
+
+    Args:
+        display_cam: The CameraComponent to load settings into.
+    """
+    # Check if file exists
+    load_path = Path(__file__).parent / "cam_transform.json"
+    if not load_path.exists():
+        print(f"Camera transform file not found at {load_path}, using default settings")
+        return
+
+    try:
+        with open(load_path, "r", encoding="utf-8") as f:
+            cam_data = json.load(f)
+
+        # Get transform component from the camera's entity
+        entity = display_cam.entity()
+        transform = re.world.TransformComponent(entity.get_component("TransformComponent"))
+
+        # Apply position if available
+        if "position" in cam_data:
+            pos = cam_data["position"]
+            transform.set_pos(lc.double3(pos[0], pos[1], pos[2]), False)
+
+        # Apply rotation if available
+        if "rotation" in cam_data:
+            rot = cam_data["rotation"]
+            transform.set_rotation(lc.float4(rot[0], rot[1], rot[2], rot[3]), False)
+
+        # Apply camera settings if available
+        if "fov" in cam_data:
+            display_cam.set_fov(cam_data["fov"])
+        if "aspect_ratio" in cam_data:
+            display_cam.set_aspect_ratio(cam_data["aspect_ratio"])
+        if "near_plane" in cam_data:
+            display_cam.set_near_plane(cam_data["near_plane"])
+        if "far_plane" in cam_data:
+            display_cam.set_far_plane(cam_data["far_plane"])
+        if "aperture" in cam_data:
+            display_cam.set_aperture(cam_data["aperture"])
+        if "focus_distance" in cam_data:
+            display_cam.set_focus_distance(cam_data["focus_distance"])
+        if "enable_physical_camera" in cam_data:
+            display_cam.set_enable_physical_camera(cam_data["enable_physical_camera"])
+        if "auto_aspect_ratio" in cam_data:
+            display_cam.set_auto_aspect_ratio(cam_data["auto_aspect_ratio"])
+
+        print(f"Loaded camera transform from {load_path}")
+    except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
+        print(f"Error loading camera transform from {load_path}: {e}")
 
 def create_uipc_scene() -> tuple[Scene, SceneIO]:
     """
@@ -412,6 +507,8 @@ def main():
         help="Export mode (no GUI)"
     )
     args = parser.parse_args()
+    print(args.output)
+    OUTPUT = args.output
     project_path = None
     if args.project:
         project_path = Path(args.project)
@@ -443,8 +540,8 @@ def main():
         rot = euler_to_quaternion(
             degrees_to_radians(15), degrees_to_radians(-15), 0)
         transform.set_rotation(lc.float4(rot), False)
-
-    app.ctx.enable_camera_control()
+    if not OUTPUT:
+        app.ctx.enable_camera_control()
 
     if not app.scene:
         print("Scene not valid!")
@@ -476,11 +573,20 @@ def main():
     frame_index = 0
     tick_stage = re.world.TickStage.PathTracingPreview
     render_settings = app.display_cam.render_settings()
-    render_settings.set_offline_spp(4)
+    render_settings.set_offline_spp(4 if OUTPUT else 1)
     physics_frame = 0
     RENDER_FRAME = 1
+    load_cam_transform(app.display_cam)
+
+    
+    if OUTPUT:
+        RENDER_FRAME = 64
     physics_should_step = None
-    app.set_ground_plane_mode('', height=-1.2)
+    material = mat.OpenPBRInterface(app._project)
+    material.set_base_albedo((0.4, 0.4, 0.3))
+    app.set_ground_plane_mode('', height=-1.2, material=material)
+    render_settings.set_use_auto_exposure(False)
+    render_settings.set_global_exposure(1.2)
     try:
         while not app.ctx.should_close():
             cur_time = time.time()
@@ -493,22 +599,22 @@ def main():
                 physics_frame = 0
                 physics_callback()
                 physics_should_step = True
-            app.ctx.tick(delta_time, tick_stage, True)
+            app.ctx.tick(delta_time, tick_stage, OUTPUT)
             if physics_should_step:
                 frame_index = 0
                 physics_should_step = False
                 # Do This: Export mode
-                
-                # Denoise, save and export image to screenshot/
-                # app.ctx.denoise()
-                # screenshot_dir = Path(__file__).parent / "screenshot"
-                # screenshot_dir.mkdir(exist_ok=True)
-                # app.ctx.save_display_image_to(
-                #     str(screenshot_dir /
-                #         f"frame_{physics_app.frame_count:04d}.png")
-                # )
-                # print(
-                #     f"Saved screenshot to {screenshot_dir}/frame_{physics_app.frame_count:04d}.png")
+                if OUTPUT:
+                    # Denoise, save and export image to screenshot/
+                    app.ctx.denoise()
+                    screenshot_dir = Path(__file__).parent / "screenshot"
+                    screenshot_dir.mkdir(exist_ok=True)
+                    app.ctx.save_display_image_to(
+                        str(screenshot_dir /
+                            f"frame_{physics_app.frame_count:04d}.png")
+                    )
+                    print(
+                        f"Saved screenshot to {screenshot_dir}/frame_{physics_app.frame_count:04d}.png")
             else:
                 frame_index += 1
 
@@ -517,7 +623,7 @@ def main():
 
     print(f"Simulation completed. Total frames: {physics_app.frame_count}")
     lc.synchronize()
-
+    save_cam_transform(app.display_cam)
     # Clean up objects to prevent memory leaks causing exit crashes
     if app.ctx:
         app.ctx.unregist_callback("physics_update")

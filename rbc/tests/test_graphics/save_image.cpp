@@ -34,12 +34,28 @@ void save_image(luisa::filesystem::path const &path, Image<float> const &img) {
         }
     }
     auto filename = luisa::to_string(path);
-    stbi_write_jpg(
-        filename.c_str(),
-        img.size().x,
-        img.size().y,
-        4,
-        bytes.data(),
-        100);
+    auto ext = luisa::to_string(path.extension());
+    for (auto &i : ext) {
+        i = std::tolower(i);
+    }
+    if (ext == ".png") {
+        stbi_write_png(
+            filename.c_str(),
+            img.size().x,
+            img.size().y,
+            4,
+            bytes.data(),
+            img.size().x * 4);
+    } else {
+        // JPEG only supports 3 channels (RGB), stbi_write_jpg does not support RGBA
+        LUISA_WARNING("JPEG format does not support alpha channel, saving as PNG instead");
+        stbi_write_jpg(
+            filename.c_str(),
+            img.size().x,
+            img.size().y,
+            4,
+            bytes.data(),
+            100);
+    }
     LUISA_INFO("{} saved", filename);
 }

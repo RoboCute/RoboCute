@@ -184,7 +184,7 @@ class App:
     def call_exit(self):
         self._exit = True
 
-    def run(self):
+    def run(self, prepare_denoise: bool = False):
         if not self._ctx or not self._scene or not self._display_cam:
             return
         last_time = time.time()
@@ -201,7 +201,7 @@ class App:
                     self._requires_reset = False
                     frame_index = 0
 
-            if self._ctx.tick(self._delta_time, self._tick_stage, True) or self._requires_reset:
+            if self._ctx.tick(self._delta_time, self._tick_stage, prepare_denoise) or self._requires_reset:
                 frame_index = 0
                 self._requires_reset = False
             else:
@@ -212,7 +212,7 @@ class App:
         if self._ctx:
             self._ctx.upload_mesh_data(mesh)
 
-    def set_ground_plane_mode(self, mode: str, scale: float = 100, height: float = 0):
+    def set_ground_plane_mode(self, mode: str, scale: float = 100, height: float = 0, material = None):
         import samples.mat_builtin as mat
         if mode is None or mode == 'none':
             if self._plane_entity:
@@ -221,13 +221,15 @@ class App:
             return
         if self._plane_entity:
             return
-        mat0_json = mat.OpenPBRInterface(self._project)
-        mat0_json.set_specular_roughness(0.5)
-        mat0_json.set_weight_metallic(0.3)
-        mat0_json.set_base_albedo((0.8, 0.8, 0.8))  # Blue-ish color
+        if material and type(material) == mat.OpenPBRInterface:
+            mat0_json = material
+        else:
+            mat0_json = mat.OpenPBRInterface(self._project)
+            mat0_json.set_specular_roughness(0.5)
+            mat0_json.set_weight_metallic(0.3)
+            mat0_json.set_base_albedo((0.8, 0.8, 0.8))  # Blue-ish color
         mat0 = re.world.MaterialResource()
         mat0.load_from_json(mat0_json.dump_to_json())
-        del mat0_json
         mat_vector = lc.capsule_vector()
         mat_vector.emplace_back(mat0._handle)
         scene = self.scene
