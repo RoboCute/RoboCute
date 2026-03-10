@@ -263,8 +263,8 @@ def _run_prepare():
     if is_empty_folder(lc_path):
         print_error("LuisaCompute not installed.")
         sys.exit(1)
-    make_alembic_config(PROJECT_ROOT)
-    make_imath_config(PROJECT_ROOT)
+    # make_alembic_config(PROJECT_ROOT)
+    # make_imath_config(PROJECT_ROOT)
     print_warning("Download package? (y/n)")
     try:
         download_package = input().strip()

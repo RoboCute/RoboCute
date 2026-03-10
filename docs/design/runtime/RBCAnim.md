@@ -19,4 +19,3 @@ MeshPack
 - mutable_data
 - submesh_indices
 - mesh
-

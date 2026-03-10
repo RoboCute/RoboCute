@@ -1,0 +1,3 @@
+# RoboCute编辑器
+
+RoboCute Editor的设计思路更类似一种debugging tools，用可视化界面来更好地理解场景中发生了什么，以弥补AI编辑缺失的3D直观
