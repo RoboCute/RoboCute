@@ -3,6 +3,7 @@ target("test_model")
         project_kind = 'binary'
     })
     set_group("02.tests")
+    add_interface_depend('rbc_importer_plugin')
     add_deps('rbc_runtime', 'external_doctest')
     add_includedirs("../_framework")
     add_files("*.cpp")

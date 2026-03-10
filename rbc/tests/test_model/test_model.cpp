@@ -8,15 +8,15 @@
 #include <rbc_core/type_info.h>
 #include <rbc_core/rc.h>
 #include <rbc_core/runtime_static.h>
-#include <rbc_world/importers/mesh_importer_obj.h>
-#include <rbc_world/importers/mesh_importer_fbx.h>
-#include <rbc_world/importers/mesh_importer_gltf.h>
-#include <rbc_world/importers/mesh_importer_stl.h>
-#include <rbc_world/importers/mesh_importer_ply.h>
-#include <rbc_world/importers/mesh_importer_off.h>
-#include <rbc_world/importers/mesh_importer_3ds.h>
-#include <rbc_world/importers/mesh_importer_collada.h>
-// #include <rbc_world/importers/mesh_importer_abc.h>
+// #include <rbc_importer/mesh_importer_obj.h>
+// #include <rbc_importer/mesh_importer_fbx.h>
+// #include <rbc_importer/mesh_importer_gltf.h>
+// #include <rbc_importer/mesh_importer_stl.h>
+// #include <rbc_importer/mesh_importer_ply.h>
+// #include <rbc_importer/mesh_importer_off.h>
+// #include <rbc_importer/mesh_importer_3ds.h>
+// #include <rbc_importer/mesh_importer_collada.h>
+// #include <rbc_importer/mesh_importer_abc.h>
 #include <rbc_world/importers/register_importers.h>
 #include <rbc_world/resource_importer.h>
 #include <rbc_world/resources/mesh.h>
@@ -66,108 +66,126 @@ struct WorldFixture {
 TEST_SUITE("model") {
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_obj") {
         SKIP_IF(!should_test_model_type("obj"));
-        ObjMeshImporter importer;
-        CHECK(importer.extension() == ".obj");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+        auto &registry = ResourceImporterRegistry::instance();
+        auto importer = registry.find_importer(luisa::string_view{".obj"}, TypeInfo::get<rbc::world::MeshResource>().md5());
+        CHECK(importer != nullptr);
+        CHECK(importer->extension() == ".obj");
+        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
         // Test importing non-existent file returns false
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "test_model.obj");
+        auto result = importer->import(mesh, "test_model.obj");
         CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_fbx") {
         SKIP_IF(!should_test_model_type("fbx"));
-        FbxMeshImporter importer;
-        CHECK(importer.extension() == ".fbx");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+        auto &registry = ResourceImporterRegistry::instance();
+        auto importer = registry.find_importer(luisa::string_view{".fbx"}, TypeInfo::get<rbc::world::MeshResource>().md5());
+        CHECK(importer != nullptr);
+        CHECK(importer->extension() == ".fbx");
+        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "test_model.fbx");
+        auto result = importer->import(mesh, "test_model.fbx");
         CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_gltf") {
         SKIP_IF(!should_test_model_type("gltf"));
-        GltfMeshImporter importer;
-        CHECK(importer.extension() == ".gltf");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+        auto &registry = ResourceImporterRegistry::instance();
+        auto importer = registry.find_importer(luisa::string_view{".gltf"}, TypeInfo::get<rbc::world::MeshResource>().md5());
+        CHECK(importer != nullptr);
+        CHECK(importer->extension() == ".gltf");
+        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "test_model.gltf");
+        auto result = importer->import(mesh, "test_model.gltf");
         CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_glb") {
         SKIP_IF(!should_test_model_type("glb"));
-        GlbMeshImporter importer;
-        CHECK(importer.extension() == ".glb");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+        auto &registry = ResourceImporterRegistry::instance();
+        auto importer = registry.find_importer(luisa::string_view{".glb"}, TypeInfo::get<rbc::world::MeshResource>().md5());
+        CHECK(importer != nullptr);
+        CHECK(importer->extension() == ".glb");
+        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "test_model.glb");
+        auto result = importer->import(mesh, "test_model.glb");
         CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_stl") {
         SKIP_IF(!should_test_model_type("stl"));
-        StlMeshImporter importer;
-        CHECK(importer.extension() == ".stl");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+        auto &registry = ResourceImporterRegistry::instance();
+        auto importer = registry.find_importer(luisa::string_view{".stl"}, TypeInfo::get<rbc::world::MeshResource>().md5());
+        CHECK(importer != nullptr);
+        CHECK(importer->extension() == ".stl");
+        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "test_model.stl");
+        auto result = importer->import(mesh, "test_model.stl");
         CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_ply") {
         SKIP_IF(!should_test_model_type("ply"));
-        PlyMeshImporter importer;
-        CHECK(importer.extension() == ".ply");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+        auto &registry = ResourceImporterRegistry::instance();
+        auto importer = registry.find_importer(luisa::string_view{".ply"}, TypeInfo::get<rbc::world::MeshResource>().md5());
+        CHECK(importer != nullptr);
+        CHECK(importer->extension() == ".ply");
+        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "test_model.ply");
+        auto result = importer->import(mesh, "test_model.ply");
         CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_off") {
         SKIP_IF(!should_test_model_type("off"));
-        OffMeshImporter importer;
-        CHECK(importer.extension() == ".off");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+        auto &registry = ResourceImporterRegistry::instance();
+        auto importer = registry.find_importer(luisa::string_view{".off"}, TypeInfo::get<rbc::world::MeshResource>().md5());
+        CHECK(importer != nullptr);
+        CHECK(importer->extension() == ".off");
+        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "test_model.off");
+        auto result = importer->import(mesh, "test_model.off");
         CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_3ds") {
         SKIP_IF(!should_test_model_type("3ds"));
-        ThreeDSMeshImporter importer;
-        CHECK(importer.extension() == ".3ds");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+        auto &registry = ResourceImporterRegistry::instance();
+        auto importer = registry.find_importer(luisa::string_view{".3ds"}, TypeInfo::get<rbc::world::MeshResource>().md5());
+        CHECK(importer != nullptr);
+        CHECK(importer->extension() == ".3ds");
+        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "test_model.3ds");
+        auto result = importer->import(mesh, "test_model.3ds");
         CHECK(result);
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_collada") {
         SKIP_IF(!should_test_model_type("dae"));
-        ColladaMeshImporter importer;
-        CHECK(importer.extension() == ".dae");
-        CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+        auto &registry = ResourceImporterRegistry::instance();
+        auto importer = registry.find_importer(luisa::string_view{".dae"}, TypeInfo::get<rbc::world::MeshResource>().md5());
+        CHECK(importer != nullptr);
+        CHECK(importer->extension() == ".dae");
+        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
         auto mesh = create<MeshResource>();
-        auto result = importer.import(mesh, "test_model.dae");
+        auto result = importer->import(mesh, "test_model.dae");
         CHECK(result);
     }
 
     // TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_abc") {
     //     AbcMeshImporter importer;
     //     CHECK(importer.extension() == ".abc");
-    //     CHECK(importer.resource_type() == MD5{"rbc::world::MeshResource"sv});
+    //     CHECK(importer.resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
         
     //     auto mesh = create<MeshResource>();
     //     auto result = importer.import(mesh, "test_model.abc");
@@ -179,7 +197,7 @@ TEST_SUITE("model") {
         auto &registry = ResourceImporterRegistry::instance();
         
         // Test finding importers by extension
-        auto mesh_type = MD5{"rbc::world::MeshResource"sv};
+        auto mesh_type = TypeInfo::get<rbc::world::MeshResource>().md5();
         
         CHECK(registry.find_importer(luisa::string_view{".obj"}, mesh_type) != nullptr);
         CHECK(registry.find_importer(luisa::string_view{".fbx"}, mesh_type) != nullptr);
