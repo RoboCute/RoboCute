@@ -20,8 +20,7 @@ rbc::coroutine SkeletonResource::_async_load() {
     luisa::BinaryFileStream file_stream(luisa::to_string(path));
     if (!file_stream.valid()) { co_return; }
 
-    // luisa::BinaryBlob blob = file_stream.read(file_stream.length()); // ERROR! 编译器找不到重载
-    luisa::BinaryBlob blob = static_cast<luisa::BinaryStream &>(file_stream).read(file_stream.length());// make them happy
+    luisa::BinaryBlob blob = file_stream.read(file_stream.length());
     BinDeSerializer deser{blob};
     deser._load(skeleton, "skeleton");
 
