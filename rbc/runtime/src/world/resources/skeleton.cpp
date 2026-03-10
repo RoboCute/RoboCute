@@ -1,6 +1,7 @@
 #include "rbc_world/resources/skeleton.h"
 #include "rbc_world/type_register.h"
 #include <rbc_core/binary_file_writer.h>
+#include <luisa/core/binary_file_stream.h>
 
 namespace rbc::world {
 
@@ -14,6 +15,16 @@ void SkeletonResource::deserialize_meta(world::ObjDeSerialize const &ser) {
 }
 
 rbc::coroutine SkeletonResource::_async_load() {
+    std::shared_lock lck{_async_mtx};
+    auto path = this->path();
+    luisa::BinaryFileStream file_stream(luisa::to_string(path));
+    if (!file_stream.valid()) { co_return; }
+
+    // luisa::BinaryBlob blob = file_stream.read(file_stream.length()); // ERROR! 编译器找不到重载
+    luisa::BinaryBlob blob = static_cast<luisa::BinaryStream &>(file_stream).read(file_stream.length());// make them happy
+    BinDeSerializer deser{blob};
+    deser._load(skeleton, "skeleton");
+
     co_return;
 }
 
@@ -30,7 +41,6 @@ bool SkeletonResource::unsafe_save_to_path() const {
     LUISA_INFO("Skeleton Writing to {}", path.string());
     auto bytes = ser.write_to();
     writer.write(bytes);
-
     return true;
 }
 void SkeletonResource::log_brief() {
