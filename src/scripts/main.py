@@ -8,7 +8,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
 import importlib
-from scripts.thirdparty_config import make_alembic_config, make_imath_config
+# from scripts.thirdparty_config import make_alembic_config, make_imath_config
 from scripts.prepare import (
     GIT_TASKS,
     CLANGCXX_NAME,
