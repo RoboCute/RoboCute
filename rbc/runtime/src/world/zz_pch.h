@@ -17,7 +17,6 @@
 
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/basic_types.h>
-#include <luisa/core/binary_buffer.h>
 #include <luisa/core/binary_file_stream.h>
 #include <luisa/core/binary_io.h>
 #include <luisa/core/clock.h>
