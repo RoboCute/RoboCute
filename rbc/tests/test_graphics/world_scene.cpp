@@ -8,8 +8,6 @@
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_core/serde.h>
 #include <rbc_render/click_manager.h>
-#include <rbc_world/importers/texture_importer_exr.h>
-#include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <tracy_wrapper.h>
 #include <rbc_plugin/plugin_manager.h>
@@ -17,6 +15,7 @@
 #include <rbc_project/project_plugin.h>
 #include <rbc_render/grid_drawer.h>
 #include <rbc_graphics/render_device.h>
+#include <rbc_world/resource_importer.h>
 
 using rbc::ArchiveWriteJson;
 using rbc::ArchiveReadJson;
@@ -100,8 +99,13 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     utils->update_mesh_data(quad_mesh->device_mesh(), false);// update through render-thread
 
     {
-        world::ExrTextureImporter exr_importer;
-        world::StbTextureImporter stb_importer;
+        auto &registry = world::ResourceImporterRegistry::instance();
+        auto exr_importer = static_cast<world::ITextureImporter*>(registry.find_importer(
+            luisa::string_view{".exr"}, TypeInfo::get<rbc::world::TextureResource>().md5()
+        ));
+        auto stb_importer = static_cast<world::ITextureImporter*>(registry.find_importer(
+            luisa::string_view{".stb"}, TypeInfo::get<rbc::world::TextureResource>().md5()
+        ));
 
         RBCZoneScopedN("Load Textures");
         TextureLoader tex_loader;
@@ -110,13 +114,13 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         //     16,
         //     true);
         tex = world::create_object<world::TextureResource>();
-        stb_importer.import(tex, &tex_loader, "test_grid.png", 16, true);
+        stb_importer->import(tex, &tex_loader, "test_grid.png", 16, true);
         // skybox = tex_loader.decode_texture(
         //     "sky.exr",
         //     1,
         //     false);
         skybox = world::create_object<world::TextureResource>();
-        exr_importer.import(skybox, &tex_loader, "sky.exr", 1, false);
+        exr_importer->import(skybox, &tex_loader, "sky.exr", 1, false);
         // write guid
         {
             RBCZoneScopedN("Write Sky GUID");

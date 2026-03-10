@@ -6,10 +6,6 @@
 #include <rbc_graphics/texture/tex_stream_manager.h>
 #include <rbc_world/type_register.h>
 #include <rbc_world/resource_importer.h>
-#include <rbc_world/importers/texture_importer_stb.h>
-#include <stb/stb_image.h>
-#include <tinytiffreader.h>
-#include <tinyexr.h>
 #include <rbc_world/importers/texture_loader.h>
 #include <luisa/core/binary_io.h>
 #include <rbc_world/resources/texture.h>

@@ -23,7 +23,7 @@ private:
     ResourceAwait() = default;
     ResourceAwait(RCWeak<Resource> &&res_ptr) : res_ptr(std::move(res_ptr)) {}
 };
-struct Resource : BaseObject {
+struct RBC_RUNTIME_API Resource : BaseObject {
     friend struct ResourceLoader;
     friend struct IResourceImporter;
     template<typename Derive>
@@ -32,32 +32,32 @@ private:
     std::atomic<EResourceLoadingStatus> _status{EResourceLoadingStatus::Unloaded};
     luisa::spin_mutex _save_mtx;
 protected:
-    RBC_RUNTIME_API Resource();
-    RBC_RUNTIME_API ~Resource();
+    Resource();
+    ~Resource();
     virtual rbc::coroutine _async_load() = 0;
     virtual bool _install() { return true; }
 
 public:
-    [[nodiscard]] RBC_RUNTIME_API luisa::filesystem::path path() const;
+    [[nodiscard]] luisa::filesystem::path path() const;
 
     ///////// Function call must be atomic
     EResourceLoadingStatus loading_status() const { return _status.load(std::memory_order_relaxed); }
     bool loaded() const { return loading_status() >= EResourceLoadingStatus::Loaded; }
     bool installed() const { return loading_status() >= EResourceLoadingStatus::Installed; }
-    RBC_RUNTIME_API EResourceLoadingStatus unsafe_set_loading_status_min(EResourceLoadingStatus dst_status);
-    RBC_RUNTIME_API EResourceLoadingStatus unsafe_set_loading_status_max(EResourceLoadingStatus dst_status);
+    EResourceLoadingStatus unsafe_set_loading_status_min(EResourceLoadingStatus dst_status);
+    EResourceLoadingStatus unsafe_set_loading_status_max(EResourceLoadingStatus dst_status);
     void unsafe_set_loaded();
     void unsafe_set_installed();
-    RBC_RUNTIME_API bool install();
+    bool install();
     // await until the loading logic finished in both host-side and device-side
-    RBC_RUNTIME_API void load();
-    RBC_RUNTIME_API ResourceAwait await_loading();
-    RBC_RUNTIME_API void wait_loading();
+    void load();
+    ResourceAwait await_loading();
+    void wait_loading();
     // save host_data to Resource::_path
-    RBC_RUNTIME_API bool save_to_path();
-    // RBC_RUNTIME_API virtual void (ObjDeSerialize const&obj);
-    RBC_RUNTIME_API static luisa::filesystem::path const &meta_root_path();
-    RBC_RUNTIME_API static luisa::filesystem::path const &binary_root_path();
+    bool save_to_path();
+    // virtual void (ObjDeSerialize const&obj);
+    static luisa::filesystem::path const &meta_root_path();
+    static luisa::filesystem::path const &binary_root_path();
 protected:
     virtual bool unsafe_save_to_path() const = 0;
 };

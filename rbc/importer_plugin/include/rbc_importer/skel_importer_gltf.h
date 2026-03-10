@@ -1,0 +1,12 @@
+#pragma once
+
+#include "rbc_world/resources/skeleton.h"
+
+namespace rbc {
+
+struct GltfSkeletonImporter final : world::ISkeletonImporter {
+    [[nodiscard]] luisa::string_view extension() const override { return ".gltf"; }
+    [[nodiscard]] bool import(world::Resource *resource, luisa::filesystem::path const &path) override;
+};
+
+}// namespace rbc

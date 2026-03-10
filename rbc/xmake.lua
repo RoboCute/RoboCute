@@ -12,6 +12,7 @@ if has_config('rbc_oidn') then
     includes('oidn_plugin')
 end
 includes('project_plugin')
+includes('importer_plugin')
 
 includes("extensions") -- python extension
 

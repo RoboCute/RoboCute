@@ -49,7 +49,7 @@ RBC_RTTI(rbc::world::SkinResource)
 
 namespace rbc::world {
 
-struct ISkinImporter : world::IResourceImporter {
+struct RBC_RUNTIME_API ISkinImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<SkinResource>().md5(); }
 protected:
     static luisa::string &name_ref(SkinResource *resource);

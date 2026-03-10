@@ -15,8 +15,6 @@
 #include <rbc_world/components/data_component.h>
 #include <rbc_graphics/graphics_utils.h>
 #include <luisa/core/binary_file_stream.h>
-#include <rbc_world/importers/texture_importer_exr.h>
-#include <rbc_world/importers/texture_importer_stb.h>
 #include <rbc_core/runtime_static.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <rbc_plugin/plugin_manager.h>

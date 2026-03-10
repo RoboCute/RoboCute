@@ -3,6 +3,8 @@
 #include <luisa/core/fiber.h>
 #include <luisa/runtime/event.h>
 #include <luisa/vstl/lockfree_array_queue.h>
+#include <rbc_core/rc.h>
+#include <luisa/vstl/functional.h>
 namespace rbc {
 namespace world {
 struct TextureResource;

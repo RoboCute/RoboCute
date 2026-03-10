@@ -32,8 +32,6 @@
 #include <rbc_world/resources/material.h>
 #include <rbc_graphics/mesh_builder.h>
 #include <rbc_world/importers/texture_loader.h>
-#include <rbc_world/importers/texture_importer_stb.h>
-#include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_display/transparent_window.h>
 #include <rbc_plugin/plugin_manager.h>
 

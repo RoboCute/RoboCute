@@ -5,6 +5,8 @@ local function rbc_runtime_interface()
     add_deps('lc-runtime', 'rbc_core')
     add_deps('tinygltf', {public = true})  -- needed for gltf.h public header
     add_interface_depend('rbc_render_plugin')
+    -- We can do this
+    -- add_interface_depend('rbc_importer_plugin')
 end
 
 local function rbc_runtime_impl()
@@ -18,7 +20,6 @@ local function rbc_runtime_impl()
         inherit = false,
         links = false
     })
-    add_deps('tinyexr', 'tiny_obj_loader', 'stb-image', 'open_fbx', 'tinytiff', "tinygltf", "tinyxml2") -- thirdparty
     -- third-party usage
     add_deps("ozz_animation_runtime_static", "ozz_animation_offline_static")
 

@@ -1,0 +1,16 @@
+#pragma once
+#include <rbc_world/resource_importer.h>
+
+namespace rbc::world {
+
+/**
+ * @brief OBJ file importer for MeshResource
+ */
+struct ObjMeshImporter final : IMeshImporter {
+    luisa::string_view extension() const override { return ".obj"; }
+    
+    bool import(Resource *resource_base, luisa::filesystem::path const &path) override;
+};
+
+}// namespace rbc::world
+

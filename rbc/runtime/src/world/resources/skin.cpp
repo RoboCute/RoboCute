@@ -64,3 +64,29 @@ RC<world::MeshResource> &ISkinImporter::ref_mesh_ref(SkinResource *resource) {
 }
 
 }// namespace rbc
+
+
+namespace rbc::world {
+
+void SkinResource::generate_LUT() {
+    if (!ref_skel || !ref_mesh) {
+        LUISA_ERROR("Skeleton or mesh not set");
+        return;
+    }
+
+    joint_remaps_LUT.resize(joint_remaps.size());
+    auto *skel = ref_skel.get();
+    auto *mesh = ref_mesh.get();
+    for (size_t i = 0; i < joint_remaps.size(); i++) {
+        auto it = std::find(
+            skel->ref_skel().RawJointNames().begin(),
+            skel->ref_skel().RawJointNames().end(), joint_remaps[i]);
+        if (it == skel->ref_skel().RawJointNames().end()) {
+            LUISA_ERROR("Joint {} not found in skeleton", joint_remaps[i]);
+            return;
+        }
+        joint_remaps_LUT[i] = static_cast<BoneIndexType>(it - skel->ref_skel().RawJointNames().begin());
+    }
+}
+
+}// namespace rbc::world

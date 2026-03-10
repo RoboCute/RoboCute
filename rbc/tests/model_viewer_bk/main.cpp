@@ -26,7 +26,7 @@
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/importers/texture_loader.h>
-#include <rbc_world/util/gltf_scene_loader.h>
+#include <rbc_importer/gltf_scene_loader.h>
 #include <rbc_world/importers/texture_importer_exr.h>
 #include <rbc_world/resource_base.h>
 #include <rbc_world/base_object.h>
