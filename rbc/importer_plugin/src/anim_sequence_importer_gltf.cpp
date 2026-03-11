@@ -2,7 +2,7 @@
 #include "ozz/animation/offline/tools/import2ozz.h"
 #include "rbc_importer/gltf2ozz.h"
 #include "ozz/animation/offline/animation_builder.h"
-#include "rbc_core/memory.h"
+#include "ozz/base/memory/allocator.h"
 
 namespace rbc::world {
 
@@ -20,7 +20,7 @@ bool GltfAnimSequenceImporter::import(Resource *resource_base, luisa::filesystem
         LUISA_ERROR("Failed to load gltf {} for AnimSeq", path.string());
     }
 
-    auto *raw_anim = RBCNew<RawAnimationAsset>();
+    auto *raw_anim = ozz::New<RawAnimationAsset>();
 
     auto anim_names = importer.GetAnimationNames();
 
@@ -50,7 +50,7 @@ bool GltfAnimSequenceImporter::import(Resource *resource_base, luisa::filesystem
     seq_ref(resource) = std::move(*animation);
     skel_ref(resource) = ref_skel;
 
-    RBCDelete(raw_anim);
+    ozz::Delete(raw_anim);
 
     return true;
 }

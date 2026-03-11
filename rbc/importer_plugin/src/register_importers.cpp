@@ -13,6 +13,7 @@
 #include <rbc_importer/texture_importer_hdr.h>
 #include <rbc_importer/scene_importer.h>
 #include <rbc_importer/mat_importer.h>
+#include <rbc_importer/skel_importer_gltf.h>
 
 namespace rbc::world {
 
@@ -79,7 +80,9 @@ LUISA_EXPORT_API void register_builtin_importers() {
     static SceneImporter scene_importer;
     registry.register_importer(&scene_importer);
 
-    // Anim Resources
+    // Register skeleton importers
+    static GltfSkeletonImporter gltf_skeleton_importer;
+    registry.register_importer(&gltf_skeleton_importer);
 }
 
 }// namespace rbc::world

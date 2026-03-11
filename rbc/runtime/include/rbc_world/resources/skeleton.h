@@ -8,7 +8,6 @@
 namespace rbc::world {
 
 struct RBC_RUNTIME_API SkeletonResource : world::ResourceBaseImpl<SkeletonResource> {
-
     using BaseType = world::ResourceBaseImpl<SkeletonResource>;
     DECLARE_WORLD_OBJECT_FRIEND(SkeletonResource)
 
@@ -42,8 +41,6 @@ namespace rbc::world {
 struct RBC_RUNTIME_API ISkeletonImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<SkeletonResource>().md5(); }
 protected:
-
-    ReferenceSkeleton &ref_skel(SkeletonResource *resource) { return resource->skeleton; }
 };
 
 }// namespace rbc::world

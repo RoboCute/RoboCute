@@ -3,6 +3,7 @@
 includes('test_graphics')
 includes('test_project')
 includes('test_model')
+includes('test_skeleton')
 if is_host('windows') then
     includes('test_transparent_window')
 end

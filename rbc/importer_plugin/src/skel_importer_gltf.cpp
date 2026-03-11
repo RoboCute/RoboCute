@@ -1,12 +1,13 @@
-#include "rbc_core/memory.h"
 #include "rbc_importer/skel_importer_gltf.h"
 #include "rbc_importer/gltf2ozz.h"
 #include "ozz/animation/offline/tools/import2ozz.h"
 #include "ozz/animation/offline/skeleton_builder.h"
+#include "ozz/base/memory/allocator.h"
 #include "rbc_anim/types.h"
 #include <tracy_wrapper.h>
 
 namespace rbc {
+
 bool GltfSkeletonImporter::import(world::Resource *resource_base, luisa::filesystem::path const &path) {
     auto resource = static_cast<world::SkeletonResource *>(resource_base);
     GltfOzzImporter impl;
@@ -19,7 +20,7 @@ bool GltfSkeletonImporter::import(world::Resource *resource_base, luisa::filesys
         resource = nullptr;
         return false;
     }
-    auto raw_skel = RBCNew<RawSkeletonAsset>();
+    auto raw_skel = ozz::New<RawSkeletonAsset>();
 
     importer.Import(raw_skel, types);
 
@@ -32,10 +33,10 @@ bool GltfSkeletonImporter::import(world::Resource *resource_base, luisa::filesys
         if (!skeleton) {
             LUISA_ERROR("Failed to build skeleton resource");
         }
-        ref_skel(resource) = std::move(*skeleton);
+        resource->ref_skel() = std::move(*skeleton);
     }
 
-    RBCDelete(raw_skel);
+    ozz::Delete(raw_skel);
     return true;
 }
 

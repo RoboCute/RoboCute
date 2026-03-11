@@ -6,12 +6,9 @@
 namespace rbc::world {
 
 void SkeletonResource::serialize_meta(world::ObjSerialize const &ser) const {
-    ser.ar.value(skeleton, "skeleton");
 }
 
 void SkeletonResource::deserialize_meta(world::ObjDeSerialize const &ser) {
-
-    ser.ar.value(skeleton, "skeleton");
 }
 
 rbc::coroutine SkeletonResource::_async_load() {

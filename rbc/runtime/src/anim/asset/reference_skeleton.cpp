@@ -4,7 +4,8 @@
 
 namespace rbc {
 ReferenceSkeleton::ReferenceSkeleton() = default;
-ReferenceSkeleton::~ReferenceSkeleton() {}
+ReferenceSkeleton::~ReferenceSkeleton() {
+}
 ReferenceSkeleton::ReferenceSkeleton(ReferenceSkeleton &&Other) noexcept {
     skeleton = std::move(Other.skeleton);
 }
