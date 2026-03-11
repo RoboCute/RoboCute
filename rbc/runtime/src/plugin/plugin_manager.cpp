@@ -1,7 +1,7 @@
 #pragma once
 #include <luisa/core/shared_function.h>
 #include <rbc_plugin/plugin_manager.h>
-#include <rbc_core/version.h>
+#include <rbc_core/generated/version.h>
 namespace rbc {
 namespace plugin_mng_detail {
 PluginManager *inst_{};

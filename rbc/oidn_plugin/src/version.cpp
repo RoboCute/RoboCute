@@ -1,4 +1,4 @@
-#include <rbc_core/version.h>
+#include <rbc_core/generated/version.h>
 #include <cstdint>
 #include <luisa/core/dll_export.h>
 
