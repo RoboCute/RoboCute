@@ -26,6 +26,8 @@ from scripts.prepare import (
 )
 from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug, run_git_command
 
+from rbc_meta.utils.codegen_util import _write_string_to
+
 PROJECT_ROOT = get_project_root()
 
 
@@ -387,8 +389,7 @@ def _generate_cxx_version_header(version: str, output_path: Path) -> None:
 #define RBC_VERSION_STRING "{version}"
 """
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(content)
+    _write_string_to(content, output_path)
     print_success(f"Generated C++ version header: {output_path}")
 
 
