@@ -18,7 +18,7 @@ public:
                 memcpy(bytes, data, size);
         }
     }
-    ~SimpleBlob() noexcept {
+    ~SimpleBlob() noexcept override {
         if (bytes) {
             rbc_free_alignedN(bytes, alignment, kSimpleBlobName);
         }
