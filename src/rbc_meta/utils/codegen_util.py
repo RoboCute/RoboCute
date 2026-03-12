@@ -22,14 +22,14 @@ from rbc_meta.utils.builtin import (
 # Write Result String To
 def _write_string_to(s: str, path: Path):
     data = s.encode("utf-8")
-    new_md5 = hashlib.md5(data).hexdigest()
+    # new_md5 = hashlib.md5(data).hexdigest()
     print(f"Writing to {path}")
     if os.path.exists(path):
         with open(path, "rb") as f:
             old_data = f.read()
-            old_md5 = hashlib.md5(old_data).hexdigest()
+            # old_md5 = hashlib.md5(old_data).hexdigest()
 
-        if new_md5 == old_md5:
+        if old_data == data:
             return False
 
     Path(path).parent.mkdir(parents=True, exist_ok=True)
