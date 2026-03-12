@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+
+# Add parent directory to path for samples module imports
+script_dir = Path(__file__).parent.parent
+if str(script_dir.parent) not in sys.path:
+    sys.path.insert(0, str(script_dir.parent))
+
 from robocute.rbc_ext.luisa import (
     float2,
     float3,

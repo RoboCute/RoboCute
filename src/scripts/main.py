@@ -250,13 +250,17 @@ def run_package_download():
         f.result()  # Raise exceptions if any
 
 
-def _run_prepare():
+def _run_prepare(auto_yes: bool = False):
     # ------------------------------ git ------------------------------
-    print_warning("Git-clone and git-pull? (y/n)")
-    try:
-        clone_lc = input().strip()
-    except EOFError:
-        clone_lc = "n"
+    if auto_yes:
+        clone_lc = "y"
+        print_warning("Git-clone and git-pull? (y/n) [auto-yes]")
+    else:
+        print_warning("Git-clone and git-pull? (y/n)")
+        try:
+            clone_lc = input().strip()
+        except EOFError:
+            clone_lc = "n"
 
     if clone_lc.lower() == "y":
         run_git_tasks()
@@ -265,11 +269,16 @@ def _run_prepare():
     if is_empty_folder(lc_path):
         print_error("LuisaCompute not installed.")
         sys.exit(1)
-    print_warning("Download package? (y/n)")
-    try:
-        download_package = input().strip()
-    except EOFError:
-        download_package = "n"
+
+    if auto_yes:
+        download_package = "y"
+        print_warning("Download package? (y/n) [auto-yes]")
+    else:
+        print_warning("Download package? (y/n)")
+        try:
+            download_package = input().strip()
+        except EOFError:
+            download_package = "n"
 
     if download_package.lower() == "y":
         run_package_download()
@@ -277,11 +286,15 @@ def _run_prepare():
     # ------------------------------ llvm/options ------------------------------
     # We skip the builddir variable as it's dead code in the Lua source provided.
 
-    print_warning("Write options? (y/n)")
-    try:
-        write_opt = input().strip()
-    except EOFError:
-        write_opt = "n"
+    if auto_yes:
+        write_opt = "y"
+        print_warning("Write options? (y/n) [auto-yes]")
+    else:
+        print_warning("Write options? (y/n)")
+        try:
+            write_opt = input().strip()
+        except EOFError:
+            write_opt = "n"
 
     if write_opt.lower() == "y":
         # Find python path
@@ -339,16 +352,30 @@ def _run_prepare():
     # ------------------------------ Clean Up ------------------------------
     # Cleanup previous generated code to prevent disturbation
     # iterate all "generated" directories in the rbc/
-    print_warning("clean up previous generated code? (y/n)")
-    try:
-        clean_up = input().strip()
-    except EOFError:
-        clean_up = "n"
+    if auto_yes:
+        clean_up = "y"
+        print_warning("clean up previous generated code? (y/n) [auto-yes]")
+    else:
+        print_warning("clean up previous generated code? (y/n)")
+        try:
+            clean_up = input().strip()
+        except EOFError:
+            clean_up = "n"
     if clean_up.lower() == "y":
         clean_up_generated_code()
+
+
 def prepare():
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Prepare RoboCute development environment')
+    parser.add_argument('-y', '--yes', action='store_true',
+                        help='Automatically answer yes to all prompts')
+
+    args = parser.parse_args()
+
     try:
-        _run_prepare()
+        _run_prepare(auto_yes=args.yes)
     except KeyboardInterrupt as e:
         print_warning('quit.')
     except EOFError as e:

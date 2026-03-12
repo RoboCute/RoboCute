@@ -32,6 +32,7 @@ Python在robocute中扮演双重角色：首先robocute最终会形成一个pyth
 ### RBC环境启动
 
 1. `uv run prepare`: 安装环境 下载cpp依赖的第三方库
+   - 使用 `-y` 参数可自动对所有提示回答 yes: `uv run prepare -y`
 2. `uv run gen`: 从`src/rbc_meta`中生成接口代码，代码生成可以保证很多需要重复定义的对象只需要一次代码编写，没有代码生成无法顺利编译cpp
 
 ### C++安装

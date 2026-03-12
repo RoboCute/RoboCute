@@ -6,6 +6,11 @@ Robocute采用python-first的工作流，只在高性能，底层硬件封装和
 
 RBC的C++开发流程需要很多的开源库源码，SDK和工具链，这些二进制工具会在`uv run prepare`的过程中下载到指定的地方，请保证网络通畅。
 
+使用 `-y` 参数可自动对所有提示回答 yes，无需手动确认：
+```bash
+uv run prepare -y
+```
+
 ### Codegen流程
 
 因为Robocute采用大量的python-cpp胶水代码绑定，还有便于网络传输与硬盘加载的序列化-反序列化代码，这些大量的模板代码需要使用codegen进行生成，`uv run gen`的过程会生成所有需要的序列化代码，请务必在这些代码生成之后再进行cpp的编译和开发。

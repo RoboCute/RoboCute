@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from pathlib import Path
 import numpy as np
@@ -6,6 +7,11 @@ import math
 import argparse
 from typing import Optional
 from PIL import Image
+
+# Add parent directory to path for samples module imports
+script_dir = Path(__file__).parent
+if str(script_dir.parent) not in sys.path:
+    sys.path.insert(0, str(script_dir.parent))
 
 import robocute as rbc
 import robocute.rbc_ext.luisa as lc
