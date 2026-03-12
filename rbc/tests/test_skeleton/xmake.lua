@@ -3,7 +3,7 @@ target("test_skeleton")
         project_kind = 'binary'
     })
     set_group("02.tests")
-    add_interface_depend('rbc_importer_plugin')
+    add_deps('rbc_importer_plugin')
     add_deps('rbc_runtime', 'stb-image', 'argparse')
     add_files("*.cpp")
 target_end()

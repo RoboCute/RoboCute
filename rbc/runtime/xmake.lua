@@ -11,7 +11,8 @@ end
 
 local function rbc_runtime_impl()
     add_rules('lc_basic_settings', {
-        project_kind = 'shared'
+        project_kind = 'shared',
+        enable_exception = true
     })
     rbc_unity_build(8)
     add_files('src/**.cpp')
@@ -21,7 +22,7 @@ local function rbc_runtime_impl()
         links = false
     })
     -- third-party usage
-    add_deps("ozz_animation_runtime_static", "ozz_animation_offline_static")
+    add_deps("ozz_animation_base")
 
     -- add_interface_deps('rbc_render_plugin')
     add_deps('lc-volk')
