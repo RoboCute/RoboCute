@@ -18,6 +18,8 @@ struct RBC_RUNTIME_API AnimGraphResource : world::ResourceBaseImpl<AnimGraphReso
 
     AnimGraph graph;
 
+    mutable rbc::shared_atomic_mutex _async_mtx;
+
 protected:
     bool unsafe_save_to_path() const override;
 };

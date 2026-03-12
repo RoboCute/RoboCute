@@ -34,6 +34,8 @@ struct RBC_RUNTIME_API SkelMeshResource : world::ResourceBaseImpl<SkelMeshResour
     RC<SkeletonResource> ref_skeleton;
     RC<AnimGraphResource> ref_anim_graph;
 
+    mutable rbc::shared_atomic_mutex _async_mtx;
+
 protected:
     bool unsafe_save_to_path() const override;
 };

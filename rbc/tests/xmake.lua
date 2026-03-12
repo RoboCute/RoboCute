@@ -16,8 +16,7 @@ end
 -- includes("test_sql")
 -- end
 
--- includes("sample_anim")
-includes("model_viewer")
+includes("sample_anim")
 
 function add_test(name, deps)
     deps = deps or {}

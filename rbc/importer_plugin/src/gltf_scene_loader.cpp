@@ -52,7 +52,7 @@ GltfSceneData GltfSceneLoader::load_from_model(
     result.config = config;
 
     // Load mesh using GltfMeshImporter
-    {
+    if (config.load_mesh) {
         result.mesh = RC<MeshResource>(create_object<MeshResource>());
         GltfMeshImporter importer;
         if (!importer.import(result.mesh.get(), path)) {
@@ -69,20 +69,19 @@ GltfSceneData GltfSceneLoader::load_from_model(
             LUISA_ERROR("Failed to import skeleton from GLTF file");
             return result;
         }
-        result.skel->unsafe_set_loaded();
 
         // Load skin (depends on skeleton and mesh)
-        if (config.load_skin) {
+        if (config.load_skin && result.mesh) {
             result.skin = RC<SkinResource>(create_object<SkinResource>());
             GltfSkinImporter importer;
             if (!importer.import(result.skin.get(), path)) {
                 LUISA_ERROR("Failed to import skin from GLTF file");
                 return result;
             }
+            // Set up resource dependencies
             result.skin->ref_skel = result.skel;
             result.skin->ref_mesh = result.mesh;
             result.skin->generate_LUT();
-            result.skin->unsafe_set_loaded();
         }
 
         // Load animation (depends on skeleton)
@@ -99,7 +98,7 @@ GltfSceneData GltfSceneLoader::load_from_model(
     }
 
     // Load Texture and Materials
-    {
+    if (config.load_materials) {
         TextureLoader tex_loader;
         auto &registry = ResourceImporterRegistry::instance();
 
@@ -215,14 +214,14 @@ GltfSceneData GltfSceneLoader::load_from_model(
     }
 
     // If no materials were loaded, create a default material
-    if (result.materials.empty()) {
+    if (result.materials.empty() && config.load_materials) {
         auto default_mat = RC<MaterialResource>(create_object<MaterialResource>());
         default_mat->load_from_json(R"({"type": "pbr", "base_albedo": [0.8, 0.8, 0.8]})");
         result.materials.push_back(std::move(default_mat));
     }
 
-    {
-        // Create a Simple Animation Graph
+    // Create Animation Graph (depends on animation sequence)
+    if (config.load_anim_seq && result.anim) {
         result.anim_graph = create_object<AnimGraphResource>();
         // nodes[0] is the root node of this AnimGraph
         auto root = RC<rbc::AnimNode_Root>::New();
@@ -231,15 +230,14 @@ GltfSceneData GltfSceneLoader::load_from_model(
         seq_player_node->anim_seq_resource = result.anim;
         result.anim_graph->graph.nodes.emplace_back(seq_player_node);
         root->result.LinkedNodeID = 1;// Linked Node Index
-        result.anim_graph->unsafe_set_loaded();
     }
 
-    {
+    // Create SkelMeshResource (depends on skin, skeleton, anim_graph)
+    if (config.load_skeleton && result.skel) {
         result.skelmesh = create_object<SkelMeshResource>();
         result.skelmesh->ref_skin = result.skin;
         result.skelmesh->ref_skeleton = result.skel;
         result.skelmesh->ref_anim_graph = result.anim_graph;
-        result.skelmesh->unsafe_set_loaded();
     }
 
     return result;

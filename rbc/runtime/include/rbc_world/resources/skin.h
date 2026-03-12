@@ -30,6 +30,8 @@ struct RBC_RUNTIME_API SkinResource : world::ResourceBaseImpl<SkinResource> {
     luisa::span<const AnimFloat4x4> InverseBindPoses() const { return {inverse_bind_poses}; }
     luisa::span<const BoneIndexType> JointRemapsLUT() const { return {joint_remaps_LUT}; }
 
+    mutable rbc::shared_atomic_mutex _async_mtx;
+
 protected:
     bool unsafe_save_to_path() const override;
 

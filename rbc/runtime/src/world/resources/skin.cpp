@@ -1,27 +1,94 @@
 #include "rbc_world/resources/skin.h"
 #include "rbc_world/type_register.h"
+#include <rbc_core/binary_file_writer.h>
+#include <luisa/core/binary_file_stream.h>
 
 namespace rbc::world {
 
 SkinResource::SkinResource() = default;
-SkinResource::~SkinResource() {}
+SkinResource::~SkinResource() = default;
 
 void SkinResource::serialize_meta(world::ObjSerialize const &ser) const {
+    std::shared_lock lck{_async_mtx};
+    // Serialize resource dependencies
+    if (ref_skel) {
+        ser.ar.value(ref_skel->guid(), "ref_skel");
+    }
+    if (ref_mesh) {
+        ser.ar.value(ref_mesh->guid(), "ref_mesh");
+    }
+    ser.ar.value(name, "name");
 }
 
 void SkinResource::deserialize_meta(world::ObjDeSerialize const &ser) {
+    std::shared_lock lck{_async_mtx};
+    // Deserialize resource dependencies
+    vstd::Guid ref_skel_guid;
+    if (ser.ar.value(ref_skel_guid, "ref_skel")) {
+        auto res = get_resource(ref_skel_guid, true);
+        if (res && res->is_type_of(TypeInfo::get<SkeletonResource>())) {
+            ref_skel = res;
+        } else {
+            ref_skel = nullptr;
+        }
+    }
+    
+    vstd::Guid ref_mesh_guid;
+    if (ser.ar.value(ref_mesh_guid, "ref_mesh")) {
+        auto res = get_resource(ref_mesh_guid, true);
+        if (res && res->is_type_of(TypeInfo::get<MeshResource>())) {
+            ref_mesh = res;
+        } else {
+            ref_mesh = nullptr;
+        }
+    }
+    ser.ar.value(name, "name");
 }
 
 rbc::coroutine SkinResource::_async_load() {
+    // Wait for dependencies to load
+    if (ref_skel) {
+        co_await ref_skel->await_loading();
+    }
+    if (ref_mesh) {
+        co_await ref_mesh->await_loading();
+    }
+
+    std::shared_lock lck{_async_mtx};
+    auto path = this->path();
+    if (path.empty()) { co_return; }
+    
+    luisa::BinaryFileStream file_stream(luisa::to_string(path));
+    if (!file_stream.valid()) { co_return; }
+
+    luisa::BinaryBlob blob = file_stream.read(file_stream.length());
+    BinDeSerializer deser{blob};
+    deser._load(joint_remaps, "joint_remaps");
+    deser._load(inverse_bind_poses, "inverse_bind_poses");
+    deser._load(joint_remaps_LUT, "joint_remaps_LUT");
+
     co_return;
 }
 
 bool SkinResource::unsafe_save_to_path() const {
-    return {};//TODO
+    std::shared_lock lck{_async_mtx};
+    BinSerializer ser;
+    ser._store(joint_remaps, "joint_remaps");
+    ser._store(inverse_bind_poses, "inverse_bind_poses");
+    ser._store(joint_remaps_LUT, "joint_remaps_LUT");
+
+    auto path = this->path();
+    BinaryFileWriter writer{luisa::to_string(path)};
+    if (!writer._file) [[unlikely]] {
+        return false;
+    }
+    LUISA_INFO("Skin Writing to {}", path.string());
+    auto bytes = ser.write_to();
+    writer.write(bytes);
+    return true;
 }
 
 void SkinResource::log_brief() {
-    // SKR_LOG_FMT_INFO(u8"Skin has {} inverse bind poses and {} joint_remaps", inverse_bind_poses.size(), joint_remaps.size());
     LUISA_INFO("Skin has {} inverse bind poses and {} joint_remaps", inverse_bind_poses.size(), joint_remaps.size());
     auto log_brief = [](const AnimFloat4x4 &m) {
         std::array<std::array<float, 4>, 4> mat;

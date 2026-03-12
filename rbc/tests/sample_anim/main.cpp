@@ -17,6 +17,7 @@
 #include <rbc_graphics/materials.h>
 #include <rbc_app/camera_controller.h>
 #include <rbc_core/runtime_static.h>
+#include <rbc_core/type_info.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <tracy_wrapper.h>
 #include <rbc_core/state_map.h>
@@ -24,26 +25,543 @@
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/resources/texture.h>
 #include <rbc_world/resources/material.h>
+#include <rbc_world/resources/scene.h>
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/skelmesh_component.h>
 #include <rbc_world/importers/texture_loader.h>
-#include <rbc_importer/gltf_scene_loader.h>
-#include <rbc_world/importers/texture_importer_exr.h>
-#include <rbc_world/resource_base.h>
+#include <rbc_world/importers/register_importers.h>
+#include <rbc_world/resource_importer.h>
 #include <rbc_world/base_object.h>
 #include <rbc_world/resources/skeleton.h>
+#include <rbc_world/resources/skin.h>
+#include <rbc_world/resources/skelmesh.h>
+#include <rbc_world/resources/anim_graph.h>
+#include <rbc_world/resources/anim_sequence.h>
+#include <rbc_anim/graph/AnimNode_Root.h>
+#include <rbc_anim/graph/AnimNode_SequencePlayer.h>
 #include <luisa/core/logging.h>
+
+// TinyGLTF for loading materials and textures from glTF
+#define TINYGLTF_NO_INCLUDE_JSON
+#include <tiny_gltf.h>
 
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
 #include <material/mats.inl>
 
+// AnimScene - Manages animated character loading and playback
+struct AnimScene {
+    // Project configuration
+    luisa::filesystem::path project_root;
+    luisa::filesystem::path intermediate_dir;
+    
+    // Scene resources
+    RC<world::SceneResource> scene;
+    RC<world::Entity> entity;
+    RC<world::MeshResource> loaded_mesh;
+    RC<world::SkelMeshResource> skel_mesh;
+    RC<world::TextureResource> skybox;
+    luisa::vector<RC<world::MaterialResource>> loaded_materials;
+    luisa::vector<world::Entity *> _entities;
+    
+    // All loaded resources for lifecycle management
+    luisa::vector<RC<world::Resource>> all_resources;
+
+    AnimScene(
+        GraphicsUtils *utils,
+        luisa::filesystem::path const &in_project_root);
+
+    ~AnimScene();
+
+    void tick_animation(float delta_time);
+    void update_render(GraphicsUtils *utils);
+    void install_resources(GraphicsUtils *utils);
+
+private:
+    void _load_skybox(GraphicsUtils *utils);
+    void _load_scene(GraphicsUtils *utils);
+};
+
+AnimScene::AnimScene(
+    GraphicsUtils *utils,
+    luisa::filesystem::path const &in_project_root) 
+    : project_root(in_project_root) {
+    
+    auto &render_device = RenderDevice::instance();
+    auto runtime_dir = render_device.lc_ctx().runtime_directory();
+    
+    // Determine project root
+    if (project_root.empty()) {
+        // Try to find project root from executable location
+        auto check_dir = runtime_dir;
+        while (!check_dir.empty() && check_dir.has_parent_path()) {
+            auto project_file = check_dir / "rbc_project.json";
+            if (luisa::filesystem::exists(project_file)) {
+                project_root = check_dir;
+                break;
+            }
+            check_dir = check_dir.parent_path();
+        }
+        
+        // Fallback to default path if no project found
+        if (project_root.empty()) {
+            project_root = "d:/ws/repos/RoboCute-repo/rbc-project-anim";
+        }
+    }
+    
+    intermediate_dir = project_root / ".rbc";
+    
+    LUISA_INFO("Using project root: {}", luisa::to_string(project_root));
+    
+    // Initialize world with intermediate directory
+    world::init_world(intermediate_dir, intermediate_dir);
+    
+    // Load resources
+    _load_skybox(utils);
+    _load_scene(utils);
+}
+
+void AnimScene::_load_skybox(GraphicsUtils *utils) {
+    RBCZoneScopedN("AnimScene::_load_skybox");
+    
+    // Get texture importers from registry
+    auto &registry = world::ResourceImporterRegistry::instance();
+    auto exr_importer = registry.find_importer(
+        luisa::string_view{"sky.exr"}, 
+        TypeInfo::get<world::TextureResource>().md5()
+    );
+    
+    if (!exr_importer) {
+        LUISA_WARNING("No EXR importer found");
+        return;
+    }
+    
+    TextureLoader tex_loader;
+    
+    // Try multiple locations for skybox
+    luisa::vector<luisa::filesystem::path> skybox_paths = {
+        project_root / "assets" / "sky.exr",
+        project_root / "assets" / "test_scene" / "sky.exr",
+        RenderDevice::instance().lc_ctx().runtime_directory() / "sky.exr",
+        RenderDevice::instance().lc_ctx().runtime_directory() / "test_scene" / "sky.exr",
+    };
+    
+    for (const auto &path : skybox_paths) {
+        if (luisa::filesystem::exists(path)) {
+            skybox = world::create_object<world::TextureResource>();
+            auto tex_importer = static_cast<world::ITextureImporter*>(exr_importer);
+            if (tex_importer->import(RC<world::TextureResource>{skybox}, &tex_loader, path, 1, false)) {
+                tex_loader.finish_task();
+                skybox->install();
+                utils->update_texture(skybox->get_image());
+                RC<DeviceImage> image{skybox->get_image()};
+                utils->render_plugin()->update_skybox(image);
+                LUISA_INFO("Skybox loaded from: {}", luisa::to_string(path));
+                return;
+            }
+        }
+    }
+    
+    LUISA_WARNING("Skybox not found in any standard location");
+}
+
+void AnimScene::_load_scene(GraphicsUtils *utils) {
+    RBCZoneScopedN("AnimScene::_load_scene");
+    
+    // Try to find test_anim.gltf in project assets
+    luisa::vector<luisa::filesystem::path> scene_paths = {
+        project_root / "assets" / "anim_test" / "test_anim.gltf",
+        project_root / "assets" / "test_anim.gltf",
+    };
+    
+    luisa::filesystem::path gltf_path;
+    bool found = false;
+    
+    for (const auto &path : scene_paths) {
+        if (luisa::filesystem::exists(path)) {
+            gltf_path = path;
+            found = true;
+            break;
+        }
+    }
+    
+    // Fallback to direct path if project loading failed
+    if (!found) {
+        gltf_path = "d:/ws/data/assets/anim_test/test_anim.gltf";
+        if (!luisa::filesystem::exists(gltf_path)) {
+            LUISA_ERROR("Cannot find test_anim.gltf");
+            return;
+        }
+    }
+    
+    LUISA_INFO("Loading scene from: {}", luisa::to_string(gltf_path));
+    
+    // Register builtin importers (required for loading resources)
+    world::register_builtin_importers();
+    
+    auto &registry = world::ResourceImporterRegistry::instance();
+    auto gltf_dir = gltf_path.parent_path();
+    
+    // Load raw glTF model for materials and textures
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    std::string err;
+    std::string warn;
+    
+    // Set dummy image loader to skip embedded images
+    auto image_loader = [](tinygltf::Image*, const int, std::string*, std::string*, 
+                          int, int, const unsigned char*, int, void*) { return true; };
+    loader.SetImageLoader(image_loader, NULL);
+    
+    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, gltf_path.string());
+    if (!warn.empty()) {
+        LUISA_WARNING("GLTF warning: {}", warn);
+    }
+    if (!err.empty()) {
+        LUISA_WARNING("GLTF error: {}", err);
+    }
+    if (!ret) {
+        LUISA_ERROR("Failed to load GLTF file: {}", luisa::to_string(gltf_path));
+        return;
+    }
+    
+    // Step 1: Load mesh
+    LUISA_INFO("Loading mesh from GLTF...");
+    auto mesh_importer = registry.find_importer(luisa::string_view{".gltf"}, 
+                                                TypeInfo::get<world::MeshResource>().md5());
+    if (!mesh_importer) {
+        LUISA_ERROR("Failed to find mesh importer for GLTF");
+        return;
+    }
+    
+    loaded_mesh = world::create_object<world::MeshResource>();
+    if (!mesh_importer->import(loaded_mesh.get(), gltf_path)) {
+        LUISA_ERROR("Failed to import mesh from GLTF");
+        return;
+    }
+    all_resources.push_back(loaded_mesh.template cast_static<world::Resource>());
+    LUISA_INFO("Mesh loaded successfully");
+    
+    // Step 2: Load skeleton
+    LUISA_INFO("Loading skeleton from GLTF...");
+    auto skel_importer = registry.find_importer(luisa::string_view{".gltf"}, 
+                                                TypeInfo::get<world::SkeletonResource>().md5());
+    RC<world::SkeletonResource> skel;
+    if (skel_importer) {
+        skel = world::create_object<world::SkeletonResource>();
+        if (skel_importer->import(skel.get(), gltf_path)) {
+            all_resources.push_back(skel.template cast_static<world::Resource>());
+            LUISA_INFO("Skeleton loaded successfully");
+        } else {
+            LUISA_WARNING("Failed to import skeleton from GLTF");
+            skel.reset();
+        }
+    } else {
+        LUISA_WARNING("No skeleton importer found");
+    }
+    
+    // Step 3: Load skin (depends on skeleton and mesh)
+    RC<world::SkinResource> skin;
+    if (skel && loaded_mesh) {
+        LUISA_INFO("Loading skin from GLTF...");
+        auto skin_importer = registry.find_importer(luisa::string_view{".gltf"}, 
+                                                    TypeInfo::get<world::SkinResource>().md5());
+        if (skin_importer) {
+            skin = world::create_object<world::SkinResource>();
+            if (skin_importer->import(skin.get(), gltf_path)) {
+                skin->ref_skel = skel;
+                skin->ref_mesh = loaded_mesh;
+                skin->generate_LUT();
+                all_resources.push_back(skin.template cast_static<world::Resource>());
+                LUISA_INFO("Skin loaded successfully");
+            } else {
+                LUISA_WARNING("Failed to import skin from GLTF");
+                skin.reset();
+            }
+        } else {
+            LUISA_WARNING("No skin importer found");
+        }
+    }
+    
+    // Step 4: Load animation sequence (depends on skeleton)
+    RC<world::AnimSequenceResource> anim;
+    if (skel) {
+        LUISA_INFO("Loading animation sequence from GLTF...");
+        auto anim_importer = registry.find_importer(luisa::string_view{".gltf"}, 
+                                                    TypeInfo::get<world::AnimSequenceResource>().md5());
+        if (anim_importer) {
+            anim = world::create_object<world::AnimSequenceResource>();
+            anim->ref_skel = skel;
+            if (anim_importer->import(anim.get(), gltf_path)) {
+                all_resources.push_back(anim.template cast_static<world::Resource>());
+                LUISA_INFO("Animation sequence loaded successfully");
+            } else {
+                LUISA_WARNING("Failed to import animation sequence from GLTF");
+                anim.reset();
+            }
+        } else {
+            LUISA_WARNING("No animation sequence importer found");
+        }
+    }
+    
+    // Step 5: Load textures and materials from raw glTF model
+    LUISA_INFO("Loading textures and materials...");
+    TextureLoader tex_loader;
+    luisa::vector<RC<world::TextureResource>> loaded_textures;
+    
+    for (auto i = 0; i < model.images.size(); i++) {
+        auto &img = model.images[i];
+        
+        // Resolve texture path
+        luisa::filesystem::path tex_path;
+        if (!img.uri.empty()) {
+            // Check if it's a data URI (base64 encoded)
+            if (img.uri.find("data:") == 0) {
+                LUISA_WARNING("Base64 embedded images not yet supported, skipping texture");
+                continue;
+            }
+            // Relative or absolute path
+            if (luisa::filesystem::path(img.uri).is_absolute()) {
+                tex_path = img.uri;
+            } else {
+                tex_path = gltf_dir / img.uri;
+            }
+        } else {
+            LUISA_WARNING("Buffer-embedded images not yet supported, skipping texture");
+            continue;
+        }
+        
+        if (!luisa::filesystem::exists(tex_path)) {
+            LUISA_WARNING("Texture path is not valid: {}", luisa::to_string(tex_path));
+            continue;
+        }
+        
+        auto *tex_importer = registry.find_importer(tex_path, TypeInfo::get<world::TextureResource>().md5());
+        if (!tex_importer) {
+            LUISA_WARNING("No importer found for texture file: {}", luisa::to_string(tex_path));
+            continue;
+        }
+        
+        auto *texture_importer = static_cast<world::ITextureImporter *>(tex_importer);
+        auto tex = world::create_object<world::TextureResource>();
+        if (texture_importer->import(RC<world::TextureResource>{tex}, &tex_loader, tex_path, 4, false)) {
+            loaded_textures.push_back(RC<world::TextureResource>{tex});
+        }
+    }
+    tex_loader.finish_task();
+    
+    // Initialize textures
+    for (auto &tex : loaded_textures) {
+        if (tex) {
+            tex->install();
+            all_resources.push_back(tex.template cast_static<world::Resource>());
+        }
+    }
+    
+    // Create materials from glTF model
+    for (size_t mat_idx = 0; mat_idx < model.materials.size(); ++mat_idx) {
+        auto const &gltf_mat = model.materials[mat_idx];
+        auto const &pbr = gltf_mat.pbrMetallicRoughness;
+        
+        auto mat = world::create_object<world::MaterialResource>();
+        
+        // Build material JSON
+        luisa::string mat_json = R"({"type": "pbr")";
+        
+        // Add base color factor
+        if (!pbr.baseColorFactor.empty() && pbr.baseColorFactor.size() >= 3) {
+            mat_json += luisa::format(
+                R"(, "base_albedo": [{}, {}, {}])",
+                pbr.baseColorFactor[0],
+                pbr.baseColorFactor[1],
+                pbr.baseColorFactor[2]);
+        }
+        
+        // Add base color texture
+        if (pbr.baseColorTexture.index >= 0) {
+            auto const &tex_info = pbr.baseColorTexture;
+            if (tex_info.index >= 0 && tex_info.index < static_cast<int>(model.textures.size())) {
+                auto const &tex = model.textures[tex_info.index];
+                if (tex.source >= 0 && tex.source < static_cast<int>(model.images.size())) {
+                    if (tex.source < static_cast<int>(loaded_textures.size()) && loaded_textures[tex.source]) {
+                        auto tex_res = loaded_textures[tex.source];
+                        auto tex_guid = tex_res->guid();
+                        mat_json += luisa::format(
+                            R"(, "base_albedo_tex": "{}")",
+                            tex_guid.to_base64());
+                    }
+                }
+            }
+        }
+        
+        // Add metallic and roughness factors
+        if (!TINYGLTF_DOUBLE_EQUAL(pbr.metallicFactor, 1.0)) {
+            mat_json += luisa::format(R"(, "weight_metallic": {})", pbr.metallicFactor);
+        }
+        if (!TINYGLTF_DOUBLE_EQUAL(pbr.roughnessFactor, 1.0)) {
+            mat_json += luisa::format(R"(, "specular_roughness": {})", pbr.roughnessFactor);
+        }
+        
+        mat_json += "}";
+        
+        mat->load_from_json(mat_json);
+        auto mat_rc = RC<world::MaterialResource>{mat};
+        loaded_materials.push_back(mat_rc);
+        all_resources.push_back(mat_rc.template cast_static<world::Resource>());
+    }
+    
+    // If no materials were loaded, create a default material
+    if (loaded_materials.empty()) {
+        auto default_mat = world::create_object<world::MaterialResource>();
+        default_mat->load_from_json(R"({"type": "pbr", "base_albedo": [0.8, 0.8, 0.8]})");
+        auto default_mat_rc = RC<world::MaterialResource>{default_mat};
+        loaded_materials.push_back(default_mat_rc);
+        all_resources.push_back(default_mat_rc.template cast_static<world::Resource>());
+    }
+    
+    // Step 6: Create animation graph (depends on animation sequence)
+    RC<world::AnimGraphResource> anim_graph;
+    if (anim) {
+        anim_graph = world::create_object<world::AnimGraphResource>();
+        auto root = RC<rbc::AnimNode_Root>::New();
+        anim_graph->graph.nodes.emplace_back(root);
+        auto seq_player_node = RC<rbc::AnimNode_SequencePlayer>::New();
+        seq_player_node->anim_seq_resource = anim;
+        anim_graph->graph.nodes.emplace_back(seq_player_node);
+        root->result.LinkedNodeID = 1;
+        all_resources.push_back(anim_graph.template cast_static<world::Resource>());
+    }
+    
+    // Step 7: Create SkelMeshResource (depends on skin, skeleton, anim_graph)
+    if (skel && skin) {
+        skel_mesh = world::create_object<world::SkelMeshResource>();
+        skel_mesh->ref_skin = skin;
+        skel_mesh->ref_skeleton = skel;
+        skel_mesh->ref_anim_graph = anim_graph;
+        all_resources.push_back(skel_mesh.template cast_static<world::Resource>());
+        LUISA_INFO("SkelMeshResource created successfully");
+    }
+    
+    // Install all resources
+    install_resources(utils);
+    
+    // Create entity from loaded resources
+    if (skel_mesh) {
+        // Create entity with SkelMeshComponent
+        entity = world::create_object<world::Entity>();
+        
+        auto transform = entity->add_component<world::TransformComponent>();
+        transform->set_pos(double3(0, 0, 0), true);
+        transform->set_scale(double3(0.2, 0.2, 0.2), true);
+        
+        auto skelmesh_comp = entity->add_component<world::SkelMeshComponent>();
+        skelmesh_comp->SetRefSkelMesh(skel_mesh);
+        skelmesh_comp->bind_mats = loaded_materials;
+        
+        _entities.push_back(entity.get());
+        
+        LUISA_INFO("Created entity with SkelMeshComponent");
+    } else if (loaded_mesh) {
+        // Create entity with RenderComponent for static mesh
+        entity = world::create_object<world::Entity>();
+        
+        auto transform = entity->add_component<world::TransformComponent>();
+        transform->set_pos(double3(0, 0, 0), true);
+        transform->set_scale(double3(0.2, 0.2, 0.2), true);
+        
+        auto render = entity->add_component<world::RenderComponent>();
+        
+        // Ensure materials
+        if (loaded_materials.empty()) {
+            auto default_mat = RC<world::MaterialResource>(world::create_object<world::MaterialResource>());
+            default_mat->load_from_json(R"({"type": "pbr", "base_albedo": [0.8, 0.8, 0.8]})");
+            loaded_materials.push_back(default_mat);
+        }
+        
+        while (loaded_materials.size() < loaded_mesh->submesh_count()) {
+            loaded_materials.push_back(loaded_materials[0]);
+        }
+        
+        render->update_object(loaded_materials, loaded_mesh.get());
+        
+        _entities.push_back(entity.get());
+        
+        LUISA_INFO("Created entity with RenderComponent");
+    }
+}
+
+void AnimScene::install_resources(GraphicsUtils *utils) {
+    RBCZoneScopedN("AnimScene::install_resources");
+    
+    for (auto &res : all_resources) {
+        if (!res) continue;
+        
+        // Install based on resource type
+        if (auto mesh = res.cast_static<world::MeshResource>()) {
+            mesh->install();
+            utils->update_mesh_data(mesh->device_mesh(), false);
+        }
+        else if (auto tex = res.cast_static<world::TextureResource>()) {
+            tex->install();
+            utils->update_texture(tex->get_image());
+        }
+        else if (auto mat = res.cast_static<world::MaterialResource>()) {
+            mat->install();
+        }
+    }
+}
+
+void AnimScene::tick_animation(float delta_time) {
+    if (entity) {
+        auto skelmesh = entity->get_component<world::SkelMeshComponent>();
+        if (skelmesh) {
+            skelmesh->tick(delta_time);
+        }
+    }
+}
+
+void AnimScene::update_render(GraphicsUtils *utils) {
+    if (entity) {
+        auto skelmesh = entity->get_component<world::SkelMeshComponent>();
+        if (skelmesh && skelmesh->GetRuntimeMesh()) {
+            skelmesh->update_render();
+            utils->build_transforming_mesh(skelmesh->GetRuntimeMesh()->device_transforming_mesh());
+        }
+    }
+}
+
+AnimScene::~AnimScene() {
+    // Save all resources
+    for (auto &res : all_resources) {
+        if (res) {
+            res->save_to_path();
+        }
+    }
+    
+    skybox.reset();
+    loaded_materials.clear();
+    loaded_mesh.reset();
+    skel_mesh.reset();
+    all_resources.clear();
+    
+    for (auto &e : _entities) {
+        if (e) {
+            e->rbc_rc_delete();
+        }
+    }
+    entity.reset();
+    scene.reset();
+    
+    world::destroy_world();
+}
+
 int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;
+    
     luisa::fiber::scheduler scheduler;
     RuntimeStaticBase::init_all();
     PluginManager::init();
@@ -72,160 +590,16 @@ int main(int argc, char *argv[]) {
     Clock clk;
     double last_frame_time = 0;
 
-    // Initialize world resource loader
-    auto &render_device = RenderDevice::instance();
-    auto runtime_dir = render_device.lc_ctx().runtime_directory();
-    luisa::filesystem::path resource_dir = runtime_dir / "model_viewer_resources";
-    if (!luisa::filesystem::exists(resource_dir)) {
-        luisa::filesystem::create_directories(resource_dir);
-    }
-
-    // New init_world API with meta_path and binary_path
-    world::init_world(resource_dir, resource_dir);
-
-    // Load skybox
-    RC<world::TextureResource> skybox;
-    {
-        world::ExrTextureImporter importer;
-        RBCZoneScopedN("Load Skybox");
-        TextureLoader tex_loader;
-        // Try to load sky.exr from runtime directory or use a default path
-        luisa::filesystem::path sky_path = runtime_dir / "sky.exr";
-        if (!luisa::filesystem::exists(sky_path)) {
-            // Try test_scene directory
-            sky_path = runtime_dir / "test_scene" / "sky.exr";
-        }
-        if (luisa::filesystem::exists(sky_path)) {
-            skybox = world::create_object<world::TextureResource>();
-            importer.import(skybox, &tex_loader, sky_path, 1, false);
-
-            if (skybox) {
-                tex_loader.finish_task();
-                skybox->install();
-                utils->update_texture(skybox->get_image());
-                RC<DeviceImage> image{skybox->get_image()};
-                utils->render_plugin()->update_skybox(image);
-                LUISA_INFO("Skybox loaded from: {}", luisa::to_string(sky_path));
-            }
-        } else {
-            LUISA_WARNING("Skybox file not found at: {}, rendering without skybox", luisa::to_string(sky_path));
-        }
-    }
-
-    // Load GLTF model using runtime loader
-    // luisa::filesystem::path gltf_path = "d:/ws/data/assets/models/Cube/Cube.gltf";
-    luisa::filesystem::path gltf_path = "d:/ws/data/assets/anim_test/test_anim.gltf";
-    // luisa::filesystem::path gltf_path = "d:/ws/data/assets/models/sponza/scene.gltf";
+    // Parse command line arguments for project directory
+    // Usage: sample_anim <backend> [project_root]
+    luisa::filesystem::path project_root;
     if (argc >= 3) {
-        gltf_path = argv[2];
+        project_root = argv[2];
     }
-
-    RC<world::Entity> entity;
-    RC<world::MeshResource> loaded_mesh;
-    luisa::vector<RC<world::MaterialResource>> loaded_materials;
-
-    {
-        RBCZoneScopedN("Load GLTF Scene");
-        world::GltfLoadConfig config;
-        config.load_skeleton = true;
-        config.load_skin = true;
-        config.load_anim_seq = true;
-        auto scene_data = world::GltfSceneLoader::load_scene(gltf_path, config);
-
-        if (true) {
-            scene_data.skel->log_brief();
-            {
-                LUISA_INFO("====== Serde Skeleton");
-                auto *skel = scene_data.skel.get();
-                skel->save_to_path();
-                // Resource Serialize
-
-                BinSerializer writer;
-                writer._store(skel->ref_skel(), "skel");
-                auto bin_blob = writer.write_to();
-                LUISA_INFO("Serde Bin {} bytes", bin_blob.size());
-                BinDeSerializer reader{bin_blob};
-                // Use world::create_object to properly register the resource with the world system
-                ReferenceSkeleton new_skel;
-                reader._load(new_skel, "skel");
-
-                new_skel.log_brief();
-                LUISA_INFO("====== Serde Skeleton Done");
-            }
-
-            scene_data.skin->log_brief();
-            {
-                LUISA_INFO("====== Serde Skin");
-                auto *skin = scene_data.skin.get();
-                skin->save_to_path();
-                LUISA_INFO("====== Serde Skin Done");
-            }
-
-            LUISA_INFO("====== Anim Sequence");
-            scene_data.anim->log_brief();
-            {
-                LUISA_INFO("====== Serde Animation");
-                auto *anim = scene_data.anim.get();
-                anim->save_to_path();
-                LUISA_INFO("====== Serde Animation Done");
-            }
-
-            if (!scene_data.mesh || scene_data.mesh->empty()) {
-                LUISA_ERROR("Failed to load GLTF model from: {}", luisa::to_string(gltf_path));
-                return 1;
-            }
-        }
-
-        // Store resources for cleanup
-        loaded_mesh = scene_data.mesh;
-        loaded_materials = std::move(scene_data.materials);
-
-        // Initialize mesh device resource
-        loaded_mesh->install();
-        utils->update_mesh_data(loaded_mesh->device_mesh(), false);
-
-        // Initialize texture device resources
-        for (auto &tex : scene_data.textures) {
-            if (tex) {
-                utils->update_texture(tex->get_image());
-            }
-        }
-
-        // Ensure we have enough materials for all submeshes
-        size_t submesh_count = loaded_mesh->submesh_count();
-        while (loaded_materials.size() < submesh_count) {
-            // Use the first material or create a default one
-            if (!loaded_materials.empty()) {
-                loaded_materials.push_back(loaded_materials[0]);
-            } else {
-                auto default_mat = RC<world::MaterialResource>(world::create_object<world::MaterialResource>());
-                default_mat->load_from_json(R"({"type": "pbr", "base_albedo": [0.8, 0.8, 0.8]})");
-                loaded_materials.push_back(std::move(default_mat));
-            }
-        }
-
-        // Initialize materials
-        for (auto &mat : loaded_materials) {
-            if (mat) {
-                mat->install();
-            }
-        }
-
-        // Create entity with the loaded mesh
-        entity = world::create_object<world::Entity>();
-
-        auto transform = entity->add_component<world::TransformComponent>();
-        transform->set_pos(double3(0, 0, 0), true);
-        transform->set_scale(double3(0.2, 0.2, 0.2), true);
-
-        auto render = entity->add_component<world::RenderComponent>();
-
-        // render->start_update_object(loaded_materials, loaded_mesh.get());
-
-        auto skelmesh = entity->add_component<world::SkelMeshComponent>();
-        skelmesh->SetRefSkelMesh(scene_data.skelmesh);
-        skelmesh->bind_mats = loaded_materials;
-    }
+    
+    // Create the animation scene
+    vstd::optional<AnimScene> anim_scene;
+    anim_scene.create(utils.get(), project_root);
 
     // Camera setup
     auto &cam = utils->render_settings(pipe_ctx).read_mut<Camera>();
@@ -286,8 +660,6 @@ int main(int argc, char *argv[]) {
         window_size = size;
     });
 
-    // return 0;
-
     while (!window.should_close()) {
         RBCFrameMark;
 
@@ -321,20 +693,18 @@ int main(int argc, char *argv[]) {
                 last_frame_time = time;
             }
 
+            // Tick animation
             {
-                // AnimTick
-                entity->get_component<world::SkelMeshComponent>()->tick(delta_time);
+                RBCZoneScopedN("Tick Animation");
+                anim_scene->tick_animation(delta_time);
             }
 
-            if (true) {
-                // Anim Update Render
-                auto *skelmesh = entity->get_component<world::SkelMeshComponent>();
-                // perform on render thread in the future
-                // skelmesh->time += delta_time;
-                skelmesh->update_render();
-                // update BLAS
-                utils->build_transforming_mesh(skelmesh->GetRuntimeMesh()->device_transforming_mesh());
+            // Update render
+            {
+                RBCZoneScopedN("Update Render");
+                anim_scene->update_render(utils.get());
             }
+
             {
                 auto &frame_settings = render_settings.read_mut<FrameSettings>();
                 frame_settings.frame_index = frame_index;
@@ -342,23 +712,7 @@ int main(int argc, char *argv[]) {
             {
                 RBCZoneScopedN("Render Tick");
                 auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
-                utils->tick(
-                    tick_stage);
-            }
-
-            if (false) {
-                // direct change original render component
-                auto *render_comp = entity->get_component<world::RenderComponent>();
-                auto vert_count = render_comp->mesh_ref()->vertex_count();
-                auto *host_data = render_comp->mesh_ref()->host_data();
-                int32_t pos_offset = 0;
-                luisa::span<float3> pos_{(float3 *)host_data->data(), vert_count};
-
-                for (auto &pos : pos_) {
-                    pos.x += sin(delta_time);
-                }
-
-                utils->update_mesh_data(render_comp->mesh_ref()->device_mesh(), true);
+                utils->tick(tick_stage);
             }
 
             ++frame_index;
@@ -367,17 +721,7 @@ int main(int argc, char *argv[]) {
     }
 
     utils->dispose([&]() {
-        // remove ref-counted resources
-        loaded_materials.clear();
-        loaded_mesh.reset();
-        skybox.reset();
-
-        // Dispose entity first
-        if (entity) {
-            entity->rbc_rc_delete();
-        }
-        // Destroy world (this will check for leaks)
-        world::destroy_world();
+        anim_scene.destroy();
     });
 
     utils.reset();

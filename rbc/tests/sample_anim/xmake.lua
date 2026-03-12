@@ -4,6 +4,6 @@ add_rules('lc_basic_settings', {
 })
 set_group("03.samples")
 add_files('**.cpp')
-add_deps('rbc_runtime', 'lc-gui')
+add_deps('rbc_runtime', 'rbc_importer_plugin', 'lc-gui', 'stb-image')
 
 target_end()
