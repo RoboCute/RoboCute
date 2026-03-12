@@ -22,8 +22,13 @@ public:
     rbc::coroutine _async_load() override;
 
     const AnimSequence &ref_seq() const { return anim_sequence; }
+    AnimSequence &ref_seq() { return anim_sequence; }
     RC<SkeletonResource> ref_skel;
     void log_brief();
+
+    // Import config (stored in meta, set before importing)
+    luisa::string anim_name;// empty = auto-select first animation
+    float sampling_rate = 30.0f;
 
 protected:
     bool unsafe_save_to_path() const override;
@@ -45,8 +50,6 @@ struct RBC_RUNTIME_API IAnimSequenceImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<AnimSequenceResource>().md5(); }
 
 protected:
-    AnimSequence &seq_ref(AnimSequenceResource *resource) { return resource->anim_sequence; }
-    RC<SkeletonResource> skel_ref(AnimSequenceResource *resource) { return resource->ref_skel; }
 };
 
 }// namespace rbc::world

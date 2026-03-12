@@ -8,12 +8,16 @@ namespace rbc::world {
 
 bool GltfAnimSequenceImporter::import(Resource *resource_base, luisa::filesystem::path const &path) {
     auto resource = static_cast<AnimSequenceResource *>(resource_base);
-    LUISA_ASSERT(ref_skel.get());// RefSkeleton Should be valid
+
+    // Get skeleton from resource's ref_skel (must be set before import)
+    auto skel = resource->ref_skel;
+
+    LUISA_ASSERT(skel.get());// RefSkeleton Should be valid
     GltfOzzImporter impl;
     ozz::animation::offline::OzzImporter &importer = impl;
 
-    auto *skel = ref_skel.get();
-    if (!skel) {
+    auto *skel_ptr = skel.get();
+    if (!skel_ptr) {
         LUISA_ERROR("Import AnimSequence Should Depend on a Valid SkeletonResource");
     }
     if (!importer.Load(path.string().c_str())) {
@@ -30,15 +34,24 @@ bool GltfAnimSequenceImporter::import(Resource *resource_base, luisa::filesystem
     } else {
         LUISA_INFO("{} anims found in {}", anim_names.size(), path.string());
     }
-    if (chosen_anim_name.size() == 0) {
+
+    // Get animation name from resource's anim_name (set via meta or directly)
+    auto anim_name = resource->anim_name;
+    if (anim_name.empty()) {
         // no specific choose, load first
-        chosen_anim_name = anim_names[0].c_str();
+        anim_name = anim_names[0].c_str();
+    }
+
+    // Get sampling rate from resource's sampling_rate (set via meta or directly)
+    auto rate = resource->sampling_rate;
+    if (rate <= 0.0f) {
+        rate = 30.0f;// default sampling rate
     }
 
     importer.Import(
-        chosen_anim_name.c_str(),
-        skel->ref_skel().GetRawSkeleton(),
-        sampling_rate, raw_anim);
+        anim_name.c_str(),
+        skel_ptr->ref_skel().GetRawSkeleton(),
+        rate, raw_anim);
 
     // Cook
     ozz::animation::offline::AnimationBuilder builder;
@@ -47,8 +60,8 @@ bool GltfAnimSequenceImporter::import(Resource *resource_base, luisa::filesystem
         LUISA_ERROR("Failed to Cook Animation");
         return false;
     }
-    seq_ref(resource) = std::move(*animation);
-    skel_ref(resource) = ref_skel;
+    resource->ref_seq() = std::move(*animation);
+    resource->ref_skel = skel;
 
     ozz::Delete(raw_anim);
 

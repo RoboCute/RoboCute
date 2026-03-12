@@ -8,10 +8,6 @@ namespace rbc::world {
 struct GltfAnimSequenceImporter final : IAnimSequenceImporter {
     [[nodiscard]] luisa::string_view extension() const override { return ".gltf"; }
     [[nodiscard]] bool import(Resource *resource, luisa::filesystem::path const &path) override;
-    // dependencies
-    RC<SkeletonResource> ref_skel;
-    luisa::string chosen_anim_name;
-    float sampling_rate = 30.0f;
 };
 
 }// namespace rbc::world

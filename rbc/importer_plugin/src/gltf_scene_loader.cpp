@@ -88,8 +88,9 @@ GltfSceneData GltfSceneLoader::load_from_model(
         // Load animation (depends on skeleton)
         if (config.load_anim_seq) {
             result.anim = create_object<AnimSequenceResource>();
+            // Set skeleton dependency via resource's meta field
+            result.anim->ref_skel = result.skel;
             GltfAnimSequenceImporter importer;
-            importer.ref_skel = result.skel;
             if (!importer.import(result.anim.get(), path)) {
                 LUISA_ERROR("Failed to import animation sequence from GLTF file");
                 return result;

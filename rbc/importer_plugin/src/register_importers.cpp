@@ -14,6 +14,7 @@
 #include <rbc_importer/scene_importer.h>
 #include <rbc_importer/mat_importer.h>
 #include <rbc_importer/skel_importer_gltf.h>
+#include <rbc_importer/anim_sequence_importer_gltf.h>
 
 namespace rbc::world {
 
@@ -83,6 +84,10 @@ LUISA_EXPORT_API void register_builtin_importers() {
     // Register skeleton importers
     static GltfSkeletonImporter gltf_skeleton_importer;
     registry.register_importer(&gltf_skeleton_importer);
+
+    // Register anim sequence importers
+    static GltfAnimSequenceImporter gltf_anim_seq_importer;
+    registry.register_importer(&gltf_anim_seq_importer);
 }
 
 }// namespace rbc::world

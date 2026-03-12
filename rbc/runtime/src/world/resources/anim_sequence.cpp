@@ -10,19 +10,26 @@ AnimSequenceResource::~AnimSequenceResource() {}
 
 void AnimSequenceResource::serialize_meta(world::ObjSerialize const &ser) const {
     std::shared_lock lck{_async_mtx};
-    ser.ar.value(ref_skel->guid(), "ref_skel");
+    if (ref_skel) {
+        ser.ar.value(ref_skel->guid(), "ref_skel");
+    }
+    ser.ar.value(anim_name, "anim_name");
+    ser.ar.value(sampling_rate, "sampling_rate");
 }
 
 void AnimSequenceResource::deserialize_meta(world::ObjDeSerialize const &ser) {
     std::shared_lock lck{_async_mtx};
     vstd::Guid ref_skel_guid;
-    ser.ar.value(ref_skel_guid, "ref_skel");
-    auto res = get_resource(ref_skel_guid, true);
-    if (res && res->is_type_of(TypeInfo::get<SkeletonResource>())) {
-        ref_skel = res;
-    } else {
-        ref_skel = nullptr;
+    if (ser.ar.value(ref_skel_guid, "ref_skel")) {
+        auto res = get_resource(ref_skel_guid, true);
+        if (res && res->is_type_of(TypeInfo::get<SkeletonResource>())) {
+            ref_skel = res;
+        } else {
+            ref_skel = nullptr;
+        }
     }
+    ser.ar.value(anim_name, "anim_name");
+    ser.ar.value(sampling_rate, "sampling_rate");
 }
 
 rbc::coroutine AnimSequenceResource::_async_load() {
