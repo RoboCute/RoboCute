@@ -77,6 +77,8 @@ uv run gen
 ```bash
 # Configure (first time only)
 xmake f -m debug -c
+# commonly used platform
+xmake f -p windows -m debug --toolchain=clang-cl -c
 # Or release mode:
 xmake f -m release -c
 
@@ -222,7 +224,7 @@ xmake f -m debug -c
 uv sync
 
 # Update C++ dependencies (re-download thirdparty)
-uv run prepare
+uv run prepare -y
 ```
 
 ### Resource Management
@@ -304,7 +306,7 @@ docs/
 **Problem**: `xmake` fails with missing dependencies
 ```bash
 # Solution: Re-run prepare
-uv run prepare
+uv run prepare -y
 ```
 
 **Problem**: Code generation errors
@@ -397,7 +399,7 @@ xmake project -k compile_commands
 # Full clean build workflow
 xmake clean -a
 uv sync
-uv run prepare
+uv run prepare -y
 uv run gen
 xmake f -m release -c
 xmake
