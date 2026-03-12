@@ -9,7 +9,6 @@ namespace rbc::world {
 
 struct RBC_RUNTIME_API AnimSequenceResource : world::ResourceBaseImpl<AnimSequenceResource> {
 
-
 public:
     using BaseType = world::ResourceBaseImpl<AnimSequenceResource>;
     DECLARE_WORLD_OBJECT_FRIEND(AnimSequenceResource)
@@ -30,18 +29,13 @@ protected:
     bool unsafe_save_to_path() const override;
 
 private:
+    mutable rbc::shared_atomic_mutex _async_mtx;
     friend class IAnimSequenceImporter;
     friend class rbc::Serialize<AnimSequenceResource>;
     AnimSequence anim_sequence;
 };
 
 }// namespace rbc::world
-
-template<>
-struct RBC_RUNTIME_API rbc::Serialize<rbc::world::AnimSequenceResource> {
-    static bool write(rbc::ArchiveWrite &w, const rbc::world::AnimSequenceResource &v);
-    static bool read(rbc::ArchiveRead &r, rbc::world::AnimSequenceResource &v);
-};
 
 RBC_RTTI(rbc::world::AnimSequenceResource)
 
@@ -56,3 +50,9 @@ protected:
 };
 
 }// namespace rbc::world
+
+template<>
+struct RBC_RUNTIME_API rbc::Serialize<rbc::world::AnimSequenceResource> {
+    static bool write(rbc::ArchiveWrite &w, const rbc::world::AnimSequenceResource &v);
+    static bool read(rbc::ArchiveRead &r, rbc::world::AnimSequenceResource &v);
+};

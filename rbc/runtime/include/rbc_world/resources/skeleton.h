@@ -11,9 +11,6 @@ struct RBC_RUNTIME_API SkeletonResource : world::ResourceBaseImpl<SkeletonResour
     using BaseType = world::ResourceBaseImpl<SkeletonResource>;
     DECLARE_WORLD_OBJECT_FRIEND(SkeletonResource)
 
-    void serialize_meta(world::ObjSerialize const &ser) const override;
-    void deserialize_meta(world::ObjDeSerialize const &ser) override;
-
     rbc::coroutine _async_load() override;
     luisa::string_view value() const;
 
@@ -29,6 +26,7 @@ protected:
 
 private:
     friend class ISkeletonImporter;
+    friend class rbc::Serialize<rbc::world::SkeletonResource>;
 
     ReferenceSkeleton skeleton;
 };

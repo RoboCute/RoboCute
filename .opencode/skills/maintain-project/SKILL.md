@@ -55,6 +55,8 @@ RoboCute/
 
 ### Initial Setup
 
+**CRITICAL** always remember to prepare and codegen beforehead, otherwise the compilation will fail.
+
 ```bash
 # 1. Clone and enter the repository
 git clone <repo-url>

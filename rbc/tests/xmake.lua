@@ -4,6 +4,7 @@ includes('test_graphics')
 includes('test_project')
 includes('test_model')
 includes('test_skeleton')
+includes('test_anim_sequence')
 if is_host('windows') then
     includes('test_transparent_window')
 end

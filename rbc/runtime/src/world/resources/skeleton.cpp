@@ -5,12 +5,6 @@
 
 namespace rbc::world {
 
-void SkeletonResource::serialize_meta(world::ObjSerialize const &ser) const {
-}
-
-void SkeletonResource::deserialize_meta(world::ObjDeSerialize const &ser) {
-}
-
 rbc::coroutine SkeletonResource::_async_load() {
     std::shared_lock lck{_async_mtx};
     auto path = this->path();
