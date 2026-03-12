@@ -87,11 +87,12 @@ protected:
 };
 RBC_RUNTIME_API luisa::spin_mutex &get_resource_mutex(vstd::Guid const &guid);
 RBC_RUNTIME_API bool resource_exists(vstd::Guid const &guid);
-RBC_RUNTIME_API RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file = true);
+// get or create an empty resource, Only meta information valid, if this resource never loaded.
+RBC_RUNTIME_API RC<Resource> get_resource(vstd::Guid const &guid, bool async_load_from_file = true);
 template<typename T>
     requires std::is_base_of_v<Resource, T>
-RC<T> load_resource(vstd::Guid const &guid, bool async_load_from_file = true) {
-    auto res = load_resource(guid, async_load_from_file);
+RC<T> get_resource(vstd::Guid const &guid, bool async_load_from_file = true) {
+    auto res = get_resource(guid, async_load_from_file);
     if (res) {
         LUISA_ASSERT(res->type_id() == TypeInfo::get<T>().md5());
         return std::move(res).cast_static<T>();

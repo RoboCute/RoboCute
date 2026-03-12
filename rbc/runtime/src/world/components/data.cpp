@@ -81,7 +81,7 @@ void DataComponent::deserialize_meta(ObjDeSerialize const &obj) {
                 if constexpr (std::is_same_v<T, RC<Resource>>) {
                     vstd::Guid guid;
                     if (obj.ar.value(guid)) {
-                        t = load_resource(guid);
+                        t = get_resource(guid);
                     }
                 } else {
                     obj.ar.value(t);

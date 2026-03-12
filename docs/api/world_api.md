@@ -270,7 +270,7 @@ Manages project assets and resource importing.
 | `import_material(path)` | Import a material |
 | `import_mesh(path)` | Import a mesh |
 | `import_texture(path, mip_level, to_vt)` | Import a texture |
-| `load_resource(guid, load_content_async)` | Load a resource by GUID |
+| `get_resource(guid, load_content_async)` | Load a resource by GUID |
 | `get_file_meta(type_id, dest_path)` | Get file metadata |
 
 ---

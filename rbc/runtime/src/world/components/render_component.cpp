@@ -78,7 +78,7 @@ void RenderComponent::deserialize_meta(ObjDeSerialize const &deser) {
             if (!deser.ar.value(guid)) {
                 _materials.emplace_back(nullptr);
             } else {
-                auto res = load_resource(guid, true);
+                auto res = get_resource(guid, true);
                 if (res && res->is_type_of(TypeInfo::get<MaterialResource>())) {
                     _materials.emplace_back(std::move(res));
                 } else {
@@ -90,7 +90,7 @@ void RenderComponent::deserialize_meta(ObjDeSerialize const &deser) {
     }
     vstd::Guid guid;
     if (deser.ar.value(guid, "mesh")) {
-        auto res = load_resource(guid, true);
+        auto res = get_resource(guid, true);
         if (res && res->is_type_of(TypeInfo::get<MeshResource>())) {
             _mesh_ref = RC<MeshResource>(std::move(res));
         }

@@ -13,7 +13,7 @@ void AtmosphereComponent::serialize_meta(ObjSerialize const &obj) const {
 void AtmosphereComponent::deserialize_meta(ObjDeSerialize const &obj) {
     vstd::Guid hdri_guid;
     if (obj.ar.value(hdri_guid, "hdri")) {
-        hdri = load_resource(hdri_guid);
+        hdri = get_resource(hdri_guid);
     }
 }
 void AtmosphereComponent::on_awake() {

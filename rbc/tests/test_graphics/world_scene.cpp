@@ -226,7 +226,7 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
                               sky_str.size()});
             auto sky_guid = vstd::Guid::TryParseGuid(sky_str);
             LUISA_ASSERT(sky_guid);
-            skybox = world::load_resource(*sky_guid, true);
+            skybox = world::get_resource(*sky_guid, true);
         }
 
         luisa::vector<std::byte> data;

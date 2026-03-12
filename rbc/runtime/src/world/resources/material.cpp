@@ -82,7 +82,7 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
                     _depended_resources.emplace_back(std::move(res));
                 });
                 if (!deser._load(resource_guid, name)) return;
-                res = load_resource(resource_guid, true);
+                res = get_resource(resource_guid, true);
                 if (!res) {
                     return;
                 }

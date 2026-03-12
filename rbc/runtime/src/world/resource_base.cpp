@@ -278,7 +278,7 @@ bool resource_exists(vstd::Guid const &guid) {
     auto bin = _res_loader->to_binary(guid);
     return bin.second;
 }
-RC<Resource> load_resource(vstd::Guid const &guid, bool async_load_from_file) {
+RC<Resource> get_resource(vstd::Guid const &guid, bool async_load_from_file) {
     {
         auto obj = get_object_ref(guid);
         if (obj && obj->base_type() == BaseObjectType::Resource) return std::move(obj).cast_static<Resource>();

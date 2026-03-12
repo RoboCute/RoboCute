@@ -88,7 +88,7 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
     vstd::Guid origin_mesh_guid;
     // this is a skinning mesh
     if (ser.ar.value(origin_mesh_guid, "origin_mesh")) {
-        _origin_mesh = load_resource(origin_mesh_guid, false);
+        _origin_mesh = get_resource(origin_mesh_guid, false);
         _copy_from_mesh(_origin_mesh.get());
         return;
     }

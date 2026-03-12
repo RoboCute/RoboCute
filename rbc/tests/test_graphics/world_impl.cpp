@@ -739,10 +739,10 @@ void *Project::import_scene(void *this_, luisa::string_view path, luisa::string_
     unsafe_forget(std::move(ptr));
     return p;
 }
-void *Project::load_resource(void *this_, vstd::Guid const &guid, bool async_load) {
+void *Project::get_resource(void *this_, vstd::Guid const &guid, bool async_load) {
     auto c = static_cast<ProjectImpl *>(this_);
     c->sync();
-    auto res = world::load_resource(guid, async_load);
+    auto res = world::get_resource(guid, async_load);
     if (!res) {
         return nullptr;
     }

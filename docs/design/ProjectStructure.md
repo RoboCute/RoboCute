@@ -1025,7 +1025,7 @@ bundle.save(compression="zstd", level=3)
 
 # Load resources from bundle
 bundle = rbc.ResourceBundle.load("character_pack.rbcbundle")
-mesh = bundle.load_resource("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+mesh = bundle.get_resource("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
 ```
 
 ### 10.2 项目导出 / Project Export

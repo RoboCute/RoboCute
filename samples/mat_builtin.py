@@ -39,7 +39,7 @@ class OpenPBRInterface:
 
     def _guid_str_to_tex(self, guid_str: str) -> re.world.TextureResource:
         guid = rbc.GUID(guid_str)
-        res = self._project.load_resource(guid, True)
+        res = self._project.get_resource(guid, True)
         if res and res.type_name() == 'rbc::world::TextureResource':
             return re.world.TextureResource(res._handle)
         return None
