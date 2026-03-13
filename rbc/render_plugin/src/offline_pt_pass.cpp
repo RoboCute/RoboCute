@@ -275,40 +275,42 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                 frame_settings.render_resolution);
         }
         pt_args.bounce = ptSettings.offline_indirect_bounce;
-        cmdlist << offline_multibounce::dispatch_shader(
-            multi_bounce, multibounce_buffer.view().size(),
-            scene.buffer_heap(),
-            scene.image_heap(),
-            scene.volume_heap(),
-            scene.tex_streamer().level_buffer(),
-            ctx.scene->accel_manager().triangle_vis_buffer(),
-            accel,
-            multibounce_buffer.view(),
-            multibounce_buffer_counter,
-            geo_buffer.view(),
-            pt_args,
-            frame_settings.render_resolution);
-        cmdlist << (*accum_hashgrid)(
-                       geo_buffer,
-                       key_buffer,
-                       value_buffer,
-                       surfel_mark,
-                       pt_args.jitter_offset,
-                       make_float3(cam.position),
-                       10.0f,
-                       key_buffer.size(),
-                       8,
-                       max_accum)
-                       .dispatch(frame_settings.render_resolution);
-        cmdlist << (*integrate_hashgrid)(
-                       geo_buffer,
-                       emission,
-                       value_buffer,
-                       surfel_mark,
-                       max_accum,
-                       i == (ptSettings.offline_spp - 1) ? (1.0f / float(ptSettings.offline_spp)) : 1.0f)
-                       .dispatch(frame_settings.render_resolution);
-        cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, max_accum).dispatch(key_buffer.size());
+        if (pt_args.bounce > 0) {
+            cmdlist << offline_multibounce::dispatch_shader(
+                multi_bounce, multibounce_buffer.view().size(),
+                scene.buffer_heap(),
+                scene.image_heap(),
+                scene.volume_heap(),
+                scene.tex_streamer().level_buffer(),
+                ctx.scene->accel_manager().triangle_vis_buffer(),
+                accel,
+                multibounce_buffer.view(),
+                multibounce_buffer_counter,
+                geo_buffer.view(),
+                pt_args,
+                frame_settings.render_resolution);
+            cmdlist << (*accum_hashgrid)(
+                           geo_buffer,
+                           key_buffer,
+                           value_buffer,
+                           surfel_mark,
+                           pt_args.jitter_offset,
+                           make_float3(cam.position),
+                           10.0f,
+                           key_buffer.size(),
+                           8,
+                           max_accum)
+                           .dispatch(frame_settings.render_resolution);
+            cmdlist << (*integrate_hashgrid)(
+                           geo_buffer,
+                           emission,
+                           value_buffer,
+                           surfel_mark,
+                           max_accum,
+                           i == (ptSettings.offline_spp - 1) ? (1.0f / float(ptSettings.offline_spp)) : 1.0f)
+                           .dispatch(frame_settings.render_resolution);
+            cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, max_accum).dispatch(key_buffer.size());
+        }
     }
     frame_settings.albedo_buffer = nullptr;
     frame_settings.normal_buffer = nullptr;

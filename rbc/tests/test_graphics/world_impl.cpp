@@ -1546,8 +1546,8 @@ uint32_t RenderSettings::get_offline_indirect_bounce(void *this_) {
 void RenderSettings::set_offline_indirect_bounce(void *this_, uint32_t value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
-    // offline_indirect_bounce: 2 ~ 8
-    clamp_value_warn(value, 2u, 8u, "offline_indirect_bounce");
+    // offline_indirect_bounce: 0 ~ 8
+    clamp_value_warn(value, 0u, 8u, "offline_indirect_bounce");
     impl->map->read_mut<PathTracerSettings>().offline_indirect_bounce = value;
 }
 bool RenderSettings::get_denoise(void *this_) {

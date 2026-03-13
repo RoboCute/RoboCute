@@ -131,8 +131,8 @@ static void check_path_tracer_settings(PathTracerSettings &settings) {
     clamp_value(settings.offline_spp, 1u, 16u);
     // offline_origin_bounce: 1 ~ 4
     clamp_value(settings.offline_origin_bounce, 1u, 4u);
-    // offline_indirect_bounce: 2 ~ 8
-    clamp_value(settings.offline_indirect_bounce, 2u, 8u);
+    // offline_indirect_bounce: 0 ~ 8
+    clamp_value(settings.offline_indirect_bounce, 0u, 8u);
 }
 
 // Check and clamp DistortionSettings
