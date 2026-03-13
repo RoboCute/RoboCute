@@ -59,11 +59,12 @@ using namespace luisa::shader;
     if (any(coord >= size)) {
         return 0;
     }
-    /////////////// RR
+    // Random Sampler
     sampling::HeitzSobol sampler(coord, args.frame_index);
     sampling::PCGSamplerOffsetted pcg_sampler(uint3(dispatch_id().xy, args.frame_index));
     pcg_sampler.offset = sampler.next3f(g_buffer_heap) / 128.f;
     auto screen_uv = (float2(coord) + sampling::sample_uniform_disk_concentric(pcg_sampler.next2f()) + 0.5f) / float2(size);
+    // Camera primary ray
     {
         auto proj = float4((screen_uv * 2.f - 1.0f), 0.f, 1);
         auto world_pos = args.inv_vp * proj;

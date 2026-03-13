@@ -8,12 +8,14 @@ using namespace luisa::shader;
 #ifdef TO_BUFFER
     Buffer<float> &out_buffer,
 #endif
-    uint2 render_resolution, uint frame) {
+    uint2 render_resolution, uint frame,
+    bool is_spectrum) {
     auto coord = dispatch_id().xy;
     auto uv = (float2(coord) + 0.5f) / float2(dispatch_size().xy);
     auto sample_id = uint2(float2(render_resolution) * uv);
     auto v = in.read(sample_id);
-    v.xyz = spectrum::spectrum_to_tristimulus(v.xyz);
+    if (is_spectrum)
+        v.xyz = spectrum::spectrum_to_tristimulus(v.xyz);
     if (frame > 0) {
         auto old = out.read(coord);
         float alpha = old.w + v.w;

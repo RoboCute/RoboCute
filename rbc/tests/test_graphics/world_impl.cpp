@@ -1562,6 +1562,62 @@ void RenderSettings::set_denoise(void *this_, bool value) {
     impl->map->read_mut<PathTracerSettings>().denoise = value;
 }
 
+// ========== AO Settings Getters/Setters ==========
+bool RenderSettings::get_enable_ao_mode(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->enable_ao_mode : false;
+}
+void RenderSettings::set_enable_ao_mode(void *this_, bool value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    impl->map->read_mut<PathTracerSettings>().enable_ao_mode = value;
+}
+bool RenderSettings::get_ao_use_cosine_sample(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->ao_use_cosine_sample : false;
+}
+void RenderSettings::set_ao_use_cosine_sample(void *this_, bool value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    impl->map->read_mut<PathTracerSettings>().ao_use_cosine_sample = value;
+}
+float RenderSettings::get_ao_max_radius(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->ao_max_radius : 1.0f;
+}
+void RenderSettings::set_ao_max_radius(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    // ao_max_radius: >= 0
+    if (value < 1e-3f) {
+        LUISA_WARNING("RenderSettings: ao_max_radius value {} is less than 0, clamping to 0", value);
+        value = 1e-3f;
+    }
+    impl->map->read_mut<PathTracerSettings>().ao_max_radius = value;
+}
+float RenderSettings::get_ao_atten_pow(void *this_) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->ao_atten_pow : 1.0f;
+}
+void RenderSettings::set_ao_atten_pow(void *this_, float value) {
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    // ao_atten_pow: >= 0
+    if (value < 1e-3f) {
+        LUISA_WARNING("RenderSettings: ao_atten_pow value {} is less than 0, clamping to 0", value);
+        value = 0.0f;
+    }
+    impl->map->read_mut<PathTracerSettings>().ao_atten_pow = value;
+}
+
 // ========== DistortionSettings Getters/Setters ==========
 float RenderSettings::get_distortion_scale(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
@@ -1639,7 +1695,7 @@ void RenderSettings::set_lpm_soft_gap(void *this_, float value) {
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // softGap: no specific range, but typically >= 0
     if (value < 0.0f) {
-        LUISA_WARNING("RenderSettings: lpm_soft_gap value {} is less than 0, clamping to 0", value);
+        LUISA_WARNING("RenderSettings: lpm_soft_gap value {} is less than 0.001, clamping to 0.001", value);
         value = 0.0f;
     }
     impl->map->read_mut<ToneMappingSettings>().lpm.softGap = value;
@@ -1654,8 +1710,8 @@ void RenderSettings::set_lpm_hdr_max(void *this_, float value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // hdrMax: > 0
-    if (value <= 0.0f) {
-        LUISA_WARNING("RenderSettings: lpm_hdr_max value {} is less than or equal to 0, clamping to 1e-3", value);
+    if (value <= 1e-3) {
+        LUISA_WARNING("RenderSettings: lpm_hdr_max value {} is less than or equal to 0.001, clamping to 0.001", value);
         value = 1e-3f;
     }
     impl->map->read_mut<ToneMappingSettings>().lpm.hdrMax = value;
@@ -1670,7 +1726,7 @@ void RenderSettings::set_lpm_exposure(void *this_, float value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // lpmExposure: > 0
-    if (value <= 0.0f) {
+    if (value <= 1e-3) {
         LUISA_WARNING("RenderSettings: lpm_exposure value {} is less than or equal to 0, clamping to 1e-3", value);
         value = 1e-3f;
     }
@@ -1699,7 +1755,7 @@ void RenderSettings::set_lpm_shoulder_contrast(void *this_, float value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // shoulderContrast: > 0
-    if (value <= 0.0f) {
+    if (value <= 1e-3f) {
         LUISA_WARNING("RenderSettings: lpm_shoulder_contrast value {} is less than or equal to 0, clamping to 1e-3", value);
         value = 1e-3f;
     }

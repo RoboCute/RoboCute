@@ -18,6 +18,9 @@ namespace offline_pt_shader_denoise {
 namespace offline_multibounce {
 #include <path_tracer/pt_multi_bounce_offline.inl>
 }// namespace offline_multibounce
+namespace ao_trace {
+#include <path_tracer/ao_trace.inl>
+}// namespace ao_trace
 PTPassContext::PTPassContext() {
 }
 PTPassContext::~PTPassContext() = default;
@@ -71,6 +74,7 @@ void OfflinePTPass::on_enable(
     RBC_LOAD_SHADER(pt_shader, offline_pt_shader, "path_tracer/offline_pt.bin");
     RBC_LOAD_SHADER(pt_shader_denoise, offline_pt_shader_denoise, "path_tracer/offline_pt_denoise.bin");
     RBC_LOAD_SHADER(multi_bounce, offline_multibounce, "path_tracer/pt_multi_bounce_offline.bin");
+    RBC_LOAD_SHADER(ao_trace, ao_trace, "path_tracer/ao_trace.bin");
     load("path_tracer/draw_sky.bin", draw_sky_shader);
     load("surfel/clear_hashgrid_offline.bin", clear_hashgrid);
     load("surfel/accum_hashgrid_offline.bin", accum_hashgrid);
@@ -88,6 +92,11 @@ void OfflinePTPass::on_enable(
 }
 void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
     ctx.scene->accel_manager().init_accel(*ctx.cmdlist);
+    const auto &ptSettings = ctx.pipeline_settings.read<PathTracerSettings>();
+    auto &pipeline_mode = ctx.pipeline_settings.read_mut<PTPipelineSettings>();
+    if (ptSettings.enable_ao_mode) {
+        pipeline_mode.use_post_filter = false;
+    }
 }
 void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
@@ -198,11 +207,28 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         uint max_accum = (1 + pt_args.frame_index) * 1024;
         pt_args.jitter_offset = float2(halton(pt_args.frame_index & 65535, 2), halton(pt_args.frame_index & 65535, 3));
         // output gbuffer for denoise
+        pt_args.geometry_mask = 0;
+        // Only trace AO
+        if (ptSettings.enable_ao_mode) {
+            cmdlist << ao_trace::dispatch_shader(
+                ao_trace, frame_settings.render_resolution,
+                scene.buffer_heap(),
+                scene.image_heap(),
+                scene.volume_heap(),
+                scene.tex_streamer().level_buffer(),
+                ctx.scene->accel_manager().triangle_vis_buffer(),
+                accel,
+                emission,
+                pt_args,
+                ptSettings.ao_max_radius,
+                ptSettings.ao_atten_pow,
+                ptSettings.ao_use_cosine_sample);
+            continue;
+        }
         cmdlist << (*clear_ptr_buffer)(multibounce_buffer_counter.view(), 0).dispatch(1);
         if ((bool)frame_settings.albedo_buffer != (bool)frame_settings.normal_buffer) [[unlikely]] {
             LUISA_ERROR("normal_buffer and albedo_buffer must be provided together.");
         }
-        pt_args.geometry_mask = 0;
         const uint geometry_byte_size[] = {
             4, // depth
             12,// normal

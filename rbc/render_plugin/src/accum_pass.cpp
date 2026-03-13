@@ -26,7 +26,7 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
 
     const auto &frame_settings = ctx.pipeline_settings.read<FrameSettings>();
-	AccumPassContext* pass_ctx{};
+    AccumPassContext *pass_ctx{};
     pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
     pass_ctx->frame_index = std::min<size_t>(pass_ctx->frame_index, frame_settings.frame_index);
     if (any(frame_settings.render_resolution != frame_settings.display_resolution)) {
@@ -55,20 +55,22 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     jitter_data.jitter = float2(halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 2), halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 3)) - 0.5f;
 }
 void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    AccumPassContext* pass_ctx{};
+    AccumPassContext *pass_ctx{};
     pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
-	Image<float> temp_img;
+    Image<float> temp_img;
     auto &pt_pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
+    const auto &ptSettings = ctx.pipeline_settings.read<PathTracerSettings>();
     auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();
     auto &scene = *ctx.scene;
     auto emission = render_device.get_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);
+    const bool is_spectrum = !ptSettings.enable_ao_mode;
     if (!emission) return;
     temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frame_settings.display_resolution);
     if (frame_settings.radiance_buffer) {
-        (*ctx.cmdlist) << (*accum_buffer)(emission, pass_ctx->hdr, temp_img, *frame_settings.radiance_buffer, frame_settings.render_resolution, pass_ctx->frame_index).dispatch(frame_settings.display_resolution);
+        (*ctx.cmdlist) << (*accum_buffer)(emission, pass_ctx->hdr, temp_img, *frame_settings.radiance_buffer, frame_settings.render_resolution, pass_ctx->frame_index, is_spectrum).dispatch(frame_settings.display_resolution);
     } else {
-        (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frame_settings.render_resolution, pass_ctx->frame_index).dispatch(frame_settings.display_resolution);
+        (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frame_settings.render_resolution, pass_ctx->frame_index, is_spectrum).dispatch(frame_settings.display_resolution);
     }
     frame_settings.radiance_buffer = nullptr;
     frame_settings.resolved_img = std::move(temp_img);

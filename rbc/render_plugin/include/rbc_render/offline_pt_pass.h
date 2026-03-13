@@ -66,6 +66,7 @@ private:
     Shader1D<Buffer<uint>, uint> const *clear_ptr_buffer;
     ShaderBase const *pt_shader_denoise;
     ShaderBase const *multi_bounce;
+    ShaderBase const *ao_trace;
     ClearHashGrid const *clear_hashgrid;
     AccumHashGrid const *accum_hashgrid;
     IntegrateHashGrid const *integrate_hashgrid;
