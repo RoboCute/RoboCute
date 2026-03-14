@@ -3,10 +3,6 @@ includes('tools.lua')
 -- Utils
 includes('core') -- 底层数据结构
 includes('runtime') -- （图像，动画，物理，插件等）运行时功能
--- Plugins
-if is_host('windows') then
-    includes('display_plugin')
-end
 includes('render_plugin')
 if has_config('rbc_oidn') then
     includes('oidn_plugin')

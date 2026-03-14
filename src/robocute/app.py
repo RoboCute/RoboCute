@@ -126,26 +126,15 @@ class App:
         self._scene.install()
 
     def init_display(
-        self, x: int = 1920, y: int = 1080, display_title: str = "py_window"
+        self, x: int = 1920, y: int = 1080, display_title: str = "py_window",
+        create_window: bool = True, window_resizable: bool = True, full_screen: bool = False, transparent: bool = False
     ):
         self._resolution = lc.uint2(x, y)
         if not self._ctx:
             return
 
-        self._ctx.init_display(display_title, self._resolution, True, True)
-        self._display_cam = self._ctx.create_display_cam()
-        self._display_cam.enable_camera()
-        self._last_frame_time = time.time()
-
-    def init_transparent_display(
-        self, x: int = 1920, y: int = 1080, offset_x: int = 0, offset_y: int = 0, opacity: float = 0.5, topmost: bool = True, click_through: bool = False, display_title: str = "py_window"
-    ):
-        self._resolution = lc.uint2(x, y)
-        if not self._ctx:
-            return
-
-        self._ctx.init_transparent_display(display_title, self._resolution, lc.uint2(
-            offset_x, offset_y), opacity, topmost, click_through)
+        self._ctx.init_display(
+            display_title, self._resolution, create_window, window_resizable, full_screen, transparent)
         self._display_cam = self._ctx.create_display_cam()
         self._display_cam.enable_camera()
         self._last_frame_time = time.time()
@@ -212,7 +201,7 @@ class App:
         if self._ctx:
             self._ctx.upload_mesh_data(mesh)
 
-    def set_ground_plane_mode(self, mode: str, scale: float = 100, height: float = 0, material = None):
+    def set_ground_plane_mode(self, mode: str, scale: float = 100, height: float = 0, material=None):
         import samples.mat_builtin as mat
         if mode is None or mode == 'none':
             if self._plane_entity:

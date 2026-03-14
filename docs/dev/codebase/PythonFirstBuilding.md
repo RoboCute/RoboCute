@@ -23,4 +23,4 @@ C++主要的编译对象是`rbc_ext_c.pyd`（一个C++和pybind11写成的python
 
 在C++编译完成之后，需要将编译产物install到指定的文件夹目录下，方便python端的打包和分发，同时用stubgen生成必要的存根文件，方便python部分的开发。
 
-`xmake l xmake/install.lua`
+`uv run scripts/build_and_copy.py`

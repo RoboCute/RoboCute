@@ -36,9 +36,6 @@
 #include <luisa/runtime/buffer.h>
 #include <rbc_world/callback_serializer.h>
 #include "builtin_shader.h"
-#ifdef SUPPORT_TRANSPARENT_WINDOW
-#include <rbc_display/transparent_window.h>
-#endif
 using namespace luisa;
 using namespace luisa::compute;
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);// implemented save_image.cpp
@@ -48,17 +45,11 @@ namespace rbc {
 struct ContextImpl;
 static ContextImpl *_ctx_inst{};
 struct ContextImpl : RCBase {
-#ifdef SUPPORT_TRANSPARENT_WINDOW
-    luisa::shared_ptr<luisa::DynamicModule> display_module;
-#endif
     luisa::spin_mutex _ctx_mtx;
     luisa::fiber::scheduler scheduler;
     CameraController::Input camera_input{};
     vstd::unique_ptr<GraphicsUtils> utils;
     vstd::unique_ptr<Window> window;
-#ifdef SUPPORT_TRANSPARENT_WINDOW
-    luisa::unique_ptr<TransparentWindow> transparent_window;
-#endif
     vstd::unique_ptr<CameraController> cam_controller;
     RC<world::Entity> display_cam_entity;
     uint2 window_size;
@@ -111,7 +102,7 @@ void RBCContext::init_render(void *this_) {
     }
     c.utils->init_render();
 }
-void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, bool create_window, bool window_resizable) {
+void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, bool create_window, bool window_resizable, bool full_screen, bool transparent) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (!RenderDevice::instance_ptr()) [[unlikely]] {
@@ -123,7 +114,7 @@ void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, 
         if (any(size == 0u)) [[unlikely]] {
             LUISA_ERROR("Size must be non-zero.");
         }
-        c.window = vstd::make_unique<Window>(luisa::string{name}, size, window_resizable);
+        c.window = vstd::make_unique<Window>(luisa::string{name}, size, window_resizable, full_screen, transparent);
         c.window->set_window_size_callback([&c](uint2 size) {
             c.window_size = size;
         });
@@ -135,55 +126,7 @@ void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, 
     }
     c.utils->init_display(size, native_display, native_handle);
 }
-void RBCContext::init_transparent_display(
-    void *this_,
-    luisa::string_view name,
-    luisa::uint2 size,
-    luisa::uint2 pos,
-    float opacity,
-    bool topmost,
-    bool click_through) {
-#ifdef SUPPORT_TRANSPARENT_WINDOW
-    auto &c = *static_cast<ContextImpl *>(this_);
-    c.transparent_should_close = false;
-    std::lock_guard lck{c._ctx_mtx};
-    if (!RenderDevice::instance_ptr()) [[unlikely]] {
-        LUISA_ERROR("init_device required before init_transparent_display.");
-    }
-    if (any(size == 0u)) [[unlikely]] {
-        LUISA_ERROR("Size must be non-zero.");
-    }
-    // Load display plugin if not already loaded
-    if (!c.display_module) {
-        c.display_module = PluginManager::instance().load_module("rbc_display_plugin");
-        if (!c.display_module) [[unlikely]] {
-            LUISA_ERROR("Failed to load rbc_display_plugin.");
-        }
-    }
-    // Create transparent window
-    TransparentWindowConfig config;
-    config.title = luisa::string{name};
-    config.rect = {static_cast<int32_t>(pos.x), static_cast<int32_t>(pos.y), size.x, size.y};
-    config.opacity = opacity;
-    config.topmost = topmost;
-    config.click_through = click_through;
-    config.swapchain_mode = true;
 
-    c.transparent_window = luisa::unique_ptr<TransparentWindow>(
-        c.display_module->invoke<TransparentWindow *(const TransparentWindowConfig &)>(
-            "create_transparent_window",
-            config));
-    if (!c.transparent_window) [[unlikely]] {
-        LUISA_ERROR("Failed to create transparent window.");
-    }
-    c.transparent_window->show();
-    c.window_size = size;
-    // Initialize display with invalid handles (transparent window doesn't use swapchain)
-    c.utils->init_display(size, c.transparent_window->display_handle(), c.transparent_window->window_handle());
-#else
-    LUISA_ERROR("Transparent unsupported.");
-#endif
-}
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
@@ -193,22 +136,12 @@ void RBCContext::disable_view(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     c.window.reset();
-#ifdef SUPPORT_TRANSPARENT_WINDOW
-    if (c.transparent_window) {
-        c.transparent_window->close();
-        c.transparent_window.reset();
-    }
-#endif
 }
 bool RBCContext::should_close(void *this_) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (c.window)
         return c.window->should_close();
-#ifdef SUPPORT_TRANSPARENT_WINDOW
-    if (c.transparent_window)
-        return c.transparent_should_close;
-#endif
     return false;
 }
 void RBCContext::denoise(void *this_) {
@@ -271,11 +204,6 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
             any_changed = c.cam_controller->any_changed();
         }
     }
-#ifdef SUPPORT_TRANSPARENT_WINDOW
-    if (c.transparent_window) {
-        c.transparent_should_close = !c.transparent_window->process_messages();
-    }
-#endif
     {
         RBCZoneScopedN("Update Camera");
         {

@@ -40,10 +40,6 @@ for target_name, is_standalone in pairs(targets) do
             -- target:add('deps', 'Jolt')
             target:add('deps', 'stb-image')
             target:add('deps', 'rbc_render_plugin', 'lc-gui', 'compile_shaders', 'rbc_project_plugin')
-            if target:is_plat('windows') then
-                target:add('deps', 'rbc_display_plugin')
-                target:add('defines', 'SUPPORT_TRANSPARENT_WINDOW')
-            end
             target:add('defines', 'TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
         end)
     end
