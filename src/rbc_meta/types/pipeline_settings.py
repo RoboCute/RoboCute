@@ -259,16 +259,17 @@ class PathTracerSettings:
     enable_ao_mode: bool
     # AO use cosine hemisphere sample instead of uniform sample
     ao_use_cosine_sample: bool
-    ao_max_radius: float
-    ao_atten_pow: float
+    # calculate 4 channel
+    ao_max_radius: float4 
+    ao_atten_pow: float4 
 
     _cpp_init = {
         "offline_spp": "1",
         "offline_origin_bounce": "2",
         "offline_indirect_bounce": "4",
         "denoise": "true",
-        "ao_max_radius": "1",
-        "ao_atten_pow": "1",
+        "ao_max_radius": "1,1,1,1",
+        "ao_atten_pow": "1,1,1,1",
         "ao_use_cosine_sample": "true"
     }
 

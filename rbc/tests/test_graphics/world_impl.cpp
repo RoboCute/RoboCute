@@ -1585,36 +1585,30 @@ void RenderSettings::set_ao_use_cosine_sample(void *this_, bool value) {
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     impl->map->read_mut<PathTracerSettings>().ao_use_cosine_sample = value;
 }
-float RenderSettings::get_ao_max_radius(void *this_) {
+float4 RenderSettings::get_ao_max_radius(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<PathTracerSettings>();
-    return settings ? settings->ao_max_radius : 1.0f;
+    return settings ? settings->ao_max_radius : float4(1.0f);
 }
-void RenderSettings::set_ao_max_radius(void *this_, float value) {
+void RenderSettings::set_ao_max_radius(void *this_, float4 value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // ao_max_radius: >= 0
-    if (value < 1e-3f) {
-        LUISA_WARNING("RenderSettings: ao_max_radius value {} is less than 0, clamping to 0", value);
-        value = 1e-3f;
-    }
+    value = max(value, float4(1e-3f));
     impl->map->read_mut<PathTracerSettings>().ao_max_radius = value;
 }
-float RenderSettings::get_ao_atten_pow(void *this_) {
+float4 RenderSettings::get_ao_atten_pow(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<PathTracerSettings>();
-    return settings ? settings->ao_atten_pow : 1.0f;
+    return settings ? settings->ao_atten_pow : float4(1.0f);
 }
-void RenderSettings::set_ao_atten_pow(void *this_, float value) {
+void RenderSettings::set_ao_atten_pow(void *this_, float4 value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
-    // ao_atten_pow: >= 0
-    if (value < 1e-3f) {
-        LUISA_WARNING("RenderSettings: ao_atten_pow value {} is less than 0, clamping to 0", value);
-        value = 0.0f;
-    }
+    // ao_atten_pow: >= 0.001
+    value = max(value, float4(1e-3f));
     impl->map->read_mut<PathTracerSettings>().ao_atten_pow = value;
 }
 

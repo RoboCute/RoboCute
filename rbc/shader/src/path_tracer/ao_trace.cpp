@@ -22,8 +22,8 @@ inline float3 decode_packed_normal(float packed_val) {
 [[kernel_2d(16, 8)]] int kernel(
     Image<float> &out_img,
     PTArgs args,
-    float ray_radius,
-    float pow_atten,
+    float4 ray_radius,
+    float4 pow_atten,
     bool use_cosine_sample) {
 
     auto coord = dispatch_id().xy;
@@ -56,15 +56,14 @@ inline float3 decode_packed_normal(float packed_val) {
         }
         ray = Ray(near_world_pos.xyz, dir, sampling::offset_ray_t_min, dir_len);
     }
-    auto write_tex = [&](float ao) {
+    auto write_tex = [&](float4 ao) {
         float alpha = 1.f;
-        float3 ao_val(ao);
         if (!args.reset_emission) {
             auto old_val = float4(out_img.read(coord));
-            ao_val += old_val.xyz;
+            ao += old_val;
             alpha += old_val.w;
         }
-        out_img.write(coord, float4(ao_val, 1));
+        out_img.write(coord, ao);
     };
     ProceduralGeometry procedural_geometry;
     auto hit = rbc_trace_closest(ray, args, sampler, procedural_geometry);
@@ -119,11 +118,12 @@ inline float3 decode_packed_normal(float packed_val) {
     auto sample_dir = onb.to_world(local_dir);
     ray.set_origin(sampling::offset_ray_origin(geometry_pos, geometry_normal));
     ray.set_dir(sample_dir);
-    ray.t_max = ray_radius;
+    
+    ray.t_max = reduce_max(ray_radius);
     hit = rbc_trace_closest(ray, args, sampler, procedural_geometry);
-    float ao = 1;
+    float4 ao = 1;
     if (hit.hit_triangle()) {
-        ao = hit.ray_t / ray_radius;
+        ao = float4(hit.ray_t) / ray_radius;
     }
     ao = pow(ao, pow_atten);
     write_tex(ao);

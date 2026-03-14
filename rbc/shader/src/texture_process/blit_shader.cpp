@@ -12,7 +12,6 @@ using namespace luisa::shader;
     auto uv = (float2(id) + 0.5f) / float2(size);
     uv = uv * src_uv_scale + src_uv_offset;
     auto color = src_img.sample(uv, Filter::LINEAR_POINT, Address::EDGE);
-    color.w = 0.5f;
     dst_img.write(id + dst_offset_pixel, color);
     return 0;
 }
