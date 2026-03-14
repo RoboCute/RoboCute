@@ -416,7 +416,8 @@ def main():
     last_time = time.time()
 
     def tick_logic():  # run every frame
-        nonlocal EXPORT, tui_exec
+        nonlocal EXPORT, tui_exec, frame_index, geometry_buffer
+        frame_index += 1
         if EXPORT and frame_index == 128:
             EXPORT = False
             img = app.display_image()
@@ -539,12 +540,12 @@ def main():
     # app.set_ground_plane_mode('yes')
     
     # Enable AO mode
-    # render_settings = app.display_cam.render_settings()
-    # render_settings.set_offline_spp(1)
-    # render_settings.set_enable_ao_mode(True)
-    # render_settings.set_ao_max_radius(1.5)
-    # render_settings.set_offline_origin_bounce(1)
-    # render_settings.set_offline_indirect_bounce(0)
+    render_settings = app.display_cam.render_settings()
+    render_settings.set_offline_spp(1)
+    render_settings.set_enable_ao_mode(True)
+    render_settings.set_ao_max_radius(lc.float4(1.5, 1.0, 0.5, 0.2))
+    render_settings.set_offline_origin_bounce(1)
+    render_settings.set_offline_indirect_bounce(0)
     
     app.run()
 

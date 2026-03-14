@@ -968,19 +968,19 @@ void CameraComponent::set_near_plane(void *this_, double value) {
     auto c = static_cast<world::CameraComponent *>(this_);
     c->near_plane = value;
 }
-void CameraComponent::config_display_image(void *this_, luisa::uint2 size, rbc::LCPixelStorage storage) {
+void CameraComponent::config_render_image(void *this_, luisa::uint2 size, rbc::LCPixelStorage storage) {
     auto c = static_cast<world::CameraComponent *>(this_);
     if (c->dst_image && all(size == c->dst_image.size()) && (PixelStorage)storage == c->dst_image.storage()) {
         return;
     }
-    release_display_image(this_);
+    release_render_image(this_);
     auto rd = RenderDevice::instance_ptr();
     if (!rd) [[unlikely]] {
         LUISA_ERROR("Render device not initialized.");
     }
     c->dst_image = rd->lc_device().create_image<float>((PixelStorage)storage, size);
 }
-void CameraComponent::release_display_image(void *this_) {
+void CameraComponent::release_render_image(void *this_) {
     auto c = static_cast<world::CameraComponent *>(this_);
     if (!c->dst_image) return;
     auto rd = RenderDevice::instance_ptr();
@@ -990,12 +990,12 @@ void CameraComponent::release_display_image(void *this_) {
         c->dst_image.reset();
     }
 }
-luisa::compute::TextureCreationInfo CameraComponent::display_image(void *this_) {
+luisa::compute::TextureCreationInfo CameraComponent::render_image(void *this_) {
     auto c = static_cast<world::CameraComponent *>(this_);
     luisa::compute::TextureCreationInfo r;
     auto &img = c->dst_image;
     if (!img) [[unlikely]] {
-        LUISA_ERROR("Camera not enabled or on display calling display_image.");
+        LUISA_ERROR("Camera not enabled or on display calling render_image.");
         r.invalidate();
         return r;
     }
