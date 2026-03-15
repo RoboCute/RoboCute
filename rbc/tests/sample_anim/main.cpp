@@ -150,14 +150,15 @@ void AnimScene::_load_skybox(GraphicsUtils *utils) {
     
     for (const auto &path : skybox_paths) {
         if (luisa::filesystem::exists(path)) {
-            skybox = world::create_object<world::TextureResource>();
+            auto skybox_rc = RC<world::TextureResource>{world::create_object<world::TextureResource>()};
             auto tex_importer = static_cast<world::ITextureImporter*>(exr_importer);
-            if (tex_importer->import(RC<world::TextureResource>{skybox}, &tex_loader, path, 1, false)) {
+            if (tex_importer->import(skybox_rc, &tex_loader, path, 1, false)) {
                 tex_loader.finish_task();
-                skybox->install();
-                utils->update_texture(skybox->get_image());
-                RC<DeviceImage> image{skybox->get_image()};
+                skybox_rc->install();
+                utils->update_texture(skybox_rc->get_image());
+                RC<DeviceImage> image{skybox_rc->get_image()};
                 utils->render_plugin()->update_skybox(image);
+                skybox = std::move(skybox_rc);
                 LUISA_INFO("Skybox loaded from: {}", luisa::to_string(path));
                 return;
             }
@@ -241,6 +242,7 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
         LUISA_ERROR("Failed to import mesh from GLTF");
         return;
     }
+    loaded_mesh->unsafe_set_loaded();
     all_resources.push_back(loaded_mesh.template cast_static<world::Resource>());
     LUISA_INFO("Mesh loaded successfully");
     
@@ -252,6 +254,7 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
     if (skel_importer) {
         skel = world::create_object<world::SkeletonResource>();
         if (skel_importer->import(skel.get(), gltf_path)) {
+            skel->unsafe_set_loaded();
             all_resources.push_back(skel.template cast_static<world::Resource>());
             LUISA_INFO("Skeleton loaded successfully");
         } else {
@@ -274,6 +277,7 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
                 skin->ref_skel = skel;
                 skin->ref_mesh = loaded_mesh;
                 skin->generate_LUT();
+                skin->unsafe_set_loaded();
                 all_resources.push_back(skin.template cast_static<world::Resource>());
                 LUISA_INFO("Skin loaded successfully");
             } else {
@@ -295,6 +299,7 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
             anim = world::create_object<world::AnimSequenceResource>();
             anim->ref_skel = skel;
             if (anim_importer->import(anim.get(), gltf_path)) {
+                anim->unsafe_set_loaded();
                 all_resources.push_back(anim.template cast_static<world::Resource>());
                 LUISA_INFO("Animation sequence loaded successfully");
             } else {
@@ -345,9 +350,10 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
         }
         
         auto *texture_importer = static_cast<world::ITextureImporter *>(tex_importer);
-        auto tex = world::create_object<world::TextureResource>();
-        if (texture_importer->import(RC<world::TextureResource>{tex}, &tex_loader, tex_path, 4, false)) {
-            loaded_textures.push_back(RC<world::TextureResource>{tex});
+        auto tex_rc = RC<world::TextureResource>{world::create_object<world::TextureResource>()};
+        if (texture_importer->import(tex_rc, &tex_loader, tex_path, 4, false)) {
+            tex_rc->unsafe_set_loaded();
+            loaded_textures.push_back(std::move(tex_rc));
         }
     }
     tex_loader.finish_task();
@@ -407,6 +413,7 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
         mat_json += "}";
         
         mat->load_from_json(mat_json);
+        mat->unsafe_set_loaded();
         auto mat_rc = RC<world::MaterialResource>{mat};
         loaded_materials.push_back(mat_rc);
         all_resources.push_back(mat_rc.template cast_static<world::Resource>());
@@ -416,6 +423,7 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
     if (loaded_materials.empty()) {
         auto default_mat = world::create_object<world::MaterialResource>();
         default_mat->load_from_json(R"({"type": "pbr", "base_albedo": [0.8, 0.8, 0.8]})");
+        default_mat->unsafe_set_loaded();
         auto default_mat_rc = RC<world::MaterialResource>{default_mat};
         loaded_materials.push_back(default_mat_rc);
         all_resources.push_back(default_mat_rc.template cast_static<world::Resource>());
@@ -431,6 +439,7 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
         seq_player_node->anim_seq_resource = anim;
         anim_graph->graph.nodes.emplace_back(seq_player_node);
         root->result.LinkedNodeID = 1;
+        anim_graph->unsafe_set_loaded();
         all_resources.push_back(anim_graph.template cast_static<world::Resource>());
     }
     
@@ -440,6 +449,7 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
         skel_mesh->ref_skin = skin;
         skel_mesh->ref_skeleton = skel;
         skel_mesh->ref_anim_graph = anim_graph;
+        skel_mesh->unsafe_set_loaded();
         all_resources.push_back(skel_mesh.template cast_static<world::Resource>());
         LUISA_INFO("SkelMeshResource created successfully");
     }
@@ -497,18 +507,39 @@ void AnimScene::install_resources(GraphicsUtils *utils) {
     
     for (auto &res : all_resources) {
         if (!res) continue;
+        LUISA_INFO("Resource [{}] type={} (status={}) is installing",
+            res->path().string(),
+            res->type_name(),
+            static_cast<int>(res->loading_status()));
+        // Check if resource is loaded before installing
+        if (!res->loaded()) {
+            LUISA_WARNING("Resource [{}] type={} is not loaded (status={}), skipping install", 
+                res->path().string(),
+                res->type_name(),
+                static_cast<int>(res->loading_status()));
+            continue;
+        }
         
         // Install based on resource type
-        if (auto mesh = res.cast_static<world::MeshResource>()) {
+        if (res->is_type_of<world::MeshResource>()) {
+            auto mesh = res.cast_static<world::MeshResource>();
             mesh->install();
             utils->update_mesh_data(mesh->device_mesh(), false);
         }
-        else if (auto tex = res.cast_static<world::TextureResource>()) {
+        else if (res->is_type_of<world::TextureResource>()) {
+            auto tex = res.cast_static<world::TextureResource>();
             tex->install();
             utils->update_texture(tex->get_image());
         }
-        else if (auto mat = res.cast_static<world::MaterialResource>()) {
+        else if (res->is_type_of<world::MaterialResource>()) {
+            auto mat = res.cast_static<world::MaterialResource>();
             mat->install();
+        }
+        else {
+            // Other resource types (SkeletonResource, SkinResource, AnimSequenceResource, 
+            // AnimGraphResource, SkelMeshResource) use default install behavior
+            LUISA_INFO("Installing resource [{}] type={}", res->path().string(), res->type_name());
+            res->install();
         }
     }
 }

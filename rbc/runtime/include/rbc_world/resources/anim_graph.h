@@ -25,6 +25,7 @@ protected:
 };
 
 }// namespace rbc::world
+
 RBC_RTTI(rbc::world::AnimGraphResource)
 
 namespace rbc::world {
@@ -35,4 +36,4 @@ struct RBC_RUNTIME_API IAnimGraphImporter : world::IResourceImporter {
 protected:
 };
 
-}// namespace rbc
+}// namespace rbc::world

@@ -15,6 +15,7 @@
 #include <rbc_importer/mat_importer.h>
 #include <rbc_importer/skel_importer_gltf.h>
 #include <rbc_importer/anim_sequence_importer_gltf.h>
+#include <rbc_importer/skin_importer_gltf.h>
 
 namespace rbc::world {
 
@@ -88,6 +89,10 @@ LUISA_EXPORT_API void register_builtin_importers() {
     // Register anim sequence importers
     static GltfAnimSequenceImporter gltf_anim_seq_importer;
     registry.register_importer(&gltf_anim_seq_importer);
+
+    // Register skin importers
+    static GltfSkinImporter gltf_skin_importer;
+    registry.register_importer(&gltf_skin_importer);
 }
 
 }// namespace rbc::world
