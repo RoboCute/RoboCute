@@ -346,14 +346,14 @@ bool StlMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
 
     // Size check: ensure all vertex attributes have the same size as positions
     const size_t position_size = mesh_builder.position.size();
-    if (mesh_builder.normal.size() != position_size) {
+    if (!mesh_builder.normal.empty() && mesh_builder.normal.size() != position_size) {
         mesh_builder.normal.resize(position_size);
     }
-    if (mesh_builder.tangent.size() != position_size) {
+    if (!mesh_builder.tangent.empty() && mesh_builder.tangent.size() != position_size) {
         mesh_builder.tangent.resize(position_size);
     }
     for (auto &uv : mesh_builder.uvs) {
-        if (uv.size() != position_size) {
+        if (!uv.empty() && uv.size() != position_size) {
             uv.resize(position_size);
         }
     }

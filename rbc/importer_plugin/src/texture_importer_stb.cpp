@@ -55,7 +55,7 @@ bool StbTextureImporter::import(
     size_t image_size = x * y * sizeof(stbi_uc) * 4;
     std::memcpy(img.data(), ptr, image_size);
     stbi_image_free(ptr);
-
+    LUISA_INFO("Texture import {} {} {} {}", resource->guid().to_string(), mip_level, to_vt, size);
     loader->process_texture(resource, mip_level, to_vt);
 
     return true;
