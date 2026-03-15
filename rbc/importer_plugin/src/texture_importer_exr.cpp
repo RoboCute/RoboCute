@@ -12,15 +12,15 @@ bool ExrTextureImporter::import(
     luisa::filesystem::path const &path,
     uint mip_level,
     bool to_vt) {
-
     float *out;
     int width;
     int height;
     const char *err = nullptr;
     int ret = LoadEXR(&out, &width, &height, luisa::to_string(path).c_str(), &err);
+    LUISA_INFO("LoadEXR");
     if (ret != TINYEXR_SUCCESS) {
+        LUISA_ERROR("Try load {} failed with reason {}", luisa::to_string(path), err ? err : "Unknown");
         if (err) {
-            LUISA_WARNING("{}", err);
             FreeEXRErrorMessage(err);
             return {};
         }

@@ -654,6 +654,7 @@ void *Project::import_material(void *this_, luisa::string_view path) {
     if (!p) {
         return nullptr;
     }
+    ptr->install();
     unsafe_forget(std::move(ptr));
     return p;
 }
@@ -670,6 +671,7 @@ void *Project::import_mesh(void *this_, luisa::string_view path) {
     if (!p) {
         return nullptr;
     }
+    ptr->install();
     unsafe_forget(std::move(ptr));
     return p;
 }
@@ -690,6 +692,7 @@ void *Project::import_texture(
     if (!p) {
         return nullptr;
     }
+    ptr->install();
     unsafe_forget(std::move(ptr));
     return p;
 }
