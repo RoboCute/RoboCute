@@ -128,7 +128,7 @@ Initialize and load a project.
 **Parameters:**
 - `project_path` (Path): Path to the project directory
 
-#### `init_display(x=1920, y=1080, display_title="py_window")`
+#### `init_display(x=1920, y=1080, display_title="py_window", create_window=True, window_resizable=True, full_screen=False, transparent=False)`
 
 Initialize the display window.
 
@@ -136,6 +136,10 @@ Initialize the display window.
 - `x` (int): Width of the display
 - `y` (int): Height of the display
 - `display_title` (str): Window title
+- `create_window` (bool): Whether to create a window
+- `window_resizable` (bool): Whether the window is resizable
+- `full_screen` (bool): Whether to use full screen mode
+- `transparent` (bool): Whether the window is transparent
 
 #### `init_transparent_display(x=1920, y=1080, offset_x=0, offset_y=0, opacity=0.5, topmost=True, click_through=False, display_title="py_window")`
 
@@ -189,7 +193,7 @@ Upload mesh data to the GPU.
 **Parameters:**
 - `mesh` (`MeshResource`): The mesh to upload
 
-#### `set_ground_plane_mode(mode, scale=100, height=0)`
+#### `set_ground_plane_mode(mode, scale=100, height=0, material=None)`
 
 Configure the ground plane visualization.
 
@@ -197,6 +201,7 @@ Configure the ground plane visualization.
 - `mode` (str): Mode type ('none' to disable, or other values)
 - `scale` (float): Plane scale
 - `height` (float): Plane height
+- `material` (OpenPBRInterface, optional): Custom material for the ground plane
 
 ---
 
@@ -267,6 +272,7 @@ Manages project assets and resource importing.
 | `init(assets_root_dir)` | Initialize project with assets directory |
 | `scan_project()` | Scan project for resources |
 | `import_scene(path, extra_meta)` | Import a scene file |
+| `import_texture(path, mip_level, to_vt)` | Import a texture file |
 | `import_material(path)` | Import a material |
 | `import_mesh(path)` | Import a mesh |
 | `import_texture(path, mip_level, to_vt)` | Import a texture |
@@ -376,6 +382,7 @@ Controls camera settings and rendering.
 | `save_image_to(path)` | Save image to file |
 | `clear_geometry_export_buffer()` | Clear geometry export buffer |
 | `set_geometry_export_buffer(buffer, channel_type)` | Set geometry export buffer |
+| `clear_geometry_export_buffer()` | Clear geometry export buffer |
 
 ---
 
@@ -458,6 +465,7 @@ Represents a 3D mesh with vertices and triangles.
 | Method | Description |
 |--------|-------------|
 | `create_empty(submesh_offsets, vertex_count, triangle_count, uv_count, contained_normal, contained_tangent)` | Create empty mesh |
+| `install()` | Install the mesh resource |
 | `create_as_morphing_instance(origin_mesh)` | Create as morphing instance |
 | `data_buffer()` | Get raw data buffer |
 | `pos_buffer()` | Get position buffer |
@@ -747,8 +755,16 @@ Resource loading states:
 
 ### RendererGeometryType
 
-Geometry export types:
-- `Position`, `Normal`, `Albedo`, `Index`
+Geometry export types (can be combined with bitwise OR):
+- `Depth` - Depth buffer
+- `Normal` - Normal vectors
+- `ObjectID` - Object ID
+- `PrimID` - Primitive ID
+- `Barycentric` - Barycentric coordinates
+- `Emission` - Emission color
+- `Albedo` - Albedo color
+- `Position` - Position data
+- `Index` - Index data
 
 ### BaseObjectType
 
