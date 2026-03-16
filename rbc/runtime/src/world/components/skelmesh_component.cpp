@@ -61,10 +61,13 @@ void SkelMeshComponent::update_render() {
         return;
     }
     auto *render = entity()->get_component<RenderComponent>();
+    if (!render) [[unlikely]] {
+        LUISA_WARNING("RenderComponent not found on entity, cannot update render");
+        return;
+    }
 
     // Now Everything Ready, start Initialize RenderState
     if (!runtime_skel_mesh->RenderStateCreated()) {
-
         runtime_skel_mesh->CreateRenderState_Concurrent(render_device);
         StartUpdateRender(*render, bind_mats);
     } else {

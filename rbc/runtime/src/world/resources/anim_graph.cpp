@@ -48,18 +48,18 @@ rbc::coroutine AnimGraphResource::_async_load() {
 }
 
 bool AnimGraphResource::unsafe_save_to_path() const {
-    std::shared_lock lck{_async_mtx};
-    BinSerializer ser;
-    ser._store(graph, "graph");
+    //std::shared_lock lck{_async_mtx};
+    //BinSerializer ser;
+    //ser._store(graph, "graph");
 
-    auto path = this->path();
-    BinaryFileWriter writer{luisa::to_string(path)};
-    if (!writer._file) [[unlikely]] {
-        return false;
-    }
-    LUISA_INFO("AnimGraph Writing to {}", path.string());
-    auto bytes = ser.write_to();
-    writer.write(bytes);
+    //auto path = this->path();
+    //BinaryFileWriter writer{luisa::to_string(path)};
+    //if (!writer._file) [[unlikely]] {
+    //    return false;
+    //}
+    //LUISA_INFO("AnimGraph Writing to {}", path.string());
+    //auto bytes = ser.write_to();
+    //writer.write(bytes);
     return true;
 }
 

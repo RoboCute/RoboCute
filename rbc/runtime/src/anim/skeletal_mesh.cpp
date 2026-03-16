@@ -220,6 +220,7 @@ void SkeletalMesh::CreateRenderState_Concurrent(RenderDevice *device) {
         render_object_ = RBCNew<SkeletalMeshRenderObjectCPUSkin>(this, device);
     }
     bRenderStateCreated = true;
+    LUISA_INFO("SkelMesh RenderState Created");
 }
 
 void SkeletalMesh::DestroyRenderState_Concurrent() {
