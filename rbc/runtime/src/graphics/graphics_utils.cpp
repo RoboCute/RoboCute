@@ -431,18 +431,30 @@ void GraphicsUtils::update_texture(DeviceImage *ptr, uint mip_level) {
         _sm->set_io_cmdlist_require_sync();
     }
     auto &&img = ptr->get_float_image();
+    auto host_ptr = ptr->host_data().data();
+    auto copy_view = [&](ImageView<float> img) {
+        auto size_bytes = img.size_bytes();
+        auto row_size = pixel_storage_size(img.storage(), make_uint3(img.size().x, 1, 1));
+        if ((row_size & 255) > 0) {
+            _render_device->lc_main_cmd_list() << img.copy_from(host_ptr);
+        } else {
+            _sm->frame_mem_io_list() << IOCommand{
+                host_ptr,
+                0,
+                IOTextureSubView{img}};
+        }
+        host_ptr += size_bytes;
+    };
     if (mip_level == ~0u) {
         for (auto i : vstd::range(img.mip_levels())) {
-            _sm->frame_mem_io_list() << IOCommand{
-                ptr->host_data().data(),
-                0,
-                IOTextureSubView{img.view(i)}};
+            copy_view(img.view(i));
         }
     } else {
-        _sm->frame_mem_io_list() << IOCommand{
-            ptr->host_data().data(),
-            0,
-            IOTextureSubView{img.view(std::min<uint32_t>(img.mip_levels() - 1, mip_level))}};
+        mip_level = std::min<uint32_t>(img.mip_levels() - 1, mip_level);
+        for (auto i : vstd::range(mip_level)) {
+            host_ptr += img.view(i).size_bytes();
+        }
+        copy_view(img.view(mip_level));
     }
 
     auto &sm = SceneManager::instance();

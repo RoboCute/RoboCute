@@ -2,6 +2,11 @@
 
 using namespace luisa::shader;
 
+// Decode normal from [0,1] range (texture storage) to [-1,1] range (direction)
+inline float3 decode_normal(float3 encoded_normal) {
+    return encoded_normal * 2.0f - 1.0f;
+}
+
 [[kernel_1d(1024)]] [[warp_size(32)]]
 int kernel(
     Image<float> &src_img,
@@ -13,9 +18,9 @@ int kernel(
     auto disp_id = dispatch_id().x;
     uint2 coord(disp_id % size.x, disp_id / size.x);
     if (disp_id < size.x * size.y) {
-        // Sample normal from src_img and dst_img, use dot to compute difference, save to diff
-        float3 src_normal = normalize(src_img.read(coord).xyz);
-        float3 dst_normal = normalize(dst_img.read(coord).xyz);
+        // Sample normal from src_img and dst_img, decode from [0,1] to [-1,1], then normalize
+        float3 src_normal = normalize(decode_normal(src_img.read(coord).xyz));
+        float3 dst_normal = normalize(decode_normal(dst_img.read(coord).xyz));
         // Compute difference: 1 - dot(n1, n2) gives angular difference
         // or we can just use (1 - dot) / 2 to get [0, 1] range
         diff = 1.0f - saturate(dot(src_normal, dst_normal));

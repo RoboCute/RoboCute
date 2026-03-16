@@ -42,6 +42,6 @@ float sobel_y(float3x3 data) {
     float gy = sobel_y(r);
 
     float3 normal = normalize(float3(-gx, -gy, 1.0f));
-    normal_img.write(id, float4(normal, 1.0f));
+    normal_img.write(id, float4(normal * 0.5f + 0.5f, 1.0f));
     return 0;
 }
