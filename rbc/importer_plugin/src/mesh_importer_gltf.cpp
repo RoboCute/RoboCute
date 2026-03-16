@@ -62,7 +62,6 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
     resource->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     *(resource->host_data()) = std::move(resource_bytes);
 
-
     // skinning
     if (import_data.max_weight_count > 0) {
         size_t weight_size = import_data.max_weight_count;
@@ -83,19 +82,10 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
             weight_size * resource->vertex_count() * sizeof(uint16_t));
 
         auto joint_weight = luisa::span{
-            (float *)w_property.second.data(),
-            w_property.second.size()};
+            reinterpret_cast<float *>(w_property.second.data()),
+            w_property.second.size() / sizeof(float)};
 
         std::memcpy(joint_weight.data(), import_data.all_joint_weight.data(), joint_weight.size_bytes());
-
-        for (auto i = 0; i < 10; i++) {
-            LUISA_INFO("Joint Index {}: {}", i, joint_index[i]);
-        }
-
-        for (auto i = 0; i < 10; i++) {
-
-            LUISA_INFO("Joint Weight {}: {}", i, joint_weight[i]);
-        }
     }
     return true;
 }
@@ -142,7 +132,6 @@ bool GlbMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
     mesh_builder.write_to(resource_bytes, submesh_offsets);
     resource->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
     *(resource->host_data()) = std::move(resource_bytes);
-
 
     // skinning
     if (import_data.max_weight_count > 0) {
