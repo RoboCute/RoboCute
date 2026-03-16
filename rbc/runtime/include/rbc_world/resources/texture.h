@@ -53,6 +53,7 @@ public:
     void serialize_meta(ObjSerialize const &obj) const override;
     void deserialize_meta(ObjDeSerialize const &obj) override;
     static uint desired_mip_level(luisa::uint2 size, uint idx);
+    DeviceResource* tex() const { return _tex.get(); }
 
 protected:
     bool _install() override;

@@ -17,6 +17,8 @@
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_core/runtime_static.h>
 #include <rbc_graphics/device_assets/device_image.h>
+#include <rbc_graphics/device_assets/device_mesh.h>
+#include <rbc_graphics/device_assets/device_transforming_mesh.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_project/project_plugin.h>
 #include <rbc_project/project.h>
@@ -31,6 +33,7 @@
 #include <rbc_world/resources/skeleton.h>
 #include <rbc_world/resources/skelmesh.h>
 #include <rbc_world/components/atmosphere_component.h>
+
 void save_image(luisa::filesystem::path const &path, luisa::compute::Image<float> const &img);// implemented save_image.cpp
 namespace rbc {
 struct EntitiesCollectionImpl : RCBase {
@@ -259,18 +262,37 @@ luisa::uint2 TextureResource::size(void *this_) {
     auto c = static_cast<world::TextureResource *>(this_);
     return c->size();
 }
+luisa::compute::TextureCreationInfo TextureResource::device_texture(void *this_) {
+    auto c = static_cast<world::TextureResource *>(this_);
+    luisa::compute::TextureCreationInfo r;
+    r.invalidate();
+    auto tex = c->tex();
+    if (!tex) [[unlikely]] {
+        LUISA_ERROR("Texture uninitialized.");
+        return r;
+    }
+    if (!c->is_vt()) [[likely]] {
+        auto t = static_cast<DeviceImage *>(tex);
+        auto &&img = t->get_float_image();
+        if (!img) [[unlikely]] {
+            LUISA_ERROR("Texture uninitialized.");
+            return r;
+        }
+        r.format = img.format();
+        r.dimension = 2;
+        auto s = img.size();
+        r.width = s.x;
+        r.height = s.y;
+        r.depth = 1;
+        r.mipmap_levels = img.mip_levels();
+        r.handle = img.handle();
+        r.native_handle = img.native_handle();
+    } else {
+        LUISA_ERROR("Sparse image (virtual texture) can not get device_texture.");
+    }
+    return r;
+}
 
-// luisa::span<std::byte> MeshResource::vertex_buffer(void *this_) {
-//     auto c = static_cast<world::MeshResource *>(this_);
-//     auto data = c->host_data();
-//     if (!data) return {};
-//     auto tri_count = c->triangle_count();
-//     auto tri_size_bytes = tri_count * sizeof(Triangle);
-//     auto basic_size = c->basic_size_bytes();
-//     auto vertex_size = basic_size - tri_size_bytes;
-//     if (data->size() < vertex_size) return {};
-//     return luisa::span{data->data(), vertex_size};
-// }
 luisa::span<std::byte> MeshResource::pos_buffer(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     auto data = c->host_data();
@@ -402,6 +424,95 @@ uint32_t MeshResource::uv_count(void *this_) {
 uint32_t MeshResource::vertex_count(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     return c->vertex_count();
+}
+luisa::compute::BufferCreationInfoInterop MeshResource::device_data_buffer(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    luisa::compute::BufferCreationInfoInterop r;
+    r.invalidate();
+    if (c->is_transforming_mesh()) {
+        auto mesh = c->device_transforming_mesh();
+        if (!mesh) [[unlikely]] {
+            LUISA_ERROR("Transforming mesh is null in MeshResource::build_before_tick.");
+        }
+        if (!mesh->mesh_data()) [[unlikely]] {
+            LUISA_ERROR("Mesh data is null in MeshResource::device_data_buffer (transforming mesh).");
+        }
+        auto &buffer = mesh->mesh_data()->pack.data;
+        if (!buffer) [[unlikely]] {
+            LUISA_ERROR("Buffer is null in MeshResource::device_data_buffer (transforming mesh).");
+        }
+        r.handle = buffer.handle();
+        r.native_handle = buffer.native_handle();
+        r.element_stride = sizeof(uint);
+        r.total_size_bytes = buffer.size_bytes();
+        r.interop = false;
+
+    } else {
+        auto mesh = c->device_mesh();
+        if (!mesh) [[unlikely]] {
+            LUISA_ERROR("Mesh is null in MeshResource::device_data_buffer.");
+        }
+        if (!mesh->mesh_data()) [[unlikely]] {
+            LUISA_ERROR("Mesh data is null in MeshResource::device_data_buffer.");
+        }
+        auto &buffer = mesh->mesh_data()->pack.data;
+        if (!buffer) [[unlikely]] {
+            LUISA_ERROR("Buffer is null in MeshResource::device_data_buffer.");
+        }
+        r.handle = buffer.handle();
+        r.native_handle = buffer.native_handle();
+        r.element_stride = sizeof(uint);
+        r.total_size_bytes = buffer.size_bytes();
+        r.interop = false;
+    }
+    return r;
+}
+luisa::compute::BufferCreationInfoInterop MeshResource::device_mutable_buffer(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    luisa::compute::BufferCreationInfoInterop r;
+    r.invalidate();
+    if (c->is_transforming_mesh()) {
+        auto mesh = c->device_transforming_mesh();
+        if (!mesh) [[unlikely]] {
+            LUISA_ERROR("Transforming mesh is null in MeshResource::build_before_tick.");
+        }
+        if (!mesh->mesh_data()) [[unlikely]] {
+            LUISA_ERROR("Mesh data is null in MeshResource::device_mutable_buffer.");
+        }
+        auto &buffer = mesh->mesh_data()->pack.mutable_data;
+        if (!buffer) [[unlikely]] {
+            LUISA_ERROR("Mutable buffer is null in MeshResource::device_mutable_buffer.");
+        }
+        r.handle = buffer.handle();
+        r.native_handle = buffer.native_handle();
+        r.element_stride = sizeof(uint);
+        r.total_size_bytes = buffer.size_bytes();
+        r.interop = false;
+
+    } else {
+        LUISA_ERROR("Mutable buffer is only supported for transforming meshes in MeshResource::device_mutable_buffer.");
+    }
+    return r;
+}
+void MeshResource::build_before_tick(void *this_) {
+    auto c = static_cast<world::MeshResource *>(this_);
+    auto graphics_util = GraphicsUtils::instance();
+    if (!graphics_util) [[unlikely]] {
+        LUISA_ERROR("GraphicsUtils not initialized.");
+    }
+    if (c->is_transforming_mesh()) {
+        auto mesh = c->device_transforming_mesh();
+        if (!mesh) [[unlikely]] {
+            LUISA_ERROR("Transforming mesh is null in MeshResource::build_before_tick.");
+        }
+        graphics_util->build_transforming_mesh(mesh);
+    } else {
+        auto mesh = c->device_mesh();
+        if (!mesh) [[unlikely]] {
+            LUISA_ERROR("Mesh is null in MeshResource::build_before_tick.");
+        }
+        graphics_util->build_mesh(mesh);
+    }
 }
 void MaterialResource::load_from_json(void *this_, luisa::string_view json) {
     auto c = static_cast<world::MaterialResource *>(this_);

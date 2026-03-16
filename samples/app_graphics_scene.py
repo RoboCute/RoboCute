@@ -1,3 +1,9 @@
+import mat_builtin as mat
+import samples.cli as cli
+from robocute.rbc_ext._C import lcapi_c as lcapi
+import robocute.rbc_ext as re
+import robocute.rbc_ext.luisa as lc
+import robocute as rbc
 import os
 import sys
 import time
@@ -13,12 +19,6 @@ script_dir = Path(__file__).parent
 if str(script_dir.parent) not in sys.path:
     sys.path.insert(0, str(script_dir.parent))
 
-import robocute as rbc
-import robocute.rbc_ext.luisa as lc
-import robocute.rbc_ext as re
-from robocute.rbc_ext._C import lcapi_c as lcapi
-import samples.cli as cli
-import mat_builtin as mat
 
 vertex_count = 16
 """网格顶点总数(两个立方体, 每个8个顶点)"""
@@ -363,7 +363,7 @@ def main():
     global app
     app = rbc.app.App()  # rbc app singleton
     app.init(project_path=project_path, backend_name=args.backend)
-    tex = app._project.import_texture('test_grid.png', 4, True)
+    tex = app._project.import_texture('test_grid.png', 1, False)
     print(tex.size())
     if not app.ctx:
         print("Context not Valid!")
@@ -412,10 +412,36 @@ def main():
         print("Scene not Valid!")
         return
 
+    # DO THIS: change texture in shader
+    # move_shader = lc.Shader('geometry/move_mesh.bin')
+    # move_tex = lc.Shader('geometry/move_color.bin')
+    # my_tex = lc.Image2D.import_native(float, tex.device_texture())
+    # move_tex(
+    #     my_tex,
+    #     lc.float4(0, 1, 1, 1),
+    #     dispatch_size=(my_tex.width, my_tex.height, 1)
+    # )
     entity = make_cube_mesh(app.scene, tex=tex)
     last_time = time.time()
 
     def tick_logic():  # run every frame
+        nonlocal last_time
+
+        cur_time = time.time()
+        delta_time = cur_time - last_time
+        last_time = cur_time
+        # build after update
+
+        # DO THIS: change mesh in shader
+        # render = re.world.RenderComponent(entity.get_component("RenderComponent"))
+        # buffer = lc.Buffer.import_native(lc.float3, render.mesh().device_data_buffer())
+        # move_shader(
+        #     buffer,
+        #     delta_time,
+        #     dispatch_size=(vertex_count, 1, 1)
+        # )
+        # render.mesh().build_before_tick()
+
         nonlocal EXPORT, tui_exec, frame_index, geometry_buffer
         frame_index += 1
         if EXPORT and frame_index == 128:
@@ -538,16 +564,17 @@ def main():
             app.call_exit()  # End the loop
     app.set_user_callback(tick_logic)
     # app.set_ground_plane_mode('yes')
-    
+
     # Enable AO mode
-    render_settings = app.display_cam.render_settings()
-    render_settings.set_offline_spp(1)
-    render_settings.set_enable_ao_mode(True)
-    render_settings.set_ao_max_radius(lc.float4(1.5, 1.0, 0.5, 0.2))
-    render_settings.set_offline_origin_bounce(1)
-    render_settings.set_offline_indirect_bounce(0)
-    
+    # render_settings = app.display_cam.render_settings()
+    # render_settings.set_offline_spp(1)
+    # render_settings.set_enable_ao_mode(True)
+    # render_settings.set_ao_max_radius(lc.float4(1.5, 1.0, 0.5, 0.2))
+    # render_settings.set_offline_origin_bounce(1)
+    # render_settings.set_offline_indirect_bounce(0)
+
     app.run()
+
 
 if __name__ == "__main__":
     main()

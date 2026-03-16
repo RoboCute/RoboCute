@@ -9,7 +9,7 @@ from .types import uint, uint, uint3, short, ushort, long, ulong
 
 
 class Buffer:
-    def __init__(self, size, dtype, external_memory=None, enable_interop=False):
+    def __init__(self, size, dtype, external_memory=None, enable_interop=False, lc_type=None):
         if dtype not in basic_dtypes and type(dtype).__name__ not in {
             "StructType",
             "ArrayType",
@@ -17,7 +17,8 @@ class Buffer:
             raise TypeError("Invalid buffer element type")
         self.bufferType = BufferType(dtype)
         self.dtype = dtype
-        lc_type = to_lctype(self.dtype)
+        if lc_type is None:
+            lc_type = to_lctype(self.dtype)
         self.stride = lc_type.size()
         assert size > 0
         self.size = size
@@ -59,7 +60,8 @@ class Buffer:
         # luisa.init()
         assert info.handle() != 18446744073709551615
         assert get_global_device() is not None
-        return Buffer(info.element_size(), dtype, info, info.interop())
+        lc_type = to_lctype(dtype)
+        return Buffer(info.total_size_bytes() // lc_type.size(), dtype, info, info.interop(), lc_type=lc_type)
 
     @staticmethod
     def buffer(arr):

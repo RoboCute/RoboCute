@@ -100,12 +100,10 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
 
     {
         auto &registry = world::ResourceImporterRegistry::instance();
-        auto exr_importer = static_cast<world::ITextureImporter*>(registry.find_importer(
-            luisa::string_view{".exr"}, TypeInfo::get<rbc::world::TextureResource>().md5()
-        ));
-        auto stb_importer = static_cast<world::ITextureImporter*>(registry.find_importer(
-            luisa::string_view{".stb"}, TypeInfo::get<rbc::world::TextureResource>().md5()
-        ));
+        auto exr_importer = static_cast<world::ITextureImporter *>(registry.find_importer(
+            luisa::string_view{".exr"}, TypeInfo::get<rbc::world::TextureResource>().md5()));
+        auto stb_importer = static_cast<world::ITextureImporter *>(registry.find_importer(
+            luisa::string_view{".stb"}, TypeInfo::get<rbc::world::TextureResource>().md5()));
 
         RBCZoneScopedN("Load Textures");
         TextureLoader tex_loader;
