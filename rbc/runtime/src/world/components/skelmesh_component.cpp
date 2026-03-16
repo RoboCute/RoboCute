@@ -106,6 +106,11 @@ MeshResource *SkelMeshComponent::GetRuntimeMesh() const {
     return render_data.morph_mesh.get();
 }
 
+bool SkelMeshComponent::IsEnabled() const {
+    if (!runtime_skel_mesh) { return false; }
+    return runtime_skel_mesh->IsAnimationEnabled();
+}
+
 DECLARE_WORLD_OBJECT_REGISTER(SkelMeshComponent);
 
 }// namespace rbc::world

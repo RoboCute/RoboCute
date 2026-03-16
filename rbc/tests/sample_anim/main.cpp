@@ -29,6 +29,7 @@
 #include <rbc_world/components/transform_component.h>
 #include <rbc_world/components/render_component.h>
 #include <rbc_world/components/skelmesh_component.h>
+#include <rbc_world/components/light_component.h>
 #include <rbc_world/importers/texture_loader.h>
 #include <rbc_world/importers/register_importers.h>
 #include <rbc_world/resource_importer.h>
@@ -82,6 +83,7 @@ struct AnimScene {
 private:
     void _load_skybox(GraphicsUtils *utils);
     void _load_scene(GraphicsUtils *utils);
+    void _setup_default_lighting();
 };
 
 AnimScene::AnimScene(
@@ -121,6 +123,11 @@ AnimScene::AnimScene(
     // Load resources
     _load_skybox(utils);
     _load_scene(utils);
+
+    // Setup default lighting if no skybox loaded
+    if (!skybox) {
+        _setup_default_lighting();
+    }
 }
 
 void AnimScene::_load_skybox(GraphicsUtils *utils) {
@@ -555,13 +562,30 @@ void AnimScene::tick_animation(float delta_time) {
 void AnimScene::update_render(GraphicsUtils *utils) {
     if (entity) {
         auto skelmesh = entity->get_component<world::SkelMeshComponent>();
-        if (skelmesh) {
+        if (skelmesh && skelmesh->IsEnabled()) {
             skelmesh->update_render();
             if (skelmesh->GetRuntimeMesh()) {
                 utils->build_transforming_mesh(skelmesh->GetRuntimeMesh()->device_transforming_mesh());
             }
         }
     }
+}
+
+void AnimScene::_setup_default_lighting() {
+    // Create a simple point light to provide basic illumination
+    // when no skybox is available
+    auto light_entity = RC<world::Entity>{world::create_object<world::Entity>()};
+
+    auto transform = light_entity->add_component<world::TransformComponent>();
+    transform->set_pos(double3(5, 10, 5), true);
+
+    auto light = light_entity->add_component<world::LightComponent>();
+    // Add a bright point light (RGB luminance values)
+    light->add_point_light(float3(100.0f, 100.0f, 100.0f), true);
+
+    _entities.push_back(light_entity.get());
+
+    LUISA_INFO("Created default point light for illumination");
 }
 
 AnimScene::~AnimScene() {
@@ -577,13 +601,13 @@ AnimScene::~AnimScene() {
     // If resources are cleared first, entity will access freed memory
     entity.reset();
     _entities.clear();
-    
+
     skybox.reset();
     loaded_materials.clear();
     loaded_mesh.reset();
     skel_mesh.reset();
     all_resources.clear();
-    
+
     if (scene) {
         scene->save_to_path();
     }
@@ -639,8 +663,8 @@ int main(int argc, char *argv[]) {
     auto &cam = utils->render_settings(pipe_ctx).read_mut<Camera>();
     CameraController cam_controller;
     cam_controller.camera = &cam;
-    cam.fov = radians(80.f);
-    cam.position = double3(0, 0, 5);
+    cam.fov = radians(60.0f);
+    cam.position = double3(0, -50, 50);
 
     CameraController::Input camera_input;
     uint2 window_size = window.size();
@@ -749,8 +773,8 @@ int main(int argc, char *argv[]) {
                 utils->tick(tick_stage);
             }
 
-            ++frame_index;
-            RBCPlot("Frame Index", static_cast<float>(frame_index));
+            // ++frame_index;
+            // RBCPlot("Frame Index", static_cast<float>(frame_index));
         }
     }
 

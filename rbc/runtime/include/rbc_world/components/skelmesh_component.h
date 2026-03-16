@@ -24,13 +24,12 @@ public:
 
     void SetRefSkelMesh(RC<SkelMeshResource> &_skel_mesh) { _skel_mesh_ref = _skel_mesh; }
 
-    // RC<MeshResource> morph_mesh;// the morphing mesh instance
-    // luisa::vector<std::byte> morph_bytes;
     float time = 0.0f;
     luisa::span<const RC<MaterialResource>> bind_mats;
 
     void StartUpdateRender(RenderComponent &render, luisa::span<RC<MaterialResource> const> mats);
     MeshResource *GetRuntimeMesh() const;
+    bool IsEnabled() const;
 
 public:
     void tick(float delta_time = 0.0f);
