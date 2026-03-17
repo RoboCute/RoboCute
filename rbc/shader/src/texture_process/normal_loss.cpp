@@ -23,12 +23,12 @@ int kernel(
         float3 dst_normal = normalize(decode_normal(dst_img.read(coord).xyz));
         // Compute difference: 1 - dot(n1, n2) gives angular difference
         // or we can just use (1 - dot) / 2 to get [0, 1] range
-        diff = 1.0f - saturate(dot(src_normal, dst_normal));
+        diff = (1.0f - saturate(dot(src_normal, dst_normal))) * 100.f;
     }
 
     // Use warp and SharedArray, reduce-sum all diff
     // First reduce within warp
-    diff = warp_active_sum(diff) / 32.f;
+    diff = warp_active_sum(diff);
 
     // Use SharedArray for inter-warp reduction
     // 32x32 threads = 1024 threads, with warp size 32, we have 32 warps
@@ -45,7 +45,7 @@ int kernel(
     // First warp reduces all warp sums
     if (warp_id == 0) {
         diff = warp_sums[lane_id];
-        diff = warp_active_sum(diff) / 32.f;
+        diff = warp_active_sum(diff);
     }
 
     if (thd_id == 0) {
