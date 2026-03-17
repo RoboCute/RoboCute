@@ -1,6 +1,5 @@
 import os
 import sys
-import subprocess
 import json
 import shutil
 import requests
@@ -8,7 +7,6 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
 import importlib
-import re
 # from scripts.thirdparty_config import make_alembic_config, make_imath_config
 from scripts.prepare import (
     GIT_TASKS,
@@ -25,7 +23,9 @@ from scripts.prepare import (
     XMAKE_GLOBAL_TOOLCHAIN,
     OIDN_NAME,
 )
-from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug, run_git_command
+from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug
+from scripts.git_ops import git_clone_or_pull
+from scripts.progress_utils import print_progress_bar
 
 
 def get_http_proxies():
@@ -42,24 +42,6 @@ def get_http_proxies():
         print_info(f"Using HTTPS_PROXY: {https_proxy}")
     
     return proxies if proxies else None
-
-
-def convert_to_ssh_url(https_url: str) -> str:
-    """Convert HTTPS GitHub URL to SSH URL.
-    
-    Args:
-        https_url: HTTPS URL like https://github.com/user/repo.git
-        
-    Returns:
-        SSH URL like git@github.com:user/repo.git
-    """
-    # Pattern to match https://github.com/user/repo.git
-    pattern = r'https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?$'
-    match = re.match(pattern, https_url)
-    if match:
-        user, repo = match.groups()
-        return f"git@github.com:{user}/{repo}.git"
-    return https_url
 
 
 def get_requests_session():
@@ -111,40 +93,6 @@ def write_shader_compile_cmd():
     f = open(shader_dir / "gen_json.cmd", "w")
     f.write("@echo off\n" + base_cmd() + " -lsp")
     f.close()
-
-
-def git_clone_or_pull(git_address, subdir, branch=None, use_ssh=False):
-    abs_subdir = rel(subdir)
-    
-    # Convert to SSH URL if requested
-    if use_ssh:
-        original_address = git_address
-        git_address = convert_to_ssh_url(git_address)
-        if git_address != original_address:
-            print_info(f"Using SSH URL: {git_address}")
-    
-    args = []
-    if is_empty_folder(abs_subdir):
-        # Clone
-        args = ["clone", git_address]
-        if branch:
-            args.extend(["-b", branch])
-        args.append(abs_subdir)
-        print_info(f"pulling {git_address} to {abs_subdir}")
-    else:
-        # Pull
-        args = ["-C", abs_subdir, "pull"]
-        if branch:
-            args.extend(["origin", branch])
-        print_info(f"pulling {git_address} to {abs_subdir}")
-
-    done, log = run_git_command(args)
-    log = log.strip()
-    if done:
-        print_success(log)
-    else:
-        print_error(log)
-        sys.exit(1)
 
 
 new_file_hash = {}
@@ -240,17 +188,35 @@ def download_packages():
             print_debug(f"'{dst_path}' exists, skip download.")
             unzip()
             return
-        print_info(f"Downloading '{dst_path}'...")
+        
+        print_info(f"Downloading '{file}'...")
         session = get_requests_session()
-        response = session.get(map["address"] + file)
+        
+        # Download with progress bar
+        response = session.get(map["address"] + file, stream=True)
         response.raise_for_status()
+        
+        # Get total file size
+        total_size = int(response.headers.get('content-length', 0))
+        downloaded = 0
+        chunk_size = 8192
+        
         # check if parent directory exists, else mkdir -p
         if not os.path.exists(os.path.dirname(dst_path)):
             os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 
         with open(dst_path, "wb") as f:
-            f.write(response.content)
-        print_success(f"Download '{dst_path}' successfully!")
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        percent = int(downloaded * 100 / total_size)
+                        print_progress_bar(percent, prefix="Downloading", width=25)
+        
+        if total_size > 0:
+            print()  # New line after progress bar
+        print_success(f"Download '{file}' successfully!")
         unzip()
 
     executor = ThreadPoolExecutor(max_workers=8)

@@ -1,0 +1,120 @@
+"""Git operations with progress display."""
+
+import subprocess
+import sys
+import threading
+from pathlib import Path
+from typing import Optional
+
+from scripts.utils import is_empty_folder, rel, print_success, print_error, print_info
+from scripts.progress_utils import GitProgressParser, stream_reader_thread
+
+
+def convert_to_ssh_url(https_url: str) -> str:
+    """Convert HTTPS GitHub URL to SSH URL.
+    
+    Args:
+        https_url: HTTPS URL like https://github.com/user/repo.git
+        
+    Returns:
+        SSH URL like git@github.com:user/repo.git
+    """
+    import re
+    pattern = r'https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?$'
+    match = re.match(pattern, https_url)
+    if match:
+        user, repo = match.groups()
+        return f"git@github.com:{user}/{repo}.git"
+    return https_url
+
+
+def git_clone_or_pull(git_address: str, subdir: str, branch: Optional[str] = None, use_ssh: bool = False) -> None:
+    """Clone or pull a git repository with progress display.
+    
+    Args:
+        git_address: URL of the git repository
+        subdir: Local subdirectory to clone/pull to
+        branch: Branch to checkout (None for default branch)
+        use_ssh: Whether to convert HTTPS URL to SSH URL
+    """
+    abs_subdir = rel(subdir)
+    
+    # Convert to SSH URL if requested
+    if use_ssh:
+        original_address = git_address
+        git_address = convert_to_ssh_url(git_address)
+        if git_address != original_address:
+            print_info(f"Using SSH URL: {git_address}")
+    
+    args = []
+    is_clone = is_empty_folder(abs_subdir)
+    if is_clone:
+        # Clone
+        args = ["clone", "--progress", git_address]
+        if branch:
+            args.extend(["-b", branch])
+        args.append(abs_subdir)
+        print_info(f"Cloning {git_address} to {subdir}...")
+    else:
+        # Pull with progress
+        args = ["-C", abs_subdir, "pull", "--progress"]
+        if branch:
+            args.extend(["origin", branch])
+        print_info(f"Pulling {git_address} in {subdir}...")
+
+    cmd = ['git'] + args
+    
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+            bufsize=1,
+            universal_newlines=True
+        )
+    except FileNotFoundError:
+        print_error("Git command not found. Please ensure git is installed.")
+        sys.exit(1)
+    except Exception as e:
+        print_error(f"Failed to start git command: {e}")
+        sys.exit(1)
+    
+    # Create progress parser
+    parser = GitProgressParser()
+    
+    def read_stream(stream, is_stderr):
+        """Read from stream and parse progress."""
+        def handler(line):
+            if is_stderr:
+                parser.parse_line(line)
+        stream_reader_thread(stream, handler)
+    
+    # Start threads to read stdout and stderr
+    stdout_thread = threading.Thread(target=read_stream, args=(process.stdout, False))
+    stderr_thread = threading.Thread(target=read_stream, args=(process.stderr, True))
+    
+    stdout_thread.start()
+    stderr_thread.start()
+    
+    # Wait for process to complete
+    returncode = process.wait()
+    stdout_thread.join()
+    stderr_thread.join()
+    
+    if parser.has_progress:
+        print()  # New line after progress bar
+    
+    if returncode == 0:
+        if is_clone:
+            print_success(f"✓ Successfully cloned {subdir}")
+        else:
+            print_success(f"✓ Successfully pulled {subdir}")
+    else:
+        if is_clone:
+            print_error(f"✗ Failed to clone {subdir}")
+        else:
+            print_error(f"✗ Failed to pull {subdir}")
+        sys.exit(1)
