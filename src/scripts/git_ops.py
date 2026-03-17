@@ -3,6 +3,7 @@
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -26,6 +27,68 @@ def convert_to_ssh_url(https_url: str) -> str:
         user, repo = match.groups()
         return f"git@github.com:{user}/{repo}.git"
     return https_url
+
+
+def _run_with_spinner(process: subprocess.Popen, parser: GitProgressParser, description: str) -> int:
+    """Run git process with a spinner animation.
+    
+    Args:
+        process: The subprocess.Popen instance
+        parser: GitProgressParser instance to parse progress
+        description: Description to show with spinner (e.g., "Cloning repo")
+        
+    Returns:
+        Process return code
+    """
+    spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    spinner_idx = 0
+    stop_spinner = threading.Event()
+    
+    def read_stream(stream, is_stderr):
+        """Read from stream and parse progress."""
+        def handler(line):
+            if is_stderr:
+                parser.parse_line(line)
+        stream_reader_thread(stream, handler)
+    
+    # Start threads to read stdout and stderr
+    stdout_thread = threading.Thread(target=read_stream, args=(process.stdout, False))
+    stderr_thread = threading.Thread(target=read_stream, args=(process.stderr, True))
+    
+    stdout_thread.start()
+    stderr_thread.start()
+    
+    def spinner_thread():
+        """Display spinner while process is running."""
+        nonlocal spinner_idx
+        while not stop_spinner.is_set():
+            if not parser.has_progress:
+                # Only show spinner if no git progress is being displayed
+                char = spinner_chars[spinner_idx % len(spinner_chars)]
+                print(f"\r{char} {description}...", end='', flush=True)
+                spinner_idx += 1
+            time.sleep(0.1)
+    
+    # Start spinner thread
+    spinner = threading.Thread(target=spinner_thread)
+    spinner.start()
+    
+    # Wait for process to complete
+    returncode = process.wait()
+    stdout_thread.join()
+    stderr_thread.join()
+    
+    # Stop spinner
+    stop_spinner.set()
+    spinner.join()
+    
+    # Clear spinner line or move to new line
+    if parser.has_progress:
+        print()  # New line after progress bar
+    else:
+        print(f"\r  {description}... done")
+    
+    return returncode
 
 
 def git_clone_or_pull(git_address: str, subdir: str, branch: Optional[str] = None, use_ssh: bool = False) -> None:
@@ -54,13 +117,13 @@ def git_clone_or_pull(git_address: str, subdir: str, branch: Optional[str] = Non
         if branch:
             args.extend(["-b", branch])
         args.append(abs_subdir)
-        print_info(f"Cloning {git_address} to {subdir}...")
+        action_desc = f"Cloning {subdir}"
     else:
         # Pull with progress
         args = ["-C", abs_subdir, "pull", "--progress"]
         if branch:
             args.extend(["origin", branch])
-        print_info(f"Pulling {git_address} in {subdir}...")
+        action_desc = f"Pulling {subdir}"
 
     cmd = ['git'] + args
     
@@ -82,30 +145,9 @@ def git_clone_or_pull(git_address: str, subdir: str, branch: Optional[str] = Non
         print_error(f"Failed to start git command: {e}")
         sys.exit(1)
     
-    # Create progress parser
+    # Create progress parser and run with spinner
     parser = GitProgressParser()
-    
-    def read_stream(stream, is_stderr):
-        """Read from stream and parse progress."""
-        def handler(line):
-            if is_stderr:
-                parser.parse_line(line)
-        stream_reader_thread(stream, handler)
-    
-    # Start threads to read stdout and stderr
-    stdout_thread = threading.Thread(target=read_stream, args=(process.stdout, False))
-    stderr_thread = threading.Thread(target=read_stream, args=(process.stderr, True))
-    
-    stdout_thread.start()
-    stderr_thread.start()
-    
-    # Wait for process to complete
-    returncode = process.wait()
-    stdout_thread.join()
-    stderr_thread.join()
-    
-    if parser.has_progress:
-        print()  # New line after progress bar
+    returncode = _run_with_spinner(process, parser, action_desc)
     
     if returncode == 0:
         if is_clone:
