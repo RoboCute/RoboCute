@@ -10,7 +10,7 @@ namespace rbc {
 void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLODCPU *InRenderData, luisa::span<AnimFloat4x4> InReferenceToLocal) {
     auto *mesh = InRenderData->render_data_->static_mesh_;
     int vertex_count = sk_prim.vertex_count;
-    LUISA_INFO("DoCPUSkinPrimitive");
+    // LUISA_INFO("DoCPUSkinPrimitive");
 
     auto joint_index = mesh->get_property_host("joint_index");
     auto joint_weight = mesh->get_property_host("joint_weight");
@@ -45,6 +45,33 @@ void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLO
         return ozz::span<T>{(T *)offset, vertex_count * comps};
     };
 
+    // Debug: Print first few joint indices and weights
+    // LUISA_INFO("Joint matrices count: {}", InReferenceToLocal.size());
+    // LUISA_INFO("Vertex count: {}", vertex_count);
+
+    // Check for invalid joint indices
+    auto *joint_idx_ptr = (uint16_t *)joint_index.data();
+    auto *joint_weight_ptr = (float *)joint_weight.data();
+    uint16_t max_joint_idx = 0;
+    for (auto i = 0; i < vertex_count * 4; i++) {
+        if (joint_idx_ptr[i] > max_joint_idx) {
+            max_joint_idx = joint_idx_ptr[i];
+        }
+    }
+    if (false) {
+        LUISA_INFO("Max joint index in mesh: {} (matrices: {})", max_joint_idx, InReferenceToLocal.size());
+
+        if (max_joint_idx >= InReferenceToLocal.size()) {
+            LUISA_ERROR("Joint index {} out of range! Only {} matrices available.", max_joint_idx, InReferenceToLocal.size());
+            return;
+        }
+
+        LUISA_INFO("First 10 joint indices:");
+        for (auto i = 0; i < std::min(10, vertex_count * 4); i++) {
+            LUISA_INFO("  [{}]: joint={}, weight={}", i, joint_idx_ptr[i], joint_weight_ptr[i]);
+        }
+    }
+
     AnimSkinningJob job;
     // BASIC CONFIG
     job.vertex_count = vertex_count;
@@ -55,15 +82,6 @@ void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLO
     job.joint_indices_stride = ref_joints.stride;
     job.joint_weights = ozz::span<float>{(float *)joint_weight.data(), (size_t)vertex_count * 4};
     job.joint_weights_stride = ref_weights.stride;
-
-    // for (auto i = 0; i < 10; i++) {
-    //     LUISA_INFO("Joint Index {}: {}", i, job.joint_indices[i]);
-    // }
-
-    // for (auto i = 0; i < 10; i++) {
-
-    //     LUISA_INFO("Joint Weight {}: {}", i, job.joint_weights[i]);
-    // }
 
     if (sk_prim.UseNormals() && false) {
         job.in_normals = static_buffer_span(sk_prim.ref_normals, rbc::type_t<float>(), 3);
@@ -142,7 +160,7 @@ SkelMeshRenderDataLOD &SkeletalMeshRenderObjectCPUSkin::GetLODRenderData() {
  * * 将更新后的VertexBuffer缓存并上传到GPU，方便渲染器调用
  */
 void SkeletalMeshRenderObjectCPUSkin::Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin) {
-    LUISA_INFO("Updating SkeletalMesh CPUSkin RenderObject");
+    // LUISA_INFO("Updating SkeletalMesh CPUSkin RenderObject");
 
     UpdateRefToLocalMatrices(LOD.skin_matrices, InDynamicData, InRefSkin);
     // 当前直接同步计算，未来会推入执行队列中异步计算
@@ -162,7 +180,7 @@ void SkeletalMeshRenderObjectCPUSkin::UpdateDynamicData_RenderThread() {
 }
 
 void SkeletalMeshRenderObjectCPUSkin::CPUSkinAndCacheVertices() {
-    LUISA_INFO("Doing CPUSkin");
+    // LUISA_INFO("Doing CPUSkin");
     RBCZoneScopedN("DoCPUSkinAndUpload");
     DoCPUSkin(&LOD, LOD.skin_matrices);
     auto *origin_mesh = LOD.morph_mesh->origin_mesh();

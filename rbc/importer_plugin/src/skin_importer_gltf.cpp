@@ -18,9 +18,13 @@ bool GltfSkinImporter::import(world::Resource *resource_base, luisa::filesystem:
     for (auto const &skin : model.skins) {
         name_ref(resource) = skin.name;
         auto &joint_remaps = joint_remaps_ref(resource);
+        // joint_remaps maps from skin joint index (0, 1, 2, ...) to joint name
+        // skin.joints array contains GLTF node indices
+        // Mesh JOINTS_0 attribute contains indices into skin.joints array
         joint_remaps.resize(skin.joints.size());
-        for (auto const &joint : skin.joints) {
-            joint_remaps[joint] = model.nodes[joint].name;
+        for (size_t i = 0; i < skin.joints.size(); ++i) {
+            auto node_idx = skin.joints[i];
+            joint_remaps[i] = model.nodes[node_idx].name;
         }
         auto &inverse_bind_poses = inverse_bind_poses_ref(resource);
         inverse_bind_poses.resize(skin.inverseBindMatrices >= 0 ? model.accessors[skin.inverseBindMatrices].count : 0);

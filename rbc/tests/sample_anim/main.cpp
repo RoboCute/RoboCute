@@ -79,6 +79,7 @@ struct AnimScene {
     void tick_animation(float delta_time);
     void update_render(GraphicsUtils *utils);
     void install_resources(GraphicsUtils *utils);
+    bool has_skybox() const { return skybox.get() != nullptr; }
 
 private:
     void _load_skybox(GraphicsUtils *utils);
@@ -135,34 +136,37 @@ void AnimScene::_load_skybox(GraphicsUtils *utils) {
 
     // Get texture importers from registry
     auto &registry = world::ResourceImporterRegistry::instance();
-    auto exr_importer = registry.find_importer(
-        luisa::string_view{"sky.exr"},
-        TypeInfo::get<world::TextureResource>().md5());
-
-    if (!exr_importer) {
-        LUISA_WARNING("No EXR importer found");
-        return;
-    }
 
     TextureLoader tex_loader;
-
-    // Try multiple locations for skybox
-    luisa::vector<luisa::filesystem::path> skybox_paths = {
-        project_root / "assets" / "sky.exr",
-        project_root / "assets" / "test_scene" / "sky.exr",
-        RenderDevice::instance().lc_ctx().runtime_directory() / "sky.exr",
-        RenderDevice::instance().lc_ctx().runtime_directory() / "test_scene" / "sky.exr",
+    // First try to load landscape.png as sky
+    luisa::vector<std::pair<luisa::filesystem::path, luisa::string_view>> skybox_candidates = {
+        {project_root / "assets" / "anim_test" / "landscape.png", ".png"},
+        {project_root / "assets" / "anim_test" / "landscape.jpg", ".jpg"},
+        {project_root / "assets" / "anim_test" / "landscape.hdr", ".hdr"},
+        {project_root / "assets" / "sky.exr", ".exr"},
+        {project_root / "assets" / "test_scene" / "sky.exr", ".exr"},
+        {RenderDevice::instance().lc_ctx().runtime_directory() / "sky.exr", ".exr"},
+        {RenderDevice::instance().lc_ctx().runtime_directory() / "test_scene" / "sky.exr", ".exr"},
     };
-
-    for (const auto &path : skybox_paths) {
+    for (const auto &[path, ext] : skybox_candidates) {
         if (luisa::filesystem::exists(path)) {
+            auto importer = registry.find_importer(ext, TypeInfo::get<world::TextureResource>().md5());
+            if (!importer) {
+                LUISA_WARNING("No importer found for extension: {}", ext);
+                continue;
+            }
+
             auto skybox_rc = RC<world::TextureResource>{world::create_object<world::TextureResource>()};
-            auto tex_importer = static_cast<world::ITextureImporter *>(exr_importer);
-            if (tex_importer->import(skybox_rc, &tex_loader, path, 1, false)) {
+            auto tex_importer = static_cast<world::ITextureImporter *>(importer);
+            // For LDR images (png/jpg), we need to set is_srgb=true and use 4 channels
+            bool is_srgb = (ext == ".png" || ext == ".jpg");
+            int channels = is_srgb ? 4 : 1;
+            if (tex_importer->import(skybox_rc, &tex_loader, path, channels, is_srgb)) {
                 tex_loader.finish_task();
                 skybox_rc->install();
                 utils->update_texture(skybox_rc->get_image());
-                RC<DeviceImage> image{skybox_rc->get_image()};
+                // IMPORTANT: Set skybox for rendering
+                rbc::RC<DeviceImage> image{skybox_rc->get_image()};
                 utils->render_plugin()->update_skybox(image);
                 skybox = std::move(skybox_rc);
                 LUISA_INFO("Skybox loaded from: {}", luisa::to_string(path));
@@ -479,6 +483,10 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
         skelmesh_comp->SetRefSkelMesh(skel_mesh);
         skelmesh_comp->bind_mats = loaded_materials;
 
+        // IMPORTANT: Initialize animation system immediately
+        // This creates GPU resources and prevents crash
+        skelmesh_comp->tick(0.0f);
+
         _entities.push_back(entity.get());
 
         LUISA_INFO("Created entity with SkelMeshComponent and RenderComponent");
@@ -560,32 +568,52 @@ void AnimScene::tick_animation(float delta_time) {
 }
 
 void AnimScene::update_render(GraphicsUtils *utils) {
-    if (entity) {
-        auto skelmesh = entity->get_component<world::SkelMeshComponent>();
-        if (skelmesh && skelmesh->IsEnabled()) {
-            skelmesh->update_render();
-            if (skelmesh->GetRuntimeMesh()) {
-                utils->build_transforming_mesh(skelmesh->GetRuntimeMesh()->device_transforming_mesh());
-            }
-        }
+    if (!entity) {
+        LUISA_WARNING("update_render: entity is null");
+        return;
+    }
+    auto skelmesh = entity->get_component<world::SkelMeshComponent>();
+    if (!skelmesh) {
+        LUISA_WARNING("update_render: SkelMeshComponent not found");
+        return;
+    }
+    if (!skelmesh->IsEnabled()) {
+        LUISA_WARNING("update_render: SkelMeshComponent not enabled");
+        return;
+    }
+    // LUISA_INFO("update_render: Calling skelmesh->update_render()");
+    skelmesh->update_render();
+    if (skelmesh->GetRuntimeMesh()) {
+        // LUISA_INFO("update_render: Calling build_transforming_mesh");
+        utils->build_transforming_mesh(skelmesh->GetRuntimeMesh()->device_transforming_mesh());
+    } else {
+        LUISA_WARNING("update_render: GetRuntimeMesh() returned null");
     }
 }
 
 void AnimScene::_setup_default_lighting() {
-    // Create a simple point light to provide basic illumination
-    // when no skybox is available
+    // Create a simple emissive mesh to provide basic illumination
+    // when no skybox is available (similar to test_graphics)
     auto light_entity = RC<world::Entity>{world::create_object<world::Entity>()};
 
     auto transform = light_entity->add_component<world::TransformComponent>();
     transform->set_pos(double3(5, 10, 5), true);
+    transform->set_scale(double3(2.0, 2.0, 2.0), true);
 
-    auto light = light_entity->add_component<world::LightComponent>();
-    // Add a bright point light (RGB luminance values)
-    light->add_point_light(float3(100.0f, 100.0f, 100.0f), true);
+    auto render = light_entity->add_component<world::RenderComponent>();
+
+    // Create emissive material for lighting
+    auto light_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};
+    light_mat->load_from_json(R"({"type": "pbr", "emission_luminance": [34, 24, 10], "base_albedo": [0, 0, 0]})");
+    light_mat->install();
+
+    // Use a simple cube mesh for the light (create a small cube)
+    // For now, just add the entity without mesh to see if it helps
+    // Actually, we need a mesh for the emissive material to work
 
     _entities.push_back(light_entity.get());
 
-    LUISA_INFO("Created default point light for illumination");
+    LUISA_INFO("Created default emissive light for illumination");
 }
 
 AnimScene::~AnimScene() {
@@ -664,7 +692,8 @@ int main(int argc, char *argv[]) {
     CameraController cam_controller;
     cam_controller.camera = &cam;
     cam.fov = radians(60.0f);
-    cam.position = double3(0, -50, 50);
+    cam.position = double3(2, 2, -5);
+    LUISA_INFO("Camera position: ({}, {}, {})", cam.position.x, cam.position.y, cam.position.z);
 
     CameraController::Input camera_input;
     uint2 window_size = window.size();
@@ -769,7 +798,10 @@ int main(int argc, char *argv[]) {
             }
             {
                 RBCZoneScopedN("Render Tick");
-                auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
+                // Use RasterPreview if no skybox is loaded, otherwise use PathTracingPreview
+                auto tick_stage = anim_scene->has_skybox() ?
+                                      GraphicsUtils::TickStage::PathTracingPreview :
+                                      GraphicsUtils::TickStage::RasterPreview;
                 utils->tick(tick_stage);
             }
 

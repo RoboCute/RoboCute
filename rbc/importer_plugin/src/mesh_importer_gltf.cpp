@@ -73,19 +73,27 @@ bool GltfMeshImporter::import_from_data(MeshResource *resource, GltfImportData &
 
         auto joint_index = luisa::span{
             (uint16_t *)property.second.data(),
-            property.second.size()};
+            property.second.size() / sizeof(uint16_t)};
 
         std::memcpy(joint_index.data(), import_data.all_joint_index.data(), joint_index.size_bytes());
 
         auto w_property = resource->add_property(
             "joint_weight",
-            weight_size * resource->vertex_count() * sizeof(uint16_t));
+            weight_size * resource->vertex_count() * sizeof(float));
 
         auto joint_weight = luisa::span{
             reinterpret_cast<float *>(w_property.second.data()),
             w_property.second.size() / sizeof(float)};
 
         std::memcpy(joint_weight.data(), import_data.all_joint_weight.data(), joint_weight.size_bytes());
+
+        // for (auto i = 0; i < 10; i++) {
+        //     LUISA_INFO("GLTF: Joint Index {}: {}", i, joint_index[i]);
+        // }
+
+        // for (auto i = 0; i < 10; i++) {
+        //     LUISA_INFO("GLTF: Joint Weight {}: {}", i, joint_weight[i]);
+        // }
     }
     return true;
 }
@@ -143,17 +151,17 @@ bool GlbMeshImporter::import(Resource *resource_base, luisa::filesystem::path co
 
         auto joint_index = luisa::span{
             (uint16_t *)property.second.data(),
-            property.second.size()};
+            property.second.size() / sizeof(uint16_t)};
 
         std::memcpy(joint_index.data(), import_data.all_joint_index.data(), joint_index.size_bytes());
 
         auto w_property = resource->add_property(
             "joint_weight",
-            weight_size * resource->vertex_count() * sizeof(uint16_t));
+            weight_size * resource->vertex_count() * sizeof(float));
 
         auto joint_weight = luisa::span{
-            (float *)w_property.second.data(),
-            w_property.second.size()};
+            reinterpret_cast<float *>(w_property.second.data()),
+            w_property.second.size() / sizeof(float)};
 
         std::memcpy(joint_weight.data(), import_data.all_joint_weight.data(), joint_weight.size_bytes());
     }

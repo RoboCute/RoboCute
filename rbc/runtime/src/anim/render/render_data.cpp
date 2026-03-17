@@ -44,7 +44,9 @@ void SkelMeshRenderDataLOD::InitResources(SkeletalMeshRenderData *InRenderData, 
 }
 
 void SkelMeshRenderDataLOD::ReleaseResources() {
-    morph_mesh->rbc_rc_delete();
+    // Just reset the RC, don't force delete
+    // The mesh will be deleted when ref count reaches 0
+    morph_mesh.reset();
 }
 
 }// namespace rbc

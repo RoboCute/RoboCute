@@ -80,7 +80,7 @@ void AnimSequence::GetAnimationPose(AnimationPoseData &OutPoseData, const AnimEx
     ratio = ratio < 0.0f ? 0.0f : ratio > 1.0f ? 1.0f :
                                                  ratio;
 
-    LUISA_INFO("Sampling In Animation {} with ratio {}", animation.name(), ratio);
+    // LUISA_INFO("Sampling In Animation {} with ratio {}", animation.name(), ratio);
 
     AnimSamplingJob sampling_job;
     sampling_job.animation = &animation;

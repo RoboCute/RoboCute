@@ -32,7 +32,7 @@ void SkinResource::deserialize_meta(world::ObjDeSerialize const &ser) {
             ref_skel = nullptr;
         }
     }
-    
+
     vstd::Guid ref_mesh_guid;
     if (ser.ar.value(ref_mesh_guid, "ref_mesh")) {
         auto res = get_resource(ref_mesh_guid, true);
@@ -57,7 +57,7 @@ rbc::coroutine SkinResource::_async_load() {
     std::shared_lock lck{_async_mtx};
     auto path = this->path();
     if (path.empty()) { co_return; }
-    
+
     luisa::BinaryFileStream file_stream(luisa::to_string(path));
     if (!file_stream.valid()) { co_return; }
 
@@ -130,8 +130,7 @@ RC<world::MeshResource> &ISkinImporter::ref_mesh_ref(SkinResource *resource) {
     return resource->ref_mesh;
 }
 
-}// namespace rbc
-
+}// namespace rbc::world
 
 namespace rbc::world {
 

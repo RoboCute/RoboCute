@@ -321,7 +321,7 @@ void SkeletalMesh::FillComponentSpaceTransforms(luisa::span<const AnimSOATransfo
     if (NumBones <= 0) {
         return;
     }
-    LUISA_INFO("Running LocalToMotion Job");
+    // LUISA_INFO("Running LocalToMotion Job");
     AnimLocalToModelJob ltm_job;
     ltm_job.skeleton = &(GetRefSkeleton().GetRawSkeleton());
     ltm_job.input = {
@@ -334,10 +334,10 @@ void SkeletalMesh::FillComponentSpaceTransforms(luisa::span<const AnimSOATransfo
         LUISA_ERROR("Failed to run LocalToModelJob");
     }
 
-}// namespace skr
+}// namespace rbc
 
 void SkeletalMesh::SwapEvaluationContextBuffers() {
-    LUISA_INFO("Swaping Evaluation Context Buffer");
+    // LUISA_INFO("Swaping Evaluation Context Buffer");
     std::swap(anim_eval_context.BoneSpaceTransforms, BoneSpaceTransforms);
     std::swap(anim_eval_context.ComponentSpaceTransforms, GetEditableComponentSpaceTransforms());
 }
@@ -427,7 +427,7 @@ void SkeletalMesh::DispatchParallelEvaluationTasks() {
 void SkeletalMesh::ParallelAnimationEvaluation() {
 
     if (anim_eval_context.bDoInterpolation) {
-        LUISA_INFO("Perform Animation with Interop");
+        // LUISA_INFO("Perform Animation with Interop");
         PerformAnimationProcessing(
             anim_eval_context.skel_mesh,
             anim_eval_context.anim_instance,
@@ -436,7 +436,7 @@ void SkeletalMesh::ParallelAnimationEvaluation() {
             anim_eval_context.CachedBoneSpaceTransforms,
             anim_eval_context.CachedComponentSpaceTransforms);
     } else {
-        LUISA_INFO("Perform Animation with No Interop");
+        // LUISA_INFO("Perform Animation with No Interop");
         PerformAnimationProcessing(
             anim_eval_context.skel_mesh,
             anim_eval_context.anim_instance,
