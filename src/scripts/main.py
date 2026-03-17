@@ -8,6 +8,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
 import importlib
+import re
 # from scripts.thirdparty_config import make_alembic_config, make_imath_config
 from scripts.prepare import (
     GIT_TASKS,
@@ -25,6 +26,50 @@ from scripts.prepare import (
     OIDN_NAME,
 )
 from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug, run_git_command
+
+
+def get_http_proxies():
+    """Get HTTP/HTTPS proxy settings from environment variables."""
+    proxies = {}
+    http_proxy = os.environ.get('HTTP_PROXY') or os.environ.get('http_proxy')
+    https_proxy = os.environ.get('HTTPS_PROXY') or os.environ.get('https_proxy')
+    
+    if http_proxy:
+        proxies['http'] = http_proxy
+        print_info(f"Using HTTP_PROXY: {http_proxy}")
+    if https_proxy:
+        proxies['https'] = https_proxy
+        print_info(f"Using HTTPS_PROXY: {https_proxy}")
+    
+    return proxies if proxies else None
+
+
+def convert_to_ssh_url(https_url: str) -> str:
+    """Convert HTTPS GitHub URL to SSH URL.
+    
+    Args:
+        https_url: HTTPS URL like https://github.com/user/repo.git
+        
+    Returns:
+        SSH URL like git@github.com:user/repo.git
+    """
+    # Pattern to match https://github.com/user/repo.git
+    pattern = r'https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?$'
+    match = re.match(pattern, https_url)
+    if match:
+        user, repo = match.groups()
+        return f"git@github.com:{user}/{repo}.git"
+    return https_url
+
+
+def get_requests_session():
+    """Create a requests session with proxy settings from environment."""
+    session = requests.Session()
+    proxies = get_http_proxies()
+    if proxies:
+        session.proxies.update(proxies)
+        print_info(f"Using proxy: {proxies}")
+    return session
 
 from rbc_meta.utils.codegen_util import _write_string_to
 
@@ -68,8 +113,16 @@ def write_shader_compile_cmd():
     f.close()
 
 
-def git_clone_or_pull(git_address, subdir, branch=None):
+def git_clone_or_pull(git_address, subdir, branch=None, use_ssh=False):
     abs_subdir = rel(subdir)
+    
+    # Convert to SSH URL if requested
+    if use_ssh:
+        original_address = git_address
+        git_address = convert_to_ssh_url(git_address)
+        if git_address != original_address:
+            print_info(f"Using SSH URL: {git_address}")
+    
     args = []
     if is_empty_folder(abs_subdir):
         # Clone
@@ -188,7 +241,8 @@ def download_packages():
             unzip()
             return
         print_info(f"Downloading '{dst_path}'...")
-        response = requests.get(map["address"] + file)
+        session = get_requests_session()
+        response = session.get(map["address"] + file)
         response.raise_for_status()
         # check if parent directory exists, else mkdir -p
         if not os.path.exists(os.path.dirname(dst_path)):
@@ -207,7 +261,7 @@ def download_packages():
     return executor, futures1
 
 
-def run_git_tasks():
+def run_git_tasks(use_ssh=False):
     # Define tasks
     tasks = GIT_TASKS
     # Group by stages based on dependencies
@@ -219,7 +273,7 @@ def run_git_tasks():
 
     def run_task(name):
         t = tasks[name]
-        git_clone_or_pull(t["url"], t["subdir"], t["branch"])
+        git_clone_or_pull(t["url"], t["subdir"], t["branch"], use_ssh=use_ssh)
 
     # Use ThreadPoolExecutor to run tasks in parallel
     with ThreadPoolExecutor(max_workers=8) as executor:
@@ -250,7 +304,12 @@ def run_package_download():
         f.result()  # Raise exceptions if any
 
 
-def _run_prepare(auto_yes: bool = False):
+def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
+    # Check and print proxy settings
+    proxies = get_http_proxies()
+    if proxies:
+        print_info(f"Detected proxy settings: {proxies}")
+    
     # ------------------------------ git ------------------------------
     if auto_yes:
         clone_lc = "y"
@@ -263,7 +322,7 @@ def _run_prepare(auto_yes: bool = False):
             clone_lc = "n"
 
     if clone_lc.lower() == "y":
-        run_git_tasks()
+        run_git_tasks(use_ssh=use_ssh)
 
     lc_path = os.path.join(PROJECT_ROOT, "thirdparty/LuisaCompute")
     if is_empty_folder(lc_path):
@@ -371,11 +430,13 @@ def prepare():
     parser = argparse.ArgumentParser(description='Prepare RoboCute development environment')
     parser.add_argument('-y', '--yes', action='store_true',
                         help='Automatically answer yes to all prompts')
+    parser.add_argument('--ssh', action='store_true',
+                        help='Use SSH (git@github.com:) instead of HTTPS for git clone/pull')
 
     args = parser.parse_args()
 
     try:
-        _run_prepare(auto_yes=args.yes)
+        _run_prepare(auto_yes=args.yes, use_ssh=args.ssh)
     except KeyboardInterrupt as e:
         print_warning('quit.')
     except EOFError as e:
