@@ -34,7 +34,7 @@ public:
 
 
 private:
-    friend class rbc::Serialize<AnimSequence>;
+    friend struct rbc::Serialize<AnimSequence>;
     AnimSequenceRuntimeAsset animation;
     float rate_scale = 1.0f;
 };

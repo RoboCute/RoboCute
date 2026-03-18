@@ -150,6 +150,10 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
             set_cmdlist(io_cmdlist, frame_res.disk_io_fence);
             set_cmdlist(mem_io_cmdlist, frame_res.mem_io_fence);
             set_cmdlist(cmdlist, frame_res.compute_fence);
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 5279)
+#endif
             _load_executive_queue.push([this,
                                         &frame_res,
                                         require_disk_io_sync,
@@ -158,6 +162,9 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                                         io_cmdlist = std::move(io_cmdlist),
                                         cmdlist = std::move(cmdlist),
                                         finish_callbak = std::move(finish_callbak)] mutable {
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
                 if (!io_cmdlist.empty()) {
                     if (cmdlist.empty()) {
                         if (finish_callbak)

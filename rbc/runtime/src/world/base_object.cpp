@@ -21,7 +21,7 @@ struct BaseObjectStatics : RBCStruct {
         // collect dangling objects
         luisa::vector<RC<BaseObject>> remove_obj;
         std::lock_guard lck{_guid_mtx};
-        if (!-_obj_guids.empty()) {
+        if (!_obj_guids.empty()) {
             for (auto iter = _obj_guids.begin(); iter != _obj_guids.end();) {
                 auto o = iter->second.lock().rc();
                 if (o->rbc_rc_count() > 0) {

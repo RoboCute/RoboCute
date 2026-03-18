@@ -26,7 +26,7 @@ public:
 };
 
 struct PoseLink : RCBase {
-    friend class Serialize<PoseLink>;
+    friend struct Serialize<PoseLink>;
 public:
     IndexType LinkedNodeID = INVALID_INDEX;// Serialized Link ID from Graph
 protected:

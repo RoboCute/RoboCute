@@ -83,7 +83,6 @@ int main(int argc, char *argv[]) {
     uint2 window_size = window.size();
     float2 start_uv, end_uv;
     luisa::vector<uint> dragged_object_ids;
-    uint clicked_user_id;
     enum struct MouseStage {
         None,
         Dragging,

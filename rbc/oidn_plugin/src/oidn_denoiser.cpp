@@ -265,6 +265,8 @@ luisa::shared_ptr<Denoiser> DXOidnDenoiserExt::create() noexcept {
         auto cuda_device = vk_interop_ext->cuda_device_index();
         return luisa::make_shared<DXOidnDenoiser>(_device, cuda_device, oidn::newCUDADevice(cuda_device, nullptr));
     }
+    LUISA_ASSERT(false, "No CUDA interop extension found.");
+    return nullptr;
 }
 }// namespace rbc
 OIDN_API rbc::DenoiserExt *rbc_create_oidn(luisa::compute::Device const &device) {

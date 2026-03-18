@@ -108,7 +108,7 @@ void IResourceImporter::import(
             rbc::ArchiveReadJson reader{ser};
             res->deserialize_meta(ObjDeSerialize{.ar = reader});
         }
-        import(res, path);
+        [[maybe_unused]] auto _ = import(res, path);
         res->unsafe_set_loaded();
     }
 }

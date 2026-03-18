@@ -202,7 +202,7 @@ void ShaderManager::preload_shaders(
     }
     _all_shader_count = size;
     _finished_shaders = 0;
-    fiber::async_parallel(size, [this, &device, shader_path, registed_shaders = std::move(registed_shaders)](size_t i) mutable {
+    (void)fiber::async_parallel(size, [this, &device, shader_path, registed_shaders = std::move(registed_shaders)](size_t i) mutable {
         auto &js = registed_shaders[i];
         luisa::string &path_str = js.first;
         _mtx.lock();

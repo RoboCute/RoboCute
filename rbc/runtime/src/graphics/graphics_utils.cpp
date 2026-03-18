@@ -109,10 +109,10 @@ void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {
     _render_device->set_main_stream(&_present_stream);
     _compute_event.event = _render_device->lc_device().create_timeline_event();
     _sm->load_shader(init_counter);
-    _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
+    (void)_sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::OpenPBR>(
         _sm->bindless_allocator(),
         65536);
-    _sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
+    (void)_sm->mat_manager().emplace_mat_type<material::PolymorphicMaterial, material::Unlit>(
         _sm->bindless_allocator(),
         65536);
     _tex_loader = luisa::make_unique<TextureLoader>();

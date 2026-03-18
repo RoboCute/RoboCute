@@ -241,6 +241,7 @@ NodeBuffer DeviceManager::create_buffer(RC<BufferDescriptor> buffer_desc, Comput
             LUISA_ERROR("Unsupported device {}", luisa::to_string(src_device_desc.type));
             break;
     }
+    return node_buffer;
 }
 ByteBufferView DeviceManager::get_buffer(NodeBuffer const &node_buffer, ComputeDeviceDesc dst_device_desc) {
     detail::_check_device_desc(dst_device_desc);

@@ -112,13 +112,13 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         //     16,
         //     true);
         tex = world::create_object<world::TextureResource>();
-        stb_importer->import(tex, &tex_loader, "test_grid.png", 16, true);
+        static_cast<void>(stb_importer->import(tex, &tex_loader, "test_grid.png", 16, true));
         // skybox = tex_loader.decode_texture(
         //     "sky.exr",
         //     1,
         //     false);
         skybox = world::create_object<world::TextureResource>();
-        exr_importer->import(skybox, &tex_loader, "sky.exr", 1, false);
+        static_cast<void>(exr_importer->import(skybox, &tex_loader, "sky.exr", 1, false));
         // write guid
         {
             RBCZoneScopedN("Write Sky GUID");
@@ -339,7 +339,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
         skinning_origin_mesh->create_empty(std::move(submesh_offsets), cube_mesh_builder.vertex_count(), cube_mesh_builder.indices_count() / 3, cube_mesh_builder.uv_count(), cube_mesh_builder.contained_normal(), cube_mesh_builder.contained_tangent());
 
         *skinning_origin_mesh->host_data() = std::move(cube_bytes);
-        skinning_origin_mesh->add_property("skinning_weight_index", cube_mesh_builder.vertex_count() * 2 * sizeof(uint));
+        static_cast<void>(skinning_origin_mesh->add_property("skinning_weight_index", cube_mesh_builder.vertex_count() * 2 * sizeof(uint)));
         skinning_origin_mesh->install();
         utils->update_mesh_data(skinning_origin_mesh->device_mesh(), false);// update through render-thread
     }
@@ -361,7 +361,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     for (auto &i : weights) {
         i = 1.0f;// set all weight to 1.0 for test
     }
-    for (auto i : vstd::range(indices.size())) {
+    for (size_t i : vstd::range(indices.size())) {
         indices[i] = (i < indices.size() / 2) ? 0 : 1;// index to bone 0 and bone 1
     }
     render_device.lc_main_stream() << skinning_weight_index.copy_from(weight_and_index_host.data());
@@ -445,9 +445,9 @@ void WorldScene::_set_gizmos() {
         }
     };
     mesh_builder.triangle_indices.emplace_back();
-    emplace(float3(1, 0.05, 0.05), float3(0.05, 0, 0), float3(1, 0, 0));
-    emplace(float3(0.05, 1, 0.05), float3(0, 0.05, 0), float3(0, 1, 0));
-    emplace(float3(0.05, 0.05, 1), float3(0, 0, 0.05), float3(0, 0, 1));
+    emplace(float3(1.f, 0.05f, 0.05f), float3(0.05f, 0.f, 0.f), float3(1.f, 0.f, 0.f));
+    emplace(float3(0.05f, 1.f, 0.05f), float3(0.f, 0.05f, 0.f), float3(0.f, 1.f, 0.f));
+    emplace(float3(0.05f, 0.05f, 1.f), float3(0.f, 0.f, 0.05f), float3(0.f, 0.f, 1.f));
     luisa::vector<std::byte> gizmos_mesh;
     luisa::vector<uint> submesh_offset;
     mesh_builder.write_to(gizmos_mesh, submesh_offset);

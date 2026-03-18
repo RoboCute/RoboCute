@@ -6,7 +6,7 @@ namespace rbc {
 
 // 一个会存储下来的AnimGraph资产
 struct RBC_RUNTIME_API AnimGraph : RCBase {
-    friend class Serialize<AnimGraph>;
+    friend struct Serialize<AnimGraph>;
     luisa::vector<RC<AnimNode>> nodes;// record for all nodes
 
 public:

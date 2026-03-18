@@ -159,11 +159,14 @@ public:
 };
 #if defined(_MSC_VER) && !defined(GAME_MODULE_STATIC)
 #ifdef OIDN_EXPORT
+#undef OIDN_API
 #define OIDN_API LUISA_EXPORT_API
 #else
+#undef OIDN_API
 #define OIDN_API LUISA_IMPORT_API
 #endif
 #else
+#undef OIDN_API
 #define OIDN_API
 #endif
 

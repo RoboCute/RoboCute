@@ -24,7 +24,14 @@ struct DenoiserStream {
 
 RBC_BIN_2_OBJ_DECLARE(render_settings_json)
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4584)// Disable 'base-class-inheritance' warning
+#endif
 struct RenderPluginImpl : RenderPlugin, RBCStruct {
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
     ////////////////////////////////////////  HDRI
     vstd::optional<HDRI> hdri;
     vstd::optional<SkyAtmosphere> sky_atom;
@@ -203,13 +210,13 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         oidn_module = PluginManager::instance().load_module("oidn_plugin");
         if (!oidn_module) {
             LUISA_WARNING("OIDN not support for reason: plugin not found.");
-            oidn_support != OidnSupport::UnSupported;
+            oidn_support = OidnSupport::UnSupported;
             return false;
         }
         oidn_ext = oidn_module->invoke<rbc::DenoiserExt *(luisa::compute::Device const &device)>("rbc_create_oidn", render_device.lc_device());
         if (!oidn_ext) {
             LUISA_WARNING("OIDN not support for reason: plugin not found.");
-            oidn_support != OidnSupport::UnSupported;
+            oidn_support = OidnSupport::UnSupported;
             return false;
         }
         return true;

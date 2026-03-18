@@ -164,7 +164,7 @@ Lights::Lights()
             });
     }
     // ///////////// Add emission material type
-    scene.mat_manager().emplace_mat_type<material::PolymorphicMaterial, rbc::material::Unlit>(scene.bindless_allocator(), 4096);
+    (void)scene.mat_manager().emplace_mat_type<material::PolymorphicMaterial, rbc::material::Unlit>(scene.bindless_allocator(), 4096);
 }
 
 uint Lights::add_point_light(

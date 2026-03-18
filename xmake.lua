@@ -27,6 +27,7 @@ lc_options = {
     lc_vk_cuda_interop = true,
     lc_enable_py = false,
     lc_enable_unity_build = true,
+    -- lc_warnings = 'all'
     -- lc_toy_c_backend = true
 }
 
@@ -35,6 +36,13 @@ if has_config('rbc_editor') then
     includes('xmake/qt/rbc_rules.lua') -- our special compilation rules for Qt
 end
 includes("thirdparty", "rbc")
+
+-- Suppress common third-party warnings globally for MSVC
+if is_plat("windows") then
+    add_cxflags("/wd4090", "/wd4102", "/wd4146", "/wd4200", "/wd4267", "/wd4307", "/wd4819", "/wd4996", "/wd4018", "/wd4333", "/wd4172", "/wd4100", {
+        tools = "cl"
+    })
+end
 
 target("lc-runtime")
 add_defines("LUISA_ENABLE_SAFE_MODE", {
