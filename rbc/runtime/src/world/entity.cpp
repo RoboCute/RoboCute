@@ -31,7 +31,7 @@ void Component::_zz_invoke_world_event(WorldEventType event_type) {
     auto &map = evt[luisa::to_underlying(event_type)];
     std::shared_lock lck{map.mtx};
     for (auto iter = map.map.begin(); iter != map.map.end();) {
-        auto inst_id{iter->first};
+        [[maybe_unused]] auto inst_id{iter->first};
         auto &coro = iter->second.first;
         auto obj = iter->second.second.lock().rc();
         if (!obj) {
@@ -145,7 +145,7 @@ void Entity::deserialize_meta(ObjDeSerialize const &ser) {
 
     if (!ser.ar.start_array(size, "components")) return;
     _components.reserve(size);
-    for (auto &i : vstd::range(static_cast<int64_t>(size))) {
+    for ([[maybe_unused]] auto &i : vstd::range(static_cast<int64_t>(size))) {
         if (!ser.ar.start_object()) break;
         auto d = vstd::scope_exit([&] {
             ser.ar.end_scope();

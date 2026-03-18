@@ -29,9 +29,10 @@ bool BaseCompactPose::IsValid() const {
 }
 
 bool BaseCompactPose::IsNormalized() const {
-    for (const auto &bone : bones) {
-        // if (!bone.IsRotationNormalized()) { return false;}
-    }
+    (void)bones;
+    // for (const auto &bone : bones) {
+    //     if (!bone.IsRotationNormalized()) { return false;}
+    // }
     return true;
 }
 

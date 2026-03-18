@@ -142,7 +142,7 @@ void SkinResource::generate_LUT() {
 
     joint_remaps_LUT.resize(joint_remaps.size());
     auto *skel = ref_skel.get();
-    auto *mesh = ref_mesh.get();
+    [[maybe_unused]] auto *mesh = ref_mesh.get();
     for (size_t i = 0; i < joint_remaps.size(); i++) {
         auto it = std::find(
             skel->ref_skel().RawJointNames().begin(),

@@ -168,7 +168,7 @@ bool DXDeviceInfo::support_sdr_10() {
     format_support.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
     ThrowIfFailed(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &format_support, sizeof(format_support)));
     return (format_support.Support1 & D3D12_FORMAT_SUPPORT1_DISPLAY) != 0 ||
-           (format_support.Support2 & D3D12_FORMAT_SUPPORT1_DISPLAY) != 0;
+           (format_support.Support2 & D3D12_FORMAT_SUPPORT2_DISPLAYABLE) != 0;
 }
 
 bool DXDeviceInfo::support_linear_sdr() {
@@ -176,7 +176,7 @@ bool DXDeviceInfo::support_linear_sdr() {
     format_support.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     ThrowIfFailed(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &format_support, sizeof(format_support)));
     return (format_support.Support1 & D3D12_FORMAT_SUPPORT1_DISPLAY) != 0 ||
-           (format_support.Support2 & D3D12_FORMAT_SUPPORT1_DISPLAY) != 0;
+           (format_support.Support2 & D3D12_FORMAT_SUPPORT2_DISPLAYABLE) != 0;
 }
 
 auto DXDeviceInfo::CreateExternalDevice() noexcept -> luisa::optional<ExternalDevice> {

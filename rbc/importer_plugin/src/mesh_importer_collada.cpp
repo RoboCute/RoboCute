@@ -164,7 +164,7 @@ static bool parse_mesh(tinyxml2::XMLElement *mesh_elem, MeshBuilder &mesh_builde
 
     // Find triangles or polylist elements
     tinyxml2::XMLElement *primitive_elem = nullptr;
-    bool is_triangles = true;
+    [[maybe_unused]] bool is_triangles = true;
 
     for (auto *triangles = mesh_elem->FirstChildElement("triangles");
          triangles;
@@ -205,7 +205,7 @@ static bool parse_mesh(tinyxml2::XMLElement *mesh_elem, MeshBuilder &mesh_builde
 
     // Try to find and parse normal data
     luisa::string normal_source_id;
-    uint normal_offset = 0;
+    [[maybe_unused]] uint normal_offset = 0;
     bool has_normals = false;
 
     for (auto *input = primitive_elem->FirstChildElement("input");
@@ -242,7 +242,7 @@ static bool parse_mesh(tinyxml2::XMLElement *mesh_elem, MeshBuilder &mesh_builde
 
     // Try to find and parse UV data
     luisa::string uv_source_id;
-    uint uv_offset = 0;
+    [[maybe_unused]] uint uv_offset = 0;
     bool has_uvs = false;
 
     for (auto *input = primitive_elem->FirstChildElement("input");

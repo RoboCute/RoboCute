@@ -35,14 +35,14 @@ public:
             bool opaque,
             MeshManager::MeshData *mesh_data,
             uint user_id)
-            : transform(transform), mesh_data(mesh_data), visibility_mask(visibility_mask), opaque(opaque), user_id(user_id) {
+            : transform(transform), mesh_data(mesh_data), user_id(user_id), visibility_mask(visibility_mask), opaque(opaque) {
         }
         AccelElement(
             float4x4 const &transform,
             uint8_t visibility_mask,
             ProceduralPrimitive &&mesh_data,
             uint user_id)
-            : transform(transform), mesh_data(std::move(mesh_data)), visibility_mask(visibility_mask), opaque(false), user_id(user_id) {
+            : transform(transform), mesh_data(std::move(mesh_data)), user_id(user_id), visibility_mask(visibility_mask), opaque(false) {
         }
         AccelElement(AccelElement &&) = default;
         AccelElement &operator=(AccelElement &&) = default;

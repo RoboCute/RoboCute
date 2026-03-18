@@ -32,6 +32,7 @@ namespace rbc::world {
 
 struct RBC_RUNTIME_API IAnimGraphImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<AnimGraphResource>().md5(); }
+    using IResourceImporter::import;
     virtual bool import(AnimGraphResource *resource, luisa::filesystem::path const &path) = 0;
 protected:
 };

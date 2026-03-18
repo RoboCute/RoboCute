@@ -25,7 +25,7 @@ struct CallbackThread {
     std::atomic_bool _enabled = true;
     std::thread _thd;
     void execute() {
-        while (auto p = task_queue.pop()) {
+        while (auto p = task_queue.dequeue()) {
             if (p->second) {
                 auto idx = all_service.size();
                 auto &v = all_service.emplace_back(std::move(p->first));
@@ -42,7 +42,7 @@ struct CallbackThread {
                 vengine_free(p->first);
             }
         }
-        while (auto c = callbacks.pop()) {
+        while (auto c = callbacks.dequeue()) {
             (*c)();
         }
         for (auto &i : all_service) {
@@ -55,10 +55,10 @@ struct CallbackThread {
                   execute();
                   std::this_thread::sleep_for(std::chrono::milliseconds(1));
               }
-              while (auto c = callbacks.pop()) {
+              while (auto c = callbacks.dequeue()) {
                   (*c)();
               }
-              while (auto p = task_queue.pop()) {
+              while (auto p = task_queue.dequeue()) {
                   if (p->second) {
                       p->first->~IOService();
                       vengine_free(p->first);
@@ -69,7 +69,7 @@ struct CallbackThread {
                   i->~IOService();
                   vengine_free(i);
               }
-              while (auto c = callbacks.pop()) {
+              while (auto c = callbacks.dequeue()) {
                   (*c)();
               }
           }) {
@@ -82,7 +82,7 @@ struct CallbackThread {
 vstd::unique_ptr<CallbackThread> _thds;
 }// namespace ioservice_detail
 void IOService::add_callback(vstd::function<void()> &&callback) {
-    ioservice_detail::_thds->callbacks.push(std::move(callback));
+    ioservice_detail::_thds->callbacks.enqueue(std::move(callback));
 }
 IOService *IOService::create_service(
     Device &device,
@@ -90,11 +90,11 @@ IOService *IOService::create_service(
     QueueType queue_type) {
     // TODO: other platforms' implementation
     auto new_ser = new (vengine_malloc(sizeof(IOService))) IOService{queue_type, device, src_type};
-    ioservice_detail::_thds->task_queue.push(new_ser, true);
+    ioservice_detail::_thds->task_queue.enqueue(new_ser, true);
     return new_ser;
 }
 void IOService::dispose_service(IOService *ser) {
-    ioservice_detail::_thds->task_queue.push(ser, false);
+    ioservice_detail::_thds->task_queue.enqueue(ser, false);
 }
 static IOService::QueueType _io_service_queue_type{};
 void IOService::init(
@@ -118,7 +118,7 @@ bool IOService::timeline_signaled(uint64_t timeline) const {
 void IOService::_join() {
     auto lock_page = [&]() {
         std::lock_guard lck{_callback_mtx};
-        return _callbacks.pop();
+        return _callbacks.dequeue();
     };
     while (auto p = lock_page()) {
         dstorage_stream->sync_event(device, _evt.handle(), _evt.native_handle(), p->timeline);
@@ -203,7 +203,7 @@ void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t
         }
         if (files.empty() && callbacks.empty()) return;
         std::lock_guard lck{_callback_mtx};
-        _callbacks.push(timeline, std::move(files), std::move(callbacks));
+        _callbacks.enqueue(timeline, std::move(files), std::move(callbacks));
     });
 
     if (cmds.empty()) {

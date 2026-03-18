@@ -260,7 +260,6 @@ struct ArchiveWrite {
             end_array();
         } else if constexpr (rbc::detail::is_vector<T>::value) {
             // vector container (luisa::vector<T>)
-            using EleType = luisa::vector_element_t<T>;
             start_array();
             for (auto &&i : v) {
                 value(i);
@@ -319,7 +318,6 @@ struct ArchiveWrite {
             end_array(name);
         } else if constexpr (rbc::detail::is_vector<T>::value) {
             // vector container (luisa::vector<T>)
-            using EleType = luisa::vector_element_t<T>;
             start_array();
             for (auto &&i : v) {
                 value(i);
@@ -438,7 +436,6 @@ struct ArchiveRead {
             return result;
         } else if constexpr (rbc::detail::is_vector<T>::value) {
             // vector container (luisa::vector<T>)
-            using EleType = luisa::vector_element_t<T>;
             uint64_t size;
             if (!start_array(size)) return false;
             bool result = true;
@@ -522,7 +519,6 @@ struct ArchiveRead {
             return result;
         } else if constexpr (rbc::detail::is_vector<T>::value) {
             // vector container (luisa::vector<T>)
-            using EleType = luisa::vector_element_t<T>;
             uint64_t size;
             if (!start_array(size, name)) return false;
             bool result = true;
@@ -1068,7 +1064,6 @@ struct DeSerializer : public Base {
             if (size != dim * dim) return false;
             for (size_t x = 0; x < dim; ++x)
                 for (size_t y = 0; y < dim; ++y) {
-                    auto i = x + y * dim;
                     double ele;
                     bool result = Base::read(ele);
                     if (result) {

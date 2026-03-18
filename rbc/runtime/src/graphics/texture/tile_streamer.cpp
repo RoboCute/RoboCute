@@ -6,7 +6,7 @@ size_t TileNodes::_idx(uint2 tile_index, uint level)
 {
     size_t offset{ 0 };
     uint2 res = _resolution;
-    for (auto i : vstd::range(level))
+    for (auto _ : vstd::range(level))
     {
         offset += res.x * res.y;
         res >>= 1u;
@@ -17,7 +17,7 @@ size_t TileNodes::_offset(uint level)
 {
     size_t offset{ 0 };
     uint2 res = _resolution;
-    for (auto i : vstd::range(level))
+    for (auto _ : vstd::range(level))
     {
         offset += res.x * res.y;
         res >>= 1u;
@@ -26,18 +26,17 @@ size_t TileNodes::_offset(uint level)
 }
 TileNodes::TileNodes(uint2 resolution, uint mip)
     : _resolution(resolution)
-    , _mip(mip)
 {
     size_t sz{ 0 };
     uint2 res = resolution;
-    for (auto i : vstd::range(mip))
+    for (auto _ : vstd::range(mip))
     {
         LUISA_ASSERT(res.x >= 1 && res.y >= 1, "Resolution must be larger than 0.");
         sz += res.x * res.y;
         res >>= 1u;
     }
     _nodes.push_back_uninitialized(sz);
-    memset(_nodes.data(), 0, _nodes.size_bytes());
+    std::memset(static_cast<void*>(_nodes.data()), 0, _nodes.size_bytes());
 }
 TileNodes::~TileNodes() {}
 

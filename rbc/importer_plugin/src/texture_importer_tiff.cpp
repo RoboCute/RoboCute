@@ -24,8 +24,8 @@ bool TiffTextureImporter::import(
     }
     const uint16_t samples = TinyTIFFReader_getSamplesPerPixel(tiffr);
     const uint16_t bitspersample = TinyTIFFReader_getBitsPerSample(tiffr, 0);
-    auto width = TinyTIFFReader_getWidth(tiffr);
-    auto height = TinyTIFFReader_getHeight(tiffr);
+    [[maybe_unused]] auto width = TinyTIFFReader_getWidth(tiffr);
+    [[maybe_unused]] auto height = TinyTIFFReader_getHeight(tiffr);
 
     PixelStorage pixel_storage;
     switch (bitspersample) {
@@ -42,7 +42,7 @@ bool TiffTextureImporter::import(
             LUISA_WARNING("Unsupported bits-per-sample");
             return {};
     }
-    uint channel_rate = 1;
+    [[maybe_unused]] uint channel_rate = 1;
     switch (samples) {
         case 1:
             break;

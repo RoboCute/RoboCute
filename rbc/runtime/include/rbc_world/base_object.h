@@ -63,9 +63,9 @@ struct BaseObject : RCBase {
     friend struct ComponentDerive;
     friend struct Entity;
     friend struct BaseObjectStatics;
-    RBC_RUNTIME_API friend BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
-    RBC_RUNTIME_API friend BaseObject *create_object(vstd::Guid const &type_info);
-    RBC_RUNTIME_API friend BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
+    RBC_RUNTIME_API friend ::rbc::world::BaseObject *create_object_with_guid(vstd::Guid const &type_info, vstd::Guid const &guid);
+    RBC_RUNTIME_API friend ::rbc::world::BaseObject *create_object(vstd::Guid const &type_info);
+    RBC_RUNTIME_API friend ::rbc::world::BaseObject *_zz_create_object_with_guid_test_base(vstd::Guid const &type_info, vstd::Guid const &guid, BaseObjectType desire_type);
 protected:
     BaseObject() = default;
 private:

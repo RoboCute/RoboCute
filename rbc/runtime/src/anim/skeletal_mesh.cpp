@@ -200,7 +200,7 @@ void SkeletalMesh::ComputeRequiredBones(luisa::vector<BoneIndexType> &OutRequire
     OutRequiredBones.clear();
     OutFillComponentSpaceTransformRequiredBones.clear();
 
-    auto *skelmesh = GetSkelMeshResource();
+    (void)GetSkelMeshResource();
     if (!render_data) {
         LUISA_ERROR("SkeletalMesh has no render data!");
         return;
@@ -245,7 +245,7 @@ void SkeletalMesh::SendRenderDynamicData_Concurrent(AnimRenderState &state) {
     bRenderDynamicDataDirty = false;
     {
         // cycle counter
-        int32_t useLOD = GetPredictedLODLevel();
+        [[maybe_unused]] int32_t useLOD = GetPredictedLODLevel();
 
         world::SkinResource &ref_skin = GetSkinResource();
         if (ref_skin.loaded()) {
@@ -357,13 +357,8 @@ void SkeletalMesh::FinalizePoseEvaluationResult(const SkeletalMesh *InSkelMesh, 
     if (InFinalPose.IsValid() && InFinalPose.GetNumBones() > 0) {
 
         InFinalPose.NormalizeRotation();
-        const auto FillReferencePose = [&](int32_t begin_index, int32_t end_index) {
-            for (int32_t mesh_pose_index = begin_index; mesh_pose_index < end_index; ++mesh_pose_index) {
-                OutBoneSpaceTransforms[mesh_pose_index] = ref_bone_pose[mesh_pose_index];
-            }
-        };
+        // Unused lambda removed
 
-        int32_t last_pose_index = 0;
         const int32_t bone_count = static_cast<int32_t>(ref_bone_pose.size());
         // OutBoneSpaceTransforms.resize_default(bone_count);
         for (auto i = 0; i < bone_count; i++) {

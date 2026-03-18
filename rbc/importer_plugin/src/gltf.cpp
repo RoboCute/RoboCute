@@ -325,7 +325,7 @@ GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     vertex_color_channels = std::max(vertex_color_channels, static_cast<size_t>(color_num_components));
 
                     // Convert color data to float array
-                    size_t color_data_size = primitive_vertex_count * color_num_components * sizeof(float);
+                    [[maybe_unused]] size_t color_data_size = primitive_vertex_count * color_num_components * sizeof(float);
                     if (all_vertex_colors.size() < (current_vertex_offset + primitive_vertex_count) * color_num_components) {
                         all_vertex_colors.resize((current_vertex_offset + primitive_vertex_count) * color_num_components);
                     }

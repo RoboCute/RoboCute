@@ -77,7 +77,7 @@ struct ResourceLoader : RBCStruct {
                            luisa::string &&meta_info,
                            MD5 type_id) {
         _resmap_mtx.lock();
-        auto &v = resource_types.emplace(resource_guid).value();
+        (void)resource_types.emplace(resource_guid);
         _resmap_mtx.unlock();
         LUISA_ASSERT(meta_info.size() > 0);
         luisa::fixed_vector<std::byte, 64> result;
@@ -99,7 +99,7 @@ struct ResourceLoader : RBCStruct {
         res->serialize_meta(world::ObjSerialize{adapter});
         _resmap_mtx.lock();
         auto resource_guid = res->guid();
-        auto &v = resource_types.emplace(resource_guid).value();
+        (void)resource_types.emplace(resource_guid);
         _resmap_mtx.unlock();
         luisa::string meta_info;
         js.write_to(meta_info);
@@ -128,7 +128,7 @@ struct ResourceLoader : RBCStruct {
                 return;
             }
             auto ptr = std::move(self_ptr_base).cast_static<Resource>();
-            auto rc_count = ptr.ref_count();
+            [[maybe_unused]] auto rc_count = ptr.ref_count();
             res.loading_coro.resume();
             if (!res.loading_coro.done()) {
                 ptr.reset();
@@ -187,7 +187,7 @@ struct ResourceLoader : RBCStruct {
             switch ((ResourceMetaType)b.type) {
                 case ResourceMetaType::TYPE_ID:
                     LUISA_ASSERT(b.size == sizeof(type_id));
-                    std::memcpy(&type_id, ptr, b.size);
+                    std::memcpy(static_cast<void*>(&type_id), ptr, b.size);
                     break;
                 case ResourceMetaType::META_JSON:
                     result.resize(b.size);
@@ -202,7 +202,7 @@ struct ResourceLoader : RBCStruct {
     ResourceLoader() {
         auto loading_thread_count = std::clamp<uint>(std::thread::hardware_concurrency() / 4, 1, 4);
         _loading_thds.reserve(loading_thread_count);
-        for (auto i : vstd::range(loading_thread_count)) {
+        for ([[maybe_unused]] auto i : vstd::range(loading_thread_count)) {
             _loading_thds.emplace_back([this] { _loading_thread(); });
         }
     }

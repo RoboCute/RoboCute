@@ -7,8 +7,8 @@ void HostBufferManager::clear()
     _dispose_list.clear();
 }
 HostBufferManager::HostBufferManager(Device& device)
-    : _alloc(65536, this, 0)
-    , _device(device)
+    : _device(device)
+    , _alloc(65536, this, 0)
 {
     ext = _device.extension<PinnedMemoryExt>();
 }

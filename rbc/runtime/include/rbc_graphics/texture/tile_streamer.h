@@ -25,7 +25,6 @@ public:
 private:
     vstd::vector<Node> _nodes;
     uint2 _resolution;
-    uint _mip;
     size_t _idx(uint2 tile_index, uint level);
     size_t _offset(uint level);
 

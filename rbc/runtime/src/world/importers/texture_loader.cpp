@@ -57,7 +57,7 @@ void TextureLoader::process_texture(RC<world::TextureResource> const &tex, uint 
         if (gpu_fence > 0) {
             _counter.add();
             std::lock_guard lck{_mtx};
-            _after_device_task.push(
+            _after_device_task.enqueue(
                 [tex]() {
                     tex->pack_to_tile();
                 },
@@ -71,7 +71,8 @@ void TextureLoader::process_texture(RC<world::TextureResource> const &tex, uint 
         auto mip_size = tex->size();
         auto desire_mip_level = 0;
         if (!to_vt) {
-            for (auto i : vstd::range(mip_level)) {
+            for (auto _i : vstd::range(mip_level)) {
+                (void)_i;
                 desire_mip_level++;
                 if (any(mip_size <= 64u)) {
                     break;
@@ -79,7 +80,8 @@ void TextureLoader::process_texture(RC<world::TextureResource> const &tex, uint 
                 mip_size >>= 1u;
             }
         } else {
-            for (auto i : vstd::range(mip_level)) {
+            for (auto _i : vstd::range(mip_level)) {
+                (void)_i;
                 if (any((mip_size & (chunk_size - 1u)) != 0u)) {
                     break;
                 }
@@ -147,7 +149,7 @@ void TextureLoader::finish_task() {
         if (!_cmdlist.empty()) {
             RenderDevice::instance().lc_main_stream() << _cmdlist.commit() << _event.signal(_finished_fence++);
         }
-        while (auto v = _after_device_task.pop()) {
+        while (auto v = _after_device_task.dequeue()) {
             ThreadWaiter waiter;
             while (!_event.is_completed(v->second)) {
                 waiter.wait(std::chrono::milliseconds(1), "texture load task");

@@ -24,10 +24,10 @@ public:
     // 主要存储dynamic vertex buffers, SkinPrimitives和对应的GPU资产结
 
 public:// interface
-    [[nodiscard]] void InitResources(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) override;
-    [[nodiscard]] void ReleaseResources() override;
-    [[nodiscard]] void Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin) override;
-    [[nodiscard]] SkelMeshRenderDataLOD &GetLODRenderData() override;
+    void InitResources(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) override;
+    void ReleaseResources() override;
+    void Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin) override;
+    SkelMeshRenderDataLOD &GetLODRenderData() override;
 
 private:
     void UpdateDynamicData_RenderThread();
@@ -62,7 +62,7 @@ private:
 
 private:
     // cached
-    mutable int32_t cached_vertex_lod_;
+    [[maybe_unused]] mutable int32_t cached_vertex_lod_;
     SkelMeshRenderDataLODCPU LOD;
 };
 

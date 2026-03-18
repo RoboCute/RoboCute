@@ -34,7 +34,7 @@ private:
     DStorageStream *dstorage_stream;
     TimelineEvent _evt;
     vector<IOCommand> extra_cmds;
-    uint _res_index{0};
+    // uint _res_index{0};  // Unused field
     void split_commands(vector<IOCommand> &commands, vector<IOCommand> &extra_commands, uint64_t staging_size);
     // vstd::SingleThreadArrayQueue<std::pair<IOCommandList, uint64_t>> _cmds;
     vstd::spin_mutex _cmd_mtx;

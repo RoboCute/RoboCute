@@ -168,16 +168,16 @@ private:
 
     const ReferenceSkeleton *skeleton;
     SkeletalMesh *skeletal_mesh;
-    AnimGraph *anim_graph;
+    [[maybe_unused]] AnimGraph *anim_graph;
     AnimNode *root_node;// The Root Node Entry for this graph
 
-    AnimInstanceProxy *MainInstanceProxy;
+    [[maybe_unused]] AnimInstanceProxy *MainInstanceProxy;
     // Bone Indicies Required for this Frame
     luisa::shared_ptr<BoneContainer> required_bones;
 
     // ==================== Sampling State =====================
     float current_delta_seconds;// The last timer passed via PreUpdate
-    bool bUpdatingRoot;         // scope guard to prevent duplicate perform
+    [[maybe_unused]] bool bUpdatingRoot;         // scope guard to prevent duplicate perform
     bool bBoneCachesValid = false;
     // float CurrentTimeDilation;
     // =========================================================

@@ -49,7 +49,6 @@ auto BVH::split(
 	}
 	auto input_size = input.size();
 	auto volume_size = input_size - 1;
-	auto volume_size_bytes = volume_size * sizeof(Volume);
 	auto sort_axis_value = luisa::to_underlying(sort_axis);
 	if (already_sorted_axis != sort_axis) {
 		luisa::sort(input.data(), input.data() + input.size(), [sort_axis_value](Element& a, Element& b) {

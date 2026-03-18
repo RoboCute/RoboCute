@@ -106,6 +106,8 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
                         case Argument::Tag::TEXTURE:
                             _mark_tex(i.texture.handle, idx);
                             break;
+                        default:
+                            break;
                     }
                 }
             } break;
@@ -173,6 +175,8 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
                                     break;
                                 case Argument::Tag::TEXTURE:
                                     _mark_tex(i.texture.handle, idx);
+                                    break;
+                                default:
                                     break;
                             }
                         }
@@ -281,6 +285,8 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
                         case Argument::Tag::TEXTURE: {
                             i.texture.handle = _get_tex_handle(i.texture.handle);
                         } break;
+                        default:
+                            break;
                     }
                 }
             } break;
@@ -348,7 +354,7 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
             case Command::Tag::ECustomCommand: {
                 switch (static_cast<CustomCommand *>(cmd)->custom_cmd_uuid()) {
                     case to_underlying(CustomCommandUUID::RASTER_CLEAR_DEPTH): {
-                        auto c = static_cast<ClearDepthCommand *>(cmd);
+                        // ClearDepthCommand handling
                     } break;
                     case to_underlying(CustomCommandUUID::RASTER_CLEAR_RENDER_TARGET): {
                         auto c = static_cast<ClearRenderTargetCommand *>(cmd);
@@ -366,6 +372,8 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
                                 case Argument::Tag::TEXTURE: {
                                     i.texture.handle = _get_tex_handle(i.texture.handle);
                                 } break;
+                                default:
+                                    break;
                             }
                         }
                         auto rtv_texs = c->rtv_texs();

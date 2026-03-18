@@ -21,7 +21,7 @@ struct RBC_RUNTIME_API SceneResource : ResourceBaseImpl<SceneResource> {
     // TODO: manage resources
 private:
     bool load_from_json(luisa::filesystem::path const &path);
-    bool unsafe_save_to_path() const;
+    bool unsafe_save_to_path() const override;
     bool _install() override;
     void _set_entity_name(Entity *e, luisa::string const &new_name);
     SceneResource();

@@ -154,10 +154,6 @@ void MeshBuilderBase<Derive>::write_to(luisa::vector<std::byte> &buffer, luisa::
 }
 template<typename Derive>
 void MeshBuilderBase<Derive>::_gen_submesh_offsets(luisa::vector<uint> &submesh_offsets) const {
-    auto &&position = static_cast<Derive const *>(this)->position;
-    auto &&normal = static_cast<Derive const *>(this)->normal;
-    auto &&tangent = static_cast<Derive const *>(this)->tangent;
-    auto &&uvs = static_cast<Derive const *>(this)->uvs;
     auto &&triangle_indices = static_cast<Derive const *>(this)->triangle_indices;
     submesh_offsets.clear();
     if (triangle_indices.size() <= 1) {

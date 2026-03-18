@@ -8,7 +8,7 @@ struct IMaterialImporter : IResourceImporter {
 };
 
 struct MatJsonImporter final : IMaterialImporter {
-    luisa::string_view extension() const;
+    luisa::string_view extension() const override;
     bool import(Resource *resource, luisa::filesystem::path const &path) override;
 };
 }// namespace rbc::world

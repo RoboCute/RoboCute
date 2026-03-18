@@ -8,7 +8,7 @@ DataComponent::~DataComponent() {}
 // Info API
 auto DataComponent::get_info(luisa::string_view name) const -> DataType {
     auto iter = _infos.find(name);
-    if (!~iter) {
+    if (!iter) {
         return DataType{};
     }
     return iter.value();
@@ -70,7 +70,7 @@ void DataComponent::deserialize_meta(ObjDeSerialize const &obj) {
     if (obj.ar.start_array(info_count, "infos")) {
         auto elem_size = info_count / 3;
         _infos.reserve(elem_size);
-        for (auto i : vstd::range(elem_size)) {
+        for ([[maybe_unused]] auto _i : vstd::range(elem_size)) {
             luisa::string key;
             uint64_t index;
             if (!obj.ar.value(key)) break;

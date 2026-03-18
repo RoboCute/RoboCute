@@ -35,8 +35,8 @@ protected:
 
 private:
     mutable rbc::shared_atomic_mutex _async_mtx;
-    friend class IAnimSequenceImporter;
-    friend class rbc::Serialize<AnimSequenceResource>;
+    friend struct IAnimSequenceImporter;
+    friend struct rbc::Serialize<AnimSequenceResource>;
     AnimSequence anim_sequence;
 };
 

@@ -1,4 +1,4 @@
-#pragma once
+
 #include <rbc_world/resources/texture.h>
 #include <rbc_core/binary_file_writer.h>
 #include <rbc_graphics/device_assets/device_image.h>

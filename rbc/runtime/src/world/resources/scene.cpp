@@ -64,7 +64,7 @@ bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
     ArchiveReadJson read_adapter(deser);
     uint64_t size = deser.last_array_size();
     _entities.reserve(size);
-    for (auto i : vstd::range(size / 2)) {
+    for ([[maybe_unused]] auto _i : vstd::range(size / 2)) {
         vstd::Guid guid;
         LUISA_ASSERT(deser._load(guid));
         auto e =

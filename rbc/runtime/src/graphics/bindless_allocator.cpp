@@ -171,7 +171,7 @@ BindlessAllocator::BindlessAllocator(
         }
         LUISA_ASSERT(reserved_idx < size);
         auto last = size - 1;
-        vstd::push_back_func(_vec[i], size - reserved_idx, [last, reserved_idx](auto i) { return last - i; });
+        vstd::push_back_func(_vec[i], size - reserved_idx, [last](auto i) { return last - i; });
     }
     for (auto i = 0; i < 3; ++i)
     {

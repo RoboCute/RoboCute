@@ -86,7 +86,7 @@ public:
         SparseHeap &get_heap(uint2 tile_idx, uint level) {
             uint2 res = streamer.resolution();
             uint sz{0};
-            for (auto i : vstd::range(level)) {
+            for (auto _ : vstd::range(level)) {
                 LUISA_ASSERT(res.x >= 1 && res.y >= 1, "Resolution must be larger than 0.");
                 sz += res.x * res.y;
                 res >>= 1u;

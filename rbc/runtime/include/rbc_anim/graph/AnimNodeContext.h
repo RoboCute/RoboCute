@@ -67,7 +67,7 @@ public:
     }
     // Most Commonly used Ctor
     AnimationUpdateContext(AnimInstanceProxy *InAnimInstanceProxy, float InDeltaTime, AnimationUpdateSharedContext *InSharedContext)
-        : AnimationBaseContext(InAnimInstanceProxy, InSharedContext), delta_time(InDeltaTime), current_weight(1.0f), root_motion_weight_modifier(1.0f) {
+        : AnimationBaseContext(InAnimInstanceProxy, InSharedContext), current_weight(1.0f), root_motion_weight_modifier(1.0f), delta_time(InDeltaTime) {
     }
     // Special Copy
     AnimationUpdateContext(const AnimationUpdateContext &Copy, AnimInstanceProxy *InAnotherProxy)

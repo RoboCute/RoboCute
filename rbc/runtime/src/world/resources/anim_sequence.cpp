@@ -71,7 +71,7 @@ void AnimSequenceResource::log_brief() {
 }
 
 void AnimSequence::GetAnimationPose(AnimationPoseData &OutPoseData, const AnimExtractContext &InExtractContext) const {
-    auto &pose = OutPoseData.GetPose();
+    [[maybe_unused]] auto &pose = OutPoseData.GetPose();
     // TODO: 此处需要在Sampling中额外分配空间，需要改为事先分配
     AnimSamplingJobContext context;
 

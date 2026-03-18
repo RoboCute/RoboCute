@@ -18,7 +18,7 @@ namespace {
     // Size of one triangle in binary STL (12 bytes normal + 36 bytes vertices + 2 bytes attribute)
     constexpr size_t STL_TRIANGLE_SIZE = 50;
     // Maximum reasonable file size for ASCII check
-    constexpr size_t STL_ASCII_CHECK_SIZE = 512;
+    [[maybe_unused]] constexpr size_t STL_ASCII_CHECK_SIZE = 512;
 }
 
 bool StlMeshImporter::_is_binary_format(luisa::span<const std::byte> data) const {

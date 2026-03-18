@@ -20,22 +20,22 @@ struct DStorageStreamFallbackImpl : DStorageStream {
 public:
     std::atomic_uint64_t signaled_fence_idx{};
     ~DStorageStreamFallbackImpl();
-    bool support_wait() { return true; }
+    bool support_wait() override { return true; }
     void enqueue_wait(
         uint64_t event_handle,
-        uint64_t fence_index);
+        uint64_t fence_index) override;
     void enqueue_request(
         IOFile::Handle const &file,
         size_t offset_bytes,
         void *ptr,
-        size_t len);
+        size_t len) override;
     void enqueue_request(
         IOFile::Handle const &file,
         size_t offset_bytes,
         uint64_t buffer_handle,
         void *buffer_ptr,
         size_t buffer_offset,
-        size_t len);
+        size_t len) override;
     void enqueue_request(
         IOFile::Handle const &file,
         size_t offset_bytes,
@@ -44,19 +44,19 @@ public:
         PixelStorage storage,
         uint3 offset,
         uint3 size,
-        uint level);
+        uint level) override;
     void enqueue_request(
         void const *mem_ptr,
         size_t offset_bytes,
         uint64_t buffer_handle,
         void *buffer_ptr,
         size_t buffer_offset,
-        size_t len);
+        size_t len) override;
     void enqueue_request(
         void const *mem_ptr,
         size_t offset_bytes,
         void *ptr,
-        size_t len);
+        size_t len) override;
     void enqueue_request(
         void const *mem_ptr,
         size_t offset_bytes,
@@ -65,26 +65,26 @@ public:
         PixelStorage storage,
         uint3 offset,
         uint3 size,
-        uint level);
+        uint level) override;
     void enqueue_signal(
         uint64_t event_handle,
         void *event,
-        uint64_t fence_index);
-    uint64_t staging_size() {
+        uint64_t fence_index) override;
+    uint64_t staging_size() override {
         return fallback_staging_size;
     }
-    void submit();
-    void free_queue();
+    void submit() override;
+    void free_queue() override;
     bool is_event_complete(
         DeviceInterface *device_interface,
         uint64_t event_handle,
         void *evt_native_handle,
-        uint64_t fence);
+        uint64_t fence) override;
     void sync_event(
         DeviceInterface *device_interface,
         uint64_t event_handle,
-        void *evt_native_handle, uint64_t fence);
-    void dispose() {
+        void *evt_native_handle, uint64_t fence) override;
+    void dispose() override {
         delete this;
     }
     bool timeline_signaled(uint64_t timeline) const override {

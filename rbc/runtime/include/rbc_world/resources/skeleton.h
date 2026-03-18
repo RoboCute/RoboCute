@@ -26,7 +26,7 @@ protected:
 
 private:
     friend class ISkeletonImporter;
-    friend class rbc::Serialize<rbc::world::SkeletonResource>;
+    friend struct rbc::Serialize<rbc::world::SkeletonResource>;
 
     ReferenceSkeleton skeleton;
 };
@@ -38,7 +38,6 @@ namespace rbc::world {
 
 struct RBC_RUNTIME_API ISkeletonImporter : world::IResourceImporter {
     [[nodiscard]] MD5 resource_type() const override { return TypeInfo::get<SkeletonResource>().md5(); }
-protected:
 };
 
 }// namespace rbc::world

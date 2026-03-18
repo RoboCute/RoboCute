@@ -207,7 +207,7 @@ private:
     // Object that is responsible for sending bone transforms
 
     SkeletalMeshRenderObject *render_object_ = nullptr;
-    SkeletalMeshRenderObject *_previous_render_object = nullptr;// previous render object when RenderThread Recreated
+    [[maybe_unused]] SkeletalMeshRenderObject *_previous_render_object = nullptr;// previous render object when RenderThread Recreated
 };
 
 }// namespace rbc

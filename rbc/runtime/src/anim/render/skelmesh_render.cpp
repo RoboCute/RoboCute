@@ -72,7 +72,7 @@ SkeletalMeshRenderObject::~SkeletalMeshRenderObject() {}
 void UpdateRefToLocalMatrices(luisa::vector<AnimFloat4x4> &ReferenceToLocal, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin) {
     RBCZoneScopedN("UpdateRefToLocalMatrices");
     const auto component_space_transforms = InDynamicData.GetComponentSpaceTransforms();
-    auto NumBones = component_space_transforms.size();
+    [[maybe_unused]] auto NumBones = component_space_transforms.size();
     auto NumSkinJoints = InRefSkin->InverseBindPoses().size();
 
     ReferenceToLocal.resize_uninitialized(NumSkinJoints);
