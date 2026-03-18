@@ -32,7 +32,10 @@
 #include <rbc_world/resources/skin.h>
 #include <rbc_world/resources/skeleton.h>
 #include <rbc_world/resources/skelmesh.h>
+#include <rbc_world/components/skelmesh_component.h>
 #include <rbc_world/components/atmosphere_component.h>
+#include <rbc_anim/graph/AnimNode_Root.h>
+#include <rbc_anim/graph/AnimNode_SequencePlayer.h>
 
 void save_image(luisa::filesystem::path const &path, luisa::compute::Image<float> const &img);// implemented save_image.cpp
 namespace rbc {
@@ -703,9 +706,29 @@ void *AnimGraphResource::_create_() {
     manually_add_ref(p);
     return p;
 }
-void *AnimGraphResource::graph(void *this_) {
+
+bool AnimGraphResource::create_simple_anim_graph(void *this_, void *anim_seq) {
     auto c = static_cast<rbc::world::AnimGraphResource *>(this_);
-    return &c->graph;
+    auto anim_seq_res = static_cast<rbc::world::AnimSequenceResource *>(anim_seq);
+    
+    if (!anim_seq_res) {
+        return false;
+    }
+    
+    // Create root node
+    auto root = rbc::RC<rbc::AnimNode_Root>::New();
+    c->graph.nodes.emplace_back(root);
+    
+    // Create sequence player node
+    auto seq_player = rbc::RC<rbc::AnimNode_SequencePlayer>::New();
+    seq_player->anim_seq_resource = rbc::RC<rbc::world::AnimSequenceResource>{anim_seq_res};
+    c->graph.nodes.emplace_back(seq_player);
+    
+    // Link root to sequence player
+    root->result.LinkedNodeID = 1;
+    
+    c->unsafe_set_loaded();
+    return true;
 }
 
 // SkelMeshResource implementation
@@ -799,6 +822,57 @@ void *Project::import_texture(
         "{{\"mip_level\":{},\"is_vt\":{}}}", mip_level, to_vt ? "true" : "false");
     auto ptr = c->proj->import_assets(
         path, TypeInfo::get<world::TextureResource>().md5(), meta_json);
+    auto p = ptr.get();
+    if (!p) {
+        return nullptr;
+    }
+    ptr->install();
+    unsafe_forget(std::move(ptr));
+    return p;
+}
+
+void *Project::import_skeleton(void *this_, luisa::string_view path) {
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    auto ptr = c->proj->import_assets(
+        path, TypeInfo::get<world::SkeletonResource>().md5(), luisa::string{});
+    auto p = ptr.get();
+    if (!p) {
+        return nullptr;
+    }
+    ptr->install();
+    unsafe_forget(std::move(ptr));
+    return p;
+}
+
+void *Project::import_skin(void *this_, luisa::string_view path) {
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    auto ptr = c->proj->import_assets(
+        path, TypeInfo::get<world::SkinResource>().md5(), luisa::string{});
+    auto p = ptr.get();
+    if (!p) {
+        return nullptr;
+    }
+    ptr->install();
+    unsafe_forget(std::move(ptr));
+    return p;
+}
+
+void *Project::import_anim_sequence(void *this_, luisa::string_view path) {
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    auto ptr = c->proj->import_assets(
+        path, TypeInfo::get<world::AnimSequenceResource>().md5(), luisa::string{});
     auto p = ptr.get();
     if (!p) {
         return nullptr;
@@ -2244,5 +2318,35 @@ void *AtmosphereComponent::texture(void *this_) {
 void AtmosphereComponent::update_texture(void *this_, void *tex) {
     auto c = static_cast<rbc::world::AtmosphereComponent *>(this_);
     c->hdri = static_cast<rbc::world::TextureResource *>(tex);
+}
+
+// SkelMeshComponent implementation
+void *SkelMeshComponent::GetRuntimeMesh(void *this_) {
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    auto mesh = c->GetRuntimeMesh();
+    if (!mesh) return nullptr;
+    manually_add_ref(mesh);
+    return mesh;
+}
+bool SkelMeshComponent::IsEnabled(void *this_) {
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    return c->IsEnabled();
+}
+void SkelMeshComponent::SetRefSkelMesh(void *this_, void *skel_mesh) {
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    auto skel_mesh_rc = RC<rbc::world::SkelMeshResource>{static_cast<rbc::world::SkelMeshResource *>(skel_mesh)};
+    c->SetRefSkelMesh(skel_mesh_rc);
+}
+void SkelMeshComponent::remove_object(void *this_) {
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    c->remove_object();
+}
+void SkelMeshComponent::tick(void *this_, float delta_time) {
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    c->tick(delta_time);
+}
+void SkelMeshComponent::update_render(void *this_) {
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    c->update_render();
 }
 }// namespace rbc
