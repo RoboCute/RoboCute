@@ -7,6 +7,7 @@ This script handles:
 3. Optionally generating Python stubs
 """
 
+import argparse
 import os
 import sys
 import shutil
@@ -333,7 +334,70 @@ def main(mode: Optional[str] = None, build_stubgen: Optional[str] = None) -> int
 
 if __name__ == "__main__":
     # Parse command line arguments
-    mode = sys.argv[1] if len(sys.argv) > 1 else None
-    build_stubgen = sys.argv[2] if len(sys.argv) > 2 else None
+    parser = argparse.ArgumentParser(
+        description="Build and install RoboCute extension.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  uv run scripts/build_and_copy.py debug
+  uv run scripts/build_and_copy.py release uv
+  uv run scripts/build_and_copy.py -r debug
+  uv run scripts/build_and_copy.py --rebuild --mode releasedbg
+        """
+    )
 
-    sys.exit(main(mode, build_stubgen))
+    parser.add_argument(
+        "mode",
+        nargs="?",
+        default="release",
+        choices=["debug", "release", "releasedbg"],
+        help="Build mode (default: release)"
+    )
+
+    parser.add_argument(
+        "-m", "--mode",
+        dest="mode_flag",
+        default=None,
+        choices=["debug", "release", "releasedbg"],
+        help="Build mode (overrides positional mode argument)"
+    )
+
+    parser.add_argument(
+        "-r", "--rebuild",
+        action="store_true",
+        help="Force rebuild (clean and rebuild the project)"
+    )
+
+    parser.add_argument(
+        "--stubgen",
+        nargs="?",
+        const="uv",
+        default=None,
+        help="Generate Python stubs. Use 'uv' (default) or specify stub generator type"
+    )
+
+    args = parser.parse_args()
+
+    # Determine mode: --mode flag takes priority over positional argument
+    mode = args.mode_flag if args.mode_flag else args.mode
+
+    # Handle rebuild: clean first if requested
+    if args.rebuild:
+        print_info("Rebuild requested, cleaning build directory...")
+        project_dir = get_project_dir()
+        build_dir = get_target_dir(mode)
+        if build_dir.exists():
+            shutil.rmtree(build_dir)
+            print_success("Build directory cleaned.")
+        # Also run xmake clean
+        try:
+            subprocess.run(
+                ["xmake", "clean"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True
+            )
+        except Exception:
+            pass  # Ignore xmake clean errors
+
+    sys.exit(main(mode, args.stubgen))
