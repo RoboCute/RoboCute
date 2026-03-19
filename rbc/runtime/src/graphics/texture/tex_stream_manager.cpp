@@ -193,9 +193,6 @@ void TexStreamManager::_async_logic() {
         vector<uint3> remove_lists;
         for (auto &i : _unmap_lists) {
             remove_lists.clear();
-            auto tex_pixel_size = pixel_storage_size(i.first->img.storage(), uint3(chunk_resolution, chunk_resolution, 1));
-            auto tex_is_compress = is_block_compressed(i.first->img.storage());
-
             for (auto &tile : i.second.map) {
                 auto &node = i.first->streamer.sample_node(tile.xy(), tile.z);
                 if (node.processing_count != 0 || node.ref_count != 0) continue;
@@ -297,10 +294,9 @@ auto TexStreamManager::load_sparse_img(
     luisa::move_only_function<void()> &&init_callback) -> LoadResult {
     _async_load_evt.wait();
     std::lock_guard lck{_async_mtx};
-    PixelStorage storage = img.storage();
     uint2 resolution = img.size();
     uint mip = img.mip_levels();
-    LUISA_ASSERT(any(resolution >> (mip - 1) >= chunk_resolution), "Minimum level mip must be less than chunk_resolution {}", chunk_resolution);
+    LUISA_ASSERT(any((resolution >> (mip - 1)) >= chunk_resolution), "Minimum level mip must be less than chunk_resolution {}", chunk_resolution);
     uint2 tile_count = (resolution + (chunk_resolution - 1u)) / chunk_resolution;
     auto iter = _loaded_texs.emplace(img.uid(), vstd::lazy_eval([&]() {
                                          return luisa::make_shared<TexIndex>(tile_count, img.mip_levels(), true);

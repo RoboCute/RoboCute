@@ -339,7 +339,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     if (!pass_ctx) {
         pass_ctx = vstd::make_unique<PTPassContext>();
     }
-    auto pass_ctx_ptr = pass_ctx.get();
 
     auto halton = [](int32_t index, int32_t base) {
         float f = 1.0f, result = 0.0f;

@@ -203,7 +203,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
 #ifdef RBC_RENDER_ENABLE_OIDN
         std::lock_guard lck{oidn_mtx};
         auto &render_device = RenderDevice::instance();
-        auto &lc_ctx = render_device.lc_ctx();
+        // Unused: auto &lc_ctx = render_device.lc_ctx();
         oidn_support = ComputeDevice::instance().render_hardware_device_index() == ~0u ? OidnSupport::UnSupported : OidnSupport::Supported;
         if (oidn_support != OidnSupport::Supported) return false;
         oidn_module = PluginManager::instance().load_module("oidn_plugin");

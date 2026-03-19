@@ -105,7 +105,6 @@ STEP_1: {
     buf_data = buf.data();
     buf_end = buf_data + buf.size();
     auto required_size = std::min<size_t>((buf_end - buf_data), sizeof(TypedHeader) - _cache.size());
-    size_t cache_idx = _cache.size();
     push_to_cache(required_size);
     if (_cache.size() >= sizeof(TypedHeader)) {
         std::memcpy(&header, _cache.data(), sizeof(header));
@@ -197,7 +196,6 @@ uint8_t IMessageReceiver::pop_typed_message(luisa::vector<std::byte> &data) {
             buf_data = buf.data();
             buf_end = buf_data + buf.size();
             auto required_size = std::min<size_t>((buf_end - buf_data), sizeof(TypedHeader) - _cache.size());
-            size_t cache_idx = _cache.size();
             push_to_cache(required_size);
             if (_cache.size() >= sizeof(TypedHeader)) {
                 std::memcpy(&header, _cache.data(), sizeof(header));

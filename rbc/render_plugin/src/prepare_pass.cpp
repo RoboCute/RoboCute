@@ -397,7 +397,7 @@ void PreparePass::on_disable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
-    auto &&alloc = scene.bindless_allocator();
+    // Unused: auto &&alloc = scene.bindless_allocator();
 }
 PreparePass::~PreparePass() {
     for (auto &i : _lut_load_cmds) {

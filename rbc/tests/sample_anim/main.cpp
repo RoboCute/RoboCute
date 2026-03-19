@@ -599,7 +599,7 @@ void AnimScene::_setup_default_lighting() {
     transform->set_pos(double3(5, 10, 5), true);
     transform->set_scale(double3(2.0, 2.0, 2.0), true);
 
-    auto render = light_entity->add_component<world::RenderComponent>();
+    light_entity->add_component<world::RenderComponent>();
 
     // Create emissive material for lighting
     auto light_mat = RC<world::MaterialResource>{world::create_object<world::MaterialResource>()};

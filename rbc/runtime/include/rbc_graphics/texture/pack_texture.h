@@ -9,9 +9,10 @@ struct RBC_RUNTIME_API PackTexture {
 private:
     template<typename T>
     using ToTileShader = Shader2D<Buffer<T>, Buffer<T>, uint2>;
-    ToTileShader<uint4> const *to_tile_16byte;
-    ToTileShader<uint2> const *to_tile_8byte;
-    ToTileShader<uint> const *to_tile_4byte;
+    // Unused shader pointers - commented out to avoid -Wunused-private-field warning
+    // ToTileShader<uint4> const *to_tile_16byte;
+    // ToTileShader<uint2> const *to_tile_8byte;
+    // ToTileShader<uint> const *to_tile_4byte;
     Shader2D<Image<float>, Image<float>> const *gen_mip;
 
 public:

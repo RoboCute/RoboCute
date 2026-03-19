@@ -161,9 +161,10 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     [[maybe_unused]] auto write_tex = [&]() -> auto & {
         return *imgs[1];
     };
-    auto swap_tex = [&]() {
-        std::swap(imgs[0], imgs[1]);
-    };
+    // Unused lambda - commented out to avoid warning
+    // auto swap_tex = [&]() {
+    //     std::swap(imgs[0], imgs[1]);
+    // };
     post_uber_pass::Args args{};
     ///////// distortion
     rbc::detail::post_process_distortion(args.distortion_CenterScale, args.distortion_Amount, distortionSettings);

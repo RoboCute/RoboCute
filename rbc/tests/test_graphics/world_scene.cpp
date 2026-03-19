@@ -93,7 +93,7 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
     luisa::vector<std::byte> quad_bytes;
     mesh_builder.write_to(quad_bytes, submesh_offsets);
     quad_mesh->create_empty(std::move(submesh_offsets), mesh_builder.vertex_count(), mesh_builder.indices_count() / 3, mesh_builder.uv_count(), mesh_builder.contained_normal(), mesh_builder.contained_tangent());
-    auto s = quad_bytes.size_bytes();
+    [[maybe_unused]] auto s = quad_bytes.size_bytes();
     *quad_mesh->host_data() = std::move(quad_bytes);
     quad_mesh->install();
     utils->update_mesh_data(quad_mesh->device_mesh(), false);// update through render-thread
@@ -240,6 +240,7 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         uint64_t size = entitie_deser.last_array_size();
         _entities.reserve(size);
         for (auto i : vstd::range(size)) {
+            (void)i;
             auto e = _entities.emplace_back(world::create_object<world::Entity>());
             read_adapter.start_object();
             e->deserialize_meta(world::ObjDeSerialize{read_adapter});
@@ -462,6 +463,7 @@ void WorldScene::_set_gizmos() {
     auto emplace = [&](float3 scale, float3 offset, float3 color) {
         _create_cube(mesh_builder, offset, scale);
         for (auto i : vstd::range(8)) {
+            (void)i;
             mesh_builder.normal.emplace_back(color);
         }
     };

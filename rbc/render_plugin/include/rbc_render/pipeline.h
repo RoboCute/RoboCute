@@ -19,7 +19,7 @@ public:
 private:
     vstd::vector<vstd::unique_ptr<Pass>> _passes;
     vstd::HashMap<TypeInfo, size_t> _pass_indices;
-    bool initialized = false;
+    // bool initialized = false; // Unused - commented out to avoid warning
 
 public:
     virtual void initialize() {}
