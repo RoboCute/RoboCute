@@ -14,8 +14,8 @@ namespace py = pybind11;
 using namespace luisa;
 using namespace luisa::compute;
 using AccelModification = AccelBuildCommand::Modification;
+// AccelModification is used to simplify type names in this file
 
-constexpr auto pyref = py::return_value_policy::reference;// object lifetime is managed on C++ side
 // Note: declare pointer & base class;
 // use reference policy when python shouldn't destroy returned object
 void export_lcapi(py::module &m) {

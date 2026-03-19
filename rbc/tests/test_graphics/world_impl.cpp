@@ -1,4 +1,16 @@
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4273)// Disable 'inconsistent dll linkage' warning
+#elif defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdll-attribute-on-redeclaration"
+#endif
 #include "generated/world.h"
+#ifdef _MSC_VER
+#pragma warning(pop)
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 #include <rbc_world/base_object.h>
 #include <rbc_world/entity.h>
 #include <rbc_world/component.h>

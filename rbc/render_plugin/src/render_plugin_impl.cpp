@@ -1,3 +1,6 @@
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Winaccessible-base"
+#endif
 #include <rbc_render/render_plugin.h>
 #include <rbc_render/pipeline_context.h>
 #include <rbc_render/pt_pipeline.h>

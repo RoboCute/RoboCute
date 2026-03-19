@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
             // reuse drag logic
             if (cam && click_mng) {
                 RBCZoneScopedN("Draw Gizmos");
-                auto reset = world_scene->draw_gizmos(stage == MouseStage::Dragging, utils.get(), make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam->position, cam->far_plane, *click_mng, *cam);
+                world_scene->draw_gizmos(stage == MouseStage::Dragging, utils.get(), make_uint2(start_uv * make_float2(window_size)), make_uint2(camera_input.mouse_cursor_pos), window_size, cam->position, cam->far_plane, *click_mng, *cam);
             }
             if (cam && grid_draw) {
                 world_scene->draw_grid(*cam, *grid_draw);

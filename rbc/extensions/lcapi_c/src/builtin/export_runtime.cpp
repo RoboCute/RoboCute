@@ -91,7 +91,6 @@ void interop_copy(DeviceInterface &d, uint64_t interop_buffer, uint64_t interop_
         cu_stream_ptr);
     rbc::RenderDevice::instance().add_before_cmdlist_commit_task([cu_stream_ptr](){
         auto compute_device = rbc::ComputeDevice::instance_ptr();
-        auto& cmdlist = rbc::RenderDevice::instance().lc_main_cmd_list();
         if(compute_device)
             compute_device->compute_to_render_fence(cu_stream_ptr, rbc::RenderDevice::instance().lc_main_stream());
     });

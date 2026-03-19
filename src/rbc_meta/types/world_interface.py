@@ -673,7 +673,7 @@ class SkelMeshResource(Resource):
 
 @reflect(
     pybind=True,
-    cpp_prefix="RBC_RUNTIME_API",
+    cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )

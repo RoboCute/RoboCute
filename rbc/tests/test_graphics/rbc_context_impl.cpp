@@ -469,8 +469,7 @@ void BuiltinKernels::buffer_to_image(void *this_, luisa::compute::BufferCreation
     auto &shaders = *static_cast<BuiltinShaders *>(this_);
     auto storage = luisa::compute::pixel_format_to_storage(output_image.format);
     (void)rbc::RenderDevice::instance().lc_main_cmd_list();  // Suppress unused warning
-
-    [[maybe_unused]] uint swizzle_bytes = BuiltinShaders::compact_swizzle(swizzle);
+    (void)BuiltinShaders::compact_swizzle(swizzle);  // Suppress unused warning
 
     // Determine image type based on format
     // Create Buffer<half> or Buffer<float> based on element stride
@@ -523,9 +522,8 @@ void BuiltinKernels::buffer_to_image(void *this_, luisa::compute::BufferCreation
 
 void BuiltinKernels::image_to_buffer(void *this_, luisa::compute::TextureCreationInfo input_image, luisa::compute::BufferCreationInfoInterop output_buffer, luisa::uint2 pixel_offset, luisa::uint2 pixel_size, luisa::uint4 swizzle) {
     auto &shaders = *static_cast<BuiltinShaders *>(this_);
-    auto &cmdlist = rbc::RenderDevice::instance().lc_main_cmd_list();
-
-    uint swizzle_bytes = BuiltinShaders::compact_swizzle(swizzle);
+    (void)rbc::RenderDevice::instance().lc_main_cmd_list();  // Suppress unused warning
+    (void)BuiltinShaders::compact_swizzle(swizzle);  // Suppress unused warning
 
     // Determine image type based on format
     // Create Buffer<half> or Buffer<float> based on element stride
