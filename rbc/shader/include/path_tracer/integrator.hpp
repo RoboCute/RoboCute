@@ -35,6 +35,208 @@ struct IntegratorResult {
 };
 namespace integrator {
 
+/// Compute MIS weight for indirect ray hitting a light source
+/// Returns modified emission and updates continue_loop flag
+inline float3 compute_light_mis(
+    float3 emission,
+    geometry::InstanceInfo inst_info,
+    float3 input_pos,
+    float pdf_bsdf,
+    std::array<float3, 3> vert_poses,
+    float3 vertices_normal,
+    float ray_t,
+    float3 input_dir,
+    bool &continue_loop) {
+
+    uint light_mask = inst_info.get_light_mask();
+    uint light_id = inst_info.get_light_id();
+    float3 result_emission = emission;
+
+    switch (light_mask) {
+        case lighting::LightTypes::PointLight: {
+            auto point_light = g_buffer_heap.uniform_idx_buffer_read<lighting::PointLight>(heap_indices::point_lights_heap_idx, light_id);
+            // triangle: longest edge is c, near angle is b, on angle's other side is a
+            auto wi_length = length(point_light.pos() - input_pos);
+            if (wi_length > point_light.radius()) {
+                float half_light_angle = asin(point_light.radius() / wi_length);
+                float cos_theta_max = cos(half_light_angle);
+                auto pdf_light = 1.0f / (2 * pi * (1.0f - cos_theta_max));
+                auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
+                result_emission *= mis;
+            }
+            continue_loop = false;
+        } break;
+        case lighting::LightTypes::SpotLight: {
+            auto spot_light = g_buffer_heap.uniform_idx_buffer_read<lighting::SpotLight>(heap_indices::spot_lights_heap_idx, light_id);
+            auto wi_light = spot_light.pos() - input_pos;
+            // triangle: longest edge is c, near angle is b, on angle's other side is a
+            auto wi_length = length(wi_light);
+            wi_light = wi_light / wi_length;
+            if (wi_length > spot_light.radius()) {
+                float half_light_angle = asin(spot_light.radius() / wi_length);
+                float cos_theta_max = cos(half_light_angle);
+                auto pdf_light = 1.0f / (2 * pi * (1.0f - cos_theta_max));
+                auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
+                float angle = acos(dot(-input_dir, float3(spot_light.forward_dir)));
+                angle = saturate((angle - spot_light.angle_radian) / (spot_light.small_angle_radian - spot_light.angle_radian));
+                angle = pow(angle, spot_light.angle_atten_power);
+                result_emission *= angle;
+                result_emission *= mis;
+            }
+            continue_loop = false;
+        } break;
+        case lighting::LightTypes::AreaLight: {
+            float a = distance(vert_poses[0], vert_poses[1]);
+            float b = distance(vert_poses[0], vert_poses[2]);
+            float c = distance(vert_poses[1], vert_poses[2]);
+            float p = (a + b + c) / 2.0f;
+            float area = sqrt(p * (p - a) * (p - b) * (p - c)) * 2.f;
+            auto pdf_light = (ray_t * ray_t) / max(area * max(dot(-input_dir, vertices_normal), 0.f), 1e-5f);
+            auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
+            result_emission *= mis;
+            continue_loop = false;
+        } break;
+        case lighting::LightTypes::TriangleLight: {
+            float a = distance(vert_poses[0], vert_poses[1]);
+            float b = distance(vert_poses[0], vert_poses[2]);
+            float c = distance(vert_poses[1], vert_poses[2]);
+            float p = (a + b + c) / 2.0f;
+            float area = sqrt(p * (p - a) * (p - b) * (p - c));
+            auto pdf_light = (ray_t * ray_t) / max(area * max(dot(-input_dir, vertices_normal), 0.f), 1e-5f);
+            auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
+            result_emission *= mis;
+        } break;
+        case lighting::LightTypes::DiskLight: {
+            auto disk_light = g_buffer_heap.uniform_idx_buffer_read<lighting::DiskLight>(heap_indices::disk_lights_heap_idx, light_id);
+            auto pdf_light = (ray_t * ray_t) / max(disk_light.area * max(dot(-input_dir, vertices_normal), 0.f), 1e-5f);
+            auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
+            result_emission *= mis;
+            continue_loop = false;
+        } break;
+    }
+    return result_emission;
+}
+
+/// Perform BSDF light importance sampling
+/// Returns the radiance result and distance to light
+inline lighting::LightISResult perform_light_importance_sampling_normal(
+    float3x3 resource_to_rec2020_mat,
+    SpectrumArg &spectrum_arg,
+    auto &bsdf_eval_func,
+    auto &sampler,
+    float3 world_pos,
+    float3 plane_normal,
+    float3 new_dir,
+    float roughness,
+    bool di_use_specular,
+    bool is_primary_ray,
+    float4x4 inst_transform,
+    std::array<float3, 3> vert_normals,
+    std::array<float3, 3> vert_poses,
+    auto hit,
+    float3x3 world_2_sky_mat,
+    lighting::BindlessIndices auto const &bdls_indices) {
+
+    bool need_flip = false;
+    float3 offset_normal = plane_normal;
+    float3 di_normal = plane_normal;
+
+    if (dot(new_dir, offset_normal) < 0.f) {
+        offset_normal = -offset_normal;
+        need_flip = true;
+    }
+    if (dot(new_dir, di_normal) < 0.f) {
+        di_normal = -di_normal;
+    }
+
+    float3 di_world_pos = world_pos;
+
+    // RAY TRACING GEMS II
+    // CHAPTER 4. HACKING THE SHADOW TERMINATOR
+    float3 nA = normalize((inst_transform * float4(vert_normals[0], 0)).xyz);
+    float3 nB = normalize((inst_transform * float4(vert_normals[1], 0)).xyz);
+    float3 nC = normalize((inst_transform * float4(vert_normals[2], 0)).xyz);
+    if (need_flip) {
+        nA = -nA;
+        nB = -nB;
+        nC = -nC;
+    }
+    // get distance vectors from triangle vertices
+    float3 tmpu = di_world_pos - vert_poses[0];
+    float3 tmpv = di_world_pos - vert_poses[1];
+    float3 tmpw = di_world_pos - vert_poses[2];
+    // project these onto the tangent planes
+    // defined by the shading normals
+    tmpu -= min(0.0f, dot(tmpu, nA)) * nA;
+    tmpv -= min(0.0f, dot(tmpv, nB)) * nB;
+    tmpw -= min(0.0f, dot(tmpw, nC)) * nC;
+    // finally P' is the barycentric mean of these three
+    di_world_pos += hit.interpolate(tmpu, tmpv, tmpw);
+
+    di_world_pos = sampling::offset_ray_origin(di_world_pos, offset_normal);
+
+    auto is_result = lighting::bsdf_light_importance_sampling(
+        resource_to_rec2020_mat,
+        spectrum_arg,
+        bsdf_eval_func,
+        sampler,
+        di_world_pos,
+        di_normal,
+        world_2_sky_mat,
+        bdls_indices,
+        new_dir,
+        roughness,
+        di_use_specular,
+        is_primary_ray);
+
+    return is_result;
+}
+
+/// Perform BSDF light importance sampling (simplified version without shadow terminator fix)
+/// Returns the radiance result and distance to light
+inline lighting::LightISResult perform_light_importance_sampling(
+    float3x3 resource_to_rec2020_mat,
+    SpectrumArg &spectrum_arg,
+    auto const &bsdf_eval_func,
+    auto &sampler,
+    float3 world_pos,
+    float3 plane_normal,
+    float3 shading_normal,
+    float3 new_dir,
+    float roughness,
+    bool di_use_specular,
+    bool is_primary_ray,
+    float3x3 world_2_sky_mat,
+    lighting::BindlessIndices auto const &bdls_indices) {
+
+    // Simplified version without shadow terminator fix
+    float3 offset_normal = plane_normal;
+    float3 di_normal = shading_normal;
+    if (dot(new_dir, offset_normal) < 0.f) {
+        offset_normal = -offset_normal;
+    }
+    if (dot(new_dir, di_normal) < 0.f) {
+        di_normal = -di_normal;
+    }
+    float3 di_world_pos = sampling::offset_ray_origin(world_pos, offset_normal);
+
+    auto is_result = lighting::bsdf_light_importance_sampling(
+        resource_to_rec2020_mat,
+        spectrum_arg,
+        bsdf_eval_func,
+        sampler,
+        di_world_pos,
+        di_normal,
+        world_2_sky_mat,
+        bdls_indices,
+        new_dir,
+        roughness,
+        di_use_specular,
+        is_primary_ray);
+
+    return is_result;
+}
+
 }// namespace integrator
 
 static IntegratorResult sample_material(
@@ -338,181 +540,102 @@ static IntegratorResult sample_material(
         };
 
         if (is_indirect_ray && hit_triangle) {// indirect ray
-            //////////////// Sample light and balance
-            uint light_mask = inst_info.get_light_mask();
-            uint light_id = inst_info.get_light_id();
-            switch (light_mask) {
-                case lighting::LightTypes::PointLight: {
-                    auto point_light = g_buffer_heap.uniform_idx_buffer_read<lighting::PointLight>(heap_indices::point_lights_heap_idx, light_id);
-                    // triangle: longest edge is c, near angle is b, on angle's other side is a
-                    auto wi_length = length(point_light.pos() - input_pos);
-                    if (wi_length > point_light.radius()) {
-                        float half_light_angle = asin(point_light.radius() / wi_length);
-                        float cos_theta_max = cos(half_light_angle);
-                        auto pdf_light = 1.0f / (2 * pi * (1.0f - cos_theta_max));
-                        auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
-                        r.emission *= mis;
-                    }
-                    continue_loop = false;
-                } break;
-                case lighting::LightTypes::SpotLight: {
-                    auto spot_light = g_buffer_heap.uniform_idx_buffer_read<lighting::SpotLight>(heap_indices::spot_lights_heap_idx, light_id);
-                    auto wi_light = spot_light.pos() - input_pos;
-                    // triangle: longest edge is c, near angle is b, on angle's other side is a
-                    auto wi_length = length(wi_light);
-                    wi_light = wi_light / wi_length;
-                    if (wi_length > spot_light.radius()) {
-                        float half_light_angle = asin(spot_light.radius() / wi_length);
-                        float cos_theta_max = cos(half_light_angle);
-                        auto pdf_light = 1.0f / (2 * pi * (1.0f - cos_theta_max));
-                        auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
-                        float angle = acos(dot(-input_dir, float3(spot_light.forward_dir)));
-                        angle = saturate((angle - spot_light.angle_radian) / (spot_light.small_angle_radian - spot_light.angle_radian));
-                        angle = pow(angle, spot_light.angle_atten_power);
-                        r.emission *= angle;
-                        r.emission *= mis;
-                    }
-                    continue_loop = false;
-                } break;
-                case lighting::LightTypes::AreaLight: {
-                    float a = distance(vert_poses[0], vert_poses[1]);
-                    float b = distance(vert_poses[0], vert_poses[2]);
-                    float c = distance(vert_poses[1], vert_poses[2]);
-                    float p = (a + b + c) / 2.0f;
-                    float area = sqrt(p * (p - a) * (p - b) * (p - c)) * 2.f;
-                    auto pdf_light = (ray_t * ray_t) / max(area * max(dot(-input_dir, vertices_normal), 0.f), 1e-5f);
-                    auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
-                    r.emission *= mis;
-                    continue_loop = false;
-                } break;
-                case lighting::LightTypes::TriangleLight: {
-                    float a = distance(vert_poses[0], vert_poses[1]);
-                    float b = distance(vert_poses[0], vert_poses[2]);
-                    float c = distance(vert_poses[1], vert_poses[2]);
-                    float p = (a + b + c) / 2.0f;
-                    float area = sqrt(p * (p - a) * (p - b) * (p - c));
-                    auto pdf_light = (ray_t * ray_t) / max(area * max(dot(-input_dir, vertices_normal), 0.f), 1e-5f);
-                    auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
-                    r.emission *= mis;
-                } break;
-                case lighting::LightTypes::DiskLight: {
-                    auto disk_light = g_buffer_heap.uniform_idx_buffer_read<lighting::DiskLight>(heap_indices::disk_lights_heap_idx, light_id);
-                    auto pdf_light = (ray_t * ray_t) / max(disk_light.area * max(dot(-input_dir, vertices_normal), 0.f), 1e-5f);
-                    auto mis = pdf_bsdf < 0.0f ? 1.0f : float(sampling::balanced_heuristic(pdf_bsdf, pdf_light));
-                    r.emission *= mis;
-                    continue_loop = false;
-                } break;
-            }
-            // radiance += beta * emission;
-            //////////////// Done sample light and balance
+            r.emission = integrator::compute_light_mis(
+                r.emission,
+                inst_info,
+                input_pos,
+                pdf_bsdf,
+                vert_poses,
+                vertices_normal,
+                ray_t,
+                input_dir,
+                continue_loop);
         }
-        if (continue_loop) {
-            bsdf.init(wi, basic_param, extra_param, closure_data);
-            if (need_albedo) {
-                bool oldFlag = closure_data.spectrumed;
-                closure_data.spectrumed = false;
-                r.albedo = bsdf.energy(wi, closure_data);
-                closure_data.spectrumed = oldFlag;
-            }
+        if (!continue_loop) return r;
+        bsdf.init(wi, basic_param, extra_param, closure_data);
+        if (need_albedo) {
+            bool oldFlag = closure_data.spectrumed;
+            closure_data.spectrumed = false;
+            r.albedo = bsdf.energy(wi, closure_data);
+            closure_data.spectrumed = oldFlag;
+        }
 
-            closure_data.rand = float3(sampler.next2f(g_buffer_heap), lobe_rand);
-            auto sample_result = bsdf.sample(wi, closure_data, volume_stack);
-            spectrum_arg.selected_wavelength = closure_data.selected_wavelength;
-            r.sample_flags = sample_result.throughput.flags;
-            if (!sample_result ||
-                any(sample_result.throughput.val < 0.f) ||
-                !any(is_finite(sample_result.throughput.val)) ||
-                !is_finite(sample_result.pdf)) {
-                continue_loop = false;
-                beta = 0.0f;
-                return r;
-            }
-            new_dir = basic_param.geometry.onb.to_world(sample_result.wo);
-            if (
-                (dot(vertices_normal, input_dir) *
-                 dot(vertices_normal, new_dir) *
-                 (is_reflective(sample_result.throughput.flags) * 2 - 1)) > 0) {
-                new_dir -= 2.0f * dot(vertices_normal, new_dir) * vertices_normal;
-            }
-
-            pdf_bsdf = max(1e-4f, sample_result.pdf);
-            beta *= sample_result.throughput.val / pdf_bsdf;
-
-            if (mtl::is_delta(sample_result.throughput.flags)) pdf_bsdf = -1.0f;
-
-            if (mtl::is_specular(sample_result.throughput.flags)) {
-                di_use_specular = true;
-            }
-            if (mtl::is_transmissive(sample_result.throughput.flags)) {
-                length_sum = -1.0f;
-                if (basic_param.geometry.thin_walled)
-                    r.new_ray_offset = -basic_param.geometry.onb.normal * basic_param.geometry.thickness;
-            }
-            if (mtl::is_non_delta(sample_result.throughput.flags) && sample_result.throughput.flags != mtl::BSDFFlags::SpecularTransmission) {
-                detail = max(detail, mtl::is_specular(sample_result.throughput.flags) ? mtl::ShadingDetail::IndirectSpecular : mtl::ShadingDetail::IndirectDiffuse);
-            }
-        } else {
+        closure_data.rand = float3(sampler.next2f(g_buffer_heap), lobe_rand);
+        auto sample_result = bsdf.sample(wi, closure_data, volume_stack);
+        spectrum_arg.selected_wavelength = closure_data.selected_wavelength;
+        r.sample_flags = sample_result.throughput.flags;
+        if (!sample_result ||
+            any(sample_result.throughput.val < 0.f) ||
+            !any(is_finite(sample_result.throughput.val)) ||
+            !is_finite(sample_result.pdf)) {
+            continue_loop = false;
+            beta = 0.0f;
             return r;
+        }
+        new_dir = basic_param.geometry.onb.to_world(sample_result.wo);
+        if (
+            (dot(vertices_normal, input_dir) *
+             dot(vertices_normal, new_dir) *
+             (is_reflective(sample_result.throughput.flags) * 2 - 1)) > 0) {
+            new_dir -= 2.0f * dot(vertices_normal, new_dir) * vertices_normal;
+        }
+
+        pdf_bsdf = max(1e-4f, sample_result.pdf);
+        beta *= sample_result.throughput.val / pdf_bsdf;
+
+        if (mtl::is_delta(sample_result.throughput.flags)) pdf_bsdf = -1.0f;
+
+        if (mtl::is_specular(sample_result.throughput.flags)) {
+            di_use_specular = true;
+        }
+        if (mtl::is_transmissive(sample_result.throughput.flags)) {
+            length_sum = -1.0f;
+            if (basic_param.geometry.thin_walled)
+                r.new_ray_offset = -basic_param.geometry.onb.normal * basic_param.geometry.thickness;
+        }
+        if (mtl::is_non_delta(sample_result.throughput.flags) && sample_result.throughput.flags != mtl::BSDFFlags::SpecularTransmission) {
+            detail = max(detail, mtl::is_specular(sample_result.throughput.flags) ? mtl::ShadingDetail::IndirectSpecular : mtl::ShadingDetail::IndirectDiffuse);
         }
         lighting::LightISResult is_result;
         ///////////// IS
-        if (importance_sampling && pdf_bsdf > 1e-4f) {
-            bool need_flip = false;
 
-            float3 offset_normal = plane_normal;
-            float3 di_normal = r.normal;
-            if (dot(new_dir, offset_normal) < 0.f) {
-                offset_normal = -offset_normal;
-                need_flip = true;
-            }
-            if (dot(new_dir, di_normal) < 0.f) {
-                di_normal = -di_normal;
-            }
-            float3 di_world_pos = world_pos;
-            if (contained_normal) {
-                // RAY TRACING GEMS II
-                // CHAPTER 4. HACKING THE SHADOW TERMINATOR
-                float3 nA = normalize((inst_transform * float4(vert_normals[0], 0)).xyz);
-                float3 nB = normalize((inst_transform * float4(vert_normals[1], 0)).xyz);
-                float3 nC = normalize((inst_transform * float4(vert_normals[2], 0)).xyz);
-                if (need_flip) {
-                    nA = -nA;
-                    nB = -nB;
-                    nC = -nC;
-                }
-                // get distance vectors from triangle vertices
-                float3 tmpu = di_world_pos - vert_poses[0];
-                float3 tmpv = di_world_pos - vert_poses[1];
-                float3 tmpw = di_world_pos - vert_poses[2];
-                // project these onto the tangent planes
-                // defined by the shading normals
-                tmpu -= min(0.0f, dot(tmpu, nA)) * nA;
-                tmpv -= min(0.0f, dot(tmpv, nB)) * nB;
-                tmpw -= min(0.0f, dot(tmpw, nC)) * nC;
-                // finally P' is the barycentric mean of these three
-                di_world_pos += hit.interpolate(tmpu, tmpv, tmpw);
-            }
-            di_world_pos = sampling::offset_ray_origin(di_world_pos, offset_normal);
-
-            is_result = lighting::bsdf_light_importance_sampling(
+        if (importance_sampling && pdf_bsdf > 1e-4f && contained_normal) {
+            is_result = integrator::perform_light_importance_sampling_normal(
                 resource_to_rec2020_mat,
                 spectrum_arg,
                 bsdf_eval_func,
                 sampler,
-                di_world_pos,
-                di_normal,
-                world_2_sky_mat,
-                bdls_indices,
+                world_pos,
+                plane_normal,
                 new_dir,
                 r.roughness,
                 di_use_specular,
-                !is_indirect_ray);
-            float hdri_mis = 1;
+                !is_indirect_ray,
+                inst_transform,
+                vert_normals,
+                vert_poses,
+                hit,
+                world_2_sky_mat,
+                bdls_indices);
             di_result = is_result.radiance.xyz;
-            float rand_num = sampler.next(g_buffer_heap);
             di_dist = is_result.radiance.w;
-            // confidence
-            return r;
+        } else if (importance_sampling && pdf_bsdf > 1e-4f) {
+            is_result = integrator::perform_light_importance_sampling(
+                resource_to_rec2020_mat,
+                spectrum_arg,
+                bsdf_eval_func,
+                sampler,
+                world_pos,
+                plane_normal,
+                r.normal,
+                new_dir,
+                r.roughness,
+                di_use_specular,
+                !is_indirect_ray,
+                world_2_sky_mat,
+                bdls_indices);
+            di_result = is_result.radiance.xyz;
+            di_dist = is_result.radiance.w;
         } else {
             di_result = float3(0);
         }

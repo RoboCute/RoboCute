@@ -2,30 +2,29 @@
 name: cpp
 ---
 
-# C++ Master Skill for RoboCute Shader
+# C++ Skill
 
-- **Syntax Check** run tool:CppSyntaxCheck after write c++ file.
+This skill provides comprehensive C++ coding guidelines for the RoboCute project.
+
+## Naming Conventions
+
 - **Class names**: Use `CamelCase` (e.g., `MyClass`, `RenderPipeline`)
 - **Functions and public variables**: Use `snake_case` (e.g., `get_value`, `process_data`)
 - **Private/protected member variables and functions**: Use `_snake_case` (prefix with underscore)
   - Example: `_private_var`, `_internal_helper()`
 - **Constants**: Use `kCamelCase` or `UPPER_SNAKE_CASE` for macros
 - **Template parameters**: Use `CamelCase`
+- **Syntax Check**: use tool:CppSyntaxCheck to check file syntax. Give up if file not in compile_commands.json.
 
-## Code Style
+## Best Practices
 
-- Use **4 spaces** for indentation (no tabs)
-- Maximum line length: **100 characters**
-- Always use braces `{}` for control structures, even for single-line blocks
-- Place opening braces on the same line (K&R style)
-
-```cpp
-// Good
-if (condition) {
-    do_something();
-}
-
-// Bad
-if (condition)
-    do_something();
-```
+1. **Prefer composition over inheritance**
+2. **Keep functions small and focused** (single responsibility)
+3. **Minimize public interface** - make members private by default
+4. **Use const correctness** - mark methods and parameters const when possible
+5. **Avoid raw loops** - use algorithms or range-based for
+6. **Document public APIs** with clear comments
+7. **Use strong types** - avoid primitive obsession
+8. **Handle errors gracefully** - don't ignore error cases
+9. **Reference** - DO NOT use const-lvalue reference
+10. **Pointer** - DO NOT use pointer
