@@ -21,9 +21,10 @@ namespace offline_multibounce {
 namespace ao_trace {
 #include <path_tracer/ao_trace.inl>
 }// namespace ao_trace
-PTPassContext::PTPassContext() {
-}
+
+PTPassContext::PTPassContext() = default;
 PTPassContext::~PTPassContext() = default;
+
 void OfflinePTPass::on_enable(
     Pipeline const &pipeline,
     Device &device,
@@ -43,34 +44,6 @@ void OfflinePTPass::on_enable(
             init_counter.done();
         });
     };
-    // luisa::vector<luisa::string> variants{ "ltc_sheen_brdf",
-    //                                        "dielectric_coat_brdf",
-    //                                        "sub_surface_bsdf",
-    //                                        "diffraction_grating_brdf" };
-    // pt_shader.init(
-    //     offline_pt_shader::load_shader,
-    //     "path_tracer",
-    //     "path_tracer/pt_variants",
-    //     variants,
-    //     "offline_pt"
-    // );
-    // pt_shader_denoise.init(
-    //     offline_pt_shader_denoise::load_shader,
-    //     "path_tracer",
-    //     "path_tracer/pt_variants",
-    //     variants,
-    //     "offline_pt_denoise"
-    // );
-    // multi_bounce.init(
-    //     offline_multibounce::load_shader,
-    //     "path_tracer",
-    //     "path_tracer/pt_variants",
-    //     variants,
-    //     "pt_multi_bounce_offline"
-    // );
-    // pt_shader.load_all(init_counter);
-    // pt_shader_denoise.load_all(init_counter);
-    // multi_bounce.load_all(init_counter);
     RBC_LOAD_SHADER(pt_shader, offline_pt_shader, "path_tracer/offline_pt.bin");
     RBC_LOAD_SHADER(pt_shader_denoise, offline_pt_shader_denoise, "path_tracer/offline_pt_denoise.bin");
     RBC_LOAD_SHADER(multi_bounce, offline_multibounce, "path_tracer/pt_multi_bounce_offline.bin");
@@ -88,94 +61,57 @@ void OfflinePTPass::on_enable(
         init_counter.done();
     });
 #undef RBC_LOAD_SHADER
-    // click_buffer = device.create_buffer<uint2>(1);
 }
+
 void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
     ctx.scene->accel_manager().init_accel(*ctx.cmdlist);
-    const auto &ptSettings = ctx.pipeline_settings.read<PathTracerSettings>();
+    const auto &pt_settings = ctx.pipeline_settings.read<PathTracerSettings>();
     auto &pipeline_mode = ctx.pipeline_settings.read_mut<PTPipelineSettings>();
-    if (ptSettings.enable_ao_mode) {
+    if (pt_settings.enable_ao_mode) {
         pipeline_mode.use_post_filter = false;
     }
 }
-void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
-    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
-    auto &scene = *ctx.scene;
-    auto &cmdlist = (*ctx.cmdlist);
-    auto &accel = scene.accel();
-    auto &render_device = RenderDevice::instance();
-    auto emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);
 
-    const auto &jitter_data = ctx.pipeline_settings.read<JitterData>();
-    const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
-    const auto &ptSettings = ctx.pipeline_settings.read<PathTracerSettings>();
-    const auto &cam = ctx.pipeline_settings.read<Camera>();
+OfflinePTPass::PreparedResources OfflinePTPass::_prepare_resources(const PTResourceContext &rc) {
+    PreparedResources res;
+    res.emission = rc.render_device.create_transient_image<float>(
+        "emission", PixelStorage::FLOAT4, rc.frame_settings.render_resolution);
 
-    const auto &sky_heap = ctx.pipeline_settings.read<SkyHeapIndices>();
-    Image<uint> id_map_val;
-    Image<uint> const *id_map;
-    if (!frame_settings.id_img) {
-        id_map_val = render_device.create_transient_image<uint>("id_map", PixelStorage::INT4, frame_settings.render_resolution, 1, false, true);
-        id_map = &id_map_val;
+    if (!rc.frame_settings.id_img) {
+        res.id_map_val = rc.render_device.create_transient_image<uint>(
+            "id_map", PixelStorage::INT4, rc.frame_settings.render_resolution, 1, false, true);
+        res.id_map = &res.id_map_val;
     } else {
-        id_map = frame_settings.id_img;
-    };
-    auto edit = pipeline.get_pass<EditingPass>();
-    bool write_id_map = (edit && edit->actived()) || frame_settings.id_img;
-    if (!accel || accel.size() == 0) {
-        cmdlist << (*draw_sky_shader)(
-                       emission,
-                       *id_map,
-                       scene.image_heap(),
-                       scene.volume_heap(),
-                       sky_heap.sky_heap_idx,
-                       frame_settings.to_rec2020_matrix,
-                       cam_data.world_to_sky,
-                       cam_data.inv_vp,
-                       make_float3(cam.position),
-                       jitter_data.jitter,
-                       frame_settings.frame_index,
-                       write_id_map)
-                       .dispatch(frame_settings.render_resolution);
-        return;
-    }
-    auto surfel_mark = render_device.create_transient_image<uint>("surfel_mask", PixelStorage::INT1, frame_settings.render_resolution);
-    auto &pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
-    Buffer<offline::MultiBouncePixel> multibounce_buffer;
-    Buffer<uint> multibounce_buffer_counter;
-    {
-        uint2 res = frame_settings.display_resolution;
-        auto buffer_size = ((res + 1u) / 2u);
-        multibounce_buffer = render_device.create_transient_buffer<offline::MultiBouncePixel>("offline_multibounce", buffer_size.x * buffer_size.y);
-        multibounce_buffer_counter = render_device.create_transient_buffer<uint>("offline_multibounce_counter", 1);
+        res.id_map = rc.frame_settings.id_img;
     }
 
-    Buffer<pt::GBuffer> geo_buffer = render_device.create_transient_buffer<pt::GBuffer>("offline_geo_buffer", frame_settings.display_resolution.x * frame_settings.display_resolution.y);
-    if (all(frame_settings.display_resolution == frame_settings.render_resolution) && accum_pass_ctx->frame_index < 64 && frame_settings.reject_sampling) {
-        scene.tex_streamer().force_sync();
-    }
+    res.surfel_mark = rc.render_device.create_transient_image<uint>(
+        "surfel_mask", PixelStorage::INT1, rc.frame_settings.render_resolution);
 
-    if (!pass_ctx) {
-        pass_ctx = vstd::make_unique<PTPassContext>();
-    }
-    auto halton = [](int32_t index, int32_t base) {
-        float f = 1.0f, result = 0.0f;
+    uint2 res_half = (rc.frame_settings.display_resolution + 1u) / 2u;
+    auto buffer_size = res_half.x * res_half.y;
+    res.multibounce_buffer = rc.render_device.create_transient_buffer<offline::MultiBouncePixel>(
+        "offline_multibounce", buffer_size);
+    res.multibounce_buffer_counter = rc.render_device.create_transient_buffer<uint>(
+        "offline_multibounce_counter", 1);
 
-        for (int32_t currentIndex = index; currentIndex > 0;) {
+    res.geo_buffer = rc.render_device.create_transient_buffer<pt::GBuffer>(
+        "offline_geo_buffer",
+        rc.frame_settings.display_resolution.x * rc.frame_settings.display_resolution.y);
 
-            f /= (float)base;
-            result = result + f * (float)(currentIndex % base);
-            currentIndex = (uint32_t)(floorf((float)(currentIndex) / (float)(base)));
-        }
+    return res;
+}
 
-        return result;
-    };
-    ////////// Physical camera
-
+offline::PTArgs OfflinePTPass::_setup_pt_args(
+    const PTResourceContext &rc,
+    const CameraData &cam_data,
+    const Camera &cam,
+    const SkyHeapIndices &sky_heap,
+    bool write_id_map,
+    uint32_t frame_index) {
     offline::PTArgs pt_args{};
     pt_args.write_id_map = write_id_map;
-    pt_args.resource_to_rec2020_mat = frame_settings.to_rec2020_matrix;
+    pt_args.resource_to_rec2020_mat = rc.frame_settings.to_rec2020_matrix;
     pt_args.world_2_sky_mat = cam_data.world_to_sky;
     pt_args.sky_heap_idx = sky_heap.sky_heap_idx;
     pt_args.alias_table_idx = sky_heap.alias_heap_idx;
@@ -184,51 +120,256 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     pt_args.inv_view = cam_data.inv_view;
     pt_args.view = cam_data.view;
     pt_args.inv_vp = cam_data.inv_vp;
-    pt_args.frame_countdown = scene.tex_streamer().countdown();
-    pt_args.light_count = static_cast<uint>(scene.light_accel().light_count());
+    pt_args.frame_countdown = rc.scene.tex_streamer().countdown();
+    pt_args.light_count = static_cast<uint>(rc.scene.light_accel().light_count());
     pt_args.tex_grad_scale = float2(1);
     pt_args.enable_physical_camera = cam.enable_physical_camera;
-    // .srgb_to_fourier_even_idx = prepare_pass->srgb_to_fourier_even_idx,
-    // .bmese_phase_idx = prepare_pass->bmese_phase_idx,
-    pt_args.require_reject = frame_settings.reject_sampling;
+    pt_args.require_reject = rc.frame_settings.reject_sampling;
+    pt_args.frame_index = frame_index;
+
     if (cam.enable_physical_camera) {
-        auto lens_radius = static_cast<float>(0.05 / cam.aperture);
-        auto resolution = make_float2(frame_settings.render_resolution);
+        pt_args.lens_radius = static_cast<float>(0.05 / cam.aperture);
         pt_args.focus_distance = cam.focus_distance;
-        pt_args.lens_radius = lens_radius;
     }
+
+    return pt_args;
+}
+
+void OfflinePTPass::_draw_sky_only(
+    const PTResourceContext &rc,
+    const Image<float> &emission,
+    Image<uint> const *id_map,
+    const SkyHeapIndices &sky_heap,
+    const CameraData &cam_data,
+    const Camera &cam,
+    const JitterData &jitter_data,
+    bool write_id_map) {
+    rc.cmdlist << (*draw_sky_shader)(
+                      emission,
+                      *id_map,
+                      rc.scene.image_heap(),
+                      rc.scene.volume_heap(),
+                      sky_heap.sky_heap_idx,
+                      rc.frame_settings.to_rec2020_matrix,
+                      cam_data.world_to_sky,
+                      cam_data.inv_vp,
+                      make_float3(cam.position),
+                      jitter_data.jitter,
+                      rc.frame_settings.frame_index,
+                      write_id_map)
+                      .dispatch(rc.frame_settings.render_resolution);
+}
+
+void OfflinePTPass::_clear_multibounce_counter(
+    const PTResourceContext &rc,
+    const Buffer<uint> &counter) {
+    rc.cmdlist << (*clear_ptr_buffer)(counter.view(), 0).dispatch(1);
+}
+
+void OfflinePTPass::_trace_ao_sample(
+    const PTResourceContext &rc,
+    const Image<float> &emission,
+    const offline::PTArgs &pt_args,
+    const PathTracerSettings &pt_settings) {
+    auto &accel = rc.scene.accel();
+    rc.cmdlist << ao_trace::dispatch_shader(
+        ao_trace, rc.frame_settings.render_resolution,
+        rc.scene.buffer_heap(),
+        rc.scene.image_heap(),
+        rc.scene.volume_heap(),
+        rc.scene.tex_streamer().level_buffer(),
+        rc.scene.accel_manager().triangle_vis_buffer(),
+        accel,
+        emission,
+        pt_args,
+        pt_settings.ao_max_radius,
+        pt_settings.ao_atten_pow,
+        pt_settings.ao_use_cosine_sample);
+}
+
+void OfflinePTPass::_dispatch_path_tracing(
+    const PTResourceContext &rc,
+    const PreparedResources &resources,
+    const offline::PTArgs &pt_args,
+    Image<uint> const *id_map,
+    uint32_t geometry_mask) {
+    auto &accel = rc.scene.accel();
+
+    // Create a copy of pt_args with the geometry_mask set
+    auto pt_args_copy = pt_args;
+    pt_args_copy.geometry_mask = geometry_mask;
+
+    auto geometry_buffer = rc.frame_settings.pt_geometry_buffer ? rc.frame_settings.pt_geometry_buffer : resources.multibounce_buffer_counter.view().as<float>();
+
+    if (rc.frame_settings.albedo_buffer && rc.frame_settings.normal_buffer) {
+        rc.cmdlist << offline_pt_shader_denoise::dispatch_shader(
+            pt_shader_denoise,
+            ((rc.frame_settings.render_resolution + 1u) / 2u) * 2u,
+            rc.scene.tex_streamer().level_buffer(),
+            rc.scene.buffer_heap(),
+            rc.scene.image_heap(),
+            rc.scene.volume_heap(),
+            rc.scene.accel_manager().triangle_vis_buffer(),
+            accel,
+            resources.emission,
+            rc.accum_pass_ctx->hdr,
+            *id_map,
+            resources.geo_buffer.view(),
+            *rc.frame_settings.albedo_buffer,
+            *rc.frame_settings.normal_buffer,
+            geometry_buffer,
+            resources.multibounce_buffer.view(),
+            resources.multibounce_buffer_counter,
+            pt_args_copy,
+            rc.frame_settings.render_resolution);
+    } else {
+        rc.cmdlist << offline_pt_shader::dispatch_shader(
+            pt_shader,
+            ((rc.frame_settings.render_resolution + 1u) / 2u) * 2u,
+            rc.scene.tex_streamer().level_buffer(),
+            rc.scene.buffer_heap(),
+            rc.scene.image_heap(),
+            rc.scene.volume_heap(),
+            rc.scene.accel_manager().triangle_vis_buffer(),
+            accel,
+            resources.emission,
+            rc.accum_pass_ctx->hdr,
+            *id_map,
+            resources.geo_buffer.view(),
+            geometry_buffer,
+            resources.multibounce_buffer.view(),
+            resources.multibounce_buffer_counter,
+            pt_args_copy,
+            rc.frame_settings.render_resolution);
+    }
+}
+
+void OfflinePTPass::_process_multibounce_indirect(
+    const PTResourceContext &rc,
+    const PreparedResources &resources,
+    const offline::PTArgs &pt_args,
+    float accumulate_rate) {
+    auto &accel = rc.scene.accel();
+    uint max_accum = (1 + pt_args.frame_index) * 1024;
+
+    rc.cmdlist << offline_multibounce::dispatch_shader(
+        multi_bounce,
+        resources.multibounce_buffer.view().size(),
+        rc.scene.buffer_heap(),
+        rc.scene.image_heap(),
+        rc.scene.volume_heap(),
+        rc.scene.tex_streamer().level_buffer(),
+        rc.scene.accel_manager().triangle_vis_buffer(),
+        accel,
+        resources.multibounce_buffer.view(),
+        resources.multibounce_buffer_counter,
+        resources.geo_buffer.view(),
+        pt_args,
+        rc.frame_settings.render_resolution);
+
+    rc.cmdlist << (*accum_hashgrid)(
+                      resources.geo_buffer,
+                      key_buffer,
+                      value_buffer,
+                      resources.surfel_mark,
+                      pt_args.jitter_offset,
+                      pt_args.cam_pos,
+                      10.0f,
+                      key_buffer.size(),
+                      8,
+                      max_accum)
+                      .dispatch(rc.frame_settings.render_resolution);
+
+    rc.cmdlist << (*integrate_hashgrid)(
+                      resources.geo_buffer,
+                      resources.emission,
+                      value_buffer,
+                      resources.surfel_mark,
+                      max_accum,
+                      accumulate_rate)
+                      .dispatch(rc.frame_settings.render_resolution);
+
+    rc.cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, max_accum)
+                      .dispatch(key_buffer.size());
+}
+
+void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
+    auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
+    auto &scene = *ctx.scene;
+    auto &cmdlist = (*ctx.cmdlist);
+    auto &render_device = RenderDevice::instance();
+
+    const auto &jitter_data = ctx.pipeline_settings.read<JitterData>();
+    const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
+    const auto &pt_settings = ctx.pipeline_settings.read<PathTracerSettings>();
+    const auto &cam = ctx.pipeline_settings.read<Camera>();
+    const auto &sky_heap = ctx.pipeline_settings.read<SkyHeapIndices>();
+
+    auto edit = pipeline.get_pass<EditingPass>();
+    bool write_id_map = (edit && edit->actived()) || frame_settings.id_img;
+
+    auto &accel = scene.accel();
+
+    auto &pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
+    PTResourceContext rc{
+        pipeline, ctx, scene, cmdlist, frame_settings,
+        render_device, accum_pass_ctx, pass_ctx};
+
+    auto resources = _prepare_resources(rc);
+
+    if (!accel || accel.size() == 0) {
+        _draw_sky_only(rc, resources.emission, resources.id_map, sky_heap,
+                       cam_data, cam, jitter_data, write_id_map);
+        return;
+    }
+
+    if (all(frame_settings.display_resolution == frame_settings.render_resolution) &&
+        accum_pass_ctx->frame_index < 64 &&
+        frame_settings.reject_sampling) {
+        scene.tex_streamer().force_sync();
+    }
+
+    if (!pass_ctx) {
+        pass_ctx = vstd::make_unique<PTPassContext>();
+    }
+    auto pass_ctx_ptr = pass_ctx.get();
+
+    auto halton = [](int32_t index, int32_t base) {
+        float f = 1.0f, result = 0.0f;
+        for (int32_t current_index = index; current_index > 0;) {
+            f /= static_cast<float>(base);
+            result = result + f * static_cast<float>(current_index % base);
+            current_index = static_cast<uint32_t>(floorf(static_cast<float>(current_index) /
+                                                         static_cast<float>(base)));
+        }
+        return result;
+    };
+
     if (accum_pass_ctx->frame_index == 0) {
         cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, 0).dispatch(key_buffer.size());
     }
-    for (auto i : vstd::range(ptSettings.offline_spp)) {
-        pt_args.bounce = ptSettings.offline_origin_bounce;
-        pt_args.reset_emission = i == 0;
-        pt_args.frame_index = accum_pass_ctx->frame_index * ptSettings.offline_spp + i;
-        uint max_accum = (1 + pt_args.frame_index) * 1024;
-        pt_args.jitter_offset = float2(halton(pt_args.frame_index & 65535, 2), halton(pt_args.frame_index & 65535, 3));
-        // output gbuffer for denoise
-        pt_args.geometry_mask = 0;
-        // Only trace AO
-        if (ptSettings.enable_ao_mode) {
-            cmdlist << ao_trace::dispatch_shader(
-                ao_trace, frame_settings.render_resolution,
-                scene.buffer_heap(),
-                scene.image_heap(),
-                scene.volume_heap(),
-                scene.tex_streamer().level_buffer(),
-                ctx.scene->accel_manager().triangle_vis_buffer(),
-                accel,
-                emission,
-                pt_args,
-                ptSettings.ao_max_radius,
-                ptSettings.ao_atten_pow,
-                ptSettings.ao_use_cosine_sample);
+
+    for (auto i : vstd::range(pt_settings.offline_spp)) {
+        uint32_t frame_index = accum_pass_ctx->frame_index * pt_settings.offline_spp + i;
+        auto pt_args = _setup_pt_args(rc, cam_data, cam, sky_heap, write_id_map, frame_index);
+        pt_args.bounce = pt_settings.offline_origin_bounce;
+        pt_args.reset_emission = (i == 0);
+        pt_args.jitter_offset = float2(
+            halton(pt_args.frame_index & 65535, 2),
+            halton(pt_args.frame_index & 65535, 3));
+
+        if (pt_settings.enable_ao_mode) {
+            _trace_ao_sample(rc, resources.emission, pt_args, pt_settings);
             continue;
         }
-        cmdlist << (*clear_ptr_buffer)(multibounce_buffer_counter.view(), 0).dispatch(1);
+
+        _clear_multibounce_counter(rc, resources.multibounce_buffer_counter);
+
         if ((bool)frame_settings.albedo_buffer != (bool)frame_settings.normal_buffer) [[unlikely]] {
             LUISA_ERROR("normal_buffer and albedo_buffer must be provided together.");
         }
+
         const uint geometry_byte_size[] = {
             4, // depth
             12,// normal
@@ -238,14 +379,19 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
             12,// emission
             12,// albedo
         };
+
+        uint32_t geometry_mask = 0;
         uint64_t buffer_dst_size = 0;
         if (frame_settings.pt_geometry_buffer) {
-            for (auto i : vstd::range(vstd::array_count(geometry_byte_size))) {
-                if ((luisa::to_underlying(frame_settings.geometry_channel) & (1 << i)) == 0) continue;
-                buffer_dst_size += geometry_byte_size[i];
-                pt_args.geometry_mask |= (1 << i);
+            for (auto j : vstd::range(vstd::array_count(geometry_byte_size))) {
+                if ((luisa::to_underlying(frame_settings.geometry_channel) & (1 << j)) == 0) {
+                    continue;
+                }
+                buffer_dst_size += geometry_byte_size[j];
+                geometry_mask |= (1 << j);
             }
-            auto desired_size = buffer_dst_size * frame_settings.render_resolution.x * frame_settings.render_resolution.y;
+            auto desired_size = buffer_dst_size * frame_settings.render_resolution.x *
+                                frame_settings.render_resolution.y;
             if (frame_settings.pt_geometry_buffer.size_bytes() < desired_size) [[unlikely]] {
                 LUISA_ERROR(
                     "Geometry buffer size {} less than desired size (dest_size_bytes {}) x (width {}) x (height {}) = {}",
@@ -256,96 +402,35 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
                     desired_size);
             }
         }
+
         if (frame_settings.albedo_buffer && frame_settings.normal_buffer) {
-            auto desired_buffer_size = frame_settings.render_resolution.x * frame_settings.render_resolution.y * 3 * sizeof(float);
+            auto desired_buffer_size = frame_settings.render_resolution.x *
+                                       frame_settings.render_resolution.y * 3 * sizeof(float);
             if (frame_settings.albedo_buffer->size_bytes() != desired_buffer_size ||
                 frame_settings.normal_buffer->size_bytes() != desired_buffer_size) [[unlikely]] {
                 LUISA_ERROR("Buffer size mismatch.");
             }
-            cmdlist << offline_pt_shader_denoise::dispatch_shader(
-                pt_shader_denoise, ((frame_settings.render_resolution + 1u) / 2u) * 2u,
-                scene.tex_streamer().level_buffer(),
-                scene.buffer_heap(),
-                scene.image_heap(),
-                scene.volume_heap(),
-                ctx.scene->accel_manager().triangle_vis_buffer(),
-                accel,
-                emission,
-                accum_pass_ctx->hdr,
-                *id_map,
-                geo_buffer.view(),
-                *frame_settings.albedo_buffer,
-                *frame_settings.normal_buffer,
-                frame_settings.pt_geometry_buffer ? frame_settings.pt_geometry_buffer : multibounce_buffer_counter.view().as<float>(),
-                multibounce_buffer.view(),
-                multibounce_buffer_counter,
-                pt_args,
-                frame_settings.render_resolution);
-        } else {
-            cmdlist << offline_pt_shader::dispatch_shader(
-                pt_shader, ((frame_settings.render_resolution + 1u) / 2u) * 2u,
-                scene.tex_streamer().level_buffer(),
-                scene.buffer_heap(),
-                scene.image_heap(),
-                scene.volume_heap(),
-                ctx.scene->accel_manager().triangle_vis_buffer(),
-                accel,
-                emission,
-                accum_pass_ctx->hdr,
-                *id_map,
-                geo_buffer.view(),
-                frame_settings.pt_geometry_buffer ? frame_settings.pt_geometry_buffer : multibounce_buffer_counter.view().as<float>(),
-                multibounce_buffer.view(),
-                multibounce_buffer_counter,
-                pt_args,
-                frame_settings.render_resolution);
         }
-        pt_args.bounce = ptSettings.offline_indirect_bounce;
-        if (pt_args.bounce > 0) {
-            cmdlist << offline_multibounce::dispatch_shader(
-                multi_bounce, multibounce_buffer.view().size(),
-                scene.buffer_heap(),
-                scene.image_heap(),
-                scene.volume_heap(),
-                scene.tex_streamer().level_buffer(),
-                ctx.scene->accel_manager().triangle_vis_buffer(),
-                accel,
-                multibounce_buffer.view(),
-                multibounce_buffer_counter,
-                geo_buffer.view(),
-                pt_args,
-                frame_settings.render_resolution);
-            cmdlist << (*accum_hashgrid)(
-                           geo_buffer,
-                           key_buffer,
-                           value_buffer,
-                           surfel_mark,
-                           pt_args.jitter_offset,
-                           make_float3(cam.position),
-                           10.0f,
-                           key_buffer.size(),
-                           8,
-                           max_accum)
-                           .dispatch(frame_settings.render_resolution);
-            cmdlist << (*integrate_hashgrid)(
-                           geo_buffer,
-                           emission,
-                           value_buffer,
-                           surfel_mark,
-                           max_accum,
-                           i == (ptSettings.offline_spp - 1) ? (1.0f / float(ptSettings.offline_spp)) : 1.0f)
-                           .dispatch(frame_settings.render_resolution);
-            cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, max_accum).dispatch(key_buffer.size());
+
+        _dispatch_path_tracing(rc, resources, pt_args, resources.id_map, geometry_mask);
+
+        if (pt_settings.offline_indirect_bounce > 0) {
+            pt_args.bounce = pt_settings.offline_indirect_bounce;
+            float accumulate_rate = (i == (pt_settings.offline_spp - 1)) ? (1.0f / static_cast<float>(pt_settings.offline_spp)) : 1.0f;
+            _process_multibounce_indirect(rc, resources, pt_args, accumulate_rate);
         }
     }
+
     frame_settings.albedo_buffer = nullptr;
     frame_settings.normal_buffer = nullptr;
 }
+
 void OfflinePTPass::on_frame_end(
     Pipeline const &pipeline,
     Device &device,
     SceneManager &scene) {
 }
+
 void OfflinePTPass::on_disable(
     Pipeline const &pipeline,
     Device &device,
@@ -353,12 +438,12 @@ void OfflinePTPass::on_disable(
     SceneManager &scene) {
     key_buffer.reset();
     value_buffer.reset();
-    // click_buffer = {};
 }
+
 void OfflinePTPass::wait_enable() {
     init_counter.wait();
 }
 
-OfflinePTPass::~OfflinePTPass() {
-}
+OfflinePTPass::~OfflinePTPass() = default;
+
 }// namespace rbc

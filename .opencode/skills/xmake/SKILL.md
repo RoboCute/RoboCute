@@ -14,15 +14,12 @@ This project uses [xmake](https://xmake.io/) as the build system.
 
 ## Key Build Options
 
-From `xmake/options.lua`:
-- `toolchain`: Set to `msvc` on Windows
-- `rbc_urdf`: Enable URDF support (default: true)
-
 From `xmake.lua`:
 - `rbc_editor`: Enable editor build
 - `rbc_tools`: Enable tools build
 - `rbc_oidn`: Enable OIDN plugin
 - `rbc_tests`: Enable tests
+- `lc_warnings`: Set to `all` to enable warnings log
 
 ## Common Commands
 
