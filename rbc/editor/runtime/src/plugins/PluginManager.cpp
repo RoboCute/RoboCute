@@ -285,7 +285,7 @@ void EditorPluginManager::enableHotReload(bool enable) {
     if (enable && !hotReloadWatcher_) {
         hotReloadWatcher_ = new QFileSystemWatcher(this);
         connect(hotReloadWatcher_, &QFileSystemWatcher::fileChanged,
-                this, [this](const QString &path) {
+                this, [](const QString &path) {
                     // TODO: Implement hot reload logic
                     qDebug() << "EditorPluginManager: File changed:" << path;
                 });

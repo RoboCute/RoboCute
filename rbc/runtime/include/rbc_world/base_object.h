@@ -12,6 +12,7 @@
 namespace rbc::world {
 struct BaseObject;
 struct Entity;
+struct BaseObjectStatics;
 enum struct BaseObjectType {
     None,
     Component,

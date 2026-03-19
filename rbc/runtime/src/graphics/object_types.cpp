@@ -8,7 +8,6 @@ namespace rbc {
 void MaterialStub::openpbr_json_ser(JsonSerializer &t, material::OpenPBR const &mat) {
     t._store("type"sv, "pbr");
     auto serde_func = [&]<typename U>(U &u, char const *name) {
-        using PureU = std::remove_cvref_t<U>;
         constexpr bool is_index = requires { u.index; };
         constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
         if constexpr (is_index) {
@@ -32,7 +31,6 @@ void MaterialStub::openpbr_json_deser(JsonDeSerializer &t, material::OpenPBR &ma
         if (type != "pbr") return;
     }
     auto serde_func = [&]<typename U>(U &u, char const *name) {
-        using PureU = std::remove_cvref_t<U>;
         constexpr bool is_index = requires { u.index; };
         constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
         if constexpr (is_index) {

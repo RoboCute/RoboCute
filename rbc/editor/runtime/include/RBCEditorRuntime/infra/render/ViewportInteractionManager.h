@@ -43,7 +43,7 @@ public:
     void handle_key(luisa::compute::Key key, luisa::compute::Action action);
     bool handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy, luisa::uint2 resolution);
     void handle_cursor_position(luisa::float2 xy, luisa::uint2 resolution);
-    void update(class ClickManager &click_manager);
+    void update(struct ClickManager &click_manager);
     const luisa::vector<uint> &get_selected_object_ids() const { return state_.selected_object_ids; }
     InteractionMode get_interaction_mode() const { return state_.mode; }
     std::pair<luisa::float2, luisa::float2> get_selection_region() const {

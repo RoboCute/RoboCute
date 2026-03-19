@@ -25,7 +25,7 @@ protected:
     bool unsafe_save_to_path() const override;
 
 private:
-    friend class ISkeletonImporter;
+    friend struct ISkeletonImporter;
     friend struct rbc::Serialize<rbc::world::SkeletonResource>;
 
     ReferenceSkeleton skeleton;

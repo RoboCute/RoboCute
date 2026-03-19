@@ -263,7 +263,7 @@ signals:
     void viewportDestroyed(const QString &viewportId);
 
 private:
-    friend class EditorEngine;// only supposed to create default viewport with EditorEngine
+    friend struct EditorEngine;// only supposed to create default viewport with EditorEngine
     void createDefaultViewports();
     void destroyAllViewports();
     IRenderer *createRenderer(const ViewportConfig &config);

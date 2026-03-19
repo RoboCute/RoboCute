@@ -643,7 +643,7 @@ void AccelManager::make_draw_list(
     } else {
         mesh_map->clear();
     }
-    luisa::spin_mutex map_mtx, elem_mtx;
+    luisa::spin_mutex map_mtx;
     std::atomic_uint64_t buffer_size{0};
     luisa::fiber::parallel(
         _accel_elements.size(), [&](uint idx) {

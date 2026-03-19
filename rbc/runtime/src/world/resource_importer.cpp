@@ -95,7 +95,7 @@ ResourceImporterRegistry &ResourceImporterRegistry::instance() {
 void IResourceImporter::import(
     Resource *res,
     luisa::filesystem::path const &path, luisa::string const &meta_json) {
-    auto type_id = resource_type();
+    (void)resource_type();  // Suppress unused warning
     if (res->loaded()) [[unlikely]] {
         LUISA_ERROR("Resource already loaded.");
     }

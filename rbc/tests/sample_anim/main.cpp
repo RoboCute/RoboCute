@@ -477,7 +477,6 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
         transform->set_scale(double3(0.2, 0.2, 0.2), true);
 
         // RenderComponent is required for SkelMeshComponent to work
-        auto render = entity->add_component<world::RenderComponent>();
 
         auto skelmesh_comp = entity->add_component<world::SkelMeshComponent>();
         skelmesh_comp->SetRefSkelMesh(skel_mesh);

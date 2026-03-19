@@ -72,7 +72,6 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
     if (is_default || mat_type == "pbr") {
         _mat_data.reset_as<material::OpenPBR>();
         auto serde_func = [&]<typename U>(U &u, char const *name) {
-            using PureU = std::remove_cvref_t<U>;
             constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
             constexpr bool is_index = requires { u.index; };
             if constexpr (is_index) {
@@ -114,7 +113,6 @@ void MaterialResource::_write_content_to(JsonSerializer &json_ser) {
     std::lock_guard lck{_async_mtx};
     auto iter = _depended_resources.begin();
     auto ser_pbr = [&]<typename U>(U &u, char const *name) {
-        using PureU = std::remove_cvref_t<U>;
         constexpr bool is_index = requires { u.index; };
         constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
         if constexpr (is_index) {
@@ -275,7 +273,6 @@ bool MaterialResource::unsafe_save_to_path() const {
             t._store("type"sv, "pbr");
             auto iter = _depended_resources.begin();
             auto serde_func = [&]<typename U>(U &u, char const *name) {
-                using PureU = std::remove_cvref_t<U>;
                 constexpr bool is_index = requires { u.index; };
                 constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
                 if constexpr (is_index) {

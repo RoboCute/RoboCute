@@ -10,7 +10,7 @@ static float uint_unpack_to_float(uint val) {
 }
 }// namespace mesh_mng_detail
 MeshManager::MeshManager(Device &device)
-    : device(device), pool(256, false) {
+    : pool(256, false), device(device) {
 }
 void MeshManager::load_shader(luisa::fiber::counter &counter) {
     ShaderManager::instance()->async_load(counter, "geometry/set_submesh.bin", set_submesh);
@@ -300,14 +300,12 @@ void MeshManager::execute_compute_bounding(
     cmdlist.add_callback([results = std::move(results), bounding_requests = std::move(bounding_requests)]() mutable {
         auto iter = results.begin();
         for (auto &i : bounding_requests) {
-            uint sub_idx = 0;
             for (auto &sub : i->bounding_box) {
                 sub = *iter;
                 for (auto i : vstd::range(3)) {
                     sub.packed_min[i] = mesh_mng_detail::uint_unpack_to_float(reinterpret_cast<uint &>(sub.packed_min[i]));
                     sub.packed_max[i] = mesh_mng_detail::uint_unpack_to_float(reinterpret_cast<uint &>(sub.packed_max[i]));
                 }
-                sub_idx++;
                 LUISA_DEBUG_ASSERT(iter != results.end());
                 ++iter;
             }

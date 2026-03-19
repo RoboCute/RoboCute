@@ -598,8 +598,9 @@ void LightAccel::generate_sphere_mesh(
 {
     const float f = (1.0 + std::pow(5.0, 0.5)) / 2.0;
     uint64_t T = 1;
-    for (auto i : vstd::range(order))
+    for (auto idx : vstd::range(order))
     {
+        (void)idx;
         T *= 4;
     }
     auto init_vertices = {

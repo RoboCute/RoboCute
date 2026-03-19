@@ -46,7 +46,7 @@ auto MeshLightAccel::build_bvh(
         auto contri = area * lum;
         r.bary_center_and_weight = make_float4((p0 + p1 + p2) / 3.f, contri);
         contribute += contri;
-        auto plane_n = normalize(cross(p1 - p0, p2 - p0));
+        (void)normalize(cross(p1 - p0, p2 - p0));
         r.cone = make_float4(0, 0, 1, pi);
         r.write_index(luisa::to_underlying(LightType::Triangle), i);
         return r;
@@ -99,7 +99,7 @@ auto MeshLightAccel::build_bvh(
     r.buffer_size = input_nodes.size() * 2;
     r.nodes = luisa::fiber::async([input_nodes = std::move(input_nodes)]() {
         vector<BVH::PackedNode> nodes;
-        auto bvh_result = BVH::build(
+        BVH::build(
             nodes,
             input_nodes);
         return nodes;
@@ -122,13 +122,13 @@ bool MeshLightAccel::create_or_update_blas(
         buffer = RenderDevice::instance().lc_device().create_buffer<BVH::PackedNode>(desired_buffer_size);
         new_buffer = true;
     }
-    _upload_task.push(std::move(nodes), buffer.view());
+    _upload_task.enqueue(std::move(nodes), buffer.view());
     return new_buffer;
 }
 
 void MeshLightAccel::update_frame(IOCommandList &io_cmdlist) {
-    while (auto p = _upload_task.pop()) {
-        auto buffer_size = p->buffer.size_bytes();
+    while (auto p = _upload_task.dequeue()) {
+        (void)p->buffer.size_bytes();  // Suppress unused warning
         auto &&nodes = p->nodes.wait();
         io_cmdlist << IOCommand{
             nodes.data(),

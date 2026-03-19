@@ -195,7 +195,6 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         return true;
     }
     void dispose_skybox() override {
-        auto &device = RenderDevice::instance();
         if (sky_atom) {
             sky_atom.destroy();
         }

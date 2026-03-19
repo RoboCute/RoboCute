@@ -26,7 +26,7 @@ lc_options = {
     lc_dx_cuda_interop = true,
     lc_vk_cuda_interop = true,
     lc_enable_py = false,
-    lc_enable_unity_build = true,
+    lc_enable_unity_build = true
     -- lc_warnings = 'all'
     -- lc_toy_c_backend = true
 }
@@ -37,12 +37,19 @@ if has_config('rbc_editor') then
 end
 includes("thirdparty", "rbc")
 
--- Suppress common third-party warnings globally for MSVC
-if is_plat("windows") then
-    add_cxflags("/wd4090", "/wd4102", "/wd4146", "/wd4200", "/wd4267", "/wd4307", "/wd4819", "/wd4996", "/wd4018", "/wd4333", "/wd4172", "/wd4100", {
+-- Suppress common third-party warnings for MSVC (cl.exe)
+add_cxflags("/wd4090", "/wd4102", "/wd4146", "/wd4200", "/wd4267", "/wd4307", "/wd4819", "/wd4996", "/wd4018",
+    "/wd4333", "/wd4172", "/wd4100", {
         tools = "cl"
     })
-end
+-- Suppress third-party warnings for Clang
+add_cxflags("-Wno-deprecated-literal-operator", "-Wno-microsoft-include", "-Wno-invalid-offsetof",
+    "-Wno-pragma-system-header-outside-header", "-Wno-macro-redefined", "-Wno-deprecated-declarations",
+    "-Wno-unused-function", "-Wno-format", "-Wno-nullability", "-Wno-delete-non-abstract-non-virtual-dtor",
+    "-Wno-duplicate-decl-specifier", "-Wno-uninitialized", "-Wno-reorder-ctor", "-Wno-unused-lambda-capture",
+    "-Wno-switch", "-Wno-mismatched-tags", "-Wno-incompatible-pointer-types-discards-qualifiers", {
+        tools = "clang_cl"
+    })
 
 target("lc-runtime")
 add_defines("LUISA_ENABLE_SAFE_MODE", {

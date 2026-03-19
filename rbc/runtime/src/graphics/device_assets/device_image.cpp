@@ -29,17 +29,16 @@ DeviceImage::~DeviceImage() {
 uint DeviceImage::_check_size(PixelStorage storage, uint2 size, uint desire_mip) {
     auto dst_mip_level = 0;
     auto mip_size = size;
-    uint64_t offset = 0;
-    auto min_size = is_block_compressed(storage) ? 4 : 1;
-    for (auto i : vstd::range(desire_mip)) {
+    [[maybe_unused]] auto min_size = is_block_compressed(storage) ? 4 : 1;
+    for (auto i [[maybe_unused]] : vstd::range(desire_mip)) {
         if (any(mip_size < 1u)) {
             break;
         }
-        offset += pixel_storage_size(storage, make_uint3(mip_size, 1));
         dst_mip_level = i + 1;
         mip_size >>= 1u;
         mip_size = max(mip_size, uint2(1));
     }
+    (void)min_size;
     return dst_mip_level;
 }
 template<typename T, typename ErrFunc>
@@ -105,6 +104,7 @@ void DeviceImage::_async_load(
     inst->load_thd_queue.push(
         [this_shared = RC{this}, copy_to_memory, load_type = std::move(load_type), image_type, dst_mip_level](
             LoadTaskArgs const &args) mutable {
+            (void)copy_to_memory;
             auto ptr = static_cast<DeviceImage *>(this_shared.get());
             if (ptr->_gpu_load_frame != std::numeric_limits<uint64_t>::max()) return;
             ptr->_gpu_load_frame = args.load_frame;

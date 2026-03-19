@@ -52,7 +52,7 @@ public:
 
     private:
         MeshData() = default;
-        vstd::Pool<MeshData, false>* pool;
+        [[maybe_unused]] vstd::Pool<MeshData, false>* pool;
         ~MeshData() = default;
     };
 

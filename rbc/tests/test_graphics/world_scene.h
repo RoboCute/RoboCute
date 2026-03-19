@@ -34,6 +34,8 @@ struct WorldScene {
     // RC<world::MeshResource> physics_box_mesh;
     RC<world::SceneResource> scene;
 
+    Buffer<AABB> procedural_buffer;
+
     struct Gizmos : RCBase {
         Buffer<uint> data;
         float3 relative_pos;

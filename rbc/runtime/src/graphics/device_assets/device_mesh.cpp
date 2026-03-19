@@ -66,6 +66,9 @@ void DeviceMesh::_async_load(
     _gpu_load_frame = std::numeric_limits<uint64_t>::max();
     inst->load_thd_queue.push(
         [vertex_count, build_mesh, calculate_bound, copy_to_host, extra_data_size, triangle_size, normal, tangent, uv_count, this_shared = RC{this}, submesh_triangle_offset = std::move(submesh_triangle_offset), load_type = std::move(load_type)](LoadTaskArgs const &args) mutable {
+            (void)calculate_bound;
+            (void)copy_to_host;
+            (void)extra_data_size;
             auto ptr = static_cast<DeviceMesh *>(this_shared.get());
             if (ptr->_gpu_load_frame != std::numeric_limits<uint64_t>::max()) return;
             ptr->_gpu_load_frame = args.load_frame;

@@ -151,7 +151,7 @@ static ULONG ETWError( ULONG result )
     static constexpr tracy::SourceLocationData srcLocHere{ nullptr, __FUNCTION__, __FILE__, __LINE__, Color_Red4 };
     tracy::ScopedZone ___tracy_scoped_zone( &srcLocHere, 0, true );
     char message[128] = {};
-    int written = snprintf( message, sizeof( message ), "ETW Error %u (0x%x): ", result, result );
+    int written = snprintf( message, sizeof( message ), "ETW Error %lu (0x%lx): ", result, result );
     written += FormatMessageA(
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL,

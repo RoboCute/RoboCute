@@ -73,7 +73,7 @@ void RenderComponent::deserialize_meta(ObjDeSerialize const &deser) {
     uint64_t size;
     if (deser.ar.start_array(size, "mats")) {
         _materials.reserve(size);
-        for (auto &i : vstd::range(size)) {
+        for ([[maybe_unused]] auto &i : vstd::range(size)) {
             vstd::Guid guid;
             if (!deser.ar.value(guid)) {
                 _materials.emplace_back(nullptr);

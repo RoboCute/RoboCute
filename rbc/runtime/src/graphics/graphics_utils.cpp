@@ -151,7 +151,6 @@ void GraphicsUtils::init_display(
     uint2 resolution,
     uint64_t native_display,
     uint64_t native_handle) {
-    auto &device = _render_device->lc_device();
     init_present_stream();
     if (
         !_dst_image || (_dst_image && any(_dst_image.size() != resolution)) ||
@@ -252,6 +251,8 @@ void GraphicsUtils::tick(
             }
         };
         switch (tick_stage) {
+            case TickStage::None:
+                break;
             case TickStage::RasterPreview:
                 pipe_settings.use_raster = true;
                 pipe_settings.use_raytracing = false;
@@ -382,7 +383,7 @@ void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {
     auto mesh_data = mesh->mesh_data();
     LUISA_ASSERT(mesh_data, "Mesh not loaded.");
     auto host_data = mesh->host_data();
-    if (!host_data.size_bytes() == mesh_data->pack.data.size_bytes()) {
+    if (host_data.size_bytes() != mesh_data->pack.data.size_bytes()) {
         LUISA_ERROR("Invalid host data length.");
     }
 

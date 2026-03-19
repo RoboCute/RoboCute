@@ -45,7 +45,7 @@ DeviceSparseImage *TextureResource::get_sparse_image() const {
 uint64_t TextureResource::desire_size_bytes() const {
     auto size = _size;
     uint64_t size_bytes{};
-    for (auto i : vstd::range(_mip_level)) {
+    for ([[maybe_unused]] auto i : vstd::range(_mip_level)) {
         size_bytes += pixel_storage_size(
             (PixelStorage)_pixel_storage,
             make_uint3(size, 1u));
@@ -176,7 +176,7 @@ rbc::coroutine TextureResource::_async_load() {
             loaded = false;
             break;
         }
-        auto file_size = desire_size_bytes();
+        (void)desire_size_bytes();  // Suppress unused warning
         auto path = this->path();
         if (path.empty()) {
             loaded = false;

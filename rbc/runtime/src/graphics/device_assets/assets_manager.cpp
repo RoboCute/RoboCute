@@ -154,14 +154,14 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
 #pragma warning(push)
 #pragma warning(disable : 5279)
 #endif
-            _load_executive_queue.push([this,
+            _load_executive_queue.enqueue([this,
                                         &frame_res,
                                         require_disk_io_sync,
                                         executed_frame,
                                         mem_io_cmdlist = std::move(mem_io_cmdlist),
                                         io_cmdlist = std::move(io_cmdlist),
                                         cmdlist = std::move(cmdlist),
-                                        finish_callbak = std::move(finish_callbak)] mutable {
+                                        finish_callbak = std::move(finish_callbak)]() mutable {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
@@ -212,7 +212,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
         }
         _load_executive_thd_cv.notify_all();
         _load_executive_thd.join();
-        while (auto p = _load_executive_queue.pop()) {
+        while (auto p = _load_executive_queue.dequeue()) {
             (*p)();
         }
         for (auto &frame_res : _async_frame_res) {
@@ -234,7 +234,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                 break;
             }
             ++executed_frame;
-            while (auto p = _load_executive_queue.pop()) {
+            while (auto p = _load_executive_queue.dequeue()) {
                 (*p)();
             }
         }

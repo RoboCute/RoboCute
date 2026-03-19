@@ -69,7 +69,7 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
             return;
         }
         _custom_properties.reserve(size / 2);
-        for (auto i : vstd::range(size)) {
+        for ([[maybe_unused]] auto i : vstd::range(size)) {
             luisa::string s;
             if (!ser.ar.value(s)) return;
             if (!ser.ar.start_object()) return;
@@ -108,7 +108,7 @@ void MeshResource::deserialize_meta(ObjDeSerialize const &ser) {
 #undef RBC_MESH_LOAD
     if (ser.ar.start_array(size, "submesh_offsets")) {
         _submesh_offsets.reserve(size);
-        for (auto i : vstd::range(size)) {
+        for ([[maybe_unused]] auto i : vstd::range(size)) {
             uint v;
             if (ser.ar.value(v)) {
                 _submesh_offsets.push_back(v);
@@ -237,7 +237,7 @@ bool MeshResource::unsafe_save_to_path() const {
 rbc::coroutine MeshResource::_async_load() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) co_return;
-    auto file_size = desire_size_bytes();
+    (void)desire_size_bytes();  // Suppress unused warning
     auto path = this->path();
     if (path.empty()) {
         co_return;

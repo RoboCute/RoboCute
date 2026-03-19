@@ -120,7 +120,7 @@ QString ViewportPlugin::createViewportWithRenderer(const ViewportConfig &config,
     instance->viewModel = new ViewportViewModel(config, sceneService_, nullptr);
 
     // 连接 Widget 的拖动信号（可以在这里处理实体拖放）
-    connect(instance->widget.data(), &ViewportWidget::entityDragRequested, this, [this, viewportId = config.viewportId]() {
+    connect(instance->widget.data(), &ViewportWidget::entityDragRequested, this, [viewportId = config.viewportId]() {
         qDebug() << "ViewportPlugin: Entity drag requested from viewport:" << viewportId;
         // TODO: 实现实体拖放逻辑
     });

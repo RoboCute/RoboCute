@@ -1111,7 +1111,7 @@ double CameraComponent::near_plane(void *this_) {
     return c->near_plane;
 }
 void CameraComponent::save_image_to(void *this_, luisa::string_view path) {
-    auto c = static_cast<world::CameraComponent *>(this_);
+    (void)this_;  // Suppress unused warning
     auto graphics = GraphicsUtils::instance();
     LUISA_ASSERT(graphics);
     save_image(path, graphics->dst_image());

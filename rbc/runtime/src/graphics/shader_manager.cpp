@@ -257,7 +257,7 @@ void ShaderManager::preload_shaders(
                     auto size = unsafe_yyjson_get_len(val);
                     ele.second.reserve(size);
                     auto node = unsafe_yyjson_get_first(val);
-                    for (auto i : vstd::range(size)) {
+                    for (auto idx [[maybe_unused]] : vstd::range(size)) {
                         if (unsafe_yyjson_get_type(node) != YYJSON_TYPE_STR) continue;
                         ele.second.emplace_back(Type::from(unsafe_yyjson_get_str(node)));
                         node = unsafe_yyjson_get_next(node);

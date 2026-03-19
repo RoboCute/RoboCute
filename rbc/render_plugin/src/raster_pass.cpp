@@ -64,7 +64,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         frustum_min_point = min(frustum_min_point, frustum_corners[i]);
         frustum_max_point = max(frustum_max_point, frustum_corners[i]);
     }
-    static bool bb = false;
+    [[maybe_unused]] static bool bb = false;
     auto frustum_cull_callback = [&](float4x4 const &transform, AABB const &bounding) {
         return frustum_cull(make_double4x4(transform), bounding, frustum_planes, frustum_min_point, frustum_max_point, cam.dir_forward(), cam.position);
     };
@@ -81,7 +81,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             .comparison = Comparison::Greater,
             .write = true},
     };
-    auto raster_ext = render_device.lc_device().extension<RasterExt>();
+    (void)render_device.lc_device().extension<RasterExt>();  // Suppress unused warning
     Image<float> emission = render_device.create_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution, 1, false, true);
     Image<uint> id_map_val;
     Image<uint> const *id_map;

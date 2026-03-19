@@ -130,7 +130,6 @@ void WorldScene::_init_scene(GraphicsUtils *utils) {
         }
 
         tex_loader.finish_task();
-        // TODO: transform from regular tex to vt need reload device-image
         // tex->pack_to_tile();
         tex->install();
         // utils->update_texture(tex->get_image());
@@ -267,6 +266,28 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         _set_gizmos();
         _init_skinning(utils);
     }
+    // Test procedural 
+    // procedural_buffer = render_device.lc_device().create_buffer<AABB>(1);
+    // AABB aabb{
+    //     .packed_min{-0.5f, -0.5f, -0.5f},
+    //     .packed_max{0.5f, 0.5f, 0.5f},
+    // };
+    // render_device.lc_main_stream() << procedural_buffer.view().copy_from(&aabb);
+    // static ProceduralPrimitive procedural;
+    // procedural = render_device.lc_device().create_procedural_primitive(procedural_buffer);
+    // render_device.lc_main_cmd_list() << procedural.build();
+    // SceneManager::instance().accel_manager().emplace_procedural_instance(
+    //     render_device.lc_main_cmd_list(),
+    //     SceneManager::instance().host_upload_buffer(),
+    //     SceneManager::instance().buffer_allocator(),
+    //     SceneManager::instance().buffer_uploader(),
+    //     SceneManager::instance().dispose_queue(),
+    //     std::move(procedural),
+    //     geometry::SDFMap{
+    //         .volume_idx = ~0u,
+    //         .sample_count = 256},
+    //     translation(float3(0, 3, 0)));
+
     // _init_physics(utils);
     // {
     //     world::Project project{

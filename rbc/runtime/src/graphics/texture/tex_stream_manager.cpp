@@ -53,12 +53,12 @@ TexStreamManager::TexStreamManager(
     : _device(device), _async_stream(async_stream), _io_service(io_service), _bdls_mng(bdls_mng), _level_buffer(device, 65536 * sizeof(uint)), _allocate_size_limits(memory_limit), _memoryless_threshold(memoryless_threshold), _lru_frame(lru_frame), _lru_frame_memoryless(lru_frame_memoryless), _copy_stream_thd([this]() {
           RenderDevice::set_rendering_thread(false);
           auto clear_all = vstd::scope_exit([&]() {
-              while (auto p = _copy_stream_callbacks.pop()) {
+              while (auto p = _copy_stream_callbacks.dequeue()) {
                   p->sparse_cmdlist.clear();
               }
           });
           while (_enabled.load()) {
-              while (auto p = _copy_stream_callbacks.pop()) {
+              while (auto p = _copy_stream_callbacks.dequeue()) {
                   {
                       std::unique_lock lck{_copy_stream_mtx};
                       while (p->fence > signalled_fence) {
@@ -102,7 +102,7 @@ size_t TexStreamManager::TexIndex::get_byte_offset(uint2 tile_idx, uint level) {
     size_t size_offset = 0;
     size_t tile_size = pixel_storage_size(img.storage(), uint3(chunk_resolution, chunk_resolution, 1));
     uint2 res = streamer.resolution();
-    for (auto i : vstd::range(level)) {
+    for ([[maybe_unused]] auto i : vstd::range(level)) {
         LUISA_ASSERT(res.x >= 1 && res.y >= 1, "Resolution must be larger than 0.");
         size_offset += res.x * res.y * tile_size;
         res >>= 1u;
@@ -132,7 +132,7 @@ void TexStreamManager::_async_logic() {
     }
     _remove_list.clear();
 
-    if (auto res = _frame_res.pop()) {
+    if (auto res = _frame_res.dequeue()) {
         inqueue_frame--;
         auto evt = luisa::fiber::async(
             [&]() {

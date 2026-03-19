@@ -307,6 +307,8 @@ void RBCContext::enable_camera_control(void *this_) {
             case Key::KEY_E: {
                 c.camera_input.is_down_dir_key_pressed = pressed;
             } break;
+            default:
+                break;  // Ignore unhandled keys
         }
     });
 }
@@ -466,9 +468,9 @@ static bool is_texture_float_type(PixelFormat format) {
 void BuiltinKernels::buffer_to_image(void *this_, luisa::compute::BufferCreationInfoInterop input_buffer, luisa::compute::TextureCreationInfo output_image, luisa::uint2 pixel_offset, luisa::uint2 pixel_size, luisa::uint4 swizzle) {
     auto &shaders = *static_cast<BuiltinShaders *>(this_);
     auto storage = luisa::compute::pixel_format_to_storage(output_image.format);
-    auto &cmdlist = rbc::RenderDevice::instance().lc_main_cmd_list();
+    (void)rbc::RenderDevice::instance().lc_main_cmd_list();  // Suppress unused warning
 
-    uint swizzle_bytes = BuiltinShaders::compact_swizzle(swizzle);
+    [[maybe_unused]] uint swizzle_bytes = BuiltinShaders::compact_swizzle(swizzle);
 
     // Determine image type based on format
     // Create Buffer<half> or Buffer<float> based on element stride

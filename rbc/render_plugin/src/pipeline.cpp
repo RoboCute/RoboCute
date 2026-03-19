@@ -18,12 +18,12 @@ Pass *Pipeline::_emplace_instance(vstd::unique_ptr<Pass> &&component, TypeInfo c
     auto iter = _pass_indices.try_emplace(
         std::move(name), vstd::lazy_eval([&]() {
             auto idx = _passes.size();
-            auto &v = _passes.emplace_back(std::move(component));
+            _passes.emplace_back(std::move(component));
             return idx;
         }));
     if (!iter.second) [[unlikely]] {
         vstd::Guid guid(false);
-        std::memcpy(&guid, &iter.first.key(), sizeof(vstd::Guid));
+        std::memcpy(static_cast<void*>(&guid), static_cast<const void*>(&iter.first.key()), sizeof(vstd::Guid));
         LUISA_ERROR("Component {} has been emplaced twice.", guid.to_string());
     }
     return ptr;

@@ -37,7 +37,7 @@ protected:
 
 
 private:
-    friend class ISkinImporter;
+    friend struct ISkinImporter;
     // direct data
     luisa::string name;
     luisa::vector<luisa::string> joint_remaps;

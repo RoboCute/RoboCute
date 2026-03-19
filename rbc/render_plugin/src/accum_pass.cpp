@@ -39,7 +39,7 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     if (!hdr) {
         hdr = ctx.device->create_image<float>(PixelStorage::FLOAT4, frame_settings.display_resolution);
     }
-    auto &mut = ctx.mut;
+    (void)ctx.mut;  // Suppress unused warning
     auto halton = [](uint i, uint b) {
         float f = 1.0f;
         float invB = 1.0f / b;
@@ -58,11 +58,11 @@ void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     AccumPassContext *pass_ctx{};
     pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
     Image<float> temp_img;
-    auto &pt_pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
+    (void)ctx.mut.get_pass_context_mut<PTPassContext>();  // Suppress unused warning
     const auto &ptSettings = ctx.pipeline_settings.read<PathTracerSettings>();
     auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();
-    auto &scene = *ctx.scene;
+    (void)*ctx.scene;  // Suppress unused warning
     auto emission = render_device.get_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);
     const bool is_spectrum = !ptSettings.enable_ao_mode;
     if (!emission) return;

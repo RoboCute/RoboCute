@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
         // material not loaded from assets, but generated
 
         auto entity = s->get_or_add_entity(vstd::Guid{true});
-        auto atmo_component = entity->add_component<world::AtmosphereComponent>();
+        (void)entity->add_component<world::AtmosphereComponent>();
         auto transform = entity->add_component<world::TransformComponent>();
         transform->set_pos(double3(0, -1, 2), true);
         auto rot = quaternion(

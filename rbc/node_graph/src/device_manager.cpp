@@ -17,6 +17,9 @@ static void _check_device_desc(ComputeDeviceDesc &desc) {
         case ComputeDeviceType::HOST: {
             desc.device_index = -1;
         } break;
+        case ComputeDeviceType::REMOTE:
+        case ComputeDeviceType::COMPUTE_DEVICE:
+            break;  // No special handling needed
     }
 }
 }// namespace detail

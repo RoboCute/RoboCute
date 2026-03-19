@@ -109,7 +109,6 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
         displaySettings.use_hdr_display);
     init_counter.wait();
     // post_ctx->reset |= frame_settings.frame_index == 0;
-    auto &scene = ctx.scene;
     if (post_ctx->reset) {
         post_ctx->aces_lut_dirty = true;
     }
@@ -145,8 +144,6 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         cmdlist << (*blit_shader)(*frame_settings.dst_img, frame_settings.resolved_img, false).dispatch(frame_settings.dst_img->size());
         return;
     }
-    auto &scene = *ctx.scene;
-
     toneMappingSettings.aces.dirty = false;
 
     auto temp_res = render_device.create_transient_image<float>(
@@ -161,7 +158,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto read_tex = [&]() -> auto & {
         return *imgs[0];
     };
-    auto write_tex = [&]() -> auto & {
+    [[maybe_unused]] auto write_tex = [&]() -> auto & {
         return *imgs[1];
     };
     auto swap_tex = [&]() {

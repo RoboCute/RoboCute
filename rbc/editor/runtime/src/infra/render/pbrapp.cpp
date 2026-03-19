@@ -84,7 +84,7 @@ void PBRApp::update() {
     cam.aspect_ratio = (float)resolution.x / (float)resolution.y;
 
     auto time = clk.toc();
-    auto delta_time = time - last_frame_time;
+    [[maybe_unused]] auto delta_time = time - last_frame_time;
     last_frame_time = time;
 
     // scene logic

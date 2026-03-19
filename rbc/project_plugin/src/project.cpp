@@ -162,7 +162,6 @@ void Project::_reimport(
         .meta = meta_data});
 }
 void Project::scan_project() {
-    luisa::spin_mutex values_mtx;
     luisa::vector<luisa::filesystem::path> paths;
     for (auto &i : std::filesystem::recursive_directory_iterator(_assets_path)) {
         if (!i.is_regular_file() || i.path().extension() == ".rbcmt") {
@@ -205,7 +204,7 @@ void Project::scan_project() {
                         LUISA_ERROR("Project json is broken.");
                     }
                     metas.reserve(meta_count / 3);
-                    for (auto i : vstd::range(meta_count / 3)) {
+                    for ([[maybe_unused]] auto i : vstd::range(meta_count / 3)) {
                         auto &v = metas.emplace_back();
                         if (!(deser._load(v.guid) && deser._load(v.meta_info) && deser._load(v.type_id))) [[unlikely]] {
                             LUISA_ERROR("Project json is broken.");
@@ -421,7 +420,7 @@ void Project::read_file_metas(
             LUISA_ERROR("Project json is broken.");
         }
         result.reserve(result.size() + meta_count / 3);
-        for (auto i : vstd::range(meta_count / 3)) {
+        for ([[maybe_unused]] auto i : vstd::range(meta_count / 3)) {
             auto &v = result.emplace_back();
             if (!(deser._load(v.guid) && deser._load(v.meta_info) && deser._load(v.type_id))) [[unlikely]] {
                 LUISA_ERROR("Project json is broken.");

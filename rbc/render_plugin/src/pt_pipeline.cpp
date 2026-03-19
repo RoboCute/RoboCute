@@ -53,7 +53,7 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // get settings
     clamp_render_settings(ctx.pipeline_settings);
     auto &sky_settings = ctx.pipeline_settings.read_mut<SkySettings>();
-    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
+    (void)ctx.pipeline_settings.read_mut<FrameSettings>();  // Suppress unused warning
     auto &sky_heap = ctx.pipeline_settings.read_mut<SkyHeapIndices>();
     // update atom
     if (sky_settings.sky_atom) {

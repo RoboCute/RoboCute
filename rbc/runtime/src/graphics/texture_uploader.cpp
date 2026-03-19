@@ -133,6 +133,8 @@ void TextureUploader::copy(
                            dst_img)
                            .dispatch(dst_img.size());
             break;
+        default:
+            LUISA_ERROR("Unsupported pixel storage for upload.");
     }
 }
 void TextureUploader::blit(

@@ -14,7 +14,7 @@ SkyAtmosphere::SkyAtmosphere(Device &device, HDRI &hdri, RC<DeviceImage> src_img
 }
 SkyAtmosphere::SkyAtmosphere(Device &device, HDRI &hdri, uint2 resolution)
     : _device(device), _hdri(hdri),
-      _weight_buffer(device.create_buffer<float>(resolution.x * resolution.y)), _size(resolution), _event() {
+      _size(resolution), _event(), _weight_buffer(device.create_buffer<float>(resolution.x * resolution.y)) {
     _init_shader(true);
 }
 
@@ -133,7 +133,7 @@ bool SkyAtmosphere::update(CommandList &cmdlist, Stream &stream, BindlessAllocat
         return _img;
     }();
     _hdri.compute_scalemap(_device, cmdlist, img_view, _size, _weight_buffer, [this](luisa::vector<float> &&data) {
-        _datas.push(std::move(data));
+        _datas.enqueue(std::move(data));
     });
     if (force_sync) {
         stream << cmdlist.commit() << synchronize();

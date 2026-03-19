@@ -141,7 +141,7 @@ struct IOQueue : RBCStruct {
     std::mutex mtx;
 
     IOQueue(Device &device, DStorageSrcType src_type, uint64_t staging_size)
-        : _device(&device), _pinnedmem_ext(device.extension<PinnedMemoryExt>()), _staging_size(staging_size), thd([this, staging_size]() {
+        : _device(&device), _pinnedmem_ext(device.extension<PinnedMemoryExt>()), _staging_size(staging_size), thd([this]() {
               uint64_t thd_wip_idx = 0;
               while (enabled) {
                   {
@@ -168,7 +168,7 @@ struct IOQueue : RBCStruct {
     }
     void init_alloc() {
         if (alloc) return;
-        auto v = _waiting_allocs.pop();
+        auto v = _waiting_allocs.dequeue();
         if (v) {
             alloc = std::move(*v);
         } else {
@@ -182,7 +182,7 @@ struct IOQueue : RBCStruct {
         if (!cmdlist.empty()) {
             cmdlist.add_callback([this, alloc = std::move(this->alloc)]() mutable {
                 alloc->reset();
-                _waiting_allocs.push(std::move(alloc));
+                _waiting_allocs.enqueue(std::move(alloc));
             });
             stream << cmdlist.commit();
         } else {

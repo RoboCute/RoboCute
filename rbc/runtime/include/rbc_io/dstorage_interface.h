@@ -59,8 +59,8 @@ public:
 };
 
 struct RBC_RUNTIME_API DStorageStream : RBCStruct {
-protected:
-    ~DStorageStream() = default;
+public:
+    virtual ~DStorageStream() = default;
 
 public:
     void *queue{nullptr};

@@ -12,11 +12,11 @@ SceneManager::SceneManager(
     luisa::filesystem::path const &shader_path)
     : _ctx(ctx),
       _device(device),
+      _bf_alloc(device),
       _mesh_mng(device),
       _temp_buffer(vstd::make_unique<HostBufferManager>(device)),
-      _bdls_mng(device),
       _uploader(),
-      _bf_alloc(device),
+      _bdls_mng(device),
       _mat_mng(device),
       _light_accel(device),
       light_accel_event(luisa::fiber::event::Mode::Auto, false) {
