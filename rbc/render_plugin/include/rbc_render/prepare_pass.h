@@ -5,6 +5,7 @@
 #include <luisa/core/fiber.h>
 #include <rbc_render/renderer_data.h>
 namespace rbc {
+struct PreparePassContext;
 struct PreparePass : public Pass {
     struct LutLoadCmd {
         luisa::fiber::event evt;
@@ -28,6 +29,16 @@ struct PreparePass : public Pass {
         SceneManager &scene,
         luisa::vector<float4> &&cie_xyz_lut_data,
         luisa::vector<float> &&illum_d65_lut_data);
+
+    // Early update helper functions
+    void _process_lut_load_commands(PipelineContext const &ctx);
+    void _update_camera_aspect_ratio(PipelineContext const &ctx, Camera &cam);
+    void _initialize_first_frame(PipelineContext const &ctx, PreparePassContext *pass_ctx, Camera &cam);
+    void _update_last_frame_camera_data(PipelineContext const &ctx, PreparePassContext *pass_ctx);
+    void _set_color_space_matrix(PipelineContext const &ctx);
+    void _bind_resources_to_heap(SceneManager &scene);
+    void _update_current_frame_camera_data(PipelineContext const &ctx, Camera &cam);
+    void _update_pass_context(PipelineContext const &ctx, PreparePassContext *pass_ctx, Camera &cam, bool is_first_frame);
 
 public:
     Buffer<uint> sobol_256d;

@@ -248,25 +248,30 @@ void PreparePass::on_enable(
 void PreparePass::wait_enable() {
 }
 
-void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
+void PreparePass::_process_lut_load_commands(PipelineContext const &ctx) {
     for (auto &i : _lut_load_cmds) {
         i.evt.wait();
         (*ctx.cmdlist) << i.tex->copy_from(i.data.data());
         ctx.scene->dispose_after_commit(std::move(i.data));
     }
     _lut_load_cmds.clear();
-    auto & cam = ctx.pipeline_settings.read_mut<Camera>();
-    auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(cam);
+}
 
+void PreparePass::_update_camera_aspect_ratio(PipelineContext const &ctx, Camera &cam) {
     auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     cam.set_aspect_ratio_from_resolution(frame_settings.render_resolution.x, frame_settings.render_resolution.y);
-    auto &mut = ctx.mut;
-    auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
-    auto &cam_data = ctx.pipeline_settings.read_mut<CameraData>();
+}
+
+void PreparePass::_initialize_first_frame(PipelineContext const &ctx, PreparePassContext *pass_ctx, Camera &cam) {
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     if (frame_settings.frame_index == 0) {
         pass_ctx->last_cam = cam;
     }
-    // pass_ctx->last_cam.position += make_double3(frame_settings.global_offset);
+}
+
+void PreparePass::_update_last_frame_camera_data(PipelineContext const &ctx, PreparePassContext *pass_ctx) {
+    auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
+    auto &cam_data = ctx.pipeline_settings.read_mut<CameraData>();
 
     jitter_data.last_jitter = pass_ctx->last_jitter;
     cam_data.last_proj = make_float4x4(pass_ctx->last_cam.projection_matrix());
@@ -275,6 +280,10 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     cam_data.last_vp = cam_data.last_proj * cam_data.last_view;
     cam_data.last_sky_vp = cam_data.last_proj * cam_data.last_sky_view;
     cam_data.last_inv_vp = inverse(cam_data.last_vp);
+}
+
+void PreparePass::_set_color_space_matrix(PipelineContext const &ctx) {
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     switch (frame_settings.resource_color_space) {
         case ResourceColorSpace::Rec709:
             frame_settings.to_rec2020_matrix = make_float3x3(0.627404, 0.329283, 0.043313, 0.069097, 0.919540, 0.011362, 0.016391, 0.088013, 0.895595);
@@ -293,9 +302,9 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
             break;
     }
     frame_settings.to_rec2020_matrix = transpose(frame_settings.to_rec2020_matrix);
+}
 
-    auto &scene = *ctx.scene;
-    auto &&alloc = scene.bindless_allocator();
+void PreparePass::_bind_resources_to_heap(SceneManager &scene) {
     auto emplace_buffer = [&](uint idx, auto &&buffer) {
         if (buffer) {
             scene.bindless_allocator().set_reserved_buffer(idx, buffer);
@@ -331,6 +340,11 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     // emplace_tex2d(bmese_phase_idx, bmese_phase, Sampler::linear_point_mirror());
     emplace_tex2d(heap_indices::illum_d65_idx, illum_d65, Sampler::linear_point_mirror());
     emplace_tex2d(heap_indices::cie_xyz_cdfinv_idx, cie_xyz_cdfinv, Sampler::linear_point_mirror());
+}
+
+void PreparePass::_update_current_frame_camera_data(PipelineContext const &ctx, Camera &cam) {
+    auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
+    auto &cam_data = ctx.pipeline_settings.read_mut<CameraData>();
 
     jitter_data.jitter = float2(0.f);
     cam_data.inv_view = make_float4x4(cam.local_to_world_matrix());
@@ -340,11 +354,32 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     cam_data.vp = cam_data.proj * cam_data.view;
     cam_data.inv_proj = inverse(cam_data.proj);
     cam_data.inv_vp = inverse(cam_data.vp);
-    if (frame_settings.frame_index != 0) {
+}
+
+void PreparePass::_update_pass_context(PipelineContext const &ctx, PreparePassContext *pass_ctx, Camera &cam, bool is_first_frame) {
+    auto &cam_data = ctx.pipeline_settings.read_mut<CameraData>();
+    if (!is_first_frame) {
         pass_ctx->last_cam = cam;
     } else {
         cam_data.last_proj = cam_data.proj;
     }
+}
+
+void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
+    _process_lut_load_commands(ctx);
+
+    auto &cam = ctx.pipeline_settings.read_mut<Camera>();
+    auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(cam);
+    auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
+    bool is_first_frame = frame_settings.frame_index == 0;
+
+    _update_camera_aspect_ratio(ctx, cam);
+    _initialize_first_frame(ctx, pass_ctx, cam);
+    _update_last_frame_camera_data(ctx, pass_ctx);
+    _set_color_space_matrix(ctx);
+    _bind_resources_to_heap(*ctx.scene);
+    _update_current_frame_camera_data(ctx, cam);
+    _update_pass_context(ctx, pass_ctx, cam, is_first_frame);
 }
 void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto & cam = ctx.pipeline_settings.read_mut<Camera>();
