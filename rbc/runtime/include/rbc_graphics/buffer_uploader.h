@@ -55,12 +55,12 @@ private:
 public:
     BufferUploader();
     void load_shader(luisa::fiber::counter& counter);
-    void* emplace_copy_cmd(
+    void* _emplace_copy_cmd(
         BufferView<uint> origin_buffer,
         uint64 struct_size,
         uint64 struct_align,
-        uint64 offset,
-        uint64 size
+        uint64 offset_bytes,
+        uint64 size_bytes
     );
     CmdValue& _get_copy_cmd(
         BufferView<uint> origin_buffer,
@@ -74,19 +74,19 @@ public:
             dst_buffer.original().template as<uint>(), sizeof(T), alignof(T)
         );
     }
-    void emplace_copy_cmd(
+    void _emplace_copy_cmd(
         BufferView<uint> origin_buffer,
         uint64 struct_size,
         uint64 struct_align,
-        uint64 offset,
-        uint64 size,
+        uint64 offset_bytes,
+        uint64 size_bytes,
         void const* data
     );
     template <typename T>
     T* emplace_copy_cmd(BufferView<T> dst_buffer)
     {
         return reinterpret_cast<T*>(
-            emplace_copy_cmd(dst_buffer.original().template as<uint>(), sizeof(T), alignof(T), dst_buffer.offset(), dst_buffer.size())
+            _emplace_copy_cmd(dst_buffer.original().template as<uint>(), sizeof(T), alignof(T), dst_buffer.offset_bytes(), dst_buffer.size_bytes())
         );
     }
     template <typename T>
@@ -95,7 +95,7 @@ public:
         T const* data
     )
     {
-        emplace_copy_cmd(dst_buffer.original().template as<uint>(), sizeof(T), alignof(T), dst_buffer.offset(), dst_buffer.size(), data);
+        _emplace_copy_cmd(dst_buffer.original().template as<uint>(), sizeof(T), alignof(T), dst_buffer.offset_bytes(), dst_buffer.size_bytes(), data);
     }
     bool commit(
         CommandList& cmdlist,

@@ -50,12 +50,12 @@ void MatManager::set_mat_instance(
     const auto struct_stride = mat_type.size;
     LUISA_DEBUG_ASSERT(mat_data.size() == struct_stride, "Material data size mismatch., data size: {}, type size: {}", mat_data.size(), struct_stride);
 
-    auto ptr = reinterpret_cast<std::byte*>(uploader.emplace_copy_cmd(
+    auto ptr = reinterpret_cast<std::byte*>(uploader._emplace_copy_cmd(
         mat_type.data_buffer,
         struct_stride,
         mat_type.align,
-        id,
-        1
+        id * struct_stride,
+        struct_stride
     ));
     std::memcpy(ptr, mat_data.data(), struct_stride);
 }
