@@ -121,78 +121,85 @@ luisa::vector<T> generate_quantiles(
 }
 
 }// namespace preparepass_detail
-void PreparePass::on_enable(
-    Pipeline const &pipeline,
-    Device &device,
-    CommandList &cmdlist,
-    SceneManager &scene) {
-    constexpr const float wavelength_min = 360;
-    constexpr const float wavelength_max = 830;
+void PreparePass::_load_rec2020_lut(Device &device, luisa::filesystem::path const &runtime_dir) {
     static constexpr auto lut3d_size = spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * spectrum::spectrum_lut3d_res * 3ull * sizeof(float4);
+    luisa::vector<std::byte> vec;
+    vec.resize_uninitialized(lut3d_size);
+    _lut_load_cmds.emplace_back(
+        luisa::fiber::async([&device, runtime_dir, this, ptr = vec.data()]() {
+            BinaryFileStream file_stream{luisa::to_string(runtime_dir / "rec2020.bytes")};
+            LUISA_ASSERT(file_stream.length() == lut3d_size);
+            file_stream.read({ptr, lut3d_size});
+            spectrum_lut_3d = device.create_volume<float>(PixelStorage::FLOAT4, uint3(spectrum::spectrum_lut3d_res * 3, spectrum::spectrum_lut3d_res, spectrum::spectrum_lut3d_res));
+        }),
+        std::move(vec),
+        &spectrum_lut_3d);
+}
+
+void PreparePass::_load_transmission_ggx_lut(Device &device, luisa::filesystem::path const &runtime_dir) {
     static const uint3 transmission_ggx_energy_size{32u};
     static const size_t transmission_ggx_energy_size_bytes = transmission_ggx_energy_size.x * transmission_ggx_energy_size.y * transmission_ggx_energy_size.z * sizeof(float4);
-    auto runtime_dir = RenderDevice::instance().lc_ctx().runtime_directory();
-    {
-        luisa::vector<std::byte> vec;
-        vec.resize_uninitialized(lut3d_size);
-        _lut_load_cmds.emplace_back(
-            luisa::fiber::async([&device, runtime_dir, this, ptr = vec.data()]() {
-                BinaryFileStream file_stream{luisa::to_string(runtime_dir / "rec2020.bytes")};
-                LUISA_ASSERT(file_stream.length() == lut3d_size);
-                file_stream.read({ptr, lut3d_size});
-                spectrum_lut_3d = device.create_volume<float>(PixelStorage::FLOAT4, uint3(spectrum::spectrum_lut3d_res * 3, spectrum::spectrum_lut3d_res, spectrum::spectrum_lut3d_res));
-            }),
-            std::move(vec),
-            &spectrum_lut_3d);
-    }
-    {
-        luisa::vector<std::byte> vec;
-        vec.resize_uninitialized(transmission_ggx_energy_size_bytes);
-        _lut_load_cmds.emplace_back(
-            luisa::fiber::async([&device, runtime_dir, this, ptr = vec.data()]() {
-                BinaryFileStream file_stream{luisa::to_string(runtime_dir / "trans_ggx.bytes")};
-                LUISA_ASSERT(file_stream.length() == transmission_ggx_energy_size_bytes);
-                file_stream.read({ptr, transmission_ggx_energy_size_bytes});
-                transmission_ggx_energy = device.create_volume<float>(PixelStorage::FLOAT4, transmission_ggx_energy_size);
-            }),
-            std::move(vec),
-            &transmission_ggx_energy);
-    }
+    luisa::vector<std::byte> vec;
+    vec.resize_uninitialized(transmission_ggx_energy_size_bytes);
+    _lut_load_cmds.emplace_back(
+        luisa::fiber::async([&device, runtime_dir, this, ptr = vec.data()]() {
+            BinaryFileStream file_stream{luisa::to_string(runtime_dir / "trans_ggx.bytes")};
+            LUISA_ASSERT(file_stream.length() == transmission_ggx_energy_size_bytes);
+            file_stream.read({ptr, transmission_ggx_energy_size_bytes});
+            transmission_ggx_energy = device.create_volume<float>(PixelStorage::FLOAT4, transmission_ggx_energy_size);
+        }),
+        std::move(vec),
+        &transmission_ggx_energy);
+}
+
+luisa::vector<float4> PreparePass::_compute_cie_xyz_lut() {
+    constexpr const float wavelength_min = 360;
+    constexpr const float wavelength_max = 830;
     luisa::vector<float4> cie_xyz_lut_data;
-    luisa::vector<float> illum_d65_lut_data;
-    auto lut_counter = luisa::fiber::async([&]() {
-        luisa::vector<float> ps;
-        ps.reserve(spectrum::cie_xyz_cdfinv_size);
-        for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++) {
-            ps.emplace_back(float(i) / (spectrum::cie_xyz_cdfinv_size - 1));
-        }
-        cie_xyz_lut_data.push_back_uninitialized(spectrum::cie_xyz_cdfinv_size);
-        luisa::vector<float> xs, ys;
-        for (size_t c = 0; c < 3; c++) {
-            xs.clear();
-            ys.clear();
-            xs.reserve(size_t(wavelength_max - wavelength_min));
-            ys.reserve(size_t(wavelength_max - wavelength_min));
-            for (size_t i = 0; i <= size_t(wavelength_max - wavelength_min); i++) {
-                xs.push_back(test::spectrum::CIE_xyz_1931_2deg[i].first);
-                ys.push_back(test::spectrum::CIE_xyz_1931_2deg[i].second[c]);
-            }
-            auto result = preparepass_detail::generate_quantiles<float>(xs, ys, ps, 50, 10e-12f);
-            for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++) {
-                cie_xyz_lut_data[i][c] = result[i];
-            }
-        }
-    });
-    {
-        uint step = 10;
-        uint lut_resolution = uint(wavelength_max - wavelength_min) / step + 1;
-        illum_d65_lut_data.push_back_uninitialized(lut_resolution);
-        auto &start = test::spectrum::CIE_std_illum_D65[0];
-        for (size_t i = 0; i < lut_resolution; i++) {
-            illum_d65_lut_data[i] = (1.0f / 98.8900106203f) * test::spectrum::CIE_std_illum_D65[size_t(wavelength_min) - start.first + i * step].second;
-        }
-        LUISA_ASSERT(spectrum::illum_d65_size == lut_resolution);
+    luisa::vector<float> ps;
+    ps.reserve(spectrum::cie_xyz_cdfinv_size);
+    for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++) {
+        ps.emplace_back(float(i) / (spectrum::cie_xyz_cdfinv_size - 1));
     }
+    cie_xyz_lut_data.push_back_uninitialized(spectrum::cie_xyz_cdfinv_size);
+    luisa::vector<float> xs, ys;
+    for (size_t c = 0; c < 3; c++) {
+        xs.clear();
+        ys.clear();
+        xs.reserve(size_t(wavelength_max - wavelength_min));
+        ys.reserve(size_t(wavelength_max - wavelength_min));
+        for (size_t i = 0; i <= size_t(wavelength_max - wavelength_min); i++) {
+            xs.push_back(test::spectrum::CIE_xyz_1931_2deg[i].first);
+            ys.push_back(test::spectrum::CIE_xyz_1931_2deg[i].second[c]);
+        }
+        auto result = preparepass_detail::generate_quantiles<float>(xs, ys, ps, 50, 10e-12f);
+        for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++) {
+            cie_xyz_lut_data[i][c] = result[i];
+        }
+    }
+    return cie_xyz_lut_data;
+}
+
+luisa::vector<float> PreparePass::_compute_illum_d65_lut() {
+    constexpr const float wavelength_min = 360;
+    constexpr const float wavelength_max = 830;
+    luisa::vector<float> illum_d65_lut_data;
+    uint step = 10;
+    uint lut_resolution = uint(wavelength_max - wavelength_min) / step + 1;
+    illum_d65_lut_data.push_back_uninitialized(lut_resolution);
+    auto &start = test::spectrum::CIE_std_illum_D65[0];
+    for (size_t i = 0; i < lut_resolution; i++) {
+        illum_d65_lut_data[i] = (1.0f / 98.8900106203f) * test::spectrum::CIE_std_illum_D65[size_t(wavelength_min) - start.first + i * step].second;
+    }
+    LUISA_ASSERT(spectrum::illum_d65_size == lut_resolution);
+    return illum_d65_lut_data;
+}
+
+void PreparePass::_initialize_sobol_resources(
+    Device &device,
+    CommandList &cmdlist,
+    SceneManager &scene,
+    luisa::filesystem::path const &runtime_dir) {
     auto sobol_path = luisa::to_string(runtime_dir / "heitz_sobol.bytes");
     sobol_256d = heitz_sobol_256d(sobol_path, device, cmdlist, scene.after_commit_dsp_queue());
     sobol_scrambling = heitz_sobol_scrambling(sobol_path, device, cmdlist, scene.after_commit_dsp_queue(), HeitzSobolSPP::SPP256);
@@ -200,26 +207,42 @@ void PreparePass::on_enable(
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_256d_heap_idx, sobol_256d);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_scrambling_heap_idx, sobol_scrambling);
     scene.bindless_allocator().set_reserved_buffer(heap_indices::sobol_ranking_heap_idx, sobol_ranking);
-    lut_counter.wait();
+}
+
+void PreparePass::_create_and_upload_images(
+    Device &device,
+    CommandList &cmdlist,
+    SceneManager &scene,
+    luisa::vector<float4> &&cie_xyz_lut_data,
+    luisa::vector<float> &&illum_d65_lut_data) {
     cie_xyz_cdfinv = device.create_image<float>(PixelStorage::FLOAT4, make_uint2(spectrum::cie_xyz_cdfinv_size, 1));
     cmdlist << cie_xyz_cdfinv.copy_from(cie_xyz_lut_data.data());
     scene.dispose_after_commit(std::move(cie_xyz_lut_data));
     illum_d65 = device.create_image<float>(PixelStorage::FLOAT1, make_uint2(spectrum::illum_d65_size, 1));
     cmdlist << illum_d65.copy_from(illum_d65_lut_data.data());
     scene.dispose_after_commit(std::move(illum_d65_lut_data));
-    // {
-    //     uint step = 5;
-    //     uint lut_resolution = uint(wavelength_max - wavelength_min) / step + 1;
-    //     luisa::vector<half> lut_data(lut_resolution);
-    //     for (size_t i = 0; i < lut_resolution; i++)
-    //     {
-    //         lut_data[i] = test::spectrum::BMESE_wavelength_to_phase[i].second;
-    //     }
-    //     bmese_phase = device.create_image<float>(PixelStorage::HALF1, make_uint2(lut_resolution, 1));
-    //     cmdlist << bmese_phase.copy_from(lut_data.data());
-    //     scene.dispose_after_commit(std::move(lut_data));
-    //     LUISA_ASSERT(spectrum::bmese_phase_size == lut_resolution);
-    // }
+}
+
+void PreparePass::on_enable(
+    Pipeline const &pipeline,
+    Device &device,
+    CommandList &cmdlist,
+    SceneManager &scene) {
+    auto runtime_dir = RenderDevice::instance().lc_ctx().runtime_directory();
+    
+    _load_rec2020_lut(device, runtime_dir);
+    _load_transmission_ggx_lut(device, runtime_dir);
+    
+    auto cie_xyz_future = luisa::fiber::async([this]() {
+        return _compute_cie_xyz_lut();
+    });
+    
+    auto illum_d65_lut_data = _compute_illum_d65_lut();
+    
+    _initialize_sobol_resources(device, cmdlist, scene, runtime_dir);
+    
+    auto cie_xyz_lut_data = cie_xyz_future.wait();
+    _create_and_upload_images(device, cmdlist, scene, std::move(cie_xyz_lut_data), std::move(illum_d65_lut_data));
 }
 
 void PreparePass::wait_enable() {

@@ -267,6 +267,7 @@ luisa::optional<int> maybe_get_value() {
 - Use `std::atomic` for atomic operations
 - Use `luisa::spin_mutex` for lightweight locking
 - Use `std::shared_mutex` for read-heavy scenarios
+- Use `rbc::shared_atomic_mutex` for read-heavy scenarios, lightweight locking
 
 ```cpp
 #include <luisa/core/spin_mutex.h>

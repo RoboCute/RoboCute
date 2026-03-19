@@ -13,6 +13,22 @@ struct PreparePass : public Pass {
     };
     luisa::vector<LutLoadCmd> _lut_load_cmds;
 
+    void _load_rec2020_lut(Device &device, luisa::filesystem::path const &runtime_dir);
+    void _load_transmission_ggx_lut(Device &device, luisa::filesystem::path const &runtime_dir);
+    luisa::vector<float4> _compute_cie_xyz_lut();
+    luisa::vector<float> _compute_illum_d65_lut();
+    void _initialize_sobol_resources(
+        Device &device,
+        CommandList &cmdlist,
+        SceneManager &scene,
+        luisa::filesystem::path const &runtime_dir);
+    void _create_and_upload_images(
+        Device &device,
+        CommandList &cmdlist,
+        SceneManager &scene,
+        luisa::vector<float4> &&cie_xyz_lut_data,
+        luisa::vector<float> &&illum_d65_lut_data);
+
 public:
     Buffer<uint> sobol_256d;
     Buffer<uint> sobol_scrambling;
