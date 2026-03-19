@@ -74,7 +74,6 @@ private:
     };
 
     using ProceduralVariant = vstd::variant<
-        geometry::HeightMap,
         geometry::VoxelSurface,
         geometry::SDFMap>;
 

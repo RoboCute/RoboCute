@@ -1,9 +1,7 @@
-#define DEBUG
+// #define DEBUG
 #include <luisa/printer.hpp>
 
 #define OFFLINE_MODE
-#define RBC_USE_RAYQUERY
-#define RBC_USE_RAYQUERY_SHADOW
 #include <luisa/std.hpp>
 #include <luisa/resources.hpp>
 #include <path_tracer/read_pixel.hpp>
@@ -96,6 +94,10 @@ using namespace luisa::shader;
         primary_hit.w = bit_cast<uint>(hit.bary.y);
     } else if (hit.hit_procedural()) {
         // procedural to id_map
+        primary_hit.x = hit.inst;
+        primary_hit.y = hit.prim;
+        primary_hit.z = 0;
+        primary_hit.w = 0;
     }
     if (args.write_id_map)
         id_map.write(coord, primary_hit);

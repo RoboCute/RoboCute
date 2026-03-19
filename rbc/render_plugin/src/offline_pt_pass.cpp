@@ -21,7 +21,7 @@ namespace offline_multibounce {
 namespace ao_trace {
 #include <path_tracer/ao_trace.inl>
 }// namespace ao_trace
-
+#define RBC_USE_RAYQUERY
 PTPassContext::PTPassContext() = default;
 PTPassContext::~PTPassContext() = default;
 
@@ -39,7 +39,7 @@ void OfflinePTPass::on_enable(
 
     auto load = [&](auto name, auto &&var) {
         init_counter.add();
-        luisa::fiber::schedule([this, &scene, name, &var]() {
+        luisa::fiber::schedule([this, name, &var]() {
             ShaderManager::instance()->load(name, var);
             init_counter.done();
         });
@@ -178,7 +178,9 @@ void OfflinePTPass::_trace_ao_sample(
         rc.scene.image_heap(),
         rc.scene.volume_heap(),
         rc.scene.tex_streamer().level_buffer(),
+#ifdef RBC_USE_RAYQUERY
         rc.scene.accel_manager().triangle_vis_buffer(),
+#endif
         accel,
         emission,
         pt_args,
@@ -209,7 +211,9 @@ void OfflinePTPass::_dispatch_path_tracing(
             rc.scene.buffer_heap(),
             rc.scene.image_heap(),
             rc.scene.volume_heap(),
+#ifdef RBC_USE_RAYQUERY
             rc.scene.accel_manager().triangle_vis_buffer(),
+#endif
             accel,
             resources.emission,
             rc.accum_pass_ctx->hdr,
@@ -230,7 +234,9 @@ void OfflinePTPass::_dispatch_path_tracing(
             rc.scene.buffer_heap(),
             rc.scene.image_heap(),
             rc.scene.volume_heap(),
+#ifdef RBC_USE_RAYQUERY
             rc.scene.accel_manager().triangle_vis_buffer(),
+#endif
             accel,
             resources.emission,
             rc.accum_pass_ctx->hdr,
@@ -447,3 +453,5 @@ void OfflinePTPass::wait_enable() {
 OfflinePTPass::~OfflinePTPass() = default;
 
 }// namespace rbc
+
+#undef RBC_USE_RAYQUERY

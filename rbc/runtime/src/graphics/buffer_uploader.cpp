@@ -109,12 +109,18 @@ auto BufferUploader::_get_copy_cmd(
     return iter.first->second;
 }
 
-void *BufferUploader::emplace_copy_cmd(
+void *BufferUploader::_emplace_copy_cmd(
     BufferView<uint> origin_buffer,
     uint64 struct_size,
     uint64 struct_align,
-    uint64 offset,
-    uint64 size) {
+    uint64 offset_bytes,
+    uint64 size_bytes) {
+    if ((offset_bytes & (struct_align - 1)) > 0) [[unlikely]] {
+        LUISA_ERROR("Offset {} not aligned as {}", offset_bytes, struct_align);
+    }
+    if(size_bytes % struct_size > 0) [[unlikely]] {
+        LUISA_ERROR("Size {} not aligned as {}", offset_bytes, struct_size);
+    }
     auto &map = _copy_cmd.emplace(origin_buffer.handle()).value();
     CmdKey key{
         struct_size,
@@ -126,23 +132,23 @@ void *BufferUploader::emplace_copy_cmd(
                 origin_buffer};
         }));
     auto &v = iter.first->second;
-    for (auto i : vstd::range(offset, offset + size)) {
+    for (auto i : vstd::range(offset_bytes, offset_bytes + size_bytes, struct_size)) {
         v.indices_map.emplace(i);
     }
     auto start_idx = v.datas.size();
-    v.datas.push_back_uninitialized(size * struct_size);
+    v.datas.push_back_uninitialized(size_bytes);
     return v.datas.data() + start_idx;
 }
 
-void BufferUploader::emplace_copy_cmd(
+void BufferUploader::_emplace_copy_cmd(
     BufferView<uint> origin_buffer,
     uint64 struct_size,
     uint64 struct_align,
-    uint64 offset,
-    uint64 size,
+    uint64 offset_bytes,
+    uint64 size_bytes,
     void const *data) {
-    auto host_ptr = emplace_copy_cmd(origin_buffer, struct_size, struct_align, offset, size);
-    memcpy(host_ptr, data, size * struct_size);
+    auto host_ptr = _emplace_copy_cmd(origin_buffer, struct_size, struct_align, offset_bytes, size_bytes);
+    memcpy(host_ptr, data, size_bytes);
 }
 
 BufferUploader::~BufferUploader() {
