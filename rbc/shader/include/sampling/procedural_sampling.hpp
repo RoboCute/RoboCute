@@ -13,7 +13,14 @@ extern Accel &g_accel;
 #endif
 namespace luisa::shader {
 struct ProceduralGeometry {
-    float3 normal;
+    std::array<float, 3> normal;
+    uint id;
+    uint type_id() {
+        return id >> 28u;
+    }
+    uint instance_id() {
+        return id & ((1u << 28u) - 1);
+    }
 };
 }// namespace luisa::shader
 namespace shadertoy {
@@ -622,7 +629,10 @@ bool _sample_proccedural(
     auto new_hit_dist = distance(inst_local_to_world * local_hit_point, ro);
     if (new_hit_dist >= hit_dist) return false;
     hit_dist = new_hit_dist;
-    geometry.normal = normalize(inst_local_to_world * local_normal);
+    local_normal = normalize(inst_local_to_world * local_normal);
+    geometry.normal[0] = local_normal.x;
+    geometry.normal[1] = local_normal.y;
+    geometry.normal[2] = local_normal.z;
     return true;
 }
 // SDF
@@ -661,7 +671,10 @@ bool _sample_proccedural(
     float3 p = local_ro + local_rd * max(min(local_hit_dist.x, local_hit_dist.y), 0.f);
     // no voxel, consider as box
     if (sdf_map.volume_idx == ~0u) {
-        geometry.normal = normalize(inst_local_to_world * box_normal);
+        box_normal = normalize(inst_local_to_world * box_normal);
+        geometry.normal[0] = box_normal.x;
+        geometry.normal[1] = box_normal.y;
+        geometry.normal[2] = box_normal.z;
         hit_dist = local_hit_dist.x;
         return true;
     } else {
@@ -700,7 +713,10 @@ bool _sample_proccedural(
         float3 local_normal = sdf_normal(local_hit_point);
         if (new_hit_dist >= hit_dist) return false;
         hit_dist = new_hit_dist;
-        geometry.normal = normalize(inst_local_to_world * local_normal);
+        local_normal = normalize(inst_local_to_world * local_normal);
+        geometry.normal[0] = local_normal.x;
+        geometry.normal[1] = local_normal.y;
+        geometry.normal[2] = local_normal.z;
     }
     return true;
 }

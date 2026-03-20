@@ -393,7 +393,7 @@ static IntegratorResult sample_material(
             basic_param.geometry.onb.normal = -basic_param.geometry.onb.normal;
         }
     } else {
-        plane_normal = procedural_geometry.normal;
+        plane_normal = float3(procedural_geometry.normal);
         vertices_normal = plane_normal;
         ray_t = hit.ray_t;
         world_pos = (ray_t - 1e-3f) * new_dir + input_pos + vertices_normal * 1e-4f;
