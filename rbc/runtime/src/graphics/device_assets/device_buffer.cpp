@@ -1,9 +1,19 @@
 #include <rbc_graphics/device_assets/device_buffer.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
+#include <rbc_graphics/render_device.h>
 #include <rbc_io/io_command_list.h>
 #include <rbc_graphics/scene_manager.h>
 namespace rbc {
 DeviceBuffer::DeviceBuffer() {}
+void DeviceBuffer::create_empty(uint64_t size_bytes) {
+    if (size_bytes == _host_data.size_bytes()) return;
+    _host_data.clear();
+    _buffer.reset();
+    if (size_bytes == 0) return;
+    _host_data.push_back_uninitialized(size_bytes);
+    auto &rd = RenderDevice::instance();
+    _buffer = rd.lc_device().create_buffer<uint>((size_bytes + sizeof(uint) - 1) / size_bytes);
+}
 DeviceBuffer::~DeviceBuffer() {
     if (!_buffer.valid()) return;
     auto inst = AssetsManager::instance();

@@ -11,6 +11,7 @@
 namespace rbc {
 struct RenderDevice;
 struct ComputeDevice;
+struct DeviceBuffer;
 struct DeviceImage;
 struct TextureLoader;
 struct DeviceMesh;
@@ -98,6 +99,10 @@ public:
         DeviceImage *ptr,
         PixelStorage storage,
         uint2 size, uint mip_level);
+    void update_buffer(
+        DeviceBuffer *buffer,
+        uint64_t offset_bytes = 0,
+        uint64_t max_size_bytes = std::numeric_limits<uint64_t>::max());
     void update_texture(
         DeviceImage *ptr,
         uint mip_level = ~0u);

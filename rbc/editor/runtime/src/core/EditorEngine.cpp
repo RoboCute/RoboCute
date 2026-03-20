@@ -62,7 +62,7 @@ void EditorEngine::init(int argc, char **argv) {
 
     auto *viewportPlugin = static_cast<ViewportPlugin *>(pluginManager.getPlugin(ViewportPlugin::staticPluginId()));
 
-    viewportPlugin->setRendererFactory([=](const ViewportConfig &config) {
+    viewportPlugin->setRendererFactory([this](const ViewportConfig &config) {
         IRenderer *app;
         switch (config.type) {
             case ViewportType::Main: {

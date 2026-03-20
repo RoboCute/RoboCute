@@ -1,4 +1,5 @@
 #include <rbc_graphics/device_assets/assets_manager.h>
+#include <rbc_graphics/device_assets/device_buffer.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
 #include <rbc_graphics/render_device.h>
@@ -426,6 +427,58 @@ void GraphicsUtils::create_mesh(
         triangle_count,
         std::move(offsets));
 }
+void GraphicsUtils::update_buffer(
+    DeviceBuffer *buffer,
+    uint64_t offset_bytes,
+    uint64_t max_size_bytes) {
+    buffer->wait_finished();
+    if (buffer->loaded()) {
+        _sm->set_io_cmdlist_require_sync();
+    }
+
+    buffer->wait_finished();
+    auto host_data = buffer->host_data();
+    if (host_data.empty()) {
+        LUISA_WARNING("Buffer has no host data, can not update.");
+        return;
+    }
+
+    // Calculate actual size to copy
+    uint64_t copy_size = host_data.size_bytes();
+    if (offset_bytes >= copy_size) {
+        LUISA_ERROR("Buffer offset {} exceeds host data size {}.", offset_bytes, copy_size);
+        return;
+    }
+    copy_size -= offset_bytes;
+    if (max_size_bytes < copy_size) {
+        copy_size = max_size_bytes;
+    }
+
+    // Get device buffer and calculate element offsets (buffer is Buffer<uint>, 4 bytes per element)
+    auto &device_buffer = buffer->buffer();
+    if (!device_buffer) [[unlikely]] {
+        LUISA_ERROR("Device buffer is null, cannot update buffer.");
+        return;
+    }
+    uint64_t element_offset = offset_bytes / sizeof(uint);
+    uint64_t element_count = (copy_size + sizeof(uint) - 1) / sizeof(uint);
+    element_count = std::min(element_count, device_buffer.size() - element_offset);
+
+    if (element_count == 0) {
+        return;
+    }
+
+    // Create buffer view and IO command
+    auto buffer_view = device_buffer.view(element_offset, element_count);
+    _sm->frame_mem_io_list() << IOCommand{
+        host_data.data() + offset_bytes,
+        0,
+        IOBufferSubView{buffer_view}};
+
+    auto &sm = SceneManager::instance();
+    sm.dispose_after_sync(RC<DeviceBuffer>(buffer));
+}
+
 void GraphicsUtils::update_texture(DeviceImage *ptr, uint mip_level) {
     ptr->wait_finished();
     if (ptr->heap_idx() != ~0u) {
@@ -542,4 +595,5 @@ void GraphicsUtils::set_pipeline_ctx_geometry(
     s.geometry_channel = type;
     s.pt_geometry_buffer = buffer;
 }
+
 }// namespace rbc

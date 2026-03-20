@@ -17,6 +17,7 @@ This skill provides comprehensive C++ coding guidelines for the RoboCute project
   - Example: `_private_var`, `_internal_helper()`
 - **Constants**: Use `kCamelCase` or `UPPER_SNAKE_CASE` for macros
 - **Template parameters**: Use `CamelCase`
+- **Condition Predict** add [[unlikely]] for log warning or error scope.
 
 ## Code Style
 

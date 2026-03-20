@@ -6,11 +6,24 @@
 #include <rbc_config.h>
 #include <luisa/core/binary_io.h>
 namespace rbc {
+namespace world {
+    struct BufferResource;
+}
 using namespace luisa;
 using namespace luisa::compute;
 struct RBC_RUNTIME_API DeviceBuffer : DeviceResource {
+    friend struct world::BufferResource;
+private:
     Buffer<uint> _buffer;
     luisa::vector<std::byte> _host_data;
+public:
+    [[nodiscard]] luisa::span<std::byte> host_data() override {
+        return _host_data;
+    }
+    [[nodiscard]] luisa::span<std::byte const> host_data() const override {
+        return _host_data;
+    }
+    Buffer<uint> const &buffer() const { return _buffer; }
     Type resource_type() const override { return Type::Buffer; }
     template<typename T>
     [[nodiscard]] BufferView<T> get_buffer() const {
@@ -23,6 +36,7 @@ struct RBC_RUNTIME_API DeviceBuffer : DeviceResource {
         DeviceOnly,
         All
     };
+    void create_empty(uint64_t size_bytes);
     void async_load_from_file(
         luisa::filesystem::path const &path,
         size_t file_offset,

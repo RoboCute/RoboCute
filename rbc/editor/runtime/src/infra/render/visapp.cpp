@@ -54,7 +54,7 @@ void VisApp::handle_key(luisa::compute::Key key, luisa::compute::Action action) 
 
 void VisApp::handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy) {
     if (button == MOUSE_BUTTON_LEFT) {
-        bool handled = interaction_manager.handle_mouse(button, action, xy, resolution);
+        interaction_manager.handle_mouse(button, action, xy, resolution);
     } else if (button == MOUSE_BUTTON_RIGHT) {
         if (action == Action::ACTION_PRESSED) {
             camera_input.is_mouse_right_down = true;

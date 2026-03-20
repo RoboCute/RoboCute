@@ -41,7 +41,6 @@ bool ViewportInteractionManager::handle_mouse(luisa::compute::MouseButton button
         // 确定交互模式
         // 注意：即使有选择，也应该先进入点击选择模式，以便检测点击空白处
         // 如果后续拖动距离超过阈值，再切换到拖动模式
-        bool has_selection = !state_.selected_object_ids.empty();
         if (state_.is_ctrl_down) {
             // Ctrl+左键 = 框选模式
             state_.mode = InteractionMode::DragSelect;
