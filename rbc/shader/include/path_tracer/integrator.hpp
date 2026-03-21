@@ -12,6 +12,7 @@
 #include <lighting/importance_sampling.hpp>
 #include <spectrum/spectrum.hpp>
 #include <material/mats.hpp>
+#include <material/procedural_mats.hpp>
 using namespace luisa::shader;
 
 constexpr float const denoise_min_albedo = 1e-1f;
@@ -401,6 +402,21 @@ static IntegratorResult sample_material(
         basic_param.geometry.onb = mtl::Onb(vertices_normal);
         vertices_onb = basic_param.geometry.onb;
         continue_loop = ray_t > 0;
+        if (continue_loop) {
+            inst_info = g_buffer_heap.uniform_idx_buffer_read<geometry::InstanceInfo>(heap_indices::inst_buffer_heap_idx, user_id);
+            mat_meta = material::mat_meta(g_buffer_heap, heap_indices::mat_idx_buffer_heap_idx, max_uint32, inst_info.mat_index, 0);
+            continue_loop = procedural_transform_to_params(
+                g_buffer_heap,
+                g_image_heap,
+                procedural_geometry.procedural_id,
+                mat_meta,
+                basic_param,
+                texture_filter,
+                vt_meta,
+                input_dir,
+                world_pos,
+                reject);
+        }
     }
 
     auto init_spectrum_colors = [&](auto &param) {
@@ -473,9 +489,17 @@ static IntegratorResult sample_material(
                 world_pos,
                 reject);
         } else {
-            if constexpr (requires { extra_param.base; }) {
-                extra_param.base.color = float3(0.3f, 0.6f, 0.7f);
-            }
+            continue_loop = procedural_transform_to_params(
+                g_buffer_heap,
+                g_image_heap,
+                procedural_geometry.procedural_id,
+                mat_meta,
+                extra_param,
+                texture_filter,
+                vt_meta,
+                input_dir,
+                world_pos,
+                reject);
         }
 
         init_spectrum_colors(extra_param);

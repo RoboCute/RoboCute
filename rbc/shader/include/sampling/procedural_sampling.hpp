@@ -12,15 +12,18 @@ extern Accel &g_accel;
 }// namespace luisa::shader
 #endif
 namespace luisa::shader {
-struct ProceduralGeometry {
-    std::array<float, 3> normal;
+struct ProceduralID {
     uint id;
     uint type_id() {
         return id >> 28u;
     }
-    uint instance_id() {
+    uint user_id() {
         return id & ((1u << 28u) - 1);
     }
+};
+struct ProceduralGeometry {
+    std::array<float, 3> normal;
+    ProceduralID procedural_id;
 };
 }// namespace luisa::shader
 namespace shadertoy {

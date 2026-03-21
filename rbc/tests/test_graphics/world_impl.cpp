@@ -47,6 +47,8 @@
 #include <rbc_world/components/skelmesh_component.h>
 #include <rbc_world/components/atmosphere_component.h>
 #include <rbc_world/resources/gaussian_splat.h>
+#include <rbc_world/resources/aabb_voxel.h>
+#include <rbc_world/resources/voxel_sdf.h>
 #include <rbc_anim/graph/AnimNode_Root.h>
 #include <rbc_anim/graph/AnimNode_SequencePlayer.h>
 
@@ -2404,5 +2406,103 @@ uint32_t GaussianSplatResource::procedural_instance_id(void *this_) {
 uint32_t GaussianSplatResource::sh_degree(void *this_) {
     auto c = static_cast<world::GaussianSplatResource *>(this_);
     return c->sh_degree();
+}
+
+// VoxelResource implementation
+void *VoxelResource::_create_() {
+    auto p = world::create_object<world::VoxelResource>();
+    manually_add_ref(p);
+    return p;
+}
+void VoxelResource::create_empty(void *this_, uint32_t num_voxels) {
+    auto c = static_cast<world::VoxelResource *>(this_);
+    c->create_empty(num_voxels);
+}
+bool VoxelResource::empty(void *this_) {
+    auto c = static_cast<world::VoxelResource *>(this_);
+    return c->empty();
+}
+bool VoxelResource::has_procedural_primitive(void *this_) {
+    auto c = static_cast<world::VoxelResource *>(this_);
+    return c->has_procedural_primitive();
+}
+uint64_t VoxelResource::host_data_size_bytes(void *this_) {
+    auto c = static_cast<world::VoxelResource *>(this_);
+    return c->host_data_size_bytes();
+}
+bool VoxelResource::is_procedural_dirty(void *this_) {
+    auto c = static_cast<world::VoxelResource *>(this_);
+    return c->is_procedural_dirty();
+}
+uint32_t VoxelResource::num_voxels(void *this_) {
+    auto c = static_cast<world::VoxelResource *>(this_);
+    return c->num_voxels();
+}
+uint32_t VoxelResource::procedural_instance_id(void *this_) {
+    auto c = static_cast<world::VoxelResource *>(this_);
+    return c->procedural_instance_id();
+}
+
+// SDFVoxelResource implementation
+void *SDFVoxelResource::_create_() {
+    auto p = world::create_object<world::SDFVoxelResource>();
+    manually_add_ref(p);
+    return p;
+}
+void SDFVoxelResource::create_empty(void *this_, luisa::uint3 grid_size) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    c->create_empty(grid_size);
+}
+bool SDFVoxelResource::empty(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->empty();
+}
+luisa::uint3 SDFVoxelResource::grid_size(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->grid_size();
+}
+bool SDFVoxelResource::has_procedural_primitive(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->has_procedural_primitive();
+}
+uint64_t SDFVoxelResource::host_data_size_bytes(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->host_data_size_bytes();
+}
+bool SDFVoxelResource::is_procedural_dirty(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->is_procedural_dirty();
+}
+uint64_t SDFVoxelResource::num_voxels(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->num_voxels();
+}
+uint32_t SDFVoxelResource::procedural_instance_id(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->procedural_instance_id();
+}
+uint32_t SDFVoxelResource::sample_count(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->sample_count();
+}
+void SDFVoxelResource::set_sample_count(void *this_, uint32_t count) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    c->set_sample_count(count);
+}
+void SDFVoxelResource::set_uvw_offset(void *this_, luisa::float3 offset) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    c->set_uvw_offset(offset);
+}
+void SDFVoxelResource::set_uvw_scale(void *this_, luisa::float3 scale) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    c->set_uvw_scale(scale);
+}
+luisa::float3 SDFVoxelResource::uvw_offset(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->uvw_offset();
+}
+luisa::float3 SDFVoxelResource::uvw_scale(void *this_) {
+    auto c = static_cast<world::SDFVoxelResource *>(this_);
+    return c->uvw_scale();
 }
 }// namespace rbc

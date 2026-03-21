@@ -31,7 +31,8 @@ public:
         Image,
         Mesh,
         TransformingMesh,
-        SparseImage
+        SparseImage,
+        Volume
     };
     virtual Type resource_type() const = 0;
     RBC_RUNTIME_API virtual bool load_finished() const;
