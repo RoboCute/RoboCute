@@ -4,6 +4,14 @@
 namespace geometry {
 using namespace luisa::shader;
 }// namespace geometry
+#else
+#include <luisa/core/basic_types.h>
+namespace geometry {
+using float3 = luisa::float3;
+using float2 = luisa::float2;
+using float4 = luisa::float4;
+using float4x4 = luisa::float4x4;
+}// namespace geometry
 #endif
 namespace geometry {
 	

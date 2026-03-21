@@ -9,6 +9,7 @@
 #include <luisa/core/fiber.h>
 #include <rbc_graphics/shader_manager.h>
 #include <luisa/core/logging.h>
+#include <rbc_graphics/scene_manager.h>
 
 namespace rbc::world {
 
@@ -74,14 +75,16 @@ void SDFVoxelResource::build_procedural_primitive(
 }
 
 uint SDFVoxelResource::emplace_procedural_instance(
-    AccelManager &accel_manager,
-    luisa::compute::CommandList &cmdlist,
-    HostBufferManager &temp_buffer,
-    BufferAllocator &buffer_allocator,
-    BufferUploader &uploader,
-    DisposeQueue &disp_queue,
     luisa::float4x4 const &transform,
     uint8_t visibility_mask) {
+    auto &sm = SceneManager::instance();
+    AccelManager &accel_manager = sm.accel_manager();
+    luisa::compute::CommandList &cmdlist = RenderDevice::instance().lc_main_cmd_list();
+    HostBufferManager &temp_buffer = sm.host_upload_buffer();
+    BufferAllocator &buffer_allocator = sm.buffer_allocator();
+    BufferUploader &uploader = sm.buffer_uploader();
+    DisposeQueue &disp_queue = sm.dispose_queue();
+
     std::lock_guard lck{_async_mtx};
 
     // Create procedural primitive if needed
@@ -116,11 +119,12 @@ uint SDFVoxelResource::emplace_procedural_instance(
 }
 
 void SDFVoxelResource::set_procedural_instance(
-    AccelManager &accel_manager,
     luisa::float4x4 const &transform,
     uint8_t visibility_mask,
     bool opaque) {
     std::lock_guard lck{_async_mtx};
+    auto &sm = SceneManager::instance();
+    AccelManager &accel_manager = sm.accel_manager();
 
     if (_procedural_instance_id == ~0u) {
         LUISA_WARNING("Cannot set procedural instance: instance not emplaced yet.");
@@ -134,11 +138,13 @@ void SDFVoxelResource::set_procedural_instance(
         opaque);
 }
 
-void SDFVoxelResource::remove_procedural_instance(
-    AccelManager &accel_manager,
-    BufferAllocator &buffer_allocator,
-    BufferUploader &uploader,
-    DisposeQueue &disp_queue) {
+void SDFVoxelResource::remove_procedural_instance() {
+    auto &sm = SceneManager::instance();
+    AccelManager &accel_manager = sm.accel_manager();
+    BufferAllocator &buffer_allocator = sm.buffer_allocator();
+    BufferUploader &uploader = sm.buffer_uploader();
+    DisposeQueue &disp_queue = sm.dispose_queue();
+
     std::lock_guard lck{_async_mtx};
 
     if (_procedural_instance_id == ~0u) {

@@ -5,15 +5,13 @@
 #include <luisa/runtime/rtx/aabb.h>
 
 namespace rbc {
+#include <geometry/procedural_types.hpp>
 struct DeviceResource;
 struct AccelManager;
 struct BufferAllocator;
 struct BufferUploader;
 struct DisposeQueue;
 struct HostBufferManager;
-namespace geometry {
-struct VoxelSurface;
-}// namespace geometry
 }// namespace rbc
 
 namespace rbc::world {
@@ -38,7 +36,7 @@ private:
     luisa::compute::Buffer<luisa::compute::AABB> _aabb_buffer;
 
     // VoxelSurface for shader access
-    luisa::vector<geometry::VoxelSurface> _voxel_surfaces;
+    geometry::VoxelSurface _voxel_surface;
 
     // Procedural primitive for ray tracing integration
     luisa::compute::ProceduralPrimitive _procedural_prim;
@@ -69,8 +67,8 @@ public:
     [[nodiscard]] luisa::compute::Buffer<luisa::compute::AABB> const &aabb_buffer() const { return _aabb_buffer; }
 
     /// Get the VoxelSurface data for shader access
-    [[nodiscard]] luisa::span<geometry::VoxelSurface const> voxel_surfaces() const { return _voxel_surfaces; }
-    [[nodiscard]] luisa::span<geometry::VoxelSurface> voxel_surfaces() { return _voxel_surfaces; }
+    [[nodiscard]] geometry::VoxelSurface const &voxel_surface() const { return _voxel_surface; }
+    [[nodiscard]] geometry::VoxelSurface &voxel_surface() { return _voxel_surface; }
 
     /// Create empty voxel resource with specified number of voxels
     void create_empty(uint32_t num_voxels);
@@ -110,28 +108,17 @@ public:
     /// Creates the procedural primitive if needed and adds it to AccelManager
     /// Returns the instance ID, or ~0u on failure
     [[nodiscard]] uint emplace_procedural_instance(
-        AccelManager &accel_manager,
-        luisa::compute::CommandList &cmdlist,
-        HostBufferManager &temp_buffer,
-        BufferAllocator &buffer_allocator,
-        BufferUploader &uploader,
-        DisposeQueue &disp_queue,
         luisa::float4x4 const &transform = luisa::float4x4{},
         uint8_t visibility_mask = 0xffu);
 
     /// Update the procedural instance transform and visibility
     void set_procedural_instance(
-        AccelManager &accel_manager,
         luisa::float4x4 const &transform,
         uint8_t visibility_mask = 0xffu,
         bool opaque = false);
 
     /// Remove this voxel resource from the acceleration structure
-    void remove_procedural_instance(
-        AccelManager &accel_manager,
-        BufferAllocator &buffer_allocator,
-        BufferUploader &uploader,
-        DisposeQueue &disp_queue);
+    void remove_procedural_instance();
 
 protected:
     bool _install() override;

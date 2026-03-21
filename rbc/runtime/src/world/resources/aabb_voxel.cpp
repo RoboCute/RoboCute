@@ -10,6 +10,7 @@
 #include <rbc_graphics/shader_manager.h>
 #include <luisa/core/logging.h>
 #include <geometry/procedural_types.hpp>
+#include <rbc_graphics/scene_manager.h>
 
 namespace rbc::world {
 
@@ -18,6 +19,7 @@ VoxelResource::VoxelResource() = default;
 VoxelResource::~VoxelResource() {
     auto inst = AssetsManager::instance();
     if (!inst) return;
+    remove_procedural_instance();
     // Procedural primitive cleanup is handled by DisposeQueue or device destruction
     // Device resource cleanup is handled by RC
 }
@@ -68,14 +70,16 @@ void VoxelResource::build_procedural_primitive(
 }
 
 uint VoxelResource::emplace_procedural_instance(
-    AccelManager &accel_manager,
-    luisa::compute::CommandList &cmdlist,
-    HostBufferManager &temp_buffer,
-    BufferAllocator &buffer_allocator,
-    BufferUploader &uploader,
-    DisposeQueue &disp_queue,
     luisa::float4x4 const &transform,
     uint8_t visibility_mask) {
+    auto &sm = SceneManager::instance();
+    AccelManager &accel_manager = sm.accel_manager();
+    luisa::compute::CommandList &cmdlist = RenderDevice::instance().lc_main_cmd_list();
+    HostBufferManager &temp_buffer = sm.host_upload_buffer();
+    BufferAllocator &buffer_allocator = sm.buffer_allocator();
+    BufferUploader &uploader = sm.buffer_uploader();
+    DisposeQueue &disp_queue = sm.dispose_queue();
+
     std::lock_guard lck{_async_mtx};
 
     // Create procedural primitive if needed
@@ -87,20 +91,11 @@ uint VoxelResource::emplace_procedural_instance(
         return ~0u;// Failed to create procedural primitive
     }
 
-    // Create VoxelSurface for each AABB (one surface per voxel instance)
-    _voxel_surfaces.clear();
-    _voxel_surfaces.reserve(_num_voxels);
-    for (uint32_t i = 0; i < _num_voxels; ++i) {
-        _voxel_surfaces.push_back(geometry::VoxelSurface{
-            .aabb_buffer_heap_idx = 0,// Will be set by buffer allocator
-            .aabb_buffer_offset = i});// Each voxel has its own AABB offset
-    }
-
-    // Create procedural data variant - use first VoxelSurface for now
+    // Create VoxelSurface for shader access
     // The actual buffer heap idx will be set by AccelManager
-    geometry::VoxelSurface voxel_surface{
-        .aabb_buffer_heap_idx = 0,// Will be set by buffer allocator
-        .aabb_buffer_offset = 0}; // Offset into AABB buffer
+    _voxel_surface = geometry::VoxelSurface{
+        .aabb_buffer_heap_idx = sm.bindless_allocator().allocate_buffer(_aabb_buffer),// Will be set by buffer allocator
+        .aabb_buffer_offset = 0};                                                     // Offset into AABB buffer
 
     // Emplace the procedural instance in AccelManager
     _procedural_instance_id = accel_manager.emplace_procedural_instance(
@@ -110,7 +105,7 @@ uint VoxelResource::emplace_procedural_instance(
         uploader,
         disp_queue,
         std::move(_procedural_prim),
-        std::move(voxel_surface),
+        _voxel_surface,
         transform,
         visibility_mask);
 
@@ -118,12 +113,12 @@ uint VoxelResource::emplace_procedural_instance(
 }
 
 void VoxelResource::set_procedural_instance(
-    AccelManager &accel_manager,
     luisa::float4x4 const &transform,
     uint8_t visibility_mask,
     bool opaque) {
     std::lock_guard lck{_async_mtx};
-
+    auto &sm = SceneManager::instance();
+    AccelManager &accel_manager = sm.accel_manager();
     if (_procedural_instance_id == ~0u) {
         LUISA_WARNING("Cannot set procedural instance: instance not emplaced yet.");
         return;
@@ -136,17 +131,19 @@ void VoxelResource::set_procedural_instance(
         opaque);
 }
 
-void VoxelResource::remove_procedural_instance(
-    AccelManager &accel_manager,
-    BufferAllocator &buffer_allocator,
-    BufferUploader &uploader,
-    DisposeQueue &disp_queue) {
+void VoxelResource::remove_procedural_instance() {
+    auto &sm = SceneManager::instance();
+    AccelManager &accel_manager = sm.accel_manager();
+    BufferAllocator &buffer_allocator = sm.buffer_allocator();
+    BufferUploader &uploader = sm.buffer_uploader();
+    DisposeQueue &disp_queue = sm.dispose_queue();
+
     std::lock_guard lck{_async_mtx};
 
     if (_procedural_instance_id == ~0u) {
         return;// Not emplaced, nothing to do
     }
-
+    sm.bindless_allocator().deallocate_buffer(_voxel_surface.aabb_buffer_heap_idx);
     accel_manager.remove_procedural_instance(
         buffer_allocator,
         uploader,
@@ -159,8 +156,6 @@ void VoxelResource::remove_procedural_instance(
 void VoxelResource::serialize_meta(ObjSerialize const &ser) const {
     std::shared_lock lck{_async_mtx};
     ser.ar.value(_num_voxels, "num_voxels");
-    ser.ar.value(_procedural_instance_id, "procedural_instance_id");
-    ser.ar.value(_procedural_prim_dirty, "procedural_prim_dirty");
 }
 
 void VoxelResource::deserialize_meta(ObjDeSerialize const &ser) {
@@ -171,12 +166,6 @@ void VoxelResource::deserialize_meta(ObjDeSerialize const &ser) {
 
     if (ser.ar.value(num_voxels, "num_voxels")) {
         _num_voxels = num_voxels;
-    }
-    if (ser.ar.value(proc_inst_id, "procedural_instance_id")) {
-        _procedural_instance_id = proc_inst_id;
-    }
-    if (ser.ar.value(procedural_prim_dirty, "procedural_prim_dirty")) {
-        _procedural_prim_dirty = procedural_prim_dirty;
     }
 }
 
@@ -198,8 +187,8 @@ void VoxelResource::create_empty(uint32_t num_voxels) {
     // Resize host AABB buffer
     _host_aabbs.resize(num_voxels);
 
-    // Clear VoxelSurfaces (will be created during emplace)
-    _voxel_surfaces.clear();
+    // Reset VoxelSurface (will be created during emplace)
+    _voxel_surface = geometry::VoxelSurface{};
 
     _procedural_prim_dirty = true;
 

@@ -137,28 +137,17 @@ public:
     /// Creates the procedural primitive if needed and adds it to AccelManager
     /// Returns the instance ID, or ~0u on failure
     [[nodiscard]] uint emplace_procedural_instance(
-        AccelManager &accel_manager,
-        luisa::compute::CommandList &cmdlist,
-        HostBufferManager &temp_buffer,
-        BufferAllocator &buffer_allocator,
-        BufferUploader &uploader,
-        DisposeQueue &disp_queue,
         luisa::float4x4 const &transform = luisa::float4x4{},
         uint8_t visibility_mask = 0xffu);
 
     /// Update the procedural instance transform and visibility
     void set_procedural_instance(
-        AccelManager &accel_manager,
         luisa::float4x4 const &transform,
         uint8_t visibility_mask = 0xffu,
         bool opaque = false);
 
     /// Remove this SDF voxel from the acceleration structure
-    void remove_procedural_instance(
-        AccelManager &accel_manager,
-        BufferAllocator &buffer_allocator,
-        BufferUploader &uploader,
-        DisposeQueue &disp_queue);
+    void remove_procedural_instance();
 
 protected:
     bool _install() override;
