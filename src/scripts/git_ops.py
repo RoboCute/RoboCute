@@ -40,7 +40,7 @@ def _run_with_spinner(process: subprocess.Popen, parser: GitProgressParser, desc
     Returns:
         Process return code
     """
-    spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    spinner_chars = ['|', '/', '-', '\\']
     spinner_idx = 0
     stop_spinner = threading.Event()
     
@@ -151,12 +151,12 @@ def git_clone_or_pull(git_address: str, subdir: str, branch: Optional[str] = Non
     
     if returncode == 0:
         if is_clone:
-            print_success(f"✓ Successfully cloned {subdir}")
+            print_success(f"[OK] Successfully cloned {subdir}")
         else:
-            print_success(f"✓ Successfully pulled {subdir}")
+            print_success(f"[OK] Successfully pulled {subdir}")
     else:
         if is_clone:
-            print_error(f"✗ Failed to clone {subdir}")
+            print_error(f"[FAIL] Failed to clone {subdir}")
         else:
-            print_error(f"✗ Failed to pull {subdir}")
+            print_error(f"[FAIL] Failed to pull {subdir}")
         sys.exit(1)
