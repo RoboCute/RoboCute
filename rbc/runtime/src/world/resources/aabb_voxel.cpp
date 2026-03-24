@@ -188,7 +188,9 @@ void VoxelResource::create_empty(uint32_t num_voxels) {
 
     // Reset VoxelSurface (will be created during emplace)
     _voxel_surface = geometry::VoxelSurface{
-        .aabb_buffer_heap_idx = ~0u};
+        .aabb_buffer_heap_idx = ~0u,
+        .mat_buffer_id = ~0u,
+    };
 
     _procedural_prim_dirty = true;
 

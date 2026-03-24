@@ -22,7 +22,7 @@ struct ProceduralID {
         return _id & ((1u << 28u) - 1);
     }
     void set_id(uint type, uint user_id) {
-        _id = (type << 28u) | user_id;
+        _id = (type << 28u) | (user_id & ((1u << 28u) - 1));
     }
 };
 struct ProceduralGeometry {

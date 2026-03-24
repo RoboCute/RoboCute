@@ -18,7 +18,6 @@ inline bool procedural_transform_to_params(
     BindlessImage &image_heap,
     ProceduralID procedural_id,
     auto &params,
-    uint &texture_filter,
     vt::VTMeta vt_meta,
     float3 input_dir,
     float3 world_pos,
@@ -27,9 +26,15 @@ inline bool procedural_transform_to_params(
     // TODO procedural support, need a special material type.
     // Something like this:
     // auto openpebr = buffer_heap.buffer_read<OpenPBR>(procedural_id.user_id(), procedural_id.prim_id);
-    if constexpr (requires { params.base; }) {
-        sampling::PCGSampler sampler(uint2(procedural_id.user_id(), procedural_id.prim_id));
-        params.base.color = sampler.next3f();
+    if (procedural_id.user_id() == ((1u << 28u) - 1)) {
+        if constexpr (requires { params.base; }) {
+            params.base.color = float3(1, 1, 1);
+        }
+    } else {
+        if constexpr (requires { params.base; }) {
+            sampling::PCGSampler sampler(uint2(procedural_id.user_id(), procedural_id.prim_id));
+            params.base.color = sampler.next3f();
+        }
     }
 
     return true;

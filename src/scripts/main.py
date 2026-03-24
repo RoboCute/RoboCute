@@ -71,6 +71,10 @@ def write_shader_compile_cmd():
         return (
             f'"{clangcxx_dir}" -in="{in_dir}" -out="{out_dir}" -include="{include_dir}"'
         )
+    def gen_json_cmd():
+        return (
+            f'"{clangcxx_dir}" -in="{shader_dir}" -out="{out_dir}" -include="{include_dir}"'
+        )
 
     def build_cmd():
         return base_cmd() + f' -hostgen="{host_dir}"' + f' -cache_dir="{cache_dir}"'
@@ -92,7 +96,7 @@ def write_shader_compile_cmd():
 
     out_dir = shader_dir / ".vscode/compile_commands.json"
     f = open(shader_dir / "gen_json.cmd", "w")
-    f.write("@echo off\n" + base_cmd() + " -lsp")
+    f.write("@echo off\n" + gen_json_cmd() + " -lsp")
     f.close()
 
 
