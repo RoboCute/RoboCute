@@ -1,5 +1,9 @@
 #pragma once
-
+#ifdef __SHADER_LANG__
+#include <material/mat_codes.hpp>
+#include <virtual_tex/stream.hpp>
+#else
+#endif
 #include <utils/shader_host.hpp>
 namespace material {
 struct OpenPBR {

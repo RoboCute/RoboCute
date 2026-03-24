@@ -277,7 +277,7 @@ void GaussianSplatResource::create_empty(uint32_t num_gaussians, uint32_t sh_deg
     uint64_t total_floats = static_cast<uint64_t>(num_gaussians) * (3 + sh_coeffs_per_channel * 3 + 1 + 3 + 4);
 
     // Resize host buffer to fit all data
-    _device_buffer.create_empty(total_floats * sizeof(float));
+    _device_buffer.create_empty(total_floats * sizeof(float), DeviceBuffer::FileLoadType::All);
 
     _procedural_prim_dirty = true;
 

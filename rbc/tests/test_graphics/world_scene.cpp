@@ -267,6 +267,7 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         _set_gizmos();
         _init_skinning(utils);
     }
+    test_procedural.init();
     // Test procedural 
     // procedural_buffer = render_device.lc_device().create_buffer<AABB>(1);
     // AABB aabb{
@@ -578,6 +579,7 @@ bool WorldScene::draw_gizmos(
 }
 
 WorldScene::~WorldScene() {
+    test_procedural.dispose();
     _write_scene();
     skybox.reset();
     tex.reset();

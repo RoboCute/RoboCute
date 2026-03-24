@@ -7,6 +7,7 @@
 #include <rbc_graphics/camera.h>
 #include <rbc_core/coroutine.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>
+#include "test_procedural.h"
 
 namespace rbc {
 struct ClickManager;
@@ -33,6 +34,7 @@ struct WorldScene {
     // RC<world::Entity> physics_box_entity;  // make it independent, no save to file
     // RC<world::MeshResource> physics_box_mesh;
     RC<world::SceneResource> scene;
+    TestProcedural test_procedural;
 
     Buffer<AABB> procedural_buffer;
 

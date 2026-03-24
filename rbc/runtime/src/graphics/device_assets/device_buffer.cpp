@@ -3,16 +3,21 @@
 #include <rbc_graphics/render_device.h>
 #include <rbc_io/io_command_list.h>
 #include <rbc_graphics/scene_manager.h>
+#include <rbc_graphics/dispose_queue.h>
 namespace rbc {
 DeviceBuffer::DeviceBuffer() {}
-void DeviceBuffer::create_empty(uint64_t size_bytes) {
+void DeviceBuffer::create_empty(uint64_t size_bytes, FileLoadType load_type) {
     if (size_bytes == _host_data.size_bytes()) return;
     _host_data.clear();
     _buffer.reset();
     if (size_bytes == 0) return;
-    _host_data.push_back_uninitialized(size_bytes);
+    if ((luisa::to_underlying(load_type) & luisa::to_underlying(FileLoadType::HostOnly)) != 0) {
+        _host_data.push_back_uninitialized(size_bytes);
+    }
     auto &rd = RenderDevice::instance();
-    _buffer = rd.lc_device().create_buffer<uint>((size_bytes + sizeof(uint) - 1) / size_bytes);
+    if ((luisa::to_underlying(load_type) & luisa::to_underlying(FileLoadType::DeviceOnly)) != 0) {
+        _buffer = rd.lc_device().create_buffer<uint>((size_bytes + sizeof(uint) - 1) / sizeof(uint));
+    }
 }
 DeviceBuffer::~DeviceBuffer() {
     if (!_buffer.valid()) return;
@@ -135,5 +140,33 @@ void DeviceBuffer::async_load_from_memory(BinaryBlob &&blob) {
                 IOBufferSubView{ptr->_buffer}};
             args.disp_queue->dispose_after_queue(std::move(blob));
         });
+}
+void DeviceBuffer::discard_host() {
+    _host_data = {};
+}
+void DeviceBuffer::sync_host_size_to_device() {
+    if (_buffer && _buffer.size_bytes() != _host_data.size()) {
+        _host_data.resize_uninitialized(_buffer.size_bytes());
+    } else {
+        _host_data = {};
+    }
+}
+void DeviceBuffer::discard_device_unsafe(DisposeQueue *disp_queue) {
+    if (disp_queue)
+        disp_queue->dispose_after_queue(std::move(_buffer));
+    else
+        _buffer.reset();
+}
+void DeviceBuffer::sync_buffer_size_to_device_unsafe(DisposeQueue *disp_queue) {
+    auto size_bytes = _host_data.size();
+    auto elem_size = (size_bytes + sizeof(uint) - 1) / sizeof(uint);
+    size_bytes = elem_size * sizeof(uint);
+    if (_host_data.empty()) {
+        discard_device_unsafe(disp_queue);
+    } else if (elem_size != _buffer.size()) {
+        discard_device_unsafe(disp_queue);
+        auto &rd = RenderDevice::instance();
+        _buffer = rd.lc_device().create_buffer<uint>(elem_size);
+    }
 }
 }// namespace rbc

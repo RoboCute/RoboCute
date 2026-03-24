@@ -1,6 +1,7 @@
 #pragma once
 #include <rbc_world/resource_base.h>
 #include <rbc_world/resources/procedural_resource.h>
+#include <rbc_graphics/device_assets/device_buffer.h>
 #include <luisa/runtime/buffer.h>
 #include <luisa/runtime/rtx/procedural_primitive.h>
 #include <luisa/runtime/rtx/aabb.h>
@@ -31,11 +32,8 @@ private:
     // Number of voxel instances (AABB count)
     uint32_t _num_voxels{};
 
-    // Host-side AABB data
-    luisa::vector<luisa::compute::AABB> _host_aabbs;
-
-    // Device-side AABB buffer
-    luisa::compute::Buffer<luisa::compute::AABB> _aabb_buffer;
+    // Combined host/device AABB buffer
+    RC<DeviceBuffer> _aabb_device_buffer;
 
     // VoxelSurface for shader access
     geometry::VoxelSurface _voxel_surface;
@@ -49,7 +47,7 @@ private:
     ~VoxelResource();
 
     /// Upload host AABB data to device buffer
-    void _upload_aabbs(luisa::compute::CommandList &cmdlist);
+    void _upload_aabbs();
 
 public:
     /// Check if resource is empty (no voxels loaded)
@@ -59,14 +57,16 @@ public:
     [[nodiscard]] auto num_voxels() const { return _num_voxels; }
 
     /// Get the total size of AABB data in bytes
-    [[nodiscard]] uint64_t host_data_size_bytes() const { return _host_aabbs.size() * sizeof(luisa::compute::AABB); }
+    [[nodiscard]] uint64_t host_data_size_bytes() const {
+        return _num_voxels * sizeof(luisa::compute::AABB);
+    }
 
     /// Get raw host AABB data span
-    [[nodiscard]] luisa::span<luisa::compute::AABB const> host_aabbs() const { return _host_aabbs; }
-    [[nodiscard]] luisa::span<luisa::compute::AABB> host_aabbs() { return _host_aabbs; }
+    [[nodiscard]] luisa::span<luisa::compute::AABB const> host_aabbs() const;
+    [[nodiscard]] luisa::span<luisa::compute::AABB> host_aabbs();
 
     /// Get the device-side AABB buffer
-    [[nodiscard]] luisa::compute::Buffer<luisa::compute::AABB> const &aabb_buffer() const { return _aabb_buffer; }
+    [[nodiscard]] luisa::compute::BufferView<luisa::compute::AABB> aabb_buffer() const;
 
     /// Get the VoxelSurface data for shader access
     [[nodiscard]] geometry::VoxelSurface const &voxel_surface() const { return _voxel_surface; }
@@ -74,9 +74,6 @@ public:
 
     /// Create empty voxel resource with specified number of voxels
     void create_empty(uint32_t num_voxels);
-
-    /// Set AABB data from host buffer
-    void set_aabbs(luisa::span<luisa::compute::AABB const> aabbs);
 
     /// Serialize metadata for persistence
     void serialize_meta(ObjSerialize const &ser) const override;

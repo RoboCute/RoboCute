@@ -13,16 +13,20 @@ extern Accel &g_accel;
 #endif
 namespace luisa::shader {
 struct ProceduralID {
-    uint id;
+    uint _id;
+    uint prim_id;
     uint type_id() {
-        return id >> 28u;
+        return _id >> 28u;
     }
     uint user_id() {
-        return id & ((1u << 28u) - 1);
+        return _id & ((1u << 28u) - 1);
+    }
+    void set_id(uint type, uint user_id) {
+        _id = (type << 28u) | user_id;
     }
 };
 struct ProceduralGeometry {
-    std::array<float, 3> normal;
+    float3 normal;
     ProceduralID procedural_id;
 };
 }// namespace luisa::shader
@@ -73,10 +77,10 @@ auto inversesqrt(T v) {
 
 #define PROCEDURAL_TRACE_MAX_DIST 1e10f
 #define PROCEDURAL_TRACE_CHECK_DIST 1e8f
-float dot2(float3 v) { return dot(v, v); }
+static float dot2(float3 v) { return dot(v, v); }
 
 // Plane
-float iPlane(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iPlane(float3 ro, float3 rd, float2 distBound, float3 &normal,
              float3 planeNormal, float planeDist) {
     float a = dot(rd, planeNormal);
     float d = -(dot(ro, planeNormal) + planeDist) / a;
@@ -89,7 +93,7 @@ float iPlane(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 
 // Sphere:          https://www.shadertoy.com/view/4d2XWV
-float iSphere(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iSphere(float3 ro, float3 rd, float2 distBound, float3 &normal,
               float sphereRadius) {
     float b = dot(ro, rd);
     float c = dot(ro, ro) - sphereRadius * sphereRadius;
@@ -113,7 +117,7 @@ float iSphere(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 
 // Box:             https://www.shadertoy.com/view/ld23DV
-float iBox(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iBox(float3 ro, float3 rd, float2 distBound, float3 &normal,
            float3 boxSize) {
     float3 m = sign_float(rd) / max(abs(rd), float3(1e-8f));
     float3 n = m * ro;
@@ -141,7 +145,7 @@ float iBox(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 // Box:             https://www.shadertoy.com/view/ld23DV
 // near dist and far dist
-float2 iBoxSimple(float3 ro, float3 rd, float3 boxSize, float3 &normal) {
+static float2 iBoxSimple(float3 ro, float3 rd, float3 boxSize, float3 &normal) {
     float3 m = sign_float(rd) / max(abs(rd), float3(1e-8f));
     float3 n = m * ro;
     float3 k = abs(m) * boxSize;
@@ -161,7 +165,7 @@ float2 iBoxSimple(float3 ro, float3 rd, float3 boxSize, float3 &normal) {
 }
 
 // Capped Cylinder: https://www.shadertoy.com/view/4lcSRn
-float iCylinder(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iCylinder(float3 ro, float3 rd, float2 distBound, float3 &normal,
                 float3 pa, float3 pb, float ra) {
     float3 ca = pb - pa;
     float3 oc = ro - pa;
@@ -197,7 +201,7 @@ float iCylinder(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 
 // Torus:           https://www.shadertoy.com/view/4sBGDy
-float iTorus(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iTorus(float3 ro, float3 rd, float2 distBound, float3 &normal,
              float2 torus) {
     // bounding sphere
     float3 tmpnormal;
@@ -312,7 +316,7 @@ float iTorus(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 
 // Capsule:         https://www.shadertoy.com/view/Xt3SzX
-float iCapsule(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iCapsule(float3 ro, float3 rd, float2 distBound, float3 &normal,
                float3 pa, float3 pb, float r) {
     float3 ba = pb - pa;
     float3 oa = ro - pa;
@@ -357,7 +361,7 @@ float iCapsule(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 
 // Capped Cone:     https://www.shadertoy.com/view/llcfRf
-float iCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
             float3 pa, float3 pb, float ra, float rb) {
     float3 ba = pb - pa;
     float3 oa = ro - pa;
@@ -412,7 +416,7 @@ float iCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 
 // Ellipsoid:       https://www.shadertoy.com/view/MlsSzn
-float iEllipsoid(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iEllipsoid(float3 ro, float3 rd, float2 distBound, float3 &normal,
                  float3 rad) {
     float3 ocn = ro / rad;
     float3 rdn = rd / rad;
@@ -437,7 +441,7 @@ float iEllipsoid(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 
 // Rounded Cone:    https://www.shadertoy.com/view/MlKfzm
-float iRoundedCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iRoundedCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
                    float3 pa, float3 pb, float ra, float rb) {
     float3 ba = pb - pa;
     float3 oa = ro - pa;
@@ -504,7 +508,7 @@ float iRoundedCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 
 // Triangle:        https://www.shadertoy.com/view/MlGcDz
-float iTriangle(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iTriangle(float3 ro, float3 rd, float2 distBound, float3 &normal,
                 float3 v0, float3 v1, float3 v2) {
     float3 v1v0 = v1 - v0;
     float3 v2v0 = v2 - v0;
@@ -526,7 +530,7 @@ float iTriangle(float3 ro, float3 rd, float2 distBound, float3 &normal,
 }
 
 // Sphere4:         https://www.shadertoy.com/view/3tj3DW
-float iSphere4(float3 ro, float3 rd, float2 distBound, float3 &normal,
+static float iSphere4(float3 ro, float3 rd, float2 distBound, float3 &normal,
                float ra) {
     // -----------------------------
     // solve quartic equation
@@ -596,8 +600,9 @@ float iSphere4(float3 ro, float3 rd, float2 distBound, float3 &normal,
 namespace sampling {
 using namespace luisa::shader;
 // Voxel
-bool _sample_proccedural(
+static bool _sample_proccedural(
     Ray ray,
+    uint type_id,
     uint user_id,
     auto hit,
     auto &rng,
@@ -636,11 +641,14 @@ bool _sample_proccedural(
     geometry.normal[0] = local_normal.x;
     geometry.normal[1] = local_normal.y;
     geometry.normal[2] = local_normal.z;
+    geometry.procedural_id.set_id(type_id, voxel_map.mat_buffer_id);
+    geometry.procedural_id.prim_id = hit.prim;
     return true;
 }
 // SDF
-bool _sample_proccedural(
+static bool _sample_proccedural(
     Ray ray,
+    uint type_id,
     uint user_id,
     auto hit,
     auto &rng,
@@ -678,6 +686,8 @@ bool _sample_proccedural(
         geometry.normal[0] = box_normal.x;
         geometry.normal[1] = box_normal.y;
         geometry.normal[2] = box_normal.z;
+        geometry.procedural_id.set_id(type_id, sdf_map.mat_buffer_id);
+        geometry.procedural_id.prim_id = hit.prim;
         hit_dist = local_hit_dist.x;
         return true;
     } else {
@@ -720,6 +730,8 @@ bool _sample_proccedural(
         geometry.normal[0] = local_normal.x;
         geometry.normal[1] = local_normal.y;
         geometry.normal[2] = local_normal.z;
+        geometry.procedural_id.set_id(type_id, sdf_map.mat_buffer_id);
+        geometry.procedural_id.prim_id = hit.prim;
     }
     return true;
 }
@@ -727,7 +739,7 @@ using PolymorphicGeometry = stdex::type_list<
     geometry::VoxelSurface,
     geometry::SDFMap>;
 
-bool sample_procedural(
+static bool sample_procedural(
     Ray ray,
     auto hit,
     auto &rng,
@@ -739,7 +751,7 @@ bool sample_procedural(
     return PolymorphicGeometry::visit(procedural_type.type, [&]<typename ins>() {
         using type = ins::type;
         auto prim = g_buffer_heap.template byte_buffer_read<type>(heap_indices::buffer_allocator_heap_index, procedural_type.meta_byte_offset);
-        return _sample_proccedural(ray, user_id, hit, rng, hit_dist, geometry, prim);
+        return _sample_proccedural(ray, ins::index, user_id, hit, rng, hit_dist, geometry, prim);
     });
 }
 }// namespace sampling

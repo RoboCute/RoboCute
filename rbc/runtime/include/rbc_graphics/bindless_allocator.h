@@ -99,6 +99,11 @@ public:
     {
         return _allocate_buffer(buffer.handle());
     }
+    template <typename T>
+    uint allocate_buffer(BufferView<T> const& buffer)
+    {
+        return _allocate_buffer(buffer.handle());
+    }
     uint allocate_tex2d(Image<float> const& img, Sampler sampler)
     {
         return _allocate_tex2d(img.handle(), sampler);

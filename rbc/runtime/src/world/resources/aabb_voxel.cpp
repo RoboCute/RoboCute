@@ -4,6 +4,7 @@
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/accel_manager.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
+#include <rbc_graphics/graphics_utils.h>
 #include <rbc_core/utils/thread_waiter.h>
 #include <rbc_core/binary_file_writer.h>
 #include <luisa/core/fiber.h>
@@ -14,7 +15,8 @@
 
 namespace rbc::world {
 
-VoxelResource::VoxelResource() = default;
+VoxelResource::VoxelResource() {
+}
 
 VoxelResource::~VoxelResource() {
     auto inst = AssetsManager::instance();
@@ -24,43 +26,30 @@ VoxelResource::~VoxelResource() {
     // Device resource cleanup is handled by RC
 }
 
-void VoxelResource::_upload_aabbs(luisa::compute::CommandList &cmdlist) {
-    auto render_device = RenderDevice::instance_ptr();
-    if (!render_device) return;
-    auto &device = render_device->lc_device();
-
-    // Create or resize AABB buffer if needed
-    if (!_aabb_buffer || !_aabb_buffer.valid() || _aabb_buffer.size() != _num_voxels) {
-        _aabb_buffer = device.create_buffer<luisa::compute::AABB>(_num_voxels);
-    }
-
-    // Upload AABB data to GPU buffer
-    if (!_host_aabbs.empty()) {
-        cmdlist << _aabb_buffer.view().copy_from(_host_aabbs.data());
-    }
+void VoxelResource::_upload_aabbs() {
+    auto gu = GraphicsUtils::instance();
+    if (!gu) return;
+    // Use GraphicsUtils::update_buffer to upload data
+    gu->update_buffer(_aabb_device_buffer.get(), 0, host_data_size_bytes());
 }
 
 void VoxelResource::build_procedural_primitive(
     luisa::compute::CommandList &cmdlist,
     DisposeQueue &disp_queue) {
     std::lock_guard lck{_async_mtx};
-    if (_procedural_prim.valid() && (!_procedural_prim_dirty)) return;
+    if (_procedural_prim.valid() && (!_procedural_prim_dirty))
+        return;
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return;
 
     auto &device = render_device->lc_device();
 
     // Upload AABB data to device buffer
-    _upload_aabbs(cmdlist);
-
-    // Create AABB buffer if not already created
-    if (!_aabb_buffer || !_aabb_buffer.valid() || _aabb_buffer.size() != _num_voxels) {
-        _aabb_buffer = device.create_buffer<luisa::compute::AABB>(_num_voxels);
-    }
+    _upload_aabbs();
 
     // Create procedural primitive (BLAS) with AABBs
     _procedural_prim = device.create_procedural_primitive(
-        _aabb_buffer,
+        aabb_buffer(),
         luisa::compute::AccelOption{.allow_compaction = false});
 
     // Build the procedural primitive
@@ -80,20 +69,18 @@ uint VoxelResource::emplace_procedural_instance(
     BufferUploader &uploader = sm.buffer_uploader();
     DisposeQueue &disp_queue = sm.dispose_queue();
 
-    std::lock_guard lck{_async_mtx};
-
     // Create procedural primitive if needed
     build_procedural_primitive(cmdlist, disp_queue);
-
+    std::lock_guard lck{_async_mtx};
     if (!_procedural_prim.valid()) {
         return ~0u;// Failed to create procedural primitive
     }
 
     // Create VoxelSurface for shader access
     // The actual buffer heap idx will be set by AccelManager
-    _voxel_surface = geometry::VoxelSurface{
-        .aabb_buffer_heap_idx = sm.bindless_allocator().allocate_buffer(_aabb_buffer),// Will be set by buffer allocator
-        .aabb_buffer_offset = 0};                                                     // Offset into AABB buffer
+    if (_voxel_surface.aabb_buffer_heap_idx == ~0u) {
+        _voxel_surface.aabb_buffer_heap_idx = sm.bindless_allocator().allocate_buffer(aabb_buffer());
+    }
 
     // Emplace the procedural instance in AccelManager
     _procedural_instance_id = accel_manager.emplace_procedural_instance(
@@ -141,7 +128,10 @@ void VoxelResource::remove_procedural_instance() {
     if (_procedural_instance_id == ~0u) {
         return;// Not emplaced, nothing to do
     }
-    sm.bindless_allocator().deallocate_buffer(_voxel_surface.aabb_buffer_heap_idx);
+    if (_voxel_surface.aabb_buffer_heap_idx != ~0u) {
+        sm.bindless_allocator().deallocate_buffer(_voxel_surface.aabb_buffer_heap_idx);
+        _voxel_surface.aabb_buffer_heap_idx = ~0u;
+    }
     accel_manager.remove_procedural_instance(
         buffer_allocator,
         uploader,
@@ -188,25 +178,42 @@ void VoxelResource::create_empty(uint32_t num_voxels) {
     _device_res.reset();
     _num_voxels = num_voxels;
 
-    // Resize host AABB buffer
-    _host_aabbs.resize(num_voxels);
+    // Create device buffer with appropriate size
+    if (!_aabb_device_buffer) {
+        _aabb_device_buffer = new DeviceBuffer();
+    } else {
+        LUISA_ERROR("Create on non-empty.");
+    }
+    _aabb_device_buffer->create_empty(num_voxels * sizeof(luisa::compute::AABB), DeviceBuffer::FileLoadType::DeviceOnly);
 
     // Reset VoxelSurface (will be created during emplace)
-    _voxel_surface = geometry::VoxelSurface{};
+    _voxel_surface = geometry::VoxelSurface{
+        .aabb_buffer_heap_idx = ~0u};
 
     _procedural_prim_dirty = true;
 
     unsafe_set_loaded();
 }
 
-void VoxelResource::set_aabbs(luisa::span<luisa::compute::AABB const> aabbs) {
-    std::lock_guard lck{_async_mtx};
-    _num_voxels = static_cast<uint32_t>(aabbs.size());
-    _host_aabbs.resize(_num_voxels);
-    if (!aabbs.empty()) {
-        std::memcpy(_host_aabbs.data(), aabbs.data(), aabbs.size() * sizeof(luisa::compute::AABB));
-    }
-    _procedural_prim_dirty = true;
+luisa::span<luisa::compute::AABB const> VoxelResource::host_aabbs() const {
+    if (!_aabb_device_buffer) return {};
+    _aabb_device_buffer->sync_host_size_to_device();
+    auto host_data = _aabb_device_buffer->host_data();
+    return {reinterpret_cast<luisa::compute::AABB const *>(host_data.data()),
+            host_data.size_bytes() / sizeof(luisa::compute::AABB)};
+}
+
+luisa::span<luisa::compute::AABB> VoxelResource::host_aabbs() {
+    if (!_aabb_device_buffer) return {};
+    _aabb_device_buffer->sync_host_size_to_device();
+    auto host_data = _aabb_device_buffer->host_data();
+    return {reinterpret_cast<luisa::compute::AABB *>(host_data.data()),
+            host_data.size_bytes() / sizeof(luisa::compute::AABB)};
+}
+
+luisa::compute::BufferView<luisa::compute::AABB> VoxelResource::aabb_buffer() const {
+    if (!_aabb_device_buffer) return {};
+    return _aabb_device_buffer->get_buffer<luisa::compute::AABB>();
 }
 
 bool VoxelResource::_install() {
@@ -221,14 +228,14 @@ bool VoxelResource::_install() {
 
 bool VoxelResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
-    if (_host_aabbs.empty()) return false;
+    if (!_aabb_device_buffer) return false;
+    auto host_data = _aabb_device_buffer->host_data();
+    if (host_data.empty()) return false;
     BinaryFileWriter writer{luisa::to_string(path())};
     if (!writer._file) [[unlikely]] {
         return false;
     }
-    writer.write(luisa::span{
-        reinterpret_cast<std::byte const *>(_host_aabbs.data()),
-        _host_aabbs.size() * sizeof(luisa::compute::AABB)});
+    writer.write(luisa::span{host_data.data(), host_data.size_bytes()});
     return true;
 }
 
@@ -242,6 +249,11 @@ rbc::coroutine VoxelResource::_async_load() {
     }
 
     std::lock_guard lck{_async_mtx};
+    _aabb_device_buffer->async_load_from_file(
+        path,
+        0,
+        _num_voxels * sizeof(luisa::compute::AABB),
+        DeviceBuffer::FileLoadType::DeviceOnly);
     if (_device_res) {
         co_return;
     }

@@ -11,10 +11,12 @@ struct TestProcedural {
     RC<world::VoxelResource> voxel_res;
     RC<world::SDFVoxelResource> sdf_res;
     RC<world::GaussianSplatResource> gus_res;
+    TestProcedural();
+    ~TestProcedural();
     void init();
     void _init_voxel_res();
     void _init_sdf_res();
     void _init_gs_res();
-    ~TestProcedural();
+    void dispose();
 };
 }// namespace rbc

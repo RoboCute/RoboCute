@@ -31,22 +31,23 @@ void TestProcedural::_init_voxel_res() {
     Random rng;
     auto aabbs = voxel_res->host_aabbs();
     for (uint32_t i = 0; i < num_voxels; ++i) {
-        int random_x = rng.next(-50, 50);
-        int random_y = rng.next(-50, 50);
-        int random_z = rng.next(-50, 50);
+        int random_x = rng.next(-20, 20);
+        int random_y = rng.next(-20, 20);
+        int random_z = rng.next(-20, 20);
         auto min_value = make_float3(
                              random_x,
                              random_y,
                              random_z) *
-                         0.1f;
-        auto max_value = min_value + float3(0.1f);
+                         0.3f;
+        auto max_value = min_value + float3(0.3f);
+        aabbs[i].packed_min = {min_value.x, min_value.y, min_value.z};
         aabbs[i].packed_max = {max_value.x, max_value.y, max_value.z};
     }
 
     // Install and emplace as procedural instance
     voxel_res->install();
     [[maybe_unused]] auto voxel_inst_id = voxel_res->emplace_procedural_instance(
-        float4x4::eye(1));
+        scaling(1.0f));
 }
 
 void TestProcedural::_init_sdf_res() {
@@ -96,7 +97,7 @@ void TestProcedural::_init_gs_res() {
     // This function intentionally does nothing as per requirements
 }
 
-TestProcedural::~TestProcedural() {
+void TestProcedural::dispose() {
     // Remove procedural instances if they exist
     if (voxel_res && voxel_res->has_procedural_primitive()) {
         voxel_res->remove_procedural_instance();
@@ -107,6 +108,10 @@ TestProcedural::~TestProcedural() {
     if (gus_res && gus_res->has_procedural_primitive()) {
         gus_res->remove_procedural_instance();
     }
+    voxel_res.reset();
+    sdf_res.reset();
+    gus_res.reset();
 }
-
+TestProcedural::TestProcedural() {}
+TestProcedural::~TestProcedural() {}
 }// namespace rbc
