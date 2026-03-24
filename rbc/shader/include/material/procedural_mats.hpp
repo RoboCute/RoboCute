@@ -10,6 +10,7 @@
 #include <material/mat_codes.hpp>
 #include <virtual_tex/stream.hpp>
 #include <material/mats.hpp>
+#include <material/gs_mat_impl.hpp>
 using namespace luisa::shader;
 namespace material {
 
@@ -25,7 +26,10 @@ inline bool procedural_transform_to_params(
     auto &&...vars) {
     // TODO procedural support, need a special material type.
     // Something like this:
-    // auto openpebr = buffer_heap.buffer_read<OpenPBR>(procedural_id.user_id(), procedural_id.prim_id);
+    auto openpebr = buffer_heap.byte_buffer_read<OpenPBRParticle>(
+        procedural_id.user_id(),
+        procedural_id.prim_id * sizeof(OpenPBRParticle) + procedural_id.mat_offset
+    );
     if (procedural_id.user_id() == ((1u << 28u) - 1)) {
         if constexpr (requires { params.base; }) {
             params.base.color = float3(1, 1, 1);

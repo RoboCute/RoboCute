@@ -19,12 +19,14 @@ struct VoxelSurface {
 	uint aabb_buffer_heap_idx;
 	uint aabb_buffer_offset;// AABB element idx
 	uint mat_buffer_id;
+	uint mat_buffer_offset;
 };
 
 struct SDFMap {
 	uint volume_idx;
 	uint sample_count;
 	uint mat_buffer_id;
+	uint mat_buffer_offset;
 	float3 uvw_scale;
 	float3 uvw_offset;
 };

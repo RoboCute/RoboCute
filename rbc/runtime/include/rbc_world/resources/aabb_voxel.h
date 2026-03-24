@@ -5,9 +5,10 @@
 #include <luisa/runtime/buffer.h>
 #include <luisa/runtime/rtx/procedural_primitive.h>
 #include <luisa/runtime/rtx/aabb.h>
-
+#include <rbc_graphics/materials.h>
 namespace rbc {
 #include <geometry/procedural_types.hpp>
+#include <material/gs_mat.hpp>
 struct DeviceResource;
 struct AccelManager;
 struct BufferAllocator;

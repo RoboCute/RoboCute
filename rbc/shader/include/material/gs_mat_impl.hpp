@@ -72,9 +72,6 @@ inline bool OpenPBRParticle::transform_to_params(
         auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBRParticle::Emission>(
             mat_type, mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, emission));
         params.emission.luminance = float3(mat.luminance);
-        if (mat.emission_tex.valid()) {
-            params.emission.luminance *= read_tex(mat.emission_tex).xyz;
-        }
     }
 
     // Base - OpenPBRParticle doesn't have a base color, use default white

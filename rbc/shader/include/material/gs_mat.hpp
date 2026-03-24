@@ -28,7 +28,6 @@ struct OpenPBRParticle {
 
     struct Emission {
         std::array<float, 3> luminance{0.0f, 0.0f, 0.0f};
-        MatImageHandle emission_tex;
     } emission;
 
     struct Transmission {

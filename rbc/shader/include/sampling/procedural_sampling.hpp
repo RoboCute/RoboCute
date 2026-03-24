@@ -15,6 +15,7 @@ namespace luisa::shader {
 struct ProceduralID {
     uint _id;
     uint prim_id;
+    uint mat_offset;
     uint type_id() {
         return _id >> 28u;
     }
@@ -642,6 +643,7 @@ static bool _sample_proccedural(
     geometry.normal[1] = local_normal.y;
     geometry.normal[2] = local_normal.z;
     geometry.procedural_id.set_id(type_id, voxel_map.mat_buffer_id);
+    geometry.procedural_id.mat_offset = voxel_map.mat_buffer_offset;
     geometry.procedural_id.prim_id = hit.prim;
     return true;
 }
@@ -687,6 +689,7 @@ static bool _sample_proccedural(
         geometry.normal[1] = box_normal.y;
         geometry.normal[2] = box_normal.z;
         geometry.procedural_id.set_id(type_id, sdf_map.mat_buffer_id);
+        geometry.procedural_id.mat_offset = sdf_map.mat_buffer_offset;
         geometry.procedural_id.prim_id = hit.prim;
         hit_dist = local_hit_dist.x;
         return true;
@@ -731,6 +734,7 @@ static bool _sample_proccedural(
         geometry.normal[1] = local_normal.y;
         geometry.normal[2] = local_normal.z;
         geometry.procedural_id.set_id(type_id, sdf_map.mat_buffer_id);
+        geometry.procedural_id.mat_offset = sdf_map.mat_buffer_offset;
         geometry.procedural_id.prim_id = hit.prim;
     }
     return true;
