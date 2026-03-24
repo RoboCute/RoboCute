@@ -359,6 +359,18 @@ bool GaussianSplatResource::decode(luisa::filesystem::path const &path) {
     return false;
 }
 
+BaseObjectType GaussianSplatResource::base_type() const {
+    return BaseObjectType::Resource;
+}
+
+MD5 GaussianSplatResource::type_id() const {
+    return rbc_rtti_detail::is_rtti_type<GaussianSplatResource>::get_md5();
+}
+
+const char *GaussianSplatResource::type_name() const {
+    return rbc_rtti_detail::is_rtti_type<GaussianSplatResource>::name;
+}
+
 DECLARE_WORLD_OBJECT_REGISTER(GaussianSplatResource)
 
 }// namespace rbc::world

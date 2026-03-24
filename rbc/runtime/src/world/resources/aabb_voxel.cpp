@@ -44,7 +44,7 @@ void VoxelResource::build_procedural_primitive(
     luisa::compute::CommandList &cmdlist,
     DisposeQueue &disp_queue) {
     std::lock_guard lck{_async_mtx};
-
+    if (_procedural_prim.valid() && (!_procedural_prim_dirty)) return;
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return;
 
@@ -83,9 +83,7 @@ uint VoxelResource::emplace_procedural_instance(
     std::lock_guard lck{_async_mtx};
 
     // Create procedural primitive if needed
-    if (!_procedural_prim.valid() || _procedural_prim_dirty) {
-        build_procedural_primitive(cmdlist, disp_queue);
-    }
+    build_procedural_primitive(cmdlist, disp_queue);
 
     if (!_procedural_prim.valid()) {
         return ~0u;// Failed to create procedural primitive
@@ -167,6 +165,12 @@ void VoxelResource::deserialize_meta(ObjDeSerialize const &ser) {
     if (ser.ar.value(num_voxels, "num_voxels")) {
         _num_voxels = num_voxels;
     }
+    if (ser.ar.value(proc_inst_id, "procedural_instance_id")) {
+        _procedural_instance_id = proc_inst_id;
+    }
+    if (ser.ar.value(procedural_prim_dirty, "procedural_prim_dirty")) {
+        _procedural_prim_dirty = procedural_prim_dirty;
+    }
 }
 
 bool VoxelResource::empty() const {
@@ -247,6 +251,18 @@ rbc::coroutine VoxelResource::_async_load() {
 
     unsafe_set_installed();
     co_return;
+}
+
+BaseObjectType VoxelResource::base_type() const {
+    return BaseObjectType::Resource;
+}
+
+MD5 VoxelResource::type_id() const {
+    return rbc_rtti_detail::is_rtti_type<VoxelResource>::get_md5();
+}
+
+const char *VoxelResource::type_name() const {
+    return rbc_rtti_detail::is_rtti_type<VoxelResource>::name;
 }
 
 DECLARE_WORLD_OBJECT_REGISTER(VoxelResource)

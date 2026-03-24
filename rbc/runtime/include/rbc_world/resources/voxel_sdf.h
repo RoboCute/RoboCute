@@ -1,5 +1,6 @@
 #pragma once
 #include <rbc_world/resource_base.h>
+#include <rbc_world/resources/procedural_resource.h>
 #include <luisa/runtime/buffer.h>
 #include <luisa/runtime/rtx/procedural_primitive.h>
 #include <luisa/runtime/rtx/aabb.h>
@@ -22,9 +23,10 @@ namespace rbc::world {
 
 /// Resource class for SDF (Signed Distance Field) Voxel data
 /// Stores 3D signed distance field data for GPU-accelerated rendering and ray marching
-struct RBC_RUNTIME_API SDFVoxelResource final : ResourceBaseImpl<SDFVoxelResource> {
+struct RBC_RUNTIME_API SDFVoxelResource final : ProceduralResource {
     DECLARE_WORLD_OBJECT_FRIEND(SDFVoxelResource)
     using BaseType = ResourceBaseImpl<SDFVoxelResource>;
+    static constexpr BaseObjectType base_object_type_v = BaseObjectType::Resource;
 
 private:
     RC<DeviceResource> _device_res;
@@ -116,42 +118,47 @@ public:
     // Procedural primitive interface for ray tracing integration
 
     /// Check if this SDF voxel has a procedural primitive created
-    [[nodiscard]] bool has_procedural_primitive() const { return _procedural_prim.valid(); }
+    [[nodiscard]] bool has_procedural_primitive() const override { return _procedural_prim.valid(); }
 
     /// Check if procedural primitive needs to be rebuilt
-    [[nodiscard]] bool is_procedural_dirty() const { return _procedural_prim_dirty; }
+    [[nodiscard]] bool is_procedural_dirty() const override { return _procedural_prim_dirty; }
 
     /// Get the procedural primitive (valid after emplace_procedural_instance or build_procedural_primitive)
-    [[nodiscard]] luisa::compute::ProceduralPrimitive const &procedural_primitive() const { return _procedural_prim; }
+    [[nodiscard]] luisa::compute::ProceduralPrimitive const &procedural_primitive() const override { return _procedural_prim; }
 
     /// Get the procedural instance ID in AccelManager
-    [[nodiscard]] auto procedural_instance_id() const { return _procedural_instance_id; }
+    [[nodiscard]] uint32_t procedural_instance_id() const override { return _procedural_instance_id; }
 
     /// Build/create the procedural primitive from current SDF bounds
     /// Creates the AABB buffer and ProceduralPrimitive BLAS
     void build_procedural_primitive(
         luisa::compute::CommandList &cmdlist,
-        DisposeQueue &disp_queue);
+        DisposeQueue &disp_queue) override;
 
     /// Emplace this SDF voxel as a procedural instance in the acceleration structure
     /// Creates the procedural primitive if needed and adds it to AccelManager
     /// Returns the instance ID, or ~0u on failure
     [[nodiscard]] uint emplace_procedural_instance(
-        luisa::float4x4 const &transform = luisa::float4x4{},
-        uint8_t visibility_mask = 0xffu);
+        luisa::float4x4 const &transform,
+        uint8_t visibility_mask = 0xffu) override;
 
     /// Update the procedural instance transform and visibility
     void set_procedural_instance(
         luisa::float4x4 const &transform,
         uint8_t visibility_mask = 0xffu,
-        bool opaque = false);
+        bool opaque = false) override;
 
     /// Remove this SDF voxel from the acceleration structure
-    void remove_procedural_instance();
+    void remove_procedural_instance() override;
 
 protected:
     bool _install() override;
     bool unsafe_save_to_path() const override;
+
+public:
+    [[nodiscard]] BaseObjectType base_type() const override;
+    [[nodiscard]] MD5 type_id() const override;
+    [[nodiscard]] const char *type_name() const override;
 };
 
 }// namespace rbc::world

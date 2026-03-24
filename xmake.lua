@@ -26,8 +26,8 @@ lc_options = {
     lc_dx_cuda_interop = true,
     lc_vk_cuda_interop = true,
     lc_enable_py = false,
-    lc_enable_unity_build = true
-    -- lc_warnings = 'all'
+    lc_enable_unity_build = true,
+    lc_warnings = 'all'
     -- lc_toy_c_backend = true
 }
 

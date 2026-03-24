@@ -293,6 +293,18 @@ rbc::coroutine SDFVoxelResource::_async_load() {
     co_return;
 }
 
+BaseObjectType SDFVoxelResource::base_type() const {
+    return BaseObjectType::Resource;
+}
+
+MD5 SDFVoxelResource::type_id() const {
+    return rbc_rtti_detail::is_rtti_type<SDFVoxelResource>::get_md5();
+}
+
+const char *SDFVoxelResource::type_name() const {
+    return rbc_rtti_detail::is_rtti_type<SDFVoxelResource>::name;
+}
+
 DECLARE_WORLD_OBJECT_REGISTER(SDFVoxelResource)
 
 }// namespace rbc::world
