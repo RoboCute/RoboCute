@@ -30,7 +30,7 @@ void VoxelResource::_upload_aabbs() {
     auto gu = GraphicsUtils::instance();
     if (!gu) return;
     // Use GraphicsUtils::update_buffer to upload data
-    gu->update_buffer(_aabb_device_buffer.get(), 0, host_data_size_bytes());
+    gu->update_buffer(_aabb_device_buffer.get(), 0, total_buffer_size_bytes());
 }
 
 void VoxelResource::build_procedural_primitive(
@@ -81,6 +81,7 @@ uint VoxelResource::emplace_procedural_instance(
     if (_voxel_surface.aabb_buffer_heap_idx == ~0u) {
         _voxel_surface.aabb_buffer_heap_idx = sm.bindless_allocator().allocate_buffer(aabb_buffer());
     }
+    _voxel_surface.aabb_buffer_offset = material_offset_bytes();
 
     // Emplace the procedural instance in AccelManager
     _procedural_instance_id = accel_manager.emplace_procedural_instance(
@@ -178,18 +179,20 @@ void VoxelResource::create_empty(uint32_t num_voxels) {
     _device_res.reset();
     _num_voxels = num_voxels;
 
-    // Create device buffer with appropriate size
+    // Create device buffer with appropriate size (AABB + material data)
     if (!_aabb_device_buffer) {
         _aabb_device_buffer = new DeviceBuffer();
     } else {
         LUISA_ERROR("Create on non-empty.");
     }
-    _aabb_device_buffer->create_empty(num_voxels * sizeof(luisa::compute::AABB), DeviceBuffer::FileLoadType::DeviceOnly);
+    _aabb_device_buffer->create_empty(total_buffer_size_bytes(), DeviceBuffer::FileLoadType::DeviceOnly);
 
     // Reset VoxelSurface (will be created during emplace)
     _voxel_surface = geometry::VoxelSurface{
         .aabb_buffer_heap_idx = ~0u,
+        .aabb_buffer_offset = 0,
         .mat_buffer_id = ~0u,
+        .mat_buffer_offset = static_cast<uint32_t>(material_offset_bytes()),
     };
 
     _procedural_prim_dirty = true;
@@ -202,7 +205,7 @@ luisa::span<luisa::compute::AABB const> VoxelResource::host_aabbs() const {
     _aabb_device_buffer->sync_host_size_to_device();
     auto host_data = _aabb_device_buffer->host_data();
     return {reinterpret_cast<luisa::compute::AABB const *>(host_data.data()),
-            host_data.size_bytes() / sizeof(luisa::compute::AABB)};
+            _num_voxels};
 }
 
 luisa::span<luisa::compute::AABB> VoxelResource::host_aabbs() {
@@ -210,7 +213,25 @@ luisa::span<luisa::compute::AABB> VoxelResource::host_aabbs() {
     _aabb_device_buffer->sync_host_size_to_device();
     auto host_data = _aabb_device_buffer->host_data();
     return {reinterpret_cast<luisa::compute::AABB *>(host_data.data()),
-            host_data.size_bytes() / sizeof(luisa::compute::AABB)};
+            _num_voxels};
+}
+
+luisa::span<material::OpenPBRParticle const> VoxelResource::host_materials() const {
+    if (!_aabb_device_buffer) return {};
+    _aabb_device_buffer->sync_host_size_to_device();
+    auto host_data = _aabb_device_buffer->host_data();
+    auto mat_data = host_data.subspan(material_offset_bytes());
+    return {reinterpret_cast<material::OpenPBRParticle const *>(mat_data.data()),
+            _num_voxels};
+}
+
+luisa::span<material::OpenPBRParticle> VoxelResource::host_materials() {
+    if (!_aabb_device_buffer) return {};
+    _aabb_device_buffer->sync_host_size_to_device();
+    auto host_data = _aabb_device_buffer->host_data();
+    auto mat_data = host_data.subspan(material_offset_bytes());
+    return {reinterpret_cast<material::OpenPBRParticle *>(mat_data.data()),
+            _num_voxels};
 }
 
 luisa::compute::BufferView<luisa::compute::AABB> VoxelResource::aabb_buffer() const {

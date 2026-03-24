@@ -58,13 +58,31 @@ public:
     [[nodiscard]] auto num_voxels() const { return _num_voxels; }
 
     /// Get the total size of AABB data in bytes
-    [[nodiscard]] uint64_t host_data_size_bytes() const {
+    [[nodiscard]] uint64_t aabb_data_size_bytes() const {
         return _num_voxels * sizeof(luisa::compute::AABB);
+    }
+
+    /// Get the material offset in bytes (AABB data comes first)
+    [[nodiscard]] uint64_t material_offset_bytes() const {
+        return aabb_data_size_bytes();
+    }
+
+    /// Get the total buffer size including AABB and material data
+    [[nodiscard]] uint64_t total_buffer_size_bytes() const {
+        return _num_voxels * (sizeof(luisa::compute::AABB) + sizeof(material::OpenPBRParticle));
+    }
+
+    /// Get the total size of host data in bytes (AABB + material data)
+    [[nodiscard]] uint64_t host_data_size_bytes() const {
+        return total_buffer_size_bytes();
     }
 
     /// Get raw host AABB data span
     [[nodiscard]] luisa::span<luisa::compute::AABB const> host_aabbs() const;
     [[nodiscard]] luisa::span<luisa::compute::AABB> host_aabbs();
+    
+    [[nodiscard]] luisa::span<material::OpenPBRParticle const> host_materials() const;
+    [[nodiscard]] luisa::span<material::OpenPBRParticle> host_materials();
 
     /// Get the device-side AABB buffer
     [[nodiscard]] luisa::compute::BufferView<luisa::compute::AABB> aabb_buffer() const;
