@@ -209,6 +209,7 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         scene = proj->import_assets("test_scene.scene", TypeInfo::get<world::SceneResource>().md5());
         scene->load();
         scene->install();
+        test_procedural.init(proj.get());
 
     } else {
         // load skybox
@@ -267,8 +268,7 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         _set_gizmos();
         _init_skinning(utils);
     }
-    test_procedural.init();
-    // Test procedural 
+    // Test procedural
     // procedural_buffer = render_device.lc_device().create_buffer<AABB>(1);
     // AABB aabb{
     //     .packed_min{-0.5f, -0.5f, -0.5f},
@@ -600,12 +600,12 @@ WorldScene::~WorldScene() {
     world::destroy_world();
 }
 void WorldScene::draw_grid(Camera &cam, GridDrawer &grid_drawer) {
-    auto &grid = grid_drawer.draw_grids.emplace_back();
-    grid.grid_center = make_float3(floor(cam.position));
-    grid.grid_center.y = 0;
-    grid.origin_color.w = 0.8f;
-    grid.decay_distance = 30.f;
-    grid.start_decay_dist = 2.f;
+    // auto &grid = grid_drawer.draw_grids.emplace_back();
+    // grid.grid_center = make_float3(floor(cam.position));
+    // grid.grid_center.y = 0;
+    // grid.origin_color.w = 0.8f;
+    // grid.decay_distance = 30.f;
+    // grid.start_decay_dist = 2.f;
 }
 void WorldScene::tick_skinning(GraphicsUtils *utils, float delta_time) {
     static Clock clk;

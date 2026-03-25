@@ -34,15 +34,15 @@ inline bool procedural_transform_to_params(
         return OpenPBRParticle::transform_to_params(
             buffer_heap,
             image_heap,
+            procedural_id.type_id(),
             procedural_id.mat_heap_id(),
             procedural_id.mat_idx,
             procedural_id.mat_offset,
+            procedural_id.sh_degree,
             params,
             input_dir,
             reject,
-            world_pos, vars...
-        );
+            world_pos, vars...);
     }
-
 }
 }// namespace material

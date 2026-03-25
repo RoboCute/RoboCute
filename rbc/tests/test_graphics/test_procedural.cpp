@@ -5,11 +5,15 @@
 #include <rbc_world/resources/voxel_sdf.h>
 #include <rbc_world/resources/gaussian_splat.h>
 #include <rbc_world/resources/scene.h>
+#include <rbc_project/project.h>
 #include <luisa/runtime/rtx/aabb.h>
 
 namespace rbc {
 
-void TestProcedural::init() {
+void TestProcedural::init(IProject *proj) {
+    // gus_res = proj->import_assets("nerf_blender_lego_30000.ply", TypeInfo::get<world::GaussianSplatResource>().md5());
+    // gus_res->install();
+    // [[maybe_unused]] auto id = gus_res->emplace_procedural_instance(scaling(1.f));
     _init_voxel_res();
     // _init_sdf_res();
     // _init_gs_res();
@@ -46,7 +50,7 @@ void TestProcedural::_init_voxel_res() {
     auto materials = voxel_res->host_materials();
     // Initialize materials with random properties
     for (uint32_t i = 0; i < num_voxels; ++i) {
-        auto& mat = materials[i];
+        auto &mat = materials[i];
         // Random base color (HSV-like variety)
         float hue = static_cast<float>(rng.next(0, 360));
         float sat = static_cast<float>(rng.next(50, 100)) / 100.0f;
@@ -57,17 +61,29 @@ void TestProcedural::_init_voxel_res() {
         float m = val - c;
         float r, g, b;
         if (hue < 60.0f) {
-            r = c; g = x; b = 0;
+            r = c;
+            g = x;
+            b = 0;
         } else if (hue < 120.0f) {
-            r = x; g = c; b = 0;
+            r = x;
+            g = c;
+            b = 0;
         } else if (hue < 180.0f) {
-            r = 0; g = c; b = x;
+            r = 0;
+            g = c;
+            b = x;
         } else if (hue < 240.0f) {
-            r = 0; g = x; b = c;
+            r = 0;
+            g = x;
+            b = c;
         } else if (hue < 300.0f) {
-            r = x; g = 0; b = c;
+            r = x;
+            g = 0;
+            b = c;
         } else {
-            r = c; g = 0; b = x;
+            r = c;
+            g = 0;
+            b = x;
         }
         mat.weight.diffuse_roughness = static_cast<float>(rng.next(0, 50)) / 100.0f;
         mat.weight.specular = static_cast<float>(rng.next(20, 80)) / 100.0f;
@@ -83,8 +99,8 @@ void TestProcedural::_init_voxel_res() {
         // Random emission for some voxels (10% chance)
         if (rng.next(0, 9) == 0) {
             float emission_strength = static_cast<float>(rng.next(10, 50)) / 10.0f;
-            mat.emission.luminance = {(r + m) * emission_strength, 
-                                      (g + m) * emission_strength, 
+            mat.emission.luminance = {(r + m) * emission_strength,
+                                      (g + m) * emission_strength,
                                       (b + m) * emission_strength};
         }
         mat.transmission.transmission_color = {1.0f, 1.0f, 1.0f};

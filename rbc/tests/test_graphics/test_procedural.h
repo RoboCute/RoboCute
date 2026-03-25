@@ -7,13 +7,14 @@ struct VoxelResource;
 struct SDFVoxelResource;
 struct GaussianSplatResource;
 }// namespace world
+struct IProject;
 struct TestProcedural {
     RC<world::VoxelResource> voxel_res;
     RC<world::SDFVoxelResource> sdf_res;
     RC<world::GaussianSplatResource> gus_res;
     TestProcedural();
     ~TestProcedural();
-    void init();
+    void init(IProject* proj);
     void _init_voxel_res();
     void _init_sdf_res();
     void _init_gs_res();

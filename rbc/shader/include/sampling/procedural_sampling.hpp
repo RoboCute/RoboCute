@@ -18,7 +18,7 @@ struct ProceduralID {
     uint _id;
     uint mat_idx;
     uint mat_offset;
-    uint sh_offset; // only for SH probe (3DGS)
+    uint sh_degree;
     uint type_id() {
         return _id >> 28u;
     }
@@ -755,15 +755,15 @@ static bool _sample_proccedural(
     geometry.procedural_id.set_id(type_id, gs.buffer_id);
     geometry.procedural_id.mat_idx = hit.prim;
     geometry.procedural_id.mat_offset = gs.mat_buffer_offset;
-    geometry.procedural_id.sh_offset = gs.sh_offset;
-    
+    geometry.procedural_id.sh_degree = gs.sh_degree;
+
     // Transform ray to probe's local space (translate and rotate)
     float3 ro = ray.origin() - float3(probe.position[0], probe.position[1], probe.position[2]);
     float3 rd = ray.dir();
-    
+
     // Rotate ray by inverse rotation (conjugate since rotation is unit quaternion)
     float4 q = probe.rotation;
-    
+
     // Apply inverse rotation to ray origin and direction
     // Quaternion rotation: v' = q * v * q^-1
     // For vector rotation (w=0): q * (v, 0) * q^-1
@@ -773,25 +773,25 @@ static bool _sample_proccedural(
         t = geometry::QuaternionMultiply(t, geometry::QuaternionInvert(rot));
         return t.xyz;
     };
-    
+
     ro = rotate_vector(q, ro);
     rd = rotate_vector(q, rd);
-    
+
     // Intersect with ellipsoid using scale as radius
     float3 scale = float3(probe.scale[0], probe.scale[1], probe.scale[2]);
     float3 normal;
     float2 distBound = float2(0.0f, hit_dist);
     float d = shadertoy::iEllipsoid(ro, rd, distBound, normal, scale);
-    
+
     if (d >= PROCEDURAL_TRACE_MAX_DIST) {
         return false;
     }
-    
+
     // Transform normal from local space back to world space
     // The normal from iEllipsoid is in the rotated (but not translated) space
     geometry.normal = normalize(rotate_vector(geometry::QuaternionInvert(q), normal));
     hit_dist = d;
-    
+
     return true;
 }
 using PolymorphicGeometry = stdex::type_list<

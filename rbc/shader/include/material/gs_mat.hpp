@@ -58,9 +58,11 @@ struct OpenPBRParticle {
         static bool transform_to_params(
             BindlessBuffer &buffer_heap,
             BindlessImage &image_heap,
-            uint mat_type,
+            uint procedural_type,
+            uint mat_heap_index,
             uint mat_index,
             uint mat_byte_offset,
+            uint sh_degree,
             auto &params,
             float3 input_dir,
             bool &reject,

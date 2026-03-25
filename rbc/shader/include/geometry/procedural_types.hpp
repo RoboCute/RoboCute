@@ -25,8 +25,8 @@ struct VoxelSurface {
 struct GaussianSplatingGeometry {
     uint buffer_id;
     uint probe_offset;
-    uint sh_offset;
     uint mat_buffer_offset;
+    uint sh_degree;
 };
 
 struct SDFMap {
@@ -37,7 +37,11 @@ struct SDFMap {
     float3 uvw_scale;
     float3 uvw_offset;
 };
-
+enum ProceduralTypeID {
+    Voxel = 0,
+    SDF = 1,
+    GaussianSplat = 2
+};
 struct ProceduralType {
     uint type;
     uint meta_byte_offset;

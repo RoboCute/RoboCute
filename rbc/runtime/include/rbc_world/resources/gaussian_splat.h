@@ -60,7 +60,7 @@ private:
 
     /// Offsets for structure-of-arrays layout in _device_buffer
 
-    DeviceBuffer _device_buffer;
+    RC<DeviceBuffer> _device_buffer;
 
     /// AABB buffer for procedural primitive (one AABB per Gaussian)
     luisa::compute::Buffer<luisa::compute::AABB> _aabb_buffer;
@@ -103,15 +103,15 @@ public:
     }
 
     /// Get the size of OpenPBRParticle array in bytes
-    [[nodiscard]] uint64_t material_data_size_bytes() const {
-        return _size_align(static_cast<uint64_t>(_num_gaussians) * sizeof(material::OpenPBRParticle));
-    }
+    // [[nodiscard]] uint64_t material_data_size_bytes() const {
+    //     return _size_align(static_cast<uint64_t>(_num_gaussians) * sizeof(material::OpenPBRParticle));
+    // }
 
     /// Get offset to SH data
     [[nodiscard]] auto sh_offset() const { return probe_data_size_bytes(); }
 
     /// Get offset to material data
-    [[nodiscard]] auto material_offset() const { return sh_offset() + sh_data_size_bytes(); }
+    // [[nodiscard]] auto material_offset() const { return sh_offset() + sh_data_size_bytes(); }
 
     /// Host-view getters (read-only access to host data)
     /// Returns span to GaussianProbe array
@@ -124,11 +124,11 @@ public:
     [[nodiscard]] luisa::span<float> host_sh_coeffs();
 
     /// Returns span to OpenPBRParticle array
-    [[nodiscard]] luisa::span<material::OpenPBRParticle const> host_materials() const;
-    [[nodiscard]] luisa::span<material::OpenPBRParticle> host_materials();
+    // [[nodiscard]] luisa::span<material::OpenPBRParticle const> host_materials() const;
+    // [[nodiscard]] luisa::span<material::OpenPBRParticle> host_materials();
 
     /// Returns the underlying device buffer
-    [[nodiscard]] DeviceBuffer const &device_buffer() const { return _device_buffer; }
+    [[nodiscard]] DeviceBuffer const &device_buffer() const { return *_device_buffer; }
 
     /// Returns the AABB buffer for procedural primitive
     [[nodiscard]] luisa::compute::Buffer<luisa::compute::AABB> const &aabb_buffer() const { return _aabb_buffer; }

@@ -2,6 +2,7 @@
 #include <rbc_importer/mesh_importer_obj.h>
 #include <rbc_importer/mesh_importer_gltf.h>
 #include <rbc_importer/mesh_importer_ply.h>
+#include <rbc_importer/gs_importer_ply.h>
 #include <rbc_importer/mesh_importer_fbx.h>
 #include <rbc_importer/mesh_importer_stl.h>
 #include <rbc_importer/mesh_importer_3ds.h>
@@ -41,6 +42,9 @@ LUISA_EXPORT_API void register_builtin_importers() {
 
     static PlyMeshImporter ply_mesh_importer;
     registry.register_importer(&ply_mesh_importer);
+
+    static PlyGaussianSplatImporter ply_gs_importer;
+    registry.register_importer(&ply_gs_importer);
 
     static StlMeshImporter stl_mesh_importer;
     registry.register_importer(&stl_mesh_importer);
