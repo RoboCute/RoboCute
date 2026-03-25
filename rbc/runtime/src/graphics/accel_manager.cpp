@@ -97,6 +97,8 @@ void AccelManager::dispose_accel(CommandList &cmdlist, DisposeQueue &disp_queue)
             if constexpr (std::is_same_v<T, MeshManager::MeshData *>) {
                 disp_queue.dispose_after_queue(std::move(t->pack.mesh));
             } else {
+                if (t)
+                    disp_queue.dispose_after_queue(std::move(t));
                 // Procedural
             }
         });
@@ -565,6 +567,8 @@ void AccelManager::build_accel(CommandList &cmdlist) {
 }
 
 AccelManager::~AccelManager() {
+    _accel.reset();
+    _accel_elements.clear();
 }
 void AccelManager::update_last_transform(
     CommandList &cmdlist) {

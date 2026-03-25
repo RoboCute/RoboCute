@@ -42,5 +42,6 @@ public:
 	DisposeQueue() = default;
 	DisposeQueue(DisposeQueue const&) = delete;
 	DisposeQueue(DisposeQueue&&) = default;
+	~DisposeQueue();
 };
 }// namespace rbc
