@@ -18,16 +18,8 @@ protected:
     virtual ~ProceduralResource() = default;
 
 public:
-    /// Check if this resource has a procedural primitive created
-    [[nodiscard]] virtual bool has_procedural_primitive() const = 0;
-
     /// Check if procedural primitive needs to be rebuilt
     [[nodiscard]] virtual bool is_procedural_dirty() const = 0;
-
-    /// Get the procedural primitive
-    /// Valid after emplace_procedural_instance or build_procedural_primitive
-    [[nodiscard]] virtual luisa::compute::ProceduralPrimitive const &procedural_primitive() const = 0;
-
     /// Get the procedural instance ID in AccelManager
     [[nodiscard]] virtual uint32_t procedural_instance_id() const = 0;
 
@@ -35,6 +27,7 @@ public:
     /// Creates the AABB buffer and ProceduralPrimitive BLAS
     virtual void build_procedural_primitive(
         luisa::compute::CommandList &cmdlist,
+        luisa::compute::ProceduralPrimitive &procedural_prim,
         DisposeQueue &disp_queue) = 0;
 
     /// Emplace this resource as a procedural instance in the acceleration structure

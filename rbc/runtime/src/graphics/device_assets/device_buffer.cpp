@@ -147,7 +147,7 @@ void DeviceBuffer::discard_host() {
 void DeviceBuffer::sync_host_size_to_device() {
     if (_buffer && _buffer.size_bytes() != _host_data.size()) {
         _host_data.resize_uninitialized(_buffer.size_bytes());
-    } else {
+    } else if (!_buffer) {
         _host_data = {};
     }
 }

@@ -10,7 +10,7 @@ namespace material {
 
 struct OpenPBRParticle {
     struct Weight {
-        float base{1.0f};
+		std::array<float, 3> albedo{1.0f, 1.0f, 1.0f};
         float diffuse_roughness{0.0f};
         float specular{1.0f};
         float metallic{0.0f};
@@ -39,6 +39,11 @@ struct OpenPBRParticle {
         float transmission_dispersion_abbe_number{20.0f};
     } transmission;
 
+    struct Base {
+		std::array<float, 3> albedo{1.0f, 1.0f, 1.0f};
+	} base;
+
+
     struct Coat {
         std::array<float, 3> coat_color{1.0f, 1.0f, 1.0f};
         float coat_roughness{0.0f};
@@ -48,18 +53,15 @@ struct OpenPBRParticle {
         float coat_darkening{1.0f};
         float coat_roughening{1.0f};
     } coat;
-    
+
     SHADER_CODE(
         static bool transform_to_params(
             BindlessBuffer &buffer_heap,
             BindlessImage &image_heap,
             uint mat_type,
             uint mat_index,
+            uint mat_byte_offset,
             auto &params,
-            uint texture_filter,
-            vt::VTMeta vt_meta,
-            float2 uv,
-            float4 ddxy,
             float3 input_dir,
             bool &reject,
             float3 world_pos,

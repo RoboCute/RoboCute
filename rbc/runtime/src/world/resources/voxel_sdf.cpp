@@ -47,6 +47,7 @@ void SDFVoxelResource::_compute_aabb(CommandList &cmdlist) {
 
 void SDFVoxelResource::build_procedural_primitive(
     luisa::compute::CommandList &cmdlist,
+    luisa::compute::ProceduralPrimitive &procedural_prim,
     DisposeQueue &disp_queue) {
     std::lock_guard lck{_async_mtx};
 
@@ -89,7 +90,7 @@ uint SDFVoxelResource::emplace_procedural_instance(
 
     // Create procedural primitive if needed
     if (!_procedural_prim.valid() || _procedural_prim_dirty) {
-        build_procedural_primitive(cmdlist, disp_queue);
+        build_procedural_primitive(cmdlist, _procedural_prim, disp_queue);
     }
 
     if (!_procedural_prim.valid()) {

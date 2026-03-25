@@ -408,7 +408,6 @@ static IntegratorResult sample_material(
                 g_image_heap,
                 procedural_geometry.procedural_id,
                 basic_param,
-                vt_meta,
                 input_dir,
                 world_pos,
                 reject);
@@ -490,7 +489,6 @@ static IntegratorResult sample_material(
                 g_image_heap,
                 procedural_geometry.procedural_id,
                 extra_param,
-                vt_meta,
                 input_dir,
                 world_pos,
                 reject);

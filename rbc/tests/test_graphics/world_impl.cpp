@@ -2383,10 +2383,6 @@ bool GaussianSplatResource::empty(void *this_) {
     auto c = static_cast<world::GaussianSplatResource *>(this_);
     return c->empty();
 }
-bool GaussianSplatResource::has_procedural_primitive(void *this_) {
-    auto c = static_cast<world::GaussianSplatResource *>(this_);
-    return c->has_procedural_primitive();
-}
 uint64_t GaussianSplatResource::host_data_size_bytes(void *this_) {
     auto c = static_cast<world::GaussianSplatResource *>(this_);
     return c->host_data_size_bytes();
@@ -2422,10 +2418,6 @@ bool VoxelResource::empty(void *this_) {
     auto c = static_cast<world::VoxelResource *>(this_);
     return c->empty();
 }
-bool VoxelResource::has_procedural_primitive(void *this_) {
-    auto c = static_cast<world::VoxelResource *>(this_);
-    return c->has_procedural_primitive();
-}
 uint64_t VoxelResource::host_data_size_bytes(void *this_) {
     auto c = static_cast<world::VoxelResource *>(this_);
     return c->host_data_size_bytes();
@@ -2460,10 +2452,6 @@ bool SDFVoxelResource::empty(void *this_) {
 luisa::uint3 SDFVoxelResource::grid_size(void *this_) {
     auto c = static_cast<world::SDFVoxelResource *>(this_);
     return c->grid_size();
-}
-bool SDFVoxelResource::has_procedural_primitive(void *this_) {
-    auto c = static_cast<world::SDFVoxelResource *>(this_);
-    return c->has_procedural_primitive();
 }
 uint64_t SDFVoxelResource::host_data_size_bytes(void *this_) {
     auto c = static_cast<world::SDFVoxelResource *>(this_);

@@ -14,16 +14,16 @@ extern Accel &g_accel;
 namespace luisa::shader {
 struct ProceduralID {
     uint _id;
-    uint prim_id;
+    uint mat_idx;
     uint mat_offset;
     uint type_id() {
         return _id >> 28u;
     }
-    uint user_id() {
+    uint mat_heap_id() {
         return _id & ((1u << 28u) - 1);
     }
-    void set_id(uint type, uint user_id) {
-        _id = (type << 28u) | (user_id & ((1u << 28u) - 1));
+    void set_id(uint type, uint mat_heap_id) {
+        _id = (type << 28u) | (mat_heap_id & ((1u << 28u) - 1));
     }
 };
 struct ProceduralGeometry {
@@ -644,7 +644,7 @@ static bool _sample_proccedural(
     geometry.normal[2] = local_normal.z;
     geometry.procedural_id.set_id(type_id, voxel_map.mat_buffer_id);
     geometry.procedural_id.mat_offset = voxel_map.mat_buffer_offset;
-    geometry.procedural_id.prim_id = hit.prim;
+    geometry.procedural_id.mat_idx = hit.prim;
     return true;
 }
 // SDF
@@ -690,7 +690,7 @@ static bool _sample_proccedural(
         geometry.normal[2] = box_normal.z;
         geometry.procedural_id.set_id(type_id, sdf_map.mat_buffer_id);
         geometry.procedural_id.mat_offset = sdf_map.mat_buffer_offset;
-        geometry.procedural_id.prim_id = hit.prim;
+        geometry.procedural_id.mat_idx = hit.prim;
         hit_dist = local_hit_dist.x;
         return true;
     } else {
@@ -735,7 +735,7 @@ static bool _sample_proccedural(
         geometry.normal[2] = local_normal.z;
         geometry.procedural_id.set_id(type_id, sdf_map.mat_buffer_id);
         geometry.procedural_id.mat_offset = sdf_map.mat_buffer_offset;
-        geometry.procedural_id.prim_id = hit.prim;
+        geometry.procedural_id.mat_idx = hit.prim;
     }
     return true;
 }

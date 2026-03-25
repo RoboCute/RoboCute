@@ -40,7 +40,6 @@ private:
     geometry::VoxelSurface _voxel_surface;
 
     // Procedural primitive for ray tracing integration
-    luisa::compute::ProceduralPrimitive _procedural_prim;
     uint32_t _procedural_instance_id{~0u};///< Instance ID in AccelManager
     bool _procedural_prim_dirty{true};    ///< Flag to indicate if AABB needs rebuild
 
@@ -59,7 +58,7 @@ public:
 
     /// Get the total size of AABB data in bytes
     [[nodiscard]] uint64_t aabb_data_size_bytes() const {
-        return _num_voxels * sizeof(luisa::compute::AABB);
+        return ((_num_voxels * sizeof(luisa::compute::AABB)) + 15ull) & (~15ull);
     }
 
     /// Get the material offset in bytes (AABB data comes first)
@@ -69,7 +68,7 @@ public:
 
     /// Get the total buffer size including AABB and material data
     [[nodiscard]] uint64_t total_buffer_size_bytes() const {
-        return _num_voxels * (sizeof(luisa::compute::AABB) + sizeof(material::OpenPBRParticle));
+        return aabb_data_size_bytes() + _num_voxels * sizeof(material::OpenPBRParticle);
     }
 
     /// Get the total size of host data in bytes (AABB + material data)
@@ -102,16 +101,9 @@ public:
 
     rbc::coroutine _async_load() override;
 
-    // Procedural primitive interface for ray tracing integration
-
-    /// Check if this voxel resource has a procedural primitive created
-    [[nodiscard]] bool has_procedural_primitive() const override { return _procedural_prim.valid(); }
 
     /// Check if procedural primitive needs to be rebuilt
     [[nodiscard]] bool is_procedural_dirty() const override { return _procedural_prim_dirty; }
-
-    /// Get the procedural primitive (valid after emplace_procedural_instance or build_procedural_primitive)
-    [[nodiscard]] luisa::compute::ProceduralPrimitive const &procedural_primitive() const override { return _procedural_prim; }
 
     /// Get the procedural instance ID in AccelManager
     [[nodiscard]] uint32_t procedural_instance_id() const override { return _procedural_instance_id; }
@@ -120,6 +112,7 @@ public:
     /// Creates the AABB buffer and ProceduralPrimitive BLAS
     void build_procedural_primitive(
         luisa::compute::CommandList &cmdlist,
+        luisa::compute::ProceduralPrimitive& procedural_prim,
         DisposeQueue &disp_queue) override;
 
     /// Emplace this voxel resource as a procedural instance in the acceleration structure

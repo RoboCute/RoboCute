@@ -19,28 +19,30 @@ inline bool procedural_transform_to_params(
     BindlessImage &image_heap,
     ProceduralID procedural_id,
     auto &params,
-    vt::VTMeta vt_meta,
     float3 input_dir,
     float3 world_pos,
     bool &reject,
     auto &&...vars) {
     // TODO procedural support, need a special material type.
     // Something like this:
-    auto openpebr = buffer_heap.byte_buffer_read<OpenPBRParticle>(
-        procedural_id.user_id(),
-        procedural_id.prim_id * sizeof(OpenPBRParticle) + procedural_id.mat_offset
-    );
-    if (procedural_id.user_id() == ((1u << 28u) - 1)) {
+    if (procedural_id.mat_heap_id() == ((1u << 28u) - 1)) {
         if constexpr (requires { params.base; }) {
             params.base.color = float3(1, 1, 1);
         }
+        return true;
     } else {
-        if constexpr (requires { params.base; }) {
-            sampling::PCGSampler sampler(uint2(procedural_id.user_id(), procedural_id.prim_id));
-            params.base.color = sampler.next3f();
-        }
+        return OpenPBRParticle::transform_to_params(
+            buffer_heap,
+            image_heap,
+            procedural_id.mat_heap_id(),
+            procedural_id.mat_idx,
+            procedural_id.mat_offset,
+            params,
+            input_dir,
+            reject,
+            world_pos, vars...
+        );
     }
 
-    return true;
 }
 }// namespace material

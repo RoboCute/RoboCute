@@ -8,43 +8,22 @@
 namespace material {
 
 inline bool OpenPBRParticle::transform_to_params(
-    BindlessBuffer& buffer_heap,
-    BindlessImage& image_heap,
+    BindlessBuffer &buffer_heap,
+    BindlessImage &image_heap,
     uint mat_type,
     uint mat_index,
-    auto& params,
-    uint texture_filter,
-    vt::VTMeta vt_meta,
-    float2 uv,
-    float4 ddxy,
+    uint mat_byte_offset,
+    auto &params,
     float3 input_dir,
-    bool& reject,
+    bool &reject,
     float3 world_pos,
-    auto&&...) {
-    
-    auto read_tex = [&](MatImageHandle const& tex) {
-        uint min_level;
-        uint dst_level;
-        auto v = vt::sample_vt(
-            buffer_heap,
-            image_heap,
-            vt_meta,
-            tex,
-            uv,
-            ddxy.xy,
-            ddxy.zw,
-            min_level,
-            dst_level,
-            texture_filter, Address::REPEAT);
-        reject |= min_level > dst_level;
-        return v;
-    };
+    auto &&...) {
 
     // Weight
     if constexpr (requires { params.weight; }) {
         auto weight = buffer_heap.uniform_idx_byte_buffer_read<OpenPBRParticle::Weight>(
-            mat_type, mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, weight));
-        params.weight.base = weight.base;
+            mat_type, mat_byte_offset + mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, weight));
+        params.weight.base = 1.0;
         params.weight.diffuse_roughness = weight.diffuse_roughness;
         params.weight.specular = weight.specular;
         params.weight.metalness = weight.metallic;
@@ -60,7 +39,7 @@ inline bool OpenPBRParticle::transform_to_params(
     // Specular
     if constexpr (requires { params.specular; }) {
         auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBRParticle::Specular>(
-            mat_type, mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, specular));
+            mat_type, mat_byte_offset + mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, specular));
         params.specular.color = float3(mat.specular_color);
         params.specular.roughness = mat.roughness;
         params.specular.roughness_anisotropy = mat.roughness_anisotropy;
@@ -70,13 +49,15 @@ inline bool OpenPBRParticle::transform_to_params(
     // Emission
     if constexpr (requires { params.emission; }) {
         auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBRParticle::Emission>(
-            mat_type, mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, emission));
+            mat_type, mat_byte_offset + mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, emission));
         params.emission.luminance = float3(mat.luminance);
     }
 
     // Base - OpenPBRParticle doesn't have a base color, use default white
     if constexpr (requires { params.base; }) {
-        params.base.color = float3(1.0f);
+        auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBRParticle::Base>(
+            mat_type, mat_byte_offset + mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, base));
+        params.base.color = float3(mat.albedo);
     }
 
     // Subsurface - OpenPBRParticle doesn't have subsurface data
@@ -89,10 +70,10 @@ inline bool OpenPBRParticle::transform_to_params(
     // Transmission
     if constexpr (requires { params.transmission; }) {
         auto weight = buffer_heap.uniform_idx_byte_buffer_read<OpenPBRParticle::Weight>(
-            mat_type, mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, weight));
+            mat_type, mat_byte_offset + mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, weight));
         if (weight.transmission > 0.f) {
             auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBRParticle::Transmission>(
-                mat_type, mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, transmission));
+                mat_type, mat_byte_offset + mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, transmission));
             params.transmission.color = float3(mat.transmission_color);
             params.transmission.depth = mat.transmission_depth;
             params.transmission.scatter = float3(mat.transmission_scatter);
@@ -105,10 +86,10 @@ inline bool OpenPBRParticle::transform_to_params(
     // Coat
     if constexpr (requires { params.coat; }) {
         auto weight = buffer_heap.uniform_idx_byte_buffer_read<OpenPBRParticle::Weight>(
-            mat_type, mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, weight));
+            mat_type, mat_byte_offset + mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, weight));
         if (weight.coat > 0.f) {
             auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBRParticle::Coat>(
-                mat_type, mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, coat));
+                mat_type, mat_byte_offset + mat_index * sizeof(OpenPBRParticle) + offsetof(OpenPBRParticle, coat));
             params.coat.color = float3(mat.coat_color);
             params.coat.roughness = mat.coat_roughness;
             params.coat.roughness_anisotropy = mat.coat_roughness_anisotropy;

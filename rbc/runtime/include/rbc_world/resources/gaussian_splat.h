@@ -112,16 +112,8 @@ public:
 
     rbc::coroutine _async_load() override;
 
-    // Procedural primitive interface for ray tracing integration
-
-    /// Check if this Gaussian splat has a procedural primitive created
-    [[nodiscard]] bool has_procedural_primitive() const override { return _procedural_prim.valid(); }
-
     /// Check if procedural primitive needs to be rebuilt
     [[nodiscard]] bool is_procedural_dirty() const override { return _procedural_prim_dirty; }
-
-    /// Get the procedural primitive (valid after emplace_procedural_instance or build_procedural_primitive)
-    [[nodiscard]] luisa::compute::ProceduralPrimitive const &procedural_primitive() const override { return _procedural_prim; }
 
     /// Get the procedural instance ID in AccelManager
     [[nodiscard]] uint32_t procedural_instance_id() const override { return _procedural_instance_id; }
@@ -130,6 +122,7 @@ public:
     /// Creates the AABB buffer (one per Gaussian) and ProceduralPrimitive BLAS
     void build_procedural_primitive(
         luisa::compute::CommandList &cmdlist,
+        luisa::compute::ProceduralPrimitive &procedural_prim,
         DisposeQueue &disp_queue) override;
 
     /// Emplace this Gaussian splat as a procedural instance in the acceleration structure

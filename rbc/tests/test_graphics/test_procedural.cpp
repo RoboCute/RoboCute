@@ -43,6 +43,64 @@ void TestProcedural::_init_voxel_res() {
         aabbs[i].packed_min = {min_value.x, min_value.y, min_value.z};
         aabbs[i].packed_max = {max_value.x, max_value.y, max_value.z};
     }
+    auto materials = voxel_res->host_materials();
+    // Initialize materials with random properties
+    for (uint32_t i = 0; i < num_voxels; ++i) {
+        auto& mat = materials[i];
+        // Random base color (HSV-like variety)
+        float hue = static_cast<float>(rng.next(0, 360));
+        float sat = static_cast<float>(rng.next(50, 100)) / 100.0f;
+        float val = static_cast<float>(rng.next(60, 100)) / 100.0f;
+        // HSV to RGB conversion
+        float c = val * sat;
+        float x = c * (1.0f - std::abs(std::fmod(hue / 60.0f, 2.0f) - 1.0f));
+        float m = val - c;
+        float r, g, b;
+        if (hue < 60.0f) {
+            r = c; g = x; b = 0;
+        } else if (hue < 120.0f) {
+            r = x; g = c; b = 0;
+        } else if (hue < 180.0f) {
+            r = 0; g = c; b = x;
+        } else if (hue < 240.0f) {
+            r = 0; g = x; b = c;
+        } else if (hue < 300.0f) {
+            r = x; g = 0; b = c;
+        } else {
+            r = c; g = 0; b = x;
+        }
+        mat.weight.diffuse_roughness = static_cast<float>(rng.next(0, 50)) / 100.0f;
+        mat.weight.specular = static_cast<float>(rng.next(20, 80)) / 100.0f;
+        mat.weight.metallic = static_cast<float>(rng.next(0, 30)) / 100.0f;
+        mat.weight.transmission = 0.0f;
+        mat.weight.coat = static_cast<float>(rng.next(0, 20)) / 100.0f;
+        mat.base.albedo = {r + m, g + m, b + m};
+        mat.specular.roughness = static_cast<float>(rng.next(10, 60)) / 100.0f;
+        mat.specular.roughness_anisotropy = 0.0f;
+        mat.specular.roughness_anisotropy_angle = 0.0f;
+        mat.specular.ior = 1.4f + static_cast<float>(rng.next(0, 20)) / 100.0f;
+        mat.emission.luminance = {0.0f, 0.0f, 0.0f};
+        // Random emission for some voxels (10% chance)
+        if (rng.next(0, 9) == 0) {
+            float emission_strength = static_cast<float>(rng.next(10, 50)) / 10.0f;
+            mat.emission.luminance = {(r + m) * emission_strength, 
+                                      (g + m) * emission_strength, 
+                                      (b + m) * emission_strength};
+        }
+        mat.transmission.transmission_color = {1.0f, 1.0f, 1.0f};
+        mat.transmission.transmission_depth = 0.0f;
+        mat.transmission.transmission_scatter = {0.0f, 0.0f, 0.0f};
+        mat.transmission.transmission_scatter_anisotropy = 0.0f;
+        mat.transmission.transmission_dispersion_scale = 0.0f;
+        mat.transmission.transmission_dispersion_abbe_number = 20.0f;
+        mat.coat.coat_color = {1.0f, 1.0f, 1.0f};
+        mat.coat.coat_roughness = static_cast<float>(rng.next(0, 30)) / 100.0f;
+        mat.coat.coat_roughness_anisotropy = 0.0f;
+        mat.coat.coat_roughness_anisotropy_angle = 0.0f;
+        mat.coat.coat_ior = 1.6f;
+        mat.coat.coat_darkening = 1.0f;
+        mat.coat.coat_roughening = 1.0f;
+    }
 
     // Install and emplace as procedural instance
     voxel_res->install();
@@ -99,13 +157,13 @@ void TestProcedural::_init_gs_res() {
 
 void TestProcedural::dispose() {
     // Remove procedural instances if they exist
-    if (voxel_res && voxel_res->has_procedural_primitive()) {
+    if (voxel_res) {
         voxel_res->remove_procedural_instance();
     }
-    if (sdf_res && sdf_res->has_procedural_primitive()) {
+    if (sdf_res) {
         sdf_res->remove_procedural_instance();
     }
-    if (gus_res && gus_res->has_procedural_primitive()) {
+    if (gus_res) {
         gus_res->remove_procedural_instance();
     }
     voxel_res.reset();

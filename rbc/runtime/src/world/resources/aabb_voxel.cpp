@@ -35,9 +35,10 @@ void VoxelResource::_upload_aabbs() {
 
 void VoxelResource::build_procedural_primitive(
     luisa::compute::CommandList &cmdlist,
+    luisa::compute::ProceduralPrimitive &procedural_prim,
     DisposeQueue &disp_queue) {
     std::lock_guard lck{_async_mtx};
-    if (_procedural_prim.valid() && (!_procedural_prim_dirty))
+    if (procedural_prim.valid() && (!_procedural_prim_dirty))
         return;
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return;
@@ -48,12 +49,12 @@ void VoxelResource::build_procedural_primitive(
     _upload_aabbs();
 
     // Create procedural primitive (BLAS) with AABBs
-    _procedural_prim = device.create_procedural_primitive(
+    procedural_prim = device.create_procedural_primitive(
         aabb_buffer(),
         luisa::compute::AccelOption{.allow_compaction = false});
 
     // Build the procedural primitive
-    cmdlist << _procedural_prim.build();
+    cmdlist << procedural_prim.build();
 
     _procedural_prim_dirty = false;
 }
@@ -70,9 +71,10 @@ uint VoxelResource::emplace_procedural_instance(
     DisposeQueue &disp_queue = sm.dispose_queue();
 
     // Create procedural primitive if needed
-    build_procedural_primitive(cmdlist, disp_queue);
+    luisa::compute::ProceduralPrimitive procedural_prim;
+    build_procedural_primitive(cmdlist, procedural_prim, disp_queue);
     std::lock_guard lck{_async_mtx};
-    if (!_procedural_prim.valid()) {
+    if (!procedural_prim.valid()) {
         return ~0u;// Failed to create procedural primitive
     }
 
@@ -81,7 +83,8 @@ uint VoxelResource::emplace_procedural_instance(
     if (_voxel_surface.aabb_buffer_heap_idx == ~0u) {
         _voxel_surface.aabb_buffer_heap_idx = sm.bindless_allocator().allocate_buffer(aabb_buffer());
     }
-    _voxel_surface.aabb_buffer_offset = material_offset_bytes();
+    _voxel_surface.mat_buffer_id = _voxel_surface.aabb_buffer_heap_idx;
+    _voxel_surface.mat_buffer_offset = material_offset_bytes();
 
     // Emplace the procedural instance in AccelManager
     _procedural_instance_id = accel_manager.emplace_procedural_instance(
@@ -90,7 +93,7 @@ uint VoxelResource::emplace_procedural_instance(
         buffer_allocator,
         uploader,
         disp_queue,
-        std::move(_procedural_prim),
+        std::move(procedural_prim),
         _voxel_surface,
         transform,
         visibility_mask);
@@ -236,7 +239,7 @@ luisa::span<material::OpenPBRParticle> VoxelResource::host_materials() {
 
 luisa::compute::BufferView<luisa::compute::AABB> VoxelResource::aabb_buffer() const {
     if (!_aabb_device_buffer) return {};
-    return _aabb_device_buffer->get_buffer<luisa::compute::AABB>();
+    return _aabb_device_buffer->get_buffer<luisa::compute::AABB>().subview(0, _num_voxels);
 }
 
 bool VoxelResource::_install() {
