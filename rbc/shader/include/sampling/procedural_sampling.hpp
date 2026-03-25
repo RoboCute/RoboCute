@@ -82,7 +82,7 @@ static float dot2(float3 v) { return dot(v, v); }
 
 // Plane
 static float iPlane(float3 ro, float3 rd, float2 distBound, float3 &normal,
-             float3 planeNormal, float planeDist) {
+                    float3 planeNormal, float planeDist) {
     float a = dot(rd, planeNormal);
     float d = -(dot(ro, planeNormal) + planeDist) / a;
     if (a > 0. || d < distBound.x || d > distBound.y) {
@@ -95,7 +95,7 @@ static float iPlane(float3 ro, float3 rd, float2 distBound, float3 &normal,
 
 // Sphere:          https://www.shadertoy.com/view/4d2XWV
 static float iSphere(float3 ro, float3 rd, float2 distBound, float3 &normal,
-              float sphereRadius) {
+                     float sphereRadius) {
     float b = dot(ro, rd);
     float c = dot(ro, ro) - sphereRadius * sphereRadius;
     float h = b * b - c;
@@ -119,7 +119,7 @@ static float iSphere(float3 ro, float3 rd, float2 distBound, float3 &normal,
 
 // Box:             https://www.shadertoy.com/view/ld23DV
 static float iBox(float3 ro, float3 rd, float2 distBound, float3 &normal,
-           float3 boxSize) {
+                  float3 boxSize) {
     float3 m = sign_float(rd) / max(abs(rd), float3(1e-8f));
     float3 n = m * ro;
     float3 k = abs(m) * boxSize;
@@ -167,7 +167,7 @@ static float2 iBoxSimple(float3 ro, float3 rd, float3 boxSize, float3 &normal) {
 
 // Capped Cylinder: https://www.shadertoy.com/view/4lcSRn
 static float iCylinder(float3 ro, float3 rd, float2 distBound, float3 &normal,
-                float3 pa, float3 pb, float ra) {
+                       float3 pa, float3 pb, float ra) {
     float3 ca = pb - pa;
     float3 oc = ro - pa;
 
@@ -203,7 +203,7 @@ static float iCylinder(float3 ro, float3 rd, float2 distBound, float3 &normal,
 
 // Torus:           https://www.shadertoy.com/view/4sBGDy
 static float iTorus(float3 ro, float3 rd, float2 distBound, float3 &normal,
-             float2 torus) {
+                    float2 torus) {
     // bounding sphere
     float3 tmpnormal;
     if (iSphere(ro, rd, distBound, tmpnormal, torus.y + torus.x) > distBound.y) {
@@ -318,7 +318,7 @@ static float iTorus(float3 ro, float3 rd, float2 distBound, float3 &normal,
 
 // Capsule:         https://www.shadertoy.com/view/Xt3SzX
 static float iCapsule(float3 ro, float3 rd, float2 distBound, float3 &normal,
-               float3 pa, float3 pb, float r) {
+                      float3 pa, float3 pb, float r) {
     float3 ba = pb - pa;
     float3 oa = ro - pa;
 
@@ -363,7 +363,7 @@ static float iCapsule(float3 ro, float3 rd, float2 distBound, float3 &normal,
 
 // Capped Cone:     https://www.shadertoy.com/view/llcfRf
 static float iCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
-            float3 pa, float3 pb, float ra, float rb) {
+                   float3 pa, float3 pb, float ra, float rb) {
     float3 ba = pb - pa;
     float3 oa = ro - pa;
     float3 ob = ro - pb;
@@ -418,7 +418,7 @@ static float iCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
 
 // Ellipsoid:       https://www.shadertoy.com/view/MlsSzn
 static float iEllipsoid(float3 ro, float3 rd, float2 distBound, float3 &normal,
-                 float3 rad) {
+                        float3 rad) {
     float3 ocn = ro / rad;
     float3 rdn = rd / rad;
 
@@ -443,7 +443,7 @@ static float iEllipsoid(float3 ro, float3 rd, float2 distBound, float3 &normal,
 
 // Rounded Cone:    https://www.shadertoy.com/view/MlKfzm
 static float iRoundedCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
-                   float3 pa, float3 pb, float ra, float rb) {
+                          float3 pa, float3 pb, float ra, float rb) {
     float3 ba = pb - pa;
     float3 oa = ro - pa;
     float3 ob = ro - pb;
@@ -510,7 +510,7 @@ static float iRoundedCone(float3 ro, float3 rd, float2 distBound, float3 &normal
 
 // Triangle:        https://www.shadertoy.com/view/MlGcDz
 static float iTriangle(float3 ro, float3 rd, float2 distBound, float3 &normal,
-                float3 v0, float3 v1, float3 v2) {
+                       float3 v0, float3 v1, float3 v2) {
     float3 v1v0 = v1 - v0;
     float3 v2v0 = v2 - v0;
     float3 rov0 = ro - v0;
@@ -532,7 +532,7 @@ static float iTriangle(float3 ro, float3 rd, float2 distBound, float3 &normal,
 
 // Sphere4:         https://www.shadertoy.com/view/3tj3DW
 static float iSphere4(float3 ro, float3 rd, float2 distBound, float3 &normal,
-               float ra) {
+                      float ra) {
     // -----------------------------
     // solve quartic equation
     // -----------------------------
@@ -739,9 +739,21 @@ static bool _sample_proccedural(
     }
     return true;
 }
+static bool _sample_proccedural(
+    Ray ray,
+    uint type_id,
+    uint user_id,
+    auto hit,
+    auto &rng,
+    float &hit_dist,
+    ProceduralGeometry &geometry,
+    geometry::GaussianSplatingGeometry gs) {
+    return false;
+}
 using PolymorphicGeometry = stdex::type_list<
     geometry::VoxelSurface,
-    geometry::SDFMap>;
+    geometry::SDFMap,
+    geometry::GaussianSplatingGeometry>;
 
 static bool sample_procedural(
     Ray ray,

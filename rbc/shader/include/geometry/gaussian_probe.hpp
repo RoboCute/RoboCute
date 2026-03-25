@@ -9,5 +9,4 @@ struct GaussianProbe {
     std::array<float, 3> position;
     float opacity;
     std::array<float, 3> scale;
-    std::array<float, 9> features; // SH features
 };

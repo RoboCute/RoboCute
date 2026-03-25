@@ -129,12 +129,13 @@ void VoxelResource::remove_procedural_instance() {
 
     std::lock_guard lck{_async_mtx};
 
-    if (_procedural_instance_id == ~0u) {
-        return;// Not emplaced, nothing to do
-    }
     if (_voxel_surface.aabb_buffer_heap_idx != ~0u) {
         sm.bindless_allocator().deallocate_buffer(_voxel_surface.aabb_buffer_heap_idx);
         _voxel_surface.aabb_buffer_heap_idx = ~0u;
+    }
+    
+    if (_procedural_instance_id == ~0u) {
+        return;// Not emplaced, nothing to do
     }
     accel_manager.remove_procedural_instance(
         buffer_allocator,

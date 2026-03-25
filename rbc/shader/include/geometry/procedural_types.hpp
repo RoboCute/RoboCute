@@ -14,25 +14,32 @@ using float4x4 = luisa::float4x4;
 }// namespace geometry
 #endif
 namespace geometry {
-	
+
 struct VoxelSurface {
-	uint aabb_buffer_heap_idx;
-	uint aabb_buffer_offset;// AABB element idx
-	uint mat_buffer_id;
-	uint mat_buffer_offset;
+    uint aabb_buffer_heap_idx;
+    uint aabb_buffer_offset;// AABB element idx
+    uint mat_buffer_id;
+    uint mat_buffer_offset;
+};
+
+struct GaussianSplatingGeometry {
+    uint buffer_id;
+    uint probe_offset;
+    uint sh_offset;
+    uint mat_buffer_offset;
 };
 
 struct SDFMap {
-	uint volume_idx;
-	uint sample_count;
-	uint mat_buffer_id;
-	uint mat_buffer_offset;
-	float3 uvw_scale;
-	float3 uvw_offset;
+    uint volume_idx;
+    uint sample_count;
+    uint mat_buffer_id;
+    uint mat_buffer_offset;
+    float3 uvw_scale;
+    float3 uvw_offset;
 };
 struct ProceduralType {
-	uint type;
-	uint meta_byte_offset;
-	// TODO: material indices
+    uint type;
+    uint meta_byte_offset;
+    // TODO: material indices
 };
 }// namespace geometry

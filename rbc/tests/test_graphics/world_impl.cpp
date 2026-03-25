@@ -2365,45 +2365,6 @@ void SkelMeshComponent::update_render(void *this_) {
     c->update_render();
 }
 
-// GaussianSplatResource implementation
-void *GaussianSplatResource::_create_() {
-    auto p = world::create_object<world::GaussianSplatResource>();
-    manually_add_ref(p);
-    return p;
-}
-void GaussianSplatResource::create_empty(void *this_, uint32_t num_gaussians, uint32_t sh_degree) {
-    auto c = static_cast<world::GaussianSplatResource *>(this_);
-    c->create_empty(num_gaussians, sh_degree);
-}
-uint64_t GaussianSplatResource::data_size_bytes(void *this_) {
-    auto c = static_cast<world::GaussianSplatResource *>(this_);
-    return c->data_size_bytes();
-}
-bool GaussianSplatResource::empty(void *this_) {
-    auto c = static_cast<world::GaussianSplatResource *>(this_);
-    return c->empty();
-}
-uint64_t GaussianSplatResource::host_data_size_bytes(void *this_) {
-    auto c = static_cast<world::GaussianSplatResource *>(this_);
-    return c->host_data_size_bytes();
-}
-bool GaussianSplatResource::is_procedural_dirty(void *this_) {
-    auto c = static_cast<world::GaussianSplatResource *>(this_);
-    return c->is_procedural_dirty();
-}
-uint32_t GaussianSplatResource::num_gaussians(void *this_) {
-    auto c = static_cast<world::GaussianSplatResource *>(this_);
-    return c->num_gaussians();
-}
-uint32_t GaussianSplatResource::procedural_instance_id(void *this_) {
-    auto c = static_cast<world::GaussianSplatResource *>(this_);
-    return c->procedural_instance_id();
-}
-uint32_t GaussianSplatResource::sh_degree(void *this_) {
-    auto c = static_cast<world::GaussianSplatResource *>(this_);
-    return c->sh_degree();
-}
-
 // VoxelResource implementation
 void *VoxelResource::_create_() {
     auto p = world::create_object<world::VoxelResource>();

@@ -15,48 +15,56 @@ struct BufferAllocator;
 struct BufferUploader;
 struct DisposeQueue;
 struct HostBufferManager;
-namespace geometry {
-struct VoxelSurface;
-struct SDFMap;
-}// namespace geometry
+#include <material/gs_mat.hpp>
 #include <geometry/gaussian_probe.hpp>
+#include <geometry/procedural_types.hpp>
 }// namespace rbc
 namespace rbc::world {
 
+/// Spherical Harmonic coefficients for Gaussian splatting
+/// Number of coefficients depends on SH degree: (degree + 1)^2 coefficients per channel
+/// Stored as 3 channels (RGB) of float coefficients
+struct SphereHarmonic {
+
+    /// Get the number of floats per Gaussian for given SH degree
+    [[nodiscard]] static constexpr uint32_t num_floats(uint32_t sh_degree) {
+        return (sh_degree + 1) * (sh_degree + 1) * 3;
+    }
+    /// Get the size in bytes for given SH degree
+    [[nodiscard]] static constexpr uint32_t size_bytes(uint32_t sh_degree) {
+        return num_floats(sh_degree) * sizeof(float);
+    }
+};
+
 /// Resource class for 3D Gaussian Splatting data
 /// Stores Gaussian parameters loaded from PLY files for GPU-accelerated rendering
+///
+/// Memory Layout (Structure of Arrays):
+/// The _device_buffer uses a SoA layout for efficient GPU access:
+/// [0]: array<GaussianProbe, _num_gaussians>
+/// [1]: array<SphereHarmonic, _num_gaussians> (size depends on _sh_degree)
+/// [2]: array<OpenPBRParticle, _num_gaussians>
 struct RBC_RUNTIME_API GaussianSplatResource final : ProceduralResource {
     DECLARE_WORLD_OBJECT_FRIEND(GaussianSplatResource)
     using BaseType = ResourceBaseImpl<GaussianSplatResource>;
     static constexpr BaseObjectType base_object_type_v = BaseObjectType::Resource;
 
 private:
+    geometry::GaussianSplatingGeometry surface;
     RC<DeviceResource> _device_res;
     mutable rbc::shared_atomic_mutex _async_mtx;
-
     // Gaussian data parameters
     uint32_t _num_gaussians{};
-    uint32_t _sh_degree{};///< Spherical harmonics degree (0-3)
 
-    // Host-side Gaussian data stored in a single flattened buffer
-    // Layout: [positions (3N floats)] [features (N*F floats)] [opacity (N floats)]
-    //         [scale (3N floats)] [rotation (4N floats)]
-    // where F = (sh_degree+1)^2 * 3, N = _num_gaussians
+    uint32_t _sh_degree{0};
+
+    /// Offsets for structure-of-arrays layout in _device_buffer
+
     DeviceBuffer _device_buffer;
 
-    // Offsets (in floats) for each component within _host_data
-    uint64_t _pos_offset{0};    ///< Position offset (always 0)
-    uint64_t _feature_offset{0};///< Feature offset
-    uint64_t _opacity_offset{0};///< Opacity offset
-    uint64_t _scale_offset{0};  ///< Scale offset
-    uint64_t _rotq_offset{0};   ///< Rotation offset
-
-    /// Calculate offsets based on _num_gaussians and _sh_degree
-    void _update_offsets();
-
-    // Procedural primitive for ray tracing integration
-    luisa::compute::ProceduralPrimitive _procedural_prim;
+    /// AABB buffer for procedural primitive (one AABB per Gaussian)
     luisa::compute::Buffer<luisa::compute::AABB> _aabb_buffer;
+
     uint32_t _procedural_instance_id{~0u};///< Instance ID in AccelManager
     bool _procedural_prim_dirty{true};    ///< Flag to indicate if AABB needs rebuild
 
@@ -67,10 +75,11 @@ private:
     /// Uses fiber parallelism for large Gaussian counts
     void _compute_all_aabbs(CommandList &cmdlist);
     void _assert_size_align(uint64_t size) const;
+    static constexpr uint64_t _size_align(uint64_t size) {
+        return (size + 15ull) & (~15ull);
+    }
 
 public:
-    /// Decode Gaussian splat data from a PLY file
-    bool decode(luisa::filesystem::path const &path);
 
     /// Check if resource is empty (no Gaussians loaded)
     [[nodiscard]] bool empty() const;
@@ -78,28 +87,51 @@ public:
     /// Get number of Gaussians
     [[nodiscard]] auto num_gaussians() const { return _num_gaussians; }
 
-    /// Get spherical harmonics degree
+    /// Get SH degree
     [[nodiscard]] auto sh_degree() const { return _sh_degree; }
-    /// Get the total number of floats in host data
-    [[nodiscard]] uint64_t host_data_size_bytes() const { return _device_buffer.host_data().size(); }
 
-    /// Get raw host data span
-    [[nodiscard]] luisa::span<GaussianProbe const> host_data() const {
-        auto byte_buffer = _device_buffer.host_data();
-        _assert_size_align(byte_buffer.size_bytes());
-        return {reinterpret_cast<GaussianProbe const *>(byte_buffer.data()), byte_buffer.size_bytes() / sizeof(GaussianProbe)};
-    }
-    [[nodiscard]] luisa::span<GaussianProbe> host_data() {
-        auto byte_buffer = _device_buffer.host_data();
-        _assert_size_align(byte_buffer.size_bytes());
-        return {reinterpret_cast<GaussianProbe *>(byte_buffer.data()), byte_buffer.size_bytes() / sizeof(GaussianProbe)};
+    /// Get total size in bytes
+    [[nodiscard]] uint64_t total_size_bytes() const;
+    /// Get the size of GaussianProbe array in bytes
+    [[nodiscard]] uint64_t probe_data_size_bytes() const {
+        return _size_align(static_cast<uint64_t>(_num_gaussians) * sizeof(GaussianProbe));
     }
 
-    /// Calculate total size of Gaussian data in bytes
-    [[nodiscard]] uint64_t data_size_bytes() const;
+    /// Get the size of SphereHarmonic array in bytes
+    [[nodiscard]] uint64_t sh_data_size_bytes() const {
+        return _size_align(static_cast<uint64_t>(_num_gaussians) * SphereHarmonic::size_bytes(_sh_degree));
+    }
 
-    /// Get the device-side Gaussian splat object
-    [[nodiscard]] DeviceGaussianSplat *device_gaussian_splat() const;
+    /// Get the size of OpenPBRParticle array in bytes
+    [[nodiscard]] uint64_t material_data_size_bytes() const {
+        return _size_align(static_cast<uint64_t>(_num_gaussians) * sizeof(material::OpenPBRParticle));
+    }
+
+    /// Get offset to SH data
+    [[nodiscard]] auto sh_offset() const { return probe_data_size_bytes(); }
+
+    /// Get offset to material data
+    [[nodiscard]] auto material_offset() const { return sh_offset() + sh_data_size_bytes(); }
+
+    /// Host-view getters (read-only access to host data)
+    /// Returns span to GaussianProbe array
+    [[nodiscard]] luisa::span<GaussianProbe const> host_probes() const;
+    [[nodiscard]] luisa::span<GaussianProbe> host_probes();
+
+    /// Returns span to SH coefficients as raw floats
+    /// Size = _num_gaussians * (sh_degree + 1)^2 * 3 floats
+    [[nodiscard]] luisa::span<float const> host_sh_coeffs() const;
+    [[nodiscard]] luisa::span<float> host_sh_coeffs();
+
+    /// Returns span to OpenPBRParticle array
+    [[nodiscard]] luisa::span<material::OpenPBRParticle const> host_materials() const;
+    [[nodiscard]] luisa::span<material::OpenPBRParticle> host_materials();
+
+    /// Returns the underlying device buffer
+    [[nodiscard]] DeviceBuffer const &device_buffer() const { return _device_buffer; }
+
+    /// Returns the AABB buffer for procedural primitive
+    [[nodiscard]] luisa::compute::Buffer<luisa::compute::AABB> const &aabb_buffer() const { return _aabb_buffer; }
 
     /// Create empty Gaussian splat resource with specified parameters
     void create_empty(uint32_t num_gaussians, uint32_t sh_degree);

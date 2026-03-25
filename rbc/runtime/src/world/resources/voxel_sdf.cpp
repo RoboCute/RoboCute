@@ -65,12 +65,12 @@ void SDFVoxelResource::build_procedural_primitive(
     }
 
     // Create procedural primitive (BLAS) with single AABB for the volume
-    _procedural_prim = device.create_procedural_primitive(
+    procedural_prim = device.create_procedural_primitive(
         _aabb_buffer,
         luisa::compute::AccelOption{.allow_compaction = false});
 
     // Build the procedural primitive
-    cmdlist << _procedural_prim.build();
+    cmdlist << procedural_prim.build();
 
     _procedural_prim_dirty = false;
 }
@@ -88,12 +88,13 @@ uint SDFVoxelResource::emplace_procedural_instance(
 
     std::lock_guard lck{_async_mtx};
 
-    // Create procedural primitive if needed
-    if (!_procedural_prim.valid() || _procedural_prim_dirty) {
-        build_procedural_primitive(cmdlist, _procedural_prim, disp_queue);
-    }
+    // Local procedural primitive
+    luisa::compute::ProceduralPrimitive procedural_prim;
 
-    if (!_procedural_prim.valid()) {
+    // Create procedural primitive
+    build_procedural_primitive(cmdlist, procedural_prim, disp_queue);
+
+    if (!procedural_prim.valid()) {
         return ~0u;// Failed to create procedural primitive
     }
 
@@ -103,7 +104,6 @@ uint SDFVoxelResource::emplace_procedural_instance(
         .sample_count = _sample_count,
         .uvw_scale = _uvw_scale,
         .uvw_offset = _uvw_offset};
-
     // Emplace the procedural instance in AccelManager
     _procedural_instance_id = accel_manager.emplace_procedural_instance(
         cmdlist,
@@ -111,10 +111,12 @@ uint SDFVoxelResource::emplace_procedural_instance(
         buffer_allocator,
         uploader,
         disp_queue,
-        std::move(_procedural_prim),
+        std::move(procedural_prim),
         std::move(sdf_map),
         transform,
         visibility_mask);
+
+    _procedural_prim_dirty = false;
 
     return _procedural_instance_id;
 }

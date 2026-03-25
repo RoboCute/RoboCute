@@ -48,8 +48,7 @@ private:
     // Maximum ray march samples for this SDF
     uint32_t _sample_count{256};
 
-    // Procedural primitive for ray tracing integration
-    luisa::compute::ProceduralPrimitive _procedural_prim;
+    // Procedural primitive data for ray tracing integration
     luisa::compute::Buffer<luisa::compute::AABB> _aabb_buffer;
     uint32_t _procedural_instance_id{~0u};///< Instance ID in AccelManager
     bool _procedural_prim_dirty{true};    ///< Flag to indicate if AABB needs rebuild
