@@ -37,6 +37,7 @@ struct SDFMap {
     float3 uvw_scale;
     float3 uvw_offset;
 };
+
 struct ProceduralType {
     uint type;
     uint meta_byte_offset;

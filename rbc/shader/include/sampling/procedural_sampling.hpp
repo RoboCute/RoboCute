@@ -6,6 +6,8 @@
 #include <luisa/resources/volume_heap_extern.hpp>
 #include <utils/heap_indices.hpp>
 #include <std/ex/type_list.hpp>
+#include <geometry/gaussian_probe.hpp>
+#include <geometry/dual_quaternion.hpp>
 #ifndef DEFINED_G_ACCEL
 namespace luisa::shader {
 extern Accel &g_accel;
@@ -16,6 +18,7 @@ struct ProceduralID {
     uint _id;
     uint mat_idx;
     uint mat_offset;
+    uint sh_offset; // only for SH probe (3DGS)
     uint type_id() {
         return _id >> 28u;
     }
@@ -604,7 +607,6 @@ using namespace luisa::shader;
 static bool _sample_proccedural(
     Ray ray,
     uint type_id,
-    uint user_id,
     auto hit,
     auto &rng,
     float &hit_dist,
@@ -651,7 +653,6 @@ static bool _sample_proccedural(
 static bool _sample_proccedural(
     Ray ray,
     uint type_id,
-    uint user_id,
     auto hit,
     auto &rng,
     float &hit_dist,
@@ -742,13 +743,56 @@ static bool _sample_proccedural(
 static bool _sample_proccedural(
     Ray ray,
     uint type_id,
-    uint user_id,
     auto hit,
     auto &rng,
     float &hit_dist,
     ProceduralGeometry &geometry,
     geometry::GaussianSplatingGeometry gs) {
-    return false;
+
+    GaussianProbe probe = g_buffer_heap.byte_buffer_read<GaussianProbe>(
+        gs.buffer_id,
+        gs.probe_offset + hit.prim * sizeof(GaussianProbe));
+    geometry.procedural_id.set_id(type_id, gs.buffer_id);
+    geometry.procedural_id.mat_idx = hit.prim;
+    geometry.procedural_id.mat_offset = gs.mat_buffer_offset;
+    geometry.procedural_id.sh_offset = gs.sh_offset;
+    
+    // Transform ray to probe's local space (translate and rotate)
+    float3 ro = ray.origin() - float3(probe.position[0], probe.position[1], probe.position[2]);
+    float3 rd = ray.dir();
+    
+    // Rotate ray by inverse rotation (conjugate since rotation is unit quaternion)
+    float4 q = probe.rotation;
+    
+    // Apply inverse rotation to ray origin and direction
+    // Quaternion rotation: v' = q * v * q^-1
+    // For vector rotation (w=0): q * (v, 0) * q^-1
+    auto rotate_vector = [&](float4 rot, float3 v) -> float3 {
+        float4 vq = float4(v.x, v.y, v.z, 0.0f);
+        float4 t = geometry::QuaternionMultiply(rot, vq);
+        t = geometry::QuaternionMultiply(t, geometry::QuaternionInvert(rot));
+        return t.xyz;
+    };
+    
+    ro = rotate_vector(q, ro);
+    rd = rotate_vector(q, rd);
+    
+    // Intersect with ellipsoid using scale as radius
+    float3 scale = float3(probe.scale[0], probe.scale[1], probe.scale[2]);
+    float3 normal;
+    float2 distBound = float2(0.0f, hit_dist);
+    float d = shadertoy::iEllipsoid(ro, rd, distBound, normal, scale);
+    
+    if (d >= PROCEDURAL_TRACE_MAX_DIST) {
+        return false;
+    }
+    
+    // Transform normal from local space back to world space
+    // The normal from iEllipsoid is in the rotated (but not translated) space
+    geometry.normal = normalize(rotate_vector(geometry::QuaternionInvert(q), normal));
+    hit_dist = d;
+    
+    return true;
 }
 using PolymorphicGeometry = stdex::type_list<
     geometry::VoxelSurface,
@@ -767,7 +811,7 @@ static bool sample_procedural(
     return PolymorphicGeometry::visit(procedural_type.type, [&]<typename ins>() {
         using type = ins::type;
         auto prim = g_buffer_heap.template byte_buffer_read<type>(heap_indices::buffer_allocator_heap_index, procedural_type.meta_byte_offset);
-        return _sample_proccedural(ray, ins::index, user_id, hit, rng, hit_dist, geometry, prim);
+        return _sample_proccedural(ray, ins::index, hit, rng, hit_dist, geometry, prim);
     });
 }
 }// namespace sampling
