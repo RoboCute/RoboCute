@@ -564,9 +564,9 @@ def main():
             app.call_exit()  # End the loop
     app.set_user_callback(tick_logic)
     # app.set_ground_plane_mode('yes')
-
     # Enable AO mode
-    # render_settings = app.display_cam.render_settings()
+    render_settings = app.display_cam.render_settings()
+    
     # render_settings.set_offline_spp(1)
     # render_settings.set_enable_ao_mode(True)
     # render_settings.set_ao_max_radius(lc.float4(1.5, 1.0, 0.5, 0.2))

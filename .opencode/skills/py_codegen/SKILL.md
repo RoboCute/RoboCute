@@ -1,5 +1,5 @@
 ---
-name: py_world
+name: py_codegen
 description: How to write Python world interface classes in RoboCute
 triggers:
   - file_types: [".py"]

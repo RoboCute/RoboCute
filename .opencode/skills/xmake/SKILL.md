@@ -40,7 +40,7 @@ xmake f --menu
 
 ```bash
 # Build all targets
-xmake
+xmake build
 
 # Build specific target
 xmake <target_name>
