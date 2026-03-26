@@ -5,3 +5,4 @@
 | Scenario | Skill |
 |----------|-------|
 | C++ | `cpp` |
+| Shader Development (Luisa) | `shader` |

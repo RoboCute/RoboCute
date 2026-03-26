@@ -749,6 +749,15 @@ static bool _sample_proccedural(
     ProceduralGeometry &geometry,
     geometry::GaussianSplatingGeometry gs) {
 
+    float4x4 inst_matrix = g_accel.instance_transform(hit.inst);
+    float3 inst_pos = inst_matrix[3].xyz;
+
+    auto inst_local_to_world = float3x3(
+        inst_matrix[0].xyz,
+        inst_matrix[1].xyz,
+        inst_matrix[2].xyz);
+    auto inst_world_to_local = inverse(inst_local_to_world);
+
     GaussianProbe probe = g_buffer_heap.byte_buffer_read<GaussianProbe>(
         gs.buffer_id,
         gs.probe_offset + hit.prim * sizeof(GaussianProbe));
@@ -757,9 +766,14 @@ static bool _sample_proccedural(
     geometry.procedural_id.mat_offset = gs.mat_buffer_offset;
     geometry.procedural_id.sh_degree = gs.sh_degree;
 
-    // Transform ray to probe's local space (translate and rotate)
-    float3 ro = ray.origin() - float3(probe.position[0], probe.position[1], probe.position[2]);
+    // Transform ray to instance local space
+    float3 ro = ray.origin() - inst_pos;
     float3 rd = ray.dir();
+    ro = inst_world_to_local * ro;
+    rd = normalize(inst_world_to_local * rd);
+
+    // Transform ray to probe's local space (translate and rotate)
+    ro -= float3(probe.position[0], probe.position[1], probe.position[2]);
 
     // Rotate ray by inverse rotation (conjugate since rotation is unit quaternion)
     float4 q = probe.rotation;
@@ -787,10 +801,24 @@ static bool _sample_proccedural(
         return false;
     }
 
+    // Calculate world-space hit distance
+    float3 local_hit_point = ro + d * rd;
+    // Transform back from probe local to instance local
+    local_hit_point = rotate_vector(geometry::QuaternionInvert(q), local_hit_point);
+    local_hit_point += float3(probe.position[0], probe.position[1], probe.position[2]);
+    // Transform from instance local to world
+    float3 world_hit_point = inst_local_to_world * local_hit_point + inst_pos;
+    auto new_hit_dist = distance(world_hit_point, ray.origin());
+
+    if (new_hit_dist >= hit_dist) {
+        return false;
+    }
+
     // Transform normal from local space back to world space
     // The normal from iEllipsoid is in the rotated (but not translated) space
-    geometry.normal = normalize(rotate_vector(geometry::QuaternionInvert(q), normal));
-    hit_dist = d;
+    normal = normalize(rotate_vector(geometry::QuaternionInvert(q), normal));
+    geometry.normal = normalize(inst_local_to_world * normal);
+    hit_dist = new_hit_dist;
 
     return true;
 }

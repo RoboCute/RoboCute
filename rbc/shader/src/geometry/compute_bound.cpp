@@ -3,7 +3,7 @@
 #include <luisa/std.hpp>
 #include <luisa/functions/atomic.hpp>
 using namespace luisa::shader;
-[[kernel_1d(256)]] int kernel(
+[[kernel_1d(128)]] int kernel(
 	BindlessBuffer& buffer_heap,
 	Buffer<uint2>& offset_buffer,// x: vertex_heap_idx  y: tri_element_offset
 	Buffer<uint>& result_aabb,
