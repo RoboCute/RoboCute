@@ -8,8 +8,9 @@ using namespace luisa::shader;
 // 3D DDA for heightfield - used for terrain collision detection
 static bool ddaTerrainRaycast(
     float3 origin,
+    float grid_size,
     float3 dir,
-    BindlessImage& heap,
+    BindlessImage &heap,
     uint heap_idx,
     float2 uv_scale,
     float2 uv_offset,
@@ -19,7 +20,6 @@ static bool ddaTerrainRaycast(
     float3 &out_pos) {
     dir = normalize(dir);
     // Project 3D ray to 2D plane for DDA
-    float2 rayPos2D = origin.xz;
     float2 rayDir2D = dir.xz;
 
     // Handle horizontal ray case
@@ -32,6 +32,8 @@ static bool ddaTerrainRaycast(
         out_pos = float3(origin.x, h, origin.z);
         return true;
     }
+    origin *= grid_size;
+    float2 rayPos2D = origin.xz;
     // Standard 2D DDA setup
     float2 delta = abs(1.0f / rayDir2D);
     float2 step = sign(rayDir2D);
@@ -41,25 +43,25 @@ static bool ddaTerrainRaycast(
 
     float t = 0.0f;
     float3 currentPos = origin;
-    float2 heightmapSize = float2(heap.image_size(heap_idx));
 
-    for (int i = 0; i < 256; i++) {
+    for (int i = 0; i < 64; i++) {
         // Calculate current 3D position
         currentPos = origin + dir * t;
         if (currentPos.y <= 0) {
-            out_pos = float3(currentPos.x, 0, currentPos.z);
+            out_pos = currentPos / grid_size;
             return true;
         }
 
         // Sample heightmap
-        float2 uv = mapPos / heightmapSize;
+        float2 uv = mapPos / grid_size;
         if (any(uv < 0.f || uv > 1.0f)) return false;
         float terrainHeight = heap.image_sample(heap_idx, uv * uv_scale + uv_offset, Filter::POINT, Address::EDGE).x * height_scale + height_offset;
+        terrainHeight *= grid_size; // to pixel space
 
         // Check if hit terrain
         if (currentPos.y <= terrainHeight) {
             // Refine hit point (optional)
-            out_pos = float3(currentPos.x, terrainHeight, currentPos.z);
+            out_pos = float3(currentPos.x, terrainHeight, currentPos.z)  / grid_size;
             return true;
         }
 
@@ -79,7 +81,7 @@ static bool ddaTerrainRaycast(
         if (nextHeight <= terrainHeight && currentPos.y > terrainHeight) {
             // Linear interpolation for precise hit point
             float alpha = (terrainHeight - currentPos.y) / (nextHeight - currentPos.y);
-            out_pos = lerp(currentPos, origin + dir * t, alpha);
+            out_pos = lerp(currentPos, origin + dir * t, alpha) / grid_size;
             return true;
         }
     }

@@ -177,7 +177,8 @@ GltfImportData import_data = process_gltf_model(model);
 
 ## Best Practices
 
-1. **Use `final` for leaf classes** - Mark importer implementations as `final`
+1. **Syntax Check**: Always use `CppSyntaxCheck` tool to check C++ file syntax after writing. Give up if file not in compile_commands.json.
+2. **Use `final` for leaf classes** - Mark importer implementations as `final`
 2. **Static instances for registration** - Use static instances when registering with the global registry
 3. **Override `can_import`** - For multi-format importers, override to check file signatures/extensions
 4. **Error handling** - Return `false` on import failure, log errors via `RBC_LOG_ERROR`

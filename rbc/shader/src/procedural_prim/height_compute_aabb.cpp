@@ -10,8 +10,6 @@ int kernel(
     Image<float> &height_image,
     Buffer<AABB> &output_buffer,
     Buffer<float2> &height_min_max_buffer,
-    float height_scale,
-    float height_offset,
     float2 xz_axis_min,
     float2 xz_axis_max) {
 
@@ -34,7 +32,7 @@ int kernel(
     float height_max = 0.0f;
     if (all(dispatch_id_xy < img_size)) {
         float4 height_val = height_image.read(dispatch_id_xy);
-        height_min = height_val.x * height_scale + height_offset;
+        height_min = height_val.x;
         height_max = height_min;
     } else {
         // For out-of-bounds threads, use neutral values that won't affect min/max

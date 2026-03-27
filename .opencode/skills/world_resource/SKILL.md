@@ -519,6 +519,10 @@ protected:
 - Binary data: `{binary_root}/{guid}`
 - Metadata: `{meta_root}/{guid}.meta`
 
+## Syntax Check
+
+Always use `CppSyntaxCheck` tool to check C++ file syntax after writing. Give up if file not in compile_commands.json.
+
 ## Testing Resources
 
 Resources can be tested by:

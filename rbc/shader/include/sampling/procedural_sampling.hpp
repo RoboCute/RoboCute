@@ -890,6 +890,7 @@ static bool _sample_proccedural(
     float3 box_local_pos;
     auto dda_result = geometry::ddaTerrainRaycast(
         hit_start_pos,
+        32, // one grid
         hit_end_pos - hit_start_pos,
         g_image_heap,
         height.heightmap_idx,
@@ -903,8 +904,8 @@ static bool _sample_proccedural(
     auto new_hit_dist = distance(inst_local_to_world * ((box_local_pos * 2.0f - 1.0f) * box_size + box_center), ro);
     if (new_hit_dist >= hit_dist) return false;
     hit_dist = new_hit_dist;
+    // TODO: write to geometry
     return true;
-    // TODO
 }
 
 using PolymorphicGeometry = stdex::type_list<

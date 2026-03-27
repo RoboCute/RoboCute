@@ -11,6 +11,7 @@ using float3 = luisa::float3;
 using float2 = luisa::float2;
 using float4 = luisa::float4;
 using float4x4 = luisa::float4x4;
+using uint2 = luisa::uint2;
 }// namespace geometry
 #endif
 namespace geometry {
@@ -39,7 +40,6 @@ struct SDFMap {
 };
 struct HeightMap {
     uint heightmap_idx;
-    uint sample_count;
     uint mat_buffer_id;
     uint aabb_buffer_heap_idx;
     uint height_minmax_buffer_idx;

@@ -351,6 +351,10 @@ struct RBC_CORE_API MyPublicClass {
 };
 ```
 
+## Syntax Check
+
+Always use `CppSyntaxCheck` tool to check C++ file syntax after writing. Give up if file not in compile_commands.json.
+
 ## Best Practices
 
 1. **Prefer composition over inheritance**

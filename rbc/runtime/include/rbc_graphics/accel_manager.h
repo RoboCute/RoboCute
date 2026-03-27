@@ -76,7 +76,8 @@ private:
     using ProceduralVariant = vstd::variant<
         geometry::VoxelSurface,
         geometry::SDFMap,
-        geometry::GaussianSplatingGeometry
+        geometry::GaussianSplatingGeometry,
+        geometry::HeightMap
         >;
 
     Buffer<ProceduralType> _procedural_type_buffer;
