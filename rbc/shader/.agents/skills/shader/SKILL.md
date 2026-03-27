@@ -104,6 +104,7 @@ using namespace luisa::shader;
 
 | Attribute | Description | Example |
 |-----------|-------------|---------|
+| `[[warp_size(N)]]` | Set Warp Size | `[[warp_size(32)]]` |
 | `[[kernel_1d(N)]]` | 1D compute kernel with N threads per group | `[[kernel_1d(128)]]` |
 | `[[kernel_2d(X, Y)]]` | 2D compute kernel with X×Y threads per group | `[[kernel_2d(16, 8)]]` |
 | `[[kernel_3d(X, Y, Z)]]` | 3D compute kernel with X×Y×Z threads per group | `[[kernel_3d(8, 8, 8)]]` |
@@ -420,7 +421,49 @@ float first = warp_read_first_active_lane(value);
 bool is_first = wave_is_first_lane();
 
 // Note: "wave_*" aliases provided for DirectX terminology
+
+// Check if current thread is in the first warp of the block:
+uint is_first_thread = all(thread_id_xy == 0u) ? max_uint32 : 0u;
+bool thread_in_first_warp = warp_active_max(is_first_thread) != 0u;
 ```
+
+### Computing Unique Warp ID within Block
+
+To get a unique warp ID for each warp in a thread block (useful for allocating shared memory per warp):
+
+```cpp
+
+
+// In kernel:
+[[kernel_2d(8, 8)]] int kernel(...) {
+    // Define shared counter in shared memory (group shared)
+    SharedArray<uint, 1> warp_counter;
+
+    uint2 thread_id_xy = thread_id().xy;
+    uint lane_id = warp_lane_id();
+    // This is WRONG, ERROR, BAD: warp_id = thread_id_xy.x + thread_id_xy.y * 8
+    // MUST use atomic, to get right warp_id
+    uint warp_id;
+    
+    // Reset counter from first thread in block
+    if (all(thread_id_xy == 0u)) {
+        warp_counter[0] = 0u;
+    }
+    sync_block();  // Ensure reset is visible to all threads
+    
+    // First lane of each warp atomically increments to get unique ID
+    if (lane_id == 0) {
+        warp_id = warp_counter.atomic_fetch_add(0, 1);
+    }
+    // Broadcast warp_id to all lanes in the warp
+    warp_id = warp_read_first_active_lane(warp_id);
+    
+    // Now warp_id is unique per warp (0, 1, 2, ... num_warps-1)
+    // Can be used to index into per-warp shared memory
+}
+```
+
+From `src/procedural_prim/height_compute_aabb.cpp`.
 
 ## Shared Memory
 
@@ -577,356 +620,6 @@ struct v2p {
 
 ## Real-World Usage Examples
 
-### Ambient Occlusion Ray Tracing
-
-From `src/path_tracer/ao_trace.cpp`:
-
-```cpp
-#include <luisa/std.hpp>
-#include <luisa/resources.hpp>
-#include <path_tracer/pt_args.hpp>
-#include <sampling/sample_funcs.hpp>
-#include <sampling/heitz_sobol.hpp>
-#include <utils/onb.hpp>
-#include <path_tracer/trace.hpp>
-
-using namespace luisa::shader;
-
-[[kernel_2d(16, 8)]] int kernel(
-    Image<float>& out_img,
-    PTArgs args,
-    float4 ray_radius,
-    bool use_cosine_sample) {
-    
-    auto coord = dispatch_id().xy;
-    auto size = dispatch_size().xy;
-    
-    // Setup sampler with frame-based randomization
-    sampling::HeitzSobol sampler(coord, args.frame_index);
-    
-    // Generate primary ray from camera
-    auto uv = (float2(coord) + 0.5f) / float2(size);
-    auto proj = float4((uv * 2.f - 1.0f), 0.f, 1);
-    auto world_pos = args.inv_vp * proj;
-    world_pos /= world_pos.w;
-    
-    float3 dir = normalize(world_pos.xyz - args.cam_pos);
-    Ray ray(args.cam_pos, dir, t_min, t_max);
-    
-    // Trace primary ray
-    ProceduralGeometry procedural_geometry;
-    auto hit = rbc_trace_closest(ray, args, sampler, procedural_geometry);
-    
-    if (hit.hit_triangle()) {
-        // Get instance transform
-        auto inst_transform = g_accel.instance_transform(hit.inst);
-        
-        // Read and interpolate vertex data
-        auto local_pos = hit.interpolate(vertices[0].pos, vertices[1].pos, vertices[2].pos);
-        auto world_pos = (inst_transform * float4(local_pos, 1.0f)).xyz;
-        
-        // Sample AO ray direction
-        float3 local_dir = sampling::cosine_sample_hemisphere(pcg_sampler.next2f());
-        mtl::Onb onb(geometry_normal);
-        auto sample_dir = onb.to_world(local_dir);
-        
-        ray.set_origin(sampling::offset_ray_origin(world_pos, geometry_normal));
-        ray.set_dir(sample_dir);
-        ray.t_max = reduce_max(ray_radius);
-        
-        // Trace AO ray
-        hit = rbc_trace_closest(ray, args, sampler, procedural_geometry);
-        float ao = hit.hit_triangle() ? hit.ray_t / reduce_max(ray_radius) : 1.0f;
-        out_img.write(coord, float4(ao));
-    }
-    return 0;
-}
-```
-
-### Gaussian Probe AABB Computation
-
-From `src/gaussian/compute_aabb.cpp`:
-
-```cpp
-#include <luisa/std.hpp>
-#include <geometry/gaussian_probe.hpp>
-
-using namespace luisa::shader;
-
-// Compute rotated extent using quaternion rotation
-[[nodiscard]] float3 compute_gaussian_extent(float3 scale, float4 rotation) {
-    float3 base_extent = scale * 3.0f;  // ~99.7% coverage
-    
-    // Build rotation matrix from quaternion
-    float3 q_vec = float3(rotation.x, rotation.y, rotation.z);
-    float q_w = rotation.w;
-    
-    float xx = q_vec.x * q_vec.x, yy = q_vec.y * q_vec.y, zz = q_vec.z * q_vec.z;
-    float xy = q_vec.x * q_vec.y, xz = q_vec.x * q_vec.z, yz = q_vec.y * q_vec.z;
-    float wx = q_w * q_vec.x, wy = q_w * q_vec.y, wz = q_w * q_vec.z;
-    
-    float3x3 rot_mat;
-    rot_mat[0] = float3(1.0f - 2.0f * (yy + zz), 2.0f * (xy + wz), 2.0f * (xz - wy));
-    rot_mat[1] = float3(2.0f * (xy - wz), 1.0f - 2.0f * (xx + zz), 2.0f * (yz + wx));
-    rot_mat[2] = float3(2.0f * (xz + wy), 2.0f * (yz - wx), 1.0f - 2.0f * (xx + yy));
-    
-    // Compute projected AABB extents
-    float3 extent;
-    extent.x = abs(rot_mat[0].x) * base_extent.x + abs(rot_mat[1].x) * base_extent.y + abs(rot_mat[2].x) * base_extent.z;
-    extent.y = abs(rot_mat[0].y) * base_extent.x + abs(rot_mat[1].y) * base_extent.y + abs(rot_mat[2].y) * base_extent.z;
-    extent.z = abs(rot_mat[0].z) * base_extent.x + abs(rot_mat[1].z) * base_extent.y + abs(rot_mat[2].z) * base_extent.z;
-    
-    return extent;
-}
-
-[[kernel_1d(128)]] int kernel(
-    Buffer<AABB>& output_buffer,
-    Buffer<GaussianProbe>& probe_buffer) {
-    
-    uint32 probe_idx = dispatch_id().x;
-    GaussianProbe probe = probe_buffer.read(probe_idx);
-    
-    float3 extent = compute_gaussian_extent(float3(probe.scale), probe.rotation);
-    AABB aabb = build_aabb(float3(probe.position), extent);
-    
-    output_buffer.write(probe_idx, aabb);
-    return 0;
-}
-```
-
-### Procedural Sky Generation
-
-From `src/hdri/sky.cpp`:
-
-```cpp
-#include <sampling/sample_funcs.hpp>
-#include <sampling/pcg.hpp>
-
-using namespace luisa::shader;
-
-float noise(float2 uv) {
-    float2 i = floor(uv);
-    float2 f = fract(uv);
-    f = f * f * (3.f - 2.f * f);  // Smoothstep
-    
-    // Use PCG sampler for random values
-    float lb = sampling::PCGSampler(uint2(i + float2(0.f, 0.f) / 64.f)).next();
-    float rb = sampling::PCGSampler(uint2(i + float2(1.f, 0.f) / 64.f)).next();
-    float lt = sampling::PCGSampler(uint2(i + float2(0.f, 1.f) / 64.f)).next();
-    float rt = sampling::PCGSampler(uint2(i + float2(1.f, 1.f) / 64.f)).next();
-    
-    return lerp(lerp(lb, rb, f.x), lerp(lt, rt, f.x), f.y);
-}
-
-float fbm(float2 uv) {
-    float value = 0.f;
-    float amplitude = .5f;
-    for (int i = 0; i < 8; i++) {
-        value += noise(uv) * amplitude;
-        amplitude *= .5f;
-        uv *= 2.f;
-    }
-    return value;
-}
-
-[[kernel_2d(16, 8)]] int kernel(Image<float>& img, float time) {
-    float2 fragCoord = float2(dispatch_id().xy);
-    float2 iResolution = float2(dispatch_size().xy);
-    
-    float2 uv = (fragCoord + 0.5f) / iResolution;
-    float3 rd = sampling::sphere_uv_to_direction(float3x3::identity(), uv);
-    
-    // Calculate sky color
-    float3 lightDir = normalize(float3(.4f, .8f, -.5f));
-    float sundot = clamp(dot(rd, lightDir), 0.0f, 1.0f);
-    
-    float3 skyCol = float3(0.4f, 0.6f, 0.85f) * 1.5f - rd.y * rd.y * 0.5f;
-    skyCol = lerp(skyCol, 0.85f * float3(0.7f, 0.75f, 0.85f), pow(1.0f - max(rd.y, 0.0f), 4.0f));
-    
-    // Add sun
-    skyCol += 0.25f * float3(1.0f, 0.9f, 0.85f) * pow(sundot, 5.0f);
-    skyCol += 0.25f * float3(1.0f, 0.8f, 0.6f) * pow(sundot, 64.0f);
-    
-    // Add clouds
-    float den = fbm(uv * 2.0f);
-    skyCol = lerp(skyCol, float3(1.f), smoothstep(.4f, .8f, den));
-    
-    img.write(dispatch_id().xy, float4(skyCol, 1.0f));
-    return 0;
-}
-```
-
-### Post-Processing (Uber Shader)
-
-From `src/post_process/uber.cpp`:
-
-```cpp
-#include <luisa/std.hpp>
-#include <spectrum/color_space.hpp>
-#include <post_process/local_exposure.hpp>
-
-using namespace luisa::shader;
-
-static float2 distort(float2 uv, float4 distortion_amount) {
-    uv = (uv - float2(0.5)) * distortion_amount.z + float2(0.5);
-    float2 ruv = distortion_CenterScale.zw * (uv - float2(0.5) - distortion_CenterScale.xy);
-    float ru = length(float2(ruv));
-    
-    if (distortion_amount.w > 0.0) {
-        float wu = ru * distortion_amount.x;
-        ru = tan(wu) * (1.0 / (ru * distortion_amount.y));
-    } else {
-        ru = (1.0 / ru) * distortion_amount.x * atan(ru * distortion_amount.y);
-    }
-    return uv + ruv * float2(ru - 1.0);
-}
-
-[[kernel_2d(16, 8)]] int kernel(
-    SampleImage& src_img,
-    SampleVolume& tonemap_volume,
-    Buffer<float>& exposure_buffer,
-    Image<float>& result) {
-    
-    auto id = dispatch_id().xy;
-    float2 uv = (float2(id) + 0.5f) / float2(dispatch_size().xy);
-    
-    // Apply lens distortion
-    uv = distort(uv, args.distortion_Amount);
-    
-    // Sample source with chromatic aberration
-    float4 tex_val = src_img.sample(uv, Filter::POINT, Address::EDGE);
-    float3 col = tex_val.xyz;
-    
-    // Apply exposure
-    col *= exposure_buffer.read(0);
-    
-    // Tonemap using 3D LUT
-    col = tonemap_volume.sample(LUT_SPACE_ENCODE(col), Filter::LINEAR_POINT, Address::EDGE).xyz;
-    
-    // Apply gamma correction
-    col = pow(col, args.gamma);
-    
-    result.write(id, float4(col, tex_val.w));
-    return 0;
-}
-```
-
-### Dual Quaternion Skinning
-
-From `src/geometry/skinning.cpp`:
-
-```cpp
-#include <luisa/std.hpp>
-#include <geometry/dual_quaternion.hpp>
-#include <geometry/vertices.hpp>
-
-using namespace luisa::shader;
-
-[[kernel_2d(128, 1)]] int kernel(
-    ByteBuffer<>& src_buffer,
-    ByteBuffer<>& dst_buffer,
-    Buffer<geometry::DualQuaternion>& dq_bone_buffer,
-    Buffer<uint>& bone_indices,
-    Buffer<float>& bone_weights,
-    uint bones_count_per_vert,
-    uint vertex_count,
-    bool contained_normal,
-    bool contained_tangent) {
-    
-    auto vert_id = dispatch_id().x;
-    auto pos_normal = geometry::read_pos_normal(src_buffer, vert_id, vertex_count, contained_normal, contained_tangent);
-    
-    auto buffer_idx = vert_id * bones_count_per_vert;
-    geometry::DualQuaternion blend_dq;
-    geometry::DualQuaternion dq0;
-    
-    // Blend dual quaternions
-    for (uint i = 0; i < bones_count_per_vert; ++i) {
-        uint index = bone_indices.read(buffer_idx + i);
-        float weight = bone_weights.read(buffer_idx + i);
-        geometry::DualQuaternion dq = dq_bone_buffer.read(index);
-        
-        if (i > 0) {
-            dq = DualQuaternionShortestPath(dq, dq0);
-        } else {
-            dq0 = dq;
-        }
-        
-        blend_dq.rotation_quaternion += dq.rotation_quaternion * weight;
-        blend_dq.translation_quaternion += dq.translation_quaternion * weight;
-    }
-    
-    // Normalize
-    float mag = length(blend_dq.rotation_quaternion);
-    blend_dq.rotation_quaternion /= mag;
-    blend_dq.translation_quaternion /= mag;
-    
-    // Apply skinning
-    pos_normal.pos = geometry::QuaternionApplyRotation(
-        float4(pos_normal.pos, 1.f), blend_dq.rotation_quaternion).xyz;
-    pos_normal.pos += geometry::QuaternionMultiply(
-        blend_dq.translation_quaternion, 
-        geometry::QuaternionInvert(blend_dq.rotation_quaternion)).xyz;
-    
-    geometry::write_pos_normal(dst_buffer, vert_id, vertex_count, contained_normal, contained_tangent, pos_normal);
-    return 0;
-}
-```
-
-### Rasterization with Transform Feedback
-
-From `src/raster/draw_gizmos.cpp`:
-
-```cpp
-#include <raster/raster_args.hpp>
-#include <geometry/raster.hpp>
-#include <luisa/raster/attributes.hpp>
-
-using namespace luisa::shader;
-
-struct AppData {
-    [[POSITION]] float4 pos;
-    [[COLOR]] float4 color;
-};
-
-struct v2p {
-    [[POSITION]] float4 proj_pos;
-    float4 color;
-    float4 local_pos;
-};
-
-[[VERTEX_SHADER]] v2p vert(AppData appdata, float4x4 vp) {
-    v2p o;
-    o.proj_pos = vp * float4(appdata.pos.xyz, 1.f);
-    o.color = appdata.color;
-    o.local_pos = appdata.pos;
-    raster::transform_projection(o.proj_pos);
-    return o;
-}
-
-[[PIXEL_SHADER]] float4 pixel(
-    v2p i,
-    Buffer<float4>& clicked_id,
-    PixelArgs args) {
-    
-    auto curr_id = uint2(i.proj_pos.xy);
-    if (all(curr_id == args.clicked_pixel)) {
-        auto inst_id = object_id();
-        float4 result;
-        result.xyz = i.local_pos.xyz;
-        result.w = bit_cast<float>(primitive_id());
-        clicked_id.write(inst_id, result);
-    }
-    
-    // Color remapping
-    if (distance(args.from_mapped_color, i.color.xyz) < 1e-2f) {
-        i.color.xyz = args.to_mapped_color;
-    }
-    i.color.w = 1.f;
-    return i.color;
-}
-```
-
 ### Debug Logging
 
 From `include/luisa/printer.hpp`:
@@ -1034,3 +727,4 @@ struct Particle {
     return 0;
 }
 ```
+

@@ -28,7 +28,7 @@ void GaussianSplatResource::_compute_all_aabbs(CommandList &cmdlist) {
         Buffer<GaussianProbe>        // &probe_buffer
         > const *compute_aabb_shader = nullptr;
     ShaderManager::instance()->load(
-        "gaussian/compute_aabb.bin",
+        "procedural_prim/gs_compute_aabb.bin",
         compute_aabb_shader);
     if (!compute_aabb_shader) [[unlikely]] {
         LUISA_ERROR("Failed to load compute_aabb shader for GaussianSplatResource.");

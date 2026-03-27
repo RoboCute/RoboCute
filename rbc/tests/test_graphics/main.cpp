@@ -283,7 +283,7 @@ int main(int argc, char *argv[]) {
                 // if (clk.toc() > 2000.f)
                 if (!offline_mode || frame_index == 0)
                     world_scene->tick_skinning(utils.get(), 1 / 10.0f);
-                auto tick_stage = GraphicsUtils::TickStage::RasterPreview;
+                auto tick_stage = GraphicsUtils::TickStage::PathTracingPreview;
                 constexpr uint sample = 256;
                 if (offline_mode && frame_index > sample) {
                     tick_stage = GraphicsUtils::TickStage::PresentOfflineResult;

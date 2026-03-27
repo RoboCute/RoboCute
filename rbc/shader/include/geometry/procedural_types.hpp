@@ -37,10 +37,20 @@ struct SDFMap {
     float3 uvw_scale;
     float3 uvw_offset;
 };
+struct HeightMap {
+    uint heightmap_idx;
+    uint sample_count;
+    uint mat_buffer_id;
+    uint aabb_buffer_heap_idx;
+    uint height_minmax_buffer_idx;
+    uint height_minmax_buffer_offset_bytes;
+    uint2 block_size;
+};
 enum ProceduralTypeID {
     Voxel = 0,
     SDF = 1,
-    GaussianSplat = 2
+    GaussianSplat = 2,
+    HeightTerrain = 3
 };
 struct ProceduralType {
     uint type;

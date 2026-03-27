@@ -3,11 +3,13 @@
 #include <geometry/procedural_types.hpp>
 #include <geometry/types.hpp>
 #include <luisa/resources/buffer_heap_extern.hpp>
+#include <luisa/resources/image_heap_extern.hpp>
 #include <luisa/resources/volume_heap_extern.hpp>
 #include <utils/heap_indices.hpp>
 #include <std/ex/type_list.hpp>
 #include <geometry/gaussian_probe.hpp>
 #include <geometry/dual_quaternion.hpp>
+#include <geometry/dda_trace.hpp>
 #ifndef DEFINED_G_ACCEL
 namespace luisa::shader {
 extern Accel &g_accel;
@@ -119,7 +121,27 @@ static float iSphere(float3 ro, float3 rd, float2 distBound, float3 &normal,
         }
     }
 }
+static void iBox(float3 ro, float3 rd, float2 distBound, float3 boxSize, float2 &tNearFar) {
+    float3 m = sign_float(rd) / max(abs(rd), float3(1e-8f));
+    float3 n = m * ro;
+    float3 k = abs(m) * boxSize;
 
+    float3 t1 = -n - k;
+    float3 t2 = -n + k;
+
+    float tN = max(max(t1.x, t1.y), t1.z);
+    float tF = min(min(t2.x, t2.y), t2.z);
+
+    if (tN > tF || tF <= 0.) {
+        tNearFar = PROCEDURAL_TRACE_MAX_DIST;
+    } else {
+        if ((tN >= distBound.x && tN <= distBound.y) || (tF >= distBound.x && tF <= distBound.y)) {
+            tNearFar = float2(tN, tF);
+        } else {
+            tNearFar = PROCEDURAL_TRACE_MAX_DIST;
+        }
+    }
+}
 // Box:             https://www.shadertoy.com/view/ld23DV
 static float iBox(float3 ro, float3 rd, float2 distBound, float3 &normal,
                   float3 boxSize) {
@@ -639,6 +661,7 @@ static bool _sample_proccedural(
     float3 local_hit_point = local_hit_dist * local_rd + local_ro;
     auto new_hit_dist = distance(inst_local_to_world * local_hit_point, ro);
     if (new_hit_dist >= hit_dist) return false;
+
     hit_dist = new_hit_dist;
     local_normal = normalize(inst_local_to_world * local_normal);
     geometry.normal[0] = local_normal.x;
@@ -822,10 +845,75 @@ static bool _sample_proccedural(
 
     return true;
 }
+static bool _sample_proccedural(
+    Ray ray,
+    uint type_id,
+    auto hit,
+    auto &rng,
+    float &hit_dist,
+    ProceduralGeometry &geometry,
+    geometry::HeightMap height) {
+    float4x4 inst_matrix = g_accel.instance_transform(hit.inst);
+    float3 inst_pos = inst_matrix[3].xyz;
+
+    auto inst_local_to_world = float3x3(
+        inst_matrix[0].xyz,
+        inst_matrix[1].xyz,
+        inst_matrix[2].xyz);
+
+    auto inst_world_to_local = inverse(inst_local_to_world);
+    float3 ro = ray.origin();
+    float3 rd = ray.dir();
+    ro -= inst_pos;
+    float3 local_ro = inst_world_to_local * ro;
+    float3 local_rd = normalize(inst_world_to_local * rd);
+
+    uint2 block_coord = uint2(hit.prim % height.block_size.x, hit.prim / height.block_size.x);
+    auto aabb = g_buffer_heap.buffer_read<AABB>(height.aabb_buffer_heap_idx, hit.prim);
+    float3 box_min(aabb.packed_min);
+    float3 box_max(aabb.packed_max);
+    float3 box_center = lerp(box_min, box_max, 0.5f);
+    float3 box_size = abs(box_max - box_center);
+    float2 local_hit_t;
+    shadertoy::iBox(local_ro - box_center, local_rd, float2(0, PROCEDURAL_TRACE_MAX_DIST), box_size, local_hit_t);
+    // Not hit box
+    if (local_hit_t.x >= PROCEDURAL_TRACE_MAX_DIST) {
+        return false;
+    }
+    float2 height_min_max = g_buffer_heap.byte_buffer_read<float2>(height.height_minmax_buffer_idx, height.height_minmax_buffer_offset_bytes + hit.prim * sizeof(float2));
+    float3 hit_start_pos = ((local_ro - box_center) + local_rd * local_hit_t.x) / box_size;
+    float3 hit_end_pos = ((local_ro - box_center) + local_rd * local_hit_t.y) / box_size;
+
+    // To UVW
+    hit_start_pos = saturate(hit_start_pos * 0.5f + 0.5f);
+    hit_end_pos = saturate(hit_end_pos * 0.5f + 0.5f);
+    float3 box_local_pos;
+    auto dda_result = geometry::ddaTerrainRaycast(
+        hit_start_pos,
+        hit_end_pos - hit_start_pos,
+        g_image_heap,
+        height.heightmap_idx,
+        1.0f / float2(height.block_size),
+        float2(block_coord) / float2(height.block_size),
+        1.0f / (height_min_max.y - height_min_max.x),
+        -height_min_max.x,
+        box_local_pos);
+    if (!dda_result) return false;
+
+    auto new_hit_dist = distance(inst_local_to_world * ((box_local_pos * 2.0f - 1.0f) * box_size + box_center), ro);
+    if (new_hit_dist >= hit_dist) return false;
+    hit_dist = new_hit_dist;
+    return true;
+    // TODO
+}
+
 using PolymorphicGeometry = stdex::type_list<
     geometry::VoxelSurface,
     geometry::SDFMap,
-    geometry::GaussianSplatingGeometry>;
+    geometry::GaussianSplatingGeometry,
+    geometry::HeightMap
+    // More types
+    >;
 
 static bool sample_procedural(
     Ray ray,

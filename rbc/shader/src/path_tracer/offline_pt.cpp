@@ -1,4 +1,4 @@
-// #define DEBUG
+#define DEBUG
 #include <luisa/printer.hpp>
 
 #define OFFLINE_MODE
