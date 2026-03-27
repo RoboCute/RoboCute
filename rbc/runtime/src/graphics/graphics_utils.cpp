@@ -84,15 +84,17 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     _dst_image.reset();
     _present_image.reset();
 }
-void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name) {
+void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name, bool compactible_mode) {
     LUISA_ASSERT(!_graphics_utils_singleton);
     _graphics_utils_singleton = this;
     PluginManager::init();
     Context ctx{program_path};
-    _render_device = vstd::make_unique<RenderDevice>();
-    _compute_device = vstd::make_unique<ComputeDevice>();
+    _render_device = vstd::make_unique<RenderDevice>(compactible_mode);
     _render_device->init(Context{ctx}, backend_name);
-    _compute_device->init(Context{ctx}, Device{_render_device->lc_device()});
+    if (RenderDevice::instance().get_features().cuda_device) {
+        _compute_device = vstd::make_unique<ComputeDevice>();
+        _compute_device->init(Context{ctx}, Device{_render_device->lc_device()});
+    }
     _backend_name = backend_name;
 }
 void GraphicsUtils::init_graphics(luisa::filesystem::path const &shader_path) {

@@ -11,7 +11,7 @@ using namespace luisa::compute;
 
 struct RBC_RUNTIME_API RenderDevice {
     // ctor & dtor
-    RenderDevice() = default;
+    RenderDevice(bool compactible_mode = false);
     ~RenderDevice();
 
     // delete copy & move
@@ -117,7 +117,13 @@ struct RBC_RUNTIME_API RenderDevice {
     void execute_after_cmdlist_commit_task();
     void add_before_cmdlist_commit_task(luisa::move_only_function<void()> &&task);
     void add_after_cmdlist_commit_task(luisa::move_only_function<void()> &&task);
+    struct Features {
+        bool ray_tracing : 1;
+        bool cuda_device : 1;
+    };
+    Features const &get_features() const { return _features; }
 private:
+    Features _features;
     // context
     vstd::optional<luisa::compute::Context> _context;
     bool _headless;

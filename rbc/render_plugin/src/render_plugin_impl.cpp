@@ -205,6 +205,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
     bool init_oidn() override {
 #ifdef RBC_RENDER_ENABLE_OIDN
         std::lock_guard lck{oidn_mtx};
+        if (!ComputeDevice::instance_ptr()) return false;
         auto &render_device = RenderDevice::instance();
         // Unused: auto &lc_ctx = render_device.lc_ctx();
         oidn_support = ComputeDevice::instance().render_hardware_device_index() == ~0u ? OidnSupport::UnSupported : OidnSupport::Supported;
@@ -285,7 +286,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
     void destroy_denoise_task(luisa::compute::Stream &stream) override {
 #ifdef RBC_RENDER_ENABLE_OIDN
         _denoisers.remove(stream.handle());
-        #else
+#else
         LUISA_WARNING("OIDN not enabled in this build.");
 #endif
     }

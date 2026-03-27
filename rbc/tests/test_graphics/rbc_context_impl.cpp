@@ -84,13 +84,14 @@ void RBCContext::init_world(void *this_, luisa::string_view meta_path, luisa::st
     std::lock_guard lck{c._ctx_mtx};
     rbc::world::init_world(meta_path, binary_path);
 }
-void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa::string_view program_path, luisa::string_view shader_path) {
+void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa::string_view program_path, luisa::string_view shader_path, bool compactible) {
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     c.utils = vstd::make_unique<GraphicsUtils>();
     c.utils->init_device(
         program_path,
-        rhi_backend);
+        rhi_backend,
+        compactible);
     c.utils->init_graphics(shader_path);
 }
 
@@ -308,7 +309,7 @@ void RBCContext::enable_camera_control(void *this_) {
                 c.camera_input.is_down_dir_key_pressed = pressed;
             } break;
             default:
-                break;  // Ignore unhandled keys
+                break;// Ignore unhandled keys
         }
     });
 }
@@ -468,8 +469,8 @@ static bool is_texture_float_type(PixelFormat format) {
 void BuiltinKernels::buffer_to_image(void *this_, luisa::compute::BufferCreationInfoInterop input_buffer, luisa::compute::TextureCreationInfo output_image, luisa::uint2 pixel_offset, luisa::uint2 pixel_size, luisa::uint4 swizzle) {
     auto &shaders = *static_cast<BuiltinShaders *>(this_);
     auto storage = luisa::compute::pixel_format_to_storage(output_image.format);
-    (void)rbc::RenderDevice::instance().lc_main_cmd_list();  // Suppress unused warning
-    (void)BuiltinShaders::compact_swizzle(swizzle);  // Suppress unused warning
+    (void)rbc::RenderDevice::instance().lc_main_cmd_list();// Suppress unused warning
+    (void)BuiltinShaders::compact_swizzle(swizzle);        // Suppress unused warning
 
     // Determine image type based on format
     // Create Buffer<half> or Buffer<float> based on element stride
@@ -522,8 +523,8 @@ void BuiltinKernels::buffer_to_image(void *this_, luisa::compute::BufferCreation
 
 void BuiltinKernels::image_to_buffer(void *this_, luisa::compute::TextureCreationInfo input_image, luisa::compute::BufferCreationInfoInterop output_buffer, luisa::uint2 pixel_offset, luisa::uint2 pixel_size, luisa::uint4 swizzle) {
     auto &shaders = *static_cast<BuiltinShaders *>(this_);
-    (void)rbc::RenderDevice::instance().lc_main_cmd_list();  // Suppress unused warning
-    (void)BuiltinShaders::compact_swizzle(swizzle);  // Suppress unused warning
+    (void)rbc::RenderDevice::instance().lc_main_cmd_list();// Suppress unused warning
+    (void)BuiltinShaders::compact_swizzle(swizzle);        // Suppress unused warning
 
     // Determine image type based on format
     // Create Buffer<half> or Buffer<float> based on element stride

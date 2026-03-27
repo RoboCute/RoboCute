@@ -40,7 +40,7 @@ void RenderDevice::add_after_cmdlist_commit_task(luisa::move_only_function<void(
     _after_commit_task.emplace_back(std::move(task));
 }
 void RenderDevice::execute_before_cmdlist_commit_task() {
-    // Never call 
+    // Never call
     if (_main_cmd_list.commands().empty()) return;
     for (auto &i : _before_commit_task) {
         i();
@@ -139,6 +139,14 @@ RenderDevice::~RenderDevice() {
     _device = {};
     _context.reset();
     render_device_detail::_inst = nullptr;
+}
+RenderDevice::RenderDevice(bool compactible_mode) {
+    std::memset(&_features, 255, sizeof(_features));
+    // Disable device and RTX
+    if (compactible_mode) {
+        _features.cuda_device = false;
+        _features.ray_tracing = false;
+    }
 }
 
 }// namespace rbc

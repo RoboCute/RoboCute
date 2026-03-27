@@ -837,7 +837,7 @@ class RBCContext:
     # frame
 
     def init_device(
-        self, rhi_backend: str, program_path: str, shader_path: str
+        self, rhi_backend: str, program_path: str, shader_path: str, compactible: bool
     ) -> None: ...
 
     # render

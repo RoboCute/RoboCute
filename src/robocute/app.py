@@ -112,7 +112,7 @@ class App:
         if self._ctx is not None:
             print(str(shader_path))
             self._ctx.init_device(backend_name, str(
-                program_path), str(shader_path))
+                program_path), str(shader_path), False)
 
     def init_render(self):
         if self._ctx is not None:

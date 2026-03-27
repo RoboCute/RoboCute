@@ -47,51 +47,56 @@ Lights::Lights()
         stream << cmdlist.commit();
     });
     ///////////// Load area-light quad vertex & index
-    auto data_buffer = device.create_buffer<uint>((sizeof(float3) * 4 + sizeof(float2) * 4 + sizeof(Triangle) * 2) / sizeof(uint));
-    auto vert_buffer = scene.host_upload_buffer().allocate_upload_buffer<uint>(data_buffer.size());
-    vector<uint> data_arr;
-    data_arr.push_back_uninitialized(data_buffer.size());
-    auto vert = reinterpret_cast<float3 *>(data_arr.data());
-    auto uv = reinterpret_cast<float2 *>(vert + 4);
-    auto tri = reinterpret_cast<Triangle *>(uv + 4);
+    (void)scene.mat_manager().emplace_mat_type<material::PolymorphicMaterial, rbc::material::Unlit>(scene.bindless_allocator(), 4096);
 
-    vert[0] = float3(-0.5, -0.5, 0);
-    vert[1] = float3(-0.5, 0.5, 0);
-    vert[2] = float3(0.5, -0.5, 0);
-    vert[3] = float3(0.5, 0.5, 0);
-    uv[0] = float2(0, 0);
-    uv[1] = float2(0, 1);
-    uv[2] = float2(1, 0);
-    uv[3] = float2(1, 1);
-    tri[0] = Triangle{0, 2, 1};
-    tri[1] = Triangle{1, 2, 3};
-    std::memcpy(vert_buffer.mapped_ptr(), data_arr.data(), data_arr.size_bytes());
-    cmdlist << data_buffer.view().copy_from(vert_buffer.view);
-    ///////////// Build area-light quad mesh BLAS
-    quad_mesh = scene.mesh_manager().load_mesh(
-        scene.bindless_allocator(),
-        cmdlist,
-        scene.host_upload_buffer(),
-        std::move(data_buffer),
-        AccelOption{.allow_compaction = false, .allow_update = false},
-        4,
-        false,
-        false,
-        1, {});
-    quad_mesh->bbox_requests = new MeshManager::BBoxRequest();
-    quad_mesh->bbox_requests->finished = true;
-    quad_mesh->bbox_requests->mesh_data = quad_mesh;
-    quad_mesh->bbox_requests->bounding_box.emplace_back(
-        AABB{
-            .packed_min = {-0.5f, -0.5f, 0},
-            .packed_max = {0.5f, 0.5f, 0},
-        });
+    if (!RenderDevice::instance().get_features().ray_tracing)
+        return;
+    {
+        auto data_buffer = device.create_buffer<uint>((sizeof(float3) * 4 + sizeof(float2) * 4 + sizeof(Triangle) * 2) / sizeof(uint));
+        auto vert_buffer = scene.host_upload_buffer().allocate_upload_buffer<uint>(data_buffer.size());
+        vector<uint> data_arr;
+        data_arr.push_back_uninitialized(data_buffer.size());
+        auto vert = reinterpret_cast<float3 *>(data_arr.data());
+        auto uv = reinterpret_cast<float2 *>(vert + 4);
+        auto tri = reinterpret_cast<Triangle *>(uv + 4);
 
+        vert[0] = float3(-0.5, -0.5, 0);
+        vert[1] = float3(-0.5, 0.5, 0);
+        vert[2] = float3(0.5, -0.5, 0);
+        vert[3] = float3(0.5, 0.5, 0);
+        uv[0] = float2(0, 0);
+        uv[1] = float2(0, 1);
+        uv[2] = float2(1, 0);
+        uv[3] = float2(1, 1);
+        tri[0] = Triangle{0, 2, 1};
+        tri[1] = Triangle{1, 2, 3};
+        std::memcpy(vert_buffer.mapped_ptr(), data_arr.data(), data_arr.size_bytes());
+        cmdlist << data_buffer.view().copy_from(vert_buffer.view);
+        ///////////// Build area-light quad mesh BLAS
+        quad_mesh = scene.mesh_manager().load_mesh(
+            scene.bindless_allocator(),
+            cmdlist,
+            scene.host_upload_buffer(),
+            std::move(data_buffer),
+            AccelOption{.allow_compaction = false, .allow_update = false},
+            4,
+            false,
+            false,
+            1, {});
+        quad_mesh->bbox_requests = new MeshManager::BBoxRequest();
+        quad_mesh->bbox_requests->finished = true;
+        quad_mesh->bbox_requests->mesh_data = quad_mesh;
+        quad_mesh->bbox_requests->bounding_box.emplace_back(
+            AABB{
+                .packed_min = {-0.5f, -0.5f, 0},
+                .packed_max = {0.5f, 0.5f, 0},
+            });
+    }
     luisa::vector<float3> sphere_vertices;
     luisa::vector<uint> sphere_triangles;
     {
         LightAccel::generate_sphere_mesh(sphere_vertices, sphere_triangles);
-        for(auto& i : sphere_vertices) {
+        for (auto &i : sphere_vertices) {
             i *= 0.5f;
         }
         auto data_buffer = device.create_buffer<uint>((sphere_triangles.size_bytes() + sphere_vertices.size_bytes()) / sizeof(uint));
@@ -163,8 +168,8 @@ Lights::Lights()
                 .packed_max = {0.5f, 0.5f, 0},
             });
     }
+
     // ///////////// Add emission material type
-    (void)scene.mat_manager().emplace_mat_type<material::PolymorphicMaterial, rbc::material::Unlit>(scene.bindless_allocator(), 4096);
 }
 
 uint Lights::add_point_light(
@@ -200,7 +205,7 @@ uint Lights::add_point_light(
         point_light,
         data_index);
     auto get_tlas_id = [&]() {
-        if (visible) {
+        if (visible && point_mesh) {
             return scene.accel_manager().emplace_mesh_instance(
                 cmdlist, scene.host_upload_buffer(),
                 scene.buffer_allocator(),
@@ -269,7 +274,7 @@ uint Lights::add_spot_light(
         spot_light,
         data_index);
     auto get_tlas_id = [&]() {
-        if (visible) {
+        if (visible && point_mesh) {
             return scene.accel_manager().emplace_mesh_instance(
                 cmdlist, scene.host_upload_buffer(),
                 scene.buffer_allocator(),
@@ -347,7 +352,7 @@ uint Lights::add_area_light(
         area_light,
         data_index);
     auto get_tlas_id = [&]() {
-        if (visible) {
+        if (visible && quad_mesh) {
             return scene.accel_manager().emplace_mesh_instance(
                 cmdlist, scene.host_upload_buffer(),
                 scene.buffer_allocator(),
@@ -415,7 +420,7 @@ uint Lights::add_disk_light(
         disk_light,
         data_index);
     auto get_tlas_id = [&]() {
-        if (visible) {
+        if (visible && disk_mesh) {
             float sign = copysign(1.0f, forward_dir.z);
             const float a = -(1.f / (sign + forward_dir.z));
             const float b = forward_dir.x * forward_dir.y * a;
@@ -536,7 +541,7 @@ void Lights::update_spot_light(
     rbc::material::Unlit mat_inst{.color{emission.x, emission.y, emission.z}};
 
     if (data.tlas_id == ~0u) {
-        if (visible) {
+        if (visible && point_mesh) {
             data.tlas_id = scene.accel_manager().emplace_mesh_instance(
                 cmdlist, scene.host_upload_buffer(),
                 scene.buffer_allocator(),
@@ -693,7 +698,7 @@ void Lights::update_point_light(
     auto &data = point_lights.light_data[light_index];
     auto local_to_world = translation(center) * scaling(radius);
     if (data.tlas_id == ~0u) {
-        if (visible) {
+        if (visible && point_mesh) {
             data.tlas_id = scene.accel_manager().emplace_mesh_instance(
                 cmdlist, scene.host_upload_buffer(),
                 scene.buffer_allocator(),
@@ -766,7 +771,7 @@ void Lights::update_disk_light(
     local_to_world = local_to_world * scaling(radius);
     /////////// Update TLAS instance
     if (data.tlas_id == ~0u) {
-        if (visible) {
+        if (visible && disk_mesh) {
             data.tlas_id = scene.accel_manager().emplace_mesh_instance(
                 cmdlist, scene.host_upload_buffer(),
                 scene.buffer_allocator(),
@@ -830,7 +835,7 @@ void Lights::update_area_light(
     auto &data = area_lights.light_data[light_index];
     /////////// Update TLAS instance
     if (data.tlas_id == ~0u) {
-        if (visible) {
+        if (visible && quad_mesh) {
             data.tlas_id = scene.accel_manager().emplace_mesh_instance(
                 cmdlist, scene.host_upload_buffer(),
                 scene.buffer_allocator(),

@@ -18,8 +18,10 @@ void PTPipeline::initialize() {
 
     prepare_pass = this->emplace_instance<PreparePass>();
     // create passes
-    pt_pass = this->emplace_instance<OfflinePTPass>();
-    accum_pass = this->emplace_instance<AccumPass>();
+    if (RenderDevice::instance().get_features().ray_tracing) {
+        pt_pass = this->emplace_instance<OfflinePTPass>();
+        accum_pass = this->emplace_instance<AccumPass>();
+    }
     raster_pass = this->emplace_instance<RasterPass>();
     post_pass = this->emplace_instance<PostPass>(device.lc_device_ext());
     editing_pass = this->emplace_instance<EditingPass>();
@@ -53,7 +55,7 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // get settings
     clamp_render_settings(ctx.pipeline_settings);
     auto &sky_settings = ctx.pipeline_settings.read_mut<SkySettings>();
-    (void)ctx.pipeline_settings.read_mut<FrameSettings>();  // Suppress unused warning
+    (void)ctx.pipeline_settings.read_mut<FrameSettings>();// Suppress unused warning
     auto &sky_heap = ctx.pipeline_settings.read_mut<SkyHeapIndices>();
     // update atom
     if (sky_settings.sky_atom) {
@@ -118,8 +120,10 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     }
     raster_pass->set_actived(pt_pipe_settings.use_raster);
     editing_pass->set_actived(pt_pipe_settings.use_editing);
-    pt_pass->set_actived(pt_pipe_settings.use_raytracing);
-    accum_pass->set_actived(pt_pipe_settings.use_raytracing);
+    if (pt_pass)
+        pt_pass->set_actived(pt_pipe_settings.use_raytracing);
+    if (accum_pass)
+        accum_pass->set_actived(pt_pipe_settings.use_raytracing);
     this->rbc::Pipeline::early_update(ctx);
 }
 

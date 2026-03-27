@@ -14,7 +14,7 @@ void TestProcedural::init(IProject *proj) {
     // gus_res = proj->import_assets("nerf_blender_lego_30000.ply", TypeInfo::get<world::GaussianSplatResource>().md5());
     // gus_res->install();
     // [[maybe_unused]] auto id = gus_res->emplace_procedural_instance(scaling(1.f));
-    _init_voxel_res();
+    // _init_voxel_res();
     // _init_sdf_res();
     // _init_gs_res();
 }
