@@ -869,7 +869,7 @@ static bool _sample_proccedural(
     float3 local_ro = inst_world_to_local * ro;
     float3 local_rd = normalize(inst_world_to_local * rd);
 
-    uint2 block_coord = uint2(hit.prim % height.block_size.x, hit.prim / height.block_size.x);
+    uint2 block_coord = uint2(hit.prim % height.block_size.x, hit.prim / height.block_size.y);
     auto aabb = g_buffer_heap.buffer_read<AABB>(height.aabb_buffer_heap_idx, hit.prim);
     float3 box_min(aabb.packed_min);
     float3 box_max(aabb.packed_max);
@@ -888,24 +888,30 @@ static bool _sample_proccedural(
     // To UVW
     hit_start_pos = saturate(hit_start_pos * 0.5f + 0.5f);
     hit_end_pos = saturate(hit_end_pos * 0.5f + 0.5f);
+    auto hit_dir = normalize(hit_end_pos - hit_start_pos);
+    if (dot(hit_dir, ray.dir()) < 0) {
+        auto temp = hit_start_pos;
+        hit_start_pos = hit_end_pos;
+        hit_end_pos = temp;
+        hit_dir = -hit_dir;
+    }
+
     float3 box_local_pos;
-    auto dda_result = geometry::ddaTerrainRaycast(
-        hit_start_pos,
-        32,// one grid
-        hit_end_pos - hit_start_pos,
+    const float grid_size = 32.f;
+    geometry::DDAResult dda_result = geometry::ddaTerrainRaycast(
+        hit_start_pos.xz * grid_size,
+        grid_size,// one grid
+        hit_dir.xz,
+        hit_start_pos.y * grid_size,
+        hit_dir.y / sqrt(max(hit_dir.x * hit_dir.x + hit_dir.z * hit_dir.z, 1e-4)),
         g_image_heap,
         height.heightmap_idx,
         1.0f / float2(height.block_size),
         float2(block_coord) / float2(height.block_size),
-        1.0f / (height_min_max.y - height_min_max.x),
-        -height_min_max.x,
-        box_local_pos);
-#ifdef DEBUG
-    if (all(dispatch_id() == dispatch_size() / 2u)) {
-        device_log("dda_result {} local pos {}", dda_result, box_local_pos);
-    }
-#endif
-    if (!dda_result) return false;
+        height_min_max);
+
+    if (!dda_result.hit) return false;
+    box_local_pos = hit_start_pos + hit_dir * dda_result.travelDist / grid_size;
 
     auto new_hit_dist = distance(inst_local_to_world * ((box_local_pos * 2.0f - 1.0f) * box_size + box_center), ro);
     if (new_hit_dist >= hit_dist) return false;
@@ -950,9 +956,12 @@ static bool _sample_proccedural(
 
     // Transform normal from local space to world space
     local_normal = normalize(inst_local_to_world * local_normal);
-    geometry.normal[0] = local_normal.x;
-    geometry.normal[1] = local_normal.y;
-    geometry.normal[2] = local_normal.z;
+    // geometry.normal[0] = local_normal.x;
+    // geometry.normal[1] = local_normal.y;
+    // geometry.normal[2] = local_normal.z;
+    geometry.normal[0] = 0;
+    geometry.normal[1] = 1;
+    geometry.normal[2] = 0;
 
     // Set procedural_id like other types
     geometry.procedural_id.set_id(type_id, height.mat_buffer_id);

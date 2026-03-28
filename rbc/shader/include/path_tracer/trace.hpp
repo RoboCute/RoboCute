@@ -65,7 +65,8 @@ static CommittedHit rbc_trace_closest(Ray ray, TraceIndices auto const &idxs, au
             }
         } else {
             proc_hit = query.procedural_candidate();
-            if (commit_procedural(query.world_ray(), proc_hit, rng, dist, procedural_geometry)) {
+            auto world_ray = query.world_ray();
+            if (commit_procedural(world_ray, proc_hit, rng, dist, procedural_geometry)) {
                 query.commit_procedural(dist);
             }
         }
