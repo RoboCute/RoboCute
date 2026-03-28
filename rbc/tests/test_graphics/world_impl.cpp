@@ -1190,7 +1190,7 @@ void CameraComponent::release_render_image(void *this_) {
     if (rd) {
         rd->lc_main_cmd_list().add_callback([i = std::move(c->dst_image)] {});
     } else {
-        c->dst_image.reset();
+        c->dst_image = {};
     }
 }
 luisa::compute::TextureCreationInfo CameraComponent::render_image(void *this_) {

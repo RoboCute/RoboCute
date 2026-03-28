@@ -34,7 +34,7 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     }
     auto &hdr = pass_ctx->hdr;
     if (hdr && any(hdr.size() != frame_settings.display_resolution)) {
-        hdr.reset();
+        hdr = {};
     }
     if (!hdr) {
         hdr = ctx.device->create_image<float>(PixelStorage::FLOAT4, frame_settings.display_resolution);

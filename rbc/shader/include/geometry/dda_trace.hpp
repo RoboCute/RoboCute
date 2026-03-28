@@ -6,6 +6,14 @@ namespace geometry {
 using namespace luisa::shader;
 
 // 3D DDA for heightfield - used for terrain collision detection
+static float dda_get_t(
+    float2 grid_origin,
+    float2 grid_end_pos,
+    float grid_size,
+    float dir_xz_len) {
+    float xz_len = distance(grid_end_pos, grid_origin) / grid_size;
+    return xz_len / dir_xz_len;
+}
 static bool ddaTerrainRaycast(
     float3 origin,
     float grid_size,
@@ -20,48 +28,58 @@ static bool ddaTerrainRaycast(
     float3 &out_pos) {
     dir = normalize(dir);
     // Project 3D ray to 2D plane for DDA
-    float2 rayDir2D = dir.xz;
+    float2 dir_xz = dir.xz;
 
     // Handle horizontal ray case
-    float len_xz = length(rayDir2D);
+    float len_xz = length(dir_xz);
+    if (dir.y >= 0) {
+        float2 uv = origin.xz;
+        float h = heap.image_sample(heap_idx, uv * uv_scale + uv_offset, Filter::POINT, Address::EDGE).x * height_scale + height_offset;
+        if (h >= origin.y) {
+            out_pos = origin;
+            return true;
+        }
+        return false;
+    }
     if (len_xz < 0.001f) {
         // Vertical ray, sample directly
         float2 uv = origin.xz;
-        if (dir.y > 0) return false;
         float h = heap.image_sample(heap_idx, uv * uv_scale + uv_offset, Filter::POINT, Address::EDGE).x * height_scale + height_offset;
-        out_pos = float3(origin.x, h, origin.z);
+        out_pos = origin;
         return true;
     }
-    origin *= grid_size;
-    float2 rayPos2D = origin.xz;
+    auto normalized_dir_xz = normalize(dir_xz);
+    auto grid_origin = origin.xz * grid_size;
     // Standard 2D DDA setup
-    float2 delta = abs(1.0f / rayDir2D);
-    float2 step = sign(rayDir2D);
-    float2 mapPos = floor(rayPos2D);
+    float2 delta = abs(1.0f / normalized_dir_xz);
+    float2 step = sign(normalized_dir_xz);
+    float2 mapPos = floor(grid_origin);
     float2 sideDist =
-        (step * (mapPos - rayPos2D) + step * 0.5f + 0.5f) * delta;
+        (step * (mapPos - grid_origin) + step * 0.5f + 0.5f) * delta;
 
     float t = 0.0f;
-    float3 currentPos = origin;
-
-    for (int i = 0; i < 64; i++) {
+    float2 grid_pos = grid_origin;
+    uint iter_count = uint(grid_size * 2 + 0.1) - 1;
+    for (int i = 0; i < iter_count; i++) {
         // Calculate current 3D position
-        currentPos = origin + dir * t;
-        if (currentPos.y <= 0) {
-            out_pos = currentPos / grid_size;
+        grid_pos = grid_origin + normalized_dir_xz * t;
+        float nrd_t = dda_get_t(grid_origin, grid_pos, grid_size, len_xz);
+        float3 pos_3d = origin + dir * nrd_t;
+        if (grid_pos.y <= 0) {
+            auto origin_xz = grid_pos / grid_size;
+            out_pos = pos_3d;
             return true;
         }
 
         // Sample heightmap
         float2 uv = mapPos / grid_size;
         if (any(uv < 0.f || uv > 1.0f)) return false;
-        float terrainHeight = heap.image_sample(heap_idx, uv * uv_scale + uv_offset, Filter::POINT, Address::EDGE).x * height_scale + height_offset;
-        terrainHeight *= grid_size; // to pixel space
+        float img_height = heap.image_sample(heap_idx, uv * uv_scale + uv_offset, Filter::POINT, Address::EDGE).x * height_scale + height_offset;
 
         // Check if hit terrain
-        if (currentPos.y <= terrainHeight) {
+        if (pos_3d.y <= img_height) {
             // Refine hit point (optional)
-            out_pos = float3(currentPos.x, terrainHeight, currentPos.z)  / grid_size;
+            out_pos = pos_3d;
             return true;
         }
 
@@ -74,15 +92,6 @@ static bool ddaTerrainRaycast(
             t = sideDist.y;
             sideDist.y += delta.y;
             mapPos.y += step.y;
-        }
-
-        // Calculate new height and check if passed through terrain
-        float nextHeight = (origin + dir * t).y;
-        if (nextHeight <= terrainHeight && currentPos.y > terrainHeight) {
-            // Linear interpolation for precise hit point
-            float alpha = (terrainHeight - currentPos.y) / (nextHeight - currentPos.y);
-            out_pos = lerp(currentPos, origin + dir * t, alpha) / grid_size;
-            return true;
         }
     }
     return false;

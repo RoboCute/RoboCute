@@ -182,7 +182,6 @@ uint HeightMapResource::emplace_procedural_instance(
     }
     _height_map_surface.height_minmax_buffer_idx = _height_map_surface.aabb_buffer_heap_idx;
 
-    _height_map_surface.mat_buffer_id = _height_map_surface.aabb_buffer_heap_idx;
     _height_map_surface.block_size.x = block_size().x;
     _height_map_surface.block_size.y = block_size().y;
 

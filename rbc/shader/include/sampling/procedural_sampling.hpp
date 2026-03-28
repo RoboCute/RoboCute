@@ -845,6 +845,7 @@ static bool _sample_proccedural(
 
     return true;
 }
+
 static bool _sample_proccedural(
     Ray ray,
     uint type_id,
@@ -890,7 +891,7 @@ static bool _sample_proccedural(
     float3 box_local_pos;
     auto dda_result = geometry::ddaTerrainRaycast(
         hit_start_pos,
-        32, // one grid
+        32,// one grid
         hit_end_pos - hit_start_pos,
         g_image_heap,
         height.heightmap_idx,
@@ -899,12 +900,64 @@ static bool _sample_proccedural(
         1.0f / (height_min_max.y - height_min_max.x),
         -height_min_max.x,
         box_local_pos);
+#ifdef DEBUG
+    if (all(dispatch_id() == dispatch_size() / 2u)) {
+        device_log("dda_result {} local pos {}", dda_result, box_local_pos);
+    }
+#endif
     if (!dda_result) return false;
 
     auto new_hit_dist = distance(inst_local_to_world * ((box_local_pos * 2.0f - 1.0f) * box_size + box_center), ro);
     if (new_hit_dist >= hit_dist) return false;
     hit_dist = new_hit_dist;
-    // TODO: write to geometry
+    ///////////////// Sobel calculate normal
+    // Compute UV from DDA return value (xz plane)
+    float2 uv_scale = 1.0f / float2(height.block_size);
+    float2 uv_offset = float2(block_coord) / float2(height.block_size);
+    float2 uv = box_local_pos.xz * uv_scale + uv_offset;
+
+    // Sample heightmap and compute normal using Sobel operator
+    // Get texture size for computing pixel offset
+    uint2 tex_size = g_image_heap.image_size(height.heightmap_idx);
+    float2 texel_size = 1.0f / float2(tex_size);
+    float height_scale = 1.0f / (height_min_max.y - height_min_max.x);
+    float height_offset = -height_min_max.x;
+
+    // Helper to sample height at offset
+    auto sample_height = [&](float2 offset) -> float {
+        float2 sample_uv = uv + offset * texel_size;
+        float h = g_image_heap.image_sample(height.heightmap_idx, sample_uv, Filter::POINT, Address::EDGE).x;
+        return h * height_scale + height_offset;
+    };
+
+    // Sample 3x3 neighborhood for Sobel operator
+    float tl = sample_height(float2(-1.0f, -1.0f));
+    float t = sample_height(float2(0.0f, -1.0f));
+    float tr = sample_height(float2(1.0f, -1.0f));
+    float l = sample_height(float2(-1.0f, 0.0f));
+    float r = sample_height(float2(1.0f, 0.0f));
+    float bl = sample_height(float2(-1.0f, 1.0f));
+    float b = sample_height(float2(0.0f, 1.0f));
+    float br = sample_height(float2(1.0f, 1.0f));
+
+    // Sobel gradients
+    float dx = (tr + 2.0f * r + br) - (tl + 2.0f * l + bl);
+    float dy = (bl + 2.0f * b + br) - (tl + 2.0f * t + tr);
+
+    // Construct normal (up is positive Y for heightmap)
+    float3 local_normal = float3(-dx * texel_size.x, 1.0f, -dy * texel_size.y);
+    local_normal = normalize(local_normal);
+
+    // Transform normal from local space to world space
+    local_normal = normalize(inst_local_to_world * local_normal);
+    geometry.normal[0] = local_normal.x;
+    geometry.normal[1] = local_normal.y;
+    geometry.normal[2] = local_normal.z;
+
+    // Set procedural_id like other types
+    geometry.procedural_id.set_id(type_id, height.mat_buffer_id);
+    geometry.procedural_id.mat_offset = 0;// HeightMap doesn't use mat_offset like SDF
+    geometry.procedural_id.mat_idx = hit.prim;
     return true;
 }
 

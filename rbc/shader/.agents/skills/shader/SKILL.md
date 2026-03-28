@@ -6,6 +6,10 @@ name: shader
 
 This skill provides guidance for writing GPU shaders using the Luisa shading language. Luisa is a C++-embedded shading language that compiles to GPU code (DXIL, SPIR-V, etc.) for compute, rasterization, and ray tracing pipelines.
 
+## DO NOT
+- Do not use static variable or static array.
+- Do not use pointer.
+
 ## Overview
 
 Luisa shaders are written in C++ with special attributes and intrinsics. The language provides:

@@ -441,8 +441,8 @@ void OfflinePTPass::on_disable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
-    key_buffer.reset();
-    value_buffer.reset();
+    key_buffer = {};
+    value_buffer = {};
 }
 
 void OfflinePTPass::wait_enable() {

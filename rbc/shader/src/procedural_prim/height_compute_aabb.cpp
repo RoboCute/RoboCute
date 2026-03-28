@@ -94,8 +94,8 @@ int kernel(
 
         // Write result to output buffer (only first thread)
         if (lane_id == 0u) {
-            float2 uv_start = float2(dispatch_id_xy) / float2(img_size);
-            float2 uv_end = (1.0f + float2(dispatch_id_xy)) / float2(img_size);
+            float2 uv_start = float2(block_id_xy) / float2(img_size / 32u);
+            float2 uv_end = (float2(block_id_xy) + 1.0f) / float2(img_size / 32u);
             float2 min_xz = lerp(xz_axis_min, xz_axis_max, uv_start);
             float2 max_xz = lerp(xz_axis_min, xz_axis_max, uv_end);
             // Build AABB

@@ -9,7 +9,7 @@ DeviceBuffer::DeviceBuffer() {}
 void DeviceBuffer::create_empty(uint64_t size_bytes, FileLoadType load_type) {
     if (size_bytes == _host_data.size_bytes()) return;
     _host_data.clear();
-    _buffer.reset();
+    _buffer = {};
     if (size_bytes == 0) return;
     if ((luisa::to_underlying(load_type) & luisa::to_underlying(FileLoadType::HostOnly)) != 0) {
         _host_data.push_back_uninitialized(size_bytes);
@@ -155,7 +155,7 @@ void DeviceBuffer::discard_device_unsafe(DisposeQueue *disp_queue) {
     if (disp_queue)
         disp_queue->dispose_after_queue(std::move(_buffer));
     else
-        _buffer.reset();
+        _buffer = {};
 }
 void DeviceBuffer::sync_buffer_size_to_device_unsafe(DisposeQueue *disp_queue) {
     auto size_bytes = _host_data.size();

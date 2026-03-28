@@ -4,9 +4,12 @@
 #include <rbc_world/resources/aabb_voxel.h>
 #include <rbc_world/resources/voxel_sdf.h>
 #include <rbc_world/resources/gaussian_splat.h>
+#include <rbc_world/resources/height_map.h>
 #include <rbc_world/resources/scene.h>
 #include <rbc_project/project.h>
+#include <rbc_graphics/render_device.h>
 #include <luisa/runtime/rtx/aabb.h>
+#include <rbc_graphics/shader_manager.h>
 
 namespace rbc {
 
@@ -14,9 +17,10 @@ void TestProcedural::init(IProject *proj) {
     // gus_res = proj->import_assets("nerf_blender_lego_30000.ply", TypeInfo::get<world::GaussianSplatResource>().md5());
     // gus_res->install();
     // [[maybe_unused]] auto id = gus_res->emplace_procedural_instance(scaling(1.f));
-    // _init_voxel_res();
+    _init_voxel_res();
     // _init_sdf_res();
     // _init_gs_res();
+    _init_height_map_res();
 }
 class Random {
     std::mt19937 gen;
@@ -171,6 +175,34 @@ void TestProcedural::_init_gs_res() {
     // This function intentionally does nothing as per requirements
 }
 
+void TestProcedural::_init_height_map_res() {
+    // Create height map resource with 512x512 resolution
+    constexpr uint2 resolution{512, 512};
+    height_map_res = RC<world::HeightMapResource>{world::create_object<world::HeightMapResource>()};
+    height_map_res->create_empty(resolution);
+    Shader2D<
+        Image<float>,//& output,
+        float2,      //uv_scale,
+        float2,      //uv_offset,
+        float,       //frequency,
+        uint         // octave_count
+        > const *perlin{};
+    ShaderManager::instance()->load("texture_process/perlin_noise.bin", perlin);
+    LUISA_ASSERT(perlin);
+    RenderDevice::instance().lc_main_cmd_list()
+        << (*perlin)(
+               height_map_res->height_img()->get_float_image(),
+               float2(1),
+               float2(0),
+               1.f,
+               1)
+               .dispatch(resolution);
+    // Install and emplace as procedural instance
+    height_map_res->install();
+    [[maybe_unused]] auto height_map_inst_id = height_map_res->emplace_procedural_instance(
+        scaling(1.0f));
+}
+
 void TestProcedural::dispose() {
     // Remove procedural instances if they exist
     if (voxel_res) {
@@ -182,9 +214,13 @@ void TestProcedural::dispose() {
     if (gus_res) {
         gus_res->remove_procedural_instance();
     }
+    if (height_map_res) {
+        height_map_res->remove_procedural_instance();
+    }
     voxel_res.reset();
     sdf_res.reset();
     gus_res.reset();
+    height_map_res.reset();
 }
 TestProcedural::TestProcedural() {}
 TestProcedural::~TestProcedural() {}

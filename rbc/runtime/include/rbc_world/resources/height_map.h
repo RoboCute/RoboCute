@@ -42,7 +42,7 @@ private:
 public:
     /// Check if resource is empty
     [[nodiscard]] bool empty() const;
-
+    auto height_img() const { return _height_img.get(); }
     uint2 block_size() const {
         return _resolution / 32u;
     }

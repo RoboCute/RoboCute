@@ -567,7 +567,7 @@ void AccelManager::build_accel(CommandList &cmdlist) {
 }
 
 AccelManager::~AccelManager() {
-    _accel.reset();
+    _accel = {};
     _accel_elements.clear();
 }
 void AccelManager::update_last_transform(

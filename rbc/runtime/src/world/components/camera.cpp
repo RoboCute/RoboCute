@@ -107,7 +107,7 @@ void CameraComponent::disable_camera() {
         if (rd) {
             rd->lc_main_cmd_list().add_callback([i = std::move(dst_image)] {});
         } else {
-            dst_image.reset();
+            dst_image = {};
         }
     }
     if (!_render_pipe_ctx || !GraphicsUtils::instance()) return;

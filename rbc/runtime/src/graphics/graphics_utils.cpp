@@ -81,8 +81,8 @@ void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     if (_present_stream) {
         _present_stream.synchronize();
     }
-    _dst_image.reset();
-    _present_image.reset();
+    _dst_image = {};
+    _present_image = {};
 }
 void GraphicsUtils::init_device(luisa::string_view program_path, luisa::string_view backend_name, bool compactible_mode) {
     LUISA_ASSERT(!_graphics_utils_singleton);
@@ -218,7 +218,7 @@ void GraphicsUtils::tick(
         auto &frame_settings = render_settings->read_mut<rbc::FrameSettings>();
         auto &pipe_settings = render_settings->read_mut<rbc::PTPipelineSettings>();
         // TODO: camera settings
-        frame_settings.resolved_img.reset();
+        frame_settings.resolved_img = {};
         if (tick_stage == TickStage::None) {
             pipe_settings.render = false;
             return;
@@ -355,9 +355,9 @@ void GraphicsUtils::resize_swapchain(
     _compute_event.event.synchronize(_compute_event.fence_index);
     _present_stream.synchronize();
 
-    _dst_image.reset();
-    _swapchain.reset();
-    _present_image.reset();
+    _dst_image = {};
+    _swapchain = {};
+    _present_image = {};
     _dst_image = _render_device->lc_device().create_image<float>(PixelStorage::FLOAT4, size, 1, false, true);
     _dst_image.set_name("Dest image");
 
@@ -371,7 +371,7 @@ void GraphicsUtils::resize_swapchain(
                 .wants_hdr = false,
                 .wants_vsync = false,
                 .back_buffer_count = 2});
-        _present_image.reset();
+        _present_image = {};
         _present_image = _render_device->lc_device().create_image<float>(_swapchain.backend_storage(), size, 1, false, true);
         _present_image.set_name("Dest image");
     }
