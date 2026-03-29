@@ -1,0 +1,594 @@
+#pragma once
+#include "procedural_common.hpp"
+#include <luisa/std.hpp>
+namespace shadertoy {
+using namespace luisa::shader;
+// Ray Tracing - Primitives. Created by Reinder Nijhoff 2019
+// The MIT License
+// @reindernijhoff
+//
+// https://www.shadertoy.com/view/tl23Rm
+//
+// I wanted to create a reference shader similar to "Raymarching - Primitives"
+// (https://www.shadertoy.com/view/Xds3zN), but with ray-primitive intersection
+// routines instead of sdf routines.
+//
+// As usual, I ended up mostly just copy-pasting code from Íñigo Quílez:
+//
+// https://iquilezles.org/articles/intersectors
+//
+// Please let me know if there are other routines that I should add to this shader.
+//
+// Sphere:          https://www.shadertoy.com/view/4d2XWV
+// Box:             https://www.shadertoy.com/view/ld23DV
+// Capped Cylinder: https://www.shadertoy.com/view/4lcSRn
+// Torus:           https://www.shadertoy.com/view/4sBGDy
+// Capsule:         https://www.shadertoy.com/view/Xt3SzX
+// Capped Cone:     https://www.shadertoy.com/view/llcfRf
+// Ellipsoid:       https://www.shadertoy.com/view/MlsSzn
+// Rounded Cone:    https://www.shadertoy.com/view/MlKfzm
+// Triangle:        https://www.shadertoy.com/view/MlGcDz
+// Sphere4:         https://www.shadertoy.com/view/3tj3DW
+// Goursat:         https://www.shadertoy.com/view/3lj3DW
+// Rounded Box:     https://www.shadertoy.com/view/WlSXRW
+//
+// Disk:            https://www.shadertoy.com/view/lsfGDB
+//
+template<concepts::float_family T>
+auto sign_float(T v) {
+    using MaskType = copy_dim<uint, T>::type;
+    auto low = select(T(1), T(0), (bit_cast<MaskType>(v) & MaskType(0x7fffffffu)) == MaskType(0));
+    auto high = select(T(2), T(0), (bit_cast<MaskType>(v) & MaskType(0x80000000u)) == MaskType(0));
+    return low - high;
+}
+template<concepts::float_family T>
+auto inversesqrt(T v) {
+    return T(1) / sqrt(v);
+}
+
+
+static float dot2(float3 v) { return dot(v, v); }
+
+// Plane
+static float iPlane(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                    float3 planeNormal, float planeDist) {
+    float a = dot(rd, planeNormal);
+    float d = -(dot(ro, planeNormal) + planeDist) / a;
+    if (a > 0. || d < distBound.x || d > distBound.y) {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    } else {
+        normal = planeNormal;
+        return d;
+    }
+}
+
+// Sphere:          https://www.shadertoy.com/view/4d2XWV
+static float iSphere(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                     float sphereRadius) {
+    float b = dot(ro, rd);
+    float c = dot(ro, ro) - sphereRadius * sphereRadius;
+    float h = b * b - c;
+    if (h < 0.) {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    } else {
+        h = sqrt(h);
+        float d1 = -b - h;
+        float d2 = -b + h;
+        if (d1 >= distBound.x && d1 <= distBound.y) {
+            normal = normalize(ro + rd * d1);
+            return d1;
+        } else if (d2 >= distBound.x && d2 <= distBound.y) {
+            normal = normalize(ro + rd * d2);
+            return d2;
+        } else {
+            return PROCEDURAL_TRACE_MAX_DIST;
+        }
+    }
+}
+static void iBox(float3 ro, float3 rd, float2 distBound, float3 boxSize, float2 &tNearFar, float3 &normal) {
+    float3 m = sign_float(rd) / max(abs(rd), float3(1e-8f));
+    float3 n = m * ro;
+    float3 k = abs(m) * boxSize;
+
+    float3 t1 = -n - k;
+    float3 t2 = -n + k;
+
+    float tN = max(max(t1.x, t1.y), t1.z);
+    float tF = min(min(t2.x, t2.y), t2.z);
+
+    if (tN > tF || tF <= 0.) {
+        tNearFar = PROCEDURAL_TRACE_MAX_DIST;
+    } else {
+        if ((tN >= distBound.x && tN <= distBound.y) || (tF >= distBound.x && tF <= distBound.y)) {
+            if (tN >= distBound.x && tN <= distBound.y) {
+                normal = -sign_float(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+            } else if (tF >= distBound.x && tF <= distBound.y) {
+                normal = -sign_float(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+            }
+
+            tNearFar = float2(tN, tF);
+        } else {
+            tNearFar = PROCEDURAL_TRACE_MAX_DIST;
+        }
+    }
+}
+// Box:             https://www.shadertoy.com/view/ld23DV
+static float iBox(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                  float3 boxSize) {
+    float3 m = sign_float(rd) / max(abs(rd), float3(1e-8f));
+    float3 n = m * ro;
+    float3 k = abs(m) * boxSize;
+
+    float3 t1 = -n - k;
+    float3 t2 = -n + k;
+
+    float tN = max(max(t1.x, t1.y), t1.z);
+    float tF = min(min(t2.x, t2.y), t2.z);
+
+    if (tN > tF || tF <= 0.) {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    } else {
+        if (tN >= distBound.x && tN <= distBound.y) {
+            normal = -sign_float(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+            return tN;
+        } else if (tF >= distBound.x && tF <= distBound.y) {
+            normal = -sign_float(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+            return tF;
+        } else {
+            return PROCEDURAL_TRACE_MAX_DIST;
+        }
+    }
+}
+// Box:             https://www.shadertoy.com/view/ld23DV
+// near dist and far dist
+static float2 iBoxSimple(float3 ro, float3 rd, float3 boxSize, float3 &normal) {
+    float3 m = sign_float(rd) / max(abs(rd), float3(1e-8f));
+    float3 n = m * ro;
+    float3 k = abs(m) * boxSize;
+
+    float3 t1 = -n - k;
+    float3 t2 = -n + k;
+
+    float tN = max(max(t1.x, t1.y), t1.z);
+    float tF = min(min(t2.x, t2.y), t2.z);
+
+    if (tN > tF || tF <= 0.) {
+        return float2(PROCEDURAL_TRACE_MAX_DIST);
+    } else {
+        normal = -sign_float(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+        return float2(tN, tF);
+    }
+}
+
+// Capped Cylinder: https://www.shadertoy.com/view/4lcSRn
+static float iCylinder(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                       float3 pa, float3 pb, float ra) {
+    float3 ca = pb - pa;
+    float3 oc = ro - pa;
+
+    float caca = dot(ca, ca);
+    float card = dot(ca, rd);
+    float caoc = dot(ca, oc);
+
+    float a = caca - card * card;
+    float b = caca * dot(oc, rd) - caoc * card;
+    float c = caca * dot(oc, oc) - caoc * caoc - ra * ra * caca;
+    float h = b * b - a * c;
+
+    if (h < 0.) return PROCEDURAL_TRACE_MAX_DIST;
+
+    h = sqrt(h);
+    float d = (-b - h) / a;
+
+    float y = caoc + d * card;
+    if (y > 0. && y < caca && d >= distBound.x && d <= distBound.y) {
+        normal = (oc + d * rd - ca * y / caca) / ra;
+        return d;
+    }
+
+    d = ((y < 0. ? 0. : caca) - caoc) / card;
+
+    if (abs(b + a * d) < h && d >= distBound.x && d <= distBound.y) {
+        normal = normalize(ca * sign_float(y) / caca);
+        return d;
+    } else {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    }
+}
+
+// Torus:           https://www.shadertoy.com/view/4sBGDy
+static float iTorus(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                    float2 torus) {
+    // bounding sphere
+    float3 tmpnormal;
+    if (iSphere(ro, rd, distBound, tmpnormal, torus.y + torus.x) > distBound.y) {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    }
+
+    float po = 1.0f;
+
+    float Ra2 = torus.x * torus.x;
+    float ra2 = torus.y * torus.y;
+
+    float m = dot(ro, ro);
+    float n = dot(ro, rd);
+
+#if 1
+    float k = (m + Ra2 - ra2) / 2.0f;
+    float k3 = n;
+    float k2 = n * n - Ra2 * dot(rd.xy, rd.xy) + k;
+    float k1 = n * k - Ra2 * dot(rd.xy, ro.xy);
+    float k0 = k * k - Ra2 * dot(ro.xy, ro.xy);
+#else
+    float k = (m - Ra2 - ra2) / 2.0f;
+    float k3 = n;
+    float k2 = n * n + Ra2 * rd.z * rd.z + k;
+    float k1 = k * n + Ra2 * ro.z * rd.z;
+    float k0 = k * k + Ra2 * ro.z * ro.z - Ra2 * ra2;
+#endif
+
+#if 1
+    // prevent |c1| from being too close to zero
+    if (abs(k3 * (k3 * k3 - k2) + k1) < 0.01) {
+        po = -1.0f;
+        float tmp = k1;
+        k1 = k3;
+        k3 = tmp;
+        k0 = 1.0f / k0;
+        k1 = k1 * k0;
+        k2 = k2 * k0;
+        k3 = k3 * k0;
+    }
+#endif
+
+    // reduced cubic
+    float c2 = k2 * 2.0f - 3.0f * k3 * k3;
+    float c1 = k3 * (k3 * k3 - k2) + k1;
+    float c0 = k3 * (k3 * (c2 + 2.0f * k2) - 8.0f * k1) + 4.0f * k0;
+
+    c2 /= 3.0f;
+    c1 *= 2.0f;
+    c0 /= 3.0f;
+
+    float Q = c2 * c2 + c0;
+    float R = c2 * c2 * c2 - 3.0f * c2 * c0 + c1 * c1;
+
+    float h = R * R - Q * Q * Q;
+    float t = PROCEDURAL_TRACE_MAX_DIST;
+
+    if (h >= 0.0f) {
+        // 2 intersections
+        h = sqrt(h);
+
+        float v = sign_float(R + h) * pow(abs(R + h), 1.0f / 3.0f);// cube root
+        float u = sign_float(R - h) * pow(abs(R - h), 1.0f / 3.0f);// cube root
+
+        float2 s = float2((v + u) + 4.0f * c2, (v - u) * sqrt(3.0f));
+
+        float y = sqrt(0.5 * (length(s) + s.x));
+        float x = 0.5 * s.y / y;
+        float r = 2.0f * c1 / (x * x + y * y);
+
+        float t1 = x - r - k3;
+        t1 = (po < 0.0f) ? 2.0f / t1 : t1;
+        float t2 = -x - r - k3;
+        t2 = (po < 0.0f) ? 2.0f / t2 : t2;
+
+        if (t1 >= distBound.x) t = t1;
+        if (t2 >= distBound.x) t = min(t, t2);
+    } else {
+        // 4 intersections
+        float sQ = sqrt(Q);
+        float w = sQ * cos(acos(-R / (sQ * Q)) / 3.0f);
+
+        float d2 = -(w + c2);
+        if (d2 < 0.0f) return PROCEDURAL_TRACE_MAX_DIST;
+        float d1 = sqrt(d2);
+
+        float h1 = sqrt(w - 2.0f * c2 + c1 / d1);
+        float h2 = sqrt(w - 2.0f * c2 - c1 / d1);
+        float t1 = -d1 - h1 - k3;
+        t1 = (po < 0.0f) ? 2.0f / t1 : t1;
+        float t2 = -d1 + h1 - k3;
+        t2 = (po < 0.0f) ? 2.0f / t2 : t2;
+        float t3 = d1 - h2 - k3;
+        t3 = (po < 0.0f) ? 2.0f / t3 : t3;
+        float t4 = d1 + h2 - k3;
+        t4 = (po < 0.0f) ? 2.0f / t4 : t4;
+
+        if (t1 >= distBound.x) t = t1;
+        if (t2 >= distBound.x) t = min(t, t2);
+        if (t3 >= distBound.x) t = min(t, t3);
+        if (t4 >= distBound.x) t = min(t, t4);
+    }
+
+    if (t >= distBound.x && t <= distBound.y) {
+        float3 pos = ro + rd * t;
+        normal = normalize(pos * (dot(pos, pos) - torus.y * torus.y - torus.x * torus.x * float3(1, 1, -1)));
+        return t;
+    } else {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    }
+}
+
+// Capsule:         https://www.shadertoy.com/view/Xt3SzX
+static float iCapsule(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                      float3 pa, float3 pb, float r) {
+    float3 ba = pb - pa;
+    float3 oa = ro - pa;
+
+    float baba = dot(ba, ba);
+    float bard = dot(ba, rd);
+    float baoa = dot(ba, oa);
+    float rdoa = dot(rd, oa);
+    float oaoa = dot(oa, oa);
+
+    float a = baba - bard * bard;
+    float b = baba * rdoa - baoa * bard;
+    float c = baba * oaoa - baoa * baoa - r * r * baba;
+    float h = b * b - a * c;
+    if (h >= 0.) {
+        float t = (-b - sqrt(h)) / a;
+        float d = PROCEDURAL_TRACE_MAX_DIST;
+
+        float y = baoa + t * bard;
+
+        // body
+        if (y > 0.f && y < baba) {
+            d = t;
+        } else {
+            // caps
+            float3 oc = (y <= 0.f) ? oa : ro - pb;
+            b = dot(rd, oc);
+            c = dot(oc, oc) - r * r;
+            h = b * b - c;
+            if (h > 0.0f) {
+                d = -b - sqrt(h);
+            }
+        }
+        if (d >= distBound.x && d <= distBound.y) {
+            pa = ro + rd * d - pa;
+            float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0f, 1.0f);
+            normal = (pa - h * ba) / r;
+            return d;
+        }
+    }
+    return PROCEDURAL_TRACE_MAX_DIST;
+}
+
+// Capped Cone:     https://www.shadertoy.com/view/llcfRf
+static float iCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                   float3 pa, float3 pb, float ra, float rb) {
+    float3 ba = pb - pa;
+    float3 oa = ro - pa;
+    float3 ob = ro - pb;
+
+    float m0 = dot(ba, ba);
+    float m1 = dot(oa, ba);
+    float m2 = dot(ob, ba);
+    float m3 = dot(rd, ba);
+
+    //caps
+    if (m1 < 0.) {
+        if (dot2(oa * m3 - rd * m1) < (ra * ra * m3 * m3)) {
+            float d = -m1 / m3;
+            if (d >= distBound.x && d <= distBound.y) {
+                normal = -ba * inversesqrt(m0);
+                return d;
+            }
+        }
+    } else if (m2 > 0.) {
+        if (dot2(ob * m3 - rd * m2) < (rb * rb * m3 * m3)) {
+            float d = -m2 / m3;
+            if (d >= distBound.x && d <= distBound.y) {
+                normal = ba * inversesqrt(m0);
+                return d;
+            }
+        }
+    }
+
+    // body
+    float m4 = dot(rd, oa);
+    float m5 = dot(oa, oa);
+    float rr = ra - rb;
+    float hy = m0 + rr * rr;
+
+    float k2 = m0 * m0 - m3 * m3 * hy;
+    float k1 = m0 * m0 * m4 - m1 * m3 * hy + m0 * ra * (rr * m3 * 1.0f);
+    float k0 = m0 * m0 * m5 - m1 * m1 * hy + m0 * ra * (rr * m1 * 2.0f - m0 * ra);
+
+    float h = k1 * k1 - k2 * k0;
+    if (h < 0.) return PROCEDURAL_TRACE_MAX_DIST;
+
+    float t = (-k1 - sqrt(h)) / k2;
+
+    float y = m1 + t * m3;
+    if (y > 0.f && y < m0 && t >= distBound.x && t <= distBound.y) {
+        normal = normalize(m0 * (m0 * (oa + t * rd) + rr * ba * ra) - ba * hy * y);
+        return t;
+    } else {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    }
+}
+
+// Ellipsoid:       https://www.shadertoy.com/view/MlsSzn
+static float iEllipsoid(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                        float3 rad) {
+    float3 ocn = ro / rad;
+    float3 rdn = rd / rad;
+
+    float a = dot(rdn, rdn);
+    float b = dot(ocn, rdn);
+    float c = dot(ocn, ocn);
+    float h = b * b - a * (c - 1.f);
+
+    if (h < 0.) {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    }
+
+    float d = (-b - sqrt(h)) / a;
+
+    if (d < distBound.x || d > distBound.y) {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    } else {
+        normal = normalize((ro + d * rd) / rad);
+        return d;
+    }
+}
+
+// Rounded Cone:    https://www.shadertoy.com/view/MlKfzm
+static float iRoundedCone(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                          float3 pa, float3 pb, float ra, float rb) {
+    float3 ba = pb - pa;
+    float3 oa = ro - pa;
+    float3 ob = ro - pb;
+    float rr = ra - rb;
+    float m0 = dot(ba, ba);
+    float m1 = dot(ba, oa);
+    float m2 = dot(ba, rd);
+    float m3 = dot(rd, oa);
+    float m5 = dot(oa, oa);
+    float m6 = dot(ob, rd);
+    float m7 = dot(ob, ob);
+
+    float d2 = m0 - rr * rr;
+
+    float k2 = d2 - m2 * m2;
+    float k1 = d2 * m3 - m1 * m2 + m2 * rr * ra;
+    float k0 = d2 * m5 - m1 * m1 + m1 * rr * ra * 2. - m0 * ra * ra;
+
+    float h = k1 * k1 - k0 * k2;
+    if (h < 0.0f) {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    }
+
+    float t = (-sqrt(h) - k1) / k2;
+
+    float y = m1 - ra * rr + t * m2;
+    if (y > 0.0f && y < d2) {
+        if (t >= distBound.x && t <= distBound.y) {
+            normal = normalize(d2 * (oa + t * rd) - ba * y);
+            return t;
+        } else {
+            return PROCEDURAL_TRACE_MAX_DIST;
+        }
+    } else {
+        float h1 = m3 * m3 - m5 + ra * ra;
+        float h2 = m6 * m6 - m7 + rb * rb;
+
+        if (max(h1, h2) < 0.0f) {
+            return PROCEDURAL_TRACE_MAX_DIST;
+        }
+
+        float3 n = float3(0);
+        float r = PROCEDURAL_TRACE_MAX_DIST;
+
+        if (h1 > 0.) {
+            r = -m3 - sqrt(h1);
+            n = (oa + r * rd) / ra;
+        }
+        if (h2 > 0.) {
+            t = -m6 - sqrt(h2);
+            if (t < r) {
+                n = (ob + t * rd) / rb;
+                r = t;
+            }
+        }
+        if (r >= distBound.x && r <= distBound.y) {
+            normal = n;
+            return r;
+        } else {
+            return PROCEDURAL_TRACE_MAX_DIST;
+        }
+    }
+}
+
+// Triangle:        https://www.shadertoy.com/view/MlGcDz
+static float iTriangle(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                       float3 v0, float3 v1, float3 v2) {
+    float3 v1v0 = v1 - v0;
+    float3 v2v0 = v2 - v0;
+    float3 rov0 = ro - v0;
+
+    float3 n = cross(v1v0, v2v0);
+    float3 q = cross(rov0, rd);
+    float d = 1.0f / dot(rd, n);
+    float u = d * dot(-q, v2v0);
+    float v = d * dot(q, v1v0);
+    float t = d * dot(-n, rov0);
+
+    if (u < 0. || v < 0. || (u + v) > 1. || t < distBound.x || t > distBound.y) {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    } else {
+        normal = normalize(-n);
+        return t;
+    }
+}
+
+// Sphere4:         https://www.shadertoy.com/view/3tj3DW
+static float iSphere4(float3 ro, float3 rd, float2 distBound, float3 &normal,
+                      float ra) {
+    // -----------------------------
+    // solve quartic equation
+    // -----------------------------
+
+    float r2 = ra * ra;
+
+    float3 d2 = rd * rd;
+    float3 d3 = d2 * rd;
+    float3 o2 = ro * ro;
+    float3 o3 = o2 * ro;
+
+    float ka = 1.0f / dot(d2, d2);
+
+    float k0 = ka * dot(ro, d3);
+    float k1 = ka * dot(o2, d2);
+    float k2 = ka * dot(o3, rd);
+    float k3 = ka * (dot(o2, o2) - r2 * r2);
+
+    // -----------------------------
+    // solve cubic
+    // -----------------------------
+
+    float c0 = k1 - k0 * k0;
+    float c1 = k2 + 2.0f * k0 * (k0 * k0 - (3.0f / 2.0f) * k1);
+    float c2 = k3 - 3.0f * k0 * (k0 * (k0 * k0 - 2.0f * k1) + (4.0f / 3.0f) * k2);
+
+    float p = c0 * c0 * 3.0f + c2;
+    float q = c0 * c0 * c0 - c0 * c2 + c1 * c1;
+    float h = q * q - p * p * p * (1.0f / 27.0f);
+
+    // -----------------------------
+    // skip the case of 3 real solutions for the cubic, which involves
+    // 4 complex solutions for the quartic, since we know this objcet is
+    // convex
+    // -----------------------------
+    if (h < 0.0f) {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    }
+
+    // one real solution, two complex (conjugated)
+    h = sqrt(h);
+
+    float s = sign_float(q + h) * pow(abs(q + h), 1.0f / 3.0f);// cuberoot
+    float t = sign_float(q - h) * pow(abs(q - h), 1.0f / 3.0f);// cuberoot
+
+    float2 v = float2((s + t) + c0 * 4.0f, (s - t) * sqrt(3.0f)) * 0.5f;
+
+    // -----------------------------
+    // the quartic will have two real solutions and two complex solutions.
+    // we only want the real ones
+    // -----------------------------
+
+    float r = length(v);
+    float d = -abs(v.y) / sqrt(r + v.x) - c1 / r - k0;
+
+    if (d >= distBound.x && d <= distBound.y) {
+        float3 pos = ro + rd * d;
+        normal = normalize(pos * pos * pos);
+        return d;
+    } else {
+        return PROCEDURAL_TRACE_MAX_DIST;
+    }
+}
+}// namespace shadertoy

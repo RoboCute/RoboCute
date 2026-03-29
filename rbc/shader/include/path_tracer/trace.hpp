@@ -8,8 +8,8 @@
 #include <std/concepts>
 
 namespace luisa::shader {
-// #define RBC_USE_RAYQUERY
-// #define RBC_USE_RAYQUERY_SHADOW
+#define RBC_USE_RAYQUERY
+#define RBC_USE_RAYQUERY_SHADOW
 
 #if defined(RBC_USE_RAYQUERY) || defined(RBC_USE_RAYQUERY_SHADOW)
 extern Buffer<uint> &g_triangle_vis_buffer;

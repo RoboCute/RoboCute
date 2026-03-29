@@ -9,6 +9,7 @@ This skill provides guidance for writing GPU shaders using the Luisa shading lan
 ## DO NOT
 - Do not use static variable or static array.
 - Do not use pointer.
+- Do not add multiple kernel at one file.
 
 ## Overview
 

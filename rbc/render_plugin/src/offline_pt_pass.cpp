@@ -21,7 +21,7 @@ namespace offline_multibounce {
 namespace ao_trace {
 #include <path_tracer/ao_trace.inl>
 }// namespace ao_trace
-// #define RBC_USE_RAYQUERY
+#define RBC_USE_RAYQUERY
 PTPassContext::PTPassContext() = default;
 PTPassContext::~PTPassContext() = default;
 
