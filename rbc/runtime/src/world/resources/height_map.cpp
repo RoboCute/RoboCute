@@ -59,7 +59,7 @@ void HeightMapResource::create_empty(uint2 resolution) {
     }
     uint2 blocks = block_size();
     size_t aabb_size = blocks.x * blocks.y * sizeof(luisa::compute::AABB);
-    size_t height_bounds_size = blocks.x * blocks.y * sizeof(float2);
+    size_t height_bounds_size = blocks.x * blocks.y * sizeof(float);
     _aabb_and_height_bounding->create_empty(aabb_size + height_bounds_size, DeviceBuffer::FileLoadType::DeviceOnly);
 
     // Reset HeightMap surface (will be set up during emplace)
@@ -107,7 +107,7 @@ void HeightMapResource::_compute_aabbs(luisa::compute::CommandList &cmdlist) {
     Shader2D<
         Image<float>,  //height_image,
         Buffer<AABB>,  //output_buffer,
-        Buffer<float2>,//height_min_max_buffer,
+        Buffer<float>,//height_min_max_buffer,
         float2,        //xz_axis_min,
         float2         //xz_axis_max
         > const *compute_aabb_shader = nullptr;

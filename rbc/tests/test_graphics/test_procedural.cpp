@@ -20,7 +20,7 @@ void TestProcedural::init(IProject *proj) {
     _init_voxel_res();
     // _init_sdf_res();
     // _init_gs_res();
-    _init_height_map_res();
+    // _init_height_map_res();
 }
 class Random {
     std::mt19937 gen;

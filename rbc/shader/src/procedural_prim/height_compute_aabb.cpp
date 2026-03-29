@@ -9,7 +9,7 @@ using namespace luisa::shader;
 int kernel(
     Image<float> &height_image,
     Buffer<AABB> &output_buffer,
-    Buffer<float2> &height_min_max_buffer,
+    Buffer<float> &height_max_buffer,
     float2 xz_axis_min,
     float2 xz_axis_max) {
 
@@ -40,14 +40,8 @@ int kernel(
         height_max = -1e8f;// Will be ignored for max comparison
     }
 
-    // Use warp operations to find min/max height within the block
-    // First, reduce within each warp (32 threads)
-    float warp_min = height_min;
     float warp_max = height_max;
 
-    // Warp reduction using shuffle operations
-    // The warp_active_min/max operations perform reduction across all active lanes
-    warp_min = warp_active_min(warp_min);
     warp_max = warp_active_max(warp_max);
 
     // Use SharedArray to store per-warp results for final reduction
@@ -66,11 +60,8 @@ int kernel(
     }
     warp_id = warp_read_first_active_lane(warp_id);
 
-    // Each warp leader writes its result to shared memory
-    SharedArray<float, 32> shared_mins;
     SharedArray<float, 32> shared_maxs;
     if (lane_id == 0u) {
-        shared_mins[warp_id] = warp_min;
         shared_maxs[warp_id] = warp_max;
     }
     // Warp  Use this method to check: is current thread  in the first warp of the whole block?
@@ -79,17 +70,11 @@ int kernel(
 
     sync_block();
 
-    // First warp performs final reduction across all warps
-    float block_min = 1e30f;
     float block_max = -1e30f;
 
     if (warp_id == 0u) {
-        // Read all warp results and reduce
-        block_min = shared_mins[lane_id];
         block_max = shared_maxs[lane_id];
 
-        // Final warp reduction
-        block_min = warp_active_min(block_min);
         block_max = warp_active_max(block_max);
 
         // Write result to output buffer (only first thread)
@@ -101,7 +86,7 @@ int kernel(
             // Build AABB
             AABB aabb;
             aabb.packed_min[0] = min_xz.x;
-            aabb.packed_min[1] = block_min;
+            aabb.packed_min[1] = 0;
             aabb.packed_min[2] = min_xz.y;
 
             aabb.packed_max[0] = max_xz.x;
@@ -109,7 +94,7 @@ int kernel(
             aabb.packed_max[2] = max_xz.y;
 
             output_buffer.write(block_idx, aabb);
-            height_min_max_buffer.write(block_idx, float2(block_min, block_max));
+            height_max_buffer.write(block_idx, block_max);
         }
     }
 

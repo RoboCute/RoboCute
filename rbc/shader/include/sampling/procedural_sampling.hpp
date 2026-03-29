@@ -121,7 +121,7 @@ static float iSphere(float3 ro, float3 rd, float2 distBound, float3 &normal,
         }
     }
 }
-static void iBox(float3 ro, float3 rd, float2 distBound, float3 boxSize, float2 &tNearFar) {
+static void iBox(float3 ro, float3 rd, float2 distBound, float3 boxSize, float2 &tNearFar, float3 &normal) {
     float3 m = sign_float(rd) / max(abs(rd), float3(1e-8f));
     float3 n = m * ro;
     float3 k = abs(m) * boxSize;
@@ -136,6 +136,12 @@ static void iBox(float3 ro, float3 rd, float2 distBound, float3 boxSize, float2 
         tNearFar = PROCEDURAL_TRACE_MAX_DIST;
     } else {
         if ((tN >= distBound.x && tN <= distBound.y) || (tF >= distBound.x && tF <= distBound.y)) {
+            if (tN >= distBound.x && tN <= distBound.y) {
+                normal = -sign_float(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+            } else if (tF >= distBound.x && tF <= distBound.y) {
+                normal = -sign_float(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+            }
+
             tNearFar = float2(tN, tF);
         } else {
             tNearFar = PROCEDURAL_TRACE_MAX_DIST;
@@ -747,9 +753,7 @@ static bool _sample_proccedural(
         }
         float3 local_hit_point = p + dist * local_rd;
         auto new_hit_dist = distance(inst_local_to_world * local_hit_point, ro);
-        // if(all(dispatch_id() == dispatch_size() / 2u)) {
-        // 	device_log("{} {}", new_hit_dist, local_hit_dist.x);
-        // }
+
         float3 local_normal = sdf_normal(local_hit_point);
         if (new_hit_dist >= hit_dist) return false;
         hit_dist = new_hit_dist;
@@ -866,7 +870,7 @@ static bool _sample_proccedural(
     float3 ro = ray.origin();
     float3 rd = ray.dir();
     ro -= inst_pos;
-    float3 local_ro = inst_world_to_local * ro;
+    float3 local_ro = (inst_world_to_local * ro);
     float3 local_rd = normalize(inst_world_to_local * rd);
 
     uint2 block_coord = uint2(hit.prim % height.block_size.x, hit.prim / height.block_size.y);
@@ -876,14 +880,21 @@ static bool _sample_proccedural(
     float3 box_center = lerp(box_min, box_max, 0.5f);
     float3 box_size = abs(box_max - box_center);
     float2 local_hit_t;
-    shadertoy::iBox(local_ro - box_center, local_rd, float2(0, PROCEDURAL_TRACE_MAX_DIST), box_size, local_hit_t);
+    float3 box_normal;
+    local_ro -= box_center;
+    shadertoy::iBox(local_ro, local_rd, float2(0, PROCEDURAL_TRACE_MAX_DIST), box_size, local_hit_t, box_normal);
     // Not hit box
-    if (local_hit_t.x >= PROCEDURAL_TRACE_MAX_DIST) {
+    if (all(local_hit_t >= PROCEDURAL_TRACE_MAX_DIST)) {
         return false;
     }
-    float2 height_min_max = g_buffer_heap.byte_buffer_read<float2>(height.height_minmax_buffer_idx, height.height_minmax_buffer_offset_bytes + hit.prim * sizeof(float2));
-    float3 hit_start_pos = ((local_ro - box_center) + local_rd * local_hit_t.x) / box_size;
-    float3 hit_end_pos = ((local_ro - box_center) + local_rd * local_hit_t.y) / box_size;
+
+    float height_max = g_buffer_heap.byte_buffer_read<float>(height.height_minmax_buffer_idx, height.height_minmax_buffer_offset_bytes + hit.prim * sizeof(float));
+    float3 hit_start_pos = (local_ro + local_rd * max(local_hit_t.x, ray.t_min)) / box_size;
+    float3 hit_end_pos = (local_ro + local_rd * local_hit_t.y) / box_size;
+    hit_start_pos = ite(hit_start_pos > 0.999f, float3(1.0), hit_start_pos);
+    hit_start_pos = ite(hit_start_pos < -0.999f, float3(-1.0), hit_start_pos);
+    hit_end_pos = ite(hit_end_pos > 0.999f, float3(1.0), hit_end_pos);
+    hit_end_pos = ite(hit_end_pos < -0.999f, float3(-1.0), hit_end_pos);
 
     // To UVW
     hit_start_pos = saturate(hit_start_pos * 0.5f + 0.5f);
@@ -908,60 +919,63 @@ static bool _sample_proccedural(
         height.heightmap_idx,
         1.0f / float2(height.block_size),
         float2(block_coord) / float2(height.block_size),
-        height_min_max);
+        float2(0, height_max));
 
     if (!dda_result.hit) return false;
-    box_local_pos = hit_start_pos + hit_dir * dda_result.travelDist / grid_size;
 
+    dda_result.travelDist = max(dda_result.travelDist, 0.f);
+    box_local_pos = hit_start_pos + hit_dir * dda_result.travelDist;
     auto new_hit_dist = distance(inst_local_to_world * ((box_local_pos * 2.0f - 1.0f) * box_size + box_center), ro);
     if (new_hit_dist >= hit_dist) return false;
     hit_dist = new_hit_dist;
     ///////////////// Sobel calculate normal
-    // Compute UV from DDA return value (xz plane)
-    float2 uv_scale = 1.0f / float2(height.block_size);
-    float2 uv_offset = float2(block_coord) / float2(height.block_size);
-    float2 uv = box_local_pos.xz * uv_scale + uv_offset;
+    float3 local_normal;
+    if (dda_result.travelDist < 1e-4) {
+        local_normal = box_normal;
+    } else {
+        // Compute UV from DDA return value (xz plane)
+        float2 uv_scale = 1.0f / float2(height.block_size);
+        float2 uv_offset = float2(block_coord) / float2(height.block_size);
+        float2 uv = box_local_pos.xz * uv_scale + uv_offset;
 
-    // Sample heightmap and compute normal using Sobel operator
-    // Get texture size for computing pixel offset
-    uint2 tex_size = g_image_heap.image_size(height.heightmap_idx);
-    float2 texel_size = 1.0f / float2(tex_size);
-    float height_scale = 1.0f / (height_min_max.y - height_min_max.x);
-    float height_offset = -height_min_max.x;
+        // Sample heightmap and compute normal using Sobel operator
+        // Get texture size for computing pixel offset
+        uint2 tex_size = g_image_heap.image_size(height.heightmap_idx);
+        float2 texel_size = 1.0f / float2(tex_size);
 
-    // Helper to sample height at offset
-    auto sample_height = [&](float2 offset) -> float {
-        float2 sample_uv = uv + offset * texel_size;
-        float h = g_image_heap.image_sample(height.heightmap_idx, sample_uv, Filter::POINT, Address::EDGE).x;
-        return h * height_scale + height_offset;
-    };
+        // Helper to sample height at offset
+        auto sample_height = [&](float2 offset) -> float {
+            float2 sample_uv = uv + offset * texel_size;
+            return g_image_heap.image_sample(height.heightmap_idx, sample_uv, Filter::POINT, Address::EDGE).x;
+        };
 
-    // Sample 3x3 neighborhood for Sobel operator
-    float tl = sample_height(float2(-1.0f, -1.0f));
-    float t = sample_height(float2(0.0f, -1.0f));
-    float tr = sample_height(float2(1.0f, -1.0f));
-    float l = sample_height(float2(-1.0f, 0.0f));
-    float r = sample_height(float2(1.0f, 0.0f));
-    float bl = sample_height(float2(-1.0f, 1.0f));
-    float b = sample_height(float2(0.0f, 1.0f));
-    float br = sample_height(float2(1.0f, 1.0f));
+        // Sample 3x3 neighborhood for Sobel operator
+        float tl = sample_height(float2(-1.0f, -1.0f));
+        float t = sample_height(float2(0.0f, -1.0f));
+        float tr = sample_height(float2(1.0f, -1.0f));
+        float l = sample_height(float2(-1.0f, 0.0f));
+        float r = sample_height(float2(1.0f, 0.0f));
+        float bl = sample_height(float2(-1.0f, 1.0f));
+        float b = sample_height(float2(0.0f, 1.0f));
+        float br = sample_height(float2(1.0f, 1.0f));
 
-    // Sobel gradients
-    float dx = (tr + 2.0f * r + br) - (tl + 2.0f * l + bl);
-    float dy = (bl + 2.0f * b + br) - (tl + 2.0f * t + tr);
+        // Sobel gradients
+        float dx = (tr + 2.0f * r + br) - (tl + 2.0f * l + bl);
+        float dy = (bl + 2.0f * b + br) - (tl + 2.0f * t + tr);
 
-    // Construct normal (up is positive Y for heightmap)
-    float3 local_normal = float3(-dx * texel_size.x, 1.0f, -dy * texel_size.y);
-    local_normal = normalize(local_normal);
+        dx *= tex_size.x;
+        dy *= tex_size.y;
+        // Construct normal (up is positive Y for heightmap)
+        // local_normal = float3(-dx * 0.25f, 1.f, -dy * 0.25f);
+        local_normal = float3(-dx, 1.f, -dy);
+        // Transform normal from local space to world space
+        local_normal = normalize(local_normal);
+    }
 
-    // Transform normal from local space to world space
     local_normal = normalize(inst_local_to_world * local_normal);
-    // geometry.normal[0] = local_normal.x;
-    // geometry.normal[1] = local_normal.y;
-    // geometry.normal[2] = local_normal.z;
-    geometry.normal[0] = 0;
-    geometry.normal[1] = 1;
-    geometry.normal[2] = 0;
+    geometry.normal[0] = local_normal.x;
+    geometry.normal[1] = local_normal.y;
+    geometry.normal[2] = local_normal.z;
 
     // Set procedural_id like other types
     geometry.procedural_id.set_id(type_id, height.mat_buffer_id);

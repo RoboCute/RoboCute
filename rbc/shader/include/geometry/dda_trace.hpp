@@ -54,20 +54,35 @@ static DDAResult ddaTerrainRaycast(
     result.hit = false;
     float height_range = max(1e-3f, height_min_max.y - height_min_max.x);
     auto sample_tex = [&](float2 uv) {
-        float h = heap.image_sample(heap_idx, uv * uv_scale + uv_offset, Filter::POINT, Address::EDGE).x;
+        float h = heap.image_sample(heap_idx, clamp(uv, 1e-5f, 0.9999f) * uv_scale + uv_offset, Filter::POINT, Address::EDGE).x;
         return ((h - height_min_max.x) / height_range) * grid_size;
     };
-    // 垂直
-    if (length(direction) < 1e-3f) {
-        if (ray_slope > 0) {
-            return result;
-        }
-        auto tex_height = sample_tex(origin / grid_size);
-        // TODO height compare
-    }
+
     // --- 1. 初始化 DDA ---
     // 将射线原点转换到高度图 UV 空间 [0,1]
     float2 pos = origin / grid_size;
+    // 入口直接碰撞
+    auto hit_height = sample_tex(pos);
+    if (hit_height >= ray_height) {
+        result.hitUV = pos;
+        result.hitHeight = hit_height / grid_size;
+        result.travelDist = 0;// 建议改为0而非-1
+        result.steps = 0;
+        result.hit = true;
+        return result;
+    }
+    // 垂直
+    if (length(direction) < 1e-3f) {
+        if (ray_height >= 0) {
+            return result;
+        }
+        result.hitUV = pos;
+        result.hitHeight = hit_height / grid_size;
+        result.travelDist = (ray_height - hit_height) / grid_size;
+        result.steps = 0;
+        result.hit = true;
+        return result;
+    }
 
     // 确保方向归一化并计算 UV 空间的方向
     float2 dir = direction / grid_size;
@@ -133,7 +148,7 @@ static DDAResult ddaTerrainRaycast(
         }
 
         // 边界检查
-        if (any(currentUV < 0.0f) || any(currentUV > 1.0f))
+        if (any(currentUV <= 0.f) || any(currentUV >= 1.0f))
             break;
 
         // --- 3. 高度相交检测 ---
@@ -146,8 +161,7 @@ static DDAResult ddaTerrainRaycast(
         float rayHeight = ray_height + ray_slope * horizontalDist;
 
         // 检查是否低于地形（相交）
-        float surfaceOffset = 0;
-        if (rayHeight < terrainHeight + surfaceOffset) {
+        if (rayHeight < terrainHeight) {
             // --- 4. 精细插值（可选但推荐） ---
             // 在前后两点之间线性插值找到精确交点
             float2 prevWorldPos = prevUV * grid_size;
@@ -157,18 +171,21 @@ static DDAResult ddaTerrainRaycast(
 
             // 如果之前在地面上方，现在在地表下方，进行线性插值
             if (prevRayHeight >= prevTerrainHeight) {
-                float t = (prevTerrainHeight - prevRayHeight) /
-                          ((rayHeight - terrainHeight) - (prevRayHeight - prevTerrainHeight) + 1e-6);
-                t = saturate(t);
+                // float t = (prevTerrainHeight - prevRayHeight) /
+                //           ((rayHeight - terrainHeight) - (prevRayHeight - prevTerrainHeight) + 1e-6);
+                // t = saturate(t);
 
-                result.hitUV = lerp(prevUV, currentUV, t);
-                result.hitHeight = lerp(prevTerrainHeight, terrainHeight, t);
-                result.travelDist = lerp(prevHorizontalDist, horizontalDist, t);
+                // result.hitUV = lerp(prevUV, currentUV, t);
+                // result.hitHeight = lerp(prevTerrainHeight, terrainHeight, t) / grid_size;
+                // result.travelDist = lerp(prevHorizontalDist, horizontalDist, t) / grid_size;
+                result.hitUV = prevUV;
+                result.hitHeight = prevTerrainHeight / grid_size;
+                result.travelDist = prevHorizontalDist / grid_size;
             } else {
                 // 起点已在地下，直接返回当前点
                 result.hitUV = currentUV;
-                result.hitHeight = terrainHeight;
-                result.travelDist = horizontalDist;
+                result.hitHeight = terrainHeight / grid_size;
+                result.travelDist = horizontalDist / grid_size;
             }
 
             result.hit = true;

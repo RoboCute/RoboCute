@@ -29,7 +29,7 @@ private:
     uint2 _resolution;
     // Resources
     RC<DeviceImage> _height_img;
-    RC<DeviceBuffer> _aabb_and_height_bounding;// Layout: <AABB, block_size()> + <float2, block_size()>
+    RC<DeviceBuffer> _aabb_and_height_bounding;// Layout: <AABB, block_size()> + <float, block_size()>
 
     // Procedural primitive data for ray tracing integration
     rbc::geometry::HeightMap _height_map_surface;
@@ -63,9 +63,9 @@ public:
         auto s = block_size();
         return _aabb_and_height_bounding->buffer().view(0, s.x * s.y * sizeof(AABB) / sizeof(uint)).as<AABB>();
     }
-    [[nodiscard]] luisa::compute::BufferView<float2> height_bounding_buffer() const {
+    [[nodiscard]] luisa::compute::BufferView<float> height_bounding_buffer() const {
         auto s = block_size();
-        return _aabb_and_height_bounding->buffer().view(s.x * s.y * sizeof(AABB) / sizeof(uint), s.x * s.y * sizeof(float2) / sizeof(uint)).as<float2>();
+        return _aabb_and_height_bounding->buffer().view(s.x * s.y * sizeof(AABB) / sizeof(uint), s.x * s.y * sizeof(float) / sizeof(uint)).as<float>();
     }
 
     /// Get the HeightMap surface data for shader access
