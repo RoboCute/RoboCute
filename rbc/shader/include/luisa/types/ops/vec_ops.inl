@@ -46,8 +46,6 @@ static constexpr bool operatable = std::is_same_v<X, ThisType> || std::is_same_v
 [[unaop("PLUS")]] ThisType operator+() const;
 [[unaop("MINUS")]] ThisType operator-() const;
 
-template <typename U> requires(std::is_same_v<U, matrix<dim>>)
-[[binop("MUL")]] ThisType operator*(const U&) const;
 template <typename U> requires(operatable<U>)
 [[binop("ADD")]] ThisType operator+(const U&) const;
 template <typename U> requires(operatable<U>)
