@@ -1,3 +1,6 @@
+---
+name: py
+---
 # RoboCute Python API
 
 RoboCute Python API provides access to the rendering engine via generated bindings.
