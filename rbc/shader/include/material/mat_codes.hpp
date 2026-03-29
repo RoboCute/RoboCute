@@ -34,6 +34,10 @@ inline MatMeta mat_meta(
 	meta.mat_index = mat_code & ((uint(1) << uint(24)) - uint(1));
 	return meta;
 }
+inline uint to_mat_code(
+	MatMeta meta) {
+	return (meta.mat_type << 24u) | (meta.mat_index);
+}
 inline MatMeta mat_meta(
 	BindlessBuffer& heap,
 	uint mat_idx_buffer_heap_idx,

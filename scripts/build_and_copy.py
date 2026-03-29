@@ -371,7 +371,7 @@ Examples:
     parser.add_argument(
         "--stubgen",
         nargs="?",
-        const="uv",
+        const="1",
         default=None,
         help="Generate Python stubs. Use 'uv' (default) or specify stub generator type"
     )

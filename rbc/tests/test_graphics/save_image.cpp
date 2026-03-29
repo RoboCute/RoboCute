@@ -21,11 +21,13 @@ void save_image(luisa::filesystem::path const &path, Image<float> const &img) {
             luisa::float2(1),
             luisa::float2(),
             luisa::uint2(),
-            img.size());
+            img.size(),
+            1.0f);
         cmdlist << temp_img.copy_to(bytes.data());
         stream << cmdlist.commit()
                << synchronize();
     }
+
     if (path.has_parent_path() && !luisa::filesystem::is_directory(path.parent_path())) {
         std::error_code ec{};
         luisa::filesystem::create_directories(path.parent_path(), ec);

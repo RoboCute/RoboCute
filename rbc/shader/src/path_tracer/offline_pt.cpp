@@ -110,6 +110,7 @@ using namespace luisa::shader;
     float4 normal_rough = float4(0);
     float to_cam_dist = 1e28f;
     uint2 obj_id(max_uint32, max_uint32);
+    uint mat_id_channel;
     float2 obj_bary;
 
     float4 hitpos;// xyz: pos, w: hit normal
@@ -258,6 +259,13 @@ using namespace luisa::shader;
             geometry_buffer.write(read_index + 2, value.z);
             byte_offset += element_size * pixel_count;
         }
+        if ((args.geometry_mask & (1 << 7)) != 0)// Albedo
+        {
+            const uint element_size = 1;//  1
+            uint read_index = byte_offset + buffer_id * element_size;
+            geometry_buffer.write(read_index, bit_cast<float>(mat_id_channel));
+            byte_offset += element_size * pixel_count;
+        }
     };
 
     std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;
@@ -309,6 +317,7 @@ using namespace luisa::shader;
             lobe_rand = sampler.next(g_buffer_heap);
         }
         bool selected_wavelength = spectrum_arg.selected_wavelength;
+        uint mat_id;
         IntegratorResult result = sample_material(
             pcg_sampler,
             volume_stack,
@@ -334,7 +343,8 @@ using namespace luisa::shader;
             di_dist,
             pdf_bsdf,
             new_dir,
-            reject);
+            reject,
+            mat_id);
         reject &= args.require_reject;
         continue_loop &= (!reject);
         if (length_sum >= 0.0f) {
@@ -365,6 +375,7 @@ using namespace luisa::shader;
             obj_id.x = result.user_id;
             obj_id.y = hit.prim;
             obj_bary = hit.bary;
+            mat_id_channel = mat_id;
 
         } else if (depth == args.bounce) {
             auto encoded_normal = sampling::encode_unit_vector(result.plane_normal);

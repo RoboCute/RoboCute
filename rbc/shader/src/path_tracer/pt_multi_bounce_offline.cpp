@@ -100,6 +100,7 @@ void accum_sky(SpectrumArg &spectrum_arg,
         last_beta = beta;
         float3 di_result;
         float di_dist;
+        uint mat_id;
         IntegratorResult result = sample_material(
             pcg_sampler,
             volume_stack,
@@ -125,7 +126,8 @@ void accum_sky(SpectrumArg &spectrum_arg,
             di_dist,
             pdf_bsdf,
             new_dir,
-            reject);
+            reject,
+            mat_id);
         reject &= args.require_reject;
         radiance += di_result * last_beta;
         continue_loop &= (!reject);

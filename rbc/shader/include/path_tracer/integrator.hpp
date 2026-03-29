@@ -280,7 +280,8 @@ static IntegratorResult sample_material(
     bool require_last_local_pos
 #endif
     ,
-    bool &reject) {
+    bool &reject,
+    uint &mat_id) {
     material::MatMeta mat_meta;
     geometry::InstanceInfo inst_info;
     bool is_indirect_ray = detail != mtl::ShadingDetail::Default;
@@ -311,6 +312,7 @@ static IntegratorResult sample_material(
         geometry::Triangle triangle;
         auto vertices = geometry::read_vertices(g_buffer_heap, hit.prim, inst_info.mesh, contained_normal, contained_tangent, contained_uv, triangle);
         mat_meta = material::mat_meta(g_buffer_heap, heap_indices::mat_idx_buffer_heap_idx, inst_info.mesh.submesh_heap_idx, inst_info.mat_index, hit.prim);
+        mat_id = material::to_mat_code(mat_meta);
         inst_transform = g_accel.instance_transform(hit.inst);
         auto local_pos = hit.interpolate(vertices[0].pos, vertices[1].pos, vertices[2].pos);
 #ifdef PT_MOTION_VECTORS

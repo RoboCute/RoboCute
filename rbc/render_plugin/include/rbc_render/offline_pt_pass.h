@@ -130,7 +130,7 @@ private:
     void _dispatch_path_tracing(
         const PTResourceContext &rc,
         const PreparedResources &resources,
-        const offline::PTArgs &pt_args,
+        offline::PTArgs &pt_args,
         Image<uint> const *id_map,
         uint32_t geometry_mask);
     void _process_multibounce_indirect(

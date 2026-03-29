@@ -391,8 +391,9 @@ def main():
     # clear_shader = lc.Shader('gui/clear_shader.bin')
 
     if EXPORT:
+        channel_size = (1 + 3 + 1 + 1 + 2 + 3 + 3 + 1)
         geometry_buffer = lc.Buffer(
-            resolution.x * resolution.y * (1 + 3 + 4 + 3 + 3), float
+            resolution.x * resolution.y * channel_size, float
         )
         app.display_cam.set_geometry_export_buffer(
             geometry_buffer.info(),
@@ -404,6 +405,7 @@ def main():
                 | int(re.world.RendererGeometryType.Barycentric)
                 | int(re.world.RendererGeometryType.Emission)
                 | int(re.world.RendererGeometryType.Albedo)
+                | int(re.world.RendererGeometryType.MaterialID)
             ),
         )
     app.ctx.enable_camera_control()
@@ -452,7 +454,7 @@ def main():
                 str(Path(__file__).parent /
                     f"screenshot/frame_{image_index}.png")
             )
-            expected_size = resolution.x * resolution.y * (1 + 3 + 4 + 3 + 3)
+            expected_size = resolution.x * resolution.y * channel_size
             geometry_array = np.empty(shape=expected_size, dtype=np.float32)
             # Assert geometry_array's size same as geometry_buffer's size
             assert geometry_buffer.size == expected_size, (
@@ -482,6 +484,11 @@ def main():
             # float 3-channel buffer
             albedo_array = geometry_array[offset:offset + pixel_size * 3]
             offset += pixel_size * 3
+            # int 1-channel buffer
+            material_id_array = geometry_array[offset:offset +
+                                               pixel_size].view(dtype=np.uint32)
+            offset += pixel_size
+            
             # Save depth, normal, emission, albedo as PNG images
             screenshot_dir = Path(__file__).parent / "screenshot"
             screenshot_dir.mkdir(exist_ok=True)
@@ -537,6 +544,12 @@ def main():
             prim_id_pil = Image.fromarray(prim_id_rgb, mode='RGB')
             prim_id_pil.save(screenshot_dir / f"prim_id_{image_index}.png")
 
+            # Material ID: reshape and convert to RGB
+            material_id_img = material_id_array.reshape(height, width)
+            material_id_rgb = int_array_to_rgb(material_id_img)
+            material_id_pil = Image.fromarray(material_id_rgb, mode='RGB')
+            material_id_pil.save(screenshot_dir / f"material_id_{image_index}.png")
+
             # Barycentric: reshape and convert to 0-255 range (2 channels: RGB with B=0)
             bary_img = bary_array.reshape(height, width, 2)
             bary_norm = np.clip(bary_img * 255, 0, 255).astype(np.uint8)
@@ -573,7 +586,7 @@ def main():
     # render_settings.set_offline_origin_bounce(1)
     # render_settings.set_offline_indirect_bounce(0)
 
-    app.run()
+    app.run(prepare_denoise=EXPORT)
 
 
 if __name__ == "__main__":

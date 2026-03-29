@@ -192,14 +192,13 @@ void OfflinePTPass::_trace_ao_sample(
 void OfflinePTPass::_dispatch_path_tracing(
     const PTResourceContext &rc,
     const PreparedResources &resources,
-    const offline::PTArgs &pt_args,
+    offline::PTArgs &pt_args,
     Image<uint> const *id_map,
     uint32_t geometry_mask) {
     auto &accel = rc.scene.accel();
 
     // Create a copy of pt_args with the geometry_mask set
-    auto pt_args_copy = pt_args;
-    pt_args_copy.geometry_mask = geometry_mask;
+    pt_args.geometry_mask = geometry_mask;
 
     auto geometry_buffer = rc.frame_settings.pt_geometry_buffer ? rc.frame_settings.pt_geometry_buffer : resources.multibounce_buffer_counter.view().as<float>();
 
@@ -224,7 +223,7 @@ void OfflinePTPass::_dispatch_path_tracing(
             geometry_buffer,
             resources.multibounce_buffer.view(),
             resources.multibounce_buffer_counter,
-            pt_args_copy,
+            pt_args,
             rc.frame_settings.render_resolution);
     } else {
         rc.cmdlist << offline_pt_shader::dispatch_shader(
@@ -245,7 +244,7 @@ void OfflinePTPass::_dispatch_path_tracing(
             geometry_buffer,
             resources.multibounce_buffer.view(),
             resources.multibounce_buffer_counter,
-            pt_args_copy,
+            pt_args,
             rc.frame_settings.render_resolution);
     }
 }
@@ -383,6 +382,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
             8, // bary
             12,// emission
             12,// albedo
+            4, // mat_id
         };
 
         uint32_t geometry_mask = 0;
