@@ -43,21 +43,20 @@ def get_target_dir(mode: str) -> Path:
     return project_dir / "build" / PLATFORM / ARCH / mode
 
 
-def run_xmake_build() -> bool:
+def run_xmake_build(rebuild: bool = False) -> bool:
     """
     Run xmake build to compile the project.
 
     Args:
-        mode: Build mode (debug, release, releasedbg)
+        rebuild: If True, force rebuild using `xmake -r`
 
     Returns:
         True if build succeeded, False otherwise
     """
     project_dir = get_project_dir()
 
-
-    # Build command: xmake build
-    cmd = ["xmake"]
+    # Build command: xmake or xmake -r
+    cmd = ["xmake", "-r"] if rebuild else ["xmake"]
 
     print_info(f"Running build command: {' '.join(cmd)}")
     print_info(f"Working directory: {project_dir}")
@@ -237,13 +236,14 @@ def run_stubgen(ext_path: Path, build_stubgen: str) -> None:
             )
 
 
-def main(mode: Optional[str] = None, build_stubgen: Optional[str] = None) -> int:
+def main(mode: Optional[str] = None, build_stubgen: Optional[str] = None, rebuild: bool = False) -> int:
     """
     Main install function.
 
     Args:
         mode: Build mode, defaults to 'release' if not provided
         build_stubgen: If provided, generate stubs. Use 'uv' to use uvx tool.
+        rebuild: If True, force rebuild using `xmake -r`
 
     Returns:
         Exit code (0 for success, 1 for failure)
@@ -276,7 +276,7 @@ def main(mode: Optional[str] = None, build_stubgen: Optional[str] = None) -> int
 
     # Step 1: Run xmake build
     print_debug("Step 1: Building project with xmake...")
-    if not run_xmake_build():
+    if not run_xmake_build(rebuild):
         print_error("Build failed. Installation aborted.")
         return 1
     print()
@@ -381,23 +381,4 @@ Examples:
     # Determine mode: --mode flag takes priority over positional argument
     mode = args.mode_flag if args.mode_flag else args.mode
 
-    # Handle rebuild: clean first if requested
-    if args.rebuild:
-        print_info("Rebuild requested, cleaning build directory...")
-        project_dir = get_project_dir()
-        build_dir = get_target_dir(mode)
-        if build_dir.exists():
-            shutil.rmtree(build_dir)
-            print_success("Build directory cleaned.")
-        # Also run xmake clean
-        try:
-            subprocess.run(
-                ["xmake", "clean"],
-                cwd=project_dir,
-                capture_output=True,
-                text=True
-            )
-        except Exception:
-            pass  # Ignore xmake clean errors
-
-    sys.exit(main(mode, args.stubgen))
+    sys.exit(main(mode, args.stubgen, args.rebuild))

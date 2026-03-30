@@ -237,7 +237,7 @@ def main():
         return
 
     resolution = lc.uint2(1920, 1080)
-    app.init_display(resolution.x, resolution.y)
+    app.init_display(resolution.x, resolution.y) # create_window=False  to use headless
     if not app.display_cam:
         print("Display not Valid!")
         return
@@ -275,7 +275,8 @@ def main():
                 | int(re.world.RendererGeometryType.MaterialID)
             ),
         )
-    app.ctx.enable_camera_control()
+    if app._window_created:
+        app.ctx.enable_camera_control()
 
     if not app.scene:
         print("Scene not Valid!")
@@ -429,6 +430,7 @@ def main():
             del geometry_buffer
             geometry_buffer = None
             print('Channel saved.')
+            exit(0)
         if tui_exec is None:
             tui_exec = tui_table.execute_cli(
                 cli.executor.async_input,

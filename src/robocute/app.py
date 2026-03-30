@@ -59,6 +59,7 @@ class App:
     _device = None
     _project: Optional[re.world.Project] = None
     _resolution: lc.uint2 = lc.uint2(1920, 1080)
+    _window_created: lc.uint2 = lc.uint2(1920, 1080)
     _scene: Optional[re.world.Scene] = None
     _display_cam: Optional[re.world.CameraComponent] = None
     _last_frame_time: float
@@ -132,7 +133,7 @@ class App:
         self._resolution = lc.uint2(x, y)
         if not self._ctx:
             return
-
+        self._window_created = create_window
         self._ctx.init_display(
             display_title, self._resolution, create_window, window_resizable, full_screen, transparent)
         self._display_cam = self._ctx.create_display_cam()
