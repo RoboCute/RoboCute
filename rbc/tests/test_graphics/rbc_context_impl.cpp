@@ -80,11 +80,17 @@ struct ContextImpl : RCBase {
     }
 };
 void RBCContext::init_world(void *this_, luisa::string_view meta_path, luisa::string_view binary_path) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     rbc::world::init_world(meta_path, binary_path);
 }
 void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa::string_view program_path, luisa::string_view shader_path, bool compactible) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     c.utils = vstd::make_unique<GraphicsUtils>();
@@ -96,6 +102,9 @@ void RBCContext::init_device(void *this_, luisa::string_view rhi_backend, luisa:
 }
 
 void RBCContext::init_render(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (!RenderDevice::instance_ptr()) [[unlikely]] {
@@ -104,6 +113,12 @@ void RBCContext::init_render(void *this_) {
     c.utils->init_render();
 }
 void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, bool create_window, bool window_resizable, bool full_screen, bool transparent) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
+    if (name.empty()) [[unlikely]] {
+        LUISA_ERROR("RBCContext::init_display: name is empty.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (!RenderDevice::instance_ptr()) [[unlikely]] {
@@ -129,16 +144,26 @@ void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, 
 }
 
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     c.reset_view(resolution);
 }
 void RBCContext::disable_view(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     c.window.reset();
 }
 bool RBCContext::should_close(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+        return false;
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (c.window)
@@ -146,6 +171,9 @@ bool RBCContext::should_close(void *this_) {
     return false;
 }
 void RBCContext::denoise(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (c.utils->denoise()) {
@@ -155,6 +183,9 @@ void RBCContext::denoise(void *this_) {
     }
 }
 void RBCContext::save_display_image_to(void *this_, luisa::string_view path) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     auto &rd = RenderDevice::instance();
@@ -166,6 +197,12 @@ void RBCContext::save_display_image_to(void *this_, luisa::string_view path) {
     save_image(path, c.utils->dst_image());
 }
 luisa::compute::TextureCreationInfo RBCContext::display_image(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+        luisa::compute::TextureCreationInfo r;
+        r.invalidate();
+        return r;
+    }
     auto c = static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c->_ctx_mtx};
     luisa::compute::TextureCreationInfo r;
@@ -186,6 +223,10 @@ luisa::compute::TextureCreationInfo RBCContext::display_image(void *this_) {
     return r;
 }
 bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, bool prepare_denoise) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+        return false;
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::unique_lock lck{c._ctx_mtx};
     RBCFrameMark;// Mark frame boundary
@@ -218,6 +259,10 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
     return any_changed;
 }
 void *RBCContext::create_display_cam(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+        return nullptr;
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (any(c.window_size == 0u) || !c.utils->dst_image()) [[unlikely]] {
@@ -236,6 +281,9 @@ void *RBCContext::create_display_cam(void *this_) {
 }
 
 void RBCContext::destroy_display_cam(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     c.clear_window_event();
@@ -243,6 +291,9 @@ void RBCContext::destroy_display_cam(void *this_) {
     c.display_cam_entity.reset();
 }
 void RBCContext::enable_camera_control(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (c.cam_controller) return;
@@ -314,6 +365,9 @@ void RBCContext::enable_camera_control(void *this_) {
     });
 }
 void RBCContext::disable_camera_control(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (!c.window) [[unlikely]] {
@@ -327,6 +381,9 @@ void RBCContext::disable_camera_control(void *this_) {
 }
 
 void RBCContext::control_camera_add_pos(void *this_, luisa::float3 pos) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (!c.cam_controller) [[unlikely]] {
@@ -344,6 +401,9 @@ void RBCContext::control_camera_add_pos(void *this_, luisa::float3 pos) {
 }
 
 void RBCContext::control_camera_add_rotate(void *this_, float yaw, float pitch, float roll) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (!c.cam_controller) [[unlikely]] {
@@ -358,6 +418,12 @@ void RBCContext::control_camera_add_rotate(void *this_, float yaw, float pitch, 
 }
 
 void RBCContext::upload_texture_data(void *this_, void *tex) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
+    if (!tex) [[unlikely]] {
+        LUISA_ERROR("Texture is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     auto *tex_res = static_cast<world::TextureResource *>(tex);
@@ -373,6 +439,12 @@ void RBCContext::upload_texture_data(void *this_, void *tex) {
 }
 
 void RBCContext::upload_mesh_data(void *this_, void *mesh) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
+    if (!mesh) [[unlikely]] {
+        LUISA_ERROR("Mesh is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     auto *mesh_res = static_cast<world::MeshResource *>(mesh);
@@ -389,6 +461,12 @@ void RBCContext::upload_mesh_data(void *this_, void *mesh) {
 }
 
 void RBCContext::update_skinning_mesh(void *this_, void *skinning_mesh, luisa::compute::BufferCreationInfoInterop dual_quaternion_buffer) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
+    if (!skinning_mesh) [[unlikely]] {
+        LUISA_ERROR("Skinning mesh is null.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     auto *mesh_res = static_cast<world::MeshResource *>(skinning_mesh);
@@ -406,6 +484,12 @@ void RBCContext::update_skinning_mesh(void *this_, void *skinning_mesh, luisa::c
             elem_size, elem_size});
 }
 void RBCContext::regist_callback(void *this_, luisa::string_view name, luisa::move_only_function<void(rbc::RCBase *)> &&callback) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
+    if (name.empty()) [[unlikely]] {
+        LUISA_ERROR("RBCContext::regist_callback: name is empty.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
 
     std::lock_guard lck{c._ctx_mtx};
@@ -414,6 +498,12 @@ void RBCContext::regist_callback(void *this_, luisa::string_view name, luisa::mo
         reinterpret_cast<luisa::move_only_function<void(void *)> &&>(callback));
 }
 void RBCContext::unregist_callback(void *this_, luisa::string_view name) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
+    if (name.empty()) [[unlikely]] {
+        LUISA_ERROR("RBCContext::unregist_callback: name is empty.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     rbc::world::unregist_callback(name);
@@ -467,6 +557,9 @@ static bool is_texture_float_type(PixelFormat format) {
 }
 
 void BuiltinKernels::buffer_to_image(void *this_, luisa::compute::BufferCreationInfoInterop input_buffer, luisa::compute::TextureCreationInfo output_image, luisa::uint2 pixel_offset, luisa::uint2 pixel_size, luisa::uint4 swizzle) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("BuiltinKernels is null.");
+    }
     auto &shaders = *static_cast<BuiltinShaders *>(this_);
     auto storage = luisa::compute::pixel_format_to_storage(output_image.format);
     (void)rbc::RenderDevice::instance().lc_main_cmd_list();// Suppress unused warning
@@ -522,6 +615,9 @@ void BuiltinKernels::buffer_to_image(void *this_, luisa::compute::BufferCreation
 }
 
 void BuiltinKernels::image_to_buffer(void *this_, luisa::compute::TextureCreationInfo input_image, luisa::compute::BufferCreationInfoInterop output_buffer, luisa::uint2 pixel_offset, luisa::uint2 pixel_size, luisa::uint4 swizzle) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("BuiltinKernels is null.");
+    }
     auto &shaders = *static_cast<BuiltinShaders *>(this_);
     (void)rbc::RenderDevice::instance().lc_main_cmd_list();// Suppress unused warning
     (void)BuiltinShaders::compact_swizzle(swizzle);        // Suppress unused warning
@@ -574,6 +670,12 @@ void BuiltinKernels::image_to_buffer(void *this_, luisa::compute::TextureCreatio
     }
 }
 void RBCContext::editing_add_click_requires(void *this_, luisa::string_view name, luisa::float2 uv) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+    }
+    if (name.empty()) [[unlikely]] {
+        LUISA_ERROR("RBCContext::editing_add_click_requires: name is empty.");
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (!c.display_cam_entity) [[unlikely]] {
@@ -602,14 +704,26 @@ void *SelectQuery::_create_() {
 }
 
 bool SelectQuery::valid(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SelectQuery is null.");
+        return false;
+    }
     auto p = static_cast<SelectQueryImpl *>(this_);
     return p->_valid;
 }
 void *SelectQuery::get_component(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SelectQuery is null.");
+        return nullptr;
+    }
     auto p = static_cast<SelectQueryImpl *>(this_);
     return p->_comp.get();
 }
 void *SelectQuery::get_material(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SelectQuery is null.");
+        return nullptr;
+    }
     auto p = static_cast<SelectQueryImpl *>(this_);
     auto mat = p->_mat.get();
     if (!mat) return nullptr;
@@ -617,18 +731,38 @@ void *SelectQuery::get_material(void *this_) {
     return mat;
 }
 luisa::float2 SelectQuery::barycentric(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SelectQuery is null.");
+        return luisa::float2{};
+    }
     auto p = static_cast<SelectQueryImpl *>(this_);
     return p->bary;
 }
 uint32_t SelectQuery::get_submesh_index(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SelectQuery is null.");
+        return ~0u;
+    }
     auto p = static_cast<SelectQueryImpl *>(this_);
     return p->submesh_idx;
 }
 uint32_t SelectQuery::prim_id(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SelectQuery is null.");
+        return ~0u;
+    }
     auto p = static_cast<SelectQueryImpl *>(this_);
     return p->prim_id;
 }
 void *RBCContext::editing_query_click_requires(void *this_, luisa::string_view name) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Context is null.");
+        return nullptr;
+    }
+    if (name.empty()) [[unlikely]] {
+        LUISA_ERROR("RBCContext::editing_query_click_requires: name is empty.");
+        return nullptr;
+    }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
     if (!c.display_cam_entity) [[unlikely]] {

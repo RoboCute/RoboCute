@@ -36,14 +36,14 @@
 - [x] 默认天空盒生成
 - [x] CUDA Headless 模式
 - [x] 编辑线修复
-- [ ] 调试可视化
+- [x] 调试可视化
 - [ ] 轨迹渲染
 
 #### 3. Python 绑定 (进行中)
 - [x] Python codegen 重构
 - [x] 内置 Image API
 - [x] LuisaCompute 绑定
-- [ ] 完整 API 封装
+- [x] 完整 API 封装
 
 #### 4. 案例：机器人底盘仿真
 - [ ] 差速/阿克曼/履带/麦轮底盘
