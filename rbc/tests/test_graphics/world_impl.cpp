@@ -537,6 +537,9 @@ luisa::span<std::byte> MeshResource::pos_buffer(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     auto data = c->host_data();
     if (!data) return {};
+    if (data->empty()) [[unlikely]] {
+        data->push_back_uninitialized(c->desire_size_bytes());
+    }
     auto vert_count = c->vertex_count();
     auto size_bytes = vert_count * sizeof(luisa::float3);
     if (data->size() < size_bytes) return {};
@@ -551,6 +554,9 @@ luisa::span<std::byte> MeshResource::normal_buffer(void *this_) {
     if (!c->contained_normal()) return {};
     auto data = c->host_data();
     if (!data) return {};
+    if (data->empty()) [[unlikely]] {
+        data->push_back_uninitialized(c->desire_size_bytes());
+    }
     auto vert_count = c->vertex_count();
     auto offset = vert_count * sizeof(luisa::float3);
     auto size_bytes = vert_count * sizeof(luisa::float3);
@@ -566,6 +572,9 @@ luisa::span<std::byte> MeshResource::tangent_buffer(void *this_) {
     if (!c->contained_tangent()) return {};
     auto data = c->host_data();
     if (!data) return {};
+    if (data->empty()) [[unlikely]] {
+        data->push_back_uninitialized(c->desire_size_bytes());
+    }
     auto vert_count = c->vertex_count();
     auto offset = vert_count * sizeof(luisa::float3);
     if (c->contained_normal()) {
@@ -583,6 +592,9 @@ luisa::span<std::byte> MeshResource::uv_buffer(void *this_, uint32_t uv_index) {
     auto c = static_cast<world::MeshResource *>(this_);
     auto data = c->host_data();
     if (!data) return {};
+    if (data->empty()) [[unlikely]] {
+        data->push_back_uninitialized(c->desire_size_bytes());
+    }
     auto vert_count = c->vertex_count();
     auto uv_count = c->uv_count();
     if (uv_index >= uv_count) [[unlikely]] {
@@ -610,6 +622,9 @@ luisa::span<std::byte> MeshResource::triangle_indices_buffer(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     auto data = c->host_data();
     if (!data) return {};
+    if (data->empty()) [[unlikely]] {
+        data->push_back_uninitialized(c->desire_size_bytes());
+    }
     auto tri_count = c->triangle_count();
     auto tri_size_bytes = tri_count * sizeof(Triangle);
     auto basic_size = c->basic_size_bytes();
@@ -668,7 +683,7 @@ luisa::span<std::byte> MeshResource::data_buffer(void *this_) {
     auto c = static_cast<world::MeshResource *>(this_);
     auto data = c->host_data();
     if (!data) return {};
-    if (data->empty()) {
+    if (data->empty()) [[unlikely]] {
         data->push_back_uninitialized(c->desire_size_bytes());
     }
     return *data;

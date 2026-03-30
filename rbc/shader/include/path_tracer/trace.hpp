@@ -6,10 +6,10 @@
 #include <material/mats.hpp>
 #include <virtual_tex/stream.hpp>
 #include <std/concepts>
-
+#include <sampling/procedural_common.hpp>
 namespace luisa::shader {
-#define RBC_USE_RAYQUERY
-#define RBC_USE_RAYQUERY_SHADOW
+// #define RBC_USE_RAYQUERY
+// #define RBC_USE_RAYQUERY_SHADOW
 
 #if defined(RBC_USE_RAYQUERY) || defined(RBC_USE_RAYQUERY_SHADOW)
 extern Buffer<uint> &g_triangle_vis_buffer;
@@ -18,7 +18,9 @@ extern Accel &g_accel;
 #define DEFINED_G_ACCEL
 }// namespace luisa::shader
 
+#if defined(RBC_USE_RAYQUERY) || defined(RBC_USE_RAYQUERY_SHADOW)
 #include <sampling/procedural_sampling.hpp>
+#endif
 
 using namespace luisa::shader;
 
@@ -90,6 +92,7 @@ static bool rbc_trace_any(Ray ray, TraceIndices auto const &idxs, auto &rng, uin
     ProceduralHit proc_hit;
     float dist;
     while (query.proceed()) {
+        device_log("proceed");
         if (query.is_triangle_candidate()) {
             hit = query.triangle_candidate();
             if (commit_triangle(hit, idxs, rng)) {

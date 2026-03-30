@@ -21,7 +21,7 @@ namespace offline_multibounce {
 namespace ao_trace {
 #include <path_tracer/ao_trace.inl>
 }// namespace ao_trace
-#define RBC_USE_RAYQUERY
+// #define RBC_USE_RAYQUERY
 PTPassContext::PTPassContext() = default;
 PTPassContext::~PTPassContext() = default;
 
@@ -264,8 +264,10 @@ void OfflinePTPass::_process_multibounce_indirect(
         rc.scene.image_heap(),
         rc.scene.volume_heap(),
         rc.scene.tex_streamer().level_buffer(),
-        rc.scene.accel_manager().triangle_vis_buffer(),
         accel,
+#ifdef RBC_USE_RAYQUERY
+        rc.scene.accel_manager().triangle_vis_buffer(),
+#endif
         resources.multibounce_buffer.view(),
         resources.multibounce_buffer_counter,
         resources.geo_buffer.view(),

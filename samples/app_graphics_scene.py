@@ -13,18 +13,13 @@ import math
 import argparse
 from typing import Optional
 from PIL import Image
+from samples.mesh_builder import MeshBuilder
 
 # Add parent directory to path for samples module imports
 script_dir = Path(__file__).parent
 if str(script_dir.parent) not in sys.path:
     sys.path.insert(0, str(script_dir.parent))
 
-
-vertex_count = 16
-"""网格顶点总数(两个立方体, 每个8个顶点)"""
-
-triangle_count = 24
-"""网格三角形总数(两个立方体, 每个12个三角形)"""
 
 app: rbc.app.App = None
 
@@ -128,215 +123,87 @@ def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
 
     trans.set_pos(lc.double3(0, -1, 1), False)
     trans.set_rotation(lc.float4(0, -1, 0, 0), False)
-    cube_mesh = re.world.MeshResource()
-    submesh_offsets = np.empty(shape=2, dtype=np.uint32)
-    # first submesh start at 0
-    submesh_offsets[0] = 0
-    # first submesh start at 'last_tri_size'
 
-    submesh_offsets[1] = triangle_count // 2
+    # Use MeshBuilder to create the mesh
+    builder = MeshBuilder()
 
-    cube_mesh.create_empty(
-        submesh_offsets, vertex_count, triangle_count, 1, False, False
-    )
-    # Data layout: positions (vertex_count * 4 floats) + UVs (vertex_count * 2 floats)
-    # + indices (triangle_count * 3 uint32s)
-    mesh_array = np.ndarray(
-        vertex_count * 4 + vertex_count * 2 + triangle_count * 3,
-        dtype=np.float32,
-        buffer=cube_mesh.data_buffer(),
-    )
-    create_mesh_array(mesh_array)
+    # Add UV set
+    builder.add_uv_set()
+
+    # First cube: offset=(0,0,0), scale=1.0
+    _add_cube_to_builder(builder, (0, 0, 0), 1.0)
+
+    # Second cube: offset=(0,1,0), scale=0.4
+    _add_cube_to_builder(builder, (0, 1, 0), 0.4)
+
+    # Create mesh resource and write data
+    cube_mesh = builder.write_to_mesh()
     cube_mesh.install()
     render.update_object(mat_vector, cube_mesh)
     return entity
 
 
-def create_mesh_array(mesh_array):
-    """
-    生成两个立方体的顶点数据和索引数据
-
-    数据布局:
-        - 位置数据: 每个顶点4个float(x, y, z, w), 共16个顶点
-        - UV数据: 每个顶点2个float(u, v), 共16个顶点
-        - 索引数据: 每个三角形3个uint32索引, 共24个三角形
-
-    顶点缓冲区格式:
-        [position_data (vertex_count * 4 floats)]
-        [uv_data (vertex_count * 2 floats)]
-        [index_data (triangle_count * 3 uint32s)]
-
+def _add_cube_to_builder(builder: MeshBuilder, offset: tuple[float, float, float], scale: float):
+    """Add a cube to the mesh builder with given offset and scale.
+    
     Args:
-        mesh_array: numpy 数组, 用于存储生成的网格数据
-
-    Raises:
-        Exception: 当 mesh_array 大小不匹配预期时抛出
-
-    立方体顶点索引定义:
-        0: 左下后 (-0.5, -0.5, -0.5)
-        1: 左下前 (-0.5, -0.5, 0.5)
-        2: 右下后 (0.5, -0.5, -0.5)
-        3: 右下前 (0.5, -0.5, 0.5)
-        4: 左上后 (-0.5, 0.5, -0.5)
-        5: 左上前 (-0.5, 0.5, 0.5)
-        6: 右上后 (0.5, 0.5, -0.5)
-        7: 右上前 (0.5, 0.5, 0.5)
+        builder: MeshBuilder instance to add cube to
+        offset: Position offset for the cube (x, y, z)
+        scale: Scale factor for the cube
     """
+    start_vertex = builder.vertex_count()
+    s = scale
+    ox, oy, oz = offset
 
-    # create a cube
-    expected_size = vertex_count * 4 + vertex_count * 2 + triangle_count * 3
-    if mesh_array.size != expected_size:
-        raise Exception(
-            f"Bad mesh-array size: {mesh_array.size} != {expected_size}")
+    # 8 vertices of a cube
+    positions = [
+        (-0.5 * s + ox, -0.5 * s + oy, -0.5 * s + oz),  # 0: left-bottom-back
+        (-0.5 * s + ox, -0.5 * s + oy, 0.5 * s + oz),   # 1: left-bottom-front
+        (0.5 * s + ox, -0.5 * s + oy, -0.5 * s + oz),   # 2: right-bottom-back
+        (0.5 * s + ox, -0.5 * s + oy, 0.5 * s + oz),    # 3: right-bottom-front
+        (-0.5 * s + ox, 0.5 * s + oy, -0.5 * s + oz),   # 4: left-top-back
+        (-0.5 * s + ox, 0.5 * s + oy, 0.5 * s + oz),    # 5: left-top-front
+        (0.5 * s + ox, 0.5 * s + oy, -0.5 * s + oz),    # 6: right-top-back
+        (0.5 * s + ox, 0.5 * s + oy, 0.5 * s + oz),     # 7: right-top-front
+    ]
+    for pos in positions:
+        builder.add_vertex(pos)
 
-    # Position data: vertex_count * 4 floats
-    vertex_arr = np.ndarray(
-        vertex_count * 4, dtype=np.float32, buffer=mesh_array.data)
+    # UV coordinates for 8 vertices
+    uvs = [
+        (0.0, 0.0),  # 0
+        (0.0, 1.0),  # 1
+        (1.0, 0.0),  # 2
+        (1.0, 1.0),  # 3
+        (0.0, 0.0),  # 4
+        (0.0, 1.0),  # 5
+        (1.0, 0.0),  # 6
+        (1.0, 1.0),  # 7
+    ]
+    for uv in uvs:
+        builder.uvs[0] = np.vstack([builder.uvs[0], np.array(uv, dtype=np.float32).reshape(1, 2)])
 
-    # UV data: vertex_count * 2 floats, after position data
-    uv_arr = np.ndarray(
-        vertex_count * 2,
-        dtype=np.float32,
-        buffer=mesh_array.data,
-        offset=vertex_arr.size * vertex_arr.itemsize,
-    )
+    # Add submesh for this cube
+    submesh_idx = builder.add_submesh()
 
-    # Index data: after UV data
-    indices_arr = np.ndarray(
-        shape=triangle_count * 3,
-        dtype=np.uint32,
-        buffer=mesh_array.data,
-        offset=vertex_arr.size * vertex_arr.itemsize + uv_arr.size * uv_arr.itemsize,
-    )
-    vert_size = 0
-    uv_size = 0
-    index_size = 0
-    offset = lc.float4(0)
-    scale = lc.float4(1)
+    # 12 triangles (6 faces, 2 triangles each)
+    triangles = [
+        # Bottom face
+        (0, 1, 2), (1, 3, 2),
+        # Top face
+        (4, 5, 6), (5, 7, 6),
+        # Left face
+        (0, 1, 4), (1, 5, 4),
+        # Right face
+        (2, 3, 6), (3, 7, 6),
+        # Back face
+        (0, 2, 4), (2, 6, 4),
+        # Front face
+        (1, 3, 5), (3, 7, 5),
+    ]
 
-    def push_vec4(x, y, z):
-        """向顶点缓冲区添加一个 float4 顶点
-
-        Args:
-            x, y, z: 顶点坐标分量
-        """
-        nonlocal vert_size, offset, scale
-        vec = lc.float4(x, y, z, 0) * scale + offset
-        for i in range(4):
-            vertex_arr[vert_size + i] = vec[i]
-        vert_size += 4
-
-    def push_indices(idx: int):
-        """向索引缓冲区添加一个顶点索引
-
-        Args:
-            idx: 顶点索引值
-        """
-        nonlocal index_size
-        indices_arr[index_size] = idx
-        index_size += 1
-
-    def push_vert():
-        """向顶点缓冲区添加8个立方体顶点(应用当前 offset 和 scale 变换)"""
-        push_vec4(-0.5, -0.5, -0.5)  # 0: 左下后
-        push_vec4(-0.5, -0.5, 0.5)  # 1: 左下前
-        push_vec4(0.5, -0.5, -0.5)  # 2: 右下后
-        push_vec4(0.5, -0.5, 0.5)  # 3: 右下前
-        push_vec4(-0.5, 0.5, -0.5)  # 4: 左上后
-        push_vec4(-0.5, 0.5, 0.5)  # 5: 左上前
-        push_vec4(0.5, 0.5, -0.5)  # 6: 右上后
-        push_vec4(0.5, 0.5, 0.5)  # 7: 右上前
-
-    def push_uvs():
-        """向UV缓冲区添加8个立方体顶点的UV坐标
-
-        UV映射基于立方体展开,为每个顶点分配适当的UV坐标:
-            底面顶点(0-3): y=0, v=0
-            顶面顶点(4-7): y=1, v=1
-            前后左右根据x/z坐标分配u坐标
-        """
-        nonlocal uv_size
-        # UV coordinates for 8 vertices of a cube
-        # Mapping based on vertex positions for consistent texture mapping
-        uv_coords = [
-            (0.0, 0.0),  # 0: 左下后 (-0.5, -0.5, -0.5)
-            (0.0, 1.0),  # 1: 左下前 (-0.5, -0.5, 0.5)
-            (1.0, 0.0),  # 2: 右下后 (0.5, -0.5, -0.5)
-            (1.0, 1.0),  # 3: 右下前 (0.5, -0.5, 0.5)
-            (0.0, 0.0),  # 4: 左上后 (-0.5, 0.5, -0.5)
-            (0.0, 1.0),  # 5: 左上前 (-0.5, 0.5, 0.5)
-            (1.0, 0.0),  # 6: 右上后 (0.5, 0.5, -0.5)
-            (1.0, 1.0),  # 7: 右上前 (0.5, 0.5, 0.5)
-        ]
-        for u, v in uv_coords:
-            uv_arr[uv_size] = u
-            uv_arr[uv_size + 1] = v
-            uv_size += 2
-
-    # First cube: positions and UVs
-    push_vert()
-    last_vert_size = vert_size
-    push_uvs()
-
-    # Second cube: positions and UVs
-    offset = lc.float4(0, 1, 0, 0)
-    scale = lc.float4(0.4, 0.4, 0.4, 0)
-    push_vert()
-    push_uvs()
-
-    # Triangle indices
-    def push_cube_triangles():
-        """向索引缓冲区添加一个立方体的12个三角形(6个面, 每个面2个三角形)"""
-        # 底面 (0, 1, 2) 和 (1, 3, 2)
-        push_indices(0)
-        push_indices(1)
-        push_indices(2)
-        push_indices(1)
-        push_indices(3)
-        push_indices(2)
-        # 顶面 (4, 5, 6) 和 (5, 7, 6)
-        push_indices(4)
-        push_indices(5)
-        push_indices(6)
-        push_indices(5)
-        push_indices(7)
-        push_indices(6)
-        # 左面 (0, 1, 4) 和 (1, 5, 4)
-        push_indices(0)
-        push_indices(1)
-        push_indices(4)
-        push_indices(1)
-        push_indices(5)
-        push_indices(4)
-        # 右面 (2, 3, 6) 和 (3, 7, 6)
-        push_indices(2)
-        push_indices(3)
-        push_indices(6)
-        push_indices(3)
-        push_indices(7)
-        push_indices(6)
-        # 后面 (0, 2, 4) 和 (2, 6, 4)
-        push_indices(0)
-        push_indices(2)
-        push_indices(4)
-        push_indices(2)
-        push_indices(6)
-        push_indices(4)
-        # 前面 (1, 3, 5) 和 (3, 7, 5)
-        push_indices(1)
-        push_indices(3)
-        push_indices(5)
-        push_indices(3)
-        push_indices(7)
-        push_indices(5)
-
-    push_cube_triangles()
-    last_index_size = index_size
-    # index size to triangle size
-    last_tri_size = last_index_size // 3
-    push_cube_triangles()
-    for i in range(last_index_size, index_size):
-        indices_arr[i] += last_vert_size // 4
+    for a, b, c in triangles:
+        builder.add_triangle(submesh_idx, start_vertex + a, start_vertex + b, start_vertex + c)
 
 
 def main():
@@ -443,7 +310,6 @@ def main():
         #     dispatch_size=(vertex_count, 1, 1)
         # )
         # render.mesh().build_before_tick()
-
         nonlocal EXPORT, tui_exec, frame_index, geometry_buffer
         frame_index += 1
         if EXPORT and frame_index == 128:
@@ -580,7 +446,9 @@ def main():
     # Enable AO mode
     render_settings = app.display_cam.render_settings()
     
-    # render_settings.set_offline_spp(1)
+    # render_settings.set_offline_spp(4)
+    # render_settings.set_offline_origin_bounce(1)
+    # render_settings.set_offline_indirect_bounce(0)
     # render_settings.set_enable_ao_mode(True)
     # render_settings.set_ao_max_radius(lc.float4(1.5, 1.0, 0.5, 0.2))
     # render_settings.set_offline_origin_bounce(1)

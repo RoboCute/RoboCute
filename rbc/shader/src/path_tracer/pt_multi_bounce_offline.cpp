@@ -1,7 +1,4 @@
 #define OFFLINE_MODE
-#define RBC_USE_RAYQUERY
-#define RBC_USE_RAYQUERY_SHADOW
-
 #include <path_tracer/integrator.hpp>
 #include <path_tracer/pt_args.hpp>
 #include <path_tracer/gbuffer.hpp>
