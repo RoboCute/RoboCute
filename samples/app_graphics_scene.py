@@ -125,33 +125,46 @@ def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
     trans.set_rotation(lc.float4(0, -1, 0, 0), False)
 
     # Use MeshBuilder to create the mesh
-    builder = MeshBuilder()
+    # 2 cubes, each with 8 vertices and 12 triangles
+    submesh_offsets = np.array([0, 12], dtype=np.uint32)  # second submesh starts at triangle 12
+    builder = MeshBuilder(
+        vertex_count=16,
+        triangle_count=24,
+        submesh_offsets=submesh_offsets,
+        uv_count=1,
+        has_normal=False,
+        has_tangent=False
+    )
 
-    # Add UV set
-    builder.add_uv_set()
+    # First cube: offset=(0,0,0), scale=1.0, vertex_start=0, triangle_start=0
+    _add_cube_to_builder(builder, (0, 0, 0), 1.0, vertex_start=0, triangle_start=0)
 
-    # First cube: offset=(0,0,0), scale=1.0
-    _add_cube_to_builder(builder, (0, 0, 0), 1.0)
+    # Second cube: offset=(0,1,0), scale=0.4, vertex_start=8, triangle_start=12
+    _add_cube_to_builder(builder, (0, 1, 0), 0.4, vertex_start=8, triangle_start=12)
 
-    # Second cube: offset=(0,1,0), scale=0.4
-    _add_cube_to_builder(builder, (0, 1, 0), 0.4)
-
-    # Create mesh resource and write data
-    cube_mesh = builder.write_to_mesh()
+    # Get mesh resource
+    cube_mesh = builder.get_mesh()
     cube_mesh.install()
     render.update_object(mat_vector, cube_mesh)
     return entity
 
 
-def _add_cube_to_builder(builder: MeshBuilder, offset: tuple[float, float, float], scale: float):
+def _add_cube_to_builder(
+    builder: MeshBuilder,
+    offset: tuple[float, float, float],
+    scale: float,
+    vertex_start: int,
+    triangle_start: int
+):
     """Add a cube to the mesh builder with given offset and scale.
-    
+
     Args:
         builder: MeshBuilder instance to add cube to
         offset: Position offset for the cube (x, y, z)
         scale: Scale factor for the cube
+        vertex_start: Starting vertex index for this cube
+        triangle_start: Starting triangle index for this cube
     """
-    start_vertex = builder.vertex_count()
     s = scale
     ox, oy, oz = offset
 
@@ -166,8 +179,8 @@ def _add_cube_to_builder(builder: MeshBuilder, offset: tuple[float, float, float
         (0.5 * s + ox, 0.5 * s + oy, -0.5 * s + oz),    # 6: right-top-back
         (0.5 * s + ox, 0.5 * s + oy, 0.5 * s + oz),     # 7: right-top-front
     ]
-    for pos in positions:
-        builder.add_vertex(pos)
+    for i, pos in enumerate(positions):
+        builder.set_position(vertex_start + i, pos)
 
     # UV coordinates for 8 vertices
     uvs = [
@@ -180,11 +193,8 @@ def _add_cube_to_builder(builder: MeshBuilder, offset: tuple[float, float, float
         (1.0, 0.0),  # 6
         (1.0, 1.0),  # 7
     ]
-    for uv in uvs:
-        builder.uvs[0] = np.vstack([builder.uvs[0], np.array(uv, dtype=np.float32).reshape(1, 2)])
-
-    # Add submesh for this cube
-    submesh_idx = builder.add_submesh()
+    for i, uv in enumerate(uvs):
+        builder.set_uv(vertex_start + i, 0, uv)
 
     # 12 triangles (6 faces, 2 triangles each)
     triangles = [
@@ -202,8 +212,8 @@ def _add_cube_to_builder(builder: MeshBuilder, offset: tuple[float, float, float
         (1, 3, 5), (3, 7, 5),
     ]
 
-    for a, b, c in triangles:
-        builder.add_triangle(submesh_idx, start_vertex + a, start_vertex + b, start_vertex + c)
+    for i, (a, b, c) in enumerate(triangles):
+        builder.set_triangle(triangle_start + i, vertex_start + a, vertex_start + b, vertex_start + c)
 
 
 def main():

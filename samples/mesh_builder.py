@@ -10,48 +10,351 @@ class MeshBuilder:
     Python implementation of rbc::MeshBuilder.
     
     Builds mesh data with positions, normals, tangents, UVs, and triangle indices.
-    Supports multiple submeshes and multiple UV sets.
+    Uses mesh host buffers directly as numpy arrays for efficient data manipulation.
     """
 
-    def __init__(self):
-        # Vertex data
-        self.position: np.ndarray = np.zeros((0, 3), dtype=np.float32)  # float3
-        self.normal: np.ndarray = np.zeros((0, 3), dtype=np.float32)    # float3
-        self.tangent: np.ndarray = np.zeros((0, 4), dtype=np.float32)   # float4
-        self.uvs: list[np.ndarray] = []                                 # list of float2 arrays
+    def __init__(
+        self,
+        vertex_count: int,
+        triangle_count: int,
+        submesh_offsets: np.ndarray | None = None,
+        uv_count: int = 0,
+        has_normal: bool = False,
+        has_tangent: bool = False
+    ):
+        """
+        Initialize mesh builder with specified size.
         
-        # Index data - each submesh has its own index array
-        self.triangle_indices: list[np.ndarray] = []                    # list of uint arrays
+        Args:
+            vertex_count: Number of vertices
+            triangle_count: Number of triangles
+            submesh_offsets: Submesh triangle offsets (empty for single submesh)
+            uv_count: Number of UV sets
+            has_normal: Whether mesh has normals
+            has_tangent: Whether mesh has tangents
+        """
+        if vertex_count <= 0:
+            raise ValueError(f"vertex_count must be positive, got {vertex_count}")
+        if triangle_count < 0:
+            raise ValueError(f"triangle_count must be non-negative, got {triangle_count}")
+        if uv_count < 0:
+            raise ValueError(f"uv_count must be non-negative, got {uv_count}")
+        
+        # Initialize submesh offsets
+        if submesh_offsets is None or len(submesh_offsets) == 0:
+            self._submesh_offsets = np.array([], dtype=np.uint32)
+        else:
+            self._submesh_offsets = np.array(submesh_offsets, dtype=np.uint32)
+        
+        # Store configuration
+        self._vertex_count = vertex_count
+        self._triangle_count = triangle_count
+        self._uv_count = uv_count
+        self._has_normal = has_normal
+        self._has_tangent = has_tangent
+        
+        # Create mesh resource and allocate buffers
+        self._mesh = re.world.MeshResource()
+        self._mesh.create_empty(
+            self._submesh_offsets,
+            vertex_count,
+            triangle_count,
+            uv_count,
+            has_normal,
+            has_tangent
+        )
+        
+        # Create numpy array views into mesh buffers
+        self._init_buffer_views()
+
+    def _init_buffer_views(self) -> None:
+        """Initialize numpy array views into mesh host buffers."""
+        # Position buffer (float4 per vertex)
+        pos_buf = self._mesh.pos_buffer()
+        if pos_buf is not None:
+            self.position = np.ndarray(self._vertex_count * 4, dtype=np.float32, buffer=pos_buf)
+            # Initialize to zero
+            self.position[:] = 0.0
+        else:
+            self.position = np.zeros(self._vertex_count * 4, dtype=np.float32)
+        
+        # Normal buffer (float4 per vertex, optional)
+        if self._has_normal:
+            normal_buf = self._mesh.normal_buffer()
+            if normal_buf is not None:
+                self.normal = np.ndarray(self._vertex_count * 4, dtype=np.float32, buffer=normal_buf)
+                self.normal[:] = 0.0
+            else:
+                self.normal = np.zeros(self._vertex_count * 4, dtype=np.float32)
+        else:
+            self.normal = np.array([], dtype=np.float32)
+        
+        # Tangent buffer (float4 per vertex, optional)
+        if self._has_tangent:
+            tangent_buf = self._mesh.tangent_buffer()
+            if tangent_buf is not None:
+                self.tangent = np.ndarray(self._vertex_count * 4, dtype=np.float32, buffer=tangent_buf)
+                self.tangent[:] = 0.0
+            else:
+                self.tangent = np.zeros(self._vertex_count * 4, dtype=np.float32)
+        else:
+            self.tangent = np.array([], dtype=np.float32)
+        
+        # UV buffers (float2 per vertex per UV set)
+        self.uvs: list[np.ndarray] = []
+        for i in range(self._uv_count):
+            uv_buf = self._mesh.uv_buffer(i)
+            if uv_buf is not None:
+                uv_array = np.ndarray(self._vertex_count * 2, dtype=np.float32, buffer=uv_buf)
+                uv_array[:] = 0.0
+            else:
+                uv_array = np.zeros(self._vertex_count * 2, dtype=np.float32)
+            self.uvs.append(uv_array)
+        
+        # Triangle indices buffer (uint32, 3 per triangle)
+        indices_buf = self._mesh.triangle_indices_buffer()
+        if indices_buf is not None:
+            self.triangle_indices = np.ndarray(self._triangle_count * 3, dtype=np.uint32, buffer=indices_buf)
+            self.triangle_indices[:] = 0
+        else:
+            self.triangle_indices = np.zeros(self._triangle_count * 3, dtype=np.uint32)
 
     def vertex_count(self) -> int:
         """Return the number of vertices."""
-        return self.position.shape[0]
+        return self._vertex_count
+
+    def triangle_count(self) -> int:
+        """Return the number of triangles."""
+        return self._triangle_count
 
     def contained_normal(self) -> bool:
         """Return True if normal data is present."""
-        return self.normal.shape[0] > 0
+        return self._has_normal
 
     def contained_tangent(self) -> bool:
         """Return True if tangent data is present."""
-        return self.tangent.shape[0] > 0
+        return self._has_tangent
 
     def uv_count(self) -> int:
         """Return the number of UV sets."""
-        return len(self.uvs)
+        return self._uv_count
 
     def submesh_count(self) -> int:
         """Return the number of submeshes."""
-        return len(self.triangle_indices)
+        return max(len(self._submesh_offsets), 1)
 
     def indices_count(self) -> int:
-        """Return the total number of indices across all submeshes."""
-        return sum(indices.shape[0] for indices in self.triangle_indices)
+        """Return the total number of indices (3 per triangle)."""
+        return self._triangle_count * 3
 
-    def get_submesh_indices(self, submesh_index: int) -> np.ndarray:
-        """Get the triangle indices for a specific submesh."""
-        if submesh_index < 0 or submesh_index >= len(self.triangle_indices):
-            raise IndexError(f"Submesh index {submesh_index} out of range [0, {len(self.triangle_indices)})")
-        return self.triangle_indices[submesh_index].copy()
+    def get_mesh(self) -> re.world.MeshResource:
+        """Get the underlying MeshResource."""
+        return self._mesh
+
+    def _check_vertex_index(self, index: int) -> None:
+        """Check if vertex index is valid."""
+        if index < 0 or index >= self._vertex_count:
+            raise IndexError(f"Vertex index {index} out of range [0, {self._vertex_count})")
+
+    def _check_triangle_index(self, index: int) -> None:
+        """Check if triangle index is valid."""
+        if index < 0 or index >= self._triangle_count:
+            raise IndexError(f"Triangle index {index} out of range [0, {self._triangle_count})")
+
+    def _check_uv_index(self, uv_index: int) -> None:
+        """Check if UV set index is valid."""
+        if uv_index < 0 or uv_index >= self._uv_count:
+            raise IndexError(f"UV set index {uv_index} out of range [0, {self._uv_count})")
+
+    def set_position(self, vertex_index: int, position: np.ndarray | tuple[float, float, float]) -> None:
+        """
+        Set position for a vertex.
+        
+        Args:
+            vertex_index: Index of the vertex
+            position: Position as (x, y, z) tuple or array
+        """
+        self._check_vertex_index(vertex_index)
+        pos = np.array(position, dtype=np.float32).flatten()
+        if pos.shape[0] != 3:
+            raise ValueError(f"Position must have 3 components, got {pos.shape[0]}")
+        
+        idx = vertex_index * 4
+        self.position[idx] = pos[0]
+        self.position[idx + 1] = pos[1]
+        self.position[idx + 2] = pos[2]
+        self.position[idx + 3] = 0.0  # padding
+
+    def set_normal(self, vertex_index: int, normal: np.ndarray | tuple[float, float, float]) -> None:
+        """
+        Set normal for a vertex.
+        
+        Args:
+            vertex_index: Index of the vertex
+            normal: Normal as (x, y, z) tuple or array
+        """
+        if not self._has_normal:
+            raise RuntimeError("Mesh was not created with normals")
+        
+        self._check_vertex_index(vertex_index)
+        n = np.array(normal, dtype=np.float32).flatten()
+        if n.shape[0] != 3:
+            raise ValueError(f"Normal must have 3 components, got {n.shape[0]}")
+        
+        idx = vertex_index * 4
+        self.normal[idx] = n[0]
+        self.normal[idx + 1] = n[1]
+        self.normal[idx + 2] = n[2]
+        self.normal[idx + 3] = 0.0  # padding
+
+    def set_tangent(self, vertex_index: int, tangent: np.ndarray | tuple[float, float, float, float]) -> None:
+        """
+        Set tangent for a vertex.
+        
+        Args:
+            vertex_index: Index of the vertex
+            tangent: Tangent as (x, y, z, w) tuple or array
+        """
+        if not self._has_tangent:
+            raise RuntimeError("Mesh was not created with tangents")
+        
+        self._check_vertex_index(vertex_index)
+        t = np.array(tangent, dtype=np.float32).flatten()
+        if t.shape[0] != 4:
+            raise ValueError(f"Tangent must have 4 components, got {t.shape[0]}")
+        
+        idx = vertex_index * 4
+        self.tangent[idx] = t[0]
+        self.tangent[idx + 1] = t[1]
+        self.tangent[idx + 2] = t[2]
+        self.tangent[idx + 3] = t[3]
+
+    def set_uv(self, vertex_index: int, uv_index: int, uv: np.ndarray | tuple[float, float]) -> None:
+        """
+        Set UV coordinates for a vertex.
+        
+        Args:
+            vertex_index: Index of the vertex
+            uv_index: Index of the UV set
+            uv: UV coordinates as (u, v) tuple or array
+        """
+        self._check_uv_index(uv_index)
+        self._check_vertex_index(vertex_index)
+        
+        uv_val = np.array(uv, dtype=np.float32).flatten()
+        if uv_val.shape[0] != 2:
+            raise ValueError(f"UV must have 2 components, got {uv_val.shape[0]}")
+        
+        idx = vertex_index * 2
+        self.uvs[uv_index][idx] = uv_val[0]
+        self.uvs[uv_index][idx + 1] = uv_val[1]
+
+    def set_triangle(self, triangle_index: int, i0: int, i1: int, i2: int) -> None:
+        """
+        Set indices for a triangle.
+        
+        Args:
+            triangle_index: Index of the triangle
+            i0, i1, i2: Vertex indices of the triangle
+        """
+        self._check_triangle_index(triangle_index)
+        self._check_vertex_index(i0)
+        self._check_vertex_index(i1)
+        self._check_vertex_index(i2)
+        
+        idx = triangle_index * 3
+        self.triangle_indices[idx] = i0
+        self.triangle_indices[idx + 1] = i1
+        self.triangle_indices[idx + 2] = i2
+
+    def set_positions(self, positions: np.ndarray) -> None:
+        """
+        Set all positions at once.
+        
+        Args:
+            positions: Array of shape (vertex_count, 3) with positions
+        """
+        positions = np.array(positions, dtype=np.float32)
+        if positions.shape != (self._vertex_count, 3):
+            raise ValueError(f"Positions shape must be ({self._vertex_count}, 3), got {positions.shape}")
+        
+        self.position[0::4] = positions[:, 0]
+        self.position[1::4] = positions[:, 1]
+        self.position[2::4] = positions[:, 2]
+        self.position[3::4] = 0.0
+
+    def set_normals(self, normals: np.ndarray) -> None:
+        """
+        Set all normals at once.
+        
+        Args:
+            normals: Array of shape (vertex_count, 3) with normals
+        """
+        if not self._has_normal:
+            raise RuntimeError("Mesh was not created with normals")
+        
+        normals = np.array(normals, dtype=np.float32)
+        if normals.shape != (self._vertex_count, 3):
+            raise ValueError(f"Normals shape must be ({self._vertex_count}, 3), got {normals.shape}")
+        
+        self.normal[0::4] = normals[:, 0]
+        self.normal[1::4] = normals[:, 1]
+        self.normal[2::4] = normals[:, 2]
+        self.normal[3::4] = 0.0
+
+    def set_tangents(self, tangents: np.ndarray) -> None:
+        """
+        Set all tangents at once.
+        
+        Args:
+            tangents: Array of shape (vertex_count, 4) with tangents
+        """
+        if not self._has_tangent:
+            raise RuntimeError("Mesh was not created with tangents")
+        
+        tangents = np.array(tangents, dtype=np.float32)
+        if tangents.shape != (self._vertex_count, 4):
+            raise ValueError(f"Tangents shape must be ({self._vertex_count}, 4), got {tangents.shape}")
+        
+        self.tangent[0::4] = tangents[:, 0]
+        self.tangent[1::4] = tangents[:, 1]
+        self.tangent[2::4] = tangents[:, 2]
+        self.tangent[3::4] = tangents[:, 3]
+
+    def set_uvs(self, uv_index: int, uvs: np.ndarray) -> None:
+        """
+        Set all UVs for a UV set at once.
+        
+        Args:
+            uv_index: Index of the UV set
+            uvs: Array of shape (vertex_count, 2) with UVs
+        """
+        self._check_uv_index(uv_index)
+        
+        uvs = np.array(uvs, dtype=np.float32)
+        if uvs.shape != (self._vertex_count, 2):
+            raise ValueError(f"UVs shape must be ({self._vertex_count}, 2), got {uvs.shape}")
+        
+        self.uvs[uv_index][0::2] = uvs[:, 0]
+        self.uvs[uv_index][1::2] = uvs[:, 1]
+
+    def set_triangles(self, triangles: np.ndarray) -> None:
+        """
+        Set all triangle indices at once.
+        
+        Args:
+            triangles: Array of shape (triangle_count, 3) with indices
+        """
+        triangles = np.array(triangles, dtype=np.uint32)
+        if triangles.shape != (self._triangle_count, 3):
+            raise ValueError(f"Triangles shape must be ({self._triangle_count}, 3), got {triangles.shape}")
+        
+        # Validate indices
+        if np.any(triangles >= self._vertex_count):
+            invalid = triangles[triangles >= self._vertex_count][0]
+            raise ValueError(f"Triangle index {invalid} exceeds vertex count {self._vertex_count}")
+        
+        self.triangle_indices[:] = triangles.flatten()
 
     def check(self) -> str:
         """
@@ -59,191 +362,23 @@ class MeshBuilder:
         Returns empty string if valid.
         """
         errors = []
-        vertex_count = self.position.shape[0]
-
-        if vertex_count == 0:
+        
+        if self._vertex_count == 0:
             errors.append("No vertices in mesh.")
-
-        # Check normal size matches position size
-        if self.normal.shape[0] > 0 and self.normal.shape[0] != vertex_count:
-            errors.append(f"Normal size {self.normal.shape[0]} does not match position size {vertex_count}.")
-
-        # Check tangent size matches position size
-        if self.tangent.shape[0] > 0 and self.tangent.shape[0] != vertex_count:
-            errors.append(f"Tangent size {self.tangent.shape[0]} does not match position size {vertex_count}.")
-
-        # Check UV sizes match position size
-        for idx, uv in enumerate(self.uvs):
-            if uv.shape[0] > 0 and uv.shape[0] != vertex_count:
-                errors.append(f"UV{idx} size {uv.shape[0]} does not match position size {vertex_count}.")
-
-        # Check triangle indices
-        for idx, indices in enumerate(self.triangle_indices):
-            # Check that index count is divisible by 3 (complete triangles)
-            if indices.shape[0] % 3 != 0:
-                errors.append(f"Submesh {idx} size {indices.shape[0]} is not divisible by 3.")
-                continue
-
-            # Check that all indices are within vertex range
-            if np.any(indices >= vertex_count):
-                invalid_idx = indices[indices >= vertex_count][0]
-                errors.append(f"Index {invalid_idx} in submesh {idx} is out of vertex range {vertex_count}.")
-
+        
+        if self._triangle_count == 0:
+            errors.append("No triangles in mesh.")
+        
+        # Check if any position is uninitialized (all zeros might indicate uninitialized)
+        # This is a heuristic check
+        
+        # Check triangle indices are within range
+        if self.triangle_indices is not None and len(self.triangle_indices) > 0:
+            max_index = np.max(self.triangle_indices)
+            if max_index >= self._vertex_count:
+                errors.append(f"Max triangle index {max_index} exceeds vertex count {self._vertex_count}.")
+        
         return "\n".join(errors)
-
-    def _gen_submesh_offsets(self) -> np.ndarray:
-        """
-        Generate submesh offsets (triangle count offset for each submesh).
-        Returns an empty array for single submesh, or array of offsets for multiple submeshes.
-        """
-        if len(self.triangle_indices) <= 1:
-            return np.array([], dtype=np.uint32)
-
-        offsets = []
-        offset = 0
-        for indices in self.triangle_indices:
-            offsets.append(offset)
-            offset += indices.shape[0] // 3  # Number of triangles in this submesh
-        return np.array(offsets, dtype=np.uint32)
-    # return submesh offsets
-    def write_to(self, dst_path: Path | str | bytearray) -> np.ndarray:
-        """
-        Write mesh data to a file path or append to a bytearray.
-        
-        Args:
-            dst_path: Path to write to, or bytearray to append to
-        
-        Returns:
-            numpy array of submesh triangle offsets
-        """
-        error_msg = self.check()
-        if error_msg:
-            raise ValueError(f"Mesh validation failed:\n{error_msg}")
-
-        # Convert data to bytes
-        data_bytes = self._to_bytes()
-
-        if isinstance(dst_path, (str, Path)):
-            # Write to file
-            with open(dst_path, 'wb') as f:
-                f.write(data_bytes)
-        elif isinstance(dst_path, bytearray):
-            # Append to bytearray
-            dst_path.extend(data_bytes)
-        else:
-            raise TypeError(f"dst_path must be a Path, str, or bytearray, got {type(dst_path)}")
-
-        # Generate submesh offsets
-        return self._gen_submesh_offsets()
-    # return submesh offsets\
-    def write_to_mesh(self) -> re.world.MeshResource:
-        """Write mesh data to a MeshResource.
-        
-        Returns:
-            MeshResource with the mesh data filled in.
-        """
-        error_msg = self.check()
-        if error_msg:
-            raise ValueError(f"Mesh validation failed:\n{error_msg}")
-
-        # Calculate submesh offsets (triangle count offset for each submesh)
-        submesh_offsets = self._gen_submesh_offsets()
-        
-        # Calculate total triangle count
-        total_triangles = sum(indices.shape[0] // 3 for indices in self.triangle_indices)
-        
-        # Create mesh resource
-        mesh = re.world.MeshResource()
-        
-        # Create empty mesh with proper parameters
-        mesh.create_empty(
-            submesh_offsets,
-            self.vertex_count(),
-            total_triangles,
-            self.uv_count(),
-            self.contained_normal(),
-            self.contained_tangent()
-        )
-        # Copy buffers to mesh
-        vertex_count = self.vertex_count()
-        
-        # Fill positions (aligned as float4)
-        if vertex_count > 0:
-            buffer = mesh.pos_buffer()
-            assert buffer is not None
-            pos_buffer = np.ndarray(vertex_count * 4, dtype=np.float32, buffer=buffer)
-            pos_buffer[0::4] = self.position[:, 0]
-            pos_buffer[1::4] = self.position[:, 1]
-            pos_buffer[2::4] = self.position[:, 2]
-            pos_buffer[3::4] = 0.0  # padding for alignment
-    
-        # Fill normals if present (aligned as float4)
-        if self.contained_normal():
-            buffer = mesh.normal_buffer()
-            if buffer is not None:
-                normal_buffer = np.ndarray(vertex_count * 4, dtype=np.float32, buffer=buffer)
-                normal_buffer[0::4] = self.normal[:, 0]
-                normal_buffer[1::4] = self.normal[:, 1]
-                normal_buffer[2::4] = self.normal[:, 2]
-                normal_buffer[3::4] = 0.0  # padding for alignment
-        
-        # Fill tangents if present (already float4)
-        if self.contained_tangent():
-            buffer = mesh.tangent_buffer()
-            if buffer is not None:
-                tangent_buffer = np.ndarray(vertex_count * 4, dtype=np.float32, buffer=buffer)
-                tangent_buffer[0::4] = self.tangent[:, 0]
-                tangent_buffer[1::4] = self.tangent[:, 1]
-                tangent_buffer[2::4] = self.tangent[:, 2]
-                tangent_buffer[3::4] = self.tangent[:, 3]
-        
-        # Fill UVs
-        for i, uv_set in enumerate(self.uvs):
-            if uv_set.shape[0] > 0:
-                buffer = mesh.uv_buffer(i)
-                if buffer is not None:
-                    uv_buffer = np.ndarray(vertex_count * 2, dtype=np.float32, buffer=buffer)
-                    uv_buffer[0::2] = uv_set[:, 0]
-                    uv_buffer[1::2] = uv_set[:, 1]
-        
-        # Fill triangle indices
-        buffer = mesh.triangle_indices_buffer()
-        if buffer is not None:
-            all_indices = np.concatenate(self.triangle_indices) if self.triangle_indices else np.array([], dtype=np.uint32)
-            index_buffer = np.ndarray(all_indices.shape[0], dtype=np.uint32, buffer=buffer)
-            index_buffer[:] = all_indices
-        
-        return mesh 
-
-    def _to_bytes(self) -> bytes:
-        """Convert all mesh data to bytes in the correct format."""
-        buffer = bytearray()
-        vertex_count = self.vertex_count()
-
-        # Write positions (float3 padded to 16 bytes per vertex)
-        if vertex_count > 0:
-            pos_padded = np.zeros((vertex_count, 4), dtype=np.float32)
-            pos_padded[:, :3] = self.position
-            buffer.extend(pos_padded.tobytes())
-
-        # Write normals (float3 padded to 16 bytes per vertex)
-        if self.contained_normal():
-            normal_padded = np.zeros((vertex_count, 4), dtype=np.float32)
-            normal_padded[:, :3] = self.normal
-            buffer.extend(normal_padded.tobytes())
-
-        # Write tangents (float4 = 16 bytes per vertex)
-        buffer.extend(self.tangent.tobytes())
-
-        # Write UVs (float2 = 8 bytes per vertex per UV set)
-        for uv_set in self.uvs:
-            buffer.extend(uv_set.tobytes())
-
-        # Write triangle indices (uint32 = 4 bytes per index)
-        for indices in self.triangle_indices:
-            buffer.extend(indices.astype(np.uint32).tobytes())
-
-        return bytes(buffer)
 
     @staticmethod
     def calculate_tangent(
@@ -308,52 +443,14 @@ class MeshBuilder:
 
         return result
 
-    def add_vertex(self, position: np.ndarray | tuple[float, float, float]) -> int:
-        """
-        Add a new vertex with the given position.
-        Returns the index of the added vertex.
-        """
-        pos_array = np.array(position, dtype=np.float32).reshape(1, 3)
-        self.position = np.vstack([self.position, pos_array])
-        return self.position.shape[0] - 1
-
-    def add_submesh(self) -> int:
-        """
-        Add a new empty submesh.
-        Returns the index of the added submesh.
-        """
-        self.triangle_indices.append(np.zeros(0, dtype=np.uint32))
-        return len(self.triangle_indices) - 1
-
-    def add_triangle(self, submesh_index: int, i0: int, i1: int, i2: int) -> None:
-        """
-        Add a triangle to the specified submesh.
-        
-        Args:
-            submesh_index: Index of the submesh to add to
-            i0, i1, i2: Vertex indices of the triangle
-        """
-        if submesh_index < 0 or submesh_index >= len(self.triangle_indices):
-            raise IndexError(f"Submesh index {submesh_index} out of range [0, {len(self.triangle_indices)})")
-        new_indices = np.array([i0, i1, i2], dtype=np.uint32)
-        self.triangle_indices[submesh_index] = np.concatenate([self.triangle_indices[submesh_index], new_indices])
-
-    def add_uv_set(self) -> int:
-        """
-        Add a new empty UV set.
-        Returns the index of the added UV set.
-        """
-        self.uvs.append(np.zeros((0, 2), dtype=np.float32))
-        return len(self.uvs) - 1
-
     def __repr__(self) -> str:
         return (
             f"MeshBuilder("
-            f"vertices={self.vertex_count()}, "
+            f"vertices={self._vertex_count}, "
+            f"triangles={self._triangle_count}, "
             f"submeshes={self.submesh_count()}, "
-            f"indices={self.indices_count()}, "
-            f"normals={self.contained_normal()}, "
-            f"tangents={self.contained_tangent()}, "
-            f"uv_sets={self.uv_count()}"
+            f"normals={self._has_normal}, "
+            f"tangents={self._has_tangent}, "
+            f"uv_sets={self._uv_count}"
             f")"
         )
