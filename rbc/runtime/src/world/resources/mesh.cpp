@@ -181,6 +181,25 @@ void MeshResource::create_as_morphing_instance(MeshResource *origin_mesh) {
     unsafe_set_loaded();
 }
 
+#ifndef NDEBUG
+namespace detail {
+static luisa::string _check_mesh_index_on_bounds(luisa::span<uint const> indices, uint64_t vertex_size) {
+    luisa::spin_mutex mtx;
+    luisa::string err_msg;
+    luisa::fiber::parallel(indices.size(), [&](uint32_t begin, uint32_t end) {
+        for(auto v = begin; v < end; ++v) {
+            if(indices[v] >= vertex_size) [[unlikely]] {
+                std::lock_guard lck{mtx};
+                if(!err_msg.empty()) return;
+                err_msg = luisa::format("triangle-index {} with value {} larger than vertex-size {}", v, indices[v], vertex_size);
+                return;
+            }
+        } }, 4096);
+    return err_msg;
+}
+}// namespace detail
+#endif
+
 bool MeshResource::_install() {
     auto render_device = RenderDevice::instance_ptr();
     if (!is_transforming_mesh()) {
@@ -189,6 +208,15 @@ bool MeshResource::_install() {
         auto host_data_ = host_data();
         auto file_size = desire_size_bytes();
         LUISA_ASSERT(host_data_->empty() || host_data_->size() == file_size, "Host data length {} mismatch with required length {}.", host_data_->size(), file_size);
+#ifndef NDEBUG
+        if (!host_data_->empty()) {
+            detail::_check_mesh_index_on_bounds(
+                luisa::span{
+                    reinterpret_cast<uint const *>(host_data_->data() + basic_size_bytes() - _triangle_count * sizeof(Triangle)),
+                    _triangle_count},
+                _vertex_count);
+        }
+#endif
         {
             std::lock_guard lck{_async_mtx};
             mesh->create_mesh(
@@ -237,7 +265,7 @@ bool MeshResource::unsafe_save_to_path() const {
 rbc::coroutine MeshResource::_async_load() {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) co_return;
-    (void)desire_size_bytes();  // Suppress unused warning
+    (void)desire_size_bytes();// Suppress unused warning
     auto path = this->path();
     if (path.empty()) {
         co_return;

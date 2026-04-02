@@ -36,7 +36,7 @@ public:
         : _meta_db(assets_db_path.parent_path() / ".temp_db"),
           _assets_path(assets_db_path) {
         if (_assets_path.empty()) {
-            LUISA_ERROR("Assets path must not be empty.");
+            LUISA_ERROR("Assets database path must not be empty.");
         }
     }
     void scan_project() override;

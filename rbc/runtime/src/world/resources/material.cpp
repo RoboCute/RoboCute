@@ -102,7 +102,7 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
             _mat_data.force_get<material::OpenPBR>(),
             serde_func);
     } else {
-        LUISA_ERROR("Unknown material type.");
+        LUISA_ERROR("Unknown material type. only support 'pbr'");
         //TODO: other types
     }
     if (set_to_loaded) {
@@ -140,7 +140,7 @@ void MaterialResource::_write_content_to(JsonSerializer &json_ser) {
             json_ser._store("type"sv, "pbr");
             rbc::detail::serde_openpbr(t, ser_pbr);
         } else {
-            LUISA_ERROR("Unknown material type.");
+            LUISA_ERROR("Unknown material type. only support 'pbr'");
             // TODO: serialize_meta other type
         }
     });
@@ -222,7 +222,7 @@ bool MaterialResource::_install() {
                 t,
                 serde_func);
         } else {
-            LUISA_ERROR("Unknown material type.");
+            LUISA_ERROR("Unknown material type. only support 'pbr'");
             //TODO
         }
     });

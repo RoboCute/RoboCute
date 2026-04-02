@@ -1,20 +1,19 @@
-from typing import Optional
+from typing import Optional, Callable
 import robocute.rbc_ext as re
 from pathlib import Path
 import robocute.rbc_ext.luisa as lc
 import os
 import time
 import numpy as np
-
 BUILTIN_PROGRAM_PATH = Path(
     os.path.dirname(__file__) + "/rbc_ext/_C"
 )  # Built-In Runtime Path
 
 
 def _create_visualization_mesh(
-    positions,
-    indices
-):
+    positions: list[tuple[float, float, float]],
+    indices: list[int]
+) -> re.world.MeshResource:
     vcount = len(positions)
     tcount = len(indices)
     assert tcount % 3 == 0
@@ -75,7 +74,7 @@ class App:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def init(self, backend_name: str, project_path: Optional[Path], world_path: Optional[Path] = None, require_render: bool = True):
+    def init(self, backend_name: str, project_path: Optional[Path], world_path: Optional[Path] = None, require_render: bool = True) -> None:
         self.init_ctx()
         self.init_device(backend_name)
         lc.init()
@@ -93,21 +92,21 @@ class App:
 
         self._initialized = True
 
-    def display_image(self, dtype=float):
+    def display_image(self, dtype=float) -> None:
         display_img = self.ctx.display_image()
         assert display_img.handle() != 18446744073709551615
         return lc.Image2D.import_native(dtype, display_img)
 
-    def init_ctx(self):
+    def init_ctx(self) -> None:
         self._ctx = re.world.RBCContext()
 
-    def init_world(self, world_path: Path):
+    def init_world(self, world_path: Path) -> None:
         if self._ctx is not None:
             self._ctx.init_world(str(world_path), str(world_path))
 
     def init_device(
         self, backend_name: str, program_path: Path = BUILTIN_PROGRAM_PATH
-    ):
+    ) -> None:
         shader_path = program_path / f"shader_build_{backend_name}"
 
         if self._ctx is not None:
@@ -115,13 +114,16 @@ class App:
             self._ctx.init_device(backend_name, str(
                 program_path), str(shader_path), False)
 
-    def init_render(self):
+    def init_render(self) -> None:
         if self._ctx is not None:
             self._ctx.init_render()
 
-    def init_project(self, project_path: Path):
+    def init_project(self, project_path: Path) -> None:
         self._project = re.world.Project()
-        self._project.init(str(project_path / "assets"))
+        assets_path = project_path / "assets"
+        if not assets_path.exists():
+            raise Exception(f'Assets path: {assets_path} not exists.')
+        self._project.init(str(assets_path))
         self._project.scan_project()
         self._scene = self._project.import_scene("test_scene.scene", "")
         self._scene.install()
@@ -129,7 +131,7 @@ class App:
     def init_display(
         self, x: int = 1920, y: int = 1080, display_title: str = "py_window",
         create_window: bool = True, window_resizable: bool = True, full_screen: bool = False, transparent: bool = False
-    ):
+    ) -> None:
         self._resolution = lc.uint2(x, y)
         if not self._ctx:
             return
@@ -140,7 +142,7 @@ class App:
         self._display_cam.enable_camera()
         self._last_frame_time = time.time()
 
-    def get_display_transform(self):
+    def get_display_transform(self) -> None:
         if not self._display_cam:
             return None
 
@@ -167,20 +169,27 @@ class App:
     def initialized(self):
         return self._initialized
 
-    def set_user_callback(self, callback):
-        assert callable(callback)
+    def set_user_callback(self, callback: Callable[[], bool | None]) -> None:
         self._callback = callback
 
-    def call_exit(self):
+    def call_exit(self) -> None:
         self._exit = True
 
-    def run(self, prepare_denoise: bool = False):
+    def run(self, prepare_denoise: bool = False, limit_frame: int | None = None) -> None:
         if not self._ctx or not self._scene or not self._display_cam:
             return
         last_time = time.time()
         frame_index = 0
+        real_frame_index = 0
         # entity = make_cube_mesh(self._scene)
-        while not self._ctx.should_close() and not self._exit:
+
+        def should_quit():
+            if self._ctx.should_close() or self._exit:
+                return True
+            return limit_frame is not None and real_frame_index >= limit_frame
+        
+        while not should_quit():
+            real_frame_index += 1
             cur_time = time.time()
             self._delta_time = cur_time - last_time
             last_time = cur_time
@@ -198,11 +207,11 @@ class App:
                 frame_index += 1
         self._exit = False
 
-    def upload_mesh_data(self, mesh: re.world.MeshResource):
+    def upload_mesh_data(self, mesh: re.world.MeshResource) -> None:
         if self._ctx:
             self._ctx.upload_mesh_data(mesh)
 
-    def set_ground_plane_mode(self, mode: str, scale: float = 100, height: float = 0, material=None):
+    def set_ground_plane_mode(self, mode: str | None, scale: float = 100, height: float = 0, material=None) -> None:
         import samples.mat_builtin as mat
         if mode is None or mode == 'none':
             if self._plane_entity:
