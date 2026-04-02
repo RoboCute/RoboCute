@@ -354,7 +354,7 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
 
             lc_py_linkdir = os.path.join(py_path, "libs")
             options["lc_py_linkdir"] = to_slash(lc_py_linkdir)
-
+            options['rbc_editor'] = False # TODO disable editor defaultly
             # Find libs starting with 'python'
             files = []
             if os.path.exists(lc_py_linkdir):
