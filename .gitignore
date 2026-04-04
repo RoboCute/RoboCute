@@ -31,6 +31,9 @@ compile_commands.json
 *.pyc
 *.msi
 
+# database
+*.mdb
+
 # build dirs
 /.sb
 /.build
