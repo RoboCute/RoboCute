@@ -1094,6 +1094,52 @@ int SkeletonResource::get_parent_index(void *this_, int joint_index) {
     auto c = static_cast<rbc::world::SkeletonResource *>(this_);
     return static_cast<int>(c->ref_skel().GetParentIndex(joint_index));
 }
+int SkeletonResource::get_num_bones(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkeletonResource::get_num_bones: this_ is null.");
+        return -1;
+    }
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    return c->ref_skel().GetNumBones();
+}
+luisa::vector<int> SkeletonResource::ensure_parents_exist(void *this_, luisa::vector<int> bone_indices) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkeletonResource::ensure_parents_exist: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    luisa::vector<rbc::BoneIndexType> indices;
+    indices.reserve(bone_indices.size());
+    for (auto idx : bone_indices) {
+        indices.push_back(static_cast<rbc::BoneIndexType>(idx));
+    }
+    c->ref_skel().EnsureParentsExist(indices);
+    luisa::vector<int> result;
+    result.reserve(indices.size());
+    for (auto idx : indices) {
+        result.push_back(static_cast<int>(idx));
+    }
+    return result;
+}
+luisa::vector<int> SkeletonResource::ensure_parents_exist_and_sort(void *this_, luisa::vector<int> bone_indices) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkeletonResource::ensure_parents_exist_and_sort: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    luisa::vector<rbc::BoneIndexType> indices;
+    indices.reserve(bone_indices.size());
+    for (auto idx : bone_indices) {
+        indices.push_back(static_cast<rbc::BoneIndexType>(idx));
+    }
+    c->ref_skel().EnsureParentsExistAndSort(indices);
+    luisa::vector<int> result;
+    result.reserve(indices.size());
+    for (auto idx : indices) {
+        result.push_back(static_cast<int>(idx));
+    }
+    return result;
+}
 
 // SkinResource implementation
 void *SkinResource::_create_() {
@@ -1219,6 +1265,40 @@ void AnimSequence::log_brief(void *this_) {
     auto c = static_cast<rbc::world::AnimSequence *>(this_);
     c->log_brief();
 }
+float AnimSequence::get_duration(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("AnimSequence::get_duration: this_ is null.");
+        return 0.0f;
+    }
+    auto c = static_cast<rbc::world::AnimSequence *>(this_);
+    return c->GetRawAnim().duration();
+}
+float AnimSequence::get_rate_scale(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("AnimSequence::get_rate_scale: this_ is null.");
+        return 1.0f;
+    }
+    auto c = static_cast<rbc::world::AnimSequence *>(this_);
+    // rate_scale is a private member, need to add getter in anim_sequence.h
+    return 1.0f;// Placeholder - will need proper implementation
+}
+void AnimSequence::set_rate_scale(void *this_, float scale) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("AnimSequence::set_rate_scale: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::AnimSequence *>(this_);
+    // rate_scale is a private member, need to add setter in anim_sequence.h
+    (void)scale;
+}
+luisa::string AnimSequence::get_name(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("AnimSequence::get_name: this_ is null.");
+        return luisa::string{};
+    }
+    auto c = static_cast<rbc::world::AnimSequence *>(this_);
+    return luisa::string{c->GetRawAnim().name()};
+}
 
 // AnimSequenceResource implementation
 void *AnimSequenceResource::_create_() {
@@ -1252,6 +1332,38 @@ void AnimSequenceResource::log_brief(void *this_) {
     }
     auto c = static_cast<rbc::world::AnimSequenceResource *>(this_);
     c->log_brief();
+}
+luisa::string AnimSequenceResource::get_anim_name(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("AnimSequenceResource::get_anim_name: this_ is null.");
+        return luisa::string{};
+    }
+    auto c = static_cast<rbc::world::AnimSequenceResource *>(this_);
+    return luisa::string{c->anim_name};
+}
+float AnimSequenceResource::get_sampling_rate(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("AnimSequenceResource::get_sampling_rate: this_ is null.");
+        return 30.0f;
+    }
+    auto c = static_cast<rbc::world::AnimSequenceResource *>(this_);
+    return c->sampling_rate;
+}
+void AnimSequenceResource::set_anim_name(void *this_, luisa::string_view name) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("AnimSequenceResource::set_anim_name: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::AnimSequenceResource *>(this_);
+    c->anim_name = luisa::string{name};
+}
+void AnimSequenceResource::set_sampling_rate(void *this_, float rate) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("AnimSequenceResource::set_sampling_rate: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::AnimSequenceResource *>(this_);
+    c->sampling_rate = rate;
 }
 
 // AnimGraphResource implementation
@@ -3738,6 +3850,150 @@ void SkelMeshComponent::update_render(void *this_) {
     }
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
     c->update_render();
+}
+// New methods with consistent naming and additional animation control
+void *SkelMeshComponent::get_runtime_mesh(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::get_runtime_mesh: this_ is null.");
+        return nullptr;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    auto mesh = c->GetRuntimeMesh();
+    if (!mesh) return nullptr;
+    manually_add_ref(mesh);
+    return mesh;
+}
+bool SkelMeshComponent::is_enabled(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::is_enabled: this_ is null.");
+        return false;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    return c->IsEnabled();
+}
+void SkelMeshComponent::set_ref_skel_mesh(void *this_, void *skel_mesh) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::set_ref_skel_mesh: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    auto skel_mesh_rc = RC<rbc::world::SkelMeshResource>{static_cast<rbc::world::SkelMeshResource *>(skel_mesh)};
+    c->SetRefSkelMesh(skel_mesh_rc);
+}
+void SkelMeshComponent::play_animation(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::play_animation: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    if (c->runtime_skel_mesh) {
+        c->runtime_skel_mesh->EnableAnimation();
+    }
+}
+void SkelMeshComponent::pause_animation(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::pause_animation: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    if (c->runtime_skel_mesh) {
+        c->runtime_skel_mesh->DisableAnimation();
+    }
+}
+void SkelMeshComponent::stop_animation(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::stop_animation: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    if (c->runtime_skel_mesh) {
+        c->runtime_skel_mesh->DisableAnimation();
+        c->runtime_skel_mesh->ResetToRefPose();
+    }
+}
+void SkelMeshComponent::set_animation_time(void *this_, float time) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::set_animation_time: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    c->time = time;
+}
+float SkelMeshComponent::get_animation_time(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::get_animation_time: this_ is null.");
+        return 0.0f;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    return c->time;
+}
+void SkelMeshComponent::set_playback_speed(void *this_, float speed) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::set_playback_speed: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    // Playback speed control would need to be implemented in SkeletalMesh
+    // For now, this is a placeholder
+    (void)speed;
+}
+float SkelMeshComponent::get_playback_speed(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::get_playback_speed: this_ is null.");
+        return 1.0f;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    // Playback speed control would need to be implemented in SkeletalMesh
+    return 1.0f;// Placeholder
+}
+bool SkelMeshComponent::is_playing(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::is_playing: this_ is null.");
+        return false;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    return c->IsEnabled();
+}
+luisa::float4x4 SkelMeshComponent::get_bone_transform(void *this_, int bone_index) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::get_bone_transform: this_ is null.");
+        return luisa::float4x4{1.0f};
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    if (!c->runtime_skel_mesh || bone_index < 0) {
+        return luisa::float4x4{1.0f};
+    }
+    auto &transforms = c->runtime_skel_mesh->GetComponentSpaceTransforms();
+    if (bone_index >= static_cast<int>(transforms.size())) {
+        return luisa::float4x4{1.0f};
+    }
+    return reinterpret_cast<luisa::float4x4 const &>(transforms[bone_index]);
+}
+void SkelMeshComponent::set_bone_transform(void *this_, int bone_index, luisa::float4x4 transform) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::set_bone_transform: this_ is null.");
+        return;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    if (!c->runtime_skel_mesh || bone_index < 0) {
+        return;
+    }
+    auto &transforms = c->runtime_skel_mesh->GetEditableComponentSpaceTransforms();
+    if (bone_index >= static_cast<int>(transforms.size())) {
+        return;
+    }
+    transforms[bone_index] = reinterpret_cast<rbc::AnimFloat4x4 const &>(transform);
+}
+int SkelMeshComponent::get_num_bones(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkelMeshComponent::get_num_bones: this_ is null.");
+        return 0;
+    }
+    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
+    if (!c->runtime_skel_mesh) {
+        return 0;
+    }
+    return static_cast<int>(c->runtime_skel_mesh->GetComponentSpaceTransforms().size());
 }
 
 // VoxelResource implementation
