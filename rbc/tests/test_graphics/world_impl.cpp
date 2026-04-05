@@ -986,6 +986,114 @@ void SkeletonResource::log_brief(void *this_) {
     auto c = static_cast<rbc::world::SkeletonResource *>(this_);
     c->log_brief();
 }
+int SkeletonResource::get_num_joints(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkeletonResource::get_num_joints: this_ is null.");
+        return -1;
+    }
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    return c->ref_skel().NumJoints();
+}
+int SkeletonResource::get_num_soa_joints(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkeletonResource::get_num_soa_joints: this_ is null.");
+        return -1;
+    }
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    return c->ref_skel().NumSOAJoints();
+}
+luisa::vector<luisa::string> SkeletonResource::get_joint_names(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkeletonResource::get_joint_names: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    auto names = c->ref_skel().RawJointNames();
+    luisa::vector<luisa::string> result;
+    result.reserve(names.size());
+    for (auto &n : names) {
+        result.push_back(luisa::string{n});
+    }
+    return result;
+}
+luisa::vector<int> SkeletonResource::get_joint_parents(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkeletonResource::get_joint_parents: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    auto parents = c->ref_skel().RawJointParents();
+    luisa::vector<int> result;
+    result.reserve(parents.size());
+    for (auto &p : parents) {
+        result.push_back(static_cast<int>(p));
+    }
+    return result;
+}
+luisa::vector<luisa::float4x4> SkeletonResource::get_joint_rest_poses(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkeletonResource::get_joint_rest_poses: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    auto poses = c->ref_skel().JointRestPoses();
+    auto num_joints = c->ref_skel().NumJoints();
+    luisa::vector<luisa::float4x4> result;
+    result.reserve(num_joints);
+    for (int i = 0; i < num_joints; ++i) {
+        // SOA format: each element contains 4 joints
+        int soa_idx = i / 4;
+        int soa_offset = i % 4;
+        auto &soa = poses[soa_idx];
+        // Extract translation (float3)
+        luisa::float3 translation(
+            soa.translation.x[soa_offset],
+            soa.translation.y[soa_offset],
+            soa.translation.z[soa_offset]);
+        // Extract rotation (quaternion to rotation matrix)
+        luisa::float4 quat(
+            soa.rotation.x[soa_offset],
+            soa.rotation.y[soa_offset],
+            soa.rotation.z[soa_offset],
+            soa.rotation.w[soa_offset]);
+        float x2 = quat.x + quat.x;
+        float y2 = quat.y + quat.y;
+        float z2 = quat.z + quat.z;
+        float xx = quat.x * x2;
+        float xy = quat.x * y2;
+        float xz = quat.x * z2;
+        float yy = quat.y * y2;
+        float yz = quat.y * z2;
+        float zz = quat.z * z2;
+        float wx = quat.w * x2;
+        float wy = quat.w * y2;
+        float wz = quat.w * z2;
+        luisa::float3x3 rotation_mat(
+            luisa::float3(1.0f - (yy + zz), xy + wz, xz - wy),
+            luisa::float3(xy - wz, 1.0f - (xx + zz), yz + wx),
+            luisa::float3(xz + wy, yz - wx, 1.0f - (xx + yy)));
+        // Extract scale (float3)
+        luisa::float3 scale(
+            soa.scale.x[soa_offset],
+            soa.scale.y[soa_offset],
+            soa.scale.z[soa_offset]);
+        // Build float4x4 transformation matrix (TRS)
+        result.push_back(luisa::float4x4(
+            luisa::float4(rotation_mat[0][0] * scale.x, rotation_mat[0][1] * scale.y, rotation_mat[0][2] * scale.z, 0.0f),
+            luisa::float4(rotation_mat[1][0] * scale.x, rotation_mat[1][1] * scale.y, rotation_mat[1][2] * scale.z, 0.0f),
+            luisa::float4(rotation_mat[2][0] * scale.x, rotation_mat[2][1] * scale.y, rotation_mat[2][2] * scale.z, 0.0f),
+            luisa::float4(translation.x, translation.y, translation.z, 1.0f)));
+    }
+    return result;
+}
+int SkeletonResource::get_parent_index(void *this_, int joint_index) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("SkeletonResource::get_parent_index: this_ is null.");
+        return -1;
+    }
+    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
+    return static_cast<int>(c->ref_skel().GetParentIndex(joint_index));
+}
 
 // SkinResource implementation
 void *SkinResource::_create_() {

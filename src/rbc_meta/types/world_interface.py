@@ -20,7 +20,7 @@ from rbc_meta.utils.builtin import (
     RCBase,
     Ref,
     Const,
-    long
+    long,
 )
 from rbc_meta.types.resource import LCPixelStorage
 from enum import Enum
@@ -45,11 +45,12 @@ class Callback:
 
     def _cpp_type_name(py_interface: bool, is_view: bool):
         if py_interface:
-            return 'py::function'
+            return "py::function"
         else:
-            return 'luisa::move_only_function<void(rbc::RCBase*)>&&'
+            return "luisa::move_only_function<void(rbc::RCBase*)>&&"
+
     _py_type_name = ""
-    _cpp_arg_call = 'to_cppfunc_5d4636ab<rbc::RCBase*>'
+    _cpp_arg_call = "to_cppfunc_5d4636ab<rbc::RCBase*>"
 
 
 class LCPYImage2D:
@@ -63,7 +64,7 @@ class LCPYImage2DInfo:
     _py_type_name = "luisa.lcapi.TextureCreationInfo"
 
 
-@reflect(cpp_namespace='rbc', module_name='world_interface', pybind=True)
+@reflect(cpp_namespace="rbc", module_name="world_interface", pybind=True)
 class BasicDataType(Enum):
     INT = 0
     DOUBLE = 1
@@ -84,7 +85,7 @@ class ResourceLoadStatus(Enum):
 @reflect(cpp_namespace="rbc", pybind=True)
 class RendererGeometryType(Enum):
     NONE = 0
-    Depth = 1 << 0   # float: Distance to camera
+    Depth = 1 << 0  # float: Distance to camera
     Normal = 1 << 1  # packed float3: normal-xyz
     # packed uint4:  X: object id  Y: primitive id ZW: triangle bary-centric (float2)
     ObjectID = 1 << 2
@@ -94,7 +95,10 @@ class RendererGeometryType(Enum):
     Emission = 1 << 5  # packed float3: emission color (sampled from spectrum)
     Albedo = 1 << 6  # packed float3: albedo color (sampled from spectrum)
     MaterialID = 1 << 7
+
+
 # After change RendererGeometryType, make sure "geometry_byte_size" in "rbc\render_plugin\src\offline_pt_pass.cpp" also updated!
+
 
 @reflect(cpp_namespace="rbc", pybind=True)
 class BaseObjectType(Enum):
@@ -123,7 +127,7 @@ class Object:
     pybind=True,
     cpp_prefix="TEST_GRAPHICS_API",
     cpp_namespace="rbc",
-    create_instance=False
+    create_instance=False,
 )
 class Entity(Object):
     def add_component(name: str) -> VoidPtr: ...
@@ -213,11 +217,7 @@ class Resource(Object):
     def wait_loading() -> None: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class BasicData:
     def type() -> BasicDataType: ...
     def get_int() -> long: ...
@@ -232,11 +232,7 @@ class BasicData:
     def set_resource(res: Resource) -> None: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class TextureResource(Resource):
     def is_vt() -> bool: ...
     def pack_to_tile() -> bool: ...
@@ -258,11 +254,7 @@ class TextureResource(Resource):
     def device_texture() -> LCPYImage2D: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class MeshResource(Resource):
     def vertex_count() -> uint: ...
     def triangle_count() -> uint: ...
@@ -298,24 +290,15 @@ class MeshResource(Resource):
     def build_before_tick() -> None: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class BufferResource(Resource):
     def size_bytes() -> ulong: ...
     def buffer() -> LCPYBuffer: ...
     def host_data() -> DataBuffer: ...
-    def create_empty(size_bytes: ulong,
-                     create_device_buffer: bool) -> None: ...
+    def create_empty(size_bytes: ulong, create_device_buffer: bool) -> None: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class MaterialResource(Resource):
     def mat_code() -> uint: ...
     def load_from_json(json: str) -> None: ...
@@ -338,16 +321,13 @@ class MaterialResource(Resource):
 #     def procedural_instance_id() -> uint: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class VoxelResource(Resource):
     """Resource class for AABB-based Voxel data.
-    
+
     Stores axis-aligned bounding boxes for GPU-accelerated voxel rendering.
     """
+
     def empty() -> bool: ...
     def num_voxels() -> uint: ...
     def host_data_size_bytes() -> ulong: ...
@@ -356,16 +336,13 @@ class VoxelResource(Resource):
     def procedural_instance_id() -> uint: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class SDFVoxelResource(Resource):
     """Resource class for SDF (Signed Distance Field) Voxel data.
-    
+
     Stores 3D signed distance field data for GPU-accelerated rendering and ray marching.
     """
+
     def empty() -> bool: ...
     def grid_size() -> uint3: ...
     def num_voxels() -> ulong: ...
@@ -396,19 +373,14 @@ class RenderComponent(Component):
     ) -> None: ...
 
     def update_mesh(mesh: MeshResource) -> None: ...
-    def update_material(
-        mat_vector: Ref[Const[Vector[RC[RCBase]]]]) -> None: ...
+    def update_material(mat_vector: Ref[Const[Vector[RC[RCBase]]]]) -> None: ...
 
     def mesh() -> MeshResource: ...
     def mat_count() -> ulong: ...
     def get_material(idx: ulong) -> MaterialResource: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class RenderSettings:
     # ========== SkySettings ==========
     def get_sky_angle() -> float: ...
@@ -582,17 +554,14 @@ class CameraComponent(Component):
     def save_image_to(path: str) -> None: ...
 
     def set_geometry_export_buffer(
-        self, buffer: LCPYBufferInfo, channel_type: RendererGeometryType) -> None: ...
+        self, buffer: LCPYBufferInfo, channel_type: RendererGeometryType
+    ) -> None: ...
 
     def clear_geometry_export_buffer() -> None: ...
     def render_settings() -> RenderSettings: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class DataComponentEventType(Enum):
     OnAwake = 0
     OnDestroy = 1
@@ -617,8 +586,7 @@ class DataComponent(Component):
     def info_count() -> ulong: ...
     def clear_infos() -> None: ...
 
-    def bind_event(event_type: DataComponentEventType,
-                   callback_name: str) -> None: ...
+    def bind_event(event_type: DataComponentEventType, callback_name: str) -> None: ...
 
     def unbind_event(event_type: DataComponentEventType) -> None: ...
 
@@ -634,21 +602,13 @@ class AtmosphereComponent(Component):
     def update_texture(tex: TextureResource) -> None: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class EntitiesCollection:
     def count() -> ulong: ...
     def get_entity(index: ulong) -> Entity: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class Scene(Resource):
     def get_entity(guid: GUID) -> Entity: ...
     def get_or_add_entity(guid: GUID) -> Entity: ...
@@ -659,21 +619,22 @@ class Scene(Resource):
     def get_entities_by_name(name: str) -> EntitiesCollection: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class SkeletonResource(Resource):
+    # Basic interface
     def ref_skel() -> VoidPtr: ...
     def log_brief() -> None: ...
 
+    # Bone hierarchy details - essential for physics animation
+    def get_num_joints() -> int: ...
+    def get_num_soa_joints() -> int: ...
+    def get_joint_names() -> Vector[str]: ...
+    def get_joint_parents() -> Vector[int]: ...
+    def get_joint_rest_poses() -> Vector[float4x4]: ...
+    def get_parent_index(joint_index: int) -> int: ...
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class SkinResource(Resource):
     def ref_skel() -> SkeletonResource: ...
     def ref_mesh() -> MeshResource: ...
@@ -694,37 +655,22 @@ class AnimSequence:
     def get_num_tracks() -> int: ...
     def log_brief() -> None: ...
 
-    def get_animation_pose(
-        pose_data: VoidPtr,
-        extract_context: VoidPtr
-    ) -> None: ...
+    def get_animation_pose(pose_data: VoidPtr, extract_context: VoidPtr) -> None: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class AnimSequenceResource(Resource):
     def ref_seq() -> AnimSequence: ...
     def ref_skel() -> SkeletonResource: ...
     def log_brief() -> None: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class AnimGraphResource(Resource):
     def create_simple_anim_graph(anim_seq: AnimSequenceResource) -> bool: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class SkelMeshResource(Resource):
     def GetSkinResource() -> SkinResource: ...
     def ref_skin() -> SkinResource: ...
@@ -747,21 +693,13 @@ class SkelMeshComponent(Component):
     def IsEnabled() -> bool: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class FileMeta:
     def guid() -> GUID: ...
     def meta_json() -> str: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class Project:
     def init(assets_root_dir: str) -> None: ...
     def import_scene(path: str, extra_meta: str) -> Scene: ...
@@ -769,19 +707,14 @@ class Project:
     def scan_project() -> None: ...
     def get_file_meta(type_id: GUID, dest_path: str) -> FileMeta: ...
     def import_mesh(path: str) -> MeshResource: ...
-    def import_texture(path: str, mip_level: uint,
-                       to_vt: bool) -> TextureResource: ...
+    def import_texture(path: str, mip_level: uint, to_vt: bool) -> TextureResource: ...
     def import_material(path: str) -> MaterialResource: ...
     def import_skeleton(path: str) -> SkeletonResource: ...
     def import_skin(path: str) -> SkinResource: ...
     def import_anim_sequence(path: str) -> AnimSequenceResource: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class TickStage(Enum):
     NONE = 0
     RasterPreview = 1
@@ -790,18 +723,14 @@ class TickStage(Enum):
     PresentOfflineResult = 4
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class BuiltinKernels:
     def buffer_to_image(
         input_buffer: LCPYBufferInfo,
         output_image: LCPYImage2DInfo,
         pixel_offset: uint2,
         pixel_size: uint2,
-        swizzle: uint4
+        swizzle: uint4,
     ) -> None: ...
 
     def image_to_buffer(
@@ -809,15 +738,11 @@ class BuiltinKernels:
         output_buffer: LCPYBufferInfo,
         pixel_offset: uint2,
         pixel_size: uint2,
-        swizzle: uint4
+        swizzle: uint4,
     ) -> None: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class SelectQuery:
     def valid() -> bool: ...
     def get_component() -> RenderComponent: ...
@@ -827,11 +752,7 @@ class SelectQuery:
     def prim_id() -> uint: ...
 
 
-@reflect(
-    pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
-    cpp_namespace="rbc"
-)
+@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class RBCContext:
     def init_world(self, meta_path: str, binary_path: str) -> None: ...
 
@@ -844,8 +765,15 @@ class RBCContext:
     # render
     def init_render(self) -> None: ...
 
-    def init_display(self, name: str, size: uint2,
-                     create_window: bool, window_resizable: bool, full_screen: bool, transparent: bool) -> None: ...
+    def init_display(
+        self,
+        name: str,
+        size: uint2,
+        create_window: bool,
+        window_resizable: bool,
+        full_screen: bool,
+        transparent: bool,
+    ) -> None: ...
 
     def create_display_cam() -> CameraComponent: ...
     def destroy_display_cam() -> None: ...
@@ -869,13 +797,13 @@ class RBCContext:
     def enable_camera_control() -> None: ...
     def disable_camera_control() -> None: ...
     def control_camera_add_pos(pos: float3) -> None: ...
-    def control_camera_add_rotate(
-        yaw: float, pitch: float, roll: float) -> None: ...
+    def control_camera_add_rotate(yaw: float, pitch: float, roll: float) -> None: ...
     # Upload host-data to device, resources must be installed
     def upload_texture_data(tex: TextureResource) -> None: ...
     def upload_mesh_data(mesh: MeshResource) -> None: ...
-    def update_skinning_mesh(skinning_mesh: MeshResource,
-                             dual_quaternion_buffer: LCPYBufferInfo) -> None: ...
+    def update_skinning_mesh(
+        skinning_mesh: MeshResource, dual_quaternion_buffer: LCPYBufferInfo
+    ) -> None: ...
 
     # callback
     def regist_callback(name: str, callback: Callback) -> None: ...
@@ -928,6 +856,4 @@ OUT_CLASSES = [
     AtmosphereComponent,
 ]
 
-__all__ = [
-    "OUT_CLASSES"
-]
+__all__ = ["OUT_CLASSES"]
