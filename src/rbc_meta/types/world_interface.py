@@ -666,7 +666,13 @@ class AnimSequence:
     def set_rate_scale(scale: float) -> None: ...
     def get_name() -> str: ...
 
+    # Low-level pose sampling (requires VoidPtr)
     def get_animation_pose(pose_data: VoidPtr, extract_context: VoidPtr) -> None: ...
+
+    # Python-friendly pose sampling - returns bone transforms at given time
+    def sample_pose_at_time(
+        time: float, skeleton: SkeletonResource
+    ) -> Vector[float4x4]: ...
 
 
 @reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")

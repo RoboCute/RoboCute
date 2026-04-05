@@ -1279,8 +1279,7 @@ float AnimSequence::get_rate_scale(void *this_) {
         return 1.0f;
     }
     auto c = static_cast<rbc::world::AnimSequence *>(this_);
-    // rate_scale is a private member, need to add getter in anim_sequence.h
-    return 1.0f;// Placeholder - will need proper implementation
+    return c->GetRateScale();
 }
 void AnimSequence::set_rate_scale(void *this_, float scale) {
     if (!this_) [[unlikely]] {
@@ -1288,8 +1287,7 @@ void AnimSequence::set_rate_scale(void *this_, float scale) {
         return;
     }
     auto c = static_cast<rbc::world::AnimSequence *>(this_);
-    // rate_scale is a private member, need to add setter in anim_sequence.h
-    (void)scale;
+    c->SetRateScale(scale);
 }
 luisa::string AnimSequence::get_name(void *this_) {
     if (!this_) [[unlikely]] {
@@ -1298,6 +1296,70 @@ luisa::string AnimSequence::get_name(void *this_) {
     }
     auto c = static_cast<rbc::world::AnimSequence *>(this_);
     return luisa::string{c->GetRawAnim().name()};
+}
+luisa::vector<luisa::float4x4> AnimSequence::sample_pose_at_time(void *this_, float time, void *skeleton) {
+    if (!this_ || !skeleton) [[unlikely]] {
+        LUISA_ERROR("AnimSequence::sample_pose_at_time: this_ or skeleton is null.");
+        return {};
+    }
+    auto anim_seq = static_cast<rbc::world::AnimSequence *>(this_);
+    auto skel_res = static_cast<rbc::world::SkeletonResource *>(skeleton);
+
+    const auto &animation = anim_seq->GetRawAnim();
+    const auto &skeleton = skel_res->ref_skel();
+    int num_bones = skeleton.NumJoints();
+
+    if (num_bones <= 0) {
+        return {};
+    }
+
+    // Create sampling context
+    rbc::AnimSamplingJobContext context;
+    context.Resize(animation.num_tracks());
+
+    // Calculate ratio from time
+    float ratio = time / animation.duration();
+    ratio = ratio < 0.0f ? 0.0f : ratio > 1.0f ? 1.0f :
+                                                 ratio;
+
+    // Prepare output buffer for SoA transforms
+    luisa::vector<rbc::AnimSOATransform> soa_transforms;
+    uint32_t num_soa_bones = (num_bones + 3) / 4;
+    soa_transforms.resize(num_soa_bones);
+
+    // Run sampling job
+    rbc::AnimSamplingJob sampling_job;
+    sampling_job.animation = &animation;
+    sampling_job.ratio = ratio;
+    sampling_job.context = &context;
+    sampling_job.output = {soa_transforms.begin(), soa_transforms.end()};
+
+    if (!sampling_job.Run()) {
+        LUISA_ERROR("Failed to run SamplingJob");
+        return {};
+    }
+
+    // Convert SoA to float4x4 matrices using LocalToModelJob
+    luisa::vector<luisa::float4x4> result;
+    result.resize(num_bones);
+    luisa::vector<rbc::AnimFloat4x4> component_space(num_bones);
+
+    rbc::AnimLocalToModelJob ltm_job;
+    ltm_job.skeleton = &skeleton.GetRawSkeleton();
+    ltm_job.input = {soa_transforms.begin(), soa_transforms.end()};
+    ltm_job.output = {component_space.begin(), component_space.end()};
+
+    if (!ltm_job.Run()) {
+        LUISA_ERROR("Failed to run LocalToModelJob");
+        return {};
+    }
+
+    // Copy results
+    for (int i = 0; i < num_bones; ++i) {
+        result[i] = reinterpret_cast<luisa::float4x4 const &>(component_space[i]);
+    }
+
+    return result;
 }
 
 // AnimSequenceResource implementation
@@ -3933,9 +3995,7 @@ void SkelMeshComponent::set_playback_speed(void *this_, float speed) {
         return;
     }
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    // Playback speed control would need to be implemented in SkeletalMesh
-    // For now, this is a placeholder
-    (void)speed;
+    c->SetPlaybackSpeed(speed);
 }
 float SkelMeshComponent::get_playback_speed(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3943,8 +4003,7 @@ float SkelMeshComponent::get_playback_speed(void *this_) {
         return 1.0f;
     }
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    // Playback speed control would need to be implemented in SkeletalMesh
-    return 1.0f;// Placeholder
+    return c->GetPlaybackSpeed();
 }
 bool SkelMeshComponent::is_playing(void *this_) {
     if (!this_) [[unlikely]] {

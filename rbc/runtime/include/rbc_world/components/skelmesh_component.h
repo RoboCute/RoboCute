@@ -31,10 +31,17 @@ public:
     MeshResource *GetRuntimeMesh() const;
     bool IsEnabled() const;
 
+    // Playback speed for animation
+    float playback_speed = 1.0f;
+
 public:
     void tick(float delta_time = 0.0f);
     void update_render();
     void remove_object();
+
+    // Playback speed control
+    float GetPlaybackSpeed() const { return playback_speed; }
+    void SetPlaybackSpeed(float speed) { playback_speed = speed; }
 };
 
 }// namespace rbc::world

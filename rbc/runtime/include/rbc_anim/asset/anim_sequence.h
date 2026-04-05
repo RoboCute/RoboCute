@@ -28,6 +28,10 @@ public:
 
     void log_brief() const;// debug helper
 
+    // Rate scale control
+    [[nodiscard]] float GetRateScale() const { return rate_scale; }
+    void SetRateScale(float InRateScale) { rate_scale = InRateScale; }
+
     // void TickAssetPlayer(AnimTickRecord &InTickRecord, AnimAssetTickContext &InContext);
     // Actural Evaluate
     void GetAnimationPose(AnimationPoseData &OutPoseData, const AnimExtractContext &InExtractContext) const;

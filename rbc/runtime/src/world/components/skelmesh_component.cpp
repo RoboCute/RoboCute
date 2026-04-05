@@ -42,7 +42,7 @@ void SkelMeshComponent::tick(float delta_time) {
     }
 
     // Now Initialized, Start Tick
-    runtime_skel_mesh->Tick(delta_time);
+    runtime_skel_mesh->Tick(delta_time * playback_speed);
 }
 
 void SkelMeshComponent::update_render() {
