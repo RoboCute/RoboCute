@@ -1,3 +1,3 @@
-import robocute.rbc_ext.generated.world_v2 as world
+import robocute.rbc_ext.generated.world as world
 
 __all__ = ["world"]
