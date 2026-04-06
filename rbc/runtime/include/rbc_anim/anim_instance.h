@@ -176,8 +176,8 @@ private:
     luisa::shared_ptr<BoneContainer> required_bones;
 
     // ==================== Sampling State =====================
-    float current_delta_seconds;// The last timer passed via PreUpdate
-    [[maybe_unused]] bool bUpdatingRoot;         // scope guard to prevent duplicate perform
+    float current_delta_seconds;        // The last timer passed via PreUpdate
+    [[maybe_unused]] bool bUpdatingRoot;// scope guard to prevent duplicate perform
     bool bBoneCachesValid = false;
     // float CurrentTimeDilation;
     // =========================================================

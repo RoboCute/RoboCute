@@ -3,7 +3,9 @@ local function rbc_runtime_interface()
         public = true
     })
     add_deps('lc-runtime', 'rbc_core')
-    add_deps('tinygltf', {public = true})  -- needed for gltf.h public header
+    add_deps('tinygltf', {
+        public = true
+    }) -- needed for gltf.h public header
     add_interface_depend('rbc_render_plugin')
     -- We can do this
     -- add_interface_depend('rbc_importer_plugin')

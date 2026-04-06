@@ -1258,6 +1258,7 @@ void AnimSequence::get_animation_pose(void *this_, void *pose_data, void *extrac
     auto c = static_cast<rbc::world::AnimSequence *>(this_);
     c->GetAnimationPose(*static_cast<AnimationPoseData *>(pose_data), *static_cast<const AnimExtractContext *>(extract_context));
 }
+
 void AnimSequence::log_brief(void *this_) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("AnimSequence::log_brief: this_ is null.");
@@ -1299,68 +1300,70 @@ luisa::string AnimSequence::get_name(void *this_) {
     return luisa::string{c->GetRawAnim().name()};
 }
 luisa::vector<luisa::float4x4> AnimSequence::sample_pose_at_time(void *this_, float time, void *skeleton) {
-    if (!this_ || !skeleton) [[unlikely]] {
-        LUISA_ERROR("AnimSequence::sample_pose_at_time: this_ or skeleton is null.");
-        return {};
-    }
-    auto anim_seq = static_cast<rbc::world::AnimSequence *>(this_);
-    auto skel_res = static_cast<rbc::world::SkeletonResource *>(skeleton);
+    // TODO: @sailing-innocent Sample Pose At Time, AI写得什么玩意
+    // if (!this_ || !skeleton) [[unlikely]] {
+    //     LUISA_ERROR("AnimSequence::sample_pose_at_time: this_ or skeleton is null.");
+    //     return {};
+    // }
+    // auto anim_seq = static_cast<rbc::world::AnimSequence *>(this_);
+    // auto skel_res = static_cast<rbc::world::SkeletonResource *>(skeleton);
 
-    const auto &animation = anim_seq->GetRawAnim();
-    const auto &ref_skel = skel_res->ref_skel();
-    int num_bones = ref_skel.NumJoints();
+    // const auto &animation = anim_seq->GetRawAnim();
+    // const auto &ref_skel = skel_res->ref_skel();
+    // int num_bones = ref_skel.NumJoints();
 
-    if (num_bones <= 0) {
-        return {};
-    }
+    // if (num_bones <= 0) {
+    //     return {};
+    // }
 
-    // Create sampling context
-    rbc::AnimSamplingJobContext context;
-    context.Resize(animation.num_tracks());
+    // // Create sampling context
+    // rbc::AnimSamplingJobContext context;
+    // context.Resize(animation.num_tracks());
 
-    // Calculate ratio from time
-    float ratio = time / animation.duration();
-    ratio = ratio < 0.0f ? 0.0f : ratio > 1.0f ? 1.0f :
-                                                 ratio;
+    // // Calculate ratio from time
+    // float ratio = time / animation.duration();
+    // ratio = ratio < 0.0f ? 0.0f : ratio > 1.0f ? 1.0f :
+    //                                              ratio;
 
-    // Prepare output buffer for SoA transforms
-    luisa::vector<rbc::AnimSOATransform> soa_transforms;
-    uint32_t num_soa_bones = (num_bones + 3) / 4;
-    soa_transforms.resize(num_soa_bones);
+    // // Prepare output buffer for SoA transforms
+    // luisa::vector<rbc::AnimSOATransform> soa_transforms;
+    // uint32_t num_soa_bones = (num_bones + 3) / 4;
+    // soa_transforms.resize(num_soa_bones);
 
-    // Run sampling job
-    rbc::AnimSamplingJob sampling_job;
-    sampling_job.animation = &animation;
-    sampling_job.ratio = ratio;
-    sampling_job.context = &context;
-    sampling_job.output = {soa_transforms.begin(), soa_transforms.end()};
+    // // Run sampling job
+    // rbc::AnimSamplingJob sampling_job;
+    // sampling_job.animation = &animation;
+    // sampling_job.ratio = ratio;
+    // sampling_job.context = &context;
+    // sampling_job.output = {soa_transforms.begin(), soa_transforms.end()};
 
-    if (!sampling_job.Run()) {
-        LUISA_ERROR("Failed to run SamplingJob");
-        return {};
-    }
+    // if (!sampling_job.Run()) {
+    //     LUISA_ERROR("Failed to run SamplingJob");
+    //     return {};
+    // }
 
-    // Convert SoA to float4x4 matrices using LocalToModelJob
-    luisa::vector<luisa::float4x4> result;
-    result.resize(num_bones);
-    luisa::vector<rbc::AnimFloat4x4> component_space(num_bones);
+    // // Convert SoA to float4x4 matrices using LocalToModelJob
+    // luisa::vector<luisa::float4x4> result;
+    // result.resize(num_bones);
+    // luisa::vector<rbc::AnimFloat4x4> component_space(num_bones);
 
-    rbc::AnimLocalToModelJob ltm_job;
-    ltm_job.skeleton = &ref_skel.GetRawSkeleton();
-    ltm_job.input = {soa_transforms.begin(), soa_transforms.end()};
-    ltm_job.output = {component_space.begin(), component_space.end()};
+    // rbc::AnimLocalToModelJob ltm_job;
+    // ltm_job.skeleton = &ref_skel.GetRawSkeleton();
+    // ltm_job.input = {soa_transforms.begin(), soa_transforms.end()};
+    // ltm_job.output = {component_space.begin(), component_space.end()};
 
-    if (!ltm_job.Run()) {
-        LUISA_ERROR("Failed to run LocalToModelJob");
-        return {};
-    }
+    // if (!ltm_job.Run()) {
+    //     LUISA_ERROR("Failed to run LocalToModelJob");
+    //     return {};
+    // }
 
-    // Copy results
-    for (int i = 0; i < num_bones; ++i) {
-        result[i] = reinterpret_cast<luisa::float4x4 const &>(component_space[i]);
-    }
+    // // Copy results
+    // for (int i = 0; i < num_bones; ++i) {
+    //     result[i] = reinterpret_cast<luisa::float4x4 const &>(component_space[i]);
+    // }
 
-    return result;
+    // return result;
+    return {};
 }
 
 // AnimSequenceResource implementation
