@@ -971,14 +971,7 @@ void *SkeletonResource::_create_() {
     manually_add_ref(p);
     return p;
 }
-void *SkeletonResource::ref_skel(void *this_) {
-    if (!this_) [[unlikely]] {
-        LUISA_ERROR("SkeletonResource::ref_skel: this_ is null.");
-        return nullptr;
-    }
-    auto c = static_cast<rbc::world::SkeletonResource *>(this_);
-    return &c->ref_skel();
-}
+
 void SkeletonResource::log_brief(void *this_) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("SkeletonResource::log_brief: this_ is null.");
@@ -1038,15 +1031,18 @@ luisa::vector<luisa::float4x4> SkeletonResource::get_joint_rest_poses(void *this
     }
     auto c = static_cast<rbc::world::SkeletonResource *>(this_);
     auto poses = c->ref_skel().JointRestPoses();
+
     auto num_joints = c->ref_skel().NumJoints();
     luisa::vector<luisa::float4x4> result;
     result.reserve(num_joints);
+
     for (int i = 0; i < num_joints; ++i) {
         // SOA format: each element contains 4 joints
         int soa_idx = i / 4;
         int soa_offset = i % 4;
         auto &soa = poses[soa_idx];
         // Extract translation (float3)
+        // TODO: woc AI 真的就敢xjb写
         luisa::float3 translation(
             soa.translation.x[soa_offset],
             soa.translation.y[soa_offset],
