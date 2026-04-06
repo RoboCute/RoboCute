@@ -69,7 +69,7 @@ class Entity:
         return component_type in self.components
 
 
-class Scene:
+class LegacyScene:
     """
     Runtime Scene data collection
 

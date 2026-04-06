@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from .context import SceneContext
+from .context import LegacySceneContext
 
 
 class NodeInput(BaseModel):
@@ -53,7 +53,7 @@ class RBCNode(ABC):
     CATEGORY: str = "default"
     DESCRIPTION: str = ""
 
-    def __init__(self, node_id: str, context: Optional[SceneContext] = None):
+    def __init__(self, node_id: str, context: Optional[LegacySceneContext] = None):
         """
         初始化节点
 

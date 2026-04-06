@@ -1,3 +1,4 @@
+
 """
 NodeGraphService - Node Graph API Service
 
@@ -13,8 +14,8 @@ from datetime import datetime
 from .node_registry import get_registry
 from .graph import NodeGraph, GraphDefinition
 from .executor import GraphExecutor, ExecutionStatus, GraphExecutionResult
-from .context import SceneContext
-from .scene import Scene
+from .context import LegacySceneContext
+from .scene import LegacyScene
 from .service import Service
 
 
@@ -69,7 +70,7 @@ class NodeGraphService(Service):
     Provides HTTP endpoints for node management, graph creation and execution.
     """
 
-    def __init__(self, scene: Optional[Scene] = None):
+    def __init__(self, scene: Optional[LegacyScene] = None):
         """
         Initialize NodeGraphService
 
@@ -83,7 +84,7 @@ class NodeGraphService(Service):
         self._graphs: Dict[str, NodeGraph] = {}
         self._execution_results: Dict[str, GraphExecutionResult] = {}
 
-    def set_scene(self, scene: Scene) -> None:
+    def set_scene(self, scene: LegacyScene) -> None:
         """
         Set the scene reference for graph execution context.
 
@@ -260,7 +261,7 @@ class NodeGraphService(Service):
                         print(
                             f"[API] Creating scene context with {len(self.scene.get_all_entities())} entities"
                         )
-                        scene_context = SceneContext(self.scene)
+                        scene_context = LegacySceneContext(self.scene)
                     else:
                         print(
                             "[API] WARNING: No scene available, graph will have no context"
@@ -294,7 +295,7 @@ class NodeGraphService(Service):
                         print(
                             f"[API] Creating scene context for existing graph with {len(self.scene.get_all_entities())} entities"
                         )
-                        scene_context = SceneContext(self.scene)
+                        scene_context = LegacySceneContext(self.scene)
                     else:
                         print("[API] WARNING: No scene available for existing graph")
                         scene_context = None

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from .node_base import RBCNode
 from .node_registry import get_registry
 
-from .context import SceneContext
+from .context import LegacySceneContext
 
 
 class NodeConnection(BaseModel):
@@ -46,7 +46,7 @@ class NodeGraph:
     """
 
     def __init__(
-        self, graph_id: str = "default", scene_context: Optional["SceneContext"] = None
+        self, graph_id: str = "default", scene_context: Optional["LegacySceneContext"] = None
     ):
         """
         初始化节点图
@@ -289,7 +289,7 @@ class NodeGraph:
         cls,
         definition: GraphDefinition,
         graph_id: str = "default",
-        scene_context: Optional["SceneContext"] = None,
+        scene_context: Optional["LegacySceneContext"] = None,
     ) -> "NodeGraph":
         """
         从图定义创建节点图

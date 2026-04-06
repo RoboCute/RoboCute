@@ -17,7 +17,7 @@ from datetime import datetime
 from .node_registry import get_registry
 from .graph import NodeGraph, GraphDefinition
 from .executor import GraphExecutor, ExecutionStatus, GraphExecutionResult
-from .context import SceneContext
+from .context import LegacySceneContext
 from .node_graph_service import NodeGraphService
 
 # 创建 FastAPI 应用（向后兼容）
@@ -258,7 +258,7 @@ async def execute_graph(request: GraphExecuteRequest):
                 print(
                     f"[API] Creating scene context with {len(_scene.get_all_entities())} entities"
                 )
-                scene_context = SceneContext(_scene)
+                scene_context = LegacySceneContext(_scene)
             else:
                 print("[API] WARNING: No scene available, graph will have no context")
                 scene_context = None
@@ -288,7 +288,7 @@ async def execute_graph(request: GraphExecuteRequest):
                 print(
                     f"[API] Creating scene context for existing graph with {len(_scene.get_all_entities())} entities"
                 )
-                scene_context = SceneContext(_scene)
+                scene_context = LegacySceneContext(_scene)
             else:
                 print("[API] WARNING: No scene available for existing graph")
                 scene_context = None

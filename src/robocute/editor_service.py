@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from robocute.rbc_ext.resource import ResourceManager, ResourceType, LoadPriority
-from .scene import Scene
+from .scene import LegacyScene
 from .service import Service
 
 
@@ -77,7 +77,7 @@ class EditorService(Service):
     """
 
     def __init__(
-        self, scene: Scene, resource_manager: Optional[ResourceManager] = None
+        self, scene: LegacyScene, resource_manager: Optional[ResourceManager] = None
     ):
         """
         Initialize EditorService

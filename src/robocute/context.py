@@ -5,10 +5,10 @@ NodeGraph Execution Context
 
 from typing import Optional, List, Any
 
-from .scene import Scene, Entity
+from .scene import LegacyScene, Entity
 
 
-class SceneContext:
+class LegacySceneContext:
     """
     Provides scene access during node execution.
 
@@ -17,7 +17,7 @@ class SceneContext:
     explicit outputs rather than side effects.
     """
 
-    def __init__(self, scene: Scene):
+    def __init__(self, scene: LegacyScene):
         """
         Initialize scene context
 
@@ -85,7 +85,7 @@ class SceneContext:
         return self._scene.metadata.copy()
 
     @property
-    def scene(self) -> Scene:
+    def scene(self) -> LegacyScene:
         """
         Get direct access to the scene for specific operations
 
@@ -98,7 +98,7 @@ class SceneContext:
 class ExecuteContext:
     """
     wrappes the Necessary Context for scene
-    - SceneContext
+    - LegacySceneContext
     """
 
     def __init__(self):

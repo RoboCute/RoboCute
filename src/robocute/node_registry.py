@@ -6,7 +6,7 @@
 
 from typing import Dict, Type, List, Optional, TYPE_CHECKING
 from .node_base import RBCNode, NodeMetadata
-
+from .context import LegacySceneContext
 
 class NodeRegistry:
     """
@@ -78,7 +78,7 @@ class NodeRegistry:
         return self._registry.get(node_type)
 
     def create_node(
-        self, node_type: str, node_id: str, context: Optional["SceneContext"] = None
+        self, node_type: str, node_id: str, context: Optional["LegacySceneContext"] = None
     ) -> Optional[RBCNode]:
         """
         创建节点实例

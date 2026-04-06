@@ -9,7 +9,7 @@ from enum import Enum
 from datetime import datetime
 from pydantic import BaseModel
 from .graph import NodeGraph, NodeConnection
-from .context import SceneContext
+from .context import LegacySceneContext
 
 
 class ExecutionStatus(str, Enum):
@@ -54,7 +54,7 @@ class GraphExecutor:
     """
 
     def __init__(
-        self, graph: NodeGraph, scene_context: Optional["SceneContext"] = None
+        self, graph: NodeGraph, scene_context: Optional["LegacySceneContext"] = None
     ):
         """
         初始化执行器
