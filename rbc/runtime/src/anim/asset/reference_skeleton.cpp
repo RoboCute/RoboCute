@@ -1,3 +1,8 @@
+/**
+ * Raw Skeleton Asset
+ * Wraps the IO of ozz assets
+ */
+
 #include <rbc_anim/asset/reference_skeleton.h>
 #include <rbc_anim/asset/ozz_stream.h>
 #include <ozz/base/io/archive.h>

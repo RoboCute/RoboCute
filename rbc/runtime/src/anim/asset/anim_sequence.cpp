@@ -1,3 +1,8 @@
+/**
+ * Raw AnimSequence Asset
+ * Wraps the IO of ozz assets
+ */
+
 #include "rbc_anim/asset/anim_sequence.h"
 #include "rbc_anim/asset/ozz_stream.h"
 #include <ozz/base/io/archive.h>
