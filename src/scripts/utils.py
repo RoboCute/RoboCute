@@ -9,6 +9,7 @@ from typing import Optional
 
 class Color(Enum):
     """ANSI color codes for foreground colors."""
+
     BLACK = 30
     RED = 31
     GREEN = 32
@@ -29,6 +30,7 @@ class Color(Enum):
 
 class BgColor(Enum):
     """ANSI color codes for background colors."""
+
     BLACK = 40
     RED = 41
     GREEN = 42
@@ -49,6 +51,7 @@ class BgColor(Enum):
 
 class Style(Enum):
     """ANSI style codes."""
+
     RESET = 0
     BOLD = 1
     DIM = 2
@@ -65,7 +68,7 @@ def colorful_print(
     fg: Optional[Color] = None,
     bg: Optional[BgColor] = None,
     styles: Optional[list[Style]] = None,
-    end: str = "\n"
+    end: str = "\n",
 ) -> None:
     """
     Print text with optional colors and styles.
@@ -96,6 +99,7 @@ def print_success(text: str, end: str = "\n") -> None:
     """Print success message in green."""
     colorful_print(text, fg=Color.GREEN, styles=[Style.BOLD], end=end)
 
+
 def print_debug(text: str, end: str = "\n") -> None:
     """Print success message in green."""
     colorful_print(text, fg=Color.BLUE, styles=[Style.BOLD], end=end)
@@ -114,6 +118,7 @@ def print_warning(text: str, end: str = "\n") -> None:
 def print_info(text: str, end: str = "\n") -> None:
     """Print info message in blue."""
     print(text, end=end)
+
 
 # Global project root (initialized on import)
 _PROJECT_ROOT = None
@@ -159,15 +164,15 @@ def compute_hash(path: Path) -> str:
     if path.is_file():
         # Compute SHA256 for a single file
         sha256 = hashlib.sha256()
-        with open(path, 'rb') as f:
-            for chunk in iter(lambda: f.read(8192), b''):
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
                 sha256.update(chunk)
         return sha256.hexdigest()
 
     elif path.is_dir():
         # Compute SHA256 for each file in the directory recursively
         file_hashes = []
-        for file_path in sorted(path.rglob('*')):
+        for file_path in sorted(path.rglob("*")):
             if file_path.is_file():
                 file_hash = compute_hash(file_path)
                 # Include relative path to make hash sensitive to file structure
@@ -178,7 +183,7 @@ def compute_hash(path: Path) -> str:
         file_hashes.sort()
         final_hash = hashlib.sha256()
         for h in file_hashes:
-            final_hash.update(h.encode('utf-8'))
+            final_hash.update(h.encode("utf-8"))
         return final_hash.hexdigest()
 
     else:
@@ -217,10 +222,7 @@ def find_7z_executable():
     return path_7z
 
 
-def unzip_dir(
-    zip_path: Path,
-    extract_to: Path
-):
+def unzip_dir(zip_path: Path, extract_to: Path):
     """Extract archive to specified directory. Supports 7z, rar, and zip formats.
 
     Args:
@@ -240,27 +242,27 @@ def unzip_dir(
     # Get file extension
     suffix = zip_path.suffix.lower()
 
-    if suffix == '.zip':
+    if suffix == ".zip":
         # Use standard library zipfile for zip archives
         print_info(f"Extracting {zip_path.name} to {extract_to}...")
         try:
-            with zipfile.ZipFile(zip_path, 'r') as zf:
+            with zipfile.ZipFile(zip_path, "r") as zf:
                 zf.extractall(extract_to)
             print_success(f"✓ Successfully extracted {zip_path.name}")
         except zipfile.BadZipFile:
-            print_error(
-                f"ERROR: Invalid or corrupted zip file: {zip_path.name}")
+            print_error(f"ERROR: Invalid or corrupted zip file: {zip_path.name}")
             sys.exit(1)
         except Exception as e:
             print_error(f"ERROR: Failed to extract {zip_path.name}: {e}")
             sys.exit(1)
 
-    elif suffix in ['.7z', '.rar']:
+    elif suffix in [".7z", ".rar"]:
         # Use 7z executable for 7z and rar archives
         seven_zip = find_7z_executable()
         if not seven_zip:
             print_error(
-                f"ERROR: 7z executable not found. Please install 7-Zip to extract {suffix} files.")
+                f"ERROR: 7z executable not found. Please install 7-Zip to extract {suffix} files."
+            )
             print("  Download from: https://www.7-zip.org/")
             sys.exit(1)
 
@@ -269,7 +271,7 @@ def unzip_dir(
             subprocess.check_call(
                 [seven_zip, "x", str(zip_path), f"-o{extract_to}", "-y"],
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
             print_success(f"✓ Successfully extracted {zip_path.name}")
         except subprocess.CalledProcessError:
@@ -281,6 +283,7 @@ def unzip_dir(
         print_error(f"ERROR: Unsupported archive format: {suffix}")
         print("  Supported formats: .zip, .7z, .rar")
         sys.exit(1)
+
 
 def _get_git_error_explanation(returncode: int, stderr: str) -> str:
     """Get human-readable explanation for common git error codes.
@@ -297,7 +300,7 @@ def _get_git_error_explanation(returncode: int, stderr: str) -> str:
         126: "Command invoked cannot execute - permission denied or not an executable.",
         127: "Command not found - git executable not found in PATH.",
         128: "Fatal error - usually indicates repository not found, invalid ref, or "
-             "network connectivity issues.",
+        "network connectivity issues.",
         129: "Usage error - invalid command-line arguments or bad flag.",
         130: "Command terminated by Ctrl+C (SIGINT).",
         137: "Command killed (SIGKILL) - possibly out of memory.",
@@ -306,7 +309,7 @@ def _get_git_error_explanation(returncode: int, stderr: str) -> str:
 
     base_explanation = explanations.get(
         returncode,
-        f"Unknown error code {returncode}. See https://git-scm.com/docs for more info."
+        f"Unknown error code {returncode}. See https://git-scm.com/docs for more info.",
     )
 
     # Add specific hints based on stderr content
@@ -377,22 +380,19 @@ def run_git_command(args: list[str], cwd: Optional[Path] = None) -> tuple[bool, 
         A tuple of (success: bool, log: str). If the command fails,
         success is False and log contains stderr output.
     """
-    cmd = ['git'] + args
+    cmd = ["git"] + args
     error_log = None
     for i in range(3):
         try:
             result = subprocess.run(
-                cmd,
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                encoding='utf-8'
+                cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8"
             )
             if result.returncode == 0:
                 return True, result.stdout
             else:
                 explanation = _get_git_error_explanation(
-                    result.returncode, result.stderr)
+                    result.returncode, result.stderr
+                )
                 error_log = f"Command failed with exit code {result.returncode}\n"
                 error_log += f"Explanation: {explanation}\n"
                 if result.stderr:
@@ -411,6 +411,6 @@ def run_git_command(args: list[str], cwd: Optional[Path] = None) -> tuple[bool, 
                 "Download from: https://git-scm.com/downloads"
             )
         except Exception as e:
-            error_log =f"Unexpected error running git command: {e}"
+            error_log = f"Unexpected error running git command: {e}"
             continue
     return False, error_log

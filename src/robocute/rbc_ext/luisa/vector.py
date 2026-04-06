@@ -2,8 +2,6 @@ from robocute.rbc_ext._C import lcapi_c as lcapi
 from .types import to_lctype, from_lctype
 
 
-# Note: vector & matrix types are directly imported from robocute.rbc_ext._C.test_py_codegen
-
 # class Vector:
 # def __init__(self, data, dtype = float):
 #     if not dtype in {int, float, bool}:

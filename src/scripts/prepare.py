@@ -140,7 +140,6 @@ GIT_TASKS = {
     #     "branch": None,
     #     "deps": ["urdfdom_headers", "tinyxml2", "console_bridge"],
     # },
-
     # "jolt_physics": {
     #     "subdir": "thirdparty/jolt_physics",
     #     "url": "https://github.com/RoboCute/JoltPhysics.git",
@@ -228,9 +227,9 @@ def _to_platform_spec(name):
     return f"{name}-{PLATFORM}-{ARCH}.7z"
 
 
-if PLATFORM == 'linux':
+if PLATFORM == "linux":
     LC_DX_SDK = "linux_dxc_2025_07_14.x86_64.zip"
-elif PLATFORM != 'windows':
+elif PLATFORM != "windows":
     LC_DX_SDK = None
 
 OIDN_NAME = _to_platform_spec(OIDN_NAME)

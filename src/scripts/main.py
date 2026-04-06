@@ -8,6 +8,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
 import importlib
+
 # from scripts.thirdparty_config import make_alembic_config, make_imath_config
 from scripts.prepare import (
     GIT_TASKS,
@@ -24,7 +25,18 @@ from scripts.prepare import (
     XMAKE_GLOBAL_TOOLCHAIN,
     OIDN_NAME,
 )
-from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug
+from scripts.utils import (
+    is_empty_folder,
+    get_project_root,
+    rel,
+    compute_hash,
+    unzip_dir,
+    print_success,
+    print_error,
+    print_warning,
+    print_info,
+    print_debug,
+)
 from scripts.git_ops import git_clone_or_pull
 from scripts.progress_utils import print_progress_bar
 
@@ -32,16 +44,16 @@ from scripts.progress_utils import print_progress_bar
 def get_http_proxies():
     """Get HTTP/HTTPS proxy settings from environment variables."""
     proxies = {}
-    http_proxy = os.environ.get('HTTP_PROXY') or os.environ.get('http_proxy')
-    https_proxy = os.environ.get('HTTPS_PROXY') or os.environ.get('https_proxy')
-    
+    http_proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+    https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+
     if http_proxy:
-        proxies['http'] = http_proxy
+        proxies["http"] = http_proxy
         print_info(f"Using HTTP_PROXY: {http_proxy}")
     if https_proxy:
-        proxies['https'] = https_proxy
+        proxies["https"] = https_proxy
         print_info(f"Using HTTPS_PROXY: {https_proxy}")
-    
+
     return proxies if proxies else None
 
 
@@ -53,6 +65,7 @@ def get_requests_session():
         session.proxies.update(proxies)
         print_info(f"Using proxy: {proxies}")
     return session
+
 
 from rbc_meta.utils.codegen_util import _write_string_to
 
@@ -71,10 +84,9 @@ def write_shader_compile_cmd():
         return (
             f'"{clangcxx_dir}" -in="{in_dir}" -out="{out_dir}" -include="{include_dir}"'
         )
+
     def gen_json_cmd():
-        return (
-            f'"{clangcxx_dir}" -in="{shader_dir}" -out="{out_dir}" -include="{include_dir}"'
-        )
+        return f'"{clangcxx_dir}" -in="{shader_dir}" -out="{out_dir}" -include="{include_dir}"'
 
     def build_cmd():
         return base_cmd() + f' -hostgen="{host_dir}"' + f' -cache_dir="{cache_dir}"'
@@ -83,15 +95,13 @@ def write_shader_compile_cmd():
     # write files
     for backend in backends:
         cache_dir = shader_dir / ".cache" / backend
-        out_dir = Path(PROJECT_ROOT) / \
-            f"build/{PLATFORM}/{ARCH}/shader_build_{backend}"
+        out_dir = Path(PROJECT_ROOT) / f"build/{PLATFORM}/{ARCH}/shader_build_{backend}"
         f = open(shader_dir / f"{backend}_compile.cmd", "w")
         f.write("@echo off\n" + build_cmd() + f" -backend={backend}")
         f.close()
 
         f = open(shader_dir / f"{backend}_clean_compile.cmd", "w")
-        f.write("@echo off\n" + build_cmd() +
-                f" -backend={backend}" + " -rebuild")
+        f.write("@echo off\n" + build_cmd() + f" -backend={backend}" + " -rebuild")
         f.close()
 
     out_dir = shader_dir / ".vscode/compile_commands.json"
@@ -116,7 +126,7 @@ def write_download_hash():
     download_file_hashes.update(new_file_hash)
     with open(hash_json_path, "w") as f:
         json.dump(download_file_hashes, f, indent=0)
-        print_success('file_hash.json dumped.')
+        print_success("file_hash.json dumped.")
 
 
 def download_packages():
@@ -128,36 +138,32 @@ def download_packages():
         CLANGCXX_NAME: {
             "address": address,
             "path": download_path,
-            "unzip": [download_path / CLANGCXX_NAME,
-                      tool_path / 'clangcxx_compiler']
+            "unzip": [download_path / CLANGCXX_NAME, tool_path / "clangcxx_compiler"],
         },
         CLANGD_NAME: {
             "address": address,
             "path": download_path,
-            "unzip": [download_path / CLANGD_NAME,
-                      tool_path / 'clangd']
+            "unzip": [download_path / CLANGD_NAME, tool_path / "clangd"],
         },
         OIDN_NAME: {
             "address": address,
             "path": download_path,
-            "unzip": [download_path / OIDN_NAME,
-                      download_path / 'oidn']
+            "unzip": [download_path / OIDN_NAME, download_path / "oidn"],
         },
         RENDER_RESOURCE_NAME: {
             "address": address,
             "path": download_path,
-            "unzip": [download_path / RENDER_RESOURCE_NAME,
-                      download_path / 'render_resources']
+            "unzip": [
+                download_path / RENDER_RESOURCE_NAME,
+                download_path / "render_resources",
+            ],
         },
     }
     if LC_DX_SDK:
         downloads[LC_DX_SDK] = {
             "address": lc_address,
             "path": download_path,
-            "unzip": [
-                download_path / LC_DX_SDK,
-                download_path / "dx_sdk"
-            ]
+            "unzip": [download_path / LC_DX_SDK, download_path / "dx_sdk"],
         }
 
     if hash_json_path.exists():
@@ -178,7 +184,7 @@ def download_packages():
 
         def unzip():
             nonlocal map
-            unzip = map.get('unzip')
+            unzip = map.get("unzip")
             if not unzip:
                 return
             if not is_empty_folder(str(unzip[1])):
@@ -193,19 +199,19 @@ def download_packages():
             print_debug(f"'{dst_path}' exists, skip download.")
             unzip()
             return
-        
+
         print_info(f"Downloading '{file}'...")
         session = get_requests_session()
-        
+
         # Download with progress bar
         response = session.get(map["address"] + file, stream=True)
         response.raise_for_status()
-        
+
         # Get total file size
-        total_size = int(response.headers.get('content-length', 0))
+        total_size = int(response.headers.get("content-length", 0))
         downloaded = 0
         chunk_size = 8192
-        
+
         # check if parent directory exists, else mkdir -p
         if not os.path.exists(os.path.dirname(dst_path)):
             os.makedirs(os.path.dirname(dst_path), exist_ok=True)
@@ -218,7 +224,7 @@ def download_packages():
                     if total_size > 0:
                         percent = int(downloaded * 100 / total_size)
                         print_progress_bar(percent, prefix="Downloading", width=25)
-        
+
         if total_size > 0:
             print()  # New line after progress bar
         print_success(f"Download '{file}' successfully!")
@@ -237,10 +243,8 @@ def run_git_tasks(use_ssh=False):
     tasks = GIT_TASKS
     # Group by stages based on dependencies
     stage1 = [k for k, v in tasks.items() if not v["deps"]]
-    stage2 = [k for k, v in tasks.items() if any(
-        d in stage1 for d in v["deps"])]
-    stage3 = [k for k, v in tasks.items() if any(
-        d in stage2 for d in v["deps"])]
+    stage2 = [k for k, v in tasks.items() if any(d in stage1 for d in v["deps"])]
+    stage3 = [k for k, v in tasks.items() if any(d in stage2 for d in v["deps"])]
 
     def run_task(name):
         t = tasks[name]
@@ -280,7 +284,7 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
     proxies = get_http_proxies()
     if proxies:
         print_info(f"Detected proxy settings: {proxies}")
-    
+
     # ------------------------------ git ------------------------------
     if auto_yes:
         clone_lc = "y"
@@ -348,13 +352,12 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
             def to_slash(p):
                 return p.replace("\\", "/")
 
-            options["lc_py_include"] = to_slash(
-                os.path.join(py_path, "include"))
+            options["lc_py_include"] = to_slash(os.path.join(py_path, "include"))
             options["rbc_py_bin"] = to_slash(py_path)
 
             lc_py_linkdir = os.path.join(py_path, "libs")
             options["lc_py_linkdir"] = to_slash(lc_py_linkdir)
-            options['rbc_editor'] = False # TODO disable editor defaultly
+            options["rbc_editor"] = False  # TODO disable editor defaultly
             # Find libs starting with 'python'
             files = []
             if os.path.exists(lc_py_linkdir):
@@ -398,20 +401,30 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
 def prepare():
     import argparse
 
-    parser = argparse.ArgumentParser(description='Prepare RoboCute development environment')
-    parser.add_argument('-y', '--yes', action='store_true',
-                        help='Automatically answer yes to all prompts')
-    parser.add_argument('--ssh', action='store_true',
-                        help='Use SSH (git@github.com:) instead of HTTPS for git clone/pull')
+    parser = argparse.ArgumentParser(
+        description="Prepare RoboCute development environment"
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Automatically answer yes to all prompts",
+    )
+    parser.add_argument(
+        "--ssh",
+        action="store_true",
+        help="Use SSH (git@github.com:) instead of HTTPS for git clone/pull",
+    )
 
     args = parser.parse_args()
 
     try:
         _run_prepare(auto_yes=args.yes, use_ssh=args.ssh)
     except KeyboardInterrupt as e:
-        print_warning('quit.')
+        print_warning("quit.")
     except EOFError as e:
-        print_warning('eof.')
+        print_warning("eof.")
+
 
 def clean_up_generated_code():
     for generated_dir in Path("rbc").glob("**/generated"):
@@ -422,9 +435,10 @@ def clean_up_generated_code():
             print_error(f"{generated_dir} is not a directory")
             sys.exit(1)
 
+
 def _parse_version(version_str: str) -> tuple[int, int, int]:
     """Parse version string to major, minor, patch tuple."""
-    parts = version_str.strip().split('.')
+    parts = version_str.strip().split(".")
     major = int(parts[0]) if len(parts) > 0 else 0
     minor = int(parts[1]) if len(parts) > 1 else 0
     patch = int(parts[2]) if len(parts) > 2 else 0
@@ -434,7 +448,7 @@ def _parse_version(version_str: str) -> tuple[int, int, int]:
 def _generate_cxx_version_header(version: str, output_path: Path) -> None:
     """Generate C++ version header file."""
     major, minor, patch = _parse_version(version)
-    
+
     content = f"""#pragma once
 
 // Auto-generated by generate(). Do not edit manually.
@@ -457,20 +471,19 @@ def _update_python_version(version: str, init_file_path: Path) -> None:
     if not init_file_path.exists():
         print_error(f"Python init file not found: {init_file_path}")
         return
-    
-    with open(init_file_path, 'r', encoding='utf-8') as f:
+
+    with open(init_file_path, "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     # Replace __version__ = "x.x.x" or __version__ = 'x.x.x'
     import re
+
     new_content = re.sub(
-        r'(__version__\s*=\s*)["\'][^"\']*["\']',
-        f'\\1"{version}"',
-        content
+        r'(__version__\s*=\s*)["\'][^"\']*["\']', f'\\1"{version}"', content
     )
-    
+
     if new_content != content:
-        with open(init_file_path, 'w', encoding='utf-8') as f:
+        with open(init_file_path, "w", encoding="utf-8") as f:
             f.write(new_content)
         print_success(f"Updated Python __version__: {init_file_path}")
     else:
@@ -481,11 +494,12 @@ def _read_pyproject_version(pyproject_path: Path) -> str | None:
     """Read version from pyproject.toml."""
     if not pyproject_path.exists():
         return None
-    
-    with open(pyproject_path, 'r', encoding='utf-8') as f:
+
+    with open(pyproject_path, "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     import re
+
     match = re.search(r'^version\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
     if match:
         return match.group(1)
@@ -496,17 +510,17 @@ def generate_version_files() -> None:
     """Generate version files for C++ and Python from pyproject.toml."""
     pyproject_path = Path(PROJECT_ROOT) / "pyproject.toml"
     version = _read_pyproject_version(pyproject_path)
-    
+
     if not version:
         print_error(f"Could not read version from {pyproject_path}")
         return
-    
+
     print_info(f"Generating version files for version: {version}")
-    
+
     # Generate C++ version header
     cxx_header_path = rel("rbc/core/include/rbc_core/generated/version.h")
     _generate_cxx_version_header(version, cxx_header_path)
-    
+
     # Update Python __version__
     py_init_path = rel("src/robocute/__init__.py")
     _update_python_version(version, py_init_path)
@@ -521,6 +535,7 @@ def generate():
     # Generate version files from pyproject.toml
     generate_version_files()
 
+
 def pre_pack():
     """
     Pre-packaging script: Copy C++ build artifacts (dll, pyd, bytes) and shader builds
@@ -534,14 +549,21 @@ def pre_pack():
     """
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description='Pre-packaging script for RoboCute')
-    parser.add_argument('mode', nargs='?', default='release',
-                        choices=['debug', 'release', 'releasedbg'],
-                        help='Build mode (default: release)')
+    parser = argparse.ArgumentParser(description="Pre-packaging script for RoboCute")
+    parser.add_argument(
+        "mode",
+        nargs="?",
+        default="release",
+        choices=["debug", "release", "releasedbg"],
+        help="Build mode (default: release)",
+    )
 
-    parser.add_argument('build_stubgen', nargs='?', default="uv",
-                        help='Stub generator to use ("uv" for uvx, or omit to skip)')
+    parser.add_argument(
+        "build_stubgen",
+        nargs="?",
+        default="uv",
+        help='Stub generator to use ("uv" for uvx, or omit to skip)',
+    )
 
     args = parser.parse_args()
 
@@ -570,7 +592,7 @@ def pre_pack():
     ext_path.mkdir(parents=True, exist_ok=True)
 
     # Copy files by extension
-    extensions = ['dll', 'pyd', 'bytes']
+    extensions = ["dll", "pyd", "bytes"]
     copied_files = []
 
     for ext in extensions:
@@ -595,7 +617,7 @@ def pre_pack():
     print()
 
     # Copy shader build directories
-    shader_names = ['shader_build_dx', 'shader_build_vk']
+    shader_names = ["shader_build_dx", "shader_build_vk"]
     shader_base = rel(f"build/{PLATFORM}/{ARCH}")
     copied_shaders = []
 
@@ -623,34 +645,31 @@ def pre_pack():
     # Generate stub files if requested
     if build_stubgen:
         print("Generating stub files...")
-        os.environ['PYTHONPATH'] = str(ext_path)
+        os.environ["PYTHONPATH"] = str(ext_path)
 
-        modules = ['rbc_ext_c', 'lcapi_c']
+        modules = ["rbc_ext_c", "lcapi_c"]
 
         for module in modules:
             # Check if .pyd file exists before generating stub
             pyd_file = ext_path / f"{module}.pyd"
             if not pyd_file.exists():
-                print_warning(
-                    f"Skipping stub for {module}: {pyd_file.name} not found")
+                print_warning(f"Skipping stub for {module}: {pyd_file.name} not found")
                 continue
 
             try:
-                if build_stubgen == 'uv':
+                if build_stubgen == "uv":
                     subprocess.run(
-                        ['uvx', 'pybind11-stubgen', module,
-                            f'--output-dir={ext_path}'],
+                        ["uvx", "pybind11-stubgen", module, f"--output-dir={ext_path}"],
                         check=True,
                         capture_output=True,
-                        text=True
+                        text=True,
                     )
                 else:
                     subprocess.run(
-                        ['pybind11-stubgen', module,
-                            f'--output-dir={ext_path}'],
+                        ["pybind11-stubgen", module, f"--output-dir={ext_path}"],
                         check=True,
                         capture_output=True,
-                        text=True
+                        text=True,
                     )
                 print_success(f"Generated stub for {module}")
             except subprocess.CalledProcessError as e:
@@ -659,7 +678,8 @@ def pre_pack():
                     print(f"  Error: {e.stderr}")
             except FileNotFoundError:
                 print_error(
-                    f"pybind11-stubgen not found. Please install it or use 'uv' option.")
+                    f"pybind11-stubgen not found. Please install it or use 'uv' option."
+                )
         print()
 
     print("=" * 60)

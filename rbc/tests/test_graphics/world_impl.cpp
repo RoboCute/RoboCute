@@ -49,6 +49,7 @@
 #include <rbc_world/resources/gaussian_splat.h>
 #include <rbc_world/resources/aabb_voxel.h>
 #include <rbc_world/resources/voxel_sdf.h>
+
 #include <rbc_anim/graph/AnimNode_Root.h>
 #include <rbc_anim/graph/AnimNode_SequencePlayer.h>
 
@@ -1306,8 +1307,8 @@ luisa::vector<luisa::float4x4> AnimSequence::sample_pose_at_time(void *this_, fl
     auto skel_res = static_cast<rbc::world::SkeletonResource *>(skeleton);
 
     const auto &animation = anim_seq->GetRawAnim();
-    const auto &skeleton = skel_res->ref_skel();
-    int num_bones = skeleton.NumJoints();
+    const auto &ref_skel = skel_res->ref_skel();
+    int num_bones = ref_skel.NumJoints();
 
     if (num_bones <= 0) {
         return {};
@@ -1345,7 +1346,7 @@ luisa::vector<luisa::float4x4> AnimSequence::sample_pose_at_time(void *this_, fl
     luisa::vector<rbc::AnimFloat4x4> component_space(num_bones);
 
     rbc::AnimLocalToModelJob ltm_job;
-    ltm_job.skeleton = &skeleton.GetRawSkeleton();
+    ltm_job.skeleton = &ref_skel.GetRawSkeleton();
     ltm_job.input = {soa_transforms.begin(), soa_transforms.end()};
     ltm_job.output = {component_space.begin(), component_space.end()};
 
@@ -3861,7 +3862,7 @@ void AtmosphereComponent::update_texture(void *this_, void *tex) {
 }
 
 // SkelMeshComponent implementation
-void *SkelMeshComponent::GetRuntimeMesh(void *this_) {
+void *SkelMeshComponent::get_runtime_mesh(void *this_) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("SkelMeshComponent::GetRuntimeMesh: this_ is null.");
         return nullptr;
@@ -3871,23 +3872,6 @@ void *SkelMeshComponent::GetRuntimeMesh(void *this_) {
     if (!mesh) return nullptr;
     manually_add_ref(mesh);
     return mesh;
-}
-bool SkelMeshComponent::IsEnabled(void *this_) {
-    if (!this_) [[unlikely]] {
-        LUISA_ERROR("SkelMeshComponent::IsEnabled: this_ is null.");
-        return false;
-    }
-    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    return c->IsEnabled();
-}
-void SkelMeshComponent::SetRefSkelMesh(void *this_, void *skel_mesh) {
-    if (!this_) [[unlikely]] {
-        LUISA_ERROR("SkelMeshComponent::SetRefSkelMesh: this_ is null.");
-        return;
-    }
-    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    auto skel_mesh_rc = RC<rbc::world::SkelMeshResource>{static_cast<rbc::world::SkelMeshResource *>(skel_mesh)};
-    c->SetRefSkelMesh(skel_mesh_rc);
 }
 void SkelMeshComponent::remove_object(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3913,18 +3897,6 @@ void SkelMeshComponent::update_render(void *this_) {
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
     c->update_render();
 }
-// New methods with consistent naming and additional animation control
-void *SkelMeshComponent::get_runtime_mesh(void *this_) {
-    if (!this_) [[unlikely]] {
-        LUISA_ERROR("SkelMeshComponent::get_runtime_mesh: this_ is null.");
-        return nullptr;
-    }
-    auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    auto mesh = c->GetRuntimeMesh();
-    if (!mesh) return nullptr;
-    manually_add_ref(mesh);
-    return mesh;
-}
 bool SkelMeshComponent::is_enabled(void *this_) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("SkelMeshComponent::is_enabled: this_ is null.");
@@ -3948,9 +3920,7 @@ void SkelMeshComponent::play_animation(void *this_) {
         return;
     }
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    if (c->runtime_skel_mesh) {
-        c->runtime_skel_mesh->EnableAnimation();
-    }
+    c->PlayAnimation();
 }
 void SkelMeshComponent::pause_animation(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3958,9 +3928,7 @@ void SkelMeshComponent::pause_animation(void *this_) {
         return;
     }
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    if (c->runtime_skel_mesh) {
-        c->runtime_skel_mesh->DisableAnimation();
-    }
+    c->PauseAnimation();
 }
 void SkelMeshComponent::stop_animation(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3968,10 +3936,7 @@ void SkelMeshComponent::stop_animation(void *this_) {
         return;
     }
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    if (c->runtime_skel_mesh) {
-        c->runtime_skel_mesh->DisableAnimation();
-        c->runtime_skel_mesh->ResetToRefPose();
-    }
+    c->StopAnimation();
 }
 void SkelMeshComponent::set_animation_time(void *this_, float time) {
     if (!this_) [[unlikely]] {
@@ -4016,17 +3981,10 @@ bool SkelMeshComponent::is_playing(void *this_) {
 luisa::float4x4 SkelMeshComponent::get_bone_transform(void *this_, int bone_index) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("SkelMeshComponent::get_bone_transform: this_ is null.");
-        return luisa::float4x4{1.0f};
+        return make_float4x4(1.0f);
     }
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    if (!c->runtime_skel_mesh || bone_index < 0) {
-        return luisa::float4x4{1.0f};
-    }
-    auto &transforms = c->runtime_skel_mesh->GetComponentSpaceTransforms();
-    if (bone_index >= static_cast<int>(transforms.size())) {
-        return luisa::float4x4{1.0f};
-    }
-    return reinterpret_cast<luisa::float4x4 const &>(transforms[bone_index]);
+    return c->GetBoneTransform(bone_index);
 }
 void SkelMeshComponent::set_bone_transform(void *this_, int bone_index, luisa::float4x4 transform) {
     if (!this_) [[unlikely]] {
@@ -4034,14 +3992,7 @@ void SkelMeshComponent::set_bone_transform(void *this_, int bone_index, luisa::f
         return;
     }
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    if (!c->runtime_skel_mesh || bone_index < 0) {
-        return;
-    }
-    auto &transforms = c->runtime_skel_mesh->GetEditableComponentSpaceTransforms();
-    if (bone_index >= static_cast<int>(transforms.size())) {
-        return;
-    }
-    transforms[bone_index] = reinterpret_cast<rbc::AnimFloat4x4 const &>(transform);
+    c->SetBoneTransform(bone_index, transform);
 }
 int SkelMeshComponent::get_num_bones(void *this_) {
     if (!this_) [[unlikely]] {
@@ -4049,10 +4000,7 @@ int SkelMeshComponent::get_num_bones(void *this_) {
         return 0;
     }
     auto c = static_cast<rbc::world::SkelMeshComponent *>(this_);
-    if (!c->runtime_skel_mesh) {
-        return 0;
-    }
-    return static_cast<int>(c->runtime_skel_mesh->GetComponentSpaceTransforms().size());
+    return c->GetNumBones();
 }
 
 // VoxelResource implementation

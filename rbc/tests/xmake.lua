@@ -1,5 +1,4 @@
 -- Test Framework for RBC Runtime
--- includes('test_py_codegen')
 includes('test_graphics')
 includes('test_project')
 includes('test_model')
@@ -40,6 +39,5 @@ end
 
 add_test("core", {"rbc_core"})
 add_test("anim", {"rbc_runtime", "rbc_core"})
-
 
 -- includes('agents')

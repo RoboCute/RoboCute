@@ -1,4 +1,5 @@
 #pragma once
+#include <luisa/core/mathematics.h>
 #include "rbc_world/component.h"
 #include "rbc_world/resources/skelmesh.h"
 #include "rbc_anim/skeletal_mesh.h"
@@ -38,6 +39,16 @@ public:
     void tick(float delta_time = 0.0f);
     void update_render();
     void remove_object();
+
+    // Animation control
+    void PlayAnimation();
+    void PauseAnimation();
+    void StopAnimation();
+
+    // Bone transform access
+    int GetNumBones() const;
+    luisa::float4x4 GetBoneTransform(int bone_index) const;
+    void SetBoneTransform(int bone_index, const luisa::float4x4 &transform);
 
     // Playback speed control
     float GetPlaybackSpeed() const { return playback_speed; }

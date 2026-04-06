@@ -1,4 +1,16 @@
-from scripts.utils import is_empty_folder, get_project_root, rel, compute_hash, unzip_dir, print_success, print_error, print_warning, print_info, print_debug, run_git_command
+from scripts.utils import (
+    is_empty_folder,
+    get_project_root,
+    rel,
+    compute_hash,
+    unzip_dir,
+    print_success,
+    print_error,
+    print_warning,
+    print_info,
+    print_debug,
+    run_git_command,
+)
 from pathlib import Path
 
 
@@ -27,28 +39,31 @@ def make_alembic_config(project_root: Path):
     version_patch = 10
 
     # Read template content
-    content = config_h_in.read_text(encoding='utf-8')
+    content = config_h_in.read_text(encoding="utf-8")
 
     # Replace CMake variables
-    content = content.replace('${PROJECT_VERSION_MAJOR}', str(version_major))
-    content = content.replace('${PROJECT_VERSION_MINOR}', str(version_minor))
-    content = content.replace('${PROJECT_VERSION_PATCH}', str(version_patch))
+    content = content.replace("${PROJECT_VERSION_MAJOR}", str(version_major))
+    content = content.replace("${PROJECT_VERSION_MINOR}", str(version_minor))
+    content = content.replace("${PROJECT_VERSION_PATCH}", str(version_patch))
 
     # Replace #cmakedefine with #define (HDF5 support disabled by default)
-    content = content.replace('#cmakedefine ALEMBIC_WITH_HDF5', '#undef ALEMBIC_WITH_HDF5')
+    content = content.replace(
+        "#cmakedefine ALEMBIC_WITH_HDF5", "#undef ALEMBIC_WITH_HDF5"
+    )
 
     # Write output file
-    config_h.write_text(content, encoding='utf-8')
+    config_h.write_text(content, encoding="utf-8")
 
     print_success(f"Generated {config_h}")
     return True
+
 
 def make_imath_config(project_root: Path):
     config_h = project_root / "thirdparty/Imath/src/Imath/ImathConfig.h"
     if config_h.exists():
         return
-    
-    config_content = '''#pragma once
+
+    config_content = """#pragma once
 #define IMATH_NOEXCEPT noexcept
 #define IMATH_DEPRECATED(x)
 #define IMATH_HOSTDEVICE
@@ -57,9 +72,8 @@ def make_imath_config(project_root: Path):
 #if defined _WIN32 || defined _WIN64
 #define IMATH_DLL 1
 #endif
-'''
+"""
     config_h.write_text(config_content)
-    
+
     print_success(f"Generated {config_h}")
     return True
-    

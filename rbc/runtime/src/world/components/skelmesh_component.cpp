@@ -111,6 +111,52 @@ bool SkelMeshComponent::IsEnabled() const {
     return runtime_skel_mesh->IsAnimationEnabled();
 }
 
+void SkelMeshComponent::PlayAnimation() {
+    if (runtime_skel_mesh) {
+        runtime_skel_mesh->EnableAnimation();
+    }
+}
+
+void SkelMeshComponent::PauseAnimation() {
+    if (runtime_skel_mesh) {
+        runtime_skel_mesh->DisableAnimation();
+    }
+}
+
+void SkelMeshComponent::StopAnimation() {
+    if (runtime_skel_mesh) {
+        runtime_skel_mesh->DisableAnimation();
+        runtime_skel_mesh->ResetToRefPose();
+    }
+}
+
+int SkelMeshComponent::GetNumBones() const {
+    if (!runtime_skel_mesh) { return 0; }
+    return static_cast<int>(runtime_skel_mesh->GetComponentSpaceTransforms().size());
+}
+
+luisa::float4x4 SkelMeshComponent::GetBoneTransform(int bone_index) const {
+    if (!runtime_skel_mesh || bone_index < 0) {
+        return make_float4x4(1.0f);
+    }
+    const auto &transforms = runtime_skel_mesh->GetComponentSpaceTransforms();
+    if (bone_index >= static_cast<int>(transforms.size())) {
+        return make_float4x4(1.0f);
+    }
+    return reinterpret_cast<const luisa::float4x4 &>(transforms[bone_index]);
+}
+
+void SkelMeshComponent::SetBoneTransform(int bone_index, const luisa::float4x4 &transform) {
+    if (!runtime_skel_mesh || bone_index < 0) {
+        return;
+    }
+    auto &transforms = runtime_skel_mesh->GetEditableComponentSpaceTransforms();
+    if (bone_index >= static_cast<int>(transforms.size())) {
+        return;
+    }
+    transforms[bone_index] = reinterpret_cast<const rbc::AnimFloat4x4 &>(transform);
+}
+
 DECLARE_WORLD_OBJECT_REGISTER(SkelMeshComponent);
 
 }// namespace rbc::world

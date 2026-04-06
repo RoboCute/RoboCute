@@ -41,7 +41,9 @@ from rbc_meta.types.pipeline_settings import OUT_CLASSES as PIPELINE_SETTING_CLA
 @codegen
 class PipelineSettingModule(CodeModule):
     name = "pipeline_setting_module"
-    cpp_interface_header = "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.hpp"
+    cpp_interface_header = (
+        "rbc/render_plugin/include/rbc_render/generated/pipeline_settings.hpp"
+    )
     cpp_impl_file = "rbc/render_plugin/src/generated/pipeline_settings.cpp"
     header_files = ["rbc_render/procedural/sky_atmosphere.h"]
     deps = [LuisaResourceModule, RBCCoreModule]
@@ -72,20 +74,10 @@ EXT_CLASSES.extend(OUT_RESOURCE_CLASSES)
 
 @codegen
 class WorldInterfacePybindModule(CodeModule):
-    name = "test_py_codegen"
-    header_files = ["generated/world.h"]
-    pybind_cpp_def_file = "rbc/tests/test_py_codegen/generated/world.cpp"
-    pybind_py_file = "src/robocute/rbc_ext/generated/world.py"
-    classes = EXT_CLASSES
-    deps = [WorldInterfaceModule]
-
-
-@codegen
-class WorldInterfacePybindModuleX(CodeModule):
     name = "rbc_ext_c"
     header_files = ["generated/world.h"]
     pybind_cpp_def_file = "rbc/extensions/ext_c/src/generated/world.cpp"
-    pybind_py_file = "src/robocute/rbc_ext/generated/world_v2.py"
+    pybind_py_file = "src/robocute/rbc_ext/generated/world.py"
     classes = EXT_CLASSES
     deps = [WorldInterfaceModule]
 
@@ -98,6 +90,7 @@ class ProjectPluginModule(CodeModule):
     name = "project_plugin"
     cpp_interface_header = "rbc/project_plugin/include/rbc_project/generated/project.h"
     classes = OUT_PROJECT_PLUGIN_CLASSES
+
 
 def generate_registered():
     r = CodegenRegistry()

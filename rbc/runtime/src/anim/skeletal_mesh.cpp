@@ -77,6 +77,10 @@ void SkeletalMesh::InitAnim_Internal() {
 // ========================= GameThread Phase =========================
 void SkeletalMesh::Tick(float InDeltaTime_s) {
     // LUISA_INFO("SkelMesh Ticking..");
+    if (!IsInitialized()) {
+        // not initialized, nothing to do
+        return;
+    }
     // LOD Changed?
     TickPose(InDeltaTime_s);// Do Update Here
     RefreshBoneTransforms();// Dispatch Evaluation Tasks Here
@@ -88,7 +92,7 @@ void SkeletalMesh::TickPose(float InDeltaTime_s) {
 }
 
 void SkeletalMesh::TickAnimation(float InDeltaTime_s, bool bNeedsValidRootMotion) {
-    if (!bAnimationEnabled) { return; }
+    if (!IsAnimationEnabled()) { return; }
     if (!bRequiredBonesUpToDate) {
         RecalcRequiredBones(GetPredictedLODLevel());
     }
@@ -99,7 +103,7 @@ void SkeletalMesh::TickAnimation(float InDeltaTime_s, bool bNeedsValidRootMotion
 }
 
 void SkeletalMesh::TickAnimInstances(float InDeltaTime_s, bool bNeedsValidRootMotion) const {
-    if (!bAnimationEnabled) { return; }
+    if (!IsAnimationEnabled()) { return; }
     // {PreUpdateLinkedInstances}
     // {LinkedInstance->UpdateAnimation}
     if (anim_instance) {
@@ -152,11 +156,10 @@ void SkeletalMesh::ResetToRefPose() {
 }
 
 void SkeletalMesh::RefreshBoneTransforms() {
-    if (!bAnimationEnabled) { return; }
+    if (!IsAnimationEnabled()) { return; }
     const bool bShouldDoEvaluation = true;
     const bool bShouldDoInterpolation = false;
     const bool bDoParallelEvaluation = true;
-
     //! Initialize Anim Evaluation Context ==> CompleteParallelAnimationEvaluation to clear
     anim_eval_context.Init(anim_instance.get(), this);
 

@@ -43,12 +43,6 @@ add_subdirectory(test_resource)
 add_subdirectory(test_coro)
 add_subdirectory(sample_anim)
 add_subdirectory(model_viewer)
-
-# Python codegen test (only if building Python extension)
-if(RBC_BUILD_PY_EXT)
-    add_subdirectory(test_py_codegen)
-endif()
-
 # Calculator test (requires Qt, only if building editor)
 if(RBC_BUILD_EDITOR)
     add_subdirectory(calculator)
