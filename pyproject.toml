@@ -12,14 +12,14 @@ license = {file = "Licenses/Apache-2.0.txt"}
 name = "robocute"
 readme = "README.md"
 requires-python = ">=3.14.3"
-version = "0.2.3"
+version = "0.2.4"
 
 [tool.uv.workspace]
 members = ["packages/*"]
 
 [[tool.uv.index]]
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 default = true
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [project.optional-dependencies]
 dev = [

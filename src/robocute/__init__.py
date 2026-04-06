@@ -36,6 +36,9 @@ from .rbc_ext import world
 
 import robocute.app as app
 
+# New Scene
+from robocute.scene import Scene, Model
+
 __version__ = "0.2.3"
 __author__ = "RoboCute Team"
 __builtin_runtime_dir__ = (
