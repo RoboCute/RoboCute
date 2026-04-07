@@ -68,6 +68,8 @@ class App:
     _delta_time: float = 0
     _exit: bool = False
     _plane_entity: re.world.Entity = None
+    frame_index = 0
+    real_frame_index = 0
 
     def __new__(cls):
         if cls._instance is None:
@@ -179,32 +181,31 @@ class App:
         if not self._ctx or not self._scene or not self._display_cam:
             return
         last_time = time.time()
-        frame_index = 0
-        real_frame_index = 0
+
         # entity = make_cube_mesh(self._scene)
 
         def should_quit():
             if self._ctx.should_close() or self._exit:
                 return True
-            return limit_frame is not None and real_frame_index >= limit_frame
+            return limit_frame is not None and self.real_frame_index >= limit_frame
         
         while not should_quit():
-            real_frame_index += 1
+            self.real_frame_index += 1
             cur_time = time.time()
             self._delta_time = cur_time - last_time
             last_time = cur_time
-            self._display_cam.set_frame_index(frame_index)
+            self._display_cam.set_frame_index(self.frame_index)
             if self._callback is not None:
                 value = self._callback()
                 if value is not None and not value:
                     self._requires_reset = False
-                    frame_index = 0
+                    self.frame_index = 0
 
             if self._ctx.tick(self._delta_time, self._tick_stage, prepare_denoise) or self._requires_reset:
-                frame_index = 0
+                self.frame_index = 0
                 self._requires_reset = False
             else:
-                frame_index += 1
+                self.frame_index += 1
         self._exit = False
 
     def upload_mesh_data(self, mesh: re.world.MeshResource) -> None:

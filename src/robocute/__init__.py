@@ -1,6 +1,6 @@
 from robocute.scene import Scene, TransformComponent, RenderComponent, Entity
 from robocute.animation import AnimationKeyframe, AnimationSequence, AnimationClip
-from robocute.context import SceneContext
+# from robocute.context import SceneContext
 from robocute.resource import (
     ResourceManager,
     ResourceHandle,
@@ -39,7 +39,7 @@ import robocute.app as app
 # New Scene
 from robocute.scene import Scene, Model
 
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 __author__ = "RoboCute Team"
 __builtin_runtime_dir__ = (
     os.path.dirname(__file__) + "/rbc_ext/_C"

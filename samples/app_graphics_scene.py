@@ -121,12 +121,13 @@ def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
         entity.add_component("TransformComponent"))
     render = re.world.RenderComponent(entity.add_component("RenderComponent"))
 
-    trans.set_pos(lc.double3(0, -1, 1), False)
+    trans.set_pos(lc.double3(0, 0, 1), False)
     trans.set_rotation(lc.float4(0, -1, 0, 0), False)
 
     # Use MeshBuilder to create the mesh
     # 2 cubes, each with 8 vertices and 12 triangles
-    submesh_offsets = np.array([0, 12], dtype=np.uint32)  # second submesh starts at triangle 12
+    # second submesh starts at triangle 12
+    submesh_offsets = np.array([0, 12], dtype=np.uint32)
     builder = MeshBuilder(
         vertex_count=16,
         triangle_count=24,
@@ -137,10 +138,12 @@ def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
     )
 
     # First cube: offset=(0,0,0), scale=1.0, vertex_start=0, triangle_start=0
-    _add_cube_to_builder(builder, (0, 0, 0), 1.0, vertex_start=0, triangle_start=0)
+    _add_cube_to_builder(builder, (0, 0, 0), 1.0,
+                         vertex_start=0, triangle_start=0)
 
     # Second cube: offset=(0,1,0), scale=0.4, vertex_start=8, triangle_start=12
-    _add_cube_to_builder(builder, (0, 1, 0), 0.4, vertex_start=8, triangle_start=12)
+    _add_cube_to_builder(builder, (0, 1, 0), 0.4,
+                         vertex_start=8, triangle_start=12)
 
     # Get mesh resource
     cube_mesh = builder.get_mesh()
@@ -213,7 +216,85 @@ def _add_cube_to_builder(
     ]
 
     for i, (a, b, c) in enumerate(triangles):
-        builder.set_triangle(triangle_start + i, vertex_start + a, vertex_start + b, vertex_start + c)
+        builder.set_triangle(triangle_start + i, vertex_start +
+                             a, vertex_start + b, vertex_start + c)
+
+
+def load_material_entity(model_name: str, scene: re.world.Scene):
+    """Load a GLTF model with PBR textures and create a renderable entity.
+
+    Args:
+        model_name: Base name of the model files (e.g., 'wooden_crate' for
+                    wooden_crate_4k.gltf, wooden_crate_arm_4k.png, etc.)
+        scene: The scene to add the entity to
+
+    Returns:
+        Entity: The created entity with Transform and Render components
+    """
+    mesh_name = f'{model_name}_4k.gltf'
+    arm_tex_name = f'textures/{model_name}_arm_4k.png'
+    albedo_tex_name = f'textures/{model_name}_diff_4k.png'
+    normal_tex_name = f'textures/{model_name}_nor_gl_4k.png'
+
+    # Load textures using project import
+    albedo_tex = app._project.import_texture(albedo_tex_name, 1, False)
+    arm_tex = app._project.import_texture(arm_tex_name, 1, False)
+    normal_tex = app._project.import_texture(normal_tex_name, 1, True)
+
+    # Create PBR material
+    mat0_json = mat.OpenPBRInterface(app._project)
+    mat0_json.set_weight_diffuse_roughness(1)
+    mat0_json.set_weight_base(1)
+    mat0_json.set_weight_specular(1)
+    mat0_json.set_specular_roughness(1)
+    mat0_json.set_weight_metallic(1)
+    mat0_json.set_base_albedo((1, 1, 1))
+    mat0_json.set_geometry_bump_scale(1)
+
+    # Set textures
+    mat0_json.set_base_albedo_tex(albedo_tex)
+    mat0_json.set_weight_weight_tex(arm_tex)
+    mat0_json.set_geometry_normal_tex(normal_tex)
+
+    # Configure swizzle for ARM texture (AO, Roughness, Metallic)
+    swizzle = mat.ChannelSwizzle()
+    swizzle.base = 0              # AO -> channel 0
+    swizzle.specular_roughness = 1  # Roughness -> channel 1
+    swizzle.metallic = 2          # Metallic -> channel 2
+    mat0_json.set_weight_tex_swizzle(swizzle)
+
+    # Load material
+    mat0 = re.world.MaterialResource()
+    mat0.load_from_json(mat0_json.dump_to_json())
+
+    # Load mesh from GLTF
+    mesh = app._project.import_mesh(mesh_name)
+    mesh.install()
+
+    # Create entity with Transform and Render components
+    entity = scene.add_entity()
+    entity.set_name(f"model_{model_name}")
+
+    # Add Transform component
+    trans = re.world.TransformComponent(
+        entity.add_component("TransformComponent")
+    )
+    trans.set_pos(lc.double3(0, -1, -0.5), False)
+    trans.set_rotation(lc.float4(0, 1, 0, 0), False)
+    trans.set_scale(lc.double3(2,2,2), False)
+
+    # Add Render component
+    render = re.world.RenderComponent(
+        entity.add_component("RenderComponent")
+    )
+
+    # Create material vector and bind to render component
+    mat_vector = lc.capsule_vector()
+    for i in range(mesh.submesh_count()):
+        mat_vector.emplace_back(mat0._handle)
+    render.update_object(mat_vector, mesh)
+
+    return entity
 
 
 def main():
@@ -247,7 +328,8 @@ def main():
         return
 
     resolution = lc.uint2(1920, 1080)
-    app.init_display(resolution.x, resolution.y) # create_window=False  to use headless
+    # create_window=False  to use headless
+    app.init_display(resolution.x, resolution.y)
     if not app.display_cam:
         print("Display not Valid!")
         return
@@ -268,7 +350,7 @@ def main():
     # clear_shader = lc.Shader('gui/clear_shader.bin')
 
     if EXPORT:
-        channel_size = (1 + 3 + 1 + 1 + 2 + 3 + 3 + 1)
+        channel_size = (1 + 3 + 1 + 1 + 2 + 3 + 3 + 1 + 2)
         geometry_buffer = lc.Buffer(
             resolution.x * resolution.y * channel_size, float
         )
@@ -283,6 +365,7 @@ def main():
                 | int(re.world.RendererGeometryType.Emission)
                 | int(re.world.RendererGeometryType.Albedo)
                 | int(re.world.RendererGeometryType.MaterialID)
+                | int(re.world.RendererGeometryType.UV)
             ),
         )
     if app._window_created:
@@ -302,6 +385,9 @@ def main():
     #     dispatch_size=(my_tex.width, my_tex.height, 1)
     # )
     entity = make_cube_mesh(app.scene, tex=tex)
+    
+    # DO THIS: test GLTF mesh
+    # poly = load_material_entity('metal_office_desk', app.scene)
     last_time = time.time()
 
     def tick_logic():  # run every frame
@@ -323,7 +409,7 @@ def main():
         # render.mesh().build_before_tick()
         nonlocal EXPORT, tui_exec, frame_index, geometry_buffer
         frame_index += 1
-        if EXPORT and frame_index == 128:
+        if EXPORT and app.frame_index == 128:
             EXPORT = False
             img = app.display_image()
             app.ctx.denoise()
@@ -365,8 +451,11 @@ def main():
             material_id_array = geometry_array[offset:offset +
                                                pixel_size].view(dtype=np.uint32)
             offset += pixel_size
-            
-            # Save depth, normal, emission, albedo as PNG images
+            # float 2-channel buffer (UV coordinates)
+            uv_array = geometry_array[offset:offset + pixel_size * 2]
+            offset += pixel_size * 2
+
+            # Save depth, normal, emission, albedo, uv as PNG images
             screenshot_dir = Path(__file__).parent / "screenshot"
             screenshot_dir.mkdir(exist_ok=True)
 
@@ -403,6 +492,16 @@ def main():
             albedo_norm = np.clip(albedo_img * 255, 0, 255).astype(np.uint8)
             albedo_pil = Image.fromarray(albedo_norm, mode='RGB')
             albedo_pil.save(screenshot_dir / f"albedo_{image_index}.png")
+
+            # UV: reshape (2 channels) and convert to 0-255 range
+            uv_img = uv_array.reshape(height, width, 2)
+            uv_norm = np.clip(uv_img * 255, 0, 255).astype(np.uint8)
+            # Convert 2-channel to 3-channel for PNG (RG -> RGB, B=0)
+            uv_rgb = np.zeros((height, width, 3), dtype=np.uint8)
+            uv_rgb[:, :, :2] = uv_norm
+            uv_pil = Image.fromarray(uv_rgb, mode='RGB')
+            uv_pil.save(screenshot_dir / f"uv_{image_index}.png")
+
             # Export object_id and prim_id as RGB PNG images
             # Using a simple hash-based color generation for integer IDs
 
@@ -425,7 +524,8 @@ def main():
             material_id_img = material_id_array.reshape(height, width)
             material_id_rgb = int_array_to_rgb(material_id_img)
             material_id_pil = Image.fromarray(material_id_rgb, mode='RGB')
-            material_id_pil.save(screenshot_dir / f"material_id_{image_index}.png")
+            material_id_pil.save(
+                screenshot_dir / f"material_id_{image_index}.png")
 
             # Barycentric: reshape and convert to 0-255 range (2 channels: RGB with B=0)
             bary_img = bary_array.reshape(height, width, 2)
@@ -457,7 +557,7 @@ def main():
     # app.set_ground_plane_mode('yes')
     # Enable AO mode
     render_settings = app.display_cam.render_settings()
-    
+
     # render_settings.set_offline_spp(4)
     # render_settings.set_offline_origin_bounce(1)
     # render_settings.set_offline_indirect_bounce(0)

@@ -8,8 +8,10 @@ from mat_builtin import (
     openpbr_set_weight_base,
     openpbr_get_weight_metallic,
     openpbr_set_weight_metallic,
-    openpbr_get_weight_metallic_roughness_tex,
-    openpbr_set_weight_metallic_roughness_tex,
+    openpbr_get_weight_weight_tex,
+    openpbr_set_weight_weight_tex,
+    openpbr_get_weight_tex_swizzle,
+    openpbr_set_weight_tex_swizzle,
     openpbr_get_geometry_opacity,
     openpbr_set_geometry_opacity,
     openpbr_get_geometry_opacity_tex,
@@ -195,12 +197,19 @@ class TestIntProperties:
         openpbr_set_geometry_nested_priority(interface, 5)
         assert openpbr_get_geometry_nested_priority(interface) == 5
 
+    def test_weight_tex_swizzle_default(self, interface):
+        assert openpbr_get_weight_tex_swizzle(interface) == 4294967295
+
+    def test_weight_tex_swizzle_set_get(self, interface):
+        openpbr_set_weight_tex_swizzle(interface, 3)
+        assert openpbr_get_weight_tex_swizzle(interface) == 3
+
 
 class TestTextureProperties:
     """Test texture resource properties."""
 
-    def test_weight_metallic_roughness_tex_default(self, interface):
-        result = openpbr_get_weight_metallic_roughness_tex(interface)
+    def test_weight_weight_tex_default(self, interface):
+        result = openpbr_get_weight_weight_tex(interface)
         # Default should be TextureResource(None)
         assert result._handle is None
 

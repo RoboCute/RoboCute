@@ -385,6 +385,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
             12,// emission
             12,// albedo
             4, // mat_id
+            8, // uv
         };
 
         uint32_t geometry_mask = 0;

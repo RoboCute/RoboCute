@@ -95,6 +95,7 @@ class RendererGeometryType(Enum):
     Emission = 1 << 5  # packed float3: emission color (sampled from spectrum)
     Albedo = 1 << 6  # packed float3: albedo color (sampled from spectrum)
     MaterialID = 1 << 7
+    UV = 1 << 8
 
 
 # After change RendererGeometryType, make sure "geometry_byte_size" in "rbc\render_plugin\src\offline_pt_pass.cpp" also updated!

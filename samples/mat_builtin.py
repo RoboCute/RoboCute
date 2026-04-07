@@ -30,6 +30,89 @@ def _clamp_int_range(value: int, min_val: int, max_val: int) -> int:
     return max(min_val, min(max_val, value))
 
 
+class ChannelSwizzle:
+    """Manages texture channel swizzling for weight texture.
+    
+    Bit layout:
+    - bits 0-2: metallic channel (0-7)
+    - bits 3-5: specular-roughness channel (0-7)
+    - bits 6-8: diffuse-roughness channel (0-7)
+    - bits 9-11: base channel (0-7)
+    """
+    
+    def __init__(
+        self,
+        metallic: int = 7,
+        specular_roughness: int = 7,
+        diffuse_roughness: int = 7,
+        base: int = 7,
+    ):
+        """Initialize swizzle with channel indices (0-7, default 7 means unused)."""
+        self._metallic = _clamp_int_range(metallic, 0, 7)
+        self._specular_roughness = _clamp_int_range(specular_roughness, 0, 7)
+        self._diffuse_roughness = _clamp_int_range(diffuse_roughness, 0, 7)
+        self._base = _clamp_int_range(base, 0, 7)
+    
+    @property
+    def metallic(self) -> int:
+        """Get the metallic channel index (0-7)."""
+        return self._metallic
+    
+    @metallic.setter
+    def metallic(self, value: int) -> None:
+        """Set the metallic channel index (0-7)."""
+        self._metallic = _clamp_int_range(value, 0, 7)
+    
+    @property
+    def specular_roughness(self) -> int:
+        """Get the specular-roughness channel index (0-7)."""
+        return self._specular_roughness
+    
+    @specular_roughness.setter
+    def specular_roughness(self, value: int) -> None:
+        """Set the specular-roughness channel index (0-7)."""
+        self._specular_roughness = _clamp_int_range(value, 0, 7)
+    
+    @property
+    def diffuse_roughness(self) -> int:
+        """Get the diffuse-roughness channel index (0-7)."""
+        return self._diffuse_roughness
+    
+    @diffuse_roughness.setter
+    def diffuse_roughness(self, value: int) -> None:
+        """Set the diffuse-roughness channel index (0-7)."""
+        self._diffuse_roughness = _clamp_int_range(value, 0, 7)
+    
+    @property
+    def base(self) -> int:
+        """Get the base channel index (0-7)."""
+        return self._base
+    
+    @base.setter
+    def base(self, value: int) -> None:
+        """Set the base channel index (0-7)."""
+        self._base = _clamp_int_range(value, 0, 7)
+    
+    def to_int(self) -> int:
+        """Pack swizzle into an integer."""
+        return (
+            self._metallic
+            | (self._specular_roughness << 3)
+            | (self._diffuse_roughness << 6)
+            | (self._base << 9)
+        )
+    
+    @classmethod
+    def from_int(cls, value: int) -> "ChannelSwizzle":
+        """Create ChannelSwizzle from a packed integer."""
+        return cls(
+            metallic=value & 0x7,
+            specular_roughness=(value >> 3) & 0x7,
+            diffuse_roughness=(value >> 6) & 0x7,
+            base=(value >> 9) & 0x7,
+        )
+
+
 class OpenPBRInterface:
     def __init__(self, project: re.world.Project):
         """Initialize an empty OpenPBR material interface."""
@@ -76,18 +159,29 @@ class OpenPBRInterface:
         """Set the metallic weight."""
         self._data['weight_metallic'] = _clamp_01(value)
 
-    def get_weight_metallic_roughness_tex(
+    def get_weight_weight_tex(
         self,
     ) -> re.world.TextureResource:
         """Get the metallic roughness texture."""
-        guid_str = self._data.get('weight_metallic_roughness_tex', None)
+        guid_str = self._data.get('weight_weight_tex', None)
         return self._guid_str_to_tex(self, guid_str)
 
-    def set_weight_metallic_roughness_tex(
+    def set_weight_weight_tex(
         self, value: re.world.TextureResource
     ) -> None:
         """Set the metallic roughness texture."""
-        self._data['weight_metallic_roughness_tex'] = str(value.guid())
+        self._data['weight_weight_tex'] = str(value.guid())
+
+    def get_weight_tex_swizzle(self) -> ChannelSwizzle:
+        """Get the weight texture swizzle."""
+        value = self._data.get('weight_weight_tex_swizzle', None)
+        if value is None:
+            return ChannelSwizzle().to_int()
+        return ChannelSwizzle.from_int(value)
+
+    def set_weight_tex_swizzle(self, value: ChannelSwizzle) -> None:
+        """Set the weight texture swizzle."""
+        self._data['weight_weight_tex_swizzle'] = value.to_int()
 
     def get_weight_subsurface(self) -> float:
         """Get the subsurface weight."""

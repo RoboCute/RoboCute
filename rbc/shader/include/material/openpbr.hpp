@@ -12,7 +12,8 @@ struct OpenPBR {
 		float diffuse_roughness{0.0f};
 		float specular{1.0f};
 		float metallic{0.0f};
-		MatImageHandle metallic_roughness_tex;
+		MatImageHandle weight_tex;
+		uint weight_tex_swizzle{~0u}; // 0 - 3 bit: metallic-channel, 3 - 6 bit: specular-roughness, 6 - 9 bit: diffuse-roughness, 9 - 12 bit: base
 		float subsurface{0.0f};
 		float transmission{0.0f};
 		float thin_film{0.0f};

@@ -98,8 +98,9 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
                 deser._load(u, name);
             }
         };
+        auto& mat = _mat_data.force_get<material::OpenPBR>();
         rbc::detail::serde_openpbr(
-            _mat_data.force_get<material::OpenPBR>(),
+            mat,
             serde_func);
     } else {
         LUISA_ERROR("Unknown material type. only support 'pbr'");

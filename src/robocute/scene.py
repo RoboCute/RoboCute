@@ -33,18 +33,7 @@ class Model(BaseModel):
     materials_name: List[str] = []
 
 class Scene:
-   """Scene class managing models and camera controller.
-    
-    This is a Python-level scene wrapper that provides:
-    - Pydantic-based Model type for scene objects
-    - Camera controller for view management
-    - Reserved space for future members
-    
-    Attributes:
-        project: Reference to the project this scene belongs to
-        models: List of Model instances in the scene
-        camera_controller: Camera controller for this scene
-    """
+
     def __init__(self, project: Optional[Any] = None):
         """Initialize a Scene.
         

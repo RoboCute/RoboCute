@@ -8,7 +8,8 @@ void serde_openpbr(
     serde_func(x.weight.diffuse_roughness, "weight_diffuse_roughness");
     serde_func(x.weight.specular, "weight_specular");
     serde_func(x.weight.metallic, "weight_metallic");
-    serde_func(x.weight.metallic_roughness_tex, "weight_metallic_roughness_tex");
+    serde_func(x.weight.weight_tex, "weight_weight_tex");
+    serde_func(x.weight.weight_tex_swizzle, "weight_weight_tex_swizzle");
     serde_func(x.weight.subsurface, "weight_subsurface");
     serde_func(x.weight.transmission, "weight_transmission");
     serde_func(x.weight.thin_film, "weight_thin_film");

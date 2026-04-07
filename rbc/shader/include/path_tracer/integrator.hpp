@@ -30,6 +30,7 @@ struct IntegratorResult {
     float3 normal;      // bump texture affected normal
     float3 emission = 0.0f;
     float3 albedo = denoise_min_albedo;
+    float2 uv;
     float roughness;
     uint user_id;
     mtl::BSDFFlags sample_flags = mtl::BSDFFlags::None;
@@ -306,6 +307,7 @@ static IntegratorResult sample_material(
     if constexpr (requires { hit.hit_triangle(); }) {
         hit_triangle = hit.hit_triangle();
     }
+    IntegratorResult r;
     if (hit_triangle) {
         inst_info = g_buffer_heap.uniform_idx_buffer_read<geometry::InstanceInfo>(heap_indices::inst_buffer_heap_idx, user_id);
         uint contained_uv = 0;
@@ -332,6 +334,7 @@ static IntegratorResult sample_material(
         plane_normal = normalize(plane_normal);
         world_pos = (inst_transform * float4(local_pos, 1)).xyz;
         uv = hit.interpolate(vertices[0].uvs[0], vertices[1].uvs[0], vertices[2].uvs[0]);
+        r.uv = uv;
 
         input_dir = world_pos - input_pos;
         ray_t = length(input_dir);
@@ -449,23 +452,20 @@ static IntegratorResult sample_material(
     init_spectrum_colors(basic_param);
 
     float3 wi = -basic_param.geometry.onb.to_local(input_dir);
+#ifdef PT_MOTION_VECTORS
+    r.last_local_pos = last_local_pos;
+#endif
+    r.world_pos = world_pos;
+    r.new_ray_offset = 0.0f;
+    r.user_id = user_id;
+    r.normal = basic_param.geometry.onb.normal;
+    r.plane_normal = plane_normal;
+    r.roughness = basic_param.specular.roughness * (1.0f - 0.8f * basic_param.specular.roughness_anisotropy);
 
     return mtl::PolymorphicBSDF::visit(std::to_underlying(mtl::detect_polymorphic_bsdf_type(basic_param.weight)), [&]<class ins>() {
         using type_pairs = typename ins::type;
         using MatBSDF = typename type_pairs::first_type;
         using MatExtraParameter = typename type_pairs::second_type;
-
-        IntegratorResult r;
-
-#ifdef PT_MOTION_VECTORS
-        r.last_local_pos = last_local_pos;
-#endif
-        r.world_pos = world_pos;
-        r.new_ray_offset = 0.0f;
-        r.user_id = user_id;
-        r.normal = basic_param.geometry.onb.normal;
-        r.plane_normal = plane_normal;
-        r.roughness = basic_param.specular.roughness * (1.0f - 0.8f * basic_param.specular.roughness_anisotropy);
 
         MatExtraParameter extra_param;
 
