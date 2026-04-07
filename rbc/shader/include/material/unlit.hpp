@@ -14,7 +14,7 @@ struct Unlit {
 			BindlessImage& image_heap,
 			uint mat_type,
 			uint mat_index,
-			float2 uv);
+			std::array<float2, 4> uv);
 		static bool transform_to_params(
 			BindlessBuffer& buffer_heap,
 			BindlessImage& image_heap,
@@ -23,7 +23,7 @@ struct Unlit {
 			auto& params,
 			uint texture_filter,
 			vt::VTMeta vt_meta,
-			float2 uv,
+			std::array<float2, 4> uv,
 			float4 ddxy,
 			float3 input_dir,
 			bool& reject,

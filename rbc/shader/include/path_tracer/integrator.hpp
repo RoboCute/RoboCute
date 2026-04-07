@@ -288,7 +288,7 @@ static IntegratorResult sample_material(
     bool is_indirect_ray = detail != mtl::ShadingDetail::Default;
     auto user_id = g_accel.instance_user_id(hit.inst);
     float3 world_pos;
-    float2 uv;
+    std::array<float2, 4> uv;
     float3 vertices_normal;
     float3 plane_normal;
     float3 input_dir;
@@ -333,7 +333,9 @@ static IntegratorResult sample_material(
         plane_normal = cross(vert_poses[0] - vert_poses[1], vert_poses[0] - vert_poses[2]);
         plane_normal = normalize(plane_normal);
         world_pos = (inst_transform * float4(local_pos, 1)).xyz;
-        uv = hit.interpolate(vertices[0].uvs[0], vertices[1].uvs[0], vertices[2].uvs[0]);
+        for (int i = 0; i < 4; ++i) {
+            uv[i] = hit.interpolate(vertices[0].uvs[i], vertices[1].uvs[i], vertices[2].uvs[i]);
+        }
 
         input_dir = world_pos - input_pos;
         ray_t = length(input_dir);
@@ -356,8 +358,8 @@ static IntegratorResult sample_material(
                 vert_poses[2]);
             auto right_uv = interpolate(right_bary, vertices[0].uvs[0], vertices[1].uvs[0], vertices[2].uvs[0]);
             auto up_uv = interpolate(up_bary, vertices[0].uvs[0], vertices[1].uvs[0], vertices[2].uvs[0]);
-            ddx = (right_uv - uv) * tex_grad_scale.x;
-            ddy = (up_uv - uv) * tex_grad_scale.y;
+            ddx = (right_uv - uv[0]) * tex_grad_scale.x;
+            ddy = (up_uv - uv[0]) * tex_grad_scale.y;
         }
 #endif
 
@@ -461,7 +463,7 @@ static IntegratorResult sample_material(
     r.plane_normal = plane_normal;
     r.roughness = basic_param.specular.roughness * (1.0f - 0.8f * basic_param.specular.roughness_anisotropy);
     r.albedo = float3(0);
-    r.uv = uv;
+    r.uv = uv[0];
 
     return mtl::PolymorphicBSDF::visit(std::to_underlying(mtl::detect_polymorphic_bsdf_type(basic_param.weight)), [&]<class ins>() {
         using type_pairs = typename ins::type;

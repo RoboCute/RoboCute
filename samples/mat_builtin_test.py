@@ -209,25 +209,30 @@ class TestTextureProperties:
     """Test texture resource properties."""
 
     def test_weight_weight_tex_default(self, interface):
-        result = openpbr_get_weight_weight_tex(interface)
-        # Default should be TextureResource(None)
-        assert result._handle is None
+        tex, uv_index = openpbr_get_weight_weight_tex(interface)
+        # Default should be (None, 0)
+        assert tex is None
+        assert uv_index == 0
 
     def test_geometry_opacity_tex_default(self, interface):
-        result = openpbr_get_geometry_opacity_tex(interface)
-        assert result._handle is None
+        tex, uv_index = openpbr_get_geometry_opacity_tex(interface)
+        assert tex is None
+        assert uv_index == 0
 
     def test_geometry_normal_tex_default(self, interface):
-        result = openpbr_get_geometry_normal_tex(interface)
-        assert result._handle is None
+        tex, uv_index = openpbr_get_geometry_normal_tex(interface)
+        assert tex is None
+        assert uv_index == 0
 
     def test_base_albedo_tex_default(self, interface):
-        result = openpbr_get_base_albedo_tex(interface)
-        assert result._handle is None
+        tex, uv_index = openpbr_get_base_albedo_tex(interface)
+        assert tex is None
+        assert uv_index == 0
 
     def test_emission_emission_tex_default(self, interface):
-        result = openpbr_get_emission_emission_tex(interface)
-        assert result._handle is None
+        tex, uv_index = openpbr_get_emission_emission_tex(interface)
+        assert tex is None
+        assert uv_index == 0
 
 
 class TestJsonSerialization:

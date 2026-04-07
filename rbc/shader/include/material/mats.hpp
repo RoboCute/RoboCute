@@ -61,7 +61,7 @@ inline bool transform_to_params(
 	auto& params,
 	uint& texture_filter,
 	vt::VTMeta vt_meta,
-	float2 uv,
+	std::array<float2, 4> uv,
 	float4 ddxy,
 	float3 input_dir,
 	float3 world_pos,

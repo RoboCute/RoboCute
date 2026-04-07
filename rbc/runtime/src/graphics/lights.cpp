@@ -330,7 +330,8 @@ uint Lights::add_area_light(
     ///////////// Make light emission material
     rbc::material::Unlit mat_inst{.color{emission.x, emission.y, emission.z}};
 
-    mat_inst.tex.index = area_light.emission_tex_id;
+    mat_inst.tex.set_type(0);
+    mat_inst.tex.set_index(area_light.emission_tex_id);
     auto mat = scene.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
         mat_inst,
         cmdlist,
@@ -398,7 +399,7 @@ uint Lights::add_disk_light(
     ///////////// Make light emission material
     rbc::material::Unlit mat_inst{.color{emission.x, emission.y, emission.z}};
 
-    mat_inst.tex.index = -1;
+    mat_inst.tex.uv_type_heap_index = -1;
     auto mat = scene.mat_manager().emplace_mat_instance<material::PolymorphicMaterial>(
         mat_inst,
         cmdlist,
@@ -811,7 +812,7 @@ void Lights::update_disk_light(
     disk_light.mis_weight = visible ? 1 : -1;
     ///////////// Make light emission material
     rbc::material::Unlit mat_inst{.color{emission.x, emission.y, emission.z}};
-    mat_inst.tex.index = -1;
+    mat_inst.tex.uv_type_heap_index = -1;
     scene.mat_manager().set_mat_instance(
         data.mat_code,
         scene.buffer_uploader(),
@@ -876,7 +877,8 @@ void Lights::update_area_light(
     } else {
         area_light.emission_tex_id = ~0u;
     }
-    mat_inst.tex.index = area_light.emission_tex_id;
+    mat_inst.tex.set_type(0);
+    mat_inst.tex.set_index(area_light.emission_tex_id);
     /////////// Update emission material
     scene.mat_manager().set_mat_instance(
         data.mat_code,

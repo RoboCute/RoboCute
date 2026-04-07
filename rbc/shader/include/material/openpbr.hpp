@@ -111,7 +111,7 @@ struct OpenPBR {
 			uint mat_type,
 			uint mat_index,
 			vt::VTMeta vt_meta,
-			float2 uv,
+			std::array<float2, 4> uvs,
 			int& priority,
 			auto& rng);
 
@@ -120,7 +120,7 @@ struct OpenPBR {
 			BindlessImage& image_heap,
 			uint mat_type,
 			uint mat_index,
-			float2 uv);
+			std::array<float2, 4> uvs);
 
 		static bool transform_to_params(
 			BindlessBuffer& buffer_heap,
@@ -130,7 +130,7 @@ struct OpenPBR {
 			auto& params,
 			uint texture_filter,
 			vt::VTMeta vt_meta,
-			float2 uv,
+			std::array<float2, 4> uvs,
 			float4 ddxy,
 			float3 input_dir,
 			bool& reject,

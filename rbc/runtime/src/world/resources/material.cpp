@@ -72,9 +72,31 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
     if (is_default || mat_type == "pbr") {
         _mat_data.reset_as<material::OpenPBR>();
         auto serde_func = [&]<typename U>(U &u, char const *name) {
+            constexpr bool is_uv_type_heap_index = requires { u.uv_type_heap_index; };
             constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
             constexpr bool is_index = requires { u.index; };
-            if constexpr (is_index) {
+            if constexpr (is_uv_type_heap_index) {
+                vstd::Guid resource_guid;
+                RC<Resource> res;
+                uint uv_type;
+                auto set_res = vstd::scope_exit([&]() {
+                    _depended_resources.emplace_back(std::move(res));
+                });
+                uint64_t array_size;
+                if (!deser.start_array(array_size, name))
+                    return;
+                if (array_size < 2)
+                    return;
+                deser._load(resource_guid);
+                deser._load(uv_type);
+                deser.end_scope();
+                res = get_resource(resource_guid, true);
+                if (!res) {
+                    return;
+                }
+                u.set_type(uv_type);
+            }
+            else if constexpr (is_index) {
                 vstd::Guid resource_guid;
                 RC<Resource> res;
                 auto set_res = vstd::scope_exit([&]() {
@@ -98,7 +120,7 @@ void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_
                 deser._load(u, name);
             }
         };
-        auto& mat = _mat_data.force_get<material::OpenPBR>();
+        auto &mat = _mat_data.force_get<material::OpenPBR>();
         rbc::detail::serde_openpbr(
             mat,
             serde_func);
@@ -114,9 +136,23 @@ void MaterialResource::_write_content_to(JsonSerializer &json_ser) {
     std::lock_guard lck{_async_mtx};
     auto iter = _depended_resources.begin();
     auto ser_pbr = [&]<typename U>(U &u, char const *name) {
+        constexpr bool is_uv_type_heap_index = requires { u.uv_type_heap_index; };
         constexpr bool is_index = requires { u.index; };
         constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
-        if constexpr (is_index) {
+        if constexpr (is_uv_type_heap_index) {
+            LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
+            auto res = *iter;
+            if (res && res->base_type() == BaseObjectType::Resource) {
+                auto guid = res->guid();
+                if (guid) {
+                    json_ser.start_array();
+                    json_ser.add(guid);
+                    json_ser.add((uint64_t)u.type());
+                    json_ser.add_last_scope_to_object(name);
+                }
+            }
+            ++iter;
+        } else if constexpr (is_index) {
             LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
             auto res = *iter;
             if (res && res->base_type() == BaseObjectType::Resource) {
@@ -210,9 +246,9 @@ bool MaterialResource::_install() {
             LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
             auto res = *iter;
             if (res) {
-                u.index = static_cast<TextureResource *>(res.get())->heap_index();
+                u.set_index(static_cast<TextureResource *>(res.get())->heap_index());
             } else {
-                u.index = ~0u;
+                u.uv_type_heap_index = ~0u;
             }
             ++iter;
         }
@@ -274,9 +310,23 @@ bool MaterialResource::unsafe_save_to_path() const {
             t._store("type"sv, "pbr");
             auto iter = _depended_resources.begin();
             auto serde_func = [&]<typename U>(U &u, char const *name) {
+                constexpr bool is_uv_type_heap_index = requires { u.uv_type_heap_index; };
                 constexpr bool is_index = requires { u.index; };
                 constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
-                if constexpr (is_index) {
+                if constexpr (is_uv_type_heap_index) {
+                    LUISA_DEBUG_ASSERT(iter != _depended_resources.end());
+                    t.start_array();
+                    if (*iter) {
+                        t._store((*iter)->guid());
+                    } else {
+                        vstd::Guid guid;
+                        t._store(guid);
+                    }
+                    t._store(u.type());
+                    t.add_last_scope_to_object(name);
+                    ++iter;
+                }
+                else if constexpr (is_index) {
                     if (*iter) {
                         t._store((*iter)->guid(), name);
                     } else {

@@ -8,9 +8,15 @@ namespace rbc {
 void MaterialStub::openpbr_json_ser(JsonSerializer &t, material::OpenPBR const &mat) {
     t._store("type"sv, "pbr");
     auto serde_func = [&]<typename U>(U &u, char const *name) {
+        constexpr bool is_uv_type_heap_index = requires { u.uv_type_heap_index; };
         constexpr bool is_index = requires { u.index; };
         constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
-        if constexpr (is_index) {
+        if constexpr (is_uv_type_heap_index) {
+            t.start_array();
+            t._store(u.index());
+            t._store(u.type());
+            t.add_last_scope_to_object(name);
+        } else if constexpr (is_index) {
             t._store(u.index, name);
         } else if constexpr (is_array) {
             t.start_array();
@@ -31,9 +37,22 @@ void MaterialStub::openpbr_json_deser(JsonDeSerializer &t, material::OpenPBR &ma
         if (type != "pbr") return;
     }
     auto serde_func = [&]<typename U>(U &u, char const *name) {
+        constexpr bool is_uv_type_heap_index = requires { u.uv_type_heap_index; };
         constexpr bool is_index = requires { u.index; };
         constexpr bool is_array = requires {u.begin(); u.end(); u.data(); u.size(); };
-        if constexpr (is_index) {
+        if constexpr (is_uv_type_heap_index) {
+            uint64_t array_size;
+            if (!t.start_array(array_size, name))
+                return;
+            if (array_size < 2)
+                return;
+            uint index;
+            uint uv_type;
+            t._load(index);
+            t._load(uv_type);
+            t.end_scope();
+            u = U(index, uv_type);
+        } else if constexpr (is_index) {
             t._load(u.index, name);
         } else if constexpr (is_array) {
             uint64_t size;

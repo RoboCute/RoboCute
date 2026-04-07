@@ -121,11 +121,45 @@ class OpenPBRInterface:
         self._project = project
 
     def _guid_str_to_tex(self, guid_str: str) -> re.world.TextureResource:
+        if guid_str is None:
+            return None
         guid = rbc.GUID(guid_str)
         res = self._project.get_resource(guid, True)
         if res and res.type_name() == 'rbc::world::TextureResource':
             return re.world.TextureResource(res._handle)
         return None
+
+    def _get_tex_with_uv(self, key: str) -> tuple:
+        """Get texture resource and uv_index from data.
+        
+        Returns:
+            Tuple of (TextureResource, uv_index). If no texture is set, returns (None, 0).
+        """
+        tex_data = self._data.get(key, None)
+        if tex_data is None:
+            return (None, 0)
+        if isinstance(tex_data, list) and len(tex_data) == 2:
+            guid_str, uv_index = tex_data
+            tex = self._guid_str_to_tex(guid_str)
+            return (tex, uv_index)
+        # Handle legacy format (just guid string)
+        if isinstance(tex_data, str):
+            tex = self._guid_str_to_tex(tex_data)
+            return (tex, 0)
+        return (None, 0)
+
+    def _set_tex_with_uv(self, key: str, value: re.world.TextureResource, uv_index: int = 0) -> None:
+        """Set texture resource and uv_index to data.
+        
+        Args:
+            key: The data key to store the texture under.
+            value: The texture resource to store, or None to clear.
+            uv_index: The UV index to use for the texture (default 0).
+        """
+        if value is None:
+            self._data[key] = None
+        else:
+            self._data[key] = [str(value.guid()), uv_index]
 
     def get_weight_base(self) -> float:
         """Get the base weight of the material."""
@@ -159,18 +193,22 @@ class OpenPBRInterface:
         """Set the metallic weight."""
         self._data['weight_metallic'] = _clamp_01(value)
 
-    def get_weight_weight_tex(
-        self,
-    ) -> re.world.TextureResource:
-        """Get the metallic roughness texture."""
-        guid_str = self._data.get('weight_weight_tex', None)
-        return self._guid_str_to_tex(self, guid_str)
+    def get_weight_weight_tex(self) -> tuple:
+        """Get the metallic roughness texture and its uv_index.
+        
+        Returns:
+            Tuple of (TextureResource, uv_index). If no texture is set, returns (None, 0).
+        """
+        return self._get_tex_with_uv('weight_weight_tex')
 
-    def set_weight_weight_tex(
-        self, value: re.world.TextureResource
-    ) -> None:
-        """Set the metallic roughness texture."""
-        self._data['weight_weight_tex'] = str(value.guid())
+    def set_weight_weight_tex(self, value: re.world.TextureResource, uv_index: int = 0) -> None:
+        """Set the metallic roughness texture.
+        
+        Args:
+            value: The texture resource to set.
+            uv_index: The UV index to use for the texture (default 0).
+        """
+        self._set_tex_with_uv('weight_weight_tex', value, uv_index)
 
     def get_weight_tex_swizzle(self) -> ChannelSwizzle:
         """Get the weight texture swizzle."""
@@ -247,18 +285,22 @@ class OpenPBRInterface:
         """Set the geometry opacity."""
         self._data['geometry_opacity'] = _clamp_01(value)
 
-    def get_geometry_opacity_tex(
-        self,
-    ) -> re.world.TextureResource:
-        """Get the geometry opacity texture."""
-        guid_str = self._data.get('geometry_opacity_tex', None)
-        return self._guid_str_to_tex(self, guid_str)
+    def get_geometry_opacity_tex(self) -> tuple:
+        """Get the geometry opacity texture and its uv_index.
+        
+        Returns:
+            Tuple of (TextureResource, uv_index). If no texture is set, returns (None, 0).
+        """
+        return self._get_tex_with_uv('geometry_opacity_tex')
 
-    def set_geometry_opacity_tex(
-        self, value: re.world.TextureResource
-    ) -> None:
-        """Set the geometry opacity texture."""
-        self._data['geometry_opacity_tex'] = str(value.guid())
+    def set_geometry_opacity_tex(self, value: re.world.TextureResource, uv_index: int = 0) -> None:
+        """Set the geometry opacity texture.
+        
+        Args:
+            value: The texture resource to set.
+            uv_index: The UV index to use for the texture (default 0).
+        """
+        self._set_tex_with_uv('geometry_opacity_tex', value, uv_index)
 
     def get_geometry_thickness(self) -> float:
         """Get the geometry thickness."""
@@ -292,18 +334,22 @@ class OpenPBRInterface:
         """Set the geometry bump scale."""
         self._data['geometry_bump_scale'] = _clamp_range(value, 0.0, 5.0)
 
-    def get_geometry_normal_tex(
-        self,
-    ) -> re.world.TextureResource:
-        """Get the geometry normal texture."""
-        guid_str = self._data.get('geometry_normal_tex', None)
-        return self._guid_str_to_tex(self, guid_str)
+    def get_geometry_normal_tex(self) -> tuple:
+        """Get the geometry normal texture and its uv_index.
+        
+        Returns:
+            Tuple of (TextureResource, uv_index). If no texture is set, returns (None, 0).
+        """
+        return self._get_tex_with_uv('geometry_normal_tex')
 
-    def set_geometry_normal_tex(
-        self, value: re.world.TextureResource
-    ) -> None:
-        """Set the geometry normal texture."""
-        self._data['geometry_normal_tex'] = str(value.guid())
+    def set_geometry_normal_tex(self, value: re.world.TextureResource, uv_index: int = 0) -> None:
+        """Set the geometry normal texture.
+        
+        Args:
+            value: The texture resource to set.
+            uv_index: The UV index to use for the texture (default 0).
+        """
+        self._set_tex_with_uv('geometry_normal_tex', value, uv_index)
 
     def get_uvs_scale(self) -> tuple:
         """Get the UV scale as a float2 tuple."""
@@ -354,31 +400,39 @@ class OpenPBRInterface:
         self._data['specular_roughness_anisotropy_angle'] = _clamp_range(
             value, 0.0, 6.2831855)
 
-    def get_specular_anisotropy_level_tex(
-        self,
-    ) -> re.world.TextureResource:
-        """Get the specular anisotropy level texture."""
-        guid_str = self._data.get('specular_anisotropy_level_tex', None)
-        return self._guid_str_to_tex(self, guid_str)
+    def get_specular_anisotropy_level_tex(self) -> tuple:
+        """Get the specular anisotropy level texture and its uv_index.
+        
+        Returns:
+            Tuple of (TextureResource, uv_index). If no texture is set, returns (None, 0).
+        """
+        return self._get_tex_with_uv('specular_anisotropy_level_tex')
 
-    def set_specular_anisotropy_level_tex(
-        self, value: re.world.TextureResource
-    ) -> None:
-        """Set the specular anisotropy level texture."""
-        self._data['specular_anisotropy_level_tex'] = str(value.guid())
+    def set_specular_anisotropy_level_tex(self, value: re.world.TextureResource, uv_index: int = 0) -> None:
+        """Set the specular anisotropy level texture.
+        
+        Args:
+            value: The texture resource to set.
+            uv_index: The UV index to use for the texture (default 0).
+        """
+        self._set_tex_with_uv('specular_anisotropy_level_tex', value, uv_index)
 
-    def get_specular_anisotropy_angle_tex(
-        self,
-    ) -> re.world.TextureResource:
-        """Get the specular anisotropy angle texture."""
-        guid_str = self._data.get('specular_anisotropy_angle_tex', None)
-        return self._guid_str_to_tex(self, guid_str)
+    def get_specular_anisotropy_angle_tex(self) -> tuple:
+        """Get the specular anisotropy angle texture and its uv_index.
+        
+        Returns:
+            Tuple of (TextureResource, uv_index). If no texture is set, returns (None, 0).
+        """
+        return self._get_tex_with_uv('specular_anisotropy_angle_tex')
 
-    def set_specular_anisotropy_angle_tex(
-        self, value: re.world.TextureResource
-    ) -> None:
-        """Set the specular anisotropy angle texture."""
-        self._data['specular_anisotropy_angle_tex'] = str(value.guid())
+    def set_specular_anisotropy_angle_tex(self, value: re.world.TextureResource, uv_index: int = 0) -> None:
+        """Set the specular anisotropy angle texture.
+        
+        Args:
+            value: The texture resource to set.
+            uv_index: The UV index to use for the texture (default 0).
+        """
+        self._set_tex_with_uv('specular_anisotropy_angle_tex', value, uv_index)
 
     def get_specular_ior(self) -> float:
         """Get the specular index of refraction."""
@@ -396,18 +450,22 @@ class OpenPBRInterface:
         """Set the emission luminance from a float3 tuple."""
         self._data['emission_luminance'] = value
 
-    def get_emission_emission_tex(
-        self,
-    ) -> re.world.TextureResource:
-        """Get the emission texture."""
-        guid_str = self._data.get('emission_emission_tex', None)
-        return self._guid_str_to_tex(self, guid_str)
+    def get_emission_emission_tex(self) -> tuple:
+        """Get the emission texture and its uv_index.
+        
+        Returns:
+            Tuple of (TextureResource, uv_index). If no texture is set, returns (None, 0).
+        """
+        return self._get_tex_with_uv('emission_emission_tex')
 
-    def set_emission_emission_tex(
-        self, value: re.world.TextureResource
-    ) -> None:
-        """Set the emission texture."""
-        self._data['emission_emission_tex'] = str(value.guid())
+    def set_emission_emission_tex(self, value: re.world.TextureResource, uv_index: int = 0) -> None:
+        """Set the emission texture.
+        
+        Args:
+            value: The texture resource to set.
+            uv_index: The UV index to use for the texture (default 0).
+        """
+        self._set_tex_with_uv('emission_emission_tex', value, uv_index)
 
     def get_base_albedo(self) -> tuple:
         """Get the base albedo color as a float3 tuple."""
@@ -417,18 +475,22 @@ class OpenPBRInterface:
         """Set the base albedo color from a float3 tuple."""
         self._data['base_albedo'] = _clamp_01_tuple(value)
 
-    def get_base_albedo_tex(
-        self,
-    ) -> re.world.TextureResource:
-        """Get the base albedo texture."""
-        guid_str = self._data.get('base_albedo_tex', None)
-        return self._guid_str_to_tex(self, guid_str)
+    def get_base_albedo_tex(self) -> tuple:
+        """Get the base albedo texture and its uv_index.
+        
+        Returns:
+            Tuple of (TextureResource, uv_index). If no texture is set, returns (None, 0).
+        """
+        return self._get_tex_with_uv('base_albedo_tex')
 
-    def set_base_albedo_tex(
-        self, value: re.world.TextureResource
-    ) -> None:
-        """Set the base albedo texture."""
-        self._data['base_albedo_tex'] = str(value.guid())
+    def set_base_albedo_tex(self, value: re.world.TextureResource, uv_index: int = 0) -> None:
+        """Set the base albedo texture.
+        
+        Args:
+            value: The texture resource to set.
+            uv_index: The UV index to use for the texture (default 0).
+        """
+        self._set_tex_with_uv('base_albedo_tex', value, uv_index)
 
     def get_subsurface_color(self) -> tuple:
         """Get the subsurface color as a float3 tuple."""
