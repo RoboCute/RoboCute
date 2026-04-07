@@ -231,7 +231,7 @@ def load_material_entity(model_name: str, scene: re.world.Scene):
     Returns:
         Entity: The created entity with Transform and Render components
     """
-    mesh_name = f'{model_name}_4k.obj'
+    mesh_name = f'{model_name}_4k.gltf'
     arm_tex_name = f'textures/{model_name}_arm_4k.png'
     albedo_tex_name = f'textures/{model_name}_diff_4k.png'
     normal_tex_name = f'textures/{model_name}_nor_gl_4k.png'
@@ -374,7 +374,7 @@ def main():
     entity = make_cube_mesh(app.scene, tex=tex)
     
     # DO THIS: test GLTF mesh
-    poly = load_material_entity('metal_office_desk', app.scene)
+    # poly = load_material_entity('metal_office_desk', app.scene)
     last_time = time.time()
 
     def tick_logic():  # run every frame
