@@ -250,7 +250,7 @@ void GraphicsUtils::tick(
                 frame_settings.albedo_buffer = &denoise_pack->external_albedo;
                 frame_settings.normal_buffer = &denoise_pack->external_normal;
                 frame_settings.radiance_buffer = &denoise_pack->external_input;
-                frame_settings.reject_sampling = true;
+                // frame_settings.reject_sampling = true;
             }
         };
         switch (tick_stage) {

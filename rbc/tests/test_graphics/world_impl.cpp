@@ -2811,6 +2811,25 @@ void RenderSettings::set_denoise(void *this_, bool value) {
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     impl->map->read_mut<PathTracerSettings>().denoise = value;
 }
+bool RenderSettings::get_reject_sampling(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("RenderSettings::get_reject_sampling: this_ is null.");
+        return false;
+    }
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<FrameSettings>();
+    return settings ? settings->reject_sampling : false;
+}
+void RenderSettings::set_reject_sampling(void *this_, bool value) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("RenderSettings::set_reject_sampling: this_ is null.");
+        return;
+    }
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    impl->map->read_mut<FrameSettings>().reject_sampling = value;
+}
 
 // ========== AO Settings Getters/Setters ==========
 bool RenderSettings::get_enable_ao_mode(void *this_) {

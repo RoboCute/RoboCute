@@ -334,7 +334,6 @@ static IntegratorResult sample_material(
         plane_normal = normalize(plane_normal);
         world_pos = (inst_transform * float4(local_pos, 1)).xyz;
         uv = hit.interpolate(vertices[0].uvs[0], vertices[1].uvs[0], vertices[2].uvs[0]);
-        r.uv = uv;
 
         input_dir = world_pos - input_pos;
         ray_t = length(input_dir);
@@ -461,6 +460,8 @@ static IntegratorResult sample_material(
     r.normal = basic_param.geometry.onb.normal;
     r.plane_normal = plane_normal;
     r.roughness = basic_param.specular.roughness * (1.0f - 0.8f * basic_param.specular.roughness_anisotropy);
+    r.albedo = float3(0);
+    r.uv = uv;
 
     return mtl::PolymorphicBSDF::visit(std::to_underlying(mtl::detect_polymorphic_bsdf_type(basic_param.weight)), [&]<class ins>() {
         using type_pairs = typename ins::type;
@@ -569,7 +570,6 @@ static IntegratorResult sample_material(
                 input_dir,
                 continue_loop);
         }
-        if (!continue_loop) return r;
         bsdf.init(wi, basic_param, extra_param, closure_data);
         if (need_albedo) {
             bool oldFlag = closure_data.spectrumed;
@@ -577,7 +577,7 @@ static IntegratorResult sample_material(
             r.albedo = bsdf.energy(wi, closure_data);
             closure_data.spectrumed = oldFlag;
         }
-
+        if (!continue_loop) return r;
         closure_data.rand = float3(sampler.next2f(g_buffer_heap), lobe_rand);
         auto sample_result = bsdf.sample(wi, closure_data, volume_stack);
         spectrum_arg.selected_wavelength = closure_data.selected_wavelength;

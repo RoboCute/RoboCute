@@ -231,7 +231,7 @@ def load_material_entity(model_name: str, scene: re.world.Scene):
     Returns:
         Entity: The created entity with Transform and Render components
     """
-    mesh_name = f'{model_name}_4k.gltf'
+    mesh_name = f'{model_name}_4k.obj'
     arm_tex_name = f'textures/{model_name}_arm_4k.png'
     albedo_tex_name = f'textures/{model_name}_diff_4k.png'
     normal_tex_name = f'textures/{model_name}_nor_gl_4k.png'
@@ -239,7 +239,7 @@ def load_material_entity(model_name: str, scene: re.world.Scene):
     # Load textures using project import
     albedo_tex = app._project.import_texture(albedo_tex_name, 1, False)
     arm_tex = app._project.import_texture(arm_tex_name, 1, False)
-    normal_tex = app._project.import_texture(normal_tex_name, 1, True)
+    normal_tex = app._project.import_texture(normal_tex_name, 1, False)
 
     # Create PBR material
     mat0_json = mat.OpenPBRInterface(app._project)
@@ -354,20 +354,7 @@ def main():
         geometry_buffer = lc.Buffer(
             resolution.x * resolution.y * channel_size, float
         )
-        app.display_cam.set_geometry_export_buffer(
-            geometry_buffer.info(),
-            re.world.RendererGeometryType(
-                int(re.world.RendererGeometryType.Depth)
-                | int(re.world.RendererGeometryType.Normal)
-                | int(re.world.RendererGeometryType.ObjectID)
-                | int(re.world.RendererGeometryType.PrimID)
-                | int(re.world.RendererGeometryType.Barycentric)
-                | int(re.world.RendererGeometryType.Emission)
-                | int(re.world.RendererGeometryType.Albedo)
-                | int(re.world.RendererGeometryType.MaterialID)
-                | int(re.world.RendererGeometryType.UV)
-            ),
-        )
+
     if app._window_created:
         app.ctx.enable_camera_control()
 
@@ -387,7 +374,7 @@ def main():
     entity = make_cube_mesh(app.scene, tex=tex)
     
     # DO THIS: test GLTF mesh
-    # poly = load_material_entity('metal_office_desk', app.scene)
+    poly = load_material_entity('metal_office_desk', app.scene)
     last_time = time.time()
 
     def tick_logic():  # run every frame
@@ -409,10 +396,25 @@ def main():
         # render.mesh().build_before_tick()
         nonlocal EXPORT, tui_exec, frame_index, geometry_buffer
         frame_index += 1
+        if EXPORT and app.frame_index == 122:
+            app.display_cam.set_geometry_export_buffer(
+            geometry_buffer.info(),
+            re.world.RendererGeometryType(
+                int(re.world.RendererGeometryType.Depth)
+                | int(re.world.RendererGeometryType.Normal)
+                | int(re.world.RendererGeometryType.ObjectID)
+                | int(re.world.RendererGeometryType.PrimID)
+                | int(re.world.RendererGeometryType.Barycentric)
+                | int(re.world.RendererGeometryType.Emission)
+                | int(re.world.RendererGeometryType.Albedo)
+                | int(re.world.RendererGeometryType.MaterialID)
+                | int(re.world.RendererGeometryType.UV)
+            ),
+        )
         if EXPORT and app.frame_index == 128:
             EXPORT = False
             img = app.display_image()
-            app.ctx.denoise()
+            # app.ctx.denoise()
             app.ctx.save_display_image_to(
                 str(Path(__file__).parent /
                     f"screenshot/frame_{image_index}.png")
