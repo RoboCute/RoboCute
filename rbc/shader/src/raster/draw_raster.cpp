@@ -109,6 +109,7 @@ struct RasterBasicParameter {
         uv,
         uv_count,
         float4(0),// float4(ddx, ddy),
+        ray_dir,
         world_pos,
         reject);
     if (dot(basic_param.geometry.onb.normal, ray_dir) <= 0) {

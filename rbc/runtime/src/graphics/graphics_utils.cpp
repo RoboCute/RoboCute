@@ -232,7 +232,6 @@ void GraphicsUtils::tick(
         frame_settings.albedo_buffer = nullptr;
         frame_settings.normal_buffer = nullptr;
         frame_settings.radiance_buffer = nullptr;
-        frame_settings.reject_sampling = false;
         auto pt_settings = render_settings->read_if<PathTracerSettings>();
         enable_denoise &= _denoiser_inited & (!pt_settings || pt_settings->denoise);
         DenoisePack *denoise_pack{};

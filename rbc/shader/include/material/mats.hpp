@@ -66,6 +66,7 @@ inline bool transform_to_params(
 	std::array<float2, 4> uv,
 	uint uv_count,
 	float4 ddxy,
+	float3 input_dir,
 	float3 world_pos,
 	bool& reject,
 	auto&&... vars) {
@@ -83,6 +84,7 @@ inline bool transform_to_params(
 											uv,
 											uv_count,
 											ddxy,
+											input_dir,
 											reject,
 											world_pos,
 											static_cast<decltype(vars)>(vars)...) } -> std::same_as<bool>;
@@ -97,6 +99,7 @@ inline bool transform_to_params(
 											 uv,
 										     uv_count,
 											 ddxy,
+											 input_dir,
 											 reject,
 											 world_pos,
 											 static_cast<decltype(vars)>(vars)...);

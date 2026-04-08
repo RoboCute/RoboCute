@@ -27,6 +27,7 @@ struct Unlit {
             std::array<float2, 4> uv,
             uint uv_count,
             float4 ddxy,
+            float3 input_dir,
             bool &reject,
             auto &&...);
 

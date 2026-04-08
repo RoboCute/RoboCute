@@ -87,6 +87,7 @@ inline bool OpenPBR::transform_to_params(
     std::array<float2, 4> uvs,
     uint uv_count,
     float4 ddxy,
+    float3 input_dir,
     bool &reject,
     auto &&...) {
     auto uv_settings = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::UVs>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, uvs));
@@ -157,9 +158,12 @@ inline bool OpenPBR::transform_to_params(
         params.geometry.thickness = mat.thickness * 1e-2f;
         if (mat.normal_tex.valid()) {
             auto tan_normal = read_tex(mat.normal_tex).xyz;
+            if (dot(tan_normal, tan_normal) < 1e-5f) {
+                tan_normal = float3(0, 0, 1);
+            }
             tan_normal.xy = (tan_normal.xy * 2.f - 1.f) * mat.bump_scale;
             tan_normal = normalize(tan_normal);
-            params.geometry.onb.to_world(tan_normal);
+            params.geometry.onb.replace_normal(tan_normal, input_dir);
         }
     }
 

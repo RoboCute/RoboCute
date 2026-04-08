@@ -58,7 +58,7 @@ void TextureResource::serialize_meta(ObjSerialize const &obj) const {
     obj.ar.value(_pixel_storage, "pixel_storage");
     obj.ar.value(_size, "size");
     obj.ar.value(_mip_level, "mip_level");
-    obj.ar.value(is_vt(), "is_vt");
+    obj.ar.value(_is_vt, "is_vt");
 }
 void TextureResource::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
@@ -187,7 +187,7 @@ rbc::coroutine TextureResource::_async_load() {
             loaded = false;
             break;
         }
-        if (is_vt()) {
+        if (_is_vt) {
             auto tex = new DeviceSparseImage();
             _tex = tex;
             // _vt_finished = new VTLoadFlag{};

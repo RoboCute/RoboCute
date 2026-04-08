@@ -377,14 +377,17 @@ static IntegratorResult sample_material(
         if (contained_tangent) {
             auto tangent = hit.interpolate(vertices[0].tangent, vertices[1].tangent, vertices[2].tangent);
             basic_param.geometry.onb.tangent = normalize(inst_transform * float4(tangent.xyz, 0)).xyz;
-            basic_param.geometry.onb.bitangent = normalize(cross(vertices_normal, tangent.xyz));
+            basic_param.geometry.onb.bitangent = normalize(cross(vertices_normal, tangent.xyz)) * tangent.w;
             basic_param.geometry.onb.normal = vertices_normal;
         } else {
             basic_param.geometry.onb = mtl::Onb(vertices_normal);
         }
 
         vertices_onb = basic_param.geometry.onb;
-
+        if (dot(input_dir, basic_param.geometry.onb.normal) >= 0.0f) {
+            basic_param.geometry.onb.normal = -basic_param.geometry.onb.normal;
+            basic_param.geometry.onb.tangent = -basic_param.geometry.onb.tangent;
+        }
         continue_loop = transform_to_params(
             g_buffer_heap,
             g_image_heap,
@@ -395,11 +398,10 @@ static IntegratorResult sample_material(
             uv,
             uv_count,
             float4(ddx, ddy),
+            input_dir,
             world_pos,
             reject);
-        if (basic_param.geometry.thin_walled && dot(input_dir, vertices_normal) >= 0.0f) {
-            basic_param.geometry.onb.normal = -basic_param.geometry.onb.normal;
-        }
+
     } else {
         plane_normal = float3(procedural_geometry.normal);
         vertices_normal = plane_normal;
@@ -487,6 +489,7 @@ static IntegratorResult sample_material(
                 uv,
                 uv_count,
                 float4(ddx, ddy),
+                input_dir,
                 world_pos,
                 reject);
         } else {
