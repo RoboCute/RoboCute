@@ -12,7 +12,7 @@ struct PosNormal {
 };
 struct PosUV {
     float3 pos;
-    float2 uv;
+    std::array<float2, 4> uv;
 };
 inline uint get_submesh_idx(BindlessBuffer &heap, uint submesh_heap_idx, uint prim_id) {
     uint submesh_idx = 0;
@@ -49,7 +49,8 @@ inline std::array<float3, 3> read_vert_pos(ByteBuffer<> &byte_buffer, uint prim_
 inline std::array<PosUV, 3> read_vert_pos_uv(
     BindlessBuffer &heap,
     uint prim_id,
-    MeshMeta mesh_meta) {
+    MeshMeta mesh_meta,
+    uint& uv_count) {
     uint mutable_heap_idx;
     if (mesh_meta.mutable_heap_idx != max_uint32) {
         mutable_heap_idx = mesh_meta.mutable_heap_idx;
@@ -69,11 +70,16 @@ inline std::array<PosUV, 3> read_vert_pos_uv(
     if ((mesh_meta.ele_mask & MeshMeta::tangent_mask) != 0) {
         offset += 16 * mesh_meta.vertex_count;
     }
-    if (mesh_meta.ele_mask & (MeshMeta::uv_mask == 0u))
-        return arr;
-    for (uint i = 0; i < 3; ++i) {
-        arr[i].uv = heap.byte_buffer_read<float2>(
-            mesh_meta.heap_idx, offset + tri[i] * 8);
+    uv_count = 0;
+    for (uint uv_idx = 0; uv_idx < 4; ++uv_idx) {
+        if ((mesh_meta.ele_mask & (MeshMeta::uv_mask << uv_idx)) == 0u)
+            break;
+        uv_count += 1;
+        for (uint i = 0; i < 3; ++i) {
+            arr[i].uv[uv_idx] = heap.byte_buffer_read<float2>(
+                mesh_meta.heap_idx, offset + tri[i] * 8);
+        }
+        offset += 8 * mesh_meta.vertex_count;
     }
     return arr;
 }
@@ -121,7 +127,7 @@ inline std::array<Vertex, 3> read_vertices(
     }
     uint uv_idx;
     for (uv_idx = 0; uv_idx < 4; ++uv_idx) {
-        if (mesh_meta.ele_mask & ((MeshMeta::uv_mask << uv_idx) == 0u))
+        if ((mesh_meta.ele_mask & (MeshMeta::uv_mask << uv_idx)) == 0u)
             break;
         for (uint i = 0; i < 3; ++i) {
             arr[i].uvs[uv_idx] = heap.byte_buffer_read<float2>(

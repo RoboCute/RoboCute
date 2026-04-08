@@ -347,7 +347,8 @@ LightSample light_importance_sampling(
             }
             auto inst_info = g_buffer_heap.uniform_idx_buffer_read<geometry::InstanceInfo>(heap_indices::inst_buffer_heap_idx, mesh_light.instance_user_id);
             result.mis_weight = mesh_light.mis_weight;
-            auto vertices = geometry::read_vert_pos_uv(g_buffer_heap, light_idx, inst_info.mesh);
+            uint uv_count;
+            auto vertices = geometry::read_vert_pos_uv(g_buffer_heap, light_idx, inst_info.mesh, uv_count);
             float2 rand = sampler.next2f();
             if (rand.x + rand.y > 1) {
                 rand = 1.f - rand;
@@ -376,8 +377,11 @@ LightSample light_importance_sampling(
             result.wi_length = d_light;
             result.pdf = (d_light * d_light) / (light_area * cos_light);
             result.wi = wi_light;
-            auto uv0 = vertices[0].uv * light_uvw.x + vertices[1].uv * light_uvw.y + vertices[2].uv * light_uvw.z;
-            float3 light_emission = material::get_light_emission(g_buffer_heap, g_image_heap, heap_indices::mat_idx_buffer_heap_idx, inst_info.mesh.submesh_heap_idx, inst_info.mat_index, light_idx, uv0);
+            std::array<float2, 4> uv;
+            for (uint i = 0; i < uv_count; ++i) {
+                uv[i] = vertices[0].uv[i] * light_uvw.x + vertices[1].uv[i] * light_uvw.y + vertices[2].uv[i] * light_uvw.z;
+            }
+            float3 light_emission = material::get_light_emission(g_buffer_heap, g_image_heap, heap_indices::mat_idx_buffer_heap_idx, inst_info.mesh.submesh_heap_idx, inst_info.mat_index, light_idx, uv, uv_count);
             // auto col = mis_weight * light_emission / float(max(pdf_light, 1e-5f));
             light_emission = spectrum::emission_to_spectrum(g_image_heap, g_volume_heap, spectrum_arg, resource_to_rec2020_mat * light_emission);
             result.L = light_emission / max(1e-5f, rad_contri);

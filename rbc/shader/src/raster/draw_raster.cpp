@@ -51,16 +51,16 @@ struct RasterBasicParameter {
     auto inst_info = g_buffer_heap.uniform_idx_buffer_read<geometry::InstanceInfo>(heap_indices::inst_buffer_heap_idx, user_id);
     geometry::Triangle triangle;
     bool contained_normal;
-    uint contained_uv;
+    uint uv_count;
     bool contained_tangent;
-    auto vertices = geometry::read_vertices(g_buffer_heap, prim_id, inst_info.mesh, contained_normal, contained_tangent, contained_uv, triangle);
+    auto vertices = geometry::read_vertices(g_buffer_heap, prim_id, inst_info.mesh, contained_normal, contained_tangent, uv_count, triangle);
     auto mat_meta = material::mat_meta(g_buffer_heap, heap_indices::mat_idx_buffer_heap_idx, inst_info.mesh.submesh_heap_idx, inst_info.mat_index, prim_id);
     auto inst_transform = transform_buffer.read(user_id);
     auto local_pos = interpolate(bary, vertices[2].pos, vertices[0].pos, vertices[1].pos);
     std::array<float3, 3> vert_poses;
     std::array<float3, 3> vert_normals;
     float3 world_pos;
-    float2 uv;
+    std::array<float2, 4> uv;
     float3 vertices_normal;
     float3 plane_normal;
     for (int i = 0; i < 3; ++i) {
@@ -70,7 +70,9 @@ struct RasterBasicParameter {
     plane_normal = cross(vert_poses[0] - vert_poses[1], vert_poses[0] - vert_poses[2]);
     plane_normal = normalize(plane_normal);
     world_pos = (inst_transform * float4(local_pos, 1)).xyz;
-    uv = interpolate(bary, vertices[2].uvs[0], vertices[0].uvs[0], vertices[1].uvs[0]);
+    for (int i = 0; i < uv_count; ++i) {
+        uv[i] = interpolate(bary, vertices[2].uvs[i], vertices[0].uvs[i], vertices[1].uvs[i]);
+    }
     if (contained_normal) {
         vertices_normal = interpolate(bary, vertices[2].normal, vertices[0].normal, vertices[1].normal);
         vertices_normal = normalize((inst_transform * float4(vertices_normal, 0)).xyz);
@@ -105,6 +107,7 @@ struct RasterBasicParameter {
         texture_filter,
         vt_meta,
         uv,
+        uv_count,
         float4(0),// float4(ddx, ddy),
         ray_dir,
         world_pos,

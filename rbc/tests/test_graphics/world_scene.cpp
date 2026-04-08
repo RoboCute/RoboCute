@@ -210,7 +210,9 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         scene->load();
         scene->install();
         test_procedural.init(proj.get());
-
+        gltf_mesh = proj->import_assets("metal_office_desk_4k.gltf", TypeInfo::get<world::MeshResource>().md5());
+        gltf_mesh->load();
+        gltf_mesh->install();
     } else {
         // load skybox
         {
@@ -591,6 +593,7 @@ WorldScene::~WorldScene() {
         scene->save_to_path();
     scene.reset();
     skinning_entity.reset();
+    gltf_mesh.reset();
     skinning_mesh.reset();
     skinning_origin_mesh.reset();
     // physics_mat.reset();

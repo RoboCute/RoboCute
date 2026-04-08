@@ -27,6 +27,7 @@ struct WorldScene {
     Buffer<DualQuaternion> test_bones;
     RC<world::MeshResource> skinning_origin_mesh;
     RC<world::MeshResource> skinning_mesh;
+    RC<world::MeshResource> gltf_mesh;
     RC<world::Entity> skinning_entity;// make it independent, no save to file
     // jolt physics
     // RC<world::MaterialResource> physics_mat;

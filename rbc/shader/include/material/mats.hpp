@@ -18,16 +18,17 @@ inline bool cutout(
 	BindlessBuffer& buffer_heap,
 	BindlessImage& image_heap,
 	MatMeta meta,
-	float2 uv,
+	std::array<float2, 4> uv,
+	uint uv_count,
 	vt::VTMeta vt_meta,
 	auto& rng) {
 	int priority = -0x7fffffff;// TODO: make priority work
 	return PolymorphicMaterial::visit(meta.mat_type, [&]<class ins>() {
 		using Type = typename ins::type;
 		if constexpr (requires {
-						  { Type::cutout(buffer_heap, image_heap, ins::index, meta.mat_index, vt_meta, uv, priority, rng) } -> std::same_as<bool>;
+						  { Type::cutout(buffer_heap, image_heap, ins::index, meta.mat_index, vt_meta, uv, uv_count, priority, rng) } -> std::same_as<bool>;
 					  }) {
-			return Type::cutout(buffer_heap, image_heap, ins::index, meta.mat_index, vt_meta, uv, priority, rng);
+			return Type::cutout(buffer_heap, image_heap, ins::index, meta.mat_index, vt_meta, uv, uv_count, priority, rng);
 		} else {
 			return false;
 		}
@@ -41,14 +42,15 @@ inline float3 get_light_emission(
 	uint submesh_heap_idx,
 	uint mat_index,
 	uint prim_id,
-	float2 uv) {
+	std::array<float2, 4> uv,
+	uint uv_count) {
 	auto meta = mat_meta(buffer_heap, mat_idx_buffer_heap_idx, submesh_heap_idx, mat_index, prim_id);
 	return PolymorphicMaterial::visit(meta.mat_type, [&]<class ins>() {
 		using Type = typename ins::type;
 		if constexpr (requires {
-						  { Type::get_emission(buffer_heap, image_heap, ins::index, meta.mat_index, uv) } -> std::same_as<float3>;
+						  { Type::get_emission(buffer_heap, image_heap, ins::index, meta.mat_index, uv, uv_count) } -> std::same_as<float3>;
 					  }) {
-			return Type::get_emission(buffer_heap, image_heap, ins::index, meta.mat_index, uv);
+			return Type::get_emission(buffer_heap, image_heap, ins::index, meta.mat_index, uv, uv_count);
 		} else {
 			return float3(0);
 		}
@@ -62,6 +64,7 @@ inline bool transform_to_params(
 	uint& texture_filter,
 	vt::VTMeta vt_meta,
 	std::array<float2, 4> uv,
+	uint uv_count,
 	float4 ddxy,
 	float3 input_dir,
 	float3 world_pos,
@@ -79,6 +82,7 @@ inline bool transform_to_params(
 											texture_filter,
 											vt_meta,
 											uv,
+											uv_count,
 											ddxy,
 											input_dir,
 											reject,
@@ -93,6 +97,7 @@ inline bool transform_to_params(
 											 texture_filter,
 											 vt_meta,
 											 uv,
+										     uv_count,
 											 ddxy,
 											 input_dir,
 											 reject,

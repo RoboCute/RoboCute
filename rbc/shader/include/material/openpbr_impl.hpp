@@ -13,29 +13,34 @@ inline bool OpenPBR::cutout(
     uint mat_index,
     vt::VTMeta vt_meta,
     std::array<float2, 4> uvs,
+    uint uv_count,
     int &priority,
     auto &rng) {
     auto geo = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Geometry>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, geometry));
     float geo_opacity = geo.opacity;
-    auto read_tex = [&](MatImageHandle const &tex, auto uv_settings) {
+    auto uv_settings = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::UVs>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, uvs));
+    auto read_tex = [&](MatImageHandle const &tex) {
         uint min_level;
+        float2 uv;
+        if (uv_count == 0)
+            uv = float2(0);
+        else
+            uv = uvs[min(uv_count - 1, tex.type())];
         return vt::sample_vt(
             buffer_heap,
             image_heap,
             vt_meta,
             tex.index(),
-            uvs[tex.type()] * uv_settings.uv_scale + uv_settings.uv_offset,
+            uv * float2(uv_settings.uv_scale) + float2(uv_settings.uv_offset),
             0.0f,
             min_level,
             Filter::POINT, Address::REPEAT);
     };
     if (geo.opacity_tex.valid()) {
-        auto uv_settings = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::UVs>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, uvs));
         geo_opacity *= read_tex(geo.opacity_tex).x;
     } else {
         auto base = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Base>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, base));
         if (base.albedo_tex.valid()) {
-            auto uv_settings = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::UVs>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, uvs));
             geo_opacity *= read_tex(base.albedo_tex).w;
         }
     }
@@ -50,12 +55,17 @@ inline float3 OpenPBR::get_emission(
     BindlessImage &image_heap,
     uint mat_type,
     uint mat_index,
-    std::array<float2, 4> uvs) {
+    std::array<float2, 4> uvs,
+    uint uv_count) {
     auto emission = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Emission>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, emission));
     float3 col = float3(emission.luminance);
+    auto uv_settings = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::UVs>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, uvs));
+    float2 uv;
+    if (uv_count == 0)
+        uv = float2(0);
+    else
+        uv = uvs[min(uv_count - 1, emission.emission_tex.type())];
     if (emission.emission_tex.valid()) {
-        auto uv_settings = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::UVs>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, uvs));
-        float2 uv = uvs[emission.emission_tex.type()];
         uv = uv * float2(uv_settings.uv_scale) + float2(uv_settings.uv_offset);
         col *= image_heap.image_sample_level(emission.emission_tex.index(), uv, 16, Filter::LINEAR_POINT, Address::REPEAT).xyz;
     }
@@ -75,6 +85,7 @@ inline bool OpenPBR::transform_to_params(
     uint texture_filter,
     vt::VTMeta vt_meta,
     std::array<float2, 4> uvs,
+    uint uv_count,
     float4 ddxy,
     float3 input_dir,
     bool &reject,
@@ -86,7 +97,11 @@ inline bool OpenPBR::transform_to_params(
     auto read_tex = [&](MatImageHandle const &tex) {
         uint min_level;
         uint dst_level;
-        float2 uv = uvs[tex.type()];
+        float2 uv;
+        if (uv_count == 0)
+            uv = float2(0);
+        else
+            uv = uvs[min(uv_count - 1, tex.type())];
         auto v = vt::sample_vt(
             buffer_heap,
             image_heap,
@@ -131,7 +146,7 @@ inline bool OpenPBR::transform_to_params(
                 get_channel((swizzle_val >> 9) & 0x7, params.weight.base);
             }
             if constexpr (requires { params.specular; }) {
-				get_channel((swizzle_val >> 3) & 0x7, params.specular.roughness);
+                get_channel((swizzle_val >> 3) & 0x7, params.specular.roughness);
             }
         }
     }

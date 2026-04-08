@@ -307,12 +307,13 @@ static IntegratorResult sample_material(
     if constexpr (requires { hit.hit_triangle(); }) {
         hit_triangle = hit.hit_triangle();
     }
+    uint uv_count = 0;
     IntegratorResult r;
+
     if (hit_triangle) {
         inst_info = g_buffer_heap.uniform_idx_buffer_read<geometry::InstanceInfo>(heap_indices::inst_buffer_heap_idx, user_id);
-        uint contained_uv = 0;
         geometry::Triangle triangle;
-        auto vertices = geometry::read_vertices(g_buffer_heap, hit.prim, inst_info.mesh, contained_normal, contained_tangent, contained_uv, triangle);
+        auto vertices = geometry::read_vertices(g_buffer_heap, hit.prim, inst_info.mesh, contained_normal, contained_tangent, uv_count, triangle);
         mat_meta = material::mat_meta(g_buffer_heap, heap_indices::mat_idx_buffer_heap_idx, inst_info.mesh.submesh_heap_idx, inst_info.mat_index, hit.prim);
         mat_id = material::to_mat_code(mat_meta);
         inst_transform = g_accel.instance_transform(hit.inst);
@@ -333,7 +334,7 @@ static IntegratorResult sample_material(
         plane_normal = cross(vert_poses[0] - vert_poses[1], vert_poses[0] - vert_poses[2]);
         plane_normal = normalize(plane_normal);
         world_pos = (inst_transform * float4(local_pos, 1)).xyz;
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < uv_count; ++i) {
             uv[i] = hit.interpolate(vertices[0].uvs[i], vertices[1].uvs[i], vertices[2].uvs[i]);
         }
 
@@ -392,6 +393,7 @@ static IntegratorResult sample_material(
             texture_filter,
             vt_meta,
             uv,
+            uv_count,
             float4(ddx, ddy),
             input_dir,
             world_pos,
@@ -484,6 +486,7 @@ static IntegratorResult sample_material(
                 texture_filter,
                 vt_meta,
                 uv,
+                uv_count,
                 float4(ddx, ddy),
                 input_dir,
                 world_pos,

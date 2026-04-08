@@ -11,11 +11,12 @@ inline float3 Unlit::get_emission(
     BindlessImage &image_heap,
     uint mat_type,
     uint mat_index,
-    std::array<float2, 4> uvs) {
+    std::array<float2, 4> uvs,
+    uint uv_count) {
     auto mat = buffer_heap.uniform_idx_buffer_read<Unlit>(mat_type, mat_index);
     float3 col = float3(mat.color);
-    if (mat.tex.valid()) {
-        float2 uv = uvs[mat.tex.type()];
+    if (mat.tex.valid() && uv_count > 0) {
+        float2 uv = uvs[min(uv_count - 1, mat.tex.type())];
         uv = uv * float2(mat.uv_scale) + float2(mat.uv_offset);
         col *= image_heap.image_sample(mat.tex.index(), uv, Filter::LINEAR_POINT, Address::REPEAT).xyz;
     }
@@ -31,6 +32,7 @@ inline bool Unlit::transform_to_params(
     uint texture_filter,
     vt::VTMeta vt_meta,
     std::array<float2, 4> uvs,
+    uint uv_count,
     float4 ddxy,
     float3 input_dir,
     bool &reject,
@@ -41,8 +43,8 @@ inline bool Unlit::transform_to_params(
         params.geometry.thin_walled = true;
     auto mat = buffer_heap.uniform_idx_buffer_read<Unlit>(mat_type, mat_index);
     float3 col = float3(mat.color);
-    if (mat.tex.valid()) {
-        float2 uv = uvs[mat.tex.type()];
+    if (mat.tex.valid() && uv_count > 0) {
+        float2 uv = uvs[min(uv_count - 1, mat.tex.type())];
         uv = uv * float2(mat.uv_scale) + float2(mat.uv_offset);
         col *= image_heap.image_sample(mat.tex.index(), uv, texture_filter, Address::REPEAT).xyz;
     }
