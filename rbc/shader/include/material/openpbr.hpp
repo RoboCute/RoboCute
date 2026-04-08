@@ -135,7 +135,6 @@ struct OpenPBR {
             std::array<float2, 4> uvs,
             uint uv_count,
             float4 ddxy,
-            float3 input_dir,
             bool &reject,
             auto &&...);
 

@@ -34,7 +34,6 @@ inline bool Unlit::transform_to_params(
     std::array<float2, 4> uvs,
     uint uv_count,
     float4 ddxy,
-    float3 input_dir,
     bool &reject,
     auto &&...) {
     if constexpr (requires { params.weight; })

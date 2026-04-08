@@ -71,12 +71,11 @@ inline std::array<PosUV, 3> read_vert_pos_uv(
         offset += 16 * mesh_meta.vertex_count;
     }
     uv_count = 0;
-    for (uint uv_idx = 0; uv_idx < 4; ++uv_idx) {
-        if ((mesh_meta.ele_mask & (MeshMeta::uv_mask << uv_idx)) == 0u)
+    for (uv_count = 0; uv_count < 4; ++uv_count) {
+        if ((mesh_meta.ele_mask & (MeshMeta::uv_mask << uv_count)) == 0u)
             break;
-        uv_count += 1;
         for (uint i = 0; i < 3; ++i) {
-            arr[i].uv[uv_idx] = heap.byte_buffer_read<float2>(
+            arr[i].uv[uv_count] = heap.byte_buffer_read<float2>(
                 mesh_meta.heap_idx, offset + tri[i] * 8);
         }
         offset += 8 * mesh_meta.vertex_count;

@@ -395,7 +395,6 @@ static IntegratorResult sample_material(
             uv,
             uv_count,
             float4(ddx, ddy),
-            input_dir,
             world_pos,
             reject);
         if (basic_param.geometry.thin_walled && dot(input_dir, vertices_normal) >= 0.0f) {
@@ -488,7 +487,6 @@ static IntegratorResult sample_material(
                 uv,
                 uv_count,
                 float4(ddx, ddy),
-                input_dir,
                 world_pos,
                 reject);
         } else {
