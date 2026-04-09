@@ -140,7 +140,7 @@ void TexStreamManager::_async_logic() {
                 if (res->set_level_cmds.empty()) return;
                 auto &copy_cmd = _uploader._get_copy_cmd(_min_level_buffer.view());
                 for (auto &i : res->set_level_cmds) {
-                    copy_cmd.indices_map.emplace(i.offset);
+                    copy_cmd.indices_map_bytes.emplace(i.offset * sizeof(uint16_t));
                     auto size = copy_cmd.datas.size();
                     copy_cmd.datas.push_back_uninitialized(sizeof(uint16_t));
                     auto ptr = reinterpret_cast<uint16_t *>(copy_cmd.datas.data() + size);
@@ -590,7 +590,7 @@ void TexStreamManager::before_rendering(
                 dispose_dispatch_cache.reserve(_dispose_map.size());
                 auto &copy_cmd = _uploader._get_copy_cmd(_chunk_offset_buffer.view());
                 for (auto &i : _dispose_map) {
-                    copy_cmd.indices_map.emplace(i.first);
+                    copy_cmd.indices_map_bytes.emplace(i.first * sizeof(uint));
                     auto size = copy_cmd.datas.size();
                     copy_cmd.datas.push_back_uninitialized(sizeof(uint));
                     auto ptr = reinterpret_cast<uint *>(copy_cmd.datas.data() + size);

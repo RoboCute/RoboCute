@@ -176,7 +176,7 @@ rbc::coroutine TextureResource::_async_load() {
             loaded = false;
             break;
         }
-        (void)desire_size_bytes();  // Suppress unused warning
+        (void)desire_size_bytes();// Suppress unused warning
         auto path = this->path();
         if (path.empty()) {
             loaded = false;
@@ -291,7 +291,6 @@ void TextureResource::_pack_to_tile_level(uint level, luisa::span<std::byte cons
         }
 }
 bool TextureResource::pack_to_tile() {
-    if (_is_vt) return false;
     auto host_data_ptr = host_data();
     if (!host_data_ptr || host_data_ptr->empty()) return false;
     auto &host_data = *host_data_ptr;
@@ -311,7 +310,17 @@ bool TextureResource::pack_to_tile() {
     host_data = std::move(data);
     save_to_path();
     _tex.reset();
-    _tex = new DeviceSparseImage();
+    auto tex = new DeviceSparseImage();
+    _tex = tex;
+    tex->load(
+        TexStreamManager::instance(),
+        {},
+        this->path(),
+        0,
+        {},
+        (PixelStorage)_pixel_storage,
+        _size,
+        _mip_level);
     // _vt_finished = new VTLoadFlag{};
     _is_vt = true;
     return true;

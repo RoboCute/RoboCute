@@ -50,6 +50,7 @@ void TextureLoader::process_texture(RC<world::TextureResource> const &tex, uint 
     uint64_t gpu_fence = 0;
     auto to_vt_func = [&](RC<world::TextureResource> const &tex, uint chunk_size) {
         if (!to_vt) return;
+        tex->_is_vt = to_vt;
         if (all((tex->size() & (chunk_size - 1u)) != 0u)) {
             LUISA_WARNING("Texture size {} is not aligned as {}", tex->size(), chunk_size);
             return;

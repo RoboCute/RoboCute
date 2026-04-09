@@ -183,6 +183,9 @@ void GraphicsUtils::remove_render_pipectx(RenderPlugin::PipeCtxStub *pipe_ctx) {
 void GraphicsUtils::tick(
     TickStage tick_stage,
     bool enable_denoise) {
+    if (_tex_loader) {
+        _tex_loader->finish_task();
+    }
     world::Component::_zz_invoke_world_event(world::WorldEventType::BeforeFrame);
     AssetsManager::instance()->wake_load_thread();
     std::unique_lock render_lck{_render_device->render_loop_mtx()};

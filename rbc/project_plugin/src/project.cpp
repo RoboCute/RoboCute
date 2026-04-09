@@ -183,7 +183,10 @@ void Project::scan_project() {
             [&] {
                 {
                     luisa::BinaryFileStream fs{luisa::to_string(path) + ".rbcmt"};
-                    if (!fs.valid()) return;
+                    if (!fs.valid()) {
+                        file_is_dirty = false;
+                        return;
+                    }
                     vec.push_back_uninitialized(fs.length());
                     fs.read(vec);
                 }
