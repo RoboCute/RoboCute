@@ -161,7 +161,7 @@ bool SkyAtmosphere::update(CommandList &cmdlist, Stream &stream, BindlessAllocat
     _atmosphere_dirty = false;
     bool update = false;
     if (!_table.table.empty()) {
-        cmdlist << _alias_table.view().copy_from(_table.table.data());
+        cmdlist << _alias_table.view().copy_from(luisa::span(_table.table));
         _table.table.clear();
         if (_sky_alias_id == ~0u) {
             _sky_alias_id = bdls_alloc.allocate_buffer(_alias_table);
@@ -170,7 +170,7 @@ bool SkyAtmosphere::update(CommandList &cmdlist, Stream &stream, BindlessAllocat
         update = true;
     }
     if (!_table.pdfs.empty()) {
-        cmdlist << _pdf_table.view().copy_from(_table.pdfs.data());
+        cmdlist << _pdf_table.view().copy_from(luisa::span(_table.pdfs));
         _table.pdfs.clear();
         if (_sky_pdf_id == ~0u) {
             _sky_pdf_id = bdls_alloc.allocate_buffer(_pdf_table);

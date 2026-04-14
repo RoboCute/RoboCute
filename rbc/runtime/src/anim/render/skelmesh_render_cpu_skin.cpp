@@ -185,7 +185,7 @@ void SkeletalMeshRenderObjectCPUSkin::CPUSkinAndCacheVertices() {
     DoCPUSkin(&LOD, LOD.skin_matrices);
     [[maybe_unused]] auto *origin_mesh = LOD.morph_mesh->origin_mesh();
     auto &morph_data = LOD.morph_mesh->device_transforming_mesh()->mesh_data()->pack.mutable_data;
-    device_->lc_main_cmd_list() << morph_data.view().copy_from(LOD.morph_bytes.data());
+    device_->lc_main_cmd_list() << morph_data.view().copy_from(luisa::span(LOD.morph_bytes));
 }
 
 void SkeletalMeshRenderObjectCPUSkin::UpdateDrawcalls() {

@@ -18,7 +18,7 @@ void TextureUploader::upload(
     void *ptr,
     ImageView<float> img) const {
     if ((pixel_storage_size(img.storage(), uint3(img.size().x, 1, 1)) & 511) == 0) {
-        cmdlist << img.copy_from(ptr);
+        cmdlist << img.copy_from(luisa::span(reinterpret_cast<std::byte*>(ptr), img.size_bytes()));
     } else {
         auto buffer = temp_buffer.allocate_upload_buffer<uint>(img.size_bytes() / sizeof(uint));
         std::memcpy(buffer.mapped_ptr(), ptr, img.size_bytes());

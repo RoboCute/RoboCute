@@ -494,7 +494,7 @@ void GraphicsUtils::update_texture(DeviceImage *ptr, uint mip_level) {
         auto size_bytes = img.size_bytes();
         auto row_size = pixel_storage_size(img.storage(), make_uint3(img.size().x, 1, 1));
         if ((row_size & 255) > 0) {
-            _render_device->lc_main_cmd_list() << img.copy_from(host_ptr);
+            _render_device->lc_main_cmd_list() << img.copy_from(luisa::span(host_ptr, size_bytes));
         } else {
             _sm->frame_mem_io_list() << IOCommand{
                 host_ptr,

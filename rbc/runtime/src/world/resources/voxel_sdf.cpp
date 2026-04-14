@@ -42,7 +42,7 @@ void SDFVoxelResource::_compute_aabb(CommandList &cmdlist) {
     host_aabb.packed_max = {aabb_max.x, aabb_max.y, aabb_max.z};
 
     // Upload AABB data to GPU buffer
-    cmdlist << _aabb_buffer.view().copy_from(&host_aabb);
+    cmdlist << _aabb_buffer.view().copy_from(luisa::span(&host_aabb, 1));
 }
 
 void SDFVoxelResource::build_procedural_primitive(

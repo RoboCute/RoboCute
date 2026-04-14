@@ -216,10 +216,10 @@ void PreparePass::_create_and_upload_images(
     luisa::vector<float4> &&cie_xyz_lut_data,
     luisa::vector<float> &&illum_d65_lut_data) {
     cie_xyz_cdfinv = device.create_image<float>(PixelStorage::FLOAT4, make_uint2(spectrum::cie_xyz_cdfinv_size, 1));
-    cmdlist << cie_xyz_cdfinv.copy_from(cie_xyz_lut_data.data());
+    cmdlist << cie_xyz_cdfinv.copy_from(luisa::span(reinterpret_cast<std::byte*>(cie_xyz_lut_data.data()), cie_xyz_lut_data.size_bytes()));
     scene.dispose_after_commit(std::move(cie_xyz_lut_data));
     illum_d65 = device.create_image<float>(PixelStorage::FLOAT1, make_uint2(spectrum::illum_d65_size, 1));
-    cmdlist << illum_d65.copy_from(illum_d65_lut_data.data());
+    cmdlist << illum_d65.copy_from(luisa::span(reinterpret_cast<std::byte*>(illum_d65_lut_data.data()), illum_d65_lut_data.size_bytes()));
     scene.dispose_after_commit(std::move(illum_d65_lut_data));
 }
 
@@ -251,7 +251,7 @@ void PreparePass::wait_enable() {
 void PreparePass::_process_lut_load_commands(PipelineContext const &ctx) {
     for (auto &i : _lut_load_cmds) {
         i.evt.wait();
-        (*ctx.cmdlist) << i.tex->copy_from(i.data.data());
+        (*ctx.cmdlist) << i.tex->copy_from(luisa::span(i.data));
         ctx.scene->dispose_after_commit(std::move(i.data));
     }
     _lut_load_cmds.clear();

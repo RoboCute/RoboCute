@@ -126,7 +126,7 @@ void TextureLoader::process_texture(RC<world::TextureResource> const &tex, uint 
         {
             auto view = img.view(0);
             auto level_size = view.size_bytes();
-            _cmdlist << view.copy_from(host_data.data());
+            _cmdlist << view.copy_from(luisa::span(host_data));
             offset += level_size;
         }
         _pack_tex->generate_mip(
@@ -136,7 +136,7 @@ void TextureLoader::process_texture(RC<world::TextureResource> const &tex, uint 
         for (auto i : vstd::range(1, mip_level)) {
             auto view = img.view(i);
             auto level_size = view.size_bytes();
-            _cmdlist << view.copy_to(host_data.data() + offset);
+            _cmdlist << view.copy_to(luisa::span(host_data).subspan(offset));
             offset += level_size;
         }
     }

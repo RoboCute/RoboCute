@@ -71,7 +71,7 @@ void EditingPass::contour(PipelineContext const &ctx, luisa::span<uint const> dr
         host_data.push_back(draw_cmd.info);
     }
     auto &cmdlist = *ctx.cmdlist;
-    cmdlist << elem_buffer.view(0, host_data.size()).copy_from(host_data.data());
+    cmdlist << elem_buffer.view(0, host_data.size()).copy_from(luisa::span(host_data));
     sm.dispose_after_commit(std::move(host_data));
     const auto &cam_data = ctx.pipeline_settings.read<CameraData>();
     auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
@@ -264,7 +264,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
 
             luisa::vector<float4> results;
             results.push_back_uninitialized(result_buffer.size());
-            cmdlist << result_buffer.view().copy_to(results.data());
+            cmdlist << result_buffer.view().copy_to(luisa::span(results));
             cmdlist.add_callback([&ctx,
                                   reqs = std::move(reqs),
                                   results = std::move(results)]() mutable {
@@ -295,7 +295,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             });
             std::memcpy(require_buffer.mapped_ptr(), req_coords.data(), req_coords.size_bytes());
             cmdlist << click_pick::dispatch_shader(_click_pick, reqs.size(), sm.buffer_heap(), require_buffer.view, *id_map, result_buffer.view())
-                    << result_buffer.view().copy_to(result.data());
+                    << result_buffer.view().copy_to(luisa::span(result));
             cmdlist.add_callback([&ctx,
                                   reqs = std::move(reqs),
                                   result = std::move(result)]() mutable {

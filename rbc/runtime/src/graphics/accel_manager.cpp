@@ -80,7 +80,7 @@ void AccelManager::_init_default_procedural_blas(
         luisa::unique_ptr<AABB> ptr(luisa::new_with_allocator<AABB>());
         ptr->packed_min = {-0.5f, -0.5f, -0.5f};
         ptr->packed_max = {0.5f, 0.5f, 0.5f};
-        cmdlist << _default_aabb_buffer.view().copy_from(ptr.get());
+        cmdlist << _default_aabb_buffer.view().copy_from(luisa::span(ptr.get(), 1));
         disp_queue.dispose_after_queue(std::move(ptr));
         _default_procedural_prim = _device.create_procedural_primitive(_default_aabb_buffer, AccelOption{});
         cmdlist << _default_procedural_prim.build();
@@ -727,7 +727,7 @@ void AccelManager::make_draw_list(
         _raster_transform_buffer = _device.create_buffer<RasterElement>(desired_buffer_size);
     }
     out_data_buffer = _raster_transform_buffer.view(0, buffer_size.load());
-    cmdlist << out_data_buffer.copy_from(elem_host.data());
+    cmdlist << out_data_buffer.copy_from(luisa::span(elem_host));
     after_commit_dispqueue.dispose_after_queue(std::move(elem_host));
     mesh_map->clear();
     _cache_maps.enqueue(std::move(*mesh_map));

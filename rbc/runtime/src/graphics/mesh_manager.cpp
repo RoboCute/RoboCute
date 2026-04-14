@@ -296,7 +296,7 @@ void MeshManager::execute_compute_bounding(
                    result_view.as<uint>(),
                    false)
                    .dispatch(dispatch_sizes)
-            << result_view.copy_to(results.data());
+            << result_view.copy_to(luisa::span(results));
     cmdlist.add_callback([results = std::move(results), bounding_requests = std::move(bounding_requests)]() mutable {
         auto iter = results.begin();
         for (auto &i : bounding_requests) {

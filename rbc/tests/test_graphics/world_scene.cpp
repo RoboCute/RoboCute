@@ -389,7 +389,7 @@ void WorldScene::_init_skinning(GraphicsUtils *utils) {
     for (size_t i : vstd::range(indices.size())) {
         indices[i] = (i < indices.size() / 2) ? 0 : 1;// index to bone 0 and bone 1
     }
-    render_device.lc_main_stream() << skinning_weight_index.copy_from(weight_and_index_host.data());
+    render_device.lc_main_stream() << skinning_weight_index.copy_from(luisa::span(weight_and_index_host));
     skinning_entity = world::create_object<world::Entity>();
     auto tr = skinning_entity->add_component<world::TransformComponent>();
     tr->set_pos(double3(0, 2, 1), false);
@@ -481,7 +481,7 @@ void WorldScene::_set_gizmos() {
     _gizmos = new Gizmos{};
     _gizmos->data = render_device.lc_device().create_buffer<uint>(gizmos_mesh.size() / sizeof(uint));
     _gizmos->vertex_size = mesh_builder.vertex_count();
-    render_device.lc_main_stream() << _gizmos->data.view().copy_from(gizmos_mesh.data());
+    render_device.lc_main_stream() << _gizmos->data.view().copy_from(luisa::span(gizmos_mesh));
 }
 bool WorldScene::draw_gizmos(
     bool dragging,
@@ -643,7 +643,7 @@ void WorldScene::tick_skinning(GraphicsUtils *utils, float delta_time) {
     auto time = clk.toc() * 1e-3 * 3;
     bones[0] = encode_dual_quaternion(float3(sin(time), -0.5, cos(time)), Quaternion{});
     bones[1] = encode_dual_quaternion(float3(sin(time + pi * 0.5f), 0.5, cos(time + pi * 0.5f)), Quaternion{});
-    cmdlist << test_bones.view().copy_from(bones.data());
+    cmdlist << test_bones.view().copy_from(luisa::span(bones));
     sm.dispose_after_commit(std::move(bones));
     // skinning
     utils->update_skinning(

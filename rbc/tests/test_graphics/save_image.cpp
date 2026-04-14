@@ -9,7 +9,7 @@ void save_image(luisa::filesystem::path const &path, Image<float> const &img) {
     luisa::vector<std::byte> bytes;
     bytes.push_back_uninitialized(pixel_storage_size(PixelStorage::BYTE4, make_uint3(img.size(), 1)));
     if (img.storage() == PixelStorage::BYTE4) {
-        stream << img.copy_to(bytes.data())
+        stream << img.copy_to(luisa::span(bytes))
                << synchronize();
     } else {
         CommandList cmdlist;
@@ -23,7 +23,7 @@ void save_image(luisa::filesystem::path const &path, Image<float> const &img) {
             luisa::uint2(),
             img.size(),
             1.0f);
-        cmdlist << temp_img.copy_to(bytes.data());
+        cmdlist << temp_img.copy_to(luisa::span(bytes));
         stream << cmdlist.commit()
                << synchronize();
     }

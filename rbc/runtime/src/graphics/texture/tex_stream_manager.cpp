@@ -238,7 +238,7 @@ void TexStreamManager::_async_logic() {
     inqueue_frame++;
     vector<uint> readback;
     readback.push_back_uninitialized(_readback_size / sizeof(uint));
-    cmdlist << _level_buffer.buffer().view(0, readback.size()).copy_to(readback.data());
+    cmdlist << _level_buffer.buffer().view(0, readback.size()).copy_to(luisa::span(readback));
     cmdlist.add_callback([this, readback = std::move(readback)]() mutable {
         _frame_readback_buffer.push(std::move(readback));
     });

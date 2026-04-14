@@ -21,7 +21,7 @@ void SkelMeshRenderDataLOD::Initialize(world::MeshResource *InMeshResource, Rend
     auto &morph_data = morph_mesh->device_transforming_mesh()->mesh_data()->pack.mutable_data;
     LUISA_INFO("Morph {}", morph_data.size_bytes());
     morph_bytes.resize_uninitialized(morph_data.size_bytes());
-    InDevice->lc_main_cmd_list() << morph_data.view().copy_to(morph_bytes.data());
+    InDevice->lc_main_cmd_list() << morph_data.view().copy_to(luisa::span(morph_bytes));
 }
 
 void SkelMeshRenderDataLOD::InitResources(SkeletalMeshRenderData *InRenderData, RenderDevice *InDevice) {

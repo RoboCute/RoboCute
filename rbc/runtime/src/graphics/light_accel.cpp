@@ -189,7 +189,7 @@ void LightAccel::update_tlas(CommandList& cmdlist, DisposeQueue& disp_queue)
             );
     }
 
-    cmdlist << _tlas_buffer.view(0, capacity).copy_from(_tlas_data.data());
+    cmdlist << _tlas_buffer.view(0, capacity).copy_from(luisa::span(_tlas_data.data(), capacity));
 }
 void LightAccel::mark_light_dirty(
     uint light_type,

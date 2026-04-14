@@ -122,7 +122,7 @@ void HDRI::compute_scalemap(
     scale_map.push_back_uninitialized(pixel_count);
     cmdlist
         << (*_weight)(img, buffer).dispatch(size)
-        << buffer.copy_to(scale_map.data());
+        << buffer.copy_to(luisa::span(scale_map));
     cmdlist.add_callback([callback = std::move(callback), scale_map = std::move(scale_map)]() mutable {
         callback(std::move(scale_map));
     });
@@ -200,7 +200,7 @@ auto HDRI::precompute(
     scale_map.push_back_uninitialized(pixel_count);
     stream
         << (*_weight)(hdr, buffer).dispatch(size)
-        << buffer.view().copy_to(scale_map.data()) << synchronize();
+        << buffer.view().copy_to(luisa::span(scale_map)) << synchronize();
     return compute_alias_table(scale_map, size);
 }
 } // namespace rbc

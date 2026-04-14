@@ -62,7 +62,7 @@ luisa::compute::Buffer<uint> heitz_sobol_scrambling(
          data.size_bytes()});
 
     auto buffer = device.create_buffer<uint>(data.size());
-    cmdlist << buffer.view().copy_from(data.data());
+    cmdlist << buffer.view().copy_from(luisa::span(data));
     after_commit_dspqueue.dispose_after_queue(std::move(data));
     return buffer;
 }
@@ -107,7 +107,7 @@ luisa::compute::Buffer<uint> heitz_sobol_ranking(
         {(std::byte *)data.data(),
          data.size_bytes()});
     auto buffer = device.create_buffer<uint>(data.size());
-    cmdlist << buffer.view().copy_from(data.data());
+    cmdlist << buffer.view().copy_from(luisa::span(data));
     after_commit_dspqueue.dispose_after_queue(std::move(data));
     return buffer;
 }
@@ -125,7 +125,7 @@ luisa::compute::Buffer<uint> heitz_sobol_256d(
         {(std::byte *)data.data(),
          data.size_bytes()});
     auto buffer = device.create_buffer<uint>(data.size());
-    cmdlist << buffer.view().copy_from(data.data());
+    cmdlist << buffer.view().copy_from(luisa::span(data));
     after_commit_dspqueue.dispose_after_queue(std::move(data));
     return buffer;
 }
