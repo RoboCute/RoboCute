@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 import math
 import argparse
+import json
 from typing import Optional
 from PIL import Image
 from samples.mesh_builder import MeshBuilder
@@ -297,6 +298,89 @@ def load_material_entity(model_name: str, scene: re.world.Scene):
     return entity
 
 
+def load_material_entity_json(config_path: str | Path, scene: re.world.Scene):
+    """Load a material entity from a JSON config file.
+
+    Args:
+        config_path: Path to the JSON configuration file
+        scene: The scene to add the entity to
+
+    Returns:
+        Entity: The created entity with Transform and Render components
+    """
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+
+    # Load textures using project import
+    albedo_tex = app._project.import_texture(
+        config["textures"]["albedo"], 1, False
+    )
+    arm_tex = app._project.import_texture(
+        config["textures"]["arm"], 1, False
+    )
+    normal_tex = app._project.import_texture(
+        config["textures"]["normal"], 1, False
+    )
+
+    # Create PBR material
+    mat0_json = mat.OpenPBRInterface(app._project)
+    mat_cfg = config["material"]
+    mat0_json.set_weight_diffuse_roughness(mat_cfg["weight_diffuse_roughness"])
+    mat0_json.set_weight_base(mat_cfg["weight_base"])
+    mat0_json.set_weight_specular(mat_cfg["weight_specular"])
+    mat0_json.set_specular_roughness(mat_cfg["specular_roughness"])
+    mat0_json.set_weight_metallic(mat_cfg["weight_metallic"])
+    mat0_json.set_base_albedo(tuple(mat_cfg["base_albedo"]))
+    mat0_json.set_geometry_bump_scale(mat_cfg["geometry_bump_scale"])
+
+    # Set textures
+    mat0_json.set_base_albedo_tex(albedo_tex)
+    mat0_json.set_weight_weight_tex(arm_tex)
+    mat0_json.set_geometry_normal_tex(normal_tex)
+
+    # Configure swizzle for ARM texture (AO, Roughness, Metallic)
+    swizzle_cfg = config["swizzle"]
+    swizzle = mat.ChannelSwizzle()
+    swizzle.base = swizzle_cfg["base"]
+    swizzle.specular_roughness = swizzle_cfg["specular_roughness"]
+    swizzle.metallic = swizzle_cfg["metallic"]
+    mat0_json.set_weight_tex_swizzle(swizzle)
+
+    # Load material
+    mat0 = re.world.MaterialResource()
+    mat0.load_from_json(mat0_json.dump_to_json())
+
+    # Load mesh from GLTF
+    mesh = app._project.import_mesh(config["mesh"])
+    mesh.install()
+
+    # Create entity with Transform and Render components
+    entity = scene.add_entity()
+    entity.set_name(f"model_{config['model_name']}")
+
+    # Add Transform component
+    trans = re.world.TransformComponent(
+        entity.add_component("TransformComponent")
+    )
+    trans_cfg = config["transform"]
+    trans.set_pos(lc.double3(*trans_cfg["position"]), False)
+    trans.set_rotation(lc.float4(*trans_cfg["rotation"]), False)
+    trans.set_scale(lc.double3(*trans_cfg["scale"]), False)
+
+    # Add Render component
+    render = re.world.RenderComponent(
+        entity.add_component("RenderComponent")
+    )
+
+    # Create material vector and bind to render component
+    mat_vector = lc.capsule_vector()
+    for i in range(mesh.submesh_count()):
+        mat_vector.emplace_back(mat0._handle)
+    render.update_object(mat_vector, mesh)
+
+    return entity
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -375,6 +459,7 @@ def main():
     
     # DO THIS: test GLTF mesh
     # poly = load_material_entity('metal_office_desk', app.scene)
+    # poly = load_material_entity_json('samples/load_material_scene.json', app.scene)
     last_time = time.time()
 
     def tick_logic():  # run every frame

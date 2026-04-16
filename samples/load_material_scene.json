@@ -1,0 +1,28 @@
+{
+  "model_name": "metal_office_desk",
+  "mesh": "metal_office_desk_4k.gltf",
+  "textures": {
+    "albedo": "textures/metal_office_desk_diff_4k.png",
+    "arm": "textures/metal_office_desk_arm_4k.png",
+    "normal": "textures/metal_office_desk_nor_gl_4k.png"
+  },
+  "material": {
+    "weight_diffuse_roughness": 1.0,
+    "weight_base": 1.0,
+    "weight_specular": 1.0,
+    "specular_roughness": 1.0,
+    "weight_metallic": 1.0,
+    "base_albedo": [1.0, 1.0, 1.0],
+    "geometry_bump_scale": 1.0
+  },
+  "swizzle": {
+    "base": 0,
+    "specular_roughness": 1,
+    "metallic": 2
+  },
+  "transform": {
+    "position": [0.0, -1.0, -0.5],
+    "rotation": [0.0, 1.0, 0.0, 0.0],
+    "scale": [1.0, 1.0, 1.0]
+  }
+}
