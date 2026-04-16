@@ -7,8 +7,8 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from scripts.utils import is_empty_folder, rel, print_success, print_error, print_info
-from scripts.progress_utils import GitProgressParser, stream_reader_thread
+from rbc_build.utils import is_empty_folder, rel, print_success, print_error, print_info
+from rbc_build.progress_utils import GitProgressParser, stream_reader_thread
 
 
 def convert_to_ssh_url(https_url: str) -> str:

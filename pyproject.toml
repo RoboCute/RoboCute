@@ -6,6 +6,7 @@ dependencies = [
   "pydantic>=2.0.0",
   "numpy>=2.3.5",
   "pillow>=12.1.1",
+  "comfyui>=0.19.1",
 ]
 description = "Make Robotics Cute!"
 license = {file = "Licenses/Apache-2.0.txt"}
@@ -14,8 +15,8 @@ readme = "README.md"
 requires-python = ">=3.14.3"
 version = "0.2.4"
 
-[tool.uv.workspace]
-members = ["packages/*"]
+[tool.uv.sources]
+comfyui = { git = "https://github.com/RoboCute/ComfyUI.git", branch = "rbc_thirdparty" }
 
 [[tool.uv.index]]
 default = true
@@ -36,13 +37,18 @@ publish = [
 ]
 
 [project.scripts]
-gen = "scripts.main:generate"
-pre-pack = "scripts.main:pre_pack"
-prepare = "scripts.main:prepare"
+gen = "rbc_build.main:generate"
+pre-pack = "rbc_build.main:pre_pack"
+prepare = "rbc_build.main:prepare"
 
 [build-system]
 build-backend = "uv_build"
-requires = ["uv_build>=0.8.15"]
+requires = ["uv_build>=0.11.7"]
+
+[tool.uv.build-backend]
+module-name = "robocute"
+module-root = "src"
+source-exclude = ["src/rbc_build/*", "src/rbc_meta/*"]
 
 [tool.pytest.ini_options]
 testpaths = [

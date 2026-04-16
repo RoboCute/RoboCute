@@ -10,7 +10,7 @@ import time
 import importlib
 
 # from scripts.thirdparty_config import make_alembic_config, make_imath_config
-from scripts.prepare import (
+from rbc_build.prepare import (
     GIT_TASKS,
     CLANGCXX_NAME,
     CLANGCXX_PATH,
@@ -25,7 +25,7 @@ from scripts.prepare import (
     XMAKE_GLOBAL_TOOLCHAIN,
     OIDN_NAME,
 )
-from scripts.utils import (
+from rbc_build.utils import (
     is_empty_folder,
     get_project_root,
     rel,
@@ -37,8 +37,8 @@ from scripts.utils import (
     print_info,
     print_debug,
 )
-from scripts.git_ops import git_clone_or_pull
-from scripts.progress_utils import print_progress_bar
+from rbc_build.git_ops import git_clone_or_pull
+from rbc_build.progress_utils import print_progress_bar
 
 
 def get_http_proxies():
@@ -527,8 +527,8 @@ def generate_version_files() -> None:
 
 
 def generate():
-    import scripts.generate
-    from scripts.generate import generate_registered
+    import rbc_build.generate
+    from rbc_build.generate import generate_registered
 
     generate_registered()
 

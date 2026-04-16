@@ -20,8 +20,8 @@ from typing import Optional
 
 # Import from src/scripts
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from scripts.utils import print_success, print_error, print_warning, print_info, print_debug
-from scripts.prepare import PLATFORM, ARCH
+from rbc_build.utils import print_success, print_error, print_warning, print_info, print_debug
+from rbc_build.prepare import PLATFORM, ARCH
 
 
 def get_project_dir() -> Path:

@@ -1,4 +1,4 @@
-from scripts.utils import (
+from rbc_build.utils import (
     is_empty_folder,
     get_project_root,
     rel,
