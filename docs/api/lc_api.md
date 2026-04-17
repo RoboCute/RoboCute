@@ -801,28 +801,6 @@ Get result type of swizzle operation.
 def get_swizzle_resulttype(dtype, length)
 ```
 
-### Callable Library
-
-The `callable_lib` module provides shader callable serialization.
-
-#### `CallableLibrary`
-
-```python
-class CallableLibrary:
-    def __init__(self)
-    def add_callable(self, f: func, argtypes: tuple)
-    def save(self, path: str)
-```
-
-#### Methods
-
-| Method | Description |
-|--------|-------------|
-| `add_callable(f, argtypes)` | Add a callable function to the library |
-| `save(path)` | Serialize library to disk |
-
----
-
 ## Global Variables
 
 The `globalvars` module contains internal global state:
@@ -843,19 +821,41 @@ def get_global_device()
 
 ## Exported Names
 
-The following are exported from the main `luisa` module:
+The following names are available from the main `luisa` module (`robocute.rbc_ext.luisa`):
 
-```python
-__all__ = [
-    "init",
-    "del_device", 
-    "execute",
-    "uint2", "uint3", "uint4",
-    "float2", "float3", "float4",
-    "double2", "double3", "double4",
-    "capsule_vector",
-    "func",
-    "set_block_size",
-    "sync_block",
-]
-```
+### Core Functions
+- `init`, `del_device`, `synchronize`, `execute`
+- `set_log_callback`
+- `verbose`, `info`, `warning`, `error`
+- `verbose_with_location`, `info_with_location`, `warning_with_location`, `error_with_location`
+
+### Log Level Constants
+- `log_level_verbose`, `log_level_info`, `log_level_warning`, `log_level_error`
+
+### Data Types
+- Scalar markers: `half`, `short`, `ushort`
+- Vectors: `uint2`, `uint3`, `uint4`, `float2`, `float3`, `float4`, `double2`, `double3`, `double4`, `half2`, `short2`, `ushort2`, `half3`, `short3`, `ushort3`, `half4`, `short4`, `ushort4`
+
+### Buffers
+- `buffer`, `Buffer`, `ByteBuffer`
+- `BufferType`, `ByteBufferType`
+
+### Images/Textures
+- `image2d`, `Image2D`, `Texture2DType`
+- `image3d`, `Image3D`, `Texture3DType`
+
+### Shaders
+- `Shader`
+
+### Arrays & Structures
+- `array`, `Array`, `ArrayType`, `SharedArrayType`
+- `struct`, `Struct`, `StructType`, `CustomType`
+
+### Math Types (from `mathtypes`)
+- `int2`, `bool2`, `float2`, `int3`, `bool3`, `float3`, `int4`, `bool4`, `float4`
+- `float2x2`, `float3x3`, `float4x4`
+- `make_int2`, `make_bool2`, `make_float2`, `make_int3`, `make_bool3`, `make_float3`, `make_int4`, `make_bool4`, `make_float4`
+- `make_float2x2`, `make_float3x3`, `make_float4x4`
+
+### Utilities
+- `capsule_vector`

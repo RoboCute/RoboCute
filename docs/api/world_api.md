@@ -24,7 +24,7 @@ This document describes the Python API for interacting with the RoboCute world s
       - [`initialized()`](#initialized)
       - [`set_user_callback(callback)`](#set_user_callbackcallback)
       - [`call_exit()`](#call_exit)
-      - [`run()`](#run)
+      - [`run(prepare_denoise=False, limit_frame=None)`](#runprepare_denoisefalse-limit_framenone)
       - [`upload_mesh_data(mesh)`](#upload_mesh_datamesh)
       - [`set_ground_plane_mode(mode, scale=100, height=0, material=None)`](#set_ground_plane_modemode-scale100-height0-materialnone)
   - [Core Classes](#core-classes)
@@ -51,6 +51,8 @@ This document describes the Python API for interacting with the RoboCute world s
       - [Methods](#methods-10)
     - [AtmosphereComponent](#atmospherecomponent)
       - [Methods](#methods-11)
+    - [SkelMeshComponent](#skelmeshcomponent)
+      - [Methods](#methods-12)
   - [Resources](#resources)
     - [Resource](#resource)
       - [Methods](#methods-12)
@@ -72,6 +74,10 @@ This document describes the Python API for interacting with the RoboCute world s
       - [Methods](#methods-20)
     - [SkelMeshResource](#skelmeshresource)
       - [Methods](#methods-21)
+    - [VoxelResource](#voxelresource)
+      - [Methods](#methods-22)
+    - [SDFVoxelResource](#sdfvoxelresource)
+      - [Methods](#methods-23)
   - [Supporting Classes](#supporting-classes)
     - [BasicData](#basicdata)
       - [Methods](#methods-22)
@@ -237,9 +243,13 @@ Set a callback function to be called every frame.
 
 Signal the application to exit on the next frame.
 
-#### `run()`
+#### `run(prepare_denoise=False, limit_frame=None)`
 
 Run the main application loop.
+
+**Parameters:**
+- `prepare_denoise` (bool): Whether to prepare denoising
+- `limit_frame` (int, optional): Maximum number of frames to run
 
 #### `upload_mesh_data(mesh)`
 
@@ -330,7 +340,9 @@ Manages project assets and resource importing.
 | `import_texture(path, mip_level, to_vt)` | Import a texture file |
 | `import_material(path)` | Import a material |
 | `import_mesh(path)` | Import a mesh |
-| `import_texture(path, mip_level, to_vt)` | Import a texture |
+| `import_anim_sequence(path)` | Import an animation sequence |
+| `import_skeleton(path)` | Import a skeleton |
+| `import_skin(path)` | Import a skin |
 | `get_resource(guid, load_content_async)` | Load a resource by GUID |
 | `get_file_meta(type_id, dest_path)` | Get file metadata |
 
@@ -431,11 +443,10 @@ Controls camera settings and rendering.
 | `enable_physical_camera()` / `set_enable_physical_camera(value)` | Physical camera mode |
 | `set_frame_index(frame_index)` | Set frame index for accumulation |
 | `render_settings()` | Get render settings |
-| `display_image()` | Get display image resource |
-| `config_display_image(size, storage)` | Configure display image |
-| `release_display_image()` | Release display image |
+| `render_image()` | Get render image resource |
+| `config_render_image(size, storage)` | Configure render image |
+| `release_render_image()` | Release render image |
 | `save_image_to(path)` | Save image to file |
-| `clear_geometry_export_buffer()` | Clear geometry export buffer |
 | `set_geometry_export_buffer(buffer, channel_type)` | Set geometry export buffer |
 | `clear_geometry_export_buffer()` | Clear geometry export buffer |
 
@@ -474,8 +485,11 @@ Stores and manages custom data for entities.
 | `remove_info(name)` | Remove data |
 | `clear_infos()` | Clear all data |
 | `info_count()` | Get number of data entries |
+| `count()` | Get number of data entries |
+| `get_entity()` | Get the owning entity |
 | `bind_event(event_type, callback_name)` | Bind event handler |
 | `unbind_event(event_type)` | Unbind event handler |
+| `dispose()` | Dispose of the component |
 
 ---
 
@@ -489,6 +503,26 @@ Manages atmosphere/sky rendering.
 |--------|-------------|
 | `texture()` | Get atmosphere texture |
 | `update_texture(tex)` | Update atmosphere texture |
+
+---
+
+### SkelMeshComponent
+
+Component for skeletal mesh rendering.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `get_animation_time()` | Get current animation time |
+| `get_bone_transform(bone_index)` | Get transform of a specific bone |
+| `get_num_bones()` | Get number of bones |
+| `get_playback_speed()` | Get animation playback speed |
+| `get_runtime_mesh()` | Get runtime mesh resource |
+| `get_skel_mesh_resource()` | Get skeleton mesh resource |
+| `set_animation_time(time)` | Set animation time |
+| `set_playback_speed(speed)` | Set animation playback speed |
+| `set_skel_mesh_resource(res)` | Set skeleton mesh resource |
 
 ---
 
@@ -508,6 +542,18 @@ Base class for all resources.
 | `load_status()` | Get current load status |
 | `path()` | Get resource path |
 | `save_to_path()` | Save resource to its path |
+| `type()` | Get resource type |
+| `get_bool(name)` | Get boolean property |
+| `get_int(name)` | Get integer property |
+| `get_float(name)` | Get float property |
+| `get_string(name)` | Get string property |
+| `get_resource(name)` | Get resource property |
+| `set_bool(name, value)` | Set boolean property |
+| `set_int(name, value)` | Set integer property |
+| `set_float(name, value)` | Set float property |
+| `set_string(name, value)` | Set string property |
+| `set_resource(name, value)` | Set resource property |
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -523,6 +569,8 @@ Represents a 3D mesh with vertices and triangles.
 | `install()` | Install the mesh resource |
 | `create_as_morphing_instance(origin_mesh)` | Create as morphing instance |
 | `data_buffer()` | Get raw data buffer |
+| `device_data_buffer()` | Get device data buffer |
+| `device_mutable_buffer()` | Get device mutable buffer |
 | `pos_buffer()` | Get position buffer |
 | `normal_buffer()` | Get normal buffer |
 | `tangent_buffer()` | Get tangent buffer |
@@ -539,6 +587,8 @@ Represents a 3D mesh with vertices and triangles.
 | `contained_normal()` | Check if contains normals |
 | `contained_tangent()` | Check if contains tangents |
 | `is_transforming_mesh()` | Check if transforming mesh |
+| `build_before_tick()` | Build mesh before tick |
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -561,6 +611,7 @@ Represents a 2D texture.
 | `load_executed()` | Check if load was executed |
 | `pack_to_tile()` | Pack to tile format |
 | `set_skybox()` | Set as skybox |
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -575,6 +626,7 @@ Represents a material for rendering.
 | `load_from_json(json)` | Load material from JSON string |
 | `dump_json()` | Dump material to JSON string |
 | `mat_code()` | Get material code |
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -590,6 +642,7 @@ Represents a generic GPU buffer.
 | `buffer()` | Get buffer handle |
 | `host_data()` | Get host data pointer |
 | `size_bytes()` | Get buffer size |
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -601,8 +654,17 @@ Represents a skeleton for skinned meshes.
 
 | Method | Description |
 |--------|-------------|
-| `ref_skel()` | Get skeleton reference |
+| `get_joint_names()` | Get joint names |
+| `get_joint_parents()` | Get joint parent indices |
+| `get_joint_rest_poses()` | Get joint rest poses |
+| `get_num_bones()` | Get number of bones |
+| `get_num_joints()` | Get number of joints |
+| `get_num_soa_joints()` | Get number of SOA joints |
+| `get_parent_index(joint_index)` | Get parent index of a joint |
+| `ensure_parents_exist()` | Ensure all parent joints exist |
+| `ensure_parents_exist_and_sort()` | Ensure parents exist and sort joints |
 | `log_brief()` | Log skeleton info |
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -621,6 +683,7 @@ Represents skinning data for skeletal animation.
 | `JointRemapsLUT()` | Get joint remaps LUT |
 | `generate_LUT()` | Generate lookup table |
 | `log_brief()` | Log skin info |
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -632,9 +695,13 @@ Resource wrapper for animation sequences.
 
 | Method | Description |
 |--------|-------------|
-| `ref_seq()` | Get animation sequence |
+| `get_anim_name()` | Get animation name |
+| `set_anim_name(name)` | Set animation name |
+| `get_sampling_rate()` | Get sampling rate |
+| `set_sampling_rate(rate)` | Set sampling rate |
 | `ref_skel()` | Get skeleton reference |
 | `log_brief()` | Log resource info |
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -646,7 +713,8 @@ Represents an animation graph.
 
 | Method | Description |
 |--------|-------------|
-| `graph()` | Get animation graph |
+| `create_simple_anim_graph(anim_seq)` | Create a simple animation graph from sequence |
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -661,6 +729,31 @@ Represents a skeletal mesh.
 | `ref_skeleton()` | Get skeleton |
 | `ref_skin()` / `GetSkinResource()` | Get skin resource |
 | `ref_anim_graph()` | Get animation graph |
+| `dispose()` | Dispose of the resource |
+
+---
+
+### VoxelResource
+
+Represents a voxel resource.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `dispose()` | Dispose of the resource |
+
+---
+
+### SDFVoxelResource
+
+Represents a signed-distance field voxel resource.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `dispose()` | Dispose of the resource |
 
 ---
 
@@ -839,4 +932,4 @@ The following vector/matrix types are imported from `robocute.rbc_ext.luisa`:
 - `double2`, `double3`, `double4`
 - `uint2`, `uint3`, `uint4`
 - `float4x4`, `double4x4`
-- `GUID` - Global unique identifier type
+- `GUID` - Global unique identifier type (from `robocute.rbc_ext._C.rbc_ext_c`)
