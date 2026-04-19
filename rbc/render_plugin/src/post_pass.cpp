@@ -102,10 +102,10 @@ void PostPass::early_update(Pipeline const &pipeline, PipelineContext const &ctx
         _init_counter,
         ctx.scene->ctx().runtime_directory(),
         pipeline, ctx.scene->buffer_uploader(),
-        exposure_settings.global_exposure,
+        exposure_settings.globalExposure,
         frame_settings.display_resolution,
-        tone_mapping_settings.lpm.display_min_luminance,
-        tone_mapping_settings.lpm.display_max_luminance,
+        tone_mapping_settings.lpm.displayMinLuminance,
+        tone_mapping_settings.lpm.displayMaxLuminance,
         display_settings.use_hdr_display);
     _init_counter.wait();
     // post_ctx->reset |= frame_settings.frame_index == 0;
@@ -186,7 +186,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     args.hdr_display_multiplier = display_settings.use_hdr_display ? tone_mapping_settings.aces.tone_mapping.hdr_display_multiplier : 1.0f;
     float hdr_input_multiplier = 1.0f;
     if (display_settings.use_hdr_display) {
-        hdr_input_multiplier = tone_mapping_settings.aces.tone_mapping.hdr_paper_white / tone_mapping_settings.lpm.display_max_luminance;
+        hdr_input_multiplier = tone_mapping_settings.aces.tone_mapping.hdr_paper_white / tone_mapping_settings.lpm.displayMaxLuminance;
     }
     args.hdr_input_multiplier = hdr_input_multiplier;
     // args.localExposure_detail_strength = pipeline.settings.exposure.localExposureDetail;

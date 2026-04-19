@@ -45,22 +45,22 @@ static void check_aces_parameters(ACESParameters &params) {
     // tint: -1 ~ 1
     clamp_value(params.tint, -1.0f, 1.0f);
     // hue_shift: -100 ~ 100
-    clamp_value(params.hue_shift, -100.0f, 100.0f);
+    clamp_value(params.hueShift, -100.0f, 100.0f);
     // saturation: -100 ~ 200
     clamp_value(params.saturation, -100.0f, 200.0f);
     // contrast: -100 ~ 100
     clamp_value(params.contrast, -100.0f, 100.0f);
 
     // Channel mixer values: -200 ~ 200
-    clamp_value(params.mixer_red_out_red_in, -200.0f, 200.0f);
-    clamp_value(params.mixer_red_out_green_in, -200.0f, 200.0f);
-    clamp_value(params.mixer_red_out_blue_in, -200.0f, 200.0f);
-    clamp_value(params.mixer_green_out_red_in, -200.0f, 200.0f);
-    clamp_value(params.mixer_green_out_green_in, -200.0f, 200.0f);
-    clamp_value(params.mixer_green_out_blue_in, -200.0f, 200.0f);
-    clamp_value(params.mixer_blue_out_red_in, -200.0f, 200.0f);
-    clamp_value(params.mixer_blue_out_green_in, -200.0f, 200.0f);
-    clamp_value(params.mixer_blue_out_blue_in, -200.0f, 200.0f);
+    clamp_value(params.mixerRedOutRedIn, -200.0f, 200.0f);
+    clamp_value(params.mixerRedOutGreenIn, -200.0f, 200.0f);
+    clamp_value(params.mixerRedOutBlueIn, -200.0f, 200.0f);
+    clamp_value(params.mixerGreenOutRedIn, -200.0f, 200.0f);
+    clamp_value(params.mixerGreenOutGreenIn, -200.0f, 200.0f);
+    clamp_value(params.mixerGreenOutBlueIn, -200.0f, 200.0f);
+    clamp_value(params.mixerBlueOutRedIn, -200.0f, 200.0f);
+    clamp_value(params.mixerBlueOutGreenIn, -200.0f, 200.0f);
+    clamp_value(params.mixerBlueOutBlueIn, -200.0f, 200.0f);
 
     // lift: xyz color, w: -1 ~ 1
     clamp_vector3(params.lift, 0.0f, 1.0f);
@@ -75,8 +75,8 @@ static void check_aces_parameters(ACESParameters &params) {
     clamp_value(params.gain.w, -1.0f, 1.0f);
 
     // color_filter: xyz color, w: 0 ~ 5
-    clamp_vector3(params.color_filter, 0.0f, 1.0f);
-    clamp_value(params.color_filter.w, 0.0f, 5.0f);
+    clamp_vector3(params.colorFilter, 0.0f, 1.0f);
+    clamp_value(params.colorFilter.w, 0.0f, 5.0f);
 
     // Check nested tone mapping parameters
     check_tone_mapping_parameters(params.tone_mapping);
@@ -89,9 +89,9 @@ static void check_lpm_parameters(LpmDispatchParameters &params) {
     // crosstalk: color values 0 ~ 1 (vector3)
     clamp_vector3(params.crosstalk, 0.0f, 1.0f);
     // display_min_luminance: >= 0
-    params.display_min_luminance = std::max(params.display_min_luminance, 0.0f);
+    params.displayMinLuminance = std::max(params.displayMinLuminance, 0.0f);
     // display_max_luminance: >= display_min_luminance
-    params.display_max_luminance = std::max(params.display_max_luminance, params.display_min_luminance);
+    params.displayMaxLuminance = std::max(params.displayMaxLuminance, params.displayMinLuminance);
 }
 
 // Check and clamp ToneMappingSettings
@@ -116,13 +116,13 @@ static void check_exposure_settings(ExposureSettings &settings) {
     settings.filtering.x = std::min(settings.filtering.x, settings.filtering.y);
 
     // min_luminance: -9 ~ 8.99
-    clamp_value(settings.min_luminance, -9.0f, 8.99f);
+    clamp_value(settings.minLuminance, -9.0f, 8.99f);
     // max_luminance: -8.99 ~ 9
-    clamp_value(settings.max_luminance, -8.99f, 9.0f);
+    clamp_value(settings.maxLuminance, -8.99f, 9.0f);
     // Ensure min_luminance <= max_luminance
-    settings.min_luminance = std::min(settings.min_luminance, settings.max_luminance);
+    settings.minLuminance = std::min(settings.minLuminance, settings.maxLuminance);
     // global_exposure: 1e-3f ~ 256
-    clamp_value(settings.global_exposure, 1e-3f, 256.0f);
+    clamp_value(settings.globalExposure, 1e-3f, 256.0f);
 }
 
 // Check and clamp PathTracerSettings

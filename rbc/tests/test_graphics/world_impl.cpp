@@ -2660,7 +2660,7 @@ float RenderSettings::get_min_luminance(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ExposureSettings>();
-    return settings ? settings->min_luminance : -9.0f;
+    return settings ? settings->minLuminance : -9.0f;
 }
 void RenderSettings::set_min_luminance(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -2673,11 +2673,11 @@ void RenderSettings::set_min_luminance(void *this_, float value) {
     clamp_value_warn(value, -9.0f, 8.99f, "min_luminance");
     auto &settings = impl->map->read_mut<ExposureSettings>();
     // Ensure min_luminance <= max_luminance
-    if (value > settings.max_luminance) {
-        LUISA_WARNING("RenderSettings: min_luminance ({}) is greater than max_luminance ({}), clamping to {}", value, settings.max_luminance, settings.max_luminance);
-        value = settings.max_luminance;
+    if (value > settings.maxLuminance) {
+        LUISA_WARNING("RenderSettings: min_luminance ({}) is greater than max_luminance ({}), clamping to {}", value, settings.maxLuminance, settings.maxLuminance);
+        value = settings.maxLuminance;
     }
-    settings.min_luminance = value;
+    settings.minLuminance = value;
 }
 float RenderSettings::get_max_luminance(void *this_) {
     if (!this_) [[unlikely]] {
@@ -2687,7 +2687,7 @@ float RenderSettings::get_max_luminance(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ExposureSettings>();
-    return settings ? settings->max_luminance : 9.0f;
+    return settings ? settings->maxLuminance : 9.0f;
 }
 void RenderSettings::set_max_luminance(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -2700,11 +2700,11 @@ void RenderSettings::set_max_luminance(void *this_, float value) {
     clamp_value_warn(value, -8.99f, 9.0f, "max_luminance");
     auto &settings = impl->map->read_mut<ExposureSettings>();
     // Ensure min_luminance <= max_luminance
-    if (value < settings.min_luminance) {
-        LUISA_WARNING("RenderSettings: max_luminance ({}) is less than min_luminance ({}), clamping to {}", value, settings.min_luminance, settings.min_luminance);
-        value = settings.min_luminance;
+    if (value < settings.minLuminance) {
+        LUISA_WARNING("RenderSettings: max_luminance ({}) is less than min_luminance ({}), clamping to {}", value, settings.minLuminance, settings.minLuminance);
+        value = settings.minLuminance;
     }
-    settings.max_luminance = value;
+    settings.maxLuminance = value;
 }
 float RenderSettings::get_global_exposure(void *this_) {
     if (!this_) [[unlikely]] {
@@ -2714,7 +2714,7 @@ float RenderSettings::get_global_exposure(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ExposureSettings>();
-    return settings ? settings->global_exposure : 0.5f;
+    return settings ? settings->globalExposure : 0.5f;
 }
 void RenderSettings::set_global_exposure(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -2725,7 +2725,7 @@ void RenderSettings::set_global_exposure(void *this_, float value) {
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // global_exposure: 1e-3f ~ 256
     clamp_value_warn(value, 1e-3f, 256.0f, "global_exposure");
-    impl->map->read_mut<ExposureSettings>().global_exposure = value;
+    impl->map->read_mut<ExposureSettings>().globalExposure = value;
 }
 
 // ========== PathTracerSettings Getters/Setters ==========
@@ -3027,7 +3027,7 @@ float RenderSettings::get_lpm_soft_gap(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->lpm.soft_gap : 0.0f;
+    return settings ? settings->lpm.softGap : 0.0f;
 }
 void RenderSettings::set_lpm_soft_gap(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3041,7 +3041,7 @@ void RenderSettings::set_lpm_soft_gap(void *this_, float value) {
         LUISA_WARNING("RenderSettings: lpm_soft_gap value {} is less than 0.001, clamping to 0.001", value);
         value = 0.0f;
     }
-    impl->map->read_mut<ToneMappingSettings>().lpm.soft_gap = value;
+    impl->map->read_mut<ToneMappingSettings>().lpm.softGap = value;
 }
 float RenderSettings::get_lpm_hdr_max(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3051,7 +3051,7 @@ float RenderSettings::get_lpm_hdr_max(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->lpm.hdr_max : 1847.0f;
+    return settings ? settings->lpm.hdrMax : 1847.0f;
 }
 void RenderSettings::set_lpm_hdr_max(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3065,7 +3065,7 @@ void RenderSettings::set_lpm_hdr_max(void *this_, float value) {
         LUISA_WARNING("RenderSettings: lpm_hdr_max value {} is less than or equal to 0.001, clamping to 0.001", value);
         value = 1e-3f;
     }
-    impl->map->read_mut<ToneMappingSettings>().lpm.hdr_max = value;
+    impl->map->read_mut<ToneMappingSettings>().lpm.hdrMax = value;
 }
 float RenderSettings::get_lpm_exposure(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3075,7 +3075,7 @@ float RenderSettings::get_lpm_exposure(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->lpm.lpm_exposure : 10.0f;
+    return settings ? settings->lpm.lpmExposure : 10.0f;
 }
 void RenderSettings::set_lpm_exposure(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3089,7 +3089,7 @@ void RenderSettings::set_lpm_exposure(void *this_, float value) {
         LUISA_WARNING("RenderSettings: lpm_exposure value {} is less than or equal to 0, clamping to 1e-3", value);
         value = 1e-3f;
     }
-    impl->map->read_mut<ToneMappingSettings>().lpm.lpm_exposure = value;
+    impl->map->read_mut<ToneMappingSettings>().lpm.lpmExposure = value;
 }
 float RenderSettings::get_lpm_contrast(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3120,7 +3120,7 @@ float RenderSettings::get_lpm_shoulder_contrast(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->lpm.shoulder_contrast : 1.0f;
+    return settings ? settings->lpm.shoulderContrast : 1.0f;
 }
 void RenderSettings::set_lpm_shoulder_contrast(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3134,7 +3134,7 @@ void RenderSettings::set_lpm_shoulder_contrast(void *this_, float value) {
         LUISA_WARNING("RenderSettings: lpm_shoulder_contrast value {} is less than or equal to 0, clamping to 1e-3", value);
         value = 1e-3f;
     }
-    impl->map->read_mut<ToneMappingSettings>().lpm.shoulder_contrast = value;
+    impl->map->read_mut<ToneMappingSettings>().lpm.shoulderContrast = value;
 }
 luisa::float3 RenderSettings::get_lpm_saturation(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3186,7 +3186,7 @@ float RenderSettings::get_lpm_display_min_luminance(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->lpm.display_min_luminance : 0.001f;
+    return settings ? settings->lpm.displayMinLuminance : 0.001f;
 }
 void RenderSettings::set_lpm_display_min_luminance(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3202,11 +3202,11 @@ void RenderSettings::set_lpm_display_min_luminance(void *this_, float value) {
     }
     auto &settings = impl->map->read_mut<ToneMappingSettings>().lpm;
     // Ensure display_min_luminance <= display_max_luminance
-    if (value > settings.display_max_luminance) {
-        LUISA_WARNING("RenderSettings: lpm_display_min_luminance ({}) is greater than display_max_luminance ({}), clamping to {}", value, settings.display_max_luminance, settings.display_max_luminance);
-        value = settings.display_max_luminance;
+    if (value > settings.displayMaxLuminance) {
+        LUISA_WARNING("RenderSettings: lpm_display_min_luminance ({}) is greater than display_max_luminance ({}), clamping to {}", value, settings.displayMaxLuminance, settings.displayMaxLuminance);
+        value = settings.displayMaxLuminance;
     }
-    settings.display_min_luminance = value;
+    settings.displayMinLuminance = value;
 }
 float RenderSettings::get_lpm_display_max_luminance(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3216,7 +3216,7 @@ float RenderSettings::get_lpm_display_max_luminance(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->lpm.display_max_luminance : 1000.0f;
+    return settings ? settings->lpm.displayMaxLuminance : 1000.0f;
 }
 void RenderSettings::set_lpm_display_max_luminance(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3227,11 +3227,11 @@ void RenderSettings::set_lpm_display_max_luminance(void *this_, float value) {
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto &settings = impl->map->read_mut<ToneMappingSettings>().lpm;
     // Ensure display_max_luminance >= display_min_luminance
-    if (value < settings.display_min_luminance) {
-        LUISA_WARNING("RenderSettings: lpm_display_max_luminance ({}) is less than display_min_luminance ({}), clamping to {}", value, settings.display_min_luminance, settings.display_min_luminance);
-        value = settings.display_min_luminance;
+    if (value < settings.displayMinLuminance) {
+        LUISA_WARNING("RenderSettings: lpm_display_max_luminance ({}) is less than display_min_luminance ({}), clamping to {}", value, settings.displayMinLuminance, settings.displayMinLuminance);
+        value = settings.displayMinLuminance;
     }
-    settings.display_max_luminance = value;
+    settings.displayMaxLuminance = value;
 }
 
 // ========== ToneMappingSettings - ACES Getters/Setters ==========
@@ -3304,7 +3304,7 @@ float RenderSettings::get_aces_hue_shift(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.hue_shift : 0.0f;
+    return settings ? settings->aces.hueShift : 0.0f;
 }
 void RenderSettings::set_aces_hue_shift(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3315,7 +3315,7 @@ void RenderSettings::set_aces_hue_shift(void *this_, float value) {
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // hue_shift: -100 ~ 100
     clamp_value_warn(value, -100.0f, 100.0f, "aces_hue_shift");
-    impl->map->read_mut<ToneMappingSettings>().aces.hue_shift = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.hueShift = value;
 }
 float RenderSettings::get_aces_saturation(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3367,7 +3367,7 @@ float RenderSettings::get_aces_mixer_red_out_red_in(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.mixer_red_out_red_in : 100.0f;
+    return settings ? settings->aces.mixerRedOutRedIn : 100.0f;
 }
 void RenderSettings::set_aces_mixer_red_out_red_in(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3378,7 +3378,7 @@ void RenderSettings::set_aces_mixer_red_out_red_in(void *this_, float value) {
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // Channel mixer values: -200 ~ 200
     clamp_value_warn(value, -200.0f, 200.0f, "aces_mixer_red_out_red_in");
-    impl->map->read_mut<ToneMappingSettings>().aces.mixer_red_out_red_in = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.mixerRedOutRedIn = value;
 }
 float RenderSettings::get_aces_mixer_red_out_green_in(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3388,7 +3388,7 @@ float RenderSettings::get_aces_mixer_red_out_green_in(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.mixer_red_out_green_in : 0.0f;
+    return settings ? settings->aces.mixerRedOutGreenIn : 0.0f;
 }
 void RenderSettings::set_aces_mixer_red_out_green_in(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3398,7 +3398,7 @@ void RenderSettings::set_aces_mixer_red_out_green_in(void *this_, float value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     clamp_value_warn(value, -200.0f, 200.0f, "aces_mixer_red_out_green_in");
-    impl->map->read_mut<ToneMappingSettings>().aces.mixer_red_out_green_in = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.mixerRedOutGreenIn = value;
 }
 float RenderSettings::get_aces_mixer_red_out_blue_in(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3408,7 +3408,7 @@ float RenderSettings::get_aces_mixer_red_out_blue_in(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.mixer_red_out_blue_in : 0.0f;
+    return settings ? settings->aces.mixerRedOutBlueIn : 0.0f;
 }
 void RenderSettings::set_aces_mixer_red_out_blue_in(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3418,7 +3418,7 @@ void RenderSettings::set_aces_mixer_red_out_blue_in(void *this_, float value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     clamp_value_warn(value, -200.0f, 200.0f, "aces_mixer_red_out_blue_in");
-    impl->map->read_mut<ToneMappingSettings>().aces.mixer_red_out_blue_in = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.mixerRedOutBlueIn = value;
 }
 float RenderSettings::get_aces_mixer_green_out_red_in(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3428,7 +3428,7 @@ float RenderSettings::get_aces_mixer_green_out_red_in(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.mixer_green_out_red_in : 0.0f;
+    return settings ? settings->aces.mixerGreenOutRedIn : 0.0f;
 }
 void RenderSettings::set_aces_mixer_green_out_red_in(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3438,7 +3438,7 @@ void RenderSettings::set_aces_mixer_green_out_red_in(void *this_, float value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     clamp_value_warn(value, -200.0f, 200.0f, "aces_mixer_green_out_red_in");
-    impl->map->read_mut<ToneMappingSettings>().aces.mixer_green_out_red_in = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.mixerGreenOutRedIn = value;
 }
 float RenderSettings::get_aces_mixer_green_out_green_in(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3448,7 +3448,7 @@ float RenderSettings::get_aces_mixer_green_out_green_in(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.mixer_green_out_green_in : 100.0f;
+    return settings ? settings->aces.mixerGreenOutGreenIn : 100.0f;
 }
 void RenderSettings::set_aces_mixer_green_out_green_in(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3458,7 +3458,7 @@ void RenderSettings::set_aces_mixer_green_out_green_in(void *this_, float value)
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     clamp_value_warn(value, -200.0f, 200.0f, "aces_mixer_green_out_green_in");
-    impl->map->read_mut<ToneMappingSettings>().aces.mixer_green_out_green_in = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.mixerGreenOutGreenIn = value;
 }
 float RenderSettings::get_aces_mixer_green_out_blue_in(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3468,7 +3468,7 @@ float RenderSettings::get_aces_mixer_green_out_blue_in(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.mixer_green_out_blue_in : 0.0f;
+    return settings ? settings->aces.mixerGreenOutBlueIn : 0.0f;
 }
 void RenderSettings::set_aces_mixer_green_out_blue_in(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3478,7 +3478,7 @@ void RenderSettings::set_aces_mixer_green_out_blue_in(void *this_, float value) 
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     clamp_value_warn(value, -200.0f, 200.0f, "aces_mixer_green_out_blue_in");
-    impl->map->read_mut<ToneMappingSettings>().aces.mixer_green_out_blue_in = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.mixerGreenOutBlueIn = value;
 }
 float RenderSettings::get_aces_mixer_blue_out_red_in(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3488,7 +3488,7 @@ float RenderSettings::get_aces_mixer_blue_out_red_in(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.mixer_blue_out_red_in : 0.0f;
+    return settings ? settings->aces.mixerBlueOutRedIn : 0.0f;
 }
 void RenderSettings::set_aces_mixer_blue_out_red_in(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3498,7 +3498,7 @@ void RenderSettings::set_aces_mixer_blue_out_red_in(void *this_, float value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     clamp_value_warn(value, -200.0f, 200.0f, "aces_mixer_blue_out_red_in");
-    impl->map->read_mut<ToneMappingSettings>().aces.mixer_blue_out_red_in = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.mixerBlueOutRedIn = value;
 }
 float RenderSettings::get_aces_mixer_blue_out_green_in(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3508,7 +3508,7 @@ float RenderSettings::get_aces_mixer_blue_out_green_in(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.mixer_blue_out_green_in : 0.0f;
+    return settings ? settings->aces.mixerBlueOutGreenIn : 0.0f;
 }
 void RenderSettings::set_aces_mixer_blue_out_green_in(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3518,7 +3518,7 @@ void RenderSettings::set_aces_mixer_blue_out_green_in(void *this_, float value) 
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     clamp_value_warn(value, -200.0f, 200.0f, "aces_mixer_blue_out_green_in");
-    impl->map->read_mut<ToneMappingSettings>().aces.mixer_blue_out_green_in = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.mixerBlueOutGreenIn = value;
 }
 float RenderSettings::get_aces_mixer_blue_out_blue_in(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3528,7 +3528,7 @@ float RenderSettings::get_aces_mixer_blue_out_blue_in(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.mixer_blue_out_blue_in : 100.0f;
+    return settings ? settings->aces.mixerBlueOutBlueIn : 100.0f;
 }
 void RenderSettings::set_aces_mixer_blue_out_blue_in(void *this_, float value) {
     if (!this_) [[unlikely]] {
@@ -3538,7 +3538,7 @@ void RenderSettings::set_aces_mixer_blue_out_blue_in(void *this_, float value) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     clamp_value_warn(value, -200.0f, 200.0f, "aces_mixer_blue_out_blue_in");
-    impl->map->read_mut<ToneMappingSettings>().aces.mixer_blue_out_blue_in = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.mixerBlueOutBlueIn = value;
 }
 luisa::float4 RenderSettings::get_aces_lift(void *this_) {
     if (!this_) [[unlikely]] {
@@ -3611,7 +3611,7 @@ luisa::float4 RenderSettings::get_aces_color_filter(void *this_) {
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<ToneMappingSettings>();
-    return settings ? settings->aces.color_filter : luisa::float4{1.0f, 1.0f, 1.0f, 1.0f};
+    return settings ? settings->aces.colorFilter : luisa::float4{1.0f, 1.0f, 1.0f, 1.0f};
 }
 void RenderSettings::set_aces_color_filter(void *this_, luisa::float4 value) {
     if (!this_) [[unlikely]] {
@@ -3622,7 +3622,7 @@ void RenderSettings::set_aces_color_filter(void *this_, luisa::float4 value) {
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     // color_filter: xyz color 0 ~ 1, w: 0 ~ 5
     clamp_vector4_color_warn(value, 0.0f, 1.0f, 0.0f, 5.0f, "aces_color_filter");
-    impl->map->read_mut<ToneMappingSettings>().aces.color_filter = value;
+    impl->map->read_mut<ToneMappingSettings>().aces.colorFilter = value;
 }
 float RenderSettings::get_aces_hdr_display_multiplier(void *this_) {
     if (!this_) [[unlikely]] {

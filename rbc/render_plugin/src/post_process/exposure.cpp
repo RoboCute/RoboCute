@@ -35,11 +35,11 @@ void post_process_exposure(
     low_percent = clamp(low_percent, 1.0f, high_percent - kMinDelta);
 
     // Clamp min/max adaptation values as well
-    out_exposure_params1 = float4(low_percent * 0.01f, high_percent * 0.01f, exp2(desc.min_luminance), exp2(desc.max_luminance));
+    out_exposure_params1 = float4(low_percent * 0.01f, high_percent * 0.01f, exp2(desc.minLuminance), exp2(desc.maxLuminance));
     out_exposure_params2 = float4(
         0, 0// desc.speedDown, desc.speedUp
         ,
-        desc.global_exposure, 0.0f);
+        desc.globalExposure, 0.0f);
 }
 }// namespace exposure_detail
 Exposure::Exposure(Device &device, luisa::fiber::counter &counter, uint2 res)
@@ -73,7 +73,7 @@ void Exposure::generate(
     ///////// Exposure
 
     cmdlist << (*_auto_exposure)(
-                   desc.use_auto_exposure ? -1.f : desc.global_exposure,
+                   desc.use_auto_exposure ? -1.f : desc.globalExposure,
                    exposure_params1,
                    exposure_params2,
                    scale_offset_res,

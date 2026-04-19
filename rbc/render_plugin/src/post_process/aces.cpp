@@ -62,7 +62,7 @@ void post_process_aces_get_arg(
     ACES::Args &args) {
 
     // hue & sat & con
-    auto hue = desc.hue_shift / 360.f;        // Remap to [-0.5;0.5]
+    auto hue = desc.hueShift / 360.f;        // Remap to [-0.5;0.5]
     auto sat = desc.saturation / 100.f + 1.f;// Remap to [0;2]
     auto con = desc.contrast / 100.f + 1.f;  // Remap to [0;2]
     args.HueSatCon = float4(hue, sat, con, 0.f);
@@ -71,9 +71,9 @@ void post_process_aces_get_arg(
     args.ColorBalance = make_float4(::rbc::white_balance_lms(desc.temperature, desc.tint, desc.use_white_balance_mode), 0.0f);
 
     // channel mixer
-    auto channelMixerR = float3(desc.mixer_red_out_red_in, desc.mixer_red_out_green_in, desc.mixer_red_out_blue_in);
-    auto channelMixerG = float3(desc.mixer_green_out_red_in, desc.mixer_green_out_green_in, desc.mixer_green_out_blue_in);
-    auto channelMixerB = float3(desc.mixer_blue_out_red_in, desc.mixer_blue_out_green_in, desc.mixer_blue_out_blue_in);
+    auto channelMixerR = float3(desc.mixerRedOutRedIn, desc.mixerRedOutGreenIn, desc.mixerRedOutBlueIn);
+    auto channelMixerG = float3(desc.mixerGreenOutRedIn, desc.mixerGreenOutGreenIn, desc.mixerGreenOutBlueIn);
+    auto channelMixerB = float3(desc.mixerBlueOutRedIn, desc.mixerBlueOutGreenIn, desc.mixerBlueOutBlueIn);
     args.ChannelMixerRed = make_float4(channelMixerR / 100.f, 0.0f);
     args.ChannelMixerGreen = make_float4(channelMixerG / 100.0f, 0.0f);
     args.ChannelMixerBlue = make_float4(channelMixerB / 100.0f, 0.0f);
@@ -82,7 +82,7 @@ void post_process_aces_get_arg(
     args.Lift = make_float4(color_to_lift(desc.lift), 0.f);
     args.InvGamma = make_float4(color_to_inverse_gamma(desc.gamma), 0.f);
     args.Gain = make_float4(color_to_gain(desc.gain), 0.f);
-    args.ColorFilter = desc.color_filter;
+    args.ColorFilter = desc.colorFilter;
     args.ColorFilter *= args.ColorFilter.w;
 }
 

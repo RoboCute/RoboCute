@@ -455,20 +455,20 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 	float2 fs2_b;
 	float2 fs2_w;
 	float2 display_min_max_luminance;
-	if (params.display_mode != LpmDisplayMode::LDR) {
+	if (params.displayMode != LpmDisplayMode::LDR) {
 		// Only used in fs2 modes
-		fs2_r[0] = params.display_red_primary[0];
-		fs2_r[1] = params.display_red_primary[1];
-		fs2_g[0] = params.display_green_primary[0];
-		fs2_g[1] = params.display_green_primary[1];
-		fs2_b[0] = params.display_blue_primary[0];
-		fs2_b[1] = params.display_blue_primary[1];
-		fs2_w[0] = params.display_white_point[0];
-		fs2_w[1] = params.display_white_point[1];
+		fs2_r[0] = params.displayRedPrimary[0];
+		fs2_r[1] = params.displayRedPrimary[1];
+		fs2_g[0] = params.displayGreenPrimary[0];
+		fs2_g[1] = params.displayGreenPrimary[1];
+		fs2_b[0] = params.displayBluePrimary[0];
+		fs2_b[1] = params.displayBluePrimary[1];
+		fs2_w[0] = params.displayWhitePoint[0];
+		fs2_w[1] = params.displayWhitePoint[1];
 
 		// Used in all HDR modes
-		display_min_max_luminance[0] = params.display_min_luminance;
-		display_min_max_luminance[1] = params.display_max_luminance;
+		display_min_max_luminance[0] = params.displayMinLuminance;
+		display_min_max_luminance[1] = params.displayMaxLuminance;
 	}
 
 	float3 saturation;
@@ -483,18 +483,18 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 	LpmConstants lpm_consts{};
 	float hdr10_s{};
 	float fs2_s{};
-	switch (params.color_space) {
+	switch (params.colorSpace) {
 		case LpmColorSpace::REC709: {
-			switch (params.display_mode) {
+			switch (params.displayMode) {
 				case LpmDisplayMode::LDR: {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_709_709,
 									   LPM_COLORS_709_709,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_709_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -504,11 +504,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2RAWPQ_709,
 									   LPM_COLORS_FS2RAWPQ_709,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_FS2RAWPQ_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -518,11 +518,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2SCRGB_709,
 									   LPM_COLORS_FS2SCRGB_709,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_FS2SCRGB_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -532,11 +532,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10RAW_709,
 									   LPM_COLORS_HDR10RAW_709,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_HDR10RAW_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -546,11 +546,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10SCRGB_709,
 									   LPM_COLORS_HDR10SCRGB_709,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_HDR10SCRGB_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -558,16 +558,16 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 			}
 		} break;
 		case LpmColorSpace::P3: {
-			switch (params.display_mode) {
+			switch (params.displayMode) {
 				case LpmDisplayMode::LDR: {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_709_P3,
 									   LPM_COLORS_709_P3,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_709_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -576,11 +576,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2RAWPQ_P3,
 									   LPM_COLORS_FS2RAWPQ_P3,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_FS2RAWPQ_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -590,11 +590,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2SCRGB_P3,
 									   LPM_COLORS_FS2SCRGB_P3,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_FS2SCRGB_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -604,11 +604,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10RAW_P3,
 									   LPM_COLORS_HDR10RAW_P3,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_HDR10RAW_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -618,11 +618,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10SCRGB_P3,
 									   LPM_COLORS_HDR10SCRGB_P3,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_HDR10SCRGB_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -630,16 +630,16 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 			}
 		} break;
 		case LpmColorSpace::REC2020: {
-			switch (params.display_mode) {
+			switch (params.displayMode) {
 				case LpmDisplayMode::LDR: {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_709_2020,
 									   LPM_COLORS_709_2020,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_709_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -648,11 +648,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2RAWPQ_2020,
 									   LPM_COLORS_FS2RAWPQ_2020,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_FS2RAWPQ_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -662,11 +662,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2SCRGB_2020,
 									   LPM_COLORS_FS2SCRGB_2020,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_FS2SCRGB_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -676,11 +676,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10RAW_2020,
 									   LPM_COLORS_HDR10RAW_2020,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_HDR10RAW_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
@@ -690,11 +690,11 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10SCRGB_2020,
 									   LPM_COLORS_HDR10SCRGB_2020,
-									   params.soft_gap,
-									   params.hdr_max,
-									   params.lpm_exposure,
+									   params.softGap,
+									   params.hdrMax,
+									   params.lpmExposure,
 									   params.contrast,
-									   params.shoulder_contrast,
+									   params.shoulderContrast,
 									   saturation,
 									   crosstalk);
 					populate_lpm_consts(LPM_CONFIG_HDR10SCRGB_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
