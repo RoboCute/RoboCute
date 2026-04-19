@@ -37,7 +37,7 @@ void ComputeDevice::init(
     bool compute_device_headless) {
     _compute_device_headless = compute_device_headless;
     _lc_ctx.create(std::move(ctx));
-    vstd::reset(device, std::move(render_device));
+    vstd::reset(_device, std::move(render_device));
     _compute_backend_name = compute_backend_name;
     _init_render();
 }
@@ -64,11 +64,11 @@ ResourceCreationInfo ComputeDevice::create_interop_texture(
 }
 void ComputeDevice::_init_render() {
     std::lock_guard lck{_render_mtx};
-    if (!device) return;
+    if (!_device) return;
     if (_ext.valid()) return;
-    if (auto dx = device.extension<DxCudaInterop>())
+    if (auto dx = _device.extension<DxCudaInterop>())
         _ext = dx;
-    else if (auto vk = device.extension<VkCudaInterop>())
+    else if (auto vk = _device.extension<VkCudaInterop>())
         _ext = vk;
 
     if (!_ext.valid()) {
@@ -76,7 +76,7 @@ void ComputeDevice::_init_render() {
     }
     if (_render_device_idx == ~0u) {
         _render_device_idx = _ext.visit_or(~0u, [&](auto &&a) {
-            return (uint)a->cuda_device_index();
+            return static_cast<uint>(a->cuda_device_index());
         });
     }
 }
@@ -128,7 +128,7 @@ void ComputeDevice::compute_to_render_fence(
     Stream &wait_render_stream) {
     _init_render();
     if (_render_device_idx == ~0u) [[unlikely]] {
-        LUISA_ERROR("Invalid render deivce.");
+        LUISA_ERROR("Invalid render device.");
     }
     auto compute_device = _init_interop_event();
     auto idx = ++_event_fence;
@@ -160,7 +160,7 @@ void ComputeDevice::render_to_compute_fence(
     void *wait_cu_stream_ptr) {
     _init_render();
     if (_render_device_idx == ~0u) [[unlikely]] {
-        LUISA_ERROR("Invalid render deivce.");
+        LUISA_ERROR("Invalid render device.");
     }
     auto compute_device = _init_interop_event();
     auto idx = ++_event_fence;

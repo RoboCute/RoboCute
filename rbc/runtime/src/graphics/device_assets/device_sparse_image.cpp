@@ -2,15 +2,19 @@
 #include <rbc_graphics/device_assets/assets_manager.h>
 #include <rbc_graphics/texture/tex_stream_manager.h>
 #include <rbc_graphics/scene_manager.h>
+
 namespace rbc {
+
 DeviceSparseImage::DeviceSparseImage() {}
+
 DeviceSparseImage::~DeviceSparseImage() {
     if (_sparse_img == nullptr) return;
     auto inst = AssetsManager::instance();
-    if (inst) {
+    if (inst && _tex_stream_mng != nullptr) {
         _tex_stream_mng->unload_sparse_img(_sparse_img->uid(), inst->load_stream_disqueue());
     }
 }
+
 void DeviceSparseImage::load(
     TexStreamManager *tex_stream,
     luisa::move_only_function<void()> &&init_callback,
@@ -20,6 +24,7 @@ void DeviceSparseImage::load(
     PixelStorage storage,
     uint2 size,
     uint mip_level) {
+    (void)sampler;
     if (_gpu_load_frame != 0) [[unlikely]] {
         return;
     }
@@ -47,4 +52,5 @@ bool DeviceSparseImage::load_finished() const {
     LUISA_ERROR("load_finished should not be used in sparse resource");
     return false;
 }
-}// namespace rbc
+
+} // namespace rbc

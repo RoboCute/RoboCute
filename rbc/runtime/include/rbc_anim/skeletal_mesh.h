@@ -165,7 +165,7 @@ public:
     size_t GetNumComponentSpaceTransforms() const;
     void SetBoneSpaceTransforms(luisa::span<const AnimSOATransform> InBoneSpaceTransforms);
     luisa::shared_ptr<BoneContainer> GetSharedRequiredBones();
-    SkeletalMeshRenderObject &GetRenderObject() { return *render_object_; }
+    SkeletalMeshRenderObject &GetRenderObject() { return *_render_object; }
 
 public:
     // resources
@@ -206,7 +206,7 @@ public:
 private:
     // Object that is responsible for sending bone transforms
 
-    SkeletalMeshRenderObject *render_object_ = nullptr;
+    SkeletalMeshRenderObject *_render_object = nullptr;
     [[maybe_unused]] SkeletalMeshRenderObject *_previous_render_object = nullptr;// previous render object when RenderThread Recreated
 };
 

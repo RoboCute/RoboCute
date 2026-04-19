@@ -3,12 +3,10 @@
 #include <rbc_graphics/device_assets/device_sparse_image.h>
 #include <rbc_graphics/render_device.h>
 #include <rbc_graphics/texture/tex_stream_manager.h>
-#include <rbc_graphics/texture/tex_stream_manager.h>
 #include <rbc_world/type_register.h>
 #include <rbc_world/resource_importer.h>
 #include <rbc_world/importers/texture_loader.h>
 #include <luisa/core/binary_io.h>
-#include <rbc_world/resources/texture.h>
 #include <rbc_core/utils/thread_waiter.h>
 
 namespace rbc {
@@ -70,10 +68,10 @@ void TextureLoader::process_texture(RC<world::TextureResource> const &tex, uint 
 
     if (mip_level > 1) {
         auto mip_size = tex->size();
-        auto desire_mip_level = 0;
+        uint desire_mip_level = 0u;
         if (!to_vt) {
-            for (auto _i : vstd::range(mip_level)) {
-                (void)_i;
+            for (auto i : vstd::range(mip_level)) {
+                static_cast<void>(i);
                 desire_mip_level++;
                 if (any(mip_size <= 64u)) {
                     break;
@@ -81,8 +79,8 @@ void TextureLoader::process_texture(RC<world::TextureResource> const &tex, uint 
                 mip_size >>= 1u;
             }
         } else {
-            for (auto _i : vstd::range(mip_level)) {
-                (void)_i;
+            for (auto i : vstd::range(mip_level)) {
+                static_cast<void>(i);
                 if (any((mip_size & (chunk_size - 1u)) != 0u)) {
                     break;
                 }

@@ -24,13 +24,11 @@ void EditingPass::on_enable(
     _gizmos_mesh_format.emplace_vertex_stream({attrs, 1});
     _gizmos_mesh_format.emplace_vertex_stream({attrs + 1, 1});
 
-#define RBC_LOAD_SHADER(SHADER_NAME, NAME_SPACE, PATH) \
-    _init_counter.add();                               \
-    luisa::fiber::schedule([this]() {                  \
-        SHADER_NAME = NAME_SPACE::load_shader(PATH);   \
-        _init_counter.done();                          \
-    })
-    RBC_LOAD_SHADER(_click_pick, click_pick, "raster/click_pick.bin");
+    _init_counter.add();
+    luisa::fiber::schedule([this]() {
+        _click_pick = click_pick::load_shader("raster/click_pick.bin");
+        _init_counter.done();
+    });
     ShaderManager::instance()->async_load_raster_shader(_init_counter, "raster/contour_draw.bin", _contour_draw);
     ShaderManager::instance()->async_load_raster_shader(_init_counter, "raster/draw_gizmos.bin", _draw_gizmos);
     ShaderManager::instance()->async_load(_init_counter, "raster/contour_flood.bin", _contour_flood);
@@ -46,14 +44,13 @@ void EditingPass::on_disable(
     CommandList &cmdlist,
     SceneManager &scene) {
 }
-#undef RBC_LOAD_SHADER
 EditingPass::EditingPass() = default;
 EditingPass::~EditingPass() = default;
 void EditingPass::wait_enable() {
     _init_counter.wait();
 }
 
-void EditingPass::contour(PipelineContext const &ctx, luisa::span<uint const> draw_indices) {
+void EditingPass::contour(PipelineContext const &ctx, luisa::span<uint const> draw_indices) const {
     if (draw_indices.empty()) return;
     RasterState raster_state{
         .cull_mode = CullMode::None,
@@ -65,7 +62,7 @@ void EditingPass::contour(PipelineContext const &ctx, luisa::span<uint const> dr
     meshes.reserve(draw_indices.size());
     host_data.reserve(draw_indices.size());
     auto elem_buffer = render_device.create_transient_buffer<geometry::RasterElement>("contour_elem_buffer", draw_indices.size());
-    for (auto &i : draw_indices) {
+    for (auto i : draw_indices) {
         auto draw_cmd = sm.accel_manager().draw_object(i, 1, meshes.size());
         meshes.push_back(std::move(draw_cmd.mesh));
         host_data.push_back(draw_cmd.info);
@@ -99,7 +96,7 @@ void EditingPass::contour(PipelineContext const &ctx, luisa::span<uint const> dr
                    cam_data.vp)
                    .draw(
                        std::move(meshes),
-                       sm.accel_manager().basic_foramt(),
+                       sm.accel_manager().basic_format(),
                        Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, nullptr, origin_map);
     sm.dispose_after_sync(std::move(elem_buffer));
     auto const *src_img = &origin_map;
@@ -144,7 +141,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             id_map = &id_map_val;
     } else {
         id_map = frame_settings.id_img;
-    };
+    }
 
     if (grid_editor) {
         auto &pass_ctx = ctx.mut.get_pass_context_mut<RasterPassContext>();
@@ -152,7 +149,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             sm.dispose_after_sync(std::move(pass_ctx->depth_buffer));
         }
         uint64_t size = 0;
-        for (auto &i : grid_editor->draw_grids) {
+        for (auto const &i : grid_editor->draw_grids) {
             size = std::max<uint64_t>(i.line_count.x * i.line_count.y * 2, size);
         }
         if (_draw_grid_buffer && _draw_grid_buffer.size() < size) {
@@ -179,7 +176,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 .comparison = Comparison::Greater,
                 .write = false};
         }
-        for (auto &i : grid_editor->draw_grids) {
+        for (auto const &i : grid_editor->draw_grids) {
             auto dst_size = (i.line_count.x + i.line_count.y) * 2;
             auto buffer = _draw_grid_buffer.view(0, dst_size);
             cmdlist << (*_grid_gen)(
@@ -205,7 +202,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                        i.start_decay_dist,
                        i.decay_distance)
                        .draw(std::move(scene),
-                             sm.accel_manager().basic_foramt(),
+                             sm.accel_manager().basic_format(),
                              Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, depth_ptr, *frame_settings.dst_img);
         }
         grid_editor->draw_grids.clear();
@@ -239,7 +236,7 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 depth_ptr = &pass_ctx->depth_buffer;
                 cmdlist << pass_ctx->depth_buffer.clear(0.0f);
             }
-            for (auto &i : reqs) {
+            for (auto const &i : reqs) {
                 VertexBufferView vbv[2] = {
                     VertexBufferView{i.pos_buffer},
                     VertexBufferView{i.color_buffer},
@@ -331,15 +328,14 @@ void EditingPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
                 float3 local_max(bounding_box.packed_max[0], bounding_box.packed_max[1], bounding_box.packed_max[2]);
                 float3 proj_min = make_float3(1e20f, 1e20f, 1.f);
                 float3 proj_max = make_float3(-1e20f, -1e20f, 0.f);
-                for (int x = 0; x < 2; x++)
-                    for (int y = 0; y < 2; y++)
-                        for (int z = 0; z < 2; z++) {
-                            float3 point = select(local_min, local_max, int3(x, y, z) == 1);
-                            float4 proj = cam_data.vp * (transform * make_float4(point, 1.f));
-                            proj /= proj.w;
-                            proj_min = min(proj_min, proj.xyz());
-                            proj_max = max(proj_max, proj.xyz());
-                        }
+                for (auto corner_idx : vstd::range(8)) {
+                    int3 corner((corner_idx >> 2) & 1, (corner_idx >> 1) & 1, corner_idx & 1);
+                    float3 point = select(local_min, local_max, corner == 1);
+                    float4 proj = cam_data.vp * (transform * make_float4(point, 1.f));
+                    proj /= proj.w;
+                    proj_min = min(proj_min, proj.xyz());
+                    proj_max = max(proj_max, proj.xyz());
+                }
                 if (all(proj_max < make_float3(i.max_projection, 1e20f) && proj_min > make_float3(i.min_projection, 0.f))) {
                     std::lock_guard lck{selection_mtx};
                     selection_result.push_back(user_id);

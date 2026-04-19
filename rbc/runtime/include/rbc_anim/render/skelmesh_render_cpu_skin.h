@@ -56,13 +56,13 @@ private:
 private:
     // RenderData for each LOD
     struct SkeletalMeshRenderDataLOD {
-        SkeletalMeshRenderData *render_data_;
-        int32_t lod_index_;
+        SkeletalMeshRenderData *_render_data;
+        int32_t _lod_index;
     };
 
 private:
     // cached
-    [[maybe_unused]] mutable int32_t cached_vertex_lod_;
+    [[maybe_unused]] mutable int32_t _cached_vertex_lod;
     SkelMeshRenderDataLODCPU LOD;
 };
 

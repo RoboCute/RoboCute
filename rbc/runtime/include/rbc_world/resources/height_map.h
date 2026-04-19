@@ -37,7 +37,7 @@ private:
     bool _procedural_prim_dirty{true};    ///< Flag to indicate if procedural primitive needs rebuild
 
     /// Compute AABBs for height map blocks
-    void _compute_aabbs(luisa::compute::CommandList &cmdlist);
+    void _compute_aabbs(luisa::compute::CommandList &cmdlist) const;
 
 public:
     /// Check if resource is empty

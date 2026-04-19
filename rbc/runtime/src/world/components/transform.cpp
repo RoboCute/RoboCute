@@ -81,14 +81,15 @@ void TransformComponent::traversal(double4x4 const &new_trs) {
         iterate(iterate, tr);
     };
     auto iterate = [&](auto &iterate, TransformComponent *tr) {
-        for (auto iter = tr->_children.begin(); iter != tr->_children.end(); ++iter) {
+        for (auto iter = tr->_children.begin(); iter != tr->_children.end(); ) {
             auto &guid = *iter;
             auto tr_obj = get_object_ref(guid);
             if (!tr_obj) {
                 iter = tr->_children.erase(iter);
-                continue;
+            } else {
+                transform(iterate, transform, static_cast<TransformComponent *>(tr_obj.get()));
+                ++iter;
             }
-            transform(iterate, transform, static_cast<TransformComponent *>(tr_obj.get()));
         }
     };
     iterate(iterate, this);
@@ -167,16 +168,17 @@ bool TransformComponent::remove_children(TransformComponent *tr) {
     return true;
 }
 TransformComponent::~TransformComponent() {
-    for (auto iter = _children.begin(); iter != _children.end(); ++iter) {
+    for (auto iter = _children.begin(); iter != _children.end(); ) {
         auto &guid = *iter;
         auto tr_obj = get_object_ref(guid);
         if (!tr_obj) {
             iter = _children.erase(iter);
-            continue;
+        } else {
+            auto tr = static_cast<TransformComponent *>(tr_obj.get());
+            LUISA_DEBUG_ASSERT(tr->_parent == this);
+            tr->_parent = nullptr;
+            ++iter;
         }
-        auto tr = static_cast<TransformComponent *>(tr_obj.get());
-        LUISA_DEBUG_ASSERT(tr->_parent = this);
-        tr->_parent = nullptr;
     }
     if (_parent) {
         remove_children(this);
@@ -192,7 +194,7 @@ void TransformComponent::_execute_on_update_event() {
         auto obj = i.second.second.lock().rc();
         if (!obj || obj->base_type() != BaseObjectType::Component) [[unlikely]] {
             invalid_components.emplace_back(i.first);
-            return;
+            continue;
         }
         (obj.get()->*i.second.first)();
     }

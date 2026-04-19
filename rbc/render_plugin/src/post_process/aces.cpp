@@ -1,14 +1,14 @@
 #include <rbc_render/post_process/aces.h>
 #include <rbc_render/pipeline.h>
 #include <luisa/vstl/common.h>
-#include <rbc_render/utils//color_space.h>
+#include <rbc_render/utils/color_space.h>
 
 namespace rbc {
 namespace aces_detail {
 static constexpr uint32_t curve_precision = 128u;
 static constexpr uint32_t volume_resolution = 128u;
 
-auto ColorToLift(float4 color) {
+auto color_to_lift(float4 color) {
     // Shadows
     auto S = float3(color.x, color.y, color.z);
     auto lumLift = S.x * 0.2126f + S.y * 0.7152f + S.z * 0.0722f;
@@ -16,7 +16,7 @@ auto ColorToLift(float4 color) {
     auto liftOffset = color.w;
     return float3(S.x + liftOffset, S.y + liftOffset, S.z + liftOffset);
 }
-auto ColorToGain(float4 color) {
+auto color_to_gain(float4 color) {
     // Highlights
     auto H = float3(color.x, color.y, color.z);
     auto lumGain = H.x * 0.2126f + H.y * 0.7152f + H.z * 0.0722f;
@@ -24,7 +24,7 @@ auto ColorToGain(float4 color) {
     auto gainOffset = color.w + 1.f;
     return float3(H.x + gainOffset, H.y + gainOffset, H.z + gainOffset);
 }
-auto ColorToInverseGamma(float4 color) {
+auto color_to_inverse_gamma(float4 color) {
     // Midtones
     auto M = float3(color.x, color.y, color.z);
     auto lumGamma = M.x * 0.2126f + M.y * 0.7152f + M.z * 0.0722f;
@@ -62,7 +62,7 @@ void post_process_aces_get_arg(
     ACES::Args &args) {
 
     // hue & sat & con
-    auto hue = desc.hueShift / 360.f;        // Remap to [-0.5;0.5]
+    auto hue = desc.hue_shift / 360.f;        // Remap to [-0.5;0.5]
     auto sat = desc.saturation / 100.f + 1.f;// Remap to [0;2]
     auto con = desc.contrast / 100.f + 1.f;  // Remap to [0;2]
     args.HueSatCon = float4(hue, sat, con, 0.f);
@@ -71,23 +71,23 @@ void post_process_aces_get_arg(
     args.ColorBalance = make_float4(::rbc::white_balance_lms(desc.temperature, desc.tint, desc.use_white_balance_mode), 0.0f);
 
     // channel mixer
-    auto channelMixerR = float3(desc.mixerRedOutRedIn, desc.mixerRedOutGreenIn, desc.mixerRedOutBlueIn);
-    auto channelMixerG = float3(desc.mixerGreenOutRedIn, desc.mixerGreenOutGreenIn, desc.mixerGreenOutBlueIn);
-    auto channelMixerB = float3(desc.mixerBlueOutRedIn, desc.mixerBlueOutGreenIn, desc.mixerBlueOutBlueIn);
+    auto channelMixerR = float3(desc.mixer_red_out_red_in, desc.mixer_red_out_green_in, desc.mixer_red_out_blue_in);
+    auto channelMixerG = float3(desc.mixer_green_out_red_in, desc.mixer_green_out_green_in, desc.mixer_green_out_blue_in);
+    auto channelMixerB = float3(desc.mixer_blue_out_red_in, desc.mixer_blue_out_green_in, desc.mixer_blue_out_blue_in);
     args.ChannelMixerRed = make_float4(channelMixerR / 100.f, 0.0f);
     args.ChannelMixerGreen = make_float4(channelMixerG / 100.0f, 0.0f);
     args.ChannelMixerBlue = make_float4(channelMixerB / 100.0f, 0.0f);
 
     // color ring(or trackball)
-    args.Lift = make_float4(ColorToLift(desc.lift), 0.f);
-    args.InvGamma = make_float4(ColorToInverseGamma(desc.gamma), 0.f);
-    args.Gain = make_float4(ColorToGain(desc.gain), 0.f);
-    args.ColorFilter = desc.colorFilter;
+    args.Lift = make_float4(color_to_lift(desc.lift), 0.f);
+    args.InvGamma = make_float4(color_to_inverse_gamma(desc.gamma), 0.f);
+    args.Gain = make_float4(color_to_gain(desc.gain), 0.f);
+    args.ColorFilter = desc.color_filter;
     args.ColorFilter *= args.ColorFilter.w;
 }
 
 }// namespace aces_detail
-void ACES::get_curve_texture(
+void ACES::_get_curve_texture(
     ACESParameters const &desc,
     Device &device,
     CommandList &cmdlist,
@@ -97,7 +97,7 @@ void ACES::get_curve_texture(
     }
     luisa::vector<float4> host_data;
     host_data.resize(aces_detail::curve_precision * 2u);
-    aces_detail::post_process_aces_get_curve(desc, host_data.data(), is_hdr);
+    aces_detail::post_process_aces_get_curve(desc, host_data.data(), _is_hdr);
     LUISA_ASSUME(host_data.size_bytes() == curve_img.view().size_bytes());
     auto buffer = temp_buffer.allocate_upload_buffer(host_data.size_bytes(), 512);
     std::memcpy(buffer.mapped_ptr(), host_data.data(), host_data.size_bytes());
@@ -106,8 +106,8 @@ void ACES::get_curve_texture(
 ACES::ACES(
     luisa::fiber::counter &counter,
     bool is_hdr)
-    : is_hdr(is_hdr) {
-    ShaderManager::instance()->async_load(counter, "post_process/unity_aces_lut.bin", lut3d_shader);
+    : _is_hdr(is_hdr) {
+    ShaderManager::instance()->async_load(counter, "post_process/unity_aces_lut.bin", _lut3d_shader);
 }
 ACES::~ACES() {}
 void ACES::early_render(
@@ -115,7 +115,7 @@ void ACES::early_render(
     Device &device,
     CommandList &cmdlist,
     HostBufferManager &temp_buffer) {
-    get_curve_texture(desc, device, cmdlist, temp_buffer);
+    _get_curve_texture(desc, device, cmdlist, temp_buffer);
     using namespace aces_detail;
     if (!lut3d_volume) {
         lut3d_volume = device.create_volume<float>(PixelStorage::FLOAT4, uint3(volume_resolution));
@@ -128,7 +128,7 @@ void ACES::dispatch(
     using namespace aces_detail;
     Args args;
     post_process_aces_get_arg(desc, args);
-    cmdlist << (*lut3d_shader)(lut3d_volume, curve_img, args).dispatch(lut3d_volume.size());
+    cmdlist << (*_lut3d_shader)(lut3d_volume, curve_img, args).dispatch(lut3d_volume.size());
 }
 
 }// namespace rbc

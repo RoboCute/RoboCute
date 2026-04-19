@@ -69,7 +69,7 @@ public:
         LUISA_DEBUG_ASSERT(iter);
         return iter.value().instance_size;
     }
-    [[nodiscard]] size_t get_mat_type_size(uint mat_type);
+    [[nodiscard]] size_t get_mat_type_size(uint mat_type) const;
     void discard_mat_instance(
         MatCode mat_code);
 

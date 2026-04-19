@@ -13,7 +13,7 @@ rbc::coroutine SkeletonResource::_async_load() {
 
     luisa::BinaryBlob blob = file_stream.read(file_stream.length());
     BinDeSerializer deser{blob};
-    deser._load(skeleton, "skeleton");
+    deser._load(_skeleton, "skeleton");
 
     co_return;
 }
@@ -21,7 +21,7 @@ rbc::coroutine SkeletonResource::_async_load() {
 bool SkeletonResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     BinSerializer ser;
-    ser._store(skeleton, "skeleton");
+    ser._store(_skeleton, "skeleton");
 
     auto path = this->path();
     BinaryFileWriter writer{luisa::to_string(path)};
@@ -34,7 +34,7 @@ bool SkeletonResource::unsafe_save_to_path() const {
     return true;
 }
 void SkeletonResource::log_brief() {
-    skeleton.log_brief();
+    _skeleton.log_brief();
 }
 
 // dispose declared here

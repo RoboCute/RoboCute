@@ -13,18 +13,18 @@ public:
 
 public:
     // Node Interface
-    void Initialize_AnyThread(const AnimationInitializationContext &InContext) override;
-    void Update_AnyThread(const AnimationUpdateContext &InContext) override;
-    void Evaluate_AnyThread(PoseContext &Output) override;
-    void NodeDebug() override;
+    void initialize_any_thread(const AnimationInitializationContext &in_context) override;
+    void update_any_thread(const AnimationUpdateContext &in_context) override;
+    void evaluate_any_thread(PoseContext &output) override;
+    void node_debug() override;
 
-    void Serialize(rbc::ArchiveWrite &w) override;
-    void Deserialize(rbc::ArchiveRead &r) override;
+    void serialize(rbc::ArchiveWrite &w) override;
+    void deserialize(rbc::ArchiveRead &r) override;
 
 public:
     // Interface
-    void UpdateAssetPlayer(const AnimationUpdateContext &InContext);
-    void CreateTickRecordForNode(const AnimationUpdateContext &InContext, world::AnimSequenceResource *InAnimSeqResource, bool bLooping, bool bIsEvaluator);
+    void update_asset_player(const AnimationUpdateContext &in_context);
+    void create_tick_record_for_node(const AnimationUpdateContext &in_context, world::AnimSequenceResource *in_anim_seq_resource, bool b_looping, bool b_is_evaluator);
 
 public:// temp public
     RC<world::AnimSequenceResource> anim_seq_resource;

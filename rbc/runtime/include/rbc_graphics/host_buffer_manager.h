@@ -26,7 +26,7 @@ private:
 };
 struct RBC_RUNTIME_API HostBufferManager : public vstd::StackAllocatorVisitor {
 	Device& _device;
-	PinnedMemoryExt* ext;
+	PinnedMemoryExt* _ext;
 	uint64 allocate(uint64 size) override;
 	void deallocate(uint64 handle) override;
 	vstd::vector<Buffer<uint>> _buffers;

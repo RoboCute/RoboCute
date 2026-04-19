@@ -25,7 +25,7 @@ MeshResource::~MeshResource() {
 void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     std::shared_lock lck{_async_mtx};
     ser.ar.start_array();
-    for (auto &i : _custom_properties) {
+    for (auto const &i : _custom_properties) {
         ser.ar.value(i.first);
         ser.ar.start_object();
         auto &v = i.second;
@@ -47,7 +47,7 @@ void MeshResource::serialize_meta(ObjSerialize const &ser) const {
     ser.ar.value(_triangle_count, "triangle_count");
     ser.ar.value(_uv_count, "uv_count");
     ser.ar.start_array();
-    for (auto &i : _submesh_offsets) {
+    for (auto const &i : _submesh_offsets) {
         ser.ar.value(i);
     }
     ser.ar.end_array("submesh_offsets");
@@ -130,7 +130,7 @@ uint64_t MeshResource::basic_size_bytes() const {
 }
 uint64_t MeshResource::extra_size_bytes() const {
     uint64_t size = 0;
-    for (auto &i : _custom_properties) {
+    for (auto const &i : _custom_properties) {
         size += i.second.size_bytes;
     }
     return size;

@@ -19,6 +19,6 @@ public:
     ~DeviceTransformingMesh();
     void async_load(RC<DeviceMesh> origin_mesh, bool copy_from_origin = true, bool init_last_vertex = false);
     void create_from_origin(DeviceMesh *device_mesh, bool init_last_vertex = false);
-    void copy_from_origin(CommandList &cmdlist);
+    void copy_from_origin(CommandList &cmdlist) const;
 };
 }// namespace rbc

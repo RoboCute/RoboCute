@@ -10,11 +10,11 @@ static float uint_unpack_to_float(uint val) {
 }
 }// namespace mesh_mng_detail
 MeshManager::MeshManager(Device &device)
-    : pool(256, false), device(device) {
+    : _pool(256, false), _device(device) {
 }
 void MeshManager::load_shader(luisa::fiber::counter &counter) {
-    ShaderManager::instance()->async_load(counter, "geometry/set_submesh.bin", set_submesh);
-    ShaderManager::instance()->async_load(counter, "geometry/compute_bound.bin", compute_bound);
+    ShaderManager::instance()->async_load(counter, "geometry/set_submesh.bin", _set_submesh);
+    ShaderManager::instance()->async_load(counter, "geometry/compute_bound.bin", _compute_bound);
 }
 
 void MeshManager::emplace_build_mesh_cmd(
@@ -54,7 +54,7 @@ void MeshManager::execute_build_cmds(CommandList &cmdlist, BindlessAllocator &bd
             if (mesh_data->pack.mesh) [[unlikely]] {
                 LUISA_ERROR("Mesh BLAS already initialized.");
             }
-            mesh_data->build_mesh(device, cmdlist, option);
+            mesh_data->build_mesh(_device, cmdlist, option);
             // if (!mesh_data->submesh_offset.empty() && !mesh_data->pack.submesh_indices)
             // _create_submesh_buffer(cmdlist, bdls_alloc, temp_buffer, mesh_data);
         }
@@ -86,7 +86,7 @@ void MeshManager::on_frame_end(
         }
         auto callback = [this, vec = std::move(unload_cmds)]() {
             for (auto &i : vec) {
-                pool.destroy_lock(_pool_mtx, std::launder(reinterpret_cast<MeshDataPack *>(i)));
+                _pool.destroy_lock(_pool_mtx, std::launder(reinterpret_cast<MeshDataPack *>(i)));
             }
         };
         if (cmdlist) {
@@ -127,7 +127,7 @@ auto MeshManager::load_mesh(
         mask |= MeshMeta::uv_mask << i;
     }
 
-    auto m = reinterpret_cast<MeshData *>(pool.create_lock(_pool_mtx));
+    auto m = reinterpret_cast<MeshData *>(_pool.create_lock(_pool_mtx));
     m->meta = MeshMeta{
         .tri_byte_offset = stride * vertex_count,
         .vertex_count = vertex_count,
@@ -140,7 +140,7 @@ auto MeshManager::load_mesh(
     BufferView<Triangle> ib = data_buffer.view(tri_offset, data_buffer.size() - tri_offset).as<Triangle>();
     if (option) {
         BufferView<float3> vb = data_buffer.view(0, vertex_count * sizeof(float3) / sizeof(uint)).as<float3>();
-        m->pack.mesh = device.create_mesh(
+        m->pack.mesh = _device.create_mesh(
             vb,
             ib,
             *option);
@@ -183,7 +183,7 @@ void MeshManager::_create_submesh_buffer(
     auto &&submesh_indices = m->pack.submesh_indices;
     LUISA_DEBUG_ASSERT(!submesh_indices);
     auto &submesh_offset = m->submesh_offset;
-    submesh_indices = device.create_buffer<uint16_t>(m->triangle_size);
+    submesh_indices = _device.create_buffer<uint16_t>(m->triangle_size);
     auto offset_buffer = temp_buffer.allocate_upload_buffer(submesh_offset.size_bytes(), 16);
     memcpy(offset_buffer.mapped_ptr(), submesh_offset.data(), submesh_offset.size_bytes());
     vstd::vector<uint3> dispatch_list;
@@ -201,18 +201,18 @@ void MeshManager::_create_submesh_buffer(
         disp_size -= submesh_offset[i];
         dispatch_list[i] = uint3(disp_size, 1, 1);
     }
-    cmdlist << (*set_submesh)(submesh_indices, offset_buffer.view).dispatch(dispatch_list);
+    cmdlist << (*_set_submesh)(submesh_indices, offset_buffer.view).dispatch(dispatch_list);
     m->meta.submesh_heap_idx = bdls_alloc.allocate_buffer(submesh_indices);
 }
 
 auto MeshManager::make_transforming_instance(
     BindlessAllocator &bdls_alloc,
     MeshData *mesh_data) -> MeshData * {
-    auto result = reinterpret_cast<MeshData *>(pool.create_lock(_pool_mtx));
+    auto result = reinterpret_cast<MeshData *>(_pool.create_lock(_pool_mtx));
     result->mutable_stride = mesh_data->mutable_stride;
     result->meta = mesh_data->meta;
     auto mutable_buffer_size_bytes = result->mutable_stride * result->meta.vertex_count;
-    result->pack.mutable_data = device.create_buffer<uint>(mutable_buffer_size_bytes / sizeof(uint));
+    result->pack.mutable_data = _device.create_buffer<uint>(mutable_buffer_size_bytes / sizeof(uint));
     result->meta.mutable_heap_idx = bdls_alloc.allocate_buffer(result->pack.mutable_data);
     result->pack.data_view = mesh_data->pack.data;
     result->triangle_size = mesh_data->triangle_size;
@@ -236,6 +236,7 @@ void MeshManager::execute_compute_bounding(
         auto mesh = rq->mesh_data;
         if (!mesh) {
             rq = bounding_requests.back();
+            bounding_requests.pop_back();
             continue;
         }
         ++i;
@@ -279,18 +280,18 @@ void MeshManager::execute_compute_bounding(
     if (!_aabb_cache_buffer) {
         auto aligned_size = 65536 / sizeof(AABB);
         auto target_size = (args.size() + aligned_size - 1) / aligned_size * aligned_size;
-        _aabb_cache_buffer = device.create_buffer<AABB>(target_size);
+        _aabb_cache_buffer = _device.create_buffer<AABB>(target_size);
     }
     auto arg_buffer = temp_buffer.allocate_upload_buffer<uint2>(args.size());
     std::memcpy(arg_buffer.mapped_ptr(), args.data(), args.size_bytes());
     auto result_view = _aabb_cache_buffer.view(0, results.size());
-    cmdlist << (*compute_bound)(
+    cmdlist << (*_compute_bound)(
                    buffer_heap,
                    arg_buffer.view,
                    result_view.as<uint>(),
                    true)
                    .dispatch(result_view.as<uint>().size())
-            << (*compute_bound)(
+            << (*_compute_bound)(
                    buffer_heap,
                    arg_buffer.view,
                    result_view.as<uint>(),
@@ -301,12 +302,12 @@ void MeshManager::execute_compute_bounding(
         auto iter = results.begin();
         for (auto &i : bounding_requests) {
             for (auto &sub : i->bounding_box) {
+                LUISA_DEBUG_ASSERT(iter != results.end());
                 sub = *iter;
                 for (auto i : vstd::range(3)) {
                     sub.packed_min[i] = mesh_mng_detail::uint_unpack_to_float(reinterpret_cast<uint &>(sub.packed_min[i]));
                     sub.packed_max[i] = mesh_mng_detail::uint_unpack_to_float(reinterpret_cast<uint &>(sub.packed_max[i]));
                 }
-                LUISA_DEBUG_ASSERT(iter != results.end());
                 ++iter;
             }
             i->finished = true;

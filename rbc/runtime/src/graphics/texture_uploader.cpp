@@ -4,7 +4,7 @@
 #include <rbc_graphics/render_device.h>
 #include <luisa/dsl/sugar.h>
 namespace rbc {
-TextureUploader::TextureUploader() {}
+TextureUploader::TextureUploader() = default;
 void TextureUploader::load_shader(luisa::fiber::counter &counter) {
     ShaderManager::instance()->async_load(counter, "texture_process/copy_byte_tex.bin", _copy_byte_tex);
     if (RenderDevice::instance().backend_name() != "vk")
@@ -30,7 +30,7 @@ void TextureUploader::upload_with_copy(
     IOCommandList &mem_io_cmdlist,
     luisa::vector<std::byte> &copy_buffer,
     CommandList &cmdlist,
-    Device &devive,
+    Device &device,
     DisposeQueue &disp_queue,
     IOFile::Handle io_file,
     ImageView<float> img,
@@ -48,7 +48,7 @@ void TextureUploader::upload_with_copy(
             0,
             IOTextureSubView{img}};
     } else {
-        auto buffer = devive.create_buffer<uint>(img.size_bytes() / sizeof(uint));
+        auto buffer = device.create_buffer<uint>(img.size_bytes() / sizeof(uint));
         copy_buffer.push_back_uninitialized(buffer.size_bytes());
         file_io_cmdlist << IOCommand{
             io_file,
@@ -64,7 +64,7 @@ void TextureUploader::upload_with_copy(
 void TextureUploader::upload(
     IOCommandList &io_cmdlist,
     CommandList &cmdlist,
-    Device &devive,
+    Device &device,
     DisposeQueue &disp_queue,
     IOFile::Handle io_file,
     ImageView<float> img,
@@ -74,7 +74,7 @@ void TextureUploader::upload(
             io_file,
             file_offset, IOTextureSubView{img}};
     } else {
-        auto buffer = devive.create_buffer<uint>(img.size_bytes() / sizeof(uint));
+        auto buffer = device.create_buffer<uint>(img.size_bytes() / sizeof(uint));
         io_cmdlist << IOCommand{
             io_file,
             file_offset, IOBufferSubView{buffer}};
@@ -85,7 +85,7 @@ void TextureUploader::upload(
 void TextureUploader::upload(
     IOCommandList &io_mem_cmdlist,
     CommandList &cmdlist,
-    Device &devive,
+    Device &device,
     DisposeQueue &disp_queue,
     void const *ptr,
     ImageView<float> img) const {
@@ -94,7 +94,7 @@ void TextureUploader::upload(
             ptr, 0,
             IOTextureSubView{img}};
     } else {
-        auto buffer = devive.create_buffer<uint>(img.size_bytes() / sizeof(uint));
+        auto buffer = device.create_buffer<uint>(img.size_bytes() / sizeof(uint));
         io_mem_cmdlist << IOCommand{
             ptr,
             0, IOBufferSubView{buffer}};
@@ -145,7 +145,7 @@ void TextureUploader::blit(
     float2 src_uv_offset,
     uint2 dst_pixel_offset,
     uint2 dst_blit_size,
-    luisa::optional<float> manually_alpha) {
+    luisa::optional<float> manually_alpha) const {
     if (any(dst_pixel_offset + dst_blit_size > dst_img.size())) [[unlikely]] {
         LUISA_ERROR("Blit offset {} + dest size {} > dest-image size {}", dst_pixel_offset, dst_blit_size, dst_img.size());
     }
@@ -159,5 +159,5 @@ void TextureUploader::blit(
                    manually_alpha ? *manually_alpha : reinterpret_cast<float &>(invalid_float))
                    .dispatch(dst_blit_size);
 }
-TextureUploader::~TextureUploader() {}
+TextureUploader::~TextureUploader() = default;
 }// namespace rbc

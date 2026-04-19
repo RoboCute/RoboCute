@@ -9,20 +9,20 @@
 
 namespace rbc {
 
-void AnimInstance::InitAnimInstance(RC<world::AnimGraphResource> &InAnimGraph) {
+void AnimInstance::InitAnimInstance(const RC<world::AnimGraphResource> &InAnimGraph) {
     LUISA_INFO("Init AnimInstance");
-    anim_graph = InAnimGraph;
+    _anim_graph = InAnimGraph;
 }
 
 void AnimInstance::BindSkelMesh(SkeletalMesh *InSkelMesh) {
     LUISA_INFO("[AnimInstance] Binding SkelMesh");
-    skel_mesh = InSkelMesh;
+    _skel_mesh = InSkelMesh;
 }
 SkeletalMesh *AnimInstance::GetSkeletalMesh() const {
-    return skel_mesh;
+    return _skel_mesh;
 }
 AnimGraph *AnimInstance::GetAnimGraph() {
-    return &(anim_graph->graph);
+    return &(_anim_graph->graph());
 }
 
 void AnimInstance::InitializeAnimation() {
@@ -48,7 +48,7 @@ void AnimInstance::RecalcRequiredCurves() {
     // TODO: use proxy impl
 }
 
-bool AnimInstance::NeedsUpdate() {
+bool AnimInstance::NeedsUpdate() const {
     return true;
 }
 
@@ -81,7 +81,7 @@ void AnimInstance::UpdateAnimation(float DeltaSeconds, bool bNeedsValidRootMotio
 }
 
 void AnimInstance::PreUpdateAnimation(float DeltaSeconds) {
-    bNeedsUpdate = true;
+    _b_needs_update = true;
     // Update Delta Time Should be running on GameThread
     GetProxyOnGameThread<AnimInstanceProxy>().PreUpdate(this, DeltaSeconds);
 }
@@ -95,16 +95,16 @@ void AnimInstance::PostUpdateAnimation() {
 void AnimInstance::ParallelEvaluateAnimation(bool bForceRefPose, const SkeletalMesh *InSkeletalMesh, ParallelEvaluationData &OutData) {
     auto &AnimProxy = GetProxyOnAnyThread<AnimInstanceProxy>();
 
-    OutData.OutPose.SetBoneContainer(&AnimProxy.GetRequiredBones());
+    OutData.OutPose.set_bone_container(&AnimProxy.GetRequiredBones());
 
     if (!bForceRefPose) {
         PoseContext eval_context(&AnimProxy);
-        eval_context.ResetToRefPose();
+        eval_context.reset_to_ref_pose();
         // Run AnimGraph
         AnimProxy.EvaluateAnimation(eval_context);
-        OutData.OutPose.CopyBonesFrom(eval_context.Pose);
+        OutData.OutPose.copy_bones_from(eval_context.pose);
     } else {
-        OutData.OutPose.ResetToRefPose();
+        OutData.OutPose.reset_to_ref_pose();
     }
 }
 
@@ -113,11 +113,11 @@ void AnimInstance::ParallelEvaluateAnimation(bool bForceRefPose, const SkeletalM
 namespace rbc {
 
 AnimInstanceProxy::AnimInstanceProxy()
-    : AnimInstanceObject(nullptr), skeleton(nullptr), skeletal_mesh(nullptr), anim_graph(nullptr), root_node(nullptr), MainInstanceProxy(nullptr), current_delta_seconds(0.0f), bUpdatingRoot(false) {
+    : _anim_instance_object(nullptr), _skeleton(nullptr), _skeletal_mesh(nullptr), _anim_graph(nullptr), _root_node(nullptr), _main_instance_proxy(nullptr), _current_delta_seconds(0.0f), _b_updating_root(false) {
 }
 
 AnimInstanceProxy::AnimInstanceProxy(AnimInstance *InAnimInstance)
-    : AnimInstanceObject(InAnimInstance), skeleton(nullptr), skeletal_mesh(nullptr), anim_graph(nullptr), root_node(nullptr), MainInstanceProxy(nullptr), current_delta_seconds(0.0f), bUpdatingRoot(false) {
+    : _anim_instance_object(InAnimInstance), _skeleton(nullptr), _skeletal_mesh(nullptr), _anim_graph(nullptr), _root_node(nullptr), _main_instance_proxy(nullptr), _current_delta_seconds(0.0f), _b_updating_root(false) {
 }
 
 AnimInstanceProxy::AnimInstanceProxy(const AnimInstanceProxy &) = default;
@@ -126,27 +126,27 @@ AnimInstanceProxy &AnimInstanceProxy::operator=(const AnimInstanceProxy &) = def
 AnimInstanceProxy::~AnimInstanceProxy() = default;
 
 AnimInstance *AnimInstanceProxy::GetAnimInstanceObject() const {
-    return AnimInstanceObject;
+    return _anim_instance_object;
 }
 
 void AnimInstanceProxy::Initialize(AnimInstance *InAnimInstance) {
-    AnimInstanceObject = InAnimInstance;
+    _anim_instance_object = InAnimInstance;
     InitializeObjects(InAnimInstance);
     {
-        root_node = InAnimInstance->GetAnimGraph()->GetRootNode();
+        _root_node = InAnimInstance->GetAnimGraph()->get_root_node();
     }
     InitializeRootNode(false);
 }
 
-void AnimInstanceProxy::InitializeObjects(AnimInstance *InAnimInstance) {
+void AnimInstanceProxy::InitializeObjects(const AnimInstance *InAnimInstance) {
     // copy object instance
-    skeletal_mesh = InAnimInstance->GetSkeletalMesh();
-    skeleton = &(skeletal_mesh->GetRefSkeleton());
+    _skeletal_mesh = InAnimInstance->GetSkeletalMesh();
+    _skeleton = &(_skeletal_mesh->GetRefSkeleton());
 }
 
 void AnimInstanceProxy::InitializeRootNode(bool bInDeferredRootNodeInitialization) {
     if (!bInDeferredRootNodeInitialization) {
-        InitializeRootNode_WithRoot(root_node);
+        InitializeRootNode_WithRoot(_root_node);
     }
 }
 void AnimInstanceProxy::InitializeRootNode_WithRoot(AnimNode *InRootNode) {
@@ -157,26 +157,26 @@ void AnimInstanceProxy::InitializeRootNode_WithRoot(AnimNode *InRootNode) {
         AnimationInitializationContext init_context{this, &shared_context};
 
         // Initialize the node regardless of whether it's the root node
-        InRootNode->Initialize_AnyThread(init_context);
+        InRootNode->initialize_any_thread(init_context);
     }
 }
 
-void AnimInstanceProxy::PreUpdate(AnimInstance *InAnimInstance, float DeltaTimeSeconds) {
+void AnimInstanceProxy::PreUpdate(const AnimInstance *InAnimInstance, float DeltaTimeSeconds) {
     InitializeObjects(InAnimInstance);
-    current_delta_seconds = DeltaTimeSeconds;
+    _current_delta_seconds = DeltaTimeSeconds;
     // allocate blend weights and state machines
     // TODO: Collect Transform Here
     // GameThreadPreUpdateNodes => PreUpdate
 }
 
 void AnimInstanceProxy::RecalcRequiredBones(SkeletalMesh *InSkelMesh) {
-    required_bones = InSkelMesh->GetSharedRequiredBones();
+    _required_bones = InSkelMesh->GetSharedRequiredBones();
     // The First AnimInstance will init the required bones
-    if (!required_bones->IsValid()) {
-        required_bones->InitializeTo(InSkelMesh->RequiredBones, InSkelMesh);
+    if (!_required_bones->is_valid()) {
+        _required_bones->initialize_to(InSkelMesh->RequiredBones, InSkelMesh);
         // Set Pose Override
     }
-    bBoneCachesValid = false;
+    _b_bone_caches_valid = false;
 }
 
 void AnimInstanceProxy::ResetAnimationCurves() {}
@@ -188,10 +188,10 @@ void AnimInstanceProxy::UpdateAnimation() {
     // SKR_LOG_INFO(u8"AnimInstanceProxy UpdateAnimation");
 
     AnimationUpdateSharedContext SharedContext;
-    AnimationUpdateContext Context{this, current_delta_seconds, &SharedContext};
+    AnimationUpdateContext Context{this, _current_delta_seconds, &SharedContext};
 
     // if valid - Context.SetNodeId
-    UpdateAnimation_WithRoot(Context, root_node);
+    UpdateAnimation_WithRoot(Context, _root_node);
     // Tick Syncing
 }
 
@@ -202,7 +202,7 @@ void AnimInstanceProxy::UpdateAnimation_WithRoot(const AnimationUpdateContext &I
         return;
     }
 
-    if (InRootNode == root_node) {
+    if (InRootNode == _root_node) {
     } else {
         CacheBones_WithRoot(InRootNode);
     }
@@ -211,7 +211,7 @@ void AnimInstanceProxy::UpdateAnimation_WithRoot(const AnimationUpdateContext &I
 
     // update root
     {
-        if (InRootNode == root_node) {
+        if (InRootNode == _root_node) {
             // call override point
             UpdateAnimationNode(InContext);
         } else {
@@ -220,7 +220,7 @@ void AnimInstanceProxy::UpdateAnimation_WithRoot(const AnimationUpdateContext &I
     }
 }
 void AnimInstanceProxy::CacheBones() {
-    CacheBones_WithRoot(root_node);
+    CacheBones_WithRoot(_root_node);
 }
 
 void AnimInstanceProxy::CacheBones_WithRoot(AnimNode *InRootNode) {
@@ -228,7 +228,7 @@ void AnimInstanceProxy::CacheBones_WithRoot(AnimNode *InRootNode) {
 }
 
 void AnimInstanceProxy::EvaluateAnimation(PoseContext &Output) {
-    EvaluateAnimation_WithRoot(Output, root_node);
+    EvaluateAnimation_WithRoot(Output, _root_node);
 }
 
 void AnimInstanceProxy::EvaluateAnimation_WithRoot(PoseContext &Output, AnimNode *InRootNode) {
@@ -239,13 +239,13 @@ void AnimInstanceProxy::EvaluateAnimation_WithRoot(PoseContext &Output, AnimNode
 }
 
 void AnimInstanceProxy::UpdateAnimationNode(const AnimationUpdateContext &InContext) {
-    UpdateAnimationNode_WithRoot(InContext, root_node);
+    UpdateAnimationNode_WithRoot(InContext, _root_node);
 }
 
 void AnimInstanceProxy::UpdateAnimationNode_WithRoot(const AnimationUpdateContext &InContext, AnimNode *InRootNode) {
     // TODO: Trace
     if (InRootNode != nullptr) {
-        if (InRootNode == root_node) {
+        if (InRootNode == _root_node) {
             // update counter
         }
 
@@ -253,20 +253,20 @@ void AnimInstanceProxy::UpdateAnimationNode_WithRoot(const AnimationUpdateContex
         // InitialUpdate
         // BecomeRelevant
         // Update
-        InRootNode->Update_AnyThread(InContext);
+        InRootNode->update_any_thread(InContext);
         // PostGraphUpdate
     }
 }
 
 void AnimInstanceProxy::EvaluateAnimationNode(PoseContext &Output) {
-    EvaluateAnimationNode_WithRoot(Output, root_node);
+    EvaluateAnimationNode_WithRoot(Output, _root_node);
 }
 
 void AnimInstanceProxy::EvaluateAnimationNode_WithRoot(PoseContext &Output, AnimNode *InRootNode) {
     if (InRootNode != nullptr) {
-        InRootNode->Evaluate_AnyThread(Output);
+        InRootNode->evaluate_any_thread(Output);
     } else {
-        Output.ResetToRefPose();
+        Output.reset_to_ref_pose();
     }
 }
 

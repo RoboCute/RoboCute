@@ -14,7 +14,7 @@ private:
     ~SkelMeshComponent();
 
     RC<SkelMeshResource> _skel_mesh_ref;// the animatable skeletal mesh resource
-    RC<SkeletalMesh> runtime_skel_mesh; // the runtime skeletal mesh
+    RC<SkeletalMesh> _runtime_skel_mesh; // the runtime skeletal mesh
 
 
 public:
@@ -28,7 +28,6 @@ public:
     float time = 0.0f;
     luisa::span<const RC<MaterialResource>> bind_mats;
 
-    void StartUpdateRender(RenderComponent &render, luisa::span<RC<MaterialResource> const> mats);
     MeshResource *GetRuntimeMesh() const;
     bool IsEnabled() const;
 
@@ -39,6 +38,7 @@ public:
     void tick(float delta_time = 0.0f);
     void update_render();
     void remove_object();
+    void _start_update_render(RenderComponent &render, luisa::span<RC<MaterialResource> const> mats);
 
     // Animation control
     void PlayAnimation();

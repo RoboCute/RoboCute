@@ -4,7 +4,7 @@
 #include "rbc_core/blob.h"
 #include "rbc_core/buffer.h"
 #include "rbc_world/resources/mesh.h"
-#include "rbc_anim/asset//reference_skeleton.h"
+#include "rbc_anim/asset/reference_skeleton.h"
 #include "rbc_anim/types.h"
 
 #include "rbc_graphics/render_device.h"
@@ -42,7 +42,7 @@ public:
 public:
     bool support_ray_tracing = false;
     bool use_dynamic_buffer = false;
-    world::MeshResource *static_mesh_;// for acquiring mesh buffers
+    world::MeshResource *static_mesh;// for acquiring mesh buffers
     luisa::vector<BoneIndexType> required_bones;
 };
 
@@ -55,7 +55,7 @@ struct SkelMeshRenderDataLOD {
     virtual void InitResources(SkeletalMeshRenderData *InRenderData, RenderDevice *InDevice);
     virtual void ReleaseResources();
 
-    SkeletalMeshRenderData *render_data_;
+    SkeletalMeshRenderData *render_data;
     luisa::vector<AnimFloat4x4> skin_matrices;
     luisa::vector<SkinPrimitive> skin_primitives;// skin primitives
     // SkeletalMesh需要一些动态更新的Vertex/Normal/Tangent数据，构成Buffer

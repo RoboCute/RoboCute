@@ -40,7 +40,7 @@ void ManagedDevice::_deallocate_handle(TexResourceHandle *handle) {
     _tex_handle_pool.destroy(handle);
 }
 
-uint64_t ManagedDevice::_get_tex_handle(uint64_t handle) {
+uint64_t ManagedDevice::_get_tex_handle(uint64_t handle) const {
     auto iter = _tex_desc_to_native.find(reinterpret_cast<ManagedTexDesc *>(handle));
     if (!iter) {
         return handle;
@@ -49,7 +49,7 @@ uint64_t ManagedDevice::_get_tex_handle(uint64_t handle) {
     return v;
 }
 
-std::pair<uint64_t, size_t> ManagedDevice::_get_buffer_handle_offset(uint64_t handle) {
+std::pair<uint64_t, size_t> ManagedDevice::_get_buffer_handle_offset(uint64_t handle) const {
     auto iter = _buffer_desc_to_native.find(reinterpret_cast<size_t *>(handle));
     if (!iter) {
         return {handle, 0};
@@ -57,7 +57,7 @@ std::pair<uint64_t, size_t> ManagedDevice::_get_buffer_handle_offset(uint64_t ha
     return {_transient_buffer_handle, iter.value().offset};
 }
 
-void *ManagedDevice::get_native_handle(uint64_t handle) {
+void *ManagedDevice::get_native_handle(uint64_t handle) const {
 #ifndef NDEBUG
     if (!_is_committing) [[unlikely]] {
         LUISA_ERROR("Acquiring native handle out of commit scope.");
@@ -86,11 +86,10 @@ void ManagedDevice::_mark_buffer(uint64_t handle, uint64_t command_index) {
     v.end_command_index = std::max<int64_t>(v.end_command_index, command_index);
 }
 
-void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> commands, CommandList &cmdlist) {
+void ManagedDevice::_mark_resources(luisa::span<luisa::unique_ptr<Command> const> commands) {
     for (uint64_t idx = 0; idx < commands.size(); ++idx) {
         auto cmd = commands[idx].get();
         switch (cmd->tag()) {
-
             case Command::Tag::EBufferToTextureCopyCommand: {
                 auto c = static_cast<BufferToTextureCopyCommand const *>(cmd);
                 _mark_buffer(c->buffer(), idx);
@@ -116,7 +115,7 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
                 _mark_tex(c->handle(), idx);
             } break;
             case Command::Tag::ETextureDownloadCommand: {
-                auto c = static_cast<TextureUploadCommand const *>(cmd);
+                auto c = static_cast<TextureDownloadCommand const *>(cmd);
                 _mark_tex(c->handle(), idx);
             } break;
             case Command::Tag::ETextureCopyCommand: {
@@ -204,9 +203,12 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
             } break;
         }
     }
+}
+
+void ManagedDevice::_build_command_caches(size_t command_count) {
     _buffer_fit.clean_all();
     _command_caches.clear();
-    _command_caches.resize(commands.size());
+    _command_caches.resize(command_count);
     for (auto &i : _tex_desc_to_native) {
         auto &v = i.second;
         if (v.start_command_index != std::numeric_limits<int64_t>::max() && v.end_command_index != std::numeric_limits<int64_t>::min()) {
@@ -221,6 +223,9 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
             _command_caches[v.end_command_index]._deallocate_buffer.emplace_back(i.first, &i.second);
         }
     }
+}
+
+void ManagedDevice::_allocate_transient_resources(CommandList &cmdlist) {
     size_t buffer_size = 0;
     for (auto &caches : _command_caches) {
         for (auto alloc : caches._allocate_tex) {
@@ -262,7 +267,9 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
         }
         _transient_buffer_handle = _impl->create_buffer(Type::of<uint4>(), buffer_size / sizeof(uint4), nullptr).handle;
     }
-    // steal command handles
+}
+
+void ManagedDevice::_steal_command_handles(luisa::span<luisa::unique_ptr<Command> const> commands) {
     for (uint64_t idx = 0; idx < commands.size(); ++idx) {
         auto cmd = commands[idx].get();
         switch (cmd->tag()) {
@@ -318,15 +325,12 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
             } break;
             case Command::Tag::EBufferDownloadCommand: {
                 auto c = static_cast<BufferDownloadCommand *>(cmd);
-                _mark_buffer(c->handle(), idx);
                 auto bf = _get_buffer_handle_offset(c->handle());
                 c->set_handle(bf.first);
                 c->set_offset(c->offset() + bf.second);
             } break;
             case Command::Tag::EBufferCopyCommand: {
                 auto c = static_cast<BufferCopyCommand *>(cmd);
-                _mark_buffer(c->src_handle(), idx);
-                _mark_buffer(c->dst_handle(), idx);
                 auto bf = _get_buffer_handle_offset(c->src_handle());
                 c->set_src_handle(bf.first);
                 c->set_src_offset(c->src_offset() + bf.second);
@@ -354,7 +358,8 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
             case Command::Tag::ECustomCommand: {
                 switch (static_cast<CustomCommand *>(cmd)->custom_cmd_uuid()) {
                     case to_underlying(CustomCommandUUID::RASTER_CLEAR_DEPTH): {
-                        // ClearDepthCommand handling
+                        auto c = static_cast<ClearDepthCommand *>(cmd);
+                        c->set_handle(_get_tex_handle(c->handle()));
                     } break;
                     case to_underlying(CustomCommandUUID::RASTER_CLEAR_RENDER_TARGET): {
                         auto c = static_cast<ClearRenderTargetCommand *>(cmd);
@@ -404,6 +409,13 @@ void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> co
                 break;
         }
     }
+}
+
+void ManagedDevice::_preprocess(luisa::span<luisa::unique_ptr<Command> const> commands, CommandList &cmdlist) {
+    _mark_resources(commands);
+    _build_command_caches(commands.size());
+    _allocate_transient_resources(cmdlist);
+    _steal_command_handles(commands);
 }
 
 BufferCreationInfo ManagedDevice::create_buffer(const ir::CArc<ir::Type> *element, size_t elem_count, void *external_memory /* nullptr if not imported from external memory */) noexcept {
@@ -502,7 +514,7 @@ ResourceCreationInfo ManagedDevice::create_texture(
     return info;
 }
 void ManagedDevice::dispatch(uint64_t stream_handle, CommandList &&list) noexcept {
-    auto commands = list.commands().subspan(managing_cmd_range.first, managing_cmd_range.second);
+    auto commands = list.commands().subspan(_managing_cmd_range.first, _managing_cmd_range.second);
     _preprocess(commands, list);
     for (auto &i : _ready_texs) {
         auto &texs = i.second;
@@ -528,7 +540,7 @@ void ManagedDevice::dispatch(uint64_t stream_handle, CommandList &&list) noexcep
     _impl->dispatch(stream_handle, std::move(list));
     _is_committing = false;
     // finalize
-    managing_cmd_range = {
+    _managing_cmd_range = {
         std::numeric_limits<uint64_t>::max(),
         std::numeric_limits<uint64_t>::max()};
     for (auto &i : _tex_desc_to_native) {
@@ -542,7 +554,7 @@ void ManagedDevice::dispatch(uint64_t stream_handle, CommandList &&list) noexcep
     _buffer_desc_to_native.clear();
     ++_frame_index;
 }
-vstd::string ManagedDevice::log_resource_info() {
+vstd::string ManagedDevice::log_resource_info() const {
     vstd::string result;
     for (auto &i : _tex_name_to_desc) {
         auto &&v = i.second;
@@ -590,7 +602,6 @@ void ManagedDevice::synchronize_stream(uint64_t stream_handle) noexcept {
     RBC_NOT_IMPL;
 }
 
-using StreamLogCallback = luisa::function<void(luisa::string_view)>;
 void ManagedDevice::set_stream_log_callback(uint64_t stream_handle, const StreamLogCallback &callback) noexcept {
     RBC_NOT_IMPL;
 }

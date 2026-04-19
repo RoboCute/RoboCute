@@ -12,7 +12,7 @@
 #include <luisa/vstl/lmdb.hpp>
 namespace rbc {
 
-struct Project : IProject {
+class Project : public IProject {
 private:
     vstd::LMDB _meta_db;
     luisa::filesystem::path _assets_path;
@@ -27,7 +27,7 @@ private:
     luisa::spin_mutex _glb_mtx;
     void _reimport(
         vstd::Guid binary_guid,
-        luisa::string &meta_data,
+        luisa::string const &meta_data,
         vstd::MD5 type_id,
         luisa::filesystem::path const &origin_path);
 
@@ -74,7 +74,7 @@ public:
         vstd::MD5 type_id,
         luisa::string const &meta_json) override;
     void write_file_meta(luisa::filesystem::path const &origin_path, uint64_t last_write_time, vstd::MD5 file_md5, luisa::span<FileMeta const> file_metas);
-    vstd::MD5 compute_md5(luisa::filesystem::path const &path) {
+    vstd::MD5 compute_md5(luisa::filesystem::path const &path) const {
         luisa::string path_str;
         if (path.is_relative()) {
             path_str = luisa::to_string(_assets_path / path);
@@ -145,7 +145,7 @@ void Project::write_file_meta(luisa::filesystem::path const &origin_path, uint64
 }
 void Project::_reimport(
     vstd::Guid binary_guid,
-    luisa::string &meta_data,
+    luisa::string const &meta_data,
     vstd::MD5 type_id,
     luisa::filesystem::path const &origin_path) {
     auto res_base = world::create_object_with_guid(type_id, binary_guid);
@@ -431,7 +431,7 @@ void Project::read_file_metas(
         }
     }
 }
-struct ProjectPluginImpl : ProjectPlugin {
+class ProjectPluginImpl : public ProjectPlugin {
 public:
     ProjectPluginImpl() {}
     IProject *create_project(luisa::filesystem::path const &assets_db_path) override {

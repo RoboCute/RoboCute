@@ -17,7 +17,6 @@ rbc::coroutine ExternalComponent::before_frame() {
         _before_frame_func();
         co_await std::suspend_always{};
     }
-    co_return;
 }
 rbc::coroutine ExternalComponent::after_frame() {
     while (true) {
@@ -26,9 +25,8 @@ rbc::coroutine ExternalComponent::after_frame() {
         _after_frame_func();
         co_await std::suspend_always{};
     }
-    co_return;
 }
 ExternalComponent::ExternalComponent() = default;
-ExternalComponent::~ExternalComponent() {}
+ExternalComponent::~ExternalComponent() = default;
 DECLARE_WORLD_OBJECT_REGISTER(ExternalComponent);
 }// namespace rbc::world

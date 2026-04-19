@@ -12,6 +12,7 @@ struct RBC_RUNTIME_API DisposeQueue {
 		vstd::func_ptr_t<void(void*)> dtor;
 	};
 	vstd::vector<Element> _elements;
+	static void _destroy_elements(vstd::vector<Element> const &elements);
 
 public:
 	template<typename T>

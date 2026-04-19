@@ -15,13 +15,13 @@ struct MaterialInst : RBCStruct {
     rbc::shared_atomic_mutex _mat_mtx;
     luisa::vector<uint> _disposed_mat;
     MatCode _default_mat_code{};
-    luisa::unordered_map<uint32_t, vstd::Guid> mat_code_to_mat;
+    luisa::unordered_map<uint32_t, vstd::Guid> _mat_code_to_mat;
 };
 static RuntimeStatic<MaterialInst> _mat_inst;
 RC<MaterialResource> MaterialResource::try_get_resource(MatCode code) {
     std::shared_lock lck{_mat_inst->_mat_mtx};
-    auto iter = _mat_inst->mat_code_to_mat.find(code.value);
-    if (iter == _mat_inst->mat_code_to_mat.end()) return {};
+    auto iter = _mat_inst->_mat_code_to_mat.find(code.value);
+    if (iter == _mat_inst->_mat_code_to_mat.end()) return {};
     auto obj_ref = get_object_ref(iter->second);
     if (!obj_ref || !obj_ref->is_type_of<MaterialResource>()) return {};
     return std::move(obj_ref).cast_static<MaterialResource>();
@@ -45,9 +45,11 @@ MatCode MaterialResource::default_mat_code() {
 }
 void _collect_all_materials() {
     auto sm = SceneManager::instance_ptr();
-    _mat_inst->_mat_mtx.lock();
-    auto mats = std::move(_mat_inst->_disposed_mat);
-    _mat_inst->_mat_mtx.unlock();
+    luisa::vector<uint> mats;
+    {
+        std::lock_guard lck{_mat_inst->_mat_mtx};
+        mats = std::move(_mat_inst->_disposed_mat);
+    }
     if (!sm) {
         return;
     }
@@ -225,7 +227,7 @@ MaterialResource::~MaterialResource() {
     if (_mat_inst) [[likely]] {
         std::lock_guard lck1{_mat_inst->_mat_mtx};
         _mat_inst->_disposed_mat.emplace_back(value);
-        _mat_inst->mat_code_to_mat.erase(value);
+        _mat_inst->_mat_code_to_mat.erase(value);
     }
 }
 bool MaterialResource::_install() {
@@ -276,7 +278,7 @@ bool MaterialResource::_install() {
                 sm.dispose_queue());
             {
                 std::lock_guard lck1{_mat_inst->_mat_mtx};
-                _mat_inst->mat_code_to_mat.force_emplace(_mat_code.value, guid());
+                _mat_inst->_mat_code_to_mat.force_emplace(_mat_code.value, guid());
             }
         } else {
             sm.mat_manager().set_mat_instance(

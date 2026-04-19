@@ -8,9 +8,9 @@ void HostBufferManager::clear()
 }
 HostBufferManager::HostBufferManager(Device& device)
     : _device(device)
+    , _ext(_device.extension<PinnedMemoryExt>())
     , _alloc(65536, this, 0)
 {
-    ext = _device.extension<PinnedMemoryExt>();
 }
 HostBufferManager::~HostBufferManager() {}
 uint64 HostBufferManager::allocate(uint64 size)
@@ -19,13 +19,13 @@ uint64 HostBufferManager::allocate(uint64 size)
     if (_buffer_pool.empty())
     {
         idx = _buffers.size();
-        _buffers.emplace_back(ext->allocate_pinned_memory<uint>(size / sizeof(uint), PinnedMemoryOption{ true }));
+        _buffers.emplace_back(_ext->allocate_pinned_memory<uint>(size / sizeof(uint), PinnedMemoryOption{ true }));
     }
     else
     {
         idx = _buffer_pool.back();
         _buffer_pool.pop_back();
-        _buffers[idx] = ext->allocate_pinned_memory<uint>(size / sizeof(uint), PinnedMemoryOption{ true });
+        _buffers[idx] = _ext->allocate_pinned_memory<uint>(size / sizeof(uint), PinnedMemoryOption{ true });
     }
     return idx;
 }
@@ -43,7 +43,7 @@ void HostBufferManager::flush()
 {
     for (auto& i : _buffers)
     {
-        ext->flush_range(i.handle(), 0, i.size_bytes());
+        _ext->flush_range(i.handle(), 0, i.size_bytes());
     }
 }
 

@@ -20,7 +20,7 @@ HeightMapResource::~HeightMapResource() {
 }
 
 bool HeightMapResource::empty() const {
-    std::shared_lock lck{_async_mtx};
+    std::lock_guard lck{_async_mtx};
     return !_height_img || _resolution.x == 0 || _resolution.y == 0;
 }
 
@@ -44,19 +44,11 @@ void HeightMapResource::create_empty(uint2 resolution) {
     auto &device = render_device->lc_device();
 
     // Create device image for height data
-    if (!_height_img) {
-        _height_img = new DeviceImage();
-    } else {
-        LUISA_ERROR("Create on non-empty height image.");
-    }
+    _height_img = new DeviceImage();
     _height_img->create_texture<float>(device, PixelStorage::FLOAT1, resolution, 1u);
 
     // Create device buffer for AABB and height bounds
-    if (!_aabb_and_height_bounding) {
-        _aabb_and_height_bounding = new DeviceBuffer();
-    } else {
-        LUISA_ERROR("Create on non-empty AABB buffer.");
-    }
+    _aabb_and_height_bounding = new DeviceBuffer();
     uint2 blocks = block_size();
     size_t aabb_size = blocks.x * blocks.y * sizeof(luisa::compute::AABB);
     size_t height_bounds_size = blocks.x * blocks.y * sizeof(float);
@@ -85,7 +77,7 @@ void HeightMapResource::serialize_meta(ObjSerialize const &ser) const {
 }
 
 void HeightMapResource::deserialize_meta(ObjDeSerialize const &ser) {
-    std::shared_lock lck{_async_mtx};
+    std::lock_guard lck{_async_mtx};
     uint2 resolution;
     uint32_t proc_inst_id = ~0u;
     bool procedural_prim_dirty = true;
@@ -101,7 +93,7 @@ void HeightMapResource::deserialize_meta(ObjDeSerialize const &ser) {
     }
 }
 
-void HeightMapResource::_compute_aabbs(luisa::compute::CommandList &cmdlist) {
+void HeightMapResource::_compute_aabbs(luisa::compute::CommandList &cmdlist) const {
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return;
     Shader2D<
@@ -115,7 +107,7 @@ void HeightMapResource::_compute_aabbs(luisa::compute::CommandList &cmdlist) {
         "procedural_prim/height_compute_aabb.bin",
         compute_aabb_shader);
     if (!compute_aabb_shader) [[unlikely]] {
-        LUISA_ERROR("Failed to load compute_aabb shader for GaussianSplatResource.");
+        LUISA_ERROR("Failed to load compute_aabb shader for HeightMapResource.");
         return;
     }
     cmdlist << (*compute_aabb_shader)(

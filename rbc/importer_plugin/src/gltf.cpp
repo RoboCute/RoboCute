@@ -2,6 +2,34 @@
 
 namespace rbc {
 
+namespace {
+
+void calculate_mesh_tangents(MeshBuilder &mesh_builder) {
+    if (mesh_builder.triangle_indices.size() > 1) {
+        luisa::vector<Triangle> triangles;
+        uint64_t size = 0;
+        for (auto const &i : mesh_builder.triangle_indices) {
+            size += i.size() / 3;
+        }
+        triangles.reserve(size);
+        for (auto &i : mesh_builder.triangle_indices) {
+            vstd::push_back_all(triangles, luisa::span{reinterpret_cast<Triangle *>(i.data()), i.size() / 3});
+        }
+        calculate_tangent(mesh_builder.position, mesh_builder.uvs[0], mesh_builder.tangent, triangles, 1);
+    } else if (!mesh_builder.triangle_indices.empty()) {
+        calculate_tangent(
+            mesh_builder.position,
+            mesh_builder.uvs[0],
+            mesh_builder.tangent,
+            luisa::span{
+                reinterpret_cast<Triangle const *>(mesh_builder.triangle_indices[0].data()),
+                mesh_builder.triangle_indices[0].size() / 3},
+            1);
+    }
+}
+
+}// namespace
+
 GltfImportData process_gltf_model(tinygltf::Model const &model) {
     GltfImportData result;
     MeshBuilder &mesh_builder = result.mesh_builder;
@@ -134,27 +162,7 @@ GltfImportData process_gltf_model(tinygltf::Model const &model) {
     // Calculate tangents if we have UVs and normals but no tangents
     if (mesh_builder.tangent.empty() && mesh_builder.uv_count() > 0 && !mesh_builder.normal.empty()) {
         mesh_builder.tangent.resize(mesh_builder.vertex_count());
-        if (mesh_builder.triangle_indices.size() > 1) {
-            luisa::vector<Triangle> triangles;
-            uint64_t size = 0;
-            for (auto &i : mesh_builder.triangle_indices) {
-                size += i.size() / 3;
-            }
-            triangles.reserve(size);
-            for (auto &i : mesh_builder.triangle_indices) {
-                vstd::push_back_all(triangles, luisa::span{(Triangle *)i.data(), i.size() / 3});
-            }
-            calculate_tangent(mesh_builder.position, mesh_builder.uvs[0], mesh_builder.tangent, triangles, 1);
-        } else if (!mesh_builder.triangle_indices.empty()) {
-            calculate_tangent(
-                mesh_builder.position,
-                mesh_builder.uvs[0],
-                mesh_builder.tangent,
-                luisa::span{
-                    (Triangle const *)(mesh_builder.triangle_indices[0].data()),
-                    mesh_builder.triangle_indices[0].size() / 3},
-                1);
-        }
+        calculate_mesh_tangents(mesh_builder);
     }
 
     // Ensure tangent array size matches position array size
@@ -163,27 +171,7 @@ GltfImportData process_gltf_model(tinygltf::Model const &model) {
         if (mesh_builder.uv_count() > 0 && !mesh_builder.normal.empty()) {
             // Recalculate all tangents if we have UVs and normals
             mesh_builder.tangent.resize(mesh_builder.vertex_count());
-            if (mesh_builder.triangle_indices.size() > 1) {
-                luisa::vector<Triangle> triangles;
-                uint64_t size = 0;
-                for (auto &i : mesh_builder.triangle_indices) {
-                    size += i.size() / 3;
-                }
-                triangles.reserve(size);
-                for (auto &i : mesh_builder.triangle_indices) {
-                    vstd::push_back_all(triangles, luisa::span{(Triangle *)i.data(), i.size() / 3});
-                }
-                calculate_tangent(mesh_builder.position, mesh_builder.uvs[0], mesh_builder.tangent, triangles, 1);
-            } else if (!mesh_builder.triangle_indices.empty()) {
-                calculate_tangent(
-                    mesh_builder.position,
-                    mesh_builder.uvs[0],
-                    mesh_builder.tangent,
-                    luisa::span{
-                        (Triangle const *)(mesh_builder.triangle_indices[0].data()),
-                        mesh_builder.triangle_indices[0].size() / 3},
-                    1);
-            }
+            calculate_mesh_tangents(mesh_builder);
         } else {
             // Fill missing tangents with default values if we can't calculate them
             mesh_builder.tangent.resize(mesh_builder.vertex_count(), float4(0, 0, 0, 1));
@@ -325,7 +313,6 @@ GltfImportData process_gltf_model(tinygltf::Model const &model) {
                     vertex_color_channels = std::max(vertex_color_channels, static_cast<size_t>(color_num_components));
 
                     // Convert color data to float array
-                    [[maybe_unused]] size_t color_data_size = primitive_vertex_count * color_num_components * sizeof(float);
                     if (all_vertex_colors.size() < (current_vertex_offset + primitive_vertex_count) * color_num_components) {
                         all_vertex_colors.resize((current_vertex_offset + primitive_vertex_count) * color_num_components);
                     }

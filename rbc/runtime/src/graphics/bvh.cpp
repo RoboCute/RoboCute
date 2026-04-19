@@ -8,13 +8,13 @@ static float evaluate_cost(
 	float theta_o,
 	float phi,
 	const BVH::Bounding& b) {
-	float M_omega = 2 * pi * (1.0f - cos(theta_o));
+	float omega_measure = 2 * pi * (1.0f - cos(theta_o));
 	// Return complete cost estimate for _LightBounds_
 
 	float3 d = b.max - b.min;
 	float surface_area = 2 * (d.x * d.y + d.x * d.z + d.y * d.z);
 
-	return phi * M_omega * surface_area;
+	return phi * omega_measure * surface_area;
 }
 }// namespace detail
 auto BVH::split(
@@ -202,9 +202,9 @@ auto BVH::build(
 		std::numeric_limits<float>::infinity(),
 	};
 	float3 max_values{
-		std::numeric_limits<float>::min(),
-		std::numeric_limits<float>::min(),
-		std::numeric_limits<float>::min(),
+		-std::numeric_limits<float>::infinity(),
+		-std::numeric_limits<float>::infinity(),
+		-std::numeric_limits<float>::infinity(),
 	};
 	vstd::vector<Element> elements;
 	Bounding root_bounding;

@@ -60,7 +60,7 @@ private:
     luisa::spin_mutex _evt_mtx;
     vstd::HashMap<vstd::string, SceneManagerEvent *> _before_render_evts;
     vstd::HashMap<vstd::string, SceneManagerEvent *> _on_frame_end_evts;
-    luisa::fiber::event light_accel_event;
+    luisa::fiber::event _light_accel_event;
     IOCommandList _frame_mem_io_list;
     bool _io_cmdlist_require_sync : 1 {false};
     luisa::spin_mutex _build_mesh_mtx;

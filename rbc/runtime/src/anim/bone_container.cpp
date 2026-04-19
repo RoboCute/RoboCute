@@ -4,53 +4,46 @@
 namespace rbc {
 
 BoneContainer::BoneContainer()
-    : ref_skeleton(nullptr) {}
+    : _ref_skeleton(nullptr) {}
 
-}// namespace rbc
-
-namespace rbc {
-
-void BoneContainer::Reset() {
-    ref_skeleton = nullptr;
-    bone_indices.clear();
+void BoneContainer::reset() {
+    _ref_skeleton = nullptr;
+    _bone_indices.clear();
 }
 
-void BoneContainer::InitializeTo(luisa::span<const BoneIndexType> InRequiredBoneIndices, SkeletalMesh *InSkelMesh /*Config Placeholder*/) {
+void BoneContainer::initialize_to(luisa::span<const BoneIndexType> required_bone_indices, SkeletalMesh *skel_mesh /*Config Placeholder*/) {
     // copy from required span
-    bone_indices.clear();
-    bone_indices.insert(
-        bone_indices.begin(),
-        InRequiredBoneIndices.begin(),
-        InRequiredBoneIndices.end());
-    asset_skeletal_mesh = InSkelMesh;
+    _bone_indices.assign(required_bone_indices.begin(), required_bone_indices.end());
+    _asset_skeletal_mesh = skel_mesh;
 
-    Initialize();
+    _initialize();
 }
 
-bool BoneContainer::IsValid() const {
+bool BoneContainer::is_valid() const {
     // Asset is Valid
     // RefSkeleton != nullptr
     // BoneIndices.size() > 0
-    return (ref_skeleton != nullptr) && (bone_indices.size() > 0);
+    return (_ref_skeleton != nullptr) && (!_bone_indices.empty());
 }
 
-luisa::vector<BoneIndexType> &BoneContainer::GetBoneIndices() {
-    return bone_indices;
+luisa::vector<BoneIndexType> &BoneContainer::get_bone_indices() {
+    return _bone_indices;
 }
-const luisa::vector<BoneIndexType> &BoneContainer::GetBoneIndices() const {
-    return bone_indices;
+const luisa::vector<BoneIndexType> &BoneContainer::get_bone_indices() const {
+    return _bone_indices;
 }
 
-void BoneContainer::Initialize() {
-
-    ref_skeleton = &(asset_skeletal_mesh.lock()->GetRefSkeleton());
+void BoneContainer::_initialize() {
+    if (auto mesh = _asset_skeletal_mesh.lock()) {
+        _ref_skeleton = &(mesh->GetRefSkeleton());
+    }
     // TODO: Init SkeletonToCompactPose and CompactPoseToSkeletonIndex
     // BoneSwitchArrays
     // RemapFromSkelMesh
     // TODO: Setup Compact Poes Data
     // CacheRequiredAnimCurves
 }
-void BoneContainer::RemapFromSkelMesh() {}
-void BoneContainer::RemapFromSkeleton() {}
+void BoneContainer::_remap_from_skel_mesh() {}
+void BoneContainer::_remap_from_skeleton() {}
 
 }// namespace rbc

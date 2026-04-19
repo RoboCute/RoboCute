@@ -13,7 +13,7 @@ Entity *SceneResource::get_entity(vstd::Guid guid) {
 }
 Entity *SceneResource::add_entity() {
     std::shared_lock lck{_map_mtx};
-    auto entity = create_object<Entity>();
+    auto const entity = create_object<Entity>();
     auto iter = _entities.try_emplace(
         entity->guid(), entity);
     entity->_parent_scene = this;
@@ -34,17 +34,14 @@ Entity *SceneResource::get_entity(luisa::string_view name) {
     std::shared_lock lck{_name_map_mtx};
     auto iter = _entities_str_name.find(name);
     if (!iter) return nullptr;
-    auto &vec = iter.value();
-    if (!vec.empty()) {
-        return vec[0];
-    }
-    return nullptr;
+    auto const &vec = iter.value();
+    return vec.empty() ? nullptr : vec[0];
 }
 luisa::span<Entity *const> SceneResource::get_entities(luisa::string_view name) {
     std::shared_lock lck{_name_map_mtx};
     auto iter = _entities_str_name.find(name);
     if (!iter) return {};
-    auto &vec = iter.value();
+    auto const &vec = iter.value();
     return vec;
 }
 bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
@@ -62,7 +59,7 @@ bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
     JsonDeSerializer deser{luisa::string_view{json_vec.data(), json_vec.size()}};
     LUISA_ASSERT(deser.valid());
     ArchiveReadJson read_adapter(deser);
-    uint64_t size = deser.last_array_size();
+    uint64_t const size = deser.last_array_size();
     _entities.reserve(size);
     for ([[maybe_unused]] auto _i : vstd::range(size / 2)) {
         vstd::Guid guid;
@@ -90,7 +87,7 @@ bool SceneResource::load_from_json(luisa::filesystem::path const &path) {
     return true;
 }
 rbc::coroutine SceneResource::_async_load() {
-    auto path = this->path();
+    auto const path = this->path();
     if (path.empty()) co_return;
     load_from_json(path);
     co_return;
@@ -148,7 +145,7 @@ bool SceneResource::_install() {
 void SceneResource::_set_entity_name(Entity *e, luisa::string const &new_name) {
     std::lock_guard lck{_name_map_mtx};
     if (new_name == e->_name) return;
-    auto old_name = e->_name;
+    auto const old_name = e->_name;
     if (!old_name.empty() && e->_name_idx != ~0ull) {
         auto iter = _entities_str_name.find(old_name);
         if (iter) {

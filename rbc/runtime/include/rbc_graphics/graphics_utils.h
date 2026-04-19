@@ -28,7 +28,6 @@ struct EventFence {
     TimelineEvent event;
     uint64_t fence_index{};
 };
-struct ComputeDevice;
 struct GraphicsUtils;
 struct RBC_RUNTIME_API GraphicsUtils : RBCStruct {
 private:

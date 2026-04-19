@@ -146,6 +146,6 @@ private:
     static void _swap_back(LightAccel::SwapBackCmd const &cmd, luisa::vector<T> &light_data);
     luisa::spin_mutex _before_render_mtx;
     vstd::vector<vstd::function<bool()>> _before_render_funcs;
-    void add_tick(vstd::function<bool()> &&func);
+    void _add_tick(vstd::function<bool()> &&func);
 };
 }// namespace rbc

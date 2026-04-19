@@ -5,43 +5,41 @@
 
 namespace rbc {
 namespace exposure_detail {
-const int rangeMin = -9;// ev
-const int rangeMax = 9; // ev
-auto GetHistogramScaleOffsetRes(uint2 resolution) {
-    auto diff = float(rangeMax - rangeMin);
+auto get_histogram_scale_offset_res(uint2 resolution) {
+    auto diff = float(Exposure::range_max - Exposure::range_min);
     auto scale = 1.f / diff;
-    auto offset = -float(rangeMin) * scale;
+    auto offset = -float(Exposure::range_min) * scale;
     auto res = make_float2(resolution);
     res += float2(1e-4f);
     return float4(scale, offset, res.x, res.y);
 }
-auto post_process_exposure(
+void post_process_exposure(
     ExposureSettings const &desc,
     uint2 resolution,
     uint2 histogram_block_size,
     float4 &out_scale_offset_res,
     uint2 &out_histogram_disp_size,
-    float4 &out_exposure_Params1,
-    float4 &out_exposure_Params2) {
-    out_scale_offset_res = GetHistogramScaleOffsetRes(resolution);
+    float4 &out_exposure_params1,
+    float4 &out_exposure_params2) {
+    out_scale_offset_res = get_histogram_scale_offset_res(resolution);
     ///////// Histogram
     auto dsp_size_flt = ceil(make_float2(resolution) / 2.0f);
     dsp_size_flt = ceil(dsp_size_flt / make_float2(histogram_block_size));
     out_histogram_disp_size = make_uint2(dsp_size_flt + float2(1e-4f)) * histogram_block_size;
     ///////// Exposure
 
-    auto lowPercent = desc.filtering.x;
-    auto highPercent = desc.filtering.y;
+    auto low_percent = desc.filtering.x;
+    auto high_percent = desc.filtering.y;
     auto kMinDelta = 1e-2f;
-    highPercent = max(highPercent, 1.0f + kMinDelta);
-    lowPercent = clamp(lowPercent, 1.0f, highPercent - kMinDelta);
+    high_percent = max(high_percent, 1.0f + kMinDelta);
+    low_percent = clamp(low_percent, 1.0f, high_percent - kMinDelta);
 
     // Clamp min/max adaptation values as well
-    out_exposure_Params1 = float4(lowPercent * 0.01f, highPercent * 0.01f, exp2(desc.minLuminance), exp2(desc.maxLuminance));
-    out_exposure_Params2 = float4(
+    out_exposure_params1 = float4(low_percent * 0.01f, high_percent * 0.01f, exp2(desc.min_luminance), exp2(desc.max_luminance));
+    out_exposure_params2 = float4(
         0, 0// desc.speedDown, desc.speedUp
         ,
-        desc.globalExposure, 0.0f);
+        desc.global_exposure, 0.0f);
 }
 }// namespace exposure_detail
 Exposure::Exposure(Device &device, luisa::fiber::counter &counter, uint2 res)
@@ -61,24 +59,24 @@ void Exposure::generate(
     uint2 res) {
     Buffer<uint> histogram_buffer = RenderDevice::instance().create_transient_buffer<uint>("histogram", k_Bins);
     ///////// Histogram
-    float4 scaleOffsetRes;
+    float4 scale_offset_res;
     uint2 histogram_dispatch_size;
-    float4 exposure_Params1, exposure_Params2;
-    exposure_detail::post_process_exposure(desc, res, _histogram_shader->block_size().xy(), scaleOffsetRes, histogram_dispatch_size, exposure_Params1, exposure_Params2);
+    float4 exposure_params1, exposure_params2;
+    exposure_detail::post_process_exposure(desc, res, _histogram_shader->block_size().xy(), scale_offset_res, histogram_dispatch_size, exposure_params1, exposure_params2);
     cmdlist << (*_clear_shader)(histogram_buffer, 0).dispatch(histogram_buffer.size())
             << (*_histogram_shader)(
                    histogram_buffer,
                    img,
-                   scaleOffsetRes)
+                   scale_offset_res)
                    .dispatch(histogram_dispatch_size);
 
     ///////// Exposure
 
     cmdlist << (*_auto_exposure)(
-                   desc.use_auto_exposure ? -1.f : desc.globalExposure,
-                   exposure_Params1,
-                   exposure_Params2,
-                   scaleOffsetRes,
+                   desc.use_auto_exposure ? -1.f : desc.global_exposure,
+                   exposure_params1,
+                   exposure_params2,
+                   scale_offset_res,
                    histogram_buffer,
                    exposure_buffer)
                    .dispatch(_auto_exposure->block_size().xy());
@@ -106,5 +104,5 @@ void Exposure::generate(
     // 			   .dispatch(local_exp_volume.size());
 }
 
-Exposure::~Exposure() {}
+Exposure::~Exposure() = default;
 }// namespace rbc

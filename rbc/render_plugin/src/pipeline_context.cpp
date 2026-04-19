@@ -22,7 +22,7 @@ PipelineContext::PipelineContext(
     Stream &stream,
     SceneManager &scene,
     CommandList &cmdlist)
-    : device{&device}, stream(&stream), scene{&scene}, cmdlist{&cmdlist}{
+    : device{&device}, stream{&stream}, scene{&scene}, cmdlist{&cmdlist} {
     auto &cam_data = pipeline_settings.read_mut<CameraData>();
     cam_data.world_to_sky = make_float3x3(
         1, 0, 0,
@@ -36,5 +36,5 @@ void PipelineContext::clear() {
         click_mng->clear();
 }
 
-PipelineContext::~PipelineContext() {}
+PipelineContext::~PipelineContext() = default;
 }// namespace rbc

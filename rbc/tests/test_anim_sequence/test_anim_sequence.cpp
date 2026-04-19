@@ -236,7 +236,7 @@ int main(int argc, char *argv[]) {
 
     skel->unsafe_set_loaded();
     std::cout << "Skeleton loaded successfully!" << std::endl;
-    std::cout << "Skeleton joints: " << skel->ref_skel().NumJoints() << std::endl;
+    std::cout << "Skeleton joints: " << skel->ref_skel().num_joints() << std::endl;
 
     std::cout << std::endl;
 

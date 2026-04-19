@@ -56,13 +56,8 @@ void SDFVoxelResource::build_procedural_primitive(
 
     auto &device = render_device->lc_device();
 
-    // Compute AABB for the volume
+    // Compute AABB for the volume and upload to GPU buffer
     _compute_aabb(cmdlist);
-
-    // Create AABB buffer (single AABB for the entire volume)
-    if (!_aabb_buffer || !_aabb_buffer.valid() || _aabb_buffer.size() != 1) {
-        _aabb_buffer = device.create_buffer<luisa::compute::AABB>(1);
-    }
 
     // Create procedural primitive (BLAS) with single AABB for the volume
     procedural_prim = device.create_procedural_primitive(

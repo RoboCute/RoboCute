@@ -2,15 +2,15 @@
 
 namespace rbc {
 
-void DeltaTimeRecord::Set(float InPrevious, float InDelta) {
-    previous_time = InPrevious;
-    delta = InDelta;
-    is_previous_valid = true;
+void DeltaTimeRecord::set(float previous_time, float delta_time) {
+    _previous_time = previous_time;
+    _delta = delta_time;
+    _is_previous_valid = true;
 }
 
-void DeltaTimeRecord::SetPrevious(float InPrevious) {
-    previous_time = InPrevious;
-    is_previous_valid = true;
+void DeltaTimeRecord::set_previous(float previous_time) {
+    _previous_time = previous_time;
+    _is_previous_valid = true;
 }
 
 }// namespace rbc

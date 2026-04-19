@@ -21,10 +21,10 @@ public:
 
     rbc::coroutine _async_load() override;
 
-    const AnimSequence &ref_seq() const { return anim_sequence; }
-    AnimSequence &ref_seq() { return anim_sequence; }
+    const AnimSequence &ref_seq() const { return _anim_sequence; }
+    AnimSequence &ref_seq() { return _anim_sequence; }
     RC<SkeletonResource> ref_skel;
-    void log_brief();
+    void log_brief() const;
 
     // Import config (stored in meta, set before importing)
     luisa::string anim_name;// empty = auto-select first animation
@@ -37,7 +37,7 @@ private:
     mutable rbc::shared_atomic_mutex _async_mtx;
     friend struct IAnimSequenceImporter;
     friend struct rbc::Serialize<AnimSequenceResource>;
-    AnimSequence anim_sequence;
+    AnimSequence _anim_sequence;
 };
 
 }// namespace rbc::world

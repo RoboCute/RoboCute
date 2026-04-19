@@ -30,18 +30,18 @@ private:
         Buffer<float>,// exposure buffer
         Image<float>  // out texture
         >;
-    UberShader const *uber_shader{};
+    UberShader const *_uber_shader{};
     Shader2D<
         Image<float>,// dst
         Image<float>,// src
         bool         // reverse rgb
-        > const *blit_shader;
+        > const *_blit_shader;
     Shader2D<
         Image<float>, // dst
         Buffer<float>,// src
         uint          // channel
-        > const *blit_from_buffer;
-    luisa::fiber::counter init_counter;
+        > const *_blit_from_buffer;
+    luisa::fiber::counter _init_counter;
 
 public:
 

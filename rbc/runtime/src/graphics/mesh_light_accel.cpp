@@ -8,7 +8,7 @@
 #include <rbc_core/atomic.h>
 namespace rbc {
 auto MeshLightAccel::build_bvh(
-    float4x4 matrix,
+    float4x4 const &matrix,
     span<float3 const> vertices,
     span<Triangle const> triangles,
     span<uint const> submesh_offset,
@@ -24,7 +24,7 @@ auto MeshLightAccel::build_bvh(
     }
     std::atomic<float> contribute{0};
     auto func = [&](size_t i, float lum) {
-        BVH::InputNode r;
+        BVH::InputNode node;
         auto &&tri = triangles[i];
         float3 p0 = vertices[tri.i0];
         float3 p1 = vertices[tri.i1];
@@ -32,11 +32,11 @@ auto MeshLightAccel::build_bvh(
         p0 = (matrix * make_float4(p0, 1.f)).xyz();
         p1 = (matrix * make_float4(p1, 1.f)).xyz();
         p2 = (matrix * make_float4(p2, 1.f)).xyz();
-        r.bounding.min = min(p0, min(p1, p2));
-        r.bounding.max = max(p0, max(p1, p2));
+        node.bounding.min = min(p0, min(p1, p2));
+        node.bounding.max = max(p0, max(p1, p2));
         for (auto i : vstd::range(3)) {
-            atomic_min(bounding_min_max[i], r.bounding.min[i]);
-            atomic_max(bounding_min_max[i + 3], r.bounding.max[i]);
+            atomic_min(bounding_min_max[i], node.bounding.min[i]);
+            atomic_max(bounding_min_max[i + 3], node.bounding.max[i]);
         }
         float a = distance(p0, p1);
         float b = distance(p2, p1);
@@ -44,12 +44,11 @@ auto MeshLightAccel::build_bvh(
         float p = (a + b + c) * 0.5f;
         float area = std::sqrt(p * (p - a) * (p - b) * (p - c));
         auto contri = area * lum;
-        r.bary_center_and_weight = make_float4((p0 + p1 + p2) / 3.f, contri);
+        node.bary_center_and_weight = make_float4((p0 + p1 + p2) / 3.f, contri);
         contribute += contri;
-        (void)normalize(cross(p1 - p0, p2 - p0));
-        r.cone = make_float4(0, 0, 1, pi);
-        r.write_index(luisa::to_underlying(LightType::Triangle), i);
-        return r;
+        node.cone = make_float4(0, 0, 1, pi);
+        node.write_index(luisa::to_underlying(LightType::Triangle), i);
+        return node;
     };
     size_t input_nodes_capacity{};
     for (auto submesh_index : vstd::range(submesh_lum.size())) {
@@ -138,6 +137,4 @@ void MeshLightAccel::update_frame(IOCommandList &io_cmdlist) {
     }
 }
 
-MeshLightAccel::MeshLightAccel() {
-}
 }// namespace rbc

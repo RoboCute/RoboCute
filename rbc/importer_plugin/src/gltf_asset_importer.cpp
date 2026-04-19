@@ -12,6 +12,7 @@
 #include <rbc_world/resource_importer.h>
 #include <luisa/core/logging.h>
 #include <luisa/core/binary_file_stream.h>
+#include <algorithm>
 
 namespace rbc::world {
 
@@ -39,40 +40,45 @@ luisa::vector<SubAssetInfo> GltfAssetImporter::analyze(
     auto base_dir = path.parent_path();
     
     // Analyze meshes
-    for (size_t i = 0; i < model.meshes.size(); ++i) {
+    int32_t mesh_index = 0;
+    for (auto const &mesh : model.meshes) {
         SubAssetInfo info;
         info.type = SubAssetInfo::Type::Mesh;
-        info.name = model.meshes[i].name.empty() 
-            ? luisa::format("mesh_{}", i) 
-            : luisa::string(model.meshes[i].name);
-        info.index = static_cast<int32_t>(i);
+        info.name = mesh.name.empty() 
+            ? luisa::format("mesh_{}", mesh_index) 
+            : luisa::string(mesh.name);
+        info.index = mesh_index;
         info.parent_scene = path;
         result.push_back(info);
+        ++mesh_index;
     }
     
     // Analyze materials
-    for (size_t i = 0; i < model.materials.size(); ++i) {
+    int32_t mat_index = 0;
+    for (auto const &mat : model.materials) {
         SubAssetInfo info;
         info.type = SubAssetInfo::Type::Material;
-        info.name = model.materials[i].name.empty() 
-            ? luisa::format("material_{}", i) 
-            : luisa::string(model.materials[i].name);
-        info.index = static_cast<int32_t>(i);
+        info.name = mat.name.empty() 
+            ? luisa::format("material_{}", mat_index) 
+            : luisa::string(mat.name);
+        info.index = mat_index;
         info.parent_scene = path;
         result.push_back(info);
+        ++mat_index;
     }
     
     // Analyze textures (and their images)
-    for (size_t i = 0; i < model.textures.size(); ++i) {
-        if (model.textures[i].source >= 0 && 
-            model.textures[i].source < static_cast<int>(model.images.size())) {
-            const auto &image = model.images[model.textures[i].source];
+    int32_t tex_index = 0;
+    for (auto const &texture : model.textures) {
+        if (texture.source >= 0 && 
+            texture.source < static_cast<int>(model.images.size())) {
+            const auto &image = model.images[texture.source];
             SubAssetInfo info;
             info.type = SubAssetInfo::Type::Texture;
             info.name = image.name.empty() 
-                ? luisa::format("texture_{}", i) 
+                ? luisa::format("texture_{}", tex_index) 
                 : luisa::string(image.name);
-            info.index = static_cast<int32_t>(i);
+            info.index = tex_index;
             
             // Resolve texture path
             if (!image.uri.empty()) {
@@ -81,30 +87,35 @@ luisa::vector<SubAssetInfo> GltfAssetImporter::analyze(
             info.parent_scene = path;
             result.push_back(info);
         }
+        ++tex_index;
     }
     
     // Analyze skins
-    for (size_t i = 0; i < model.skins.size(); ++i) {
+    int32_t skin_index = 0;
+    for (auto const &skin : model.skins) {
         SubAssetInfo info;
         info.type = SubAssetInfo::Type::Skin;
-        info.name = model.skins[i].name.empty() 
-            ? luisa::format("skin_{}", i) 
-            : luisa::string(model.skins[i].name);
-        info.index = static_cast<int32_t>(i);
+        info.name = skin.name.empty() 
+            ? luisa::format("skin_{}", skin_index) 
+            : luisa::string(skin.name);
+        info.index = skin_index;
         info.parent_scene = path;
         result.push_back(info);
+        ++skin_index;
     }
     
     // Analyze animations
-    for (size_t i = 0; i < model.animations.size(); ++i) {
+    int32_t anim_index = 0;
+    for (auto const &anim : model.animations) {
         SubAssetInfo info;
         info.type = SubAssetInfo::Type::Animation;
-        info.name = model.animations[i].name.empty() 
-            ? luisa::format("animation_{}", i) 
-            : luisa::string(model.animations[i].name);
-        info.index = static_cast<int32_t>(i);
+        info.name = anim.name.empty() 
+            ? luisa::format("animation_{}", anim_index) 
+            : luisa::string(anim.name);
+        info.index = anim_index;
         info.parent_scene = path;
         result.push_back(info);
+        ++anim_index;
     }
     
     // Note: Skeletons are derived from skin joints, not direct GLTF resources
@@ -250,8 +261,7 @@ void GltfAssetImporter::import_materials(GltfImportState &state) const {
     
     state.materials.reserve(state.model.materials.size());
     
-    for (size_t i = 0; i < state.model.materials.size(); ++i) {
-        const auto &gltf_mat = state.model.materials[i];
+    for (auto const &gltf_mat : state.model.materials) {
         auto mat = world::create_object<MaterialResource>();
         
         // Build material JSON
@@ -308,9 +318,10 @@ void GltfAssetImporter::import_textures(
     // Get texture importers from registry
     auto &registry = ResourceImporterRegistry::instance();
     
-    for (size_t i = 0; i < state.model.textures.size(); ++i) {
-        const auto &texture = state.model.textures[i];
+    size_t texture_index = 0;
+    for (auto const &texture : state.model.textures) {
         if (texture.source < 0 || texture.source >= static_cast<int>(state.model.images.size())) {
+            ++texture_index;
             continue;
         }
         
@@ -322,6 +333,7 @@ void GltfAssetImporter::import_textures(
             
             if (!luisa::filesystem::exists(image_path)) {
                 LUISA_WARNING("Texture file not found: {}", luisa::to_string(image_path));
+                ++texture_index;
                 continue;
             }
             
@@ -329,6 +341,7 @@ void GltfAssetImporter::import_textures(
             auto *importer = registry.find_importer(image_path, TypeInfo::get<TextureResource>().md5());
             if (!importer) {
                 LUISA_WARNING("No importer found for texture: {}", luisa::to_string(image_path));
+                ++texture_index;
                 continue;
             }
             
@@ -339,7 +352,7 @@ void GltfAssetImporter::import_textures(
             if (tex_importer->import(RC<TextureResource>{tex}, &tex_loader, image_path, 
                                      ctx.settings.texture_mip_levels, 
                                      ctx.settings.texture_compress)) {
-                state.textures[i] = tex;
+                state.textures[texture_index] = tex;
                 if (!image.name.empty()) {
                     state.name_to_guid[luisa::string(image.name)] = tex->guid();
                 }
@@ -352,6 +365,7 @@ void GltfAssetImporter::import_textures(
             // TODO: Handle embedded images
             LUISA_WARNING("Embedded images not yet supported");
         }
+        ++texture_index;
     }
 }
 
@@ -378,8 +392,8 @@ void GltfAssetImporter::import_animations(GltfImportState &state) const {
 }
 
 luisa::filesystem::path GltfAssetImporter::resolve_uri(
-    const luisa::string &uri,
-    const luisa::filesystem::path &base_dir) const {
+    luisa::string const &uri,
+    luisa::filesystem::path const &base_dir) const {
     
     // Handle data URIs
     if (uri.find("data:") == 0) {
@@ -396,7 +410,7 @@ luisa::filesystem::path GltfAssetImporter::resolve_uri(
 }
 
 luisa::string GltfAssetImporter::get_node_name(
-    const tinygltf::Node &node, 
+    tinygltf::Node const &node, 
     int index) const {
     if (!node.name.empty()) {
         return luisa::string(node.name);

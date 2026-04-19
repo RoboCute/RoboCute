@@ -138,8 +138,8 @@ private:
     Shader1D<Buffer<uint>, uint> const *set_shader;
     Shader1D<Buffer<uint>, uint, uint> const *clear_shader;
     // used in before_rendering
-    luisa::vector<uint2> dispose_offset_cache;
-    luisa::vector<uint3> dispose_dispatch_cache;
+    luisa::vector<uint2> _dispose_offset_cache;
+    luisa::vector<uint3> _dispose_dispatch_cache;
     uint _countdown{(1u << 28u) - 2u};
     ////////////// callback thread	struct
     struct FrameResource {
@@ -162,7 +162,7 @@ private:
         luisa::spin_mutex _mtx;
     };
     vstd::HashMap<TexIndex *, UnmapCmd> _unmap_lists;
-    uint inqueue_frame{0};
+    uint _inqueue_frame{0};
     vector<TexIndex *> _tex_indices;
 
     ////////////// callback thread
@@ -192,9 +192,9 @@ private:
     std::atomic_bool _enabled{true};
     std::mutex _copy_stream_mtx;
     std::condition_variable _copy_stream_cv;
-    CommandList async_cmdlist;
-    uint64_t signalled_fence = 0;
-    std::atomic_uint64_t last_fence = 0;
+    CommandList _async_cmdlist;
+    uint64_t _signalled_fence = 0;
+    std::atomic_uint64_t _last_fence = 0;
     void _async_logic();
     luisa::fiber::event _async_load_evt;
     uint64_t _last_io_fence = 0;

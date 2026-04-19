@@ -12,8 +12,8 @@ private:
     vstd::HashMap<
         luisa::string,
         luisa::weak_ptr<luisa::DynamicModule>>
-        loaded_modules;
-    std::mutex mtx;
+        _loaded_modules;
+    std::mutex _mtx;
     PluginManager();
     ~PluginManager();
 public:

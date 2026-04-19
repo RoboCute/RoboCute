@@ -36,26 +36,26 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
 #pragma warning(pop)
 #endif
     ////////////////////////////////////////  HDRI
-    vstd::optional<HDRI> hdri;
-    vstd::optional<SkyAtmosphere> sky_atom;
-    bool sky_dirty{false};
+    vstd::optional<HDRI> _hdri;
+    vstd::optional<SkyAtmosphere> _sky_atom;
+    bool _sky_dirty{false};
     //////////////////////////////////////// denoise
     enum struct OidnSupport : uint8_t {
         UnChecked,
         UnSupported,
         Supported
     };
-    OidnSupport oidn_support{OidnSupport::UnChecked};
-    std::mutex oidn_mtx;
-    luisa::shared_ptr<DynamicModule> oidn_module;
+    OidnSupport _oidn_support{OidnSupport::UnChecked};
+    std::mutex _oidn_mtx;
+    luisa::shared_ptr<DynamicModule> _oidn_module;
 #ifdef RBC_RENDER_ENABLE_OIDN
-    rbc::DenoiserExt *oidn_ext{};
+    rbc::DenoiserExt *_oidn_ext{};
     vstd::HashMap<uint64, DenoiserStream> _denoisers;
 #endif
     //////////////////////////////////////// pipeline
-    luisa::unordered_map<luisa::string, luisa::unique_ptr<Pipeline>> pipelines;
+    luisa::unordered_map<luisa::string, luisa::unique_ptr<Pipeline>> _pipelines;
     RenderPluginImpl() {
-        pipelines.try_emplace("default", luisa::make_unique<PTPipeline>());
+        _pipelines.try_emplace("default", luisa::make_unique<PTPipeline>());
     }
     PipeCtxStub *create_pipeline_context() override {
         auto ctx = new PipelineContext{
@@ -73,12 +73,12 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
     void destroy_pipeline_context(PipeCtxStub *ctx) override {
         delete reinterpret_cast<PipelineContext *>(ctx);
     }
-    Pipeline *get_pipe(luisa::string_view name) {
+    Pipeline *get_pipe(luisa::string_view name) const {
         if (name.empty()) {
             name = "default";
         }
-        auto iter = pipelines.find(name);
-        if (iter == pipelines.end()) return nullptr;
+        auto iter = _pipelines.find(name);
+        if (iter == _pipelines.end()) return nullptr;
         return iter->second.get();
     }
 
@@ -104,9 +104,9 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         // set sky
         {
             auto &sky_settings = ctx.pipeline_settings.read_mut<SkySettings>();
-            sky_settings.sky_atom = sky_atom.has_value() ? sky_atom.ptr() : nullptr;
-            sky_settings.dirty = sky_dirty;
-            sky_dirty = false;
+            sky_settings.sky_atom = _sky_atom.has_value() ? _sky_atom.ptr() : nullptr;
+            sky_settings.dirty = _sky_dirty;
+            _sky_dirty = false;
         }
         auto &pipe_settings = ctx.pipeline_settings.read<rbc::PTPipelineSettings>();
         if (!pipe_settings.render) return false;
@@ -124,35 +124,35 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         return true;
     }
     void update_skybox(uint2 res) override {
-        sky_dirty = true;
+        _sky_dirty = true;
         auto &device = RenderDevice::instance();
-        if (!hdri) {
-            hdri.create();
+        if (!_hdri) {
+            _hdri.create();
         }
-        if (sky_atom) {
-            sky_atom->deallocate(SceneManager::instance().bindless_allocator());
+        if (_sky_atom) {
+            _sky_atom->deallocate(SceneManager::instance().bindless_allocator());
             device.lc_main_stream().synchronize();
-            sky_atom.destroy();
+            _sky_atom.destroy();
         }
-        sky_atom.create(
+        _sky_atom.create(
             device.lc_device(),
-            *hdri,
+            *_hdri,
             res);
     }
     void update_skybox(RC<DeviceImage> image) override {
-        sky_dirty = true;
+        _sky_dirty = true;
         auto &device = RenderDevice::instance();
-        if (!hdri) {
-            hdri.create();
+        if (!_hdri) {
+            _hdri.create();
         }
-        if (sky_atom) {
-            sky_atom->deallocate(SceneManager::instance().bindless_allocator());
+        if (_sky_atom) {
+            _sky_atom->deallocate(SceneManager::instance().bindless_allocator());
             device.lc_main_stream().synchronize();
-            sky_atom.destroy();
+            _sky_atom.destroy();
         }
-        sky_atom.create(
+        _sky_atom.create(
             device.lc_device(),
-            *hdri,
+            *_hdri,
             std::move(image));
     }
     bool update_skybox(
@@ -160,10 +160,10 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         compute::PixelStorage pixel_storage,
         uint2 resolution,
         uint64_t file_offset_bytes) override {
-        sky_dirty = true;
+        _sky_dirty = true;
         auto &device = RenderDevice::instance();
-        if (!hdri) {
-            hdri.create();
+        if (!_hdri) {
+            _hdri.create();
         }
         if (!luisa::filesystem::exists(path)) {
             return false;
@@ -186,40 +186,40 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             img->get_float_image()};
         io_cmdlist.dispose_file(std::move(file_stream));
         auto load_fence = device.io_service()->execute(std::move(io_cmdlist));
-        if (sky_atom) {
+        if (_sky_atom) {
             device.lc_main_stream().synchronize();
-            sky_atom.destroy();
+            _sky_atom.destroy();
         }
-        sky_atom.create(
+        _sky_atom.create(
             device.lc_device(),
-            *hdri,
+            *_hdri,
             std::move(img));
         device.io_service()->synchronize(load_fence);
         return true;
     }
     void dispose_skybox() override {
-        if (sky_atom) {
-            sky_atom.destroy();
+        if (_sky_atom) {
+            _sky_atom.destroy();
         }
     }
     bool init_oidn() override {
 #ifdef RBC_RENDER_ENABLE_OIDN
-        std::lock_guard lck{oidn_mtx};
+        std::lock_guard lck{_oidn_mtx};
         if (!ComputeDevice::instance_ptr()) return false;
         auto &render_device = RenderDevice::instance();
         // Unused: auto &lc_ctx = render_device.lc_ctx();
-        oidn_support = ComputeDevice::instance().render_hardware_device_index() == ~0u ? OidnSupport::UnSupported : OidnSupport::Supported;
-        if (oidn_support != OidnSupport::Supported) return false;
-        oidn_module = PluginManager::instance().load_module("oidn_plugin");
-        if (!oidn_module) {
+        _oidn_support = ComputeDevice::instance().render_hardware_device_index() == ~0u ? OidnSupport::UnSupported : OidnSupport::Supported;
+        if (_oidn_support != OidnSupport::Supported) return false;
+        _oidn_module = PluginManager::instance().load_module("oidn_plugin");
+        if (!_oidn_module) {
             LUISA_WARNING("OIDN not support for reason: plugin not found.");
-            oidn_support = OidnSupport::UnSupported;
+            _oidn_support = OidnSupport::UnSupported;
             return false;
         }
-        oidn_ext = oidn_module->invoke<rbc::DenoiserExt *(luisa::compute::Device const &device)>("rbc_create_oidn", render_device.lc_device());
-        if (!oidn_ext) {
+        _oidn_ext = _oidn_module->invoke<rbc::DenoiserExt *(luisa::compute::Device const &device)>("rbc_create_oidn", render_device.lc_device());
+        if (!_oidn_ext) {
             LUISA_WARNING("OIDN not support for reason: plugin not found.");
-            oidn_support = OidnSupport::UnSupported;
+            _oidn_support = OidnSupport::UnSupported;
             return false;
         }
         return true;
@@ -233,7 +233,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
         PipeCtxStub *ctx,
         uint2 render_resolution) override {
 #ifdef RBC_RENDER_ENABLE_OIDN
-        if (oidn_support != OidnSupport::Supported) {
+        if (_oidn_support != OidnSupport::Supported) {
             LUISA_ERROR("Denoiser not supported.");
         }
         bool init = false;
@@ -243,7 +243,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             stream.handle(),
             vstd::lazy_eval([&]() {
                 init = true;
-                return DenoiserStream(oidn_ext->create());
+                return DenoiserStream(_oidn_ext->create());
             }));
 
         auto &denoiser = *iter.value().denoiser;
@@ -270,7 +270,7 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
             denoiser.init(input);
         }
 
-        auto *denoise_ext = static_cast<DXOidnDenoiserExt *>(oidn_ext);
+        auto *denoise_ext = static_cast<DXOidnDenoiserExt *>(_oidn_ext);
         return DenoisePack{
             .external_albedo = denoise_ext->buffer_from_image<float>(input.features[0].image),
             .external_normal = denoise_ext->buffer_from_image<float>(input.features[1].image),
@@ -291,15 +291,15 @@ struct RenderPluginImpl : RenderPlugin, RBCStruct {
 #endif
     }
     ~RenderPluginImpl() {
-        if (sky_atom)
-            sky_atom->deallocate(SceneManager::instance().bindless_allocator());
+        if (_sky_atom)
+            _sky_atom->deallocate(SceneManager::instance().bindless_allocator());
 #ifdef RBC_RENDER_ENABLE_OIDN
         _denoisers.clear();
 #endif
-        pipelines.clear();
+        _pipelines.clear();
         dispose_skybox();
 #ifdef RBC_RENDER_ENABLE_OIDN
-        delete oidn_ext;
+        delete _oidn_ext;
 #endif
     }
 };

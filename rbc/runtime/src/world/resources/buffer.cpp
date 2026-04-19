@@ -54,21 +54,16 @@ void BufferResource::serialize_meta(ObjSerialize const &obj) const {
 
 void BufferResource::deserialize_meta(ObjDeSerialize const &obj) {
     std::lock_guard lck{_async_mtx};
-    uint64_t size_bytes = 0;
-    if (obj.ar.value(size_bytes, "size_bytes")) {
-        _size_bytes = size_bytes;
-    } else {
+    if (!obj.ar.value(_size_bytes, "size_bytes")) {
         _size_bytes = 0;
     }
-    bool create_device_buffer = false;
-    if (obj.ar.value(create_device_buffer, "create_device_buffer")) {
-        _create_device_buffer = create_device_buffer;
-    } else {
+    if (!obj.ar.value(_create_device_buffer, "create_device_buffer")) {
         _create_device_buffer = false;
     }
 }
 
 luisa::compute::BufferView<uint> BufferResource::buffer() const {
+    std::shared_lock lck{_async_mtx};
     return _device_buffer ? _device_buffer->_buffer : luisa::compute::BufferView<uint>{};
 }
 

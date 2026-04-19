@@ -8,6 +8,7 @@
 #include "dstorage.h"
 #include <d3d12.h>
 #include <wrl/client.h>
+#include <algorithm>
 
 namespace rbc {
 using Microsoft::WRL::ComPtr;
@@ -97,24 +98,20 @@ inline const char *d3d12_error_name(HRESULT hr) {
 
 class DStorageModule {
 public:
-    luisa::DynamicModule dstorage_core_module;
-    luisa::DynamicModule dstorage_module;
-    ComPtr<IDStorageFactory> factory;
-
     DStorageModule(
         luisa::filesystem::path const &runtime_dir,
         size_t staging_size,
         bool force_hdd)
-        : dstorage_core_module{DynamicModule::load(runtime_dir, "dstoragecore")}, dstorage_module{DynamicModule::load(runtime_dir, "dstorage")} {
+        : _dstorage_core_module{DynamicModule::load(runtime_dir, "dstoragecore")}, _dstorage_module{DynamicModule::load(runtime_dir, "dstorage")} {
         HRESULT(WINAPI * DStorageGetFactory)
         (REFIID riid, _COM_Outptr_ void **ppv);
-        if (!dstorage_module || !dstorage_core_module) {
+        if (!_dstorage_module || !_dstorage_core_module) {
             LUISA_WARNING("Direct-Storage DLL not found.");
             return;
         }
         HRESULT(WINAPI * DStorageSetConfiguration1)
         (DSTORAGE_CONFIGURATION1 const *configuration);
-        DStorageSetConfiguration1 = dstorage_module.function<std::remove_pointer_t<decltype(DStorageSetConfiguration1)>>("DStorageSetConfiguration1");
+        DStorageSetConfiguration1 = _dstorage_module.function<std::remove_pointer_t<decltype(DStorageSetConfiguration1)>>("DStorageSetConfiguration1");
         if (force_hdd) {
             DSTORAGE_CONFIGURATION1 cfg{
                 .DisableBypassIO = true,
@@ -125,16 +122,22 @@ public:
             DStorageSetConfiguration1(&cfg);
         }
 
-        DStorageGetFactory = dstorage_module.function<std::remove_pointer_t<decltype(DStorageGetFactory)>>("DStorageGetFactory");
-        DStorageGetFactory(IID_PPV_ARGS(factory.GetAddressOf()));
-        factory->SetStagingBufferSize(staging_size);
+        DStorageGetFactory = _dstorage_module.function<std::remove_pointer_t<decltype(DStorageGetFactory)>>("DStorageGetFactory");
+        DStorageGetFactory(IID_PPV_ARGS(_factory.GetAddressOf()));
+        _factory->SetStagingBufferSize(staging_size);
     }
+    IDStorageFactory *factory() const { return _factory.Get(); }
+
+private:
+    luisa::DynamicModule _dstorage_core_module;
+    luisa::DynamicModule _dstorage_module;
+    ComPtr<IDStorageFactory> _factory;
 };
 namespace dstorage_detail {
 static vstd::optional<DStorageModule> module;
 static std::mutex module_mtx;
 }// namespace dstorage_detail
-static constexpr size_t dx12_staging_size = 64ull * 1024ull * 1024ull;
+static constexpr size_t kDx12StagingSize = 64ull * 1024ull * 1024ull;
 struct DStorageStreamDX12Impl : DStorageStream {
 public:
     ~DStorageStreamDX12Impl();
@@ -206,7 +209,7 @@ public:
         return true;
     }
     uint64_t staging_size() override {
-        return dx12_staging_size;
+        return kDx12StagingSize;
     }
     DStorageStreamDX12Impl(
         Device &device,
@@ -218,7 +221,7 @@ void DStorageStream::init_dx12(
     using namespace dstorage_detail;
     std::lock_guard lck{module_mtx};
     if (!module.has_value())
-        module.create(runtime_dir, dx12_staging_size, force_hdd);
+        module.create(runtime_dir, kDx12StagingSize, force_hdd);
 }
 void DStorageStream::dispose_dx12() {
     using namespace dstorage_detail;
@@ -244,7 +247,7 @@ DStorageStreamDX12Impl::DStorageStreamDX12Impl(
         .Capacity = DSTORAGE_MAX_QUEUE_CAPACITY,
         .Priority = DSTORAGE_PRIORITY_LOW,
         .Device = reinterpret_cast<ID3D12Device *>(device.impl()->native_handle())};
-    ThrowIfFailed(module->factory->CreateQueue(&queue_desc, IID_PPV_ARGS(&reinterpret_cast<IDStorageQueue2 *&>(queue))));
+    ThrowIfFailed(module->factory()->CreateQueue(&queue_desc, IID_PPV_ARGS(&reinterpret_cast<IDStorageQueue2 *&>(queue))));
 }
 
 DStorageStreamDX12Impl::~DStorageStreamDX12Impl() {
@@ -261,11 +264,9 @@ IOFile::Handle IOFile::_init_dx12(luisa::string_view path) {
     luisa::vector<wchar_t> wstr;
     wstr.push_back_uninitialized(path.size() + 1);
     wstr[path.size()] = 0;
-    for (size_t i = 0; i < path.size(); ++i) {
-        wstr[i] = path[i];
-    }
+    std::copy_n(path.begin(), path.size(), wstr.begin());
     IDStorageFile *file;
-    if (module->factory->OpenFile(wstr.data(), IID_PPV_ARGS(&file)) != S_OK) [[unlikely]] {
+    if (module->factory()->OpenFile(wstr.data(), IID_PPV_ARGS(&file)) != S_OK) [[unlikely]] {
         LUISA_ERROR("Open file {} failed.", luisa::to_string(path));
     }
     handle.file = file;

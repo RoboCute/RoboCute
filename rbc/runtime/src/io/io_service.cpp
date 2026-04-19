@@ -1,4 +1,4 @@
-#include <rbc_io//io_service.h>
+#include <rbc_io/io_service.h>
 #include "dx12_dstorage/dstorage_config.h"
 #include <luisa/core/stl/algorithm.h>
 #include <luisa/backends/ext/pinned_memory_ext.hpp>
@@ -14,7 +14,7 @@ TimelineEvent::Wait IOService::wait(uint64_t timeline) const {
     return {_evt.handle(), timeline};
 }
 void IOService::synchronize(uint64_t timeline) const {
-    dstorage_stream->sync_event(device, _evt.handle(), _evt.native_handle(), timeline);
+    _dstorage_stream->sync_event(_device, _evt.handle(), _evt.native_handle(), timeline);
 }
 
 namespace ioservice_detail {
@@ -22,8 +22,8 @@ struct CallbackThread {
     vstd::LockFreeArrayQueue<vstd::function<void()>> callbacks;
     vstd::LockFreeArrayQueue<std::pair<IOService *, bool>> task_queue;
     vstd::vector<IOService *> all_service;
-    std::atomic_bool _enabled = true;
-    std::thread _thd;
+    std::atomic_bool enabled = true;
+    std::thread thd;
     void execute() {
         while (auto p = task_queue.dequeue()) {
             if (p->second) {
@@ -50,8 +50,8 @@ struct CallbackThread {
         }
     }
     CallbackThread()
-        : _thd([this]() {
-              while (_enabled) {
+        : thd([this]() {
+              while (enabled) {
                   execute();
                   std::this_thread::sleep_for(std::chrono::milliseconds(1));
               }
@@ -75,14 +75,14 @@ struct CallbackThread {
           }) {
     }
     ~CallbackThread() {
-        _enabled = false;
-        _thd.join();
+        enabled = false;
+        thd.join();
     }
 };
-vstd::unique_ptr<CallbackThread> _thds;
+vstd::unique_ptr<CallbackThread> thds;
 }// namespace ioservice_detail
 void IOService::add_callback(vstd::function<void()> &&callback) {
-    ioservice_detail::_thds->callbacks.enqueue(std::move(callback));
+    ioservice_detail::thds->callbacks.enqueue(std::move(callback));
 }
 IOService *IOService::create_service(
     Device &device,
@@ -90,18 +90,18 @@ IOService *IOService::create_service(
     QueueType queue_type) {
     // TODO: other platforms' implementation
     auto new_ser = new (vengine_malloc(sizeof(IOService))) IOService{queue_type, device, src_type};
-    ioservice_detail::_thds->task_queue.enqueue(new_ser, true);
+    ioservice_detail::thds->task_queue.enqueue(new_ser, true);
     return new_ser;
 }
 void IOService::dispose_service(IOService *ser) {
-    ioservice_detail::_thds->task_queue.enqueue(ser, false);
+    ioservice_detail::thds->task_queue.enqueue(ser, false);
 }
-static IOService::QueueType _io_service_queue_type{};
+static IOService::QueueType io_service_queue_type{};
 void IOService::init(
     QueueType queue_type,
     luisa::filesystem::path const &runtime_dir,
     bool force_hdd) {
-    _io_service_queue_type = queue_type;
+    io_service_queue_type = queue_type;
     switch (queue_type) {
         case QueueType::DX12:
             DStorageStream::init_dx12(runtime_dir, force_hdd);
@@ -110,10 +110,10 @@ void IOService::init(
             DStorageStream::init_fallback();
             break;
     }
-    ioservice_detail::_thds = vstd::make_unique<ioservice_detail::CallbackThread>();
+    ioservice_detail::thds = vstd::make_unique<ioservice_detail::CallbackThread>();
 }
 bool IOService::timeline_signaled(uint64_t timeline) const {
-    return dstorage_stream->timeline_signaled(timeline);
+    return _dstorage_stream->timeline_signaled(timeline);
 }
 void IOService::_join() {
     auto lock_page = [&]() {
@@ -121,16 +121,16 @@ void IOService::_join() {
         return _callbacks.dequeue();
     };
     while (auto p = lock_page()) {
-        dstorage_stream->sync_event(device, _evt.handle(), _evt.native_handle(), p->timeline);
+        _dstorage_stream->sync_event(_device, _evt.handle(), _evt.native_handle(), p->timeline);
         _clear_res(*p);
     }
-    dstorage_stream->free_queue();
+    _dstorage_stream->free_queue();
 }
 
 void IOService::dispose() {
-    if (!ioservice_detail::_thds) return;
-    ioservice_detail::_thds.reset();
-    switch (_io_service_queue_type) {
+    if (!ioservice_detail::thds) return;
+    ioservice_detail::thds.reset();
+    switch (io_service_queue_type) {
         case QueueType::DX12:
             DStorageStream::dispose_dx12();
             break;
@@ -151,8 +151,8 @@ void IOService::_tick() {
     // }
     std::lock_guard lck{_callback_mtx};
     if (auto v = _callbacks.front()) {
-        if (dstorage_stream->is_event_complete(
-                device,
+        if (_dstorage_stream->is_event_complete(
+                _device,
                 _evt.handle(),
                 _evt.native_handle(),
                 v->timeline)) {
@@ -162,21 +162,21 @@ void IOService::_tick() {
     }
 }
 auto IOService::queue_type() -> QueueType {
-    return _io_service_queue_type;
+    return io_service_queue_type;
 }
 IOService::IOService(QueueType queue_type, Device &device, DStorageSrcType src_type)
     : _evt(device.create_timeline_event()) {
     if (queue_type == QueueType::Default)
-        queue_type = _io_service_queue_type;
+        queue_type = io_service_queue_type;
     switch (queue_type) {
         case QueueType::DX12:
-            dstorage_stream = DStorageStream::create_dx12(device, src_type);
+            _dstorage_stream = DStorageStream::create_dx12(device, src_type);
             break;
         default:
-            dstorage_stream = DStorageStream::create_fallback(device, src_type);
+            _dstorage_stream = DStorageStream::create_fallback(device, src_type);
             break;
     }
-    this->device = device.impl();
+    this->_device = device.impl();
 }
 void IOService::_clear_res(Callbacks &r) {
     r.files.clear();
@@ -186,11 +186,11 @@ void IOService::_clear_res(Callbacks &r) {
     r.callbacks.clear();
 }
 IOService::~IOService() {
-    dstorage_stream->dispose();
+    _dstorage_stream->dispose();
 }
 
 void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t wait_on_event_handle, uint64_t wait_on_fence_index) {
-    extra_cmds.clear();
+    _extra_cmds.clear();
     auto &&cmds = std::move(cmd).steal_commands();
     auto &&files = std::move(cmd).steal_files();
     auto &&callbacks = std::move(cmd).steal_callbacks();
@@ -198,8 +198,8 @@ void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t
     auto add_callback = vstd::scope_exit([&]() {
         cmds.clear();
         if (require_signal) {
-            dstorage_stream->enqueue_signal(_evt.handle(), _evt.native_handle(), timeline);
-            dstorage_stream->submit();
+            _dstorage_stream->enqueue_signal(_evt.handle(), _evt.native_handle(), timeline);
+            _dstorage_stream->submit();
         }
         if (files.empty() && callbacks.empty()) return;
         std::lock_guard lck{_callback_mtx};
@@ -211,16 +211,16 @@ void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t
     }
     require_signal = true;
     if (wait_on_event_handle != invalid_resource_handle && wait_on_fence_index > 0) {
-        if (!dstorage_stream->support_wait()) [[unlikely]] {
+        if (!_dstorage_stream->support_wait()) [[unlikely]] {
             LUISA_ERROR("Direct-storage not support wait.");
         }
-        dstorage_stream->enqueue_wait(wait_on_event_handle, wait_on_fence_index);
+        _dstorage_stream->enqueue_wait(wait_on_event_handle, wait_on_fence_index);
     }
 
     _fragment_buffer.clear();
     _staging_buffer.clear();
-    auto staging_size = dstorage_stream->staging_size();
-    split_commands(cmds, extra_cmds, staging_size);
+    auto staging_size = _dstorage_stream->staging_size();
+    split_commands(cmds, _extra_cmds, staging_size);
     auto iter_cmd_loop = [&](auto &i) {
         auto sz = i.size_bytes();
         if (sz < staging_size) {
@@ -232,7 +232,7 @@ void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t
     for (auto &i : cmds) {
         iter_cmd_loop(i);
     }
-    for (auto &i : extra_cmds) {
+    for (auto &i : _extra_cmds) {
         iter_cmd_loop(i);
     }
     luisa::sort(_fragment_buffer.begin(), _fragment_buffer.end(), [&](auto &&a, auto &&b) {
@@ -243,7 +243,7 @@ void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t
     auto execute_stream = [&]() {
         if (!require_execute) return;
         require_execute = false;
-        dstorage_stream->submit();
+        _dstorage_stream->submit();
     };
     if (!_fragment_buffer.empty()) {
         size_t byte_offset = 0;
@@ -259,7 +259,7 @@ void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t
             luisa::visit([&](auto &&src) {
                 luisa::visit([&]<typename T>(T const &dst) {
                     if constexpr (std::is_same_v<T, IOBufferSubView>) {
-                        dstorage_stream->enqueue_request(
+                        _dstorage_stream->enqueue_request(
                             src,
                             cmd->offset_bytes,
                             dst.handle,
@@ -267,13 +267,13 @@ void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t
                             dst.offset_bytes,
                             dst.size_bytes);
                     } else if constexpr (std::is_same_v<T, vstd::span<std::byte>>) {
-                        dstorage_stream->enqueue_request(
+                        _dstorage_stream->enqueue_request(
                             src,
                             cmd->offset_bytes,
                             dst.data(),
                             dst.size_bytes());
                     } else {
-                        dstorage_stream->enqueue_request(
+                        _dstorage_stream->enqueue_request(
                             src,
                             cmd->offset_bytes,
                             dst.handle,
@@ -299,7 +299,7 @@ void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t
             luisa::visit([&](auto &&src) {
                 luisa::visit([&]<typename T>(T const &dst) {
                     if constexpr (std::is_same_v<T, IOBufferSubView>) {
-                        dstorage_stream->enqueue_request(
+                        _dstorage_stream->enqueue_request(
                             src,
                             cmd->offset_bytes,
                             dst.handle,
@@ -307,13 +307,13 @@ void IOService::_execute_cmdlist(IOCommandList &cmd, uint64_t timeline, uint64_t
                             dst.offset_bytes,
                             dst.size_bytes);
                     } else if constexpr (std::is_same_v<T, vstd::span<std::byte>>) {
-                        dstorage_stream->enqueue_request(
+                        _dstorage_stream->enqueue_request(
                             src,
                             cmd->offset_bytes,
                             dst.data(),
                             dst.size_bytes());
                     } else {
-                        dstorage_stream->enqueue_request(
+                        _dstorage_stream->enqueue_request(
                             src,
                             cmd->offset_bytes,
                             dst.handle,

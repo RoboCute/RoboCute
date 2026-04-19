@@ -34,7 +34,7 @@ void GaussianSplatResource::_compute_all_aabbs(CommandList &cmdlist) {
         LUISA_ERROR("Failed to load compute_aabb shader for GaussianSplatResource.");
         return;
     }
-    auto probe_buffer = _device_buffer->buffer().view().as<GaussianProbe>();
+    auto const probe_buffer = _device_buffer->buffer().view().as<GaussianProbe>();
     if (_num_gaussians == 0) [[unlikely]] {
         LUISA_ERROR("No Gaussians to compute AABBs for.");
         return;
@@ -52,7 +52,7 @@ void GaussianSplatResource::_compute_all_aabbs(CommandList &cmdlist) {
 }
 
 void GaussianSplatResource::_assert_size_align(uint64_t size) const {
-    uint64_t expected_size = total_size_bytes();
+    uint64_t const expected_size = total_size_bytes();
     if (size != expected_size) [[unlikely]] {
         LUISA_ERROR(
             "GaussianSplatResource size {} does not match expected size {} "
@@ -67,39 +67,39 @@ uint64_t GaussianSplatResource::total_size_bytes() const {
 
 luisa::span<GaussianProbe const> GaussianSplatResource::host_probes() const {
     if (_num_gaussians == 0) return {};
-    auto host_data = _device_buffer->host_data();
+    auto const host_data = _device_buffer->host_data();
     if (host_data.size_bytes() < probe_data_size_bytes()) return {};
-    auto probe_data = host_data.subspan(0, probe_data_size_bytes());
+    auto const probe_data = host_data.subspan(0, probe_data_size_bytes());
     return {reinterpret_cast<GaussianProbe const *>(probe_data.data()), _num_gaussians};
 }
 
 luisa::span<GaussianProbe> GaussianSplatResource::host_probes() {
     if (_num_gaussians == 0) return {};
-    auto host_data = _device_buffer->host_data();
+    auto const host_data = _device_buffer->host_data();
     if (host_data.size_bytes() < probe_data_size_bytes()) return {};
-    auto probe_data = host_data.subspan(0, probe_data_size_bytes());
+    auto const probe_data = host_data.subspan(0, probe_data_size_bytes());
     return {reinterpret_cast<GaussianProbe *>(probe_data.data()), _num_gaussians};
 }
 
 luisa::span<float const> GaussianSplatResource::host_sh_coeffs() const {
     if (_num_gaussians == 0 || _sh_degree == 0) return {};
-    auto host_data = _device_buffer->host_data();
-    uint64_t sh_size = sh_data_size_bytes();
-    auto sh_offset = this->sh_offset();
+    auto const host_data = _device_buffer->host_data();
+    uint64_t const sh_size = sh_data_size_bytes();
+    auto const sh_offset = this->sh_offset();
     if (host_data.size_bytes() < sh_offset + sh_size) return {};
-    auto sh_data = host_data.subspan(sh_offset, sh_size);
-    uint32_t num_floats = SphereHarmonic::num_floats(_sh_degree) * _num_gaussians;
+    auto const sh_data = host_data.subspan(sh_offset, sh_size);
+    uint32_t const num_floats = SphereHarmonic::num_floats(_sh_degree) * _num_gaussians;
     return {reinterpret_cast<float const *>(sh_data.data()), num_floats};
 }
 
 luisa::span<float> GaussianSplatResource::host_sh_coeffs() {
     if (_num_gaussians == 0 || _sh_degree == 0) return {};
-    auto host_data = _device_buffer->host_data();
-    uint64_t sh_size = sh_data_size_bytes();
-    auto sh_offset = this->sh_offset();
+    auto const host_data = _device_buffer->host_data();
+    uint64_t const sh_size = sh_data_size_bytes();
+    auto const sh_offset = this->sh_offset();
     if (host_data.size_bytes() < sh_offset + sh_size) return {};
-    auto sh_data = host_data.subspan(sh_offset, sh_size);
-    uint32_t num_floats = SphereHarmonic::num_floats(_sh_degree) * _num_gaussians;
+    auto const sh_data = host_data.subspan(sh_offset, sh_size);
+    uint32_t const num_floats = SphereHarmonic::num_floats(_sh_degree) * _num_gaussians;
     return {reinterpret_cast<float *>(sh_data.data()), num_floats};
 }
 
@@ -178,6 +178,7 @@ uint GaussianSplatResource::emplace_procedural_instance(
 
     if (!procedural_prim.valid()) {
         LUISA_ERROR("Create procedural primitive failed.");
+        return ~0u;
     }
     if (surface.buffer_id == ~0u) {
         surface.buffer_id = bindless_alloc.allocate_buffer(_device_buffer->buffer());
@@ -318,7 +319,8 @@ bool GaussianSplatResource::_install() {
 
 bool GaussianSplatResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
-    auto host_data = _device_buffer->host_data();
+    if (!_device_buffer) return false;
+    auto const host_data = _device_buffer->host_data();
     if (host_data.empty()) return false;
     BinaryFileWriter writer{luisa::to_string(path())};
     if (!writer._file) [[unlikely]] {

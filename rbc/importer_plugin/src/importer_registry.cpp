@@ -37,10 +37,10 @@ ImporterRegistry& ImporterRegistry::register_importer(IResourceImporter* importe
     auto& global_registry = ResourceImporterRegistry::instance();
     global_registry.register_importer(importer);
 
-    _registered_importers.push_back(RegisteredImporter{
+    _registered_importers.emplace_back(
         luisa::string(importer->extension()),
         importer->resource_type(),
-        importer});
+        importer);
 
     return *this;
 }
@@ -49,17 +49,17 @@ void ImporterRegistry::unregister_importer(luisa::string_view extension, MD5 typ
     auto& global_registry = ResourceImporterRegistry::instance();
     global_registry.unregister_importer(extension, type);
 
-    // Remove from our tracking list
     auto it = std::remove_if(
         _registered_importers.begin(),
         _registered_importers.end(),
-        [&](const RegisteredImporter& reg) {
+        [extension, type](const RegisteredImporter& reg) {
             return reg.extension == extension && reg.type == type;
         });
     _registered_importers.erase(it, _registered_importers.end());
 }
 
 void ImporterRegistry::unregister_all() {
+    if (_registered_importers.empty()) return;
     auto& global_registry = ResourceImporterRegistry::instance();
     for (const auto& reg : _registered_importers) {
         global_registry.unregister_importer(reg.extension, reg.type);

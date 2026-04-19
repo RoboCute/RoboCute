@@ -79,7 +79,7 @@ void TextureResource::create_empty(
     LCPixelStorage pixel_storage,
     luisa::uint2 size,
     uint32_t mip_level,
-    bool is_vt) {
+    bool is_virtual_texture) {
     ThreadWaiter waiter;
     while (loading_status() == EResourceLoadingStatus::Loading) {
         waiter.wait(std::chrono::microseconds(10), "Last texture loading.");
@@ -90,8 +90,8 @@ void TextureResource::create_empty(
     _size = size;
     _pixel_storage = pixel_storage;
     _mip_level = mip_level;
-    _is_vt = is_vt;
-    if (is_vt) {
+    _is_vt = is_virtual_texture;
+    if (is_virtual_texture) {
         _tex = new DeviceSparseImage();
         // _vt_finished = new VTLoadFlag{};
     } else {
@@ -176,7 +176,6 @@ rbc::coroutine TextureResource::_async_load() {
             loaded = false;
             break;
         }
-        (void)desire_size_bytes();// Suppress unused warning
         auto path = this->path();
         if (path.empty()) {
             loaded = false;
@@ -268,8 +267,8 @@ void TextureResource::_pack_to_tile_level(uint level, luisa::span<std::byte cons
         pixel_size_bytes = pixel_storage_size((PixelStorage)_pixel_storage, uint3(1u));
     }
     raw_size_bytes = pixel_size_bytes * chunk_resolution;
-    auto block_size_bytes = raw_size_bytes * chunk_resolution;
-    auto block_count = (size + chunk_resolution - 1u) / chunk_resolution;
+    const auto block_size_bytes = raw_size_bytes * chunk_resolution;
+    const auto block_count = (size + chunk_resolution - 1u) / chunk_resolution;
     auto get_src_offset = [&](uint2 coord) {
         return (coord.y * size.x + coord.x) * pixel_size_bytes;
     };
@@ -291,7 +290,7 @@ void TextureResource::_pack_to_tile_level(uint level, luisa::span<std::byte cons
         }
 }
 bool TextureResource::pack_to_tile() {
-    auto host_data_ptr = host_data();
+    const auto host_data_ptr = host_data();
     if (!host_data_ptr || host_data_ptr->empty()) return false;
     auto &host_data = *host_data_ptr;
     luisa::vector<std::byte> data;
@@ -299,7 +298,7 @@ bool TextureResource::pack_to_tile() {
     auto size = _size;
     uint64_t offset = 0;
     for (auto i : vstd::range(_mip_level)) {
-        auto level_size = pixel_storage_size((PixelStorage)_pixel_storage, make_uint3(size, 1u));
+        const auto level_size = pixel_storage_size((PixelStorage)_pixel_storage, make_uint3(size, 1u));
         _pack_to_tile_level(
             i,
             luisa::span{host_data}.subspan(offset, level_size),

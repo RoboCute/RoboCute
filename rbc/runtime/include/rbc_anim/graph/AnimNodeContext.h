@@ -31,106 +31,106 @@ public:
     AnimationBaseContext &operator=(AnimationBaseContext &&) = default;
 
 protected:
-    explicit AnimationBaseContext(AnimInstanceProxy *InAnimInstanceProxy, AnimationUpdateSharedContext *InShareContext = nullptr);
+    explicit AnimationBaseContext(AnimInstanceProxy *in_anim_instance_proxy, AnimationUpdateSharedContext *in_share_context = nullptr);
 
 public:
     // Get Animaiton Class Type
-    AnimInstance *GetAnimInstanceObject() const;
-    IndexType GetCurrentNodeId() const { return current_node_id; }
-    IndexType GetPreviousNodeId() const { return previous_node_id; }
-    AnimationUpdateSharedContext *GetSharedContext() const { return shared_context; }
+    AnimInstance *get_anim_instance_object() const;
+    IndexType get_current_node_id() const { return _current_node_id; }
+    IndexType get_previous_node_id() const { return _previous_node_id; }
+    AnimationUpdateSharedContext *get_shared_context() const { return shared_context; }
 
 protected:
-    bool is_active = false;
-    IndexType current_node_id = INVALID_INDEX;
-    IndexType previous_node_id = INVALID_INDEX;
+    bool _is_active = false;
+    IndexType _current_node_id = INVALID_INDEX;
+    IndexType _previous_node_id = INVALID_INDEX;
 };
 
 struct AnimationInitializationContext : public AnimationBaseContext {
 public:
-    AnimationInitializationContext(AnimInstanceProxy *InAnimInstanceProxy, AnimationUpdateSharedContext *InShareContext = nullptr)
-        : AnimationBaseContext(InAnimInstanceProxy, InShareContext) {
+    AnimationInitializationContext(AnimInstanceProxy *in_anim_instance_proxy, AnimationUpdateSharedContext *in_share_context = nullptr)
+        : AnimationBaseContext(in_anim_instance_proxy, in_share_context) {
     }
 };
 
 struct AnimationUpdateContext : public AnimationBaseContext {
 private:
     // Core Context
-    float current_weight;
-    float root_motion_weight_modifier;
-    float delta_time;
+    float _current_weight;
+    float _root_motion_weight_modifier;
+    float _delta_time;
 
 public:
     // Default Ctor
-    AnimationUpdateContext(AnimInstanceProxy *InAnimInstanceProxy = nullptr)
-        : AnimationBaseContext(InAnimInstanceProxy), current_weight(1.0f), root_motion_weight_modifier(1.0f), delta_time(0.0f) {
+    AnimationUpdateContext(AnimInstanceProxy *in_anim_instance_proxy = nullptr)
+        : AnimationBaseContext(in_anim_instance_proxy), _current_weight(1.0f), _root_motion_weight_modifier(1.0f), _delta_time(0.0f) {
     }
     // Most Commonly used Ctor
-    AnimationUpdateContext(AnimInstanceProxy *InAnimInstanceProxy, float InDeltaTime, AnimationUpdateSharedContext *InSharedContext)
-        : AnimationBaseContext(InAnimInstanceProxy, InSharedContext), current_weight(1.0f), root_motion_weight_modifier(1.0f), delta_time(InDeltaTime) {
+    AnimationUpdateContext(AnimInstanceProxy *in_anim_instance_proxy, float in_delta_time, AnimationUpdateSharedContext *in_shared_context)
+        : AnimationBaseContext(in_anim_instance_proxy, in_shared_context), _current_weight(1.0f), _root_motion_weight_modifier(1.0f), _delta_time(in_delta_time) {
     }
     // Special Copy
-    AnimationUpdateContext(const AnimationUpdateContext &Copy, AnimInstanceProxy *InAnotherProxy)
-        : AnimationBaseContext(InAnotherProxy, Copy.shared_context), current_weight(Copy.current_weight), root_motion_weight_modifier(Copy.root_motion_weight_modifier), delta_time(Copy.delta_time) {
-        current_node_id = Copy.current_node_id;
-        previous_node_id = Copy.previous_node_id;
+    AnimationUpdateContext(const AnimationUpdateContext &copy, AnimInstanceProxy *in_another_proxy)
+        : AnimationBaseContext(in_another_proxy, copy.shared_context), _current_weight(copy._current_weight), _root_motion_weight_modifier(copy._root_motion_weight_modifier), _delta_time(copy._delta_time) {
+        _current_node_id = copy._current_node_id;
+        _previous_node_id = copy._previous_node_id;
     }
 
 public:
-    AnimationUpdateContext WithOtherProxy(AnimInstanceProxy *InAnimInstanceProxy) const {
-        AnimationUpdateContext Result(*this, InAnimInstanceProxy);
-        return Result;
+    AnimationUpdateContext with_other_proxy(AnimInstanceProxy *in_anim_instance_proxy) const {
+        AnimationUpdateContext result(*this, in_anim_instance_proxy);
+        return result;
     }
-    AnimationUpdateContext WithOtherSharedContext(AnimationUpdateSharedContext *InSharedContext) const {
-        AnimationUpdateContext Result(*this);// Default Copy
-        Result.shared_context = InSharedContext;
-        return Result;
+    AnimationUpdateContext with_other_shared_context(AnimationUpdateSharedContext *in_shared_context) const {
+        AnimationUpdateContext result(*this);// Default Copy
+        result.shared_context = in_shared_context;
+        return result;
     }
 
 public:
     // get & set
-    float GetDeltaTime() const;
-    float GetFinalBlendWeight() const;
+    float get_delta_time() const;
+    float get_final_blend_weight() const;
 };
 
 // Context for Actual Evaluate Pose
 struct PoseContext : public AnimationBaseContext {
 public:
-    CompactPose Pose;
+    CompactPose pose;
     // Curve
     // CustomAttribute
-    bool bExpectsAdditivePose;
+    bool expects_additive_pose;
 
 public:
-    PoseContext(AnimInstanceProxy *InAnimInstanceProxy, bool bInExpectsAdditivePose = false)
-        : AnimationBaseContext(InAnimInstanceProxy), bExpectsAdditivePose(bInExpectsAdditivePose) {
-        InitializeImpl(InAnimInstanceProxy);
+    PoseContext(AnimInstanceProxy *in_anim_instance_proxy, bool in_expects_additive_pose = false)
+        : AnimationBaseContext(in_anim_instance_proxy), expects_additive_pose(in_expects_additive_pose) {
+        initialize_impl(in_anim_instance_proxy);
     }
 
-    void InitializeImpl(AnimInstanceProxy *InAnimInstanceProxy);
+    void initialize_impl(AnimInstanceProxy *in_anim_instance_proxy);
 
 public:
     // get & set
-    bool ExpectsAdditivePose() const { return bExpectsAdditivePose; }
-    void ResetToRefPose();
+    bool get_expects_additive_pose() const { return expects_additive_pose; }
+    void reset_to_ref_pose();
 };
 
 struct AnimationPoseData {
 public:
-    AnimationPoseData(PoseContext &InPoseContext);
+    AnimationPoseData(PoseContext &in_pose_context);
     // Slot
-    AnimationPoseData(CompactPose &InPose);
+    AnimationPoseData(CompactPose &in_pose);
     // No Default and Move Constructor
     AnimationPoseData() = delete;
-    AnimationPoseData &operator=(AnimationPoseData &&Other) = delete;
+    AnimationPoseData &operator=(AnimationPoseData &&other) = delete;
 
 public:
     // Getter
-    const CompactPose &GetPose() const;
-    CompactPose &GetPose();
+    const CompactPose &get_pose() const;
+    CompactPose &get_pose();
 
 protected:
-    CompactPose &pose;
+    CompactPose &_pose;
 };
 
 struct AnimExtractContext {

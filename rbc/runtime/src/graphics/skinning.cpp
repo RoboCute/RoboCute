@@ -7,17 +7,17 @@ namespace rbc {
 void Skinning::load_shader(luisa::fiber::counter &init_counter) {
     ShaderManager::instance()->async_load(init_counter, "geometry/skinning.bin", _skinning);
 }
-static Skinning *_skining_ptr{};
-Skinning * Skinning::instance() {
-    return _skining_ptr;
+static Skinning *_skinning_ptr{};
+Skinning *Skinning::instance() {
+    return _skinning_ptr;
 }
 Skinning::Skinning() {
-    LUISA_ASSERT(!_skining_ptr);
-    _skining_ptr = this;
+    LUISA_ASSERT(!_skinning_ptr);
+    _skinning_ptr = this;
 }
 Skinning::~Skinning() {
-    LUISA_ASSERT(_skining_ptr == this);
-    _skining_ptr = nullptr;
+    LUISA_ASSERT(_skinning_ptr == this);
+    _skinning_ptr = nullptr;
 }
 
 void Skinning::update_mesh(

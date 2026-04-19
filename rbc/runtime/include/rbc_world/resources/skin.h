@@ -24,11 +24,11 @@ struct RBC_RUNTIME_API SkinResource : world::ResourceBaseImpl<SkinResource> {
     RC<SkeletonResource> ref_skel;
     RC<world::MeshResource> ref_mesh;
     void generate_LUT();
-    void log_brief();
+    void log_brief() const;
 
-    luisa::span<const luisa::string> JointRemaps() const { return {joint_remaps}; }
-    luisa::span<const AnimFloat4x4> InverseBindPoses() const { return {inverse_bind_poses}; }
-    luisa::span<const BoneIndexType> JointRemapsLUT() const { return {joint_remaps_LUT}; }
+    luisa::span<const luisa::string> JointRemaps() const { return {_joint_remaps}; }
+    luisa::span<const AnimFloat4x4> InverseBindPoses() const { return {_inverse_bind_poses}; }
+    luisa::span<const BoneIndexType> JointRemapsLUT() const { return {_joint_remaps_LUT}; }
 
     mutable rbc::shared_atomic_mutex _async_mtx;
 
@@ -39,11 +39,11 @@ protected:
 private:
     friend struct ISkinImporter;
     // direct data
-    luisa::string name;
-    luisa::vector<luisa::string> joint_remaps;
-    luisa::vector<AnimFloat4x4> inverse_bind_poses;
+    luisa::string _name;
+    luisa::vector<luisa::string> _joint_remaps;
+    luisa::vector<AnimFloat4x4> _inverse_bind_poses;
     // generated data
-    luisa::vector<BoneIndexType> joint_remaps_LUT;// LUT: joint_remaps[i] -> bone index in skel
+    luisa::vector<BoneIndexType> _joint_remaps_LUT;// LUT: joint_remaps[i] -> bone index in skel
 };
 
 }// namespace rbc

@@ -6,41 +6,41 @@
 
 namespace rbc {
 
-void PoseLink::AttemptRelink(const AnimationBaseContext &InContext) {
+void PoseLink::attempt_relink(const AnimationBaseContext &in_context) {
 
-    if (LinkedNode == nullptr && LinkedNodeID != INVALID_INDEX) {
+    if (_linked_node == nullptr && linked_node_id != INVALID_INDEX) {
         LUISA_INFO("Attempt Relinking...");
-        LinkedNode = InContext.GetAnimInstanceObject()->GetAnimGraph()->nodes[LinkedNodeID].get();
+        _linked_node = in_context.get_anim_instance_object()->GetAnimGraph()->nodes[linked_node_id].get();
     }
 }
 
-AnimNode *PoseLink::GetLinkedNode() {
-    return LinkedNode;
+AnimNode *PoseLink::get_linked_node() {
+    return _linked_node;
 }
 
-void PoseLink::Initialize(const AnimationInitializationContext &InContext) {
-    LUISA_INFO("Initializing Through PoseLink for LinkedNode {}", LinkedNodeID);
+void PoseLink::initialize(const AnimationInitializationContext &in_context) {
+    LUISA_INFO("Initializing Through PoseLink for LinkedNode {}", linked_node_id);
 
-    AttemptRelink(InContext);
+    attempt_relink(in_context);
 
-    if (LinkedNode != nullptr) {
-        AnimationInitializationContext init_ctx(InContext);
-        LinkedNode->Initialize_AnyThread(init_ctx);
+    if (_linked_node != nullptr) {
+        AnimationInitializationContext init_ctx(in_context);
+        _linked_node->initialize_any_thread(init_ctx);
     }
 }
 
-void PoseLink::Update(const AnimationUpdateContext &InContext) {
-    if (LinkedNode) {
-        LinkedNode->Update_AnyThread(InContext);
+void PoseLink::update(const AnimationUpdateContext &in_context) {
+    if (_linked_node) {
+        _linked_node->update_any_thread(in_context);
     }
 }
 
-void PoseLink::Evaluate(PoseContext &Output) {
-    // LUISA_INFO("Evaluating Through PoseLink for LinkedNode {}", LinkedNodeID);
-    if (LinkedNode != nullptr) {
-        LinkedNode->Evaluate_AnyThread(Output);
+void PoseLink::evaluate(PoseContext &output) {
+    // LUISA_INFO("Evaluating Through PoseLink for LinkedNode {}", linked_node_id);
+    if (_linked_node != nullptr) {
+        _linked_node->evaluate_any_thread(output);
     } else {
-        Output.ResetToRefPose();
+        output.reset_to_ref_pose();
     }
     // Detect Valid Output
 }
@@ -48,12 +48,12 @@ void PoseLink::Evaluate(PoseContext &Output) {
 }// namespace rbc
 
 bool rbc::Serialize<rbc::PoseLink>::write(rbc::ArchiveWrite &w, const rbc::PoseLink &v) {
-    w.value(v.LinkedNodeID, "LinkedNodeID");
+    w.value(v.linked_node_id, "linked_node_id");
     return true;
 }
 bool rbc::Serialize<rbc::PoseLink>::read(rbc::ArchiveRead &r, rbc::PoseLink &v) {
     r.start_object();
-    r.value(v.LinkedNodeID, "LinkedNodeID");
+    r.value(v.linked_node_id, "linked_node_id");
     r.end_scope();
     return true;
 }

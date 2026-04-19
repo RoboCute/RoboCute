@@ -8,15 +8,15 @@ static T reciprocal(T a) {
 }
 struct LpmConstants {
 	std::array<uint4, 10> ctl;
-	uint shoulder; // Use optional extra shoulderContrast tuning (set to false if shoulderContrast is 1.0).
+	uint shoulder; // Use optional extra shoulder_contrast tuning (set to false if shoulder_contrast is 1.0).
 	uint con;	   // Use first RGB conversion matrix, if 'soft' then 'con' must be true also.
 	uint soft;	   // Use soft gamut mapping.
 	uint con2;	   // Use last RGB conversion matrix.
 	uint clip;	   // Use clipping in last conversion matrix.
-	uint scaleOnly;// Scale only for last conversion matrix (used for 709 HDR to scRGB).
+	uint scale_only;// Scale only for last conversion matrix (used for 709 HDR to scRGB).
 	std::array<uint, 2> pad;
 };
-static void LpmMatInv3x3(float3& ox, float3& oy, float3& oz, float3 ix, float3 iy, float3 iz) {
+static void lpm_mat_inv_3x3(float3& ox, float3& oy, float3& oz, float3 ix, float3 iy, float3 iz) {
 	float i = reciprocal(ix[0] * (iy[1] * iz[2] - iz[1] * iy[2]) - ix[1] * (iy[0] * iz[2] - iy[2] * iz[0]) + ix[2] * (iy[0] * iz[1] - iy[1] * iz[0]));
 	ox[0] = (iy[1] * iz[2] - iz[1] * iy[2]) * i;
 	ox[1] = (ix[2] * iz[1] - ix[1] * iz[2]) * i;
@@ -30,7 +30,7 @@ static void LpmMatInv3x3(float3& ox, float3& oy, float3& oz, float3 ix, float3 i
 }
 
 // Transpose.
-static void LpmMatTrn3x3(float3& ox, float3& oy, float3& oz, float3 ix, float3 iy, float3 iz) {
+static void lpm_mat_trn_3x3(float3& ox, float3& oy, float3& oz, float3 ix, float3 iy, float3 iz) {
 	ox[0] = ix[0];
 	ox[1] = iy[0];
 	ox[2] = iz[0];
@@ -42,13 +42,13 @@ static void LpmMatTrn3x3(float3& ox, float3& oy, float3& oz, float3 ix, float3 i
 	oz[2] = iz[2];
 }
 
-static void LpmMatMul3x3(
+static void lpm_mat_mul_3x3(
 	float3& ox, float3& oy, float3& oz, float3 ax, float3 ay, float3 az, float3 bx, float3 by, float3 bz) {
 	float3 bx2;
 	float3 by2;
 	float3 bz2;
 
-	LpmMatTrn3x3(bx2, by2, bz2, bx, by, bz);
+	lpm_mat_trn_3x3(bx2, by2, bz2, bx, by, bz);
 	ox[0] = dot(ax, bx2);
 	ox[1] = dot(ax, by2);
 	ox[2] = dot(ax, bz2);
@@ -59,165 +59,165 @@ static void LpmMatMul3x3(
 	oz[1] = dot(az, by2);
 	oz[2] = dot(az, bz2);
 }
-static float LpmFs2ScrgbScalar(float minLuma, float maxLuma) {
+static float lpm_fs2_scrgb_scalar(float minLuma, float maxLuma) {
 	// Queried display properties.
 	return ((maxLuma - minLuma) + minLuma) * (float(1.0) / float(80.0));
 }
 // D65 xy coordinates.
-static const float2 lpmColD65 = {float(0.3127), float(0.3290)};
+static const float2 kLpmColD65 = {float(0.3127), float(0.3290)};
 
 // Rec709 xy coordinates, (D65 white point).
-static const float2 lpmCol709R = {float(0.64), float(0.33)};
-static const float2 lpmCol709G = {float(0.30), float(0.60)};
-static const float2 lpmCol709B = {float(0.15), float(0.06)};
+static const float2 kLpmCol709R = {float(0.64), float(0.33)};
+static const float2 kLpmCol709G = {float(0.30), float(0.60)};
+static const float2 kLpmCol709B = {float(0.15), float(0.06)};
 
 // DCI-P3 xy coordinates, (D65 white point).
-static const float2 lpmColP3R = {float(0.680), float(0.320)};
-static const float2 lpmColP3G = {float(0.265), float(0.690)};
-static const float2 lpmColP3B = {float(0.150), float(0.060)};
+static const float2 kLpmColP3R = {float(0.680), float(0.320)};
+static const float2 kLpmColP3G = {float(0.265), float(0.690)};
+static const float2 kLpmColP3B = {float(0.150), float(0.060)};
 
 // Rec2020 xy coordinates, (D65 white point).
-static const float2 lpmCol2020R = {float(0.708), float(0.292)};
-static const float2 lpmCol2020G = {float(0.170), float(0.797)};
-static const float2 lpmCol2020B = {float(0.131), float(0.046)};
+static const float2 kLpmCol2020R = {float(0.708), float(0.292)};
+static const float2 kLpmCol2020G = {float(0.170), float(0.797)};
+static const float2 kLpmCol2020B = {float(0.131), float(0.046)};
 
 #define LPM_CONFIG_FS2RAW_709 false, false, true, true, false
 #define LPM_COLORS_FS2RAW_709 \
-	lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, fs2R, fs2G, fs2B, fs2W, float(1.0)
+	kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, fs2_r, fs2_g, fs2_b, fs2_w, float(1.0)
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_FS2RAWPQ_709 false, false, true, true, false
 #define LPM_COLORS_FS2RAWPQ_709 \
-	lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, hdr10S
+	kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, hdr10_s
 //------------------------------------------------------------------------------------------------------------------------------
 // FreeSync2 min-spec is larger than sRGB, so using 709 primaries all the way through as an optimization.
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_FS2SCRGB_709 false, false, false, false, true
 #define LPM_COLORS_FS2SCRGB_709 \
-	lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, fs2S
+	kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, fs2_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_HDR10RAW_709 false, false, true, true, false
 #define LPM_COLORS_HDR10RAW_709 \
-	lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, hdr10S
+	kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, hdr10_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_HDR10SCRGB_709 false, false, false, false, true
 #define LPM_COLORS_HDR10SCRGB_709 \
-	lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, hdr10S
+	kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, hdr10_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_709_709 false, false, false, false, false
 #define LPM_COLORS_709_709 \
-	lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, float(1.0)
+	kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, float(1.0)
 //==============================================================================================================================
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_FS2RAW_P3 true, true, false, false, false
-#define LPM_COLORS_FS2RAW_P3 lpmColP3R, lpmColP3G, lpmColP3B, lpmColD65, fs2R, fs2G, fs2B, fs2W, fs2R, fs2G, fs2B, fs2W, float(1.0)
+#define LPM_COLORS_FS2RAW_P3 kLpmColP3R, kLpmColP3G, kLpmColP3B, kLpmColD65, fs2_r, fs2_g, fs2_b, fs2_w, fs2_r, fs2_g, fs2_b, fs2_w, float(1.0)
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_FS2RAWPQ_P3 true, true, true, false, false
-#define LPM_COLORS_FS2RAWPQ_P3 lpmColP3R, lpmColP3G, lpmColP3B, lpmColD65, fs2R, fs2G, fs2B, fs2W, lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, hdr10S
+#define LPM_COLORS_FS2RAWPQ_P3 kLpmColP3R, kLpmColP3G, kLpmColP3B, kLpmColD65, fs2_r, fs2_g, fs2_b, fs2_w, kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, hdr10_s
 //------------------------------------------------------------------------------------------------------------------------------
 // FreeSync2 gamut can be smaller than P3.
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_FS2SCRGB_P3 true, true, true, false, false
-#define LPM_COLORS_FS2SCRGB_P3 lpmColP3R, lpmColP3G, lpmColP3B, lpmColD65, fs2R, fs2G, fs2B, fs2W, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, fs2S
+#define LPM_COLORS_FS2SCRGB_P3 kLpmColP3R, kLpmColP3G, kLpmColP3B, kLpmColD65, fs2_r, fs2_g, fs2_b, fs2_w, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, fs2_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_HDR10RAW_P3 false, false, true, true, false
 #define LPM_COLORS_HDR10RAW_P3 \
-	lpmColP3R, lpmColP3G, lpmColP3B, lpmColD65, lpmColP3R, lpmColP3G, lpmColP3B, lpmColD65, lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, hdr10S
+	kLpmColP3R, kLpmColP3G, kLpmColP3B, kLpmColD65, kLpmColP3R, kLpmColP3G, kLpmColP3B, kLpmColD65, kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, hdr10_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_HDR10SCRGB_P3 false, false, true, false, false
 #define LPM_COLORS_HDR10SCRGB_P3 \
-	lpmColP3R, lpmColP3G, lpmColP3B, lpmColD65, lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, hdr10S
+	kLpmColP3R, kLpmColP3G, kLpmColP3B, kLpmColD65, kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, hdr10_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_709_P3 true, true, false, false, false
 #define LPM_COLORS_709_P3 \
-	lpmColP3R, lpmColP3G, lpmColP3B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, float(1.0)
+	kLpmColP3R, kLpmColP3G, kLpmColP3B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, float(1.0)
 //==============================================================================================================================
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_FS2RAW_2020 true, true, false, false, false
-#define LPM_COLORS_FS2RAW_2020 lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, fs2R, fs2G, fs2B, fs2W, fs2R, fs2G, fs2B, fs2W, float(1.0)
+#define LPM_COLORS_FS2RAW_2020 kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, fs2_r, fs2_g, fs2_b, fs2_w, fs2_r, fs2_g, fs2_b, fs2_w, float(1.0)
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_FS2RAWPQ_2020 true, true, true, false, false
-#define LPM_COLORS_FS2RAWPQ_2020 lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, fs2R, fs2G, fs2B, fs2W, lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, hdr10S
+#define LPM_COLORS_FS2RAWPQ_2020 kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, fs2_r, fs2_g, fs2_b, fs2_w, kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, hdr10_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_FS2SCRGB_2020 true, true, true, false, false
-#define LPM_COLORS_FS2SCRGB_2020 lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, fs2R, fs2G, fs2B, fs2W, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, fs2S
+#define LPM_COLORS_FS2SCRGB_2020 kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, fs2_r, fs2_g, fs2_b, fs2_w, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, fs2_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_HDR10RAW_2020 false, false, false, false, true
 #define LPM_COLORS_HDR10RAW_2020 \
-	lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, hdr10S
+	kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, hdr10_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_HDR10SCRGB_2020 false, false, true, false, false
 #define LPM_COLORS_HDR10SCRGB_2020 \
-	lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, hdr10S
+	kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, hdr10_s
 //------------------------------------------------------------------------------------------------------------------------------
 // CON     SOFT    CON2    CLIP    SCALEONLY
 #define LPM_CONFIG_709_2020 true, true, false, false, false
 #define LPM_COLORS_709_2020                                                                                                                         \
-	lpmCol2020R, lpmCol2020G, lpmCol2020B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, lpmCol709R, lpmCol709G, lpmCol709B, lpmColD65, \
+	kLpmCol2020R, kLpmCol2020G, kLpmCol2020B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, kLpmCol709R, kLpmCol709G, kLpmCol709B, kLpmColD65, \
 		float(1.0)
 
 // Computes z from xy, returns xyz.
-static void LpmColXyToZ(float3& d, float2 s) {
+static void lpm_col_xy_to_z(float3& d, float2 s) {
 	d[0] = s[0];
 	d[1] = s[1];
 	d[2] = float(1.0) - (s[0] + s[1]);
 }
 
-static void opAMulOneF3(float3& d, float3 a, float b) {
+static void op_a_mul_one_f3(float3& d, float3 a, float b) {
 	d = a * b;
 	return;
 }
-static void opAMulF3(float3& d, float3 a, float3 b) {
+static void op_a_mul_f3(float3& d, float3 a, float3 b) {
 	d = a * b;
 	return;
 }
-static void opAAddOneF3(float3& d, float3 a, float b) {
+static void op_a_add_one_f3(float3& d, float3 a, float b) {
 	d = a + b;
 	return;
 }
-static float LpmHdr10RawScalar(float peakNits) {
+static float lpm_hdr10_raw_scalar(float peakNits) {
 	return peakNits * (float(1.0) / float(10000.0));
 }
-static float LpmHdr10ScrgbScalar(float peakNits) {
+static float lpm_hdr10_scrgb_scalar(float peakNits) {
 	return peakNits * (float(1.0) / float(10000.0)) * (float(10000.0) / float(80.0));
 }
 
 // Returns conversion matrix, rgbw inputs are xy chroma coordinates.
-static void LpmColRgbToXyz(float3& ox, float3& oy, float3& oz, float2 r, float2 g, float2 b, float2 w) {
+static void lpm_col_rgb_to_xyz(float3& ox, float3& oy, float3& oz, float2 r, float2 g, float2 b, float2 w) {
 	// Expand from xy to xyz.
 	float3 rz;
 	float3 gz;
 	float3 bz;
-	LpmColXyToZ(rz, r);
-	LpmColXyToZ(gz, g);
-	LpmColXyToZ(bz, b);
+	lpm_col_xy_to_z(rz, r);
+	lpm_col_xy_to_z(gz, g);
+	lpm_col_xy_to_z(bz, b);
 
 	float3 r3;
 	float3 g3;
 	float3 b3;
-	LpmMatTrn3x3(r3, g3, b3, rz, gz, bz);
+	lpm_mat_trn_3x3(r3, g3, b3, rz, gz, bz);
 
 	// Convert white xyz to XYZ.
 	float3 w3;
-	LpmColXyToZ(w3, w);
-	opAMulOneF3(w3, w3, reciprocal(w[1]));
+	lpm_col_xy_to_z(w3, w);
+	op_a_mul_one_f3(w3, w3, reciprocal(w[1]));
 
 	// Compute xyz to XYZ scalars for primaries.
 	float3 rv;
 	float3 gv;
 	float3 bv;
-	LpmMatInv3x3(rv, gv, bv, r3, g3, b3);
+	lpm_mat_inv_3x3(rv, gv, bv, r3, g3, b3);
 
 	float3 s;
 	s[0] = dot(rv, w3);
@@ -225,20 +225,20 @@ static void LpmColRgbToXyz(float3& ox, float3& oy, float3& oz, float2 r, float2 
 	s[2] = dot(bv, w3);
 
 	// Scale.
-	opAMulF3(ox, r3, s);
-	opAMulF3(oy, g3, s);
-	opAMulF3(oz, b3, s);
+	op_a_mul_f3(ox, r3, s);
+	op_a_mul_f3(oy, g3, s);
+	op_a_mul_f3(oz, b3, s);
 }
-static void CalculateLpmConsts(uint* ctl,
+static void calculate_lpm_consts(uint* ctl,
 							   // Path control.
-							   bool shoulder,// Use optional extra shoulderContrast tuning (set to false if shoulderContrast is 1.0).
+							   bool shoulder,// Use optional extra shoulder_contrast tuning (set to false if shoulder_contrast is 1.0).
 
 							   // Prefab start, "LPM_CONFIG_".
 							   bool con,	  // Use first RGB conversion matrix, if 'soft' then 'con' must be true also.
 							   bool soft,	  // Use soft gamut mapping.
 							   bool con2,	  // Use last RGB conversion matrix.
 							   bool clip,	  // Use clipping in last conversion matrix.
-							   bool scaleOnly,// Scale only for last conversion matrix (used for 709 HDR to scRGB).
+							   bool scale_only,// Scale only for last conversion matrix (used for 709 HDR to scRGB).
 
 							   // Gamut control, "LPM_COLORS_".
 							   float2 xyRedW,
@@ -256,17 +256,17 @@ static void CalculateLpmConsts(uint* ctl,
 							   float scaleC,// For the output container color space (if con2).
 
 							   // Prefab end.
-							   float softGap,// Range of 0 to a little over zero, controls how much feather region in out-of-gamut mapping, 0=clip.
+							   float soft_gap,// Range of 0 to a little over zero, controls how much feather region in out-of-gamut mapping, 0=clip.
 
 							   // Tonemapping control.
-							   float hdrMax,		  // Maximum input value.
-							   float exposure,		  // Number of stops between 'hdrMax' and 18% mid-level on input.
+							   float hdr_max,		  // Maximum input value.
+							   float exposure,		  // Number of stops between 'hdr_max' and 18% mid-level on input.
 							   float contrast,		  // Input range {0.0 (no extra contrast) to 1.0 (maximum contrast)}.
-							   float shoulderContrast,// Shoulder shaping, 1.0 = no change (fast path).
+							   float shoulder_contrast,// Shoulder shaping, 1.0 = no change (fast path).
 							   float3 saturation,	  // A per channel adjustment, use <0 decrease, 0=no change, >0 increase.
 							   float3 crosstalk)	  // One channel must be 1.0, the rest can be <= 1.0 but not zero.
 {
-	auto LpmSetupOut = [&](uint i, uint4 v) {
+	auto lpm_setup_out = [&](uint i, uint4 v) {
 		for (int j = 0; j < 4; ++j) {
 			ctl[i * 4 + j] = v[j];
 		}
@@ -275,200 +275,200 @@ static void CalculateLpmConsts(uint* ctl,
 	contrast += float(1.0);
 
 	// Saturation is based on contrast.
-	opAAddOneF3(saturation, saturation, contrast);
+	op_a_add_one_f3(saturation, saturation, contrast);
 
-	// The 'softGap' must actually be above zero.
-	softGap = std::max(softGap, float(1.0 / 1024.0));
+	// The 'soft_gap' must actually be above zero.
+	soft_gap = std::max(soft_gap, float(1.0 / 1024.0));
 
-	float midIn = hdrMax * float(0.18) * exp2(-exposure);
-	float midOut = float(0.18);
+	float mid_in = hdr_max * float(0.18) * exp2(-exposure);
+	float mid_out = float(0.18);
 
-	float2 toneScaleBias;
-	float cs = contrast * shoulderContrast;
-	float z0 = -pow(midIn, contrast);
-	float z1 = pow(hdrMax, cs) * pow(midIn, contrast);
-	float z2 = pow(hdrMax, contrast) * pow(midIn, cs) * midOut;
-	float z3 = pow(hdrMax, cs) * midOut;
-	float z4 = pow(midIn, cs) * midOut;
-	toneScaleBias[0] = -((z0 + (midOut * (z1 - z2)) * reciprocal(z3 - z4)) * reciprocal(z4));
+	float2 tone_scale_bias;
+	float cs = contrast * shoulder_contrast;
+	float z0 = -pow(mid_in, contrast);
+	float z1 = pow(hdr_max, cs) * pow(mid_in, contrast);
+	float z2 = pow(hdr_max, contrast) * pow(mid_in, cs) * mid_out;
+	float z3 = pow(hdr_max, cs) * mid_out;
+	float z4 = pow(mid_in, cs) * mid_out;
+	tone_scale_bias[0] = -((z0 + (mid_out * (z1 - z2)) * reciprocal(z3 - z4)) * reciprocal(z4));
 
-	float w0 = pow(hdrMax, cs) * pow(midIn, contrast);
-	float w1 = pow(hdrMax, contrast) * pow(midIn, cs) * midOut;
-	float w2 = pow(hdrMax, cs) * midOut;
-	float w3 = pow(midIn, cs) * midOut;
-	toneScaleBias[1] = (w0 - w1) * reciprocal(w2 - w3);
+	float w0 = pow(hdr_max, cs) * pow(mid_in, contrast);
+	float w1 = pow(hdr_max, contrast) * pow(mid_in, cs) * mid_out;
+	float w2 = pow(hdr_max, cs) * mid_out;
+	float w3 = pow(mid_in, cs) * mid_out;
+	tone_scale_bias[1] = (w0 - w1) * reciprocal(w2 - w3);
 
-	float3 lumaW;
-	float3 rgbToXyzXW;
-	float3 rgbToXyzYW;
-	float3 rgbToXyzZW;
-	LpmColRgbToXyz(rgbToXyzXW, rgbToXyzYW, rgbToXyzZW, xyRedW, xyGreenW, xyBlueW, xyWhiteW);
+	float3 luma_w;
+	float3 rgb_to_xyz_xw;
+	float3 rgb_to_xyz_yw;
+	float3 rgb_to_xyz_zw;
+	lpm_col_rgb_to_xyz(rgb_to_xyz_xw, rgb_to_xyz_yw, rgb_to_xyz_zw, xyRedW, xyGreenW, xyBlueW, xyWhiteW);
 
 	// Use the Y vector of the matrix for the associated luma coef.
 	// For safety, make sure the vector sums to 1.0.
-	opAMulOneF3(lumaW, rgbToXyzYW, reciprocal(rgbToXyzYW[0] + rgbToXyzYW[1] + rgbToXyzYW[2]));
+	op_a_mul_one_f3(luma_w, rgb_to_xyz_yw, reciprocal(rgb_to_xyz_yw[0] + rgb_to_xyz_yw[1] + rgb_to_xyz_yw[2]));
 
-	// The 'lumaT' for crosstalk mapping is always based on the output color space, unless soft conversion is not used.
-	float3 lumaT;
-	float3 rgbToXyzXO;
-	float3 rgbToXyzYO;
-	float3 rgbToXyzZO;
-	LpmColRgbToXyz(rgbToXyzXO, rgbToXyzYO, rgbToXyzZO, xyRedO, xyGreenO, xyBlueO, xyWhiteO);
+	// The 'luma_t' for crosstalk mapping is always based on the output color space, unless soft conversion is not used.
+	float3 luma_t;
+	float3 rgb_to_xyz_xo;
+	float3 rgb_to_xyz_yo;
+	float3 rgb_to_xyz_zo;
+	lpm_col_rgb_to_xyz(rgb_to_xyz_xo, rgb_to_xyz_yo, rgb_to_xyz_zo, xyRedO, xyGreenO, xyBlueO, xyWhiteO);
 
-	lumaT = soft ? rgbToXyzYO : rgbToXyzYW;
+	luma_t = soft ? rgb_to_xyz_yo : rgb_to_xyz_yw;
 
-	opAMulOneF3(lumaT, lumaT, reciprocal(lumaT[0] + lumaT[1] + lumaT[2]));
-	float3 rcpLumaT = 1.f / lumaT;
+	op_a_mul_one_f3(luma_t, luma_t, reciprocal(luma_t[0] + luma_t[1] + luma_t[2]));
+	float3 rcp_luma_t = 1.f / luma_t;
 
-	float2 softGap2 = {0.0, 0.0};
+	float2 soft_gap_2 = {0.0, 0.0};
 	if (soft) {
-		softGap2[0] = softGap;
-		softGap2[1] = (float(1.0) - softGap) * reciprocal(softGap * float(0.693147180559));
+		soft_gap_2[0] = soft_gap;
+		soft_gap_2[1] = (float(1.0) - soft_gap) * reciprocal(soft_gap * float(0.693147180559));
 	}
 
 	// First conversion is always working to output.
-	float3 conR = {0.0, 0.0, 0.0};
-	float3 conG = {0.0, 0.0, 0.0};
-	float3 conB = {0.0, 0.0, 0.0};
+	float3 con_r = {0.0, 0.0, 0.0};
+	float3 con_g = {0.0, 0.0, 0.0};
+	float3 con_b = {0.0, 0.0, 0.0};
 
 	if (con) {
-		float3 xyzToRgbRO;
-		float3 xyzToRgbGO;
-		float3 xyzToRgbBO;
-		LpmMatInv3x3(xyzToRgbRO, xyzToRgbGO, xyzToRgbBO, rgbToXyzXO, rgbToXyzYO, rgbToXyzZO);
-		LpmMatMul3x3(conR, conG, conB, xyzToRgbRO, xyzToRgbGO, xyzToRgbBO, rgbToXyzXW, rgbToXyzYW, rgbToXyzZW);
+		float3 xyz_to_rgb_ro;
+		float3 xyz_to_rgb_go;
+		float3 xyz_to_rgb_bo;
+		lpm_mat_inv_3x3(xyz_to_rgb_ro, xyz_to_rgb_go, xyz_to_rgb_bo, rgb_to_xyz_xo, rgb_to_xyz_yo, rgb_to_xyz_zo);
+		lpm_mat_mul_3x3(con_r, con_g, con_b, xyz_to_rgb_ro, xyz_to_rgb_go, xyz_to_rgb_bo, rgb_to_xyz_xw, rgb_to_xyz_yw, rgb_to_xyz_zw);
 	}
 
 	// The last conversion is always output to container.
-	float3 con2R = {0.0, 0.0, 0.0};
-	float3 con2G = {0.0, 0.0, 0.0};
-	float3 con2B = {0.0, 0.0, 0.0};
+	float3 con2_r = {0.0, 0.0, 0.0};
+	float3 con2_g = {0.0, 0.0, 0.0};
+	float3 con2_b = {0.0, 0.0, 0.0};
 
 	if (con2) {
-		float3 rgbToXyzXC;
-		float3 rgbToXyzYC;
-		float3 rgbToXyzZC;
-		LpmColRgbToXyz(rgbToXyzXC, rgbToXyzYC, rgbToXyzZC, xyRedC, xyGreenC, xyBlueC, xyWhiteC);
+		float3 rgb_to_xyz_xc;
+		float3 rgb_to_xyz_yc;
+		float3 rgb_to_xyz_zc;
+		lpm_col_rgb_to_xyz(rgb_to_xyz_xc, rgb_to_xyz_yc, rgb_to_xyz_zc, xyRedC, xyGreenC, xyBlueC, xyWhiteC);
 
-		float3 xyzToRgbRC;
-		float3 xyzToRgbGC;
-		float3 xyzToRgbBC;
-		LpmMatInv3x3(xyzToRgbRC, xyzToRgbGC, xyzToRgbBC, rgbToXyzXC, rgbToXyzYC, rgbToXyzZC);
-		LpmMatMul3x3(con2R, con2G, con2B, xyzToRgbRC, xyzToRgbGC, xyzToRgbBC, rgbToXyzXO, rgbToXyzYO, rgbToXyzZO);
-		opAMulOneF3(con2R, con2R, scaleC);
-		opAMulOneF3(con2G, con2G, scaleC);
-		opAMulOneF3(con2B, con2B, scaleC);
+		float3 xyz_to_rgb_rc;
+		float3 xyz_to_rgb_gc;
+		float3 xyz_to_rgb_bc;
+		lpm_mat_inv_3x3(xyz_to_rgb_rc, xyz_to_rgb_gc, xyz_to_rgb_bc, rgb_to_xyz_xc, rgb_to_xyz_yc, rgb_to_xyz_zc);
+		lpm_mat_mul_3x3(con2_r, con2_g, con2_b, xyz_to_rgb_rc, xyz_to_rgb_gc, xyz_to_rgb_bc, rgb_to_xyz_xo, rgb_to_xyz_yo, rgb_to_xyz_zo);
+		op_a_mul_one_f3(con2_r, con2_r, scaleC);
+		op_a_mul_one_f3(con2_g, con2_g, scaleC);
+		op_a_mul_one_f3(con2_b, con2_b, scaleC);
 	}
 
-	if (scaleOnly)
-		con2R[0] = scaleC;
+	if (scale_only)
+		con2_r[0] = scaleC;
 	uint4 map0;
 	map0[0] = reinterpret_cast<uint&>(saturation[0]);
 	map0[1] = reinterpret_cast<uint&>(saturation[1]);
 	map0[2] = reinterpret_cast<uint&>(saturation[2]);
 	map0[3] = reinterpret_cast<uint&>(contrast);
-	LpmSetupOut(0, map0);
+	lpm_setup_out(0, map0);
 
 	uint4 map1;
-	map1[0] = reinterpret_cast<uint&>(toneScaleBias[0]);
-	map1[1] = reinterpret_cast<uint&>(toneScaleBias[1]);
-	map1[2] = reinterpret_cast<uint&>(lumaT[0]);
-	map1[3] = reinterpret_cast<uint&>(lumaT[1]);
-	LpmSetupOut(1, map1);
+	map1[0] = reinterpret_cast<uint&>(tone_scale_bias[0]);
+	map1[1] = reinterpret_cast<uint&>(tone_scale_bias[1]);
+	map1[2] = reinterpret_cast<uint&>(luma_t[0]);
+	map1[3] = reinterpret_cast<uint&>(luma_t[1]);
+	lpm_setup_out(1, map1);
 
 	uint4 map2;
-	map2[0] = reinterpret_cast<uint&>(lumaT[2]);
+	map2[0] = reinterpret_cast<uint&>(luma_t[2]);
 	map2[1] = reinterpret_cast<uint&>(crosstalk[0]);
 	map2[2] = reinterpret_cast<uint&>(crosstalk[1]);
 	map2[3] = reinterpret_cast<uint&>(crosstalk[2]);
-	LpmSetupOut(2, map2);
+	lpm_setup_out(2, map2);
 
 	uint4 map3;
-	map3[0] = reinterpret_cast<uint&>(rcpLumaT[0]);
-	map3[1] = reinterpret_cast<uint&>(rcpLumaT[1]);
-	map3[2] = reinterpret_cast<uint&>(rcpLumaT[2]);
-	map3[3] = reinterpret_cast<uint&>(con2R[0]);
-	LpmSetupOut(3, map3);
+	map3[0] = reinterpret_cast<uint&>(rcp_luma_t[0]);
+	map3[1] = reinterpret_cast<uint&>(rcp_luma_t[1]);
+	map3[2] = reinterpret_cast<uint&>(rcp_luma_t[2]);
+	map3[3] = reinterpret_cast<uint&>(con2_r[0]);
+	lpm_setup_out(3, map3);
 
 	uint4 map4;
-	map4[0] = reinterpret_cast<uint&>(con2R[1]);
-	map4[1] = reinterpret_cast<uint&>(con2R[2]);
-	map4[2] = reinterpret_cast<uint&>(con2G[0]);
-	map4[3] = reinterpret_cast<uint&>(con2G[1]);
-	LpmSetupOut(4, map4);
+	map4[0] = reinterpret_cast<uint&>(con2_r[1]);
+	map4[1] = reinterpret_cast<uint&>(con2_r[2]);
+	map4[2] = reinterpret_cast<uint&>(con2_g[0]);
+	map4[3] = reinterpret_cast<uint&>(con2_g[1]);
+	lpm_setup_out(4, map4);
 
 	uint4 map5;
-	map5[0] = reinterpret_cast<uint&>(con2G[2]);
-	map5[1] = reinterpret_cast<uint&>(con2B[0]);
-	map5[2] = reinterpret_cast<uint&>(con2B[1]);
-	map5[3] = reinterpret_cast<uint&>(con2B[2]);
-	LpmSetupOut(5, map5);
+	map5[0] = reinterpret_cast<uint&>(con2_g[2]);
+	map5[1] = reinterpret_cast<uint&>(con2_b[0]);
+	map5[2] = reinterpret_cast<uint&>(con2_b[1]);
+	map5[3] = reinterpret_cast<uint&>(con2_b[2]);
+	lpm_setup_out(5, map5);
 
 	uint4 map6;
-	map6[0] = reinterpret_cast<uint&>(shoulderContrast);
-	map6[1] = reinterpret_cast<uint&>(lumaW[0]);
-	map6[2] = reinterpret_cast<uint&>(lumaW[1]);
-	map6[3] = reinterpret_cast<uint&>(lumaW[2]);
-	LpmSetupOut(6, map6);
+	map6[0] = reinterpret_cast<uint&>(shoulder_contrast);
+	map6[1] = reinterpret_cast<uint&>(luma_w[0]);
+	map6[2] = reinterpret_cast<uint&>(luma_w[1]);
+	map6[3] = reinterpret_cast<uint&>(luma_w[2]);
+	lpm_setup_out(6, map6);
 
 	uint4 map7;
-	map7[0] = reinterpret_cast<uint&>(softGap2[0]);
-	map7[1] = reinterpret_cast<uint&>(softGap2[1]);
-	map7[2] = reinterpret_cast<uint&>(conR[0]);
-	map7[3] = reinterpret_cast<uint&>(conR[1]);
-	LpmSetupOut(7, map7);
+	map7[0] = reinterpret_cast<uint&>(soft_gap_2[0]);
+	map7[1] = reinterpret_cast<uint&>(soft_gap_2[1]);
+	map7[2] = reinterpret_cast<uint&>(con_r[0]);
+	map7[3] = reinterpret_cast<uint&>(con_r[1]);
+	lpm_setup_out(7, map7);
 
 	uint4 map8;
-	map8[0] = reinterpret_cast<uint&>(conR[2]);
-	map8[1] = reinterpret_cast<uint&>(conG[0]);
-	map8[2] = reinterpret_cast<uint&>(conG[1]);
-	map8[3] = reinterpret_cast<uint&>(conG[2]);
-	LpmSetupOut(8, map8);
+	map8[0] = reinterpret_cast<uint&>(con_r[2]);
+	map8[1] = reinterpret_cast<uint&>(con_g[0]);
+	map8[2] = reinterpret_cast<uint&>(con_g[1]);
+	map8[3] = reinterpret_cast<uint&>(con_g[2]);
+	lpm_setup_out(8, map8);
 
 	uint4 map9;
-	map9[0] = reinterpret_cast<uint&>(conB[0]);
-	map9[1] = reinterpret_cast<uint&>(conB[1]);
-	map9[2] = reinterpret_cast<uint&>(conB[2]);
+	map9[0] = reinterpret_cast<uint&>(con_b[0]);
+	map9[1] = reinterpret_cast<uint&>(con_b[1]);
+	map9[2] = reinterpret_cast<uint&>(con_b[2]);
 	map9[3] = 0;
-	LpmSetupOut(9, map9);
+	lpm_setup_out(9, map9);
 }
-static void PopulateLpmConsts(bool incon,
-							  bool insoft,
-							  bool incon2,
-							  bool inclip,
-							  bool inscaleOnly,
-							  uint32_t& outcon,
-							  uint32_t& outsoft,
-							  uint32_t& outcon2,
-							  uint32_t& outclip,
-							  uint32_t& outscaleOnly) {
-	outcon = incon;
-	outsoft = insoft;
-	outcon2 = incon2;
-	outclip = inclip;
-	outscaleOnly = inscaleOnly;
+static void populate_lpm_consts(bool in_con,
+							  bool in_soft,
+							  bool in_con2,
+							  bool in_clip,
+							  bool in_scale_only,
+							  uint32_t& out_con,
+							  uint32_t& out_soft,
+							  uint32_t& out_con2,
+							  uint32_t& out_clip,
+							  uint32_t& out_scale_only) {
+	out_con = in_con;
+	out_soft = in_soft;
+	out_con2 = in_con2;
+	out_clip = in_clip;
+	out_scale_only = in_scale_only;
 }
 
 static LpmConstants prepare_args(LpmDispatchParameters const& params) {
-	float2 fs2R;
-	float2 fs2G;
-	float2 fs2B;
-	float2 fs2W;
-	float2 displayMinMaxLuminance;
-	if (params.displayMode != LpmDisplayMode::LDR) {
+	float2 fs2_r;
+	float2 fs2_g;
+	float2 fs2_b;
+	float2 fs2_w;
+	float2 display_min_max_luminance;
+	if (params.display_mode != LpmDisplayMode::LDR) {
 		// Only used in fs2 modes
-		fs2R[0] = params.displayRedPrimary[0];
-		fs2R[1] = params.displayRedPrimary[1];
-		fs2G[0] = params.displayGreenPrimary[0];
-		fs2G[1] = params.displayGreenPrimary[1];
-		fs2B[0] = params.displayBluePrimary[0];
-		fs2B[1] = params.displayBluePrimary[1];
-		fs2W[0] = params.displayWhitePoint[0];
-		fs2W[1] = params.displayWhitePoint[1];
+		fs2_r[0] = params.display_red_primary[0];
+		fs2_r[1] = params.display_red_primary[1];
+		fs2_g[0] = params.display_green_primary[0];
+		fs2_g[1] = params.display_green_primary[1];
+		fs2_b[0] = params.display_blue_primary[0];
+		fs2_b[1] = params.display_blue_primary[1];
+		fs2_w[0] = params.display_white_point[0];
+		fs2_w[1] = params.display_white_point[1];
 
 		// Used in all HDR modes
-		displayMinMaxLuminance[0] = params.displayMinLuminance;
-		displayMinMaxLuminance[1] = params.displayMaxLuminance;
+		display_min_max_luminance[0] = params.display_min_luminance;
+		display_min_max_luminance[1] = params.display_max_luminance;
 	}
 
 	float3 saturation;
@@ -480,231 +480,231 @@ static LpmConstants prepare_args(LpmDispatchParameters const& params) {
 	crosstalk[0] = params.crosstalk[0];
 	crosstalk[1] = params.crosstalk[1];
 	crosstalk[2] = params.crosstalk[2];
-	LpmConstants lpmConsts{};
-	float hdr10S{};
-	float fs2S{};
-	switch (params.colorSpace) {
+	LpmConstants lpm_consts{};
+	float hdr10_s{};
+	float fs2_s{};
+	switch (params.color_space) {
 		case LpmColorSpace::REC709: {
-			switch (params.displayMode) {
+			switch (params.display_mode) {
 				case LpmDisplayMode::LDR: {
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_709_709,
 									   LPM_COLORS_709_709,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_709_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_709_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::FSHDR_2084: {
-					hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					hdr10_s = lpm_hdr10_raw_scalar(display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2RAWPQ_709,
 									   LPM_COLORS_FS2RAWPQ_709,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_FS2RAWPQ_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_FS2RAWPQ_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::FSHDR_SCRGB: {
-					fs2S = LpmFs2ScrgbScalar(displayMinMaxLuminance[0], displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					fs2_s = lpm_fs2_scrgb_scalar(display_min_max_luminance[0], display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2SCRGB_709,
 									   LPM_COLORS_FS2SCRGB_709,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_FS2SCRGB_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_FS2SCRGB_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::HDR10_2084: {
-					hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					hdr10_s = lpm_hdr10_raw_scalar(display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10RAW_709,
 									   LPM_COLORS_HDR10RAW_709,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_HDR10RAW_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_HDR10RAW_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::HDR10_SCRGB: {
-					hdr10S = LpmHdr10ScrgbScalar(displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					hdr10_s = lpm_hdr10_scrgb_scalar(display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10SCRGB_709,
 									   LPM_COLORS_HDR10SCRGB_709,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_HDR10SCRGB_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_HDR10SCRGB_709, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 			}
 		} break;
 		case LpmColorSpace::P3: {
-			switch (params.displayMode) {
+			switch (params.display_mode) {
 				case LpmDisplayMode::LDR: {
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_709_P3,
 									   LPM_COLORS_709_P3,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_709_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_709_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::FSHDR_2084: {
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2RAWPQ_P3,
 									   LPM_COLORS_FS2RAWPQ_P3,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_FS2RAWPQ_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_FS2RAWPQ_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::FSHDR_SCRGB: {
-					fs2S = LpmFs2ScrgbScalar(displayMinMaxLuminance[0], displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					fs2_s = lpm_fs2_scrgb_scalar(display_min_max_luminance[0], display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2SCRGB_P3,
 									   LPM_COLORS_FS2SCRGB_P3,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_FS2SCRGB_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_FS2SCRGB_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::HDR10_2084: {
-					hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					hdr10_s = lpm_hdr10_raw_scalar(display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10RAW_P3,
 									   LPM_COLORS_HDR10RAW_P3,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_HDR10RAW_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_HDR10RAW_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::HDR10_SCRGB: {
-					hdr10S = LpmHdr10ScrgbScalar(displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					hdr10_s = lpm_hdr10_scrgb_scalar(display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10SCRGB_P3,
 									   LPM_COLORS_HDR10SCRGB_P3,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_HDR10SCRGB_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_HDR10SCRGB_P3, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 			}
 		} break;
 		case LpmColorSpace::REC2020: {
-			switch (params.displayMode) {
+			switch (params.display_mode) {
 				case LpmDisplayMode::LDR: {
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_709_2020,
 									   LPM_COLORS_709_2020,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_709_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_709_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::FSHDR_2084: {
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2RAWPQ_2020,
 									   LPM_COLORS_FS2RAWPQ_2020,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_FS2RAWPQ_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_FS2RAWPQ_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::FSHDR_SCRGB: {
-					fs2S = LpmFs2ScrgbScalar(displayMinMaxLuminance[0], displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					fs2_s = lpm_fs2_scrgb_scalar(display_min_max_luminance[0], display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_FS2SCRGB_2020,
 									   LPM_COLORS_FS2SCRGB_2020,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_FS2SCRGB_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_FS2SCRGB_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::HDR10_2084: {
-					hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					hdr10_s = lpm_hdr10_raw_scalar(display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10RAW_2020,
 									   LPM_COLORS_HDR10RAW_2020,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_HDR10RAW_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_HDR10RAW_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 				case LpmDisplayMode::HDR10_SCRGB: {
-					hdr10S = LpmHdr10ScrgbScalar(displayMinMaxLuminance[1]);
-					CalculateLpmConsts(reinterpret_cast<uint*>(lpmConsts.ctl.data()), params.shoulder,
+					hdr10_s = lpm_hdr10_scrgb_scalar(display_min_max_luminance[1]);
+					calculate_lpm_consts(reinterpret_cast<uint*>(lpm_consts.ctl.data()), params.shoulder,
 									   LPM_CONFIG_HDR10SCRGB_2020,
 									   LPM_COLORS_HDR10SCRGB_2020,
-									   params.softGap,
-									   params.hdrMax,
-									   params.lpmExposure,
+									   params.soft_gap,
+									   params.hdr_max,
+									   params.lpm_exposure,
 									   params.contrast,
-									   params.shoulderContrast,
+									   params.shoulder_contrast,
 									   saturation,
 									   crosstalk);
-					PopulateLpmConsts(LPM_CONFIG_HDR10SCRGB_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+					populate_lpm_consts(LPM_CONFIG_HDR10SCRGB_2020, lpm_consts.con, lpm_consts.soft, lpm_consts.con2, lpm_consts.clip, lpm_consts.scale_only);
 				} break;
 			}
 		} break;
 		default:
 			break;
 	}
-	return lpmConsts;
+	return lpm_consts;
 }
 }// namespace ffx
 
@@ -713,7 +713,7 @@ post_uber_pass::LpmArgs LPM::compute(LpmDispatchParameters const& d) {
 	post_uber_pass::LpmArgs a;
 	std::memcpy(a.ctl.data(), consts.ctl.data(), consts.ctl.size() * sizeof(uint4));
 	a.flags = 0;
-	a.flags |= (consts.scaleOnly != 0) ? 1 : 0;
+	a.flags |= (consts.scale_only != 0) ? 1 : 0;
 	a.flags <<= 1;
 	a.flags |= (consts.clip != 0) ? 1 : 0;
 	a.flags <<= 1;

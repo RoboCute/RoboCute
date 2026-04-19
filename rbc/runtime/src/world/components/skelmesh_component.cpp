@@ -12,7 +12,7 @@ SkelMeshComponent::~SkelMeshComponent() {
 }
 void SkelMeshComponent::on_awake() {
     // called when entity->_add_component was called
-    runtime_skel_mesh = RC<SkeletalMesh>::New();
+    _runtime_skel_mesh = RC<SkeletalMesh>::New();
 }
 void SkelMeshComponent::on_destroy() {
     // called when Component->_clear_entity() was called
@@ -25,7 +25,7 @@ void SkelMeshComponent::deserialize_meta(ObjDeSerialize const &ser) {}
 
 void SkelMeshComponent::tick(float delta_time) {
     // LUISA_INFO("Updating SkelMesh");
-    if (!runtime_skel_mesh) [[unlikely]] {
+    if (!_runtime_skel_mesh) [[unlikely]] {
         LUISA_ERROR("Ticking A SkelMeshComponent with an Invalid Runtime SkelMesh");
         return;
     }
@@ -35,19 +35,19 @@ void SkelMeshComponent::tick(float delta_time) {
     }
 
     // Now Everything Ready, start Initialize
-    if (!runtime_skel_mesh->IsInitialized()) {
-        runtime_skel_mesh->ref_skelmesh = _skel_mesh_ref;
-        runtime_skel_mesh->InitAnim();
-        runtime_skel_mesh->EnableAnimation();// Start Ticking!
+    if (!_runtime_skel_mesh->IsInitialized()) {
+        _runtime_skel_mesh->ref_skelmesh = _skel_mesh_ref;
+        _runtime_skel_mesh->InitAnim();
+        _runtime_skel_mesh->EnableAnimation();// Start Ticking!
     }
 
     // Now Initialized, Start Tick
-    runtime_skel_mesh->Tick(delta_time * playback_speed);
+    _runtime_skel_mesh->Tick(delta_time * playback_speed);
 }
 
 void SkelMeshComponent::update_render() {
     // LUISA_INFO("UpdateRender SkelMesh");
-    if (!runtime_skel_mesh) [[unlikely]] {
+    if (!_runtime_skel_mesh) [[unlikely]] {
         LUISA_ERROR("RenderTicking A SkelMeshComponent with an Invalid Runtime SkelMesh");
         return;
     }
@@ -67,79 +67,79 @@ void SkelMeshComponent::update_render() {
     }
 
     // Now Everything Ready, start Initialize RenderState
-    if (!runtime_skel_mesh->RenderStateCreated()) {
-        runtime_skel_mesh->CreateRenderState_Concurrent(render_device);
-        StartUpdateRender(*render, bind_mats);
+    if (!_runtime_skel_mesh->RenderStateCreated()) {
+        _runtime_skel_mesh->CreateRenderState_Concurrent(render_device);
+        _start_update_render(*render, bind_mats);
     } else {
         AnimRenderState state;
-        runtime_skel_mesh->DoDeferredRenderUpdate_Concurrent(state);
+        _runtime_skel_mesh->DoDeferredRenderUpdate_Concurrent(state);
     }
 }
 
 void SkelMeshComponent::remove_object() {
 
-    if (!runtime_skel_mesh) {
+    if (!_runtime_skel_mesh) {
         return;
     }
-    if (runtime_skel_mesh->RenderStateCreated()) {
-        runtime_skel_mesh->DestroyRenderState_Concurrent();
+    if (_runtime_skel_mesh->RenderStateCreated()) {
+        _runtime_skel_mesh->DestroyRenderState_Concurrent();
     }
-    if (runtime_skel_mesh->IsInitialized()) {
-        runtime_skel_mesh->DestroyAnim();
+    if (_runtime_skel_mesh->IsInitialized()) {
+        _runtime_skel_mesh->DestroyAnim();
     }
-    runtime_skel_mesh.reset();
+    _runtime_skel_mesh.reset();
 }
 
-void SkelMeshComponent::StartUpdateRender(RenderComponent &render, luisa::span<RC<MaterialResource> const> mats) {
+void SkelMeshComponent::_start_update_render(RenderComponent &render, luisa::span<RC<MaterialResource> const> mats) {
     // auto &ref_mesh = _skel_mesh_ref->ref_skin->ref_mesh;
-    auto &render_data = runtime_skel_mesh->GetRenderObject().GetLODRenderData();
+    auto &render_data = _runtime_skel_mesh->GetRenderObject().GetLODRenderData();
     render.update_object(
         mats, render_data.morph_mesh.get());
 }
 
 MeshResource *SkelMeshComponent::GetRuntimeMesh() const {
-    if (!runtime_skel_mesh->RenderStateCreated()) {
+    if (!_runtime_skel_mesh->RenderStateCreated()) {
         LUISA_INFO("RenderState Not Created ~");
         return nullptr;
     }
-    auto &render_data = runtime_skel_mesh->GetRenderObject().GetLODRenderData();
+    auto &render_data = _runtime_skel_mesh->GetRenderObject().GetLODRenderData();
     return render_data.morph_mesh.get();
 }
 
 bool SkelMeshComponent::IsEnabled() const {
-    if (!runtime_skel_mesh) { return false; }
-    return runtime_skel_mesh->IsAnimationEnabled();
+    if (!_runtime_skel_mesh) { return false; }
+    return _runtime_skel_mesh->IsAnimationEnabled();
 }
 
 void SkelMeshComponent::PlayAnimation() {
-    if (runtime_skel_mesh) {
-        runtime_skel_mesh->EnableAnimation();
+    if (_runtime_skel_mesh) {
+        _runtime_skel_mesh->EnableAnimation();
     }
 }
 
 void SkelMeshComponent::PauseAnimation() {
-    if (runtime_skel_mesh) {
-        runtime_skel_mesh->DisableAnimation();
+    if (_runtime_skel_mesh) {
+        _runtime_skel_mesh->DisableAnimation();
     }
 }
 
 void SkelMeshComponent::StopAnimation() {
-    if (runtime_skel_mesh) {
-        runtime_skel_mesh->DisableAnimation();
-        runtime_skel_mesh->ResetToRefPose();
+    if (_runtime_skel_mesh) {
+        _runtime_skel_mesh->DisableAnimation();
+        _runtime_skel_mesh->ResetToRefPose();
     }
 }
 
 int SkelMeshComponent::GetNumBones() const {
-    if (!runtime_skel_mesh) { return 0; }
-    return static_cast<int>(runtime_skel_mesh->GetComponentSpaceTransforms().size());
+    if (!_runtime_skel_mesh) { return 0; }
+    return static_cast<int>(_runtime_skel_mesh->GetComponentSpaceTransforms().size());
 }
 
 luisa::float4x4 SkelMeshComponent::GetBoneTransform(int bone_index) const {
-    if (!runtime_skel_mesh || bone_index < 0) {
+    if (!_runtime_skel_mesh || bone_index < 0) {
         return make_float4x4(1.0f);
     }
-    const auto &transforms = runtime_skel_mesh->GetComponentSpaceTransforms();
+    const auto &transforms = _runtime_skel_mesh->GetComponentSpaceTransforms();
     if (bone_index >= static_cast<int>(transforms.size())) {
         return make_float4x4(1.0f);
     }
@@ -147,10 +147,10 @@ luisa::float4x4 SkelMeshComponent::GetBoneTransform(int bone_index) const {
 }
 
 void SkelMeshComponent::SetBoneTransform(int bone_index, const luisa::float4x4 &transform) {
-    if (!runtime_skel_mesh || bone_index < 0) {
+    if (!_runtime_skel_mesh || bone_index < 0) {
         return;
     }
-    auto &transforms = runtime_skel_mesh->GetEditableComponentSpaceTransforms();
+    auto &transforms = _runtime_skel_mesh->GetEditableComponentSpaceTransforms();
     if (bone_index >= static_cast<int>(transforms.size())) {
         return;
     }

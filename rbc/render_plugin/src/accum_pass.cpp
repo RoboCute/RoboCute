@@ -26,8 +26,7 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
 
     const auto &frame_settings = ctx.pipeline_settings.read<FrameSettings>();
-    AccumPassContext *pass_ctx{};
-    pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
+    auto *pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
     pass_ctx->frame_index = std::min<size_t>(pass_ctx->frame_index, frame_settings.frame_index);
     if (any(frame_settings.render_resolution != frame_settings.display_resolution)) {
         pass_ctx->frame_index = 0;
@@ -39,32 +38,29 @@ void AccumPass::early_update(Pipeline const &pipeline, PipelineContext const &ct
     if (!hdr) {
         hdr = ctx.device->create_image<float>(PixelStorage::FLOAT4, frame_settings.display_resolution);
     }
-    (void)ctx.mut;  // Suppress unused warning
     auto halton = [](uint i, uint b) {
         float f = 1.0f;
-        float invB = 1.0f / b;
+        float inv_b = 1.0f / b;
         float r = 0.0f;
         while (i > 0u) {
-            f = f * invB;
+            f = f * inv_b;
             r = r + f * (i % b);
             i = i / b;
-        };
+        }
         return r;
     };
     jitter_data.jitter_phase_count = ~0u;
     jitter_data.jitter = float2(halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 2), halton(pass_ctx->frame_index & (jitter_data.jitter_phase_count - 1), 3)) - 0.5f;
 }
 void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    AccumPassContext *pass_ctx{};
-    pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
+    auto *pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
     Image<float> temp_img;
-    (void)ctx.mut.get_pass_context_mut<PTPassContext>();  // Suppress unused warning
-    const auto &ptSettings = ctx.pipeline_settings.read<PathTracerSettings>();
+    [[maybe_unused]] auto &pt_pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
+    const auto &pt_settings = ctx.pipeline_settings.read<PathTracerSettings>();
     auto &frame_settings = ctx.pipeline_settings.read_mut<FrameSettings>();
     auto &render_device = RenderDevice::instance();
-    (void)*ctx.scene;  // Suppress unused warning
     auto emission = render_device.get_transient_image<float>("emission", PixelStorage::FLOAT4, frame_settings.render_resolution);
-    const bool is_spectrum = !ptSettings.enable_ao_mode;
+    const bool is_spectrum = !pt_settings.enable_ao_mode;
     if (!emission) return;
     temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frame_settings.display_resolution);
     if (frame_settings.radiance_buffer) {

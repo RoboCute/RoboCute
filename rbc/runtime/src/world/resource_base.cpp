@@ -3,12 +3,10 @@
 #include <rbc_core/runtime_static.h>
 #include <rbc_core/shared_atomic_mutex.h>
 #include <rbc_graphics/device_assets/assets_manager.h>
-#include <rbc_core/binary_file_writer.h>
 #include <rbc_core/containers/rbc_concurrent_queue.h>
 #include <rbc_world/importers/register_importers.h>
 #include <rbc_core/atomic.h>
 #include <luisa/vstl/lmdb.hpp>
-#include <luisa/core/clock.h>
 #include <rbc_core/utils/thread_waiter.h>
 
 namespace rbc ::world {
@@ -34,12 +32,8 @@ struct BinaryBlock {
     uint type : 8;// ResourceMetaType
     uint size : 24;
 };
-struct ResourceLoader : RBCStruct {
-    luisa::filesystem::path _meta_path;
-    luisa::filesystem::path _binary_path;
-    rbc::shared_atomic_mutex _meta_db_mtx;
-    vstd::LMDB _meta_db;
-
+class ResourceLoader : public RBCStruct {
+public:
     struct ResourceHandle {
         RCWeak<Resource> res;
         luisa::spin_mutex mtx;
@@ -47,37 +41,31 @@ struct ResourceLoader : RBCStruct {
         ResourceHandle(ResourceHandle &&rhs) noexcept : res(std::move(rhs.res)) {}
     };
 
-    rbc::shared_atomic_mutex _resmap_mtx;
-    vstd::HashMap<vstd::Guid, ResourceHandle> resource_types;
-    rbc::ConcurrentQueue<LoadingResource> loading_queue;
-    luisa::vector<std::thread> _loading_thds;
-    std::atomic_bool _enabled = true;
-    std::condition_variable _async_cv;
-    std::mutex _async_mtx;
+    luisa::filesystem::path &meta_path() { return _meta_path; }
+    luisa::filesystem::path const &meta_path() const { return _meta_path; }
+    luisa::filesystem::path &binary_path() { return _binary_path; }
+    luisa::filesystem::path const &binary_path() const { return _binary_path; }
+    rbc::shared_atomic_mutex &resmap_mtx() { return _resmap_mtx; }
+    vstd::HashMap<vstd::Guid, ResourceHandle> &resource_types() { return _resource_types; }
+
+    ResourceLoader() {
+        auto loading_thread_count = std::clamp<uint>(std::thread::hardware_concurrency() / 4, 1, 4);
+        _loading_thds.reserve(loading_thread_count);
+        for ([[maybe_unused]] auto i : vstd::range(loading_thread_count)) {
+            _loading_thds.emplace_back([this] { _loading_thread(); });
+        }
+    }
     void init_db() {
         if (!luisa::filesystem::is_directory(_meta_path)) {
             luisa::filesystem::create_directories(_meta_path);
         }
         vstd::reset(_meta_db, luisa::to_string(_meta_path / ".meta_db"));
     }
-    static void add_block(
-        ResourceMetaType type,
-        luisa::span<std::byte const> data,
-        luisa::fixed_vector<std::byte, 64> &result) {
-        LUISA_DEBUG_ASSERT(data.size() < 1u << 24u);
-        BinaryBlock block{
-            .type = (uint)type,
-            .size = (uint)data.size()};
-        auto sz = result.size();
-        result.push_back_uninitialized(sizeof(BinaryBlock) + data.size());
-        std::memcpy(result.data() + sz, &block, sizeof(BinaryBlock));
-        std::memcpy(result.data() + sz + sizeof(BinaryBlock), data.data(), data.size());
-    }
     void register_resource(vstd::Guid resource_guid,
                            luisa::string &&meta_info,
                            MD5 type_id) {
         _resmap_mtx.lock();
-        (void)resource_types.emplace(resource_guid);
+        (void)_resource_types.emplace(resource_guid);
         _resmap_mtx.unlock();
         LUISA_ASSERT(meta_info.size() > 0);
         luisa::fixed_vector<std::byte, 64> result;
@@ -99,7 +87,7 @@ struct ResourceLoader : RBCStruct {
         res->serialize_meta(world::ObjSerialize{adapter});
         _resmap_mtx.lock();
         auto resource_guid = res->guid();
-        (void)resource_types.emplace(resource_guid);
+        (void)_resource_types.emplace(resource_guid);
         _resmap_mtx.unlock();
         luisa::string meta_info;
         js.write_to(meta_info);
@@ -118,52 +106,8 @@ struct ResourceLoader : RBCStruct {
              sizeof(resource_guid)},
             result);
     }
-    void _loading_thread() {
-        auto execute = [&](LoadingResource &res) {
-            auto self_ptr_base = res.res_inst.lock().rc();
-            // already disposed
-            if (!self_ptr_base || self_ptr_base->base_type() != BaseObjectType::Resource) [[unlikely]] {
-                res.loading_coro.destroy();
-                res.res_inst.reset();
-                return;
-            }
-            auto ptr = std::move(self_ptr_base).cast_static<Resource>();
-            [[maybe_unused]] auto rc_count = ptr.ref_count();
-            res.loading_coro.resume();
-            if (!res.loading_coro.done()) {
-                ptr.reset();
-                loading_queue.enqueue(std::move(res));
-            } else {
-                ptr->unsafe_set_loaded();
-            }
-            auto asset_mng = AssetsManager::instance();
-            if (asset_mng) {
-                asset_mng->wake_load_thread();
-            }
-        };
-        while (_enabled) {
-            while (true) {
-                LoadingResource loading_res;
-                std::this_thread::yield();// do not make loading thread too busy
-                if (!loading_queue.try_dequeue(loading_res))
-                    break;
-                execute(loading_res);
-            }
-            std::unique_lock lck{_async_mtx};
-            while (_enabled && loading_queue.size_approx() == 0) {
-                _async_cv.wait(lck);
-            }
-        }
-        while (true) {
-            LoadingResource loading_res;
-            std::this_thread::yield();// do not make loading thread too busy
-            if (!loading_queue.try_dequeue(loading_res))
-                break;
-            execute(loading_res);
-        }
-    }
     // meta, type-id
-    std::pair<luisa::string, vstd::Guid> to_binary(vstd::Guid guid) {
+    std::pair<luisa::string, vstd::Guid> to_binary(vstd::Guid const &guid) {
         luisa::string result;
         vstd::Guid type_id{};
         type_id.reset();
@@ -198,14 +142,6 @@ struct ResourceLoader : RBCStruct {
         }
         return {result, type_id};
     }
-
-    ResourceLoader() {
-        auto loading_thread_count = std::clamp<uint>(std::thread::hardware_concurrency() / 4, 1, 4);
-        _loading_thds.reserve(loading_thread_count);
-        for ([[maybe_unused]] auto i : vstd::range(loading_thread_count)) {
-            _loading_thds.emplace_back([this] { _loading_thread(); });
-        }
-    }
     void dispose() {
         if (!_enabled) return;
         _async_mtx.lock();
@@ -223,7 +159,7 @@ struct ResourceLoader : RBCStruct {
         if (atomic_max(res->_status, EResourceLoadingStatus::Loading) > EResourceLoadingStatus::Unloaded) {
             return;
         }
-        loading_queue.enqueue(LoadingResource{RCWeak<Resource>{res}, res->_async_load()});
+        _loading_queue.enqueue(LoadingResource{RCWeak<Resource>{res}, res->_async_load()});
         _async_mtx.lock();
         _async_mtx.unlock();
         _async_cv.notify_one();
@@ -243,11 +179,82 @@ struct ResourceLoader : RBCStruct {
                 co_await std::suspend_always{};
             }
         }(rc_weak)};
-        loading_queue.enqueue(LoadingResource{std::move(rc_weak), std::move(c)});
+        _loading_queue.enqueue(LoadingResource{std::move(rc_weak), std::move(c)});
         _async_mtx.lock();
         _async_mtx.unlock();
         _async_cv.notify_one();
     }
+
+private:
+    static void add_block(
+        ResourceMetaType type,
+        luisa::span<std::byte const> data,
+        luisa::fixed_vector<std::byte, 64> &result) {
+        LUISA_DEBUG_ASSERT(data.size() < 1u << 24u);
+        BinaryBlock block{
+            .type = (uint)type,
+            .size = (uint)data.size()};
+        auto sz = result.size();
+        result.push_back_uninitialized(sizeof(BinaryBlock) + data.size());
+        std::memcpy(result.data() + sz, &block, sizeof(BinaryBlock));
+        std::memcpy(result.data() + sz + sizeof(BinaryBlock), data.data(), data.size());
+    }
+    void _loading_thread() {
+        auto execute = [&](LoadingResource &res) {
+            auto self_ptr_base = res.res_inst.lock().rc();
+            // already disposed
+            if (!self_ptr_base || self_ptr_base->base_type() != BaseObjectType::Resource) [[unlikely]] {
+                res.loading_coro.destroy();
+                res.res_inst.reset();
+                return;
+            }
+            auto ptr = std::move(self_ptr_base).cast_static<Resource>();
+            [[maybe_unused]] auto rc_count = ptr.ref_count();
+            res.loading_coro.resume();
+            if (!res.loading_coro.done()) {
+                ptr.reset();
+                _loading_queue.enqueue(std::move(res));
+            } else {
+                ptr->unsafe_set_loaded();
+            }
+            auto asset_mng = AssetsManager::instance();
+            if (asset_mng) {
+                asset_mng->wake_load_thread();
+            }
+        };
+        while (_enabled) {
+            while (true) {
+                LoadingResource loading_res;
+                std::this_thread::yield();// do not make loading thread too busy
+                if (!_loading_queue.try_dequeue(loading_res))
+                    break;
+                execute(loading_res);
+            }
+            std::unique_lock lck{_async_mtx};
+            while (_enabled && _loading_queue.size_approx() == 0) {
+                _async_cv.wait(lck);
+            }
+        }
+        while (true) {
+            LoadingResource loading_res;
+            std::this_thread::yield();// do not make loading thread too busy
+            if (!_loading_queue.try_dequeue(loading_res))
+                break;
+            execute(loading_res);
+        }
+    }
+
+    luisa::filesystem::path _meta_path;
+    luisa::filesystem::path _binary_path;
+    rbc::shared_atomic_mutex _meta_db_mtx;
+    vstd::LMDB _meta_db;
+    rbc::shared_atomic_mutex _resmap_mtx;
+    vstd::HashMap<vstd::Guid, ResourceHandle> _resource_types;
+    rbc::ConcurrentQueue<LoadingResource> _loading_queue;
+    luisa::vector<std::thread> _loading_thds;
+    std::atomic_bool _enabled = true;
+    std::condition_variable _async_cv;
+    std::mutex _async_mtx;
 };
 
 ResourceLoader *_res_loader{};
@@ -270,8 +277,8 @@ void init_resource_loader(luisa::filesystem::path const &meta_path, luisa::files
     }
     register_builtin_importers();
     _res_loader = new ResourceLoader{};
-    _res_loader->_meta_path = meta_path;
-    _res_loader->_binary_path = binary_path;
+    _res_loader->meta_path() = meta_path;
+    _res_loader->binary_path() = binary_path;
     _res_loader->init_db();
 }
 bool resource_exists(vstd::Guid const &guid) {
@@ -287,11 +294,11 @@ RC<Resource> get_resource(vstd::Guid const &guid, bool async_load_from_file) {
         if (obj && obj->base_type() == BaseObjectType::Resource) return std::move(obj).cast_static<Resource>();
     }
 
-    LUISA_DEBUG_ASSERT(_res_loader && !_res_loader->_meta_path.empty());
+    LUISA_DEBUG_ASSERT(_res_loader && !_res_loader->meta_path().empty());
     ResourceLoader::ResourceHandle *v{};
     {
-        std::shared_lock lck{_res_loader->_resmap_mtx};
-        auto iter = _res_loader->resource_types.emplace(guid);
+        std::shared_lock lck{_res_loader->resmap_mtx()};
+        auto iter = _res_loader->resource_types().emplace(guid);
         v = &iter.value();
     }
     std::unique_lock lck{v->mtx};
@@ -378,9 +385,9 @@ void Resource::unsafe_set_installed() {
     atomic_max(_status, EResourceLoadingStatus::Installed);
 }
 luisa::spin_mutex &get_resource_mutex(vstd::Guid const &guid) {
-    _res_loader->_resmap_mtx.lock();
-    auto &v = _res_loader->resource_types.emplace(guid).value();
-    _res_loader->_resmap_mtx.unlock();
+    _res_loader->resmap_mtx().lock();
+    auto &v = _res_loader->resource_types().emplace(guid).value();
+    _res_loader->resmap_mtx().unlock();
     return v.mtx;
 }
 bool Resource::install() {
@@ -412,9 +419,9 @@ EResourceLoadingStatus Resource::unsafe_set_loading_status_max(EResourceLoadingS
     return atomic_max(_status, dst_status);
 }
 luisa::filesystem::path const &Resource::meta_root_path() {
-    return _res_loader->_meta_path;
+    return _res_loader->meta_path();
 }
 luisa::filesystem::path const &Resource::binary_root_path() {
-    return _res_loader->_binary_path;
+    return _res_loader->binary_path();
 }
 }// namespace rbc::world

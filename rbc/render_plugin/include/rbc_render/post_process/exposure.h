@@ -31,8 +31,8 @@ private:
     luisa::fixed_vector<float, 4> _global_data;
 
 public:
-    static constexpr int rangeMin = -9; // ev
-    static constexpr int rangeMax = 9;  // ev
+    static constexpr int range_min = -9; // ev
+    static constexpr int range_max = 9;  // ev
     static constexpr int k_Bins = 128;
 
     Buffer<float> exposure_buffer;

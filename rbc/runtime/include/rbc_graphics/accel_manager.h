@@ -62,7 +62,7 @@ private:
     using MeshMap = vstd::HashMap<MeshManager::MeshData *, MeshInstanceList>;
     vstd::LockFreeArrayQueue<MeshMap> _cache_maps;
     Buffer<RasterElement> _raster_transform_buffer;
-    MeshFormat _basic_foramt;
+    MeshFormat _basic_format;
 
     struct Instance {
         BufferAllocator::Node material_node;
@@ -121,7 +121,8 @@ private:
         BufferUploader &uploader,
         DisposeQueue &disp_queue,
         ProceduralVariant &&prim_data);
-    void _swap_last(BufferUploader &uploader, auto &inst, DisposeQueue *disp_queue);
+    template<typename Inst>
+    void _swap_last(BufferUploader &uploader, Inst &inst, DisposeQueue *disp_queue);
 
 public:
     [[nodiscard]] auto const &procedural_type_buffer() const { return _procedural_type_buffer; }
@@ -232,8 +233,8 @@ public:
     }
     ~AccelManager();
     ////////////////////// Raster
-    MeshFormat const &basic_foramt() const {
-        return _basic_foramt;
+    MeshFormat const &basic_format() const {
+        return _basic_format;
     }
     void make_draw_list(
         CommandList &cmdlist,

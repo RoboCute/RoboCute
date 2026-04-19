@@ -2,8 +2,8 @@
 #include <rbc_world/type_register.h>
 
 namespace rbc::world {
-DataComponent::DataComponent() {}
-DataComponent::~DataComponent() {}
+DataComponent::DataComponent() = default;
+DataComponent::~DataComponent() = default;
 
 // Info API
 auto DataComponent::get_info(luisa::string_view name) const -> DataType {
@@ -42,7 +42,7 @@ void DataComponent::clear_infos() noexcept {
 void DataComponent::serialize_meta(ObjSerialize const &obj) const {
     // Serialize infos
     obj.ar.start_array();
-    for (auto &pair : _infos) {
+    for (auto const &pair : _infos) {
         obj.ar.value(pair.first);
         obj.ar.value(pair.second.index());
         pair.second.visit([&]<typename T>(T const &t) {
@@ -58,7 +58,7 @@ void DataComponent::serialize_meta(ObjSerialize const &obj) const {
     obj.ar.end_array("infos");
     // Serialize events
     obj.ar.start_array();
-    for (auto &event : _events) {
+    for (auto const &event : _events) {
         obj.ar.value(event);
     }
     obj.ar.end_array("events");
@@ -108,6 +108,16 @@ void DataComponent::bind_event(
     }
     auto idx = luisa::to_underlying(event_type);
     _events[idx] = luisa::string{callback_name};
+    auto create_coro = [](luisa::string name, void *self_) -> rbc::coroutine {
+        while (true) {
+            auto func_ptr = get_callback(name);
+            if (!func_ptr) {
+                co_return;
+            }
+            (*func_ptr)(self_);
+            co_await std::suspend_always{};
+        }
+    };
     switch (event_type) {
         case EventType::OnAwake: {
             if (enabled()) {
@@ -119,44 +129,15 @@ void DataComponent::bind_event(
             break;
         }
         case EventType::BeforeFrame: {
-            add_world_event(WorldEventType::BeforeFrame, [](luisa::string name, void *self_) -> rbc::coroutine {
-                while (true) {
-                    {
-                        auto func_ptr = get_callback(name);
-                        if (!func_ptr) {
-                            co_return;
-                        }
-                        (*func_ptr)(self_);
-                    }
-                    co_await std::suspend_always{};
-                }
-            }(_events[idx], this));
+            add_world_event(WorldEventType::BeforeFrame, create_coro(_events[idx], this));
             break;
         }
         case EventType::BeforeRender: {
-            add_world_event(WorldEventType::BeforeRender, [](luisa::string name, void *self_) -> rbc::coroutine {
-                while (true) {
-                    {
-                        auto func_ptr = get_callback(name);
-                        if (!func_ptr) co_return;
-                        (*func_ptr)(self_);
-                    }
-                    co_await std::suspend_always{};
-                }
-            }(_events[idx], this));
+            add_world_event(WorldEventType::BeforeRender, create_coro(_events[idx], this));
             break;
         }
         case EventType::AfterFrame: {
-            add_world_event(WorldEventType::AfterFrame, [](luisa::string name, void *self_) -> rbc::coroutine {
-                while (true) {
-                    {
-                        auto func_ptr = get_callback(name);
-                        if (!func_ptr) co_return;
-                        (*func_ptr)(self_);
-                    }
-                    co_await std::suspend_always{};
-                }
-            }(_events[idx], this));
+            add_world_event(WorldEventType::AfterFrame, create_coro(_events[idx], this));
             break;
         }
             // OnDestroy is handled in on_destroy(), no immediate action needed here
@@ -195,47 +176,30 @@ void DataComponent::on_awake() {
         }
     }
 
+    auto create_coro = [](luisa::string name, void *self_) -> rbc::coroutine {
+        while (true) {
+            auto func_ptr = get_callback(name);
+            if (!func_ptr) {
+                co_return;
+            }
+            (*func_ptr)(self_);
+            co_await std::suspend_always{};
+        }
+    };
     // BeforeFrame event
     auto &before_frame_name = _events[luisa::to_underlying(EventType::BeforeFrame)];
     if (!before_frame_name.empty()) {
-        add_world_event(WorldEventType::BeforeFrame, [](luisa::string name, void *self_) -> rbc::coroutine {
-            while (true) {
-                {
-                    auto func_ptr = get_callback(name);
-                    if (!func_ptr) co_return;
-                    (*func_ptr)(self_);
-                }
-                co_await std::suspend_always{};
-            }
-        }(before_frame_name, this));
+        add_world_event(WorldEventType::BeforeFrame, create_coro(before_frame_name, this));
     }
     // BeforeRender event
     auto &before_render_name = _events[luisa::to_underlying(EventType::BeforeRender)];
     if (!before_render_name.empty()) {
-        add_world_event(WorldEventType::BeforeRender, [](luisa::string name, void *self_) -> rbc::coroutine {
-            while (true) {
-                {
-                    auto func_ptr = get_callback(name);
-                    if (!func_ptr) co_return;
-                    (*func_ptr)(self_);
-                }
-                co_await std::suspend_always{};
-            }
-        }(before_render_name, this));
+        add_world_event(WorldEventType::BeforeRender, create_coro(before_render_name, this));
     }
     // AfterFrame event
     auto &after_frame_name = _events[luisa::to_underlying(EventType::AfterFrame)];
     if (!after_frame_name.empty()) {
-        add_world_event(WorldEventType::AfterFrame, [](luisa::string name, void *self_) -> rbc::coroutine {
-            while (true) {
-                {
-                    auto func_ptr = get_callback(name);
-                    if (!func_ptr) co_return;
-                    (*func_ptr)(self_);
-                }
-                co_await std::suspend_always{};
-            }
-        }(after_frame_name, this));
+        add_world_event(WorldEventType::AfterFrame, create_coro(after_frame_name, this));
     }
 }
 void DataComponent::on_destroy() {

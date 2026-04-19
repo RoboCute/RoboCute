@@ -185,10 +185,10 @@ bool SkyAtmosphere::update(CommandList &cmdlist, Stream &stream, BindlessAllocat
 
     if (_sky_id == ~0u) {
         _sky_id = bdls_alloc.allocate_tex2d(img_view, Sampler::point_edge());
-    } else if (sky_id_dirty) {
+    } else if (_sky_id_dirty) {
         bdls_alloc.image_heap().emplace_on_update(_sky_id, img_view, Sampler::point_edge());
     }
-    sky_id_dirty = false;
+    _sky_id_dirty = false;
     return update;
 }
 void SkyAtmosphere::sync() {

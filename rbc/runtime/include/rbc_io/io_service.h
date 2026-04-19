@@ -25,15 +25,15 @@ private:
 
 private:
     ~IOService();
-    DeviceInterface *device;
+    DeviceInterface *_device;
     struct Callbacks {
         uint64_t timeline{0};
         vstd::vector<IOFile> files;
         vstd::vector<vstd::function<void()>> callbacks;
     };
-    DStorageStream *dstorage_stream;
+    DStorageStream *_dstorage_stream;
     TimelineEvent _evt;
-    vector<IOCommand> extra_cmds;
+    vector<IOCommand> _extra_cmds;
     // uint _res_index{0};  // Unused field
     void split_commands(vector<IOCommand> &commands, vector<IOCommand> &extra_commands, uint64_t staging_size);
     // vstd::SingleThreadArrayQueue<std::pair<IOCommandList, uint64_t>> _cmds;

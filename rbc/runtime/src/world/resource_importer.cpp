@@ -88,7 +88,10 @@ IResourceImporter *ResourceImporterRegistry::find_importer(luisa::filesystem::pa
 
     return nullptr;
 }
+namespace {
 RuntimeStatic<ResourceImporterRegistry> _resource_importer_registry;
+}// namespace
+
 ResourceImporterRegistry &ResourceImporterRegistry::instance() {
     return *_resource_importer_registry.ptr;
 }

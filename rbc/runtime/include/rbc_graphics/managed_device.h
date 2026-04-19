@@ -99,7 +99,7 @@ private:
 
     vstd::HashMap<vstd::string, ManagedTexDesc*> _tex_name_to_desc;
     vstd::HashMap<vstd::string, size_t*> _buffer_name_to_desc;
-    std::pair<uint64_t, uint64_t> managing_cmd_range{
+    std::pair<uint64_t, uint64_t> _managing_cmd_range{
         std::numeric_limits<uint64_t>::max(),
         std::numeric_limits<uint64_t>::max()
     };
@@ -108,16 +108,20 @@ private:
     uint64_t _transient_buffer_handle = invalid_resource_handle;
     size_t _transient_buffer_size = 0;
 
-    uint64_t _get_tex_handle(uint64_t handle);
-    std::pair<uint64_t, size_t> _get_buffer_handle_offset(uint64_t handle);
+    uint64_t _get_tex_handle(uint64_t handle) const;
+    std::pair<uint64_t, size_t> _get_buffer_handle_offset(uint64_t handle) const;
     void _mark_tex(uint64_t handle, uint64_t command_index);
     void _mark_buffer(uint64_t handle, uint64_t command_index);
+    void _mark_resources(luisa::span<luisa::unique_ptr<Command> const> commands);
+    void _build_command_caches(size_t command_count);
+    void _allocate_transient_resources(CommandList& cmdlist);
+    void _steal_command_handles(luisa::span<luisa::unique_ptr<Command> const> commands);
     void _preprocess(luisa::span<luisa::unique_ptr<Command> const> commands, CommandList& cmdlist);
     TexResourceHandle* _allocate_handle(ManagedTexDesc const& desc);
     void _deallocate_handle(TexResourceHandle* handle);
 
 public:
-    void* get_native_handle(uint64_t handle);
+    void* get_native_handle(uint64_t handle) const;
 
     void set_next_res_name(vstd::string&& name, bool next_is_only_get = false)
     {
@@ -127,14 +131,14 @@ public:
     void begin_managing(CommandList const& cmdlist)
     {
         _is_managing = true;
-        managing_cmd_range.first = cmdlist.commands().size();
+        _managing_cmd_range.first = cmdlist.commands().size();
     }
     void end_managing(CommandList const& cmdlist)
     {
         _is_managing = false;
-        managing_cmd_range.second = cmdlist.commands().size() - managing_cmd_range.first;
+        _managing_cmd_range.second = cmdlist.commands().size() - _managing_cmd_range.first;
     }
-    vstd::string log_resource_info();
+    vstd::string log_resource_info() const;
 
     uint64_t resource_contain_frame{ 0 };
 

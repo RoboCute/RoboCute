@@ -17,7 +17,6 @@
 #include <rbc_world/component.h>
 #include <rbc_world/resources/mesh.h>
 #include <rbc_world/importers/texture_loader.h>
-#include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_core/state_map.h>
 #include <rbc_graphics/compute_device.h>
 #include <rbc_graphics/lights.h>
@@ -39,11 +38,11 @@ GraphicsUtils::GraphicsUtils() {
 }
 GraphicsUtils::~GraphicsUtils() {
     dispose();
-};
+}
 
 void deser_openpbr(
-    JsonSerializer &serde,
-    material::OpenPBR &x) {
+    [[maybe_unused]] JsonSerializer &serde,
+    [[maybe_unused]] material::OpenPBR &x) {
 }
 void GraphicsUtils::dispose(vstd::function<void()> after_sync) {
     if (!_graphics_utils_singleton) return;
@@ -155,11 +154,8 @@ void GraphicsUtils::init_display(
     uint64_t native_display,
     uint64_t native_handle) {
     init_present_stream();
-    if (
-        !_dst_image || (_dst_image && any(_dst_image.size() != resolution)) ||
-        !_present_image || (_present_image && any(_present_image.size() != resolution))
-
-    ) {
+    if (!_dst_image || any(_dst_image.size() != resolution) ||
+        !_present_image || any(_present_image.size() != resolution)) {
         resize_swapchain(resolution, native_display, native_handle);
     }
 }
@@ -236,7 +232,7 @@ void GraphicsUtils::tick(
         frame_settings.normal_buffer = nullptr;
         frame_settings.radiance_buffer = nullptr;
         auto pt_settings = render_settings->read_if<PathTracerSettings>();
-        enable_denoise &= _denoiser_inited & (!pt_settings || pt_settings->denoise);
+        enable_denoise &= _denoiser_inited && (!pt_settings || pt_settings->denoise);
         DenoisePack *denoise_pack{};
         if (tick_stage != TickStage::RasterPreview && enable_denoise) {
             denoise_pack = &_denoise_packs.emplace_back();
@@ -315,7 +311,7 @@ void GraphicsUtils::tick(
     uint64_t idx = 0;
     _render_device->_pipeline_name_ = {};
     for (auto &i : _render_pipe_ctxs) {
-        _render_device->_pipeline_name_ = luisa::format("{}\126", idx);
+        _render_device->_pipeline_name_ = luisa::format("{}V", idx);
         ++idx;
         _render_plugin->on_rendering({}, i);
     }
@@ -375,7 +371,7 @@ void GraphicsUtils::resize_swapchain(
                 .back_buffer_count = 2});
         _present_image = {};
         _present_image = _render_device->lc_device().create_image<float>(_swapchain.backend_storage(), size, 1, false, true);
-        _present_image.set_name("Dest image");
+        _present_image.set_name("Present image");
     }
 }
 void GraphicsUtils::update_mesh_data(DeviceMesh *mesh, bool only_vertex) {

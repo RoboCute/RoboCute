@@ -32,7 +32,7 @@ struct RBC_RUNTIME_API MaterialStub : RCBase {
         material::Unlit>;
     MatCode mat_code;
     MatDataType mat_data;
-    void craete_pbr_material();
+    void create_pbr_material();
     void update_material(luisa::string_view json);
     void remove_material();
     MaterialStub();

@@ -13,6 +13,7 @@ using namespace luisa::compute;
 struct ShaderManager;
 struct DisposeQueue;
 struct RBC_RUNTIME_API TextureUploader {
+private:
     Shader2D<Buffer<uint>, Image<float>> const *_copy_byte_tex;
     Shader2D<Buffer<half>, Image<float>> const *_copy_half_tex;
     Shader2D<Buffer<float>, Image<float>> const *_copy_float_tex;
@@ -36,7 +37,7 @@ public:
     void upload(
         IOCommandList &io_cmdlist,
         CommandList &cmdlist,
-        Device &devive,
+        Device &device,
         DisposeQueue &disp_queue,
         IOFile::Handle io_file,
         ImageView<float> img,
@@ -46,7 +47,7 @@ public:
         IOCommandList &mem_io_cmdlist,
         luisa::vector<std::byte> &copy,
         CommandList &cmdlist,
-        Device &devive,
+        Device &device,
         DisposeQueue &disp_queue,
         IOFile::Handle io_file,
         ImageView<float> img,
@@ -54,7 +55,7 @@ public:
     void upload(
         IOCommandList &io_mem_cmdlist,
         CommandList &cmdlist,
-        Device &devive,
+        Device &device,
         DisposeQueue &disp_queue,
         void const *ptr,
         ImageView<float> img) const;
@@ -80,7 +81,7 @@ public:
         float2 src_uv_offset,
         uint2 dst_pixel_offset,
         uint2 dst_blit_size,
-        luisa::optional<float> manually_alpha = {});
+        luisa::optional<float> manually_alpha = {}) const;
     ~TextureUploader();
 };
 }// namespace rbc

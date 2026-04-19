@@ -20,12 +20,12 @@ void PluginManager::destroy_instance() {
 PluginManager::PluginManager() {}
 PluginManager::~PluginManager() {}
 void PluginManager::unload_module(luisa::string_view name) {
-    std::lock_guard lck{mtx};
-    loaded_modules.remove(name);
+    std::lock_guard lck{_mtx};
+    _loaded_modules.remove(name);
 }
 luisa::shared_ptr<luisa::DynamicModule> PluginManager::load_module(luisa::string_view name) {
-    std::lock_guard lck{mtx};
-    auto iter = loaded_modules.try_emplace(name);
+    std::lock_guard lck{_mtx};
+    auto iter = _loaded_modules.try_emplace(name);
     luisa::shared_ptr<luisa::DynamicModule> r;
     if (!iter.second) {
         r = iter.first.value().lock();
@@ -37,7 +37,7 @@ luisa::shared_ptr<luisa::DynamicModule> PluginManager::load_module(luisa::string
     auto func = r->function<uint64_t()>("rbc_version");
     if (!func || func() != RBC_VERSION) [[unlikely]] {
         r = nullptr;
-        loaded_modules.remove(iter.first);
+        _loaded_modules.remove(iter.first);
     }
     return r;
 }

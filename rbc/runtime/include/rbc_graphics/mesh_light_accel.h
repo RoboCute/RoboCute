@@ -25,21 +25,21 @@ public:
         luisa::fiber::future<vector<BVH::PackedNode>> nodes;
         BufferView<BVH::PackedNode> buffer;
     };
-    vstd::LockFreeArrayQueue<Task> _upload_task;
-
-public:
-    MeshLightAccel();
+    MeshLightAccel() = default;
     bool create_or_update_blas(
         CommandList &cmdlist,
         Buffer<BVH::PackedNode> &buffer,
         uint desired_buffer_size,
         luisa::fiber::future<vector<BVH::PackedNode>> &&nodes);
     static HostResult build_bvh(
-        float4x4 matrix,
+        float4x4 const &matrix,
         span<float3 const> vertices,
         span<Triangle const> triangles,
         span<uint const> submesh_offset,
         span<float const> submesh_lum);
     void update_frame(IOCommandList &io_cmdlist);
+
+private:
+    vstd::LockFreeArrayQueue<Task> _upload_task;
 };
 }// namespace rbc

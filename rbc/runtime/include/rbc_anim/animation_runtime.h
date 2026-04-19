@@ -5,7 +5,7 @@
 namespace rbc {
 
 struct RBC_RUNTIME_API AnimationRuntime {
-    static void EnsureParentsPresent(luisa::vector<BoneIndexType> &InBoneIndices, const ReferenceSkeleton &InRefSkeleton);
+    static void ensure_parents_present(luisa::vector<BoneIndexType> &in_bone_indices, const ReferenceSkeleton &in_ref_skeleton);
 };
 
 }// namespace rbc

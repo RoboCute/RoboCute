@@ -31,34 +31,34 @@ void OfflinePTPass::on_enable(
     CommandList &cmdlist,
     SceneManager &scene) {
 #define RBC_LOAD_SHADER(SHADER_NAME, NAME_SPACE, PATH) \
-    init_counter.add();                                \
+    _init_counter.add();                               \
     luisa::fiber::schedule([this]() {                  \
         SHADER_NAME = NAME_SPACE::load_shader(PATH);   \
-        init_counter.done();                           \
+        _init_counter.done();                          \
     })
 
     auto load = [&](auto name, auto &&var) {
-        init_counter.add();
+        _init_counter.add();
         luisa::fiber::schedule([this, name, &var]() {
             ShaderManager::instance()->load(name, var);
-            init_counter.done();
+            _init_counter.done();
         });
     };
-    RBC_LOAD_SHADER(pt_shader, offline_pt_shader, "path_tracer/offline_pt.bin");
-    RBC_LOAD_SHADER(pt_shader_denoise, offline_pt_shader_denoise, "path_tracer/offline_pt_denoise.bin");
-    RBC_LOAD_SHADER(multi_bounce, offline_multibounce, "path_tracer/pt_multi_bounce_offline.bin");
-    RBC_LOAD_SHADER(ao_trace, ao_trace, "path_tracer/ao_trace.bin");
-    load("path_tracer/draw_sky.bin", draw_sky_shader);
-    load("surfel/clear_hashgrid_offline.bin", clear_hashgrid);
-    load("surfel/accum_hashgrid_offline.bin", accum_hashgrid);
-    load("surfel/integrate_hashgrid_offline.bin", integrate_hashgrid);
-    load("path_tracer/clear_buffer.bin", clear_ptr_buffer);
-    init_counter.add();
+    RBC_LOAD_SHADER(_pt_shader, offline_pt_shader, "path_tracer/offline_pt.bin");
+    RBC_LOAD_SHADER(_pt_shader_denoise, offline_pt_shader_denoise, "path_tracer/offline_pt_denoise.bin");
+    RBC_LOAD_SHADER(_multi_bounce, offline_multibounce, "path_tracer/pt_multi_bounce_offline.bin");
+    RBC_LOAD_SHADER(_ao_trace, ao_trace, "path_tracer/ao_trace.bin");
+    load("path_tracer/draw_sky.bin", _draw_sky_shader);
+    load("surfel/clear_hashgrid_offline.bin", _clear_hashgrid);
+    load("surfel/accum_hashgrid_offline.bin", _accum_hashgrid);
+    load("surfel/integrate_hashgrid_offline.bin", _integrate_hashgrid);
+    load("path_tracer/clear_buffer.bin", _clear_ptr_buffer);
+    _init_counter.add();
     luisa::fiber::schedule([&]() {
         auto hash_size = 1024ull * 1024ull * 4ull;
         key_buffer = device.create_buffer<uint>(hash_size);
         value_buffer = device.create_buffer<uint>(hash_size * 4);
-        init_counter.done();
+        _init_counter.done();
     });
 #undef RBC_LOAD_SHADER
 }
@@ -72,7 +72,7 @@ void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const
     }
 }
 
-OfflinePTPass::PreparedResources OfflinePTPass::_prepare_resources(const PTResourceContext &rc) {
+OfflinePTPass::PreparedResources OfflinePTPass::_prepare_resources(const PTResourceContext &rc) const {
     PreparedResources res;
     res.emission = rc.render_device.create_transient_image<float>(
         "emission", PixelStorage::FLOAT4, rc.frame_settings.render_resolution);
@@ -108,7 +108,7 @@ offline::PTArgs OfflinePTPass::_setup_pt_args(
     const Camera &cam,
     const SkyHeapIndices &sky_heap,
     bool write_id_map,
-    uint32_t frame_index) {
+    uint32_t frame_index) const {
     offline::PTArgs pt_args{};
     pt_args.write_id_map = write_id_map;
     pt_args.resource_to_rec2020_mat = rc.frame_settings.to_rec2020_matrix;
@@ -143,8 +143,8 @@ void OfflinePTPass::_draw_sky_only(
     const CameraData &cam_data,
     const Camera &cam,
     const JitterData &jitter_data,
-    bool write_id_map) {
-    rc.cmdlist << (*draw_sky_shader)(
+    bool write_id_map) const {
+    rc.cmdlist << (*_draw_sky_shader)(
                       emission,
                       *id_map,
                       rc.scene.image_heap(),
@@ -162,18 +162,18 @@ void OfflinePTPass::_draw_sky_only(
 
 void OfflinePTPass::_clear_multibounce_counter(
     const PTResourceContext &rc,
-    const Buffer<uint> &counter) {
-    rc.cmdlist << (*clear_ptr_buffer)(counter.view(), 0).dispatch(1);
+    const Buffer<uint> &counter) const {
+    rc.cmdlist << (*_clear_ptr_buffer)(counter.view(), 0).dispatch(1);
 }
 
 void OfflinePTPass::_trace_ao_sample(
     const PTResourceContext &rc,
     const Image<float> &emission,
     const offline::PTArgs &pt_args,
-    const PathTracerSettings &pt_settings) {
+    const PathTracerSettings &pt_settings) const {
     auto &accel = rc.scene.accel();
     rc.cmdlist << ao_trace::dispatch_shader(
-        ao_trace, rc.frame_settings.render_resolution,
+        _ao_trace, rc.frame_settings.render_resolution,
         rc.scene.buffer_heap(),
         rc.scene.image_heap(),
         rc.scene.volume_heap(),
@@ -194,7 +194,7 @@ void OfflinePTPass::_dispatch_path_tracing(
     const PreparedResources &resources,
     offline::PTArgs &pt_args,
     Image<uint> const *id_map,
-    uint32_t geometry_mask) {
+    uint32_t geometry_mask) const {
     auto &accel = rc.scene.accel();
 
     // Create a copy of pt_args with the geometry_mask set
@@ -204,7 +204,7 @@ void OfflinePTPass::_dispatch_path_tracing(
 
     if (rc.frame_settings.albedo_buffer && rc.frame_settings.normal_buffer) {
         rc.cmdlist << offline_pt_shader_denoise::dispatch_shader(
-            pt_shader_denoise,
+            _pt_shader_denoise,
             ((rc.frame_settings.render_resolution + 1u) / 2u) * 2u,
             rc.scene.tex_streamer().level_buffer(),
             rc.scene.buffer_heap(),
@@ -227,7 +227,7 @@ void OfflinePTPass::_dispatch_path_tracing(
             rc.frame_settings.render_resolution);
     } else {
         rc.cmdlist << offline_pt_shader::dispatch_shader(
-            pt_shader,
+            _pt_shader,
             ((rc.frame_settings.render_resolution + 1u) / 2u) * 2u,
             rc.scene.tex_streamer().level_buffer(),
             rc.scene.buffer_heap(),
@@ -253,12 +253,12 @@ void OfflinePTPass::_process_multibounce_indirect(
     const PTResourceContext &rc,
     const PreparedResources &resources,
     const offline::PTArgs &pt_args,
-    float accumulate_rate) {
+    float accumulate_rate) const {
     auto &accel = rc.scene.accel();
     uint max_accum = (1 + pt_args.frame_index) * 1024;
 
     rc.cmdlist << offline_multibounce::dispatch_shader(
-        multi_bounce,
+        _multi_bounce,
         resources.multibounce_buffer.view().size(),
         rc.scene.buffer_heap(),
         rc.scene.image_heap(),
@@ -274,7 +274,7 @@ void OfflinePTPass::_process_multibounce_indirect(
         pt_args,
         rc.frame_settings.render_resolution);
 
-    rc.cmdlist << (*accum_hashgrid)(
+    rc.cmdlist << (*_accum_hashgrid)(
                       resources.geo_buffer,
                       key_buffer,
                       value_buffer,
@@ -287,7 +287,7 @@ void OfflinePTPass::_process_multibounce_indirect(
                       max_accum)
                       .dispatch(rc.frame_settings.render_resolution);
 
-    rc.cmdlist << (*integrate_hashgrid)(
+    rc.cmdlist << (*_integrate_hashgrid)(
                       resources.geo_buffer,
                       resources.emission,
                       value_buffer,
@@ -296,7 +296,7 @@ void OfflinePTPass::_process_multibounce_indirect(
                       accumulate_rate)
                       .dispatch(rc.frame_settings.render_resolution);
 
-    rc.cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, max_accum)
+    rc.cmdlist << (*_clear_hashgrid)(key_buffer, value_buffer, max_accum)
                       .dispatch(key_buffer.size());
 }
 
@@ -353,7 +353,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     };
 
     if (accum_pass_ctx->frame_index == 0) {
-        cmdlist << (*clear_hashgrid)(key_buffer, value_buffer, 0).dispatch(key_buffer.size());
+        cmdlist << (*_clear_hashgrid)(key_buffer, value_buffer, 0).dispatch(key_buffer.size());
     }
 
     for (auto i : vstd::range(pt_settings.offline_spp)) {
@@ -449,7 +449,7 @@ void OfflinePTPass::on_disable(
 }
 
 void OfflinePTPass::wait_enable() {
-    init_counter.wait();
+    _init_counter.wait();
 }
 
 OfflinePTPass::~OfflinePTPass() = default;

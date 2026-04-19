@@ -35,7 +35,7 @@ struct ParallelEvaluationData {
 struct RBC_RUNTIME_API AnimInstance : RCBase {
 
 public:
-    void InitAnimInstance(RC<world::AnimGraphResource> &InAnimGraph);
+    void InitAnimInstance(const RC<world::AnimGraphResource> &InAnimGraph);
 
     void BindSkelMesh(SkeletalMesh *InSkelMesh);
     SkeletalMesh *GetSkeletalMesh() const;
@@ -57,17 +57,17 @@ public:
 
     // 存在Graph依然需要eval但是不需要update的情况，设置flag来disble update
     void EnableUpdateAnimation(bool bEnable) {
-        bUpdateAnimationEnabled = bEnable;
+        _b_update_animation_enabled = bEnable;
     }
-    bool IsUpdateAnimationEnabled() const { return bUpdateAnimationEnabled; }
+    bool IsUpdateAnimationEnabled() const { return _b_update_animation_enabled; }
 
     template<typename T>
     static T *GetProxyOnGameThreadStatic(AnimInstance *InAnimInstance) {
         if (InAnimInstance) {
-            if (InAnimInstance->proxy == nullptr) {
-                InAnimInstance->proxy = InAnimInstance->CreateAnimInstanceProxy();
+            if (InAnimInstance->_proxy == nullptr) {
+                InAnimInstance->_proxy = InAnimInstance->CreateAnimInstanceProxy();
             }
-            return static_cast<T *>(InAnimInstance->proxy);
+            return static_cast<T *>(InAnimInstance->_proxy);
         }
         return nullptr;
     }
@@ -79,33 +79,33 @@ public:
 
     template<typename T>
     const T &GetProxyOnGameThread() const {
-        if (proxy == nullptr) {
-            proxy = const_cast<AnimInstance *>(this)->CreateAnimInstanceProxy();
+        if (_proxy == nullptr) {
+            _proxy = const_cast<AnimInstance *>(this)->CreateAnimInstanceProxy();
         }
-        return *static_cast<const T *>(proxy);
+        return *static_cast<const T *>(_proxy);
     }
 
     template<typename T>
     RBC_FORCEINLINE T &GetProxyOnAnyThread() {
-        if (proxy == nullptr) {
-            proxy = CreateAnimInstanceProxy();
+        if (_proxy == nullptr) {
+            _proxy = CreateAnimInstanceProxy();
         }
-        return *static_cast<T *>(proxy);
+        return *static_cast<T *>(_proxy);
     }
 
     // AnimInstance不一定需要用到整个Skeleton的全部骨骼，只需要部分
     void RecalcRequiredBones();
     void RecalcRequiredCurves();
 
-    bool NeedsUpdate();
+    bool NeedsUpdate() const;
     void ParallelUpdateAnimation();
 
 private:
-    RC<world::AnimGraphResource> anim_graph;
-    SkeletalMesh *skel_mesh;
-    mutable AnimInstanceProxy *proxy = nullptr;
-    bool bUpdateAnimationEnabled = true;
-    bool bNeedsUpdate = false;
+    RC<world::AnimGraphResource> _anim_graph;
+    SkeletalMesh *_skel_mesh;
+    mutable AnimInstanceProxy *_proxy = nullptr;
+    bool _b_update_animation_enabled = true;
+    bool _b_needs_update = false;
 };
 
 struct RBC_RUNTIME_API AnimInstanceProxy {
@@ -121,10 +121,10 @@ public:
 public:// LifeCycle
     AnimInstance *GetAnimInstanceObject() const;
     void Initialize(AnimInstance *InAnimInstance);
-    void InitializeObjects(AnimInstance *InAnimInstance);
+    void InitializeObjects(const AnimInstance *InAnimInstance);
     void InitializeRootNode(bool bInDeferredRootNodeInitialization);
     void InitializeRootNode_WithRoot(AnimNode *InRootNode);
-    void PreUpdate(AnimInstance *InAnimInstance, float DeltaTimeSeconds);
+    void PreUpdate(const AnimInstance *InAnimInstance, float DeltaTimeSeconds);
     // overwrite point for evaluate anim
     virtual bool Evaluate(PoseContext &Output) { return false; }
     // overwrite point for evaluate with root
@@ -157,28 +157,28 @@ public:                    // Core Function
 public:
     // Get & Set
     BoneContainer &GetRequiredBones() {
-        return *required_bones;
+        return *_required_bones;
     }
     [[nodiscard]] const BoneContainer &GetRequiredBones() const {
-        return *required_bones;
+        return *_required_bones;
     }
 
 private:
-    mutable AnimInstance *AnimInstanceObject;
+    mutable AnimInstance *_anim_instance_object;
 
-    const ReferenceSkeleton *skeleton;
-    SkeletalMesh *skeletal_mesh;
-    [[maybe_unused]] AnimGraph *anim_graph;
-    AnimNode *root_node;// The Root Node Entry for this graph
+    const ReferenceSkeleton *_skeleton;
+    SkeletalMesh *_skeletal_mesh;
+    [[maybe_unused]] AnimGraph *_anim_graph;
+    AnimNode *_root_node;// The Root Node Entry for this graph
 
-    [[maybe_unused]] AnimInstanceProxy *MainInstanceProxy;
+    [[maybe_unused]] AnimInstanceProxy *_main_instance_proxy;
     // Bone Indicies Required for this Frame
-    luisa::shared_ptr<BoneContainer> required_bones;
+    luisa::shared_ptr<BoneContainer> _required_bones;
 
     // ==================== Sampling State =====================
-    float current_delta_seconds;        // The last timer passed via PreUpdate
-    [[maybe_unused]] bool bUpdatingRoot;// scope guard to prevent duplicate perform
-    bool bBoneCachesValid = false;
+    float _current_delta_seconds;        // The last timer passed via PreUpdate
+    [[maybe_unused]] bool _b_updating_root;// scope guard to prevent duplicate perform
+    bool _b_bone_caches_valid = false;
     // float CurrentTimeDilation;
     // =========================================================
     // Buffers

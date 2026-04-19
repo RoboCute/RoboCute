@@ -88,7 +88,7 @@ inline const char *d3d12_error_name(HRESULT hr) {
     }
     return "Unknown error";
 }
-inline int ComputeIntersectionArea(int ax1, int ay1, int ax2, int ay2, int bx1, int by1, int bx2, int by2) {
+inline int compute_intersection_area(int ax1, int ay1, int ax2, int ay2, int bx1, int by1, int bx2, int by2) {
     return std::max(0, std::min(ax2, bx2) - std::max(ax1, bx1)) * std::max(0, std::min(ay2, by2) - std::max(ay1, by1));
 }
 }// namespace dx_detail
@@ -125,7 +125,7 @@ DXGI_OUTPUT_DESC1 DXDeviceInfo::GetOutput(HWND window_handle) {
     UINT i = 0;
     Microsoft::WRL::ComPtr<IDXGIOutput> currentOutput;
     Microsoft::WRL::ComPtr<IDXGIOutput> bestOutput;
-    float bestIntersectArea = -1;
+    int best_intersect_area = -1;
 
     while (adapter->EnumOutputs(i, &currentOutput) != DXGI_ERROR_NOT_FOUND) {
         // Get the retangle bounds of the app window
@@ -144,10 +144,10 @@ DXGI_OUTPUT_DESC1 DXDeviceInfo::GetOutput(HWND window_handle) {
         int by2 = r.bottom;
 
         // Compute the intersection
-        int intersectArea = dx_detail::ComputeIntersectionArea(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2);
-        if (intersectArea > bestIntersectArea) {
+        int intersect_area = dx_detail::compute_intersection_area(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2);
+        if (intersect_area > best_intersect_area) {
             bestOutput = currentOutput;
-            bestIntersectArea = static_cast<float>(intersectArea);
+            best_intersect_area = intersect_area;
         }
 
         i++;
@@ -163,7 +163,7 @@ DXGI_OUTPUT_DESC1 DXDeviceInfo::GetOutput(HWND window_handle) {
     return desc1;
 }
 
-bool DXDeviceInfo::support_sdr_10() {
+bool DXDeviceInfo::support_sdr_10() const {
     D3D12_FEATURE_DATA_FORMAT_SUPPORT format_support;
     format_support.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
     ThrowIfFailed(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &format_support, sizeof(format_support)));
@@ -171,7 +171,7 @@ bool DXDeviceInfo::support_sdr_10() {
            (format_support.Support2 & D3D12_FORMAT_SUPPORT2_DISPLAYABLE) != 0;
 }
 
-bool DXDeviceInfo::support_linear_sdr() {
+bool DXDeviceInfo::support_linear_sdr() const {
     D3D12_FEATURE_DATA_FORMAT_SUPPORT format_support;
     format_support.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     ThrowIfFailed(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &format_support, sizeof(format_support)));

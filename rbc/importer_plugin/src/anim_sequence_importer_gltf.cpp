@@ -12,13 +12,13 @@ bool GltfAnimSequenceImporter::import(Resource *resource_base, luisa::filesystem
     // Get skeleton from resource's ref_skel (must be set before import)
     auto skel = resource->ref_skel;
 
-    LUISA_ASSERT(skel.get());// RefSkeleton Should be valid
     GltfOzzImporter impl;
     ozz::animation::offline::OzzImporter &importer = impl;
 
     auto *skel_ptr = skel.get();
     if (!skel_ptr) {
         LUISA_ERROR("Import AnimSequence Should Depend on a Valid SkeletonResource");
+        return false;
     }
     if (!importer.Load(path.string().c_str())) {
         LUISA_ERROR("Failed to load gltf {} for AnimSeq", path.string());
@@ -28,7 +28,7 @@ bool GltfAnimSequenceImporter::import(Resource *resource_base, luisa::filesystem
 
     auto anim_names = importer.GetAnimationNames();
 
-    if (!(anim_names.size() > 0)) {
+    if (anim_names.empty()) {
         LUISA_ERROR("No Animation Found in GLTF File: {}", path.string());
         return false;
     } else {
@@ -48,10 +48,14 @@ bool GltfAnimSequenceImporter::import(Resource *resource_base, luisa::filesystem
         rate = 30.0f;// default sampling rate
     }
 
-    importer.Import(
-        anim_name.c_str(),
-        skel_ptr->ref_skel().GetRawSkeleton(),
-        rate, raw_anim);
+    if (!importer.Import(
+            anim_name.c_str(),
+            skel_ptr->ref_skel().get_raw_skeleton(),
+            rate, raw_anim)) {
+        LUISA_ERROR("Failed to import animation '{}' from {}", anim_name, path.string());
+        ozz::Delete(raw_anim);
+        return false;
+    }
 
     // Cook
     ozz::animation::offline::AnimationBuilder builder;

@@ -15,8 +15,7 @@
 
 namespace rbc::world {
 
-VoxelResource::VoxelResource() {
-}
+VoxelResource::VoxelResource() = default;
 
 VoxelResource::~VoxelResource() {
     auto inst = AssetsManager::instance();
@@ -38,7 +37,7 @@ void VoxelResource::build_procedural_primitive(
     luisa::compute::ProceduralPrimitive &procedural_prim,
     DisposeQueue &disp_queue) {
     std::lock_guard lck{_async_mtx};
-    if (procedural_prim.valid() && (!_procedural_prim_dirty))
+    if (procedural_prim.valid() && !_procedural_prim_dirty)
         return;
     auto render_device = RenderDevice::instance_ptr();
     if (!render_device) return;
@@ -75,7 +74,7 @@ uint VoxelResource::emplace_procedural_instance(
     build_procedural_primitive(cmdlist, procedural_prim, disp_queue);
     std::lock_guard lck{_async_mtx};
     if (!procedural_prim.valid()) {
-        return ~0u;// Failed to create procedural primitive
+        return ~0u; // Failed to create procedural primitive
     }
 
     // Create VoxelSurface for shader access
@@ -135,7 +134,7 @@ void VoxelResource::remove_procedural_instance() {
     }
     
     if (_procedural_instance_id == ~0u) {
-        return;// Not emplaced, nothing to do
+        return; // Not emplaced, nothing to do
     }
     accel_manager.remove_procedural_instance(
         buffer_allocator,
@@ -152,7 +151,7 @@ void VoxelResource::serialize_meta(ObjSerialize const &ser) const {
 }
 
 void VoxelResource::deserialize_meta(ObjDeSerialize const &ser) {
-    std::shared_lock lck{_async_mtx};
+    std::lock_guard lck{_async_mtx};
     uint32_t num_voxels = 0;
     uint32_t proc_inst_id = ~0u;
     bool procedural_prim_dirty = true;

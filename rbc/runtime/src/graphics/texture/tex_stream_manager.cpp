@@ -61,7 +61,7 @@ TexStreamManager::TexStreamManager(
               while (auto p = _copy_stream_callbacks.dequeue()) {
                   {
                       std::unique_lock lck{_copy_stream_mtx};
-                      while (p->fence > signalled_fence) {
+                      while (p->fence > _signalled_fence) {
                           _copy_stream_cv.wait(lck);
                           if (!_enabled.load()) {
                               p->sparse_cmdlist.clear();
@@ -125,15 +125,15 @@ void TexStreamManager::CopyStreamCallback::operator()() {
     }
 }
 void TexStreamManager::_async_logic() {
-    CommandList &cmdlist = async_cmdlist;
-    luisa::vector<SparseTextureHeap> _disposed_heap;
+    CommandList &cmdlist = _async_cmdlist;
+    luisa::vector<SparseTextureHeap> disposed_heap;
     for (auto &i : _remove_list) {
         _unmap_lists.remove(i);
     }
     _remove_list.clear();
 
     if (auto res = _frame_res.dequeue()) {
-        inqueue_frame--;
+        _inqueue_frame--;
         auto evt = luisa::fiber::async(
             [&]() {
                 std::lock_guard lck{_uploader_mtx};
@@ -157,7 +157,7 @@ void TexStreamManager::_async_logic() {
 
         // 	}
         // }
-        std::mutex _unload_mtx;
+        std::mutex unload_mtx;
         luisa::fiber::parallel(
             res->unload_cmds.size(),
             [&](size_t i) {
@@ -166,10 +166,10 @@ void TexStreamManager::_async_logic() {
                 if (!tex) {
                     return;
                 }
-                _unload_mtx.lock();
+                unload_mtx.lock();
                 auto iter = _unmap_lists.emplace(tex.get());
                 auto &v = iter.value();
-                _unload_mtx.unlock();
+                unload_mtx.unlock();
                 luisa::fiber::parallel(
                     tile.tiles.size(),
                     [&](size_t idx) {
@@ -204,7 +204,7 @@ void TexStreamManager::_async_logic() {
                         sparse_tile_size,
                         tile.z);
                     remove_lists.emplace_back(tile);
-                    _disposed_heap.emplace_back(std::move(heap.heap));
+                    disposed_heap.emplace_back(std::move(heap.heap));
                 }
             }
             if (remove_lists.empty()) continue;
@@ -220,22 +220,22 @@ void TexStreamManager::_async_logic() {
             _unmap_lists.remove(i);
         }
     }
-    if (!io_cmdlist.empty() || !sparse_cmdlist.empty() || !_disposed_heap.empty()) {
+    if (!io_cmdlist.empty() || !sparse_cmdlist.empty() || !disposed_heap.empty()) {
         _copy_stream_callbacks.push(
             this,
             _async_stream,
             std::move(io_cmdlist),
             std::move(sparse_cmdlist),
             &_main_stream_event,
-            last_fence.load(),
-            std::move(_disposed_heap));
+            _last_fence.load(),
+            std::move(disposed_heap));
     }
-    if (inqueue_frame >= 2) {
+    if (_inqueue_frame >= 2) {
         return;
     }
     ///////////////// Process async commands
     if (_readback_size == 0) return;
-    inqueue_frame++;
+    _inqueue_frame++;
     vector<uint> readback;
     readback.push_back_uninitialized(_readback_size / sizeof(uint));
     cmdlist << _level_buffer.buffer().view(0, readback.size()).copy_to(luisa::span(readback));
@@ -264,22 +264,22 @@ void TexStreamManager::dispose() {
         return;
     _copy_stream_mtx.lock();
     _enabled = false;
-    signalled_fence = last_fence.load();
+    _signalled_fence = _last_fence.load();
     _copy_stream_mtx.unlock();
     _copy_stream_cv.notify_one();
     _copy_stream_thd.join();
     _async_load_evt.wait();
-    async_cmdlist.clear();
+    _async_cmdlist.clear();
     for (auto &i : _loaded_texs) {
         i.second->heaps.clear();
         _level_buffer.free(i.second->node);
     }
-    _async_stream << _main_stream_event.signal(signalled_fence + 1);
+    _async_stream << _main_stream_event.signal(_signalled_fence + 1);
     _async_stream.synchronize();
     if (_last_io_fence > 0) {
         _io_service.synchronize(_last_io_fence);
     }
-    _main_stream_event.synchronize(signalled_fence + 1);
+    _main_stream_event.synchronize(_signalled_fence + 1);
 }
 TexStreamManager::~TexStreamManager() {
     dispose();
@@ -335,9 +335,7 @@ auto TexStreamManager::load_sparse_img(
         auto offset_ptr = _uploader.emplace_copy_cmd(_chunk_offset_buffer.view(bindless_idx, 1));
         atomic_max(_readback_size, v->node.offset_bytes() + v->node.size_bytes());
         const uint value = (_countdown << 4u) | 15u;
-        for (auto end_ptr = host_ptr + tile_count.x * tile_count.y; host_ptr != end_ptr; ++host_ptr) {
-            *host_ptr = value;
-        }
+        std::fill(host_ptr, host_ptr + tile_count.x * tile_count.y, value);
         // level-buffer's pos
         *offset_ptr = v->node.offset_bytes() / sizeof(uint);
     }
@@ -578,16 +576,16 @@ void TexStreamManager::before_rendering(
     if (!_async_load_evt.is_signalled()) {
         return;
     }
-    dispose_offset_cache.clear();
-    dispose_dispatch_cache.clear();
-    cmdlist.add_range(std::move(async_cmdlist));
+    _dispose_offset_cache.clear();
+    _dispose_dispatch_cache.clear();
+    cmdlist.add_range(std::move(_async_cmdlist));
     {
         std::lock_guard lck{_uploader_mtx};
         {
             std::lock_guard lck1{_dispose_map_mtx};
             if (!_dispose_map.empty()) {
-                dispose_offset_cache.reserve(_dispose_map.size());
-                dispose_dispatch_cache.reserve(_dispose_map.size());
+                _dispose_offset_cache.reserve(_dispose_map.size());
+                _dispose_dispatch_cache.reserve(_dispose_map.size());
                 auto &copy_cmd = _uploader._get_copy_cmd(_chunk_offset_buffer.view());
                 for (auto &i : _dispose_map) {
                     copy_cmd.indices_map_bytes.emplace(i.first * sizeof(uint));
@@ -595,8 +593,8 @@ void TexStreamManager::before_rendering(
                     copy_cmd.datas.push_back_uninitialized(sizeof(uint));
                     auto ptr = reinterpret_cast<uint *>(copy_cmd.datas.data() + size);
                     *ptr = std::numeric_limits<uint>::max();
-                    dispose_offset_cache.emplace_back(i.second.offset, i.first);
-                    dispose_dispatch_cache.emplace_back(make_uint3(i.second.size, 1, 1));
+                    _dispose_offset_cache.emplace_back(i.second.offset, i.first);
+                    _dispose_dispatch_cache.emplace_back(make_uint3(i.second.size, 1, 1));
                 }
                 _dispose_map.clear();
             }
@@ -604,24 +602,24 @@ void TexStreamManager::before_rendering(
         _uploader.commit(cmdlist, temp_buffer);
     }
     // clear min-level buffer
-    if (!dispose_offset_cache.empty()) {
-        auto bf = temp_buffer.allocate_upload_buffer<uint2>(dispose_offset_cache.size(), 16);
-        std::memcpy(bf.mapped_ptr(), dispose_offset_cache.data(), dispose_offset_cache.size_bytes());
+    if (!_dispose_offset_cache.empty()) {
+        auto bf = temp_buffer.allocate_upload_buffer<uint2>(_dispose_offset_cache.size(), 16);
+        std::memcpy(bf.mapped_ptr(), _dispose_offset_cache.data(), _dispose_offset_cache.size_bytes());
         cmdlist << (*set_min_level_shader)(
                        _min_level_buffer,
                        bf.view,
                        _chunk_offset_buffer.view(),
                        32768u)
-                       .dispatch(dispose_dispatch_cache);
+                       .dispatch(_dispose_dispatch_cache);
     }
-    auto fence = ++last_fence;
+    auto fence = ++_last_fence;
 
     if (fence > 0)
         main_stream << Event::Signal{
             _main_stream_event.handle(),
             fence};
     _copy_stream_mtx.lock();
-    signalled_fence = fence;
+    _signalled_fence = fence;
     _copy_stream_mtx.unlock();
     _copy_stream_cv.notify_one();
     _async_load_evt.clear();

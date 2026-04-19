@@ -32,7 +32,7 @@ private:
         VkCudaInterop *>
         _ext{};
     vstd::optional<luisa::compute::Context> _lc_ctx;
-    Device device;
+    Device _device;
     luisa::string _compute_backend_name;
     luisa::spin_mutex _render_mtx;
     vstd::HashMap<uint, std::pair<Device, luisa::spin_mutex>> _devices;

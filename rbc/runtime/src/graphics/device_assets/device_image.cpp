@@ -30,7 +30,7 @@ uint DeviceImage::_check_size(PixelStorage storage, uint2 size, uint desire_mip)
     auto dst_mip_level = 0;
     auto mip_size = size;
     auto min_size = is_block_compressed(storage) ? 4 : 1;
-    for (auto i [[maybe_unused]] : vstd::range(desire_mip)) {
+    for (auto i : vstd::range(desire_mip)) {
         if (any(mip_size < 1u)) {
             break;
         }
@@ -41,14 +41,14 @@ uint DeviceImage::_check_size(PixelStorage storage, uint2 size, uint desire_mip)
     return dst_mip_level;
 }
 template<typename T, typename ErrFunc>
-void DeviceImage::_create_img(Image<T> &img, PixelStorage storage, uint2 size, uint mip_level, uint &dst_mip_level, ErrFunc &&err_func) {
+void DeviceImage::_create_img(Image<T> &img, PixelStorage storage, uint2 size, uint mip_level, uint &dst_mip_level, ErrFunc &&err_func) const {
     auto inst = AssetsManager::instance();
     // file.length() - file_offset
     dst_mip_level = _check_size(storage, size, mip_level);
     if (dst_mip_level == 0) {
         err_func();
     }
-    if (img && (!(all(img.size() == size)) && img.storage() == storage && img.mip_levels() == dst_mip_level)) {
+    if (img && !(all(img.size() == size) && img.storage() == storage && img.mip_levels() == dst_mip_level)) {
         inst->dispose_after_render_frame(std::move(img));
     }
     if (!img)

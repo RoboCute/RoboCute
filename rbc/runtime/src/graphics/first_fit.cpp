@@ -22,12 +22,18 @@ FirstFit::FirstFit(FirstFit&& another) noexcept
     : _alignment{ another._alignment }
     , _node_pool{ std::move(another._node_pool) }
 {
+    _free_list._next = another._free_list._next;
+    _free_list._offset = another._free_list._offset;
+    _free_list._size = another._free_list._size;
+    another._free_list._next = nullptr;
+    another._free_list._offset = 0u;
+    another._free_list._size = 0u;
 }
 
 void FirstFit::clean_all() noexcept
 {
     _free_list._offset = 0;
-	_node_pool.destroy_all();
+    _node_pool.destroy_all();
     _free_list._next = _node_pool.create();
     _free_list._next->_next = nullptr;
     _free_list._next->_offset = 0u;

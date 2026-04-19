@@ -23,7 +23,7 @@ void DeviceMesh::_check_indices(
     luisa::span<std::byte const> mesh_data,
     uint vertex_count,
     uint triangle_count) {
-    if(triangle_count * sizeof(Triangle) + vertex_count * sizeof(float3) > mesh_data.size()) [[unlikely]] {
+    if (triangle_count * sizeof(Triangle) + vertex_count * sizeof(float3) > mesh_data.size()) [[unlikely]] {
         LUISA_ERROR("Mesh data size too small: expected at least {} bytes ({} triangles + {} vertices), but got {} bytes.",
                     triangle_count * sizeof(Triangle) + vertex_count * sizeof(float3),
                     triangle_count, vertex_count, mesh_data.size());
@@ -38,14 +38,15 @@ void DeviceMesh::_check_indices(
         }
     };
     if (indices.size() < 4096) {
-        for (size_t i = 0; i < indices.size(); ++i) {
+        for (auto i : vstd::range(indices.size())) {
             call(i);
         }
     } else {
         luisa::fiber::parallel(indices.size(), [&](uint32_t start_idx, uint32_t end_idx) {
-            for(auto i = start_idx ; i < end_idx; ++i){
+            for (auto i = start_idx; i < end_idx; ++i) {
                 call(i);
-            } }, 4096);
+            }
+        }, 4096);
     }
 }
 
@@ -232,8 +233,8 @@ void DeviceMesh::create_mesh(
 void DeviceMesh::calculate_bounding_box() {
     LUISA_ASSERT(_render_mesh_data, "Mesh data not loaded.");
     LUISA_ASSERT(!_host_data.empty(), "Host data not loaded.");
-    auto indices = (uint *)(_host_data.data() + _render_mesh_data->meta.tri_byte_offset);
-    auto verts = (float3 *)_host_data.data();
+    auto indices = reinterpret_cast<uint const *>(_host_data.data() + _render_mesh_data->meta.tri_byte_offset);
+    auto verts = reinterpret_cast<float3 const *>(_host_data.data());
     auto &bbox_request = _render_mesh_data->bbox_requests;
     if (!bbox_request) {
         bbox_request = new MeshManager::BBoxRequest();
@@ -241,17 +242,17 @@ void DeviceMesh::calculate_bounding_box() {
     // luisa::fiber::schedule
     auto calculate_bound = [&](luisa::span<std::atomic<float>> boundings) {
         luisa::fiber::parallel(
-            (uint64_t)0,
-            (uint64_t)(_render_mesh_data->triangle_size * 3),
+            uint64_t{0},
+            static_cast<uint64_t>(_render_mesh_data->triangle_size * 3),
             1024,
             [&](uint64_t begin, uint64_t end) {
-                auto &submesh_offset = _render_mesh_data->submesh_offset;
+                auto const &submesh_offset = _render_mesh_data->submesh_offset;
                 uint submesh_index = 1;
                 if (!submesh_offset.empty()) {
                     submesh_index =
                         binary_search(
                             luisa::span{submesh_offset},
-                            (uint)(begin / 3u) + 1,
+                            static_cast<uint>(begin / 3u) + 1,
                             [](auto a, auto b) {
                                 if (a < b) return -1;
                                 return a > b ? 1 : 0;
@@ -280,7 +281,7 @@ void DeviceMesh::calculate_bounding_box() {
                         min_value = float3(1e28f);
                         max_value = float3(-1e28f);
                     }
-                    auto &vert = verts[indices[i]];
+                    auto const &vert = verts[indices[i]];
                     min_value = min(min_value, vert);
                     max_value = max(max_value, vert);
                 }
@@ -301,7 +302,7 @@ void DeviceMesh::calculate_bounding_box() {
         auto float_size = bbox_request->bounding_box.size() * sizeof(AABB) / sizeof(float);
         calculate_bound(
             {// type force change, need launder here
-             std::launder((std::atomic<float> *)bbox_request->bounding_box.data()),
+             std::launder(reinterpret_cast<std::atomic<float> *>(bbox_request->bounding_box.data())),
              float_size});
     } else {
         luisa::vector<std::atomic<float>> atomic_data;

@@ -27,8 +27,8 @@ namespace preparepass_detail {
 /**
  * Compute inverse CDF (quantiles) from unnormalized PDF.
  *
- * @param x_span Sorted span of x values (size m).
- * @param y_span PDF values corresponding to x (size m), may include zeros at ends.
+ * @param xs Sorted span of x values (size m).
+ * @param ys PDF values corresponding to x (size m), may include zeros at ends.
  * @param ps probabilities in (0,1) for which to compute quantiles.
  * @param iterations Maximum Newton-Raphson iterations per quantile.
  * @param tol Convergence tolerance for Newton-Raphson.
@@ -158,8 +158,8 @@ luisa::vector<float4> PreparePass::_compute_cie_xyz_lut() {
     luisa::vector<float4> cie_xyz_lut_data;
     luisa::vector<float> ps;
     ps.reserve(spectrum::cie_xyz_cdfinv_size);
-    for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++) {
-        ps.emplace_back(float(i) / (spectrum::cie_xyz_cdfinv_size - 1));
+    for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; ++i) {
+        ps.emplace_back(static_cast<float>(i) / static_cast<float>(spectrum::cie_xyz_cdfinv_size - 1));
     }
     cie_xyz_lut_data.push_back_uninitialized(spectrum::cie_xyz_cdfinv_size);
     luisa::vector<float> xs, ys;
@@ -168,12 +168,12 @@ luisa::vector<float4> PreparePass::_compute_cie_xyz_lut() {
         ys.clear();
         xs.reserve(size_t(wavelength_max - wavelength_min));
         ys.reserve(size_t(wavelength_max - wavelength_min));
-        for (size_t i = 0; i <= size_t(wavelength_max - wavelength_min); i++) {
+        for (size_t i = 0; i <= size_t(wavelength_max - wavelength_min); ++i) {
             xs.push_back(test::spectrum::CIE_xyz_1931_2deg[i].first);
             ys.push_back(test::spectrum::CIE_xyz_1931_2deg[i].second[c]);
         }
         auto result = preparepass_detail::generate_quantiles<float>(xs, ys, ps, 50, 10e-12f);
-        for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; i++) {
+        for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; ++i) {
             cie_xyz_lut_data[i][c] = result[i];
         }
     }
@@ -184,11 +184,11 @@ luisa::vector<float> PreparePass::_compute_illum_d65_lut() {
     constexpr const float wavelength_min = 360;
     constexpr const float wavelength_max = 830;
     luisa::vector<float> illum_d65_lut_data;
-    uint step = 10;
+    constexpr uint step = 10;
     uint lut_resolution = uint(wavelength_max - wavelength_min) / step + 1;
     illum_d65_lut_data.push_back_uninitialized(lut_resolution);
-    auto &start = test::spectrum::CIE_std_illum_D65[0];
-    for (size_t i = 0; i < lut_resolution; i++) {
+    auto const &start = test::spectrum::CIE_std_illum_D65[0];
+    for (size_t i = 0; i < lut_resolution; ++i) {
         illum_d65_lut_data[i] = (1.0f / 98.8900106203f) * test::spectrum::CIE_std_illum_D65[size_t(wavelength_min) - start.first + i * step].second;
     }
     LUISA_ASSERT(spectrum::illum_d65_size == lut_resolution);
@@ -228,7 +228,7 @@ void PreparePass::on_enable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
-    auto runtime_dir = RenderDevice::instance().lc_ctx().runtime_directory();
+    auto const runtime_dir = RenderDevice::instance().lc_ctx().runtime_directory();
     
     _load_rec2020_lut(device, runtime_dir);
     _load_transmission_ggx_lut(device, runtime_dir);
@@ -382,7 +382,7 @@ void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &
     _update_pass_context(ctx, pass_ctx, cam, is_first_frame);
 }
 void PreparePass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
-    auto & cam = ctx.pipeline_settings.read_mut<Camera>();
+    auto &cam = ctx.pipeline_settings.read_mut<Camera>();
     auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(cam);
     auto &jitter_data = ctx.pipeline_settings.read_mut<JitterData>();
     pass_ctx->last_jitter = jitter_data.jitter;
@@ -397,7 +397,6 @@ void PreparePass::on_disable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
-    // Unused: auto &&alloc = scene.bindless_allocator();
 }
 PreparePass::~PreparePass() {
     for (auto &i : _lut_load_cmds) {

@@ -60,7 +60,7 @@ struct GltfSceneLoader {
     static GltfSceneData load_scene_binary(luisa::filesystem::path const &glb_path, GltfLoadConfig config = {});
 
 private:
-    static GltfSceneData load_from_model(tinygltf::Model &model, GltfLoadConfig &config, luisa::filesystem::path const &path);
+    static GltfSceneData _load_from_model(tinygltf::Model const &model, GltfLoadConfig const &config, luisa::filesystem::path const &path);
 };
 
 }// namespace rbc::world

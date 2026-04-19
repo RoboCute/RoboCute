@@ -27,11 +27,11 @@ rbc::coroutine AnimGraphResource::_async_load() {
 
     luisa::BinaryBlob blob = file_stream.read(file_stream.length());
     BinDeSerializer deser{blob};
-    deser._load(graph, "graph");
+    deser._load(_graph, "graph");
 
     // Collect and wait for all AnimSequenceResource dependencies from SequencePlayer nodes
     luisa::vector<RC<AnimSequenceResource>> anim_seq_deps;
-    for (auto &node : graph.nodes) {
+    for (const auto &node : _graph.nodes) {
         if (auto seq_player = dynamic_cast<AnimNode_SequencePlayer *>(node.get())) {
             if (seq_player->anim_seq_resource) {
                 anim_seq_deps.push_back(seq_player->anim_seq_resource);

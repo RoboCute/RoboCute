@@ -30,9 +30,10 @@ private:
     uint _enqueue_buffer(uint64 handle);
     uint _enqueue_tex2d(uint64 handle, Sampler sampler);
     uint _enqueue_tex3d(uint64 handle, Sampler sampler);
-    uint _index(uint64 handle, ResourceType type);
+    uint _index(uint64 handle, ResourceType type) const;
     uint _dequeue(uint64 handle, ResourceType type);
-    luisa::spin_mutex _mtx;
+    void _deallocate(ResourceType type, uint index);
+    mutable luisa::spin_mutex _mtx;
 
 public:
     void clear_all();

@@ -13,31 +13,31 @@ public:
     AnimNode &operator=(AnimNode &) = delete;
 
 public:
-    virtual void Initialize_AnyThread(const AnimationInitializationContext &InContext) = 0;
-    virtual void Update_AnyThread(const AnimationUpdateContext &InContext) = 0;
-    virtual void Evaluate_AnyThread(PoseContext &Output) = 0;
-    virtual void NodeDebug() = 0;
+    virtual void initialize_any_thread(const AnimationInitializationContext &in_context) = 0;
+    virtual void update_any_thread(const AnimationUpdateContext &in_context) = 0;
+    virtual void evaluate_any_thread(PoseContext &output) = 0;
+    virtual void node_debug() = 0;
 
     // the special serialize and deserialize method for AnimNodes
-    virtual void Serialize(rbc::ArchiveWrite &w) = 0;
-    virtual void Deserialize(rbc::ArchiveRead &r) = 0;
+    virtual void serialize(rbc::ArchiveWrite &w) = 0;
+    virtual void deserialize(rbc::ArchiveRead &r) = 0;
 
-    IndexType NodeID = INVALID_INDEX;
+    IndexType node_id = INVALID_INDEX;
 };
 
 struct PoseLink : RCBase {
     friend struct Serialize<PoseLink>;
 public:
-    IndexType LinkedNodeID = INVALID_INDEX;// Serialized Link ID from Graph
+    IndexType linked_node_id = INVALID_INDEX;// Serialized Link ID from Graph
 protected:
-    AnimNode *LinkedNode = nullptr;
+    AnimNode *_linked_node = nullptr;
 
 public:
-    void AttemptRelink(const AnimationBaseContext &InContext);
-    AnimNode *GetLinkedNode();
-    void Initialize(const AnimationInitializationContext &InContext);
-    void Update(const AnimationUpdateContext &InContext);
-    void Evaluate(PoseContext &Output);
+    void attempt_relink(const AnimationBaseContext &in_context);
+    AnimNode *get_linked_node();
+    void initialize(const AnimationInitializationContext &in_context);
+    void update(const AnimationUpdateContext &in_context);
+    void evaluate(PoseContext &output);
 };
 
 }// namespace rbc

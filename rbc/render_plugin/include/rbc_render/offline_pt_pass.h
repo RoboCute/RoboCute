@@ -31,7 +31,7 @@ struct PathTracerSettings;
 struct OfflinePTPass : public Pass {
 private:
     friend struct PTPassContext;
-    luisa::fiber::counter init_counter;
+    luisa::fiber::counter _init_counter;
 
     using ClearHashGrid =
         Shader1D<
@@ -74,15 +74,15 @@ private:
         uint,         // frame_index
         bool          //write_id_map
         >;
-    DrawSkyShader const *draw_sky_shader{nullptr};
-    ShaderBase const *pt_shader{nullptr};
-    Shader1D<Buffer<uint>, uint> const *clear_ptr_buffer{nullptr};
-    ShaderBase const *pt_shader_denoise{nullptr};
-    ShaderBase const *multi_bounce{nullptr};
-    ShaderBase const *ao_trace{nullptr};
-    ClearHashGrid const *clear_hashgrid{nullptr};
-    AccumHashGrid const *accum_hashgrid{nullptr};
-    IntegrateHashGrid const *integrate_hashgrid{nullptr};
+    DrawSkyShader const *_draw_sky_shader{nullptr};
+    ShaderBase const *_pt_shader{nullptr};
+    Shader1D<Buffer<uint>, uint> const *_clear_ptr_buffer{nullptr};
+    ShaderBase const *_pt_shader_denoise{nullptr};
+    ShaderBase const *_multi_bounce{nullptr};
+    ShaderBase const *_ao_trace{nullptr};
+    ClearHashGrid const *_clear_hashgrid{nullptr};
+    AccumHashGrid const *_accum_hashgrid{nullptr};
+    IntegrateHashGrid const *_integrate_hashgrid{nullptr};
 
     struct PreparedResources {
         Image<float> emission;
@@ -105,14 +105,14 @@ private:
         vstd::unique_ptr<PTPassContext> &pass_ctx;
     };
 
-    PreparedResources _prepare_resources(const PTResourceContext &rc);
+    PreparedResources _prepare_resources(const PTResourceContext &rc) const;
     offline::PTArgs _setup_pt_args(
         const PTResourceContext &rc,
         const CameraData &cam_data,
         const Camera &cam,
         const SkyHeapIndices &sky_heap,
         bool write_id_map,
-        uint32_t frame_index);
+        uint32_t frame_index) const;
     void _draw_sky_only(
         const PTResourceContext &rc,
         const Image<float> &emission,
@@ -121,24 +121,24 @@ private:
         const CameraData &cam_data,
         const Camera &cam,
         const JitterData &jitter_data,
-        bool write_id_map);
+        bool write_id_map) const;
     void _trace_ao_sample(
         const PTResourceContext &rc,
         const Image<float> &emission,
         const offline::PTArgs &pt_args,
-        const PathTracerSettings &pt_settings);
+        const PathTracerSettings &pt_settings) const;
     void _dispatch_path_tracing(
         const PTResourceContext &rc,
         const PreparedResources &resources,
         offline::PTArgs &pt_args,
         Image<uint> const *id_map,
-        uint32_t geometry_mask);
+        uint32_t geometry_mask) const;
     void _process_multibounce_indirect(
         const PTResourceContext &rc,
         const PreparedResources &resources,
         const offline::PTArgs &pt_args,
-        float accumulate_rate);
-    void _clear_multibounce_counter(const PTResourceContext &rc, const Buffer<uint> &counter);
+        float accumulate_rate) const;
+    void _clear_multibounce_counter(const PTResourceContext &rc, const Buffer<uint> &counter) const;
 
 public:
     Buffer<uint> key_buffer;

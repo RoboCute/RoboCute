@@ -11,48 +11,48 @@ namespace rbc {
 ReferenceSkeleton::ReferenceSkeleton() = default;
 ReferenceSkeleton::~ReferenceSkeleton() {
 }
-ReferenceSkeleton::ReferenceSkeleton(ReferenceSkeleton &&Other) noexcept {
-    skeleton = std::move(Other.skeleton);
+ReferenceSkeleton::ReferenceSkeleton(ReferenceSkeleton &&other) noexcept {
+    _skeleton = std::move(other._skeleton);
 }
-ReferenceSkeleton &ReferenceSkeleton::operator=(ReferenceSkeleton &&Other) noexcept {
-    skeleton = std::move(Other.skeleton);
+ReferenceSkeleton &ReferenceSkeleton::operator=(ReferenceSkeleton &&other) noexcept {
+    _skeleton = std::move(other._skeleton);
     return *this;
 }
 // expclit construct from raw
-ReferenceSkeleton::ReferenceSkeleton(SkeletonRuntimeAsset &&InSkeleton) {
-    skeleton = std::move(InSkeleton);
+ReferenceSkeleton::ReferenceSkeleton(SkeletonRuntimeAsset &&in_skeleton) {
+    _skeleton = std::move(in_skeleton);
 }
-ReferenceSkeleton &ReferenceSkeleton::operator=(SkeletonRuntimeAsset &&InSkeleton) {
-    skeleton = std::move(InSkeleton);
+ReferenceSkeleton &ReferenceSkeleton::operator=(SkeletonRuntimeAsset &&in_skeleton) {
+    _skeleton = std::move(in_skeleton);
     return *this;
 }
 
-luisa::span<const char *const> ReferenceSkeleton::RawJointNames() const {
-    auto raw_joint_names = skeleton.joint_names();
+luisa::span<const char *const> ReferenceSkeleton::raw_joint_names() const {
+    auto raw_joint_names = _skeleton.joint_names();
     return {raw_joint_names.data(), raw_joint_names.size()};
 }
-luisa::span<const BoneIndexType> ReferenceSkeleton::RawJointParents() const {
-    auto raw_joint_parents = skeleton.joint_parents();
+luisa::span<const BoneIndexType> ReferenceSkeleton::raw_joint_parents() const {
+    auto raw_joint_parents = _skeleton.joint_parents();
     return {raw_joint_parents.data(), raw_joint_parents.size()};
 }
-luisa::span<const AnimSOATransform> ReferenceSkeleton::JointRestPoses() const {
-    auto joint_rest_pose = skeleton.joint_rest_poses();
+luisa::span<const AnimSOATransform> ReferenceSkeleton::joint_rest_poses() const {
+    auto joint_rest_pose = _skeleton.joint_rest_poses();
     return {joint_rest_pose.data(), joint_rest_pose.size()};
 }
 
-BoneIndexType ReferenceSkeleton::GetParentIndex(BoneIndexType InBoneIndex) const {
-    return RawJointParents()[InBoneIndex];
+BoneIndexType ReferenceSkeleton::get_parent_index(BoneIndexType in_bone_index) const {
+    return raw_joint_parents()[in_bone_index];
 }
 
-void ReferenceSkeleton::log_brief() {
-    LUISA_INFO("skel has {} joints {} soa joints", NumJoints(), NumSOAJoints());
-    const int NUM_LOG_JOINTS = NumJoints() > 10 ? 10 : NumJoints();
-    for (int i = 0; i < NUM_LOG_JOINTS; i++) {
-        auto &joint_name = RawJointNames()[i];
-        auto &parent = RawJointParents()[i];
+void ReferenceSkeleton::log_brief() const {
+    LUISA_INFO("skel has {} joints {} soa joints", num_joints(), num_soa_joints());
+    const int kNumLogJoints = num_joints() > 10 ? 10 : num_joints();
+    for (int i = 0; i < kNumLogJoints; i++) {
+        auto &joint_name = raw_joint_names()[i];
+        auto &parent = raw_joint_parents()[i];
         LUISA_INFO("skel {} <{}> has parent {}", i, joint_name, parent);
         int soa_idx = i / 4;
-        const ozz::math::SoaTransform soa_pose = JointRestPoses()[soa_idx];
+        const ozz::math::SoaTransform soa_pose = joint_rest_poses()[soa_idx];
         float x[4];
         float y[4];
         float z[4];
@@ -80,15 +80,15 @@ void ReferenceSkeleton::log_brief() {
     }
 }
 
-void ReferenceSkeleton::EnsureParentsExist(luisa::vector<BoneIndexType> &InOutBoneSortedIndices) const {
+void ReferenceSkeleton::ensure_parents_exist(luisa::vector<BoneIndexType> &in_out_bone_sorted_indices) const {
     // 保证bone indices是排序过的，这样从前向后轮询不会出错
     // TODO: 考虑采用ThreadSingleton
-    const int32_t num_bones = GetNumBones();
+    const int32_t num_bones = get_num_bones();
     int32_t i = 0;
     luisa::vector<bool> bone_exists;
     bone_exists.resize(num_bones);
-    while (i < InOutBoneSortedIndices.size()) {
-        const BoneIndexType bone_index = InOutBoneSortedIndices[i];
+    while (i < in_out_bone_sorted_indices.size()) {
+        const BoneIndexType bone_index = in_out_bone_sorted_indices[i];
         // For RootBone, Just move on
         if (bone_index == 0) {
             bone_exists[0] = true;
@@ -103,11 +103,11 @@ void ReferenceSkeleton::EnsureParentsExist(luisa::vector<BoneIndexType> &InOutBo
             continue;
         }
         bone_exists[bone_index] = true;// make itself true
-        const BoneIndexType parent_index = GetParentIndex(bone_index);
+        const BoneIndexType parent_index = get_parent_index(bone_index);
 
         if (!bone_exists[parent_index]) {
             // 由于BoneIndices经过排序，所以parent必然在children之前出现，如果没有存在，则说明出现异常
-            InOutBoneSortedIndices.insert(InOutBoneSortedIndices.begin() + i, parent_index);
+            in_out_bone_sorted_indices.insert(in_out_bone_sorted_indices.begin() + i, parent_index);
             bone_exists[parent_index] = true;
         } else {
             i++;
@@ -115,10 +115,10 @@ void ReferenceSkeleton::EnsureParentsExist(luisa::vector<BoneIndexType> &InOutBo
     }
 }
 
-void ReferenceSkeleton::EnsureParentsExistAndSort(luisa::vector<BoneIndexType> &InOutBoneUnsortedIndices) const {
-    std::sort(InOutBoneUnsortedIndices.begin(), InOutBoneUnsortedIndices.end());
-    EnsureParentsExist(InOutBoneUnsortedIndices);
-    std::sort(InOutBoneUnsortedIndices.begin(), InOutBoneUnsortedIndices.end());
+void ReferenceSkeleton::ensure_parents_exist_and_sort(luisa::vector<BoneIndexType> &in_out_bone_unsorted_indices) const {
+    std::sort(in_out_bone_unsorted_indices.begin(), in_out_bone_unsorted_indices.end());
+    ensure_parents_exist(in_out_bone_unsorted_indices);
+    std::sort(in_out_bone_unsorted_indices.begin(), in_out_bone_unsorted_indices.end());
 }
 
 }// namespace rbc
@@ -127,7 +127,7 @@ bool rbc::Serialize<rbc::ReferenceSkeleton>::write(rbc::ArchiveWrite &w, const r
     // Use OzzStream in write mode - buffers all data internally
     OzzStream ozz_stream;
     ozz::io::OArchive archive(&ozz_stream);
-    archive << v.skeleton;
+    archive << v._skeleton;
 
     // Write the buffered data as a single bytes field
     auto buffer = ozz_stream.buffer();
@@ -146,7 +146,7 @@ bool rbc::Serialize<rbc::ReferenceSkeleton>::read(rbc::ArchiveRead &r, rbc::Refe
     // Use OzzStream in read mode - provides sequential read from buffer
     OzzStream ozz_stream(luisa::span<const std::byte>{data.data(), data.size()});
     ozz::io::IArchive archive(&ozz_stream);
-    archive >> v.skeleton;
+    archive >> v._skeleton;
 
     return true;
 }

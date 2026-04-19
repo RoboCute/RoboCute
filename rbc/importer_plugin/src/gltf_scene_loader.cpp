@@ -42,13 +42,13 @@ bool load_gltf_model(tinygltf::Model &model, luisa::filesystem::path const &path
     return ret;
 }
 
-GltfSceneData GltfSceneLoader::load_from_model(
-    tinygltf::Model &model,
-    GltfLoadConfig &config,
+GltfSceneData GltfSceneLoader::_load_from_model(
+    tinygltf::Model const &model,
+    GltfLoadConfig const &config,
     luisa::filesystem::path const &path) {
     GltfSceneData result;
     // Get the directory containing the GLTF file (for resolving relative texture paths)
-    auto gltf_dir = path.parent_path();
+    auto const gltf_dir = path.parent_path();
     result.config = config;
 
     // Load mesh using GltfMeshImporter
@@ -100,9 +100,9 @@ GltfSceneData GltfSceneLoader::load_from_model(
     // Load Texture and Materials
     if (config.load_materials) {
         TextureLoader tex_loader;
-        auto &registry = ResourceImporterRegistry::instance();
+        auto const &registry = ResourceImporterRegistry::instance();
 
-        for (auto i = 0; i < model.images.size(); i++) {
+        for (size_t i = 0; i < model.images.size(); ++i) {
             result.textures.emplace_back(create_object<TextureResource>());
             auto const &img = model.images[i];
 
@@ -159,8 +159,7 @@ GltfSceneData GltfSceneLoader::load_from_model(
         }
 
         // Second pass: create materials
-        for (size_t mat_idx = 0; mat_idx < model.materials.size(); ++mat_idx) {
-            auto const &gltf_mat = model.materials[mat_idx];
+        for (auto const &gltf_mat : model.materials) {
             auto const &pbr = gltf_mat.pbrMetallicRoughness;
 
             // Create material resource
@@ -186,7 +185,7 @@ GltfSceneData GltfSceneLoader::load_from_model(
                     if (tex.source >= 0 && tex.source < static_cast<int>(model.images.size())) {
                         // Get the texture resource from image index
                         if (tex.source < static_cast<int>(result.textures.size()) && result.textures[tex.source]) {
-                            auto tex_res = result.textures[tex.source];
+                            auto const &tex_res = result.textures[tex.source];
                             // Add texture reference to material
                             auto tex_guid = tex_res->guid();
                             mat_json += luisa::format(
@@ -225,11 +224,11 @@ GltfSceneData GltfSceneLoader::load_from_model(
         result.anim_graph = create_object<AnimGraphResource>();
         // nodes[0] is the root node of this AnimGraph
         auto root = RC<rbc::AnimNode_Root>::New();
-        result.anim_graph->graph.nodes.emplace_back(root);
+        result.anim_graph->graph().nodes.emplace_back(root);
         auto seq_player_node = RC<rbc::AnimNode_SequencePlayer>::New();
         seq_player_node->anim_seq_resource = result.anim;
-        result.anim_graph->graph.nodes.emplace_back(seq_player_node);
-        root->result.LinkedNodeID = 1;// Linked Node Index
+        result.anim_graph->graph().nodes.emplace_back(seq_player_node);
+        root->result.linked_node_id = 1;// Linked Node Index
     }
 
     // Create SkelMeshResource (depends on skin, skeleton, anim_graph)
@@ -250,7 +249,7 @@ GltfSceneData GltfSceneLoader::load_scene(luisa::filesystem::path const &gltf_pa
         LUISA_ERROR("Failed to load GLTF file: {}", luisa::to_string(gltf_path));
         return {};
     }
-    return load_from_model(model, config, gltf_path);
+    return _load_from_model(model, config, gltf_path);
 }
 
 GltfSceneData GltfSceneLoader::load_scene_binary(luisa::filesystem::path const &glb_path, GltfLoadConfig config) {
@@ -260,7 +259,7 @@ GltfSceneData GltfSceneLoader::load_scene_binary(luisa::filesystem::path const &
         return {};
     }
 
-    return load_from_model(model, config, glb_path);
+    return _load_from_model(model, config, glb_path);
 }
 
 }// namespace rbc::world

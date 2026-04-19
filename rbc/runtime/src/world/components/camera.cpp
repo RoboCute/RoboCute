@@ -9,9 +9,8 @@
 #include <rbc_core/state_map.h>
 
 namespace rbc::world {
-CameraComponent::CameraComponent() {}
-CameraComponent::~CameraComponent() {
-}
+CameraComponent::CameraComponent() = default;
+CameraComponent::~CameraComponent() = default;
 void *CameraComponent::render_pipe_ctx() const {
     if (_render_pipe_ctx == nullptr) [[unlikely]] {
         LUISA_ERROR("Camera not enabled.");

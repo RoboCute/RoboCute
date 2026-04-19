@@ -3,12 +3,14 @@
 #include "ozz/base/span.h"
 #include <tracy_wrapper.h>
 
+#include <algorithm>
+
 #include "rbc_graphics/device_assets/device_transforming_mesh.h"
 
 namespace rbc {
 
-void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLODCPU *InRenderData, luisa::span<AnimFloat4x4> InReferenceToLocal) {
-    auto *mesh = InRenderData->render_data_->static_mesh_;
+void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLODCPU *in_render_data, luisa::span<AnimFloat4x4> in_reference_to_local) {
+    auto *mesh = in_render_data->render_data->static_mesh;
     int vertex_count = sk_prim.vertex_count;
     // LUISA_INFO("DoCPUSkinPrimitive");
 
@@ -38,10 +40,10 @@ void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLO
         return ozz::span<const T>{(T *)offset, vertex_count * comps};
     };
     // Fetch span from dynamic data
-    auto dynamic_buffer_span = [&vertex_count, &InRenderData](const VertexBufferEntry *buffer, auto t, uint32_t comps = 1) {
+    auto dynamic_buffer_span = [&vertex_count, &in_render_data](const VertexBufferEntry *buffer, auto t, uint32_t comps = 1) {
         using T = typename decltype(t)::type;
         LUISA_ASSERT(buffer->stride == sizeof(T) * comps);
-        auto offset = InRenderData->morph_bytes.data() + buffer->offset;
+        auto offset = in_render_data->morph_bytes.data() + buffer->offset;
         return ozz::span<T>{(T *)offset, vertex_count * comps};
     };
 
@@ -53,16 +55,14 @@ void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLO
     auto *joint_idx_ptr = (uint16_t *)joint_index.data();
     auto *joint_weight_ptr = (float *)joint_weight.data();
     uint16_t max_joint_idx = 0;
-    for (auto i = 0; i < vertex_count * 4; i++) {
-        if (joint_idx_ptr[i] > max_joint_idx) {
-            max_joint_idx = joint_idx_ptr[i];
-        }
+    if (vertex_count > 0) {
+        max_joint_idx = *std::max_element(joint_idx_ptr, joint_idx_ptr + vertex_count * 4);
     }
     if (false) {
-        LUISA_INFO("Max joint index in mesh: {} (matrices: {})", max_joint_idx, InReferenceToLocal.size());
+        LUISA_INFO("Max joint index in mesh: {} (matrices: {})", max_joint_idx, in_reference_to_local.size());
 
-        if (max_joint_idx >= InReferenceToLocal.size()) {
-            LUISA_ERROR("Joint index {} out of range! Only {} matrices available.", max_joint_idx, InReferenceToLocal.size());
+        if (max_joint_idx >= in_reference_to_local.size()) {
+            LUISA_ERROR("Joint index {} out of range! Only {} matrices available.", max_joint_idx, in_reference_to_local.size());
             return;
         }
 
@@ -75,7 +75,7 @@ void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLO
     AnimSkinningJob job;
     // BASIC CONFIG
     job.vertex_count = vertex_count;
-    job.joint_matrices = {InReferenceToLocal.data(), InReferenceToLocal.size()};
+    job.joint_matrices = {in_reference_to_local.data(), in_reference_to_local.size()};
     job.influences_count = 4;
     // INPUT LAYOUT
     job.joint_indices = ozz::span<uint16_t>{(uint16_t *)joint_index.data(), (size_t)vertex_count * 4};
@@ -114,10 +114,10 @@ void DoCPUSkinPrimitive(const SkinPrimitive &sk_prim, const SkelMeshRenderDataLO
     }
 }
 
-void DoCPUSkin(const SkelMeshRenderDataLODCPU *InRenderData, luisa::span<AnimFloat4x4> InReferenceToLocal) {
-    for (auto i = 0; i < InRenderData->skin_primitives.size(); i++) {
+void DoCPUSkin(const SkelMeshRenderDataLODCPU *in_render_data, luisa::span<AnimFloat4x4> in_reference_to_local) {
+    for (const auto &skin_primitive : in_render_data->skin_primitives) {
         // create job per primitive
-        DoCPUSkinPrimitive(InRenderData->skin_primitives[i], InRenderData, InReferenceToLocal);
+        DoCPUSkinPrimitive(skin_primitive, in_render_data, in_reference_to_local);
     }
 }
 
@@ -125,17 +125,17 @@ void DoCPUSkin(const SkelMeshRenderDataLODCPU *InRenderData, luisa::span<AnimFlo
 
 namespace rbc {
 
-SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh *InSkelMesh, RenderDevice *device)
-    : SkeletalMeshRenderObjectCPUSkin(SkeletalMeshSceneProxyDesc(InSkelMesh), device) {
+SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalMesh *in_skel_mesh, RenderDevice *device)
+    : SkeletalMeshRenderObjectCPUSkin(SkeletalMeshSceneProxyDesc(in_skel_mesh), device) {
 }
 
-SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc, RenderDevice *device)
-    : SkeletalMeshRenderObject(InSkelMeshDesc, device), cached_vertex_lod_(INVALID_INDEX) {
-    InitResources(InSkelMeshDesc);
+SkeletalMeshRenderObjectCPUSkin::SkeletalMeshRenderObjectCPUSkin(const SkeletalMeshSceneProxyDesc &in_skel_mesh_desc, RenderDevice *device)
+    : SkeletalMeshRenderObject(in_skel_mesh_desc, device), _cached_vertex_lod(INVALID_INDEX) {
+    InitResources(in_skel_mesh_desc);
 }
 
-void SkeletalMeshRenderObjectCPUSkin::InitResources(const SkeletalMeshSceneProxyDesc &InSkelMeshDesc) {
-    LOD.InitResources(InSkelMeshDesc.render_data, device_);
+void SkeletalMeshRenderObjectCPUSkin::InitResources(const SkeletalMeshSceneProxyDesc &in_skel_mesh_desc) {
+    LOD.InitResources(in_skel_mesh_desc.render_data, device_);
 }
 
 void SkeletalMeshRenderObjectCPUSkin::ReleaseResources() {
@@ -159,10 +159,10 @@ SkelMeshRenderDataLOD &SkeletalMeshRenderObjectCPUSkin::GetLODRenderData() {
  * * 将ReferenceToLocal矩阵和对应LOD的渲染数据进行CPU蒙皮，得到更新后的VertexBuffer
  * * 将更新后的VertexBuffer缓存并上传到GPU，方便渲染器调用
  */
-void SkeletalMeshRenderObjectCPUSkin::Update(AnimRenderState &state, int32_t LODIndex, const SkeletalMeshSceneProxyDynamicData &InDynamicData, const world::SkinResource *InRefSkin) {
+void SkeletalMeshRenderObjectCPUSkin::Update(AnimRenderState &state, int32_t lod_index, const SkeletalMeshSceneProxyDynamicData &in_dynamic_data, const world::SkinResource *in_ref_skin) {
     // LUISA_INFO("Updating SkeletalMesh CPUSkin RenderObject");
 
-    UpdateRefToLocalMatrices(LOD.skin_matrices, InDynamicData, InRefSkin);
+    UpdateRefToLocalMatrices(LOD.skin_matrices, in_dynamic_data, in_ref_skin);
     // 当前直接同步计算，未来会推入执行队列中异步计算
     UpdateDynamicData_RenderThread();
 }

@@ -27,10 +27,10 @@ DeviceVolume::~DeviceVolume() {
     }
 }
 uint DeviceVolume::_check_size(PixelStorage storage, uint3 size, uint desire_mip) {
-    auto dst_mip_level = 0;
+    auto dst_mip_level = 0u;
     auto mip_size = size;
-    auto min_size = is_block_compressed(storage) ? 4 : 1;
-    for (auto i [[maybe_unused]] : vstd::range(desire_mip)) {
+    auto min_size = is_block_compressed(storage) ? 4u : 1u;
+    for (auto i : vstd::range(desire_mip)) {
         if (any(mip_size < 1u)) {
             break;
         }
@@ -47,7 +47,7 @@ void DeviceVolume::_create_vol(Volume<T> &vol, PixelStorage storage, uint3 size,
     if (dst_mip_level == 0) {
         err_func();
     }
-    if (vol && (!(all(vol.size() == size)) && vol.storage() == storage && vol.mip_levels() == dst_mip_level)) {
+    if (vol && (!(all(vol.size() == size)) || vol.storage() != storage || vol.mip_levels() != dst_mip_level)) {
         inst->dispose_after_render_frame(std::move(vol));
     }
     if (!vol)
@@ -200,8 +200,9 @@ void DeviceVolume::_async_load(
 
 void DeviceVolume::_create_heap_idx() {
     auto &sm = SceneManager::instance();
-    if (_heap_idx != ~0u)
+    if (_heap_idx != ~0u) {
         sm.bindless_allocator().deallocate_tex3d(_heap_idx);
+    }
     _heap_idx = sm.bindless_allocator().allocate_tex3d(_vol.force_get<Volume<float>>(), Sampler{});
 }
 

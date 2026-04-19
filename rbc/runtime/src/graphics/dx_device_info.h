@@ -40,8 +40,8 @@ public:
         ID3D12DescriptorHeap *samplerDescriptor) noexcept override;
 
     RBC_RUNTIME_API DXGI_OUTPUT_DESC1 GetOutput(HWND window_handle);
-    RBC_RUNTIME_API bool support_sdr_10();
-    RBC_RUNTIME_API bool support_linear_sdr();
+    RBC_RUNTIME_API bool support_sdr_10() const;
+    RBC_RUNTIME_API bool support_linear_sdr() const;
     bool UseDRED() const noexcept override {
         return gpu_dump;
     }

@@ -40,8 +40,8 @@ public:
     bool loaded() const {
         return _gpu_load_frame != 0;
     }
-    RBC_RUNTIME_API virtual void wait_executed();
-    RBC_RUNTIME_API virtual void wait_finished();
+    RBC_RUNTIME_API virtual void wait_executed() const;
+    RBC_RUNTIME_API virtual void wait_finished() const;
     virtual luisa::span<std::byte const> host_data() const {
         return {};
     }

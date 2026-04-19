@@ -78,7 +78,7 @@ void MaterialStub::openpbr_json_deser(JsonDeSerializer &json_deser, material::Un
 MaterialStub::MaterialStub() {
     mat_code.value = ~0u;
 }
-void MaterialStub::craete_pbr_material() {
+void MaterialStub::create_pbr_material() {
     LUISA_DEBUG_ASSERT(mat_code.value == ~0u);
     mat_data.reset_as<material::OpenPBR>();
 }
@@ -198,7 +198,7 @@ void LightStub::add_spot_light(luisa::float3 center, float radius, luisa::float3
         radius,
         luminance,
         forward_dir,
-        angle_atten_pow,
+        angle_radians,
         small_angle_radians,
         angle_atten_pow,
         visible);
@@ -345,7 +345,7 @@ void ObjectStub::create_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
         materials,
         mats.size(),
         [&](size_t i) {
-            return (MaterialStub *)(mats[i].get());
+            return static_cast<MaterialStub *>(mats[i].get());
         });
     vstd::push_back_func(
         material_codes,

@@ -35,16 +35,14 @@ void SkeletalMesh::DestroyAnim() {
 
 void SkeletalMesh::AllocateTransformData() {
     // Allocate Transform SwapBuffer base on NumBones
-    const int32_t NumBones = GetRefSkeleton().GetNumBones();
-    if (GetNumComponentSpaceTransforms() != NumBones) {
+    const int32_t num_bones = GetRefSkeleton().get_num_bones();
+    if (GetNumComponentSpaceTransforms() != num_bones) {
         for (auto &comp_space_transforms : ComponentSpaceTransformsArray) {
-            LUISA_INFO("Allocating ComponentSpace Transform with {} Bones", NumBones);
+            LUISA_INFO("Allocating ComponentSpace Transform with {} Bones", num_bones);
             comp_space_transforms.clear();
-            comp_space_transforms.resize_uninitialized(NumBones);
+            comp_space_transforms.resize_uninitialized(num_bones);
             // Initialize with Identity
-            for (auto i = 0; i < NumBones; i++) {
-                comp_space_transforms[i] = AnimFloat4x4::identity();
-            }
+            std::fill(comp_space_transforms.begin(), comp_space_transforms.end(), AnimFloat4x4::identity());
         }
     }
     bHasValidBoneTransform = false;
@@ -61,7 +59,7 @@ void SkeletalMesh::DeallocateTransformData() {
 void SkeletalMesh::InitAnim_Internal() {
     LUISA_INFO("InitAnim_Internal");
     render_data = luisa::make_unique<SkeletalMeshRenderData>();
-    render_data->static_mesh_ = ref_skelmesh->ref_skin->ref_mesh.get();
+    render_data->static_mesh = ref_skelmesh->ref_skin->ref_mesh.get();
     render_data->InitializeWithRefSkeleton(GetRefSkeleton());
 
     AllocateTransformData();// 从asset中复制一份到当前SkeletalMesh作为运行时ComponentSpace的DualBuffer
@@ -125,9 +123,7 @@ void SkeletalMesh::FlipEditableSpaceBases() {
 
 void SkeletalMesh::SetBoneSpaceTransforms(luisa::span<const AnimSOATransform> InBoneSpaceTransforms) {
     BoneSpaceTransforms.resize_uninitialized(InBoneSpaceTransforms.size());
-    for (auto i = 0; i < InBoneSpaceTransforms.size(); i++) {
-        BoneSpaceTransforms[i] = InBoneSpaceTransforms[i];
-    }
+    std::copy(InBoneSpaceTransforms.begin(), InBoneSpaceTransforms.end(), BoneSpaceTransforms.begin());
 }
 
 bool SkeletalMesh::ShouldBlendPhysicsBones() {
@@ -144,7 +140,7 @@ luisa::shared_ptr<BoneContainer> SkeletalMesh::GetSharedRequiredBones() {
 void SkeletalMesh::ResetToRefPose() {
     LUISA_INFO("Reseting To RefPose");
     // asset rest pose -> BoneSpace
-    auto rest_view = GetRefSkeleton().JointRestPoses();
+    auto rest_view = GetRefSkeleton().joint_rest_poses();
     SetBoneSpaceTransforms(rest_view);
     // Initial BoneSpace -> Editing Component Space
     FillComponentSpaceTransforms(BoneSpaceTransforms, FillComponentSpaceTransformsRequiredBones, GetEditableComponentSpaceTransforms());
@@ -177,11 +173,9 @@ void SkeletalMesh::RefreshBoneTransforms() {
 void SkeletalMesh::RecalcRequiredBones(int32_t LODIndex) {
     ComputeRequiredBones(RequiredBones, FillComponentSpaceTransformsRequiredBones, LODIndex);
     // Reset Anim Pose to Reference Pose
-    auto ref_pose = GetRefSkeleton().JointRestPoses();
+    auto ref_pose = GetRefSkeleton().joint_rest_poses();
     BoneSpaceTransforms.resize_uninitialized(ref_pose.size());
-    for (auto i = 0; i < ref_pose.size(); i++) {
-        BoneSpaceTransforms[i] = ref_pose[i];
-    }
+    std::copy(ref_pose.begin(), ref_pose.end(), BoneSpaceTransforms.begin());
     LUISA_INFO("Reset BoneSpace Transforms with RestPose with {} SOABones", ref_pose.size());
 
     // Clear Cached Bone Containers
@@ -209,7 +203,7 @@ void SkeletalMesh::ComputeRequiredBones(luisa::vector<BoneIndexType> &OutRequire
         return;
     }
     OutRequiredBones = render_data->required_bones;// Copy from render data
-    AnimationRuntime::EnsureParentsPresent(OutRequiredBones, GetRefSkeleton());
+    AnimationRuntime::ensure_parents_present(OutRequiredBones, GetRefSkeleton());
     luisa::sort(OutRequiredBones.begin(), OutRequiredBones.end());
 }
 
@@ -217,19 +211,19 @@ void SkeletalMesh::CreateRenderState_Concurrent(RenderDevice *device) {
     if (bUseGPUSkin) {
         LUISA_ERROR("GPUSkin Unimplemented");
         RBC_UNIMPLEMENTED();
-        // render_object_ = SkrNew<SkeletalMeshRenderObjectGPUSkin>(this, InRenderDevice);
+        // _render_object = SkrNew<SkeletalMeshRenderObjectGPUSkin>(this, InRenderDevice);
     } else {
         LUISA_INFO("Creating CPUSkin RenderObject");
-        render_object_ = RBCNew<SkeletalMeshRenderObjectCPUSkin>(this, device);
+        _render_object = RBCNew<SkeletalMeshRenderObjectCPUSkin>(this, device);
     }
     bRenderStateCreated = true;
     LUISA_INFO("SkelMesh RenderState Created");
 }
 
 void SkeletalMesh::DestroyRenderState_Concurrent() {
-    if (render_object_) {
-        render_object_->ReleaseResources();
-        RBCDelete(render_object_);
+    if (_render_object) {
+        _render_object->ReleaseResources();
+        RBCDelete(_render_object);
     }
 
     DeallocateTransformData();
@@ -248,12 +242,12 @@ void SkeletalMesh::SendRenderDynamicData_Concurrent(AnimRenderState &state) {
     bRenderDynamicDataDirty = false;
     {
         // cycle counter
-        [[maybe_unused]] int32_t useLOD = GetPredictedLODLevel();
+        [[maybe_unused]] int32_t use_lod = GetPredictedLODLevel();
 
         world::SkinResource &ref_skin = GetSkinResource();
         if (ref_skin.loaded()) {
             SkeletalMeshSceneProxyDynamicData data{this};
-            render_object_->Update(state, 0, data, &ref_skin);
+            _render_object->Update(state, 0, data, &ref_skin);
             bForceMeshObjectUpdate = false;
         }
     }
@@ -270,10 +264,10 @@ void SkeletalMesh::PerformAnimationProcessing(SkeletalMesh *InSkeletalMesh, Anim
     // SKR_LOG_FMT_INFO(u8"Processing Animation Process withOutBoneSpaceTransforms {}", OutBoneSpaceTransforms.size());
 
     if (bInDoEvaluation && OutBoneSpaceTransforms.size() > 0) {
-        CompactPose EvaluatedPose;
-        EvaluateAnimation(InSkeletalMesh, InAnimInstance, bForceRefPose, EvaluatedPose);
+        CompactPose evaluated_pose;
+        EvaluateAnimation(InSkeletalMesh, InAnimInstance, bForceRefPose, evaluated_pose);
         EvaluatePostProcessMeshInstance();
-        FinalizePoseEvaluationResult(this, OutBoneSpaceTransforms, EvaluatedPose);
+        FinalizePoseEvaluationResult(this, OutBoneSpaceTransforms, evaluated_pose);
         // FinalizeAttributeEvaluationResults(EvaluatedPose.GetBoneContainer(), Attributes, OutAttributes);
         // LocalAtoms
         InSkeletalMesh->FillComponentSpaceTransforms(OutBoneSpaceTransforms, FillComponentSpaceTransformsRequiredBones, OutComponentSpaceTransforms);
@@ -290,8 +284,8 @@ void SkeletalMesh::EvaluateAnimation(SkeletalMesh *InSkelMesh, AnimInstance *InA
     }
     {
         // Construct Evaluation Data
-        ParallelEvaluationData OutData{OutPose};
-        InAnimInstance->ParallelEvaluateAnimation(bInForceRefPose, InSkelMesh, OutData);
+        ParallelEvaluationData out_data{OutPose};
+        InAnimInstance->ParallelEvaluateAnimation(bInForceRefPose, InSkelMesh, out_data);
     }
 }
 
@@ -326,7 +320,7 @@ void SkeletalMesh::FillComponentSpaceTransforms(luisa::span<const AnimSOATransfo
     }
     // LUISA_INFO("Running LocalToMotion Job");
     AnimLocalToModelJob ltm_job;
-    ltm_job.skeleton = &(GetRefSkeleton().GetRawSkeleton());
+    ltm_job.skeleton = &(GetRefSkeleton().get_raw_skeleton());
     ltm_job.input = {
         (const AnimSOATransform *)InBoneSpaceTransforms.data(),
         InBoneSpaceTransforms.size()};
@@ -336,8 +330,7 @@ void SkeletalMesh::FillComponentSpaceTransforms(luisa::span<const AnimSOATransfo
     if (!ltm_job.Run()) {
         LUISA_ERROR("Failed to run LocalToModelJob");
     }
-
-}// namespace rbc
+}
 
 void SkeletalMesh::SwapEvaluationContextBuffers() {
     // LUISA_INFO("Swaping Evaluation Context Buffer");
@@ -351,22 +344,19 @@ void SkeletalMesh::SwapEvaluationContextBuffers() {
  * Get output bone space transforms from final pose generated by AnimGraph execution
  */
 void SkeletalMesh::FinalizePoseEvaluationResult(const SkeletalMesh *InSkelMesh, luisa::vector<AnimSOATransform> &OutBoneSpaceTransforms, CompactPose &InFinalPose) {
-    const luisa::span<const AnimSOATransform> ref_bone_pose = GetRefSkeleton().JointRestPoses();
+    const luisa::span<const AnimSOATransform> ref_bone_pose = GetRefSkeleton().joint_rest_poses();
     OutBoneSpaceTransforms.resize_uninitialized(ref_bone_pose.size());
-    for (auto i = 0; i < ref_bone_pose.size(); i++) {
-        OutBoneSpaceTransforms[i] = ref_bone_pose[i];
-    }
+    std::copy(ref_bone_pose.begin(), ref_bone_pose.end(), OutBoneSpaceTransforms.begin());
 
-    if (InFinalPose.IsValid() && InFinalPose.GetNumBones() > 0) {
+    if (InFinalPose.is_valid() && InFinalPose.get_num_bones() > 0) {
 
-        InFinalPose.NormalizeRotation();
+        InFinalPose.normalize_rotation();
         // Unused lambda removed
 
         const int32_t bone_count = static_cast<int32_t>(ref_bone_pose.size());
         // OutBoneSpaceTransforms.resize_default(bone_count);
-        for (auto i = 0; i < bone_count; i++) {
-            OutBoneSpaceTransforms[i] = InFinalPose.GetBones()[i];
-        }
+        const auto &pose_bones = InFinalPose.get_bones();
+        std::copy_n(pose_bones.begin(), bone_count, OutBoneSpaceTransforms.begin());
     }
 }
 

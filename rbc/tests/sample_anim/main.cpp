@@ -444,11 +444,11 @@ void AnimScene::_load_scene(GraphicsUtils *utils) {
     if (anim) {
         anim_graph = world::create_object<world::AnimGraphResource>();
         auto root = RC<rbc::AnimNode_Root>::New();
-        anim_graph->graph.nodes.emplace_back(root);
+        anim_graph->graph().nodes.emplace_back(root);
         auto seq_player_node = RC<rbc::AnimNode_SequencePlayer>::New();
         seq_player_node->anim_seq_resource = anim;
-        anim_graph->graph.nodes.emplace_back(seq_player_node);
-        root->result.LinkedNodeID = 1;
+        anim_graph->graph().nodes.emplace_back(seq_player_node);
+        root->result.linked_node_id = 1;
         anim_graph->unsafe_set_loaded();
         all_resources.push_back(anim_graph.template cast_static<world::Resource>());
     }

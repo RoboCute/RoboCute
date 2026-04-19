@@ -2,7 +2,7 @@
 #include <luisa/core/logging.h>
 namespace rbc
 {
-size_t TileNodes::_idx(uint2 tile_index, uint level)
+size_t TileNodes::_idx(uint2 tile_index, uint level) const
 {
     size_t offset{ 0 };
     uint2 res = _resolution;
@@ -13,7 +13,7 @@ size_t TileNodes::_idx(uint2 tile_index, uint level)
     }
     return offset + res.x * tile_index.y + tile_index.x;
 }
-size_t TileNodes::_offset(uint level)
+size_t TileNodes::_offset(uint level) const
 {
     size_t offset{ 0 };
     uint2 res = _resolution;
@@ -45,6 +45,11 @@ auto TileNodes::sample_node(uint2 tile_index, uint level) -> Node&
     return _nodes[_idx(tile_index, level)];
 }
 
+auto TileNodes::sample_node(uint2 tile_index, uint level) const -> Node const&
+{
+    return _nodes[_idx(tile_index, level)];
+}
+
 bool TileNodes::try_load_chunk(uint2 tile_index, uint level)
 {
     auto& nd = sample_node(tile_index, level);
@@ -60,7 +65,7 @@ bool TileNodes::try_unload_chunk(uint2 tile_index, uint level)
     }
     return (--nd.ref_count) == 0;
 }
-bool TileNodes::require_load(uint2 tile_index, uint level)
+bool TileNodes::require_load(uint2 tile_index, uint level) const
 {
     auto& nd = sample_node(tile_index, level);
     return nd.ref_count == 0;
@@ -136,7 +141,7 @@ void TileStreamer::load_tile(
 uint TileStreamer::can_load(
     LoadCallback& callback,
     uint2 tile_index,
-    uint level)
+    uint level) const
 {
     if (level > _mip - 1) [[unlikely]]
     {

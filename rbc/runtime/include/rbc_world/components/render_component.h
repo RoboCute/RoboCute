@@ -36,7 +36,7 @@ public:
 private:
     void _remove_tlas_idx();
     void _add_tlas_idx();
-    void _update_object_pos(float4x4 matrix);
+    void _update_object_pos(float4x4 const &matrix);
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::RenderComponent)

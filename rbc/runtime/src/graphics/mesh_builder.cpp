@@ -8,10 +8,10 @@
 
 namespace rbc {
 MeshBuilder::MeshBuilder() = default;
-MeshBuilder::~MeshBuilder() {}
+MeshBuilder::~MeshBuilder() = default;
 MeshBuilder::MeshBuilder(MeshBuilder &&rhs) noexcept = default;
 MeshBuilderSpan::MeshBuilderSpan() = default;
-MeshBuilderSpan::~MeshBuilderSpan() {}
+MeshBuilderSpan::~MeshBuilderSpan() = default;
 MeshBuilderSpan::MeshBuilderSpan(MeshBuilderSpan &&rhs) noexcept = default;
 template<typename Derive>
 uint MeshBuilderBase<Derive>::vertex_count() const {
@@ -240,8 +240,8 @@ void calculate_tangent(
     float tangent_w) {
     luisa::vector<std::array<std::atomic<float>, 3>> atomic_tangents;
     atomic_tangents.resize(tangents.size());
-    for (size_t i = 0; i < tangents.size(); ++i) {
-        for (auto &j : atomic_tangents[i]) {
+    for (auto &at : atomic_tangents) {
+        for (auto &j : at) {
             j = 0;
         }
     }
@@ -249,12 +249,12 @@ void calculate_tangent(
         triangles.size(),
         [&](size_t i) {
             auto &tri = triangles[i];
-            auto &p0 = positions[tri.i0];
-            auto &p1 = positions[tri.i1];
-            auto &p2 = positions[tri.i2];
-            auto &uv0 = uvs[tri.i0];
-            auto &uv1 = uvs[tri.i1];
-            auto &uv2 = uvs[tri.i2];
+            auto const &p0 = positions[tri.i0];
+            auto const &p1 = positions[tri.i1];
+            auto const &p2 = positions[tri.i2];
+            auto const &uv0 = uvs[tri.i0];
+            auto const &uv1 = uvs[tri.i1];
+            auto const &uv2 = uvs[tri.i2];
             auto edge1 = p1 - p0;
             auto edge2 = p2 - p0;
             auto delta_uv1 = uv1 - uv0;

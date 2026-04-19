@@ -56,7 +56,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     AccelManager::DrawListMap draw_meshes;
     BufferView<AccelManager::RasterElement> data_buffer;
     auto &cmdlist = *ctx.cmdlist;
-    auto frustum_corners = cam.frustum_corners();
+    const auto frustum_corners = cam.frustum_corners();
     auto frustum_planes = cam.frustum_plane();
     auto frustum_min_point = frustum_corners[0];
     auto frustum_max_point = frustum_corners[0];
@@ -64,7 +64,6 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         frustum_min_point = min(frustum_min_point, frustum_corners[i]);
         frustum_max_point = max(frustum_max_point, frustum_corners[i]);
     }
-    [[maybe_unused]] static bool bb = false;
     auto frustum_cull_callback = [&](float4x4 const &transform, AABB const &bounding) {
         return frustum_cull(make_double4x4(transform), bounding, frustum_planes, frustum_min_point, frustum_max_point, cam.dir_forward(), cam.position);
     };
@@ -90,7 +89,7 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
         id_map = &id_map_val;
     } else {
         id_map = frame_settings.id_img;
-    };
+    }
 
     cmdlist << pass_ctx->depth_buffer.clear(0.0f)
             << (*_clear_id)(*id_map, uint4(-1, -1, 0, 0)).dispatch(frame_settings.render_resolution);
@@ -101,11 +100,11 @@ void RasterPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
             .proj = cam_data.proj,
             .view_proj = cam_data.vp};
         cmdlist << (*_draw_id_shader)(data_buffer, vert_args)
-                       .draw(std::move(draw_meshes), sm.accel_manager().basic_foramt(), Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, *id_map);
+                       .draw(std::move(draw_meshes), sm.accel_manager().basic_format(), Viewport{0, 0, frame_settings.render_resolution.x, frame_settings.render_resolution.y}, raster_state, &pass_ctx->depth_buffer, *id_map);
     }
     // cmdlist << (*_shading_id)(id_map, emission).dispatch(frame_settings.render_resolution);
     const auto &sky_heap = ctx.pipeline_settings.read<SkyHeapIndices>();
-    float3 light_color{1};
+    const float3 light_color{1};
     cmdlist << draw_raster::dispatch_shader(_shading, frame_settings.render_resolution, sm.tex_streamer().level_buffer(), sm.buffer_heap(), sm.image_heap(), *id_map, emission, sm.accel_manager().last_trans_buffer(), cam_data.inv_vp, frame_settings.to_rec2020_matrix, cam_data.world_to_sky, make_float3(cam.position), sky_heap.sky_heap_idx, sm.tex_streamer().countdown(), light_color);
     frame_settings.resolved_img = std::move(emission);
 }

@@ -14,7 +14,7 @@ Pipeline::~Pipeline() {
 
 Pass *Pipeline::_emplace_instance(vstd::unique_ptr<Pass> &&component, TypeInfo const &name, bool init_enabled) {
     auto ptr = component.get();
-    ptr->_actived = true;
+    ptr->_actived = init_enabled;
     auto iter = _pass_indices.try_emplace(
         std::move(name), vstd::lazy_eval([&]() {
             auto idx = _passes.size();
@@ -40,7 +40,7 @@ void Pipeline::enable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
-    for (auto &i : _passes) {
+    for (const auto &i : _passes) {
         i->on_enable(
             *this,
             device,
@@ -50,16 +50,16 @@ void Pipeline::enable(
 }
 
 void Pipeline::wait_enable() {
-    for (auto &i : _passes) {
+    for (const auto &i : _passes) {
         i->wait_enable();
     }
 }
 
 void Pipeline::update(PipelineContext &ctx) {
-    for (auto &i : ctx._enabled_passes) {
+    for (const auto &i : ctx._enabled_passes) {
         i->update(*this, ctx);
     }
-    for (auto &i : ctx._enabled_passes) {
+    for (const auto &i : ctx._enabled_passes) {
         i->on_frame_end(*this, *ctx.device, *ctx.scene);
     }
     ctx._enabled_passes.clear();
@@ -68,8 +68,7 @@ void Pipeline::update(PipelineContext &ctx) {
 void Pipeline::early_update(PipelineContext &ctx) {
     ctx._enabled_passes.clear();
     ctx._enabled_passes.reserve(_passes.size());
-    for (auto &i : _passes) {
-
+    for (const auto &i : _passes) {
         if (i->_actived) {
             ctx._enabled_passes.emplace_back(i.get());
             i->early_update(*this, ctx);
@@ -81,7 +80,7 @@ void Pipeline::disable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
-    for (auto &i : _passes) {
+    for (const auto &i : _passes) {
         i->on_disable(*this, device, cmdlist, scene);
     }
 }

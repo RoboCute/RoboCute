@@ -2,8 +2,6 @@
 #include "vk_device_info.h"
 #include <rbc_graphics/make_device_config.h>
 namespace rbc {
-VkDeviceInfo::VkDeviceInfo() {}
-VkDeviceInfo::~VkDeviceInfo() {}
 void VkDeviceInfo::init_volk(PFN_vkGetInstanceProcAddr handler) noexcept {
     volkInitializeCustom(handler);
 }
@@ -22,20 +20,21 @@ void VkDeviceInfo::readback_vulkan_device(
     IDxcCompiler3 *dxc_compiler,
     IDxcLibrary *dxc_library,
     IDxcUtils *dxc_utils) noexcept {
-    this->instance = instance;
-    this->physical_device = physical_device;
-    this->device = device;
-    this->alloc_callback = alloc_callback;
-    this->graphics_queue = graphics_queue;
-    this->compute_queue = compute_queue;
-    this->copy_queue = copy_queue;
-    this->dxc_compiler = dxc_compiler;
-    this->dxc_library = dxc_library;
-    this->dxc_utils = dxc_utils;
-    this->graphics_queue_family_index = graphics_queue_family_index;
-    this->compute_queue_family_index = compute_queue_family_index;
-    this->copy_queue_family_index = copy_queue_family_index;
-    volkLoadInstance(instance);
+    (void)pso_meta;
+    _instance = instance;
+    _physical_device = physical_device;
+    _device = device;
+    _alloc_callback = alloc_callback;
+    _graphics_queue = graphics_queue;
+    _compute_queue = compute_queue;
+    _copy_queue = copy_queue;
+    _dxc_compiler = dxc_compiler;
+    _dxc_library = dxc_library;
+    _dxc_utils = dxc_utils;
+    _graphics_queue_family_index = graphics_queue_family_index;
+    _compute_queue_family_index = compute_queue_family_index;
+    _copy_queue_family_index = copy_queue_family_index;
+    volkLoadInstance(_instance);
 }
 RBC_RUNTIME_API luisa::unique_ptr<luisa::compute::DeviceConfigExt> make_vk_device_config(
     void *device,
@@ -46,8 +45,8 @@ RBC_RUNTIME_API luisa::unique_ptr<luisa::compute::DeviceConfigExt> make_vk_devic
 RBC_RUNTIME_API void clear_vk_states(
     luisa::compute::DeviceConfigExt *device_config_ext) {
     auto ptr = static_cast<VkDeviceInfo *>(device_config_ext);
-    ptr->resource_before_states.clear();
-    ptr->resource_after_states.clear();
+    ptr->_resource_before_states.clear();
+    ptr->_resource_after_states.clear();
 }
 RBC_RUNTIME_API void add_vk_before_state(
     luisa::compute::DeviceConfigExt *device_config_ext,
@@ -57,7 +56,7 @@ RBC_RUNTIME_API void add_vk_before_state(
         luisa::compute::Argument::BindlessArray> const &resource,
     VkResourceUsageType resource_type) {
     auto ptr = static_cast<VkDeviceInfo *>(device_config_ext);
-    ptr->resource_before_states.emplace_back(
+    ptr->_resource_before_states.emplace_back(
         resource,
         (VKCustomCmd::ResourceUsageType)resource_type);
 }
@@ -70,7 +69,7 @@ RBC_RUNTIME_API void add_vk_after_state(
         luisa::compute::Argument::BindlessArray> const &resource,
     VkResourceUsageType resource_type) {
     auto ptr = static_cast<VkDeviceInfo *>(device_config_ext);
-    ptr->resource_after_states.emplace_back(
+    ptr->_resource_after_states.emplace_back(
         resource,
         (VKCustomCmd::ResourceUsageType)resource_type);
 }
@@ -82,9 +81,9 @@ RBC_RUNTIME_API void get_vk_device(
     void *&vk_instance,
     uint32_t &gfx_queue_family_index) {
     auto ptr = static_cast<VkDeviceInfo *>(device_config_ext);
-    device = ptr->device;
-    physical_device = ptr->physical_device;
-    vk_instance = ptr->instance;
-    gfx_queue_family_index = ptr->graphics_queue_family_index;
+    device = ptr->_device;
+    physical_device = ptr->_physical_device;
+    vk_instance = ptr->_instance;
+    gfx_queue_family_index = ptr->_graphics_queue_family_index;
 }
 }// namespace rbc

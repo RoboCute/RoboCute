@@ -4,53 +4,53 @@
 
 namespace rbc {
 
-void BaseCompactPose::ResetToRefPose() {
-    ResetToRefPose(GetBoneContainer());
+void BaseCompactPose::reset_to_ref_pose() {
+    reset_to_ref_pose(get_bone_container());
 }
-void BaseCompactPose::ResetToRefPose(const BoneContainer &InRequireBones) {
-    // RequiredBones.FillWithCompactRefPose(this->Bones);
-    bone_container = &InRequireBones;
-    const luisa::span<const AnimSOATransform> ref_pose = bone_container->GetReferenceSkeleton()->JointRestPoses();
+void BaseCompactPose::reset_to_ref_pose(const BoneContainer &required_bones) {
+    // RequiredBones.fill_with_compact_ref_pose(this->Bones);
+    _bone_container = &required_bones;
+    const luisa::span<const AnimSOATransform> ref_pose = _bone_container->get_reference_skeleton()->joint_rest_poses();
 
     for (auto bone_index = 0; bone_index < ref_pose.size(); bone_index++) {
-        // const int32_t skel_bone_index = bone_container->GetSkelBoneIndex(bone_index);
-        // this->bones[bone_index] = ref_pose[skel_bone_index];
-        this->bones[bone_index] = ref_pose[bone_index];
+        // const int32_t skel_bone_index = _bone_container->GetSkelBoneIndex(bone_index);
+        // this->_bones[bone_index] = ref_pose[skel_bone_index];
+        this->_bones[bone_index] = ref_pose[bone_index];
     }
 }
 
-void BaseCompactPose::Clear() {
-    bone_container = nullptr;
-    bones.clear();
+void BaseCompactPose::clear() {
+    _bone_container = nullptr;
+    _bones.clear();
 }
 
-bool BaseCompactPose::IsValid() const {
+bool BaseCompactPose::is_valid() const {
     return true;
 }
 
-bool BaseCompactPose::IsNormalized() const {
-    (void)bones;
-    // for (const auto &bone : bones) {
+bool BaseCompactPose::is_normalized() const {
+    (void)_bones;
+    // for (const auto &bone : _bones) {
     //     if (!bone.IsRotationNormalized()) { return false;}
     // }
     return true;
 }
 
-BoneContainer &BaseCompactPose::GetBoneContainer() {
+BoneContainer &BaseCompactPose::get_bone_container() {
     // CheckSlow(Valid)
-    return *const_cast<BoneContainer *>(bone_container);
+    return *const_cast<BoneContainer *>(_bone_container);
 }
 
-const BoneContainer &BaseCompactPose::GetBoneContainer() const {
+const BoneContainer &BaseCompactPose::get_bone_container() const {
     // CheckSlow(Valid)
-    return *const_cast<BoneContainer *>(bone_container);
+    return *_bone_container;
 }
 
-void BaseCompactPose::SetBoneContainer(const BoneContainer *InBoneContainer) {
+void BaseCompactPose::set_bone_container(const BoneContainer *bone_container) {
     // CheckSlow
-    bone_container = InBoneContainer;
+    _bone_container = bone_container;
 
-    this->InitBones(static_cast<int>(bone_container->GetBoneIndices().size()));
+    this->init_bones(static_cast<int>(_bone_container->get_bone_indices().size()));
 }
 
 }// namespace rbc
@@ -58,9 +58,9 @@ void BaseCompactPose::SetBoneContainer(const BoneContainer *InBoneContainer) {
 // Compact Pose Impl
 namespace rbc {
 
-void CompactPose::ResetToAdditiveIdentity() {}
-void CompactPose::NormalizeRotation() {
-    for (auto &bone : bones) {
+void CompactPose::reset_to_additive_identity() {}
+void CompactPose::normalize_rotation() {
+    for (auto &bone : _bones) {
         bone.rotation = ozz::math::Normalize(bone.rotation);
     }
 }

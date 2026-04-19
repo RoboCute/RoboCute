@@ -11,8 +11,6 @@ static Lights *_inst = nullptr;
 }// namespace light_detail
 Lights::~Lights() {
     dispose();
-    if (SceneManager::instance_ptr() != nullptr)
-        SceneManager::instance_ptr()->remove_before_render_event("_lights_tick");
     if (light_detail::_inst == this) {
         light_detail::_inst = nullptr;
     }
@@ -462,7 +460,7 @@ uint Lights::add_disk_light(
     return data_index;
 }
 
-void Lights::add_tick(vstd::function<bool()> &&func) {
+void Lights::_add_tick(vstd::function<bool()> &&func) {
     std::lock_guard lck{_before_render_mtx};
     _before_render_funcs.emplace_back(std::move(func));
 }
@@ -978,6 +976,8 @@ void Lights::remove_mesh_light(uint light_index) {
 }
 
 void Lights::dispose() const {
+    if (SceneManager::instance_ptr() == nullptr)
+        return;
     auto &scene = SceneManager::instance();
     if (quad_mesh)
         scene.mesh_manager().emplace_unload_mesh_cmd(quad_mesh);
@@ -985,8 +985,7 @@ void Lights::dispose() const {
         scene.mesh_manager().emplace_unload_mesh_cmd(disk_mesh);
     if (point_mesh)
         scene.mesh_manager().emplace_unload_mesh_cmd(point_mesh);
-    if (SceneManager::instance_ptr() != nullptr)
-        scene.remove_before_render_event("_lights_tick");
+    scene.remove_before_render_event("_lights_tick");
 }
 Lights *Lights::instance() {
     return light_detail::_inst;

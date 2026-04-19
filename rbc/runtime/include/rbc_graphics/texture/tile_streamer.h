@@ -25,17 +25,18 @@ public:
 private:
     vstd::vector<Node> _nodes;
     uint2 _resolution;
-    size_t _idx(uint2 tile_index, uint level);
-    size_t _offset(uint level);
+    size_t _idx(uint2 tile_index, uint level) const;
+    size_t _offset(uint level) const;
 
 public:
     [[nodiscard]] auto count() const { return _nodes.size(); }
     TileNodes(uint2 resolution, uint mip);
     ~TileNodes();
     Node& sample_node(uint2 tile_index, uint level);
+    const Node& sample_node(uint2 tile_index, uint level) const;
     bool try_load_chunk(uint2 tile_index, uint level);
     bool try_unload_chunk(uint2 tile_index, uint level);
-    bool require_load(uint2 tile_index, uint level);
+    bool require_load(uint2 tile_index, uint level) const;
     TileNodes(TileNodes const&) = delete;
     TileNodes(TileNodes&&) = delete;
 };
@@ -77,7 +78,7 @@ public:
         LoadCallback& callback,
         uint2 tile_index,
         uint level
-    );
+    ) const;
 
     uint8_t tile_level(uint2 tile_idx) const;
     uint8_t& frame_lru(uint2 tile_index);

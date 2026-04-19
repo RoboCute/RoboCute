@@ -7,28 +7,28 @@ namespace rbc {
 // Helper template to clamp values
 template<typename T>
 static void clamp_value(T &value, T min, T max) {
-    value = std::max(min, std::min(value, max));
+    value = std::clamp(value, min, max);
 }
 
 template<typename T>
 static void clamp_vector2(T &v, float min, float max) {
-    v.x = std::max(min, std::min(v.x, max));
-    v.y = std::max(min, std::min(v.y, max));
+    v.x = std::clamp(v.x, min, max);
+    v.y = std::clamp(v.y, min, max);
 }
 
 template<typename T>
 static void clamp_vector3(T &v, float min, float max) {
-    v.x = std::max(min, std::min(v.x, max));
-    v.y = std::max(min, std::min(v.y, max));
-    v.z = std::max(min, std::min(v.z, max));
+    v.x = std::clamp(v.x, min, max);
+    v.y = std::clamp(v.y, min, max);
+    v.z = std::clamp(v.z, min, max);
 }
 
 template<typename T>
 static void clamp_vector4(T &v, float min, float max) {
-    v.x = std::max(min, std::min(v.x, max));
-    v.y = std::max(min, std::min(v.y, max));
-    v.z = std::max(min, std::min(v.z, max));
-    v.w = std::max(min, std::min(v.w, max));
+    v.x = std::clamp(v.x, min, max);
+    v.y = std::clamp(v.y, min, max);
+    v.z = std::clamp(v.z, min, max);
+    v.w = std::clamp(v.w, min, max);
 }
 // Check and clamp ToneMappingParameters
 static void check_tone_mapping_parameters(ToneMappingParameters &params) {
@@ -44,23 +44,23 @@ static void check_aces_parameters(ACESParameters &params) {
     clamp_value(params.temperature, 1000.0f, 15000.0f);
     // tint: -1 ~ 1
     clamp_value(params.tint, -1.0f, 1.0f);
-    // hueShift: -100 ~ 100
-    clamp_value(params.hueShift, -100.0f, 100.0f);
+    // hue_shift: -100 ~ 100
+    clamp_value(params.hue_shift, -100.0f, 100.0f);
     // saturation: -100 ~ 200
     clamp_value(params.saturation, -100.0f, 200.0f);
     // contrast: -100 ~ 100
     clamp_value(params.contrast, -100.0f, 100.0f);
 
     // Channel mixer values: -200 ~ 200
-    clamp_value(params.mixerRedOutRedIn, -200.0f, 200.0f);
-    clamp_value(params.mixerRedOutGreenIn, -200.0f, 200.0f);
-    clamp_value(params.mixerRedOutBlueIn, -200.0f, 200.0f);
-    clamp_value(params.mixerGreenOutRedIn, -200.0f, 200.0f);
-    clamp_value(params.mixerGreenOutGreenIn, -200.0f, 200.0f);
-    clamp_value(params.mixerGreenOutBlueIn, -200.0f, 200.0f);
-    clamp_value(params.mixerBlueOutRedIn, -200.0f, 200.0f);
-    clamp_value(params.mixerBlueOutGreenIn, -200.0f, 200.0f);
-    clamp_value(params.mixerBlueOutBlueIn, -200.0f, 200.0f);
+    clamp_value(params.mixer_red_out_red_in, -200.0f, 200.0f);
+    clamp_value(params.mixer_red_out_green_in, -200.0f, 200.0f);
+    clamp_value(params.mixer_red_out_blue_in, -200.0f, 200.0f);
+    clamp_value(params.mixer_green_out_red_in, -200.0f, 200.0f);
+    clamp_value(params.mixer_green_out_green_in, -200.0f, 200.0f);
+    clamp_value(params.mixer_green_out_blue_in, -200.0f, 200.0f);
+    clamp_value(params.mixer_blue_out_red_in, -200.0f, 200.0f);
+    clamp_value(params.mixer_blue_out_green_in, -200.0f, 200.0f);
+    clamp_value(params.mixer_blue_out_blue_in, -200.0f, 200.0f);
 
     // lift: xyz color, w: -1 ~ 1
     clamp_vector3(params.lift, 0.0f, 1.0f);
@@ -74,9 +74,9 @@ static void check_aces_parameters(ACESParameters &params) {
     clamp_vector3(params.gain, 0.0f, 1.0f);
     clamp_value(params.gain.w, -1.0f, 1.0f);
 
-    // colorFilter: xyz color, w: 0 ~ 5
-    clamp_vector3(params.colorFilter, 0.0f, 1.0f);
-    clamp_value(params.colorFilter.w, 0.0f, 5.0f);
+    // color_filter: xyz color, w: 0 ~ 5
+    clamp_vector3(params.color_filter, 0.0f, 1.0f);
+    clamp_value(params.color_filter.w, 0.0f, 5.0f);
 
     // Check nested tone mapping parameters
     check_tone_mapping_parameters(params.tone_mapping);
@@ -88,10 +88,10 @@ static void check_lpm_parameters(LpmDispatchParameters &params) {
     clamp_vector3(params.saturation, -1.0f, 1.0f);
     // crosstalk: color values 0 ~ 1 (vector3)
     clamp_vector3(params.crosstalk, 0.0f, 1.0f);
-    // displayMinLuminance: >= 0
-    params.displayMinLuminance = std::max(params.displayMinLuminance, 0.0f);
-    // displayMaxLuminance: >= displayMinLuminance
-    params.displayMaxLuminance = std::max(params.displayMaxLuminance, params.displayMinLuminance);
+    // display_min_luminance: >= 0
+    params.display_min_luminance = std::max(params.display_min_luminance, 0.0f);
+    // display_max_luminance: >= display_min_luminance
+    params.display_max_luminance = std::max(params.display_max_luminance, params.display_min_luminance);
 }
 
 // Check and clamp ToneMappingSettings
@@ -115,14 +115,14 @@ static void check_exposure_settings(ExposureSettings &settings) {
     // Ensure filtering.x <= filtering.y
     settings.filtering.x = std::min(settings.filtering.x, settings.filtering.y);
 
-    // minLuminance: -9 ~ 8.99
-    clamp_value(settings.minLuminance, -9.0f, 8.99f);
-    // maxLuminance: -8.99 ~ 9
-    clamp_value(settings.maxLuminance, -8.99f, 9.0f);
-    // Ensure minLuminance <= maxLuminance
-    settings.minLuminance = std::min(settings.minLuminance, settings.maxLuminance);
-    // globalExposure: 1e-3f ~ 256
-    clamp_value(settings.globalExposure, 1e-3f, 256.0f);
+    // min_luminance: -9 ~ 8.99
+    clamp_value(settings.min_luminance, -9.0f, 8.99f);
+    // max_luminance: -8.99 ~ 9
+    clamp_value(settings.max_luminance, -8.99f, 9.0f);
+    // Ensure min_luminance <= max_luminance
+    settings.min_luminance = std::min(settings.min_luminance, settings.max_luminance);
+    // global_exposure: 1e-3f ~ 256
+    clamp_value(settings.global_exposure, 1e-3f, 256.0f);
 }
 
 // Check and clamp PathTracerSettings
@@ -142,7 +142,7 @@ static void check_distortion_settings(DistortionSettings &settings) {
     // intensity: -100 ~ 100
     clamp_value(settings.intensity, -100.0f, 100.0f);
     // intensity_multiplier: 0 ~ 1
-    clamp_vector2(settings.intensity_multiplier, 0, 1.0f);
+    clamp_vector2(settings.intensity_multiplier, 0.0f, 1.0f);
     // center: -1 ~ 1
     clamp_vector2(settings.center, -1.0f, 1.0f);
 }
@@ -161,6 +161,7 @@ static void check_sky_settings(SkySettings &settings) {
     // sun_angle: typical range 0.1 ~ 10 degrees, but no strict limit in code
     settings.sun_angle = std::clamp(settings.sun_angle, 0.0f, 2.0f * pi);
 }
+/// Clamp all render settings in the state map to their valid ranges.
 void clamp_render_settings(StateMap &map) {
     // Check SkySettings
     if (auto sky_settings = map.read_if<SkySettings>()) {

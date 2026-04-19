@@ -121,9 +121,9 @@ void print_rbc_skeleton_info(SkeletonResource* skel) {
     std::cout << "========== RBC SkeletonResource Information ==========" << std::endl;
     
     const auto& ref_skel = skel->ref_skel();
-    int num_joints = ref_skel.NumJoints();
-    int num_soa_joints = ref_skel.NumSOAJoints();
-    int num_bones = ref_skel.GetNumBones();
+    int num_joints = ref_skel.num_joints();
+    int num_soa_joints = ref_skel.num_soa_joints();
+    int num_bones = ref_skel.get_num_bones();
     
     std::cout << "Total joints: " << num_joints << std::endl;
     std::cout << "Total SOA joints: " << num_soa_joints << std::endl;
@@ -132,8 +132,8 @@ void print_rbc_skeleton_info(SkeletonResource* skel) {
     // Print joint details (first 10)
     if (num_joints > 0) {
         std::cout << "----- Joints (first 10) -----" << std::endl;
-        auto joint_names = ref_skel.RawJointNames();
-        auto joint_parents = ref_skel.RawJointParents();
+        auto joint_names = ref_skel.raw_joint_names();
+        auto joint_parents = ref_skel.raw_joint_parents();
         
         int num_to_print = std::min(num_joints, 10);
         for (int i = 0; i < num_to_print; ++i) {
@@ -153,7 +153,7 @@ void compare_skeletons(const RawGltfSkeletonInfo& raw_info, SkeletonResource* sk
     std::cout << "========== Skeleton Comparison ==========" << std::endl;
     
     const auto& ref_skel = skel->ref_skel();
-    int rbc_joint_count = ref_skel.NumJoints();
+    int rbc_joint_count = ref_skel.num_joints();
     
     std::cout << "Raw glTF total joints: " << raw_info.total_joints << std::endl;
     std::cout << "RBC Skeleton joints: " << rbc_joint_count << std::endl;
@@ -166,7 +166,7 @@ void compare_skeletons(const RawGltfSkeletonInfo& raw_info, SkeletonResource* sk
     
     // Compare joint names if counts match
     if (raw_info.total_joints > 0 && rbc_joint_count > 0) {
-        auto rbc_joint_names = ref_skel.RawJointNames();
+        auto rbc_joint_names = ref_skel.raw_joint_names();
         
         std::cout << "----- Joint Name Comparison (first 5) -----" << std::endl;
         int compare_count = std::min(std::min(5, rbc_joint_count), 

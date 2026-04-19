@@ -5,8 +5,8 @@
 #include <rbc_graphics/shader_manager.h>
 
 namespace rbc {
-BufferUploader::BufferUploader() {}
-void BufferUploader::load_shader(luisa::fiber::counter &counter) {
+BufferUploader::BufferUploader() = default;
+void BufferUploader::load_shader(luisa::fiber::counter& counter) {
     ShaderManager::instance()->async_load(counter, "texture_process/uploader_align2cp2.bin", _align2_copy);
     ShaderManager::instance()->async_load(counter, "texture_process/uploader_align4cp2.bin", _align4_copy);
     ShaderManager::instance()->async_load(counter, "texture_process/uploader_align8cp2.bin", _align8_copy);
@@ -14,9 +14,9 @@ void BufferUploader::load_shader(luisa::fiber::counter &counter) {
 }
 
 void BufferUploader::commit_cmd(
-    CmdKey const &key, CmdValue &value,
-    CommandList &cmdlist,
-    HostBufferManager &temp_buffer) {
+    CmdKey const& key, CmdValue& value,
+    CommandList& cmdlist,
+    HostBufferManager& temp_buffer) {
     value.indices_vec_bytes.clear();
     value.indices_vec_bytes.reserve(value.indices_map_bytes.size());
     for (auto &i : value.indices_map_bytes) {
@@ -66,8 +66,8 @@ void BufferUploader::commit_cmd(
 }
 
 bool BufferUploader::commit(
-    CommandList &cmdlist,
-    HostBufferManager &temp_buffer) {
+    CommandList& cmdlist,
+    HostBufferManager& temp_buffer) {
     bool non_empty = false;
     for (auto &map : _copy_cmd) {
         for (auto &i : map.second) {
@@ -95,7 +95,7 @@ void BufferUploader::_swap_buffer(
 auto BufferUploader::_get_copy_cmd(
     BufferView<uint> origin_buffer,
     uint64 struct_size,
-    uint64 struct_align) -> CmdValue & {
+    uint64 struct_align) -> CmdValue& {
     auto &map = _copy_cmd.emplace(origin_buffer.handle()).value();
     CmdKey key{
         struct_size,
@@ -109,7 +109,7 @@ auto BufferUploader::_get_copy_cmd(
     return iter.first->second;
 }
 
-void *BufferUploader::_emplace_copy_cmd(
+void* BufferUploader::_emplace_copy_cmd(
     BufferView<uint> origin_buffer,
     uint64 struct_size,
     uint64 struct_align,
@@ -146,11 +146,10 @@ void BufferUploader::_emplace_copy_cmd(
     uint64 struct_align,
     uint64 offset_bytes,
     uint64 size_bytes,
-    void const *data) {
+    void const* data) {
     auto host_ptr = _emplace_copy_cmd(origin_buffer, struct_size, struct_align, offset_bytes, size_bytes);
     memcpy(host_ptr, data, size_bytes);
 }
 
-BufferUploader::~BufferUploader() {
-}
+BufferUploader::~BufferUploader() = default;
 }// namespace rbc

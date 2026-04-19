@@ -23,9 +23,9 @@ private:
         Volume<float>, //& dst_volume,
         Image<float>,
         Args // args
-        > const* lut3d_shader;
-    bool is_hdr;
-    void get_curve_texture(
+        > const* _lut3d_shader;
+    bool _is_hdr;
+    void _get_curve_texture(
         ACESParameters const& desc,
         Device& device,
         CommandList& cmdlist,

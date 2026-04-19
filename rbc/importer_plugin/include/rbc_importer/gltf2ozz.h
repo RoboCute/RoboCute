@@ -16,26 +16,26 @@ private:
 
     // Find all unique root joints of skeletons used by given skins and add them
     // to `roots`
-    void FindSkinRootJointIndices(const ozz::vector<tinygltf::Skin> &skins, ozz::vector<int> &roots);
+    void find_skin_root_joint_indices(const ozz::vector<tinygltf::Skin> &skins, ozz::vector<int> &roots);
 
     bool Import(ozz::animation::offline::RawSkeleton *_skeleton, const NodeType &_types) override;
 
     // Recursively import a node's children
-    bool ImportNode(const tinygltf::Node &_node, ozz::animation::offline::RawSkeleton::Joint *_joint);
+    bool import_node(const tinygltf::Node &_node, ozz::animation::offline::RawSkeleton::Joint *_joint);
 
     // Returns all animations in the gltf document.
     AnimationNames GetAnimationNames() override;
 
     bool Import(const char *_animation_name, const ozz::animation::Skeleton &skeleton, float _sampling_rate, ozz::animation::offline::RawAnimation *_animation) override;
 
-    bool SampleAnimationChannel(
+    bool sample_animation_channel(
         const tinygltf::Model &_model, const tinygltf::AnimationSampler &_sampler, const std::string &_target_path, float _sampling_rate, float *_duration, ozz::animation::offline::RawAnimation::JointTrack *_track);
 
     // Returns all skins belonging to a given gltf scene
-    ozz::vector<tinygltf::Skin> GetSkinsForScene(
+    ozz::vector<tinygltf::Skin> get_skins_for_scene(
         const tinygltf::Scene &_scene) const;
 
-    const tinygltf::Node *FindNodeByName(const std::string &_name) const;
+    const tinygltf::Node *find_node_by_name(const std::string &_name) const;
 
     // no support for user-defined tracks
     NodeProperties GetNodeProperties(const char *) override {
@@ -54,8 +54,8 @@ private:
         return false;
     }
 
-    tinygltf::TinyGLTF m_loader;
-    tinygltf::Model m_model;
+    tinygltf::TinyGLTF _loader;
+    tinygltf::Model _model;
 };
 
 }// namespace rbc

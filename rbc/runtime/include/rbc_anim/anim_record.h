@@ -4,20 +4,21 @@ namespace rbc {
 
 struct DeltaTimeRecord {
 public:
-    float delta = 0.f;
     DeltaTimeRecord() = default;
-    explicit DeltaTimeRecord(float InDeltaTime)
-        : delta(InDeltaTime) {
+    explicit DeltaTimeRecord(float delta_time)
+        : _delta(delta_time) {
     }
 
 public:
-    void Set(float InPrevious, float InDelta);
-    void SetPrevious(float InPrevious);
-    [[nodiscard]] bool IsPreviousValid() const { return is_previous_valid; }
+    [[nodiscard]] float delta() const { return _delta; }
+    void set(float previous_time, float delta_time);
+    void set_previous(float previous_time);
+    [[nodiscard]] bool is_previous_valid() const { return _is_previous_valid; }
 
 private:
-    float previous_time = 0.f;
-    bool is_previous_valid = false;
+    float _delta = 0.f;
+    float _previous_time = 0.f;
+    bool _is_previous_valid = false;
 };
 
 }// namespace rbc

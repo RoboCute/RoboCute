@@ -76,18 +76,18 @@ private:
     {
         private:
         friend struct LightAccel;
-        uint light_type : 3;
+        uint _light_type : 3;
         struct DataPack {
-            T data;
-            uint accel_id;
-            uint user_id;
+            T _data;
+            uint _accel_id;
+            uint _user_id;
         };
-        vector<DataPack> host_data;
-        Buffer<T> device_data;
+        vector<DataPack> _host_data;
+        Buffer<T> _device_data;
 
     public:
         Light(uint type)
-            : light_type(type)
+            : _light_type(type)
         {
         }
         uint emplace(
@@ -111,12 +111,12 @@ private:
         );
         [[nodiscard]] auto const& buffer() const
         {
-            return device_data;
+            return _device_data;
         }
         // get next light id
         uint _get_next_id() const
         {
-            return static_cast<uint>(host_data.size());
+            return static_cast<uint>(_host_data.size());
         }
     };
     struct InstIndex {
@@ -132,35 +132,35 @@ private:
     ///////////// Accel
     vector<BVH::PackedNode> _tlas_data;
     Buffer<BVH::PackedNode> _tlas_buffer;
-    Light<PointLight> point_lights;
-    Light<SpotLight> spot_lights;
-    Light<AreaLight> area_lights;
-    Light<MeshLight> mesh_lights;
-    Light<DiskLight> disk_lights;
+    Light<PointLight> _point_lights;
+    Light<SpotLight> _spot_lights;
+    Light<AreaLight> _area_lights;
+    Light<MeshLight> _mesh_lights;
+    Light<DiskLight> _disk_lights;
     void _erase_accel_inst(uint accel_id);
-    size_t capacity{ 0 };
+    size_t _capacity{ 0 };
     bool _dirty = false;
 
 public:
-    [[nodiscard]] uint _get_next_pointlight_index() const { return point_lights._get_next_id(); }
-    [[nodiscard]] uint _get_next_arealight_index() const { return area_lights._get_next_id(); }
-    [[nodiscard]] uint _get_next_disklight_index() const { return disk_lights._get_next_id(); }
-    [[nodiscard]] uint _get_next_spotlight_index() const { return spot_lights._get_next_id(); }
-    [[nodiscard]] uint _get_next_meshlight_index() const { return mesh_lights._get_next_id(); }
+    [[nodiscard]] uint _get_next_pointlight_index() const { return _point_lights._get_next_id(); }
+    [[nodiscard]] uint _get_next_arealight_index() const { return _area_lights._get_next_id(); }
+    [[nodiscard]] uint _get_next_disklight_index() const { return _disk_lights._get_next_id(); }
+    [[nodiscard]] uint _get_next_spotlight_index() const { return _spot_lights._get_next_id(); }
+    [[nodiscard]] uint _get_next_meshlight_index() const { return _mesh_lights._get_next_id(); }
     // #endif
     [[nodiscard]] auto light_count() const
     {
-        return point_lights.host_data.size() +
-               area_lights.host_data.size() +
-               disk_lights.host_data.size() +
-               spot_lights.host_data.size() +
-               mesh_lights.host_data.size();
+        return _point_lights._host_data.size() +
+               _area_lights._host_data.size() +
+               _disk_lights._host_data.size() +
+               _spot_lights._host_data.size() +
+               _mesh_lights._host_data.size();
     }
-    [[nodiscard]] auto const& area_light_buffer() const { return area_lights.buffer(); }
-    [[nodiscard]] auto const& disk_light_buffer() const { return disk_lights.buffer(); }
-    [[nodiscard]] auto const& spot_light_buffer() const { return spot_lights.buffer(); }
-    [[nodiscard]] auto const& point_light_buffer() const { return point_lights.buffer(); }
-    [[nodiscard]] auto const& mesh_light_buffer() const { return mesh_lights.buffer(); }
+    [[nodiscard]] auto const& area_light_buffer() const { return _area_lights.buffer(); }
+    [[nodiscard]] auto const& disk_light_buffer() const { return _disk_lights.buffer(); }
+    [[nodiscard]] auto const& spot_light_buffer() const { return _spot_lights.buffer(); }
+    [[nodiscard]] auto const& point_light_buffer() const { return _point_lights.buffer(); }
+    [[nodiscard]] auto const& mesh_light_buffer() const { return _mesh_lights.buffer(); }
     [[nodiscard]] auto tlas_data() const { return span<BVH::PackedNode const>{ _tlas_data }; }
     [[nodiscard]] auto const& tlas_buffer() const { return _tlas_buffer; }
     LightAccel(Device& device);

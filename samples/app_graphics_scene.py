@@ -459,7 +459,7 @@ def main():
     
     # DO THIS: test GLTF mesh
     # poly = load_material_entity('metal_office_desk', app.scene)
-    # poly = load_material_entity_json('samples/load_material_scene.json', app.scene)
+    poly = load_material_entity_json('samples/load_material_scene.json', app.scene)
     last_time = time.time()
 
     def tick_logic():  # run every frame

@@ -8,13 +8,13 @@ struct BaseObjectStatics : RBCStruct {
     shared_atomic_mutex _guid_mtx;
     luisa::unordered_map<MD5, RCWeak<BaseObject>> _obj_guids;
     luisa::unordered_map<MD5, TypeRegisterBase *> _create_funcs;
-    void init_register(TypeRegisterBase *p) {
+    void _init_register(TypeRegisterBase *p) {
         p->init();
         _create_funcs.try_emplace(p->type_id(), p);
     }
     BaseObjectStatics() {
         for (auto p = _type_register_header; p; p = p->p_next) {
-            init_register(p);
+            _init_register(p);
         }
     }
     ~BaseObjectStatics() {
@@ -24,6 +24,10 @@ struct BaseObjectStatics : RBCStruct {
         if (!_obj_guids.empty()) {
             for (auto iter = _obj_guids.begin(); iter != _obj_guids.end();) {
                 auto o = iter->second.lock().rc();
+                if (!o) {
+                    iter = _obj_guids.erase(iter);
+                    continue;
+                }
                 if (o->rbc_rc_count() > 0) {
                     ++iter;
                     continue;
@@ -36,9 +40,9 @@ struct BaseObjectStatics : RBCStruct {
         }
         if (!_obj_guids.empty()) {
             for (auto &i : _obj_guids) {
-                auto ptr = i.second.lock().rc();
+                auto const ptr = i.second.lock().rc();
                 if (ptr) {
-                    LUISA_INFO("{} leaking with rc {}", (size_t)ptr.get(), ptr->rbc_rc_count());
+                    LUISA_INFO("{} leaking with rc {}", reinterpret_cast<size_t>(ptr.get()), ptr->rbc_rc_count());
                 }
             }
             LUISA_ERROR("World object is leaking.");
@@ -51,7 +55,7 @@ struct BaseObjectStatics : RBCStruct {
 static BaseObjectStatics *_world_inst = nullptr;
 void TypeRegisterBase::_base_init() {
     if (_world_inst) {
-        _world_inst->init_register(this);
+        _world_inst->_init_register(this);
     } else {
         p_next = _type_register_header;
         _type_register_header = this;
@@ -83,7 +87,7 @@ void destroy_world() {
 void get_all_objects(vstd::function<void(BaseObject *)> const &callback) {
     std::shared_lock lck{_world_inst->_guid_mtx};
     for (auto &i : _world_inst->_obj_guids) {
-        auto v = i.second.lock().rc();
+        auto const v = i.second.lock().rc();
         if (v)
             callback(v.get());
     }
@@ -126,7 +130,7 @@ luisa::spin_mutex &dirty_trans_mtx();
 luisa::vector<RCWeak<TransformComponent>> &dirty_transforms();
 BaseObjectType get_base_object_type(vstd::Guid const &type_id) {
     LUISA_DEBUG_ASSERT(_world_inst, "World already destroyed.");
-    auto iter = _world_inst->_create_funcs.find((MD5 const &)type_id);
+    auto iter = _world_inst->_create_funcs.find(reinterpret_cast<MD5 const &>(type_id));
     if (iter == _world_inst->_create_funcs.end()) {
         return BaseObjectType::None;
     }
@@ -196,7 +200,7 @@ bool world_transform_dirty() {
 void _zz_clear_dirty_transform() {
     auto &v = dirty_transforms();
     for (auto &i : v) {
-        auto obj = i.lock().rc();
+        auto const obj = i.lock().rc();
         if (!obj) continue;
         LUISA_DEBUG_ASSERT(obj->is_type_of(TypeInfo::get<TransformComponent>()));
         static_cast<TransformComponent *>(obj.get())->_dirty = false;
@@ -212,7 +216,7 @@ uint64_t object_count() {
 void _zz_on_before_rendering() {
     _collect_all_materials();
     for (auto &i : dirty_transforms()) {
-        auto tr_obj = i.lock().rc();
+        auto const tr_obj = i.lock().rc();
         if (!tr_obj || !tr_obj->is_type_of(TypeInfo::get<TransformComponent>())) {
             continue;
         }

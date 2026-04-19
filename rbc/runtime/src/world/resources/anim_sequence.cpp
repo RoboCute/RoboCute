@@ -45,7 +45,7 @@ rbc::coroutine AnimSequenceResource::_async_load() {
 
     luisa::BinaryBlob blob = file_stream.read(file_stream.length());
     BinDeSerializer deser{blob};
-    deser._load(anim_sequence, "anim_sequence");
+    deser._load(_anim_sequence, "anim_sequence");
 
     co_return;
 }
@@ -53,7 +53,7 @@ rbc::coroutine AnimSequenceResource::_async_load() {
 bool AnimSequenceResource::unsafe_save_to_path() const {
     std::shared_lock lck{_async_mtx};
     BinSerializer ser;
-    ser._store(anim_sequence, "anim_sequence");
+    ser._store(_anim_sequence, "anim_sequence");
 
     auto path = this->path();
     BinaryFileWriter writer{luisa::to_string(path)};
@@ -66,27 +66,27 @@ bool AnimSequenceResource::unsafe_save_to_path() const {
     return true;
 }
 
-void AnimSequenceResource::log_brief() {
-    anim_sequence.log_brief();
+void AnimSequenceResource::log_brief() const {
+    _anim_sequence.log_brief();
 }
 
-void AnimSequence::GetAnimationPose(AnimationPoseData &OutPoseData, const AnimExtractContext &InExtractContext) const {
-    [[maybe_unused]] auto &pose = OutPoseData.GetPose();
+void AnimSequence::GetAnimationPose(AnimationPoseData &out_pose_data, const AnimExtractContext &in_extract_context) const {
+    [[maybe_unused]] auto &pose = out_pose_data.get_pose();
     // TODO: 此处需要在Sampling中额外分配空间，需要改为事先分配
     AnimSamplingJobContext context;
 
-    context.Resize(animation.num_tracks());
-    float ratio = InExtractContext.current_time / animation.duration();
+    context.Resize(_animation.num_tracks());
+    float ratio = in_extract_context.current_time / _animation.duration();
     ratio = ratio < 0.0f ? 0.0f : ratio > 1.0f ? 1.0f :
                                                  ratio;
 
-    // LUISA_INFO("Sampling In Animation {} with ratio {}", animation.name(), ratio);
+    // LUISA_INFO("Sampling In Animation {} with ratio {}", _animation.name(), ratio);
 
     AnimSamplingJob sampling_job;
-    sampling_job.animation = &animation;
+    sampling_job.animation = &_animation;
     sampling_job.ratio = ratio;
     sampling_job.context = &context;
-    luisa::vector<AnimSOATransform> &out_bones = OutPoseData.GetPose().GetBones();
+    luisa::vector<AnimSOATransform> &out_bones = out_pose_data.get_pose().get_bones();
     sampling_job.output = {out_bones.begin(), out_bones.end()};
     if (!sampling_job.Run()) {
         LUISA_ERROR("Failed to run SamplingJob");

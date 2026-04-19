@@ -49,7 +49,7 @@ void RenderComponent::update_data() {
 }
 void RenderComponent::serialize_meta(ObjSerialize const &ser) const {
     ser.ar.start_array();
-    for (auto &i : _materials) {
+    for (auto const &i : _materials) {
         vstd::Guid guid;
         if (i) {
             guid = i->guid();
@@ -73,7 +73,7 @@ void RenderComponent::deserialize_meta(ObjDeSerialize const &deser) {
     uint64_t size;
     if (deser.ar.start_array(size, "mats")) {
         _materials.reserve(size);
-        for ([[maybe_unused]] auto &i : vstd::range(size)) {
+        for ([[maybe_unused]] auto i : vstd::range(size)) {
             vstd::Guid guid;
             if (!deser.ar.value(guid)) {
                 _materials.emplace_back(nullptr);
@@ -99,19 +99,19 @@ void RenderComponent::deserialize_meta(ObjDeSerialize const &deser) {
 
 static bool material_is_emission(luisa::span<RC<MaterialResource> const> materials) {
     bool contained_emission = false;
-    for (auto &i : materials) {
+    for (auto const &i : materials) {
         if (!i) [[unlikely]]
             continue;
         i->mat_data().visit([&]<typename T>(T const &t) {
             if constexpr (std::is_same_v<T, material::OpenPBR>) {
-                for (auto &i : t.emission.luminance) {
+                for (auto const i : t.emission.luminance) {
                     if (i > 1e-3f) {
                         contained_emission = true;
                         return;
                     }
                 }
             } else {
-                for (auto &i : t.color) {
+                for (auto const i : t.color) {
                     if (i > 1e-3f) {
                         contained_emission = true;
                         return;
@@ -121,12 +121,12 @@ static bool material_is_emission(luisa::span<RC<MaterialResource> const> materia
         });
     }
     return contained_emission;
-};
+}
 static luisa::vector<float> material_emissions(luisa::span<RC<MaterialResource> const> materials) {
     luisa::vector<float> vec;
     vec.resize(materials.size());
     size_t mat_index = 0;
-    for (auto &i : materials) {
+    for (auto const &i : materials) {
         if (i) [[likely]] {
             float3 emission{};
             i->mat_data().visit([&]<typename T>(T const &t) {
@@ -150,7 +150,7 @@ static luisa::vector<float> material_emissions(luisa::span<RC<MaterialResource> 
         ++mat_index;
     }
     return vec;
-};
+}
 RenderComponent::~RenderComponent() {
     remove_object();
 }
@@ -164,7 +164,7 @@ void RenderComponent::_add_tlas_idx() {
 }
 
 void RenderComponent::remove_object() {
-    auto sm = SceneManager::instance_ptr();
+    auto const sm = SceneManager::instance_ptr();
     if (_mesh_ref && _mesh_ref->device_mesh()) {
         _mesh_ref.reset();
     }
@@ -208,7 +208,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
         LUISA_WARNING("Transform component not found, renderer update failed.");
         return;
     }
-    float4x4 matrix = tr->trs_float();
+    float4x4 const matrix = tr->trs_float();
     auto render_device = RenderDevice::instance_ptr();
     auto &sm = SceneManager::instance();
     if (mesh) {
@@ -274,7 +274,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                         sm.buffer_uploader(),
                         _mesh_tlas_idx);
                     _remove_tlas_idx();
-                    auto emissions = material_emissions(_materials);
+                    auto const emissions = material_emissions(_materials);
                     _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                         render_device->lc_main_cmd_list(),
                         RC<DeviceMesh>{mesh->device_mesh()},
@@ -315,7 +315,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                     _add_tlas_idx();
                     _type = ObjectRenderType::Mesh;
                 } else {
-                    auto emissions = material_emissions(_materials);
+                    auto const emissions = material_emissions(_materials);
                     RC<DeviceMesh> m{mesh->device_mesh()};
                     Lights::instance()->update_mesh_light_sync(
                         render_device->lc_main_cmd_list(),
@@ -337,7 +337,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
     // create
     else {
         if (is_emission) {
-            auto emissions = material_emissions(_materials);
+            auto const emissions = material_emissions(_materials);
             _mesh_light_idx = Lights::instance()->add_mesh_light_sync(
                 render_device->lc_main_cmd_list(),
                 RC<DeviceMesh>{mesh->device_mesh()},
@@ -363,7 +363,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
         }
     }
 }
-void RenderComponent::_update_object_pos(float4x4 matrix) {
+void RenderComponent::_update_object_pos(float4x4 const &matrix) {
     if (_mesh_tlas_idx == ~0u) [[unlikely]] {
         return;
     }
@@ -379,7 +379,7 @@ void RenderComponent::_update_object_pos(float4x4 matrix) {
                 matrix, 0xff, true);
         } break;
         case ObjectRenderType::EmissionMesh: {
-            auto emissions = material_emissions(_materials);
+            auto const emissions = material_emissions(_materials);
             Lights::instance()->update_mesh_light_sync(
                 render_device->lc_main_cmd_list(),
                 _mesh_light_idx,

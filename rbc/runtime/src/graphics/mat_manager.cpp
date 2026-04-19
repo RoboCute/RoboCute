@@ -29,7 +29,7 @@ uint MatManager::_emplace_mat_type(
     alloc.set_reserved_buffer(index, v.data_buffer);
     return index;
 }
-size_t MatManager::get_mat_type_size(uint mat_type_idx)
+size_t MatManager::get_mat_type_size(uint mat_type_idx) const
 {
     auto mat_type_iter = _mats.find(mat_type_idx);
     LUISA_DEBUG_ASSERT(mat_type_iter);
@@ -70,6 +70,7 @@ auto MatManager::_emplace_mat_instance(
 ) -> MatCode
 {
     auto mat_type_iter = _mats.find(mat_type_idx);
+    LUISA_DEBUG_ASSERT(mat_type_iter);
     auto& mat_type = mat_type_iter.value();
     const auto struct_stride = mat_type.size;
     uint id = ~0u;
@@ -106,6 +107,7 @@ void MatManager::discard_mat_instance(
 {
     uint mat_type_idx = mat_code.get_type();
     auto mat_type_iter = _mats.find(mat_type_idx);
+    LUISA_DEBUG_ASSERT(mat_type_iter);
     auto& mat_type = mat_type_iter.value();
     std::lock_guard lck{ mat_type.mtx };
     mat_type.alloc_pool.emplace_back(mat_code.get_inst_id());

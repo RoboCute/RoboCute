@@ -38,18 +38,17 @@ void PTPipeline::update(rbc::PipelineContext &ctx) {
     this->rbc::Pipeline::update(ctx);
 }
 
-PTPipeline::~PTPipeline() {
-}
+PTPipeline::~PTPipeline() = default;
 
 void PTPipeline::early_update(rbc::PipelineContext &ctx) {
     // HDR
     // sync monitor
-    //     tms.lpm.displayRedPrimary = monitor_info->red_primary;
-    // tms.lpm.displayGreenPrimary = monitor_info->green_primary;
-    // tms.lpm.displayBluePrimary = monitor_info->blue_primary;
-    // tms.lpm.displayWhitePoint = monitor_info->white_point;
-    // tms.lpm.displayMinLuminance = monitor_info->min_luminance;
-    // tms.lpm.displayMaxLuminance = monitor_info->max_luminance;
+    //     tms.lpm.display_red_primary = monitor_info->red_primary;
+    // tms.lpm.display_green_primary = monitor_info->green_primary;
+    // tms.lpm.display_blue_primary = monitor_info->blue_primary;
+    // tms.lpm.display_white_point = monitor_info->white_point;
+    // tms.lpm.display_min_luminance = monitor_info->min_luminance;
+    // tms.lpm.display_max_luminance = monitor_info->max_luminance;
     // tms.aces.tone_mapping.hdr_display_multiplier = monitor_info->max_luminance / 80.0f;
 
     // get settings
@@ -102,8 +101,7 @@ void PTPipeline::early_update(rbc::PipelineContext &ctx) {
             }
             sky_settings.dirty = false;
         }
-        if (sky_atom.update(*ctx.cmdlist, *ctx.stream, ctx.scene->bindless_allocator(), sky_settings.force_sync)) {
-        }
+        sky_atom.update(*ctx.cmdlist, *ctx.stream, ctx.scene->bindless_allocator(), sky_settings.force_sync);
         sky_heap.sky_heap_idx = sky_atom.sky_id();
         sky_heap.alias_heap_idx = sky_atom.sky_alias_id();
         sky_heap.pdf_heap_idx = sky_atom.sky_pdf_id();

@@ -47,12 +47,14 @@ ShaderBase ShaderManager::unload_shader(
         return ShaderBase{};
     }
     auto &value = iter.value();
-    value._evt.wait();
-    _shaders.remove(iter);
     _mtx.unlock();
+    value._evt.wait();
+    _mtx.lock();
     LUISA_DEBUG_ASSERT(value.shader.is_type_of<ShaderBase>());
     ShaderBase v = std::move(value.shader.force_get<ShaderBase>());
     value.shader.dispose();
+    _shaders.remove(iter);
+    _mtx.unlock();
     return v;
 }
 luisa::string_view ShaderManager::_path_to_key(luisa::filesystem::path const &path, luisa::string &can_path_str, luisa::string &buffer) const {
@@ -188,7 +190,7 @@ vstd::vector<char> ShaderManager::loaded_shaders_json(luisa::filesystem::path co
     vec.push_back('}');
     return vec;
 }
-void ShaderManager::get_preload_progress(uint64_t &all_shader_count, uint64_t &finished_shader_count) {
+void ShaderManager::get_preload_progress(uint64_t &all_shader_count, uint64_t &finished_shader_count) const {
     all_shader_count = _all_shader_count;
     finished_shader_count = _finished_shaders;
 }

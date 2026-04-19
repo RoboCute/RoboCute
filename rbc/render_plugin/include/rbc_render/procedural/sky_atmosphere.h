@@ -45,7 +45,7 @@ private:
     uint _sky_lum_id = ~0u;
     uint _sky_pdf_id = ~0u;
     HDRI::AliasTable _table;
-    bool sky_id_dirty : 1 = false;
+    bool _sky_id_dirty : 1 = false;
 
     void _init_shader(bool load_gen);
 public:

@@ -6,7 +6,7 @@
 namespace rbc {
 
 namespace accel_detail {
-static const AccelOption tlas_option{
+static const AccelOption kTlasOption{
     // "For TLAS, consider the PREFER_FAST_TRACE flag and perform only rebuilds"
     // https://developer.nvidia.com/blog/best-practices-for-using-nvidia-rtx-ray-tracing-updated/
     .hint = AccelOption::UsageHint::FAST_TRACE,
@@ -20,7 +20,7 @@ AccelManager::AccelManager(Device &device)
         VertexAttributeType::Position,
         PixelFormat::RGBA32F};
 
-    _basic_foramt.emplace_vertex_stream({&pos_attr, 1});
+    _basic_format.emplace_vertex_stream({&pos_attr, 1});
 
     // Initialize buffers with minimum size to avoid null buffer access when scene is empty
     constexpr auto aligned_size_inst = (65536u + sizeof(InstanceInfo) - 1) / sizeof(InstanceInfo);
@@ -49,7 +49,7 @@ void AccelManager::set_mesh_instance(
     uint8_t visibility_mask,
     bool opaque) {
     auto &inst = _insts[inst_id];
-    auto &mesh_data = _accel_elements[inst.accel_id].mesh_data;
+    auto const &mesh_data = _accel_elements[inst.accel_id].mesh_data;
     _dirty = true;
     auto &ele = _accel_elements[inst.accel_id];
     ele.transform = transform;
@@ -108,7 +108,7 @@ void AccelManager::dispose_accel(CommandList &cmdlist, DisposeQueue &disp_queue)
 void AccelManager::init_accel(CommandList &cmdlist) {
     if (_accel_elements.empty() || _accel) return;
     _dirty = true;
-    _accel = _device.create_accel(accel_detail::tlas_option);
+    _accel = _device.create_accel(accel_detail::kTlasOption);
     for (auto &i : _accel_elements) {
         i.mesh_data.visit([&]<typename T>(T const &t) {
             if constexpr (std::is_same_v<T, MeshManager::MeshData *>) {
@@ -191,7 +191,7 @@ void AccelManager::set_procedural_instance(
     uint8_t visibility_mask,
     bool opaque) {
     auto &inst = _procedural_insts[inst_id];
-    auto &mesh_data = _accel_elements[inst.accel_id].mesh_data;
+    auto const &mesh_data = _accel_elements[inst.accel_id].mesh_data;
     _dirty = true;
     auto &ele = _accel_elements[inst.accel_id];
     ele.transform = transform;
@@ -400,7 +400,7 @@ void AccelManager::set_procedural_instance(
     ProceduralVariant &&prim_data,
     float4x4 const &transform,
     uint8_t visibility_mask) {
-    auto &inst = _procedural_insts[inst_id];
+    auto const &inst = _procedural_insts[inst_id];
     _update_procedural_instance(inst_id, cmdlist, temp_buffer, buffer_allocator, uploader, disp_queue, std::move(prim_data));
 
     if (!prim) {
@@ -480,7 +480,8 @@ void AccelManager::set_mesh_instance(
             inst_id);
     }
 }
-void AccelManager::_swap_last(BufferUploader &uploader, auto &inst, DisposeQueue *disp_queue) {
+template<typename Inst>
+void AccelManager::_swap_last(BufferUploader &uploader, Inst &inst, DisposeQueue *disp_queue) {
     _dirty = true;
     // swap last element
     auto &accel_ele = _accel_elements[inst.accel_id];
@@ -552,8 +553,8 @@ void AccelManager::remove_procedural_instance(
     _swap_last(uploader, inst, &disp_queue);
 }
 
-auto AccelManager::try_get_accel_element(uint inst_id) const -> AccelElement const * {
-    auto id = _insts[inst_id].accel_id;
+AccelManager::AccelElement const *AccelManager::try_get_accel_element(uint inst_id) const {
+    auto const id = _insts[inst_id].accel_id;
     if (id >= _accel_elements.size()) return nullptr;
     return &_accel_elements[id];
 }
@@ -599,12 +600,12 @@ void AccelManager::move_the_world(
     _dirty = true;
 }
 
-auto AccelManager::draw_object(uint inst_id, uint draw_instance_count, uint object_id, uint submesh_index) -> DrawCommand {
+AccelManager::DrawCommand AccelManager::draw_object(uint inst_id, uint draw_instance_count, uint object_id, uint submesh_index) {
     DrawCommand cmd;
-    auto inst = try_get_accel_element(inst_id);
+    auto const inst = try_get_accel_element(inst_id);
     if (!inst) return cmd;
     LUISA_DEBUG_ASSERT(inst->mesh_data.is_type_of<MeshManager::MeshData *>());
-    auto mesh_data = inst->mesh_data.force_get<MeshManager::MeshData *>();
+    auto const mesh_data = inst->mesh_data.force_get<MeshManager::MeshData *>();
     cmd.info.local_to_world_and_inst_id = inst->transform;
     uint triangle_offset = 0;
     uint triangle_size = mesh_data->triangle_size;
@@ -621,8 +622,8 @@ auto AccelManager::draw_object(uint inst_id, uint draw_instance_count, uint obje
     }
     reinterpret_cast<uint &>(cmd.info.local_to_world_and_inst_id[2][3]) = triangle_offset;
     reinterpret_cast<uint &>(cmd.info.local_to_world_and_inst_id[3][3]) = inst_id;
-    BufferView<uint> vert_buffer = mesh_data->pack.mutable_data ? mesh_data->pack.mutable_data : mesh_data->pack.data;
-    BufferView<uint> index_buffer = mesh_data->pack.data ? mesh_data->pack.data : mesh_data->pack.data_view;
+    BufferView<uint> const vert_buffer = mesh_data->pack.mutable_data ? mesh_data->pack.mutable_data : mesh_data->pack.data;
+    BufferView<uint> const index_buffer = mesh_data->pack.data ? mesh_data->pack.data : mesh_data->pack.data_view;
     VertexBufferView vbv{
         vert_buffer.subview(0, mesh_data->meta.vertex_count * 4).as<float4>()};
     cmd.mesh = RasterMesh(
@@ -651,11 +652,11 @@ void AccelManager::make_draw_list(
     std::atomic_uint64_t buffer_size{0};
     luisa::fiber::parallel(
         _accel_elements.size(), [&](uint idx) {
-            auto &inst = _accel_elements[idx];
+            auto const &inst = _accel_elements[idx];
             if (!inst.mesh_data.is_type_of<MeshManager::MeshData *>()) {
                 return;
             }
-            auto mesh = inst.mesh_data.force_get<MeshManager::MeshData *>();
+            auto const mesh = inst.mesh_data.force_get<MeshManager::MeshData *>();
             map_mtx.lock();
             auto iter = mesh_map->try_emplace(mesh);
             map_mtx.unlock();
@@ -711,7 +712,7 @@ void AccelManager::make_draw_list(
                 instance_indices.size(),
                 obj_id);
             for (auto &i : instance_indices) {
-                auto &inst = _accel_elements[i];
+                auto const &inst = _accel_elements[i];
                 auto &elem = elem_host.emplace_back();
                 elem.local_to_world_and_inst_id = inst.transform;
 
@@ -738,11 +739,11 @@ void AccelManager::iterate_scene(
 ) {
     luisa::fiber::parallel(
         _accel_elements.size(), [&](uint idx) {
-            auto &inst = _accel_elements[idx];
+            auto const &inst = _accel_elements[idx];
             if (!inst.mesh_data.is_type_of<MeshManager::MeshData *>()) {
                 return;
             }
-            auto mesh = inst.mesh_data.force_get<MeshManager::MeshData *>();
+            auto const mesh = inst.mesh_data.force_get<MeshManager::MeshData *>();
             for (auto submesh_idx : vstd::range(std::max<uint>(mesh->submesh_offset.size(), 1))) {
                 // bool keep = false;
                 // TODO: cull

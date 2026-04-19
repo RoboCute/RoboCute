@@ -1,12 +1,14 @@
 #include <rbc_graphics/texture/hdri.h>
 #include <luisa/core/fiber.h>
+#include <algorithm>
+#include <numeric>
 namespace rbc
 {
 namespace detail
 {
 
-template <typename T, std::enable_if_t<std::is_unsigned_v<T> && (sizeof(T) == 4u || sizeof(T) == 8u), int> = 0>
-[[nodiscard]] constexpr auto next_pow2(T v) noexcept
+template <typename Value, std::enable_if_t<std::is_unsigned_v<Value> && (sizeof(Value) == 4u || sizeof(Value) == 8u), int> = 0>
+[[nodiscard]] constexpr auto next_pow2(Value v) noexcept
 {
 #ifdef __cpp_lib_int_pow2
     return std::bit_ceil(v);
@@ -17,38 +19,43 @@ template <typename T, std::enable_if_t<std::is_unsigned_v<T> && (sizeof(T) == 4u
     v |= v >> 4u;
     v |= v >> 8u;
     v |= v >> 16u;
-    if constexpr (sizeof(T) == 8u) { v |= v >> 32u; }
+    if constexpr (sizeof(Value) == 8u) { v |= v >> 32u; }
     return v + 1u;
 #endif
 }
 
 void create_alias_table(luisa::span<const float> values, luisa::span<HDRI::AliasEntry> table, luisa::span<float> pdf, bool parallel)
 {
-    auto inplace = parallel ? 1ull : std::numeric_limits<size_t>::max();
-    auto sum = [&]() {
+    const auto inplace = parallel ? 1ull : std::numeric_limits<size_t>::max();
+    const auto sum = [&]() {
         std::atomic<double> d = 0;
         luisa::fiber::parallel(values.begin(), values.end(), 1024, [&](auto&& begin, auto&& end) {
-			double dd = 0;
-			for (auto ite = begin; ite != end; ++ite) {
-				dd += std::abs(*ite);
-			}
+			const double dd = std::accumulate(begin, end, 0.0, [](double a, float b) { return a + std::abs(b); });
 			d += dd; }, inplace);
         return d.load();
     }();
     if (sum == 0.) [[unlikely]]
     {
-        auto n = static_cast<double>(values.size());
-        std::fill(pdf.begin(), pdf.end(), static_cast<float>(1.0 / n));
+        const auto n = static_cast<double>(values.size());
+        const auto p = static_cast<float>(1.0 / n);
+        std::fill(pdf.begin(), pdf.end(), p);
+        size_t idx = 0;
+        std::generate(table.begin(), table.end(), [&]() mutable {
+            return HDRI::AliasEntry{ p, static_cast<uint>(idx++) };
+        });
+        return;
     }
     else [[likely]]
     {
-        auto inv_sum = 1.0 / sum;
+        const auto inv_sum = 1.0 / sum;
         luisa::fiber::parallel<uint64_t>(0ull, values.size(), 1024, [&](auto begin, auto end) {
-			for (auto i = begin; i != end; ++i) {
-				pdf[i] = static_cast<float>(std::abs(values[i]) * inv_sum);
-			} }, inplace);
+			std::transform(values.begin() + begin, values.begin() + end,
+			               pdf.begin() + begin,
+			               [inv_sum](float v) {
+			                   return static_cast<float>(std::abs(v) * inv_sum);
+			               }); }, inplace);
     }
-    auto ratio = static_cast<double>(values.size()) / sum;
+    const auto ratio = static_cast<double>(values.size()) / sum;
     luisa::vector<uint> over;
     luisa::vector<uint> under;
     over.push_back_uninitialized(next_pow2(values.size()));
@@ -57,7 +64,7 @@ void create_alias_table(luisa::span<const float> values, luisa::span<HDRI::Alias
     std::atomic_size_t under_size = 0;
     luisa::fiber::parallel<uint64_t>(0ull, values.size(), 1024, [&](size_t beg, size_t end) {
 		for (auto i = beg; i < end; i++) {
-			auto p = static_cast<float>(values[i] * ratio);
+			const auto p = static_cast<float>(values[i] * ratio);
 			table[i] = {p, static_cast<uint>(i)};
 			if (p > 1.f) {
 				over[over_size++] = i;
@@ -107,7 +114,7 @@ void HDRI::compute_scalemap(
     vstd::function<void(luisa::vector<float>&&)> callback
 )
 {
-    auto pixel_count = size.x * size.y;
+    const auto pixel_count = size.x * size.y;
     if (!buffer_cache)
     {
         buffer_cache = device.create_buffer<float>(pixel_count);
@@ -117,7 +124,7 @@ void HDRI::compute_scalemap(
         cmdlist.add_callback([b = std::move(buffer_cache)]() {});
         buffer_cache = device.create_buffer<float>(pixel_count);
     }
-    auto buffer = buffer_cache.view(0, pixel_count);
+    const auto buffer = buffer_cache.view(0, pixel_count);
     luisa::vector<float> scale_map;
     scale_map.push_back_uninitialized(pixel_count);
     cmdlist
@@ -129,23 +136,18 @@ void HDRI::compute_scalemap(
 }
 auto HDRI::compute_alias_table(luisa::span<float> scale_map, uint2 size) -> AliasTable
 {
-    auto pixel_count = size.x * size.y;
+    const auto pixel_count = size.x * size.y;
     {
         std::atomic<double> sum_scale = 0;
         luisa::fiber::parallel(scale_map.begin(), scale_map.end(), 4096, [&](auto beg, auto end) {
-            double d = 0;
-            for (auto i = beg; i != end; ++i)
-            {
-                d += *i;
-            }
+            const double d = std::accumulate(beg, end, 0.0);
             sum_scale += d;
         });
-        auto average_scale = static_cast<double>(sum_scale.load() / pixel_count);
+        const auto average_scale = static_cast<double>(sum_scale.load() / pixel_count);
         luisa::fiber::parallel(scale_map.begin(), scale_map.end(), 1024, [&](auto beg, auto end) {
-            for (auto i = beg; i != end; ++i)
-            {
-                *i = std::max<float>(*i - average_scale, 0.f);
-            }
+            std::for_each(beg, end, [average_scale](float& v) {
+                v = std::max<float>(v - average_scale, 0.f);
+            });
         });
     }
     luisa::vector<float> row_averages(size.y);
@@ -155,7 +157,7 @@ auto HDRI::compute_alias_table(luisa::span<float> scale_map, uint2 size) -> Alia
         for (auto i = beg; i != end; ++i)
         {
             auto sum = 0.;
-            auto values = luisa::span{ scale_map }.subspan(
+            const auto values = luisa::span{ scale_map }.subspan(
                 i * size.x, size.x
             );
             for (auto v : values)
@@ -176,13 +178,11 @@ auto HDRI::compute_alias_table(luisa::span<float> scale_map, uint2 size) -> Alia
     luisa::fiber::parallel<uint64_t>(0u, size.y, 32, [&](auto beg, auto end) {
         for (auto y = beg; y < end; ++y)
         {
-            auto offset = y * size.x;
-            auto pdf_y = pdf_table[y];
-            auto scale = static_cast<float>(pdf_y * pixel_count);
-            for (auto x = 0u; x < size.x; x++)
-            {
-                pdfs[offset + x] *= scale;
-            }
+            const auto offset = y * size.x;
+            const auto pdf_y = pdf_table[y];
+            const auto scale = static_cast<float>(pdf_y * pixel_count);
+            auto row = luisa::span{ pdfs }.subspan(offset, size.x);
+            std::for_each(row.begin(), row.end(), [&](float& v) { v *= scale; });
         }
     });
     return { std::move(aliases), std::move(pdfs) };
@@ -193,9 +193,9 @@ auto HDRI::precompute(
     Stream& stream
 ) -> AliasTable
 {
-    auto size = hdr.size();
-    auto pixel_count = size.x * size.y;
-    auto buffer = device.create_buffer<float>(pixel_count);
+    const auto size = hdr.size();
+    const auto pixel_count = size.x * size.y;
+    const auto buffer = device.create_buffer<float>(pixel_count);
     luisa::vector<float> scale_map;
     scale_map.push_back_uninitialized(pixel_count);
     stream

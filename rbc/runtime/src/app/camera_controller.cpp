@@ -4,48 +4,44 @@
 namespace rbc {
 // phase
 void CameraController::set_rotation_towards(double3 target_pos) {
-    set_rotation_from_direction(make_double3(make_double3(target_pos) - camera->position));
+    set_rotation_from_direction(make_double3(target_pos - camera->position));
 }
 void CameraController::set_rotation_from_direction(double3 dir) {
-    dir = normalize(dir);
-    rotation_pitch = asin(dir.y);
-    rotation_yaw = atan2f(-dir.x, dir.z);
+    auto const normalized_dir = normalize(dir);
+    rotation_pitch = asin(normalized_dir.y);
+    rotation_yaw = atan2(-normalized_dir.x, normalized_dir.z);
 }
 
 void CameraController::grab_input_from_viewport(Input const &input, float delta_time) {
     LUISA_ASSERT(camera != nullptr);
 
     // get last widget size
-    {
-        _viewport_size = input.viewport_size;
-    }
+    _viewport_size = input.viewport_size;
 
     // update mouse info
-    {
-        auto now_mouse_pos = input.mouse_cursor_pos;
-        _mouse_delta = now_mouse_pos - _mouse_pos;
-        _mouse_pos = now_mouse_pos;
-    }
+    auto const now_mouse_pos = input.mouse_cursor_pos;
+    _mouse_delta = now_mouse_pos - _mouse_pos;
+    _mouse_pos = now_mouse_pos;
 
     // get mouse state
 
     // trigger rotation
-    if (!_is_rotating && (input.is_mouse_right_down)) {
+    if (!_is_rotating && input.is_mouse_right_down) {
         _is_rotating = true;
     }
 
     // end rotation
-    if (_is_rotating && !(input.is_mouse_right_down)) {
+    if (_is_rotating && !input.is_mouse_right_down) {
         _is_rotating = false;
     }
 
     // trigger panning
-    if (!_is_panning && (input.is_mouse_middle_down)) {
+    if (!_is_panning && input.is_mouse_middle_down) {
         _is_panning = true;
     }
 
     // end panning
-    if (_is_panning && !(input.is_mouse_middle_down)) {
+    if (_is_panning && !input.is_mouse_middle_down) {
         _is_panning = false;
     }
     // TODO: may need set cursor
@@ -55,7 +51,7 @@ void CameraController::grab_input_from_viewport(Input const &input, float delta_
     _mouse_wheel = input.is_hovered ? input.mouse_wheel : 0;
 
     // get key state
-    bool allow_move = _is_rotating;
+    bool const allow_move = _is_rotating;
     _shift_down = input.is_shift_down;
     _space_down = input.is_space_down;
     _move_forward = allow_move && input.is_front_dir_key_pressed;
@@ -95,13 +91,13 @@ bool CameraController::any_changed() const {
 void CameraController::_update(float delta_time) {
     if (!_controlling) return;
     LUISA_ASSERT(camera != nullptr);
-    if (transform) {
+    if (transform != nullptr) {
         camera->position = transform->position();
     }
     // camera dirs
-    double3 forward = camera->dir_forward();
-    double3 right = camera->dir_right();
-    double3 up = camera->dir_up();
+    double3 const forward = camera->dir_forward();
+    double3 const right = camera->dir_right();
+    double3 const up = camera->dir_up();
     // rotate & pan
     if (_is_rotating) {
         rotation_yaw -= _mouse_delta.x / _viewport_size.x * rotation_speed;
@@ -111,19 +107,19 @@ void CameraController::_update(float delta_time) {
         camera->position -= make_double3(_mouse_delta.x / _viewport_size.x * (double)move_speed * right);
         camera->position -= make_double3(_mouse_delta.y / _viewport_size.y * (double)move_speed * up);
     }
-    auto mat = transpose(
+    auto const mat = transpose(
         rotation(double3(0, 0, 1), rotation_roll) *
         rotation(double3(1, 0, 0), rotation_pitch) *
         rotation(double3(0, 1, 0), rotation_yaw));
-    auto mat_3x3 = make_double3x3(
+    auto const mat_3x3 = make_double3x3(
         mat[0].xyz(),
         mat[1].xyz(),
         mat[2].xyz());
     camera->rotation_data = mat_3x3;
 
     // wsad control
-    double move_speed_real = _shift_down ? move_speed_fast : (_space_down ? move_speed_slow : move_speed);
-    double move_delta = move_speed_real * delta_time;
+    double const move_speed_real = _shift_down ? move_speed_fast : (_space_down ? move_speed_slow : move_speed);
+    double const move_delta = move_speed_real * delta_time;
     if (_move_forward) {
         camera->position += make_double3(forward * move_delta);
     }
@@ -144,10 +140,10 @@ void CameraController::_update(float delta_time) {
     }
 
     // zoom
-    if (_mouse_wheel) {
+    if (_mouse_wheel != 0.f) {
         camera->position += make_double3(forward * (double)_mouse_wheel * move_speed_real * (double)wheel_move_scale / 100.0);
     }
-    if (transform) {
+    if (transform != nullptr) {
         transform->set_trs(
             camera->position,
             quaternion(mat_3x3),

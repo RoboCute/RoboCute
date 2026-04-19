@@ -44,7 +44,7 @@ private:
 public:
     [[nodiscard]] auto require_sync() const { return _require_sync; }
     // Do not use this only if required
-    void _set_sync() { _require_sync = true; }
+    void set_sync() { _require_sync = true; }
 
     void set_no_warning()
     {

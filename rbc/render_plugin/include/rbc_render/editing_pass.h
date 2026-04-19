@@ -56,7 +56,7 @@ public:
     EditingPass();
     ~EditingPass();
     void wait_enable() override;
-    void contour(PipelineContext const &ctx, luisa::span<uint const> draw_indices);
+    void contour(PipelineContext const &ctx, luisa::span<uint const> draw_indices) const;
 };
 }// namespace rbc
 

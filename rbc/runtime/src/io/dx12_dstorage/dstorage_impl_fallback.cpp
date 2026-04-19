@@ -15,10 +15,12 @@
 #define RBC_FTELL ftello
 #endif
 namespace rbc {
-static constexpr size_t fallback_staging_size = 128ull * 1024ull * 1024ull;
+static constexpr size_t kFallbackStagingSize = 128ull * 1024ull * 1024ull;
 struct DStorageStreamFallbackImpl : DStorageStream {
 public:
-    std::atomic_uint64_t signaled_fence_idx{};
+private:
+    std::atomic_uint64_t _signaled_fence_idx{};
+public:
     ~DStorageStreamFallbackImpl();
     bool support_wait() override { return true; }
     void enqueue_wait(
@@ -71,7 +73,7 @@ public:
         void *event,
         uint64_t fence_index) override;
     uint64_t staging_size() override {
-        return fallback_staging_size;
+        return kFallbackStagingSize;
     }
     void submit() override;
     void free_queue() override;
@@ -88,7 +90,7 @@ public:
         delete this;
     }
     bool timeline_signaled(uint64_t timeline) const override {
-        return signaled_fence_idx.load() >= timeline;
+        return _signaled_fence_idx.load() >= timeline;
     }
 
     DStorageStreamFallbackImpl(
@@ -103,9 +105,9 @@ struct FrameBuffer {
     vstd::StackAllocator host_memory;
     Buffer<uint> upload_buffer;
     uint64_t buffer_offset{};
-    FrameBuffer(uint64_t staging_size, PinnedMemoryExt *_pinnedmem_ext, vstd::VEngineMallocVisitor *visitor)
+    FrameBuffer(uint64_t staging_size, PinnedMemoryExt *pinnedmem_ext, vstd::VEngineMallocVisitor *visitor)
         : host_memory(staging_size, visitor), upload_buffer(
-                                                  _pinnedmem_ext->allocate_pinned_memory<uint>(staging_size / sizeof(uint), PinnedMemoryOption{true})) {
+                                                  pinnedmem_ext->allocate_pinned_memory<uint>(staging_size / sizeof(uint), PinnedMemoryOption{true})) {
     }
 
     void reset() {
@@ -205,7 +207,7 @@ DStorageStreamFallbackImpl::DStorageStreamFallbackImpl(
     Device &device,
     DStorageSrcType src_type)
     : DStorageStream(src_type) {
-    queue = new rbc::detail::IOQueue(device, src_type, fallback_staging_size);
+    queue = new rbc::detail::IOQueue(device, src_type, kFallbackStagingSize);
 }
 
 DStorageStreamFallbackImpl::~DStorageStreamFallbackImpl() {
@@ -444,12 +446,12 @@ void DStorageStreamFallbackImpl::enqueue_wait(
 void DStorageStreamFallbackImpl::enqueue_signal(
     uint64_t event_handle,
     void *event,
-    uint64 fence_index) {
+    uint64_t fence_index) {
     auto queue_impl = static_cast<rbc::detail::IOQueue *>(queue);
     luisa::move_only_function<void(rbc::detail::IOQueue *)> io_queue{[event_handle, fence_index, this](rbc::detail::IOQueue *queue) {
         queue->commit();
         queue->stream << Event::Signal{event_handle, fence_index};
-        signaled_fence_idx = fence_index;
+        _signaled_fence_idx = fence_index;
     }};
     queue_impl->work_thd.lock();
     queue_impl->works.emplace_back(std::move(io_queue));

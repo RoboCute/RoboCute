@@ -1,14 +1,14 @@
 #include "rbc_anim/render/render_data.h"
 #include "rbc_graphics/device_assets/device_transforming_mesh.h"
 
+#include <numeric>
+
 namespace rbc {
 
 void SkeletalMeshRenderData::InitializeWithRefSkeleton(const rbc::ReferenceSkeleton &InRefSkeleton) {
 
-    required_bones.resize_uninitialized(InRefSkeleton.NumJoints());
-    for (auto i = 0; i < InRefSkeleton.NumJoints(); ++i) {
-        required_bones[i] = (BoneIndexType)i;
-    }
+    required_bones.resize_uninitialized(InRefSkeleton.num_joints());
+    std::iota(required_bones.begin(), required_bones.end(), BoneIndexType{0});
     LUISA_INFO("Initialize SkelMeshRenderData with {} Bones", required_bones.size());
 }
 
@@ -28,8 +28,8 @@ void SkelMeshRenderDataLOD::InitResources(SkeletalMeshRenderData *InRenderData, 
     // 动态，应该跟随RenderObject初始化
     LUISA_INFO("Initializing Resources for SkelMeshRenderData");
 
-    auto *InMeshResource = InRenderData->static_mesh_;
-    render_data_ = InRenderData;
+    auto *InMeshResource = InRenderData->static_mesh;
+    render_data = InRenderData;
     Initialize(InMeshResource, InDevice);
 
     skin_primitives.resize_uninitialized(1);

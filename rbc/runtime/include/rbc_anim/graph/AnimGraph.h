@@ -10,7 +10,8 @@ struct RBC_RUNTIME_API AnimGraph : RCBase {
     luisa::vector<RC<AnimNode>> nodes;// record for all nodes
 
 public:
-    rbc::AnimNode *GetRootNode();
+    /// Get the root animation node.
+    rbc::AnimNode *get_root_node() const;
 };
 
 template<>

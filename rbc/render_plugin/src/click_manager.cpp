@@ -13,5 +13,8 @@ void ClickManager::clear() {
     _results.clear();
     _frame_selection_requires.clear();
     _frame_selection_results.clear();
+    _gizmos_requires.clear();
+    _gizmos_clicked_result.clear();
+    _contour_objects.clear();
 }
 }// namespace rbc

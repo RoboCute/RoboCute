@@ -14,7 +14,7 @@ BindlessManager::BindlessManager(Device& device)
 {
 }
 
-uint BindlessManager::_index(uint64 handle, ResourceType type)
+uint BindlessManager::_index(uint64 handle, ResourceType type) const
 {
     std::lock_guard lck{ _mtx };
     auto iter = _map.find(Res{ handle, type });
@@ -48,24 +48,29 @@ uint BindlessManager::_enqueue_tex3d(uint64 handle, Sampler sampler)
     return iter.first.value();
 }
 
+void BindlessManager::_deallocate(ResourceType type, uint index)
+{
+    switch (type)
+    {
+    case ResourceType::Buffer:
+        _alloc.deallocate_buffer(index);
+        break;
+    case ResourceType::Tex2D:
+        _alloc.deallocate_tex2d(index);
+        break;
+    case ResourceType::Tex3D:
+        _alloc.deallocate_tex3d(index);
+        break;
+    }
+}
+
 uint BindlessManager::_dequeue(uint64 handle, ResourceType type)
 {
     std::lock_guard lck{ _mtx };
     auto iter = _map.find(Res{ handle, type });
     LUISA_ASSERT(iter, "Invalid bindless dequeue");
-    switch (iter.key().type)
-    {
-    case ResourceType::Buffer:
-        _alloc.deallocate_buffer(iter.value());
-        break;
-    case ResourceType::Tex2D:
-        _alloc.deallocate_tex2d(iter.value());
-        break;
-    case ResourceType::Tex3D:
-        _alloc.deallocate_tex3d(iter.value());
-        break;
-    }
     auto v = iter.value();
+    _deallocate(iter.key().type, v);
     _map.remove(iter);
     return v;
 }
@@ -73,18 +78,7 @@ void BindlessManager::clear_all()
 {
     for (auto&& i : _map)
     {
-        switch (i.first.type)
-        {
-        case ResourceType::Buffer:
-            _alloc.deallocate_buffer(i.second);
-            break;
-        case ResourceType::Tex2D:
-            _alloc.deallocate_tex2d(i.second);
-            break;
-        case ResourceType::Tex3D:
-            _alloc.deallocate_tex3d(i.second);
-            break;
-        }
+        _deallocate(i.first.type, i.second);
     }
     _map.clear();
 }

@@ -3,6 +3,7 @@
 #include <luisa/core/logging.h>
 #include <luisa/runtime/stream.h>
 #include <luisa/runtime/image.h>
+#include <mutex>
 
 namespace rbc {
 static thread_local bool _is_rendering_thread{false};
@@ -26,9 +27,8 @@ void RenderDevice::set_instance(RenderDevice *device) {
     render_device_detail::_inst = device;
 }
 void RenderDevice::set_main_stream(Stream *main_stream) {
-    _render_loop_mtx.lock();
+    std::lock_guard<std::mutex> lock(_render_loop_mtx);
     _main_stream_ptr = main_stream;
-    _render_loop_mtx.unlock();
 }
 void RenderDevice::execute_after_cmdlist_commit_task() {
     for (auto &i : _after_commit_task) {
@@ -40,7 +40,7 @@ void RenderDevice::add_after_cmdlist_commit_task(luisa::move_only_function<void(
     _after_commit_task.emplace_back(std::move(task));
 }
 void RenderDevice::execute_before_cmdlist_commit_task() {
-    // Never call
+    // internal use only
     if (_main_cmd_list.commands().empty()) return;
     for (auto &i : _before_commit_task) {
         i();

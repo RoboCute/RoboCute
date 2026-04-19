@@ -28,7 +28,7 @@ struct RBC_RUNTIME_API SkelMeshResource : world::ResourceBaseImpl<SkelMeshResour
 
     rbc::coroutine _async_load() override;
 
-    RC<SkinResource> GetSkinResource() const { return ref_skin; }
+    RC<SkinResource> get_skin_resource() const { return ref_skin; }
 
     RC<SkinResource> ref_skin;
     RC<SkeletonResource> ref_skeleton;

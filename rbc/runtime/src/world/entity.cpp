@@ -58,8 +58,7 @@ void Component::remove_world_event(WorldEventType event_type) {
     std::lock_guard lck{map.mtx};
     map.map.erase(this);
 }
-Entity::Entity() {
-}
+Entity::Entity() = default;
 
 Entity::~Entity() {
     for (auto &i : _components) {
@@ -125,7 +124,7 @@ Component *Entity::get_component(MD5 const &type_md5) {
 void Entity::serialize_meta(ObjSerialize const &ser) const {
     ser.ar.start_array();
     for (auto &i : _components) {
-        auto comp = i.second;
+        auto const &comp = i.second;
         if (!comp) return;
         ser.ar.start_object();
         auto type_id = comp->type_id();
@@ -207,8 +206,7 @@ void Entity::set_name(luisa::string name) {
     _name = std::move(name);
 }
 Component::Component() = default;
-Component::~Component() {
-}
+Component::~Component() = default;
 DECLARE_WORLD_OBJECT_REGISTER(Entity)
 }// namespace rbc::world
 

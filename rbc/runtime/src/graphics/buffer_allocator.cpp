@@ -13,13 +13,9 @@ auto BufferAllocator::allocate(
 	vstd::FuncRef<void(Buffer<uint> const& old_buffer, Buffer<uint> const& new_buffer)> before_copy,
 	AllocateType alloc_type) -> Node {
 	size = (size + 3) & (~3);
-	auto fit_node = [&]() {
-		if (alloc_type == AllocateType::FirstFit) {
-			return _fit.allocate(size);
-		} else {
-			return _fit.allocate(size);
-		}
-	}();
+	auto fit_node = (alloc_type == AllocateType::FirstFit)
+		? _fit.allocate(size)
+		: _fit.allocate_best_fit(size);
 	size_t buffer_size = fit_node->offset() + fit_node->size();
 	if (buffer_size > _capacity) {
 		size_t new_capa = _capacity;
@@ -27,10 +23,10 @@ auto BufferAllocator::allocate(
 			new_capa *= 2;
 		} while (buffer_size > new_capa);
 		_capacity = new_capa;
-		auto buffer_size = _capacity / sizeof(uint);
-		if (_buffer.size() < buffer_size) {
+		auto uint_buffer_size = _capacity / sizeof(uint);
+		if (_buffer.size() < uint_buffer_size) {
 			_dirty = true;
-			auto new_buffer = device.create_buffer<uint>(buffer_size);
+			auto new_buffer = device.create_buffer<uint>(uint_buffer_size);
 			before_copy(_buffer, new_buffer);
 			cmd_list << new_buffer.view(0, _buffer.size()).copy_from(_buffer);
 			disp_queue.dispose_after_queue(std::move(_buffer));
@@ -44,6 +40,5 @@ auto BufferAllocator::allocate(
 void BufferAllocator::free(Node node) {
 	_fit.free(node._fit_node);
 }
-BufferAllocator::~BufferAllocator() {
-}
+BufferAllocator::~BufferAllocator() = default;
 }// namespace rbc

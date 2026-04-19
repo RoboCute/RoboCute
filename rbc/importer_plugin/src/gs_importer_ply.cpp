@@ -4,8 +4,6 @@
 #include <luisa/core/binary_file_stream.h>
 #include <luisa/core/logging.h>
 
-#include <cstring>
-#include <cctype>
 #include <string>
 #include <cmath>
 
@@ -59,7 +57,7 @@ bool PlyGaussianSplatImporter::import(Resource *resource_base, luisa::filesystem
     }
     
     auto &vertex_element = ply_in.getElement("vertex");
-    int N = static_cast<int>(vertex_element.count);
+    int const N = static_cast<int>(vertex_element.count);
     
     if (N == 0) [[unlikely]] {
         LUISA_WARNING("No vertices in PLY file: {}", path.string());
@@ -78,7 +76,7 @@ bool PlyGaussianSplatImporter::import(Resource *resource_base, luisa::filesystem
         sh_degree = 1;
     }
     
-    int stride = (sh_degree + 1) * (sh_degree + 1);
+    int const stride = (sh_degree + 1) * (sh_degree + 1);
     
     // Create resource with detected parameters
     resource->create_empty(static_cast<uint32_t>(N), static_cast<uint32_t>(sh_degree));
@@ -88,9 +86,9 @@ bool PlyGaussianSplatImporter::import(Resource *resource_base, luisa::filesystem
     auto sh_coeffs = resource->host_sh_coeffs();
     
     // Read position data
-    std::vector<float> x = vertex_element.getProperty<float>("x");
-    std::vector<float> y = vertex_element.getProperty<float>("y");
-    std::vector<float> z = vertex_element.getProperty<float>("z");
+    std::vector<float> const x = vertex_element.getProperty<float>("x");
+    std::vector<float> const y = vertex_element.getProperty<float>("y");
+    std::vector<float> const z = vertex_element.getProperty<float>("z");
     
     for (int i = 0; i < N; i++) {
         probes[i].position[0] = x[i];
@@ -100,36 +98,36 @@ bool PlyGaussianSplatImporter::import(Resource *resource_base, luisa::filesystem
     
     // Read DC features (f_dc_0, f_dc_1, f_dc_2) - always present
     for (int channel = 0; channel < 3; channel++) {
-        std::string dc_feat_name = "f_dc_" + std::to_string(channel);
-        std::vector<float> dc_feat = vertex_element.getProperty<float>(dc_feat_name);
-        int offset = 0;
+        std::string const dc_feat_name = "f_dc_" + std::to_string(channel);
+        std::vector<float> const dc_feat = vertex_element.getProperty<float>(dc_feat_name);
+        int const offset = 0;
         for (int j = 0; j < N; j++) {
             sh_coeffs[offset * 3 + channel + j * stride * 3] = dc_feat[j];
         }
     }
     
     // Read REST features (f_rest_*) if present
-    int num_rest_coeffs = (stride - 1) * 3;
+    int const num_rest_coeffs = (stride - 1) * 3;
     for (int i = 0; i < num_rest_coeffs; i++) {
-        std::string rest_feat_name = "f_rest_" + std::to_string(i);
-        int channel = i / (stride - 1);
-        int offset = i % (stride - 1) + 1;
-        std::vector<float> rest_feat = vertex_element.getProperty<float>(rest_feat_name);
+        std::string const rest_feat_name = "f_rest_" + std::to_string(i);
+        int const channel = i / (stride - 1);
+        int const offset = i % (stride - 1) + 1;
+        std::vector<float> const rest_feat = vertex_element.getProperty<float>(rest_feat_name);
         for (int j = 0; j < N; j++) {
             sh_coeffs[offset * 3 + channel + j * stride * 3] = rest_feat[j];
         }
     }
     
     // Read opacity and apply activation
-    std::vector<float> opacity = vertex_element.getProperty<float>("opacity");
+    std::vector<float> const opacity = vertex_element.getProperty<float>("opacity");
     for (int i = 0; i < N; i++) {
         probes[i].opacity = opacity_activation(opacity[i]);
     }
     
     // Read scales and apply activation
     for (int i = 0; i < 3; i++) {
-        std::string scale_name = "scale_" + std::to_string(i);
-        std::vector<float> scale_feat = vertex_element.getProperty<float>(scale_name);
+        std::string const scale_name = "scale_" + std::to_string(i);
+        std::vector<float> const scale_feat = vertex_element.getProperty<float>(scale_name);
         for (int j = 0; j < N; j++) {
             probes[j].scale[i] = scaling_activation(scale_feat[j]);
         }
@@ -137,8 +135,8 @@ bool PlyGaussianSplatImporter::import(Resource *resource_base, luisa::filesystem
     
     // Read rotations
     for (int i = 0; i < 4; i++) {
-        std::string rotation_name = "rot_" + std::to_string(i);
-        std::vector<float> rotation_feat = vertex_element.getProperty<float>(rotation_name);
+        std::string const rotation_name = "rot_" + std::to_string(i);
+        std::vector<float> const rotation_feat = vertex_element.getProperty<float>(rotation_name);
         for (int j = 0; j < N; j++) {
             // rot_0 is real part (w), stored in rotation.x
             // rot_1,2,3 are imaginary parts (x,y,z), stored in rotation.yzw

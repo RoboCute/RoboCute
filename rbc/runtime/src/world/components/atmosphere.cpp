@@ -35,8 +35,8 @@ void AtmosphereComponent::update_data() {
     }
 }
 void AtmosphereComponent::on_destroy() {}
-AtmosphereComponent::AtmosphereComponent() {}
-AtmosphereComponent::~AtmosphereComponent() {}
+AtmosphereComponent::AtmosphereComponent() = default;
+AtmosphereComponent::~AtmosphereComponent() = default;
 DECLARE_WORLD_OBJECT_REGISTER(AtmosphereComponent)
 
 }// namespace rbc::world

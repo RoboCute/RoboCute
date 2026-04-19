@@ -8,16 +8,19 @@ namespace rbc::world {
  * This function should be called during system initialization
  */
 struct ImporterPluginStatic {
-    luisa::shared_ptr<luisa::DynamicModule> importer_plugin;
+private:
+    luisa::shared_ptr<luisa::DynamicModule> _importer_plugin;
+public:
+    luisa::shared_ptr<luisa::DynamicModule> &importer_plugin() { return _importer_plugin; }
 };
 static RuntimeStatic<ImporterPluginStatic> _importer_plug;
 RBC_RUNTIME_API void register_builtin_importers() {
     // auto &registry = ResourceImporterRegistry::instance();
-    _importer_plug->importer_plugin = PluginManager::instance().load_module("rbc_importer_plugin");
-    if (_importer_plug->importer_plugin && *_importer_plug->importer_plugin)
-        _importer_plug->importer_plugin->invoke<void()>(
+    _importer_plug->importer_plugin() = PluginManager::instance().load_module("rbc_importer_plugin");
+    if (_importer_plug->importer_plugin() && *_importer_plug->importer_plugin())
+        _importer_plug->importer_plugin()->invoke<void()>(
             "register_builtin_importers");
     // Anim Resources
 }
 
-}// namespace rbc::world
+} // namespace rbc::world

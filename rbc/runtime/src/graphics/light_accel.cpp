@@ -15,7 +15,7 @@ std::array<float, 3> LightAccel::PackFloat3(float3 const& arr)
 namespace detail
 {
 
-float LightLuminance(float3 rad)
+float LightLuminance(float3 const& rad)
 {
     return dot(rad, float3(0.2126729, 0.7151522, 0.0721750));
 }
@@ -26,11 +26,11 @@ float LightLuminance(std::array<float, 3> const& rad)
 } // namespace detail
 LightAccel::LightAccel(Device& device)
     : _device(device)
-    , point_lights(luisa::to_underlying(LightType::Sphere))
-    , spot_lights(luisa::to_underlying(LightType::Spot))
-    , area_lights(luisa::to_underlying(LightType::Area))
-    , mesh_lights(luisa::to_underlying(LightType::Blas))
-    , disk_lights(luisa::to_underlying(LightType::Disk))
+    , _point_lights(luisa::to_underlying(LightType::Sphere))
+    , _spot_lights(luisa::to_underlying(LightType::Spot))
+    , _area_lights(luisa::to_underlying(LightType::Area))
+    , _mesh_lights(luisa::to_underlying(LightType::Blas))
+    , _disk_lights(luisa::to_underlying(LightType::Disk))
 {
     // #ifdef ENABLE_TEMPORAL_DI
     // #endif
@@ -46,29 +46,29 @@ uint LightAccel::Light<T>::emplace(
     uint user_id
 )
 {
-    uint index = host_data.size();
+    uint index = _host_data.size();
     auto accel_id = self._inst_ids.size();
-    self._inst_ids.emplace_back(InstIndex{ light_type, uint(index) });
+    self._inst_ids.emplace_back(InstIndex{ _light_type, uint(index) });
     auto& node = self._input_nodes.emplace_back(data.leaf_node());
-    node.write_index(light_type, index);
-    host_data.emplace_back(data, accel_id, user_id);
-    if (host_data.size() >= LightAccel::t_MaxLightCount) [[unlikely]]
+    node.write_index(_light_type, index);
+    _host_data.emplace_back(data, accel_id, user_id);
+    if (_host_data.size() >= LightAccel::t_MaxLightCount) [[unlikely]]
     {
         LUISA_ERROR("Light count out of range {}", t_MaxLightCount);
     }
-    size_t buffer_size = device_data ? device_data.size() : 0;
-    if (host_data.capacity() > buffer_size) [[unlikely]]
+    size_t buffer_size = _device_data ? _device_data.size() : 0;
+    if (_host_data.capacity() > buffer_size) [[unlikely]]
     {
-        auto new_buffer = self._device.create_buffer<T>(std::max(host_data.capacity(), 65536u / sizeof(T)));
-        if (device_data)
+        auto new_buffer = self._device.create_buffer<T>(std::max(_host_data.capacity(), 65536u / sizeof(T)));
+        if (_device_data)
         {
-            uploader.swap_buffer(device_data, new_buffer);
-            cmdlist << new_buffer.view(0, index).copy_from(device_data.view(0, index));
-            disp_queue.dispose_after_queue(std::move(device_data));
+            uploader.swap_buffer(_device_data, new_buffer);
+            cmdlist << new_buffer.view(0, index).copy_from(_device_data.view(0, index));
+            disp_queue.dispose_after_queue(std::move(_device_data));
         }
-        device_data = std::move(new_buffer);
+        _device_data = std::move(new_buffer);
     }
-    uploader.emplace_copy_cmd(device_data.view(index, 1), &data);
+    uploader.emplace_copy_cmd(_device_data.view(index, 1), &data);
     return index;
 }
 template <typename T>
@@ -79,10 +79,10 @@ void LightAccel::Light<T>::update(
     T const& t
 )
 {
-    auto& host = host_data[index];
-    host.data = t;
-    uploader.emplace_copy_cmd(device_data.view(index, 1), &t);
-    auto& node = self._input_nodes[host.accel_id];
+    auto& host = _host_data[index];
+    host._data = t;
+    uploader.emplace_copy_cmd(_device_data.view(index, 1), &t);
+    auto& node = self._input_nodes[host._accel_id];
     auto leaf_node = t.leaf_node();
     leaf_node.index = node.index;
     node = leaf_node;
@@ -90,29 +90,22 @@ void LightAccel::Light<T>::update(
 
 uint* LightAccel::get_accel_id(uint light_type, uint index)
 {
-    uint* ptr{};
     switch (static_cast<LightType>(light_type))
     {
     case LightType::Sphere:
-        ptr = &point_lights.host_data[index].accel_id;
-        break;
+        return &_point_lights._host_data[index]._accel_id;
     case LightType::Spot:
-        ptr = &spot_lights.host_data[index].accel_id;
-        break;
+        return &_spot_lights._host_data[index]._accel_id;
     case LightType::Area:
-        ptr = &area_lights.host_data[index].accel_id;
-        break;
+        return &_area_lights._host_data[index]._accel_id;
     case LightType::Disk:
-        ptr = &disk_lights.host_data[index].accel_id;
-        break;
+        return &_disk_lights._host_data[index]._accel_id;
     case LightType::Blas:
-        ptr = &mesh_lights.host_data[index].accel_id;
-        break;
+        return &_mesh_lights._host_data[index]._accel_id;
     default:
         LUISA_ERROR_WITH_LOCATION("Invalid light type id.");
-        break;
+        return nullptr;
     }
-    return ptr;
 }
 
 template <typename T>
@@ -122,24 +115,24 @@ auto LightAccel::Light<T>::remove(
     uint index
 ) -> SwapBackCmd
 {
-    auto& curr_data = host_data[index];
-    auto accel_id = curr_data.accel_id;
+    auto& curr_data = _host_data[index];
+    auto accel_id = curr_data._accel_id;
     // remove self in light-list
     SwapBackCmd cmd{
         -1u,
         -1u
     };
-    if (index != host_data.size() - 1)
+    if (index != _host_data.size() - 1)
     {
-        cmd.transformed_user_id = host_data.back().user_id;
+        cmd.transformed_user_id = _host_data.back()._user_id;
         cmd.new_light_index = index;
-        curr_data = host_data.back();
-        self._inst_ids[curr_data.accel_id].light_index = index;
-        auto& node = self._input_nodes[curr_data.accel_id];
-        node.write_index(light_type, index);
-        uploader.emplace_copy_cmd(device_data.view(index, 1), &curr_data.data);
+        curr_data = _host_data.back();
+        self._inst_ids[curr_data._accel_id].light_index = index;
+        auto& node = self._input_nodes[curr_data._accel_id];
+        node.write_index(_light_type, index);
+        uploader.emplace_copy_cmd(_device_data.view(index, 1), &curr_data._data);
     }
-    host_data.pop_back();
+    _host_data.pop_back();
     // remove self in accel
     self._erase_accel_inst(accel_id);
     return cmd;
@@ -164,20 +157,20 @@ void LightAccel::_erase_accel_inst(uint accel_id)
 }
 void LightAccel::reserve_tlas()
 {
-    capacity = _input_nodes.size() * 2;
-    _tlas_data.reserve(capacity);
+    _capacity = _input_nodes.size() * 2;
+    _tlas_data.reserve(_capacity);
 }
 void LightAccel::build_tlas()
 {
-    if (!_dirty || capacity == 0) return;
+    if (!_dirty || _capacity == 0) return;
     BVH::build(_tlas_data, _input_nodes);
-    capacity = _tlas_data.size();
+    _capacity = _tlas_data.size();
     _dirty = false;
 }
 void LightAccel::update_tlas(CommandList& cmdlist, DisposeQueue& disp_queue)
 {
-    if (!_dirty || capacity == 0) return;
-    if (_tlas_buffer && _tlas_buffer.size() < capacity)
+    if (!_dirty || _capacity == 0) return;
+    if (_tlas_buffer && _tlas_buffer.size() < _capacity)
     {
         disp_queue.dispose_after_queue(std::move(_tlas_buffer));
     }
@@ -185,11 +178,11 @@ void LightAccel::update_tlas(CommandList& cmdlist, DisposeQueue& disp_queue)
     {
         _tlas_buffer =
             _device.create_buffer<BVH::PackedNode>(
-                std::max(capacity, 65536 / sizeof(BVH::PackedNode))
+                std::max(_capacity, 65536 / sizeof(BVH::PackedNode))
             );
     }
 
-    cmdlist << _tlas_buffer.view(0, capacity).copy_from(luisa::span(_tlas_data.data(), capacity));
+    cmdlist << _tlas_buffer.view(0, _capacity).copy_from(luisa::span(_tlas_data.data(), _capacity));
 }
 void LightAccel::mark_light_dirty(
     uint light_type,
@@ -281,7 +274,7 @@ uint LightAccel::emplace(
 )
 {
     _dirty = true;
-    auto idx = area_lights.emplace(
+    auto idx = _area_lights.emplace(
         *this,
         scene_manager.dispose_queue(),
         cmdlist,
@@ -301,7 +294,7 @@ uint LightAccel::emplace(
 )
 {
     _dirty = true;
-    auto idx = disk_lights.emplace(
+    auto idx = _disk_lights.emplace(
         *this,
         scene_manager.dispose_queue(),
         cmdlist,
@@ -321,7 +314,7 @@ uint LightAccel::emplace(
 )
 {
     _dirty = true;
-    auto idx = point_lights.emplace(
+    auto idx = _point_lights.emplace(
         *this,
         scene_manager.dispose_queue(),
         cmdlist,
@@ -341,7 +334,7 @@ uint LightAccel::emplace(
 )
 {
     _dirty = true;
-    auto idx = spot_lights.emplace(
+    auto idx = _spot_lights.emplace(
         *this,
         scene_manager.dispose_queue(),
         cmdlist,
@@ -372,7 +365,7 @@ uint LightAccel::emplace(
         mesh_light.bounding_max[2]
     };
     float3 min_v{ std::numeric_limits<float>::max() };
-    float3 max_v{ std::numeric_limits<float>::min() };
+    float3 max_v{ std::numeric_limits<float>::lowest() };
     float3 v = (transform * make_float4(bounding_min, 1.0f)).xyz();
     min_v = min(v, min_v);
     max_v = max(v, max_v);
@@ -408,7 +401,7 @@ uint LightAccel::emplace(
     };
 
     _dirty = true;
-    auto idx = mesh_lights.emplace(
+    auto idx = _mesh_lights.emplace(
         *this,
         scene_manager.dispose_queue(),
         cmdlist,
@@ -427,7 +420,7 @@ void LightAccel::update(
 )
 {
     _dirty = true;
-    area_lights.update(
+    _area_lights.update(
         *this,
         scene_manager.buffer_uploader(),
         index,
@@ -444,7 +437,7 @@ void LightAccel::update(
 )
 {
     _dirty = true;
-    disk_lights.update(
+    _disk_lights.update(
         *this,
         scene_manager.buffer_uploader(),
         index,
@@ -461,7 +454,7 @@ void LightAccel::update(
 )
 {
     _dirty = true;
-    point_lights.update(
+    _point_lights.update(
         *this,
         scene_manager.buffer_uploader(),
         index,
@@ -478,7 +471,7 @@ void LightAccel::update(
 )
 {
     _dirty = true;
-    spot_lights.update(
+    _spot_lights.update(
         *this,
         scene_manager.buffer_uploader(),
         index,
@@ -495,7 +488,7 @@ void LightAccel::update(
 )
 {
     _dirty = true;
-    mesh_lights.update(
+    _mesh_lights.update(
         *this,
         scene_manager.buffer_uploader(),
         index,
@@ -511,16 +504,16 @@ auto LightAccel::remove_area(
 ) -> SwapBackCmd
 {
     _dirty = true;
-    auto cmd = area_lights.remove(
+    auto cmd = _area_lights.remove(
         *this,
         scene_manager.buffer_uploader(),
         index
     );
     // #ifdef ENABLE_TEMPORAL_DI
-    mark_light_dirty(t_AreaLight, area_lights.host_data.size());
+    mark_light_dirty(t_AreaLight, _area_lights._host_data.size());
     mark_light_dirty(t_AreaLight, index);
-    return cmd;
     // #endif
+    return cmd;
 }
 auto LightAccel::remove_disk(
     SceneManager& scene_manager,
@@ -528,16 +521,16 @@ auto LightAccel::remove_disk(
 ) -> SwapBackCmd
 {
     _dirty = true;
-    auto cmd = disk_lights.remove(
+    auto cmd = _disk_lights.remove(
         *this,
         scene_manager.buffer_uploader(),
         index
     );
     // #ifdef ENABLE_TEMPORAL_DI
-    mark_light_dirty(t_DiskLight, disk_lights.host_data.size());
+    mark_light_dirty(t_DiskLight, _disk_lights._host_data.size());
     mark_light_dirty(t_DiskLight, index);
-    return cmd;
     // #endif
+    return cmd;
 }
 auto LightAccel::remove_spot(
     SceneManager& scene_manager,
@@ -545,13 +538,13 @@ auto LightAccel::remove_spot(
 ) -> SwapBackCmd
 {
     _dirty = true;
-    auto cmd = spot_lights.remove(
+    auto cmd = _spot_lights.remove(
         *this,
         scene_manager.buffer_uploader(),
         index
     );
     // #ifdef ENABLE_TEMPORAL_DI
-    mark_light_dirty(t_SpotLight, spot_lights.host_data.size());
+    mark_light_dirty(t_SpotLight, _spot_lights._host_data.size());
     mark_light_dirty(t_SpotLight, index);
     // #endif
     return cmd;
@@ -562,13 +555,13 @@ auto LightAccel::remove_point(
 ) -> SwapBackCmd
 {
     _dirty = true;
-    auto cmd = point_lights.remove(
+    auto cmd = _point_lights.remove(
         *this,
         scene_manager.buffer_uploader(),
         index
     );
     // #ifdef ENABLE_TEMPORAL_DI
-    mark_light_dirty(t_PointLight, point_lights.host_data.size());
+    mark_light_dirty(t_PointLight, _point_lights._host_data.size());
     mark_light_dirty(t_PointLight, index);
     // #endif
     return cmd;
@@ -579,13 +572,13 @@ auto LightAccel::remove_mesh(
 ) -> SwapBackCmd
 {
     _dirty = true;
-    auto cmd = mesh_lights.remove(
+    auto cmd = _mesh_lights.remove(
         *this,
         scene_manager.buffer_uploader(),
         index
     );
     // #ifdef ENABLE_TEMPORAL_DI
-    mark_light_dirty(t_MeshLight, mesh_lights.host_data.size());
+    mark_light_dirty(t_MeshLight, _mesh_lights._host_data.size());
     mark_light_dirty(t_MeshLight, index);
     // #endif
     return cmd;
@@ -596,7 +589,7 @@ void LightAccel::generate_sphere_mesh(
     uint order
 )
 {
-    const float f = (1.0 + std::pow(5.0, 0.5)) / 2.0;
+    float const f = (1.0 + std::pow(5.0, 0.5)) / 2.0;
     uint64_t T = 1;
     for (auto idx : vstd::range(order))
     {
@@ -623,33 +616,33 @@ void LightAccel::generate_sphere_mesh(
         3, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9,
         9, 8, 1, 4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7
     };
-    vstd::unordered_map<uint, uint> midCache;
+    vstd::unordered_map<uint, uint> mid_cache;
     uint v = 12;
-    auto addMidPoint = [&](uint a, uint b) {
+    auto add_mid_point = [&](uint a, uint b) {
         uint key = ((a + b) * (a + b + 1u) / 2u) + std::min(a, b);
-        auto iter = midCache.find(key);
-        if (iter != midCache.end())
+        auto iter = mid_cache.find(key);
+        if (iter != mid_cache.end())
         {
             auto i = iter->second;
-            midCache.erase(iter);
+            mid_cache.erase(iter);
             return i;
         }
-        midCache.try_emplace(key, v);
+        mid_cache.try_emplace(key, v);
         vertices[v] = (vertices[a] + vertices[b]) / 2.0f;
         return v++;
     };
-    auto trianglesPrev = std::move(triangles);
+    auto triangles_prev = std::move(triangles);
     for (uint i = 0; i < order; i++)
     {
-        triangles.resize_uninitialized(trianglesPrev.size() * 4);
-        for (uint k = 0; k < trianglesPrev.size(); k += 3)
+        triangles.resize_uninitialized(triangles_prev.size() * 4);
+        for (uint k = 0; k < triangles_prev.size(); k += 3)
         {
-            const auto v1 = trianglesPrev[k + 0];
-            const auto v2 = trianglesPrev[k + 1];
-            const auto v3 = trianglesPrev[k + 2];
-            const auto a = addMidPoint(v1, v2);
-            const auto b = addMidPoint(v2, v3);
-            const auto c = addMidPoint(v3, v1);
+            const auto v1 = triangles_prev[k + 0];
+            const auto v2 = triangles_prev[k + 1];
+            const auto v3 = triangles_prev[k + 2];
+            const auto a = add_mid_point(v1, v2);
+            const auto b = add_mid_point(v2, v3);
+            const auto c = add_mid_point(v3, v1);
             auto t = k * 4;
             triangles[t++] = v1;
             triangles[t++] = a;
@@ -664,9 +657,9 @@ void LightAccel::generate_sphere_mesh(
             triangles[t++] = b;
             triangles[t++] = c;
         }
-        trianglesPrev = std::move(triangles);
+        triangles_prev = std::move(triangles);
     }
-    triangles = std::move(trianglesPrev);
+    triangles = std::move(triangles_prev);
     for (auto& i : vertices)
     {
         i = normalize(i);

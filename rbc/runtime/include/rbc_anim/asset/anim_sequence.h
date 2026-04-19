@@ -22,15 +22,15 @@ public:
 
 
 public:
-    [[nodiscard]] const AnimSequenceRuntimeAsset &GetRawAnim() const { return animation; }
-    [[nodiscard]] int GetNumSoaTracks() const { return animation.num_soa_tracks(); }
-    [[nodiscard]] int GetNumTracks() const { return animation.num_tracks(); }
+    [[nodiscard]] const AnimSequenceRuntimeAsset &GetRawAnim() const { return _animation; }
+    [[nodiscard]] int GetNumSoaTracks() const { return _animation.num_soa_tracks(); }
+    [[nodiscard]] int GetNumTracks() const { return _animation.num_tracks(); }
 
     void log_brief() const;// debug helper
 
     // Rate scale control
-    [[nodiscard]] float GetRateScale() const { return rate_scale; }
-    void SetRateScale(float InRateScale) { rate_scale = InRateScale; }
+    [[nodiscard]] float GetRateScale() const { return _rate_scale; }
+    void SetRateScale(float InRateScale) { _rate_scale = InRateScale; }
 
     // void TickAssetPlayer(AnimTickRecord &InTickRecord, AnimAssetTickContext &InContext);
     // Actural Evaluate
@@ -39,8 +39,8 @@ public:
 
 private:
     friend struct rbc::Serialize<AnimSequence>;
-    AnimSequenceRuntimeAsset animation;
-    float rate_scale = 1.0f;
+    AnimSequenceRuntimeAsset _animation;
+    float _rate_scale = 1.0f;
 };
 
 }// namespace rbc::world

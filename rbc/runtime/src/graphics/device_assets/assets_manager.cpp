@@ -19,7 +19,7 @@ namespace asset_mng_detail {
 AssetsManager *_inst{};
 template<typename T>
 void atomic_max(std::atomic<T> &a, T b) {
-    uint64 prev_value = a;
+    T prev_value = a.load();
     while (prev_value < b && !a.compare_exchange_weak(prev_value, b)) {
         std::this_thread::yield();
     }
@@ -67,8 +67,7 @@ void AssetsManager::set_root_path(luisa::filesystem::path assets_root_path) {
 }
 
 AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mng)
-    : _render_device(render_device) {
-    _scene_mng = scene_mng;
+    : _render_device(render_device), _scene_mng(scene_mng) {
     for (auto &i : _async_frame_res) {
         i.temp_buffer.create(render_device.lc_device());
     }
@@ -140,7 +139,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
             for (auto &i : funcs) {
                 i(load_task);
             }
-            auto finish_callbak = luisa::make_shared<asset_mng_detail::FinishCallback>(&_finished_frame_index, executed_frame, std::move(funcs));
+            auto finish_callback = luisa::make_shared<asset_mng_detail::FinishCallback>(&_finished_frame_index, executed_frame, std::move(funcs));
             _load_buffer_uploader.commit(cmdlist, *frame_res.temp_buffer);
             _load_stream_disqueue.on_frame_end(cmdlist);
             _scene_mng->mesh_manager().execute_build_cmds(cmdlist, _scene_mng->bindless_allocator(), *frame_res.temp_buffer);
@@ -161,14 +160,14 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                                         mem_io_cmdlist = std::move(mem_io_cmdlist),
                                         io_cmdlist = std::move(io_cmdlist),
                                         cmdlist = std::move(cmdlist),
-                                        finish_callbak = std::move(finish_callbak)]() mutable {
+                                        finish_callback = std::move(finish_callback)]() mutable {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
                 if (!io_cmdlist.empty()) {
                     if (cmdlist.empty()) {
-                        if (finish_callbak)
-                            io_cmdlist.add_callback([finish_callbak]() {});
+                        if (finish_callback)
+                            io_cmdlist.add_callback([finish_callback]() {});
                     }
                     frame_res.disk_io_fence = _render_device.io_service()->execute(std::move(io_cmdlist));
                     if (require_disk_io_sync) {
@@ -182,8 +181,8 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                 bool require_memory_io_sync = false;
                 if (!mem_io_cmdlist.empty()) {
                     if (cmdlist.empty()) {
-                        if (finish_callbak)
-                            mem_io_cmdlist.add_callback([finish_callbak]() {});
+                        if (finish_callback)
+                            mem_io_cmdlist.add_callback([finish_callback]() {});
                     }
                     frame_res.mem_io_fence = _render_device.mem_io_service()->execute(std::move(mem_io_cmdlist));
                     if (require_memory_io_sync) {
@@ -194,7 +193,7 @@ AssetsManager::AssetsManager(RenderDevice &render_device, SceneManager *scene_mn
                     require_memory_io_sync = true;
                 }
                 if (!cmdlist.empty()) {
-                    cmdlist.add_callback([finish_callbak]() {});
+                    cmdlist.add_callback([finish_callback]() {});
                     _render_device.async_compute_loop_mtx().lock();
                     if (!require_disk_io_sync) {
                         _render_device.lc_async_stream() << _render_device.io_service()->wait(frame_res.disk_io_fence);

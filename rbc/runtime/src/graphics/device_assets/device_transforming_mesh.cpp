@@ -5,18 +5,17 @@
 namespace rbc {
 DeviceTransformingMesh::DeviceTransformingMesh() {}
 DeviceTransformingMesh::~DeviceTransformingMesh() {
-    if (_render_mesh_data) {
-        auto inst = AssetsManager::instance();
-        if (inst) {
-            inst->scene_mng()->mesh_manager().emplace_unload_mesh_cmd(_render_mesh_data);
-            if (_last_vertex_heap_idx != ~0u)
-                inst->scene_mng()->bindless_allocator().deallocate_buffer(_last_vertex_heap_idx);
-        }
-    }
+    if (!_render_mesh_data) return;
+    auto inst = AssetsManager::instance();
+    if (!inst) return;
+    inst->scene_mng()->mesh_manager().emplace_unload_mesh_cmd(_render_mesh_data);
+    if (_last_vertex_heap_idx != ~0u)
+        inst->scene_mng()->bindless_allocator().deallocate_buffer(_last_vertex_heap_idx);
 }
 void DeviceTransformingMesh::async_load(RC<DeviceMesh> origin_mesh, bool copy_from_origin, bool init_last_vertex) {
     _origin_mesh = std::move(origin_mesh);
     auto inst = AssetsManager::instance();
+    if (!inst) return;
     _gpu_load_frame = std::numeric_limits<uint64_t>::max();
     inst->load_thd_queue.push([copy_from_origin, init_last_vertex, this_shared = RC{this}](LoadTaskArgs const &args) {
         auto inst = AssetsManager::instance();
@@ -52,7 +51,7 @@ void DeviceTransformingMesh::create_from_origin(DeviceMesh *device_mesh, bool in
         _last_vertex_heap_idx = sm.bindless_allocator().allocate_buffer(_last_vertex);
     }
 }
-void DeviceTransformingMesh::copy_from_origin(CommandList &cmdlist) {
+void DeviceTransformingMesh::copy_from_origin(CommandList &cmdlist) const {
     LUISA_ASSERT(_origin_mesh && _render_mesh_data);
     cmdlist << _render_mesh_data->pack.mutable_data.view().copy_from(_origin_mesh->mesh_data()->pack.data.view(0, _render_mesh_data->pack.mutable_data.size()));
     if (_last_vertex) {
