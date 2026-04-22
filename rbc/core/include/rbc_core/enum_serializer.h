@@ -5,7 +5,7 @@
 #include <initializer_list>
 #include <rbc_config.h>
 #include <rbc_core/base.h>
-#include <rbc_core//type_info.h>
+#include <rbc_core/type_info.h>
 
 namespace rbc {
 struct EnumReflectionType {
@@ -20,20 +20,9 @@ struct EnumReflectionTypeHasher {
         return a.enum_name == b.enum_name && a.value == b.value;
     }
 };
+struct EnumSerIniter;
+
 struct RBC_CORE_API EnumSerializer {
-    // key: {namespace::EnumType, enum)value}   value:      EnumValueName
-    luisa::unordered_map<EnumReflectionType, luisa::string, EnumReflectionTypeHasher, EnumReflectionTypeHasher> enum_value_to_name;
-    // key: namespace::EnumType##Value          value:      enum_value
-    luisa::unordered_map<luisa::string, uint64_t> enum_name_to_value;
-    luisa::optional<uint32_t> get_value(char const *name);
-
-    static luisa::string_view _get_enum_value_name(
-        luisa::string_view enum_name,
-        uint64_t value);
-
-    static vstd::optional<uint64_t> _get_enum_value(
-        luisa::string_view enum_type,
-        luisa::string_view enum_value);
     template<typename T>
         requires(std::is_enum_v<T>)
     static vstd::optional<uint64_t> get_enum_value(
@@ -46,6 +35,22 @@ struct RBC_CORE_API EnumSerializer {
         uint64_t value) {
         return _get_enum_value_name(rbc_rtti_detail::is_rtti_type<T>::name, value);
     }
+
+private:
+    friend struct EnumSerIniter;
+
+    // key: {namespace::EnumType, enum)value}   value:      EnumValueName
+    luisa::unordered_map<EnumReflectionType, luisa::string, EnumReflectionTypeHasher, EnumReflectionTypeHasher> _enum_value_to_name;
+    // key: namespace::EnumType##Value          value:      enum_value
+    luisa::unordered_map<luisa::string, uint64_t> _enum_name_to_value;
+
+    static luisa::string_view _get_enum_value_name(
+        luisa::string_view enum_name,
+        uint64_t value);
+
+    static vstd::optional<uint64_t> _get_enum_value(
+        luisa::string_view enum_type,
+        luisa::string_view enum_value);
 };
 struct RBC_CORE_API EnumSerIniter {
     EnumSerIniter(

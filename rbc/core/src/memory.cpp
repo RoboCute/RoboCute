@@ -12,12 +12,16 @@ RBC_FORCEINLINE static void *calloc_aligned(size_t count, size_t size, size_t al
         ptr = aligned_alloc(alignment, size * count);
     }
     if (!ptr) {
-        posix_memalign(&ptr, alignment, size * count);
+        if (posix_memalign(&ptr, alignment, size * count) != 0) {
+            ptr = nullptr;
+        }
     }
 #else
     void *ptr = _aligned_malloc(size * count, alignment);
 #endif
-    memset(ptr, 0, size * count);
+    if (ptr) {
+        memset(ptr, 0, size * count);
+    }
     return ptr;
 }
 
@@ -49,7 +53,9 @@ RBC_CORE_API void *traced_os_malloc_aligned(size_t size, size_t alignment, const
         ptr = aligned_alloc(alignment, size);
     }
     if (!ptr) {
-        posix_memalign(&ptr, alignment, size);
+        if (posix_memalign(&ptr, alignment, size) != 0) {
+            ptr = nullptr;
+        }
     }
 #else
     void *ptr = _aligned_malloc(size, alignment);
@@ -94,13 +100,15 @@ RBC_EXTERN_C RBC_CORE_API void *traced_os_realloc_aligned(void *p, size_t newsiz
     // posix_memalign'ing a new block, copying old data, deallocating old memory.
     alignment = alignment < alignof(void *) ? alignof(void *) : alignment;
     void *new_allocation = traced_os_realloc(p, newsize, pool_name);
-    if ((uint64_t)(new_allocation) % alignment != 0) {
+    if (new_allocation && (uint64_t)(new_allocation) % alignment != 0) {
         //log_warn("This is slow. realloc did not allocate with an alignment of %lu, requires double copy",
         //            (long unsigned int)align);
         void *new_new = traced_os_malloc_aligned(newsize, alignment, pool_name);
-        memcpy(new_new, new_allocation, newsize);
-        traced_os_free(new_allocation, pool_name);
-        new_allocation = new_new;
+        if (new_new) {
+            memcpy(new_new, new_allocation, newsize);
+            traced_os_free(new_allocation, pool_name);
+            new_allocation = new_new;
+        }
     }
     return new_allocation;
 }
@@ -230,6 +238,11 @@ RBC_CORE_API void *internal_rbc_calloc(size_t count, size_t size, const char *po
 
 RBC_EXTERN_C RBC_CORE_API void *internal_rbc_new_n(size_t count, size_t size, const char *pool_name) {
     void *p = malloc(count * size);
+    if (pool_name) {
+        RBCCAllocN(p, size * count, pool_name);
+    } else {
+        RBCCAlloc(p, size * count);
+    }
     return p;
 }
 
@@ -245,7 +258,7 @@ RBC_CORE_API void *internal_rbc_new_aligned(size_t size, size_t alignment, const
     return traced_os_malloc_aligned(size, alignment, pool_name);
 }
 
-RBC_CORE_API void internal_rbc_free(void *p, const char *pool_name) {
+RBC_CORE_API void internal_rbc_free(void *p, const char *pool_name) RBC_NOEXCEPT {
     return traced_os_free(p, pool_name);
 }
 

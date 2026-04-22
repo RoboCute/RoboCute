@@ -7,14 +7,14 @@ struct RuntimeStaticBase {
     RBC_CORE_API static void init_all();
     RBC_CORE_API static void dispose_all();
 protected:
-    RuntimeStaticBase *p_next{};
+    RuntimeStaticBase *_p_next{};
     RuntimeStaticBase() = default;
     ~RuntimeStaticBase() = default;
     RBC_CORE_API void _base_init();
-    static RBC_CORE_API void check_ptr(bool ptr);
+    static RBC_CORE_API void _check_ptr(bool ptr);
 private:
-    virtual void init() = 0;
-    virtual void destroy() = 0;
+    virtual void _init() = 0;
+    virtual void _destroy() = 0;
 };
 template<typename T, typename... Args>
     requires luisa::is_constructible_v<T, Args...>
@@ -42,14 +42,14 @@ struct RuntimeStatic : RuntimeStaticBase {
         return ptr.has_value();
     }
 protected:
-    void init() override {
+    void _init() override {
         std::apply(
             [&](Args &&...args) {
                 ptr.create(std::forward<Args>(args)...);
             },
             std::move(_args));
     }
-    void destroy() override {
+    void _destroy() override {
         ptr.destroy();
     }
 };
@@ -62,13 +62,13 @@ struct RuntimeStatic<T> : RuntimeStaticBase {
     }
     T const *operator->() const {
 #ifndef NDEBUG
-        RuntimeStaticBase::check_ptr(ptr);
+        RuntimeStaticBase::_check_ptr(ptr);
 #endif
         return ptr.ptr();
     }
     T *operator->() {
 #ifndef NDEBUG
-        RuntimeStaticBase::check_ptr(ptr);
+        RuntimeStaticBase::_check_ptr(ptr);
 #endif
         return ptr.ptr();
     }
@@ -76,10 +76,10 @@ struct RuntimeStatic<T> : RuntimeStaticBase {
         return ptr.has_value();
     }
 protected:
-    void init() override {
+    void _init() override {
         ptr.create();
     }
-    void destroy() override {
+    void _destroy() override {
         ptr.destroy();
     }
 };

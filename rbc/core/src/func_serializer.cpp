@@ -5,7 +5,7 @@ static vstd::HashMap<vstd::Guid::GuidData, FuncSerializer::FuncCall> func_maps;
 }// namespace func_ser_detail
 
 FuncSerializer::FuncSerializer(
-    std::initializer_list<const char *> names,
+    std::initializer_list<char const *> names,
     std::initializer_list<AnyFuncPtr> funcs,
     std::initializer_list<HeapObjectMeta> args_meta,
     std::initializer_list<HeapObjectMeta> ret_value_meta,
@@ -23,9 +23,9 @@ FuncSerializer::FuncSerializer(
             is_static.begin()[i]);
     }
 }
-FuncSerializer::~FuncSerializer() {}
+FuncSerializer::~FuncSerializer() = default;
 auto FuncSerializer::get_call_meta(vstd::Guid const &name) -> FuncCall const * {
-    auto iter = func_ser_detail::func_maps.find(name.to_binary());
+    auto const iter = func_ser_detail::func_maps.find(name.to_binary());
     if (!iter) [[unlikely]]
         return nullptr;
     return &iter.value();

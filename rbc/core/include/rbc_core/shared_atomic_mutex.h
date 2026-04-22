@@ -29,13 +29,13 @@ public:
     void unlock_shared();
 
     // Returns the number of threads with an active shared lock.
-    val_t num_shared_locks();
+    val_t num_shared_locks() const;
 
     // Returns the number of threads waiting for a unique lock, one of which may have an active unique lock.
-    val_t num_unique_locks();
+    val_t num_unique_locks() const;
 
     // Returns whether the mutex is currently uniquely locked.
-    bool is_unique_locked();
+    bool is_unique_locked() const;
 
 private:
     void acquire_unique();

@@ -5,7 +5,7 @@
 namespace rbc {
 
 // BinWriter implementation
-BinWriter::BinWriter(bool root_array) : pos_(0) {
+BinWriter::BinWriter(bool root_array) : _pos(0) {
     if (root_array) {
         BinScope scope;
         scope.is_array = true;
@@ -15,7 +15,7 @@ BinWriter::BinWriter(bool root_array) : pos_(0) {
         scope.object_start_written = false;
         scope.object_start_pos = 0;
         write_type(BinType::ArrayStart);
-        scope.array_size_pos = buffer_.size();// Save position where size will be written
+        scope.array_size_pos = _buffer.size();// Save position where size will be written
         write_uint64(0);                      // placeholder for size
         _scope.emplace_back(scope);
     } else {
@@ -44,9 +44,9 @@ void BinWriter::write_uint64(uint64_t value) {
 
 void BinWriter::write_bytes(void const *data, uint64_t size) {
     if (size == 0) return;
-    auto old_size = buffer_.size();
-    buffer_.resize(old_size + size);
-    std::memcpy(buffer_.data() + old_size, data, size);
+    auto old_size = _buffer.size();
+    _buffer.resize(old_size + size);
+    std::memcpy(_buffer.data() + old_size, data, size);
 }
 
 void BinWriter::start_array() {
@@ -60,7 +60,7 @@ void BinWriter::start_array() {
     new_scope.object_start_written = false;
     new_scope.object_start_pos = 0;
     write_type(BinType::ArrayStart);
-    new_scope.array_size_pos = buffer_.size();// Save position where size will be written
+    new_scope.array_size_pos = _buffer.size();// Save position where size will be written
     write_uint64(0);                          // placeholder for size
     _scope.emplace_back(new_scope);
 }
@@ -76,7 +76,7 @@ void BinWriter::start_object() {
     // If we're in an object context, delay writing ObjectStart until we know if there's a key
     if (!parent.is_array && parent.in_object) {
         new_scope.object_start_written = false;
-        new_scope.object_start_pos = buffer_.size();
+        new_scope.object_start_pos = _buffer.size();
     } else {
         new_scope.object_start_written = true;
         new_scope.object_start_pos = 0;
@@ -104,7 +104,7 @@ void BinWriter::add_last_scope_to_object() {
     // Note: For root array, the size will be updated in write_to()
     if (scope.is_array && scope.array_size_pos > 0 && _scope.size() > 0) {
         // Update the array size at the saved position
-        std::memcpy(buffer_.data() + scope.array_size_pos, &scope.array_size, sizeof(uint64_t));
+        std::memcpy(_buffer.data() + scope.array_size_pos, &scope.array_size, sizeof(uint64_t));
     }
 }
 
@@ -126,17 +126,17 @@ void BinWriter::add_last_scope_to_object(char const *name) {
     if (!scope.is_array && !scope.object_start_written) {
         // Save current buffer size (where we'll insert key + ObjectStart)
         uint64_t insert_pos = scope.object_start_pos;
-        uint64_t content_size = buffer_.size() - insert_pos;
+        uint64_t content_size = _buffer.size() - insert_pos;
 
         // Save the content that was written after start_object()
         luisa::vector<std::byte> content_backup;
         if (content_size > 0) {
             content_backup.resize(content_size);
-            std::memcpy(content_backup.data(), buffer_.data() + insert_pos, content_size);
+            std::memcpy(content_backup.data(), _buffer.data() + insert_pos, content_size);
         }
 
         // Truncate buffer to insert position
-        buffer_.resize(insert_pos);
+        _buffer.resize(insert_pos);
 
         // Write key first
         luisa::string_view key(name);
@@ -156,17 +156,17 @@ void BinWriter::add_last_scope_to_object(char const *name) {
         // array_size_pos points to the size field (right after ArrayStart type byte)
         // So ArrayStart is at array_size_pos - sizeof(BinType) = array_size_pos - 1
         uint64_t array_start_pos = scope.array_size_pos - sizeof(BinType);
-        uint64_t content_size = buffer_.size() - array_start_pos;
+        uint64_t content_size = _buffer.size() - array_start_pos;
 
         // Save the content (ArrayStart + size + array elements)
         luisa::vector<std::byte> content_backup;
         if (content_size > 0) {
             content_backup.resize(content_size);
-            std::memcpy(content_backup.data(), buffer_.data() + array_start_pos, content_size);
+            std::memcpy(content_backup.data(), _buffer.data() + array_start_pos, content_size);
         }
 
         // Truncate buffer to insert position
-        buffer_.resize(array_start_pos);
+        _buffer.resize(array_start_pos);
 
         // Write key first
         luisa::string_view key(name);
@@ -180,8 +180,8 @@ void BinWriter::add_last_scope_to_object(char const *name) {
         }
 
         // Update the array size at the new position (it shifted due to key insertion)
-        uint64_t new_array_size_pos = scope.array_size_pos + (buffer_.size() - array_start_pos - content_size);
-        std::memcpy(buffer_.data() + new_array_size_pos, &scope.array_size, sizeof(uint64_t));
+        uint64_t new_array_size_pos = scope.array_size_pos + (_buffer.size() - array_start_pos - content_size);
+        std::memcpy(_buffer.data() + new_array_size_pos, &scope.array_size, sizeof(uint64_t));
     } else {
         // Object scope with ObjectStart already written - this shouldn't normally happen
         // in object context, but handle it by writing key before scope end
@@ -558,7 +558,7 @@ void BinWriter::bytes(void *data, uint64_t size, char const *name) {
 luisa::BinaryBlob BinWriter::write_to() const {
     // Update array sizes in buffer before creating the blob
     // We need to modify the buffer, so create a mutable copy
-    luisa::vector<std::byte> buffer_copy = buffer_;
+    luisa::vector<std::byte> buffer_copy = _buffer;
 
     // Update all array sizes that were written as placeholders
     for (const auto &scope : _scope) {
@@ -584,39 +584,39 @@ bool BinWriter::is_current_scope_array() const {
 }
 
 void BinWriter::clear_alloc() {
-    buffer_.clear();
+    _buffer.clear();
     _scope.clear();
 }
 
 void BinWriter::reset() {
-    pos_ = 0;
+    _pos = 0;
 }
 
 void BinWriter::reset_buffer() {
-    buffer_.clear();
+    _buffer.clear();
     _scope.clear();
 }
 
 bool BinWriter::move_next(uint64_t size, uint64_t &old_pos) {
-    if (pos_ + size > buffer_.size()) [[unlikely]] {
-        LUISA_ERROR("[BinWriter] out of range {} + {} > {}", pos_, size, buffer_.size());
+    if (_pos + size > _buffer.size()) [[unlikely]] {
+        LUISA_ERROR("[BinWriter] out of range {} + {} > {}", _pos, size, _buffer.size());
         return false;
     } else {
-        old_pos = pos_;
-        pos_ += size;
+        old_pos = _pos;
+        _pos += size;
         return true;
     }
 }
 
 // BinReader implementation
-BinReader::BinReader(luisa::span<std::byte const> data) : pos_(0), valid_(true) {
-    buffer_.resize(data.size());
-    std::memcpy(buffer_.data(), data.data(), data.size());
+BinReader::BinReader(luisa::span<std::byte const> data) : _pos(0), _valid(true) {
+    _buffer.resize(data.size());
+    std::memcpy(_buffer.data(), data.data(), data.size());
 
     // Read root type
     BinType root_type;
     if (!read_type(root_type)) {
-        valid_ = false;
+        _valid = false;
         return;
     }
 
@@ -624,7 +624,7 @@ BinReader::BinReader(luisa::span<std::byte const> data) : pos_(0), valid_(true) 
         BinScope scope;
         scope.is_array = true;
         if (!read_uint64(scope.array_size)) {
-            valid_ = false;
+            _valid = false;
             return;
         }
         scope.array_index = 0;
@@ -636,7 +636,7 @@ BinReader::BinReader(luisa::span<std::byte const> data) : pos_(0), valid_(true) 
         scope.in_object = true;
         _scope.emplace_back(scope);
     } else {
-        valid_ = false;
+        _valid = false;
     }
 }
 
@@ -647,20 +647,20 @@ BinReader::~BinReader() {
 }
 
 bool BinReader::read_type(BinType &type) {
-    if (pos_ + sizeof(BinType) > buffer_.size()) {
+    if (_pos + sizeof(BinType) > _buffer.size()) {
         return false;
     }
-    std::memcpy(&type, buffer_.data() + pos_, sizeof(BinType));
-    pos_ += sizeof(BinType);
+    std::memcpy(&type, _buffer.data() + _pos, sizeof(BinType));
+    _pos += sizeof(BinType);
     return true;
 }
 
 bool BinReader::read_uint64(uint64_t &value) {
-    if (pos_ + sizeof(uint64_t) > buffer_.size()) {
+    if (_pos + sizeof(uint64_t) > _buffer.size()) {
         return false;
     }
-    std::memcpy(&value, buffer_.data() + pos_, sizeof(uint64_t));
-    pos_ += sizeof(uint64_t);
+    std::memcpy(&value, _buffer.data() + _pos, sizeof(uint64_t));
+    _pos += sizeof(uint64_t);
     return true;
 }
 
@@ -669,21 +669,21 @@ bool BinReader::read_string(luisa::string &value) {
     if (!read_uint64(size)) {
         return false;
     }
-    if (pos_ + size > buffer_.size()) {
+    if (_pos + size > _buffer.size()) {
         return false;
     }
     value.resize(size);
-    std::memcpy(value.data(), buffer_.data() + pos_, size);
-    pos_ += size;
+    std::memcpy(value.data(), _buffer.data() + _pos, size);
+    _pos += size;
     return true;
 }
 
 bool BinReader::read_bytes_internal(void *data, uint64_t size) {
-    if (pos_ + size > buffer_.size()) {
+    if (_pos + size > _buffer.size()) {
         return false;
     }
-    std::memcpy(data, buffer_.data() + pos_, size);
-    pos_ += size;
+    std::memcpy(data, _buffer.data() + _pos, size);
+    _pos += size;
     return true;
 }
 
@@ -711,7 +711,7 @@ bool BinReader::start_array(uint64_t &size) {
 
     if (type != BinType::ArrayStart) {
         // Rewind
-        pos_ -= sizeof(BinType);
+        _pos -= sizeof(BinType);
         return false;
     }
 
@@ -747,7 +747,7 @@ bool BinReader::start_object() {
 
     if (type != BinType::ObjectStart) {
         // Rewind
-        pos_ -= sizeof(BinType);
+        _pos -= sizeof(BinType);
         return false;
     }
 
@@ -772,14 +772,14 @@ bool BinReader::start_array(uint64_t &size, char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
 
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -826,7 +826,7 @@ bool BinReader::start_object(char const *name) {
         return start_object();
     }
 
-    if (!valid_ || _scope.empty()) {
+    if (!_valid || _scope.empty()) {
         return false;
     }
     auto &scope = _scope.back();
@@ -837,14 +837,14 @@ bool BinReader::start_object(char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
 
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -949,6 +949,7 @@ bool BinReader::read(BasicDeserDataType &value) {
                 return false;
             }
             value = val;
+            scope.array_index++;
             return true;
         }
         case BinType::Double: {
@@ -957,6 +958,7 @@ bool BinReader::read(BasicDeserDataType &value) {
                 return false;
             }
             value = val;
+            scope.array_index++;
             return true;
         }
         case BinType::String: {
@@ -966,6 +968,7 @@ bool BinReader::read(BasicDeserDataType &value) {
                 value.dispose();
                 return false;
             }
+            scope.array_index++;
             return true;
         }
         default: return false;
@@ -1072,7 +1075,7 @@ bool BinReader::read(bool &value, char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
@@ -1080,7 +1083,7 @@ bool BinReader::read(bool &value, char const *name) {
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
             // Rewind to before reading ScopeEnd
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -1129,14 +1132,14 @@ bool BinReader::read(int64_t &value, char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
 
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -1183,14 +1186,14 @@ bool BinReader::read(uint64_t &value, char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
 
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -1237,14 +1240,14 @@ bool BinReader::read(BasicDeserDataType &value, char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
 
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -1271,7 +1274,6 @@ bool BinReader::read(BasicDeserDataType &value, char const *name) {
                         return false;
                     }
                     value = val != 0;
-                    scope.array_index++;
                     scope.last_key = key;
                     return true;
                 }
@@ -1327,14 +1329,14 @@ bool BinReader::read(double &value, char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
 
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -1381,14 +1383,14 @@ bool BinReader::read(luisa::string &value, char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
 
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -1463,14 +1465,14 @@ bool BinReader::bytes(luisa::vector<std::byte> &data, char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
 
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -1550,14 +1552,14 @@ bool BinReader::bytes(void *data, uint64_t size) {
         // Scan through key-value pairs until we find the matching key
         while (true) {
             BinType key_type;
-            uint64_t saved_pos = pos_;
+            uint64_t saved_pos = _pos;
             if (!read_type(key_type)) {
                 return false;
             }
 
             // Check if we've reached the end of the object
             if (key_type == BinType::ScopeEnd) {
-                pos_ = saved_pos;
+                _pos = saved_pos;
                 return false;
             }
 
@@ -1615,14 +1617,14 @@ bool BinReader::bytes(void *data, uint64_t size, char const *name) {
     // Scan through key-value pairs until we find the matching key
     while (true) {
         BinType key_type;
-        uint64_t saved_pos = pos_;
+        uint64_t saved_pos = _pos;
         if (!read_type(key_type)) {
             return false;
         }
 
         // Check if we've reached the end of the object
         if (key_type == BinType::ScopeEnd) {
-            pos_ = saved_pos;
+            _pos = saved_pos;
             return false;
         }
 
@@ -1707,13 +1709,13 @@ bool BinReader::skip_value() {
         case BinType::String: {
             uint64_t size;
             if (!read_uint64(size)) return false;
-            pos_ += size;// Skip string data
+            _pos += size;// Skip string data
             return true;
         }
         case BinType::Bytes: {
             uint64_t size;
             if (!read_uint64(size)) return false;
-            pos_ += size;// Skip bytes data
+            _pos += size;// Skip bytes data
             return true;
         }
         case BinType::ArrayStart: {
@@ -1746,7 +1748,7 @@ bool BinReader::skip_value() {
                     // Skip key
                     uint64_t key_size;
                     if (!read_uint64(key_size)) return false;
-                    pos_ += key_size;// Skip key string data
+                    _pos += key_size;// Skip key string data
                     // Skip value (recursive call)
                     if (!skip_value()) return false;
                 } else {
@@ -1763,7 +1765,7 @@ bool BinReader::skip_value() {
 }
 
 bool BinReader::valid() const {
-    return valid_;
+    return _valid;
 }
 
 }// namespace rbc

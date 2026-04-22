@@ -17,7 +17,7 @@ RBC_CORE_API void HeapObjectMeta::deallocate(void *ptr) const {
     }
     luisa::detail::allocator_deallocate(ptr, alignment);
 }
-RBC_CORE_API void HeapObjectMeta::copy(void *dst, void *src) const {
+RBC_CORE_API void HeapObjectMeta::copy(void *dst, const void *src) const {
     LUISA_DEBUG_ASSERT(copy_ctor || is_trivial_copyable);
     if (is_trivial_copyable) {
         std::memcpy(dst, src, size);
@@ -34,9 +34,9 @@ RBC_CORE_API void HeapObjectMeta::move(void *dst, void *src) const {
     }
 }
 RBC_CORE_API HeapObject::~HeapObject() {
-    if (HeapObjectMeta::deleter) {
-        HeapObjectMeta::deleter(data);
+    if (deleter) {
+        deleter(data);
     }
-    luisa::detail::allocator_deallocate(data, HeapObjectMeta::alignment);
+    luisa::detail::allocator_deallocate(data, alignment);
 }
 }// namespace rbc

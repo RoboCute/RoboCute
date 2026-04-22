@@ -3,8 +3,8 @@
 #include <luisa/vstl/common.h>
 namespace rbc {
 static EnumSerializer &enum_ser_singleton() {
-    static EnumSerializer _enum_serializer;
-    return _enum_serializer;
+    static EnumSerializer enum_serializer;
+    return enum_serializer;
 }
 EnumSerIniter::EnumSerIniter(
     luisa::string_view enum_name,
@@ -14,13 +14,13 @@ EnumSerIniter::EnumSerIniter(
     auto &r = enum_ser_singleton();
     luisa::string enum_str{enum_name};
     for (size_t i = 0; i < names.size(); ++i) {
-        r.enum_value_to_name.try_emplace(
+        r._enum_value_to_name.try_emplace(
             EnumReflectionType{
                 enum_str,
                 numbers.begin()[i]},
             names.begin()[i]);
         luisa::string combined_name = enum_str + "##" + names.begin()[i];
-        r.enum_name_to_value.try_emplace(
+        r._enum_name_to_value.try_emplace(
             std::move(combined_name),
             numbers.begin()[i]);
     }
@@ -29,11 +29,11 @@ EnumSerIniter::EnumSerIniter(
 luisa::string_view EnumSerializer::_get_enum_value_name(
     luisa::string_view enum_name,
     uint64_t value) {
-    auto &r = enum_ser_singleton();
-    auto iter = r.enum_value_to_name.find(EnumReflectionType{
+    auto const &r = enum_ser_singleton();
+    auto const iter = r._enum_value_to_name.find(EnumReflectionType{
         luisa::string{enum_name},
         value});
-    if (iter == r.enum_value_to_name.end()) [[unlikely]] {
+    if (iter == r._enum_value_to_name.end()) [[unlikely]] {
         LUISA_ERROR("Enum {} with value {} not serialized properly.", enum_name, value);
     }
     return iter->second;
@@ -57,9 +57,9 @@ vstd::optional<uint64_t> EnumSerializer::_get_enum_value(
         enum_value.data(),
         enum_value.size());
     luisa::string_view combined_name_view{combined_name.data(), combined_name.size()};
-    auto &r = enum_ser_singleton();
-    auto iter = r.enum_name_to_value.find(combined_name_view);
-    if (iter == r.enum_name_to_value.end()) return {};
+    auto const &r = enum_ser_singleton();
+    auto const iter = r._enum_name_to_value.find(combined_name_view);
+    if (iter == r._enum_name_to_value.end()) return {};
     return iter->second;
 }
 }// namespace rbc

@@ -35,7 +35,10 @@ namespace rbc {
 JsonWriter::JsonWriter(bool root_array)
     : _alloc(4096, &_alloc_callback, 2), alc{} {
     alc = yyjson_alc{
-        .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
+        .malloc = +[](void *, size_t size) { return vengine_malloc(size); },
+        .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); },
+        .free = +[](void *, void *ptr) { vengine_free(ptr); }
+    };
     json_doc = yyjson_mut_doc_new(&alc);
     yyjson_mut_val *root;
     if (root_array) {
@@ -279,10 +282,14 @@ void JsonWriter::add(luisa::string_view str, char const *name) {
     LUISA_DEBUG_ASSERT(!_json_scope.empty());
     auto &v = _json_scope.back();
     LUISA_DEBUG_ASSERT(!v.second);
+    auto char_len = strlen(name);
+    auto temp_ptr = (char *)allocate_temp_str(char_len + 1);
+    temp_ptr[char_len] = 0;
+    std::memcpy(temp_ptr, name, char_len);
     auto ptr = (char *)allocate_temp_str(str.size() + 1);
     ptr[str.size()] = 0;
     std::memcpy(ptr, str.data(), str.size());
-    LUISA_ASSERT(yyjson_mut_obj_add_str(json_doc, v.first, name, ptr));
+    LUISA_ASSERT(yyjson_mut_obj_add_str(json_doc, v.first, temp_ptr, ptr));
 }
 
 JsonWriter::~JsonWriter() {
@@ -296,7 +303,10 @@ bool JsonReader::valid() const {
 JsonReader::JsonReader(luisa::string_view str)
     : alc{} {
     alc = yyjson_alc{
-        .malloc = +[](void *, size_t size) { return vengine_malloc(size); }, .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); }, .free = +[](void *, void *ptr) { vengine_free(ptr); }};
+        .malloc = +[](void *, size_t size) { return vengine_malloc(size); },
+        .realloc = +[](void *, void *ptr, size_t old_size, size_t size) { return vengine_realloc(ptr, size); },
+        .free = +[](void *, void *ptr) { vengine_free(ptr); }
+    };
     json_doc = yyjson_read_opts(const_cast<char *>(str.data()), str.size(), 0, &alc, nullptr);
     if (!json_doc) [[unlikely]] {
         return;

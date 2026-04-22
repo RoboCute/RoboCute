@@ -7,7 +7,7 @@ struct HeapObjectMeta {
     uint64_t size{};
     uint64_t alignment{};
     vstd::func_ptr_t<void(void *dst)> default_ctor{};
-    vstd::func_ptr_t<void(void *dst, void *src)> copy_ctor{};
+    vstd::func_ptr_t<void(void *dst, const void *src)> copy_ctor{};
     vstd::func_ptr_t<void(void *dst, void *src)> move_ctor{};
     vstd::func_ptr_t<void(void *src)> deleter{};
     vstd::func_ptr_t<void(void const *src, ::rbc::JsonSerializer *)> json_writer{};
@@ -29,8 +29,8 @@ struct HeapObjectMeta {
         if constexpr (std::is_trivially_copy_constructible_v<T>) {
             is_trivial_copyable = true;
         } else if constexpr (std::is_copy_constructible_v<T>) {
-            copy_ctor = +[](void *dst, void *src) {
-                std::construct_at(std::launder(static_cast<T *>(dst)), *static_cast<T *>(src));
+            copy_ctor = +[](void *dst, const void *src) {
+                std::construct_at(std::launder(static_cast<T *>(dst)), *static_cast<const T *>(src));
             };
         }
         if constexpr (std::is_trivially_move_constructible_v<T>) {
@@ -65,7 +65,7 @@ struct HeapObjectMeta {
     }
     RBC_CORE_API void *allocate() const;
     RBC_CORE_API void deallocate(void *ptr) const;
-    RBC_CORE_API void copy(void *dst, void *src) const;
+    RBC_CORE_API void copy(void *dst, const void *src) const;
     RBC_CORE_API void move(void *dst, void *src) const;
 };
 struct HeapObject : HeapObjectMeta {

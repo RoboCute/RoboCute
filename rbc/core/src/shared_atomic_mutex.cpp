@@ -39,7 +39,7 @@ void shared_atomic_mutex::lock_shared() {
             if (counter > 16) {
                 std::this_thread::yield();
             } else {
-                counter++;
+                ++counter;
                 LUISA_INTRIN_PAUSE();
             }
         }
@@ -56,27 +56,27 @@ void shared_atomic_mutex::lock_shared() {
 }
 
 void shared_atomic_mutex::unlock_shared() {
-    assert(num_shared_locks() > 0);
+    LUISA_DEBUG_ASSERT(num_shared_locks() > 0);
     _bitfield.fetch_sub(one_shared_thread);
 }
 
-shared_atomic_mutex::val_t shared_atomic_mutex::num_shared_locks() {
+shared_atomic_mutex::val_t shared_atomic_mutex::num_shared_locks() const {
     const auto mask = _bitfield.load() & num_shared_mask;
     return val_t(mask >> num_shared_bitshift);
 }
 
-shared_atomic_mutex::val_t shared_atomic_mutex::num_unique_locks() {
+shared_atomic_mutex::val_t shared_atomic_mutex::num_unique_locks() const {
     const auto mask = _bitfield.load() & num_unique_mask;
     return val_t(mask >> num_unique_bitshift);
 }
 
-bool shared_atomic_mutex::is_unique_locked() {
+bool shared_atomic_mutex::is_unique_locked() const {
     const auto mask = _bitfield.load() & unique_flag_mask;
     return (mask >> unique_flag_bitshift) != 0;
 }
 
 void shared_atomic_mutex::acquire_unique() {
-    bitfield_t oldval = _bitfield;
+    bitfield_t oldval = _bitfield.load();
     bitfield_t newval = oldval;
 
     uint8_t counter = 0;

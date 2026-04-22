@@ -3,8 +3,8 @@
 #include <charconv>
 namespace rbc {
 vstd::optional<int64_t> parse_string_to_int(luisa::string_view string, uint32_t base) {
-    const char *start = string.data();
-    const char *end = start + string.size();
+    const char *const start = string.data();
+    const char *const end = start + string.size();
     {
         int64_t result;
         auto err = std::from_chars(start, end, result, static_cast<int>(base));
@@ -15,8 +15,9 @@ vstd::optional<int64_t> parse_string_to_int(luisa::string_view string, uint32_t 
     return {};
 }
 vstd::optional<double> parse_string_to_float(luisa::string_view string, uint32_t base) {
-    const char *start = string.data();
-    const char *end = start + string.size();
+    (void)base;
+    const char *const start = string.data();
+    const char *const end = start + string.size();
     {
         double result;
         auto err = fast_float::from_chars(start, end, result);

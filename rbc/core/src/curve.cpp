@@ -37,9 +37,9 @@ float Curve::sample_node(float time) const {
 Curve::Curve() {}
 Curve::~Curve() {}
 void Curve::_sync_range() {
-    for (auto &i : _key_nodes) {
-        _range.x = std::min(i.x, _range.x);
-        _range.y = std::max(i.x, _range.y);
+    for (auto &node : _key_nodes) {
+        _range.x = std::min(node.x, _range.x);
+        _range.y = std::max(node.x, _range.y);
     }
 }
 Curve::Curve(std::initializer_list<float2> key_nodes) : _key_nodes(key_nodes) {
@@ -243,15 +243,15 @@ void CubicBezier2D::build_through_point(float2 in_p0, float2 in_p3, float2 point
     // find quadratic bezier
     float2 p10 = in_p0 - point;
     float2 p12 = in_p3 - point;
-    float p10Len = luisa::length(p10);
-    float p12Len = luisa::length(p12);
+    float p10_len = luisa::length(p10);
+    float p12_len = luisa::length(p12);
 
-    float2 pCenter = point - sqrt(p10Len * p12Len) * (p10 / p10Len + p12 / p12Len) / 2.0f;
+    float2 p_center = point - sqrt(p10_len * p12_len) * (p10 / p10_len + p12 / p12_len) / 2.0f;
 
     // upgrade to cubic bezier
     p0 = in_p0;
-    p1 = in_p0 / 3.0f + pCenter * 2.0f / 3.0f;
-    p2 = pCenter * 2.0f / 3.0f + in_p3 / 3.0f;
+    p1 = in_p0 / 3.0f + p_center * 2.0f / 3.0f;
+    p2 = p_center * 2.0f / 3.0f + in_p3 / 3.0f;
     p3 = in_p3;
 }
 }// namespace rbc

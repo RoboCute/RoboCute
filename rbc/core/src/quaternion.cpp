@@ -5,64 +5,64 @@
 namespace rbc {
 DecomposedTransform decompose(float4x4 m) noexcept {
     auto t = m[3].xyz();
-    auto N = make_float3x3(m);
+    auto linear = make_float3x3(m);
     auto near_zero = [](auto f) noexcept {
         return std::abs(f) <= 1e-4f;
     };
-    auto R = N;
+    auto r = linear;
     constexpr auto max_iteration_count = 100u;
     for (auto i = 0u; i < max_iteration_count; i++) {
-        auto R_it = inverse(transpose(R));
-        auto R_next = 0.5f * (R + R_it);
-        auto diff = R - R_next;
-        R = R_next;
-        auto n = abs(diff[0]) + abs(diff[1]) + abs(diff[2]);
-        if (near_zero(std::max({n.x, n.y, n.z}))) { break; }
+        auto r_it = inverse(transpose(r));
+        auto r_next = 0.5f * (r + r_it);
+        auto diff = r - r_next;
+        r = r_next;
+        auto diff_sum = abs(diff[0]) + abs(diff[1]) + abs(diff[2]);
+        if (near_zero(std::max({diff_sum.x, diff_sum.y, diff_sum.z}))) { break; }
     }
-    auto S = inverse(R) * N;
-    if (!near_zero(S[0].y) || !near_zero(S[0].z) ||
-        !near_zero(S[1].x) || !near_zero(S[1].z) ||
-        !near_zero(S[2].x) || !near_zero(S[2].y)) [[unlikely]] {
+    auto scale_matrix = inverse(r) * linear;
+    if (!near_zero(scale_matrix[0].y) || !near_zero(scale_matrix[0].z) ||
+        !near_zero(scale_matrix[1].x) || !near_zero(scale_matrix[1].z) ||
+        !near_zero(scale_matrix[2].x) || !near_zero(scale_matrix[2].y)) [[unlikely]] {
         LUISA_WARNING_WITH_LOCATION(
             "Non-zero entries found in decomposed scaling matrix: "
             "(({}, {}, {}), ({}, {}, {}), ({}, {}, {})).",
-            S[0].x, S[1].x, S[2].x,
-            S[0].y, S[1].y, S[2].y,
-            S[0].z, S[1].z, S[2].z);
+            scale_matrix[0].x, scale_matrix[1].x, scale_matrix[2].x,
+            scale_matrix[0].y, scale_matrix[1].y, scale_matrix[2].y,
+            scale_matrix[0].z, scale_matrix[1].z, scale_matrix[2].z);
     }
-    auto s = make_float3(S[0].x, S[1].y, S[2].z);
-    auto q = quaternion(R);
+    auto s = make_float3(scale_matrix[0].x, scale_matrix[1].y, scale_matrix[2].z);
+    auto q = quaternion(r);
     return {s, q, t};
 }
 DecomposedTransformDouble decompose(double4x4 const &m) noexcept {
     auto t = m[3].xyz();
-    auto N = make_double3x3(m);
+    auto linear = make_double3x3(m);
     auto near_zero = [](auto f) noexcept {
         return std::abs(f) <= 1e-5;
     };
-    auto R = N;
+    auto r = linear;
     constexpr auto max_iteration_count = 100u;
     for (auto i = 0u; i < max_iteration_count; i++) {
-        auto R_it = inverse(transpose(R));
-        auto R_next = 0.5 * (R + R_it);
-        auto diff = R - R_next;
-        R = R_next;
-        auto n = abs(diff[0]) + abs(diff[1]) + abs(diff[2]);
-        if (near_zero(std::max({n.x, n.y, n.z}))) { break; }
+        auto r_it = inverse(transpose(r));
+        auto r_next = 0.5 * (r + r_it);
+        auto diff = r - r_next;
+        r = r_next;
+        auto diff_sum = abs(diff[0]) + abs(diff[1]) + abs(diff[2]);
+        if (near_zero(std::max({diff_sum.x, diff_sum.y, diff_sum.z}))) { break; }
     }
-    auto S = inverse(R) * N;
-    if (!near_zero(S[0].y) || !near_zero(S[0].z) ||
-        !near_zero(S[1].x) || !near_zero(S[1].z) ||
-        !near_zero(S[2].x) || !near_zero(S[2].y)) [[unlikely]] {
+    auto scale_matrix = inverse(r) * linear;
+    if (!near_zero(scale_matrix[0].y) || !near_zero(scale_matrix[0].z) ||
+        !near_zero(scale_matrix[1].x) || !near_zero(scale_matrix[1].z) ||
+        !near_zero(scale_matrix[2].x) || !near_zero(scale_matrix[2].y)) [[unlikely]] {
         LUISA_WARNING_WITH_LOCATION(
             "Non-zero entries found in decomposed scaling matrix: "
             "(({}, {}, {}), ({}, {}, {}), ({}, {}, {})).",
-            S[0].x, S[1].x, S[2].x,
-            S[0].y, S[1].y, S[2].y,
-            S[0].z, S[1].z, S[2].z);
+            scale_matrix[0].x, scale_matrix[1].x, scale_matrix[2].x,
+            scale_matrix[0].y, scale_matrix[1].y, scale_matrix[2].y,
+            scale_matrix[0].z, scale_matrix[1].z, scale_matrix[2].z);
     }
-    auto s = make_double3(S[0].x, S[1].y, S[2].z);
-    auto q = quaternion(R);
+    auto s = make_double3(scale_matrix[0].x, scale_matrix[1].y, scale_matrix[2].z);
+    auto q = quaternion(r);
     return {s, q, t};
 }
 static_assert(sizeof(rtm::matrix3x3f) == sizeof(float3x3) && alignof(rtm::matrix3x3f) == alignof(float3x3), "size mismatch.");
@@ -74,8 +74,8 @@ Quaternion quaternion(float3x3 m) noexcept {
 }
 Quaternion quaternion(double3x3 const &m) noexcept {
     auto quad = rtm::quat_from_matrix(reinterpret_cast<rtm::matrix3x3d const &>(m));
-    auto quadd = reinterpret_cast<double4 const &>(quad);
-    return {make_float4(quadd)};
+    auto quad_d = reinterpret_cast<double4 const &>(quad);
+    return {make_float4(quad_d)};
 }
 
 double4x4 rotation(double3 pos, Quaternion rot, double3 local_scale) noexcept {

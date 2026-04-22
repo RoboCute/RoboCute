@@ -8,30 +8,30 @@ const char *kSimpleBlobName = "SimpleBlob";
 struct SimpleBlob : public IBlob {
 public:
     SimpleBlob(const uint8_t *data, uint64_t size, uint64_t alignment, bool move, const char *name) noexcept
-        : size(size),
-          alignment(alignment) {
+        : _size(size),
+          _alignment(alignment) {
         if (move) {
-            bytes = (uint8_t *)data;
+            _bytes = (uint8_t *)data;
         } else if (size) {
-            bytes = (uint8_t *)rbc_malloc_alignedN(size, alignment, name ? name : kSimpleBlobName);
+            _bytes = (uint8_t *)rbc_malloc_alignedN(_size, _alignment, name ? name : kSimpleBlobName);
             if (data)
-                memcpy(bytes, data, size);
+                memcpy(_bytes, data, _size);
         }
     }
     ~SimpleBlob() noexcept override {
-        if (bytes) {
-            rbc_free_alignedN(bytes, alignment, kSimpleBlobName);
+        if (_bytes) {
+            rbc_free_alignedN(_bytes, _alignment, kSimpleBlobName);
         }
-        bytes = nullptr;
+        _bytes = nullptr;
     }
-    uint8_t *get_data() const noexcept override { return bytes; }
-    uint64_t get_size() const noexcept override { return size; }
+    uint8_t *get_data() const noexcept override { return _bytes; }
+    uint64_t get_size() const noexcept override { return _size; }
 
 
 private:
-    uint64_t size = 0;
-    uint64_t alignment = 0;
-    uint8_t *bytes = nullptr;
+    uint64_t _size = 0;
+    uint64_t _alignment = 0;
+    uint8_t *_bytes = nullptr;
 };
 
 BlobId IBlob::Create(const uint8_t *data, uint64_t size, bool move, const char *name) noexcept {

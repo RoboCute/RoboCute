@@ -7,7 +7,7 @@ coroutine::coroutine(coroutine &&rhs) noexcept
     rhs._base = nullptr;
 }
 void coroutine::resume() {
-    if (_base.done()) [[unlikely]]
+    if (!_base || _base.done()) [[unlikely]]
         return;
     auto &prom = _base.promise();
     if (prom._awaitable_func) [[likely]] {
@@ -20,7 +20,7 @@ void coroutine::resume() {
         _base.resume();
     }
 }
-bool coroutine::done() {
+bool coroutine::done() const {
     return !_base || _base.done();
 }
 void coroutine::destroy() {

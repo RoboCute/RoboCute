@@ -32,9 +32,9 @@ struct BinScope {
 };
 
 struct RBC_CORE_API BinWriter {
-    luisa::vector<std::byte> buffer_;
+    luisa::vector<std::byte> _buffer;
     luisa::vector<BinScope> _scope;
-    uint64_t pos_;
+    uint64_t _pos;
     BinWriter(BinWriter const &) = delete;
     BinWriter(BinWriter &&) = delete;
 
@@ -90,7 +90,7 @@ public:
     [[nodiscard]] luisa::BinaryBlob write_to() const;
     [[nodiscard]] bool is_current_scope_array() const;
     luisa::span<std::byte> buffer() {
-        return buffer_;
+        return _buffer;
     }
     void reset();
     void reset_buffer();
@@ -98,10 +98,10 @@ public:
 };
 
 struct RBC_CORE_API BinReader {
-    luisa::vector<std::byte> buffer_;
-    uint64_t pos_;
+    luisa::vector<std::byte> _buffer;
+    uint64_t _pos;
     luisa::vector<BinScope> _scope;
-    bool valid_;
+    bool _valid;
 
     explicit BinReader(luisa::span<std::byte const> data);
     BinReader(luisa::BinaryBlob const &blob);

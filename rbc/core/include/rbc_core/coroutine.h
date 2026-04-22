@@ -35,7 +35,7 @@ public:
         return _base == nullptr;
     }
     RBC_CORE_API void resume();
-    RBC_CORE_API bool done();
+    RBC_CORE_API bool done() const;
     RBC_CORE_API void destroy();
     RBC_CORE_API ~coroutine();
 };
