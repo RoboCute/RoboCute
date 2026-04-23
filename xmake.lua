@@ -27,7 +27,8 @@ lc_options = {
     lc_vk_cuda_interop = true,
     lc_enable_py = false,
     lc_enable_unity_build = true,
-    lc_warnings = 'all'
+    lc_warnings = 'all',
+    lc_safe_mode = true
     -- lc_toy_c_backend = true
 }
 
@@ -50,9 +51,3 @@ add_cxflags("-Wno-deprecated-literal-operator", "-Wno-microsoft-include", "-Wno-
     "-Wno-switch", "-Wno-mismatched-tags", "-Wno-incompatible-pointer-types-discards-qualifiers", {
         tools = "clang_cl"
     })
-
-target("lc-runtime")
-add_defines("LUISA_ENABLE_SAFE_MODE", {
-    public = true
-})
-target_end()

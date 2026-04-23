@@ -25,5 +25,5 @@ if has_config('rbc_editor') then
     includes("tool")
 end
 if has_config('rbc_tools') then
-    includes('ipc') -- 跨进程
+-- tools
 end
