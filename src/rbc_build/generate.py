@@ -66,20 +66,18 @@ class WorldInterfaceModule(CodeModule):
     deps = [ResourceMetaModule]
 
 
-# Python 绑定模块
-EXT_CLASSES = []
-EXT_CLASSES.extend(OUT_WORLD_INTERFACE_CLASSES)
-EXT_CLASSES.extend(OUT_RESOURCE_CLASSES)
+# from rbc_meta.types.editor_interface import OUT_CLASSES as OUT_EDITOR_INTERFACE_CLASSES
 
 
-@codegen
-class WorldInterfacePybindModule(CodeModule):
-    name = "rbc_ext_c"
-    header_files = ["generated/world.h"]
-    pybind_cpp_def_file = "rbc/extensions/ext_c/src/generated/world.cpp"
-    pybind_py_file = "src/robocute/rbc_ext/generated/world.py"
-    classes = EXT_CLASSES
-    deps = [WorldInterfaceModule]
+# @codegen
+# class EditorInterfaceModule(CodeModule):
+#     name = "editor_interface"
+#     cpp_interface_header = "rbc/editor/runtime/include/generated/editor_interface.hpp"
+#     header_files = [
+#         "RBCEditorRuntime/infra/editor/EditorProject.h",
+#         "RBCEditorRuntime/infra/editor/EditorScene.h",
+#     ]
+#     classes = OUT_EDITOR_INTERFACE_CLASSES
 
 
 from rbc_meta.types.project_plugin import OUT_CLASSES as OUT_PROJECT_PLUGIN_CLASSES
@@ -90,6 +88,25 @@ class ProjectPluginModule(CodeModule):
     name = "project_plugin"
     cpp_interface_header = "rbc/project_plugin/include/rbc_project/generated/project.h"
     classes = OUT_PROJECT_PLUGIN_CLASSES
+
+
+# Python 绑定模块
+EXT_CLASSES = []
+EXT_CLASSES.extend(OUT_WORLD_INTERFACE_CLASSES)
+EXT_CLASSES.extend(OUT_RESOURCE_CLASSES)
+# EXT_CLASSES.extend(OUT_EDITOR_INTERFACE_CLASSES)
+
+
+@codegen
+class WorldInterfacePybindModule(CodeModule):
+    name = "rbc_ext_c"
+    header_files = [
+        "generated/world.h",
+    ]
+    pybind_cpp_def_file = "rbc/extensions/ext_c/src/generated/world.cpp"
+    pybind_py_file = "src/robocute/rbc_ext/generated/world.py"
+    classes = EXT_CLASSES
+    deps = [WorldInterfaceModule]
 
 
 def generate_registered():
