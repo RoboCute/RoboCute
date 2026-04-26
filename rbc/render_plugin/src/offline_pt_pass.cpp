@@ -1,6 +1,7 @@
 #include <rbc_render/offline_pt_pass.h>
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_render/pipeline.h>
+#include <rbc_render/generated/pipeline_settings.hpp>
 #include <rbc_render/utils/heitz_sobol.h>
 #include <rbc_render/accum_pass.h>
 #include <rbc_render/renderer_data.h>
@@ -194,14 +195,18 @@ void OfflinePTPass::_dispatch_path_tracing(
     const PreparedResources &resources,
     offline::PTArgs &pt_args,
     Image<uint> const *id_map,
-    uint32_t geometry_mask) const {
+    uint32_t geometry_mask,
+    AlphaCull alpha_cull) const {
     auto &accel = rc.scene.accel();
 
     // Create a copy of pt_args with the geometry_mask set
     pt_args.geometry_mask = geometry_mask;
 
     auto geometry_buffer = rc.frame_settings.pt_geometry_buffer ? rc.frame_settings.pt_geometry_buffer : resources.multibounce_buffer_counter.view().as<float>();
-
+    Image<float> alpha_map;
+    if (alpha_cull != AlphaCull::NoCull) {
+        alpha_map = rc.render_device.create_transient_image<float>("alpha_map", PixelStorage::BYTE1, rc.frame_settings.render_resolution);
+    }
     if (rc.frame_settings.albedo_buffer && rc.frame_settings.normal_buffer) {
         rc.cmdlist << offline_pt_shader_denoise::dispatch_shader(
             _pt_shader_denoise,
@@ -217,6 +222,7 @@ void OfflinePTPass::_dispatch_path_tracing(
             resources.emission,
             rc.accum_pass_ctx->hdr,
             *id_map,
+            alpha_map ? alpha_map : resources.emission,
             resources.geo_buffer.view(),
             *rc.frame_settings.albedo_buffer,
             *rc.frame_settings.normal_buffer,
@@ -224,6 +230,7 @@ void OfflinePTPass::_dispatch_path_tracing(
             resources.multibounce_buffer.view(),
             resources.multibounce_buffer_counter,
             pt_args,
+            static_cast<int32_t>(alpha_cull),
             rc.frame_settings.render_resolution);
     } else {
         rc.cmdlist << offline_pt_shader::dispatch_shader(
@@ -240,11 +247,13 @@ void OfflinePTPass::_dispatch_path_tracing(
             resources.emission,
             rc.accum_pass_ctx->hdr,
             *id_map,
+            alpha_map ? alpha_map : resources.emission,
             resources.geo_buffer.view(),
             geometry_buffer,
             resources.multibounce_buffer.view(),
             resources.multibounce_buffer_counter,
             pt_args,
+            static_cast<int32_t>(alpha_cull),
             rc.frame_settings.render_resolution);
     }
 }
@@ -312,6 +321,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     const auto &pt_settings = ctx.pipeline_settings.read<PathTracerSettings>();
     const auto &cam = ctx.pipeline_settings.read<Camera>();
     const auto &sky_heap = ctx.pipeline_settings.read<SkyHeapIndices>();
+    const auto &display_settings = ctx.pipeline_settings.read<DisplaySettings>();
 
     auto edit = pipeline.get_pass<EditingPass>();
     bool write_id_map = (edit && edit->actived()) || frame_settings.id_img;
@@ -420,7 +430,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
             }
         }
 
-        _dispatch_path_tracing(rc, resources, pt_args, resources.id_map, geometry_mask);
+        _dispatch_path_tracing(rc, resources, pt_args, resources.id_map, geometry_mask, display_settings.alpha_cull);
 
         if (pt_settings.offline_indirect_bounce > 0) {
             pt_args.bounce = pt_settings.offline_indirect_bounce;

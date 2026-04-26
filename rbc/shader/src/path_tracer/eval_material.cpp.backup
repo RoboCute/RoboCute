@@ -1,0 +1,246 @@
+#include <luisa/std.hpp>
+#include <material/openpbr.hpp>
+#include <material/openpbr_params.hpp>
+#include <bsdfs/openpbr.hpp>
+#include <bsdfs/base/bsdf.hpp>
+#include <spectrum/spectrum.hpp>
+#include <utils/onb.hpp>
+#include <std/inplace_vector>
+#include <volumetric/volume.hpp>
+
+using namespace luisa::shader;
+
+inline void openpbr_to_shader_params(
+    material::OpenPBR const &src,
+    mtl::openpbr::BasicParameter &basic,
+    mtl::openpbr::Parameter &extra) {
+    // Weight
+    basic.weight.base = src.weight.base;
+    basic.weight.diffuse_roughness = src.weight.diffuse_roughness;
+    basic.weight.specular = src.weight.specular;
+    basic.weight.metalness = src.weight.metallic;
+    basic.weight.subsurface = src.weight.subsurface;
+    basic.weight.transmission = src.weight.transmission;
+    basic.weight.coat = src.weight.coat;
+    basic.weight.fuzz = src.weight.fuzz;
+    basic.weight.thin_film = src.weight.thin_film;
+    basic.weight.diffraction = src.weight.diffraction;
+
+    // Geometry
+    basic.geometry.thin_walled = src.geometry.thin_walled;
+    basic.geometry.thickness = src.geometry.thickness * 1e-2f;
+
+    // Specular
+    basic.specular.color = spectrum::SpectrumColor(float3(src.specular.specular_color[0], src.specular.specular_color[1], src.specular.specular_color[2]));
+    basic.specular.roughness = src.specular.roughness;
+    basic.specular.roughness_anisotropy = src.specular.roughness_anisotropy;
+    basic.specular.ior = src.specular.ior;
+
+    // Emission
+    basic.emission.luminance = spectrum::SpectrumColor(float3(src.emission.luminance[0], src.emission.luminance[1], src.emission.luminance[2]));
+
+    // Base
+    extra.base.color = spectrum::SpectrumColor(float3(src.base.albedo[0], src.base.albedo[1], src.base.albedo[2]));
+
+    // Subsurface
+    extra.subsurface.color = spectrum::SpectrumColor(float3(src.subsurface.subsurface_color[0], src.subsurface.subsurface_color[1], src.subsurface.subsurface_color[2]));
+    extra.subsurface.radius = float3(src.subsurface.subsurface_radius_scale[0], src.subsurface.subsurface_radius_scale[1], src.subsurface.subsurface_radius_scale[2]) * src.subsurface.subsurface_radius;
+    extra.subsurface.scatter_anisotropy = src.subsurface.subsurface_scatter_anisotropy;
+
+    // Transmission
+    extra.transmission.color = spectrum::SpectrumColor(float3(src.transmission.transmission_color[0], src.transmission.transmission_color[1], src.transmission.transmission_color[2]));
+    extra.transmission.depth = src.transmission.transmission_depth;
+    extra.transmission.scatter = float3(src.transmission.transmission_scatter[0], src.transmission.transmission_scatter[1], src.transmission.transmission_scatter[2]);
+    extra.transmission.scatter_anisotropy = src.transmission.transmission_scatter_anisotropy;
+    extra.transmission.dispersion_scale = src.transmission.transmission_dispersion_scale;
+    extra.transmission.dispersion_abbe_number = src.transmission.transmission_dispersion_abbe_number;
+
+    // Coat
+    extra.coat.color = spectrum::SpectrumColor(float3(src.coat.coat_color[0], src.coat.coat_color[1], src.coat.coat_color[2]));
+    extra.coat.roughness = src.coat.coat_roughness;
+    extra.coat.roughness_anisotropy = src.coat.coat_roughness_anisotropy;
+    extra.coat.ior = src.coat.coat_ior;
+    extra.coat.darkening = src.coat.coat_darkening;
+    extra.coat.roughening = src.coat.coat_roughening;
+
+    // Fuzz
+    extra.fuzz.color = spectrum::SpectrumColor(float3(src.fuzz.fuzz_color[0], src.fuzz.fuzz_color[1], src.fuzz.fuzz_color[2]));
+    extra.fuzz.roughness = src.fuzz.fuzz_roughness;
+
+    // ThinFilm
+    extra.thin_film.thickness = src.thin_film.thin_film_thickness;
+    extra.thin_film.ior = src.thin_film.thin_film_ior;
+
+    // Diffraction
+    extra.diffraction.color = spectrum::SpectrumColor(float3(src.diffraction.diffraction_color[0], src.diffraction.diffraction_color[1], src.diffraction.diffraction_color[2]));
+    extra.diffraction.thickness = src.diffraction.diffraction_thickness;
+    extra.diffraction.inv_pitch = float2(src.diffraction.diffraction_inv_pitch_x, src.diffraction.diffraction_inv_pitch_y);
+    extra.diffraction.angle = src.diffraction.diffraction_angle;
+    extra.diffraction.lobe_count = src.diffraction.diffraction_lobe_count;
+    extra.diffraction.type = mtl::DiffractionGratingType(src.diffraction.diffraction_type);
+}
+
+inline void init_spectrum_colors(
+    mtl::openpbr::BasicParameter &basic,
+    mtl::openpbr::Parameter &extra,
+    spectrum::SpectrumArg &spectrum_arg,
+    float3x3 resource_to_rec2020_mat) {
+    basic.emission.luminance.init_emission(g_image_heap, g_volume_heap, spectrum_arg, resource_to_rec2020_mat);
+    extra.base.color.init_reflectance(g_volume_heap, spectrum_arg, resource_to_rec2020_mat);
+    basic.specular.color.init_reflectance(g_volume_heap, spectrum_arg, resource_to_rec2020_mat);
+    if (basic.weight.diffraction > 0.0f)
+        extra.diffraction.color.init_reflectance(g_volume_heap, spectrum_arg, resource_to_rec2020_mat);
+    if (basic.weight.coat > 0.0f)
+        extra.coat.color.init_reflectance(g_volume_heap, spectrum_arg, resource_to_rec2020_mat);
+    if (basic.weight.fuzz > 0.0f)
+        extra.fuzz.color.init_reflectance(g_volume_heap, spectrum_arg, resource_to_rec2020_mat);
+    if (basic.weight.subsurface > 0.0f) {
+        extra.subsurface.color.init_reflectance(g_volume_heap, spectrum_arg, resource_to_rec2020_mat);
+        extra.subsurface.radius = spectrum::reflectance_to_spectrum(g_volume_heap, spectrum_arg, extra.subsurface.radius);
+    }
+    if (basic.weight.transmission > 0.0f) {
+        extra.transmission.color.init_reflectance(g_volume_heap, spectrum_arg, resource_to_rec2020_mat);
+        if (any(extra.transmission.scatter != 0.0f)) {
+            extra.transmission.scatter = spectrum::reflectance_to_spectrum(g_volume_heap, spectrum_arg, extra.transmission.scatter);
+        }
+    }
+}
+
+inline void evaluate_material_sample(
+    mtl::openpbr::BasicParameter &basic_param,
+    mtl::openpbr::Parameter &extra_param,
+    float3x3 resource_to_rec2020_mat,
+    float3 input_dir,
+    float3 normal,
+    float3 rand,
+    spectrum::SpectrumArg &spectrum_arg,
+    float3 &new_dir,
+    float3 &beta,
+    float &pdf_bsdf,
+    mtl::BSDFFlags &sample_flags) {
+    // Setup ONB from normal, flip against input direction
+    basic_param.geometry.onb = mtl::Onb(normal);
+    if (dot(input_dir, basic_param.geometry.onb.normal) >= 0.0f) {
+        basic_param.geometry.onb.normal = -basic_param.geometry.onb.normal;
+        basic_param.geometry.onb.tangent = -basic_param.geometry.onb.tangent;
+    }
+
+    // Align coat ONB with surface ONB
+    extra_param.coat.coat_onb = basic_param.geometry.onb;
+
+    // Convert input direction to local space
+    float3 wi = -basic_param.geometry.onb.to_local(input_dir);
+
+    // Initialize spectrum colors
+    init_spectrum_colors(basic_param, extra_param, spectrum_arg
+    , resource_to_rec2020_mat);
+
+    // Setup closure data
+    mtl::ShadingDetail detail = mtl::ShadingDetail::Default;
+    mtl::ClosureData<mtl::openpbr::Parameter> closure_data{basic_param, extra_param, spectrum_arg.lambda, detail};
+
+    if (wi.z > 0.0f) {
+        // no volume above
+    } else {
+        // no volume below
+    }
+
+    closure_data.selected_wavelength = spectrum_arg.selected_wavelength;
+    closure_data.hero_wavelength_index = spectrum_arg.hero_index;
+    closure_data.ray_t = 0.0f;
+    closure_data.rand = rand;
+    closure_data.init(basic_param, extra_param);
+
+    // Initialize BSDF
+    mtl::OpenpbrBSDF bsdf;
+    bsdf.init(wi, basic_param, extra_param, closure_data);
+
+    // Sample BSDF
+    std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;
+    auto sample_result = bsdf.sample(wi, closure_data, volume_stack);
+    spectrum_arg.selected_wavelength = closure_data.selected_wavelength;
+
+    sample_flags = sample_result.throughput.flags;
+
+    if (!sample_result ||
+        any(sample_result.throughput.val < 0.f) ||
+        !any(is_finite(sample_result.throughput.val)) ||
+        !is_finite(sample_result.pdf)) {
+        beta = 0.0f;
+        pdf_bsdf = 0.0f;
+        return;
+    }
+
+    // Convert sampled direction back to world space
+    new_dir = basic_param.geometry.onb.to_world(sample_result.wo);
+
+    // Update beta
+    pdf_bsdf = max(1e-4f, sample_result.pdf);
+    beta *= sample_result.throughput.val / pdf_bsdf;
+
+    if (mtl::is_delta(sample_result.throughput.flags))
+        pdf_bsdf = -1.0f;
+}
+
+[[kernel_1d(128)]] int kernel(
+    Buffer<material::OpenPBR> &materials,
+    Buffer<float3> &input_dirs,
+    Buffer<float3> &normals,
+    Buffer<uint> &random_seeds,
+    Buffer<float3> &output_dirs,
+    Buffer<float3> &output_betas,
+    Buffer<uint> &output_flags,
+    float3x3 resource_to_rec2020_mat) {
+
+    auto id = dispatch_id().x;
+
+    // Read material (single shared material at index 0)
+    material::OpenPBR mat = materials.read(0);
+
+    // Convert host OpenPBR to shader parameters
+    mtl::openpbr::BasicParameter basic_param;
+    mtl::openpbr::Parameter extra_param;
+    openpbr_to_shader_params(mat, basic_param, extra_param);
+
+    // Read per-thread inputs
+    float3 input_dir = normalize(input_dirs.read(id));
+    float3 normal = normalize(normals.read(id));
+    uint seed = random_seeds.read(id);
+    sampling::PCGSampler sampler(seed);
+    auto rand = sampler.next3f();
+    // Setup spectrum argument
+    spectrum::SpectrumArg spectrum_arg;
+    spectrum_arg.lambda = spectrum::sample_xyz(g_image_heap, sampler.next());
+    spectrum_arg.hero_index = seed % 3u;
+    spectrum_arg.selected_wavelength = false;
+
+    // Random values for BSDF sampling
+    
+    random_seeds.write(id, sampler.state);
+
+    // Evaluate material sample
+    float3 new_dir;
+    float3 beta = float3(1.0f);
+    float pdf_bsdf;
+    mtl::BSDFFlags sample_flags;
+
+    evaluate_material_sample(
+        basic_param,
+        extra_param,
+        resource_to_rec2020_mat,
+        input_dir,
+        normal,
+        rand,
+        spectrum_arg,
+        new_dir,
+        beta,
+        pdf_bsdf,
+        sample_flags);
+
+    // Write outputs
+    output_dirs.write(id, new_dir);
+    output_betas.write(id, beta);
+    output_flags.write(id, static_cast<uint>(sample_flags));
+
+    return 0;
+}

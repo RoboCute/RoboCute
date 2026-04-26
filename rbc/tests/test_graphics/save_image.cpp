@@ -21,8 +21,7 @@ void save_image(luisa::filesystem::path const &path, Image<float> const &img) {
             luisa::float2(1),
             luisa::float2(),
             luisa::uint2(),
-            img.size(),
-            1.0f);
+            img.size());
         cmdlist << temp_img.copy_to(luisa::span(bytes));
         stream << cmdlist.commit()
                << synchronize();

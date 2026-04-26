@@ -41,7 +41,9 @@ static float2 distort(float2 uv, float4 distortion_Amount, float4 distortion_Cen
     Args args,
     LpmArgs lpm_args,
     Buffer<float> &exposure_buffer,
-    Image<float> &result) {
+    Image<float> &result,
+    Image<float> &alpha_texture,
+    bool alpha_coverage) {
     auto id = dispatch_id().xy;
     float2 uv = (float2(id) + 0.5f) / float2(dispatch_size().xy);
 #ifndef DISABLE_POST_PROCESS
@@ -131,6 +133,9 @@ static float2 distort(float2 uv, float4 distortion_Amount, float4 distortion_Cen
 #endif
     if (args.saturate_result) {
         col = saturate(col);
+    }
+    if (alpha_coverage) {
+        tex_val.w = alpha_texture.read(id + args.pixel_offset).x;
     }
     result.write(id + args.pixel_offset, float4(col, tex_val.w));
     return 0;

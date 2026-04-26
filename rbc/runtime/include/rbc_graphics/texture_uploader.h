@@ -22,8 +22,7 @@ private:
         Image<float>,
         float2,// src uv scale
         float2,// src uv offset
-        uint2, // dst write pixel offset
-        float  // alpha, take max_uint32 for no change
+        uint2 // dst write pixel offset
         > const *_blit_shader;
 
 public:
@@ -80,8 +79,7 @@ public:
         float2 src_uv_scale,
         float2 src_uv_offset,
         uint2 dst_pixel_offset,
-        uint2 dst_blit_size,
-        luisa::optional<float> manually_alpha = {}) const;
+        uint2 dst_blit_size) const;
     ~TextureUploader();
 };
 }// namespace rbc

@@ -27,6 +27,7 @@ using namespace luisa::shader;
     Image<float> &emission_img,
     Image<float> &last_img,
     Image<uint> &id_map,
+    Image<float> &mask_img,
     Buffer<GBuffer> gbuffers,
 #ifdef OFFLINE_DENOISER
     Buffer<float> albedo_buffer,
@@ -36,6 +37,7 @@ using namespace luisa::shader;
     Buffer<MultiBouncePixel> &multi_bounce_pixel,
     Buffer<uint> &multi_bounce_pixel_counter,
     PTArgs args,
+    int alpha_option,
     uint2 size) {
 
     auto coord = dispatch_id().xy;
@@ -138,7 +140,23 @@ using namespace luisa::shader;
             addition_color += old_val.xyz;
             alpha += old_val.w;
         }
-        emission_img.write(coord, float4(addition_color, alpha));
+        float emission_alpha = alpha;
+        float mask = 0;
+        switch (alpha_option) {
+            case 1:
+                mask = to_cam_dist > 1e10f ? 0.0f : 1.0f;
+                break;
+            case 2:
+                mask = to_cam_dist > 1e20f ? 1.0f : 0.0f;
+                break;
+            case 3:
+                mask = 0.f;
+                break;
+        }
+        if (alpha_option > 0) {
+            mask_img.write(coord, float4(mask));
+        }
+        emission_img.write(coord, float4(addition_color, emission_alpha));
         if (reject) return;
 
         alpha = args.frame_index == 0 ? 1.0f : (alpha / (last_img.read(coord).w + alpha));

@@ -19,6 +19,7 @@ struct GBuffer {
 }// namespace pt
 
 struct PTPassContext;
+enum struct AlphaCull : uint32_t;
 struct FrameSettings;
 struct RenderDevice;
 struct AccumPassContext;
@@ -132,7 +133,8 @@ private:
         const PreparedResources &resources,
         offline::PTArgs &pt_args,
         Image<uint> const *id_map,
-        uint32_t geometry_mask) const;
+        uint32_t geometry_mask,
+        AlphaCull alpha_cull) const;
     void _process_multibounce_indirect(
         const PTResourceContext &rc,
         const PreparedResources &resources,

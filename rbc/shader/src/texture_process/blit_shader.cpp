@@ -6,16 +6,12 @@ using namespace luisa::shader;
     Image<float> &dst_img,
     float2 src_uv_scale,
     float2 src_uv_offset,
-    uint2 dst_offset_pixel,
-    float alpha) {
+    uint2 dst_offset_pixel) {
     auto id = dispatch_id().xy;
     auto size = dispatch_size().xy;
     auto uv = (float2(id) + 0.5f) / float2(size);
     uv = uv * src_uv_scale + src_uv_offset;
     auto color = src_img.sample(uv, Filter::LINEAR_POINT, Address::EDGE);
-    if (bit_cast<uint>(alpha) != max_uint32) {
-        color.w = alpha;
-    }
     dst_img.write(id + dst_offset_pixel, color);
     return 0;
 }

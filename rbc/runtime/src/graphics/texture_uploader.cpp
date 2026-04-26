@@ -144,19 +144,16 @@ void TextureUploader::blit(
     float2 src_uv_scale,
     float2 src_uv_offset,
     uint2 dst_pixel_offset,
-    uint2 dst_blit_size,
-    luisa::optional<float> manually_alpha) const {
+    uint2 dst_blit_size) const {
     if (any(dst_pixel_offset + dst_blit_size > dst_img.size())) [[unlikely]] {
         LUISA_ERROR("Blit offset {} + dest size {} > dest-image size {}", dst_pixel_offset, dst_blit_size, dst_img.size());
     }
-    uint invalid_float = -1;
     cmdlist << (*_blit_shader)(
                    src_img,
                    dst_img,
                    src_uv_scale,
                    src_uv_offset,
-                   dst_pixel_offset,
-                   manually_alpha ? *manually_alpha : reinterpret_cast<float &>(invalid_float))
+                   dst_pixel_offset)
                    .dispatch(dst_blit_size);
 }
 TextureUploader::~TextureUploader() = default;

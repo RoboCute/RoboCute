@@ -194,14 +194,21 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     LUISA_ASSERT(read_tex(), "Bad read");
     LUISA_ASSERT(post_ctx->aces.lut3d_volume, "Bad lut3d");
     auto lpm_args = LPM::compute(tone_mapping_settings.lpm);
+    auto &&read_tex_val = read_tex();
+    Image<float> alpha_map;
+    if (display_settings.alpha_cull != AlphaCull::NoCull) {
+        alpha_map = render_device.get_transient_image<float>("alpha_map", PixelStorage::BYTE1, frame_settings.display_offset);
+    }
     cmdlist << (*_uber_shader)(
-                   read_tex(),
+                   read_tex_val,
                    post_ctx->aces.lut3d_volume,
                    //    post_ctx->exposure.local_exp_volume,
                    args,
                    lpm_args,
                    post_ctx->exposure.exposure_buffer,
-                   *uber_out_img)
+                   *uber_out_img,
+                   alpha_map ? alpha_map : read_tex_val,
+                   static_cast<bool>(alpha_map))
                    .dispatch(frame_settings.display_resolution);
     if (post_ctx)
         post_ctx->reset = false;

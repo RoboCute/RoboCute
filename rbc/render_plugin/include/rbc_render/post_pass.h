@@ -28,7 +28,9 @@ private:
         post_uber_pass::Args,
         post_uber_pass::LpmArgs,
         Buffer<float>,// exposure buffer
-        Image<float>  // out texture
+        Image<float>,  // out texture
+        Image<float>,  // alpha-texture
+        bool // use _alpha
         >;
     UberShader const *_uber_shader{};
     Shader2D<

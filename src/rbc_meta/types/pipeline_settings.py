@@ -46,6 +46,13 @@ class LpmColorSpace(Enum):
     Display = 3
     
 @reflect(cpp_namespace="rbc")
+class AlphaCull(Enum):
+    NoCull = 0
+    CullSkybox = 1
+    OnlySkybox = 2
+    CullAll = 3
+    
+@reflect(cpp_namespace="rbc")
 class GeometryType(Enum):
     NONE = 0
     Depth = 1 << 0   # float: Distance to camera
@@ -285,6 +292,7 @@ class DisplaySettings:
     use_linear_sdr: bool
     use_hdr_display: bool
     use_hdr_10: bool
+    alpha_cull: AlphaCull
     gamma: float
     chromatic_aberration: float
 
@@ -339,6 +347,7 @@ OUT_CLASSES = [
     ToneMappingSettings,
     DisplaySettings,
     SkySettings,
+    AlphaCull,
 ]
 
 __all__ = [
