@@ -60,6 +60,15 @@ SOFTWARE.
 #include <climits>
 
 // General namespace wrapping all Happly things.
+
+// Helper to log error and abort (no exceptions in this project)
+namespace {
+[[noreturn]] inline void log_error_and_abort(const std::string& msg) {
+    std::cerr << "ERROR: " << msg << std::endl;
+    std::abort();
+}
+} // namespace
+
 namespace happly
 {
 
@@ -112,7 +121,7 @@ template <> struct SerializeType< int8_t>               { typedef int32_t   type
 // last int/char arg is to resolve ambiguous overloads, just always pass 0 and the int version will be preferred
 template <typename S, typename T>
 S* addressIfSame(T&, char) {
-  throw std::runtime_error("tried to take address for types that are not same");
+  log_error_and_abort("tried to take address for types that are not same");
   return nullptr;}
 template <typename S>
 S* addressIfSame(S& t, int) {return &t;}
@@ -301,7 +310,7 @@ public:
         if (typeName<T>() == "unknown")
         {
             // TODO should really be a compile-time error
-            throw std::runtime_error("Attempted property type does not match any type defined by the .ply format.");
+            log_error_and_abort("Attempted property type does not match any type defined by the .ply format.");
         }
     };
 
@@ -317,7 +326,7 @@ public:
     {
         if (typeName<T>() == "unknown")
         {
-            throw std::runtime_error("Attempted property type does not match any type defined by the .ply format.");
+            log_error_and_abort("Attempted property type does not match any type defined by the .ply format.");
         }
     };
 
@@ -453,7 +462,7 @@ public:
     {
         if (typeName<T>() == "unknown")
         {
-            throw std::runtime_error("Attempted property type does not match any type defined by the .ply format.");
+            log_error_and_abort("Attempted property type does not match any type defined by the .ply format.");
         }
 
         flattenedIndexStart.push_back(0);
@@ -470,7 +479,7 @@ public:
     {
         if (typeName<T>() == "unknown")
         {
-            throw std::runtime_error("Attempted property type does not match any type defined by the .ply format.");
+            log_error_and_abort("Attempted property type does not match any type defined by the .ply format.");
         }
 
         // Populate list with data
@@ -616,9 +625,7 @@ public:
         size_t dataCount = dataEnd - dataStart;
         if (dataCount > std::numeric_limits<uint8_t>::max())
         {
-            throw std::runtime_error(
-                "List property has an element with more entries than fit in a uchar. See note in README."
-            );
+            log_error_and_abort("List property has an element with more entries than fit in a uchar. See note in README.");
         }
 
         outStream << dataCount;
@@ -644,9 +651,7 @@ public:
         size_t dataCount = dataEnd - dataStart;
         if (dataCount > std::numeric_limits<uint8_t>::max())
         {
-            throw std::runtime_error(
-                "List property has an element with more entries than fit in a uchar. See note in README."
-            );
+            log_error_and_abort("List property has an element with more entries than fit in a uchar. See note in README.");
         }
         uint8_t count = static_cast<uint8_t>(dataCount);
 
@@ -669,9 +674,7 @@ public:
         size_t dataCount = dataEnd - dataStart;
         if (dataCount > std::numeric_limits<uint8_t>::max())
         {
-            throw std::runtime_error(
-                "List property has an element with more entries than fit in a uchar. See note in README."
-            );
+            log_error_and_abort("List property has an element with more entries than fit in a uchar. See note in README.");
         }
         uint8_t count = static_cast<uint8_t>(dataCount);
 
@@ -750,7 +753,7 @@ inline std::unique_ptr<Property> createPropertyWithType(const std::string& name,
         }
         else
         {
-            throw std::runtime_error("Unrecognized list count type: " + listCountTypeStr);
+            log_error_and_abort("Unrecognized list count type: " + listCountTypeStr);
         }
     }
 
@@ -866,7 +869,7 @@ inline std::unique_ptr<Property> createPropertyWithType(const std::string& name,
 
     else
     {
-        throw std::runtime_error("Data type: " + typeStr + " cannot be mapped to .ply format");
+        log_error_and_abort("Data type: " + typeStr + " cannot be mapped to .ply format");
     }
 }
 
@@ -971,7 +974,7 @@ public:
                 return prop;
             }
         }
-        throw std::runtime_error("PLY parser: element " + name + " does not have property " + target);
+        log_error_and_abort("PLY parser: element " + name + " does not have property " + target);
     }
 
     /**
@@ -987,7 +990,7 @@ public:
 
         if (data.size() != count)
         {
-            throw std::runtime_error("PLY write: new property " + propertyName + " has size which does not match element");
+            log_error_and_abort("PLY write: new property " + propertyName + " has size which does not match element");
         }
 
         // If there is already some property with this name, remove it
@@ -1021,7 +1024,7 @@ public:
 
         if (data.size() != count)
         {
-            throw std::runtime_error("PLY write: new property " + propertyName + " has size which does not match element");
+            log_error_and_abort("PLY write: new property " + propertyName + " has size which does not match element");
         }
 
         // If there is already some property with this name, remove it
@@ -1088,7 +1091,7 @@ public:
         }
 
         // No match, failure
-        throw std::runtime_error("PLY parser: property " + prop->name + " is not of type type " + typeName<T>() + ". Has type " + prop->propertyTypeName());
+        log_error_and_abort("PLY parser: property " + prop->name + " is not of type type " + typeName<T>() + ". Has type " + prop->propertyTypeName());
     }
 
     /**
@@ -1133,7 +1136,7 @@ public:
         }
 
         // No match, failure
-        throw std::runtime_error("PLY parser: list property " + prop->name + " is not of type " + typeName<T>() + ". Has type " + prop->propertyTypeName());
+        log_error_and_abort("PLY parser: list property " + prop->name + " is not of type " + typeName<T>() + ". Has type " + prop->propertyTypeName());
     }
 
     /**
@@ -1155,31 +1158,8 @@ public:
         std::unique_ptr<Property>& prop = getPropertyPtr(propertyName);
 
         // Get a copy of the data with auto-promoting type magic
-        try
-        {
-            // First, try the usual approach, looking for a version of the property with the same signed-ness and possibly
-            // smaller size
-            return getDataFromListPropertyRecursive<T, T>(prop.get());
-        } catch (const std::runtime_error& orig_e)
-        {
-
-            // If the usual approach fails, look for a version with opposite signed-ness
-            try
-            {
-
-                // This type has the oppopsite signeness as the input type
-                typedef typename CanonicalName<T>::type                                                                                                              Tcan;
-                typedef typename std::conditional<std::is_signed<Tcan>::value, typename std::make_unsigned<Tcan>::type, typename std::make_signed<Tcan>::type>::type OppsignType;
-
-                return getDataFromListPropertyRecursive<T, OppsignType>(prop.get());
-
-            } catch (const std::runtime_error&)
-            {
-                throw orig_e;
-            }
-
-            throw orig_e;
-        }
+        // Get a copy of the data with auto-promoting type magic
+        return getDataFromListPropertyRecursive<T, T>(prop.get());
     }
 
     /**
@@ -1195,14 +1175,14 @@ public:
             {
                 if (std::isspace(c))
                 {
-                    throw std::runtime_error("Ply validate: illegal whitespace in name " + properties[iP]->name);
+                    log_error_and_abort("Ply validate: illegal whitespace in name " + properties[iP]->name);
                 }
             }
             for (size_t jP = iP + 1; jP < properties.size(); jP++)
             {
                 if (properties[iP]->name == properties[jP]->name)
                 {
-                    throw std::runtime_error("Ply validate: multiple properties with name " + properties[iP]->name);
+                    log_error_and_abort("Ply validate: multiple properties with name " + properties[iP]->name);
                 }
             }
         }
@@ -1212,7 +1192,7 @@ public:
         {
             if (properties[iP]->size() != count)
             {
-                throw std::runtime_error("Ply validate: property has wrong size. " + properties[iP]->name + " does not match element size.");
+                log_error_and_abort("Ply validate: property has wrong size. " + properties[iP]->name + " does not match element size.");
             }
         }
     }
@@ -1330,7 +1310,7 @@ public:
         else
         {
             // No smaller type to try, failure
-            throw std::runtime_error("PLY parser: property " + prop->name + " cannot be coerced to requested type " + typeName<D>() + ". Has type " + prop->propertyTypeName());
+            log_error_and_abort("PLY parser: property " + prop->name + " cannot be coerced to requested type " + typeName<D>() + ". Has type " + prop->propertyTypeName());
         }
     }
 
@@ -1386,7 +1366,7 @@ public:
         else
         {
             // No smaller type to try, failure
-            throw std::runtime_error("PLY parser: list property " + prop->name + " cannot be coerced to requested type list " + typeName<D>() + ". Has type list " + prop->propertyTypeName());
+            log_error_and_abort("PLY parser: list property " + prop->name + " cannot be coerced to requested type list " + typeName<D>() + ". Has type list " + prop->propertyTypeName());
         }
     }
 };
@@ -1469,7 +1449,7 @@ public:
         std::ifstream inStream(filename, std::ios::binary);
         if (inStream.fail())
         {
-            throw std::runtime_error("PLY parser: Could not open file " + filename);
+            log_error_and_abort("PLY parser: Could not open file " + filename);
         }
 
         parsePLY(inStream, verbose);
@@ -1514,14 +1494,14 @@ public:
             {
                 if (std::isspace(c))
                 {
-                    throw std::runtime_error("Ply validate: illegal whitespace in element name " + elements[iE].name);
+                    log_error_and_abort("Ply validate: illegal whitespace in element name " + elements[iE].name);
                 }
             }
             for (size_t jE = iE + 1; jE < elements.size(); jE++)
             {
                 if (elements[iE].name == elements[jE].name)
                 {
-                    throw std::runtime_error("Ply validate: duplcate element name " + elements[iE].name);
+                    log_error_and_abort("Ply validate: duplcate element name " + elements[iE].name);
                 }
             }
         }
@@ -1549,7 +1529,7 @@ public:
         std::ofstream outStream(filename, std::ios::out | std::ios::binary);
         if (!outStream.good())
         {
-            throw std::runtime_error("Ply writer: Could not open output file " + filename + " for writing");
+            log_error_and_abort("Ply writer: Could not open output file " + filename + " for writing");
         }
 
         writePLY(outStream);
@@ -1583,7 +1563,7 @@ public:
         {
             if (e.name == target) return e;
         }
-        throw std::runtime_error("PLY parser: no element with name: " + target);
+        log_error_and_abort("PLY parser: no element with name: " + target);
     }
 
     /**
@@ -1692,16 +1672,10 @@ public:
         {
             for (const std::string& p : std::vector<std::string>{ "vertex_indices", "vertex_index" })
             {
-                try
-                {
-                    return getElement(f).getListPropertyAnySign<T>(p);
-                } catch (const std::runtime_error&)
-                {
-                    // that's fine
-                }
+                return getElement(f).getListPropertyAnySign<T>(p);
             }
         }
-        throw std::runtime_error("PLY parser: could not find face vertex indices attribute under any common name.");
+        log_error_and_abort("PLY parser: could not find face vertex indices attribute under any common name.");;
     }
 
     /**
@@ -1842,8 +1816,7 @@ public:
                 IndType valConverted = static_cast<IndType>(val);
                 if (valConverted != val)
                 {
-                    throw std::runtime_error("Index value " + std::to_string(val) + " could not be converted to a .ply integer without loss of data. Note that .ply "
-                                                                                    "only supports 32-bit ints.");
+                    log_error_and_abort("Index value " + std::to_string(val) + " could not be converted to a .ply integer without loss of data. Note that .ply only supports 32-bit ints.");
                 }
                 thisInds.push_back(valConverted);
             }
@@ -1923,7 +1896,7 @@ private:
             std::getline(inStream, plyLine);
             if (trimSpaces(plyLine) != "ply")
             {
-                throw std::runtime_error("PLY parser: File does not appear to be ply file. First line should be 'ply'");
+                log_error_and_abort("PLY parser: File does not appear to be ply file. First line should be 'ply'");
             }
         }
 
@@ -1931,13 +1904,13 @@ private:
             string styleLine;
             std::getline(inStream, styleLine);
             vector<string> tokens = tokenSplit(styleLine);
-            if (tokens.size() != 3) throw std::runtime_error("PLY parser: bad format line");
+            if (tokens.size() != 3) log_error_and_abort("PLY parser: bad format line");
             std::string formatStr  = tokens[0];
             std::string typeStr    = tokens[1];
             std::string versionStr = tokens[2];
 
             // "format"
-            if (formatStr != "format") throw std::runtime_error("PLY parser: bad format line");
+            if (formatStr != "format") log_error_and_abort("PLY parser: bad format line");
 
             // ascii/binary
             if (typeStr == "ascii")
@@ -1957,13 +1930,13 @@ private:
             }
             else
             {
-                throw std::runtime_error("PLY parser: bad format line");
+                log_error_and_abort("PLY parser: bad format line");
             }
 
             // version
             if (versionStr != "1.0")
             {
-                throw std::runtime_error("PLY parser: encountered file with version != 1.0. Don't know how to parse that");
+                log_error_and_abort("PLY parser: encountered file with version != 1.0. Don't know how to parse that");
             }
             if (verbose) cout << "  - Version: " << versionStr << endl;
         }
@@ -1996,7 +1969,7 @@ private:
             else if (startsWith(line, "element"))
             {
                 vector<string> tokens = tokenSplit(line);
-                if (tokens.size() != 3) throw std::runtime_error("PLY parser: Invalid element line");
+                if (tokens.size() != 3) log_error_and_abort("PLY parser: Invalid element line");
                 string             name = tokens[1];
                 size_t             count;
                 std::istringstream iss(tokens[2]);
@@ -2010,8 +1983,8 @@ private:
             else if (startsWith(line, "property list"))
             {
                 vector<string> tokens = tokenSplit(line);
-                if (tokens.size() != 5) throw std::runtime_error("PLY parser: Invalid property list line");
-                if (elements.size() == 0) throw std::runtime_error("PLY parser: Found property list without previous element");
+                if (tokens.size() != 5) log_error_and_abort("PLY parser: Invalid property list line");
+                if (elements.size() == 0) log_error_and_abort("PLY parser: Found property list without previous element");
                 string countType = tokens[2];
                 string type      = tokens[3];
                 string name      = tokens[4];
@@ -2026,8 +1999,8 @@ private:
             else if (startsWith(line, "property"))
             {
                 vector<string> tokens = tokenSplit(line);
-                if (tokens.size() != 3) throw std::runtime_error("PLY parser: Invalid property line");
-                if (elements.size() == 0) throw std::runtime_error("PLY parser: Found property without previous element");
+                if (tokens.size() != 3) log_error_and_abort("PLY parser: Invalid property line");
+                if (elements.size() == 0) log_error_and_abort("PLY parser: Found property without previous element");
                 string type = tokens[1];
                 string name = tokens[2];
                 elements.back().properties.push_back(createPropertyWithType(name, type, false, ""));
@@ -2044,7 +2017,7 @@ private:
             // Error!
             else
             {
-                throw std::runtime_error("Unrecognized header line: " + line);
+                log_error_and_abort("Unrecognized header line: " + line);
             }
         }
     }
@@ -2111,7 +2084,7 @@ private:
 
         if (!isLittleEndian())
         {
-            throw std::runtime_error("binary reading assumes little endian system");
+            log_error_and_abort("binary reading assumes little endian system");
         }
 
         using std::string;
@@ -2151,7 +2124,7 @@ private:
 
         if (!isLittleEndian())
         {
-            throw std::runtime_error("binary reading assumes little endian system");
+            log_error_and_abort("binary reading assumes little endian system");
         }
 
         using std::string;
@@ -2199,7 +2172,7 @@ private:
             {
                 if (!isLittleEndian())
                 {
-                    throw std::runtime_error("binary writing assumes little endian system");
+                    log_error_and_abort("binary writing assumes little endian system");
                 }
                 e.writeDataBinary(outStream);
             }
@@ -2207,7 +2180,7 @@ private:
             {
                 if (!isLittleEndian())
                 {
-                    throw std::runtime_error("binary writing assumes little endian system");
+                    log_error_and_abort("binary writing assumes little endian system");
                 }
                 e.writeDataBinaryBigEndian(outStream);
             }

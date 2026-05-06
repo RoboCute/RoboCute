@@ -125,12 +125,7 @@ bool ProjectService::openProject(const QString &projectRootOrProjectFile, const 
 
     // Ensure editor data dir exists (placeholder)
     // This might fail, but we should continue anyway
-    try {
-        QDir().mkpath(editorDataDirPath());
-    } catch (...) {
-        qWarning() << "[ProjectService] Failed to create editor data directory";
-        // Don't fail the project open for this
-    }
+    QDir().mkpath(editorDataDirPath());
 
     // Load preferences and session - failures here should not prevent project opening
     if (options.loadUserPreferences) {
@@ -595,50 +590,40 @@ bool ProjectService::loadProjectFile(const QString &projectFilePath) {
     }
 
     // Fill ProjectInfo (best-effort; tolerate missing fields)
-    // Use try-catch to handle any potential exceptions during parsing
-    try {
-        ProjectInfo info;
-        info.raw = obj;
-        info.name = obj.value("name").toString();
-        info.version = obj.value("version").toString();
-        info.rbcVersion = obj.value("rbc_version").toString();
-        info.author = obj.value("author").toString();
-        info.description = obj.value("description").toString();
-        info.createdAt = parse_iso_datetime_or_empty(obj.value("created_at"));
-        info.modifiedAt = parse_iso_datetime_or_empty(obj.value("modified_at"));
+    ProjectInfo info;
+    info.raw = obj;
+    info.name = obj.value("name").toString();
+    info.version = obj.value("version").toString();
+    info.rbcVersion = obj.value("rbc_version").toString();
+    info.author = obj.value("author").toString();
+    info.description = obj.value("description").toString();
+    info.createdAt = parse_iso_datetime_or_empty(obj.value("created_at"));
+    info.modifiedAt = parse_iso_datetime_or_empty(obj.value("modified_at"));
 
-        const auto pathsVal = obj.value("paths");
-        if (pathsVal.isObject()) {
-            const auto p = pathsVal.toObject();
-            info.paths.assets = p.value("assets").toString(info.paths.assets);
-            info.paths.docs = p.value("docs").toString(info.paths.docs);
-            info.paths.datasets = p.value("datasets").toString(info.paths.datasets);
-            info.paths.pretrained = p.value("pretrained").toString(info.paths.pretrained);
-            info.paths.intermediate = p.value("intermediate").toString(info.paths.intermediate);
-        }
-
-        const auto cfgVal = obj.value("config");
-        if (cfgVal.isObject()) {
-            const auto c = cfgVal.toObject();
-            info.config.defaultScene = c.value("default_scene").toString();
-            info.config.startupGraph = c.value("startup_graph").toString();
-            info.config.backend = c.value("backend").toString();
-            info.config.resourceVersion = c.value("resource_version").toString();
-            info.config.extra = c;
-        }
-
-        // Only update info_ if everything succeeded
-        info_ = info;
-        // Don't emit projectInfoChanged here - it will be emitted by openProject after state is set
-        return true;
-    } catch (const std::exception &e) {
-        setLastError(QString("loadProjectFile: exception while parsing project file %1: %2")
-                         .arg(projectFilePath, QString::fromStdString(e.what())));
-        return false;
-    } catch (...) {
-        setLastError(QString("loadProjectFile: unknown exception while parsing project file: %1").arg(projectFilePath));
-        return false;
+    const auto pathsVal = obj.value("paths");
+    if (pathsVal.isObject()) {
+        const auto p = pathsVal.toObject();
+        info.paths.assets = p.value("assets").toString(info.paths.assets);
+        info.paths.docs = p.value("docs").toString(info.paths.docs);
+        info.paths.datasets = p.value("datasets").toString(info.paths.datasets);
+        info.paths.pretrained = p.value("pretrained").toString(info.paths.pretrained);
+        info.paths.intermediate = p.value("intermediate").toString(info.paths.intermediate);
     }
+
+    const auto cfgVal = obj.value("config");
+    if (cfgVal.isObject()) {
+        const auto c = cfgVal.toObject();
+        info.config.defaultScene = c.value("default_scene").toString();
+        info.config.startupGraph = c.value("startup_graph").toString();
+        info.config.backend = c.value("backend").toString();
+        info.config.resourceVersion = c.value("resource_version").toString();
+        info.config.extra = c;
+    }
+
+    // Only update info_ if everything succeeded
+    info_ = info;
+    // Don't emit projectInfoChanged here - it will be emitted by openProject after state is set
+    return true;
 }
 
 void ProjectService::clearState() {

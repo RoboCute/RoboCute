@@ -81,45 +81,39 @@ bool EditorPluginManager::loadPlugin(const QString &pluginId) {
 
 bool EditorPluginManager::loadPluginFromDLL(const QString &pluginPath) {
     auto &inst = rbc::PluginManager::instance();
-    try {
-        auto module = inst.load_module(pluginPath.toStdString().c_str());
+    auto module = inst.load_module(pluginPath.toStdString().c_str());
 
-        // 新设计：动态库导出 createPluginFactory 函数
-        IPluginFactory *factoryPtr = module->invoke<IPluginFactory *()>("createPluginFactory");
-        if (!factoryPtr) {
-            qWarning() << "EditorPluginManager::loadPluginFromDLL: createPluginFactory returned null from" << pluginPath;
-            return false;
-        }
-
-        // 接管工厂所有权
-        std::unique_ptr<IPluginFactory> factory(factoryPtr);
-        QString pluginId = factory->pluginId();
-
-        // 通过工厂创建插件
-        auto plugin = factory->create();
-        if (!plugin) {
-            qWarning() << "EditorPluginManager::loadPluginFromDLL: Factory failed to create plugin from" << pluginPath;
-            return false;
-        }
-
-        plugin->plugin_path = pluginPath;
-
-        if (!loadPluginInternal(std::move(plugin), pluginId)) {
-            return false;
-        }
-
-        // 保持 DLL 模块加载状态，防止插件代码被卸载
-        modules_[pluginId] = std::move(module);
-
-        // 保存工厂以支持重新加载
-        factories_[pluginId] = std::move(factory);
-
-        return true;
-    } catch (std::exception &e) {
-        qWarning() << "EditorPluginManager::loadPluginFromDLL: Plugin from" << pluginPath
-                   << "load failed:" << e.what();
+    // 新设计：动态库导出 createPluginFactory 函数
+    IPluginFactory *factoryPtr = module->invoke<IPluginFactory *()>("createPluginFactory");
+    if (!factoryPtr) {
+        qWarning() << "EditorPluginManager::loadPluginFromDLL: createPluginFactory returned null from" << pluginPath;
         return false;
     }
+
+    // 接管工厂所有权
+    std::unique_ptr<IPluginFactory> factory(factoryPtr);
+    QString pluginId = factory->pluginId();
+
+    // 通过工厂创建插件
+    auto plugin = factory->create();
+    if (!plugin) {
+        qWarning() << "EditorPluginManager::loadPluginFromDLL: Factory failed to create plugin from" << pluginPath;
+        return false;
+    }
+
+    plugin->plugin_path = pluginPath;
+
+    if (!loadPluginInternal(std::move(plugin), pluginId)) {
+        return false;
+    }
+
+    // 保持 DLL 模块加载状态，防止插件代码被卸载
+    modules_[pluginId] = std::move(module);
+
+    // 保存工厂以支持重新加载
+    factories_[pluginId] = std::move(factory);
+
+    return true;
 }
 
 bool EditorPluginManager::loadPluginInternal(std::unique_ptr<IEditorPlugin> plugin, const QString &pluginId) {

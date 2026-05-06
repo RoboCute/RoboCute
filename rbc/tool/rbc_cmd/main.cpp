@@ -453,24 +453,14 @@ int main(int argc, char **argv) {
 
     program.add_subparser(createCommand);
 
-    try {
-        program.parse_args(argc, argv);
-    } catch (const std::exception &err) {
-        std::cerr << err.what() << std::endl;
-        std::cerr << program;
-        return 1;
-    }
+    program.parse_args(argc, argv);
 
     // Handle create command
     if (program.is_subcommand_used("create")) {
         auto projectName = createCommand.get<std::string>("project_name");
         auto templateName = createCommand.get<std::string>("--template");
         std::string version = "";
-        try {
-            version = createCommand.get<std::string>("--version");
-        } catch (...) {
-            // Version not specified, use default behavior
-        }
+        version = createCommand.get<std::string>("--version");
 
         return createProject(projectName, templateName, version);
     }

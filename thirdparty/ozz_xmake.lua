@@ -10,7 +10,8 @@ target_end()
 target("ozz_animation_base")
 do
     add_rules('lc_basic_settings', {
-        project_kind = 'shared'
+        project_kind = 'shared',
+        enable_exception = true
     })
     add_headerfiles("ozz_animation/include/**.h")
     add_deps('ozz_animation_include')

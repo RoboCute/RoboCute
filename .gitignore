@@ -115,7 +115,6 @@ thirdparty/console_bridge
 thirdparty/tinyxml2
 thirdparty/urdfdom_headers
 thirdparty/alembic
-thirdparty/argparse
 thirdparty/Imath
 thirdparty/lib3ds
 thirdparty/lwo

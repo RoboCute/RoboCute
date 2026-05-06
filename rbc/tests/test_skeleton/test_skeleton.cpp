@@ -192,13 +192,7 @@ int main(int argc, char* argv[]) {
     argparse::ArgumentParser program("test_skeleton", "0.1.0");
     program.add_argument("gltf_file").help("Path to glTF file to load skeleton from");
     
-    try {
-        program.parse_args(argc, argv);
-    } catch (const std::exception& err) {
-        std::cerr << err.what() << std::endl;
-        std::cerr << program;
-        return 1;
-    }
+    program.parse_args(argc, argv);
     
     auto gltf_file = program.get<std::string>("gltf_file");
     
