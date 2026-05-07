@@ -25,7 +25,7 @@ struct NumberSourceDataModel : public NodeDelegateModel
 public:
     NumberSourceDataModel();
 
-    virtual ~NumberSourceDataModel() {}
+    ~NumberSourceDataModel() override = default;
 
 public:
     QString caption() const override { return QStringLiteral("Number Source"); }

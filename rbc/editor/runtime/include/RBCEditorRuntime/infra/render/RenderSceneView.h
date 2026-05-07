@@ -26,7 +26,7 @@ struct GraphicsUtils;
  * This view is created and managed by SceneService.
  */
 struct RBC_EDITOR_RUNTIME_API RenderSceneView {
-    EditorScene *scene_ = nullptr;
+    EditorScene *_scene = nullptr;
 
     // ========== Scene State ==========
 
@@ -34,14 +34,14 @@ struct RBC_EDITOR_RUNTIME_API RenderSceneView {
      * Check if the scene is ready for rendering
      */
     [[nodiscard]] bool isReady() const {
-        return scene_ && scene_->isReady();
+        return _scene && _scene->isReady();
     }
 
     /**
      * Check if a scene is bound
      */
     [[nodiscard]] bool isValid() const {
-        return scene_ != nullptr;
+        return _scene != nullptr;
     }
 
     // ========== Entity Access ==========
@@ -50,28 +50,28 @@ struct RBC_EDITOR_RUNTIME_API RenderSceneView {
      * Get entity count
      */
     [[nodiscard]] size_t entityCount() const {
-        return scene_ ? scene_->entityCount() : 0;
+        return _scene ? _scene->entityCount() : 0;
     }
 
     /**
      * Get all entity IDs
      */
     [[nodiscard]] luisa::vector<int> getAllEntityIds() const {
-        return scene_ ? scene_->getAllEntityIds() : luisa::vector<int>{};
+        return _scene ? _scene->getAllEntityIds() : luisa::vector<int>{};
     }
 
     /**
      * Get entity by local ID
      */
     [[nodiscard]] world::Entity *getEntity(int localId) const {
-        return scene_ ? scene_->getEntity(localId) : nullptr;
+        return _scene ? _scene->getEntity(localId) : nullptr;
     }
 
     /**
      * Get entity ID from TLAS instance ID (for picking)
      */
     [[nodiscard]] int getEntityIdFromInstanceId(uint32_t instanceId) const {
-        return scene_ ? scene_->getEntityIdFromInstanceId(instanceId) : -1;
+        return _scene ? _scene->getEntityIdFromInstanceId(instanceId) : -1;
     }
 
     // ========== Resource Access ==========
@@ -80,7 +80,7 @@ struct RBC_EDITOR_RUNTIME_API RenderSceneView {
      * Get skybox texture
      */
     [[nodiscard]] RC<world::TextureResource> getSkybox() const {
-        return scene_ ? scene_->getSkybox() : RC<world::TextureResource>{};
+        return _scene ? _scene->getSkybox() : RC<world::TextureResource>{};
     }
 };
 

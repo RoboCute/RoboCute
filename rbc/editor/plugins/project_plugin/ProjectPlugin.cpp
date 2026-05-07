@@ -35,39 +35,39 @@ ProjectPlugin::ProjectPlugin(QObject *parent)
 }
 
 ProjectPlugin::~ProjectPlugin() {
-    if (projectOpenedConnection_) {
-        QObject::disconnect(projectOpenedConnection_);
-        projectOpenedConnection_ = {};
+    if (_project_opened_connection) {
+        QObject::disconnect(_project_opened_connection);
+        _project_opened_connection = {};
     }
-    if (treeViewDoubleClickConnection_) {
-        QObject::disconnect(treeViewDoubleClickConnection_);
-        treeViewDoubleClickConnection_ = {};
+    if (_tree_view_double_click_connection) {
+        QObject::disconnect(_tree_view_double_click_connection);
+        _tree_view_double_click_connection = {};
     }
-    if (projectClosingConnection_) {
-        QObject::disconnect(projectClosingConnection_);
-        projectClosingConnection_ = {};
+    if (_project_closing_connection) {
+        QObject::disconnect(_project_closing_connection);
+        _project_closing_connection = {};
     }
 
     // Save cache before destruction
-    if (projectService_ && projectService_->isOpen()) {
+    if (_project_service && _project_service->isOpen()) {
         saveProjectCache();
     }
 
-    if (fileBrowserWidget_ || viewModel_) {
+    if (_file_browser_widget || _view_model) {
         qWarning() << "ProjectPlugin::~ProjectPlugin: unload() was not called before destruction!";
-        if (viewModel_) {
-            delete viewModel_;
-            viewModel_ = nullptr;
+        if (_view_model) {
+            delete _view_model;
+            _view_model = nullptr;
         }
-        // fileBrowserWidget_ 使用 QPointer，检查是否已被删除
-        if (fileBrowserWidget_) {
-            delete fileBrowserWidget_.data();
-            // QPointer 会自动变成 nullptr
+        // _file_browser_widget uses QPointer, check if already deleted
+        if (_file_browser_widget) {
+            delete _file_browser_widget.data();
+            // QPointer auto-becomes nullptr
         }
     }
 
-    projectService_ = nullptr;
-    context_ = nullptr;
+    _project_service = nullptr;
+    _context = nullptr;
 
     qDebug() << "ProjectPlugin destroyed";
 }
@@ -78,12 +78,12 @@ bool ProjectPlugin::load(PluginContext *context) {
         return false;
     }
 
-    context_ = context;
+    _context = context;
 
     // Get ProjectService from PluginManager (using interface type)
-    projectService_ = context->getService<IProjectService>();
+    _project_service = context->getService<IProjectService>();
 
-    if (!projectService_) {
+    if (!_project_service) {
         qWarning() << "ProjectPlugin::load: ProjectService should be registered before ProjectPlugin load";
         return false;
     }
@@ -92,7 +92,7 @@ bool ProjectPlugin::load(PluginContext *context) {
     loadProjectCache();
 
     // Create ViewModel first (needed for signal connections)
-    viewModel_ = new ProjectViewModel(projectService_, this);
+    _view_model = new ProjectViewModel(_project_service, this);
 
     // Try to open last project if available
     QString lastProject = getLastOpenedProject();
@@ -101,28 +101,28 @@ bool ProjectPlugin::load(PluginContext *context) {
         options.loadUserPreferences = true;
         options.loadEditorSession = true;
         
-        if (projectService_->openProject(lastProject, options)) {
+        if (_project_service->openProject(lastProject, options)) {
             qDebug() << "ProjectPlugin: Auto-opened last project:" << lastProject;
             // ViewModel will be updated via projectOpened signal connection
         } else {
-            qWarning() << "ProjectPlugin: Failed to auto-open last project:" << projectService_->lastError();
+            qWarning() << "ProjectPlugin: Failed to auto-open last project:" << _project_service->lastError();
         }
     }
     
     // If no project is open, show project list
-    if (!projectService_->isOpen()) {
-        viewModel_->setProjectListMode(true);
-        viewModel_->setRecentProjects(getRecentProjects());
+    if (!_project_service->isOpen()) {
+        _view_model->setProjectListMode(true);
+        _view_model->setRecentProjects(getRecentProjects());
     }
 
     // Create file browser widget
-    fileBrowserWidget_ = new QWidget();
-    QVBoxLayout *layout = new QVBoxLayout(fileBrowserWidget_);
+    _file_browser_widget = new QWidget();
+    QVBoxLayout *layout = new QVBoxLayout(_file_browser_widget);
     layout->setContentsMargins(0, 0, 0, 0);
 
-    QTreeView *treeView = new QTreeView(fileBrowserWidget_);
-    treeView->setModel(viewModel_->fileSystemModel());
-    treeView->setRootIndex(viewModel_->rootIndex());
+    QTreeView *treeView = new QTreeView(_file_browser_widget);
+    treeView->setModel(_view_model->fileSystemModel());
+    treeView->setRootIndex(_view_model->rootIndex());
     treeView->setHeaderHidden(false);
     treeView->setAlternatingRowColors(true);
     treeView->setAnimated(true);
@@ -132,17 +132,18 @@ bool ProjectPlugin::load(PluginContext *context) {
     // Apply unified style using StyleManager
     IStyleManager *styleManager = context->getService<IStyleManager>();
     if (styleManager) {
-        styleManager->applyStylePreset(treeView, "FileTree");
-        qDebug() << "ProjectPlugin: Applied FileTree style preset";
+        if (!styleManager->applyStylePreset(treeView, "FileTree")) {
+            qWarning() << "ProjectPlugin: Failed to apply FileTree style preset";
+        }
     } else {
         qWarning() << "ProjectPlugin: StyleManager not found, FileTree will use default style";
     }
 
-    QPointer<ProjectViewModel> viewModelPtr = viewModel_;
+    QPointer<ProjectViewModel> viewModelPtr = _view_model;
     QPointer<QTreeView> treeViewPtr = treeView;
-    treeViewDoubleClickConnection_ = QObject::connect(
+    _tree_view_double_click_connection = QObject::connect(
         treeView, &QTreeView::doubleClicked,
-        this,// context 对象 - 确保 plugin 删除时连接自动断开
+        this,// context object - ensures connection auto-disconnects when plugin is deleted
         [viewModelPtr, treeViewPtr](const QModelIndex &index) {
             if (viewModelPtr && treeViewPtr && viewModelPtr->isDirectory(index)) {
                 QString path = viewModelPtr->getFilePath(index);
@@ -154,34 +155,34 @@ bool ProjectPlugin::load(PluginContext *context) {
         });
 
     QPointer<ProjectPlugin> pluginPtr = this;
-    projectOpenedConnection_ = QObject::connect(
-        projectService_, &IProjectService::projectOpened,
-        this,// context 对象 - 这是关键！没有它 disconnect(sender, nullptr, this, nullptr) 无法断开 lambda 连接
+    _project_opened_connection = QObject::connect(
+        _project_service, &IProjectService::projectOpened,
+        this,// context object - this is key! Without it disconnect(sender, nullptr, this, nullptr) cannot disconnect lambda connections
         [pluginPtr, viewModelPtr, treeViewPtr]() {
-            if (pluginPtr && viewModelPtr && treeViewPtr && pluginPtr->projectService_) {
+            if (pluginPtr && viewModelPtr && treeViewPtr && pluginPtr->_project_service) {
                 // Switch to tree mode when project opens
                 viewModelPtr->setProjectListMode(false);
-                viewModelPtr->setRootPath(pluginPtr->projectService_->projectRoot());
+                viewModelPtr->setRootPath(pluginPtr->_project_service->projectRoot());
                 if (treeViewPtr) {
                     treeViewPtr->setRootIndex(viewModelPtr->rootIndex());
                 }
                 // Add to cache
-                pluginPtr->addProjectToCache(pluginPtr->projectService_->projectRoot());
+                pluginPtr->addProjectToCache(pluginPtr->_project_service->projectRoot());
             }
         });
     
-    projectClosingConnection_ = QObject::connect(
-        projectService_, &IProjectService::projectClosing,
+    _project_closing_connection = QObject::connect(
+        _project_service, &IProjectService::projectClosing,
         this,
         [pluginPtr]() {
-            if (pluginPtr && pluginPtr->projectService_) {
+            if (pluginPtr && pluginPtr->_project_service) {
                 // Save cache when project is closing
                 pluginPtr->saveProjectCache();
             }
         });
 
     layout->addWidget(treeView);
-    fileBrowserWidget_->setLayout(layout);
+    _file_browser_widget->setLayout(layout);
 
     // Register NativeViewContribution for file browser
     NativeViewContribution fileBrowserContrib;
@@ -191,9 +192,9 @@ bool ProjectPlugin::load(PluginContext *context) {
     fileBrowserContrib.closable = true;
     fileBrowserContrib.movable = true;
     fileBrowserContrib.floatable = true;
-    fileBrowserContrib.isExternalManaged = true; // 由 Plugin 管理生命周期
+    fileBrowserContrib.isExternalManaged = true; // Lifecycle managed by Plugin
     
-    registeredContributions_.append(fileBrowserContrib);
+    _registered_contributions.append(fileBrowserContrib);
 
     qDebug() << "ProjectPlugin loaded successfully";
     return true;
@@ -202,68 +203,68 @@ bool ProjectPlugin::load(PluginContext *context) {
 bool ProjectPlugin::unload() {
     qDebug() << "ProjectPlugin::unload: Starting unload...";
 
-    // 1. 显式断开所有保存的连接句柄
-    //    这是必要的，因为我们需要在删除 viewModel_ 之前断开连接，
-    //    否则在 viewModel_ 删除后到 plugin 删除前的窗口期内，
-    //    如果 projectService_ 发送信号，lambda 会被调用
-    if (projectOpenedConnection_) {
-        QObject::disconnect(projectOpenedConnection_);
-        projectOpenedConnection_ = {};
+    // 1. Explicitly disconnect all saved connection handles
+    //    This is necessary because we need to disconnect before deleting _view_model,
+    //    otherwise during the window between _view_model deletion and plugin deletion,
+    //    if _project_service emits signals, lambda will be called
+    if (_project_opened_connection) {
+        QObject::disconnect(_project_opened_connection);
+        _project_opened_connection = {};
         qDebug() << "ProjectPlugin::unload: Disconnected projectOpenedConnection";
     }
-    if (treeViewDoubleClickConnection_) {
-        QObject::disconnect(treeViewDoubleClickConnection_);
-        treeViewDoubleClickConnection_ = {};
+    if (_tree_view_double_click_connection) {
+        QObject::disconnect(_tree_view_double_click_connection);
+        _tree_view_double_click_connection = {};
         qDebug() << "ProjectPlugin::unload: Disconnected treeViewDoubleClickConnection";
     }
 
-    // 2. 断开其他可能的信号连接（使用 receiver 匹配）
-    if (projectClosingConnection_) {
-        QObject::disconnect(projectClosingConnection_);
-        projectClosingConnection_ = {};
+    // 2. Disconnect other possible signal connections (using receiver matching)
+    if (_project_closing_connection) {
+        QObject::disconnect(_project_closing_connection);
+        _project_closing_connection = {};
         qDebug() << "ProjectPlugin::unload: Disconnected projectClosingConnection";
     }
     
     // Save cache before unloading
-    if (projectService_ && projectService_->isOpen()) {
+    if (_project_service && _project_service->isOpen()) {
         saveProjectCache();
     }
     
-    if (projectService_) {
-        QObject::disconnect(projectService_, nullptr, this, nullptr);
+    if (_project_service) {
+        QObject::disconnect(_project_service, nullptr, this, nullptr);
     }
 
-    // 2. 清理 fileBrowserWidget_
-    // 使用 QPointer 检查 widget 是否仍然存在
-    // 如果 Qt 已经删除了 widget（例如通过 parent-child 机制），QPointer 会变成 nullptr
-    if (fileBrowserWidget_) {
-        // 清理 tree view 的 model 引用
-        QTreeView *treeView = fileBrowserWidget_->findChild<QTreeView *>();
+    // 2. Clean up _file_browser_widget
+    // Use QPointer to check if widget still exists
+    // If Qt already deleted widget (e.g., via parent-child mechanism), QPointer becomes nullptr
+    if (_file_browser_widget) {
+        // Clean up tree view model reference
+        QTreeView *treeView = _file_browser_widget->findChild<QTreeView *>();
         if (treeView) {
             treeView->setModel(nullptr);
         }
 
-        // 删除 widget（如果 WindowManager 正确调用了 cleanup()，widget 应该没有 parent）
+        // Delete widget (if WindowManager correctly called cleanup(), widget should have no parent)
         qDebug() << "ProjectPlugin::unload: Deleting fileBrowserWidget";
-        delete fileBrowserWidget_.data();
-        // QPointer 会自动变成 nullptr，无需手动设置
+        delete _file_browser_widget.data();
+        // QPointer auto-becomes nullptr, no manual setting needed
     } else {
         qDebug() << "ProjectPlugin::unload: fileBrowserWidget already deleted";
     }
 
-    // 3. 清理 ViewModel
-    if (viewModel_) {
-        delete viewModel_;
-        viewModel_ = nullptr;
+    // 3. Clean up ViewModel
+    if (_view_model) {
+        delete _view_model;
+        _view_model = nullptr;
         qDebug() << "ProjectPlugin::unload: Deleted viewModel";
     }
 
-    // 4. 清理 NativeViewContributions
-    registeredContributions_.clear();
+    // 4. Clean up NativeViewContributions
+    _registered_contributions.clear();
 
-    // 5. 清理引用（不删除 service，它由其他地方管理）
-    projectService_ = nullptr;
-    context_ = nullptr;
+    // 5. Clean up references (do not delete service, it is managed elsewhere)
+    _project_service = nullptr;
+    _context = nullptr;
 
     qDebug() << "ProjectPlugin::unload: Unload completed";
     return true;
@@ -277,7 +278,7 @@ bool ProjectPlugin::reload() {
         return false;
     }
 
-    if (!load(context_)) {
+    if (!load(_context)) {
         return false;
     }
 
@@ -291,13 +292,13 @@ QList<ViewContribution> ProjectPlugin::view_contributions() const {
 }
 
 QList<NativeViewContribution> ProjectPlugin::native_view_contributions() const {
-    return registeredContributions_;
+    return _registered_contributions;
 }
 
 QList<MenuContribution> ProjectPlugin::menu_contributions() const {
     MenuContribution menuItem;
-    menuItem.menuPath = "File/打开Project";// Full path including action text
-    menuItem.actionText = "打开Project";
+    menuItem.menuPath = "File/Open Project";// Full path including action text
+    menuItem.actionText = "Open Project";
     menuItem.actionId = "project.open";
     menuItem.shortcut = "Ctrl+O";
     // Use lambda to capture 'this' pointer
@@ -326,21 +327,21 @@ void ProjectPlugin::register_view_models(QQmlEngine *engine) {
 }
 
 QObject *ProjectPlugin::getViewModel(const QString &viewId) {
-    if (viewId == "project_previewer" && viewModel_) {
-        return viewModel_;
+    if (viewId == "project_previewer" && _view_model) {
+        return _view_model;
     }
     return nullptr;
 }
 
 QWidget *ProjectPlugin::getNativeWidget(const QString &viewId) {
     if (viewId == "project_file_browser") {
-        return fileBrowserWidget_.data();  // QPointer::data() 返回原始指针
+        return _file_browser_widget.data();  // QPointer::data() returns raw pointer
     }
     return nullptr;
 }
 
 void ProjectPlugin::onOpenProjectTriggered() {
-    if (!projectService_) {
+    if (!_project_service) {
         qWarning() << "ProjectPlugin::onOpenProjectTriggered: projectService is null";
         return;
     }
@@ -358,7 +359,7 @@ void ProjectPlugin::onOpenProjectTriggered() {
     // Open file dialog to select project folder
     QString projectPath = QFileDialog::getExistingDirectory(
         nullptr,
-        "选择Project文件夹",
+        "Select Project Folder",
         defaultDir,
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
@@ -371,18 +372,18 @@ void ProjectPlugin::onOpenProjectTriggered() {
     options.loadUserPreferences = true;
     options.loadEditorSession = true;
 
-    if (!projectService_->openProject(projectPath, options)) {
+    if (!_project_service->openProject(projectPath, options)) {
         qWarning() << "ProjectPlugin::onOpenProjectTriggered: Failed to open project:"
-                   << projectService_->lastError();
+                   << _project_service->lastError();
         return;
     }
 
     qDebug() << "ProjectPlugin: Project opened successfully:" << projectPath;
 
     // Update file browser widget if it exists
-    if (fileBrowserWidget_) {
-        if (viewModel_) {
-            viewModel_->setRootPath(projectPath);
+    if (_file_browser_widget) {
+        if (_view_model) {
+            _view_model->setRootPath(projectPath);
         }
     }
 }
@@ -437,8 +438,8 @@ void ProjectPlugin::loadProjectCache() {
     }
     
     // Store in viewModel if it exists
-    if (viewModel_) {
-        viewModel_->setRecentProjects(recentProjects);
+    if (_view_model) {
+        _view_model->setRecentProjects(recentProjects);
     }
     
     qDebug() << "ProjectPlugin::loadProjectCache: Loaded" << recentProjects.size() << "recent projects";
@@ -455,8 +456,8 @@ void ProjectPlugin::saveProjectCache() {
     obj.insert("recent_projects", recentArray);
     
     // Add last opened project
-    if (projectService_ && projectService_->isOpen()) {
-        obj.insert("last_opened_project", projectService_->projectRoot());
+    if (_project_service && _project_service->isOpen()) {
+        obj.insert("last_opened_project", _project_service->projectRoot());
     } else {
         QString lastProject = getLastOpenedProject();
         if (!lastProject.isEmpty()) {
@@ -497,8 +498,8 @@ void ProjectPlugin::addProjectToCache(const QString &projectPath) {
     }
     
     // Update viewModel
-    if (viewModel_) {
-        viewModel_->setRecentProjects(recentProjects);
+    if (_view_model) {
+        _view_model->setRecentProjects(recentProjects);
     }
     
     // Save immediately
@@ -506,8 +507,8 @@ void ProjectPlugin::addProjectToCache(const QString &projectPath) {
 }
 
 QStringList ProjectPlugin::getRecentProjects() const {
-    if (viewModel_) {
-        return viewModel_->recentProjects();
+    if (_view_model) {
+        return _view_model->recentProjects();
     }
     
     // Load from cache if viewModel not available
@@ -570,8 +571,8 @@ QString ProjectPlugin::getLastOpenedProject() const {
     return QString();
 }
 
-// 导出工厂函数（新设计）
-// PluginManager 通过工厂统一管理插件生命周期
+// Export factory function (new design)
+// PluginManager manages plugin lifecycles through factories
 IPluginFactory *createPluginFactory() {
     return new PluginFactory<ProjectPlugin>();
 }

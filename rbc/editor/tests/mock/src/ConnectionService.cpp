@@ -6,9 +6,9 @@
 namespace rbc {
 
 MockConnectionService::MockConnectionService(QObject *parent)
-    : IConnectionService(parent), m_delayTimer(new QTimer(this)) {
-    m_delayTimer->setSingleShot(true);
-    QObject::connect(m_delayTimer, &QTimer::timeout, this, &MockConnectionService::onDelayedConnection);
+    : IConnectionService(parent), _delay_timer(new QTimer(this)) {
+    _delay_timer->setSingleShot(true);
+    QObject::connect(_delay_timer, &QTimer::timeout, this, &MockConnectionService::onDelayedConnection);
 }
 
 QString MockConnectionService::serverUrl() const {
@@ -17,19 +17,19 @@ QString MockConnectionService::serverUrl() const {
 
 bool MockConnectionService::connected() const {
     // Return mock state (this will be called when using MockConnectionService*)
-    return m_mockConnected;
+    return _mock_connected;
 }
 
 QString MockConnectionService::statusText() const {
     // Return mock state (this will be called when using MockConnectionService*)
-    return m_mockStatusText;
+    return _mock_status_text;
 }
 
 void MockConnectionService::testConnection() {
     qDebug() << "[MockConnectionService] testConnection called";
     // Default behavior: simulate success after a short delay
-    if (m_autoConnectDelay > 0) {
-        QTimer::singleShot(static_cast<int>(m_autoConnectDelay), this, [this]() {
+    if (_auto_connect_delay > 0) {
+        QTimer::singleShot(static_cast<int>(_auto_connect_delay), this, [this]() {
             simulateTestSuccess();
         });
     } else {
@@ -41,21 +41,21 @@ void MockConnectionService::connect() {
     qDebug() << "[MockConnectionService] connect called for" << serverUrl();
 
     if (serverUrl().isEmpty()) {
-        m_mockConnected = false;
-        m_mockStatusText = "No server URL set";
+        _mock_connected = false;
+        _mock_status_text = "No server URL set";
         emit connectedChanged();
         emit statusTextChanged();
         return;
     }
 
     // Set connecting status
-    m_mockConnected = false;
-    m_mockStatusText = "Connecting ...";
+    _mock_connected = false;
+    _mock_status_text = "Connecting ...";
     emit statusTextChanged();
 
     // Simulate the connection behavior
-    if (m_autoConnectDelay > 0) {
-        m_delayTimer->start(m_autoConnectDelay);
+    if (_auto_connect_delay > 0) {
+        _delay_timer->start(_auto_connect_delay);
     } else {
         onDelayedConnection();
     }
@@ -63,17 +63,17 @@ void MockConnectionService::connect() {
 
 void MockConnectionService::disconnect() {
     qDebug() << "[MockConnectionService] disconnect called";
-    m_delayTimer->stop();
-    m_mockConnected = false;
-    m_mockStatusText = "Disconnected";
+    _delay_timer->stop();
+    _mock_connected = false;
+    _mock_status_text = "Disconnected";
     emit connectedChanged();
     emit statusTextChanged();
 }
 
 void MockConnectionService::simulateConnectionSuccess() {
     qDebug() << "[MockConnectionService] Simulating connection success";
-    m_mockConnected = true;
-    m_mockStatusText = "Connected";
+    _mock_connected = true;
+    _mock_status_text = "Connected";
     emit connectedChanged();
     emit statusTextChanged();
     emit connectionTested(true);
@@ -81,8 +81,8 @@ void MockConnectionService::simulateConnectionSuccess() {
 
 void MockConnectionService::simulateConnectionFailure(const QString &errorMessage) {
     qDebug() << "[MockConnectionService] Simulating connection failure:" << errorMessage;
-    m_mockConnected = false;
-    m_mockStatusText = errorMessage;
+    _mock_connected = false;
+    _mock_status_text = errorMessage;
     emit connectedChanged();
     emit statusTextChanged();
     emit connectionTested(false);
@@ -100,15 +100,15 @@ void MockConnectionService::simulateTestFailure() {
 }
 
 void MockConnectionService::setAutoConnectDelay(int milliseconds) {
-    m_autoConnectDelay = milliseconds;
+    _auto_connect_delay = milliseconds;
 }
 
 void MockConnectionService::reset() {
-    m_delayTimer->stop();
+    _delay_timer->stop();
     setServerUrl("http://127.0.0.1:5555");
-    m_mockConnected = false;
-    m_mockStatusText = "Disconnected";
-    m_autoConnectDelay = 0;
+    _mock_connected = false;
+    _mock_status_text = "Disconnected";
+    _auto_connect_delay = 0;
     emit connectedChanged();
     emit statusTextChanged();
 }

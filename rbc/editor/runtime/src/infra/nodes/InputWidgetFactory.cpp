@@ -16,7 +16,7 @@ InputWidgetFactory &InputWidgetFactory::instance() {
 }
 
 void InputWidgetFactory::registerCreator(std::unique_ptr<IInputWidgetCreator> creator) {
-    m_creators.push_back(std::move(creator));
+    _creators.push_back(std::move(creator));
 }
 
 QWidget *InputWidgetFactory::createWidget(const QJsonObject &inputDef, 
@@ -24,14 +24,14 @@ QWidget *InputWidgetFactory::createWidget(const QJsonObject &inputDef,
                                           QWidget *parent) const {
     QString type = inputDef["type"].toString();
     
-    // 查找支持的创建器
+    // Find supported creator
     IInputWidgetCreator *creator = findCreator(type, inputDef);
     if (!creator) {
         qWarning() << "InputWidgetFactory: No creator found for type:" << type;
         return nullptr;
     }
     
-    // 合并样式：先从 inputDef 加载样式，再与传入的 style 合并
+    // Merge styles: first load style from inputDef, then merge with passed style
     InputWidgetStyle finalStyle = InputWidgetStyle::fromJson(inputDef);
     finalStyle = finalStyle.merge(style);
     
@@ -43,8 +43,8 @@ QVariant InputWidgetFactory::getValue(QWidget *widget) const {
         return QVariant();
     }
     
-    // 尝试所有创建器，找到能处理该组件的
-    for (const auto &creator : m_creators) {
+    // Try all creators, find one that can handle this widget
+    for (const auto &creator : _creators) {
         QVariant value = creator->getValue(widget);
         if (value.isValid()) {
             return value;
@@ -59,17 +59,17 @@ bool InputWidgetFactory::setValue(QWidget *widget, const QVariant &value) const 
         return false;
     }
     
-    // 尝试所有创建器，找到能处理该组件的
-    for (const auto &creator : m_creators) {
-        // 先检查是否能获取值（说明能处理该组件类型）
+    // Try all creators, find one that can handle this widget
+    for (const auto &creator : _creators) {
+        // First check if value can be retrieved (indicates it can handle this widget type)
         QVariant oldValue = creator->getValue(widget);
         if (oldValue.isValid()) {
-            // 设置新值
+            // Set new value
             creator->setValue(widget, value);
-            // 验证是否设置成功
+            // Verify setting was successful
             QVariant checkValue = creator->getValue(widget);
             if (checkValue.isValid()) {
-                // 对于浮点数，允许小的误差
+                // For floats, allow small error
                 if (checkValue.typeId() == QMetaType::Double || value.typeId() == QMetaType::Double) {
                     if (qAbs(checkValue.toDouble() - value.toDouble()) < 1e-6) {
                         return true;
@@ -85,8 +85,8 @@ bool InputWidgetFactory::setValue(QWidget *widget, const QVariant &value) const 
 }
 
 IInputWidgetCreator *InputWidgetFactory::findCreator(const QString &type, const QJsonObject &inputDef) const {
-    // 按注册顺序查找，后注册的优先级更高（允许覆盖）
-    for (auto it = m_creators.rbegin(); it != m_creators.rend(); ++it) {
+    // Search by registration order, later registrations have higher priority (allows override)
+    for (auto it = _creators.rbegin(); it != _creators.rend(); ++it) {
         if ((*it)->supports(type, inputDef)) {
             return it->get();
         }
@@ -95,8 +95,8 @@ IInputWidgetCreator *InputWidgetFactory::findCreator(const QString &type, const 
 }
 
 void InputWidgetFactory::registerDefaultCreators() {
-    // 注意：EntityIdInputCreator 应该在 IntegerInputCreator 之前注册
-    // 这样 entity_id 会优先使用 EntityIdInputCreator
+    // Note: EntityIdInputCreator should be registered before IntegerInputCreator
+    // So entity_id will prefer EntityIdInputCreator
     registerCreator(std::make_unique<EntityIdInputCreator>());
     registerCreator(std::make_unique<BooleanInputCreator>());
     registerCreator(std::make_unique<StringInputCreator>());

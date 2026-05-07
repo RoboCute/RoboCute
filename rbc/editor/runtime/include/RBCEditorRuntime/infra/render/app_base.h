@@ -24,7 +24,7 @@ struct IRenderer {
     virtual void handle_key(luisa::compute::Key key, luisa::compute::Action action) = 0;
     virtual void handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy) = 0;
     virtual void handle_cursor_position(luisa::float2 xy) = 0;
-    virtual uint64_t get_present_texture(uint width, uint height) = 0;
+    [[nodiscard]] virtual uint64_t get_present_texture(uint width, uint height) = 0;
 
     virtual ~IRenderer() = default;
 };
@@ -32,12 +32,12 @@ struct IRenderer {
 // LC Impl App Interface
 struct IRenderApp : public IRenderer {
     luisa::unique_ptr<luisa::compute::Context> ctx;
-    virtual unsigned int GetDXAdapterLUIDHigh() const = 0;
-    virtual unsigned int GetDXAdapterLUIDLow() const = 0;
-    virtual void *GetStreamNativeHandle() const = 0;
-    virtual void *GetDeviceNativeHandle() const = 0;
+    [[nodiscard]] virtual unsigned int GetDXAdapterLUIDHigh() const = 0;
+    [[nodiscard]] virtual unsigned int GetDXAdapterLUIDLow() const = 0;
+    [[nodiscard]] virtual void *GetStreamNativeHandle() const = 0;
+    [[nodiscard]] virtual void *GetDeviceNativeHandle() const = 0;
 
-    virtual ~IRenderApp() {}
+    virtual ~IRenderApp() = default;
 };
 
 struct RBC_EDITOR_RUNTIME_API RenderAppBase : public IRenderApp {
@@ -53,8 +53,8 @@ struct RBC_EDITOR_RUNTIME_API RenderAppBase : public IRenderApp {
     // Camera Control
     CameraController::Input camera_input;
     CameraController cam_controller;
-    QRhi::Implementation m_graphicsApi = QRhi::D3D12;
-    bool m_initialized = false;
+    QRhi::Implementation _graphics_api = QRhi::D3D12;
+    bool _initialized = false;
 
 public:
     [[nodiscard]] unsigned int GetDXAdapterLUIDHigh() const override { return dx_adapter_luid.x; }
@@ -68,8 +68,8 @@ public:
     uint64_t get_present_texture(uint width, uint height) override;
     void handle_reset();
     void prepare_dx_states();
-    ~RenderAppBase() override;
-    // interface
+    ~RenderAppBase() override = default;
+    // Subclass interface
     virtual void update_camera(float delta_time);
     virtual void dispose();
 

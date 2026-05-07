@@ -5,69 +5,69 @@
 namespace rbc {
 
 ConnectionViewModel::ConnectionViewModel(ConnectionService *connectionService, QObject *parent)
-    : ViewModelBase(parent), connectionService_(connectionService) {
+    : ViewModelBase(parent), _connection_service(connectionService) {
 
-    if (!connectionService_) {
+    if (!_connection_service) {
         qWarning() << "ConnectionViewModel: connectionService is null";
         return;
     }
 
     // Connect to service signals
-    QObject::connect(connectionService_, &ConnectionService::serverUrlChanged,
+    QObject::connect(_connection_service, &ConnectionService::serverUrlChanged,
                      this, &ConnectionViewModel::serverUrlChanged);
-    QObject::connect(connectionService_, &ConnectionService::connectedChanged,
+    QObject::connect(_connection_service, &ConnectionService::connectedChanged,
                      this, &ConnectionViewModel::onConnectionStatusChanged);
-    QObject::connect(connectionService_, &ConnectionService::statusTextChanged,
+    QObject::connect(_connection_service, &ConnectionService::statusTextChanged,
                      this, &ConnectionViewModel::onStatusTextChanged);
-    QObject::connect(connectionService_, &ConnectionService::connectionTested,
+    QObject::connect(_connection_service, &ConnectionService::connectionTested,
                      this, &ConnectionViewModel::onConnectionTested);
 }
 
 ConnectionViewModel::~ConnectionViewModel() {
-    // Service 生命周期比 ViewModel 长，在析构时显式断开与 Service 的信号槽连接
-    if (connectionService_) {
-        // 断开所有从 connectionService_ 到 this 的连接
-        QObject::disconnect(connectionService_, nullptr, this, nullptr);
+    // Service lifetime is longer than ViewModel, explicitly disconnect signal-slot connections with Service during destruction
+    if (_connection_service) {
+        // Disconnect all connections from _connection_service to this
+        QObject::disconnect(_connection_service, nullptr, this, nullptr);
     }
-    connectionService_ = nullptr;
+    _connection_service = nullptr;
 }
 
 QString ConnectionViewModel::serverUrl() const {
-    return connectionService_ ? connectionService_->serverUrl() : QString();
+    return _connection_service ? _connection_service->serverUrl() : QString();
 }
 
 void ConnectionViewModel::setServerUrl(const QString &url) {
-    if (connectionService_) {
-        connectionService_->setServerUrl(url);
+    if (_connection_service) {
+        _connection_service->setServerUrl(url);
     }
 }
 
 bool ConnectionViewModel::connected() const {
-    return connectionService_ ? connectionService_->connected() : false;
+    return _connection_service ? _connection_service->connected() : false;
 }
 
 QString ConnectionViewModel::statusText() const {
-    return connectionService_ ? connectionService_->statusText() : QString("Disconnected");
+    return _connection_service ? _connection_service->statusText() : QString("Disconnected");
 }
 
 void ConnectionViewModel::testConnection() {
-    if (connectionService_) {
+    if (_connection_service) {
         setBusy(true);
-        connectionService_->testConnection();
+        _connection_service->testConnection();
         // Busy state will be reset when connectionTested signal is received
     }
 }
 
 void ConnectionViewModel::connect() {
-    if (connectionService_) {
+    if (_connection_service) {
         setBusy(true);
-        connectionService_->connect();
+        _connection_service->connect();
     }
 }
 
 void ConnectionViewModel::disconnect() {
-    if (connectionService_) {
-        connectionService_->disconnect();
+    if (_connection_service) {
+        _connection_service->disconnect();
         setBusy(false);
     }
 }

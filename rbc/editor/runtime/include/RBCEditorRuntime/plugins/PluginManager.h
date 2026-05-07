@@ -15,35 +15,35 @@ namespace rbc {
 class IEditorPlugin;
 
 /**
- * @brief 编辑器插件管理器
+ * @brief Editor plugin manager
  * 
- * 采用工厂模式统一管理所有插件的生命周期：
- * - 所有插件都通过工厂创建
- * - 所有插件都由 PluginManager 使用 unique_ptr 管理
- * - 消除了外部传入指针导致的生命周期混乱和双重析构问题
+ * Manages all plugin lifecycles using the factory pattern:
+ * - All plugins are created through factories
+ * - All plugins are managed by PluginManager using unique_ptr
+ * - Eliminates lifetime chaos and double-destruction from external pointers
  */
 class RBC_EDITOR_RUNTIME_API EditorPluginManager : public QObject {
     Q_OBJECT
 public:
     static EditorPluginManager &instance();
 
-    // === 工厂注册 ===
+    // === Factory Registration ===
 
     /**
-     * @brief 注册插件工厂
-     * @param factory 插件工厂的 unique_ptr，所有权转移给 PluginManager
+     * @brief Register a plugin factory
+     * @param factory unique_ptr to the plugin factory, ownership transferred to PluginManager
      */
     void registerFactory(std::unique_ptr<IPluginFactory> factory);
 
     /**
-     * @brief 注册内置插件（模板便捷方法）
+     * @brief Register a built-in plugin (template convenience method)
      * 
-     * 使用方式：
+     * Usage:
      * @code
      * pluginManager.registerPlugin<ViewportPlugin>();
      * @endcode
      * 
-     * 要求插件类 T 必须提供以下静态方法：
+     * Plugin class T must provide the following static methods:
      * - static QString staticPluginId()
      * - static QString staticPluginName()
      */
@@ -55,56 +55,56 @@ public:
     // === Plugin LifeCycle ===
 
     /**
-     * @brief 从已注册的工厂创建并加载插件
-     * @param pluginId 插件 ID（必须先通过 registerFactory 或 registerPlugin 注册）
-     * @return 加载成功返回 true
+     * @brief Create and load a plugin from a registered factory
+     * @param pluginId Plugin ID (must be registered via registerFactory or registerPlugin first)
+     * @return true if loaded successfully
      */
     bool loadPlugin(const QString &pluginId);
 
     /**
-     * @brief 从动态库加载插件
-     * @param pluginPath 动态库路径
-     * @return 加载成功返回 true
+     * @brief Load a plugin from a dynamic library
+     * @param pluginPath Dynamic library path
+     * @return true if loaded successfully
      * 
-     * 动态库必须导出 createPluginFactory() 函数
+     * Dynamic library must export createPluginFactory() function
      */
     bool loadPluginFromDLL(const QString &pluginPath);
 
     /**
-     * @brief 卸载插件
-     * @param pluginId 插件 ID
-     * @return 卸载成功返回 true
+     * @brief Unload a plugin
+     * @param pluginId Plugin ID
+     * @return true if unloaded successfully
      */
     bool unloadPlugin(const QString &pluginId);
 
     /**
-     * @brief 重新加载插件
-     * @param pluginId 插件 ID
-     * @return 重新加载成功返回 true
+     * @brief Reload a plugin
+     * @param pluginId Plugin ID
+     * @return true if reloaded successfully
      */
     bool reloadPlugin(const QString &pluginId);
 
     /**
-     * @brief 卸载所有已加载的插件
+     * @brief Unload all loaded plugins
      */
     void unloadAllPlugins();
 
     // === Plugin Query ===
 
     /**
-     * @brief 获取已加载的插件
-     * @param id 插件 ID
-     * @return 插件指针（不转移所有权），未找到返回 nullptr
+     * @brief Get a loaded plugin
+     * @param id Plugin ID
+     * @return Plugin pointer (ownership not transferred), nullptr if not found
      */
     IEditorPlugin *getPlugin(const QString &id) const;
 
     /**
-     * @brief 获取所有已加载的插件
+     * @brief Get all loaded plugins
      */
     QList<IEditorPlugin *> getLoadedPlugins() const;
 
     /**
-     * @brief 按分类获取插件
+     * @brief Get plugins by category
      */
     QList<IEditorPlugin *> getPluginsByCategory(const QString &category) const;
 
@@ -130,10 +130,10 @@ public:
     QObject *getService(const QString &serviceId) const;
 
     /**
-     * @brief 清理所有 service 引用
+     * @brief Clear all service references
      * 
-     * 必须在 services 的真实拥有者（如 QApplication）析构前调用
-     * 这样可以避免 EditorPluginManager 析构时访问已被删除的 service
+     * Must be called before the true owner of services (e.g., QApplication) is destroyed
+     * This prevents EditorPluginManager from accessing deleted services during destruction
      */
     void clearServices();
 
@@ -143,7 +143,7 @@ public:
         QString serviceId;
 
         // First, try to find any registered service that can be cast to T
-        for (auto it = services_.begin(); it != services_.end(); ++it) {
+        for (auto it = _services.begin(); it != _services.end(); ++it) {
             QObject *service = it.value();
             if (qobject_cast<T *>(service)) {
                 // If it's an IService, use its serviceId
@@ -192,27 +192,27 @@ private:
     void initializePlugin(IEditorPlugin *plugin);
 
     /**
-     * @brief 内部加载插件实现
-     * @param plugin 已创建的插件 unique_ptr
-     * @param pluginId 插件 ID
-     * @return 加载成功返回 true
+     * @brief Internal plugin load implementation
+     * @param plugin Created plugin unique_ptr
+     * @param pluginId Plugin ID
+     * @return true if loaded successfully
      */
     bool loadPluginInternal(std::unique_ptr<IEditorPlugin> plugin, const QString &pluginId);
 
-    // 使用 unique_ptr 管理插件生命周期，统一所有权
-    // 注意：使用 std::map 而非 QMap，因为 QMap 不支持 move-only 类型
-    std::map<QString, std::unique_ptr<IEditorPlugin>> plugins_;
+    // Manage plugin lifecycles with unique_ptr, unified ownership
+    // Note: use std::map instead of QMap because QMap does not support move-only types
+    std::map<QString, std::unique_ptr<IEditorPlugin>> _plugins;
 
-    // 已注册的插件工厂
-    std::map<QString, std::unique_ptr<IPluginFactory>> factories_;
+    // Registered plugin factories
+    std::map<QString, std::unique_ptr<IPluginFactory>> _factories;
 
-    // 动态库模块（保持加载状态以防止插件代码被卸载）
-    std::map<QString, luisa::shared_ptr<luisa::DynamicModule>> modules_;
+    // Dynamic library modules (kept loaded to prevent plugin code unloading)
+    std::map<QString, luisa::shared_ptr<luisa::DynamicModule>> _modules;
 
-    QMap<QString, QObject *> services_;
-    QQmlEngine *qmlEngine_ = nullptr;
-    QFileSystemWatcher *hotReloadWatcher_ = nullptr;
-    bool hotReloadEnabled_ = false;
+    QMap<QString, QObject *> _services;
+    QQmlEngine *_qml_engine = nullptr;
+    QFileSystemWatcher *_hot_reload_watcher = nullptr;
+    bool _hot_reload_enabled = false;
 };
 
 }// namespace rbc

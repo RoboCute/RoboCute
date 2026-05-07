@@ -20,9 +20,9 @@ public:
 
     NodeDataType type() const override { return NodeDataType{"decimal", "Decimal"}; }
 
-    double number() const { return _number; }
+    [[nodiscard]] double number() const { return _number; }
 
-    QString numberAsText() const { return QString::number(_number, 'f'); }
+    [[nodiscard]] QString numberAsText() const { return QString::number(_number, 'f'); }
 
 private:
     double _number;

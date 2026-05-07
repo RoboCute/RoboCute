@@ -97,13 +97,13 @@ inline luisa::float2 mouse_pos_map(float x, float y) {
 // ============================================================================
 
 /**
- * @brief RhiWindow - 基于 Qt RHI 的渲染窗口
- * 
- * 这是一个 QWindow 子类，负责：
- * 1. 初始化 RHI 后端（D3D12/Vulkan/Metal）
- * 2. 管理 SwapChain 和渲染管线
- * 3. 将渲染器输出的纹理渲染到窗口
- * 4. 处理输入事件并转发给渲染器
+ * @brief RhiWindow - Qt RHI-based rendering window
+ *
+ * This is a QWindow subclass responsible for:
+ * 1. Initializing RHI backend (D3D12/Vulkan/Metal)
+ * 2. Managing SwapChain and rendering pipeline
+ * 3. Rendering renderer output texture to window
+ * 4. Handling input events and forwarding to renderer
  */
 class RBC_EDITOR_RUNTIME_API RhiWindow : public QWindow {
     Q_OBJECT
@@ -115,7 +115,7 @@ public:
     [[nodiscard]] QString graphicsApiName() const;
     void releaseSwapChain();
 
-    // Renderer 由外部设置，RhiWindow 不拥有其生命周期
+    // Renderer is set externally, RhiWindow does not own its lifetime
     IRenderer *renderer = nullptr;
 
     std::string workspace_path;
@@ -126,12 +126,12 @@ signals:
 
 protected:
     // RHI Resources
-    std::unique_ptr<QRhi> m_rhi;
-    std::unique_ptr<QRhiSwapChain> m_sc;
-    std::unique_ptr<QRhiRenderBuffer> m_ds;
-    std::unique_ptr<QRhiRenderPassDescriptor> m_rp;
-    bool m_hasSwapChain = false;
-    QRhi::Implementation m_graphicsApi = QRhi::D3D12;
+    std::unique_ptr<QRhi> _rhi;
+    std::unique_ptr<QRhiSwapChain> _sc;
+    std::unique_ptr<QRhiRenderBuffer> _ds;
+    std::unique_ptr<QRhiRenderPassDescriptor> _rp;
+    bool _has_swap_chain = false;
+    QRhi::Implementation _graphics_api = QRhi::D3D12;
 
     // Input event handlers
     void keyPressEvent(QKeyEvent *event) override;
@@ -149,19 +149,19 @@ private:
     bool event(QEvent *) override;
     void ensureFullscreenTexture(const QSize &pixelSize, QRhiResourceUpdateBatch *u);
 
-    bool m_initialized = false;
-    bool m_notExposed = false;
-    bool m_newlyExposed = false;
+    bool _initialized = false;
+    bool _not_exposed = false;
+    bool _newly_exposed = false;
 
     // Fullscreen quad resources
-    std::unique_ptr<QRhiBuffer> m_vbuf;
-    std::unique_ptr<QRhiBuffer> m_ubuf;
-    std::unique_ptr<QRhiTexture> m_texture;
-    std::unique_ptr<QRhiSampler> m_sampler;
-    std::unique_ptr<QRhiShaderResourceBindings> m_fullscreenQuadSrb;
-    std::unique_ptr<QRhiGraphicsPipeline> m_fullscreenQuadPipeline;
+    std::unique_ptr<QRhiBuffer> _vbuf;
+    std::unique_ptr<QRhiBuffer> _ubuf;
+    std::unique_ptr<QRhiTexture> _texture;
+    std::unique_ptr<QRhiSampler> _sampler;
+    std::unique_ptr<QRhiShaderResourceBindings> _fullscreen_quad_srb;
+    std::unique_ptr<QRhiGraphicsPipeline> _fullscreen_quad_pipeline;
 
-    QRhiResourceUpdateBatch *m_initialUpdates = nullptr;
+    QRhiResourceUpdateBatch *_initial_updates = nullptr;
 };
 
 // ============================================================================
@@ -169,11 +169,11 @@ private:
 // ============================================================================
 
 /**
- * @brief RHIWindowContainerWidget - 用于转发事件的 QWidget 容器
- * 
- * 这个 widget 包装了 RhiWindow，负责：
- * 1. 将键盘/鼠标事件转发给 RhiWindow
- * 2. 处理焦点管理
+ * @brief RHIWindowContainerWidget - QWidget container for event forwarding
+ *
+ * This widget wraps RhiWindow, responsible for:
+ * 1. Forwarding keyboard/mouse events to RhiWindow
+ * 2. Handling focus management
  */
 class RBC_EDITOR_RUNTIME_API RHIWindowContainerWidget : public QWidget {
     Q_OBJECT
@@ -203,7 +203,7 @@ protected:
     }
 
     void mousePressEvent(QMouseEvent *event) override {
-        setFocus();// 点击时获取焦点
+        setFocus();// Acquire focus on click
         if (rhiWindow) {
             QCoreApplication::sendEvent(rhiWindow, event);
         }

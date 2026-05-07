@@ -41,18 +41,18 @@ private:
     void loadNodesFromBackend();
 
 private:
-    std::shared_ptr<DataFlowGraphModel> m_graphModel;
-    DataFlowGraphicsScene *m_scene;
-    std::unique_ptr<NodeFactory> m_nodeFactory;
+    std::shared_ptr<DataFlowGraphModel> _graph_model;
+    DataFlowGraphicsScene *_scene;
+    std::unique_ptr<NodeFactory> _node_factory;
 
     // Widgets
-    GraphicsView *m_view;
-    QListWidget *m_nodePalette;
-    ExecutionPanel *m_executionPanel;
+    GraphicsView *_view;
+    QListWidget *_node_palette;
+    ExecutionPanel *_execution_panel;
 
     // State
-    QString m_currentExecutionId;
-    bool m_isExecuting = false;
+    QString _current_execution_id;
+    bool _is_executing = false;
 };
 
 }// namespace rbc

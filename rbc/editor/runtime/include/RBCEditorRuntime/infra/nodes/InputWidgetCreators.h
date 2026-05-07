@@ -9,22 +9,22 @@
 namespace rbc {
 
 /**
- * NumberInputCreator - 数值输入创建器（支持 float, number）
+ * NumberInputCreator - Numeric input creator (supports float, number)
  */
 class NumberInputCreator : public IInputWidgetCreator {
 public:
-    QWidget *createWidget(const QJsonObject &inputDef, 
+    [[nodiscard]] QWidget *createWidget(const QJsonObject &inputDef,
                           const InputWidgetStyle &style,
                           QWidget *parent = nullptr) override;
-    
-    QVariant getValue(QWidget *widget) const override;
+
+    [[nodiscard]] QVariant getValue(QWidget *widget) const override;
     void setValue(QWidget *widget, const QVariant &value) const override;
-    bool supports(const QString &type, const QJsonObject &inputDef) const override;
-    QString name() const override { return "NumberInputCreator"; }
+    [[nodiscard]] bool supports(const QString &type, const QJsonObject &inputDef) const override;
+    [[nodiscard]] QString name() const override { return "NumberInputCreator"; }
 };
 
 /**
- * IntegerInputCreator - 整数输入创建器（支持 int, integer）
+ * IntegerInputCreator - Integer input creator (supports int, integer)
  */
 class IntegerInputCreator : public IInputWidgetCreator {
 public:
@@ -39,7 +39,7 @@ public:
 };
 
 /**
- * EntityIdInputCreator - 实体ID输入创建器（特殊处理 entity_id）
+ * EntityIdInputCreator - Entity ID input creator (special handling for entity_id)
  */
 class EntityIdInputCreator : public IInputWidgetCreator {
 public:
@@ -54,7 +54,7 @@ public:
 };
 
 /**
- * StringInputCreator - 字符串输入创建器（支持 string, text）
+ * StringInputCreator - String input creator (supports string, text)
  */
 class StringInputCreator : public IInputWidgetCreator {
 public:
@@ -69,7 +69,7 @@ public:
 };
 
 /**
- * BooleanInputCreator - 布尔值输入创建器（支持 bool, boolean）
+ * BooleanInputCreator - Boolean input creator (supports bool, boolean)
  */
 class BooleanInputCreator : public IInputWidgetCreator {
 public:

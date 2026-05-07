@@ -2,8 +2,6 @@
 
 namespace rbc {
 
-EventBus::~EventBus() {
-}
 
 void EventBus::publish(const Event &event) {}
 void EventBus::publish(EventType type, const QVariant &data, QObject *sender) {}

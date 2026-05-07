@@ -5,9 +5,9 @@
 namespace rbc {
 
 LayoutViewModel::LayoutViewModel(LayoutService *layoutService, QObject *parent)
-    : ViewModelBase(parent), layoutService_(layoutService) {
+    : ViewModelBase(parent), _layout_service(layoutService) {
 
-    if (layoutService_) {
+    if (_layout_service) {
         // Connect to layout service signals when available
         // For now, we manually update when needed
     }
@@ -21,28 +21,28 @@ LayoutViewModel::~LayoutViewModel() {
 }
 
 QString LayoutViewModel::currentLayoutId() const {
-    return layoutService_ ? layoutService_->currentLayoutId() : QString();
+    return _layout_service ? _layout_service->currentLayoutId() : QString();
 }
 
 QStringList LayoutViewModel::availableLayouts() const {
-    if (!layoutService_) {
+    if (!_layout_service) {
         return {};
     }
-    qDebug() << "Available Layouts: " << layoutService_->availableLayouts();
-    return layoutService_->availableLayouts();
+    qDebug() << "Available Layouts: " << _layout_service->availableLayouts();
+    return _layout_service->availableLayouts();
 }
 
 QVariantList LayoutViewModel::viewStates() const {
-    return viewStates_;
+    return _view_states;
 }
 
 void LayoutViewModel::switchLayout(const QString &layoutId) {
-    if (!layoutService_) {
+    if (!_layout_service) {
         qWarning() << "LayoutViewModel::switchLayout: layoutService is null";
         return;
     }
 
-    if (layoutService_->switchToLayout(layoutId)) {
+    if (_layout_service->switchToLayout(layoutId)) {
         qDebug() << "LayoutViewModel: Switched to layout:" << layoutId;
         emit currentLayoutIdChanged();
         updateViewStates();
@@ -53,12 +53,12 @@ void LayoutViewModel::switchLayout(const QString &layoutId) {
 }
 
 void LayoutViewModel::setViewVisible(const QString &viewId, bool visible) {
-    if (!layoutService_) {
+    if (!_layout_service) {
         qWarning() << "LayoutViewModel::setViewVisible: layoutService is null";
         return;
     }
 
-    layoutService_->setViewVisible(viewId, visible);
+    _layout_service->setViewVisible(viewId, visible);
     updateViewStates();
     emit viewStatesChanged();
 
@@ -66,18 +66,18 @@ void LayoutViewModel::setViewVisible(const QString &viewId, bool visible) {
 }
 
 bool LayoutViewModel::isViewVisible(const QString &viewId) const {
-    if (!layoutService_) {
+    if (!_layout_service) {
         return false;
     }
-    return layoutService_->isViewVisible(viewId);
+    return _layout_service->isViewVisible(viewId);
 }
 
 QString LayoutViewModel::getLayoutName(const QString &layoutId) const {
-    if (!layoutService_) {
+    if (!_layout_service) {
         return layoutId;
     }
 
-    QJsonObject metadata = layoutService_->getLayoutMetadata(layoutId);
+    QJsonObject metadata = _layout_service->getLayoutMetadata(layoutId);
     if (metadata.contains("layout_name")) {
         return metadata["layout_name"].toString();
     }
@@ -85,10 +85,10 @@ QString LayoutViewModel::getLayoutName(const QString &layoutId) const {
 }
 
 QString LayoutViewModel::getLayoutDescription(const QString &layoutId) const {
-    if (!layoutService_) {
+    if (!_layout_service) {
         return QString();
     }
-    QJsonObject metadata = layoutService_->getLayoutMetadata(layoutId);
+    QJsonObject metadata = _layout_service->getLayoutMetadata(layoutId);
     if (metadata.contains("description")) {
         return metadata["description"].toString();
     }
@@ -102,8 +102,8 @@ void LayoutViewModel::onLayoutChanged() {
 }
 
 void LayoutViewModel::updateViewStates() {
-    viewStates_.clear();
-    if (!layoutService_) {
+    _view_states.clear();
+    if (!_layout_service) {
         return;
     }
 }

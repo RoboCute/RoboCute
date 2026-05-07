@@ -9,27 +9,27 @@
 namespace rbc {
 
 ConnectionService::ConnectionService(QObject *parent) : IConnectionService(parent) {
-    m_healthCheckTimer = new QTimer(this);
-    m_healthCheckTimer->setInterval(5000);
-    QObject::connect(m_healthCheckTimer, &QTimer::timeout, this, &ConnectionService::performHealthCheck);
+    _health_check_timer = new QTimer(this);
+    _health_check_timer->setInterval(5000);
+    QObject::connect(_health_check_timer, &QTimer::timeout, this, &ConnectionService::performHealthCheck);
 }
 
 ConnectionService::~ConnectionService() {
     // Stop timer before destruction
-    if (m_healthCheckTimer) {
-        m_healthCheckTimer->stop();
+    if (_health_check_timer) {
+        _health_check_timer->stop();
     }
 
     // Stop health check and disconnect from server
-    m_connected = false;
+    _connected = false;
 }
 
 void ConnectionService::setServerUrl(const QString &url) {
-    if (m_serverUrl != url) {
-        m_serverUrl = url;
+    if (_server_url != url) {
+        _server_url = url;
         emit serverUrlChanged();
 
-        if (m_connected) {
+        if (_connected) {
             disconnect();
             connect();
         }
@@ -41,9 +41,9 @@ void ConnectionService::testConnection() {
 }
 
 void ConnectionService::connect() {
-    qDebug() << "[Connection Service] Connecting ... " << m_serverUrl;
+    qDebug() << "[Connection Service] Connecting ... " << _server_url;
 
-    if (m_serverUrl.isEmpty()) {
+    if (_server_url.isEmpty()) {
         updateStatus(false, "No server URL set");
         return;
     }
@@ -52,11 +52,11 @@ void ConnectionService::connect() {
     performHealthCheck();
 
     // start health check
-    m_healthCheckTimer->start();
+    _health_check_timer->start();
 }
 
 void ConnectionService::disconnect() {
-    m_healthCheckTimer->stop();
+    _health_check_timer->stop();
     updateStatus(false, "Disconnected");
 }
 
@@ -70,25 +70,25 @@ void ConnectionService::onHealthCheckComplete(bool success) {
 }
 
 void ConnectionService::updateStatus(bool connected, const QString &text) {
-    if (m_connected != connected) {
-        m_connected = connected;
+    if (_connected != connected) {
+        _connected = connected;
         emit connectedChanged();
     }
 
-    if (m_statusText != text) {
-        m_statusText = text;
+    if (_status_text != text) {
+        _status_text = text;
         emit statusTextChanged();
     }
 }
 
 void ConnectionService::performHealthCheck() {
-    if (m_serverUrl.isEmpty()) {
+    if (_server_url.isEmpty()) {
         updateStatus(false, "No Server URL");
         return;
     }
 
     QNetworkAccessManager *manager = new QNetworkAccessManager(this);
-    QNetworkRequest request(QUrl(m_serverUrl + "/health"));
+    QNetworkRequest request(QUrl(_server_url + "/health"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QNetworkReply *reply = manager->get(request);

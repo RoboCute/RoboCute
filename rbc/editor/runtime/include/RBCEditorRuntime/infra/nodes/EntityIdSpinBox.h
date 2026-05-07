@@ -9,9 +9,9 @@
 namespace rbc {
 
 /**
- * EntityIdSpinBox - 支持实体拖放的 SpinBox
- * 
- * 用于 EntityInputNode 的 entity_id 输入，支持从 SceneHierarchy 或 Viewport 拖放实体
+ * EntityIdSpinBox - SpinBox supporting entity drag-and-drop
+ *
+ * Used for EntityInputNode's entity_id input, supports dragging and dropping entities from SceneHierarchy or Viewport
  */
 class EntityIdSpinBox : public QSpinBox {
     Q_OBJECT
@@ -26,7 +26,7 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
-    bool m_isDragOver;
+    bool _is_drag_over;
 };
 
 }// namespace rbc

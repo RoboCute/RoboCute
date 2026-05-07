@@ -51,26 +51,26 @@ public:
     /**
      * Check if a project is currently open
      */
-    [[nodiscard]] bool isOpen() const { return is_open_; }
+    [[nodiscard]] bool isOpen() const { return _is_open; }
 
     // ========== Project Info ==========
 
     /**
      * Get project root directory
      */
-    [[nodiscard]] const luisa::filesystem::path &projectRoot() const { return project_root_; }
+    [[nodiscard]] const luisa::filesystem::path &projectRoot() const { return _project_root; }
 
     /**
      * Get project name
      */
-    [[nodiscard]] const luisa::string &projectName() const { return project_name_; }
+    [[nodiscard]] const luisa::string &projectName() const { return _project_name; }
 
     // ========== Scene Management ==========
 
     /**
      * Get all scene configurations
      */
-    [[nodiscard]] const luisa::vector<SceneConfig> &scenes() const { return scenes_; }
+    [[nodiscard]] const luisa::vector<SceneConfig> &scenes() const { return _scenes; }
 
     /**
      * Get the default scene config (if any)
@@ -97,8 +97,8 @@ public:
     /**
      * Get the currently active scene (if any)
      */
-    [[nodiscard]] EditorScene *activeScene() { return active_scene_.has_value() ? &(*active_scene_) : nullptr; }
-    [[nodiscard]] const EditorScene *activeScene() const { return active_scene_.has_value() ? &(*active_scene_) : nullptr; }
+    [[nodiscard]] EditorScene *activeScene() { return _active_scene.has_value() ? &(*_active_scene) : nullptr; }
+    [[nodiscard]] const EditorScene *activeScene() const { return _active_scene.has_value() ? &(*_active_scene) : nullptr; }
 
     /**
      * Open a scene by name
@@ -112,11 +112,11 @@ public:
     void closeActiveScene();
 
 private:
-    bool is_open_ = false;
-    luisa::filesystem::path project_root_;
-    luisa::string project_name_;
-    luisa::vector<SceneConfig> scenes_;
-    vstd::optional<EditorScene> active_scene_;
+    bool _is_open = false;
+    luisa::filesystem::path _project_root;
+    luisa::string _project_name;
+    luisa::vector<SceneConfig> _scenes;
+    vstd::optional<EditorScene> _active_scene;
 
     bool loadProjectConfig();
     bool saveProjectConfig();

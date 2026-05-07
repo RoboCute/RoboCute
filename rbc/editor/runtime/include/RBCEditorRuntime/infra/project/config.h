@@ -2,7 +2,7 @@
 
 namespace rbc {
 
-struct LocalConfig {};// platform-specific config on local machine
-struct UserConfig {}; // user-override config
+struct LocalConfig {};// Platform-specific config on local machine
+struct UserConfig {}; // User-override config
 
 }// namespace rbc

@@ -11,10 +11,10 @@ public:
     explicit IConnectionService(QObject *parent = nullptr) : IService(parent) {}
     virtual ~IConnectionService() = default;
 
-    virtual QString serverUrl() const = 0;
+    [[nodiscard]] virtual QString serverUrl() const = 0;
     virtual void setServerUrl(const QString &url) = 0;
-    virtual bool connected() const = 0;
-    virtual QString statusText() const = 0;
+    [[nodiscard]] virtual bool connected() const = 0;
+    [[nodiscard]] virtual QString statusText() const = 0;
 
 signals:
     void serverUrlChanged();

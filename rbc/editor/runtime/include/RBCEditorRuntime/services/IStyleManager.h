@@ -16,9 +16,9 @@ public:
 
     // QML interface
     virtual void initialize(int argc, char **argv) = 0;
-    virtual bool isHotReloadEnabled() const { return false; }
-    virtual QUrl resolveUrl(const QString &relativePath) = 0;
-    virtual QQmlEngine *qmlEngine() = 0;
+    [[nodiscard]] virtual bool isHotReloadEnabled() const { return false; }
+    [[nodiscard]] virtual QUrl resolveUrl(const QString &relativePath) = 0;
+    [[nodiscard]] virtual QQmlEngine *qmlEngine() = 0;
 
     // Qt Widget style interface
     /**
@@ -26,7 +26,7 @@ public:
      * @param qssPath Path to QSS file (can be resource path like ":/main.qss")
      * @return true if loaded successfully
      */
-    virtual bool loadGlobalStyleSheet(const QString &qssPath) = 0;
+    [[nodiscard]] virtual bool loadGlobalStyleSheet(const QString &qssPath) = 0;
 
     /**
      * @brief Apply style preset to a widget
@@ -34,14 +34,14 @@ public:
      * @param presetName Name of the preset (e.g., "FileTree", "StatusLabel")
      * @return true if preset exists and applied successfully
      */
-    virtual bool applyStylePreset(QWidget *widget, const QString &presetName) = 0;
+    [[nodiscard]] virtual bool applyStylePreset(QWidget *widget, const QString &presetName) = 0;
 
     /**
      * @brief Get style preset QSS string
      * @param presetName Name of the preset
      * @return QSS string, empty if preset not found
      */
-    virtual QString getStylePreset(const QString &presetName) const = 0;
+    [[nodiscard]] virtual QString getStylePreset(const QString &presetName) const = 0;
 
     /**
      * @brief Register a custom style preset
@@ -59,7 +59,7 @@ public:
     /**
      * @brief Get current theme name
      */
-    virtual QString currentTheme() const = 0;
+    [[nodiscard]] virtual QString currentTheme() const = 0;
 
 signals:
     /**

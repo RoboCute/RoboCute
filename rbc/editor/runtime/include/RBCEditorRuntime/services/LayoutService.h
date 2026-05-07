@@ -92,7 +92,7 @@ public:
     void loadUserLayouts();   // load from user-setting file
     QString layoutConfigDirectory() const;
     LayoutConfig &getLayoutConfig(const QString &layoutId) {
-        return layouts_[layoutId];
+        return _layouts[layoutId];
     }
     /**
      * @brief Set central widget for the current layout
@@ -146,21 +146,21 @@ private:// helpers
     void applyDockArrangements(const QJsonObject &arrangements);
 
 private:// members
-    WindowManager *windowManager_ = nullptr;
-    EditorPluginManager *pluginManager_ = nullptr;
-    QString currentLayoutId_;
-    QMap<QString, LayoutConfig> layouts_;
-    QMap<QString, ViewState> currentViewStates_;
+    WindowManager *_window_manager = nullptr;
+    EditorPluginManager *_plugin_manager = nullptr;
+    QString _current_layout_id;
+    QMap<QString, LayoutConfig> _layouts;
+    QMap<QString, ViewState> _current_view_states;
 
-    bool isTransitioning_ = false;
-    QTimer *transitionTimer_ = nullptr;
-    QString configDirectory_;
+    bool _is_transitioning = false;
+    QTimer *_transition_timer = nullptr;
+    QString _config_directory;
 
     // Central widget container - a stable wrapper for the actual central widget
     // This prevents Qt from deleting the actual widget when switching layouts
-    QWidget *centralWidgetContainer_ = nullptr;
-    QVBoxLayout *centralContainerLayout_ = nullptr;
-    QString currentCentralViewId_;// viewId of the current central widget
+    QWidget *_central_widget_container = nullptr;
+    QVBoxLayout *_central_container_layout = nullptr;
+    QString _current_central_view_id;// viewId of the current central widget
 };
 
 }// namespace rbc

@@ -13,7 +13,7 @@
 struct DivisionModel : public MathOperationDataModel
 {
 public:
-    virtual ~DivisionModel() {}
+    ~DivisionModel() override = default;
 
 public:
     QString caption() const override { return QStringLiteral("Division"); }

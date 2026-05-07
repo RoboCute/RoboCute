@@ -3,12 +3,12 @@
 
 namespace rbc {
 
-NodeFactory::NodeFactory() : m_registry(std::make_shared<NodeDelegateModelRegistry>()) {
+NodeFactory::NodeFactory() : _registry(std::make_shared<NodeDelegateModelRegistry>()) {
 }
 
 void NodeFactory::registerNodesFromMetadata(const QJsonArray &nodesMetadata, const std::shared_ptr<NodeDelegateModelRegistry> &registry) {
     if (registry) {
-        m_registry = registry;
+        _registry = registry;
     }
 
     for (const auto &value : nodesMetadata) {
@@ -22,10 +22,10 @@ void NodeFactory::registerNodesFromMetadata(const QJsonArray &nodesMetadata, con
         }
 
         // store current metadata
-        m_nodeMetadata[nodeType] = metadata;
+        _node_metadata[nodeType] = metadata;
 
         // Register a lambda that create DynamicNodeModel instances
-        m_registry->registerModel<DynamicNodeModel>(
+        _registry->registerModel<DynamicNodeModel>(
             [metadata]() { return std::make_unique<DynamicNodeModel>(metadata); }, category);
 
         qDebug() << "Registered node: " << nodeType << "in category: " << category;
@@ -33,13 +33,13 @@ void NodeFactory::registerNodesFromMetadata(const QJsonArray &nodesMetadata, con
 }
 
 QJsonObject NodeFactory::getNodeMetadata(const QString &nodeType) const {
-    return m_nodeMetadata.value(nodeType, QJsonObject());
+    return _node_metadata.value(nodeType, QJsonObject());
 }
 
 QMap<QString, QVector<QJsonObject>> NodeFactory::getNodesByCategory() const {
     QMap<QString, QVector<QJsonObject>> result;
 
-    for (auto it = m_nodeMetadata.begin(); it != m_nodeMetadata.end(); ++it) {
+    for (auto it = _node_metadata.begin(); it != _node_metadata.end(); ++it) {
         QJsonObject metadata = it.value();
         QString category = metadata["category"].toString();
         result[category].append(metadata);

@@ -34,11 +34,11 @@ private:
     void setupUi();
 
 private:
-    QLabel *thumbnailLabel_;
-    QLabel *typeIconLabel_;
-    QLabel *statusLabel_;
-    QPoint dragStartPos_;
-    bool isDraggging_;
+    QLabel *_thumbnail_label;
+    QLabel *_type_icon_label;
+    QLabel *_status_label;
+    QPoint _drag_start_pos;
+    bool _is_dragging;
 };
 
 }// namespace rbc

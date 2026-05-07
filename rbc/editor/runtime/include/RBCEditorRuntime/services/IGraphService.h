@@ -11,18 +11,18 @@
 namespace rbc {
 
 /**
- * 执行状态枚举
+ * Execution status enum
  */
 enum class ExecutionStatus {
-    Pending,  // 等待执行
-    Running,  // 正在执行
-    Completed,// 执行完成
-    Failed,   // 执行失败
-    Cancelled // 已取消
+    Pending,  // Pending execution
+    Running,  // Currently running
+    Completed,// Execution completed
+    Failed,   // Execution failed
+    Cancelled // Execution cancelled
 };
 
 /**
- * 执行进度信息
+ * Execution progress info
  */
 struct ExecutionProgress {
     QString executionId;
@@ -42,14 +42,14 @@ public:
     virtual ~IGraphService() = default;
 
     // === Service Dependencies ===
-    virtual bool isRemoteMode() const = 0;
+    [[nodiscard]] virtual bool isRemoteMode() const = 0;
     virtual void bindProjectService(IProjectService *proj_service) = 0;
     virtual void bindConnectionService(IConnectionService *conn_service) = 0;
 
     // == Node Management
-    virtual QJsonArray getNodeDefinitions() const = 0;
-    virtual QJsonObject getNodeDefinition(const QString &nodeType) const = 0;
-    virtual QMap<QString, QJsonArray> getNodesByCategory() const = 0;
+    [[nodiscard]] virtual QJsonArray getNodeDefinitions() const = 0;
+    [[nodiscard]] virtual QJsonObject getNodeDefinition(const QString &nodeType) const = 0;
+    [[nodiscard]] virtual QMap<QString, QJsonArray> getNodesByCategory() const = 0;
 
     // // == Graph Management
     // virtual QString currentGraphId() const = 0;

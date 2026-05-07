@@ -27,9 +27,9 @@ public:
 
     // Property accessors
     QString projectRoot() const;
-    QFileSystemModel *fileSystemModel() const { return fileSystemModel_; }
+    QFileSystemModel *fileSystemModel() const { return _file_system_model; }
     QModelIndex rootIndex() const;
-    QString filter() const { return filter_; }
+    QString filter() const { return _filter; }
     void setFilter(const QString &filter);
 
     // QML invokable methods
@@ -49,13 +49,13 @@ public:
     Q_INVOKABLE QModelIndex indexForRow(int row) const;
 
     // Service access
-    IProjectService *projectService() const { return projectService_; }
+    IProjectService *projectService() const { return _project_service; }
 
     // Project list mode support
     Q_INVOKABLE void setProjectListMode(bool enabled);
-    Q_INVOKABLE bool isProjectListMode() const { return projectListMode_; }
-    Q_INVOKABLE QStringList recentProjects() const { return recentProjects_; }
-    Q_INVOKABLE void setRecentProjects(const QStringList &projects) { recentProjects_ = projects; }
+    Q_INVOKABLE bool isProjectListMode() const { return _project_list_mode; }
+    Q_INVOKABLE QStringList recentProjects() const { return _recent_projects; }
+    Q_INVOKABLE void setRecentProjects(const QStringList &projects) { _recent_projects = projects; }
     Q_INVOKABLE void openProjectFromList(const QString &projectPath);
 
 signals:
@@ -72,12 +72,12 @@ private:
     void updateRootPath();
     void setupFilters();
 
-    IProjectService *projectService_ = nullptr;
-    QFileSystemModel *fileSystemModel_ = nullptr;
-    QString filter_ = "*";// Default: show all files
-    QString currentRootPath_;
-    bool projectListMode_ = false;
-    QStringList recentProjects_;
+    IProjectService *_project_service = nullptr;
+    QFileSystemModel *_file_system_model = nullptr;
+    QString _filter = "*";// Default: show all files
+    QString _current_root_path;
+    bool _project_list_mode = false;
+    QStringList _recent_projects;
 };
 
 class RBC_EDITOR_PLUGIN_API ProjectPlugin : public IEditorPlugin {
@@ -116,7 +116,7 @@ public:
     QWidget *getNativeWidget(const QString &viewId) override;
 
     // Get file browser widget (for native widget dock) - deprecated, use getNativeWidget("project_file_browser") instead
-    QWidget *fileBrowserWidget() const { return fileBrowserWidget_.data(); }
+    QWidget *fileBrowserWidget() const { return _file_browser_widget.data(); }
 
 private slots:
     void onOpenProjectTriggered();
@@ -131,23 +131,23 @@ private:
     QStringList getRecentProjects() const;
     QString getLastOpenedProject() const;
 
-    IProjectService *projectService_ = nullptr;
-    ProjectViewModel *viewModel_ = nullptr;
-    PluginContext *context_ = nullptr;
-    QPointer<QWidget> fileBrowserWidget_;// 使用 QPointer 追踪，自动检测删除
+    IProjectService *_project_service = nullptr;
+    ProjectViewModel *_view_model = nullptr;
+    PluginContext *_context = nullptr;
+    QPointer<QWidget> _file_browser_widget;// Tracked with QPointer, auto-detects deletion
 
-    // 预注册的 Native View Contributions
-    QList<NativeViewContribution> registeredContributions_;
+    // Pre-registered Native View Contributions
+    QList<NativeViewContribution> _registered_contributions;
 
-    // 保存连接句柄，以便在 unload 时显式断开
-    // 这是必要的，因为 lambda 连接如果没有 context 对象，
-    // 调用 disconnect(sender, nullptr, this, nullptr) 无法断开它们
-    QMetaObject::Connection projectOpenedConnection_;
-    QMetaObject::Connection treeViewDoubleClickConnection_;
-    QMetaObject::Connection projectClosingConnection_;
+    // Store connection handles for explicit disconnection on unload
+    // This is necessary because lambda connections without a context object
+    // cannot be disconnected via disconnect(sender, nullptr, this, nullptr)
+    QMetaObject::Connection _project_opened_connection;
+    QMetaObject::Connection _tree_view_double_click_connection;
+    QMetaObject::Connection _project_closing_connection;
 };
 
-// 导出工厂函数（新设计）
+// Export factory function (new design)
 class IPluginFactory;
 LUISA_EXPORT_API IPluginFactory *createPluginFactory();
 

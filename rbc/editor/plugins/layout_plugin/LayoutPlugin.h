@@ -13,9 +13,9 @@
 namespace rbc {
 
 /**
- * LayoutViewModel - Layout 管理视图模型
+ * LayoutViewModel - Layout management view model
  * 
- * 负责管理 Layout 切换和视图可见性控制
+ * Manages layout switching and view visibility control
  */
 class RBC_EDITOR_PLUGIN_API LayoutViewModel : public ViewModelBase {
     Q_OBJECT
@@ -40,7 +40,7 @@ public:
     Q_INVOKABLE QString getLayoutDescription(const QString &layoutId) const;
 
     // Service access
-    LayoutService *layoutService() const { return layoutService_; }
+    [[nodiscard]] LayoutService *layoutService() const { return _layout_service; }
 
 signals:
     void currentLayoutIdChanged();
@@ -53,14 +53,14 @@ private slots:
 private:
     void updateViewStates();
 
-    LayoutService *layoutService_ = nullptr;
-    QVariantList viewStates_;
+    LayoutService *_layout_service = nullptr;
+    QVariantList _view_states;
 };
 
 /**
- * LayoutPlugin - Layout 管理插件
+ * LayoutPlugin - Layout management plugin
  * 
- * 提供 Layout 切换和视图可见性控制的 UI 面板和菜单
+ * Provides UI panels and menus for layout switching and view visibility control
  */
 class RBC_EDITOR_PLUGIN_API LayoutPlugin : public IEditorPlugin {
     Q_OBJECT
@@ -95,13 +95,13 @@ public:
 private:
     void buildMenuContributions();
 
-    LayoutService *layoutService_ = nullptr;
-    LayoutViewModel *viewModel_ = nullptr;
-    PluginContext *context_ = nullptr;
-    QList<MenuContribution> menuContributions_;
+    LayoutService *_layout_service = nullptr;
+    LayoutViewModel *_view_model = nullptr;
+    PluginContext *_context = nullptr;
+    QList<MenuContribution> _menu_contributions;
 };
 
-// 导出工厂函数
+// Export factory function
 class IPluginFactory;
 LUISA_EXPORT_API IPluginFactory *createPluginFactory();
 

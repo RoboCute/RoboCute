@@ -21,10 +21,10 @@ private:
     EditorEngine() = default;
     ~EditorEngine() { shutdown(); }
 
-    bool m_isInitialized = false;
-    luisa::string m_programPath;
-    luisa::string m_backendName;
-    QRhi::Implementation m_graphicsApi = QRhi::D3D12;
+    bool _is_initialized = false;
+    luisa::string _program_path;
+    luisa::string _backend_name;
+    QRhi::Implementation _graphics_api = QRhi::D3D12;
 };
 
 }// namespace rbc

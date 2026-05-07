@@ -16,7 +16,7 @@ namespace rbc {
 class ViewportWidget;
 
 // ============================================================================
-// ViewportType - 视口类型枚举
+// ViewportType - Viewport type enum
 // ============================================================================
 
 enum class ViewportType {
@@ -27,7 +27,7 @@ enum class ViewportType {
 };
 
 // ============================================================================
-// ViewportConfig - 视口配置
+// ViewportConfig - Viewport configuration
 // ============================================================================
 
 struct ViewportConfig {
@@ -37,17 +37,17 @@ struct ViewportConfig {
     bool enableGizmos = true;
     bool enableGrid = true;
     bool enableSelection = true;
-    QRhi::Implementation graphicsApi = QRhi::D3D12;// RHI 图形 API
+    QRhi::Implementation graphicsApi = QRhi::D3D12;// RHI graphics API
 };
 
 // ============================================================================
-// ViewportViewModel - 视口状态视图模型
+// ViewportViewModel - Viewport state view model
 // ============================================================================
 
 /**
- * @brief ViewportViewModel - 视口状态视图模型
+ * @brief ViewportViewModel - Viewport state view model
  * 
- * 管理单个视口的状态：
+ * Manages the state of a single viewport:
  * - Camera State
  * - Control Command State
  * - Show/Hide State
@@ -68,12 +68,12 @@ public:
     ~ViewportViewModel() override;
 
     // Properties
-    QString viewportId() const { return config_.viewportId; }
-    bool gizmosEnabled() const { return gizmosEnabled_; }
+    QString viewportId() const { return _config.viewportId; }
+    bool gizmosEnabled() const { return _gizmos_enabled; }
     void setGizmosEnabled(bool enabled);
-    bool gridEnabled() const { return gridEnabled_; }
+    bool gridEnabled() const { return _grid_enabled; }
     void setGridEnabled(bool enabled);
-    QString cameraMode() const { return cameraMode_; }
+    QString cameraMode() const { return _camera_mode; }
     void setCameraMode(const QString &mode);
 
     // Camera control
@@ -87,74 +87,74 @@ signals:
     void cameraModeChanged();
 
 private:
-    ViewportConfig config_;
-    ISceneService *sceneService_ = nullptr;
-    bool gizmosEnabled_ = true;
-    bool gridEnabled_ = true;
-    QString cameraMode_ = "Perspective";
+    ViewportConfig _config;
+    ISceneService *_scene_service = nullptr;
+    bool _gizmos_enabled = true;
+    bool _grid_enabled = true;
+    QString _camera_mode = "Perspective";
 };
 
 // ============================================================================
-// ViewportInstance - 视口实例（组合 Widget + ViewModel + Renderer）
+// ViewportInstance - Viewport instance (combines Widget + ViewModel + Renderer)
 // ============================================================================
 
 /**
- * @brief ViewportInstance - 将 Widget、ViewModel 和 Renderer 组合在一起
+ * @brief ViewportInstance - Combines Widget, ViewModel, and Renderer
  * 
- * 每个视口实例包含：
- * - config: 视口配置
- * - widget: ViewportWidget 实例（使用 QPointer 追踪，自动检测删除）
- * - viewModel: ViewportViewModel 实例
- * - renderer: IRenderer 实例
+ * Each viewport instance contains:
+ * - config: Viewport configuration
+ * - widget: ViewportWidget instance (tracked with QPointer, auto-detects deletion)
+ * - viewModel: ViewportViewModel instance
+ * - renderer: IRenderer instance
  * 
- * 注意：widget 使用 QPointer 追踪，因为它可能被 Qt 的 parent-child 机制删除
- * （例如当 WindowManager 删除 main_window_ 时）
+ * Note: widget uses QPointer because it may be deleted by Qt's parent-child mechanism
+ * (e.g., when WindowManager deletes main_window_)
  */
 struct ViewportInstance {
     ViewportConfig config;
-    QPointer<ViewportWidget> widget;// 使用 QPointer 追踪，自动检测删除
+    QPointer<ViewportWidget> widget;// Tracked with QPointer, auto-detects deletion
     ViewportViewModel *viewModel = nullptr;
     IRenderer *renderer = nullptr;
 
     ~ViewportInstance() {
-        // 注意：widget 使用 QPointer 追踪，由 destroyViewport 显式管理或由 Qt parent-child 机制管理
-        // 这里只负责清理 viewModel 和 renderer
+        // Note: widget uses QPointer, explicitly managed by destroyViewport or Qt parent-child mechanism
+        // Only responsible for cleaning up viewModel and renderer here
         delete viewModel;
         viewModel = nullptr;
-        // renderer 通常由外部工厂创建，需要外部销毁
+        // renderer is usually created by an external factory and needs external destruction
         renderer = nullptr;
     }
 };
 
 // ============================================================================
-// RendererFactory - 渲染器工厂函数类型
+// RendererFactory - Renderer factory function type
 // ============================================================================
 
 /**
- * @brief 渲染器工厂函数类型
+ * @brief Renderer factory function type
  * 
- * 用于创建 IRenderer 实例的函数类型。
- * ViewportPlugin 通过设置渲染器工厂来创建渲染器。
+ * Function type for creating IRenderer instances.
+ * ViewportPlugin creates renderers by setting a renderer factory.
  * 
- * @param config 视口配置
- * @return IRenderer* 渲染器实例，调用者负责管理生命周期
+ * @param config Viewport configuration
+ * @return IRenderer* Renderer instance, caller manages lifetime
  */
 using RendererFactory = std::function<IRenderer *(const ViewportConfig &config)>;
 
 // ============================================================================
-// ViewportPlugin - 视口管理插件
+// ViewportPlugin - Viewport management plugin
 // ============================================================================
 
 /**
- * @brief ViewportPlugin - 视口管理插件
+ * @brief ViewportPlugin - Viewport management plugin
  * 
- * 职责：
- * 1. 管理所有 ViewportWidget 的生命周期
- * 2. 提供视口创建/销毁 API
- * 3. 通过 NativeViewContribution 向 WindowManager 注册视口
- * 4. 协调 ViewportViewModel 与 SceneService 的交互
+ * Responsibilities:
+ * 1. Manage all ViewportWidget lifecycles
+ * 2. Provide viewport create/destroy API
+ * 3. Register viewports with WindowManager via NativeViewContribution
+ * 4. Coordinate ViewportViewModel and SceneService interaction
  * 
- * 使用方式：
+ * Usage:
  * @code
  * viewportPlugin->setRendererFactory([](const ViewportConfig& config) {
  *     return new MyRenderer();
@@ -198,65 +198,65 @@ public:
     // === Renderer Factory ===
 
     /**
-     * @brief 设置渲染器工厂
-     * @param factory 渲染器工厂函数
+     * @brief Set renderer factory
+     * @param factory Renderer factory function
      * 
-     * 必须在创建视口之前调用此方法设置渲染器工厂。
+     * Must call this to set renderer factory before creating viewports.
      */
-    void setRendererFactory(RendererFactory factory) { rendererFactory_ = std::move(factory); }
+    void setRendererFactory(RendererFactory factory) { _renderer_factory = std::move(factory); }
 
     /**
-     * @brief 获取渲染器工厂
+     * @brief Get renderer factory
      */
-    RendererFactory rendererFactory() const { return rendererFactory_; }
+    RendererFactory rendererFactory() const { return _renderer_factory; }
 
     // === Viewport Management API ===
 
     /**
-     * @brief 创建新视口
-     * @param config 视口配置
-     * @return 视口 ID，失败返回空字符串
+     * @brief Create a new viewport
+     * @param config Viewport configuration
+     * @return Viewport ID, empty string on failure
      */
     QString createViewport(const ViewportConfig &config);
 
     /**
-     * @brief 使用已有的渲染器创建视口
-     * @param config 视口配置
-     * @param renderer 渲染器实例（ViewportPlugin 不接管其生命周期）
-     * @return 视口 ID，失败返回空字符串
+     * @brief Create a viewport with an existing renderer
+     * @param config Viewport configuration
+     * @param renderer Renderer instance (ViewportPlugin does not take ownership)
+     * @return Viewport ID, empty string on failure
      */
     QString createViewportWithRenderer(const ViewportConfig &config, IRenderer *renderer);
 
     /**
-     * @brief 销毁视口
-     * @param viewportId 视口 ID
-     * @return 是否成功
+     * @brief Destroy a viewport
+     * @param viewportId Viewport ID
+     * @return Whether successful
      */
     bool destroyViewport(const QString &viewportId);
 
     /**
-     * @brief 获取视口实例
-     * @param viewportId 视口 ID
-     * @return 视口实例，未找到返回 nullptr
+     * @brief Get viewport instance
+     * @param viewportId Viewport ID
+     * @return Viewport instance, nullptr if not found
      */
     ViewportInstance *getViewport(const QString &viewportId);
 
     /**
-     * @brief 获取所有视口 ID
+     * @brief Get all viewport IDs
      */
     QStringList allViewportIds() const;
 
     /**
-     * @brief 获取主视口实例
+     * @brief Get main viewport instance
      */
     ViewportInstance *mainViewport() const;
 
     /**
-     * @brief 设置默认图形 API
-     * @param api RHI 图形 API 类型
+     * @brief Set default graphics API
+     * @param api RHI graphics API type
      */
-    void setDefaultGraphicsApi(QRhi::Implementation api) { defaultGraphicsApi_ = api; }
-    QRhi::Implementation defaultGraphicsApi() const { return defaultGraphicsApi_; }
+    void setDefaultGraphicsApi(QRhi::Implementation api) { _default_graphics_api = api; }
+    QRhi::Implementation defaultGraphicsApi() const { return _default_graphics_api; }
 
 signals:
     void viewportCreated(const QString &viewportId);
@@ -268,21 +268,21 @@ private:
     void destroyAllViewports();
     IRenderer *createRenderer(const ViewportConfig &config);
 
-    PluginContext *context_ = nullptr;
-    ISceneService *sceneService_ = nullptr;
+    PluginContext *_context = nullptr;
+    ISceneService *_scene_service = nullptr;
 
-    // 渲染器工厂
-    RendererFactory rendererFactory_;
+    // Renderer factory
+    RendererFactory _renderer_factory;
 
-    // 默认图形 API
-    QRhi::Implementation defaultGraphicsApi_ = QRhi::D3D12;
+    // Default graphics API
+    QRhi::Implementation _default_graphics_api = QRhi::D3D12;
 
-    // 视口实例管理
-    QHash<QString, ViewportInstance *> viewports_;
-    QString mainViewportId_;
+    // Viewport instance management
+    QHash<QString, ViewportInstance *> _viewports;
+    QString _main_viewport_id;
 
-    // 预注册的 Native View Contributions
-    QList<NativeViewContribution> registeredContributions_;
+    // Pre-registered Native View Contributions
+    QList<NativeViewContribution> _registered_contributions;
 };
 
 }// namespace rbc

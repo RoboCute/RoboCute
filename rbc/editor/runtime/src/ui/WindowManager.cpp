@@ -33,21 +33,21 @@ static Qt::DockWidgetArea parse_dock_area(const QString &dockArea) {
 }
 
 WindowManager::WindowManager(EditorPluginManager *plugin_mng, QObject *parent)
-    : QObject(parent), plugin_mng_(plugin_mng) {
+    : QObject(parent), _plugin_mng(plugin_mng) {
 }
 
 WindowManager::~WindowManager() {
-    // 确保 cleanup() 已被调用
-    if (!cleaned_up_) {
+    // Ensure cleanup() has been called
+    if (!_cleaned_up) {
         qWarning() << "WindowManager::~WindowManager: cleanup() was not called before destruction!";
         cleanup();
     }
 
-    // 简单的析构：依赖 Qt 的 parent-child 自动清理机制
-    // main_window_ 及其所有子 widget 会被自动删除
-    if (main_window_) {
-        delete main_window_;
-        main_window_ = nullptr;
+    // Simple destructor: relies on Qt's parent-child auto-cleanup mechanism
+    // _main_window and all child widgets are auto-deleted
+    if (_main_window) {
+        delete _main_window;
+        _main_window = nullptr;
     }
 
     qDebug() << "WindowManager::~WindowManager: Destroyed";
@@ -57,40 +57,40 @@ void WindowManager::cleanupQmlWidget(QWidget *widget) {
     QQuickWidget *quickWidget = qobject_cast<QQuickWidget *>(widget);
     if (!quickWidget) return;
 
-    // 隐藏 QQuickWidget 停止渲染
+    // Hide QQuickWidget to stop rendering
     quickWidget->hide();
 
-    // 清理 context properties，打破对 ViewModel 的引用
-    // 这是关键：防止 QML 在 ViewModel 销毁后访问它
+    // Clean up context properties, break references to ViewModel
+    // This is key: prevent QML from accessing ViewModel after destruction
     QQmlContext *context = quickWidget->rootContext();
     if (context) {
         context->setContextProperty("viewModel", nullptr);
     }
 
-    // 清空 source 停止 QML 执行
+    // Clear source to stop QML execution
     quickWidget->setSource(QUrl());
 
     qDebug() << "WindowManager::cleanupQmlWidget: Cleaned up QQuickWidget";
 }
 
 void WindowManager::cleanup() {
-    if (cleaned_up_) {
+    if (_cleaned_up) {
         return;
     }
-    cleaned_up_ = true;
+    _cleaned_up = true;
 
-    if (!main_window_) {
+    if (!_main_window) {
         return;
     }
 
     qDebug() << "WindowManager::cleanup: Starting cleanup...";
 
-    // 1. 隐藏窗口，停止所有渲染和事件处理
-    main_window_->hide();
+    // 1. Hide window, stop all rendering and event processing
+    _main_window->hide();
 
-    // 2. 清理所有 dock widget 中的 QML widget
-    //    这一步打破 QML 对 ViewModel 的引用，防止 plugin unload 后访问已销毁对象
-    QList<QDockWidget *> dockWidgets = main_window_->findChildren<QDockWidget *>();
+    // 2. Clean up QML widgets in all dock widgets
+    //    This breaks QML's reference to ViewModel, preventing access to destroyed objects after plugin unload
+    QList<QDockWidget *> dockWidgets = _main_window->findChildren<QDockWidget *>();
     for (QDockWidget *dock : dockWidgets) {
         QWidget *widget = dock->widget();
         if (widget) {
@@ -98,42 +98,42 @@ void WindowManager::cleanup() {
         }
     }
 
-    // 3. 释放外部 widget 的引用
-    //    外部 widget 由其创建者（plugin）管理，我们只是解除引用
-    //    关键：必须在 WindowManager 析构前将外部 widget 从 dock 中移除
-    //    否则 dock 删除时会一起删除外部 widget，导致 plugin 双重释放
-    for (auto it = external_widgets_.begin(); it != external_widgets_.end(); ++it) {
+    // 3. Release external widget references
+    //    External widgets are managed by their creator (plugin), we just release references
+    //    Key: must remove external widgets from dock before WindowManager destruction
+    //    Otherwise dock deletion will also delete external widgets, causing plugin double-free
+    for (auto it = _external_widgets.begin(); it != _external_widgets.end(); ++it) {
         QString viewId = it.key();
         QPointer<QWidget> widgetPtr = it.value();
 
         if (widgetPtr) {
-            // 找到对应的 dock 并解除关联
-            QDockWidget *dock = main_window_->findChild<QDockWidget *>(viewId);
+            // Find corresponding dock and disassociate
+            QDockWidget *dock = _main_window->findChild<QDockWidget *>(viewId);
             if (dock) {
                 QWidget *dockWidget = dock->widget();
                 if (dockWidget == widgetPtr) {
-                    // 从 dock 中移除外部 widget，但不删除它
-                    // 这样 plugin 仍然可以安全地管理它
+                    // Remove external widget from dock but do not delete it
+                    // So plugin can still safely manage it
                     dock->setWidget(nullptr);
-                    widgetPtr->setParent(nullptr);// 确保完全脱离 parent-child 关系
+                    widgetPtr->setParent(nullptr);// Ensure complete detachment from parent-child relationship
                     qDebug() << "WindowManager::cleanup: Released external widget:" << viewId;
                 } else {
-                    // widget 可能被包装在其他容器中
-                    // 尝试直接从 parent 中移除
+                    // Widget may be wrapped in other containers
+                    // Try to remove directly from parent
                     qWarning() << "WindowManager::cleanup: Widget mismatch for" << viewId
                                << "- dock->widget() is different, forcing release";
-                    widgetPtr->setParent(nullptr);// 强制脱离 parent
+                    widgetPtr->setParent(nullptr);// Force detach from parent
                     qDebug() << "WindowManager::cleanup: Force-released external widget:" << viewId;
                 }
             } else {
-                // Dock 未找到，可能 widget 是 central widget
-                // 检查是否是 central widget
-                if (main_window_->centralWidget() == widgetPtr ||
-                    widgetPtr->parent() == main_window_->centralWidget()) {
+                // Dock not found, widget may be central widget
+                // Check if it is central widget
+                if (_main_window->centralWidget() == widgetPtr ||
+                    widgetPtr->parent() == _main_window->centralWidget()) {
                     widgetPtr->setParent(nullptr);
                     qDebug() << "WindowManager::cleanup: Released external central widget:" << viewId;
                 } else {
-                    // 无法找到 dock，直接从 parent 脱离
+                    // Cannot find dock, detach directly from parent
                     qWarning() << "WindowManager::cleanup: Dock not found for" << viewId
                                << "- forcing release from parent";
                     widgetPtr->setParent(nullptr);
@@ -143,11 +143,11 @@ void WindowManager::cleanup() {
             qDebug() << "WindowManager::cleanup: External widget already deleted:" << viewId;
         }
     }
-    external_widgets_.clear();
+    _external_widgets.clear();
 
-    // 4. 断开菜单 action 的信号连接
-    //    菜单 callback 可能捕获了 plugin 对象的指针，需要在 plugin unload 前断开
-    QMenuBar *menuBar = main_window_->menuBar();
+    // 4. Disconnect menu action signal connections
+    //    Menu callbacks may capture plugin object pointers, need to disconnect before plugin unload
+    QMenuBar *menuBar = _main_window->menuBar();
     if (menuBar) {
         std::function<void(QMenu *)> disconnectMenuActions;
         disconnectMenuActions = [&disconnectMenuActions](QMenu *menu) {
@@ -171,9 +171,9 @@ void WindowManager::cleanup() {
 }
 
 void WindowManager::setup_main_window() {
-    if (!main_window_) {
-        main_window_ = new QMainWindow();
-        main_window_->setWindowTitle("RoboCute Editor");
+    if (!_main_window) {
+        _main_window = new QMainWindow();
+        _main_window->setWindowTitle("RoboCute Editor");
     }
 }
 
@@ -185,8 +185,8 @@ QDockWidget *WindowManager::createDockWidgetCommon(
     QDockWidget::DockWidgetFeatures features,
     Qt::DockWidgetAreas allowedAreas) {
 
-    if (!main_window_) {
-        qWarning() << "WindowManager::createDockWidgetCommon: main_window_ is null, call setup_main_window() first";
+    if (!_main_window) {
+        qWarning() << "WindowManager::createDockWidgetCommon: _main_window is null, call setup_main_window() first";
         return nullptr;
     }
     if (!content) {
@@ -194,30 +194,30 @@ QDockWidget *WindowManager::createDockWidgetCommon(
         return nullptr;
     }
 
-    QDockWidget *dock = new QDockWidget(title, main_window_);
+    QDockWidget *dock = new QDockWidget(title, _main_window);
     dock->setObjectName(viewId);
     dock->setAllowedAreas(allowedAreas);
     dock->setFeatures(features);
     dock->setWidget(content);
 
     if (dockArea != Qt::NoDockWidgetArea) {
-        main_window_->addDockWidget(dockArea, dock);
+        _main_window->addDockWidget(dockArea, dock);
     }
     return dock;
 }
 
 QDockWidget *WindowManager::createDockableView(const ViewContribution &contribution, QObject *viewModel) {
-    if (!main_window_) {
-        qWarning() << "WindowManager::createDockableView: main_window_ is null, call setup_main_window() first";
+    if (!_main_window) {
+        qWarning() << "WindowManager::createDockableView: _main_window is null, call setup_main_window() first";
         return nullptr;
     }
 
-    if (!plugin_mng_ || !plugin_mng_->qmlEngine()) {
+    if (!_plugin_mng || !_plugin_mng->qmlEngine()) {
         qWarning() << "WindowManager::createDockableView: QML engine is not available";
         return nullptr;
     }
 
-    QQmlEngine *engine = plugin_mng_->qmlEngine();
+    QQmlEngine *engine = _plugin_mng->qmlEngine();
 
     // Create QQuickWidget
     QQuickWidget *quickWidget = new QQuickWidget(engine, nullptr);
@@ -226,8 +226,8 @@ QDockWidget *WindowManager::createDockableView(const ViewContribution &contribut
     // Resolve QML URL (support qrc:/, file://, or hot reload from filesystem)
     QUrl qmlUrl;
 
-    if (hot_reload_enabled_ && !contribution.qmlHotDir.isEmpty()) {
-        // 热更新模式：从文件系统加载
+    if (_hot_reload_enabled && !contribution.qmlHotDir.isEmpty()) {
+        // Hot-reload mode: load from filesystem
         QString filePath = contribution.qmlHotDir + "/qml/" + contribution.qmlSource;
         qmlUrl = QUrl::fromLocalFile(filePath);
         qDebug() << "WindowManager: Hot reload mode - loading QML from:" << filePath;
@@ -282,12 +282,12 @@ QDockWidget *WindowManager::createDockableView(const ViewContribution &contribut
         return nullptr;
     }
 
-    // 存储 QML 视图信息用于热更新刷新
+    // Store QML view info for hot-reload refresh
     QmlViewInfo viewInfo;
     viewInfo.contribution = contribution;
     viewInfo.viewModel = viewModel;
     viewInfo.quickWidget = quickWidget;
-    qml_views_.insert(contribution.viewId, viewInfo);
+    _qml_views.insert(contribution.viewId, viewInfo);
 
     qDebug() << "WindowManager::createDockableView: Created dock for" << contribution.viewId;
     return dock;
@@ -304,10 +304,10 @@ QDockWidget *WindowManager::createDockableView(
 
     QDockWidget *dock = createDockWidgetCommon(viewId, title, widget, dockArea, features, allowedAreas);
 
-    // 如果是外部 widget，使用 QPointer 追踪它
-    // 这样在 cleanup() 时可以安全地释放引用，让 plugin 管理其生命周期
+    // If external widget, track it with QPointer
+    // So references can be safely released in cleanup(), letting plugin manage its lifecycle
     if (dock && isExternalWidget) {
-        external_widgets_.insert(viewId, QPointer<QWidget>(widget));
+        _external_widgets.insert(viewId, QPointer<QWidget>(widget));
         qDebug() << "WindowManager::createDockableView: Registered external widget:" << viewId;
     }
 
@@ -319,7 +319,7 @@ QDockWidget *WindowManager::createDockableView(
     QWidget *widget,
     QObject *viewModel) {
 
-    Q_UNUSED(viewModel);// 可用于未来扩展
+    Q_UNUSED(viewModel);// Can be used for future extensions
 
     Qt::DockWidgetArea area = parse_dock_area(contribution.dockArea);
 
@@ -342,12 +342,12 @@ QDockWidget *WindowManager::createDockableView(
 }
 
 QWidget *WindowManager::createStandaloneView(const QString &qmlSource, QObject *viewModel, const QString &title) {
-    if (!plugin_mng_ || !plugin_mng_->qmlEngine()) {
+    if (!_plugin_mng || !_plugin_mng->qmlEngine()) {
         qWarning() << "WindowManager::createStandaloneView: QML engine is not available";
         return nullptr;
     }
 
-    QQmlEngine *engine = plugin_mng_->qmlEngine();
+    QQmlEngine *engine = _plugin_mng->qmlEngine();
 
     // Create QQuickWidget
     QQuickWidget *quickWidget = new QQuickWidget(engine, nullptr);
@@ -382,30 +382,30 @@ QWidget *WindowManager::createStandaloneView(const QString &qmlSource, QObject *
 }
 
 bool WindowManager::setCentralWidget(QWidget *widget, bool isExternalWidget) {
-    if (!main_window_) {
-        qWarning() << "WindowManager::setCentralWidget: main_window_ is null";
+    if (!_main_window) {
+        qWarning() << "WindowManager::setCentralWidget: _main_window is null";
         return false;
     }
 
     // If there's an existing central widget that's external, untrack it
-    QWidget *oldCentral = main_window_->centralWidget();
+    QWidget *oldCentral = _main_window->centralWidget();
     if (oldCentral) {
-        // Check if old central widget was in external_widgets_
+        // Check if old central widget was in _external_widgets
         QString oldViewId;
-        for (auto it = external_widgets_.begin(); it != external_widgets_.end(); ++it) {
+        for (auto it = _external_widgets.begin(); it != _external_widgets.end(); ++it) {
             if (it.value() == oldCentral) {
                 oldViewId = it.key();
                 break;
             }
         }
         if (!oldViewId.isEmpty()) {
-            external_widgets_.remove(oldViewId);
+            _external_widgets.remove(oldViewId);
             qDebug() << "WindowManager::setCentralWidget: Removed old external central widget:" << oldViewId;
         }
     }
 
     // Set the new central widget
-    main_window_->setCentralWidget(widget);
+    _main_window->setCentralWidget(widget);
 
     // Track if it's an external widget
     if (widget && isExternalWidget) {
@@ -414,7 +414,7 @@ bool WindowManager::setCentralWidget(QWidget *widget, bool isExternalWidget) {
         if (viewId.isEmpty()) {
             viewId = QStringLiteral("__central_widget__");
         }
-        external_widgets_.insert(viewId, QPointer<QWidget>(widget));
+        _external_widgets.insert(viewId, QPointer<QWidget>(widget));
         qDebug() << "WindowManager::setCentralWidget: Registered external central widget:" << viewId;
     }
 
@@ -423,29 +423,29 @@ bool WindowManager::setCentralWidget(QWidget *widget, bool isExternalWidget) {
 }
 
 QWidget *WindowManager::centralWidget() const {
-    if (!main_window_) {
+    if (!_main_window) {
         return nullptr;
     }
-    return main_window_->centralWidget();
+    return _main_window->centralWidget();
 }
 
 QWidget *WindowManager::takeCentralWidget() {
-    if (!main_window_) {
+    if (!_main_window) {
         return nullptr;
     }
-    return main_window_->takeCentralWidget();
+    return _main_window->takeCentralWidget();
 }
 
 void WindowManager::applyMenuContributions(const QList<MenuContribution> &contributions) {
-    if (!main_window_) {
-        qWarning() << "WindowManager::applyMenuContributions: main_window_ is null";
+    if (!_main_window) {
+        qWarning() << "WindowManager::applyMenuContributions: _main_window is null";
         return;
     }
 
-    QMenuBar *menuBar = main_window_->menuBar();
+    QMenuBar *menuBar = _main_window->menuBar();
     if (!menuBar) {
-        menuBar = new QMenuBar(main_window_);
-        main_window_->setMenuBar(menuBar);
+        menuBar = new QMenuBar(_main_window);
+        _main_window->setMenuBar(menuBar);
     }
 
     for (const auto &contribution : contributions) {
@@ -524,21 +524,21 @@ void WindowManager::applyMenuContributions(const QList<MenuContribution> &contri
 }
 
 void WindowManager::setHotReloadEnabled(bool enabled) {
-    hot_reload_enabled_ = enabled;
+    _hot_reload_enabled = enabled;
     qDebug() << "WindowManager: Hot reload" << (enabled ? "enabled" : "disabled");
 }
 
 void WindowManager::reloadAllQmlViews() {
-    if (!plugin_mng_ || !plugin_mng_->qmlEngine()) {
+    if (!_plugin_mng || !_plugin_mng->qmlEngine()) {
         qWarning() << "WindowManager::reloadAllQmlViews: QML engine is not available";
         return;
     }
 
-    qDebug() << "WindowManager::reloadAllQmlViews: Reloading" << qml_views_.size() << "QML views...";
+    qDebug() << "WindowManager::reloadAllQmlViews: Reloading" << _qml_views.size() << "QML views...";
 
-    QQmlEngine *engine = plugin_mng_->qmlEngine();
+    QQmlEngine *engine = _plugin_mng->qmlEngine();
 
-    for (auto it = qml_views_.begin(); it != qml_views_.end(); ++it) {
+    for (auto it = _qml_views.begin(); it != _qml_views.end(); ++it) {
         const QString &viewId = it.key();
         QmlViewInfo &viewInfo = it.value();
 
@@ -553,11 +553,11 @@ void WindowManager::reloadAllQmlViews() {
             continue;
         }
 
-        // 重新计算 QML URL
+        // Recalculate QML URL
         QUrl qmlUrl;
         const ViewContribution &contribution = viewInfo.contribution;
 
-        if (hot_reload_enabled_ && !contribution.qmlHotDir.isEmpty()) {
+        if (_hot_reload_enabled && !contribution.qmlHotDir.isEmpty()) {
             QString filePath = contribution.qmlHotDir + "/qml/" + contribution.qmlSource;
             qmlUrl = QUrl::fromLocalFile(filePath);
             qDebug() << "WindowManager::reloadAllQmlViews: Reloading" << viewId << "from: " << filePath;
@@ -569,21 +569,21 @@ void WindowManager::reloadAllQmlViews() {
             qmlUrl = QUrl("qrc:/qml/" + contribution.qmlSource);
         }
 
-        // 重新设置 ViewModel（确保 context 绑定正确）
+        // Re-set ViewModel (ensure context binding is correct)
         QQmlContext *context = quickWidget->rootContext();
         if (context && viewInfo.viewModel) {
             context->setContextProperty("viewModel", viewInfo.viewModel);
         }
 
-        // 重新加载 QML
-        // 1. 先清空 source 以确保完全卸载旧内容
+        // Reload QML
+        // 1. First clear source to ensure complete unloading of old content
         quickWidget->setSource(QUrl());
         engine->clearComponentCache();
         engine->trimComponentCache();
-        // 2. 处理事件确保卸载完成
+        // 2. Process events to ensure unloading completes
         QCoreApplication::processEvents();
 
-        // 3. 重新加载新的 QML
+        // 3. Reload new QML
         qDebug() << "WindowManager::reloadAllQmlViews: Setting source to:" << qmlUrl.toString();
         quickWidget->setSource(qmlUrl);
 
@@ -595,7 +595,7 @@ void WindowManager::reloadAllQmlViews() {
         }
     }
 
-    // 处理所有待处理事件，确保缓存清理完成
+    // Process all pending events to ensure cache cleanup completes
     QCoreApplication::processEvents();
 
     qDebug() << "WindowManager::reloadAllQmlViews: Reload completed";

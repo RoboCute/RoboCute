@@ -7,14 +7,14 @@ namespace rbc {
 
 PluginContext::PluginContext(EditorPluginManager *manager, QObject *parent)
     : QObject(parent)
-    , manager_(manager) {
-    if (!manager_) {
+    , _manager(manager) {
+    if (!_manager) {
         qWarning() << "PluginContext: manager is null";
     }
 }
 
 IEventBus *PluginContext::event_bus() const {
-    return manager_ ? manager_->getService<IEventBus>() : nullptr;
+    return _manager ? _manager->getService<IEventBus>() : nullptr;
 }
 
 }// namespace rbc

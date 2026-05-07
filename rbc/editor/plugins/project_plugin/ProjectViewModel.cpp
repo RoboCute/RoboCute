@@ -13,101 +13,101 @@ namespace rbc {
 // ============================================================================
 
 ProjectViewModel::ProjectViewModel(IProjectService *projectService, QObject *parent)
-    : ViewModelBase(parent), projectService_(projectService) {
+    : ViewModelBase(parent), _project_service(projectService) {
 
-    if (!projectService_) {
+    if (!_project_service) {
         qWarning() << "ProjectViewModel: projectService is null";
         return;
     }
 
     // Create and configure QFileSystemModel
-    fileSystemModel_ = new QFileSystemModel(this);
+    _file_system_model = new QFileSystemModel(this);
     setupFilters();
 
     // Connect to service signals
-    QObject::connect(projectService_, &IProjectService::projectOpened,
+    QObject::connect(_project_service, &IProjectService::projectOpened,
                      this, &ProjectViewModel::onProjectOpened);
-    QObject::connect(projectService_, &IProjectService::projectClosed,
+    QObject::connect(_project_service, &IProjectService::projectClosed,
                      this, &ProjectViewModel::onProjectClosed);
-    QObject::connect(projectService_, &IProjectService::projectInfoChanged,
+    QObject::connect(_project_service, &IProjectService::projectInfoChanged,
                      this, &ProjectViewModel::onProjectInfoChanged);
 
     // Initialize root path if project is already open
-    if (projectService_->isOpen()) {
+    if (_project_service->isOpen()) {
         updateRootPath();
     }
 }
 
 ProjectViewModel::~ProjectViewModel() {
-    // 关键：在析构时显式断开与 Service 的信号槽连接
-    // 使用正确的语法：QObject::disconnect(sender, signal, receiver, slot)
+    // Key: explicitly disconnect signal-slot connections with Service during destruction
+    // Use correct syntax: QObject::disconnect(sender, signal, receiver, slot)
     // 
-    // 为什么必须显式断开？
-    // 1. Service 的生命周期比 ViewModel 长（Service 在 app 析构时才删除）
-    // 2. 如果依赖 Qt 自动清理，在 Service 析构时会访问已删除的 ViewModel
-    // 3. 显式断开是安全的，因为此时 this 还存在
+    // Why must we explicitly disconnect?
+    // 1. Service lifetime is longer than ViewModel (Service deleted only when app is destroyed)
+    // 2. If relying on Qt auto-cleanup, Service destructor will access deleted ViewModel
+    // 3. Explicit disconnect is safe because this still exists
     
-    if (projectService_) {
-        // 断开所有从 projectService_ 到 this 的连接
-        // 这是安全的：sender 和 receiver 都还存在
-        QObject::disconnect(projectService_, nullptr, this, nullptr);
+    if (_project_service) {
+        // Disconnect all connections from _project_service to this
+        // This is safe: both sender and receiver still exist
+        QObject::disconnect(_project_service, nullptr, this, nullptr);
     }
     
     // Clear file system model root path to stop any background operations
-    if (fileSystemModel_) {
-        fileSystemModel_->setRootPath(QString());
-        // fileSystemModel_ will be automatically deleted as it's a child of this
+    if (_file_system_model) {
+        _file_system_model->setRootPath(QString());
+        // _file_system_model will be automatically deleted as it's a child of this
     }
     
     // Clear references
-    projectService_ = nullptr;
-    fileSystemModel_ = nullptr;
+    _project_service = nullptr;
+    _file_system_model = nullptr;
 }
 
 QString ProjectViewModel::projectRoot() const {
-    return projectService_ ? projectService_->projectRoot() : QString();
+    return _project_service ? _project_service->projectRoot() : QString();
 }
 
 QModelIndex ProjectViewModel::rootIndex() const {
-    if (!fileSystemModel_ || currentRootPath_.isEmpty()) {
+    if (!_file_system_model || _current_root_path.isEmpty()) {
         return QModelIndex();
     }
     // Return the index for the root path
     // Note: QFileSystemModel::index() with a path returns the index for that path
-    return fileSystemModel_->index(currentRootPath_);
+    return _file_system_model->index(_current_root_path);
 }
 
 void ProjectViewModel::setFilter(const QString &filter) {
-    if (filter_ != filter) {
-        filter_ = filter;
+    if (_filter != filter) {
+        _filter = filter;
         setupFilters();
         emit filterChanged();
     }
 }
 
 QString ProjectViewModel::getFilePath(const QModelIndex &index) const {
-    if (!fileSystemModel_ || !index.isValid()) {
+    if (!_file_system_model || !index.isValid()) {
         return QString();
     }
-    return fileSystemModel_->filePath(index);
+    return _file_system_model->filePath(index);
 }
 
 bool ProjectViewModel::isDirectory(const QModelIndex &index) const {
-    if (!fileSystemModel_ || !index.isValid()) {
+    if (!_file_system_model || !index.isValid()) {
         return false;
     }
-    return fileSystemModel_->isDir(index);
+    return _file_system_model->isDir(index);
 }
 
 QString ProjectViewModel::getFileName(const QModelIndex &index) const {
-    if (!fileSystemModel_ || !index.isValid()) {
+    if (!_file_system_model || !index.isValid()) {
         return QString();
     }
-    return fileSystemModel_->fileName(index);
+    return _file_system_model->fileName(index);
 }
 
 void ProjectViewModel::setRootPath(const QString &path) {
-    if (!fileSystemModel_ || path.isEmpty()) {
+    if (!_file_system_model || path.isEmpty()) {
         return;
     }
     QDir dir(path);
@@ -115,29 +115,29 @@ void ProjectViewModel::setRootPath(const QString &path) {
         qWarning() << "ProjectViewModel::setRootPath: path does not exist:" << path;
         return;
     }
-    currentRootPath_ = QDir::cleanPath(dir.absolutePath());
-    fileSystemModel_->setRootPath(currentRootPath_);
+    _current_root_path = QDir::cleanPath(dir.absolutePath());
+    _file_system_model->setRootPath(_current_root_path);
     emit rootIndexChanged();
 }
 
 void ProjectViewModel::refresh() {
-    if (fileSystemModel_ && !currentRootPath_.isEmpty()) {
-        fileSystemModel_->setRootPath(QString());       // Clear
-        fileSystemModel_->setRootPath(currentRootPath_);// Reset
+    if (_file_system_model && !_current_root_path.isEmpty()) {
+        _file_system_model->setRootPath(QString());       // Clear
+        _file_system_model->setRootPath(_current_root_path);// Reset
     }
 }
 
 void ProjectViewModel::navigateUp() {
-    if (currentRootPath_.isEmpty() || !projectService_) {
+    if (_current_root_path.isEmpty() || !_project_service) {
         return;
     }
 
-    const QString projectRoot = projectService_->projectRoot();
-    if (currentRootPath_ == projectRoot) {
+    const QString projectRoot = _project_service->projectRoot();
+    if (_current_root_path == projectRoot) {
         return;// Already at project root
     }
 
-    QDir dir(currentRootPath_);
+    QDir dir(_current_root_path);
     if (dir.cdUp()) {
         QString parentPath = dir.absolutePath();
         // Don't navigate above project root
@@ -150,11 +150,11 @@ void ProjectViewModel::navigateUp() {
 }
 
 bool ProjectViewModel::canNavigateUp() const {
-    if (currentRootPath_.isEmpty() || !projectService_) {
+    if (_current_root_path.isEmpty() || !_project_service) {
         return false;
     }
-    const QString projectRoot = projectService_->projectRoot();
-    return currentRootPath_ != projectRoot;
+    const QString projectRoot = _project_service->projectRoot();
+    return _current_root_path != projectRoot;
 }
 
 void ProjectViewModel::onProjectOpened() {
@@ -162,9 +162,9 @@ void ProjectViewModel::onProjectOpened() {
 }
 
 void ProjectViewModel::onProjectClosed() {
-    currentRootPath_.clear();
-    if (fileSystemModel_) {
-        fileSystemModel_->setRootPath(QString());
+    _current_root_path.clear();
+    if (_file_system_model) {
+        _file_system_model->setRootPath(QString());
     }
     emit rootIndexChanged();
     emit projectRootChanged();
@@ -175,41 +175,41 @@ void ProjectViewModel::onProjectInfoChanged() {
 }
 
 void ProjectViewModel::updateRootPath() {
-    if (!projectService_ || !projectService_->isOpen()) {
+    if (!_project_service || !_project_service->isOpen()) {
         return;
     }
 
-    const QString root = projectService_->projectRoot();
-    if (root != currentRootPath_) {
+    const QString root = _project_service->projectRoot();
+    if (root != _current_root_path) {
         setRootPath(root);
         emit projectRootChanged();
     }
 }
 
 void ProjectViewModel::setupFilters() {
-    if (!fileSystemModel_) {
+    if (!_file_system_model) {
         return;
     }
 
     // Configure filters based on project structure
     QStringList nameFilters;
 
-    if (filter_ == "*" || filter_.isEmpty()) {
+    if (_filter == "*" || _filter.isEmpty()) {
         // Show all files
         nameFilters << "*";
     } else {
         // Parse filter string (e.g., "*.rbcgraph,*.rbcscene")
-        nameFilters = filter_.split(',', Qt::SkipEmptyParts);
+        nameFilters = _filter.split(',', Qt::SkipEmptyParts);
         for (QString &filter : nameFilters) {
             filter = filter.trimmed();
         }
     }
 
-    fileSystemModel_->setNameFilters(nameFilters);
-    fileSystemModel_->setNameFilterDisables(false);// Show matching files
+    _file_system_model->setNameFilters(nameFilters);
+    _file_system_model->setNameFilterDisables(false);// Show matching files
 
     // Configure what to show
-    fileSystemModel_->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System);
+    _file_system_model->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System);
 }
 
 QString ProjectViewModel::getFilePathByRow(int row) const {
@@ -228,35 +228,35 @@ QString ProjectViewModel::getFileNameByRow(int row) const {
 }
 
 int ProjectViewModel::rowCount() const {
-    if (!fileSystemModel_ || currentRootPath_.isEmpty()) {
+    if (!_file_system_model || _current_root_path.isEmpty()) {
         return 0;
     }
-    const auto rootIdx = fileSystemModel_->index(currentRootPath_);
+    const auto rootIdx = _file_system_model->index(_current_root_path);
     if (!rootIdx.isValid()) {
         return 0;
     }
-    return fileSystemModel_->rowCount(rootIdx);
+    return _file_system_model->rowCount(rootIdx);
 }
 
 QModelIndex ProjectViewModel::indexForRow(int row) const {
-    if (!fileSystemModel_ || currentRootPath_.isEmpty() || row < 0) {
+    if (!_file_system_model || _current_root_path.isEmpty() || row < 0) {
         return QModelIndex();
     }
-    const auto rootIdx = fileSystemModel_->index(currentRootPath_);
+    const auto rootIdx = _file_system_model->index(_current_root_path);
     if (!rootIdx.isValid()) {
         return QModelIndex();
     }
-    return fileSystemModel_->index(row, 0, rootIdx);
+    return _file_system_model->index(row, 0, rootIdx);
 }
 
 void ProjectViewModel::setProjectListMode(bool enabled) {
-    if (projectListMode_ != enabled) {
-        projectListMode_ = enabled;
+    if (_project_list_mode != enabled) {
+        _project_list_mode = enabled;
         if (enabled) {
             // Clear current root path when switching to list mode
-            currentRootPath_.clear();
-            if (fileSystemModel_) {
-                fileSystemModel_->setRootPath(QString());
+            _current_root_path.clear();
+            if (_file_system_model) {
+                _file_system_model->setRootPath(QString());
             }
             emit rootIndexChanged();
         } else {
@@ -267,7 +267,7 @@ void ProjectViewModel::setProjectListMode(bool enabled) {
 }
 
 void ProjectViewModel::openProjectFromList(const QString &projectPath) {
-    if (!projectService_ || projectPath.isEmpty()) {
+    if (!_project_service || projectPath.isEmpty()) {
         return;
     }
 
@@ -275,9 +275,9 @@ void ProjectViewModel::openProjectFromList(const QString &projectPath) {
     options.loadUserPreferences = true;
     options.loadEditorSession = true;
 
-    if (!projectService_->openProject(projectPath, options)) {
+    if (!_project_service->openProject(projectPath, options)) {
         qWarning() << "ProjectViewModel::openProjectFromList: Failed to open project:"
-                   << projectService_->lastError();
+                   << _project_service->lastError();
         return;
     }
 

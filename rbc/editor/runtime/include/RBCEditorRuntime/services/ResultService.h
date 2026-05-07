@@ -14,10 +14,10 @@ class ResultService : public IResultService {
     Q_OBJECT
 public:
     explicit ResultService(QObject *parent = nullptr);
-    ~ResultService();
+    ~ResultService() override;
 
     // === IResultService Interface Impl ===
-    QString storeResult(
+    [[nodiscard]] QString storeResult(
         const QString &executionId,
         const QString &nodeId,
         const QString &outputName,

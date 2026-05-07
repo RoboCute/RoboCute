@@ -23,7 +23,7 @@ namespace rbc {
 
 NodeEditor::NodeEditor(QWidget *parent)
     : QWidget(parent),
-      m_nodeFactory(std::make_unique<NodeFactory>()) {
+      _node_factory(std::make_unique<NodeFactory>()) {
     setupUI();
 }
 NodeEditor::~NodeEditor() = default;
@@ -44,10 +44,10 @@ void NodeEditor::setupUI() {
             }
         })");
 
-    m_graphModel = std::make_shared<DataFlowGraphModel>(m_nodeFactory->getRegistry());
-    m_scene = new DataFlowGraphicsScene(*m_graphModel, this);
-    m_view = new GraphicsView(m_scene);
-    m_view->setAcceptDrops(true);
+    _graph_model = std::make_shared<DataFlowGraphModel>(_node_factory->getRegistry());
+    _scene = new DataFlowGraphicsScene(*_graph_model, this);
+    _view = new GraphicsView(_scene);
+    _view->setAcceptDrops(true);
 
     // create Main Layout
     auto *mainLayout = new QVBoxLayout(this);
@@ -59,18 +59,18 @@ void NodeEditor::setupUI() {
     // mainLayout->addWidget(m_toolBar)
     auto *mainSplitter = new QSplitter(Qt::Horizontal, this);
     // Left: Node Pallete
-    m_nodePalette = new QListWidget();
-    m_nodePalette->setStyleSheet("QListWidget { font-size: 11pt; }");
-    m_nodePalette->setMaximumWidth(250);
-    mainSplitter->addWidget(m_nodePalette);
+    _node_palette = new QListWidget();
+    _node_palette->setStyleSheet("QListWidget { font-size: 11pt; }");
+    _node_palette->setMaximumWidth(250);
+    mainSplitter->addWidget(_node_palette);
 
     // Center: Graph View
-    mainSplitter->addWidget(m_view);
+    mainSplitter->addWidget(_view);
 
     // Right: Execution Panel
-    m_executionPanel = new ExecutionPanel(this);
-    m_executionPanel->setMaximumWidth(400);
-    mainSplitter->addWidget(m_executionPanel);
+    _execution_panel = new ExecutionPanel(this);
+    _execution_panel->setMaximumWidth(400);
+    mainSplitter->addWidget(_execution_panel);
 
     mainSplitter->setStretchFactor(0, 1);
     mainSplitter->setStretchFactor(1, 3);// Graph view
@@ -83,15 +83,15 @@ void NodeEditor::onConnectionStatusChanged(bool connected) {}
 void NodeEditor::onHttpError(const QString &error) {}
 void NodeEditor::onNodesLoaded(const QJsonArray &nodes, bool success) {
     if (!success) {
-        m_executionPanel->logError("Failed to load nodes from backend");
+        _execution_panel->logError("Failed to load nodes from backend");
         return;
     }
-    m_executionPanel->logSuccess(QString("Loaded %1 node types").arg(nodes.size()));
+    _execution_panel->logSuccess(QString("Loaded %1 node types").arg(nodes.size()));
     // Register nodes with the factory
-    m_nodeFactory->registerNodesFromMetadata(nodes, m_nodeFactory->getRegistry());
+    _node_factory->registerNodesFromMetadata(nodes, _node_factory->getRegistry());
 
-    m_nodePalette->clear();
-    QMap<QString, QVector<QJsonObject>> nodesByCategory = m_nodeFactory->getNodesByCategory();
+    _node_palette->clear();
+    QMap<QString, QVector<QJsonObject>> nodesByCategory = _node_factory->getNodesByCategory();
 
     for (auto it = nodesByCategory.begin(); it != nodesByCategory.end(); ++it) {
         QString category = it.key();
@@ -102,7 +102,7 @@ void NodeEditor::onNodesLoaded(const QJsonArray &nodes, bool success) {
         QFont font = headerItem->font();
         font.setBold(true);
         headerItem->setFont(font);
-        m_nodePalette->addItem(headerItem);
+        _node_palette->addItem(headerItem);
 
         // Add nodes in category
         for (const QJsonObject &nodeMetadata : it.value()) {
@@ -114,7 +114,7 @@ void NodeEditor::onNodesLoaded(const QJsonArray &nodes, bool success) {
             item->setToolTip(QString("%1\n\nType: %2\n%3")
                                  .arg(displayName, nodeType, description));
             item->setData(Qt::UserRole, nodeType);
-            m_nodePalette->addItem(item);
+            _node_palette->addItem(item);
         }
     }
 }
@@ -131,24 +131,24 @@ void NodeEditor::loadNodesDeferred() {
 }
 
 void NodeEditor::loadNodesFromBackend() {
-    m_executionPanel->logMessage("Connecting to backend server...");
+    _execution_panel->logMessage("Connecting to backend server...");
     QJsonObject input = {
         {"name", "value"},
         {"type", "number"},
         {"required", true},
         {"default", 0.0},
-        {"desciprtion", "数值"}};
+        {"desciprtion", "value"}};
     QJsonArray inputs = {
         input};
 
     QJsonObject output = {
         {"name", "output"},
         {"type", "number"},
-        {"description", "输出数值"}};
+        {"description", "output value"}};
     QJsonArray outputs = {
         output};
 
-    QJsonObject node_def = {{"node_type", "input_number"}, {"display_name", "输入数值"}, {"category", "input"}, {"description", "提供一个数值输入"}, {"inputs", inputs}, {"outputs", outputs}};
+    QJsonObject node_def = {{"node_type", "input_number"}, {"display_name", "Input Number"}, {"category", "input"}, {"description", "Provide a numeric input"}, {"inputs", inputs}, {"outputs", outputs}};
 
     QJsonArray nodes = {
         node_def};
@@ -156,15 +156,15 @@ void NodeEditor::loadNodesFromBackend() {
 
     // m_httpClient->healthCheck([this](bool healthy) {
     //     if (healthy) {
-    //         m_executionPanel->logSuccess("Connected to backend server");
+    //         _execution_panel->logSuccess("Connected to backend server");
 
     //         // Load nodes
-    //         m_executionPanel->logMessage("Loading node types from backend...");
+    //         _execution_panel->logMessage("Loading node types from backend...");
     //         m_httpClient->fetchAllNodes([this](const QJsonArray &nodes, bool success) {
     //             onNodesLoaded(nodes, success);
     //         });
     //     } else {
-    //         m_executionPanel->logError("Failed to connect to backend server");
+    //         _execution_panel->logError("Failed to connect to backend server");
     //         updateConnectionStatus(false);
     //     }
     // });

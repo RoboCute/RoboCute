@@ -57,122 +57,122 @@ class IResultService : public QObject {
 public:
     virtual ~IResultService() = default;
 
-    // === 结果存储 ===
+    // === Result Storage ===
     /**
-     * 存储执行结果
-     * @param executionId 执行 ID
-     * @param nodeId 节点 ID
-     * @param outputName 输出名称
-     * @param resultData 结果数据 JSON
-     * @return 结果 ID
+     * Store execution result
+     * @param executionId Execution ID
+     * @param nodeId Node ID
+     * @param outputName Output name
+     * @param resultData Result data JSON
+     * @return Result ID
      */
-    virtual QString storeResult(const QString &executionId,
+    [[nodiscard]] virtual QString storeResult(const QString &executionId,
                                 const QString &nodeId,
                                 const QString &outputName,
                                 const QJsonObject &resultData) = 0;
 
     /**
-     * 批量存储执行结果
+     * Batch store execution results
      */
     virtual void storeExecutionResults(
         const QString &executionId,
         const QJsonObject &allResults) = 0;
 
-    // === 结果查询 ===
+    // === Result Query ===
 
     /**
-     * 获取单个结果
+     * Get a single result
      */
-    virtual std::shared_ptr<OutputResult> getResult(const QString &resultId) const = 0;
+    [[nodiscard]] virtual std::shared_ptr<OutputResult> getResult(const QString &resultId) const = 0;
     /**
-     * 按查询条件获取结果列表
+     * Get result list by query criteria
      */
-    virtual QList<std::shared_ptr<OutputResult>> queryResults(
+    [[nodiscard]] virtual QList<std::shared_ptr<OutputResult>> queryResults(
         const ResultQuery &query) const = 0;
 
     /**
-     * 获取节点的最新输出结果
+     * Get the latest output result of a node
      */
-    virtual std::shared_ptr<OutputResult> getLatestNodeOutput(
+    [[nodiscard]] virtual std::shared_ptr<OutputResult> getLatestNodeOutput(
         const QString &nodeId,
         const QString &outputName) const = 0;
     /**
-     * 获取执行的所有结果
+     * Get all results of an execution
      */
-    virtual QList<std::shared_ptr<OutputResult>> getExecutionResults(
+    [[nodiscard]] virtual QList<std::shared_ptr<OutputResult>> getExecutionResults(
         const QString &executionId) const = 0;
 
-    // === 缩略图管理 ===
+    // === Thumbnail Management ===
     /**
-     * 获取结果的缩略图
-     * @param resultId 结果 ID
-     * @param maxSize 最大尺寸
-     * @return 缩略图图像
+     * Get result thumbnail
+     * @param resultId Result ID
+     * @param maxSize Maximum size
+     * @return Thumbnail image
      */
-    virtual QImage getThumbnail(
+    [[nodiscard]] virtual QImage getThumbnail(
         const QString &resultId,
         const QSize &maxSize = QSize(128, 128)) const = 0;
 
     /**
-     * 异步生成缩略图
+     * Generate thumbnail asynchronously
      */
     virtual void generateThumbnailAsync(
         const QString &resultId,
         const QSize &maxSize = QSize(128, 128)) = 0;
 
-    // === 结果数据访问 ===
+    // === Result Data Access ===
     /**
-     * 获取完整的图片数据
+     * Get full image data
      */
-    virtual QImage getImageData(const QString &resultId) const = 0;
+    [[nodiscard]] virtual QImage getImageData(const QString &resultId) const = 0;
     /**
-     * 获取文本数据
+     * Get text data
      */
-    virtual QString getTextData(const QString &resultId) const = 0;
+    [[nodiscard]] virtual QString getTextData(const QString &resultId) const = 0;
     /**
-     * 获取原始数据
+     * Get raw data
      */
-    virtual QByteArray getRawData(const QString &resultId) const = 0;
+    [[nodiscard]] virtual QByteArray getRawData(const QString &resultId) const = 0;
 
-    // === 结果导出 ===
+    // === Result Export ===
 
     /**
-     * 保存结果到文件
+     * Save result to file
      */
-    virtual bool saveResultToFile(const QString &resultId,
+    [[nodiscard]] virtual bool saveResultToFile(const QString &resultId,
                                   const QString &filePath) const = 0;
 
     /**
-     * 复制结果到剪贴板
+     * Copy result to clipboard
      */
-    virtual bool copyResultToClipboard(const QString &resultId) const = 0;
+    [[nodiscard]] virtual bool copyResultToClipboard(const QString &resultId) const = 0;
 
     /**
-     * 清除指定执行的所有结果
+     * Clear all results for a specified execution
      */
     virtual void clearExecutionResults(const QString &executionId) = 0;
 
     /**
-     * 清除过期结果
-     * @param olderThanSeconds 超过此秒数的结果将被清除
+     * Clear expired results
+     * @param olderThanSeconds Results older than this many seconds will be cleared
      */
     virtual void clearExpiredResults(qint64 olderThanSeconds) = 0;
     /**
-     * 清除所有结果
+     * Clear all results
      */
     virtual void clearAllResults() = 0;
     /**
-     * 获取缓存大小
+     * Get cache size
      */
-    virtual qint64 getCacheSize() const = 0;
+    [[nodiscard]] virtual qint64 getCacheSize() const = 0;
     /**
-     * 设置最大缓存大小
+     * Set maximum cache size
      */
     virtual void setMaxCacheSize(qint64 bytes) = 0;
 
 signals:
     /**
-     * 新结果可用
+     * New result available
      */
     void resultAvailable(const QString &resultId,
                          const QString &executionId,
@@ -180,22 +180,22 @@ signals:
                          const QString &outputName);
 
     /**
-     * 缩略图生成完成
+     * Thumbnail generation completed
      */
     void thumbnailReady(const QString &resultId);
 
     /**
-     * 结果被清除
+     * Result cleared
      */
     void resultCleared(const QString &resultId);
 
     /**
-     * 执行结果全部到达
+     * All execution results arrived
      */
     void executionResultsComplete(const QString &executionId);
 
     /**
-     * 缓存大小变化
+     * Cache size changed
      */
     void cacheSizeChanged(qint64 currentSize, qint64 maxSize);
 };

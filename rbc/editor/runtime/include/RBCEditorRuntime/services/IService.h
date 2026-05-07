@@ -18,7 +18,7 @@ public:
      * Get the unique service ID
      * This ID is used for service registration and lookup
      */
-    virtual QString serviceId() const = 0;
+    [[nodiscard]] virtual QString serviceId() const = 0;
 };
 
 }// namespace rbc

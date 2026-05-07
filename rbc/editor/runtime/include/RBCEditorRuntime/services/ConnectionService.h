@@ -21,10 +21,10 @@ public:
     QString serviceId() const override { return "com.robocute.connection_service"; }
 
     // IConnectionServiceInterface
-    QString serverUrl() const override { return m_serverUrl; }
+    QString serverUrl() const override { return _server_url; }
     void setServerUrl(const QString &url) override;
-    bool connected() const override { return m_connected; }
-    QString statusText() const override { return m_statusText; }
+    bool connected() const override { return _connected; }
+    QString statusText() const override { return _status_text; }
 
 public slots:
     void testConnection();
@@ -39,10 +39,10 @@ private:
     void performHealthCheck();
 
 private:
-    QString m_serverUrl = "http://127.0.0.1:5555";
-    bool m_connected = false;
-    QString m_statusText = "Disconnected";
-    QTimer *m_healthCheckTimer = nullptr;
+    QString _server_url = "http://127.0.0.1:5555";
+    bool _connected = false;
+    QString _status_text = "Disconnected";
+    QTimer *_health_check_timer = nullptr;
 };
 
 }// namespace rbc

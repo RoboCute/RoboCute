@@ -13,16 +13,16 @@ public:
 
     // Get Service
     template<typename T>
-    T *getService() const {
-        return manager_->getService<T>();
+    [[nodiscard]] T *getService() const {
+        return _manager->getService<T>();
     }
 
     // fast impl for services
-    IEventBus *event_bus() const;
+    [[nodiscard]] IEventBus *event_bus() const;
 
 
 private:
-    EditorPluginManager *manager_;
+    EditorPluginManager *_manager;
 };
 
 }// namespace rbc

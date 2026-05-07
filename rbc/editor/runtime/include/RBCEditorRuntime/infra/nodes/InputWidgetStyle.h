@@ -7,36 +7,36 @@
 namespace rbc {
 
 /**
- * InputWidgetStyle - 输入组件样式配置
- * 
- * 支持通过 JSON 配置或代码设置组件的样式属性
+ * InputWidgetStyle - Input widget style configuration
+ *
+ * Supports configuring widget style properties via JSON or code
  */
 struct InputWidgetStyle {
-    // 尺寸相关
+    // Size related
     int minimumWidth = -1;
     int minimumHeight = -1;
     int maximumWidth = -1;
     int maximumHeight = -1;
     
-    // 数值范围（用于 SpinBox）
+    // Value range (for SpinBox)
     double minValue = -999999.0;
     double maxValue = 999999.0;
     double step = 1.0;
-    int decimals = 2;  // 用于 DoubleSpinBox
+    int decimals = 2;  // For DoubleSpinBox
     
-    // 样式表
+    // Stylesheet
     QString styleSheet;
     
-    // 占位符文本（用于 LineEdit）
+    // Placeholder text (for LineEdit)
     QString placeholderText;
     
-    // 其他自定义属性
+    // Other custom properties
     QJsonObject customProperties;
     
     /**
-     * 从 JSON 对象加载样式配置
+     * Load style configuration from JSON object
      */
-    static InputWidgetStyle fromJson(const QJsonObject &json) {
+    [[nodiscard]] static InputWidgetStyle fromJson(const QJsonObject &json) {
         InputWidgetStyle style;
         
         if (json.contains("style")) {
@@ -84,9 +84,9 @@ struct InputWidgetStyle {
     }
     
     /**
-     * 合并另一个样式配置（优先级：other > this）
+     * Merge another style configuration (priority: other > this)
      */
-    InputWidgetStyle merge(const InputWidgetStyle &other) const {
+    [[nodiscard]] InputWidgetStyle merge(const InputWidgetStyle &other) const {
         InputWidgetStyle result = *this;
         
         if (other.minimumWidth >= 0) result.minimumWidth = other.minimumWidth;
@@ -102,7 +102,7 @@ struct InputWidgetStyle {
         if (!other.styleSheet.isEmpty()) result.styleSheet = other.styleSheet;
         if (!other.placeholderText.isEmpty()) result.placeholderText = other.placeholderText;
         
-        // 合并自定义属性
+        // Merge custom properties
         for (auto it = other.customProperties.begin(); it != other.customProperties.end(); ++it) {
             result.customProperties[it.key()] = it.value();
         }

@@ -15,8 +15,8 @@ EditorCommandBus &EditorCommandBus::instance() {
     return bus;
 }
 
-EditorCommandBus::EditorCommandBus(QObject *parent) : QObject(parent), undoStack_(this) {
-    connect(&undoStack_, &QUndoStack::indexChanged, this, &EditorCommandBus::commandHistoryChanged);
+EditorCommandBus::EditorCommandBus(QObject *parent) : QObject(parent), _undo_stack(this) {
+    connect(&_undo_stack, &QUndoStack::indexChanged, this, &EditorCommandBus::commandHistoryChanged);
 }
 
 void EditorCommandBus::execute(EditorCommand *command) {
@@ -25,47 +25,47 @@ void EditorCommandBus::execute(EditorCommand *command) {
         return;
     }
 
-    undoStack_.push(command);
+    _undo_stack.push(command);
     emit commandExecuted(command->text());
 }
 
 void EditorCommandBus::undo() {
     if (canUndo()) {
-        undoStack_.undo();
+        _undo_stack.undo();
         emit commandUndone(undoText());
     }
 }
 
 void EditorCommandBus::redo() {
     if (canRedo()) {
-        undoStack_.redo();
+        _undo_stack.redo();
         emit commandRedone(redoText());
     }
 }
 
 bool EditorCommandBus::canUndo() const {
-    return undoStack_.canUndo();
+    return _undo_stack.canUndo();
 }
 
 bool EditorCommandBus::canRedo() const {
-    return undoStack_.canRedo();
+    return _undo_stack.canRedo();
 }
 
 QString EditorCommandBus::undoText() const {
-    return undoStack_.undoText();
+    return _undo_stack.undoText();
 }
 
 QString EditorCommandBus::redoText() const {
-    return undoStack_.redoText();
+    return _undo_stack.redoText();
 }
 
 void EditorCommandBus::clear() {
-    undoStack_.clear();
+    _undo_stack.clear();
     emit commandHistoryChanged();
 }
 
 void EditorCommandBus::setUndoLimit(int limit) {
-    undoStack_.setUndoLimit(limit);
+    _undo_stack.setUndoLimit(limit);
 }
 
 void EditorCommandBus::onCommandExecuted() {

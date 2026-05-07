@@ -47,13 +47,17 @@ public:
         return nullptr;
     }
 
-    // == Get Widget
+    // == Get Widget ==
     virtual QWidget *getNativeWidget(const QString &viewId) {
         Q_UNUSED(viewId);
         return nullptr;
     }
 
-    QString plugin_path = "";
+    QString plugin_path() const { return _plugin_path; }
+    void set_plugin_path(const QString &path) { _plugin_path = path; }
+
+private:
+    QString _plugin_path;
 
 signals:
     void reloadRequested();

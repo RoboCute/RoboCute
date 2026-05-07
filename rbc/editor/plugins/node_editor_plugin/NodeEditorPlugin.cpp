@@ -19,85 +19,85 @@ NodeEditorViewModel::NodeEditorViewModel(
     const NodeEditorConfig &config,
     NodeEditor *editor,
     QObject *parent)
-    : ViewModelBase(parent), config_(config), editor_(editor), serverUrl_(config.serverUrl) {
+    : ViewModelBase(parent), _config(config), _editor(editor), _server_url(config.serverUrl) {
 
-    if (!editor_) {
+    if (!_editor) {
         qWarning() << "NodeEditorViewModel: editor is null for:" << config.editorId;
     }
 
-    if (editor_) {
-        editor_->loadNodesDeferred();
+    if (_editor) {
+        _editor->loadNodesDeferred();
     }
 }
 
 NodeEditorViewModel::~NodeEditorViewModel() {
-    editor_ = nullptr;
+    _editor = nullptr;
 }
 
 void NodeEditorViewModel::setServerUrl(const QString &url) {
-    if (serverUrl_ != url) {
-        serverUrl_ = url;
+    if (_server_url != url) {
+        _server_url = url;
         emit serverUrlChanged();
-        qDebug() << "NodeEditorViewModel:" << config_.editorId << "server URL changed:" << url;
+        qDebug() << "NodeEditorViewModel:" << _config.editorId << "server URL changed:" << url;
     }
 }
 
 void NodeEditorViewModel::connectToServer() {
-    qDebug() << "NodeEditorViewModel:" << config_.editorId << "connectToServer";
-    if (editor_) {
-        editor_->loadNodesDeferred();
+    qDebug() << "NodeEditorViewModel:" << _config.editorId << "connectToServer";
+    if (_editor) {
+        _editor->loadNodesDeferred();
     }
 }
 
 void NodeEditorViewModel::disconnectFromServer() {
-    qDebug() << "NodeEditorViewModel:" << config_.editorId << "disconnectFromServer";
+    qDebug() << "NodeEditorViewModel:" << _config.editorId << "disconnectFromServer";
     // TODO: Implement disconnect logic
-    connected_ = false;
-    statusText_ = "Disconnected";
+    _connected = false;
+    _status_text = "Disconnected";
     emit connectedChanged();
     emit statusTextChanged();
 }
 
 void NodeEditorViewModel::executeGraph() {
-    qDebug() << "NodeEditorViewModel:" << config_.editorId << "executeGraph";
+    qDebug() << "NodeEditorViewModel:" << _config.editorId << "executeGraph";
     // The NodeEditor handles execution internally
     // We can trigger it via a slot if needed
 }
 
 void NodeEditorViewModel::refreshNodes() {
-    qDebug() << "NodeEditorViewModel:" << config_.editorId << "refreshNodes";
-    if (editor_) {
-        editor_->loadNodesDeferred();
+    qDebug() << "NodeEditorViewModel:" << _config.editorId << "refreshNodes";
+    if (_editor) {
+        _editor->loadNodesDeferred();
     }
 }
 
 void NodeEditorViewModel::newGraph() {
-    qDebug() << "NodeEditorViewModel:" << config_.editorId << "newGraph";
+    qDebug() << "NodeEditorViewModel:" << _config.editorId << "newGraph";
     // TODO: Trigger new graph action on editor
 }
 
 void NodeEditorViewModel::saveGraph() {
-    qDebug() << "NodeEditorViewModel:" << config_.editorId << "saveGraph";
+    qDebug() << "NodeEditorViewModel:" << _config.editorId << "saveGraph";
     // TODO: Trigger save graph action on editor
 }
 
 void NodeEditorViewModel::loadGraph() {
-    qDebug() << "NodeEditorViewModel:" << config_.editorId << "loadGraph";
+    qDebug() << "NodeEditorViewModel:" << _config.editorId << "loadGraph";
     // TODO: Trigger load graph action on editor
 }
 
 void NodeEditorViewModel::onConnectionStatusChanged(bool connected) {
-    if (connected_ != connected) {
-        connected_ = connected;
-        statusText_ = connected ? "Connected" : "Disconnected";
+    if (_connected != connected) {
+        _connected = connected;
+        _status_text = connected ? "Connected" : "Disconnected";
         emit connectedChanged();
         emit statusTextChanged();
     }
 }
 
 void NodeEditorViewModel::onExecutionStateChanged(bool executing) {
-    if (executing_ != executing) {
-        executing_ = executing;
+    if (_executing != executing) {
+        _executing = executing;
         emit executingChanged();
     }
 }
@@ -122,7 +122,7 @@ bool NodeEditorPlugin::load(PluginContext *context) {
         return false;
     }
 
-    context_ = context;
+    _context = context;
 
     // Create shared HttpClient for node editors
     // httpClient_ = new HttpClient(this);
@@ -141,9 +141,9 @@ bool NodeEditorPlugin::load(PluginContext *context) {
 bool NodeEditorPlugin::unload() {
     qDebug() << "NodeEditorPlugin::unload";
     destroyAllNodeEditors();
-    registeredContributions_.clear();
-    menuContributions_.clear();
-    context_ = nullptr;
+    _registered_contributions.clear();
+    _menu_contributions.clear();
+    _context = nullptr;
     qDebug() << "NodeEditorPlugin unloaded";
     return true;
 }
@@ -160,9 +160,9 @@ void NodeEditorPlugin::createDefaultNodeEditor() {
     mainConfig.serverUrl = "http://127.0.0.1:5555";
     mainConfig.autoConnect = true;
 
-    mainEditorId_ = createNodeEditor(mainConfig);
+    _main_editor_id = createNodeEditor(mainConfig);
 
-    if (!mainEditorId_.isEmpty()) {
+    if (!_main_editor_id.isEmpty()) {
         // Register to contributions
         NativeViewContribution mainContrib;
         mainContrib.viewId = mainConfig.editorId;
@@ -173,14 +173,14 @@ void NodeEditorPlugin::createDefaultNodeEditor() {
         mainContrib.movable = true;
         mainContrib.floatable = true;
 
-        registeredContributions_.append(mainContrib);
+        _registered_contributions.append(mainContrib);
 
-        qDebug() << "NodeEditorPlugin: Created main node editor:" << mainEditorId_;
+        qDebug() << "NodeEditorPlugin: Created main node editor:" << _main_editor_id;
     }
 }
 
 QString NodeEditorPlugin::createNodeEditor(const NodeEditorConfig &config) {
-    if (editors_.contains(config.editorId)) {
+    if (_editors.contains(config.editorId)) {
         qWarning() << "NodeEditorPlugin::createNodeEditor: Editor already exists:" << config.editorId;
         return QString();
     }
@@ -203,7 +203,7 @@ QString NodeEditorPlugin::createNodeEditor(const NodeEditorConfig &config) {
         QMetaObject::invokeMethod(instance->widget.data(), "loadNodesDeferred", Qt::QueuedConnection);
     }
 
-    editors_.insert(config.editorId, instance);
+    _editors.insert(config.editorId, instance);
 
     emit nodeEditorCreated(config.editorId);
     qDebug() << "NodeEditorPlugin: Created node editor:" << config.editorId;
@@ -212,8 +212,8 @@ QString NodeEditorPlugin::createNodeEditor(const NodeEditorConfig &config) {
 }
 
 bool NodeEditorPlugin::destroyNodeEditor(const QString &editorId) {
-    auto it = editors_.find(editorId);
-    if (it == editors_.end()) {
+    auto it = _editors.find(editorId);
+    if (it == _editors.end()) {
         qWarning() << "NodeEditorPlugin::destroyNodeEditor: Editor not found:" << editorId;
         return false;
     }
@@ -221,12 +221,12 @@ bool NodeEditorPlugin::destroyNodeEditor(const QString &editorId) {
     NodeEditorInstance *instance = it.value();
 
     // Delete Widget
-    // 使用 QPointer 检查 widget 是否仍然存在
-    // 如果 Qt 已经删除了 widget（例如通过 parent-child 机制），QPointer 会变成 nullptr
+    // Use QPointer to check if widget still exists
+    // If Qt already deleted widget (e.g., via parent-child mechanism), QPointer becomes nullptr
     if (instance->widget) {
         qDebug() << "NodeEditorPlugin::destroyNodeEditor: Deleting widget for:" << editorId;
         delete instance->widget.data();
-        // QPointer 会自动变成 nullptr，无需手动设置
+        // QPointer auto-becomes nullptr, no manual setting needed
     } else {
         qDebug() << "NodeEditorPlugin::destroyNodeEditor: Widget already deleted for:" << editorId;
     }
@@ -234,21 +234,21 @@ bool NodeEditorPlugin::destroyNodeEditor(const QString &editorId) {
     // Delete instance (destructor cleans up viewModel)
     delete instance;
 
-    editors_.erase(it);
+    _editors.erase(it);
 
     // Clear main reference if this was the main editor
-    if (editorId == mainEditorId_) {
-        mainEditorId_.clear();
+    if (editorId == _main_editor_id) {
+        _main_editor_id.clear();
     }
 
     // Remove from contributions
-    registeredContributions_.erase(
+    _registered_contributions.erase(
         std::remove_if(
-            registeredContributions_.begin(), registeredContributions_.end(),
+            _registered_contributions.begin(), _registered_contributions.end(),
             [&editorId](const NativeViewContribution &c) {
                 return c.viewId == editorId;
             }),
-        registeredContributions_.end());
+        _registered_contributions.end());
 
     emit nodeEditorDestroyed(editorId);
     qDebug() << "NodeEditorPlugin: Destroyed node editor:" << editorId;
@@ -257,25 +257,25 @@ bool NodeEditorPlugin::destroyNodeEditor(const QString &editorId) {
 }
 
 void NodeEditorPlugin::destroyAllNodeEditors() {
-    QStringList ids = editors_.keys();
+    QStringList ids = _editors.keys();
     for (const QString &id : ids) {
         destroyNodeEditor(id);
     }
 }
 
 NodeEditorInstance *NodeEditorPlugin::getNodeEditor(const QString &editorId) {
-    return editors_.value(editorId, nullptr);
+    return _editors.value(editorId, nullptr);
 }
 
 QStringList NodeEditorPlugin::allEditorIds() const {
-    return editors_.keys();
+    return _editors.keys();
 }
 
 NodeEditorInstance *NodeEditorPlugin::mainNodeEditor() const {
-    if (mainEditorId_.isEmpty()) {
+    if (_main_editor_id.isEmpty()) {
         return nullptr;
     }
-    return editors_.value(mainEditorId_, nullptr);
+    return _editors.value(_main_editor_id, nullptr);
 }
 
 // ============================================================================
@@ -283,18 +283,18 @@ NodeEditorInstance *NodeEditorPlugin::mainNodeEditor() const {
 // ============================================================================
 
 QList<NativeViewContribution> NodeEditorPlugin::native_view_contributions() const {
-    return registeredContributions_;
+    return _registered_contributions;
 }
 
 QWidget *NodeEditorPlugin::getNativeWidget(const QString &viewId) {
-    if (auto *instance = editors_.value(viewId, nullptr)) {
-        return instance->widget.data();// QPointer::data() 返回原始指针
+    if (auto *instance = _editors.value(viewId, nullptr)) {
+        return instance->widget.data();// QPointer::data() returns raw pointer
     }
     return nullptr;
 }
 
 QObject *NodeEditorPlugin::getViewModel(const QString &viewId) {
-    if (auto *instance = editors_.value(viewId, nullptr)) {
+    if (auto *instance = _editors.value(viewId, nullptr)) {
         return instance->viewModel;
     }
     return nullptr;
@@ -313,7 +313,7 @@ void NodeEditorPlugin::register_view_models(QQmlEngine *engine) {
 }
 
 void NodeEditorPlugin::buildMenuContributions() {
-    menuContributions_.clear();
+    _menu_contributions.clear();
 
     // Node Editor menu
     MenuContribution newGraph;
@@ -328,7 +328,7 @@ void NodeEditorPlugin::buildMenuContributions() {
             }
         }
     };
-    menuContributions_.append(newGraph);
+    _menu_contributions.append(newGraph);
 
     MenuContribution saveGraph;
     saveGraph.menuPath = "Graph";
@@ -342,7 +342,7 @@ void NodeEditorPlugin::buildMenuContributions() {
             }
         }
     };
-    menuContributions_.append(saveGraph);
+    _menu_contributions.append(saveGraph);
 
     MenuContribution loadGraph;
     loadGraph.menuPath = "Graph";
@@ -356,7 +356,7 @@ void NodeEditorPlugin::buildMenuContributions() {
             }
         }
     };
-    menuContributions_.append(loadGraph);
+    _menu_contributions.append(loadGraph);
 
     MenuContribution executeGraph;
     executeGraph.menuPath = "Graph";
@@ -370,7 +370,7 @@ void NodeEditorPlugin::buildMenuContributions() {
             }
         }
     };
-    menuContributions_.append(executeGraph);
+    _menu_contributions.append(executeGraph);
 
     MenuContribution refreshNodes;
     refreshNodes.menuPath = "Graph";
@@ -384,11 +384,11 @@ void NodeEditorPlugin::buildMenuContributions() {
             }
         }
     };
-    menuContributions_.append(refreshNodes);
+    _menu_contributions.append(refreshNodes);
 }
 
 QList<MenuContribution> NodeEditorPlugin::menu_contributions() const {
-    return menuContributions_;
+    return _menu_contributions;
 }
 
 // ============================================================================

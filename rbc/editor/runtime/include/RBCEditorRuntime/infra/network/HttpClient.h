@@ -19,14 +19,14 @@ public:
 
 public:
     void setServerUrl(const QString &url);
-    [[nodiscard]] QString serverUrl() const { return m_serverUrl; }
+    [[nodiscard]] QString serverUrl() const { return _server_url; }
 
     // API method
 
 private:
-    QNetworkAccessManager *m_networkManager;
-    QString m_serverUrl;
-    bool m_isConnected;
+    QNetworkAccessManager *_network_manager;
+    QString _server_url;
+    bool _is_connected;
 };
 
 }// namespace rbc

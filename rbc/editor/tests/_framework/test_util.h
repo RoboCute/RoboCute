@@ -9,29 +9,10 @@ namespace rbc::test {
 
 [[nodiscard]] int argc() noexcept;
 [[nodiscard]] const char *const *argv() noexcept;
-// concept for normal value types
-
-inline bool feq(luisa::float2 a, luisa::float2 b) {
+template<std::size_t N>
+[[nodiscard]] inline bool feq(const luisa::Vector<float, N> &a, const luisa::Vector<float, N> &b) noexcept {
     bool res = true;
-    for (auto i = 0; i < 2; i++) {
-        res = res && a[i] == doctest::Approx(b[i]);
-        CHECK(a[i] == doctest::Approx(b[i]));
-    }
-    return res;
-}
-
-inline bool feq(luisa::float3 a, luisa::float3 b) {
-    bool res = true;
-    for (auto i = 0; i < 3; i++) {
-        res = res && a[i] == doctest::Approx(b[i]);
-        CHECK(a[i] == doctest::Approx(b[i]));
-    }
-    return res;
-}
-
-inline bool feq(luisa::float4 a, luisa::float4 b) {
-    bool res = true;
-    for (auto i = 0; i < 4; i++) {
+    for (std::size_t i = 0; i < N; ++i) {
         res = res && a[i] == doctest::Approx(b[i]);
         CHECK(a[i] == doctest::Approx(b[i]));
     }

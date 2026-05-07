@@ -7,7 +7,7 @@ namespace rbc {
 enum struct PluginState {
 };
 
-// QML视图贡献，用于基础的组件类和简单交互界面，支持比较方便的热重载
+// QML view contribution for basic component classes and simple interactive UIs, with convenient hot-reload support
 struct ViewContribution {
     QString viewId;   // the unique identifier
     QString title;    // display title
@@ -20,29 +20,29 @@ struct ViewContribution {
 };
 
 /**
- * @brief Native Widget 视图贡献
- * 
- * 用于注册需要使用 QWidget 而非 QML 的视图，如 ViewportWidget。
- * 与 ViewContribution 区分开，更清晰地表达意图。
- * 使用Native QWidget而非QMLK定义的View Contribution
+ * @brief Native Widget view contribution
+ *
+ * Used for registering views that need QWidget instead of QML, such as ViewportWidget.
+ * Distinguished from ViewContribution for clearer intent.
+ * View Contribution defined using native QWidget instead of QML
  */
 struct NativeViewContribution {
     QString viewId;
     QString title;
-    QString dockArea;// Left/Right/Top/Buttom/Center
+    QString dockArea;// Left/Right/Top/Bottom/Center
 
     bool closable = true;
     bool movable = true;
     bool floatable = true;
     // Qt::DockWidgetAreas allowedAreas = Qt::AllDockWidgetAreas;
 
-    // 是否由插件自行管理 widget 生命周期
-    // true: WindowManager 不负责删除 widget（cleanup 时释放引用）
-    // false: widget 所有权转移给 WindowManager
+    // Whether the plugin manages the widget lifecycle itself
+    // true: WindowManager does not delete the widget (releases reference on cleanup)
+    // false: widget ownership is transferred to WindowManager
     bool isExternalManaged = false;
 };
 
-// Menu接口
+// Menu interface
 struct MenuContribution {
     QString menuPath;              // e.g., "File", "File/Open", "Edit/Preferences"
     QString actionText;            // Display text for the menu item
@@ -51,7 +51,7 @@ struct MenuContribution {
     std::function<void()> callback;// Callback function to execute when menu item is triggered
 };
 
-// Toolbar接口
+// Toolbar interface
 struct ToolbarContribution {
     QString toolbarId;             // Unique identifier for the toolbar
     QString toolbarName;           // Display name for the toolbar

@@ -77,7 +77,7 @@ public:
     /**
      * Get sync interval in milliseconds (SERVER mode)
      */
-    int syncIntervalMs() const { return sync_interval_ms_; }
+    int syncIntervalMs() const { return _sync_interval_ms; }
 
     /**
      * Set sync interval in milliseconds (SERVER mode)
@@ -91,28 +91,28 @@ private slots:
 
 private:
     // Scene instance
-    std::unique_ptr<EditorScene> scene_;
+    std::unique_ptr<EditorScene> _scene;
 
     // Source tracking
-    SceneSourceType source_type_ = SceneSourceType::None;
-    QString server_url_;
-    QString local_path_;
+    SceneSourceType _source_type = SceneSourceType::None;
+    QString _server_url;
+    QString _local_path;
 
     // Selection state
-    int selected_entity_id_ = -1;
+    int _selected_entity_id = -1;
 
     // Server sync
-    ConnectionService *connection_service_ = nullptr;
-    HttpClient *http_client_ = nullptr;
-    QTimer *sync_timer_ = nullptr;
-    int sync_interval_ms_ = 100;// 10 FPS sync rate
-    bool sync_in_progress_ = false;
+    ConnectionService *_connection_service = nullptr;
+    HttpClient *_http_client = nullptr;
+    QTimer *_sync_timer = nullptr;
+    int _sync_interval_ms = 100;// 10 FPS sync rate
+    bool _sync_in_progress = false;
 
     // Graphics integration
-    GraphicsUtils *graphics_utils_ = nullptr;
+    GraphicsUtils *_graphics_utils = nullptr;
 
     // Cached sync data for SERVER mode
-    SceneSyncData pending_sync_data_;
+    SceneSyncData _pending_sync_data;
 
     // Internal helpers
     void startSyncTimer();

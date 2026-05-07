@@ -22,12 +22,12 @@ EditorEngine &EditorEngine::instance() {
 
 void EditorEngine::init(int argc, char **argv) {
 
-    if (m_isInitialized) return;
+    if (_is_initialized) return;
 
     // TODO: parsed from arg or config
-    m_backendName = "dx";
-    m_programPath = argv[0];
-    m_graphicsApi = QRhi::D3D12;
+    _backend_name = "dx";
+    _program_path = argv[0];
+    _graphics_api = QRhi::D3D12;
 
     // Register StyleManager service
     auto &pluginManager = EditorPluginManager::instance();
@@ -74,12 +74,12 @@ void EditorEngine::init(int argc, char **argv) {
                 break;
             }
         }
-        app->init(m_programPath.c_str(), m_backendName.c_str());
+        app->init(_program_path.c_str(), _backend_name.c_str());
         return app;
     });
     viewportPlugin->createDefaultViewports();
 
-    m_isInitialized = true;
+    _is_initialized = true;
 }
 
 void EditorEngine::shutdown() {

@@ -44,24 +44,24 @@ public:
     bool handle_mouse(luisa::compute::MouseButton button, luisa::compute::Action action, luisa::float2 xy, luisa::uint2 resolution);
     void handle_cursor_position(luisa::float2 xy, luisa::uint2 resolution);
     void update(struct ClickManager &click_manager);
-    const luisa::vector<uint> &get_selected_object_ids() const { return state_.selected_object_ids; }
-    InteractionMode get_interaction_mode() const { return state_.mode; }
-    std::pair<luisa::float2, luisa::float2> get_selection_region() const {
-        return {luisa::min(state_.start_uv, state_.end_uv), luisa::max(state_.start_uv, state_.end_uv)};
+    [[nodiscard]] const luisa::vector<uint> &get_selected_object_ids() const { return _state.selected_object_ids; }
+    [[nodiscard]] InteractionMode get_interaction_mode() const { return _state.mode; }
+    [[nodiscard]] std::pair<luisa::float2, luisa::float2> get_selection_region() const {
+        return {luisa::min(_state.start_uv, _state.end_uv), luisa::max(_state.start_uv, _state.end_uv)};
     }
-    bool is_drag_selecting() const {
-        return state_.mode == InteractionMode::DragSelect && state_.mouse_state == MouseState::Dragging;
+    [[nodiscard]] bool is_drag_selecting() const {
+        return _state.mode == InteractionMode::DragSelect && _state.mouse_state == MouseState::Dragging;
     }
-    bool is_click_selecting() const {
-        return state_.mode == InteractionMode::ClickSelect &&
-               (state_.mouse_state == MouseState::Pressed || state_.mouse_state == MouseState::WaitingResult);
+    [[nodiscard]] bool is_click_selecting() const {
+        return _state.mode == InteractionMode::ClickSelect &&
+               (_state.mouse_state == MouseState::Pressed || _state.mouse_state == MouseState::WaitingResult);
     }
     void reset();
 private:
     InteractionMode determine_interaction_mode(bool has_selection, bool is_ctrl_down) const;
     bool is_repeat_selection(const luisa::vector<uint> &new_selection) const;
     void update_selection(const luisa::vector<uint> &new_selection, bool is_repeat);
-    InteractionState state_;
+    InteractionState _state;
 };
 
 }// namespace rbc

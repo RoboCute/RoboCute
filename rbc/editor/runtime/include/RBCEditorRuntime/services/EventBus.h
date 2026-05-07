@@ -7,12 +7,12 @@ namespace rbc {
 class EventBus : public IEventBus {
     Q_OBJECT
 public:
-    ~EventBus() override;
+    ~EventBus() override = default;
     EventBus(const EventBus &) = delete;
     EventBus &operator=(const EventBus &) = delete;
 
 public:
-    static EventBus &instance();
+    [[nodiscard]] static EventBus &instance();
     // == IEventBus Interface ==
     void publish(const Event &event) override;
     void publish(EventType type, const QVariant &data = QVariant(), QObject *sender = nullptr) override;

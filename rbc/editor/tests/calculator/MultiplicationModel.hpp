@@ -14,7 +14,7 @@
 struct MultiplicationModel : public MathOperationDataModel
 {
 public:
-    virtual ~MultiplicationModel() {}
+    ~MultiplicationModel() override = default;
 
 public:
     QString caption() const override { return QStringLiteral("Multiplication"); }

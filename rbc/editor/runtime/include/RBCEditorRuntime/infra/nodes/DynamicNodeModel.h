@@ -23,15 +23,15 @@ namespace rbc {
 struct GenericNodeData : public QtNodes::NodeData {
 public:
     GenericNodeData() = default;
-    explicit GenericNodeData(const QVariant &value, const QString &typeName = "generic") : m_value(value), m_typeName(typeName) {}
+    explicit GenericNodeData(const QVariant &value, const QString &typeName = "generic") : _value(value), _type_name(typeName) {}
 
     [[nodiscard]] QtNodes::NodeDataType type() const override { return QtNodes::NodeDataType{
-        m_typeName, m_typeName}; }
-    [[nodiscard]] QVariant value() const { return m_value; }
+        _type_name, _type_name}; }
+    [[nodiscard]] QVariant value() const { return _value; }
 
 private:
-    QVariant m_value;
-    QString m_typeName;
+    QVariant _value;
+    QString _type_name;
 };
 
 struct DynamicNodeModel : public QtNodes::NodeDelegateModel {
@@ -46,8 +46,8 @@ public:
     explicit DynamicNodeModel(const QJsonObject &metadata);
     ~DynamicNodeModel() override = default;
 
-    [[nodiscard]] QString caption() const override { return m_displayName; }
-    [[nodiscard]] QString name() const override { return m_nodeType; }
+    [[nodiscard]] QString caption() const override { return _display_name; }
+    [[nodiscard]] QString name() const override { return _node_type; }
     [[nodiscard]] bool captionVisible() const override { return true; }
     [[nodiscard]] unsigned int nPorts(PortType) const override;
     [[nodiscard]] NodeDataType dataType(PortType portType, PortIndex portIndex) const override;
@@ -62,8 +62,8 @@ public:
     void load(QJsonObject const &p) override;
 
     // Custom Methods
-    [[nodiscard]] QString nodeType() const { return m_nodeType; }
-    [[nodiscard]] QString category() const { return m_category; }
+    [[nodiscard]] QString nodeType() const { return _node_type; }
+    [[nodiscard]] QString category() const { return _category; }
     [[nodiscard]] QJsonObject getInputValues() const;
     void setOutputValues(const QJsonObject &outputs);
     void updatePreview(const QJsonValue &previewData, const QString &outputName);
@@ -73,20 +73,20 @@ private:
     QWidget *createWidgetForInput(const QJsonObject &inputDef);
     void updateOutputData(QtNodes::PortIndex port, const QVariant &value, const QString &typeName);
 
-    QString m_nodeType;
-    QString m_displayName;
-    QString m_category;
-    QString m_description;
+    QString _node_type;
+    QString _display_name;
+    QString _category;
+    QString _description;
 
-    QJsonArray m_inputs;
-    QJsonArray m_outputs;
+    QJsonArray _inputs;
+    QJsonArray _outputs;
 
-    std::map<QtNodes::PortIndex, std::shared_ptr<NodeData>> m_outputData;
-    std::map<QtNodes::PortIndex, std::shared_ptr<NodeData>> m_inputData;
+    std::map<QtNodes::PortIndex, std::shared_ptr<NodeData>> _output_data;
+    std::map<QtNodes::PortIndex, std::shared_ptr<NodeData>> _input_data;
 
-    QWidget *m_mainWidget;
-    std::map<QString, QWidget *> m_inputWidgets;
-    std::map<QString, QWidget *> m_previewWidgets;
+    QWidget *_main_widget;
+    std::map<QString, QWidget *> _input_widgets;
+    std::map<QString, QWidget *> _preview_widgets;
 };
 
 }// namespace rbc

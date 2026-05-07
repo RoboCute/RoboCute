@@ -114,17 +114,17 @@ public:
     /**
      * Get current source type
      */
-    [[nodiscard]] EditorSceneSourceType sourceType() const { return source_type_; }
+    [[nodiscard]] EditorSceneSourceType sourceType() const { return _source_type; }
 
     /**
      * Check if scene is ready for rendering
      */
-    [[nodiscard]] bool isReady() const { return scene_ready_; }
+    [[nodiscard]] bool isReady() const { return _scene_ready; }
 
     /**
      * Check if world is initialized
      */
-    [[nodiscard]] bool isWorldInitialized() const { return world_initialized_; }
+    [[nodiscard]] bool isWorldInitialized() const { return _world_initialized; }
 
     // ========== Frame Update ==========
 
@@ -157,7 +157,7 @@ public:
     /**
      * Get entity count
      */
-    [[nodiscard]] size_t entityCount() const { return entities_.size(); }
+    [[nodiscard]] size_t entityCount() const { return _entities.size(); }
 
     /**
      * Get entity local ID from TLAS instance ID (for picking)
@@ -180,12 +180,12 @@ public:
     /**
      * Get the skybox texture resource
      */
-    [[nodiscard]] RC<world::TextureResource> getSkybox() const { return skybox_; }
+    [[nodiscard]] RC<world::TextureResource> getSkybox() const { return _skybox; }
 
     /**
      * Set graphics utils reference for resource updates
      */
-    void setGraphicsUtils(GraphicsUtils *utils) { graphics_utils_ = utils; }
+    void setGraphicsUtils(GraphicsUtils *utils) { _graphics_utils = utils; }
 
     // ========== Scene Modification (LOCAL mode) ==========
 
@@ -220,16 +220,16 @@ private:
     };
 
     // Entity storage
-    luisa::vector<EntityEntry> entities_;
-    luisa::unordered_map<int, size_t> entity_map_;          // local_id -> index
-    luisa::unordered_map<uint32_t, int> instance_to_entity_;// instance_id -> local_id
-    int next_local_id_ = 1;
+    luisa::vector<EntityEntry> _entities;
+    luisa::unordered_map<int, size_t> _entity_map;          // local_id -> index
+    luisa::unordered_map<uint32_t, int> _instance_to_entity;// instance_id -> local_id
+    int _next_local_id = 1;
 
     // Resource caches
-    luisa::unordered_map<luisa::string, RC<world::MeshResource>> mesh_cache_;
-    luisa::vector<RC<world::MaterialResource>> materials_;
-    RC<world::MaterialResource> default_material_;
-    RC<world::TextureResource> skybox_;
+    luisa::unordered_map<luisa::string, RC<world::MeshResource>> _mesh_cache;
+    luisa::vector<RC<world::MaterialResource>> _materials;
+    RC<world::MaterialResource> _default_material;
+    RC<world::TextureResource> _skybox;
 
     // Pending async operations
     struct PendingEntity {
@@ -237,16 +237,16 @@ private:
         RC<world::Entity> entity;
         RC<world::MeshResource> mesh_resource;
     };
-    luisa::vector<PendingEntity> pending_entities_;
+    luisa::vector<PendingEntity> _pending_entities;
 
     // Scene state
-    EditorSceneSourceType source_type_ = EditorSceneSourceType::None;
-    luisa::filesystem::path project_path_;
-    luisa::filesystem::path scene_file_path_;
-    luisa::string server_url_;
-    bool world_initialized_ = false;
-    bool scene_ready_ = false;
-    GraphicsUtils *graphics_utils_ = nullptr;
+    EditorSceneSourceType _source_type = EditorSceneSourceType::None;
+    luisa::filesystem::path _project_path;
+    luisa::filesystem::path _scene_file_path;
+    luisa::string _server_url;
+    bool _world_initialized = false;
+    bool _scene_ready = false;
+    GraphicsUtils *_graphics_utils = nullptr;
 
     // ========== Internal Methods ==========
 

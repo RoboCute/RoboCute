@@ -60,7 +60,7 @@ public:
     explicit ISceneService(QObject *parent = nullptr) : IService(parent) {}
     virtual ~ISceneService() = default;
 
-    QString serviceId() const override { return "com.robocute.scene_service"; }
+    [[nodiscard]] QString serviceId() const override { return "com.robocute.scene_service"; }
 
     // ========== Scene Loading ==========
 
@@ -69,14 +69,14 @@ public:
      * @param serverUrl The server URL (e.g., "http://127.0.0.1:5555")
      * @return true if connection initiated successfully
      */
-    virtual bool loadFromServer(const QString &serverUrl) = 0;
+    [[nodiscard]] virtual bool loadFromServer(const QString &serverUrl) = 0;
 
     /**
      * Load scene from local .rbcscene file or project directory
      * @param scenePath Path to the scene file or project folder
      * @return true if loading initiated successfully
      */
-    virtual bool loadFromLocal(const QString &scenePath) = 0;
+    [[nodiscard]] virtual bool loadFromLocal(const QString &scenePath) = 0;
 
     /**
      * Unload the current scene and release resources
@@ -86,64 +86,64 @@ public:
     /**
      * Get current scene source type
      */
-    virtual SceneSourceType sceneSource() const = 0;
+    [[nodiscard]] virtual SceneSourceType sceneSource() const = 0;
 
     /**
      * Get scene source as human-readable string
      */
-    virtual QString sceneSourceName() const = 0;
+    [[nodiscard]] virtual QString sceneSourceName() const = 0;
 
     // ========== Scene State ==========
 
     /**
      * Check if a scene is currently loaded and ready
      */
-    virtual bool isSceneLoaded() const = 0;
+    [[nodiscard]] virtual bool isSceneLoaded() const = 0;
 
     /**
      * Check if the scene is fully ready for rendering
      */
-    virtual bool isSceneReady() const = 0;
+    [[nodiscard]] virtual bool isSceneReady() const = 0;
 
     /**
      * Get the number of entities in the scene
      */
-    virtual int entityCount() const = 0;
+    [[nodiscard]] virtual int entityCount() const = 0;
 
     // ========== Entity Access ==========
 
     /**
      * Get all entity IDs in the scene
      */
-    virtual QList<int> getAllEntityIds() const = 0;
+    [[nodiscard]] virtual QList<int> getAllEntityIds() const = 0;
 
     /**
      * Get entity info by local ID
      */
-    virtual EntityInfo getEntityInfo(int localId) const = 0;
+    [[nodiscard]] virtual EntityInfo getEntityInfo(int localId) const = 0;
 
     /**
      * Get all entities info (for UI listing)
      */
-    virtual QList<EntityInfo> getAllEntities() const = 0;
+    [[nodiscard]] virtual QList<EntityInfo> getAllEntities() const = 0;
 
     /**
      * Get entity by local ID (returns nullptr if not found)
      * For internal C++ use only - provides direct access to world::Entity
      */
-    virtual world::Entity *getEntity(int localId) const = 0;
+    [[nodiscard]] virtual world::Entity *getEntity(int localId) const = 0;
 
     /**
      * Get entity ID from TLAS instance ID (for picking)
      */
-    virtual int getEntityIdFromInstanceId(uint32_t instanceId) const = 0;
+    [[nodiscard]] virtual int getEntityIdFromInstanceId(uint32_t instanceId) const = 0;
 
     // ========== Entity Selection ==========
 
     /**
      * Get currently selected entity ID (-1 if none)
      */
-    virtual int selectedEntityId() const = 0;
+    [[nodiscard]] virtual int selectedEntityId() const = 0;
 
     /**
      * Set selected entity by local ID
@@ -173,7 +173,7 @@ public:
     /**
      * Save scene modifications (LOCAL mode only)
      */
-    virtual bool saveScene() = 0;
+    [[nodiscard]] virtual bool saveScene() = 0;
 
     // ========== Render Integration ==========
 
@@ -181,7 +181,7 @@ public:
      * Get the underlying EditorScene for render integration
      * Returns nullptr if no scene is loaded
      */
-    virtual EditorScene *editorScene() const = 0;
+    [[nodiscard]] virtual EditorScene *editorScene() const = 0;
 
 signals:
     // Scene lifecycle

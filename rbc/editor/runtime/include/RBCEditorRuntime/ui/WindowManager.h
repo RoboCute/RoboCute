@@ -13,14 +13,14 @@ namespace rbc {
 class EditorPluginManager;
 
 /**
- * @brief WindowManager - Qt Widget 生命周期管理范式
- * 
- * 设计原则：
- * 1. 遵循 Qt parent-child 所有权模型：子 widget 由父 widget 自动管理
- * 2. WindowManager 拥有 main_window_，main_window_ 拥有其所有子 widget
- * 3. 外部传入的 widget（如 plugin 创建的）使用 QPointer 追踪，不接管所有权
- * 4. cleanup() 必须在 plugin unload 之前调用，确保正确的析构顺序
- * 5. 析构器保持简单，依赖 Qt 自动清理机制
+ * @brief WindowManager - Qt Widget lifecycle management paradigm
+ *
+ * Design principles:
+ * 1. Follow Qt parent-child ownership model: child widgets are automatically managed by parent widget
+ * 2. WindowManager owns _main_window, which owns all its child widgets
+ * 3. Externally passed widgets (e.g., created by plugins) are tracked using QPointer, ownership not taken
+ * 4. cleanup() must be called before plugin unload to ensure correct destruction order
+ * 5. Destructor is kept simple, relying on Qt's automatic cleanup mechanism
  */
 class RBC_EDITOR_RUNTIME_API WindowManager : public QObject {
     Q_OBJECT
@@ -31,27 +31,27 @@ public:
 
     // == Lifecycle Management ==
     /**
-     * @brief 在 plugin unload 之前调用此方法进行清理
-     * 
-     * 这是关键的生命周期方法：
-     * - 隐藏窗口停止渲染
-     * - 清理 QML context 引用（打破对 ViewModel 的引用）
-     * - 释放外部 widget 引用（让 plugin 管理其 widget）
-     * - 不删除任何 widget，让析构器通过 Qt 机制处理
+     * @brief Call this method before plugin unload for cleanup
+     *
+     * This is a critical lifecycle method:
+     * - Hide window and stop rendering
+     * - Clean up QML context references (break references to ViewModel)
+     * - Release external widget references (let plugin manage its widgets)
+     * - Do not delete any widgets, let the destructor handle via Qt mechanism
      */
     void cleanup();
 
     // == MainWindow Management ==
-    QMainWindow *main_window() const { return main_window_; }
+    QMainWindow *main_window() const { return _main_window; }
     void setup_main_window();
 
     // == Create Dockable Window View through Contribution (QML)
     QDockWidget *createDockableView(const ViewContribution &contribution, QObject *viewModel);
 
     // == Create Dockable Window View through native QWidget (C++ widget)
-    // 注意：widget 的所有权转移给 DockWidget（即 main_window_）
-    // 如果 widget 来自外部（如 plugin），调用者应确保 widget 在 WindowManager 之前不被销毁
-    // 使用 takeExternalWidget=true 表示 widget 来自外部，WindowManager 不会在析构时删除它
+    // Note: widget ownership is transferred to DockWidget (i.e., _main_window)
+    // If widget comes from external source (e.g., plugin), caller must ensure widget is not destroyed before WindowManager
+    // Use isExternalWidget=true to indicate widget is from external source, WindowManager will not delete it during destruction
     QDockWidget *createDockableView(
         const QString &viewId,
         const QString &title,
@@ -64,7 +64,7 @@ public:
         bool isExternalWidget = false);
 
     // == Create Dockable View from NativeViewContribution
-    // 便捷方法：直接从 NativeViewContribution 创建 DockWidget
+    // Convenience method: create DockWidget directly from NativeViewContribution
     QDockWidget *createDockableView(
         const NativeViewContribution &contribution,
         QWidget *widget,
@@ -103,17 +103,17 @@ public:
 
     // == Hot Reload Support ==
     /**
-     * @brief 设置热更新模式
-     * 
-     * 当启用时，QML 文件将从文件系统 (qmlHotDir) 加载而非 qrc 资源
+     * @brief Set hot reload mode
+     *
+     * When enabled, QML files will be loaded from filesystem (qmlHotDir) instead of qrc resources
      */
     void setHotReloadEnabled(bool enabled);
-    bool isHotReloadEnabled() const { return hot_reload_enabled_; }
+    bool isHotReloadEnabled() const { return _hot_reload_enabled; }
 
     /**
-     * @brief 刷新所有 QML 视图
-     * 
-     * 重新加载所有已注册的 QML 视图，用于热更新
+     * @brief Reload all QML views
+     *
+     * Reload all registered QML views, used for hot reload
      */
     void reloadAllQmlViews();
 
@@ -128,22 +128,22 @@ private:
 
     void cleanupQmlWidget(QWidget *widget);
 
-    QMainWindow *main_window_ = nullptr;
-    EditorPluginManager *plugin_mng_ = nullptr;
-    bool cleaned_up_ = false;
-    bool hot_reload_enabled_ = false;
-    
-    // 追踪外部传入的 widget（使用 QPointer 安全追踪）
-    // Key: viewId, Value: 外部 widget 的弱引用
-    QHash<QString, QPointer<QWidget>> external_widgets_;
-    
-    // 存储 QML 视图的贡献信息和 ViewModel，用于热更新刷新
+    QMainWindow *_main_window = nullptr;
+    EditorPluginManager *_plugin_mng = nullptr;
+    bool _cleaned_up = false;
+    bool _hot_reload_enabled = false;
+
+    // Track externally passed widgets (tracked safely using QPointer)
+    // Key: viewId, Value: weak reference to external widget
+    QHash<QString, QPointer<QWidget>> _external_widgets;
+
+    // Store QML view contribution info and ViewModel for hot reload refresh
     struct QmlViewInfo {
         ViewContribution contribution;
         QObject *viewModel;
         QPointer<QWidget> quickWidget;
     };
-    QHash<QString, QmlViewInfo> qml_views_;
+    QHash<QString, QmlViewInfo> _qml_views;
 };
 
 }// namespace rbc

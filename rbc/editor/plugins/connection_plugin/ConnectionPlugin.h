@@ -13,9 +13,9 @@
 namespace rbc {
 
 /**
- * ConnectionViewModel - 连接状态视图模型
+ * ConnectionViewModel - Connection status view model
  * 
- * 负责管理连接状态的显示和交互逻辑
+ * Manages connection status display and interaction logic
  */
 class RBC_EDITOR_PLUGIN_API ConnectionViewModel : public ViewModelBase {
     Q_OBJECT
@@ -39,7 +39,7 @@ public:
     Q_INVOKABLE void disconnect();
 
     // Service access
-    ConnectionService *connectionService() const { return connectionService_; }
+    [[nodiscard]] ConnectionService *connectionService() const { return _connection_service; }
 
 signals:
     void serverUrlChanged();
@@ -52,13 +52,13 @@ private slots:
     void onConnectionTested(bool success);
 
 private:
-    ConnectionService *connectionService_ = nullptr;
+    ConnectionService *_connection_service = nullptr;
 };
 
 /**
- * ConnectionPlugin - 连接状态插件
+ * ConnectionPlugin - Connection status plugin
  * 
- * 提供连接状态管理的 UI 面板
+ * Provides a UI panel for connection status management
  */
 class RBC_EDITOR_PLUGIN_API ConnectionPlugin : public IEditorPlugin {
     Q_OBJECT
@@ -91,12 +91,12 @@ public:
     QObject *getViewModel(const QString &viewId) override;
 
 private:
-    ConnectionService *connectionService_ = nullptr;
-    ConnectionViewModel *viewModel_ = nullptr;
-    PluginContext *context_ = nullptr;
+    ConnectionService *_connection_service = nullptr;
+    ConnectionViewModel *_view_model = nullptr;
+    PluginContext *_context = nullptr;
 };
 
-// 导出工厂函数
+// Export factory function
 class IPluginFactory;
 LUISA_EXPORT_API IPluginFactory *createPluginFactory();
 

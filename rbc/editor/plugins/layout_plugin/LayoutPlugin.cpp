@@ -23,18 +23,18 @@ bool LayoutPlugin::load(PluginContext *context) {
         return false;
     }
 
-    context_ = context;
+    _context = context;
 
     // Get LayoutService from PluginManager
-    layoutService_ = context->getService<LayoutService>();
+    _layout_service = context->getService<LayoutService>();
 
-    if (!layoutService_) {
+    if (!_layout_service) {
         qWarning() << "LayoutPlugin::load: LayoutService should be registered before LayoutPlugin load";
         return false;
     }
 
     // Create ViewModel
-    viewModel_ = new LayoutViewModel(layoutService_, this);
+    _view_model = new LayoutViewModel(_layout_service, this);
 
     // Build menu contributions
     buildMenuContributions();
@@ -45,14 +45,14 @@ bool LayoutPlugin::load(PluginContext *context) {
 }
 
 bool LayoutPlugin::unload() {
-    if (viewModel_) {
-        viewModel_->deleteLater();
-        viewModel_ = nullptr;
+    if (_view_model) {
+        _view_model->deleteLater();
+        _view_model = nullptr;
     }
 
-    menuContributions_.clear();
-    layoutService_ = nullptr;
-    context_ = nullptr;
+    _menu_contributions.clear();
+    _layout_service = nullptr;
+    _context = nullptr;
 
     qDebug() << "LayoutPlugin unloaded";
     return true;
@@ -62,20 +62,20 @@ bool LayoutPlugin::reload() {
     qDebug() << "LayoutPlugin reloading...";
 
     // Save current layout
-    QString savedLayoutId = layoutService_ ? layoutService_->currentLayoutId() : QString();
+    QString savedLayoutId = _layout_service ? _layout_service->currentLayoutId() : QString();
 
     // Unload and reload
     if (!unload()) {
         return false;
     }
 
-    if (!load(context_)) {
+    if (!load(_context)) {
         return false;
     }
 
     // Restore layout
-    if (layoutService_ && !savedLayoutId.isEmpty()) {
-        layoutService_->switchToLayout(savedLayoutId, false);
+    if (_layout_service && !savedLayoutId.isEmpty()) {
+        _layout_service->switchToLayout(savedLayoutId, false);
     }
 
     qDebug() << "LayoutPlugin reloaded";
@@ -97,21 +97,21 @@ QList<ViewContribution> LayoutPlugin::view_contributions() const {
 }
 
 QList<MenuContribution> LayoutPlugin::menu_contributions() const {
-    return menuContributions_;
+    return _menu_contributions;
 }
 
 void LayoutPlugin::buildMenuContributions() {
-    menuContributions_.clear();
+    _menu_contributions.clear();
 
-    if (!layoutService_) {
+    if (!_layout_service) {
         return;
     }
 
-    auto layouts = layoutService_->availableLayouts();
+    auto layouts = _layout_service->availableLayouts();
     // === View Menu - Layout Switching ===
     // Add layout switching menu items under "View/Layouts"
     for (auto layout : layouts) {
-        auto &config = layoutService_->getLayoutConfig(layout);
+        auto &config = _layout_service->getLayoutConfig(layout);
 
         MenuContribution menu;
         menu.menuPath = "View/Layouts/" + config.layoutName;
@@ -119,17 +119,17 @@ void LayoutPlugin::buildMenuContributions() {
         menu.actionId = "layout.switch" + layout;
         menu.shortcut = "";
         menu.callback = [this, layout]() {
-            if (layoutService_) {
-                layoutService_->switchToLayout(layout);
+            if (_layout_service) {
+                _layout_service->switchToLayout(layout);
             }
         };
-        menuContributions_.append(menu);
+        _menu_contributions.append(menu);
     }
     // === View Menu - Window Visibility ===
 
     // Toggle Connection Status Panel
-    auto layout = layoutService_->currentLayoutId();
-    auto config = layoutService_->getLayoutConfig(layout);
+    auto layout = _layout_service->currentLayoutId();
+    auto config = _layout_service->getLayoutConfig(layout);
 
     for (auto view : config.views) {
         MenuContribution toggleConnection;
@@ -139,12 +139,12 @@ void LayoutPlugin::buildMenuContributions() {
         toggleConnection.shortcut = "";
 
         toggleConnection.callback = [this, view]() {
-            if (layoutService_) {
-                bool visible = layoutService_->isViewVisible(view.viewId);
-                layoutService_->setViewVisible(view.viewId, !visible);
+            if (_layout_service) {
+                bool visible = _layout_service->isViewVisible(view.viewId);
+                _layout_service->setViewVisible(view.viewId, !visible);
             }
         };
-        menuContributions_.append(toggleConnection);
+        _menu_contributions.append(toggleConnection);
     }
 
     // === Window Menu - Reset Layout ===
@@ -154,14 +154,14 @@ void LayoutPlugin::buildMenuContributions() {
     resetLayout.actionId = "view.reset_layout";
     resetLayout.shortcut = "";
     resetLayout.callback = [this]() {
-        if (layoutService_) {
-            QString currentId = layoutService_->currentLayoutId();
+        if (_layout_service) {
+            QString currentId = _layout_service->currentLayoutId();
             if (!currentId.isEmpty()) {
-                layoutService_->resetLayout(currentId);
+                _layout_service->resetLayout(currentId);
             }
         }
     };
-    menuContributions_.append(resetLayout);
+    _menu_contributions.append(resetLayout);
 }
 
 void LayoutPlugin::register_view_models(QQmlEngine *engine) {
@@ -175,13 +175,13 @@ void LayoutPlugin::register_view_models(QQmlEngine *engine) {
 }
 
 QObject *LayoutPlugin::getViewModel(const QString &viewId) {
-    if (viewId == "layout_manager" && viewModel_) {
-        return viewModel_;
+    if (viewId == "layout_manager" && _view_model) {
+        return _view_model;
     }
     return nullptr;
 }
 
-// 导出工厂函数
+// Export factory function
 IPluginFactory *createPluginFactory() {
     return new PluginFactory<LayoutPlugin>();
 }

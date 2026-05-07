@@ -7,26 +7,26 @@
 namespace rbc {
 
 ViewModelBase::ViewModelBase(QObject *parent)
-    : QObject(parent), isBusy_(false) {
+    : QObject(parent), _is_busy(false) {
 }
 
 void ViewModelBase::setBusy(bool busy) {
-    if (isBusy_ != busy) {
-        isBusy_ = busy;
+    if (_is_busy != busy) {
+        _is_busy = busy;
         emit isBusyChanged();
     }
 }
 
 void ViewModelBase::setError(const QString &message) {
-    if (errorMessage_ != message) {
-        errorMessage_ = message;
+    if (_error_message != message) {
+        _error_message = message;
         emit errorMessageChanged();
     }
 }
 
 void ViewModelBase::clearError() {
-    if (!errorMessage_.isEmpty()) {
-        errorMessage_.clear();
+    if (!_error_message.isEmpty()) {
+        _error_message.clear();
         emit errorMessageChanged();
     }
 }

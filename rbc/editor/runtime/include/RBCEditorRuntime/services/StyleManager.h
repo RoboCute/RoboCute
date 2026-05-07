@@ -17,13 +17,13 @@ public:
     ~StyleManager() override = default;
 
     // IService interface (StyleManager implements IService through IStyleManager)
-    QString serviceId() const { return "StyleManager"; }
+    [[nodiscard]] QString serviceId() const { return "StyleManager"; }
 
     // QML interface
     void initialize(int argc, char **argv) override;
-    bool isHotReloadEnabled() const override { return isDevMode_; }
+    bool isHotReloadEnabled() const override { return _is_dev_mode; }
     QUrl resolveUrl(const QString &relativePath) override;
-    QQmlEngine *qmlEngine() override { return engine_; }
+    QQmlEngine *qmlEngine() override { return _engine; }
 
     // Qt Widget style interface
     bool loadGlobalStyleSheet(const QString &qssPath) override;
@@ -31,21 +31,21 @@ public:
     QString getStylePreset(const QString &presetName) const override;
     void registerStylePreset(const QString &presetName, const QString &qss) override;
     void setTheme(const QString &themeName) override;
-    QString currentTheme() const override { return currentTheme_; }
+    QString currentTheme() const override { return _current_theme; }
 
 private:
     void loadDefaultPresets();
     void loadTheme(const QString &themeName);
 
-    bool isDevMode_ = false;
-    QString sourceRoot_;
-    QQmlEngine *engine_ = nullptr;
-    QFileSystemWatcher *watcher_ = nullptr;
+    bool _is_dev_mode = false;
+    QString _source_root;
+    QQmlEngine *_engine = nullptr;
+    QFileSystemWatcher *_watcher = nullptr;
 
     // Widget style management
-    QHash<QString, QString> stylePresets_;// presetName -> QSS
-    QString currentTheme_;
-    QString globalStyleSheet_;
+    QHash<QString, QString> _style_presets;// presetName -> QSS
+    QString _current_theme;
+    QString _global_style_sheet;
 };
 
 }// namespace rbc

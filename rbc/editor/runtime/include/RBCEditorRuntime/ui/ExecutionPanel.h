@@ -36,11 +36,11 @@ private:
     void setupUI();
     // void addTreeItem(QTreeWidgetItem *parent, const QString &key, const QJsonValue &value);
 
-    QLabel *m_statusLabel;
-    QTabWidget *m_tabWidget;
-    QTextEdit *m_consoleOutput;
-    QTreeWidget *m_resultsTree;
-    QPushButton *m_cancelButton;
+    QLabel *_status_label;
+    QTabWidget *_tab_widget;
+    QTextEdit *_console_output;
+    QTreeWidget *_results_tree;
+    QPushButton *_cancel_button;
 };
 
 }// namespace rbc

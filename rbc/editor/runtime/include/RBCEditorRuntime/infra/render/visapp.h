@@ -6,20 +6,20 @@
 namespace rbc {
 
 /**
- * VisApp - 编辑器可视化应用
+ * VisApp - Editor visualization application
  * 
- * 用于编辑器预览模式：
- * - 光栅化快速预览
- * - 支持选择、框选、拖动等交互
- * - 物体轮廓高亮显示
+ * Used for editor preview mode:
+ * - Rasterized quick preview
+ * - Supports selection, drag-select, drag, etc.
+ * - Object outline highlighting
  */
 struct VisApp : public RenderAppBase {
-    bool dst_image_reseted = false;
+    bool dst_image_reset = false;
 
-    // 交互管理器：处理选择、拖动、框选逻辑
+    // Interaction manager: handles selection, drag, and box-select logic
     ViewportInteractionManager interaction_manager;
 
-    // 当前选择的对象ID列表（从interaction_manager同步）
+    // Currently selected object ID list (synced from interaction_manager)
     luisa::vector<uint> dragged_object_ids;
 
 public:
@@ -31,15 +31,15 @@ public:
     void handle_cursor_position(luisa::float2 xy) override;
 
     /**
-     * 获取当前选中的对象ID列表
+     * Get currently selected object ID list
      */
-    [[nodiscard]] const luisa::vector<uint> &getSelectedObjectIds() const { return dragged_object_ids; }
+    [[nodiscard]] const luisa::vector<uint> &get_selected_object_ids() const { return dragged_object_ids; }
 
     ~VisApp() override;
 
 protected:
     /**
-     * 更新相机（考虑交互模式）
+     * Update camera (taking interaction mode into account)
      */
     void update_camera(float delta_time) override;
 };

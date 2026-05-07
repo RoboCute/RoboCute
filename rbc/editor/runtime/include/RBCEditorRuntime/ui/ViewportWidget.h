@@ -13,12 +13,12 @@ class ViewportWidget;
 // ============================================================================
 
 /**
- * @brief ViewportContainerWidget - 处理鼠标事件和拖动的自定义容器
- * 
- * 这个 widget 包装了 RhiWindow 的容器，负责：
- * 1. 处理拖动起始位置检测
- * 2. 发出拖动请求信号
- * 3. 转发事件给 RhiWindow
+ * @brief ViewportContainerWidget - Custom container for mouse events and drag support
+ *
+ * This widget wraps the RhiWindow container, responsible for:
+ * 1. Detecting drag start position
+ * 2. Emitting drag request signals
+ * 3. Forwarding events to RhiWindow
  */
 class RBC_EDITOR_RUNTIME_API ViewportContainerWidget : public QWidget {
     Q_OBJECT
@@ -26,11 +26,11 @@ class RBC_EDITOR_RUNTIME_API ViewportContainerWidget : public QWidget {
 public:
     explicit ViewportContainerWidget(RhiWindow *rhiWindow, QWidget *parent = nullptr);
 
-    void setDragStartPos(const QPoint &pos) { m_dragStartPos = pos; }
-    QPoint dragStartPos() const { return m_dragStartPos; }
-    void resetDragStartPos() { m_dragStartPos = QPoint(); }
+    void setDragStartPos(const QPoint &pos) { _drag_start_pos = pos; }
+    QPoint dragStartPos() const { return _drag_start_pos; }
+    void resetDragStartPos() { _drag_start_pos = QPoint(); }
 
-    QWidget *innerContainer() const { return m_innerContainer; }
+    QWidget *innerContainer() const { return _inner_container; }
 
 signals:
     void dragRequested();
@@ -42,9 +42,9 @@ protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
-    RhiWindow *m_rhiWindow = nullptr;
-    QWidget *m_innerContainer = nullptr;
-    QPoint m_dragStartPos;
+    RhiWindow *_rhi_window = nullptr;
+    QWidget *_inner_container = nullptr;
+    QPoint _drag_start_pos;
 };
 
 // ============================================================================
@@ -52,18 +52,18 @@ private:
 // ============================================================================
 
 /**
- * @brief ViewportWidget - 视口组件
- * 
- * Viewport组件是渲染窗口的QWidget封装，负责：
- * 1. 创建和管理 RhiWindow
- * 2. 转发窗口消息给渲染器
- * 3. 支持实体拖放操作
- * 
- * 使用方式：
+ * @brief ViewportWidget - Viewport component
+ *
+ * The Viewport component is a QWidget wrapper for the rendering window, responsible for:
+ * 1. Creating and managing RhiWindow
+ * 2. Forwarding window messages to the renderer
+ * 3. Supporting entity drag-and-drop operations
+ *
+ * Usage:
  * @code
  * IRenderer* renderer = createRenderer();
  * ViewportWidget* viewport = new ViewportWidget(renderer, parent);
- * viewport 会管理 RhiWindow 的生命周期
+ * viewport manages the lifecycle of RhiWindow
  * @endcode
  */
 class RBC_EDITOR_RUNTIME_API ViewportWidget : public QWidget {
@@ -71,28 +71,28 @@ class RBC_EDITOR_RUNTIME_API ViewportWidget : public QWidget {
 
 public:
     /**
-     * @brief 构造函数
-     * @param renderer 渲染器接口，ViewportWidget 不拥有其生命周期
-     * @param graphicsApi RHI 图形 API 类型
-     * @param parent 父 widget
+     * @brief Constructor
+     * @param renderer Renderer interface, ViewportWidget does not own its lifecycle
+     * @param graphicsApi RHI graphics API type
+     * @param parent Parent widget
      */
     explicit ViewportWidget(IRenderer *renderer,
                             QRhi::Implementation graphicsApi = QRhi::D3D12,
                             QWidget *parent = nullptr);
     ~ViewportWidget() override;
 
-    [[nodiscard]] RhiWindow *getRhiWindow() const { return m_rhiWindow; }
+    [[nodiscard]] RhiWindow *getRhiWindow() const { return _rhi_window; }
 
     /**
-     * @brief 获取图形 API 名称
+     * @brief Get the graphics API name
      */
     [[nodiscard]] QString graphicsApiName() const;
 
 signals:
     /**
-     * @brief 拖动请求信号
-     * 
-     * 当用户在视口中拖动选中的实体时发出
+     * @brief Drag request signal
+     *
+     * Emitted when the user drags a selected entity in the viewport
      */
     void entityDragRequested();
 
@@ -109,10 +109,10 @@ private slots:
 private:
     void setupUi();
 
-    IRenderer *m_renderer = nullptr;
-    RhiWindow *m_rhiWindow = nullptr;
-    ViewportContainerWidget *m_container = nullptr;
-    QRhi::Implementation m_graphicsApi = QRhi::D3D12;
+    IRenderer *_renderer = nullptr;
+    RhiWindow *_rhi_window = nullptr;
+    ViewportContainerWidget *_container = nullptr;
+    QRhi::Implementation _graphics_api = QRhi::D3D12;
 };
 
 }// namespace rbc

@@ -55,11 +55,11 @@ private slots:
 
 private:
     // Mock state (shadow base class private members for testing)
-    bool m_mockConnected = false;
-    QString m_mockStatusText = "Disconnected";
+    bool _mock_connected = false;
+    QString _mock_status_text = "Disconnected";
 
-    int m_autoConnectDelay = 0;
-    QTimer *m_delayTimer = nullptr;
+    int _auto_connect_delay = 0;
+    QTimer *_delay_timer = nullptr;
 };
 
 }// namespace rbc

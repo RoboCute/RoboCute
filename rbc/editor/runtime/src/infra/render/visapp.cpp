@@ -88,42 +88,42 @@ void VisApp::update() {
     handle_reset();
     prepare_dx_states();
 
-    dst_image_reseted = false;
+    dst_image_reset = false;
 
     auto time = clk.toc();
     auto delta_time = time - last_frame_time;
     last_frame_time = time;
 
-    // 更新相机（考虑交互模式）
+    // Update camera (taking interaction mode into account)
     update_camera(static_cast<float>(delta_time));
 
-    // 处理交互逻辑：根据交互状态设置点击管理器
+    // Process interaction logic: set click manager according to interaction state
     auto interaction_mode = interaction_manager.get_interaction_mode();
 
     if (interaction_mode == ViewportInteractionManager::InteractionMode::ClickSelect) {
-        // 点击选择：在Pressed或WaitingResult状态时添加点击请求
+        // Click select: add click request when in Pressed or WaitingResult state
         if (interaction_manager.is_click_selecting()) {
             auto selection_region = interaction_manager.get_selection_region();
             click_mng.add_require("click", ClickRequire{.screen_uv = selection_region.first});
         }
     } else if (interaction_mode == ViewportInteractionManager::InteractionMode::DragSelect) {
         if (interaction_manager.is_drag_selecting()) {
-            // 框选：添加框选请求（在Dragging状态时添加）
+            // Box select: add box-select request (added when in Dragging state)
             auto selection_region = interaction_manager.get_selection_region();
-            // 转换为NDC坐标（-1到1）
+            // Convert to NDC coordinates (-1 to 1)
             float2 min_ndc = selection_region.first * 2.f - 1.f;
             float2 max_ndc = selection_region.second * 2.f - 1.f;
             click_mng.add_frame_selection("dragging", min_ndc, max_ndc, true);
         }
     }
 
-    // 更新交互管理器状态（查询选择结果）
+    // Update interaction manager state (query selection results)
     interaction_manager.update(click_mng);
 
-    // 同步选择的对象ID列表
+    // Sync selected object ID list
     dragged_object_ids = interaction_manager.get_selected_object_ids();
 
-    // 设置轮廓对象（高亮显示选中的物体）
+    // Set contour objects (highlight selected objects)
     click_mng.set_contour_objects(luisa::vector<uint>{dragged_object_ids});
 
     utils.tick(

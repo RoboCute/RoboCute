@@ -20,7 +20,7 @@ static QShader getShader(const QString &name) {
 }
 
 RhiWindow::RhiWindow(QRhi::Implementation graphicsApi)
-    : m_graphicsApi(graphicsApi) {
+    : _graphics_api(graphicsApi) {
     switch (graphicsApi) {
         case QRhi::D3D12:
             setSurfaceType(Direct3DSurface);
@@ -35,12 +35,12 @@ RhiWindow::RhiWindow(QRhi::Implementation graphicsApi)
             setSurfaceType(Direct3DSurface);
             break;
     }
-    // 设置窗口标志以接收键盘事件
+    // Set window flags to receive keyboard events
     setFlags(Qt::Window | Qt::FramelessWindowHint);
 }
 
 QString RhiWindow::graphicsApiName() const {
-    switch (m_graphicsApi) {
+    switch (_graphics_api) {
         case QRhi::D3D12:
             return QLatin1String("Direct3D 12");
         case QRhi::Vulkan:
@@ -53,26 +53,26 @@ QString RhiWindow::graphicsApiName() const {
 }
 
 void RhiWindow::exposeEvent(QExposeEvent *) {
-    // 当窗口展示时触发
-    if (isExposed() && !m_initialized) {
+    // Triggered when window is exposed
+    if (isExposed() && !_initialized) {
         init();
         resizeSwapChain();
-        m_initialized = true;
+        _initialized = true;
     }
 
-    const QSize surfaceSize = m_hasSwapChain ? m_sc->surfacePixelSize() : QSize();
+    const QSize surfaceSize = _has_swap_chain ? _sc->surfacePixelSize() : QSize();
 
-    // 停止渲染当窗口不可见或尺寸为0
-    if ((!isExposed() || (m_hasSwapChain && surfaceSize.isEmpty())) && m_initialized && !m_notExposed)
-        m_notExposed = true;
+    // Stop rendering when window is not visible or size is zero
+    if ((!isExposed() || (_has_swap_chain && surfaceSize.isEmpty())) && _initialized && !_not_exposed)
+        _not_exposed = true;
 
-    // 窗口再次可见且尺寸有效时继续渲染
-    if (isExposed() && m_initialized && m_notExposed && !surfaceSize.isEmpty()) {
-        m_notExposed = false;
-        m_newlyExposed = true;
+    // Resume rendering when window is visible again and size is valid
+    if (isExposed() && _initialized && _not_exposed && !surfaceSize.isEmpty()) {
+        _not_exposed = false;
+        _newly_exposed = true;
     }
 
-    // 在 exposeEvent 时渲染一帧以立即响应窗口调整
+    // Render a frame during exposeEvent to immediately respond to window resize
     if (isExposed() && !surfaceSize.isEmpty())
         render();
 }
@@ -84,7 +84,7 @@ bool RhiWindow::event(QEvent *e) {
             break;
 
         case QEvent::PlatformSurface:
-            // 在 native window 和 surface 还存在时释放 swapchain
+            // Release swapchain while native window and surface still exist
             if (static_cast<QPlatformSurfaceEvent *>(e)->surfaceEventType() ==
                 QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed)
                 releaseSwapChain();
@@ -99,7 +99,7 @@ bool RhiWindow::event(QEvent *e) {
 
 void RhiWindow::init() {
     LUISA_ASSERT(renderer, "Renderer must be set before initialization.");
-    if (m_graphicsApi == QRhi::D3D12) {
+    if (_graphics_api == QRhi::D3D12) {
         QRhiD3D12NativeHandles handles;
         QRhiD3D12InitParams params;
 #ifdef DEBUG
@@ -108,88 +108,88 @@ void RhiWindow::init() {
         params.enableDebugLayer = false;
 #endif
         renderer->process_qt_handle(handles);
-        m_rhi.reset(QRhi::create(QRhi::D3D12, &params, {}, &handles));
+        _rhi.reset(QRhi::create(QRhi::D3D12, &params, {}, &handles));
     }
-    // else if (m_graphicsApi == QRhi::Vulkan) {
+    // else if (_graphics_api == QRhi::Vulkan) {
     //     QRhiVulkanInitParams params;
     //     QRhiVulkanNativeHandles handles;
     //     params.inst = vulkanInstance();
     //     params.window = this;
     //     renderer->init(handles);
     //     handles.inst = vulkanInstance();
-    //     m_rhi.reset(QRhi::create(QRhi::Vulkan, &params, {}, &handles));
+    //     _rhi.reset(QRhi::create(QRhi::Vulkan, &params, {}, &handles));
     // }
 
-    if (!m_rhi)
+    if (!_rhi)
         qFatal("Failed to create RHI backend");
 
-    m_sc.reset(m_rhi->newSwapChain());
-    m_ds.reset(m_rhi->newRenderBuffer(
+    _sc.reset(_rhi->newSwapChain());
+    _ds.reset(_rhi->newRenderBuffer(
         QRhiRenderBuffer::DepthStencil,
-        QSize(),// UsedWithSwapChainOnly 不需要指定尺寸
+        QSize(),// UsedWithSwapChainOnly no need to specify size
         1, QRhiRenderBuffer::UsedWithSwapChainOnly));
 
-    m_sc->setWindow(this);
-    m_sc->setDepthStencil(m_ds.get());
-    m_rp.reset(m_sc->newCompatibleRenderPassDescriptor());
-    m_sc->setRenderPassDescriptor(m_rp.get());
+    _sc->setWindow(this);
+    _sc->setDepthStencil(_ds.get());
+    _rp.reset(_sc->newCompatibleRenderPassDescriptor());
+    _sc->setRenderPassDescriptor(_rp.get());
 
-    m_initialUpdates = m_rhi->nextResourceUpdateBatch();
+    _initial_updates = _rhi->nextResourceUpdateBatch();
 
-    ensureFullscreenTexture(m_sc->surfacePixelSize(), m_initialUpdates);
+    ensureFullscreenTexture(_sc->surfacePixelSize(), _initial_updates);
 
-    m_sampler.reset(m_rhi->newSampler(
+    _sampler.reset(_rhi->newSampler(
         QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
         QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
-    m_sampler->create();
+    _sampler->create();
 
-    m_fullscreenQuadSrb.reset(m_rhi->newShaderResourceBindings());
-    m_fullscreenQuadSrb->setBindings({QRhiShaderResourceBinding::sampledTexture(
+    _fullscreen_quad_srb.reset(_rhi->newShaderResourceBindings());
+    _fullscreen_quad_srb->setBindings({QRhiShaderResourceBinding::sampledTexture(
         0, QRhiShaderResourceBinding::FragmentStage,
-        m_texture.get(), m_sampler.get())});
-    m_fullscreenQuadSrb->create();
+        _texture.get(), _sampler.get())});
+    _fullscreen_quad_srb->create();
 
-    m_fullscreenQuadPipeline.reset(m_rhi->newGraphicsPipeline());
-    m_fullscreenQuadPipeline->setShaderStages(
+    _fullscreen_quad_pipeline.reset(_rhi->newGraphicsPipeline());
+    _fullscreen_quad_pipeline->setShaderStages(
         {{QRhiShaderStage::Vertex,
           getShader(QLatin1String(":/quad.vert.qsb"))},
          {QRhiShaderStage::Fragment,
           getShader(QLatin1String(":/quad.frag.qsb"))}});
-    m_fullscreenQuadPipeline->setVertexInputLayout({});
-    m_fullscreenQuadPipeline->setShaderResourceBindings(m_fullscreenQuadSrb.get());
-    m_fullscreenQuadPipeline->setRenderPassDescriptor(m_rp.get());
-    m_fullscreenQuadPipeline->create();
+    _fullscreen_quad_pipeline->setVertexInputLayout({});
+    _fullscreen_quad_pipeline->setShaderResourceBindings(_fullscreen_quad_srb.get());
+    _fullscreen_quad_pipeline->setRenderPassDescriptor(_rp.get());
+    _fullscreen_quad_pipeline->create();
 }
 
 void RhiWindow::resizeSwapChain() {
-    m_hasSwapChain = m_sc->createOrResize();
+    _has_swap_chain = _sc->createOrResize();
 }
 
 void RhiWindow::releaseSwapChain() {
-    if (m_hasSwapChain) {
-        m_hasSwapChain = false;
-        m_sc->destroy();
+    if (_has_swap_chain) {
+        _has_swap_chain = false;
+        _sc->destroy();
     }
 }
 
 void RhiWindow::render() {
-    if (!m_hasSwapChain || m_notExposed)
+    if (!_has_swap_chain || _not_exposed)
         return;
 
-    if (m_sc->currentPixelSize() != m_sc->surfacePixelSize() || m_newlyExposed) {
+    if (_sc->currentPixelSize() != _sc->surfacePixelSize() || _newly_exposed) {
         resizeSwapChain();
-        if (!m_hasSwapChain)
+        if (!_has_swap_chain)
             return;
-        m_newlyExposed = false;
+        _newly_exposed = false;
     }
 
-    QRhi::FrameOpResult result = m_rhi->beginFrame(m_sc.get());
+    QRhi::FrameOpResult result = _rhi->beginFrame(_sc.get());
 
     if (result == QRhi::FrameOpSwapChainOutOfDate) {
         resizeSwapChain();
-        if (!m_hasSwapChain)
+        if (!_has_swap_chain)
             return;
-        result = m_rhi->beginFrame(m_sc.get());
+        result = _rhi->beginFrame(_sc.get());
     }
 
     if (result != QRhi::FrameOpSuccess) {
@@ -198,53 +198,53 @@ void RhiWindow::render() {
         return;
     }
 
-    QRhiResourceUpdateBatch *resourceUpdates = m_rhi->nextResourceUpdateBatch();
+    QRhiResourceUpdateBatch *resourceUpdates = _rhi->nextResourceUpdateBatch();
 
-    if (m_initialUpdates) {
-        resourceUpdates->merge(m_initialUpdates);
-        m_initialUpdates->release();
-        m_initialUpdates = nullptr;
+    if (_initial_updates) {
+        resourceUpdates->merge(_initial_updates);
+        _initial_updates->release();
+        _initial_updates = nullptr;
     }
 
-    QRhiCommandBuffer *cb = m_sc->currentFrameCommandBuffer();
-    const QSize outputSizeInPixels = m_sc->currentPixelSize();
+    QRhiCommandBuffer *cb = _sc->currentFrameCommandBuffer();
+    const QSize outputSizeInPixels = _sc->currentPixelSize();
     ensureFullscreenTexture(outputSizeInPixels, resourceUpdates);
 
-    // 更新渲染器
+    // Update renderer
     renderer->update();
 
-    cb->beginPass(m_sc->currentFrameRenderTarget(), Qt::black, {1.0f, 0}, resourceUpdates);
-    cb->setGraphicsPipeline(m_fullscreenQuadPipeline.get());
+    cb->beginPass(_sc->currentFrameRenderTarget(), Qt::black, {1.0f, 0}, resourceUpdates);
+    cb->setGraphicsPipeline(_fullscreen_quad_pipeline.get());
     cb->setViewport({0, 0, float(outputSizeInPixels.width()), float(outputSizeInPixels.height())});
     cb->setShaderResources();
     cb->draw(3);
     cb->endPass();
 
-    m_rhi->endFrame(m_sc.get());
+    _rhi->endFrame(_sc.get());
     requestUpdate();
 }
 
 void RhiWindow::ensureFullscreenTexture(const QSize &pixelSize, QRhiResourceUpdateBatch *u) {
-    if (m_texture && m_texture->pixelSize() == pixelSize)
+    if (_texture && _texture->pixelSize() == pixelSize)
         return;
 
-    if (!m_texture)
-        m_texture.reset(m_rhi->newTexture(QRhiTexture::RGBA8, pixelSize));
+    if (!_texture)
+        _texture.reset(_rhi->newTexture(QRhiTexture::RGBA8, pixelSize));
     else
-        m_texture->setPixelSize(pixelSize);
+        _texture->setPixelSize(pixelSize);
 
     uint64_t handle = renderer->get_present_texture(
         pixelSize.width(), pixelSize.height());
     // D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE = 128
     // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL = 5
-    m_texture->createFrom({handle, m_graphicsApi == QRhi::Vulkan ? 5 : 128});
+    _texture->createFrom({handle, _graphics_api == QRhi::Vulkan ? 5 : 128});
 }
 
 void RhiWindow::keyPressEvent(QKeyEvent *event) {
-    // 转发给渲染器
+    // Forward to renderer
     renderer->handle_key(key_map(event->key()), action_map(event->type()));
 
-    // 发出信号用于调试
+    // Emit signal for debugging
     QString keyName;
     switch (event->key()) {
         case Qt::Key_W: keyName = "W"; break;
@@ -266,7 +266,7 @@ void RhiWindow::keyReleaseEvent(QKeyEvent *event) {
 }
 
 void RhiWindow::mousePressEvent(QMouseEvent *event) {
-    // 转换逻辑坐标到物理像素坐标（支持高 DPI）
+    // Convert logical coordinates to physical pixel coordinates (supports high DPI)
     qreal dpr = devicePixelRatio();
     float physicalX = static_cast<float>(event->pos().x() * dpr);
     float physicalY = static_cast<float>(event->pos().y() * dpr);

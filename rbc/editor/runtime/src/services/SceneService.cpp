@@ -87,7 +87,7 @@ void SceneService::setGraphicsUtils(GraphicsUtils *graphicsUtils) {
 }
 
 void SceneService::setSyncIntervalMs(int ms) {
-    sync_interval_ms_ = ms;
+    _sync_interval_ms = ms;
 }
 
 void SceneService::startSyncTimer() {}

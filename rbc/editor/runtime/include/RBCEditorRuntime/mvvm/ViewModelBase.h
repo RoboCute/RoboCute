@@ -15,8 +15,8 @@ class RBC_EDITOR_RUNTIME_API ViewModelBase : public QObject {
 public:
     explicit ViewModelBase(QObject *parent = nullptr);
 
-    bool isBusy() const { return isBusy_; }
-    QString errorMessage() const { return errorMessage_; }
+    bool isBusy() const { return _is_busy; }
+    QString errorMessage() const { return _error_message; }
 
     // LifeCycle
     virtual void onActivate() {}  // on View show
@@ -38,9 +38,9 @@ signals:
     void errorMessageChanged();
 
 private:
-    bool isBusy_;
-    QString errorMessage_;
-    QList<QMetaObject::Connection> subscriptions_;
+    bool _is_busy;
+    QString _error_message;
+    QList<QMetaObject::Connection> _subscriptions;
 };
 
 }// namespace rbc

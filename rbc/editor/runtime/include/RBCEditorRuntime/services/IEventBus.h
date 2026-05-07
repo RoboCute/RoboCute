@@ -5,7 +5,7 @@
 #include "RBCEditorRuntime/infra/events/EventType.h"
 #include "RBCEditorRuntime/services/IService.h"
 
-// 事件总线
+// Event bus
 
 namespace rbc {
 
@@ -19,22 +19,22 @@ public:
  * Use Case
  * ================
 
-// 使用示例
+// Usage example
 void MyViewModel::init() {
-    // Lambda订阅
-    eventBus_->subscribe(EventType::EntitySelected, 
+    // Lambda subscription
+    eventBus_->subscribe(EventType::EntitySelected,
         [this](const Event& e) {
             int entityId = e.data.toInt();
             this->onEntitySelected(entityId);
         });
-    
-    // 信号槽订阅
-    eventBus_->subscribe(this, EventType::SceneUpdated, 
+
+    // Signal-slot subscription
+    eventBus_->subscribe(this, EventType::SceneUpdated,
         SLOT(onSceneUpdated()));
 }
 
 void MyViewModel::selectEntity(int id) {
-    // 发布事件
+    // Publish event
     eventBus_->publish(EventType::EntitySelected, id);
 }
 
@@ -43,23 +43,23 @@ void MyViewModel::selectEntity(int id) {
 /**
  * IEventBus - Event bus service interface
  * 
- * 重要：作为接口类，使用内联析构器避免链接冲突
- * 具体实现类（如 EventBus）应在 .cpp 中定义析构器
+ * Important: As an interface class, use an inline destructor to avoid link conflicts.
+ * Concrete implementations (e.g., EventBus) should define the destructor in a .cpp file.
  */
 class IEventBus : public IService {
     Q_OBJECT
 public:
     explicit IEventBus(QObject *parent = nullptr) : IService(parent) {}
-    ~IEventBus() override {}// 内联空实现，避免与 moc 生成的代码冲突
+    ~IEventBus() override = default;// Inline default implementation to avoid conflicts with moc-generated code
 
     // IService interface
-    QString serviceId() const override { return "com.robocute.event_bus"; }
+    [[nodiscard]] QString serviceId() const override { return "com.robocute.event_bus"; }
 
     // publish event
     virtual void publish(const Event &event) = 0;
     virtual void publish(EventType type, const QVariant &data = QVariant(), QObject *sender = nullptr) = 0;
 
-    // subscibe event (callback & subscriber)
+    // subscribe event (callback & subscriber)
     virtual void subscribe(EventType type, std::function<void(const Event &)> handler) = 0;
     virtual void subscribe(EventType type, IEventSubscriber *subscriber) = 0;
 
@@ -67,7 +67,7 @@ public:
     virtual void unsubscribe(int subscriptionId) = 0;
     virtual void unsubscribe(EventType type, IEventSubscriber *subscriber) = 0;
 
-    // clear all subscrib
+    // clear all subscriptions
     virtual void clear() = 0;
 
 signals:

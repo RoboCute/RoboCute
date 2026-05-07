@@ -21,9 +21,9 @@ public:
 
 
 private:
-    IProjectService *m_proj_service = nullptr;
-    IConnectionService *m_conn_service = nullptr;
-    bool m_is_remote_mode = false;
+    IProjectService *_proj_service = nullptr;
+    IConnectionService *_conn_service = nullptr;
+    bool _is_remote_mode = false;
 };
 
 }// namespace rbc

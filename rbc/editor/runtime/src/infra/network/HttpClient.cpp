@@ -5,7 +5,7 @@ namespace rbc {
 HttpClient::HttpClient(QObject *parent) : QObject(parent) {}
 HttpClient::~HttpClient() {}
 void HttpClient::setServerUrl(const QString &url) {
-    m_serverUrl = url;
+    _server_url = url;
 }
 
 }// namespace rbc

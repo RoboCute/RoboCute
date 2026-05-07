@@ -20,12 +20,12 @@ void *RenderAppBase::GetDeviceNativeHandle() const {
 }
 
 void RenderAppBase::process_qt_handle(QRhiNativeHandles &qt_rhi_handle) {
-    if (!m_initialized) [[unlikely]] {
+    if (!_initialized) [[unlikely]] {
         LUISA_ERROR("RenderApp not Initialized when processing Qt handle");
         return;
     }
 
-    if (m_graphicsApi == QRhi::D3D12) {
+    if (_graphics_api == QRhi::D3D12) {
         auto &handles = static_cast<QRhiD3D12NativeHandles &>(qt_rhi_handle);
         handles.dev = GetDeviceNativeHandle();
         handles.minimumFeatureLevel = 0;
@@ -38,13 +38,13 @@ void RenderAppBase::process_qt_handle(QRhiNativeHandles &qt_rhi_handle) {
 }
 
 void RenderAppBase::init(const char *program_path, const char *backend_name) {
-    if (m_initialized) [[unlikely]] {
+    if (_initialized) [[unlikely]] {
         LUISA_INFO("Double Initialized RenderAppp");
         return;
     }
 
     if (luisa::string(backend_name) == "dx") {
-        m_graphicsApi = QRhi::D3D12;
+        _graphics_api = QRhi::D3D12;
     } else {
         LUISA_ERROR("Backend unsupported.");
     }
@@ -67,9 +67,9 @@ void RenderAppBase::init(const char *program_path, const char *backend_name) {
     cam->fov = radians(80.f);
     cam_controller.camera = cam;
     last_frame_time = clk.toc();
-    // 调用子类钩子
+    // Call subclass hook
     on_init();
-    m_initialized = true;
+    _initialized = true;
 }
 
 uint64_t RenderAppBase::get_present_texture(uint width, uint height) {
@@ -122,10 +122,6 @@ void RenderAppBase::dispose() {
         }
     });
     ctx.reset();
-}
-
-RenderAppBase::~RenderAppBase() {
-    // dispose() 应由子类调用，但作为安全保障
 }
 
 }// namespace rbc

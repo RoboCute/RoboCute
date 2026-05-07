@@ -4,13 +4,12 @@ namespace rbc {
 
 GraphService::GraphService(QObject *parent) : IGraphService(parent) {
 }
-GraphService::~GraphService() {}
 
 void GraphService::bindConnectionService(IConnectionService *conn_service) {
-    m_conn_service = conn_service;
+    _conn_service = conn_service;
 }
 void GraphService::bindProjectService(IProjectService *proj_service) {
-    m_proj_service = proj_service;
+    _proj_service = proj_service;
 }
 
 QJsonArray GraphService::getNodeDefinitions() const {
@@ -24,7 +23,7 @@ QMap<QString, QJsonArray> GraphService::getNodesByCategory() const {
 }
 
 bool GraphService::isRemoteMode() const {
-    return m_is_remote_mode;
+    return _is_remote_mode;
 }
 
 }// namespace rbc

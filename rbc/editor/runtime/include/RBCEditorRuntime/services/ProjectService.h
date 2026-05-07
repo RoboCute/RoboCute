@@ -60,7 +60,7 @@ public:
 
 public:
     // Convenience getters
-    QString projectName() const { return info_.name; }
+    QString projectName() const { return _info.name; }
 
 private:
     // Files/dirs (placeholder layout, can be refactored later)
@@ -79,17 +79,17 @@ private:
     QString normalizeGraphPathOrSetError(const QString &graphPath);
 
 private:
-    bool open_ = false;
-    QString projectRoot_;
-    QString projectFilePath_;
-    ProjectInfo info_;
-    QString lastError_;
+    bool _open = false;
+    QString _project_root;
+    QString _project_file_path;
+    ProjectInfo _info;
+    QString _last_error;
 
-    QJsonObject userPrefs_;
+    QJsonObject _user_prefs;
 
-    QStringList openedGraphs_;       // project-relative paths
-    QString activeGraph_;            // project-relative path
-    QHash<QString, bool> graphDirty_;// graphPath -> dirty
+    QStringList _opened_graphs;       // project-relative paths
+    QString _active_graph;            // project-relative path
+    QHash<QString, bool> _graph_dirty;// graphPath -> dirty
 };
 
 }// namespace rbc

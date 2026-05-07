@@ -13,72 +13,72 @@ ViewportViewModel::ViewportViewModel(
     ISceneService *sceneService,
     QObject *parent)
     : ViewModelBase(parent)
-    , config_(config)
-    , sceneService_(sceneService) {
+    , _config(config)
+    , _scene_service(sceneService) {
     
-    if (!sceneService_) {
+    if (!_scene_service) {
         qWarning() << "ViewportViewModel: sceneService is null for viewport:" << config.viewportId;
     }
     
-    // 从配置中初始化状态
-    gizmosEnabled_ = config.enableGizmos;
-    gridEnabled_ = config.enableGrid;
+    // Initialize state from config
+    _gizmos_enabled = config.enableGizmos;
+    _grid_enabled = config.enableGrid;
 }
 
 ViewportViewModel::~ViewportViewModel() {
-    sceneService_ = nullptr;
+    _scene_service = nullptr;
 }
 
 void ViewportViewModel::setGizmosEnabled(bool enabled) {
-    if (gizmosEnabled_ != enabled) {
-        gizmosEnabled_ = enabled;
+    if (_gizmos_enabled != enabled) {
+        _gizmos_enabled = enabled;
         emit gizmosEnabledChanged();
-        qDebug() << "ViewportViewModel:" << config_.viewportId << "gizmos enabled:" << enabled;
+        qDebug() << "ViewportViewModel:" << _config.viewportId << "gizmos enabled:" << enabled;
     }
 }
 
 void ViewportViewModel::setGridEnabled(bool enabled) {
-    if (gridEnabled_ != enabled) {
-        gridEnabled_ = enabled;
+    if (_grid_enabled != enabled) {
+        _grid_enabled = enabled;
         emit gridEnabledChanged();
-        qDebug() << "ViewportViewModel:" << config_.viewportId << "grid enabled:" << enabled;
+        qDebug() << "ViewportViewModel:" << _config.viewportId << "grid enabled:" << enabled;
     }
 }
 
 void ViewportViewModel::setCameraMode(const QString &mode) {
-    if (cameraMode_ != mode) {
-        cameraMode_ = mode;
+    if (_camera_mode != mode) {
+        _camera_mode = mode;
         emit cameraModeChanged();
-        qDebug() << "ViewportViewModel:" << config_.viewportId << "camera mode:" << mode;
+        qDebug() << "ViewportViewModel:" << _config.viewportId << "camera mode:" << mode;
     }
 }
 
 void ViewportViewModel::focusOnSelection() {
-    qDebug() << "ViewportViewModel:" << config_.viewportId << "focusOnSelection";
-    // TODO: 实现聚焦到选中对象
-    if (sceneService_) {
-        // 获取当前选中的实体，计算其边界盒，调整相机位置
+    qDebug() << "ViewportViewModel:" << _config.viewportId << "focusOnSelection";
+    // TODO: Implement focus on selected object
+    if (_scene_service) {
+        // Get currently selected entity, compute its bounding box, adjust camera position
     }
 }
 
 void ViewportViewModel::resetCamera() {
-    qDebug() << "ViewportViewModel:" << config_.viewportId << "resetCamera";
-    // TODO: 重置相机到默认位置
+    qDebug() << "ViewportViewModel:" << _config.viewportId << "resetCamera";
+    // TODO: Reset camera to default position
     setCameraMode("Perspective");
 }
 
 void ViewportViewModel::setCameraView(const QString &preset) {
-    qDebug() << "ViewportViewModel:" << config_.viewportId << "setCameraView:" << preset;
+    qDebug() << "ViewportViewModel:" << _config.viewportId << "setCameraView:" << preset;
     
-    // 支持的预设视图：Top, Bottom, Front, Back, Left, Right, Perspective
+    // Supported preset views: Top, Bottom, Front, Back, Left, Right, Perspective
     if (preset == "Top" || preset == "Bottom" || 
         preset == "Front" || preset == "Back" ||
         preset == "Left" || preset == "Right") {
         setCameraMode(preset);
-        // TODO: 实际调整相机参数
+        // TODO: Actually adjust camera parameters
     } else if (preset == "Perspective") {
         setCameraMode("Perspective");
-        // TODO: 切换到透视视图
+        // TODO: Switch to perspective view
     } else {
         qWarning() << "ViewportViewModel: Unknown camera preset:" << preset;
     }

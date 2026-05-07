@@ -8,7 +8,7 @@ namespace rbc {
 
 EntityIdSpinBox::EntityIdSpinBox(QWidget *parent)
     : QSpinBox(parent),
-      m_isDragOver(false) {
+      _is_drag_over(false) {
     setAcceptDrops(true);
     setMinimum(0);
     setMaximum(999999);
@@ -17,7 +17,7 @@ EntityIdSpinBox::EntityIdSpinBox(QWidget *parent)
 void EntityIdSpinBox::dragEnterEvent(QDragEnterEvent *event) {
     if (event->mimeData()->hasFormat(EntityDragDropHelper::MIME_TYPE)) {
         event->acceptProposedAction();
-        m_isDragOver = true;
+        _is_drag_over = true;
         update();// Trigger repaint to show drag over state
     } else {
         event->ignore();
@@ -49,7 +49,7 @@ void EntityIdSpinBox::dropEvent(QDropEvent *event) {
         event->ignore();
     }
 
-    m_isDragOver = false;
+    _is_drag_over = false;
     update();// Trigger repaint to remove drag over state
 }
 
@@ -57,7 +57,7 @@ void EntityIdSpinBox::paintEvent(QPaintEvent *event) {
     QSpinBox::paintEvent(event);
 
     // Draw drag over indicator
-    if (m_isDragOver) {
+    if (_is_drag_over) {
         QPainter painter(this);
         painter.setPen(QPen(QColor(0, 122, 204), 2, Qt::DashLine));// #007acc with dash
         painter.setBrush(QBrush(QColor(0, 122, 204, 30)));         // Semi-transparent blue

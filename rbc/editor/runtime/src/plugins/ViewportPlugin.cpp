@@ -24,15 +24,15 @@ bool ViewportPlugin::load(PluginContext *context) {
         return false;
     }
 
-    context_ = context;
-    sceneService_ = context->getService<ISceneService>();
+    _context = context;
+    _scene_service = context->getService<ISceneService>();
 
-    if (!sceneService_) {
+    if (!_scene_service) {
         qWarning() << "ViewportPlugin::load: SceneService not available";
     }
 
-    // 不在 load 时自动创建默认视口
-    // 调用者需要先设置 rendererFactory，然后手动调用 createDefaultViewports 或 createViewport
+    // Do not auto-create default viewports on load
+    // Caller needs to set rendererFactory first, then manually call createDefaultViewports or createViewport
     qDebug() << "ViewportPlugin loaded successfully";
     return true;
 }
@@ -41,10 +41,10 @@ bool ViewportPlugin::unload() {
     qDebug() << "ViewportPlugin::unload";
 
     destroyAllViewports();
-    registeredContributions_.clear();
+    _registered_contributions.clear();
 
-    sceneService_ = nullptr;
-    context_ = nullptr;
+    _scene_service = nullptr;
+    _context = nullptr;
 
     return true;
 }
@@ -55,40 +55,40 @@ bool ViewportPlugin::reload() {
 }
 
 void ViewportPlugin::createDefaultViewports() {
-    if (!rendererFactory_) {
+    if (!_renderer_factory) {
         qWarning() << "ViewportPlugin::createDefaultViewports: rendererFactory not set";
         return;
     }
 
-    // 创建主视口
+    // Create main viewport
     ViewportConfig mainConfig;
     mainConfig.viewportId = "viewport.main";
     mainConfig.type = ViewportType::Main;
     mainConfig.rendererType = "scene";
-    mainConfig.graphicsApi = defaultGraphicsApi_;
-    mainViewportId_ = createViewport(mainConfig);
+    mainConfig.graphicsApi = _default_graphics_api;
+    _main_viewport_id = createViewport(mainConfig);
 
-    if (!mainViewportId_.isEmpty()) {
-        // 注册到 contributions
+    if (!_main_viewport_id.isEmpty()) {
+        // Register to contributions
         NativeViewContribution mainContrib;
         mainContrib.viewId = mainConfig.viewportId;
         mainContrib.title = "Scene";
         mainContrib.dockArea = "Center";
-        mainContrib.isExternalManaged = true;// 由 Plugin 管理生命周期
+        mainContrib.isExternalManaged = true;// Lifecycle managed by Plugin
 
-        registeredContributions_.append(mainContrib);
+        _registered_contributions.append(mainContrib);
 
-        qDebug() << "ViewportPlugin: Created main viewport:" << mainViewportId_;
+        qDebug() << "ViewportPlugin: Created main viewport:" << _main_viewport_id;
     }
 }
 
 QString ViewportPlugin::createViewport(const ViewportConfig &config) {
-    if (viewports_.contains(config.viewportId)) {
+    if (_viewports.contains(config.viewportId)) {
         qWarning() << "ViewportPlugin::createViewport: Viewport already exists:" << config.viewportId;
         return QString();
     }
 
-    // 创建渲染器
+    // Create renderer
     IRenderer *renderer = createRenderer(config);
     if (!renderer) {
         qWarning() << "ViewportPlugin::createViewport: Failed to create renderer for:" << config.viewportId;
@@ -99,7 +99,7 @@ QString ViewportPlugin::createViewport(const ViewportConfig &config) {
 }
 
 QString ViewportPlugin::createViewportWithRenderer(const ViewportConfig &config, IRenderer *renderer) {
-    if (viewports_.contains(config.viewportId)) {
+    if (_viewports.contains(config.viewportId)) {
         qWarning() << "ViewportPlugin::createViewportWithRenderer: Viewport already exists:" << config.viewportId;
         return QString();
     }
@@ -113,19 +113,19 @@ QString ViewportPlugin::createViewportWithRenderer(const ViewportConfig &config,
     instance->config = config;
     instance->renderer = renderer;
 
-    // 创建 Widget
+    // Create widget
     instance->widget = new ViewportWidget(renderer, config.graphicsApi, nullptr);
 
-    // 创建 ViewModel
-    instance->viewModel = new ViewportViewModel(config, sceneService_, nullptr);
+    // Create viewModel
+    instance->viewModel = new ViewportViewModel(config, _scene_service, nullptr);
 
-    // 连接 Widget 的拖动信号（可以在这里处理实体拖放）
+    // Connect widget drag signals (entity drag-and-drop can be handled here)
     connect(instance->widget.data(), &ViewportWidget::entityDragRequested, this, [viewportId = config.viewportId]() {
         qDebug() << "ViewportPlugin: Entity drag requested from viewport:" << viewportId;
-        // TODO: 实现实体拖放逻辑
+        // TODO: Implement entity drag-and-drop logic
     });
 
-    viewports_.insert(config.viewportId, instance);
+    _viewports.insert(config.viewportId, instance);
 
     emit viewportCreated(config.viewportId);
     qDebug() << "ViewportPlugin: Created viewport:" << config.viewportId;
@@ -134,42 +134,42 @@ QString ViewportPlugin::createViewportWithRenderer(const ViewportConfig &config,
 }
 
 bool ViewportPlugin::destroyViewport(const QString &viewportId) {
-    auto it = viewports_.find(viewportId);
-    if (it == viewports_.end()) {
+    auto it = _viewports.find(viewportId);
+    if (it == _viewports.end()) {
         qWarning() << "ViewportPlugin::destroyViewport: Viewport not found:" << viewportId;
         return false;
     }
 
     ViewportInstance *instance = it.value();
 
-    // 删除 Widget（会触发 RhiWindow 的清理）
-    // 使用 QPointer 检查 widget 是否仍然存在
-    // 如果 Qt 已经删除了 widget（例如通过 parent-child 机制），QPointer 会变成 nullptr
+    // Delete widget (triggers RhiWindow cleanup)
+    // Use QPointer to check if widget still exists
+    // If Qt already deleted widget (e.g., via parent-child mechanism), QPointer becomes nullptr
     if (instance->widget) {
         qDebug() << "ViewportPlugin::destroyViewport: Deleting widget for:" << viewportId;
         delete instance->widget.data();
-        // QPointer 会自动变成 nullptr，无需手动设置
+        // QPointer auto-becomes nullptr, no manual setting needed
     } else {
         qDebug() << "ViewportPlugin::destroyViewport: Widget already deleted for:" << viewportId;
     }
 
-    // 删除实例（析构函数会清理 viewModel）
+    // Delete instance (destructor cleans up viewModel)
     delete instance;
 
-    viewports_.erase(it);
+    _viewports.erase(it);
 
-    // 如果是主视口，清除引用
-    if (viewportId == mainViewportId_) {
-        mainViewportId_.clear();
+    // If main viewport, clear reference
+    if (viewportId == _main_viewport_id) {
+        _main_viewport_id.clear();
     }
 
-    // 从 contributions 中移除
-    registeredContributions_.erase(
-        std::remove_if(registeredContributions_.begin(), registeredContributions_.end(),
+    // Remove from contributions
+    _registered_contributions.erase(
+        std::remove_if(_registered_contributions.begin(), _registered_contributions.end(),
                        [&viewportId](const NativeViewContribution &c) {
                            return c.viewId == viewportId;
                        }),
-        registeredContributions_.end());
+        _registered_contributions.end());
 
     emit viewportDestroyed(viewportId);
     qDebug() << "ViewportPlugin: Destroyed viewport:" << viewportId;
@@ -178,15 +178,15 @@ bool ViewportPlugin::destroyViewport(const QString &viewportId) {
 }
 
 void ViewportPlugin::destroyAllViewports() {
-    QStringList ids = viewports_.keys();
+    QStringList ids = _viewports.keys();
     for (const QString &id : ids) {
         destroyViewport(id);
     }
 }
 
 IRenderer *ViewportPlugin::createRenderer(const ViewportConfig &config) {
-    if (rendererFactory_) {
-        return rendererFactory_(config);
+    if (_renderer_factory) {
+        return _renderer_factory(config);
     }
 
     qWarning() << "ViewportPlugin::createRenderer: No renderer factory set";
@@ -194,18 +194,18 @@ IRenderer *ViewportPlugin::createRenderer(const ViewportConfig &config) {
 }
 
 ViewportInstance *ViewportPlugin::getViewport(const QString &viewportId) {
-    return viewports_.value(viewportId, nullptr);
+    return _viewports.value(viewportId, nullptr);
 }
 
 QStringList ViewportPlugin::allViewportIds() const {
-    return viewports_.keys();
+    return _viewports.keys();
 }
 
 ViewportInstance *ViewportPlugin::mainViewport() const {
-    if (mainViewportId_.isEmpty()) {
+    if (_main_viewport_id.isEmpty()) {
         return nullptr;
     }
-    return viewports_.value(mainViewportId_, nullptr);
+    return _viewports.value(_main_viewport_id, nullptr);
 }
 
 // ============================================================================
@@ -213,30 +213,30 @@ ViewportInstance *ViewportPlugin::mainViewport() const {
 // ============================================================================
 
 QList<NativeViewContribution> ViewportPlugin::native_view_contributions() const {
-    return registeredContributions_;
+    return _registered_contributions;
 }
 
 QWidget *ViewportPlugin::getNativeWidget(const QString &viewId) {
-    if (auto *instance = viewports_.value(viewId, nullptr)) {
-        return instance->widget.data();  // QPointer::data() 返回原始指针
+    if (auto *instance = _viewports.value(viewId, nullptr)) {
+        return instance->widget.data();  // QPointer::data() returns raw pointer
     }
     return nullptr;
 }
 
 QObject *ViewportPlugin::getViewModel(const QString &viewId) {
-    if (auto *instance = viewports_.value(viewId, nullptr)) {
+    if (auto *instance = _viewports.value(viewId, nullptr)) {
         return instance->viewModel;
     }
     return nullptr;
 }
 
 QList<MenuContribution> ViewportPlugin::menu_contributions() const {
-    // TODO: 添加视口相关菜单项
+    // TODO: Add viewport-related menu items
     return {};
 }
 
 QList<ToolbarContribution> ViewportPlugin::toolbar_contributions() const {
-    // TODO: 添加视口相关工具栏项
+    // TODO: Add viewport-related toolbar items
     return {};
 }
 

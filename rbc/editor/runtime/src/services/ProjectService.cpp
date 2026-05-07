@@ -33,43 +33,43 @@ ProjectService::ProjectService(QObject *parent) : IProjectService(parent) {
 }
 
 ProjectService::~ProjectService() {
-    if (open_) {
-        open_ = false;
-        projectRoot_.clear();
-        projectFilePath_.clear();
-        info_ = ProjectInfo{};
-        lastError_.clear();
-        userPrefs_ = QJsonObject{};
-        openedGraphs_.clear();
-        activeGraph_.clear();
-        graphDirty_.clear();
+    if (_open) {
+        _open = false;
+        _project_root.clear();
+        _project_file_path.clear();
+        _info = ProjectInfo{};
+        _last_error.clear();
+        _user_prefs = QJsonObject{};
+        _opened_graphs.clear();
+        _active_graph.clear();
+        _graph_dirty.clear();
     }
 }
 
-bool ProjectService::isOpen() const { return open_; }
+bool ProjectService::isOpen() const { return _open; }
 
 QString ProjectService::projectRoot() const {
-    if (!open_) {
+    if (!_open) {
         return QString();// Return empty string if project is not open
     }
-    return projectRoot_;
+    return _project_root;
 }
 
 QString ProjectService::projectFilePath() const {
-    if (!open_) {
+    if (!_open) {
         return QString();// Return empty string if project is not open
     }
-    return projectFilePath_;
+    return _project_file_path;
 }
 
 ProjectInfo ProjectService::projectInfo() const {
-    if (!open_) {
+    if (!_open) {
         return ProjectInfo{};// Return empty ProjectInfo if project is not open
     }
-    return info_;
+    return _info;
 }
 
-QString ProjectService::lastError() const { return lastError_; }
+QString ProjectService::lastError() const { return _last_error; }
 
 bool ProjectService::openProject(const QString &projectRootOrProjectFile, const ProjectOpenOptions &options) {
     setLastError(QString());
@@ -80,7 +80,7 @@ bool ProjectService::openProject(const QString &projectRootOrProjectFile, const 
     }
 
     // If already open, close first (save session by default).
-    if (open_) {
+    if (_open) {
         closeProject(true);
     }
 
@@ -119,9 +119,9 @@ bool ProjectService::openProject(const QString &projectRootOrProjectFile, const 
     }
 
     // Only set state after successful load
-    projectRoot_ = rootDir;
-    projectFilePath_ = projectFile;
-    open_ = true;
+    _project_root = rootDir;
+    _project_file_path = projectFile;
+    _open = true;
 
     // Ensure editor data dir exists (placeholder)
     // This might fail, but we should continue anyway
@@ -147,7 +147,7 @@ bool ProjectService::openProject(const QString &projectRootOrProjectFile, const 
 }
 
 void ProjectService::closeProject(bool saveSession) {
-    if (!open_) {
+    if (!_open) {
         clearState();
         return;
     }
@@ -169,15 +169,15 @@ void ProjectService::closeProject(bool saveSession) {
 }
 
 bool ProjectService::reloadProject() {
-    if (!open_ || projectFilePath_.isEmpty()) {
+    if (!_open || _project_file_path.isEmpty()) {
         setLastError("reloadProject: no project opened");
         return false;
     }
-    return loadProjectFile(projectFilePath_);
+    return loadProjectFile(_project_file_path);
 }
 
 QString ProjectService::resolvePath(const QString &projectRelativePath) const {
-    if (!open_ || projectRoot_.isEmpty()) {
+    if (!_open || _project_root.isEmpty()) {
         // Return the path as-is if project is not open
         return projectRelativePath;
     }
@@ -188,11 +188,11 @@ QString ProjectService::resolvePath(const QString &projectRelativePath) const {
     if (fi.isAbsolute()) {
         return QDir::cleanPath(fi.absoluteFilePath());
     }
-    return join_clean(projectRoot_, projectRelativePath);
+    return join_clean(_project_root, projectRelativePath);
 }
 
 QString ProjectService::normalizeProjectPath(const QString &path) const {
-    if (!open_ || projectRoot_.isEmpty()) {
+    if (!_open || _project_root.isEmpty()) {
         // Return the path as-is if project is not open
         return path;
     }
@@ -204,7 +204,7 @@ QString ProjectService::normalizeProjectPath(const QString &path) const {
         return QDir::cleanPath(path);
     }
     const auto abs = QDir::cleanPath(fi.absoluteFilePath());
-    const auto root = QDir::cleanPath(projectRoot_);
+    const auto root = QDir::cleanPath(_project_root);
     if (!root.isEmpty() && abs.startsWith(root, Qt::CaseInsensitive)) {
         QDir r(root);
         return QDir::cleanPath(r.relativeFilePath(abs));
@@ -212,16 +212,16 @@ QString ProjectService::normalizeProjectPath(const QString &path) const {
     return abs;
 }
 
-QJsonObject ProjectService::userPreferences() const { return userPrefs_; }
+QJsonObject ProjectService::userPreferences() const { return _user_prefs; }
 
 void ProjectService::setUserPreferences(const QJsonObject &prefs) {
-    userPrefs_ = prefs;
+    _user_prefs = prefs;
     emit userPreferencesChanged();
 }
 
 bool ProjectService::loadUserPreferences() {
     setLastError(QString());
-    if (!open_) {
+    if (!_open) {
         setLastError("loadUserPreferences: no project opened");
         return false;
     }
@@ -235,7 +235,7 @@ bool ProjectService::loadUserPreferences() {
     QJsonObject obj;
     if (!QFileInfo::exists(file)) {
         // no prefs yet: treat as success
-        userPrefs_ = QJsonObject{};
+        _user_prefs = QJsonObject{};
         emit userPreferencesChanged();
         return true;
     }
@@ -244,14 +244,14 @@ bool ProjectService::loadUserPreferences() {
         return false;
     }
 
-    userPrefs_ = obj;
+    _user_prefs = obj;
     emit userPreferencesChanged();
     return true;
 }
 
 bool ProjectService::saveUserPreferences() {
     setLastError(QString());
-    if (!open_) {
+    if (!_open) {
         setLastError("saveUserPreferences: no project opened");
         return false;
     }
@@ -270,26 +270,26 @@ bool ProjectService::saveUserPreferences() {
         return false;
     }
 
-    return writeJsonFile(file, userPrefs_);
+    return writeJsonFile(file, _user_prefs);
 }
 
-QStringList ProjectService::openedNodeGraphs() const { return openedGraphs_; }
+QStringList ProjectService::openedNodeGraphs() const { return _opened_graphs; }
 
-QString ProjectService::activeNodeGraph() const { return activeGraph_; }
+QString ProjectService::activeNodeGraph() const { return _active_graph; }
 
 bool ProjectService::isNodeGraphOpen(const QString &graphPath) const {
     const auto p = QDir::cleanPath(normalizeProjectPath(graphPath));
-    return openedGraphs_.contains(p);
+    return _opened_graphs.contains(p);
 }
 
 bool ProjectService::isNodeGraphDirty(const QString &graphPath) const {
     const auto p = QDir::cleanPath(normalizeProjectPath(graphPath));
-    return graphDirty_.value(p, false);
+    return _graph_dirty.value(p, false);
 }
 
 bool ProjectService::openNodeGraph(const QString &graphPath) {
     setLastError(QString());
-    if (!open_) {
+    if (!_open) {
         setLastError("openNodeGraph: no project opened");
         return false;
     }
@@ -299,9 +299,9 @@ bool ProjectService::openNodeGraph(const QString &graphPath) {
         return false;
     }
 
-    if (!openedGraphs_.contains(p)) {
-        openedGraphs_.push_back(p);
-        graphDirty_.insert(p, false);
+    if (!_opened_graphs.contains(p)) {
+        _opened_graphs.push_back(p);
+        _graph_dirty.insert(p, false);
         emit openedNodeGraphsChanged();
         emit nodeGraphOpened(p);
     }
@@ -312,27 +312,27 @@ bool ProjectService::openNodeGraph(const QString &graphPath) {
 
 bool ProjectService::closeNodeGraph(const QString &graphPath, bool allowDirty) {
     setLastError(QString());
-    if (!open_) {
+    if (!_open) {
         setLastError("closeNodeGraph: no project opened");
         return false;
     }
 
     const auto p = QDir::cleanPath(normalizeProjectPath(graphPath));
-    if (!openedGraphs_.contains(p)) {
+    if (!_opened_graphs.contains(p)) {
         return true;// nothing to close
     }
-    if (!allowDirty && graphDirty_.value(p, false)) {
+    if (!allowDirty && _graph_dirty.value(p, false)) {
         setLastError(QString("closeNodeGraph: graph is dirty: %1").arg(p));
         return false;
     }
 
-    openedGraphs_.removeAll(p);
-    graphDirty_.remove(p);
+    _opened_graphs.removeAll(p);
+    _graph_dirty.remove(p);
 
-    if (activeGraph_ == p) {
-        activeGraph_.clear();
-        if (!openedGraphs_.isEmpty()) {
-            activeGraph_ = openedGraphs_.last();
+    if (_active_graph == p) {
+        _active_graph.clear();
+        if (!_opened_graphs.isEmpty()) {
+            _active_graph = _opened_graphs.last();
         }
         emit activeNodeGraphChanged();
     }
@@ -343,57 +343,57 @@ bool ProjectService::closeNodeGraph(const QString &graphPath, bool allowDirty) {
 }
 
 void ProjectService::closeAllNodeGraphs(bool allowDirty) {
-    if (!open_) {
+    if (!_open) {
         return;
     }
     // Close in reverse order to preserve a reasonable "recent" behavior.
-    const auto graphs = openedGraphs_;
+    const auto graphs = _opened_graphs;
     for (int i = graphs.size() - 1; i >= 0; --i) {
         closeNodeGraph(graphs[i], allowDirty);
     }
 }
 
 void ProjectService::setActiveNodeGraph(const QString &graphPath) {
-    if (!open_) {
+    if (!_open) {
         return;
     }
     const auto p = QDir::cleanPath(normalizeProjectPath(graphPath));
     if (p.isEmpty()) {
         return;
     }
-    if (!openedGraphs_.contains(p)) {
+    if (!_opened_graphs.contains(p)) {
         // If asked to activate a non-open graph, open it.
         openNodeGraph(p);
         return;
     }
-    if (activeGraph_ != p) {
-        activeGraph_ = p;
+    if (_active_graph != p) {
+        _active_graph = p;
         emit activeNodeGraphChanged();
     }
 }
 
 void ProjectService::markNodeGraphDirty(const QString &graphPath, bool dirty) {
-    if (!open_) {
+    if (!_open) {
         return;
     }
     const auto p = QDir::cleanPath(normalizeProjectPath(graphPath));
-    if (!openedGraphs_.contains(p)) {
+    if (!_opened_graphs.contains(p)) {
         return;
     }
-    if (graphDirty_.value(p, false) != dirty) {
-        graphDirty_.insert(p, dirty);
+    if (_graph_dirty.value(p, false) != dirty) {
+        _graph_dirty.insert(p, dirty);
         emit nodeGraphDirtyChanged(p, dirty);
     }
 }
 
 QStringList ProjectService::discoverNodeGraphs(const QString &subdir) const {
-    if (!open_) {
+    if (!_open) {
         return {};
     }
 
     QString rel = subdir;
     if (rel.isEmpty()) {
-        rel = join_clean(info_.paths.assets, "graphs");
+        rel = join_clean(_info.paths.assets, "graphs");
     }
     const auto absDir = resolvePath(rel);
     if (!QDir(absDir).exists()) {
@@ -413,7 +413,7 @@ QStringList ProjectService::discoverNodeGraphs(const QString &subdir) const {
 
 bool ProjectService::loadEditorSession() {
     setLastError(QString());
-    if (!open_) {
+    if (!_open) {
         setLastError("loadEditorSession: no project opened");
         return false;
     }
@@ -434,9 +434,9 @@ bool ProjectService::loadEditorSession() {
     }
 
     // Reset graph state before applying session
-    openedGraphs_.clear();
-    graphDirty_.clear();
-    activeGraph_.clear();
+    _opened_graphs.clear();
+    _graph_dirty.clear();
+    _active_graph.clear();
 
     const auto graphsVal = obj.value("opened_graphs");
     if (graphsVal.isArray()) {
@@ -448,9 +448,9 @@ bool ProjectService::loadEditorSession() {
             if (p.isEmpty()) {
                 continue;
             }
-            if (!openedGraphs_.contains(p)) {
-                openedGraphs_.push_back(p);
-                graphDirty_.insert(p, false);
+            if (!_opened_graphs.contains(p)) {
+                _opened_graphs.push_back(p);
+                _graph_dirty.insert(p, false);
             }
         }
     }
@@ -458,12 +458,12 @@ bool ProjectService::loadEditorSession() {
     const auto activeVal = obj.value("active_graph");
     if (activeVal.isString()) {
         const auto p = QDir::cleanPath(activeVal.toString());
-        if (!p.isEmpty() && openedGraphs_.contains(p)) {
-            activeGraph_ = p;
+        if (!p.isEmpty() && _opened_graphs.contains(p)) {
+            _active_graph = p;
         }
     }
-    if (activeGraph_.isEmpty() && !openedGraphs_.isEmpty()) {
-        activeGraph_ = openedGraphs_.last();
+    if (_active_graph.isEmpty() && !_opened_graphs.isEmpty()) {
+        _active_graph = _opened_graphs.last();
     }
 
     emit openedNodeGraphsChanged();
@@ -473,7 +473,7 @@ bool ProjectService::loadEditorSession() {
 
 bool ProjectService::saveEditorSession() {
     setLastError(QString());
-    if (!open_) {
+    if (!_open) {
         setLastError("saveEditorSession: no project opened");
         return false;
     }
@@ -494,23 +494,23 @@ bool ProjectService::saveEditorSession() {
 
     QJsonObject obj;
     QJsonArray graphsArr;
-    for (const auto &g : openedGraphs_) {
+    for (const auto &g : _opened_graphs) {
         graphsArr.push_back(g);
     }
     obj.insert("opened_graphs", graphsArr);
-    obj.insert("active_graph", activeGraph_);
+    obj.insert("active_graph", _active_graph);
     obj.insert("saved_at", QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
 
     return writeJsonFile(sessionFilePath(), obj);
 }
 
 QString ProjectService::editorDataDirPath() const {
-    if (!open_ || projectRoot_.isEmpty()) {
+    if (!_open || _project_root.isEmpty()) {
         return QString();// Return empty string if project is not open
     }
     // Place editor-only data under intermediate dir; can be changed later.
-    const auto intermediate = info_.paths.intermediate.isEmpty() ? ".rbc" : info_.paths.intermediate;
-    return join_clean(projectRoot_, join_clean(intermediate, "editor"));
+    const auto intermediate = _info.paths.intermediate.isEmpty() ? ".rbc" : _info.paths.intermediate;
+    return join_clean(_project_root, join_clean(intermediate, "editor"));
 }
 
 QString ProjectService::userPrefsFilePath() const {
@@ -550,7 +550,7 @@ bool ProjectService::writeJsonFile(const QString &filePath, const QJsonObject &o
 }
 
 void ProjectService::setLastError(const QString &msg) {
-    lastError_ = msg;
+    _last_error = msg;
     if (!msg.isEmpty()) {
         qWarning() << "[ProjectService]" << msg;
     }
@@ -620,22 +620,22 @@ bool ProjectService::loadProjectFile(const QString &projectFilePath) {
         info.config.extra = c;
     }
 
-    // Only update info_ if everything succeeded
-    info_ = info;
+    // Only update _info if everything succeeded
+    _info = info;
     // Don't emit projectInfoChanged here - it will be emitted by openProject after state is set
     return true;
 }
 
 void ProjectService::clearState() {
-    open_ = false;
-    projectRoot_.clear();
-    projectFilePath_.clear();
-    info_ = ProjectInfo{};
-    lastError_.clear();
-    userPrefs_ = QJsonObject{};
-    openedGraphs_.clear();
-    activeGraph_.clear();
-    graphDirty_.clear();
+    _open = false;
+    _project_root.clear();
+    _project_file_path.clear();
+    _info = ProjectInfo{};
+    _last_error.clear();
+    _user_prefs = QJsonObject{};
+    _opened_graphs.clear();
+    _active_graph.clear();
+    _graph_dirty.clear();
 }
 
 QString ProjectService::normalizeGraphPathOrSetError(const QString &graphPath) {

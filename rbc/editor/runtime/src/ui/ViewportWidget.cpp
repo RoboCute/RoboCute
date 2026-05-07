@@ -13,45 +13,45 @@ namespace rbc {
 // ============================================================================
 
 ViewportContainerWidget::ViewportContainerWidget(RhiWindow *rhiWindow, QWidget *parent)
-    : QWidget(parent), m_rhiWindow(rhiWindow) {
-    // 使用 createWindowContainer 创建实际的容器
-    m_innerContainer = QWidget::createWindowContainer(rhiWindow, this);
-    m_innerContainer->setFocusPolicy(Qt::NoFocus);
-    m_innerContainer->setMinimumSize(400, 300);
-    m_innerContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    : QWidget(parent), _rhi_window(rhiWindow) {
+    // Use createWindowContainer to create actual container
+    _inner_container = QWidget::createWindowContainer(rhiWindow, this);
+    _inner_container->setFocusPolicy(Qt::NoFocus);
+    _inner_container->setMinimumSize(400, 300);
+    _inner_container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // 设置内部容器对鼠标事件透明，这样事件会传递到父widget
-    m_innerContainer->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    m_innerContainer->setMouseTracking(true);
+    // Set inner container transparent to mouse events so they pass to parent widget
+    _inner_container->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    _inner_container->setMouseTracking(true);
 
-    // 安装事件过滤器
-    m_innerContainer->installEventFilter(this);
+    // Install event filter
+    _inner_container->installEventFilter(this);
 
-    // 设置布局
+    // Set layout
     auto layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
-    layout->addWidget(m_innerContainer);
+    layout->addWidget(_inner_container);
     setLayout(layout);
 
-    // 启用鼠标跟踪
+    // Enable mouse tracking
     setMouseTracking(true);
     setFocusPolicy(Qt::NoFocus);
     setAttribute(Qt::WA_MouseTracking, true);
 }
 
 void ViewportContainerWidget::mousePressEvent(QMouseEvent *event) {
-    // 处理拖动起始位置
+    // Handle drag start position
     if (event->button() == Qt::LeftButton) {
-        // 记录拖动起始位置（支持 Ctrl 键配合拖动）
+        // Record drag start position (supports Ctrl+drag)
         if (event->modifiers() & Qt::ControlModifier) {
-            m_dragStartPos = event->pos();
+            _drag_start_pos = event->pos();
         }
     }
 
-    // 转发事件到 RhiWindow
-    if (m_rhiWindow) {
-        QCoreApplication::sendEvent(m_rhiWindow, event);
+    // Forward events to RhiWindow
+    if (_rhi_window) {
+        QCoreApplication::sendEvent(_rhi_window, event);
     }
 
     QWidget::mousePressEvent(event);
@@ -59,31 +59,31 @@ void ViewportContainerWidget::mousePressEvent(QMouseEvent *event) {
 
 void ViewportContainerWidget::mouseReleaseEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
-        m_dragStartPos = QPoint();
+        _drag_start_pos = QPoint();
     }
 
-    if (m_rhiWindow) {
-        QCoreApplication::sendEvent(m_rhiWindow, event);
+    if (_rhi_window) {
+        QCoreApplication::sendEvent(_rhi_window, event);
     }
 
     QWidget::mouseReleaseEvent(event);
 }
 
 void ViewportContainerWidget::mouseMoveEvent(QMouseEvent *event) {
-    // 处理拖动检测
-    if ((event->buttons() & Qt::LeftButton) && !m_dragStartPos.isNull()) {
-        QPoint delta = event->pos() - m_dragStartPos;
-        // 移动超过 5 像素开始拖动
+    // Handle drag detection
+    if ((event->buttons() & Qt::LeftButton) && !_drag_start_pos.isNull()) {
+        QPoint delta = event->pos() - _drag_start_pos;
+        // Start dragging after moving more than 5 pixels
         if (delta.manhattanLength() > 5) {
             emit dragRequested();
-            m_dragStartPos = QPoint();// 重置防止多次触发
+            _drag_start_pos = QPoint();// Reset to prevent multiple triggers
             return;
         }
     }
 
-    // 转发事件到 RhiWindow
-    if (m_rhiWindow) {
-        QCoreApplication::sendEvent(m_rhiWindow, event);
+    // Forward events to RhiWindow
+    if (_rhi_window) {
+        QCoreApplication::sendEvent(_rhi_window, event);
     }
 
     QWidget::mouseMoveEvent(event);
@@ -100,7 +100,7 @@ bool ViewportContainerWidget::eventFilter(QObject *obj, QEvent *event) {
 ViewportWidget::ViewportWidget(IRenderer *renderer,
                                QRhi::Implementation graphicsApi,
                                QWidget *parent)
-    : QWidget(parent), m_renderer(renderer), m_graphicsApi(graphicsApi) {
+    : QWidget(parent), _renderer(renderer), _graphics_api(graphicsApi) {
     setupUi();
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
@@ -108,43 +108,43 @@ ViewportWidget::ViewportWidget(IRenderer *renderer,
 
 ViewportWidget::~ViewportWidget() {
     // Release SwapChain first while window is valid
-    if (m_rhiWindow && m_rhiWindow->handle()) {
-        m_rhiWindow->releaseSwapChain();
+    if (_rhi_window && _rhi_window->handle()) {
+        _rhi_window->releaseSwapChain();
     }
-    if (m_container) {
-        delete m_container;
-        m_container = nullptr;
+    if (_container) {
+        delete _container;
+        _container = nullptr;
     }
-    m_rhiWindow = nullptr;
+    _rhi_window = nullptr;
 }
 
 void ViewportWidget::setupUi() {
 
-    m_rhiWindow = new RhiWindow(m_graphicsApi);
-    m_rhiWindow->renderer = m_renderer;
-    // 安装事件过滤器到 RhiWindow
-    m_rhiWindow->installEventFilter(this);
+    _rhi_window = new RhiWindow(_graphics_api);
+    _rhi_window->renderer = _renderer;
+    // Install event filter on RhiWindow
+    _rhi_window->installEventFilter(this);
 
-    // 使用自定义容器类来处理鼠标事件和拖动
-    m_container = new ViewportContainerWidget(m_rhiWindow, this);
-    m_container->setMinimumSize(400, 300);
-    m_container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    // Use custom container class to handle mouse events and dragging
+    _container = new ViewportContainerWidget(_rhi_window, this);
+    _container->setMinimumSize(400, 300);
+    _container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // 连接拖动请求信号
-    connect(m_container, &ViewportContainerWidget::dragRequested,
+    // Connect drag request signal
+    connect(_container, &ViewportContainerWidget::dragRequested,
             this, &ViewportWidget::onDragRequested);
 
     auto layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
-    layout->addWidget(m_container);
+    layout->addWidget(_container);
 
     setLayout(layout);
 }
 
 QString ViewportWidget::graphicsApiName() const {
-    if (m_rhiWindow) {
-        return m_rhiWindow->graphicsApiName();
+    if (_rhi_window) {
+        return _rhi_window->graphicsApiName();
     }
     return QString();
 }
@@ -154,49 +154,49 @@ void ViewportWidget::resizeEvent(QResizeEvent *event) {
 }
 
 void ViewportWidget::keyPressEvent(QKeyEvent *event) {
-    if (m_rhiWindow) {
-        QCoreApplication::sendEvent(m_rhiWindow, event);
+    if (_rhi_window) {
+        QCoreApplication::sendEvent(_rhi_window, event);
     }
     QWidget::keyPressEvent(event);
 }
 
 void ViewportWidget::keyReleaseEvent(QKeyEvent *event) {
-    if (m_rhiWindow) {
-        QCoreApplication::sendEvent(m_rhiWindow, event);
+    if (_rhi_window) {
+        QCoreApplication::sendEvent(_rhi_window, event);
     }
     QWidget::keyReleaseEvent(event);
 }
 
 void ViewportWidget::wheelEvent(QWheelEvent *event) {
-    if (m_rhiWindow) {
-        QCoreApplication::sendEvent(m_rhiWindow, event);
+    if (_rhi_window) {
+        QCoreApplication::sendEvent(_rhi_window, event);
     }
     QWidget::wheelEvent(event);
 }
 
 bool ViewportWidget::eventFilter(QObject *obj, QEvent *event) {
-    // 拦截 RhiWindow 的鼠标事件，处理拖动逻辑
-    if (obj == m_rhiWindow && m_container) {
+    // Intercept RhiWindow mouse events, handle drag logic
+    if (obj == _rhi_window && _container) {
         if (event->type() == QEvent::MouseButtonPress) {
             auto *mouseEvent = static_cast<QMouseEvent *>(event);
             if (mouseEvent->button() == Qt::LeftButton &&
                 (mouseEvent->modifiers() & Qt::ControlModifier)) {
-                m_container->setDragStartPos(mouseEvent->pos());
+                _container->setDragStartPos(mouseEvent->pos());
             }
         } else if (event->type() == QEvent::MouseMove) {
             auto *mouseEvent = static_cast<QMouseEvent *>(event);
             if ((mouseEvent->buttons() & Qt::LeftButton) &&
-                !m_container->dragStartPos().isNull()) {
-                QPoint delta = mouseEvent->pos() - m_container->dragStartPos();
+                !_container->dragStartPos().isNull()) {
+                QPoint delta = mouseEvent->pos() - _container->dragStartPos();
                 if (delta.manhattanLength() > 5) {
                     onDragRequested();
-                    m_container->resetDragStartPos();
+                    _container->resetDragStartPos();
                 }
             }
         } else if (event->type() == QEvent::MouseButtonRelease) {
             auto *mouseEvent = static_cast<QMouseEvent *>(event);
             if (mouseEvent->button() == Qt::LeftButton) {
-                m_container->resetDragStartPos();
+                _container->resetDragStartPos();
             }
         }
     }

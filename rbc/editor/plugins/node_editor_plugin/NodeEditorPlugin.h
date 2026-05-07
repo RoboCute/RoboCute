@@ -8,7 +8,7 @@
 namespace rbc {
 
 // ============================================================================
-// NodeEditorConfig - 节点编辑器配置
+// NodeEditorConfig - Node editor configuration
 // ============================================================================
 
 struct NodeEditorConfig {
@@ -18,13 +18,13 @@ struct NodeEditorConfig {
 };
 
 // ============================================================================
-// NodeEditorViewModel - 节点编辑器视图模型
+// NodeEditorViewModel - Node editor view model
 // ============================================================================
 
 /**
- * @brief NodeEditorViewModel - 节点编辑器状态视图模型
+ * @brief NodeEditorViewModel - Node editor state view model
  * 
- * 管理节点编辑器的状态：
+ * Manages node editor state:
  * - Server connection state
  * - Graph execution state
  * - Node types / categories
@@ -45,12 +45,12 @@ public:
     ~NodeEditorViewModel() override;
 
     // Properties
-    QString editorId() const { return config_.editorId; }
-    QString serverUrl() const { return serverUrl_; }
+    QString editorId() const { return _config.editorId; }
+    QString serverUrl() const { return _server_url; }
     void setServerUrl(const QString &url);
-    bool connected() const { return connected_; }
-    bool executing() const { return executing_; }
-    QString statusText() const { return statusText_; }
+    bool connected() const { return _connected; }
+    bool executing() const { return _executing; }
+    QString statusText() const { return _status_text; }
 
     // QML invokable methods
     Q_INVOKABLE void connectToServer();
@@ -72,50 +72,50 @@ public slots:
     void onExecutionStateChanged(bool executing);
 
 private:
-    NodeEditorConfig config_;
-    NodeEditor *editor_ = nullptr;
-    QString serverUrl_;
-    bool connected_ = false;
-    bool executing_ = false;
-    QString statusText_ = "Disconnected";
+    NodeEditorConfig _config;
+    NodeEditor *_editor = nullptr;
+    QString _server_url;
+    bool _connected = false;
+    bool _executing = false;
+    QString _status_text = "Disconnected";
 };
 
 // ============================================================================
-// NodeEditorInstance - 节点编辑器实例
+// NodeEditorInstance - Node editor instance
 // ============================================================================
 
 /**
- * @brief NodeEditorInstance - 将 Widget 和 ViewModel 组合在一起
+ * @brief NodeEditorInstance - Combines Widget and ViewModel
  */
 struct NodeEditorInstance {
     NodeEditorConfig config;
-    QPointer<NodeEditor> widget;// 使用 QPointer 追踪，自动检测删除
+    QPointer<NodeEditor> widget;// Tracked with QPointer, auto-detects deletion
     NodeEditorViewModel *viewModel = nullptr;
 
     ~NodeEditorInstance() {
         delete viewModel;
         viewModel = nullptr;
-        // widget 使用 QPointer 追踪，不在这里删除
-        // 由 destroyNodeEditor 显式管理或由 Qt parent-child 机制管理
+        // widget uses QPointer, not deleted here
+        // Explicitly managed by destroyNodeEditor or Qt parent-child mechanism
     }
 };
 
 // ============================================================================
-// NodeEditorPlugin - 节点编辑器管理插件
+// NodeEditorPlugin - Node editor management plugin
 // ============================================================================
 
 /**
- * @brief NodeEditorPlugin - 节点编辑器管理插件
+ * @brief NodeEditorPlugin - Node editor management plugin
  * 
- * 职责：
- * 1. 管理 NodeEditor 的生命周期
- * 2. 提供节点编辑器创建/销毁 API
- * 3. 通过 NativeViewContribution 向 WindowManager 注册节点编辑器
- * 4. 协调 NodeEditorViewModel 与后端服务的交互
+ * Responsibilities:
+ * 1. Manage NodeEditor lifecycle
+ * 2. Provide node editor create/destroy API
+ * 3. Register node editors with WindowManager via NativeViewContribution
+ * 4. Coordinate NodeEditorViewModel and backend service interaction
  * 
- * 布局配置：
- * - scene_editing: 放在 Bottom dock
- * - aigc: 放在 Center
+ * Layout config:
+ * - scene_editing: placed in Bottom dock
+ * - aigc: placed in Center
  */
 class RBC_EDITOR_PLUGIN_API NodeEditorPlugin : public IEditorPlugin {
     Q_OBJECT
@@ -151,33 +151,33 @@ public:
     // === Node Editor Management API ===
 
     /**
-     * @brief 创建新的节点编辑器
-     * @param config 编辑器配置
-     * @return 编辑器 ID，失败返回空字符串
+     * @brief Create a new node editor
+     * @param config Editor configuration
+     * @return Editor ID, empty string on failure
      */
     QString createNodeEditor(const NodeEditorConfig &config);
 
     /**
-     * @brief 销毁节点编辑器
-     * @param editorId 编辑器 ID
-     * @return 是否成功
+     * @brief Destroy a node editor
+     * @param editorId Editor ID
+     * @return Whether successful
      */
     bool destroyNodeEditor(const QString &editorId);
 
     /**
-     * @brief 获取节点编辑器实例
-     * @param editorId 编辑器 ID
-     * @return 编辑器实例，未找到返回 nullptr
+     * @brief Get node editor instance
+     * @param editorId Editor ID
+     * @return Editor instance, nullptr if not found
      */
     NodeEditorInstance *getNodeEditor(const QString &editorId);
 
     /**
-     * @brief 获取所有节点编辑器 ID
+     * @brief Get all node editor IDs
      */
     QStringList allEditorIds() const;
 
     /**
-     * @brief 获取主节点编辑器实例
+     * @brief Get main node editor instance
      */
     NodeEditorInstance *mainNodeEditor() const;
 
@@ -190,16 +190,16 @@ private:
     void destroyAllNodeEditors();
     void buildMenuContributions();
 
-    PluginContext *context_ = nullptr;
-    // 节点编辑器实例管理
-    QHash<QString, NodeEditorInstance *> editors_;
-    QString mainEditorId_;
+    PluginContext *_context = nullptr;
+    // Node editor instance management
+    QHash<QString, NodeEditorInstance *> _editors;
+    QString _main_editor_id;
 
-    QList<NativeViewContribution> registeredContributions_;
-    QList<MenuContribution> menuContributions_;
+    QList<NativeViewContribution> _registered_contributions;
+    QList<MenuContribution> _menu_contributions;
 };
 
-// 导出工厂函数
+// Export factory function
 class IPluginFactory;
 LUISA_EXPORT_API IPluginFactory *createPluginFactory();
 

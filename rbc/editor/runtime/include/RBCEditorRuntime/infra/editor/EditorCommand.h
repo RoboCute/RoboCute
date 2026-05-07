@@ -25,7 +25,7 @@ public:
     EditorCommandBus &operator=(const EditorCommandBus &) = delete;
 
 public:
-    static EditorCommandBus &instance();
+    [[nodiscard]] static EditorCommandBus &instance();
     void execute(EditorCommand *command);
     void undo();
     void redo();
@@ -35,7 +35,7 @@ public:
     [[nodiscard]] QString redoText() const;
     void clear();
     void setUndoLimit(int limit);
-    QUndoStack *undoStack() { return &undoStack_; }
+    [[nodiscard]] QUndoStack *undoStack() { return &_undo_stack; }
 
 signals:
     void commandHistoryChanged();
@@ -48,7 +48,7 @@ private:
     explicit EditorCommandBus(QObject *parent = nullptr);
     ~EditorCommandBus() override = default;
 
-    QUndoStack undoStack_;
+    QUndoStack _undo_stack;
 
 private slots:
     void onCommandExecuted();

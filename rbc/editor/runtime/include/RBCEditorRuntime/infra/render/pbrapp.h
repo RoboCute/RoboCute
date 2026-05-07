@@ -5,17 +5,16 @@
 namespace rbc {
 
 /**
- * PBRApp - 真实感渲染应用
+ * PBRApp - Photorealistic rendering application
  * 
- * 用于预览真实感渲染效果：
- * - 路径追踪渲染
- * - PBR材质渲染
- * - 光照效果预览
+ * Used for previewing photorealistic rendering effects:
+ * - Path tracing rendering
+ * - PBR material rendering
+ * - Lighting effect preview
  */
 struct PBRApp : public RenderAppBase {
     // vstd::optional<rbc::SimpleScene> simple_scene;
     vstd::optional<float3> cube_move, light_move;
-    RenderPlugin::PipeCtxStub *pipe_ctx{};
 
 public:
     [[nodiscard]] RenderMode getRenderMode() const override { return RenderMode::PBR; }
@@ -26,7 +25,7 @@ public:
 
 protected:
     /**
-     * PBRApp 特有的初始化
+     * PBRApp-specific initialization
      */
     void on_init() override;
 };

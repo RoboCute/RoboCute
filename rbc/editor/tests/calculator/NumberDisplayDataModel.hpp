@@ -45,7 +45,7 @@ public:
 
     QWidget *embeddedWidget() override;
 
-    double number() const;
+    [[nodiscard]] double number() const;
 
 private:
     std::shared_ptr<DecimalData> _numberData;

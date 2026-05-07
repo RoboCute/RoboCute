@@ -15,10 +15,10 @@ struct ProjectCache {
 // user configs
 struct EditorContext {
     EditorContext(luisa::string local_launch_path);
-    ProjectCache cache_;
-    LocalConfig local_config_;
-    UserConfig user_config_;
-    vstd::optional<EditorProject> project_;// optional opening project
+    ProjectCache _cache;
+    LocalConfig _local_config;
+    UserConfig _user_config;
+    vstd::optional<EditorProject> _project;// optional opening project
 };
 
 }// namespace rbc

@@ -14,16 +14,16 @@ QWidget *NumberInputCreator::createWidget(const QJsonObject &inputDef,
                                          QWidget *parent) {
     auto spinBox = new QDoubleSpinBox(parent);
     
-    // 设置范围
+    // Set range
     spinBox->setRange(style.minValue, style.maxValue);
     spinBox->setSingleStep(style.step);
     spinBox->setDecimals(style.decimals);
     
-    // 设置默认值
+    // Set default value
     QVariant defaultValue = inputDef["default"].toVariant();
     spinBox->setValue(defaultValue.toDouble());
     
-    // 设置尺寸
+    // Set size
     if (style.minimumWidth >= 0) {
         spinBox->setMinimumWidth(style.minimumWidth);
     } else {
@@ -39,7 +39,7 @@ QWidget *NumberInputCreator::createWidget(const QJsonObject &inputDef,
         spinBox->setMaximumHeight(style.maximumHeight);
     }
     
-    // 应用样式表
+    // Apply stylesheet
     if (!style.styleSheet.isEmpty()) {
         spinBox->setStyleSheet(style.styleSheet);
     }
@@ -71,15 +71,15 @@ QWidget *IntegerInputCreator::createWidget(const QJsonObject &inputDef,
                                           QWidget *parent) {
     auto spinBox = new QSpinBox(parent);
     
-    // 设置范围
+    // Set range
     spinBox->setRange(static_cast<int>(style.minValue), static_cast<int>(style.maxValue));
     spinBox->setSingleStep(static_cast<int>(style.step));
     
-    // 设置默认值
+    // Set default value
     QVariant defaultValue = inputDef["default"].toVariant();
     spinBox->setValue(defaultValue.toInt());
     
-    // 设置尺寸
+    // Set size
     if (style.minimumWidth >= 0) {
         spinBox->setMinimumWidth(style.minimumWidth);
     } else {
@@ -95,7 +95,7 @@ QWidget *IntegerInputCreator::createWidget(const QJsonObject &inputDef,
         spinBox->setMaximumHeight(style.maximumHeight);
     }
     
-    // 应用样式表
+    // Apply stylesheet
     if (!style.styleSheet.isEmpty()) {
         spinBox->setStyleSheet(style.styleSheet);
     }
@@ -117,7 +117,7 @@ void IntegerInputCreator::setValue(QWidget *widget, const QVariant &value) const
 }
 
 bool IntegerInputCreator::supports(const QString &type, const QJsonObject &inputDef) const {
-    // 排除 entity_id，它应该由 EntityIdInputCreator 处理
+    // Exclude entity_id, it should be handled by EntityIdInputCreator
     QString name = inputDef["name"].toString();
     if (name == "entity_id") {
         return false;
@@ -131,11 +131,11 @@ QWidget *EntityIdInputCreator::createWidget(const QJsonObject &inputDef,
                                            QWidget *parent) {
     auto spinBox = new EntityIdSpinBox(parent);
     
-    // 设置默认值
+    // Set default value
     QVariant defaultValue = inputDef["default"].toVariant();
     spinBox->setValue(defaultValue.toInt());
     
-    // 设置尺寸
+    // Set size
     if (style.minimumWidth >= 0) {
         spinBox->setMinimumWidth(style.minimumWidth);
     } else {
@@ -151,7 +151,7 @@ QWidget *EntityIdInputCreator::createWidget(const QJsonObject &inputDef,
         spinBox->setMaximumHeight(style.maximumHeight);
     }
     
-    // 应用样式表
+    // Apply stylesheet
     if (!style.styleSheet.isEmpty()) {
         spinBox->setStyleSheet(style.styleSheet);
     }
@@ -163,7 +163,7 @@ QVariant EntityIdInputCreator::getValue(QWidget *widget) const {
     if (auto spinBox = qobject_cast<EntityIdSpinBox *>(widget)) {
         return spinBox->value();
     }
-    // 也支持普通的 QSpinBox（向后兼容）
+    // Also supports plain QSpinBox (backward compatibility)
     if (auto spinBox = qobject_cast<QSpinBox *>(widget)) {
         return spinBox->value();
     }
@@ -189,16 +189,16 @@ QWidget *StringInputCreator::createWidget(const QJsonObject &inputDef,
                                         QWidget *parent) {
     auto lineEdit = new QLineEdit(parent);
     
-    // 设置默认值
+    // Set default value
     QVariant defaultValue = inputDef["default"].toVariant();
     lineEdit->setText(defaultValue.toString());
     
-    // 设置占位符
+    // Set placeholder
     if (!style.placeholderText.isEmpty()) {
         lineEdit->setPlaceholderText(style.placeholderText);
     }
     
-    // 设置尺寸
+    // Set size
     if (style.minimumWidth >= 0) {
         lineEdit->setMinimumWidth(style.minimumWidth);
     } else {
@@ -214,7 +214,7 @@ QWidget *StringInputCreator::createWidget(const QJsonObject &inputDef,
         lineEdit->setMaximumHeight(style.maximumHeight);
     }
     
-    // 应用样式表
+    // Apply stylesheet
     if (!style.styleSheet.isEmpty()) {
         lineEdit->setStyleSheet(style.styleSheet);
     }
@@ -246,11 +246,11 @@ QWidget *BooleanInputCreator::createWidget(const QJsonObject &inputDef,
                                           QWidget *parent) {
     auto checkBox = new QCheckBox(parent);
     
-    // 设置默认值
+    // Set default value
     QVariant defaultValue = inputDef["default"].toVariant();
     checkBox->setChecked(defaultValue.toBool());
     
-    // 设置尺寸
+    // Set size
     if (style.minimumWidth >= 0) {
         checkBox->setMinimumWidth(style.minimumWidth);
     }
@@ -264,7 +264,7 @@ QWidget *BooleanInputCreator::createWidget(const QJsonObject &inputDef,
         checkBox->setMaximumHeight(style.maximumHeight);
     }
     
-    // 应用样式表
+    // Apply stylesheet
     if (!style.styleSheet.isEmpty()) {
         checkBox->setStyleSheet(style.styleSheet);
     }

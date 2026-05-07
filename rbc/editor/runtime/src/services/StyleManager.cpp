@@ -9,9 +9,9 @@ namespace rbc {
 
 StyleManager::StyleManager(QObject *parent)
     : IStyleManager(parent)
-    , engine_(nullptr)
-    , watcher_(nullptr)
-    , currentTheme_("dark") {
+    , _engine(nullptr)
+    , _watcher(nullptr)
+    , _current_theme("dark") {
     loadDefaultPresets();
 }
 
@@ -42,7 +42,7 @@ bool StyleManager::loadGlobalStyleSheet(const QString &qssPath) {
     QApplication *app = qobject_cast<QApplication *>(QApplication::instance());
     if (app) {
         app->setStyleSheet(styleSheet);
-        globalStyleSheet_ = styleSheet;
+        _global_style_sheet = styleSheet;
         qDebug() << "StyleManager::loadGlobalStyleSheet: Loaded and applied" << qssPath;
         return true;
     }
@@ -69,20 +69,20 @@ bool StyleManager::applyStylePreset(QWidget *widget, const QString &presetName) 
 }
 
 QString StyleManager::getStylePreset(const QString &presetName) const {
-    return stylePresets_.value(presetName, QString());
+    return _style_presets.value(presetName, QString());
 }
 
 void StyleManager::registerStylePreset(const QString &presetName, const QString &qss) {
-    stylePresets_[presetName] = qss;
+    _style_presets[presetName] = qss;
     qDebug() << "StyleManager::registerStylePreset: Registered preset" << presetName;
 }
 
 void StyleManager::setTheme(const QString &themeName) {
-    if (currentTheme_ == themeName) {
+    if (_current_theme == themeName) {
         return;
     }
 
-    currentTheme_ = themeName;
+    _current_theme = themeName;
     loadTheme(themeName);
     emit themeChanged(themeName);
     qDebug() << "StyleManager::setTheme: Changed to" << themeName;
@@ -99,7 +99,7 @@ void StyleManager::loadTheme(const QString &themeName) {
         QApplication *app = qobject_cast<QApplication *>(QApplication::instance());
         if (app) {
             app->setStyleSheet(styleSheet);
-            globalStyleSheet_ = styleSheet;
+            _global_style_sheet = styleSheet;
             qDebug() << "StyleManager::loadTheme: Loaded theme" << themeName;
         }
     } else {
