@@ -15,6 +15,7 @@ local function oidn_plugin_impl()
     end)
     add_deps('lc-vstl', 'lc-runtime', 'rbc_runtime')
     before_build(function(target)
+        os.mkdir(target:targetdir())
         os.cp(path.join(os.projectdir(), 'build/download/oidn/*'), target:targetdir(), {
             copy_if_different = true,
             async = true,
