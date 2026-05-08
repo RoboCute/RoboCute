@@ -61,6 +61,7 @@ class WorldInterfaceModule(CodeModule):
         "res_creation_info.h",
         "rbc_plugin/generated/resource_meta.hpp",
         "rbc_world/resources/mesh.h",
+        "rbc_render/generated/pipeline_settings.hpp",
     ]
     classes = OUT_WORLD_INTERFACE_CLASSES
     deps = [ResourceMetaModule]

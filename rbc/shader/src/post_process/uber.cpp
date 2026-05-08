@@ -136,6 +136,7 @@ static float2 distort(float2 uv, float4 distortion_Amount, float4 distortion_Cen
     }
     if (alpha_coverage) {
         tex_val.w = alpha_texture.read(id + args.pixel_offset).x;
+        col *= tex_val.w;
     }
     result.write(id + args.pixel_offset, float4(col, tex_val.w));
     return 0;

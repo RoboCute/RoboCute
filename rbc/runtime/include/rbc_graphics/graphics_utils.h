@@ -74,12 +74,14 @@ public:
     void resize_swapchain(
         uint2 size,
         uint64_t native_display,
-        uint64_t native_handle);
+        uint64_t native_handle,
+        bool transparent = false);
 
     void init_display(
         uint2 resolution,
         uint64_t native_display,
-        uint64_t native_handle);
+        uint64_t native_handle,
+        bool transparent = false);
     void reset_frame();
     enum struct TickStage {
         None,

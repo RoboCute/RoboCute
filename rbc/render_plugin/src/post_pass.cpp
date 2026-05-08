@@ -197,7 +197,7 @@ void PostPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     auto &&read_tex_val = read_tex();
     Image<float> alpha_map;
     if (display_settings.alpha_cull != AlphaCull::NoCull) {
-        alpha_map = render_device.get_transient_image<float>("alpha_map", PixelStorage::BYTE1, frame_settings.display_offset);
+        alpha_map = render_device.get_transient_image<float>("alpha_map", PixelStorage::BYTE1, frame_settings.render_resolution);
     }
     cmdlist << (*_uber_shader)(
                    read_tex_val,

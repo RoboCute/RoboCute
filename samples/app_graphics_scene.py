@@ -413,7 +413,7 @@ def main():
 
     resolution = lc.uint2(1920, 1080)
     # create_window=False  to use headless
-    app.init_display(resolution.x, resolution.y)
+    app.init_display(resolution.x, resolution.y) # , transparent=True
     if not app.display_cam:
         print("Display not Valid!")
         return
@@ -644,6 +644,7 @@ def main():
     # app.set_ground_plane_mode('yes')
     # Enable AO mode
     render_settings = app.display_cam.render_settings()
+    # render_settings.set_alpha_cull(1)
 
     # render_settings.set_offline_spp(4)
     # render_settings.set_offline_origin_bounce(1)

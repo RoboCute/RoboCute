@@ -152,11 +152,12 @@ void GraphicsUtils::init_present_stream() {
 void GraphicsUtils::init_display(
     uint2 resolution,
     uint64_t native_display,
-    uint64_t native_handle) {
+    uint64_t native_handle,
+    bool transparent) {
     init_present_stream();
     if (!_dst_image || any(_dst_image.size() != resolution) ||
         !_present_image || any(_present_image.size() != resolution)) {
-        resize_swapchain(resolution, native_display, native_handle);
+        resize_swapchain(resolution, native_display, native_handle, transparent);
     }
 }
 
@@ -346,7 +347,8 @@ void GraphicsUtils::tick(
 void GraphicsUtils::resize_swapchain(
     uint2 size,
     uint64_t native_display,
-    uint64_t native_handle) {
+    uint64_t native_handle,
+    bool transparent) {
     if (any(size == 0u)) return;
     reset_frame();
     _frame_requires_sync = false;
@@ -368,6 +370,7 @@ void GraphicsUtils::resize_swapchain(
                 .size = size,
                 .wants_hdr = false,
                 .wants_vsync = false,
+                .wants_transparent = transparent,
                 .back_buffer_count = 2});
         _present_image = {};
         _present_image = _render_device->lc_device().create_image<float>(_swapchain.backend_storage(), size, 1, false, true);

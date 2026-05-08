@@ -407,14 +407,13 @@ static ModuleRegister ${EXPORT_FUNC_NAME}_(${EXPORT_FUNC_NAME});
 """)
 
 PYBIND_ENUM_BINDING_TEMPLATE = Template("""
-${INDENT}using namespace ${NAMESPACE_NAME};
-${INDENT}py::enum_<${ENUM_NAME}>(m, "${CLASS_NAME}")
+${INDENT}py::enum_<${NAMESPACE_NAME}::${ENUM_NAME}>(m, "${CLASS_NAME}")
 ${ENUM_VALUES}
 ${INDENT};
 """)
 
 PYBIND_ENUM_VALUE_TEMPLATE = Template(
-    '${INDENT}${INDENT}.value("${VALUE_NAME}", ${ENUM_NAME}::${VALUE_NAME})'
+    '${INDENT}${INDENT}.value("${VALUE_NAME}", ${NAMESPACE_NAME}::${ENUM_NAME}::${VALUE_NAME})'
 )
 
 PYBIND_CREATE_FUNC_TEMPLATE = Template("""

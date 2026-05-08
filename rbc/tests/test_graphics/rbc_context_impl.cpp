@@ -53,7 +53,7 @@ struct ContextImpl : RCBase {
     vstd::unique_ptr<CameraController> cam_controller;
     RC<world::Entity> display_cam_entity;
     uint2 window_size;
-    bool transparent_should_close{false};
+    bool transparent{false};
     void clear_window_event() {
         if (!window) return;
         window->set_mouse_callback({});
@@ -72,11 +72,11 @@ struct ContextImpl : RCBase {
             _ctx_inst = nullptr;
         utils.reset();
     }
-    void reset_view(uint2 resolution) {
+    void reset_view(uint2 resolution, bool transparent) {
         if (window)
-            utils->resize_swapchain(resolution, window->native_display(), window->native_handle());
+            utils->resize_swapchain(resolution, window->native_display(), window->native_handle(), transparent);
         else
-            utils->resize_swapchain(resolution, invalid_resource_handle, invalid_resource_handle);
+            utils->resize_swapchain(resolution, invalid_resource_handle, invalid_resource_handle, transparent);
     }
 };
 void RBCContext::init_world(void *this_, luisa::string_view meta_path, luisa::string_view binary_path) {
@@ -120,6 +120,7 @@ void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, 
         LUISA_ERROR("RBCContext::init_display: name is empty.");
     }
     auto &c = *static_cast<ContextImpl *>(this_);
+    c.transparent = transparent;
     std::lock_guard lck{c._ctx_mtx};
     if (!RenderDevice::instance_ptr()) [[unlikely]] {
         LUISA_ERROR("init_device required before init_display.");
@@ -140,7 +141,7 @@ void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, 
         native_display = invalid_resource_handle;
         native_handle = invalid_resource_handle;
     }
-    c.utils->init_display(size, native_display, native_handle);
+    c.utils->init_display(size, native_display, native_handle, transparent);
 }
 
 void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
@@ -149,7 +150,7 @@ void RBCContext::reset_view(void *this_, luisa::uint2 resolution) {
     }
     auto &c = *static_cast<ContextImpl *>(this_);
     std::lock_guard lck{c._ctx_mtx};
-    c.reset_view(resolution);
+    c.reset_view(resolution, c.transparent);
 }
 void RBCContext::disable_view(void *this_) {
     if (!this_) [[unlikely]] {
@@ -237,7 +238,7 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
         RBCZoneScopedN("Poll Events");
         c.window->poll_events();
         if (c.utils->dst_image() && any(c.window_size != c.utils->dst_image().size())) {
-            c.reset_view(c.window_size);
+            c.reset_view(c.window_size, c.transparent);
             any_changed = true;
         }
         if (c.cam_controller) {

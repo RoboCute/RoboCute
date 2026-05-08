@@ -2605,6 +2605,25 @@ void RenderSettings::set_chromatic_aberration(void *this_, float value) {
     clamp_value_warn(value, 0.0f, 0.05f, "chromatic_aberration");
     impl->map->read_mut<DisplaySettings>().chromatic_aberration = value;
 }
+int RenderSettings::get_alpha_cull(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("RenderSettings::get_alpha_cull: this_ is null.");
+        return (int)rbc::AlphaCull::NoCull;
+    }
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<DisplaySettings>();
+    return settings ? (int)settings->alpha_cull : (int)rbc::AlphaCull::NoCull;
+}
+void RenderSettings::set_alpha_cull(void *this_, int value) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("RenderSettings::set_alpha_cull: this_ is null.");
+        return;
+    }
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    impl->map->read_mut<DisplaySettings>().alpha_cull = static_cast<rbc::AlphaCull>(value);
+}
 
 // ========== ExposureSettings Getters/Setters ==========
 bool RenderSettings::get_use_auto_exposure(void *this_) {

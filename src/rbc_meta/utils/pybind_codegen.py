@@ -243,6 +243,7 @@ def pybind_enum_binding(info: ClassInfo, INDENT: str = DEFAULT_INDENT):
     enum_values = "\n".join(
         [
             PYBIND_ENUM_VALUE_TEMPLATE.substitute(
+                NAMESPACE_NAME=namespace_name,
                 INDENT=INDENT,
                 VALUE_NAME=field.name,
                 ENUM_NAME=enum_name,  # Use full key for enum name
