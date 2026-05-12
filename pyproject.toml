@@ -28,8 +28,20 @@ dev = [
   "mypy>=1.19.0",
   "pybind11-stubgen>=2.5.5",
   "Pillow>=10.0.0",
+  "orjson>=3.0.0",
 ]
 publish = [
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.0.0",
+  "pymdown-extensions>=10.0.0",
+  "mkdocs-i18n",
+]
+all = [
+  "pytest>=9.0.1",
+  "mypy>=1.19.0",
+  "pybind11-stubgen>=2.5.5",
+  "Pillow>=10.0.0",
+  "orjson>=3.0.0",
   "mkdocs>=1.6.1",
   "mkdocs-material>=9.0.0",
   "pymdown-extensions>=10.0.0",

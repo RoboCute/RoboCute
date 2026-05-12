@@ -1,7 +1,7 @@
 """C++ syntax check CLI using clangd."""
 
 import argparse
-import json
+import orjson
 import os
 import subprocess
 import sys
@@ -67,7 +67,7 @@ class ClangdLSPClient:
             "method": method,
             "params": params,
         }
-        self._send_message(json.dumps(message).encode())
+        self._send_message(orjson.dumps(message))
         return self.request_id
 
     def _send_notification(self, method: str, params: dict[str, Any]) -> None:
@@ -77,7 +77,7 @@ class ClangdLSPClient:
             "method": method,
             "params": params,
         }
-        self._send_message(json.dumps(message).encode())
+        self._send_message(orjson.dumps(message))
 
     def _read_message(self) -> dict[str, Any] | None:
         """Read a message from clangd."""
@@ -105,7 +105,7 @@ class ClangdLSPClient:
 
         assert self.process.stdout is not None
         body = self.process.stdout.read(content_length)
-        return cast(dict[str, Any], json.loads(body.decode()))
+        return cast(dict[str, Any], orjson.loads(body))
 
     def initialize(self) -> None:
         """Initialize the LSP connection."""
@@ -219,7 +219,7 @@ def find_clangd(clangd_path: str, project_root: str) -> str:
         if settings_path.exists():
             try:
                 with open(settings_path, "r", encoding="utf-8") as f:
-                    settings = json.load(f)
+                    settings = orjson.loads(f.read())
                 config_clangd_path = settings.get("clangd.path")
                 if config_clangd_path:
                     resolved_path = Path(project_root) / config_clangd_path
@@ -229,7 +229,7 @@ def find_clangd(clangd_path: str, project_root: str) -> str:
                         config_path = Path(config_clangd_path)
                         if config_path.exists():
                             clangd_path = str(config_path.resolve())
-            except (json.JSONDecodeError, IOError):
+            except (orjson.JSONDecodeError, IOError):
                 pass
 
     if not Path(clangd_path).exists():
@@ -269,7 +269,7 @@ def run_lint(file_path: str, project_root: str, clangd_path: str, verbose: bool)
 
         try:
             with open(compile_commands_path, "r", encoding="utf-8") as f:
-                compile_commands = cast(list[dict[str, Any]], json.load(f))
+                compile_commands = cast(list[dict[str, Any]], orjson.loads(f.read()))
 
             file_maps: dict[str, str] = {}
             for entry in compile_commands:
@@ -297,7 +297,7 @@ def run_lint(file_path: str, project_root: str, clangd_path: str, verbose: bool)
                         file=sys.stderr,
                     )
                     return 2
-        except (json.JSONDecodeError, IOError) as e:
+        except (orjson.JSONDecodeError, IOError) as e:
             if verbose:
                 print(f"Compile arguments:\n{file_args}\nError: {e}", file=sys.stderr)
             print(f"Error: compile_commands.json decode error: {e}", file=sys.stderr)

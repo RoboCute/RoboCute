@@ -1,8 +1,9 @@
 # Agent Guidelines
 
 ## Rules
-1. never change files under `generated/`.
-2. 
+- never change files under `generated/`.
+- use `uv sync --extra=all` to sync package
+- use `uv run` to run python scripts
 
 ## C++ Lint
 Run C++ syntax validation, or get file reference using clangd:

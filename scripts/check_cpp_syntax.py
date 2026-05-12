@@ -8,7 +8,7 @@ It reads compile_commands.json from .vscode directory for proper compilation fla
 """
 
 import argparse
-import json
+import orjson
 import os
 import subprocess
 import sys
@@ -78,7 +78,7 @@ class ClangdLSPClient:
             "method": method,
             "params": params,
         }
-        self._send_message(json.dumps(message).encode())
+        self._send_message(orjson.dumps(message))
         return self.request_id
 
     def _send_notification(self, method: str, params: dict):
@@ -88,7 +88,7 @@ class ClangdLSPClient:
             "method": method,
             "params": params,
         }
-        self._send_message(json.dumps(message).encode())
+        self._send_message(orjson.dumps(message))
 
     def _read_message(self) -> dict:
         """Read a message from clangd."""
@@ -114,7 +114,7 @@ class ClangdLSPClient:
 
         # Read body
         body = self.process.stdout.read(content_length)
-        return json.loads(body.decode())
+        return orjson.loads(body)
 
     def initialize(self):
         """Initialize the LSP connection."""
@@ -337,7 +337,7 @@ Examples:
         if settings_path.exists():
             try:
                 with open(settings_path, "r", encoding="utf-8") as f:
-                    settings = json.load(f)
+                    settings = orjson.loads(f.read())
                 config_clangd_path = settings.get("clangd.path")
                 if config_clangd_path:
                     # Resolve relative path from project root
@@ -349,7 +349,7 @@ Examples:
                         config_path = Path(config_clangd_path)
                         if config_path.exists():
                             clangd_path = str(config_path.resolve())
-            except (json.JSONDecodeError, IOError):
+            except (orjson.JSONDecodeError, IOError):
                 pass  # Fall back to default behavior
     if not Path(clangd_path).exists():
         # Try to find in PATH
