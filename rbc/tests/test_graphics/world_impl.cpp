@@ -1041,18 +1041,18 @@ luisa::vector<luisa::float4x4> SkeletonResource::get_joint_rest_poses(void *this
         int soa_idx = i / 4;
         int soa_offset = i % 4;
         auto &soa = poses[soa_idx];
-        // Extract translation (float3)
-        // TODO: woc AI 真的就敢xjb写
-        luisa::float3 translation(
-            soa.translation.x[soa_offset],
-            soa.translation.y[soa_offset],
-            soa.translation.z[soa_offset]);
+        // SOA extraction: StorePtrU dumps SimdFloat4 into float[4], then index
+        float tx[4], ty[4], tz[4], tw[4];
+        ozz::math::StorePtrU(soa.translation.x, tx);
+        ozz::math::StorePtrU(soa.translation.y, ty);
+        ozz::math::StorePtrU(soa.translation.z, tz);
+        luisa::float3 translation(tx[soa_offset], ty[soa_offset], tz[soa_offset]);
         // Extract rotation (quaternion to rotation matrix)
-        luisa::float4 quat(
-            soa.rotation.x[soa_offset],
-            soa.rotation.y[soa_offset],
-            soa.rotation.z[soa_offset],
-            soa.rotation.w[soa_offset]);
+        ozz::math::StorePtrU(soa.rotation.x, tx);
+        ozz::math::StorePtrU(soa.rotation.y, ty);
+        ozz::math::StorePtrU(soa.rotation.z, tz);
+        ozz::math::StorePtrU(soa.rotation.w, tw);
+        luisa::float4 quat(tx[soa_offset], ty[soa_offset], tz[soa_offset], tw[soa_offset]);
         float x2 = quat.x + quat.x;
         float y2 = quat.y + quat.y;
         float z2 = quat.z + quat.z;
@@ -1070,10 +1070,10 @@ luisa::vector<luisa::float4x4> SkeletonResource::get_joint_rest_poses(void *this
             luisa::float3(xy - wz, 1.0f - (xx + zz), yz + wx),
             luisa::float3(xz + wy, yz - wx, 1.0f - (xx + yy)));
         // Extract scale (float3)
-        luisa::float3 scale(
-            soa.scale.x[soa_offset],
-            soa.scale.y[soa_offset],
-            soa.scale.z[soa_offset]);
+        ozz::math::StorePtrU(soa.scale.x, tx);
+        ozz::math::StorePtrU(soa.scale.y, ty);
+        ozz::math::StorePtrU(soa.scale.z, tz);
+        luisa::float3 scale(tx[soa_offset], ty[soa_offset], tz[soa_offset]);
         // Build float4x4 transformation matrix (TRS)
         result.push_back(luisa::float4x4(
             luisa::float4(rotation_mat[0][0] * scale.x, rotation_mat[0][1] * scale.y, rotation_mat[0][2] * scale.z, 0.0f),
@@ -2605,24 +2605,24 @@ void RenderSettings::set_chromatic_aberration(void *this_, float value) {
     clamp_value_warn(value, 0.0f, 0.05f, "chromatic_aberration");
     impl->map->read_mut<DisplaySettings>().chromatic_aberration = value;
 }
-int RenderSettings::get_alpha_cull(void *this_) {
+rbc::AlphaCull RenderSettings::get_alpha_cull(void *this_) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("RenderSettings::get_alpha_cull: this_ is null.");
-        return (int)rbc::AlphaCull::NoCull;
+        return rbc::AlphaCull::NoCull;
     }
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
     auto settings = impl->map->read_if<DisplaySettings>();
-    return settings ? (int)settings->alpha_cull : (int)rbc::AlphaCull::NoCull;
+    return settings ? settings->alpha_cull : rbc::AlphaCull::NoCull;
 }
-void RenderSettings::set_alpha_cull(void *this_, int value) {
+void RenderSettings::set_alpha_cull(void *this_, rbc::AlphaCull value) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("RenderSettings::set_alpha_cull: this_ is null.");
         return;
     }
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
-    impl->map->read_mut<DisplaySettings>().alpha_cull = static_cast<rbc::AlphaCull>(value);
+    impl->map->read_mut<DisplaySettings>().alpha_cull = value;
 }
 
 // ========== ExposureSettings Getters/Setters ==========

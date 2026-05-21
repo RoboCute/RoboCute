@@ -1,7 +1,7 @@
 # Agent Guidelines
 
 ## Rules
-- never change files under `generated/`.
+- never change files under `generated/`, `thirdparty/`.
 - use `uv sync --extra=all` to sync package
 - use `uv run` to run python scripts
 

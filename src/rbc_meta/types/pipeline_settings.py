@@ -45,7 +45,7 @@ class LpmColorSpace(Enum):
     REC2020 = 2
     Display = 3
     
-@reflect(cpp_namespace="rbc")
+@reflect(cpp_namespace="rbc", pybind=True)
 class AlphaCull(Enum):
     NoCull = 0
     CullSkybox = 1

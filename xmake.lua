@@ -40,7 +40,7 @@ includes("thirdparty", "rbc")
 
 -- Suppress common third-party warnings for MSVC (cl.exe)
 add_cxflags("/wd4090", "/wd4102", "/wd4146", "/wd4200", "/wd4267", "/wd4307", "/wd4819", "/wd4996", "/wd4018",
-    "/wd4333", "/wd4172", "/wd4100", {
+    "/wd4333", "/wd4172", "/wd4100", "/wd4005", "/wd4068", "/wd4099", "/wd4251", "/wd4273", "/wd4275", {
         tools = "cl"
     })
 -- Suppress third-party warnings for Clang
