@@ -10,8 +10,8 @@
 #include <luisa/backends/ext/vk_cuda_interop.h>
 #include <luisa/runtime/rhi/device_interface.h>
 #include <luisa/runtime/context.h>
-#include <luisa/backends/ext/cuda_config_ext.h>
-#include <luisa/backends/ext/cuda_external_ext.h>
+#include <luisa/backends/ext/cuda/cuda_config_ext.h>
+#include <luisa/backends/ext/cuda/cuda_external_ext.h>
 #include <rbc_graphics/compute_device.h>
 namespace rbc {
 namespace oidn_detail {

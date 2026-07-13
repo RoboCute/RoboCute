@@ -1,7 +1,7 @@
 #include <rbc_node/device_manager.h>
 #include <rbc_graphics/render_device.h>
 #include <luisa/backends/ext/vk_cuda_interop.h>
-#include <luisa/backends/ext/cuda_config_ext.h>
+#include <luisa/backends/ext/cuda/cuda_config_ext.h>
 
 namespace rbc {
 namespace detail {

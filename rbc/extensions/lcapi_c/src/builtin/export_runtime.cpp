@@ -3,7 +3,7 @@
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 #include "ref_counter.h"
-#include <luisa/backends/ext/cuda_external_ext.h>
+#include <luisa/backends/ext/cuda/cuda_external_ext.h>
 #include <luisa/ast/function.h>
 #include <luisa/core/binary_file_stream.h>
 #include <luisa/core/fiber.h>

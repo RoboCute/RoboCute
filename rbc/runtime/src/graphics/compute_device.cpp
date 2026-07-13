@@ -1,5 +1,5 @@
 #include <rbc_graphics/compute_device.h>
-#include <luisa/backends/ext/cuda_external_ext.h>
+#include <luisa/backends/ext/cuda/cuda_external_ext.h>
 #include <luisa/core/logging.h>
 #include <luisa/backends/ext/vk_cuda_interop.h>
 #include <luisa/backends/ext/dx_cuda_interop.h>
