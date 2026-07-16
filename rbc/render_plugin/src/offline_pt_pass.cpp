@@ -256,6 +256,7 @@ void OfflinePTPass::_dispatch_path_tracing(
             static_cast<int32_t>(alpha_cull),
             rc.frame_settings.render_resolution);
     }
+            LUISA_INFO("{} {}", (int32_t)alpha_cull, rc.frame_settings.render_resolution);
 }
 
 void OfflinePTPass::_process_multibounce_indirect(

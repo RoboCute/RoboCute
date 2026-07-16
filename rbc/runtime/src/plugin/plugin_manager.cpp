@@ -1,5 +1,6 @@
 
 #include <luisa/core/shared_function.h>
+#include <luisa/core/dynamic_module.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_core/generated/version.h>
 namespace rbc {
@@ -34,7 +35,11 @@ luisa::shared_ptr<luisa::DynamicModule> PluginManager::load_module(luisa::string
         r = luisa::make_shared<luisa::DynamicModule>(luisa::DynamicModule::load(name));
         iter.first.value() = r;
     }
-    auto func = r->function<uint64_t()>("rbc_version");
+    auto core_module = luisa::DynamicModule::load("rbc_core");
+    auto func = core_module ? core_module.function<uint64_t()>("rbc_version") : nullptr;
+    if (!func) {
+        func = r->function<uint64_t()>("rbc_version");
+    }
     if (!func || func() != RBC_VERSION) [[unlikely]] {
         r = nullptr;
         _loaded_modules.remove(iter.first);

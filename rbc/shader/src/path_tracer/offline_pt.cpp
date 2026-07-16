@@ -41,6 +41,14 @@ using namespace luisa::shader;
     uint2 size) {
 
     auto coord = dispatch_id().xy;
+    // TODO add print, device_log, print the screen_uv == float2(0.5, 0.2) and screen_uv == float2(0.5, 0.8) (do not compare float, use pixel integer instead)
+    {
+        // uint2 target0 = uint2(float2(0.5f, 0.2f) * float2(size) - 0.5f);
+        // uint2 target1 = uint2(float2(0.5f, 0.8f) * float2(size) - 0.5f);
+        if (all(coord == (dispatch_size().xy / 2u))) {
+            device_log("size {} alpha_option {}", size, alpha_option);
+        }
+    }
     // auto screen_uv = (float2(coord) + args.jitter_offset + float2(0.5)) / float2(size);
     float3 dir;
     Ray ray;
@@ -86,6 +94,7 @@ using namespace luisa::shader;
         }
         ray = Ray(near_world_pos.xyz, dir, sampling::offset_ray_t_min, dir_len);
     }
+
     ProceduralGeometry procedural_geometry;
     auto hit = rbc_trace_closest(ray, args, sampler, procedural_geometry);
     uint4 primary_hit(max_uint32, max_uint32, 0, 0);
