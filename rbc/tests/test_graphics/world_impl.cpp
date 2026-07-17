@@ -2369,8 +2369,6 @@ void RenderSettings::set_sky_angle(void *this_, float value) {
     }
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
-    // sky_angle: no specific range, but clamp to [0, 2*pi] for sanity
-    clamp_value_warn(value, 0.0f, 2.0f * pi, "sky_angle");
     impl->map->read_mut<SkySettings>().sky_angle = value;
 }
 float RenderSettings::get_sky_max_lum(void *this_) {
@@ -2500,8 +2498,6 @@ void RenderSettings::set_sun_angle(void *this_, float value) {
     }
     auto impl = static_cast<RenderSettingsImpl *>(this_);
     LUISA_DEBUG_ASSERT(impl->map, "Map is null");
-    // sun_angle: typical range 0.1 ~ 10 degrees, clamp to [0, 2*pi]
-    clamp_value_warn(value, 0.0f, 2.0f * pi, "sun_angle");
     impl->map->read_mut<SkySettings>().sun_angle = value;
 }
 

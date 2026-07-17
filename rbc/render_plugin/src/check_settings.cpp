@@ -149,7 +149,7 @@ static void check_distortion_settings(DistortionSettings &settings) {
 
 // Check and clamp SkySettings
 static void check_sky_settings(SkySettings &settings) {
-    // sky_angle: no specific range in pipeline_controller
+    // sky_angle and sun_angle are stored in degrees and intentionally unbounded.
     // sky_max_lum: > 0
     settings.sky_max_lum = std::max(settings.sky_max_lum, 0.0f);
     // sky_color: 0 ~ 1
@@ -158,8 +158,6 @@ static void check_sky_settings(SkySettings &settings) {
     clamp_vector3(settings.sun_color, 0.0f, 1.0f);
     // sun_intensity: >= 0
     settings.sun_intensity = std::max(settings.sun_intensity, 0.0f);
-    // sun_angle: typical range 0.1 ~ 10 degrees, but no strict limit in code
-    settings.sun_angle = std::clamp(settings.sun_angle, 0.0f, 2.0f * pi);
 }
 /// Clamp all render settings in the state map to their valid ranges.
 void clamp_render_settings(StateMap &map) {
