@@ -47,10 +47,7 @@ class DiffractionGratingBRDF {
 			} break;
 		}
 		auto result = ix * iy;
-		if (any(inv_pitch == float2(0.0f))) {
-			result = sqr(result);
-		}
-		return result;
+		return sqr(result);
 	}
 
 	int2 sample_lobe(float cos_theta, float2& pdf, float lambda, float2 rand) const {

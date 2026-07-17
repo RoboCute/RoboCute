@@ -154,3 +154,4 @@ samples/screenshot/*
 src/uipc
 !AGENTS.md
 .kimix_cache
+cmake-build-debug
