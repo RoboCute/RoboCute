@@ -85,7 +85,7 @@ Expected contents:
 
 | File | Purpose |
 |------|---------|
-| `clangd.exe` | Clang language server (LLVM 19.1.7) |
+| `clangd.exe` | Clang language server (LLVM `<version>`) |
 
 ### Naming Convention
 
@@ -95,14 +95,14 @@ Platform-specific names are generated in `src/rbc_build/prepare.py`:
 def _to_platform_spec(name):
     return f"{name}-{PLATFORM}-{ARCH}.7z"
 
-CLANGCXX_NAME = _to_platform_spec("clangcxx_compiler-v2.0.8")
-CLANGD_NAME   = _to_platform_spec("clangd-v19.1.7")
+CLANGCXX_NAME = _to_platform_spec("clangcxx_compiler-v<version>")
+CLANGD_NAME   = _to_platform_spec("clangd-v<version>")
 ```
 
 So on Windows x64 the resolved names are:
 
-- `clangcxx_compiler-v2.0.8-windows-x64.7z`
-- `clangd-v19.1.7-windows-x64.7z`
+- `clangcxx_compiler-v<version>-windows-x64.7z`
+- `clangd-v<version>-windows-x64.7z`
 
 ### Unpacking (manual)
 
@@ -110,10 +110,10 @@ Use 7-Zip CLI:
 
 ```bash
 # clangcxx_compiler
-7z x clangcxx_compiler-v2.0.9-windows-x64.7z -oD:\RoboCute\build\tool\clangcxx_compiler -y
+7z x clangcxx_compiler-v<version>-windows-x64.7z -oD:\RoboCute\build\tool\clangcxx_compiler -y
 
 # clangd
-7z x clangd-v19.1.7-windows-x64.7z -oD:\RoboCute\build\tool\clangd -y
+7z x clangd-v<version>-windows-x64.7z -oD:\RoboCute\build\tool\clangd -y
 ```
 
 The project also locates `7z.exe` automatically in this order:
@@ -132,7 +132,7 @@ Example for `clangcxx_compiler`:
 ```bash
 cd D:\RoboCute\build\tool\clangcxx_compiler
 7z a -t7z -m0=lzma2 -mx=9 ..
-..\download\clangcxx_compiler-v2.0.9-windows-x64.7z ^
+..\download\clangcxx_compiler-v<version>-windows-x64.7z ^
   clangcxx_compiler.exe dxcompiler.dll dxil.dll ^
   luisa-backend-dx.dll luisa-backend-vk.dll ^
   luisa-clangcxx.dll luisa-core.dll luisa-runtime.dll ^
@@ -143,7 +143,7 @@ Example for `clangd`:
 
 ```bash
 cd D:\RoboCute\build\tool\clangd
-7z a -t7z -m0=lzma2 -mx=9 D:\RoboCute\build\download\clangd-v19.1.7-windows-x64.7z clangd.exe
+7z a -t7z -m0=lzma2 -mx=9 D:\RoboCute\build\download\clangd-v<version>-windows-x64.7z clangd.exe
 ```
 
 Then upload the archive to the release asset URL configured in `src/rbc_build/prepare.py::RBC_SDK_ADDRESS` and bump the version constant there.
