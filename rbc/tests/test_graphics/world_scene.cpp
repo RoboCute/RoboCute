@@ -258,9 +258,9 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         }
         // wait skybox
         {
-            auto wait_skybox = [&]() -> rbc::coroutine {
+            auto wait_skybox = rbc::capture([skybox = skybox]() -> rbc::coroutine {
                 co_await skybox->await_loading();
-            }();
+            });
             while (!wait_skybox.done()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 wait_skybox.resume();

@@ -1586,9 +1586,9 @@ void TextureResource::set_skybox(void *this_) {
     if (t->loading_status() == world::EResourceLoadingStatus::Unloaded) [[unlikely]] {
         LUISA_ERROR("Skybox dest texture not loaded.");
     }
-    auto wait_skybox = [&]() -> rbc::coroutine {
+    auto wait_skybox = rbc::capture([t]() -> rbc::coroutine {
         co_await t->await_loading();
-    }();
+    });
     while (!wait_skybox.done()) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
         wait_skybox.resume();

@@ -1,7 +1,11 @@
 #pragma once
 #include <rbc_config.h>
+#include <concepts>
 #include <coroutine>
+#include <functional>
 #include <memory>
+#include <type_traits>
+#include <utility>
 #include <luisa/core/stl/type_traits.h>
 
 namespace rbc {
@@ -96,5 +100,18 @@ template<typename Func>
     requires std::is_invocable_r_v<bool, Func>
 _awaitable<Func> awaitable(Func &&func) {
     return _awaitable<Func>{std::forward<Func>(func)};
+}
+
+/// Keeps a coroutine callable and its argument copies alive in a wrapper frame.
+/// References captured by the callable must still outlive the returned coroutine.
+template<typename Func, typename... Args>
+    requires std::invocable<Func &, Args &&...> &&
+             std::same_as<std::invoke_result_t<Func &, Args &&...>, coroutine>
+[[nodiscard]] coroutine capture(Func func, Args... args) {
+    auto nested = std::invoke(func, std::move(args)...);
+    co_await awaitable([&nested] {
+        nested.resume();
+        return nested.done();
+    });
 }
 }// namespace rbc
