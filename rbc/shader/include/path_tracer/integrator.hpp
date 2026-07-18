@@ -512,7 +512,7 @@ static IntegratorResult sample_material(
             }
         }
 
-        mtl::ClosureData<MatExtraParameter> closure_data{basic_param, extra_param, spectrum_arg.lambda, detail};
+        mtl::BSDFContext<MatExtraParameter> closure_data{basic_param, extra_param, spectrum_arg.lambda, detail};
 
         if (wi.z > 0.0f) {
             if (!volume_stack.empty()) {

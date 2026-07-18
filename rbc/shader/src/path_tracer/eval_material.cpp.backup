@@ -137,7 +137,7 @@ inline void evaluate_material_sample(
 
     // Setup closure data
     mtl::ShadingDetail detail = mtl::ShadingDetail::Default;
-    mtl::ClosureData<mtl::openpbr::Parameter> closure_data{basic_param, extra_param, spectrum_arg.lambda, detail};
+    mtl::BSDFContext<mtl::openpbr::Parameter> closure_data{basic_param, extra_param, spectrum_arg.lambda, detail};
 
     if (wi.z > 0.0f) {
         // no volume above

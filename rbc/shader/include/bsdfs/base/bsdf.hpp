@@ -17,7 +17,7 @@ namespace mtl {
 using namespace luisa::shader;
 
 template<class ExtraParams>
-struct ClosureData {
+struct BSDFContext {
 	ShadingDetail detail = ShadingDetail::Default;
 	bool spectrumed = spectrum::use_spectrum;
 	bool geometry_thin_walled = false;
@@ -56,7 +56,7 @@ struct ClosureData {
 		bool>
 		coat_local_onb;
 
-	ClosureData(auto& p, auto& ep, float3 lambda, ShadingDetail detail) : geometry_thin_walled(p.geometry.thin_walled),
+	BSDFContext(auto& p, auto& ep, float3 lambda, ShadingDetail detail) : geometry_thin_walled(p.geometry.thin_walled),
 																		  lambda(lambda),
 																		  detail(detail) {
 		original_ior = p.specular.ior;
@@ -105,19 +105,19 @@ struct ClosureData {
 // trait_struct BSDFBase {
 // public:
 // 	static constexpr BSDFFlags flags = BSDFFlags::None;
-// 	Throughput eval(float3 wi, float3 wo, ClosureData & data) const;
-// 	BSDFSample sample(float3 wi, ClosureData & data, auto& volume_stack) const;
-// 	float pdf(float3 wi, float3 wo, ClosureData & data) const;
-// 	float3 tint_out(float3 wo, ClosureData & data, float3 base_energy) const;
-// 	float3 trans(float3 wi, ClosureData & data) const;
-// 	float3 energy(float3 wi, ClosureData & data) const;
+// 	Throughput eval(float3 wi, float3 wo, BSDFContext & data) const;
+// 	BSDFSample sample(float3 wi, BSDFContext & data, auto& volume_stack) const;
+// 	float pdf(float3 wi, float3 wo, BSDFContext & data) const;
+// 	float3 tint_out(float3 wo, BSDFContext & data, float3 base_energy) const;
+// 	float3 trans(float3 wi, BSDFContext & data) const;
+// 	float3 energy(float3 wi, BSDFContext & data) const;
 // };
 
 template<class T>
 concept BSDF = requires(std::remove_cvref_t<T> bsdf,
 						float3 wi,
 						float3 wo,
-						ClosureData<openpbr::Parameter>& data,
+						BSDFContext<openpbr::Parameter>& data,
 						openpbr::Parameter& p,
 						float3 base_energy,
 						std::inplace_vector<mtl::Volume, 0>& volume_stack) {
@@ -133,7 +133,7 @@ concept BSDF = requires(std::remove_cvref_t<T> bsdf,
 // static_assert(mtl::BSDF<mtl::BSDFBase>, "BSDFBase must satisfy BSDF concept");
 
 template<class T>
-concept FloatWeight = requires(std::remove_cvref_t<T> w, openpbr::Parameter& p, ClosureData<openpbr::Parameter>& data) {
+concept FloatWeight = requires(std::remove_cvref_t<T> w, openpbr::Parameter& p, BSDFContext<openpbr::Parameter>& data) {
 	{ w.value() } -> std::same_as<float>;
 	{ w.init(p, p, data) } -> std::same_as<void>;
 };
