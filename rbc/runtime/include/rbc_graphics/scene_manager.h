@@ -1,7 +1,11 @@
 #pragma once
+#include <array>
+#include <atomic>
 #include <rbc_config.h>
 #include <luisa/runtime/stream.h>
 #include <luisa/runtime/event.h>
+#include <luisa/core/spin_mutex.h>
+#include <luisa/core/stl/unordered_map.h>
 #include <luisa/vstl/lockfree_array_queue.h>
 #include <rbc_io/io_command_list.h>
 #include <rbc_io/io_service.h>
@@ -15,6 +19,7 @@
 #include "mat_manager.h"
 #include "light_accel.h"
 #include "skinning.h"
+#include "shader_features.h"
 namespace rbc {
 struct ManagedDevice;
 struct PipelineCtxMutable;
@@ -66,6 +71,27 @@ private:
     luisa::spin_mutex _build_mesh_mtx;
     luisa::unordered_map<Mesh *, RC<RCBase>> _build_meshes;
 
+    struct ShaderFeatureSource {
+        uint64_t mask{};
+        uint32_t binding_count{};
+        bool directly_active{};
+
+        [[nodiscard]] bool active() const noexcept {
+            return directly_active || binding_count != 0u;
+        }
+    };
+    mutable luisa::spin_mutex _shader_feature_mtx;
+    luisa::unordered_map<void const *, ShaderFeatureSource> _shader_feature_sources;
+    std::array<uint32_t, 64u> _shader_feature_counts{};
+    uint64_t _shader_feature_mask{};
+    std::atomic_uint64_t _published_shader_feature_mask{};
+
+    void _apply_shader_feature_transition_locked(
+        uint64_t old_mask,
+        bool old_active,
+        uint64_t new_mask,
+        bool new_active);
+
 public:
     ///////////// properties
     bool accel_dirty() const;
@@ -96,6 +122,15 @@ public:
     [[nodiscard]] auto &mesh_manager() { return _mesh_mng; }
     [[nodiscard]] auto &light_accel() { return _light_accel; }
     [[nodiscard]] auto &tex_uploader() { return _tex_uploader; }
+    [[nodiscard]] SceneShaderFeatureSnapshot shader_features() const;
+
+    // Direct sources are active from set() until remove(). Material sources use
+    // update/bind/unbind so loaded-but-unused materials do not affect the scene.
+    void set_shader_feature_source(void const *source, uint64_t mask);
+    void update_shader_feature_source(void const *source, uint64_t mask);
+    void bind_shader_feature_source(void const *source, uint64_t mask);
+    void unbind_shader_feature_source(void const *source);
+    void remove_shader_feature_source(void const *source);
     static SceneManager &instance();
     static SceneManager *instance_ptr();
     static void set_instance(SceneManager *scene_manager);

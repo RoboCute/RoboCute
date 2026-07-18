@@ -260,17 +260,21 @@ interface_target('my_lib', my_interface, my_impl)
 
 ### Shader Compilation
 
-The `compile_shaders` and `compile_shaders_hostgen` phony targets invoke `build/tool/clangcxx_compiler/clangcxx_compiler.exe`:
+The `compile_shaders` and `compile_shaders_hostgen` phony targets invoke the manifest-driven shader build driver:
 
 ```lua
-compiler_path = path.join(os.projectdir(), 'build/tool/clangcxx_compiler', compiler_path)
+os.execv(uv.program, {'run', 'shader-build', 'build',
+                      '--project-root', os.projectdir(),
+                      '--build-root', builddir})
 ```
+
+Without `--backend`, the driver builds every backend declared in `rbc/shader/shader_variants.json`. The hostgen target depends on that build and verifies coherence against the same manifest-defined backend set.
 
 Generated command scripts:
 
 ```bash
-rbc/shader/dx_compile.cmd
-rbc/shader/dx_clean_compile.cmd
+rbc/shader/<backend>_compile.cmd
+rbc/shader/<backend>_clean_compile.cmd
 rbc/shader/gen_json.cmd   # -lsp mode for compile_commands.json
 ```
 
@@ -445,7 +449,7 @@ __all__ = ["OUT_CLASSES"]
 
 1. Runs `xmake` (or `xmake -r` with `--rebuild`).
 2. Copies `*.dll`, `*.pyd`, `*.bytes` from `build/<platform>/<arch>/<mode>` to `src/robocute/rbc_ext/_C`.
-3. Copies shader build directories `shader_build_dx` and `shader_build_vk`.
+3. Copies every `shader_build_<backend>` directory declared by `rbc/shader/shader_variants.json`.
 4. Optionally generates Python stubs with `pybind11-stubgen` via `uvx`.
 
 ### `uv run pre-pack [mode] [stubgen]`
@@ -459,7 +463,7 @@ Same copy/stub logic as above, but assumes the build directory already exists.
 1. Finds `uv`.
 2. Runs `cmake/rbc_install_resources_post_build.py`.
 3. Extracts `build/download/test_scene_*.7z` and `build/download/render_resources-*.7z` into the output directory.
-4. Copies `shader_build_dx` and `shader_build_vk`.
+4. Copies every `shader_build_<backend>` directory declared by `rbc/shader/shader_variants.json`.
 
 ### Typical Full Flow
 

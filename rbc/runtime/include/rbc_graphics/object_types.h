@@ -3,6 +3,7 @@
 #include <rbc_graphics/light_type.h>
 #include <rbc_core/rc.h>
 #include <rbc_core/serde.h>
+#include <rbc_graphics/shader_features.h>
 namespace rbc {
 #include <rbc_graphics/materials.h>
 #include <material/mats.inl>
@@ -35,6 +36,7 @@ struct RBC_RUNTIME_API MaterialStub : RCBase {
     void create_pbr_material();
     void update_material(luisa::string_view json);
     void remove_material();
+    [[nodiscard]] uint64_t shader_feature_mask() const;
     MaterialStub();
     ~MaterialStub();
     static void openpbr_json_ser(JsonSerializer &json_ser, material::OpenPBR const &mat);
@@ -52,6 +54,7 @@ struct RBC_RUNTIME_API ObjectStub : RCBase {
     ObjectRenderType type;
     luisa::vector<RC<MaterialStub>> materials;
     luisa::vector<MatCode> material_codes;
+    luisa::vector<MaterialStub const *> shader_feature_materials;
     void create_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::span<RC<RCBase> const> materials);
     void update_object_pos(luisa::float4x4 matrix);
     void update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::span<RC<RCBase> const> materials);
@@ -59,6 +62,9 @@ struct RBC_RUNTIME_API ObjectStub : RCBase {
     void remove_object();
     ObjectStub();
     ~ObjectStub();
+private:
+    void _update_shader_feature_bindings(size_t material_count);
+    void _clear_shader_feature_bindings();
 };
 
 }// namespace rbc

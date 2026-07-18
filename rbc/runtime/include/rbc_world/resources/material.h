@@ -14,13 +14,21 @@ private:
     ~MaterialResource();
     MaterialStub::MatDataType _mat_data;
     MatCode _mat_code;
+    std::atomic_uint64_t _installed_shader_feature_mask{};
+    std::atomic_uint64_t _reinstall_generation{};
+    std::atomic_bool _gpu_material_installed{};
+    std::atomic_bool _reinstall_queued{};
     bool _loaded : 1 {false};
     bool _dirty : 1 {true};
     void _write_content_to(JsonSerializer &json_ser);
+    void _publish_shader_features(uint64_t mask) const;
+    void _enqueue_reinstall();
+    void _run_queued_reinstall();
 public:
     static MatCode default_mat_code();
     auto &mat_code() const { return _mat_code; }
     auto &mat_data() const { return _mat_data; }
+    [[nodiscard]] uint64_t shader_feature_mask() const noexcept;
     // prepare host data and emplace
     luisa::BinaryBlob write_content_to();
     luisa::string write_content_to_str();

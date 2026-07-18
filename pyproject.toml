@@ -52,6 +52,7 @@ all = [
 gen = "rbc_build.main:generate"
 pre-pack = "rbc_build.main:pre_pack"
 prepare = "rbc_build.main:prepare"
+shader-build = "rbc_build.shader_variants:main"
 
 [build-system]
 build-backend = "uv_build"

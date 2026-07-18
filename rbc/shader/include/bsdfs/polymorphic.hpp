@@ -5,7 +5,6 @@
 #include <bsdfs/openpbr.hpp>
 
 #include <std/utility>
-#define RBC_LITE_PBR_MATERIAL
 namespace mtl {
 
 enum class PolymorphicBSDFType {

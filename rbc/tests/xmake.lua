@@ -39,5 +39,6 @@ end
 
 add_test("core", {"rbc_core"})
 add_test("anim", {"rbc_runtime", "rbc_core"})
+add_test("shader_runtime", {"rbc_runtime", "rbc_core"})
 
 -- includes('agents')

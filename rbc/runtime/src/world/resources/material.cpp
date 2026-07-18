@@ -2,6 +2,7 @@
 #include <rbc_world/type_register.h>
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_graphics/render_device.h>
+#include <rbc_graphics/device_assets/assets_manager.h>
 #include <luisa/core/fiber.h>
 #include <luisa/core/binary_file_stream.h>
 #include <rbc_graphics/mat_serde.h>
@@ -11,6 +12,53 @@
 #include <rbc_core/runtime_static.h>
 
 namespace rbc::world {
+
+uint64_t MaterialResource::shader_feature_mask() const noexcept {
+    return _installed_shader_feature_mask.load(std::memory_order_acquire);
+}
+
+void MaterialResource::_publish_shader_features(uint64_t mask) const {
+    if (auto scene = SceneManager::instance_ptr()) {
+        scene->update_shader_feature_source(this, mask);
+    }
+}
+
+void MaterialResource::_enqueue_reinstall() {
+    auto assets = AssetsManager::instance();
+    if (!assets) return;
+    auto expected = false;
+    if (!_reinstall_queued.compare_exchange_strong(
+            expected, true, std::memory_order_acq_rel)) {
+        return;
+    }
+    assets->render_thd_queue.push(
+        [material = RC<MaterialResource>{this}]() mutable {
+            material->_run_queued_reinstall();
+        });
+}
+
+void MaterialResource::_run_queued_reinstall() {
+    auto const handled_generation =
+        _reinstall_generation.load(std::memory_order_acquire);
+    bool dirty;
+    {
+        std::shared_lock lock{_async_mtx};
+        dirty = _dirty;
+    }
+    if (dirty) {
+        // A concurrent install may have restored Installed after the loader
+        // lowered the state. Re-open it on the render thread.
+        unsafe_set_loading_status_min(EResourceLoadingStatus::Loaded);
+        install();
+    }
+
+    _reinstall_queued.store(false, std::memory_order_release);
+    if (_reinstall_generation.load(std::memory_order_acquire) !=
+        handled_generation) {
+        _enqueue_reinstall();
+    }
+}
+
 struct MaterialInst : RBCStruct {
     rbc::shared_atomic_mutex _mat_mtx;
     luisa::vector<uint> _disposed_mat;
@@ -59,6 +107,15 @@ void _collect_all_materials() {
 }
 void MaterialResource::load_from_json(luisa::string_view json_vec) {
     _load_from_json(json_vec, true);
+    _reinstall_generation.fetch_add(1u, std::memory_order_release);
+    auto const requires_reinstall =
+        _gpu_material_installed.load(std::memory_order_acquire) ||
+        loading_status() >= EResourceLoadingStatus::Installing;
+    if (!requires_reinstall) {
+        return;
+    }
+    unsafe_set_loading_status_min(EResourceLoadingStatus::Loaded);
+    _enqueue_reinstall();
 }
 void MaterialResource::_load_from_json(luisa::string_view json_vec, bool set_to_loaded) {
     JsonDeSerializer deser{json_vec};
@@ -219,6 +276,9 @@ bool MaterialResource::_async_load_from_file() {
 MaterialResource::MaterialResource() {}
 
 MaterialResource::~MaterialResource() {
+    if (auto scene = SceneManager::instance_ptr()) {
+        scene->remove_shader_feature_source(this);
+    }
     _depended_resources.clear();
     _loaded = false;
     if (_mat_code.value == ~0u) return;
@@ -288,6 +348,15 @@ bool MaterialResource::_install() {
                  sizeof(t)});
         }
     });
+    auto const feature_mask = _mat_data.visit_or(
+        uint64_t{0u},
+        []<typename T>(T const &material) {
+            return rbc::scene_shader_feature_mask(material);
+        });
+    _installed_shader_feature_mask.store(
+        feature_mask, std::memory_order_release);
+    _gpu_material_installed.store(true, std::memory_order_release);
+    _publish_shader_features(feature_mask);
     return true;
 }
 

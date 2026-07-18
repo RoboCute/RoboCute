@@ -1,5 +1,6 @@
 #pragma once
 #include <rbc_config.h>
+#include <luisa/core/stl/algorithm.h>
 #include <luisa/core/stl/filesystem.h>
 #include <luisa/dsl/func.h>
 #include <luisa/core/fiber.h>
@@ -55,25 +56,69 @@ using ShaderType = vstd::variant<ShaderBase, RasterShader<>>;
 ;
 struct RBC_RUNTIME_API ShaderManager : RBCStruct {
     using ReloadFunc = vstd::func_ptr_t<ShaderType(Device &device, string_view name, luisa::span<Type const *const> arg_types)>;
-    struct ShaderVariant {
+    struct ShaderCacheEntry {
         ShaderType shader;
         vstd::vector<Type const *> arg_types;
         ReloadFunc reload_func{nullptr};
         luisa::spin_mutex local_mtx;
         luisa::fiber::event _evt;
         bool support_preload{true};
-        ShaderVariant()
-            : _evt(luisa::fiber::event::Mode::Auto) {
+        ShaderCacheEntry()
+            : _evt(luisa::fiber::event::Mode::Manual) {
         }
         template<typename ShaderT>
             requires(ShaderType::IndexOf<std::remove_cvref_t<ShaderT>> < ShaderType::argSize)
-        ShaderVariant(
+        ShaderCacheEntry(
             ShaderT &&shader,
             vstd::vector<Type const *> &&arg_types,
             ReloadFunc reload_func = {},
             bool support_preload = true)
-            : shader(std::forward<ShaderT>(shader)), arg_types(std::move(arg_types)), reload_func(reload_func), _evt(luisa::fiber::event::Mode::Auto), support_preload(support_preload) {
+            : shader(std::forward<ShaderT>(shader)), arg_types(std::move(arg_types)), reload_func(reload_func), _evt(luisa::fiber::event::Mode::Manual), support_preload(support_preload) {
         }
+    };
+    using ShaderVariant [[deprecated("Use ShaderCacheEntry; runtime variants use VariantSelection.")]] =
+        ShaderCacheEntry;
+
+    struct VariantSelection {
+        using Item = std::pair<luisa::string, luisa::string>;
+        vstd::vector<Item> values;
+
+        VariantSelection &set(luisa::string_view dimension, luisa::string_view value) {
+            for (auto &item : values) {
+                if (item.first == dimension) {
+                    item.second = value;
+                    return *this;
+                }
+            }
+            values.emplace_back(luisa::string{dimension}, luisa::string{value});
+            luisa::sort(
+                values.begin(),
+                values.end(),
+                [](Item const &lhs, Item const &rhs) noexcept {
+                    return lhs.first < rhs.first;
+                });
+            return *this;
+        }
+        [[nodiscard]] bool empty() const noexcept { return values.empty(); }
+        [[nodiscard]] bool operator==(VariantSelection const &rhs) const noexcept {
+            return values == rhs.values;
+        }
+    };
+
+    struct VariantResolution {
+        luisa::string logical_name;
+        luisa::filesystem::path artifact;
+        VariantSelection selection;
+        luisa::string build_id;
+        bool manifest_backed{false};
+
+        [[nodiscard]] explicit operator bool() const noexcept { return !artifact.empty(); }
+    };
+
+    struct VariantFamilyResolution {
+        vstd::vector<VariantResolution> programs;
+        VariantSelection selection;
+        luisa::string build_id;
     };
 
     // [SINGLETON]
@@ -82,14 +127,44 @@ struct RBC_RUNTIME_API ShaderManager : RBCStruct {
     static void destroy_instance();
 
 private:
+    struct ManifestVariant {
+        VariantSelection selection;
+        luisa::filesystem::path artifact;
+        uint64_t size{};
+    };
+    struct ManifestProgram {
+        VariantSelection default_selection;
+        vstd::vector<ManifestVariant> variants;
+    };
+    struct ManifestFamilyRule {
+        VariantSelection selection;
+        uint64_t required_features{};
+        uint64_t forbidden_features{};
+    };
+    struct ManifestFamily {
+        vstd::vector<luisa::string> programs;
+        vstd::vector<ManifestFamilyRule> rules;
+    };
+
     Device &_device;
-    vstd::spin_mutex _mtx;
+    mutable vstd::spin_mutex _mtx;
     luisa::filesystem::path _shader_path;
     std::atomic_uint64_t _all_shader_count{};
     std::atomic_uint64_t _finished_shaders{};
-    vstd::HashMap<string, ShaderVariant> _shaders;
+    luisa::fiber::counter _preload_counter;
+    vstd::HashMap<string, luisa::shared_ptr<ShaderCacheEntry>> _shaders;
+    vstd::HashMap<string, ManifestProgram> _manifest_programs;
+    vstd::HashMap<string, ManifestFamily> _manifest_families;
+    luisa::string _manifest_backend;
+    luisa::string _manifest_build_id;
+    bool _manifest_present{false};
+    bool _manifest_valid{false};
     void _empty_path_error();
     void _captured_not_empty_error(string_view name);
+    void _load_variant_manifest();
+    [[nodiscard]] bool _is_family_shader_path(
+        luisa::filesystem::path const &path) const;
+    [[nodiscard]] static luisa::string _canonical_logical_name(luisa::string_view name);
     ShaderType const *_load_shader(
         luisa::filesystem::path const &shader_path,
         luisa::variant<
@@ -117,14 +192,16 @@ private:
             new_option.name = shader_path;
             return _device.compile(kernel, new_option);
         };
-        return static_cast<Shader<N, Args...> const *>(
-            _load_shader(
-                option.name,
-                kernel.function()->arguments(),
-                cb,
-                nullptr,
-                support_preload)
-                ->template try_get<ShaderBase>());
+        auto shader = _load_shader(
+            option.name,
+            kernel.function()->arguments(),
+            cb,
+            nullptr,
+            support_preload);
+        return shader
+                   ? static_cast<Shader<N, Args...> const *>(
+                         shader->template try_get<ShaderBase>())
+                   : nullptr;
     }
     luisa::string_view _path_to_key(luisa::filesystem::path const &path, luisa::string &can_path_str, luisa::string &buffer) const;
 
@@ -132,6 +209,20 @@ public:
     ShaderManager(Device &device, luisa::filesystem::path const &shader_path);
     ~ShaderManager();
     [[nodiscard]] auto const &shader_path() const { return _shader_path; }
+    [[nodiscard]] bool has_shader_manifest() const noexcept { return _manifest_valid; }
+    [[nodiscard]] luisa::string_view shader_manifest_build_id() const noexcept { return _manifest_build_id; }
+    [[nodiscard]] bool resolve_shader_variant(
+        luisa::string_view logical_name,
+        VariantSelection const &requested,
+        VariantResolution &resolution) const;
+    [[nodiscard]] bool select_shader_family_variant(
+        luisa::string_view family_name,
+        uint64_t scene_feature_mask,
+        VariantSelection &selection) const;
+    [[nodiscard]] bool resolve_shader_family(
+        luisa::string_view family_name,
+        VariantSelection const &selection,
+        VariantFamilyResolution &resolution) const;
     void get_preload_progress(uint64_t &all_shader_count, uint64_t &finished_shader_count) const;
     [[nodiscard]] ShaderBase unload_shader(luisa::filesystem::path const &shader_path);
 
@@ -148,13 +239,14 @@ public:
         auto c2 = [](Device &device, string_view name, luisa::span<Type const *const> arg_types) -> ShaderType {
             return TT::load_shader(device, name);
         };
-        shader_ptr = static_cast<T>(
-            _load_shader(
-                shader_path,
-                TT::arg_types(),
-                c1, c2,
-                support_preload)
-                ->template try_get<ShaderBase>());
+        auto shader = _load_shader(
+            shader_path,
+            TT::arg_types(),
+            c1, c2,
+            support_preload);
+        shader_ptr = shader
+                         ? static_cast<T>(shader->template try_get<ShaderBase>())
+                         : nullptr;
     }
     template<typename T>
         requires(
@@ -183,14 +275,15 @@ public:
             auto shader = TT::load_shader(device, name);
             return reinterpret_cast<RasterShader<> &&>(shader);
         };
-        shader_ptr = reinterpret_cast<T>(
-            _load_shader(
-                shader_path,
-                TT::arg_types(),
-                c1, c2,
-                // raster no support preload
-                false)
-                ->template try_get<RasterShader<>>());
+        auto shader = _load_shader(
+            shader_path,
+            TT::arg_types(),
+            c1, c2,
+            // raster no support preload
+            false);
+        shader_ptr = shader
+                         ? reinterpret_cast<T>(shader->template try_get<RasterShader<> >())
+                         : nullptr;
     }
     template<typename... Args>
     void async_load_raster_shader(luisa::fiber::counter &counter, luisa::string_view shader_name, RasterShader<Args...> const *&shader) {

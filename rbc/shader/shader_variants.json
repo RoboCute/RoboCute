@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "backends": [
+    "dx",
+    "vk"
+  ],
+  "compile": {
+    "source_root": "src",
+    "include_dirs": [
+      "include"
+    ],
+    "optimization": "on",
+    "defines": {}
+  },
+  "scene_features": [
+    "complex_pbr_material"
+  ],
+  "dimensions": {
+    "pbr_material": {
+      "default": "lite",
+      "values": {
+        "lite": {
+          "defines": {
+            "RBC_LITE_PBR_MATERIAL": "1"
+          },
+          "scene_features": {
+            "forbidden": [
+              "complex_pbr_material"
+            ]
+          }
+        },
+        "full": {
+          "defines": {},
+          "scene_features": {
+            "required": [
+              "complex_pbr_material"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "variant_sets": {
+    "offline_pt": {
+      "default": "lite",
+      "permutations": [
+        {
+          "id": "lite",
+          "select": {
+            "pbr_material": "lite"
+          }
+        },
+        {
+          "id": "full",
+          "select": {
+            "pbr_material": "full"
+          }
+        }
+      ]
+    }
+  },
+  "programs": [
+    {
+      "id": "path_tracer/offline_pt",
+      "source": "src/path_tracer/offline_pt.cpp",
+      "variant_set": "offline_pt",
+      "host_abi": "stable"
+    },
+    {
+      "id": "path_tracer/offline_pt_denoise",
+      "source": "src/path_tracer/offline_pt_denoise.cpp",
+      "variant_set": "offline_pt",
+      "host_abi": "stable"
+    },
+    {
+      "id": "path_tracer/pt_multi_bounce_offline",
+      "source": "src/path_tracer/pt_multi_bounce_offline.cpp",
+      "variant_set": "offline_pt",
+      "host_abi": "stable"
+    }
+  ]
+}

@@ -5,6 +5,12 @@
 #include <rbc_graphics/mat_serde.h>
 namespace rbc {
 
+uint64_t MaterialStub::shader_feature_mask() const {
+    return mat_data.visit_or(uint64_t{0u}, []<typename T>(T const &material) {
+        return rbc::scene_shader_feature_mask(material);
+    });
+}
+
 void MaterialStub::openpbr_json_ser(JsonSerializer &t, material::OpenPBR const &mat) {
     t._store("type"sv, "pbr");
     auto serde_func = [&]<typename U>(U &u, char const *name) {
@@ -81,6 +87,9 @@ MaterialStub::MaterialStub() {
 void MaterialStub::create_pbr_material() {
     LUISA_DEBUG_ASSERT(mat_code.value == ~0u);
     mat_data.reset_as<material::OpenPBR>();
+    if (auto scene = SceneManager::instance_ptr()) {
+        scene->update_shader_feature_source(this, shader_feature_mask());
+    }
 }
 void MaterialStub::remove_material() {
     if (mat_code.value == ~0u) return;
@@ -88,6 +97,9 @@ void MaterialStub::remove_material() {
     if (sm && mat_code.value != ~0u)
         sm->mat_manager().discard_mat_instance(mat_code);
     mat_code.value = ~0u;
+    if (sm) {
+        sm->update_shader_feature_source(this, 0u);
+    }
 }
 void MaterialStub::update_material(luisa::string_view json) {
     mat_data.visit([&]<typename T>(T &t) {
@@ -123,9 +135,15 @@ void MaterialStub::update_material(luisa::string_view json) {
             }
         }
     });
+    if (auto scene = SceneManager::instance_ptr()) {
+        scene->update_shader_feature_source(this, shader_feature_mask());
+    }
 }
 MaterialStub::~MaterialStub() {
     remove_material();
+    if (auto scene = SceneManager::instance_ptr()) {
+        scene->remove_shader_feature_source(this);
+    }
 }
 void LightStub::remove_light() {
     if (id == ~0u) return;
@@ -304,7 +322,39 @@ static luisa::vector<float> material_emissions(luisa::span<RC<MaterialStub> cons
 ObjectStub::~ObjectStub() {
     remove_object();
 }
+
+void ObjectStub::_update_shader_feature_bindings(size_t material_count) {
+    luisa::vector<MaterialStub const *> next_materials;
+    material_count = std::min(material_count, materials.size());
+    next_materials.reserve(material_count);
+    for (auto i : vstd::range(material_count)) {
+        auto const &material = materials[i];
+        if (material && material->mat_code.value != ~0u) {
+            next_materials.emplace_back(material.get());
+        }
+    }
+    if (auto scene = SceneManager::instance_ptr()) {
+        for (auto const material : next_materials) {
+            scene->bind_shader_feature_source(material, material->shader_feature_mask());
+        }
+        for (auto const material : shader_feature_materials) {
+            scene->unbind_shader_feature_source(material);
+        }
+    }
+    shader_feature_materials = std::move(next_materials);
+}
+
+void ObjectStub::_clear_shader_feature_bindings() {
+    if (auto scene = SceneManager::instance_ptr()) {
+        for (auto const material : shader_feature_materials) {
+            scene->unbind_shader_feature_source(material);
+        }
+    }
+    shader_feature_materials.clear();
+}
+
 void ObjectStub::remove_object() {
+    _clear_shader_feature_bindings();
     auto sm = SceneManager::instance_ptr();
     if (mesh_ref) {
         mesh_ref.reset();
@@ -383,6 +433,7 @@ void ObjectStub::create_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
     } else {
         mesh_tlas_idx = ~0u;
     }
+    _update_shader_feature_bindings(submesh_size);
 }
 ObjectStub::ObjectStub() {
     mesh_light_idx = ~0u;
@@ -394,7 +445,7 @@ void ObjectStub::update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
         mesh_ref.reset();
     }
     mesh_ref = mesh;
-    materials.clear();
+    [[maybe_unused]] auto old_materials = std::move(materials);
     material_codes.clear();
     auto submesh_size = std::max<size_t>(1, mesh_ref->mesh_data()->submesh_offset.size());
     if (!(mats.size() == submesh_size)) [[unlikely]] {
@@ -473,6 +524,7 @@ void ObjectStub::update_object(luisa::float4x4 matrix, DeviceMesh *mesh, luisa::
             } break;
         }
     }
+    _update_shader_feature_bindings(submesh_size);
 }
 void ObjectStub::update_object_pos(luisa::float4x4 matrix) {
     auto render_device = RenderDevice::instance_ptr();

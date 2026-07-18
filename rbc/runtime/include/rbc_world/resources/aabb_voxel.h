@@ -48,6 +48,7 @@ private:
 
     /// Upload host AABB data to device buffer
     void _upload_aabbs();
+    [[nodiscard]] uint64_t _shader_feature_mask() const;
 
 public:
     /// Check if resource is empty (no voxels loaded)
@@ -82,6 +83,10 @@ public:
     
     [[nodiscard]] luisa::span<material::OpenPBRParticle const> host_materials() const;
     [[nodiscard]] luisa::span<material::OpenPBRParticle> host_materials();
+
+    // Uploads edits made through host_materials() and refreshes the active
+    // scene's shader feature snapshot.
+    void commit_host_materials();
 
     /// Get the device-side AABB buffer
     [[nodiscard]] luisa::compute::BufferView<luisa::compute::AABB> aabb_buffer() const;
