@@ -9,7 +9,6 @@ BUILTIN_PROGRAM_PATH = Path(
     os.path.dirname(__file__) + "/rbc_ext/_C"
 )  # Built-In Runtime Path
 
-
 def _create_visualization_mesh(
     positions: list[tuple[float, float, float]],
     indices: list[int]

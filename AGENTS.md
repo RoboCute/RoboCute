@@ -1,11 +1,13 @@
 # Agent Guidelines
 
 ## Rules
+
 - never change files under `generated/`, `thirdparty/`.
 - use `uv sync --extra=all` to sync package
 - use `uv run` to run python scripts
 
 ## C++ Lint
+
 Run C++ syntax validation, or get file reference using clangd:
 ```bash
 uv run scripts/cpp_lint.py <cpp_file> [--project-root <dir>] [--clangd-path <path>] [-v]

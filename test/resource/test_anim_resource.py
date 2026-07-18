@@ -1,1 +1,0 @@
-# 专用于测试SkeletalAnimation相关的Resource是否正确

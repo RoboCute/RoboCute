@@ -1,7 +1,6 @@
 import numpy as np
 import math
 
-
 def degrees_to_radians(degrees: float) -> float:
     """Convert degrees to radians.
 
@@ -14,7 +13,6 @@ def degrees_to_radians(degrees: float) -> float:
     import math
 
     return degrees * math.pi / 180
-
 
 def euler_to_quaternion(euler_x: float, euler_y: float, euler_z: float) -> tuple:
     """
