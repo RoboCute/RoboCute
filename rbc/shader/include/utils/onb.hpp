@@ -2,6 +2,15 @@
 #include <luisa/std.hpp>
 namespace mtl {
 using namespace luisa::shader;
+
+float3 bend_to_hemisphere(float3 dir, float3 hemisphere_normal, float strength = 0.1f) {
+    float dir_dot_n = dot(dir, hemisphere_normal);
+    float3 dir_perp = dir - dir_dot_n * hemisphere_normal;
+    float weight = dir_dot_n + sqrt(sqr(dir_dot_n) + sqr(strength));
+    weight = saturate(weight / (1.0f + sqrt(1.0f + sqr(strength))));
+    return normalize(hemisphere_normal * weight + dir_perp * rsqrt(dot(dir_perp, dir_perp) ) / max(1.0f - sqr(weight), 1e-10f));
+}
+
 struct Onb {
 	float3 tangent{1.0f, 0.0f, 0.0f};
 	float3 bitangent{0.0f, 1.0f, 0.0f};
