@@ -154,6 +154,29 @@ static luisa::vector<float> material_emissions(luisa::span<RC<MaterialResource> 
 RenderComponent::~RenderComponent() {
     remove_object();
 }
+
+void RenderComponent::_update_shader_feature_bindings(
+    luisa::vector<MaterialResource const *> &&materials) {
+    if (auto scene = SceneManager::instance_ptr()) {
+        for (auto const material : materials) {
+            scene->bind_shader_feature_source(material, material->shader_feature_mask());
+        }
+        for (auto const material : _shader_feature_materials) {
+            scene->unbind_shader_feature_source(material);
+        }
+    }
+    _shader_feature_materials = std::move(materials);
+}
+
+void RenderComponent::_clear_shader_feature_bindings() {
+    if (auto scene = SceneManager::instance_ptr()) {
+        for (auto const material : _shader_feature_materials) {
+            scene->unbind_shader_feature_source(material);
+        }
+    }
+    _shader_feature_materials.clear();
+}
+
 void RenderComponent::_remove_tlas_idx() {
     std::lock_guard lck{render_comp_lists->_mtx};
     render_comp_lists->accel_ids.erase(_mesh_tlas_idx);
@@ -164,6 +187,7 @@ void RenderComponent::_add_tlas_idx() {
 }
 
 void RenderComponent::remove_object() {
+    _clear_shader_feature_bindings();
     auto const sm = SceneManager::instance_ptr();
     if (_mesh_ref && _mesh_ref->device_mesh()) {
         _mesh_ref.reset();
@@ -224,8 +248,9 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
         return;
     }
     auto submesh_size = mesh->submesh_count();
+    [[maybe_unused]] luisa::vector<RC<MaterialResource>> old_materials;
     if (!mats.empty()) {
-        _materials.clear();
+        old_materials = std::move(_materials);
         auto setted_size = std::min(mats.size(), submesh_size);
         vstd::push_back_all(
             _materials,
@@ -233,6 +258,8 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
     }
     _material_codes.clear();
     _material_codes.reserve(submesh_size);
+    luisa::vector<MaterialResource const *> shader_feature_materials;
+    shader_feature_materials.reserve(submesh_size);
     mesh->install();
     vstd::push_back_func(
         _material_codes,
@@ -248,6 +275,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
                 if (mat->mat_code().value == ~0u) [[unlikely]] {
                     return MaterialResource::default_mat_code();
                 }
+                shader_feature_materials.emplace_back(mat.get());
                 return mat->mat_code();
             }
         });
@@ -257,6 +285,7 @@ void RenderComponent::update_object(luisa::span<RC<MaterialResource> const> mats
             _material_codes.emplace_back(default_mat);
         } while (_material_codes.size() < submesh_size);
     }
+    _update_shader_feature_bindings(std::move(shader_feature_materials));
     // TODO: change light type
     bool is_emission = material_is_emission(_materials);
     if (!render_device) return;

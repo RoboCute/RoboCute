@@ -15,13 +15,22 @@ import platform
 import subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional
+from typing import Callable, Optional, Sequence
 
 
 # Import from src/scripts
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from rbc_build.utils import print_success, print_error, print_warning, print_info, print_debug
 from rbc_build.prepare import PLATFORM, ARCH
+from rbc_build.artifact_publish import (
+    install_build_artifacts as publish_build_artifacts,
+)
+from rbc_build.shader_variants import (
+    ShaderVariantError,
+    _atomic_replace_directory,
+    install_verified_shader_root,
+    load_config,
+)
 
 
 def get_project_dir() -> Path:
@@ -154,21 +163,41 @@ def copy_shader(shader_name: str, target_dir: Path, ext_path: Path) -> int:
     # Shader path is at parent of target_dir: ../shader_build_<name>
     shader_src = target_dir.parent / f"shader_build_{shader_name}"
     shader_dst = ext_path / f"shader_build_{shader_name}"
-
-    if not shader_src.exists():
-        print_warning(f"Shader source not found: {shader_src}")
-        return 0
-
-    # If destination exists, remove it first to ensure clean copy
-    if shader_dst.exists():
-        shutil.rmtree(shader_dst)
-
-    # Copy the entire directory
-    shutil.copytree(shader_src, shader_dst)
+    install_verified_shader_root(shader_src, shader_dst, shader_name)
 
     # Count items copied
     count = sum(1 for _ in shader_dst.rglob("*") if _.is_file())
     return count
+
+
+def install_build_artifacts(
+    target_dir: Path,
+    ext_path: Path,
+    shader_types: Sequence[str],
+    *,
+    build_stubgen: Optional[str] = None,
+    host_output: Optional[Path] = None,
+    publisher: Callable[[Path, Path], None] = _atomic_replace_directory,
+) -> int:
+    """Publish through the shared generation-checked artifact installer."""
+    resolved_host_output = (
+        host_output
+        if host_output is not None
+        else get_project_dir() / "rbc" / "shader" / "host"
+    )
+    prepare_staged = (
+        (lambda staged: run_stubgen(staged, build_stubgen))
+        if build_stubgen
+        else None
+    )
+    return publish_build_artifacts(
+        target_dir,
+        ext_path,
+        shader_types,
+        host_output=resolved_host_output,
+        prepare_staged=prepare_staged,
+        publisher=publisher,
+    )
 
 
 def run_jobs(jobs: list) -> None:
@@ -289,41 +318,28 @@ def main(mode: Optional[str] = None, build_stubgen: Optional[str] = None, rebuil
         print_error(f"Target directory does not exist: {target_dir}")
         return 1
 
-    # Step 2: Copy files
-    print_debug("Step 2: Copying build artifacts...")
-
-    # Prepare copy jobs
-    copy_jobs = []
-
-    # Define file extensions to copy
-    extensions = ["dll", "pyd", "bytes"]
-
-    # Add jobs for copying extension files
-    for ext in extensions:
-        copy_jobs.append(
-            (f"copy_{ext}", copy_files_with_pattern, (target_dir, ext_path, f"*.{ext}"))
+    # Step 2: Publish binaries and shaders as one verified generation.
+    print_debug("Step 2: Publishing build artifacts...")
+    shader_types = list(
+        load_config(
+            project_dir / "rbc" / "shader" / "shader_variants.json"
+        ).backends
+    )
+    try:
+        copied_files = install_build_artifacts(
+            target_dir,
+            ext_path,
+            shader_types,
+            build_stubgen=build_stubgen,
         )
-
-    # Define shader types to copy
-    shader_types = ["dx", "vk"]
-
-    # Add jobs for copying shader files
-    for shader in shader_types:
-        copy_jobs.append(
-            (f"shader_{shader}", copy_shader, (shader, target_dir, ext_path))
-        )
-
-    # Run all copy jobs concurrently
-    run_jobs(copy_jobs)
-    print_success("File copy operations completed.")
+    except (OSError, ShaderVariantError) as error:
+        print_error(f"Artifact publication failed: {error}")
+        return 1
+    print_success(
+        f"Published {copied_files} binary/resource files and "
+        f"{len(shader_types)} shader roots."
+    )
     print()
-
-    # Step 3: Optionally build stubs
-    if build_stubgen:
-        print_debug("Step 3: Generating stubs...")
-        run_stubgen(ext_path, build_stubgen)
-        print_success("Stub generation completed.")
-        print()
 
     print("=" * 60)
     print("Install completed successfully!")

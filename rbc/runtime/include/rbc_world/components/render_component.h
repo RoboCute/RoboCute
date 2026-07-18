@@ -16,6 +16,7 @@ private:
     ObjectRenderType _type{};
     luisa::vector<MatCode> _material_codes;
     luisa::vector<RC<MaterialResource>> _materials;
+    luisa::vector<MaterialResource const *> _shader_feature_materials;
     uint _mesh_tlas_idx{~0u};
     uint _mesh_light_idx{~0u};
 
@@ -37,6 +38,8 @@ private:
     void _remove_tlas_idx();
     void _add_tlas_idx();
     void _update_object_pos(float4x4 const &matrix);
+    void _update_shader_feature_bindings(luisa::vector<MaterialResource const *> &&materials);
+    void _clear_shader_feature_bindings();
 };
 }// namespace rbc::world
 RBC_RTTI(rbc::world::RenderComponent)

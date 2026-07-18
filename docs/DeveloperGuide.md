@@ -3,6 +3,7 @@
 本页是RoboCute开发者的文档入口，如果您希望深入了解RoboCute项目的项目项目构造，技术选型思路，基础库，功能细节等，请从本页面开始。
 
 - [Codebase](dev/Codebase.md)：代码库相关文档，介绍了Robocute的基础构造和底层工具链
+- [Shader 变体系统](design/shader-variants.md)：材质 feature、变体构建、运行时自动选择与发布流程
 - [Roadmap](dev/Roadmap.md): 整体路径，罗列了当前已经计划的开发事项
 
 ## 贡献指南

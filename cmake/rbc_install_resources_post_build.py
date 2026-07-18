@@ -8,6 +8,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from rbc_build.shader_variants import load_config
+
+
 def find_7z_executable():
     """Find 7z executable for extracting archives."""
     possible_paths = [
@@ -116,13 +119,14 @@ def main():
         build_dir = output_dir.parent
     
     shader_dirs = []
+    shader_backends = load_config(
+        project_root / "rbc" / "shader" / "shader_variants.json"
+    ).backends
+    shader_search_roots = [build_dir, output_dir.parent, output_dir]
     possible_shader_locations = [
-        build_dir / "shader_build_dx",
-        build_dir / "shader_build_vk",
-        output_dir.parent / "shader_build_dx",
-        output_dir.parent / "shader_build_vk",
-        output_dir / "shader_build_dx",
-        output_dir / "shader_build_vk",
+        root / f"shader_build_{backend}"
+        for root in shader_search_roots
+        for backend in shader_backends
     ]
     
     # Remove duplicates while preserving order
@@ -141,8 +145,12 @@ def main():
     if not shader_dirs:
         print("WARNING: No shader build directories found.")
         print("  Expected locations:")
-        print(f"    - {build_dir}/shader_build_dx, shader_build_vk")
-        print(f"    - {output_dir.parent}/shader_build_dx, shader_build_vk")
+        for root in shader_search_roots:
+            expected = ", ".join(
+                str(root / f"shader_build_{backend}")
+                for backend in shader_backends
+            )
+            print(f"    - {expected}")
     else:
         
         print(f"Copying shader build results to {dest_dir}...")

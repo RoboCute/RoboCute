@@ -26,6 +26,24 @@ namespace ao_trace {
 PTPassContext::PTPassContext() = default;
 PTPassContext::~PTPassContext() = default;
 
+OfflinePTPass::OfflinePTPass()
+    : _pt_shader_family{
+          "offline_pt",
+          {
+              ShaderFamily::Program{
+                  .logical_name = "path_tracer/offline_pt",
+                  .slot = &_pt_shader,
+                  .load = offline_pt_shader::load_shader},
+              ShaderFamily::Program{
+                  .logical_name = "path_tracer/offline_pt_denoise",
+                  .slot = &_pt_shader_denoise,
+                  .load = offline_pt_shader_denoise::load_shader},
+              ShaderFamily::Program{
+                  .logical_name = "path_tracer/pt_multi_bounce_offline",
+                  .slot = &_multi_bounce,
+                  .load = offline_multibounce::load_shader},
+          }} {}
+
 void OfflinePTPass::on_enable(
     Pipeline const &pipeline,
     Device &device,
@@ -45,9 +63,7 @@ void OfflinePTPass::on_enable(
             _init_counter.done();
         });
     };
-    RBC_LOAD_SHADER(_pt_shader, offline_pt_shader, "path_tracer/offline_pt.bin");
-    RBC_LOAD_SHADER(_pt_shader_denoise, offline_pt_shader_denoise, "path_tracer/offline_pt_denoise.bin");
-    RBC_LOAD_SHADER(_multi_bounce, offline_multibounce, "path_tracer/pt_multi_bounce_offline.bin");
+    _pt_shader_family.prefetch(scene.shader_features());
     RBC_LOAD_SHADER(_ao_trace, ao_trace, "path_tracer/ao_trace.bin");
     load("path_tracer/draw_sky.bin", _draw_sky_shader);
     load("surfel/clear_hashgrid_offline.bin", _clear_hashgrid);
@@ -71,6 +87,17 @@ void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const
     if (pt_settings.enable_ao_mode) {
         pipeline_mode.use_post_filter = false;
     }
+
+    auto &pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
+    if (!pass_ctx) {
+        pass_ctx = vstd::make_unique<PTPassContext>();
+    }
+    auto const selected = _pt_shader_family.acquire(ctx.scene->shader_features());
+    if (selected.revision != pass_ctx->shader_revision) {
+        auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
+        accum_pass_ctx->frame_index = 0;
+    }
+    pass_ctx->shader_revision = selected.revision;
 }
 
 OfflinePTPass::PreparedResources OfflinePTPass::_prepare_resources(const PTResourceContext &rc) const {
@@ -208,6 +235,7 @@ void OfflinePTPass::_dispatch_path_tracing(
         alpha_map = rc.render_device.create_transient_image<float>("alpha_map", PixelStorage::BYTE1, rc.frame_settings.render_resolution);
     }
     if (rc.frame_settings.albedo_buffer && rc.frame_settings.normal_buffer) {
+        LUISA_DEBUG_ASSERT(_pt_shader_denoise);
         rc.cmdlist << offline_pt_shader_denoise::dispatch_shader(
             _pt_shader_denoise,
             ((rc.frame_settings.render_resolution + 1u) / 2u) * 2u,
@@ -233,6 +261,7 @@ void OfflinePTPass::_dispatch_path_tracing(
             static_cast<int32_t>(alpha_cull),
             rc.frame_settings.render_resolution);
     } else {
+        LUISA_DEBUG_ASSERT(_pt_shader);
         rc.cmdlist << offline_pt_shader::dispatch_shader(
             _pt_shader,
             ((rc.frame_settings.render_resolution + 1u) / 2u) * 2u,
@@ -265,6 +294,7 @@ void OfflinePTPass::_process_multibounce_indirect(
     const offline::PTArgs &pt_args,
     float accumulate_rate) const {
     auto &accel = rc.scene.accel();
+    LUISA_DEBUG_ASSERT(_multi_bounce);
     uint max_accum = (1 + pt_args.frame_index) * 1024;
 
     rc.cmdlist << offline_multibounce::dispatch_shader(
@@ -330,13 +360,23 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     auto &accel = scene.accel();
 
     auto &pass_ctx = ctx.mut.get_pass_context_mut<PTPassContext>();
+    if (!pass_ctx) {
+        pass_ctx = vstd::make_unique<PTPassContext>();
+    }
     PTResourceContext rc{
         pipeline, ctx, scene, cmdlist, frame_settings,
         render_device, accum_pass_ctx, pass_ctx};
 
     auto resources = _prepare_resources(rc);
 
-    if (!accel || accel.size() == 0) {
+    auto const waiting_for_pt_shader =
+        !pt_settings.enable_ao_mode && !_pt_shader;
+    if (!accel || accel.size() == 0 || waiting_for_pt_shader) {
+        if (waiting_for_pt_shader) {
+            frame_settings.albedo_buffer = nullptr;
+            frame_settings.normal_buffer = nullptr;
+            frame_settings.radiance_buffer = nullptr;
+        }
         _draw_sky_only(rc, resources.emission, resources.id_map, sky_heap,
                        cam_data, cam, jitter_data, write_id_map);
         return;
@@ -346,10 +386,6 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         accum_pass_ctx->frame_index < 64 &&
         frame_settings.reject_sampling) {
         scene.tex_streamer().force_sync();
-    }
-
-    if (!pass_ctx) {
-        pass_ctx = vstd::make_unique<PTPassContext>();
     }
 
     auto halton = [](int32_t index, int32_t base) {
@@ -463,7 +499,10 @@ void OfflinePTPass::wait_enable() {
     _init_counter.wait();
 }
 
-OfflinePTPass::~OfflinePTPass() = default;
+OfflinePTPass::~OfflinePTPass() {
+    _init_counter.wait();
+    _pt_shader_family.wait();
+}
 
 }// namespace rbc
 

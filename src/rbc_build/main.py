@@ -13,7 +13,6 @@ import importlib
 from rbc_build.prepare import (
     GIT_TASKS,
     CLANGCXX_NAME,
-    CLANGCXX_PATH,
     SHADER_PATH,
     CLANGD_NAME,
     LC_SDK_ADDRESS,
@@ -73,40 +72,62 @@ PROJECT_ROOT = get_project_root()
 
 
 def write_shader_compile_cmd():
-    clangcxx_dir = rel(CLANGCXX_PATH)
-    shader_dir = rel(SHADER_PATH)
-    in_dir = shader_dir / "src"
-    host_dir = shader_dir / "host"
-    include_dir = shader_dir / "include"
-    cache_dir = ""
+    from rbc_build.shader_variants import load_config
 
-    def base_cmd():
+    shader_dir = rel(SHADER_PATH)
+    host_dir = shader_dir / "host"
+    project_root = Path(PROJECT_ROOT)
+    build_root = project_root / f"build/{PLATFORM}/{ARCH}"
+
+    def base_cmd(*args: str):
+        quoted_args = " ".join(f'"{arg}"' for arg in args)
         return (
-            f'"{clangcxx_dir}" -in="{in_dir}" -out="{out_dir}" -include="{include_dir}"'
+            f'uv run shader-build {quoted_args} '
+            f'--project-root "{project_root}"'
         )
 
-    def gen_json_cmd():
-        return f'"{clangcxx_dir}" -in="{shader_dir}" -out="{out_dir}" -include="{include_dir}"'
-
-    def build_cmd():
-        return base_cmd() + f' -hostgen="{host_dir}"' + f' -cache_dir="{cache_dir}"'
-
-    backends = ["dx"]  # , "vk"
+    backends = load_config(shader_dir / "shader_variants.json").backends
     # write files
     for backend in backends:
-        cache_dir = shader_dir / ".cache" / backend
-        out_dir = Path(PROJECT_ROOT) / f"build/{PLATFORM}/{ARCH}/shader_build_{backend}"
         f = open(shader_dir / f"{backend}_compile.cmd", "w")
-        f.write("@echo off\n" + build_cmd() + f" -backend={backend}")
+        f.write(
+            "@echo off\n"
+            + base_cmd(
+                "build",
+                "--backend",
+                backend,
+                "--build-root",
+                str(build_root),
+                "--hostgen",
+                "--host-out",
+                str(host_dir),
+            )
+        )
         f.close()
 
         f = open(shader_dir / f"{backend}_clean_compile.cmd", "w")
-        f.write("@echo off\n" + build_cmd() + f" -backend={backend}" + " -rebuild")
+        f.write(
+            "@echo off\n"
+            + base_cmd(
+                "build",
+                "--backend",
+                backend,
+                "--build-root",
+                str(build_root),
+                "--hostgen",
+                "--host-out",
+                str(host_dir),
+                "--rebuild",
+            )
+        )
         f.close()
 
     out_dir = shader_dir / ".vscode/compile_commands.json"
     f = open(shader_dir / "gen_json.cmd", "w")
-    f.write("@echo off\n" + gen_json_cmd() + " -lsp")
+    f.write(
+        "@echo off\n"
+        + base_cmd("lsp", "--out", str(out_dir))
+    )
     f.close()
 
 
@@ -538,8 +559,7 @@ def generate():
 
 def pre_pack():
     """
-    Pre-packaging script: Copy C++ build artifacts (dll, pyd, bytes) and shader builds
-    to src/robocute/rbc_ext/_C for packaging. Optionally generate stub files.
+    Atomically publish one verified binary, shader, and host generation for packaging.
 
     Usage: uv run pre-pack <mode> <build_stubgen>
 
@@ -548,6 +568,8 @@ def pre_pack():
         build_stubgen: Stub generator to use ('uv' for uvx, or None to skip).
     """
     import argparse
+    from rbc_build.artifact_publish import install_build_artifacts
+    from rbc_build.shader_variants import ShaderVariantError, load_config
 
     parser = argparse.ArgumentParser(description="Pre-packaging script for RoboCute")
     parser.add_argument(
@@ -588,70 +610,22 @@ def pre_pack():
         print("Please build the project first with xmake.")
         sys.exit(1)
 
-    # Ensure destination directory exists
-    ext_path.mkdir(parents=True, exist_ok=True)
+    host_output = rel("rbc/shader/host")
+    backends = list(
+        load_config(rel("rbc/shader/shader_variants.json")).backends
+    )
 
-    # Copy files by extension
-    extensions = ["dll", "pyd", "bytes"]
-    copied_files = []
-
-    for ext in extensions:
-        pattern = f"*.{ext}"
-        files = list(target_dir.glob(pattern))
-        for src_file in files:
-            dst_file = ext_path / src_file.name
-            try:
-                shutil.copy2(src_file, dst_file)
-                copied_files.append(src_file.name)
-            except Exception as e:
-                print_error(f"Failed to copy {src_file.name}: {e}")
-
-    if copied_files:
-        print_success(f"Copied {len(copied_files)} files:")
-        for f in copied_files[:10]:  # Show first 10
-            print(f"  - {f}")
-        if len(copied_files) > 10:
-            print(f"  ... and {len(copied_files) - 10} more")
-    else:
-        print_warning("No dll/pyd/bytes files found to copy.")
-    print()
-
-    # Copy shader build directories
-    shader_names = ["shader_build_dx", "shader_build_vk"]
-    shader_base = rel(f"build/{PLATFORM}/{ARCH}")
-    copied_shaders = []
-
-    for shader_name in shader_names:
-        shader_dir = shader_base / shader_name
-        if shader_dir.exists() and shader_dir.is_dir():
-            dst_shader_dir = ext_path / shader_name
-
-            # Remove existing directory if present
-            if dst_shader_dir.exists():
-                shutil.rmtree(dst_shader_dir)
-
-            try:
-                shutil.copytree(shader_dir, dst_shader_dir)
-                copied_shaders.append(shader_name)
-            except Exception as e:
-                print_error(f"Failed to copy {shader_name}: {e}")
-
-    if copied_shaders:
-        print_success(f"Copied shader builds: {', '.join(copied_shaders)}")
-    else:
-        print_warning("No shader build directories found.")
-    print()
-
-    # Generate stub files if requested
-    if build_stubgen:
+    def prepare_staged(staged: Path) -> None:
+        if not build_stubgen:
+            return
         print("Generating stub files...")
-        os.environ["PYTHONPATH"] = str(ext_path)
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(staged)
 
         modules = ["rbc_ext_c", "lcapi_c"]
 
         for module in modules:
-            # Check if .pyd file exists before generating stub
-            pyd_file = ext_path / f"{module}.pyd"
+            pyd_file = staged / f"{module}.pyd"
             if not pyd_file.exists():
                 print_warning(f"Skipping stub for {module}: {pyd_file.name} not found")
                 continue
@@ -659,17 +633,19 @@ def pre_pack():
             try:
                 if build_stubgen == "uv":
                     subprocess.run(
-                        ["uvx", "pybind11-stubgen", module, f"--output-dir={ext_path}"],
+                        ["uvx", "pybind11-stubgen", module, f"--output-dir={staged}"],
                         check=True,
                         capture_output=True,
                         text=True,
+                        env=env,
                     )
                 else:
                     subprocess.run(
-                        ["pybind11-stubgen", module, f"--output-dir={ext_path}"],
+                        ["pybind11-stubgen", module, f"--output-dir={staged}"],
                         check=True,
                         capture_output=True,
                         text=True,
+                        env=env,
                     )
                 print_success(f"Generated stub for {module}")
             except subprocess.CalledProcessError as e:
@@ -681,6 +657,24 @@ def pre_pack():
                     f"pybind11-stubgen not found. Please install it or use 'uv' option."
                 )
         print()
+
+    try:
+        copied_files = install_build_artifacts(
+            target_dir,
+            ext_path,
+            backends,
+            host_output=host_output,
+            prepare_staged=prepare_staged,
+        )
+    except (OSError, ShaderVariantError) as error:
+        print_error(f"Artifact publication failed: {error}")
+        sys.exit(1)
+
+    print_success(
+        f"Published {copied_files} binary/resource files and "
+        f"{len(backends)} shader roots."
+    )
+    print()
 
     print("=" * 60)
     print("Pre-pack completed successfully!")

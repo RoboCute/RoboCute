@@ -4,6 +4,112 @@
 #include <luisa/core/dynamic_module.h>
 #include <rbc_graphics/managed_device.h>
 namespace rbc {
+
+void SceneManager::_apply_shader_feature_transition_locked(
+    uint64_t old_mask,
+    bool old_active,
+    uint64_t new_mask,
+    bool new_active) {
+    auto const old_features = old_active ? old_mask : 0u;
+    auto const new_features = new_active ? new_mask : 0u;
+    auto const removed_features = old_features & ~new_features;
+    auto const added_features = new_features & ~old_features;
+    auto const previous_mask = _shader_feature_mask;
+    for (uint32_t bit = 0u; bit < _shader_feature_counts.size(); ++bit) {
+        auto const feature = 1ull << bit;
+        if ((removed_features & feature) != 0u) {
+            auto &count = _shader_feature_counts[bit];
+            LUISA_DEBUG_ASSERT(count != 0u);
+            if (--count == 0u) {
+                _shader_feature_mask &= ~feature;
+            }
+        }
+        if ((added_features & feature) != 0u) {
+            auto &count = _shader_feature_counts[bit];
+            if (count++ == 0u) {
+                _shader_feature_mask |= feature;
+            }
+        }
+    }
+    if (_shader_feature_mask != previous_mask) {
+        _published_shader_feature_mask.store(
+            _shader_feature_mask, std::memory_order_release);
+    }
+}
+
+SceneShaderFeatureSnapshot SceneManager::shader_features() const {
+    return SceneShaderFeatureSnapshot{
+        .mask = _published_shader_feature_mask.load(std::memory_order_acquire)};
+}
+
+void SceneManager::set_shader_feature_source(void const *source, uint64_t mask) {
+    if (source == nullptr) return;
+    std::lock_guard lock{_shader_feature_mtx};
+    auto [iter, inserted] = _shader_feature_sources.try_emplace(source);
+    auto &state = iter->second;
+    if (!inserted && state.directly_active && state.mask == mask) return;
+    auto const old_mask = state.mask;
+    auto const old_active = state.active();
+    state.mask = mask;
+    state.directly_active = true;
+    _apply_shader_feature_transition_locked(
+        old_mask, old_active, state.mask, state.active());
+}
+
+void SceneManager::update_shader_feature_source(void const *source, uint64_t mask) {
+    if (source == nullptr) return;
+    std::lock_guard lock{_shader_feature_mtx};
+    auto [iter, inserted] = _shader_feature_sources.try_emplace(source);
+    auto &state = iter->second;
+    if (!inserted && state.mask == mask) return;
+    auto const old_mask = state.mask;
+    auto const old_active = state.active();
+    state.mask = mask;
+    _apply_shader_feature_transition_locked(
+        old_mask, old_active, state.mask, state.active());
+}
+
+void SceneManager::bind_shader_feature_source(void const *source, uint64_t mask) {
+    if (source == nullptr) return;
+    std::lock_guard lock{_shader_feature_mtx};
+    auto [iter, inserted] = _shader_feature_sources.try_emplace(source);
+    auto &state = iter->second;
+    auto const old_mask = state.mask;
+    auto const old_active = state.active();
+    // Do not overwrite a newer material update with a stale mask sampled by
+    // the caller before this lock was acquired.
+    if (inserted) {
+        state.mask = mask;
+    }
+    ++state.binding_count;
+    _apply_shader_feature_transition_locked(
+        old_mask, old_active, state.mask, state.active());
+}
+
+void SceneManager::unbind_shader_feature_source(void const *source) {
+    if (source == nullptr) return;
+    std::lock_guard lock{_shader_feature_mtx};
+    auto iter = _shader_feature_sources.find(source);
+    if (iter == _shader_feature_sources.end() ||
+        iter->second.binding_count == 0u) return;
+    auto const old_mask = iter->second.mask;
+    auto const old_active = iter->second.active();
+    --iter->second.binding_count;
+    _apply_shader_feature_transition_locked(
+        old_mask, old_active, iter->second.mask, iter->second.active());
+}
+
+void SceneManager::remove_shader_feature_source(void const *source) {
+    if (source == nullptr) return;
+    std::lock_guard lock{_shader_feature_mtx};
+    auto iter = _shader_feature_sources.find(source);
+    if (iter == _shader_feature_sources.end()) return;
+    auto const old_mask = iter->second.mask;
+    auto const old_active = iter->second.active();
+    _shader_feature_sources.erase(iter);
+    _apply_shader_feature_transition_locked(old_mask, old_active, 0u, false);
+}
+
 SceneManager::SceneManager(
     Context &ctx,
     Device &device, Stream &copy_stream,

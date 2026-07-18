@@ -1,54 +1,63 @@
 # RBC Shader Compilation Support
 # Handles shader compilation using clangcxx_compiler
 
-# Global flag to track if shader compilation targets have been created
-if(NOT DEFINED _RBC_SHADER_COMPILE_TARGETS_CREATED)
-    set(_RBC_SHADER_COMPILE_TARGETS_CREATED FALSE CACHE INTERNAL "Flag to track shader compile targets")
-endif()
+function(_rbc_load_shader_backends output_variable)
+    set(MANIFEST_PATH "${CMAKE_SOURCE_DIR}/rbc/shader/shader_variants.json")
+    if(NOT EXISTS "${MANIFEST_PATH}")
+        message(FATAL_ERROR "Shader variant manifest not found: ${MANIFEST_PATH}")
+    endif()
+
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MANIFEST_PATH}")
+    file(READ "${MANIFEST_PATH}" MANIFEST_JSON)
+    string(JSON BACKEND_COUNT ERROR_VARIABLE JSON_ERROR LENGTH "${MANIFEST_JSON}" backends)
+    if(NOT JSON_ERROR STREQUAL "NOTFOUND")
+        message(FATAL_ERROR "Cannot read shader backends from ${MANIFEST_PATH}: ${JSON_ERROR}")
+    endif()
+    if(BACKEND_COUNT LESS 1)
+        message(FATAL_ERROR "Shader variant manifest must declare at least one backend")
+    endif()
+
+    math(EXPR LAST_BACKEND_INDEX "${BACKEND_COUNT} - 1")
+    set(BACKENDS)
+    foreach(BACKEND_INDEX RANGE ${LAST_BACKEND_INDEX})
+        string(JSON BACKEND_TYPE TYPE "${MANIFEST_JSON}" backends ${BACKEND_INDEX})
+        if(NOT BACKEND_TYPE STREQUAL "STRING")
+            message(FATAL_ERROR "Shader backend at index ${BACKEND_INDEX} must be a string")
+        endif()
+        string(JSON BACKEND GET "${MANIFEST_JSON}" backends ${BACKEND_INDEX})
+        if(NOT BACKEND MATCHES "^[a-z][a-z0-9_-]*$")
+            message(FATAL_ERROR "Invalid shader backend in ${MANIFEST_PATH}: ${BACKEND}")
+        endif()
+        if(BACKEND IN_LIST BACKENDS)
+            message(FATAL_ERROR "Duplicate shader backend in ${MANIFEST_PATH}: ${BACKEND}")
+        endif()
+        list(APPEND BACKENDS "${BACKEND}")
+    endforeach()
+
+    set(${output_variable} "${BACKENDS}" PARENT_SCOPE)
+endfunction()
 
 function(rbc_add_shader_compilation target_name)
-    # Determine compiler path
-    if(WIN32)
-        set(COMPILER_NAME "clangcxx_compiler.exe")
-    else()
-        set(COMPILER_NAME "clangcxx_compiler")
-    endif()
-    
-    set(COMPILER_PATH "${CMAKE_SOURCE_DIR}/build/tool/clangcxx_compiler/${COMPILER_NAME}")
-    set(SHADER_DIR "${CMAKE_SOURCE_DIR}/rbc/shader")
-    
-    # Backends to compile
-    set(BACKENDS "dx" "vk")
+    find_program(RBC_SHADER_UV_EXECUTABLE NAMES uv REQUIRED)
+    _rbc_load_shader_backends(BACKENDS)
     
     foreach(BACKEND ${BACKENDS})
-        set(CACHE_DIR "${SHADER_DIR}/.cache/${BACKEND}")
         set(OUT_DIR "${CMAKE_BINARY_DIR}/shader_build_${BACKEND}")
         set(TARGET_NAME "rbc_shader_compile_${BACKEND}")
-        
-        # Create output directory
-        file(MAKE_DIRECTORY ${OUT_DIR})
-        file(MAKE_DIRECTORY ${CACHE_DIR})
-        
+
         # Only create the target once (shared across all callers)
         if(NOT TARGET ${TARGET_NAME})
-            # Custom command to compile shaders
-            add_custom_command(
-                OUTPUT ${OUT_DIR}/.shader_compile_${BACKEND}_done
-                COMMAND ${COMPILER_PATH}
-                    --in=${SHADER_DIR}/src
-                    --out=${OUT_DIR}
-                    --cache_dir=${CACHE_DIR}
-                    --backend=${BACKEND}
-                    --include=${SHADER_DIR}/include
-                COMMAND ${CMAKE_COMMAND} -E touch ${OUT_DIR}/.shader_compile_${BACKEND}_done
-                DEPENDS ${COMPILER_PATH}
-                COMMENT "Compiling shaders for ${BACKEND} backend"
-                VERBATIM
-            )
-            
-            # Add dependency to target
+            # The driver owns dependency tracking, staging, and cache validation.
             add_custom_target(${TARGET_NAME}
-                DEPENDS ${OUT_DIR}/.shader_compile_${BACKEND}_done
+                COMMAND ${RBC_SHADER_UV_EXECUTABLE} run shader-build build
+                    --project-root ${CMAKE_SOURCE_DIR}
+                    --build-root ${CMAKE_BINARY_DIR}
+                    --backend ${BACKEND}
+                BYPRODUCTS
+                    ${OUT_DIR}/shader_manifest.json
+                COMMENT "Compiling shaders for ${BACKEND} backend"
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                VERBATIM
             )
         endif()
         
@@ -58,46 +67,26 @@ function(rbc_add_shader_compilation target_name)
 endfunction()
 
 function(rbc_add_shader_hostgen target_name)
-    # Determine compiler path
-    if(WIN32)
-        set(COMPILER_NAME "clangcxx_compiler.exe")
-    else()
-        set(COMPILER_NAME "clangcxx_compiler")
-    endif()
-    
-    set(COMPILER_PATH "${CMAKE_SOURCE_DIR}/build/tool/clangcxx_compiler/${COMPILER_NAME}")
     set(SHADER_DIR "${CMAKE_SOURCE_DIR}/rbc/shader")
-    
-    set(CACHE_DIR "${SHADER_DIR}/.cache/hostgen")
-    set(OUT_DIR "${CMAKE_BINARY_DIR}/shader_build_hostgen")
     set(TARGET_NAME "rbc_shader_hostgen")
-    
-    # Create output directory
-    file(MAKE_DIRECTORY ${OUT_DIR})
-    file(MAKE_DIRECTORY ${CACHE_DIR})
-    
+    find_program(RBC_SHADER_UV_EXECUTABLE NAMES uv REQUIRED)
+
     # Only create the target once (shared across all callers)
     if(NOT TARGET ${TARGET_NAME})
-        # Custom command to compile shaders with hostgen
-        add_custom_command(
-            OUTPUT ${OUT_DIR}/.shader_hostgen_done
-            COMMAND ${COMPILER_PATH}
-                --in=${SHADER_DIR}/src
-                --out=${OUT_DIR}
-                --cache_dir=${CACHE_DIR}
-                --hostgen=${SHADER_DIR}/host
-                --include=${SHADER_DIR}/include
-            COMMAND ${CMAKE_COMMAND} -E touch ${OUT_DIR}/.shader_hostgen_done
-            DEPENDS ${COMPILER_PATH}
+        add_custom_target(${TARGET_NAME}
+            COMMAND ${RBC_SHADER_UV_EXECUTABLE} run shader-build build
+                --project-root ${CMAKE_SOURCE_DIR}
+                --build-root ${CMAKE_BINARY_DIR}
+                --hostgen-only
+                --host-out ${SHADER_DIR}/host
             COMMENT "Generating shader host code"
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             VERBATIM
         )
-        
-        # Add dependency to target
-        add_custom_target(${TARGET_NAME}
-            DEPENDS ${OUT_DIR}/.shader_hostgen_done
-        )
     endif()
+
+    # Host code and runtime binaries are one shader build contract.
+    rbc_add_shader_compilation(${TARGET_NAME})
     
     # Add dependency to the calling target
     add_dependencies(${target_name} ${TARGET_NAME})

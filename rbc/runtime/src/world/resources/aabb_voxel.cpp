@@ -17,7 +17,26 @@ namespace rbc::world {
 
 VoxelResource::VoxelResource() = default;
 
+uint64_t VoxelResource::_shader_feature_mask() const {
+    auto const materials = host_materials();
+    if (materials.size() != _num_voxels) {
+        // Device-only legacy voxel files do not retain host material bytes.
+        // Full is the only safe choice when the material features are unknown.
+        return _num_voxels == 0u
+                   ? 0u
+                   : scene_shader_feature_mask(SceneShaderFeature::ComplexPbrMaterial);
+    }
+    uint64_t mask = 0u;
+    for (auto const &material : materials) {
+        mask |= rbc::scene_shader_feature_mask(material);
+    }
+    return mask;
+}
+
 VoxelResource::~VoxelResource() {
+    if (auto scene = SceneManager::instance_ptr()) {
+        scene->remove_shader_feature_source(this);
+    }
     auto inst = AssetsManager::instance();
     if (!inst) return;
     remove_procedural_instance();
@@ -97,6 +116,10 @@ uint VoxelResource::emplace_procedural_instance(
         transform,
         visibility_mask);
 
+    if (_procedural_instance_id != ~0u) {
+        sm.set_shader_feature_source(this, _shader_feature_mask());
+    }
+
     return _procedural_instance_id;
 }
 
@@ -127,6 +150,7 @@ void VoxelResource::remove_procedural_instance() {
     DisposeQueue &disp_queue = sm.dispose_queue();
 
     std::lock_guard lck{_async_mtx};
+    sm.remove_shader_feature_source(this);
 
     if (_voxel_surface.aabb_buffer_heap_idx != ~0u) {
         sm.bindless_allocator().deallocate_buffer(_voxel_surface.aabb_buffer_heap_idx);
@@ -223,6 +247,9 @@ luisa::span<material::OpenPBRParticle const> VoxelResource::host_materials() con
     if (!_aabb_device_buffer) return {};
     _aabb_device_buffer->sync_host_size_to_device();
     auto host_data = _aabb_device_buffer->host_data();
+    if (host_data.size_bytes() < total_buffer_size_bytes()) {
+        return {};
+    }
     auto mat_data = host_data.subspan(material_offset_bytes());
     return {reinterpret_cast<material::OpenPBRParticle const *>(mat_data.data()),
             _num_voxels};
@@ -232,9 +259,22 @@ luisa::span<material::OpenPBRParticle> VoxelResource::host_materials() {
     if (!_aabb_device_buffer) return {};
     _aabb_device_buffer->sync_host_size_to_device();
     auto host_data = _aabb_device_buffer->host_data();
+    if (host_data.size_bytes() < total_buffer_size_bytes()) {
+        return {};
+    }
     auto mat_data = host_data.subspan(material_offset_bytes());
     return {reinterpret_cast<material::OpenPBRParticle *>(mat_data.data()),
             _num_voxels};
+}
+
+void VoxelResource::commit_host_materials() {
+    std::lock_guard lck{_async_mtx};
+    _upload_aabbs();
+    if (_procedural_instance_id != ~0u) {
+        if (auto scene = SceneManager::instance_ptr()) {
+            scene->set_shader_feature_source(this, _shader_feature_mask());
+        }
+    }
 }
 
 luisa::compute::BufferView<luisa::compute::AABB> VoxelResource::aabb_buffer() const {
