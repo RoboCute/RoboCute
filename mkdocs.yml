@@ -82,6 +82,7 @@ nav:
   - Development: 
       - Developer Guide: DeveloperGuide.md
       - Architecture: design/Architecture.md
+      - Shader Variants: design/shader-variants.md
       - Development Log: devlog/README.md
       - Building: BUILD.md
   - API Reference:
