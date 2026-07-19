@@ -2807,6 +2807,27 @@ void RenderSettings::set_offline_indirect_bounce(void *this_, uint32_t value) {
     clamp_value_warn(value, 0u, 8u, "offline_indirect_bounce");
     impl->map->read_mut<PathTracerSettings>().offline_indirect_bounce = value;
 }
+SpectrumAccumulationSpace RenderSettings::get_spectrum_accumulation_space(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("RenderSettings::get_spectrum_accumulation_space: this_ is null.");
+        return SpectrumAccumulationSpace::AP0D65;
+    }
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->spectrum_accumulation_space : SpectrumAccumulationSpace::AP0D65;
+}
+void RenderSettings::set_spectrum_accumulation_space(
+    void *this_,
+    SpectrumAccumulationSpace value) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("RenderSettings::set_spectrum_accumulation_space: this_ is null.");
+        return;
+    }
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    impl->map->read_mut<PathTracerSettings>().spectrum_accumulation_space = value;
+}
 bool RenderSettings::get_denoise(void *this_) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("RenderSettings::get_denoise: this_ is null.");

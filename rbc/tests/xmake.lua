@@ -14,8 +14,9 @@ end
 
 includes("sample_anim")
 
-function add_test(name, deps)
+function add_test(name, deps, interface_deps)
     deps = deps or {}
+    interface_deps = interface_deps or {}
     target("test_" .. name)
     add_rules('lc_basic_settings', {
         project_kind = 'binary'
@@ -32,6 +33,9 @@ function add_test(name, deps)
     end)
     add_files(name .. "/*.cpp")
     add_deps("external_doctest")
+    for _, dep in ipairs(interface_deps) do
+        add_interface_depend(dep)
+    end
     add_includedirs("_framework")
     add_files("_framework/test_util.cpp")
     target_end()
@@ -40,5 +44,6 @@ end
 add_test("core", {"rbc_core"})
 add_test("anim", {"rbc_runtime", "rbc_core"})
 add_test("shader_runtime", {"rbc_runtime", "rbc_core"})
+add_test("render", {"rbc_core"}, {"rbc_render_plugin"})
 
 -- includes('agents')

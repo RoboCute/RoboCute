@@ -256,7 +256,7 @@ using namespace luisa::shader;
         if ((args.geometry_mask & (1 << 5)) != 0)// Emission
         {
             const uint element_size = 3;//  3
-            float3 value = emission_sum;
+            float3 value = spectrum::spectrum_to_tristimulus(emission_sum, args.spectrum);
             uint read_index = byte_offset + buffer_id * element_size;
             // if (alpha < 0.999f) {
             //     float3 old_value;
@@ -313,7 +313,7 @@ using namespace luisa::shader;
 
     std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;
     SpectrumArg spectrum_arg;
-    spectrum_arg.lambda = spectrum::sample_xyz(g_image_heap, fract(sampler.next(g_buffer_heap) + pcg_sampler.next() / 255.f));
+    spectrum_arg.lambda = spectrum::sample_wavelengths(g_image_heap, fract(sampler.next(g_buffer_heap) + pcg_sampler.next() / 255.f));
     spectrum_arg.hero_index = pcg_sampler.nextui() % 3;
     if (hit.miss()) {
         normal_rough = float4(0, 0, 1, 0);
@@ -395,7 +395,7 @@ using namespace luisa::shader;
         }
         if (!selected_wavelength && spectrum_arg.selected_wavelength) {
             spectrum_arg.selected_wavelength = true;
-            spectrum::modify_throughput(g_image_heap, spectrum_arg, beta, last_beta, di_result);
+            spectrum::modify_throughput(g_image_heap, spectrum_arg, args.spectrum, beta, last_beta, di_result);
         }
         if (is_transmissive(result.sample_flags) && is_non_diffuse(result.sample_flags)) {
             if (transparent_depth < TRANS_MAX_DEPTH) {
@@ -411,7 +411,7 @@ using namespace luisa::shader;
             gbuffer_albedo = result.albedo;
             gbuffer_uv = result.uv;
 #ifdef OFFLINE_DENOISER
-            albedo_sum = result.albedo + spectrum::spectrum_to_tristimulus(result.emission);
+            albedo_sum = result.albedo + spectrum::spectrum_to_tristimulus(result.emission, args.spectrum);
 #endif
             emission_sum = result.emission;
             normal_rough = float4(result.normal, result.roughness);

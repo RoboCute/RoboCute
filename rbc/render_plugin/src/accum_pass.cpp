@@ -3,6 +3,7 @@
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_render/offline_pt_pass.h>
 #include <rbc_render/renderer_data.h>
+#include <rbc_render/prepare_pass.h>
 #include <rbc_graphics/render_device.h>
 
 // #include <oidn_denoiser.h>
@@ -16,6 +17,8 @@ void AccumPass::on_enable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
+    prepare_pass = pipeline.get_pass<PreparePass>();
+    LUISA_ASSERT(prepare_pass != nullptr);
     ShaderManager::instance()->async_load(init_counter, "path_tracer/accum/offline_accum.bin", accum);
     ShaderManager::instance()->async_load(init_counter, "path_tracer/accum/offline_accum_to_buffer.bin", accum_buffer);
 }
@@ -64,9 +67,9 @@ void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     if (!emission) return;
     temp_img = render_device.create_transient_image<float>("accum_temp_img", PixelStorage::FLOAT4, frame_settings.display_resolution);
     if (frame_settings.radiance_buffer) {
-        (*ctx.cmdlist) << (*accum_buffer)(emission, pass_ctx->hdr, temp_img, *frame_settings.radiance_buffer, frame_settings.render_resolution, pass_ctx->frame_index, is_spectrum).dispatch(frame_settings.display_resolution);
+        (*ctx.cmdlist) << (*accum_buffer)(emission, pass_ctx->hdr, temp_img, *frame_settings.radiance_buffer, frame_settings.render_resolution, pass_ctx->frame_index, prepare_pass->spectrum_args, is_spectrum).dispatch(frame_settings.display_resolution);
     } else {
-        (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frame_settings.render_resolution, pass_ctx->frame_index, is_spectrum).dispatch(frame_settings.display_resolution);
+        (*ctx.cmdlist) << (*accum)(emission, pass_ctx->hdr, temp_img, frame_settings.render_resolution, pass_ctx->frame_index, prepare_pass->spectrum_args, is_spectrum).dispatch(frame_settings.display_resolution);
     }
     frame_settings.radiance_buffer = nullptr;
     frame_settings.resolved_img = std::move(temp_img);
@@ -83,7 +86,7 @@ void AccumPass::update(Pipeline const &pipeline, PipelineContext const &ctx) {
     // {
     //     if (buffer_frame_idx < lut_frame)
     //     {
-    //         (*ctx.cmdlist) << lut_baker::dispatch_shader(_lut_baker, lut_dispatch_size, ctx.scene->image_heap(), lut_buffer, prepare_pass->illum_d65_idx, prepare_pass->cie_xyz_cdfinv_idx, prepare_pass->spectrum_lut3d_idx, buffer_frame_idx);
+    //         (*ctx.cmdlist) << lut_baker::dispatch_shader(_lut_baker, lut_dispatch_size, ctx.scene->image_heap(), lut_buffer, prepare_pass->illum_d65_idx, prepare_pass->spectrum_wavelength_lut_idx, prepare_pass->spectrum_lut3d_idx, buffer_frame_idx);
     //     }
     //     else if (buffer_frame_idx == lut_frame)
     //     {

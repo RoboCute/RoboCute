@@ -36,7 +36,7 @@ class ResourceMetaModule(CodeModule):
 
 
 from rbc_meta.types.pipeline_settings import OUT_CLASSES as PIPELINE_SETTING_CLASSES
-from rbc_meta.types.pipeline_settings import AlphaCull
+from rbc_meta.types.pipeline_settings import AlphaCull, SpectrumAccumulationSpace
 
 
 @codegen
@@ -97,6 +97,7 @@ EXT_CLASSES = []
 EXT_CLASSES.extend(OUT_WORLD_INTERFACE_CLASSES)
 EXT_CLASSES.extend(OUT_RESOURCE_CLASSES)
 EXT_CLASSES.append(AlphaCull)
+EXT_CLASSES.append(SpectrumAccumulationSpace)
 # EXT_CLASSES.extend(OUT_EDITOR_INTERFACE_CLASSES)
 
 

@@ -2,6 +2,7 @@
 #include <rbc_graphics/scene_manager.h>
 #include <rbc_render/pipeline.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
+#include <rbc_render/prepare_pass.h>
 #include <rbc_render/utils/heitz_sobol.h>
 #include <rbc_render/accum_pass.h>
 #include <rbc_render/renderer_data.h>
@@ -49,6 +50,8 @@ void OfflinePTPass::on_enable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
+    _prepare_pass = pipeline.get_pass<PreparePass>();
+    LUISA_ASSERT(_prepare_pass != nullptr);
 #define RBC_LOAD_SHADER(SHADER_NAME, NAME_SPACE, PATH) \
     _init_counter.add();                               \
     luisa::fiber::schedule([this]() {                  \
@@ -140,6 +143,7 @@ offline::PTArgs OfflinePTPass::_setup_pt_args(
     offline::PTArgs pt_args{};
     pt_args.write_id_map = write_id_map;
     pt_args.resource_to_rec2020_mat = rc.frame_settings.to_rec2020_matrix;
+    pt_args.spectrum = _prepare_pass->spectrum_args;
     pt_args.world_2_sky_mat = cam_data.world_to_sky;
     pt_args.sky_heap_idx = sky_heap.sky_heap_idx;
     pt_args.alias_table_idx = sky_heap.alias_heap_idx;
@@ -179,6 +183,7 @@ void OfflinePTPass::_draw_sky_only(
                       rc.scene.volume_heap(),
                       sky_heap.sky_heap_idx,
                       rc.frame_settings.to_rec2020_matrix,
+                      _prepare_pass->spectrum_args,
                       cam_data.world_to_sky,
                       cam_data.inv_vp,
                       make_float3(cam.position),

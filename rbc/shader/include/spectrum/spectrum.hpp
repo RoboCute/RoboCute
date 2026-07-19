@@ -33,75 +33,66 @@ inline float d65_normalized(BindlessImage& heap, float lambda) {
 	auto radiance = heap.uniform_idx_image_sample(heap_indices::illum_d65_idx, float2((lambda - wavelength_min) / (wavelength_max - wavelength_min) * ((size - 1.0f) / size) + 0.5f / size, 0.5f), Filter::LINEAR_POINT, Address::EDGE).x;
 	return radiance;
 }
-// log of Gaussian function
-float gaussdistlog(float x, float3 p) {
-	x = (x - p.y) / p.z;
-	return p.x - 0.5 * x * x;
-}
-// Sigmoid function
-float gtanh(float x, float3 p) {
-	return p.x / (1 + exp(p.z * (p.y - x)));
-}
-// CIE 1931 2° 5-bell
-float cmf_s_1931_5b(float wl) {
-	auto param_s = std::array<float3, 5>{
-		float3{0.728039840518760, 452.5373300487677, 20.63998741455027},
-		float3{-0.903768754848100, 436.5072798146079, 6.80213865708983},
-		float3{-1.142203568915948, 426.6964514807404, 5.82897816302603},
-		float3{0.418410092402545, 567.5101202778363, 43.44030592589013},
-		float3{-0.567908922578286, 606.9866079746189, 25.57205199243601}};
-	float result = 0.0f;
-	for (int i = 0; i < param_s.size(); ++i) {
-		float x = gaussdistlog(wl, param_s[i]);
-		result += exp(x);
-	}
-	return result;
-}
-float3 xy_1931_5b(float wl) {
-	auto param_y = std::array<float3, 3>{
-		float3{1.606156428203371, 502.0075537941163, 0.0967029313067696},
-		float3{-0.800580541463583, 513.8824977974497, 0.0881332765655076},
-		float3{-0.550389264835406, 572.0735758547771, 0.0499662323614685}};
-	auto param_z = std::array<float3, 2>{
-		float3{0.878531722389920, 500.8587238060737, -0.1076130311623401},
-		float3{-0.056933268287903, 470.2562688668381, -0.0756868208907367}};
-
-	float y = 0.007958436344230262f;
-	for (int i = 0; i < param_y.size(); ++i) {
-		y += gtanh(wl, param_y[i]);
-	}
-	float z = 0.0f;
-	for (int i = 0; i < param_z.size(); ++i) {
-		z += gtanh(wl, param_z[i]);
-	}
-	return float3{1 - (y + z), y, z};
-}
-float3 cmf_1931_5b(float wl) {
-	return xy_1931_5b(wl) * cmf_s_1931_5b(wl);
-}
 }// namespace detail
 #ifdef USE_SPECTRUM
 constexpr bool const use_spectrum = true;
 #else
 constexpr bool const use_spectrum = false;
 #endif
-inline float3 sample_xyz(BindlessImage& heap, float dx) {
-	float size = cie_xyz_cdfinv_size;
-	return heap.uniform_idx_image_sample(heap_indices::cie_xyz_cdfinv_idx, float2(dx * ((size - 1.0f) / size) + 0.5f / size, 0.5f), Filter::LINEAR_POINT, Address::EDGE).xyz;
+inline float3 sample_wavelengths(BindlessImage& heap, float dx) {
+	float size = wavelength_lut_size;
+	return heap.uniform_idx_image_sample(heap_indices::spectrum_wavelength_lut_idx, float2(dx * ((size - 1.0f) / size) + 0.5f / size, 0.5f), Filter::LINEAR_POINT, Address::EDGE).xyz;
 }
 
-inline void modify_throughput(BindlessImage& image_heap, SpectrumArg& args, float3& throughput, float3& last_throughput, float3& di_result) {
-	float3 xyz_inv_pdf(detail::xy_1931_5b(args.lambda[args.hero_index]) * 3.0f);
+inline float3 wavelength_pdf(BindlessImage& heap, float lambda) {
+	float table_x = clamp(lambda - wavelength_min, 0.0f, float(wavelength_pdf_table_size - 1u));
+	float inv_size = 1.0f / float(wavelength_lut_size);
+	float3 u = (table_x + float3(0u, wavelength_pdf_table_size, wavelength_pdf_table_size * 2u) + 0.5f) * inv_size;
+	return float3(
+		heap.uniform_idx_image_sample(heap_indices::spectrum_wavelength_lut_idx, float2(u.x, 0.5f), Filter::LINEAR_POINT, Address::EDGE).w,
+		heap.uniform_idx_image_sample(heap_indices::spectrum_wavelength_lut_idx, float2(u.y, 0.5f), Filter::LINEAR_POINT, Address::EDGE).w,
+		heap.uniform_idx_image_sample(heap_indices::spectrum_wavelength_lut_idx, float2(u.z, 0.5f), Filter::LINEAR_POINT, Address::EDGE).w);
+}
+
+inline float3 tristimulus_to_accumulation(float3 x, SpectrumAccumulationArgs const& args) {
 #ifdef USE_SPECTRUM
-	args.lambda = args.lambda[args.hero_index];
-	last_throughput = last_throughput[args.hero_index];
-	di_result = di_result[args.hero_index] * xyz_inv_pdf;
-	throughput = throughput[args.hero_index] * xyz_inv_pdf;
+	return args.rec2020_to_accumulation * x;
 #else
-	xyz_inv_pdf *= detail::d65_normalized(image_heap, args.lambda[args.hero_index]);
-	float3 inv_wavelength_pdf = max(float3(0.0f), spectrum::xyz_to_rec2020(xyz_inv_pdf)) *
-								float3(0.92150449687, 0.9387315829, 0.987215281555);
-	throughput *= inv_wavelength_pdf;
+	return x;
+#endif
+}
+
+inline float3 spectrum_to_accumulation(float3 x, SpectrumAccumulationArgs const& args) {
+#ifdef USE_SPECTRUM
+	return x * args.lane_scale;
+#else
+	return x;
+#endif
+}
+
+inline float3 accumulation_to_tristimulus(float3 x, SpectrumAccumulationArgs const& args) {
+#ifdef USE_SPECTRUM
+	return args.accumulation_to_rec2020 * x;
+#else
+	return x;
+#endif
+}
+
+inline void modify_throughput(BindlessImage& image_heap, SpectrumArg& args, SpectrumAccumulationArgs const& accumulation_args, float3& throughput, float3& last_throughput, float3& di_result) {
+	float hero_lambda = args.lambda[args.hero_index];
+	float3 p = wavelength_pdf(image_heap, hero_lambda);
+	float q = max(reduce_sum(p) * (1.0f / 3.0f), 1e-20f);
+	float3 inv_pdf_weight = p / q;
+#ifdef USE_SPECTRUM
+	args.lambda = hero_lambda;
+	last_throughput = last_throughput[args.hero_index];
+	di_result = di_result[args.hero_index] * inv_pdf_weight;
+	throughput = throughput[args.hero_index] * inv_pdf_weight;
+#else
+	float d65 = detail::d65_normalized(image_heap, hero_lambda);
+	float3 accumulation_weight = inv_pdf_weight * accumulation_args.lane_scale * d65;
+	float3 rec2020_weight = max(float3(0.0f), accumulation_args.accumulation_to_rec2020 * accumulation_weight);
+	throughput *= rec2020_weight;
 #endif
 }
 
@@ -125,9 +116,9 @@ inline float3 emission_to_spectrum(BindlessImage& image_heap, BindlessVolume& vo
 #endif
 }
 
-inline float3 spectrum_to_tristimulus(float3 x) {
+inline float3 spectrum_to_tristimulus(float3 x, SpectrumAccumulationArgs const& args) {
 #ifdef USE_SPECTRUM
-	return spectrum::xyz_to_rec2020(x);
+	return accumulation_to_tristimulus(spectrum_to_accumulation(x, args), args);
 #else
 	return x;
 #endif

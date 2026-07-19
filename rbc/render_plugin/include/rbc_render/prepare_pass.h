@@ -4,6 +4,8 @@
 #include <luisa/runtime/shader.h>
 #include <luisa/core/fiber.h>
 #include <rbc_render/renderer_data.h>
+#include <spectrum/spectrum_args.hpp>
+#include <array>
 namespace rbc {
 struct PreparePassContext;
 struct PreparePass : public Pass {
@@ -16,8 +18,13 @@ struct PreparePass : public Pass {
 
     void _load_rec2020_lut(Device &device, luisa::filesystem::path const &runtime_dir);
     void _load_transmission_ggx_lut(Device &device, luisa::filesystem::path const &runtime_dir);
-    luisa::vector<float4> _compute_cie_xyz_lut();
-    luisa::vector<float> _compute_illum_d65_lut();
+    static constexpr size_t spectrum_accumulation_space_count = 2u;
+    std::array<luisa::vector<float4>, spectrum_accumulation_space_count> _spectrum_lut_data;
+    std::array<SpectrumAccumulationArgs, spectrum_accumulation_space_count> _spectrum_args;
+    uint _active_spectrum_accumulation_space{~0u};
+
+    double _compute_spectrum_luts();
+    luisa::vector<float> _compute_illum_d65_lut(double d65_normalization);
     void _initialize_sobol_resources(
         Device &device,
         CommandList &cmdlist,
@@ -27,8 +34,8 @@ struct PreparePass : public Pass {
         Device &device,
         CommandList &cmdlist,
         SceneManager &scene,
-        luisa::vector<float4> &&cie_xyz_lut_data,
         luisa::vector<float> &&illum_d65_lut_data);
+    void _update_spectrum_accumulation_space(PipelineContext const &ctx);
 
     // Early update helper functions
     void _process_lut_load_commands(PipelineContext const &ctx);
@@ -47,9 +54,10 @@ public:
 
     Volume<float> spectrum_lut_3d;
     // Volume<float> srgb_to_fourier_even;
-    Image<float> cie_xyz_cdfinv;
+    Image<float> spectrum_wavelength_lut;
     // Image<float> bmese_phase;
     Image<float> illum_d65;
+    SpectrumAccumulationArgs spectrum_args;
 
     Volume<float> transmission_ggx_energy;
 

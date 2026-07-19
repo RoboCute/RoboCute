@@ -3,14 +3,17 @@
 #include <rbc_render/utils/heitz_sobol.h>
 #include <rbc_render/pipeline.h>
 #include <rbc_render/renderer_data.h>
+#include <rbc_render/accum_pass.h>
+#include <rbc_render/utils/color_space.h>
 #include <luisa/core/binary_file_stream.h>
 #include "spectrum_data.h"
-#include <spectrum/spectrum_args.hpp>
 #include <rbc_graphics/render_device.h>
 #include <rbc_render/generated/pipeline_settings.hpp>
 #include <luisa/core/platform.h>
 #include <luisa/core/stl/filesystem.h>
 #include <rbc_render/click_manager.h>
+#include <cmath>
+#include <limits>
 namespace rbc {
 struct PreparePassContext : PassContext {
     Camera last_cam;
@@ -24,100 +27,73 @@ RBC_RTTI(rbc::PreparePassContext);
 namespace rbc {
 namespace preparepass_detail {
 
-/**
- * Compute inverse CDF (quantiles) from unnormalized PDF.
- *
- * @param xs Sorted span of x values (size m).
- * @param ys PDF values corresponding to x (size m), may include zeros at ends.
- * @param ps probabilities in (0,1) for which to compute quantiles.
- * @param iterations Maximum Newton-Raphson iterations per quantile.
- * @param tol Convergence tolerance for Newton-Raphson.
- * @return Vector of quantiles corresponding to probabilities ps.
- */
 template<class T, class G>
 luisa::vector<T> generate_quantiles(
     luisa::span<T const> xs,
     luisa::span<T const> ys,
     G &&ps,
-    int iterations,
-    T tol) {
-    size_t m = xs.size();
-
-    // Compute integration step sizes (left differences)
-    luisa::vector<T> dx(m);
-    dx[0] = 0.0;
-    for (size_t i = 1; i < m; ++i) {
-        dx[i] = xs[i] - xs[i - 1];
-    }
-
-    // Compute unnormalized CDF
+    T &integral) {
+    LUISA_ASSERT(xs.size() == ys.size() && xs.size() >= 2u);
+    const auto m = xs.size();
     luisa::vector<T> cdf(m);
-    cdf[0] = ys[0] * dx[0];
+    cdf[0] = T{0};
     for (size_t i = 1; i < m; ++i) {
-        cdf[i] = cdf[i - 1] + ys[i] * dx[i];
+        const auto dx = xs[i] - xs[i - 1u];
+        cdf[i] = cdf[i - 1u] + (ys[i - 1u] + ys[i]) * dx * T{0.5};
     }
-    auto &total = cdf.back();
-    for (auto &v : cdf)
-        v /= total;// Normalize to [0,1]
+    integral = cdf.back();
+    LUISA_ASSERT(integral > T{0});
+    for (auto &v : cdf) {
+        v /= integral;
+    }
 
-    // Determine valid support where PDF > 0
     size_t start = 0;
-    while (start < m && ys[start] <= 0)
+    while (start < m && ys[start] <= T{0}) {
         ++start;
-    size_t end = m - 1;
-    while (end > 0 && ys[end] <= 0)
-        --end;
-    auto &xmin = xs[start];
-    auto &xmax = xs[end];
-
-    // Prepare output
-    luisa::vector<T> quantiles;
-
-    // Inverse CDF for each probability in ps
-    for (auto &&p : std::forward<G>(ps)) {
-        // Initial guess via linear interpolation on CDF
-        auto it = std::lower_bound(cdf.begin(), cdf.end(), p);
-        T x0;
-        if (it == cdf.begin()) {
-            x0 = xs[0];
-        } else if (it == cdf.end()) {
-            x0 = xs[m - 1];
-        } else {
-            size_t j = it - cdf.begin();
-            auto &c1 = cdf[j - 1];
-            auto &c2 = cdf[j];
-            auto t = (p - c1) / (c2 - c1);
-            x0 = xs[j - 1] + t * (xs[j] - xs[j - 1]);
-        }
-
-        // Newton-Raphson refinement
-        for (int iters = 0; iters < iterations; ++iters) {
-            // Locate interval for x0
-            auto up = std::upper_bound(xs.begin(), xs.begin() + m, x0);
-            size_t j = (up == xs.begin()) ? 0 : (up - xs.begin() - 1);
-            size_t k = luisa::min(j + 1, m - 1);
-
-            auto xj = xs[j], xk = xs[k];
-            auto cj = cdf[j], ck = cdf[k];
-            auto yj = ys[j], yk = ys[k];
-            auto t = (xk == xj ? 0 : (x0 - xj) / (xk - xj));
-            auto cval = cj + t * (ck - cj);
-            auto pdf = yj + t * (yk - yj);
-
-            if (pdf <= 0) break;
-            auto xnew = x0 - (cval - p) / pdf;
-            if (luisa::abs(xnew - x0) < tol) {
-                x0 = xnew;
-                break;
-            }
-            x0 = xnew;
-        }
-
-        // Clamp to valid support
-        quantiles.emplace_back(luisa::clamp(x0, xmin, xmax));
     }
+    size_t end = m - 1;
+    while (end > 0 && ys[end] <= T{0}) {
+        --end;
+    }
+    const auto support_start = start > 0u ? start - 1u : start;
+    const auto support_end = end + 1u < m ? end + 1u : end;
 
+    luisa::vector<T> quantiles;
+    quantiles.reserve(std::size(ps));
+    for (auto &&p : std::forward<G>(ps)) {
+        if (p <= T{0}) {
+            quantiles.emplace_back(xs[support_start]);
+            continue;
+        }
+        if (p >= T{1}) {
+            quantiles.emplace_back(xs[support_end]);
+            continue;
+        }
+        const auto upper = std::upper_bound(cdf.begin(), cdf.end(), p);
+        const auto k = std::min<size_t>(upper - cdf.begin(), m - 1u);
+        const auto j = k - 1u;
+        const auto dx = xs[k] - xs[j];
+        const auto segment_area = (p - cdf[j]) * integral / dx;
+        const auto y0 = ys[j];
+        const auto dy = ys[k] - y0;
+        T t;
+        if (luisa::abs(dy) <= std::numeric_limits<T>::epsilon()) {
+            t = segment_area / luisa::max(y0, std::numeric_limits<T>::min());
+        } else {
+            const auto discriminant = luisa::max(y0 * y0 + T{2} * dy * segment_area, T{0});
+            t = T{2} * segment_area /
+                luisa::max(y0 + luisa::sqrt(discriminant), std::numeric_limits<T>::min());
+        }
+        quantiles.emplace_back(luisa::lerp(xs[j], xs[k], luisa::clamp(t, T{0}, T{1})));
+    }
     return quantiles;
+}
+
+[[nodiscard]] float3x3 to_float3x3(double3x3 const &m) noexcept {
+    return make_float3x3(
+        make_float3(m.cols[0]),
+        make_float3(m.cols[1]),
+        make_float3(m.cols[2]));
 }
 
 }// namespace preparepass_detail
@@ -152,44 +128,142 @@ void PreparePass::_load_transmission_ggx_lut(Device &device, luisa::filesystem::
         &transmission_ggx_energy);
 }
 
-luisa::vector<float4> PreparePass::_compute_cie_xyz_lut() {
-    constexpr const float wavelength_min = 360;
-    constexpr const float wavelength_max = 830;
-    luisa::vector<float4> cie_xyz_lut_data;
-    luisa::vector<float> ps;
-    ps.reserve(spectrum::cie_xyz_cdfinv_size);
-    for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; ++i) {
-        ps.emplace_back(static_cast<float>(i) / static_cast<float>(spectrum::cie_xyz_cdfinv_size - 1));
+double PreparePass::_compute_spectrum_luts() {
+    luisa::vector<double> probabilities;
+    probabilities.reserve(spectrum::wavelength_lut_size);
+    for (size_t i = 0; i < spectrum::wavelength_lut_size; ++i) {
+        probabilities.emplace_back(double(i) / double(spectrum::wavelength_lut_size - 1u));
     }
-    cie_xyz_lut_data.push_back_uninitialized(spectrum::cie_xyz_cdfinv_size);
-    luisa::vector<float> xs, ys;
-    for (size_t c = 0; c < 3; c++) {
-        xs.clear();
-        ys.clear();
-        xs.reserve(size_t(wavelength_max - wavelength_min));
-        ys.reserve(size_t(wavelength_max - wavelength_min));
-        for (size_t i = 0; i <= size_t(wavelength_max - wavelength_min); ++i) {
-            xs.push_back(test::spectrum::CIE_xyz_1931_2deg[i].first);
-            ys.push_back(test::spectrum::CIE_xyz_1931_2deg[i].second[c]);
-        }
-        auto result = preparepass_detail::generate_quantiles<float>(xs, ys, ps, 50, 10e-12f);
-        for (size_t i = 0; i < spectrum::cie_xyz_cdfinv_size; ++i) {
-            cie_xyz_lut_data[i][c] = result[i];
-        }
+
+    luisa::vector<double> wavelengths;
+    luisa::vector<double3> cmf;
+    wavelengths.reserve(spectrum::wavelength_pdf_table_size);
+    cmf.reserve(spectrum::wavelength_pdf_table_size);
+    for (size_t i = 0; i < spectrum::wavelength_pdf_table_size; ++i) {
+        auto const &sample = test::spectrum::CIE_xyz_1931_2deg[i];
+        wavelengths.emplace_back(double(sample.first));
+        cmf.emplace_back(make_double3(sample.second));
     }
-    return cie_xyz_lut_data;
+
+    double3 cmf_integral{0.0};
+    double3 d65_white{0.0};
+    const auto d65_start = test::spectrum::CIE_std_illum_D65[0].first;
+    for (size_t i = 1; i < spectrum::wavelength_pdf_table_size; ++i) {
+        const auto dx = wavelengths[i] - wavelengths[i - 1u];
+        cmf_integral += (cmf[i - 1u] + cmf[i]) * (0.5 * dx);
+        const auto d65_index0 = size_t(wavelengths[i - 1u]) - size_t(d65_start);
+        const auto d65_index1 = size_t(wavelengths[i]) - size_t(d65_start);
+        const auto e0 = double(test::spectrum::CIE_std_illum_D65[d65_index0].second);
+        const auto e1 = double(test::spectrum::CIE_std_illum_D65[d65_index1].second);
+        d65_white += (cmf[i - 1u] * e0 + cmf[i] * e1) * (0.5 * dx);
+    }
+    const auto d65_normalization = d65_white.y / cmf_integral.y;
+    d65_white /= d65_white.y;
+    const auto d65_xyY = Chromaticities::XYZ_to_xyY(d65_white);
+    const auto d65_xy = make_double2(d65_xyY.x, d65_xyY.y);
+
+    const Chromaticities rec2020_chromaticities{EColorSpace::Rec2020};
+    const ColorSpace rec2020{
+        rec2020_chromaticities.red,
+        rec2020_chromaticities.green,
+        rec2020_chromaticities.blue,
+        d65_xy};
+    const Chromaticities ap0_chromaticities{EColorSpace::ACES_AP0};
+    const ColorSpace ap0_d65{
+        ap0_chromaticities.red,
+        ap0_chromaticities.green,
+        ap0_chromaticities.blue,
+        d65_xy};
+    const std::array accumulation_to_xyz{
+        double3x3::eye(1.0),
+        ap0_d65.to_xyz};
+
+    for (size_t space = 0; space < spectrum_accumulation_space_count; ++space) {
+        auto &lut = _spectrum_lut_data[space];
+        lut.resize(spectrum::wavelength_lut_size, make_float4(0.0f));
+        const auto xyz_to_accumulation = inverse(accumulation_to_xyz[space]);
+        luisa::vector<double3> responses;
+        responses.reserve(spectrum::wavelength_pdf_table_size);
+        for (const auto xyz : cmf) {
+            const auto response = xyz_to_accumulation * xyz;
+            LUISA_ASSERT(
+                response.x >= -1e-9 && response.y >= -1e-9 && response.z >= -1e-9,
+                "Spectrum accumulation basis {} has a negative wavelength response.",
+                space);
+            responses.emplace_back(double3{
+                std::max(response.x, 0.0),
+                std::max(response.y, 0.0),
+                std::max(response.z, 0.0)});
+        }
+
+        double3 response_integral{0.0};
+        luisa::vector<double> response;
+        response.reserve(spectrum::wavelength_pdf_table_size);
+        for (size_t channel = 0; channel < 3u; ++channel) {
+            response.clear();
+            for (const auto value : responses) {
+                response.emplace_back(value[channel]);
+            }
+            double integral;
+            const auto quantiles = preparepass_detail::generate_quantiles<double>(
+                wavelengths, response, probabilities, integral);
+            for (size_t i = 1; i < quantiles.size(); ++i) {
+                LUISA_ASSERT(quantiles[i] >= quantiles[i - 1u]);
+            }
+            double normalized_pdf_integral = 0.0;
+            for (size_t i = 1; i < response.size(); ++i) {
+                const auto dx = wavelengths[i] - wavelengths[i - 1u];
+                normalized_pdf_integral +=
+                    (response[i - 1u] + response[i]) * (0.5 * dx / integral);
+            }
+            LUISA_ASSERT(std::abs(normalized_pdf_integral - 1.0) < 1e-9);
+            response_integral[channel] = integral;
+            for (size_t i = 0; i < spectrum::wavelength_lut_size; ++i) {
+                lut[i][channel] = float(quantiles[i]);
+            }
+            for (size_t i = 0; i < spectrum::wavelength_pdf_table_size; ++i) {
+                lut[channel * spectrum::wavelength_pdf_table_size + i].w =
+                    float(response[i] / integral);
+            }
+        }
+
+        const auto rec2020_to_accumulation = xyz_to_accumulation * rec2020.to_xyz;
+        const auto accumulation_to_rec2020 = rec2020.from_xyz * accumulation_to_xyz[space];
+        const auto round_trip = accumulation_to_rec2020 * rec2020_to_accumulation;
+        for (size_t column = 0; column < 3u; ++column) {
+            for (size_t row = 0; row < 3u; ++row) {
+                const auto expected = column == row ? 1.0 : 0.0;
+                LUISA_ASSERT(std::abs(round_trip.cols[column][row] - expected) < 1e-9);
+            }
+        }
+        if (space == static_cast<size_t>(SpectrumAccumulationSpace::AP0D65)) {
+            const auto neutral = xyz_to_accumulation * d65_white;
+            LUISA_ASSERT(all(abs(neutral - double3{1.0}) < double3{1e-9}));
+        }
+
+        _spectrum_args[space] = SpectrumAccumulationArgs{
+            .rec2020_to_accumulation = preparepass_detail::to_float3x3(
+                rec2020_to_accumulation),
+            .accumulation_to_rec2020 = preparepass_detail::to_float3x3(
+                accumulation_to_rec2020),
+            .lane_scale = make_float3(response_integral / cmf_integral.y)};
+    }
+    return d65_normalization;
 }
 
-luisa::vector<float> PreparePass::_compute_illum_d65_lut() {
-    constexpr const float wavelength_min = 360;
-    constexpr const float wavelength_max = 830;
+luisa::vector<float> PreparePass::_compute_illum_d65_lut(double d65_normalization) {
     luisa::vector<float> illum_d65_lut_data;
     constexpr uint step = 10;
-    uint lut_resolution = uint(wavelength_max - wavelength_min) / step + 1;
+    const uint lut_resolution =
+        uint(spectrum::wavelength_max - spectrum::wavelength_min) / step + 1u;
     illum_d65_lut_data.push_back_uninitialized(lut_resolution);
     auto const &start = test::spectrum::CIE_std_illum_D65[0];
     for (size_t i = 0; i < lut_resolution; ++i) {
-        illum_d65_lut_data[i] = (1.0f / 98.8900106203f) * test::spectrum::CIE_std_illum_D65[size_t(wavelength_min) - start.first + i * step].second;
+        illum_d65_lut_data[i] = float(
+            test::spectrum::CIE_std_illum_D65[
+                size_t(spectrum::wavelength_min) - start.first + i * step]
+                .second /
+            d65_normalization);
     }
     LUISA_ASSERT(spectrum::illum_d65_size == lut_resolution);
     return illum_d65_lut_data;
@@ -213,11 +287,15 @@ void PreparePass::_create_and_upload_images(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene,
-    luisa::vector<float4> &&cie_xyz_lut_data,
     luisa::vector<float> &&illum_d65_lut_data) {
-    cie_xyz_cdfinv = device.create_image<float>(PixelStorage::FLOAT4, make_uint2(spectrum::cie_xyz_cdfinv_size, 1));
-    cmdlist << cie_xyz_cdfinv.copy_from(luisa::span(reinterpret_cast<std::byte*>(cie_xyz_lut_data.data()), cie_xyz_lut_data.size_bytes()));
-    scene.dispose_after_commit(std::move(cie_xyz_lut_data));
+    spectrum_wavelength_lut = device.create_image<float>(
+        PixelStorage::FLOAT4, make_uint2(spectrum::wavelength_lut_size, 1));
+    const auto default_space = static_cast<uint>(SpectrumAccumulationSpace::AP0D65);
+    _active_spectrum_accumulation_space = default_space;
+    spectrum_args = _spectrum_args[default_space];
+    auto &default_lut = _spectrum_lut_data[default_space];
+    cmdlist << spectrum_wavelength_lut.copy_from(luisa::span(
+        reinterpret_cast<std::byte *>(default_lut.data()), default_lut.size_bytes()));
     illum_d65 = device.create_image<float>(PixelStorage::FLOAT1, make_uint2(spectrum::illum_d65_size, 1));
     cmdlist << illum_d65.copy_from(luisa::span(reinterpret_cast<std::byte*>(illum_d65_lut_data.data()), illum_d65_lut_data.size_bytes()));
     scene.dispose_after_commit(std::move(illum_d65_lut_data));
@@ -233,16 +311,15 @@ void PreparePass::on_enable(
     _load_rec2020_lut(device, runtime_dir);
     _load_transmission_ggx_lut(device, runtime_dir);
     
-    auto cie_xyz_future = luisa::fiber::async([this]() {
-        return _compute_cie_xyz_lut();
+    auto spectrum_future = luisa::fiber::async([this]() {
+        return _compute_spectrum_luts();
     });
-    
-    auto illum_d65_lut_data = _compute_illum_d65_lut();
-    
+
     _initialize_sobol_resources(device, cmdlist, scene, runtime_dir);
-    
-    auto cie_xyz_lut_data = cie_xyz_future.wait();
-    _create_and_upload_images(device, cmdlist, scene, std::move(cie_xyz_lut_data), std::move(illum_d65_lut_data));
+
+    const auto d65_normalization = spectrum_future.wait();
+    auto illum_d65_lut_data = _compute_illum_d65_lut(d65_normalization);
+    _create_and_upload_images(device, cmdlist, scene, std::move(illum_d65_lut_data));
 }
 
 void PreparePass::wait_enable() {
@@ -255,6 +332,22 @@ void PreparePass::_process_lut_load_commands(PipelineContext const &ctx) {
         ctx.scene->dispose_after_commit(std::move(i.data));
     }
     _lut_load_cmds.clear();
+}
+
+void PreparePass::_update_spectrum_accumulation_space(PipelineContext const &ctx) {
+    const auto &pt_settings = ctx.pipeline_settings.read<PathTracerSettings>();
+    const auto spectrum_space = static_cast<uint>(pt_settings.spectrum_accumulation_space);
+    LUISA_ASSERT(spectrum_space < spectrum_accumulation_space_count);
+    spectrum_args = _spectrum_args[spectrum_space];
+    if (_active_spectrum_accumulation_space == spectrum_space) {
+        return;
+    }
+
+    auto &lut = _spectrum_lut_data[spectrum_space];
+    (*ctx.cmdlist) << spectrum_wavelength_lut.copy_from(luisa::span(
+        reinterpret_cast<std::byte *>(lut.data()), lut.size_bytes()));
+    _active_spectrum_accumulation_space = spectrum_space;
+    ctx.mut.get_pass_context<AccumPassContext>()->frame_index = 0;
 }
 
 void PreparePass::_update_camera_aspect_ratio(PipelineContext const &ctx, Camera &cam) {
@@ -339,7 +432,10 @@ void PreparePass::_bind_resources_to_heap(SceneManager &scene) {
     // emplace_tex3d(srgb_to_fourier_even_idx, srgb_to_fourier_even, Sampler::linear_point_mirror());
     // emplace_tex2d(bmese_phase_idx, bmese_phase, Sampler::linear_point_mirror());
     emplace_tex2d(heap_indices::illum_d65_idx, illum_d65, Sampler::linear_point_mirror());
-    emplace_tex2d(heap_indices::cie_xyz_cdfinv_idx, cie_xyz_cdfinv, Sampler::linear_point_mirror());
+    emplace_tex2d(
+        heap_indices::spectrum_wavelength_lut_idx,
+        spectrum_wavelength_lut,
+        Sampler::linear_point_mirror());
 }
 
 void PreparePass::_update_current_frame_camera_data(PipelineContext const &ctx, Camera &cam) {
@@ -367,6 +463,7 @@ void PreparePass::_update_pass_context(PipelineContext const &ctx, PreparePassCo
 
 void PreparePass::early_update(Pipeline const &pipeline, PipelineContext const &ctx) {
     _process_lut_load_commands(ctx);
+    _update_spectrum_accumulation_space(ctx);
 
     auto &cam = ctx.pipeline_settings.read_mut<Camera>();
     auto pass_ctx = ctx.mut.get_pass_context<PreparePassContext>(cam);

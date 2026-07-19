@@ -72,7 +72,7 @@ void accum_sky(SpectrumArg &spectrum_arg,
     mtl::ShadingDetail detail = mtl::ShadingDetail::IndirectDiffuse;
     std::inplace_vector<mtl::Volume, 0> volume_stack;
     SpectrumArg spectrum_arg;
-    spectrum_arg.lambda = spectrum::sample_xyz(g_image_heap, pcg_sampler.next());
+    spectrum_arg.lambda = spectrum::sample_wavelengths(g_image_heap, pcg_sampler.next());
     spectrum_arg.selected_wavelength = true;
     spectrum_arg.hero_index = pcg_sampler.nextui() % 3;
     float3 last_beta = 0;

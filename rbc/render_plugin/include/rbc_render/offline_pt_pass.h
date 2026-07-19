@@ -29,6 +29,7 @@ struct Camera;
 struct SkyHeapIndices;
 struct JitterData;
 struct PathTracerSettings;
+struct PreparePass;
 
 struct OfflinePTPass : public Pass {
 private:
@@ -69,6 +70,7 @@ private:
         BindlessArray,//& volume_heap,
         uint,         //sky_idx,
         float3x3,     //resource_to_rec2020_mat,
+        SpectrumAccumulationArgs,//spectrum accumulation,
         float3x3,     //world_2_sky_mat,
         float4x4,     //inv_vp,
         float3,       //cam_pos,
@@ -85,6 +87,7 @@ private:
     ClearHashGrid const *_clear_hashgrid{nullptr};
     AccumHashGrid const *_accum_hashgrid{nullptr};
     IntegrateHashGrid const *_integrate_hashgrid{nullptr};
+    PreparePass *_prepare_pass{nullptr};
     ShaderFamily _pt_shader_family;
 
     struct PreparedResources {

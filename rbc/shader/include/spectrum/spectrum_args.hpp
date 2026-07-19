@@ -3,13 +3,20 @@
 #include <luisa/std.hpp>
 using namespace luisa::shader;
 #else
+#include <luisa/core/mathematics.h>
 namespace spectrum {
 using luisa::float3;
+using luisa::float3x3;
 using luisa::inv_pi;
 using luisa::uint3;
 }// namespace spectrum
 #endif
 namespace spectrum {
+struct SpectrumAccumulationArgs {
+	float3x3 rec2020_to_accumulation;
+	float3x3 accumulation_to_rec2020;
+	float3 lane_scale;
+};
 struct SpectrumArg {
 	float3 lambda;
 	uint hero_index;
@@ -17,7 +24,8 @@ struct SpectrumArg {
 };
 constexpr uint spectrum_lut3d_res = 64;
 // constexpr uint3 srgb_to_fourier_even_size(128, 128, 128);
-constexpr uint cie_xyz_cdfinv_size = 2048;
+constexpr uint wavelength_lut_size = 2048;
+constexpr uint wavelength_pdf_table_size = 471;
 // constexpr uint bmese_phase_size = 95;
 constexpr uint illum_d65_size = 48;
 constexpr float fourier_cmin = -inv_pi;
@@ -26,3 +34,4 @@ constexpr const float wavelength_min = 360;
 constexpr const float wavelength_max = 830;
 }// namespace spectrum
 using spectrum::SpectrumArg;
+using spectrum::SpectrumAccumulationArgs;

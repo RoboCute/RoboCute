@@ -12,6 +12,7 @@ using namespace luisa::shader;
     BindlessVolume &volume_heap,
     uint sky_idx,
     float3x3 resource_to_rec2020_mat,
+    SpectrumAccumulationArgs spectrum_args,
     float3x3 world_2_sky_mat,
     float4x4 inv_vp,
     float3 cam_pos,
@@ -20,7 +21,7 @@ using namespace luisa::shader;
     bool write_id_map) {
     sampling::PCGSampler sampler(uint3(dispatch_id().xy, frame_index));
     SpectrumArg spectrum_arg;
-    spectrum_arg.lambda = spectrum::sample_xyz(image_heap, fract(sampler.next() + sampler.next() / 255.f));
+    spectrum_arg.lambda = spectrum::sample_wavelengths(image_heap, fract(sampler.next() + sampler.next() / 255.f));
     spectrum_arg.hero_index = sampler.nextui() % 3;
 
     auto coord = dispatch_id().xy;

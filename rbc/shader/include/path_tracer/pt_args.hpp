@@ -1,6 +1,7 @@
 #pragma once
 
 #define NO_RESTIR_DI
+#include <spectrum/spectrum_args.hpp>
 #ifdef __SHADER_LANG__
 #include <luisa/std.hpp>
 using namespace luisa::shader;
@@ -15,6 +16,7 @@ struct PTArgs {
     float4x4 inv_vp;
     
     float3x3 resource_to_rec2020_mat;
+    SpectrumAccumulationArgs spectrum;
     float3x3 world_2_sky_mat;
     
     float3 cam_pos;
