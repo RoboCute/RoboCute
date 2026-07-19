@@ -299,7 +299,7 @@ def _parse_resolution(value: str) -> tuple[int, int]:
     try:
         width, height = (int(part) for part in value.lower().split("x", 1))
     except ValueError as error:
-        raise argparse.ArgumentTypeError("resolution must look like 1280x960") from error
+        raise argparse.ArgumentTypeError("resolution must look like 1080x720") from error
     if width <= 0 or height <= 0:
         raise argparse.ArgumentTypeError("resolution dimensions must be positive")
     return width, height
@@ -440,7 +440,7 @@ def main() -> None:
         choices=tuple(DIFFRACTION_TYPES),
         default="rectangular",
     )
-    parser.add_argument("--resolution", type=_parse_resolution, default=(1280, 720))
+    parser.add_argument("--resolution", type=_parse_resolution, default=(1080, 720))
     parser.add_argument("--spp", type=int, default=96)
     parser.add_argument("--lobe-count", type=int, choices=range(1, 8), default=3)
     parser.add_argument(
@@ -457,7 +457,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "docs" / "design" / "images" / "diffraction_disc.png",
+        default=ROOT / "docs" / "images" / "diffraction_disc.png",
     )
     parser.add_argument(
         "--window",
@@ -511,51 +511,13 @@ def main() -> None:
         parser.error(f"environment map does not exist: {envmap_path}")
 
     app = rbc.app.App()
-    app.init(backend_name=args.backend, project_path=None, world_path=world_path)
+    app.init(
+        backend_name=args.backend,
+        project_path=None,
+        world_path=world_path,
+        require_render=False,
+    )
     app._scene = re.world.Scene()
-    app.init_display(
-        args.resolution[0],
-        args.resolution[1],
-        display_title="RoboCute Diffraction Disc",
-        create_window=args.window,
-        window_resizable=args.window,
-    )
-    render_settings = app.display_cam.render_settings()
-    render_settings.set_offline_origin_bounce(4)
-    render_settings.set_offline_indirect_bounce(8)
-    render_settings.set_sky_angle(args.sky_angle)
-
-    if not args.no_envmap:
-        environment_cache = world_path / "environment"
-        environment_cache.mkdir(parents=True, exist_ok=True)
-        cached_envmap = environment_cache / envmap_path.name
-        shutil.copy2(envmap_path, cached_envmap)
-        environment_project = re.world.Project()
-        environment_project.init(str(environment_cache))
-        environment_texture = environment_project.import_texture(
-            cached_envmap.name, 1, False
-        )
-        if not environment_texture:
-            raise RuntimeError(
-                f"failed to import environment map: {envmap_path}"
-            )
-        environment_texture.set_skybox()
-
-    camera_pitch = math.radians(26.0)
-    camera_transform = app.get_display_transform()
-    camera_transform.set_pos(lc.double3(0.05, 1.5, 0.3), False)
-    camera_transform.set_rotation(
-        lc.float4(
-            math.sin(camera_pitch * 0.5),
-            0.0,
-            0.0,
-            math.cos(camera_pitch * 0.5),
-        ),
-        False,
-    )
-    app.display_cam.set_fov(math.radians(44.0))
-    app.display_cam.set_near_plane(0.05)
-    app.display_cam.set_far_plane(30.0)
 
     disc_material_descriptions = {
         mode: _disc_material_description(
@@ -652,6 +614,54 @@ def main() -> None:
         [diffraction_material, edge_material],
     )
     _make_entity(app.scene, "studio", studio_mesh, studio_materials)
+
+    # Preload the exact scene variant before a visible window is created.
+    app.init_render()
+    app.init_display(
+        args.resolution[0],
+        args.resolution[1],
+        display_title="RoboCute Diffraction Disc",
+        create_window=args.window,
+        window_resizable=args.window,
+    )
+    if not args.window:
+        app._tick_stage = re.world.TickStage.OffineCapturing
+    render_settings = app.display_cam.render_settings()
+    render_settings.set_offline_origin_bounce(4)
+    render_settings.set_offline_indirect_bounce(8)
+    render_settings.set_sky_angle(args.sky_angle)
+
+    if not args.no_envmap:
+        environment_cache = world_path / "environment"
+        environment_cache.mkdir(parents=True, exist_ok=True)
+        cached_envmap = environment_cache / envmap_path.name
+        shutil.copy2(envmap_path, cached_envmap)
+        environment_project = re.world.Project()
+        environment_project.init(str(environment_cache))
+        environment_texture = environment_project.import_texture(
+            cached_envmap.name, 1, False
+        )
+        if not environment_texture:
+            raise RuntimeError(
+                f"failed to import environment map: {envmap_path}"
+            )
+        environment_texture.set_skybox()
+
+    camera_pitch = math.radians(26.0)
+    camera_transform = app.get_display_transform()
+    camera_transform.set_pos(lc.double3(-0.4, 1.7, 0.3), False)
+    camera_transform.set_rotation(
+        lc.float4(
+            math.sin(camera_pitch * 0.5),
+            0.0,
+            0.0,
+            math.cos(camera_pitch * 0.5),
+        ),
+        False,
+    )
+    app.display_cam.set_fov(math.radians(44.0))
+    app.display_cam.set_near_plane(0.05)
+    app.display_cam.set_far_plane(30.0)
 
     saved = False
     control_panel = None

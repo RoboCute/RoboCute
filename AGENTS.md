@@ -37,4 +37,4 @@ xmake
 uv run scripts/build_and_copy.py releasedbg uv
 ```
 
-Refer to the `build` skill (`.opencode/skills/build/SKILL.md`) for full details on xmake options, packaging/unpacking toolchain archives, and Python-to-C++ codegen.
+Refer to the `build` skill (`.agent/skills/build/SKILL.md`) for full details on xmake options, packaging/unpacking toolchain archives, and Python-to-C++ codegen.

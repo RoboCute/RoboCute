@@ -95,7 +95,12 @@ void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const
     if (!pass_ctx) {
         pass_ctx = vstd::make_unique<PTPassContext>();
     }
-    auto const selected = _pt_shader_family.acquire(ctx.scene->shader_features());
+    auto const shader_features = ctx.scene->shader_features();
+    auto selected = _pt_shader_family.acquire(shader_features);
+    if (!selected) {
+        _pt_shader_family.wait();
+        selected = _pt_shader_family.acquire(shader_features);
+    }
     if (selected.revision != pass_ctx->shader_revision) {
         auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
         accum_pass_ctx->frame_index = 0;
@@ -502,6 +507,7 @@ void OfflinePTPass::on_disable(
 
 void OfflinePTPass::wait_enable() {
     _init_counter.wait();
+    _pt_shader_family.wait();
 }
 
 OfflinePTPass::~OfflinePTPass() {
