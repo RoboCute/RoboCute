@@ -83,12 +83,23 @@ class WorldInterfaceModule(CodeModule):
 
 
 from rbc_meta.types.project_plugin import OUT_CLASSES as OUT_PROJECT_PLUGIN_CLASSES
+from rbc_meta.types.project_plugin import (
+    SCHEMA_VERSION as PROJECT_SCHEMA_VERSION,
+    CURRENT_SCHEMA_VERSION as PROJECT_CURRENT_SCHEMA_VERSION,
+)
 
 
 @codegen
 class ProjectPluginModule(CodeModule):
     name = "project_plugin"
     cpp_interface_header = "rbc/project_plugin/include/rbc_project/generated/project.h"
+    cpp_impl_file = "rbc/project_plugin/src/generated/project.cpp"
+    py_schema_file = "src/robocute/generated/project_schema.py"
+    py_schema_root = "ProjectConfigSchema"
+    extra_constants = {
+        "RBC_PROJECT_SCHEMA_VERSION": PROJECT_SCHEMA_VERSION,
+        "RBC_PROJECT_CURRENT_SCHEMA_VERSION": PROJECT_CURRENT_SCHEMA_VERSION,
+    }
     classes = OUT_PROJECT_PLUGIN_CLASSES
 
 

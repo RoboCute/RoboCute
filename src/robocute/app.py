@@ -1,6 +1,7 @@
 from typing import Optional, Callable
 import robocute.rbc_ext as rbce
 from pathlib import Path
+import robocute.project
 import robocute.rbc_ext.luisa as lc
 import os
 import time
@@ -86,12 +87,13 @@ class App:
             print(">>>>>> Render init done")
 
         if project_path:
+            cfg = robocute.project.load_project_config(project_path)
             if not world_path:
-                world_path = project_path / "library"
+                world_path = project_path / cfg.paths.library
             print(">>>> using world_path: ", world_path)
             self.init_world(world_path)
             print(">>>> init world done")
-            self.init_project(project_path)
+            self.init_project(project_path, cfg)
             print(">>>> init project done")
         elif world_path:
             self.init_world(world_path)
@@ -127,16 +129,25 @@ class App:
         if self._ctx is not None:
             self._ctx.init_render()
 
-    def init_project(self, project_path: Path) -> None:
+    def init_project(self, project_path: Path, cfg: Optional[robocute.project.ProjectConfigSchema] = None) -> None:
         if not project_path.exists():
             raise Exception(f'Project path: {project_path} not exists.')
+        if cfg is None:
+            cfg = robocute.project.load_project_config(project_path)
         self._project = rbce.world.Project()
-        self._project.init(str(project_path / "assets"))
+        # 传项目根目录（内含 rbc_project.json）；assets/library 等目录由 schema 解析
+        self._project.init(str(project_path))
         print(f"init project {project_path} done, start scanning")
         self._project.scan_project()
-        self._scene = self._project.import_scene("test_scene.scene", "")
-        print("scene imported, start install ...")
-        self._scene.install()
+        # default_scene 是项目根相对路径，import_scene 期望 assets 相对路径
+        scene_rel = robocute.project.asset_rel_path(cfg, cfg.config.default_scene)
+        if scene_rel:
+            self._scene = self._project.import_scene(scene_rel, "")
+            print("scene imported, start install ...")
+            if self._scene:
+                self._scene.install()
+        else:
+            print("no default_scene configured, skip scene import.")
 
     def init_display(
         self, x: int = 1920, y: int = 1080, display_title: str = "py_window",

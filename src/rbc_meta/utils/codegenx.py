@@ -6,6 +6,7 @@
 - 指定 cpp_impl_file → 生成 C++ 实现文件
 - 指定 pybind_py_file → 生成 Python 绑定
 - 指定 pybind_cpp_def_file → 生成 pybind C++ 定义
+- 指定 py_schema_file → 生成自包含 Python schema（dataclass）
 """
 
 from typing import Dict, List, Optional, Any, Type
@@ -16,6 +17,7 @@ from rbc_meta.utils.codegen_cpp import (
 )
 from rbc_meta.utils.codegen_py import gen_pybind_py
 from rbc_meta.utils.codegen_pybind import gen_pybind_cpp_impl
+from rbc_meta.utils.codegen_py_schema import gen_py_schema
 
 
 class CodegenRegistry:
@@ -52,6 +54,9 @@ class CodegenRegistry:
 
             if mod.pybind_cpp_def_file:
                 gen_pybind_cpp_impl(mod, dep_mods)
+
+            if mod.py_schema_file:
+                gen_py_schema(mod)
 
 
 def codegen(cls: Optional[Type] = None, *, interface_gen=True, interface_header_path="") -> Type:
@@ -105,6 +110,15 @@ class CodeModule:
     # Pybind C++ 定义文件输出路径（指定即启用）
     pybind_cpp_def_file: Optional[str] = None
 
+    # 自包含 Python schema 输出路径（指定即启用）
+    py_schema_file: Optional[str] = None
+
+    # Python schema 顶层（root）类名；缺省取 classes 列表最后一个
+    py_schema_root: Optional[str] = None
+
+    # 额外常量（生成到 C++ 接口头文件尾部，namespace 取第一个类的 cpp_namespace）
+    extra_constants: Optional[Dict[str, int]] = None
+
     # 额外头文件（用于生成的代码中包含）
     header_files: Optional[List[str]] = None
 
@@ -116,6 +130,7 @@ class CodeModule:
         self.classes = list(self.classes) if self.classes is not None else []
         self.header_files = list(self.header_files) if self.header_files is not None else []
         self.deps = list(self.deps) if self.deps is not None else []
+        self.extra_constants = dict(self.extra_constants) if self.extra_constants is not None else {}
 
     def add_cls(self, cls: Type):
         self.classes.append(cls)

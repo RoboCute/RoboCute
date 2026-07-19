@@ -32,6 +32,8 @@ ${EXTRA_INCLUDE}
 ${ENUMS_EXPR}
 
 ${STRUCTS_EXPR}
+
+${EXTRA_CONSTANTS_EXPR}
 // ========================================
 // MAIN GENERATED CONTENT END
 

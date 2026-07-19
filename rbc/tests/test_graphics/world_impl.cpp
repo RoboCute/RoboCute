@@ -1521,7 +1521,7 @@ void Project::scan_project(void *this_) {
     c->sync();
     c->proj->scan_project();
 }
-void Project::init(void *this_, luisa::string_view assets_root_dir) {
+void Project::init(void *this_, luisa::string_view project_root) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("Project::init: this_ is null.");
         return;
@@ -1529,9 +1529,74 @@ void Project::init(void *this_, luisa::string_view assets_root_dir) {
     auto c = static_cast<ProjectImpl *>(this_);
     if (c->module || c->proj) return;
     c->module = PluginManager::instance().load_module("rbc_project_plugin");
+    // project_root：含 rbc_project.json 的项目根目录；
+    // 兼容：不存在 rbc_project.json 时 project_plugin 内部按 legacy assets 目录模式处理。
     c->proj = luisa::unique_ptr<rbc::IProject>(c->module->invoke<ProjectPlugin *()>(
                                                             "get_project_plugin")
-                                                   ->create_project(assets_root_dir));
+                                                   ->create_project(project_root));
+}
+
+// ===== schema / 路径访问（仅读取 project_plugin 内部状态；字符串跨 DLL 边界）=====
+luisa::string Project::root_path(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Project::root_path: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    return luisa::to_string(c->proj->project_root());
+}
+luisa::string Project::assets_path(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Project::assets_path: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    return luisa::to_string(c->proj->assets_dir());
+}
+luisa::string Project::library_path(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Project::library_path: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    return luisa::to_string(c->proj->library_dir());
+}
+luisa::string Project::intermediate_path(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Project::intermediate_path: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    return luisa::to_string(c->proj->intermediate_dir());
+}
+luisa::string Project::config_json(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("Project::config_json: this_ is null.");
+        return {};
+    }
+    auto c = static_cast<ProjectImpl *>(this_);
+    if (!c->proj) [[unlikely]] {
+        LUISA_ERROR("Project not initialized.");
+    }
+    c->sync();
+    // config_json() 在 project_plugin 内完成序列化，此处不经手 rbc_objser（跨 DLL 约束）
+    return c->proj->config_json();
 }
 template<typename T>
 void project_import(void *this_, luisa::string_view path, luisa::string_view extra_meta) {

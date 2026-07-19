@@ -48,10 +48,12 @@ struct WorldScene {
         float to_cam_distance;
         uint picked_face{~0u};
     };
+    // project_dir：项目根目录（内含 rbc_project.json）；
+    // 兼容：传入 assets 目录时 create_project 按 legacy 模式降级处理。
     WorldScene(
         GraphicsUtils *utils,
         luisa::filesystem::path const &target_binary_dir,
-        luisa::filesystem::path const &assets_dir);
+        luisa::filesystem::path const &project_dir);
 
     ~WorldScene();
     bool draw_gizmos(

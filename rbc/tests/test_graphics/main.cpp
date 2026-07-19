@@ -66,14 +66,15 @@ int main(int argc, char *argv[]) {
     // vstd::optional<SimpleScene> simple_scene;
     vstd::optional<WorldScene> world_scene;
     luisa::filesystem::path target_binary_dir;
-    luisa::filesystem::path assets_dir;
+    // argv[3]：项目根目录（含 rbc_project.json）；legacy assets 目录亦可（自动降级）
+    luisa::filesystem::path project_dir;
     if (argc > 2) {
         target_binary_dir = argv[2];
     }
     if (argc > 3) {
-        assets_dir = argv[3];
+        project_dir = argv[3];
     }
-    world_scene.create(utils.get(), target_binary_dir, assets_dir);
+    world_scene.create(utils.get(), target_binary_dir, project_dir);
     // simple_scene.create(*Lights::instance());
     // Test FOV
     bool reset = false;

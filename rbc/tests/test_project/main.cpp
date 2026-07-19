@@ -21,7 +21,7 @@
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        LUISA_WARNING("Bad args, must be #backend# #scene path#");
+        LUISA_WARNING("Bad args, must be #backend# #project root path# (legacy: assets dir)");
         return 1;
     }
     using namespace luisa;
@@ -64,6 +64,8 @@ int main(int argc, char *argv[]) {
 
     auto project_plugin = project_plugin_module->invoke<ProjectPlugin *()>(
         "get_project_plugin");
+    // argv[2]：项目根目录（含 rbc_project.json）；
+    // 传入 assets 目录时 create_project 内部按 legacy 模式降级处理。
     auto proj = luisa::unique_ptr<IProject>(project_plugin->create_project(argv[2]));
 
     proj->scan_project();
