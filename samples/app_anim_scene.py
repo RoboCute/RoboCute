@@ -316,7 +316,7 @@ def main():
     
     # Init project without importing default scene
     app._project = re.world.Project()
-    app._project.init(str(project_path / "assets"))
+    app._project.init(str(project_path))
     app._project.scan_project()
     
     # Create a new empty scene instead of importing test_scene.scene

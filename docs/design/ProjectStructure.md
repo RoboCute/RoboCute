@@ -114,7 +114,7 @@ RoboCute/
 |--------|------|
 | `robocute/` | 核心 Python 包，暴露给用户的公共 API。包含场景管理 (`scene.py`)、节点图 (`graph.py`)、服务 (`service.py`)、动画 (`animation.py`)、编辑器服务 (`editor_service.py`) 等 |
 | `rbc_meta/` | 代码生成元数据。使用 `@reflect` 装饰器定义 C++ ↔ Python 的接口契约，生成 pybind11 绑定代码。关键文件如 `types/world_interface.py` |
-| `rbc_ext/` | 代码生成输出目录。包含 `generated/world.py` 等自动生成的 Python 包装器，将 C++ 类型暴露为 Python 类 |
+| `rbc_build/` | 代码生成相关脚本。包含整个项目的构建脚本，材质编译，基础功能建设等|
 
 ### 3.3 示例与扩展
 
@@ -202,8 +202,8 @@ project.init("/path/to/your/project")
 project.scan_project()
 ```
 
-> **兼容性**：`init()` 的语义自 v0.2 起为「项目根目录」。若传入的目录下不存在
-> `rbc_project.json`，会自动降级为 legacy assets 目录模式（deprecated，打印告警）。
+> **项目入口**：`init()` 的语义为「项目根目录」。若传入的目录下不存在
+> `rbc_project.json` 或加载失败，会直接报错（fail-first），不再自动降级。
 > 项目配置的 schema 与版本演进见 [project_schema.md](project_schema.md)。
 
 ### 5.2 资源导入
@@ -249,7 +249,7 @@ file_meta = project.get_file_meta(GUID("..."), "./assets/models/bunny.obj")
 
 | 方法 | 参数 | 返回值 | 说明 |
 |------|------|--------|------|
-| `init(project_root)` | `project_root: str` | `None` | 初始化项目，设置项目根目录（含 rbc_project.json；无此文件时按 legacy assets 目录降级） |
+| `init(project_root)` | `project_root: str` | `None` | 初始化项目，设置项目根目录（含 rbc_project.json；无此文件时直接报错） |
 | `root_path()` | - | `str` | 项目根目录（v0.2 新增） |
 | `assets_path()` | - | `str` | assets 目录绝对路径（v0.2 新增） |
 | `library_path()` | - | `str` | library 目录绝对路径（v0.2 新增） |

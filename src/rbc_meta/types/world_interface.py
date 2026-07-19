@@ -722,8 +722,8 @@ class FileMeta:
 @reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class Project:
     def init(project_root: str) -> None:
-        """初始化项目。project_root 为含 rbc_project.json 的项目根目录；
-        兼容：若不存在 rbc_project.json 则按 legacy assets 目录模式处理（deprecated）。"""
+        """初始化项目。project_root 必须为含 rbc_project.json 的项目根目录；
+        若文件不存在或加载失败则直接报错（fail-first）。"""
         ...
 
     # ===== schema / 路径访问（替代 app.py 的 assets/library 硬编码）=====

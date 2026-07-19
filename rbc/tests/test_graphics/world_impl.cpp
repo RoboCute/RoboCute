@@ -1530,7 +1530,7 @@ void Project::init(void *this_, luisa::string_view project_root) {
     if (c->module || c->proj) return;
     c->module = PluginManager::instance().load_module("rbc_project_plugin");
     // project_root：含 rbc_project.json 的项目根目录；
-    // 兼容：不存在 rbc_project.json 时 project_plugin 内部按 legacy assets 目录模式处理。
+    // 若文件不存在或加载失败则 project_plugin 内部直接报错（fail-first）。
     c->proj = luisa::unique_ptr<rbc::IProject>(c->module->invoke<ProjectPlugin *()>(
                                                             "get_project_plugin")
                                                    ->create_project(project_root));

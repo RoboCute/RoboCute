@@ -204,7 +204,7 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         auto project_plugin = project_plugin_module->invoke<ProjectPlugin *()>(
             "get_project_plugin");
         // project_dir 为项目根目录（含 rbc_project.json）；
-        // 传入 assets 目录时 create_project 内部按 legacy 模式降级。
+        // 若文件不存在或加载失败则 create_project 直接报错（fail-first）。
         auto proj = luisa::unique_ptr<IProject>(project_plugin->create_project(
             luisa::to_string(project_dir)));
         proj->scan_project();

@@ -125,11 +125,11 @@ xmake run rbc-editor
 ### Graphics Tests
 
 ```bash
-# Run graphics test with backend
-xmake run test_graphics_bin <backend> <asset_dir> <intermediate_dir>
+# Run graphics test with backend (project_dir must contain rbc_project.json)
+xmake run test_graphics_bin <backend> <project_dir> <intermediate_dir>
 
 # Example:
-xmake run test_graphics_bin dx ./assets ./.rbc
+xmake run test_graphics_bin dx ./my_project ./.rbc
 ```
 
 ## Testing

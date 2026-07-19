@@ -1,7 +1,7 @@
 import mat_builtin as mat
 import cli
 from robocute.rbc_ext._C import lcapi_c as lcapi
-import robocute.rbc_ext as re
+import robocute.rbc_ext as rbce
 import robocute.rbc_ext.luisa as lc
 import robocute as rbc
 import os
@@ -64,7 +64,7 @@ def int_array_to_rgb(int_array: np.ndarray) -> np.ndarray:
     return rgb_array
 
 
-def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
+def make_cube_mesh(scene: rbce.world.Scene, tex: rbce.world.TextureResource):
     """
     创建一个包含两个立方体的动态网格实体
 
@@ -81,7 +81,7 @@ def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
     Returns:
         Entity: 创建的实体对象, 包含完整的渲染组件
     """
-    mat0 = re.world.MaterialResource()
+    mat0 = rbce.world.MaterialResource()
 
     mat0_json = mat.OpenPBRInterface(app._project)
     mat0_json.set_specular_roughness(0.8)
@@ -92,7 +92,7 @@ def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
     mat0.load_from_json(mat0_json.dump_to_json())
     del mat0_json
 
-    mat1 = re.world.MaterialResource()
+    mat1 = rbce.world.MaterialResource()
 
     mat1_json = mat.OpenPBRInterface(app._project)
     mat1_json.set_specular_roughness(0.5)
@@ -111,9 +111,9 @@ def make_cube_mesh(scene: re.world.Scene, tex: re.world.TextureResource):
     entity.set_name("test_cube")
     entity = scene.get_entity_by_name("test_cube")
     assert entity._handle is not None
-    trans = re.world.TransformComponent(
+    trans = rbce.world.TransformComponent(
         entity.add_component("TransformComponent"))
-    render = re.world.RenderComponent(entity.add_component("RenderComponent"))
+    render = rbce.world.RenderComponent(entity.add_component("RenderComponent"))
 
     trans.set_pos(lc.double3(0, 0, 1), False)
     trans.set_rotation(lc.float4(0, -1, 0, 0), False)
@@ -214,7 +214,7 @@ def _add_cube_to_builder(
                              a, vertex_start + b, vertex_start + c)
 
 
-def load_material_entity(model_name: str, scene: re.world.Scene):
+def load_material_entity(model_name: str, scene: rbce.world.Scene):
     """Load a GLTF model with PBR textures and create a renderable entity.
 
     Args:
@@ -258,7 +258,7 @@ def load_material_entity(model_name: str, scene: re.world.Scene):
     mat0_json.set_weight_tex_swizzle(swizzle)
 
     # Load material
-    mat0 = re.world.MaterialResource()
+    mat0 = rbce.world.MaterialResource()
     mat0.load_from_json(mat0_json.dump_to_json())
 
     # Load mesh from GLTF
@@ -270,7 +270,7 @@ def load_material_entity(model_name: str, scene: re.world.Scene):
     entity.set_name(f"model_{model_name}")
 
     # Add Transform component
-    trans = re.world.TransformComponent(
+    trans = rbce.world.TransformComponent(
         entity.add_component("TransformComponent")
     )
     trans.set_pos(lc.double3(0, -1, -0.5), False)
@@ -278,7 +278,7 @@ def load_material_entity(model_name: str, scene: re.world.Scene):
     trans.set_scale(lc.double3(2,2,2), False)
 
     # Add Render component
-    render = re.world.RenderComponent(
+    render = rbce.world.RenderComponent(
         entity.add_component("RenderComponent")
     )
 
@@ -291,7 +291,7 @@ def load_material_entity(model_name: str, scene: re.world.Scene):
     return entity
 
 
-def load_material_entity_json(config_path: str | Path, scene: re.world.Scene):
+def load_material_entity_json(config_path: str | Path, scene: rbce.world.Scene):
     """Load a material entity from a JSON config file.
 
     Args:
@@ -340,7 +340,7 @@ def load_material_entity_json(config_path: str | Path, scene: re.world.Scene):
     mat0_json.set_weight_tex_swizzle(swizzle)
 
     # Load material
-    mat0 = re.world.MaterialResource()
+    mat0 = rbce.world.MaterialResource()
     mat0.load_from_json(mat0_json.dump_to_json())
 
     # Load mesh from GLTF
@@ -352,7 +352,7 @@ def load_material_entity_json(config_path: str | Path, scene: re.world.Scene):
     entity.set_name(f"model_{config['model_name']}")
 
     # Add Transform component
-    trans = re.world.TransformComponent(
+    trans = rbce.world.TransformComponent(
         entity.add_component("TransformComponent")
     )
     trans_cfg = config["transform"]
@@ -361,7 +361,7 @@ def load_material_entity_json(config_path: str | Path, scene: re.world.Scene):
     trans.set_scale(lc.double3(*trans_cfg["scale"]), False)
 
     # Add Render component
-    render = re.world.RenderComponent(
+    render = rbce.world.RenderComponent(
         entity.add_component("RenderComponent")
     )
 
@@ -466,7 +466,7 @@ def main():
         # build after update
 
         # DO THIS: change mesh in shader
-        # render = re.world.RenderComponent(entity.get_component("RenderComponent"))
+        # render = rbce.world.RenderComponent(entity.get_component("RenderComponent"))
         # buffer = lc.Buffer.import_native(lc.float3, render.mesh().device_data_buffer())
         # move_shader(
         #     buffer,
@@ -479,16 +479,16 @@ def main():
         if EXPORT and app.frame_index == 122:
             app.display_cam.set_geometry_export_buffer(
             geometry_buffer.info(),
-            re.world.RendererGeometryType(
-                int(re.world.RendererGeometryType.Depth)
-                | int(re.world.RendererGeometryType.Normal)
-                | int(re.world.RendererGeometryType.ObjectID)
-                | int(re.world.RendererGeometryType.PrimID)
-                | int(re.world.RendererGeometryType.Barycentric)
-                | int(re.world.RendererGeometryType.Emission)
-                | int(re.world.RendererGeometryType.Albedo)
-                | int(re.world.RendererGeometryType.MaterialID)
-                | int(re.world.RendererGeometryType.UV)
+            rbce.world.RendererGeometryType(
+                int(rbce.world.RendererGeometryType.Depth)
+                | int(rbce.world.RendererGeometryType.Normal)
+                | int(rbce.world.RendererGeometryType.ObjectID)
+                | int(rbce.world.RendererGeometryType.PrimID)
+                | int(rbce.world.RendererGeometryType.Barycentric)
+                | int(rbce.world.RendererGeometryType.Emission)
+                | int(rbce.world.RendererGeometryType.Albedo)
+                | int(rbce.world.RendererGeometryType.MaterialID)
+                | int(rbce.world.RendererGeometryType.UV)
             ),
         )
         if EXPORT and app.frame_index == 128:

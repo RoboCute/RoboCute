@@ -530,6 +530,18 @@ def main() -> None:
         environment_cache.mkdir(parents=True, exist_ok=True)
         cached_envmap = environment_cache / envmap_path.name
         shutil.copy2(envmap_path, cached_envmap)
+        # environment_cache 作为最小项目根目录使用，需提供 rbc_project.json
+        (environment_cache / "rbc_project.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "name": "diffraction_disc_env",
+                    "paths": {"assets": "."},
+                },
+                indent=4,
+            ),
+            encoding="utf-8",
+        )
         environment_project = re.world.Project()
         environment_project.init(str(environment_cache))
         environment_texture = environment_project.import_texture(

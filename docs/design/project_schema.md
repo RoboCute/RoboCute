@@ -168,7 +168,7 @@ auto db_dir = proj->intermediate_dir();  // meta_db 位于其下的 meta_db/
 ```
 
 加载逻辑集中在 `rbc/project_plugin/src/project.cpp` 的构造流程
-（`rbc_project.json` 不存在时自动降级为 legacy assets 目录模式并告警）与
+（`rbc_project.json` 不存在或加载失败时直接报错，fail-first）与
 `project_schema_migration.cpp`（`load_project_config` / `fixup_project_schema`）。
 
 ### Python（脚本 / app）
@@ -198,13 +198,13 @@ root, assets, library = (
   启用 editor 构建时需按本文档 §5 的新接口跟进。
 - **旧 `.temp_db` 缓存**：v2 起 meta_db 迁至 `<root>/.rbc/meta_db`，旧 `.temp_db`
   不再读取（纯索引缓存，可安全手动删除）。
-- **legacy 自动检测**：目录下无 `rbc_project.json` 时按 assets 目录处理
-  （`paths.assets = 目录名`、项目根 = 父目录），与旧行为（assets 直接传入、
-  `.temp_db` 在父目录）语义一致；该路径为 deprecated，请迁移到 `rbc_project.json` 入口。
+- **项目入口**：必须通过含 `rbc_project.json` 的项目根目录初始化；目录下无
+  `rbc_project.json` 时不再降级，直接报错（fail-first）。
 
 ## 7. 变更记录
 
 | 版本 | 变更 | 兼容处理 |
 |------|------|----------|
 | v1 | 初始模板（无 `schema_version`、无 `paths.library`） | — |
-| v2 | 新增 `schema_version`、`paths.library`；`.temp_db` → `<intermediate>/meta_db`；`create_project` 参数语义由 assets 目录改为项目根目录（legacy 自动降级） | 新增字段走默认值兜底 + `_migrate_v1_to_v2`（双侧） |
+| v2 | 新增 `schema_version`、`paths.library`；`.temp_db` → `<intermediate>/meta_db`；`create_project` 参数语义由 assets 目录改为项目根目录 | 新增字段走默认值兜底 + `_migrate_v1_to_v2`（双侧） |
+| v2+ | 移除 legacy assets 目录自动降级：`create_project` / `Project.init` 必须传入含 `rbc_project.json` 的项目根目录，不存在时直接报错（fail-first） | 不再兼容旧入口；请为旧项目补写 `rbc_project.json` |

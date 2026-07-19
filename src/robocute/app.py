@@ -141,6 +141,7 @@ class App:
         self._project.scan_project()
         # default_scene 是项目根相对路径，import_scene 期望 assets 相对路径
         scene_rel = robocute.project.asset_rel_path(cfg, cfg.config.default_scene)
+        print(">>> Scene Path: ", scene_rel)
         if scene_rel:
             self._scene = self._project.import_scene(scene_rel, "")
             print("scene imported, start install ...")

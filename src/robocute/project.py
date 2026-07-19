@@ -30,7 +30,7 @@ PROJECT_CONFIG_FILENAME = "rbc_project.json"
 
 
 def load_project_config(project_root: str | Path) -> ProjectConfigSchema:
-    """加载 `<project_root>/rbc_project.json`；不存在时返回全默认 schema（legacy 模式）。
+    """加载 `<project_root>/rbc_project.json`；不存在或加载失败时直接报错（fail-first）。
 
     加载时自动执行版本迁移（v1 -> CURRENT），返回对象的 `schema_version`
     始终为 `CURRENT_SCHEMA_VERSION`。
@@ -38,9 +38,10 @@ def load_project_config(project_root: str | Path) -> ProjectConfigSchema:
     root = Path(project_root)
     json_path = root / PROJECT_CONFIG_FILENAME
     if not json_path.is_file():
-        cfg = ProjectConfigSchema()
-        cfg.schema_version = CURRENT_SCHEMA_VERSION
-        return cfg
+        raise FileNotFoundError(
+            f"Project configuration not found: {json_path}\n"
+            f"Please create a valid rbc_project.json under '{root}'."
+        )
     return ProjectConfigSchema.load(json_path)
 
 

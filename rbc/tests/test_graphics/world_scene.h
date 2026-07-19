@@ -49,7 +49,7 @@ struct WorldScene {
         uint picked_face{~0u};
     };
     // project_dir：项目根目录（内含 rbc_project.json）；
-    // 兼容：传入 assets 目录时 create_project 按 legacy 模式降级处理。
+    // 若文件不存在或加载失败则 create_project 直接报错（fail-first）。
     WorldScene(
         GraphicsUtils *utils,
         luisa::filesystem::path const &target_binary_dir,

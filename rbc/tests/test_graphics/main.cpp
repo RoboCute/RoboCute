@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     // vstd::optional<SimpleScene> simple_scene;
     vstd::optional<WorldScene> world_scene;
     luisa::filesystem::path target_binary_dir;
-    // argv[3]：项目根目录（含 rbc_project.json）；legacy assets 目录亦可（自动降级）
+    // argv[3]：项目根目录（含 rbc_project.json）；不存在或加载失败时直接报错
     luisa::filesystem::path project_dir;
     if (argc > 2) {
         target_binary_dir = argv[2];

@@ -487,7 +487,7 @@ def main():
 
     # Initialize project
     app._project = re.world.Project()
-    app._project.init(str(project_path / "assets"))
+    app._project.init(str(project_path))
     app._project.scan_project()
 
     # Create empty scene

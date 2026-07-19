@@ -41,23 +41,21 @@ private:
         luisa::filesystem::path meta_db_path;
         ProjectConfigSchema config;
     };
-    static ResolvedRoot _resolve_root(luisa::filesystem::path const &project_root_or_assets) {
+    static ResolvedRoot _resolve_root(luisa::filesystem::path const &project_root) {
         ResolvedRoot r;
-        auto root = project_root_or_assets;
-        if (!luisa::filesystem::exists(root / "rbc_project.json")) {
-            // legacy 模式：传入的是 assets 目录（deprecated）
-            LUISA_WARNING(
-                "rbc_project.json not found under '{}', fallback to legacy assets-dir mode (deprecated).",
+        auto root = project_root;
+        auto project_file = root / "rbc_project.json";
+        if (!luisa::filesystem::exists(project_file)) [[unlikely]] {
+            LUISA_ERROR(
+                "rbc_project.json not found under '{}'. "
+                "Please create a valid RoboCute project configuration file.",
                 luisa::to_string(root));
-            r.config = ProjectConfigSchema{};
-            r.config.paths.assets = luisa::to_string(root.filename());
-            root = root.parent_path();
-        } else {
-            if (!load_project_config(root / "rbc_project.json", r.config)) [[unlikely]] {
-                LUISA_WARNING(
-                    "Failed to load rbc_project.json under '{}', fallback to default project config.",
-                    luisa::to_string(root));
-            }
+        }
+        if (!load_project_config(project_file, r.config)) [[unlikely]] {
+            LUISA_ERROR(
+                "Failed to load rbc_project.json under '{}'. "
+                "Please make sure the file is a valid project configuration.",
+                luisa::to_string(root));
         }
         r.project_root = std::move(root);
         r.assets_path = r.project_root / r.config.paths.assets;

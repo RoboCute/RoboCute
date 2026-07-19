@@ -46,7 +46,6 @@ struct IProject : RCBase {
     [[nodiscard]] luisa::filesystem::path intermediate_dir() const { return project_root() / config().paths.intermediate; }
 
     // ===== 兼容接口（deprecated 但保留）=====
-    // DEPRECATED: 等价于 assets_dir()；仅为兼容旧代码保留，新代码请使用 assets_dir()。
     [[nodiscard]] virtual luisa::filesystem::path const &root_path() const = 0;
 
     // ===== 既有资源接口（相对路径语义不变：相对 assets 目录）=====
