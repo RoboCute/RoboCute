@@ -1,10 +1,11 @@
 from typing import Optional, Callable
-import robocute.rbc_ext as re
+import robocute.rbc_ext as rbce
 from pathlib import Path
 import robocute.rbc_ext.luisa as lc
 import os
 import time
 import numpy as np
+
 BUILTIN_PROGRAM_PATH = Path(
     os.path.dirname(__file__) + "/rbc_ext/_C"
 )  # Built-In Runtime Path
@@ -12,13 +13,13 @@ BUILTIN_PROGRAM_PATH = Path(
 def _create_visualization_mesh(
     positions: list[tuple[float, float, float]],
     indices: list[int]
-) -> re.world.MeshResource:
+) -> rbce.world.MeshResource:
     vcount = len(positions)
     tcount = len(indices)
     assert tcount % 3 == 0
     tcount = tcount // 3
     # Create mesh with actual surface dimensions
-    mesh = re.world.MeshResource()
+    mesh = rbce.world.MeshResource()
     submesh_offsets = np.array([0], dtype=np.uint32)
     mesh.create_empty(submesh_offsets, vcount,
                       tcount, 0, False, False)
@@ -51,22 +52,22 @@ def _create_visualization_mesh(
 
 
 class App:
-    _ctx: Optional[re.world.RBCContext] = None
+    _ctx: Optional[rbce.world.RBCContext] = None
     _initialized = False
     _instance: Optional["App"] = None
     _device = None
-    _project: Optional[re.world.Project] = None
+    _project: Optional[rbce.world.Project] = None
     _resolution: lc.uint2 = lc.uint2(1920, 1080)
     _window_created: lc.uint2 = lc.uint2(1920, 1080)
-    _scene: Optional[re.world.Scene] = None
-    _display_cam: Optional[re.world.CameraComponent] = None
+    _scene: Optional[rbce.world.Scene] = None
+    _display_cam: Optional[rbce.world.CameraComponent] = None
     _last_frame_time: float
     _requires_reset: bool = False
     _callback = None
-    _tick_stage: re.world.TickStage = re.world.TickStage.PathTracingPreview
+    _tick_stage: rbce.world.TickStage = rbce.world.TickStage.PathTracingPreview
     _delta_time: float = 0
     _exit: bool = False
-    _plane_entity: re.world.Entity = None
+    _plane_entity: rbce.world.Entity = None
     frame_index = 0
     real_frame_index = 0
 
@@ -79,18 +80,25 @@ class App:
         self.init_ctx()
         self.init_device(backend_name)
         lc.init()
+        print(">>>>>> Device init done")
         if require_render:
             self.init_render()
+            print(">>>>>> Render init done")
+
         if project_path:
             if not world_path:
                 world_path = project_path / "library"
+            print(">>>> using world_path: ", world_path)
             self.init_world(world_path)
+            print(">>>> init world done")
             self.init_project(project_path)
+            print(">>>> init project done")
         elif world_path:
             self.init_world(world_path)
         else:
             raise Exception('world_path or project_path required.')
 
+        print(">>>>>> rbc app init done")
         self._initialized = True
 
     def display_image(self, dtype=float) -> None:
@@ -99,7 +107,7 @@ class App:
         return lc.Image2D.import_native(dtype, display_img)
 
     def init_ctx(self) -> None:
-        self._ctx = re.world.RBCContext()
+        self._ctx = rbce.world.RBCContext()
 
     def init_world(self, world_path: Path) -> None:
         if self._ctx is not None:
@@ -120,13 +128,14 @@ class App:
             self._ctx.init_render()
 
     def init_project(self, project_path: Path) -> None:
-        self._project = re.world.Project()
-        assets_path = project_path / "assets"
-        if not assets_path.exists():
-            raise Exception(f'Assets path: {assets_path} not exists.')
-        self._project.init(str(assets_path))
+        if not project_path.exists():
+            raise Exception(f'Project path: {project_path} not exists.')
+        self._project = rbce.world.Project()
+        self._project.init(str(project_path / "assets"))
+        print(f"init project {project_path} done, start scanning")
         self._project.scan_project()
         self._scene = self._project.import_scene("test_scene.scene", "")
+        print("scene imported, start install ...")
         self._scene.install()
 
     def init_display(
@@ -147,7 +156,7 @@ class App:
         if not self._display_cam:
             return None
 
-        return re.world.TransformComponent(
+        return rbce.world.TransformComponent(
             self._display_cam.entity().get_component("TransformComponent")
         )
 
@@ -207,7 +216,7 @@ class App:
                 self.frame_index += 1
         self._exit = False
 
-    def upload_mesh_data(self, mesh: re.world.MeshResource) -> None:
+    def upload_mesh_data(self, mesh: rbce.world.MeshResource) -> None:
         if self._ctx:
             self._ctx.upload_mesh_data(mesh)
 
@@ -227,7 +236,7 @@ class App:
             mat0_json.set_specular_roughness(0.5)
             mat0_json.set_weight_metallic(0.3)
             mat0_json.set_base_albedo((0.8, 0.8, 0.8))  # Blue-ish color
-        mat0 = re.world.MaterialResource()
+        mat0 = rbce.world.MaterialResource()
         mat0.load_from_json(mat0_json.dump_to_json())
         mat_vector = lc.capsule_vector()
         mat_vector.emplace_back(mat0._handle)
@@ -239,9 +248,9 @@ class App:
         self._plane_entity = entity
         entity.set_name("__app_plane_entity")
 
-        trans = re.world.TransformComponent(
+        trans = rbce.world.TransformComponent(
             entity.add_component("TransformComponent"))
-        render = re.world.RenderComponent(
+        render = rbce.world.RenderComponent(
             entity.add_component("RenderComponent"))
 
         trans.set_pos(lc.double3(0, 0, 0), False)

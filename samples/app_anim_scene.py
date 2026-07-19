@@ -10,10 +10,10 @@ Based on: rbc/tests/sample_anim/main.cpp
 
 Usage:
     cd <project_root>
-    uv run python -m samples.app_anim_scene -p <project_path> -b <backend>
+    uv run samples.app_anim_scene -p <project_path> -b <backend>
     
 Example:
-    uv run python -m samples.app_anim_scene -p d:/ws/repos/RoboCute-repo/rbc-project-anim -b dx
+    uv run samples.app_anim_scene -p d:/ws/repos/RoboCute-repo/rbc-project-anim -b dx
 """
 
 import os

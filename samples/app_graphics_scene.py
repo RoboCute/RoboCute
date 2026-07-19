@@ -1,5 +1,5 @@
 import mat_builtin as mat
-import samples.cli as cli
+import cli
 from robocute.rbc_ext._C import lcapi_c as lcapi
 import robocute.rbc_ext as re
 import robocute.rbc_ext.luisa as lc
@@ -14,16 +14,9 @@ import argparse
 import json
 from typing import Optional
 from PIL import Image
-from samples.mesh_builder import MeshBuilder
-
-# Add parent directory to path for samples module imports
-script_dir = Path(__file__).parent
-if str(script_dir.parent) not in sys.path:
-    sys.path.insert(0, str(script_dir.parent))
-
+from mesh_builder import MeshBuilder
 
 app: rbc.app.App = None
-
 
 def int_array_to_rgb(int_array: np.ndarray) -> np.ndarray:
     """Convert an array of integer IDs to RGB image array using PCG hash.
@@ -405,6 +398,7 @@ def main():
     global app
     app = rbc.app.App()  # rbc app singleton
     app.init(project_path=project_path, backend_name=args.backend)
+    print("init done")
     tex = app._project.import_texture('test_grid.png', 1, False)
     print(tex.size())
     if not app.ctx:
@@ -440,11 +434,16 @@ def main():
         )
 
     if app._window_created:
+        print("window created")
         app.ctx.enable_camera_control()
+    else:
+        print("window not ready")
 
     if not app.scene:
         print("Scene not Valid!")
         return
+
+
 
     # DO THIS: change texture in shader
     # move_shader = lc.Shader('geometry/move_mesh.bin')
@@ -456,10 +455,6 @@ def main():
     #     dispatch_size=(my_tex.width, my_tex.height, 1)
     # )
     entity = make_cube_mesh(app.scene, tex=tex)
-    
-    # DO THIS: test GLTF mesh
-    # poly = load_material_entity('metal_office_desk', app.scene)
-    poly = load_material_entity_json('samples/load_material_scene.json', app.scene)
     last_time = time.time()
 
     def tick_logic():  # run every frame
@@ -643,6 +638,7 @@ def main():
     app.set_user_callback(tick_logic)
     # app.set_ground_plane_mode('yes')
     # Enable AO mode
+    input()
     render_settings = app.display_cam.render_settings()
     # render_settings.set_alpha_cull(1)
 
@@ -653,7 +649,6 @@ def main():
     # render_settings.set_ao_max_radius(lc.float4(1.5, 1.0, 0.5, 0.2))
     # render_settings.set_offline_origin_bounce(1)
     # render_settings.set_offline_indirect_bounce(0)
-
     app.run(prepare_denoise=EXPORT)
 
 
