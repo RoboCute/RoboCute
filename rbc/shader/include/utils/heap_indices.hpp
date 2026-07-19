@@ -33,7 +33,7 @@ enum buffer {
 };
 enum tex2d {
 	illum_d65_idx,
-	cie_xyz_cdfinv_idx,
+	spectrum_wavelength_lut_idx,
 	BINDLESS_TEX2D_RESERVED_NUM
 };
 enum tex3d {

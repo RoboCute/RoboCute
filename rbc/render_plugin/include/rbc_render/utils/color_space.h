@@ -622,10 +622,10 @@ inline double3 Chromaticities::XYZ_to_xyY(const double3 &XYZ) {
 
 // xyY <=> LMS
 inline double3 Chromaticities::XYZ_to_LMS(const double3 &XYZ, EChromaticAdaptationMethod method) {
-    return transpose(chromatic_adaptation_matrix(method)) * XYZ;
+    return chromatic_adaptation_matrix(method) * XYZ;
 }
 inline double3 Chromaticities::LMS_to_XYZ(const double3 &LMS, EChromaticAdaptationMethod method) {
-    return transpose(inverse(chromatic_adaptation_matrix(method))) * LMS;
+    return inverse(chromatic_adaptation_matrix(method)) * LMS;
 }
 
 inline double2 Chromaticities::get_white_point(EWhitePoint white_point) {
@@ -674,14 +674,14 @@ inline double3x3 Chromaticities::chromatic_adaptation_matrix(
     const double3 &to_white_in_XYZ) {
     double3x3 to_cone_response = chromatic_adaptation_matrix(method);
 
-    auto from_white_cone_response = transpose(to_cone_response) * from_white_in_XYZ;
-    auto to_white_cone_response = transpose(to_cone_response) * to_white_in_XYZ;
+    auto from_white_cone_response = to_cone_response * from_white_in_XYZ;
+    auto to_white_cone_response = to_cone_response * to_white_in_XYZ;
 
     auto scale = to_white_cone_response / from_white_cone_response;
 
     auto scale_matrix = make_double3x3(luisa::scaling(scale));
 
-    return to_cone_response * scale_matrix * inverse(to_cone_response);
+    return inverse(to_cone_response) * scale_matrix * to_cone_response;
 }
 
 // calc xy from temperature
@@ -873,9 +873,8 @@ inline double3x3 Chromaticities::matrix_to_xyz() {
     };
 
     // calc scale
-    double3x3 inv_mat = inverse(mat);
     double3 white_xyz = xyY_to_XYZ(make_double3(white_point, 1.0));
-    double3 scale = inverse(inv_mat) * white_xyz;
+    double3 scale = inverse(mat) * white_xyz;
 
     // apply scale
     mat.cols[0] *= scale.x;
@@ -908,31 +907,26 @@ inline double3x3 ColorSpace::convert_matrix(
     auto nearly_equal = [](auto a, auto b, auto c) {
         return abs(a - b) < c;
     };
-    if (method == EChromaticAdaptationMethod::XYZScaling) {
-        return from.to_xyz * to.from_xyz;
-    } else {
-        const auto from_white_xyz = transpose(from.to_xyz) * double3(1.0);
-        const auto to_white_xyz = transpose(to.to_xyz) * double3(1.0);
+    const auto from_white_xyz = from.to_xyz * double3(1.0);
+    const auto to_white_xyz = to.to_xyz * double3(1.0);
 
-        if (all(nearly_equal(from_white_xyz, to_white_xyz, 1.e-7))) {
-            return from.to_xyz * to.from_xyz;
-        } else {
-            auto adaptation_matrix = Chromaticities::chromatic_adaptation_matrix(
-                method,
-                from_white_xyz,
-                to_white_xyz);
-
-            return from.to_xyz * adaptation_matrix * to.from_xyz;
-        }
+    auto adaptation_matrix = double3x3::eye(1.0);
+    if (!all(nearly_equal(from_white_xyz, to_white_xyz, 1.e-7))) {
+        adaptation_matrix = Chromaticities::chromatic_adaptation_matrix(
+            method,
+            from_white_xyz,
+            to_white_xyz);
     }
+
+    return to.from_xyz * adaptation_matrix * from.to_xyz;
 }
 
 // convert color
 inline double3 ColorSpace::color_to_XYZ(const double3 &color) const {
-    return transpose(to_xyz) * color;
+    return to_xyz * color;
 }
 inline double3 ColorSpace::color_from_XYZ(const double3 &XYZ) const {
-    return transpose(from_xyz) * XYZ;
+    return from_xyz * XYZ;
 }
 }
 }// namespace rbc::math

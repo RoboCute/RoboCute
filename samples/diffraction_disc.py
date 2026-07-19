@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 import robocute as rbc
-import robocute.rbc_ext as re
+import robocute.rbc_ext as rbce
 import robocute.rbc_ext.luisa as lc
 from mesh_builder import MeshBuilder
 
@@ -30,8 +30,8 @@ def _normalized(value: np.ndarray) -> np.ndarray:
     return value / np.linalg.norm(value)
 
 
-def _material(description: dict[str, object]) -> re.world.MaterialResource:
-    material = re.world.MaterialResource()
+def _material(description: dict[str, object]) -> rbce.world.MaterialResource:
+    material = rbce.world.MaterialResource()
     material.load_from_json(json.dumps(description))
     return material
 
@@ -71,14 +71,14 @@ def _disc_material_description(
 
 
 def _make_entity(
-    scene: re.world.Scene,
+    scene: rbce.world.Scene,
     name: str,
-    mesh: re.world.MeshResource,
-    materials: list[re.world.MaterialResource],
-) -> re.world.Entity:
+    mesh: rbce.world.MeshResource,
+    materials: list[rbce.world.MaterialResource],
+) -> rbce.world.Entity:
     entity = scene.add_entity()
     entity.set_name(name)
-    transform = re.world.TransformComponent(
+    transform = rbce.world.TransformComponent(
         entity.add_component("TransformComponent")
     )
     transform.set_pos(lc.double3(0.0, 0.0, 0.0), False)
@@ -87,7 +87,7 @@ def _make_entity(
     material_vector = lc.capsule_vector()
     for material in materials:
         material_vector.emplace_back(material._handle)
-    render = re.world.RenderComponent(entity.add_component("RenderComponent"))
+    render = rbce.world.RenderComponent(entity.add_component("RenderComponent"))
     render.update_object(material_vector, mesh)
     return entity
 
@@ -97,7 +97,7 @@ def _build_disc(
     normal: tuple[float, float, float],
     outer_radius: float,
     segments: int = 512,
-) -> re.world.MeshResource:
+) -> rbce.world.MeshResource:
     center_vector = np.asarray(center, dtype=np.float64)
     normal_vector = _normalized(np.asarray(normal, dtype=np.float64))
     up = np.array([0.0, 1.0, 0.0], dtype=np.float64)
@@ -231,7 +231,7 @@ def _build_disc(
     return mesh
 
 
-def _build_studio() -> re.world.MeshResource:
+def _build_studio() -> rbce.world.MeshResource:
     positions: list[np.ndarray] = []
     submeshes: list[list[tuple[int, int, int]]] = [
         [],
@@ -299,7 +299,7 @@ def _parse_resolution(value: str) -> tuple[int, int]:
     try:
         width, height = (int(part) for part in value.lower().split("x", 1))
     except ValueError as error:
-        raise argparse.ArgumentTypeError("resolution must look like 1280x960") from error
+        raise argparse.ArgumentTypeError("resolution must look like 1080x720") from error
     if width <= 0 or height <= 0:
         raise argparse.ArgumentTypeError("resolution dimensions must be positive")
     return width, height
@@ -440,7 +440,7 @@ def main() -> None:
         choices=tuple(DIFFRACTION_TYPES),
         default="rectangular",
     )
-    parser.add_argument("--resolution", type=_parse_resolution, default=(1280, 720))
+    parser.add_argument("--resolution", type=_parse_resolution, default=(1080, 720))
     parser.add_argument("--spp", type=int, default=96)
     parser.add_argument("--lobe-count", type=int, choices=range(1, 8), default=3)
     parser.add_argument(
@@ -457,7 +457,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "docs" / "design" / "images" / "diffraction_disc.png",
+        default=ROOT / "docs" / "images" / "diffraction_disc.png",
     )
     parser.add_argument(
         "--window",
@@ -511,63 +511,13 @@ def main() -> None:
         parser.error(f"environment map does not exist: {envmap_path}")
 
     app = rbc.app.App()
-    app.init(backend_name=args.backend, project_path=None, world_path=world_path)
-    app._scene = re.world.Scene()
-    app.init_display(
-        args.resolution[0],
-        args.resolution[1],
-        display_title="RoboCute Diffraction Disc",
-        create_window=args.window,
-        window_resizable=args.window,
+    app.init(
+        backend_name=args.backend,
+        project_path=None,
+        world_path=world_path,
+        require_render=False,
     )
-    render_settings = app.display_cam.render_settings()
-    render_settings.set_offline_origin_bounce(4)
-    render_settings.set_offline_indirect_bounce(8)
-    render_settings.set_sky_angle(args.sky_angle)
-
-    if not args.no_envmap:
-        environment_cache = world_path / "environment"
-        environment_cache.mkdir(parents=True, exist_ok=True)
-        cached_envmap = environment_cache / envmap_path.name
-        shutil.copy2(envmap_path, cached_envmap)
-        # environment_cache 作为最小项目根目录使用，需提供 rbc_project.json
-        (environment_cache / "rbc_project.json").write_text(
-            json.dumps(
-                {
-                    "schema_version": 2,
-                    "name": "diffraction_disc_env",
-                    "paths": {"assets": "."},
-                },
-                indent=4,
-            ),
-            encoding="utf-8",
-        )
-        environment_project = re.world.Project()
-        environment_project.init(str(environment_cache))
-        environment_texture = environment_project.import_texture(
-            cached_envmap.name, 1, False
-        )
-        if not environment_texture:
-            raise RuntimeError(
-                f"failed to import environment map: {envmap_path}"
-            )
-        environment_texture.set_skybox()
-
-    camera_pitch = math.radians(26.0)
-    camera_transform = app.get_display_transform()
-    camera_transform.set_pos(lc.double3(0.05, 1.5, 0.3), False)
-    camera_transform.set_rotation(
-        lc.float4(
-            math.sin(camera_pitch * 0.5),
-            0.0,
-            0.0,
-            math.cos(camera_pitch * 0.5),
-        ),
-        False,
-    )
-    app.display_cam.set_fov(math.radians(44.0))
-    app.display_cam.set_near_plane(0.05)
-    app.display_cam.set_far_plane(30.0)
+    app._scene = rbce.world.Scene()
 
     disc_material_descriptions = {
         mode: _disc_material_description(
@@ -664,6 +614,54 @@ def main() -> None:
         [diffraction_material, edge_material],
     )
     _make_entity(app.scene, "studio", studio_mesh, studio_materials)
+
+    # Preload the exact scene variant before a visible window is created.
+    app.init_render()
+    app.init_display(
+        args.resolution[0],
+        args.resolution[1],
+        display_title="RoboCute Diffraction Disc",
+        create_window=args.window,
+        window_resizable=args.window,
+    )
+    if not args.window:
+        app._tick_stage = rbce.world.TickStage.OffineCapturing
+    render_settings = app.display_cam.render_settings()
+    render_settings.set_offline_origin_bounce(4)
+    render_settings.set_offline_indirect_bounce(8)
+    render_settings.set_sky_angle(args.sky_angle)
+
+    if not args.no_envmap:
+        environment_cache = world_path / "environment"
+        environment_cache.mkdir(parents=True, exist_ok=True)
+        cached_envmap = environment_cache / envmap_path.name
+        shutil.copy2(envmap_path, cached_envmap)
+        environment_project = rbce.world.Project()
+        environment_project.init(str(environment_cache))
+        environment_texture = environment_project.import_texture(
+            cached_envmap.name, 1, False
+        )
+        if not environment_texture:
+            raise RuntimeError(
+                f"failed to import environment map: {envmap_path}"
+            )
+        environment_texturbce.set_skybox()
+
+    camera_pitch = math.radians(26.0)
+    camera_transform = app.get_display_transform()
+    camera_transform.set_pos(lc.double3(-0.4, 1.7, 0.3), False)
+    camera_transform.set_rotation(
+        lc.float4(
+            math.sin(camera_pitch * 0.5),
+            0.0,
+            0.0,
+            math.cos(camera_pitch * 0.5),
+        ),
+        False,
+    )
+    app.display_cam.set_fov(math.radians(44.0))
+    app.display_cam.set_near_plane(0.05)
+    app.display_cam.set_far_plane(30.0)
 
     saved = False
     control_panel = None

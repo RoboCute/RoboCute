@@ -75,6 +75,12 @@ class ResourceColorSpace(Enum):
     Rec2020 = 4
 
 
+@reflect(cpp_namespace="rbc", pybind=True)
+class SpectrumAccumulationSpace(Enum):
+    XYZ = 0
+    AP0D65 = 1
+
+
 @reflect(cpp_namespace="rbc")
 class LpmDisplayMode(Enum):
     LDR = 0
@@ -261,6 +267,7 @@ class PathTracerSettings:
     offline_origin_bounce: uint
     offline_indirect_bounce: uint
     resource_color_space: ResourceColorSpace
+    spectrum_accumulation_space: SpectrumAccumulationSpace
     denoise: bool
     # AO mode
     enable_ao_mode: bool
@@ -274,6 +281,7 @@ class PathTracerSettings:
         "offline_spp": "1",
         "offline_origin_bounce": "2",
         "offline_indirect_bounce": "4",
+        "spectrum_accumulation_space": "SpectrumAccumulationSpace::AP0D65",
         "denoise": "true",
         "ao_max_radius": "1,1,1,1",
         "ao_atten_pow": "1,1,1,1",
@@ -335,6 +343,7 @@ OUT_CLASSES = [
     LpmColorSpace,
     GeometryType,
     ResourceColorSpace,
+    SpectrumAccumulationSpace,
     LpmDisplayMode,
     NRD_CheckerboardMode,
     NRD_HitDistanceReconstructionMode,

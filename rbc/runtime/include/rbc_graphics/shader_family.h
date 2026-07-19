@@ -67,8 +67,8 @@ public:
     void prefetch(SceneShaderFeatureSnapshot features);
     [[nodiscard]] Status acquire(SceneShaderFeatureSnapshot features);
 
-    // Only teardown should wait for dynamic family loads. Render-frame setup
-    // intentionally never calls this so a first-time variant cannot stall it.
+    // Wait for all currently scheduled loads. Call acquire again afterward to
+    // publish a completed selection at an explicit synchronization point.
     void wait();
 
     [[nodiscard]] static bool select_with_shader_manager(

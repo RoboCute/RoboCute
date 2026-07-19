@@ -3,8 +3,10 @@
 #include <luisa/runtime/shader.h>
 #include <luisa/core/fiber.h>
 #include <luisa/core/dynamic_module.h>
+#include <spectrum/spectrum_args.hpp>
 namespace rbc {
 struct AccumPassContext;
+struct PreparePass;
 struct AccumPass : public Pass {
 public:
     luisa::fiber::counter init_counter;
@@ -19,6 +21,7 @@ public:
         Image<float>,
         uint2,
         uint,
+        SpectrumAccumulationArgs,
         bool> const *accum;
     Shader2D<
         Image<float>,
@@ -27,10 +30,12 @@ public:
         Buffer<float>,
         uint2,
         uint,
+        SpectrumAccumulationArgs,
         bool> const *accum_buffer;
     // ShaderBase const* _lut_baker;
     // Buffer<float4> lut_buffer;
     uint64_t buffer_frame_idx = 0;
+    PreparePass *prepare_pass{nullptr};
     void on_enable(
         Pipeline const &pipeline,
         Device &device,
