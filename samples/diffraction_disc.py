@@ -518,6 +518,54 @@ def main() -> None:
         require_render=False,
     )
     app._scene = rbce.world.Scene()
+    render_settings = app.display_cam.render_settings()
+    render_settings.set_offline_origin_bounce(4)
+    render_settings.set_offline_indirect_bounce(8)
+    render_settings.set_sky_angle(args.sky_angle)
+
+    if not args.no_envmap:
+        environment_cache = world_path / "environment"
+        environment_cache.mkdir(parents=True, exist_ok=True)
+        cached_envmap = environment_cache / envmap_path.name
+        shutil.copy2(envmap_path, cached_envmap)
+        # environment_cache 作为最小项目根目录使用，需提供 rbc_project.json
+        (environment_cache / "rbc_project.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "name": "diffraction_disc_env",
+                    "paths": {"assets": "."},
+                },
+                indent=4,
+            ),
+            encoding="utf-8",
+        )
+        environment_project = re.world.Project()
+        environment_project.init(str(environment_cache))
+        environment_texture = environment_project.import_texture(
+            cached_envmap.name, 1, False
+        )
+        if not environment_texture:
+            raise RuntimeError(
+                f"failed to import environment map: {envmap_path}"
+            )
+        environment_texture.set_skybox()
+
+    camera_pitch = math.radians(26.0)
+    camera_transform = app.get_display_transform()
+    camera_transform.set_pos(lc.double3(0.05, 1.5, 0.3), False)
+    camera_transform.set_rotation(
+        lc.float4(
+            math.sin(camera_pitch * 0.5),
+            0.0,
+            0.0,
+            math.cos(camera_pitch * 0.5),
+        ),
+        False,
+    )
+    app.display_cam.set_fov(math.radians(44.0))
+    app.display_cam.set_near_plane(0.05)
+    app.display_cam.set_far_plane(30.0)
 
     disc_material_descriptions = {
         mode: _disc_material_description(
