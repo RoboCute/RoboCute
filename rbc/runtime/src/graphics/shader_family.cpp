@@ -4,7 +4,7 @@
 #include <mutex>
 #include <thread>
 #include <utility>
-#include <vector>
+#include <luisa/core/stl/vector.h>
 
 #include <luisa/core/fiber.h>
 #include <luisa/core/logging.h>
@@ -28,7 +28,7 @@ enum class FamilyLoadState : uint8_t {
 struct ShaderFamily::Impl {
     struct Entry {
         ShaderManager::VariantSelection selection;
-        std::vector<ShaderBase const *> programs;
+        luisa::vector<ShaderBase const *> programs;
         FamilyLoadState state{FamilyLoadState::Unloaded};
 
         explicit Entry(ShaderManager::VariantSelection value)
@@ -36,10 +36,10 @@ struct ShaderFamily::Impl {
     };
 
     luisa::string name;
-    std::vector<Program> program_bindings;
+    luisa::vector<Program> program_bindings;
     Selector selector{};
     Resolver resolver{};
-    std::vector<std::unique_ptr<Entry>> entries;
+    luisa::vector<luisa::unique_ptr<Entry>> entries;
     std::mutex mutex;
     luisa::fiber::counter load_counter;
     std::atomic_uint64_t completion_epoch{};
@@ -108,7 +108,7 @@ struct ShaderFamily::Impl {
         if (auto entry = find_entry_locked(selection)) {
             return *entry;
         }
-        auto entry = std::make_unique<Entry>(selection);
+        auto entry = luisa::make_unique<Entry>(selection);
         auto result = entry.get();
         entries.emplace_back(std::move(entry));
         return *result;
@@ -144,11 +144,11 @@ struct ShaderFamily::Impl {
                     resolved = false;
                 }
 
-                std::vector<ShaderBase const *> loaded_programs(
+                luisa::vector<ShaderBase const *> loaded_programs(
                     program_bindings.size(), nullptr);
                 auto loaded = resolved &&
                               resolution.programs.size() == program_bindings.size();
-                std::vector<ShaderManager::VariantResolution const *> resolved_programs(
+                luisa::vector<ShaderManager::VariantResolution const *> resolved_programs(
                     program_bindings.size(), nullptr);
                 if (loaded) {
                     for (size_t i = 0u; i < program_bindings.size(); ++i) {
@@ -283,7 +283,7 @@ ShaderFamily::ShaderFamily(
     std::initializer_list<Program> programs,
     Selector selector,
     Resolver resolver)
-    : _impl{std::make_unique<Impl>(
+    : _impl{luisa::make_unique<Impl>(
           family_name,
           programs,
           selector,

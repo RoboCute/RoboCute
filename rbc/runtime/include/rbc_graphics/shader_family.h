@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
-#include <memory>
+#include <luisa/core/stl/memory.h>
 
 #include <luisa/core/stl/filesystem.h>
 #include <luisa/core/stl/string.h>
@@ -47,7 +47,7 @@ public:
 
 private:
     struct Impl;
-    std::unique_ptr<Impl> _impl;
+    luisa::unique_ptr<Impl> _impl;
 
 public:
     ShaderFamily(
