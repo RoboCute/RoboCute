@@ -32,14 +32,15 @@
 - [ ] RBC 命令行工具
 - [ ] Project 结构完整定义
 
-#### 2. 渲染增强 (进行中)
+#### 2. 渲染增强 
+
 - [x] 默认天空盒生成
 - [x] CUDA Headless 模式
 - [x] 编辑线修复
 - [x] 调试可视化
-- [ ] 轨迹渲染
 
-#### 3. Python 绑定 (进行中)
+#### 3. Python 绑定 
+
 - [x] Python codegen 重构
 - [x] 内置 Image API
 - [x] LuisaCompute 绑定

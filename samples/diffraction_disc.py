@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 import robocute as rbc
-import robocute.rbc_ext as re
+import robocute.rbc_ext as rbce
 import robocute.rbc_ext.luisa as lc
 from mesh_builder import MeshBuilder
 
@@ -30,8 +30,8 @@ def _normalized(value: np.ndarray) -> np.ndarray:
     return value / np.linalg.norm(value)
 
 
-def _material(description: dict[str, object]) -> re.world.MaterialResource:
-    material = re.world.MaterialResource()
+def _material(description: dict[str, object]) -> rbce.world.MaterialResource:
+    material = rbce.world.MaterialResource()
     material.load_from_json(json.dumps(description))
     return material
 
@@ -71,14 +71,14 @@ def _disc_material_description(
 
 
 def _make_entity(
-    scene: re.world.Scene,
+    scene: rbce.world.Scene,
     name: str,
-    mesh: re.world.MeshResource,
-    materials: list[re.world.MaterialResource],
-) -> re.world.Entity:
+    mesh: rbce.world.MeshResource,
+    materials: list[rbce.world.MaterialResource],
+) -> rbce.world.Entity:
     entity = scene.add_entity()
     entity.set_name(name)
-    transform = re.world.TransformComponent(
+    transform = rbce.world.TransformComponent(
         entity.add_component("TransformComponent")
     )
     transform.set_pos(lc.double3(0.0, 0.0, 0.0), False)
@@ -87,7 +87,7 @@ def _make_entity(
     material_vector = lc.capsule_vector()
     for material in materials:
         material_vector.emplace_back(material._handle)
-    render = re.world.RenderComponent(entity.add_component("RenderComponent"))
+    render = rbce.world.RenderComponent(entity.add_component("RenderComponent"))
     render.update_object(material_vector, mesh)
     return entity
 
@@ -97,7 +97,7 @@ def _build_disc(
     normal: tuple[float, float, float],
     outer_radius: float,
     segments: int = 512,
-) -> re.world.MeshResource:
+) -> rbce.world.MeshResource:
     center_vector = np.asarray(center, dtype=np.float64)
     normal_vector = _normalized(np.asarray(normal, dtype=np.float64))
     up = np.array([0.0, 1.0, 0.0], dtype=np.float64)
@@ -231,7 +231,7 @@ def _build_disc(
     return mesh
 
 
-def _build_studio() -> re.world.MeshResource:
+def _build_studio() -> rbce.world.MeshResource:
     positions: list[np.ndarray] = []
     submeshes: list[list[tuple[int, int, int]]] = [
         [],
@@ -517,7 +517,7 @@ def main() -> None:
         world_path=world_path,
         require_render=False,
     )
-    app._scene = re.world.Scene()
+    app._scene = rbce.world.Scene()
 
     disc_material_descriptions = {
         mode: _disc_material_description(
@@ -625,7 +625,7 @@ def main() -> None:
         window_resizable=args.window,
     )
     if not args.window:
-        app._tick_stage = re.world.TickStage.OffineCapturing
+        app._tick_stage = rbce.world.TickStage.OffineCapturing
     render_settings = app.display_cam.render_settings()
     render_settings.set_offline_origin_bounce(4)
     render_settings.set_offline_indirect_bounce(8)
@@ -636,7 +636,7 @@ def main() -> None:
         environment_cache.mkdir(parents=True, exist_ok=True)
         cached_envmap = environment_cache / envmap_path.name
         shutil.copy2(envmap_path, cached_envmap)
-        environment_project = re.world.Project()
+        environment_project = rbce.world.Project()
         environment_project.init(str(environment_cache))
         environment_texture = environment_project.import_texture(
             cached_envmap.name, 1, False
@@ -645,7 +645,7 @@ def main() -> None:
             raise RuntimeError(
                 f"failed to import environment map: {envmap_path}"
             )
-        environment_texture.set_skybox()
+        environment_texturbce.set_skybox()
 
     camera_pitch = math.radians(26.0)
     camera_transform = app.get_display_transform()

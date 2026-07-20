@@ -723,7 +723,33 @@ class FileMeta:
 
 @reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
 class Project:
-    def init(assets_root_dir: str) -> None: ...
+    def init(project_root: str) -> None:
+        """初始化项目。project_root 必须为含 rbc_project.json 的项目根目录；
+        若文件不存在或加载失败则直接报错（fail-first）。"""
+        ...
+
+    # ===== schema / 路径访问（替代 app.py 的 assets/library 硬编码）=====
+    def root_path() -> str:
+        """项目根目录。"""
+        ...
+
+    def assets_path() -> str:
+        """<root>/<paths.assets>。"""
+        ...
+
+    def library_path() -> str:
+        """<root>/<paths.library>。"""
+        ...
+
+    def intermediate_path() -> str:
+        """<root>/<paths.intermediate>。"""
+        ...
+
+    def config_json() -> str:
+        """ProjectConfigSchema 序列化 JSON（Python 侧用 robocute.generated.project_schema 解析）。"""
+        ...
+
+    # ===== 既有资源接口（不变；相对路径语义仍为 assets 相对）=====
     def import_scene(path: str, extra_meta: str) -> Scene: ...
     def get_resource(guid: GUID, load_content_async: bool) -> Resource: ...
     def scan_project() -> None: ...

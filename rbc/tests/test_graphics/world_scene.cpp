@@ -184,7 +184,7 @@ void WorldScene::_write_scene() {
     file_writer.write(scene_ser.write_to());
 }
 WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &target_binary_dir,
-                       luisa::filesystem::path const &assets_dir) {
+                       luisa::filesystem::path const &project_dir) {
     auto &render_device = RenderDevice::instance();
     auto runtime_dir = render_device.lc_ctx().runtime_directory();
     luisa::filesystem::path meta_dir{"test_scene"};
@@ -199,12 +199,14 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
     // write a demo scene
     if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
         _init_scene(utils);
-    } else if (!target_binary_dir.empty() && !assets_dir.empty()) {
+    } else if (!target_binary_dir.empty() && !project_dir.empty()) {
         auto project_plugin_module = PluginManager::instance().load_module("rbc_project_plugin");
         auto project_plugin = project_plugin_module->invoke<ProjectPlugin *()>(
             "get_project_plugin");
+        // project_dir 为项目根目录（含 rbc_project.json）；
+        // 若文件不存在或加载失败则 create_project 直接报错（fail-first）。
         auto proj = luisa::unique_ptr<IProject>(project_plugin->create_project(
-            luisa::to_string(assets_dir)));
+            luisa::to_string(project_dir)));
         proj->scan_project();
         scene = proj->import_assets("test_scene.scene", TypeInfo::get<world::SceneResource>().md5());
         scene->load();

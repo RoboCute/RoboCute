@@ -334,7 +334,7 @@ Manages project assets and resource importing.
 
 | Method | Description |
 |--------|-------------|
-| `init(assets_root_dir)` | Initialize project with assets directory |
+| `init(project_root_dir)` | Initialize project with project root directory (must contain rbc_project.json) |
 | `scan_project()` | Scan project for resources |
 | `import_scene(path, extra_meta)` | Import a scene file |
 | `import_texture(path, mip_level, to_vt)` | Import a texture file |

@@ -114,7 +114,7 @@ RoboCute/
 |--------|------|
 | `robocute/` | 核心 Python 包，暴露给用户的公共 API。包含场景管理 (`scene.py`)、节点图 (`graph.py`)、服务 (`service.py`)、动画 (`animation.py`)、编辑器服务 (`editor_service.py`) 等 |
 | `rbc_meta/` | 代码生成元数据。使用 `@reflect` 装饰器定义 C++ ↔ Python 的接口契约，生成 pybind11 绑定代码。关键文件如 `types/world_interface.py` |
-| `rbc_ext/` | 代码生成输出目录。包含 `generated/world.py` 等自动生成的 Python 包装器，将 C++ 类型暴露为 Python 类 |
+| `rbc_build/` | 代码生成相关脚本。包含整个项目的构建脚本，材质编译，基础功能建设等|
 
 ### 3.3 示例与扩展
 
@@ -159,19 +159,22 @@ RoboCute/
 
 ```
 rbc-project-default/
-├── assets/                # 项目资源文件（模型、材质、纹理、场景）
-├── datasets/              # 数据集目录
-├── docs/                  # 项目文档
-├── library/               # 资源库（自动生成的缓存/索引）
-├── pretrained/            # 预训练模型目录
-├── .temp_db/              # 临时数据库目录
+├── assets/                # 项目资源文件（模型、材质、纹理、场景；由 paths.assets 配置，默认 assets）
+├── datasets/              # 数据集目录（由 paths.datasets 配置）
+├── docs/                  # 项目文档（由 paths.docs 配置）
+├── library/               # world meta/binary 缓存目录（由 paths.library 配置，默认 library）
+├── pretrained/            # 预训练模型目录（由 paths.pretrained 配置）
+├── .rbc/                  # 中间产物目录（由 paths.intermediate 配置，默认 .rbc；meta_db 位于其下）
 ├── main.py                # 项目入口文件
 ├── pyproject.toml         # Python 项目配置
-├── rbc_project.json       # RoboCute 项目配置
+├── rbc_project.json       # RoboCute 项目配置（schema 见 docs/design/project_schema.md）
 ├── .gitignore             # Git 忽略配置
 ├── .rbcignore             # RoboCute 忽略配置
 └── README.md              # 项目说明文档
 ```
+
+> 目录布局由 `rbc_project.json` 的 `paths.*` 字段决定，上表为默认值。
+> 旧版 `.temp_db/` 已废弃：v2 起元数据库位于 `<intermediate>/meta_db`，旧 `.temp_db` 可安全删除。
 
 > 用户项目**不在本仓库内**。运行示例时请通过 `-p <path_to_your_project>` 指定项目路径，例如：
 > ```bash
@@ -192,12 +195,16 @@ from robocute.rbc_ext.generated.world import Project
 # 创建 Project 实例
 project = Project()
 
-# 初始化项目，指定资源根目录
-project.init("./assets")
+# 初始化项目，指定项目根目录（内含 rbc_project.json）
+project.init("/path/to/your/project")
 
 # 扫描项目资源
 project.scan_project()
 ```
+
+> **项目入口**：`init()` 的语义为「项目根目录」。若传入的目录下不存在
+> `rbc_project.json` 或加载失败，会直接报错（fail-first），不再自动降级。
+> 项目配置的 schema 与版本演进见 [project_schema.md](project_schema.md)。
 
 ### 5.2 资源导入
 
@@ -242,7 +249,12 @@ file_meta = project.get_file_meta(GUID("..."), "./assets/models/bunny.obj")
 
 | 方法 | 参数 | 返回值 | 说明 |
 |------|------|--------|------|
-| `init(assets_root_dir)` | `assets_root_dir: str` | `None` | 初始化项目，设置资源根目录 |
+| `init(project_root)` | `project_root: str` | `None` | 初始化项目，设置项目根目录（含 rbc_project.json；无此文件时直接报错） |
+| `root_path()` | - | `str` | 项目根目录（v0.2 新增） |
+| `assets_path()` | - | `str` | assets 目录绝对路径（v0.2 新增） |
+| `library_path()` | - | `str` | library 目录绝对路径（v0.2 新增） |
+| `intermediate_path()` | - | `str` | intermediate 目录绝对路径（v0.2 新增） |
+| `config_json()` | - | `str` | 项目配置序列化 JSON，可用 `robocute.generated.project_schema.ProjectConfigSchema.from_dict(json.loads(...))` 解析（v0.2 新增） |
 | `scan_project()` | - | `None` | 扫描项目，更新资源索引 |
 | `import_mesh(path)` | `path: str` | `MeshResource` | 从文件导入 3D 网格模型 |
 | `import_texture(path, mip_level, to_vt)` | `path: str`, `mip_level: int`, `to_vt: bool` | `TextureResource` | 导入纹理图像 |
@@ -259,16 +271,16 @@ file_meta = project.get_file_meta(GUID("..."), "./assets/models/bunny.obj")
 ```python
 from robocute.rbc_ext.generated.world import Project, RBCContext
 
-# 初始化项目
+# 初始化项目（项目根目录，内含 rbc_project.json）
 project = Project()
-project.init("./assets")
+project.init("./my_project")
 project.scan_project()
 
-# 导入资源
-bunny_mesh = project.import_mesh("./assets/bunny.obj")
-albedo_tex = project.import_texture("./assets/albedo.png", mip_level=-1, to_vt=True)
-material = project.import_material("./assets/basic_mat.mat")
-scene = project.import_scene("./assets/test_scene.scene", "{}")
+# 导入资源（import_* 的相对路径语义不变：相对 assets 目录）
+bunny_mesh = project.import_mesh("bunny.obj")
+albedo_tex = project.import_texture("albedo.png", mip_level=-1, to_vt=True)
+material = project.import_material("basic_mat.mat")
+scene = project.import_scene("test_scene.scene", "{}")
 
 # 在渲染上下文中使用资源
 ctx = RBCContext()
@@ -279,10 +291,10 @@ ctx.init_world("./library/meta", "./library/binary")
 
 ### 5.6 注意事项
 
-1. **初始化顺序**: 必须先调用 `init()` 设置资源根目录，然后才能导入资源
+1. **初始化顺序**: 必须先调用 `init()` 设置项目根目录（含 `rbc_project.json`），然后才能导入资源
 2. **扫描项目**: 导入新资源后，建议调用 `scan_project()` 更新资源索引
-3. **路径格式**: 使用相对路径或绝对路径均可，但建议统一使用相对路径
-4. **资源缓存**: 导入的资源会自动缓存到 `library/` 目录，重复导入时会使用缓存
+3. **路径格式**: `import_*` 接口的相对路径始终相对 assets 目录（与旧版一致）；项目根相对路径（如 `config.default_scene`）可用 `robocute.project.asset_rel_path()` 转换
+4. **资源缓存**: 导入的资源会自动缓存到 `paths.library` 配置的目录（默认 `library/`），重复导入时会使用缓存
 5. **上下文初始化**: `RBCContext.init_device()` 的 `compactible` 参数不可省略
 
 ---

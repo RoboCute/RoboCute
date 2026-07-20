@@ -158,11 +158,33 @@ def gen_cpp_interface_header(mod: "CodeModule", dep_mods: List["CodeModule"] = [
     enums_expr = "\n".join(enums_expr)
     structs_expr = "\n".join(structs_expr)
 
+    # 额外常量（如 schema 版本号），namespace 取第一个类的 cpp_namespace
+    extra_constants_expr = ""
+    if getattr(mod, "extra_constants", None):
+        const_ns = ""
+        for cls in mod.classes:
+            cls_info = reg.get_class_info(cls.__name__)
+            if cls_info is not None and cls_info.cpp_namespace:
+                const_ns = cls_info.cpp_namespace
+                break
+        const_lines = [
+            f"inline constexpr uint32_t {k} = {v};"
+            for k, v in mod.extra_constants.items()
+        ]
+        consts = "\n".join(const_lines)
+        if const_ns:
+            extra_constants_expr = (
+                f"namespace {const_ns} {{\n{consts}\n}}// namespace {const_ns}"
+            )
+        else:
+            extra_constants_expr = consts
+
     header_path = Path(mod.cpp_interface_header).resolve()
     file_expr = CPP_INTERFACE_TEMPLATE.substitute(
         EXTRA_INCLUDE=extra_include_expr,
         ENUMS_EXPR=enums_expr,
         STRUCTS_EXPR=structs_expr,
+        EXTRA_CONSTANTS_EXPR=extra_constants_expr,
     )
     _write_string_to(file_expr, header_path)
 

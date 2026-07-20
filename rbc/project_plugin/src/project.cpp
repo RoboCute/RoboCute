@@ -1,4 +1,5 @@
 #include <rbc_project/project.h>
+#include <rbc_project/project_schema_migration.h>
 #include <luisa/core/fiber.h>
 #include <rbc_core/utils/parse_string.h>
 #include <rbc_core/binary_file_writer.h>
@@ -15,7 +16,9 @@ namespace rbc {
 class Project : public IProject {
 private:
     vstd::LMDB _meta_db;
+    luisa::filesystem::path _project_root;
     luisa::filesystem::path _assets_path;
+    ProjectConfigSchema _config;
     vstd::HashMap<luisa::filesystem::path, std::pair<luisa::spin_mutex, std::atomic_uint64_t>> _file_mtx;
     struct LoadCommand {
         vstd::Guid type_id;
@@ -31,14 +34,47 @@ private:
         vstd::MD5 type_id,
         luisa::filesystem::path const &origin_path);
 
-public:
-    Project(luisa::filesystem::path const &assets_db_path)
-        : _meta_db(assets_db_path.parent_path() / ".temp_db"),
-          _assets_path(assets_db_path) {
+    // 入口解析结果（构造前置，供成员初始化列表使用）
+    struct ResolvedRoot {
+        luisa::filesystem::path project_root;
+        luisa::filesystem::path assets_path;
+        luisa::filesystem::path meta_db_path;
+        ProjectConfigSchema config;
+    };
+    static ResolvedRoot _resolve_root(luisa::filesystem::path const &project_root) {
+        ResolvedRoot r;
+        auto root = project_root;
+        auto project_file = root / "rbc_project.json";
+        if (!luisa::filesystem::exists(project_file)) [[unlikely]] {
+            LUISA_ERROR(
+                "rbc_project.json not found under '{}'. "
+                "Please create a valid RoboCute project configuration file.",
+                luisa::to_string(root));
+        }
+        if (!load_project_config(project_file, r.config)) [[unlikely]] {
+            LUISA_ERROR(
+                "Failed to load rbc_project.json under '{}'. "
+                "Please make sure the file is a valid project configuration.",
+                luisa::to_string(root));
+        }
+        r.project_root = std::move(root);
+        r.assets_path = r.project_root / r.config.paths.assets;
+        r.meta_db_path = r.project_root / r.config.paths.intermediate / "meta_db";
+        return r;
+    }
+    explicit Project(ResolvedRoot &&resolved)
+        : _meta_db(resolved.meta_db_path),
+          _project_root(std::move(resolved.project_root)),
+          _assets_path(std::move(resolved.assets_path)),
+          _config(std::move(resolved.config)) {
         if (_assets_path.empty()) {
             LUISA_ERROR("Assets database path must not be empty.");
         }
     }
+
+public:
+    explicit Project(luisa::filesystem::path const &project_root_or_assets)
+        : Project(_resolve_root(project_root_or_assets)) {}
     void scan_project() override;
     ~Project() {
     }
@@ -92,7 +128,21 @@ public:
              vec.size()});
     }
     luisa::filesystem::path const &root_path() const override {
+        // DEPRECATED 兼容接口：语义 = assets_dir()
         return _assets_path;
+    }
+    ProjectConfigSchema const &config() const override {
+        return _config;
+    }
+    luisa::filesystem::path const &project_root() const override {
+        return _project_root;
+    }
+    luisa::string config_json() const override {
+        JsonSerializer ser{};
+        _config.rbc_objser(ser);
+        luisa::string str;
+        ser.write_to(str);
+        return str;
     }
 
     void unsafe_write_file_meta(
@@ -434,8 +484,8 @@ void Project::read_file_metas(
 class ProjectPluginImpl : public ProjectPlugin {
 public:
     ProjectPluginImpl() {}
-    IProject *create_project(luisa::filesystem::path const &assets_db_path) override {
-        return new Project(assets_db_path);
+    IProject *create_project(luisa::filesystem::path const &project_root_path) override {
+        return new Project(project_root_path);
     }
 };
 

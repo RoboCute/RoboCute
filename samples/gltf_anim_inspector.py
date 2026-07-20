@@ -486,7 +486,7 @@ def main():
         # 创建项目对象
         project = re.world.Project()
         assets_dir = project_path / "assets"
-        project.init(str(assets_dir))
+        project.init(str(project_path))
         project.scan_project()
 
         print("✓ 初始化完成\n")

@@ -67,7 +67,7 @@ All classes wrap a C++ handle (`_handle`) and provide:
 
 | Class | Purpose |
 |-------|---------|
-| `Project` | Asset management: `init(assets_root)`, `import_mesh()`, `import_texture()`, `import_scene()` |
+| `Project` | Asset management: `init(project_root)`, `import_mesh()`, `import_texture()`, `import_scene()` |
 | `RBCContext` | Render context: `tick()`, `upload_mesh_data()`, `should_close()` |
 | `RenderSettings` | Post-process: `set_offline_spp()`, `set_denoise()`, `set_global_exposure()` |
 | `BasicData` | Variant type: `set_int()`, `set_float()`, `set_string()`, `get_resource()` |
