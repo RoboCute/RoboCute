@@ -156,6 +156,7 @@ inline bool OpenPBR::transform_to_params(
         auto mat = buffer_heap.uniform_idx_byte_buffer_read<OpenPBR::Geometry>(mat_type, mat_index * sizeof(OpenPBR) + offsetof(OpenPBR, geometry));
         params.geometry.thin_walled = mat.thin_walled;
         params.geometry.thickness = mat.thickness * 1e-2f;
+        params.geometry.nested_priority = mat.nested_priority;
         if (mat.normal_tex.valid()) {
             auto tan_normal = read_tex(mat.normal_tex).xyz;
             if (dot(tan_normal, tan_normal) < 1e-5f) {

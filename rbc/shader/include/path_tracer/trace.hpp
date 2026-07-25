@@ -84,6 +84,7 @@ static CommittedHit rbc_trace_closest(Ray ray, TraceIndices auto const &idxs, au
     r.inst = hit.inst;
     r.prim = hit.prim;
     r.bary = hit.bary;
+    r.ray_t = hit.ray_t;
     r.hit_type = hit.miss() ? HitTypes::Miss : HitTypes::HitTriangle;
     return r;
 #endif

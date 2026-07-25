@@ -9,6 +9,15 @@ namespace mtl {
 using namespace luisa::shader;
 
 class [[ignore]] RefractiveFresnelMicrofacet {
+	static float transport_eta_scale(float etap, auto const& data) {
+		using Context = std::remove_cvref_t<decltype(data)>;
+		if constexpr (Context::transport_mode == TransportMode::Radiance) {
+			return rcp(sqr(etap));
+		} else {
+			return 1.0f;
+		}
+	}
+
 public:
 	static Throughput eval(float3 wi, float3 wo, auto& data, auto const& microfacet, auto const& fresnel) {
 		Throughput result;
@@ -44,8 +53,7 @@ public:
 				result.flags = BSDFFlags::SpecularTransmission;
 				float denom = sqr(moo + moi / etap) * wi.z;
 				result.val = F.second * D * microfacet.G2t(wi, wo) * abs(moi * moo / denom);
-				// only available in radiance transport mode
-				result.val /= sqr(etap);
+				result.val *= transport_eta_scale(etap, data);
 			}
 		}
 		return result;
@@ -99,16 +107,19 @@ public:
 			wo = refracted.out();
 			if (wi.z * wo.z >= 0.0f)
 				return result;
+			float etap = refracted.relative_ior();
+			result.eta = etap;
 			result.throughput.flags = BSDFFlags::DeltaTransmission;
 			result.pdf = pt / (pr + pt);
 			if (!microfacet.effectivelySmooth() && fresnel.ior() != 1.0f) {
 				result.throughput.flags = BSDFFlags::SpecularTransmission;
 				// Compute PDF of rough dielectric transmission
 				float moo = dot(wo, wm);
-				float denom = sqr(moo + moi / (moi > 0.0f ? fresnel.ior() : rcp(fresnel.ior())));
+				float denom = sqr(moo + moi / etap);
 				result.pdf *= mpdf * (abs(moo) / denom);
 				T *= D * microfacet.G2t(wi, wo) * abs(moi * moo / (wi.z * denom));
 			}
+			T *= transport_eta_scale(etap, data);
 			result.throughput.val = T;
 		} else {
 			// Sample reflection at dielectric interface

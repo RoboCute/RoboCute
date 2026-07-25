@@ -40,6 +40,7 @@ struct PTArgs {
     bool reset_emission;
     bool require_reject;
     bool write_id_map;
+    bool probe_initial_medium;
 };
 struct MultiBouncePixel {
     std::array<float, 3> beta;
@@ -47,6 +48,30 @@ struct MultiBouncePixel {
     std::array<float, 3> input_pos;
     float pdf_bsdf;
     std::array<float, 3> input_dir;
-    float length_sum;
+    uint spectrum_state;
 };
+
+constexpr uint SPECTRUM_SAMPLE_BITS = 24u;
+constexpr uint SPECTRUM_SAMPLE_MASK = (1u << SPECTRUM_SAMPLE_BITS) - 1u;
+
+constexpr uint pack_spectrum_state(
+    float wavelength_sample,
+    uint hero_index,
+    bool selected_wavelength,
+    uint volume_count) {
+    uint quantized_sample = uint(wavelength_sample * float(1u << SPECTRUM_SAMPLE_BITS));
+    quantized_sample = quantized_sample < SPECTRUM_SAMPLE_MASK
+                           ? quantized_sample
+                           : SPECTRUM_SAMPLE_MASK;
+    return quantized_sample |
+           ((hero_index & 3u) << 24u) |
+           (uint(selected_wavelength) << 26u) |
+           ((volume_count & 3u) << 27u);
+}
+constexpr float unpack_wavelength_sample(uint state) {
+    return float(state & SPECTRUM_SAMPLE_MASK) / float(1u << SPECTRUM_SAMPLE_BITS);
+}
+constexpr uint unpack_hero_index(uint state) { return (state >> 24u) & 3u; }
+constexpr bool unpack_selected_wavelength(uint state) { return ((state >> 26u) & 1u) != 0u; }
+constexpr uint unpack_volume_count(uint state) { return (state >> 27u) & 3u; }
 }// namespace offline

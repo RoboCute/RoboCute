@@ -16,6 +16,8 @@ struct BSDFSample {
 
 	Throughput throughput;
 	float pdf = 0.0f;
+	// Relative IOR along a sampled transmission direction; one for reflection.
+	float eta = 1.0f;
 	float3 wo = 0.0f;
 
 	constexpr

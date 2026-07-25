@@ -4,6 +4,8 @@
 #include <path_tracer/gbuffer.hpp>
 
 #include <std/inplace_vector>
+#include <volumetric/medium_probe.hpp>
+#include <volumetric/trace.hpp>
 #include <volumetric/volume.hpp>
 
 void accum_sky(SpectrumArg &spectrum_arg,
@@ -53,7 +55,6 @@ void accum_sky(SpectrumArg &spectrum_arg,
     const uint MAX_DEPTH = args.bounce;
     uint depth = 0;
     float3 beta(pixel.beta[0], pixel.beta[1], pixel.beta[2]);
-    auto origin_beta = beta;
     sampling::PCGSampler pcg_sampler(uint2(id, args.frame_index));
     float3 input_pos(pixel.input_pos);
     bool continue_loop = true;
@@ -70,17 +71,65 @@ void accum_sky(SpectrumArg &spectrum_arg,
     vt_meta.frame_countdown = args.frame_countdown;
 
     mtl::ShadingDetail detail = mtl::ShadingDetail::IndirectDiffuse;
-    std::inplace_vector<mtl::Volume, 0> volume_stack;
+    std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;
     SpectrumArg spectrum_arg;
-    spectrum_arg.lambda = spectrum::sample_wavelengths(g_image_heap, pcg_sampler.next());
-    spectrum_arg.selected_wavelength = true;
-    spectrum_arg.hero_index = pcg_sampler.nextui() % 3;
+    spectrum_arg.hero_index = unpack_hero_index(pixel.spectrum_state);
+    spectrum_arg.selected_wavelength = unpack_selected_wavelength(pixel.spectrum_state);
+    spectrum_arg.lambda = spectrum::sample_wavelengths(
+        g_image_heap,
+        unpack_wavelength_sample(pixel.spectrum_state));
+    if (spectrum_arg.selected_wavelength) {
+        spectrum_arg.lambda = spectrum_arg.lambda[spectrum_arg.hero_index];
+    }
     float3 last_beta = 0;
-    float length_sum = pixel.length_sum;
     ProceduralGeometry procedural_geometry;
     bool reject = false;
-    while (depth < MAX_DEPTH) {
-        auto hit = rbc_trace_closest(ray, args, pcg_sampler, procedural_geometry, ONLY_OPAQUE_MASK);
+    uint medium_boundary_steps = 0u;
+
+    auto expected_volume_count = unpack_volume_count(pixel.spectrum_state);
+    if (expected_volume_count > 0u) {
+        bool selected_wavelength = spectrum_arg.selected_wavelength;
+        bool probe_complete = mtl::probe_medium_stack(
+            volume_stack,
+            input_pos,
+            args,
+            pcg_sampler,
+            spectrum_arg,
+            args.resource_to_rec2020_mat,
+            ONLY_OPAQUE_MASK);
+        if (!probe_complete || volume_stack.size() != expected_volume_count) {
+            return 0;
+        }
+        if (!selected_wavelength && spectrum_arg.selected_wavelength) {
+            float3 ignored_last_beta = beta;
+            float3 ignored_di = 0.0f;
+            spectrum::modify_throughput(
+                g_image_heap,
+                spectrum_arg,
+                args.spectrum,
+                beta,
+                ignored_last_beta,
+                ignored_di);
+        }
+    }
+
+    while (depth <= MAX_DEPTH) {
+        auto trace_origin = ray.origin();
+        auto hit = mtl::trace_volumetric(
+            volume_stack,
+            beta,
+            detail,
+            ray,
+            args,
+            pcg_sampler,
+            procedural_geometry,
+            ONLY_OPAQUE_MASK);
+        bool volume_scattered = any(ray.origin() != trace_origin);
+        if (volume_scattered) {
+            input_pos = ray.origin();
+            pdf_bsdf = -1.0f;
+        }
+        new_dir = ray.dir();
         if (hit.miss()) {
             accum_sky(
                 spectrum_arg,
@@ -98,19 +147,21 @@ void accum_sky(SpectrumArg &spectrum_arg,
         float3 di_result;
         float di_dist;
         uint mat_id;
+        bool evaluate_bsdf = depth < MAX_DEPTH;
+        bool selected_wavelength = spectrum_arg.selected_wavelength;
         IntegratorResult result = sample_material(
             pcg_sampler,
             volume_stack,
-            length_sum,
             hit,
             procedural_geometry,
             spectrum_arg,
             args.world_2_sky_mat,
             vt_meta,
-            block_sampler.next(),
+            evaluate_bsdf ? block_sampler.next() : 0.0f,
             input_pos,
             beta,
             continue_loop,
+            evaluate_bsdf,
             false,
             filter,
             ddx,
@@ -125,9 +176,33 @@ void accum_sky(SpectrumArg &spectrum_arg,
             new_dir,
             reject,
             mat_id);
+        if (!selected_wavelength && spectrum_arg.selected_wavelength) {
+            spectrum::modify_throughput(
+                g_image_heap,
+                spectrum_arg,
+                args.spectrum,
+                beta,
+                last_beta,
+                di_result);
+        }
         reject &= args.require_reject;
-        radiance += di_result * last_beta;
         continue_loop &= (!reject);
+        if (mtl::is_no_medium_change(result.sample_flags)) {
+            if (++medium_boundary_steps >= mtl::MAX_MEDIUM_BOUNDARY_STEPS) break;
+            if (!continue_loop) break;
+            ray = Ray(
+                sampling::offset_ray_origin(
+                    result.world_pos,
+                    dot(result.plane_normal, new_dir) < 0.0f ? -result.plane_normal : result.plane_normal),
+                new_dir,
+                sampling::offset_ray_t_min);
+            continue;
+        }
+        medium_boundary_steps = 0u;
+        radiance += result.emission * last_beta;
+        if (!evaluate_bsdf) break;
+
+        radiance += di_result * last_beta;
         // see integrate_hashgrid_offline.cpp
         if (reject) {
             radiance = float3(-1000.0f);
@@ -135,28 +210,9 @@ void accum_sky(SpectrumArg &spectrum_arg,
         if (!continue_loop) {
             break;
         }
-        if (length_sum >= 0.0f) {
-            length_sum += hit.ray_t;
-        }
         ///////////// Prepare next ray
         ray = Ray(result.new_ray_offset + sampling::offset_ray_origin(result.world_pos, dot(result.plane_normal, new_dir) < 0 ? -result.plane_normal : result.plane_normal), new_dir, 0.0f);
-
         input_pos = ray.origin();
-        if (depth == (MAX_DEPTH - 1)) {
-            if (!rbc_trace_any(ray, args, pcg_sampler, ONLY_OPAQUE_MASK)) {
-                accum_sky(
-                    spectrum_arg,
-                    args.world_2_sky_mat,
-                    args.sky_heap_idx,
-                    args.pdf_table_idx,
-                    pdf_bsdf,
-                    beta,
-                    new_dir,
-                    args.resource_to_rec2020_mat,
-                    radiance);
-            }
-            break;
-        }
         ++depth;
     }
     gb.radiance = std::array<float, 3>(radiance.x, radiance.y, radiance.z);

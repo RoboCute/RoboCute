@@ -82,6 +82,9 @@ public:
 		float3 out() const {
 			return inv_eta * wi - (inv_eta * cos_theta + sqrt(t0)) * n;
 		}
+		float relative_ior() const {
+			return rcp(inv_eta);
+		}
 	};
 
 	RefractResult refract(float3 wi, float3 n) const {

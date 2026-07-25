@@ -14,6 +14,7 @@ enum class BSDFFlags {
 	SpecularTransmission = 1 << 3,
 	DeltaReflection = 1 << 4,
 	DeltaTransmission = 1 << 5,
+	NoMediumChange = 1 << 6,
 
 	Diffuse = DiffuseReflection | DiffuseTransmission,
 	Specular = SpecularReflection | SpecularTransmission,
@@ -57,6 +58,9 @@ constexpr bool is_delta(BSDFFlags f) {
 }
 constexpr bool is_non_delta(BSDFFlags f) {
 	return f & (BSDFFlags::Diffuse | BSDFFlags::Specular);
+}
+constexpr bool is_no_medium_change(BSDFFlags f) {
+	return f & BSDFFlags::NoMediumChange;
 }
 
 enum class ShadingDetail {

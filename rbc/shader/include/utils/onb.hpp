@@ -8,7 +8,17 @@ float3 bend_to_hemisphere(float3 dir, float3 hemisphere_normal, float strength =
     float3 dir_perp = dir - dir_dot_n * hemisphere_normal;
     float weight = dir_dot_n + sqrt(sqr(dir_dot_n) + sqr(strength));
     weight = saturate(weight / (1.0f + sqrt(1.0f + sqr(strength))));
-    return normalize(hemisphere_normal * weight + dir_perp * rsqrt(dot(dir_perp, dir_perp) ) / max(1.0f - sqr(weight), 1e-10f));
+    float perp_scale = sqrt(
+        max(1.0f - sqr(weight), 0.0f) /
+        max(dot(dir_perp, dir_perp), 1e-10f));
+    return normalize(hemisphere_normal * weight + dir_perp * perp_scale);
+}
+
+float3x3 make_normal_transform(float4x4 transform) {
+	float3 x = transform[0].xyz;
+	float3 y = transform[1].xyz;
+	float3 z = transform[2].xyz;
+	return float3x3(cross(y, z), cross(z, x), cross(x, y));
 }
 
 struct Onb {
@@ -39,22 +49,13 @@ struct Onb {
 		return transpose(float3x3(tangent, bitangent, normal)) * v;
 	}
 	void replace_normal(float3 new_local_normal, float3 view_dir) {
+		float handedness = copysign(1.0f, dot(cross(tangent, bitangent), normal));
 		auto new_normal = to_world(new_local_normal);
-		// HACKING BACKFACE NORMAL
-		float curve_start = dot(view_dir, normal);
-		float flip = curve_start < 0.0f ? -1.0f : 1.0f;
-		curve_start *= flip;
-		new_normal *= flip;
-		float nov = dot(new_normal, view_dir);
-		float3 edge_normal = new_normal - view_dir * nov;
-		float weight = saturate(curve_start - curve_start * (curve_start > 0.0f ? exp(nov / curve_start - 1.0f) : 0.0f));
-		weight = max(nov, curve_start) - weight;
-		normal = normalize(view_dir * weight +
-						   edge_normal * rsqrt(dot(edge_normal, edge_normal) /
-											   max(1.0f - sqr(weight), 1e-10f)));
-		normal *= flip;
-		bitangent = normalize(cross(normal, tangent));
-		tangent = normalize(cross(normal, bitangent));
+		float3 view_hemisphere = dot(view_dir, normal) < 0.0f ? -view_dir : view_dir;
+		new_normal = bend_to_hemisphere(new_normal, view_hemisphere);
+		normal = new_normal;
+		bitangent = handedness * normalize(cross(normal, tangent));
+		tangent = handedness * normalize(cross(bitangent, normal));
 	}
 };
 }// namespace mtl

@@ -417,6 +417,7 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
         uint32_t frame_index = accum_pass_ctx->frame_index * pt_settings.offline_spp + i;
         auto pt_args = _setup_pt_args(rc, cam_data, cam, sky_heap, write_id_map, frame_index);
         pt_args.bounce = pt_settings.offline_origin_bounce;
+        pt_args.probe_initial_medium = pt_settings.probe_initial_medium;
         pt_args.reset_emission = (i == 0);
         pt_args.jitter_offset = float2(
             halton(pt_args.frame_index & 65535, 2),

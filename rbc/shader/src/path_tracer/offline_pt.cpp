@@ -20,6 +20,7 @@
 #include <std/inplace_vector>
 #include <volumetric/volume.hpp>
 #include <volumetric/trace.hpp>
+#include <volumetric/medium_probe.hpp>
 
 using namespace luisa::shader;
 
@@ -95,23 +96,62 @@ using namespace luisa::shader;
         ray = Ray(near_world_pos.xyz, dir, sampling::offset_ray_t_min, dir_len);
     }
 
-    ProceduralGeometry procedural_geometry;
-    auto hit = rbc_trace_closest(ray, args, sampler, procedural_geometry);
-    uint4 primary_hit(max_uint32, max_uint32, 0, 0);
-    if (hit.hit_triangle()) {
-        primary_hit.x = hit.inst;
-        primary_hit.y = hit.prim;
-        primary_hit.z = bit_cast<uint>(hit.bary.x);
-        primary_hit.w = bit_cast<uint>(hit.bary.y);
-    } else if (hit.hit_procedural()) {
-        // procedural to id_map
-        primary_hit.x = hit.inst;
-        primary_hit.y = hit.prim;
-        primary_hit.z = 0;
-        primary_hit.w = 0;
+    float3 beta(1.0f);
+    mtl::ShadingDetail detail = mtl::ShadingDetail::Default;
+    std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;
+    SpectrumArg spectrum_arg;
+    float wavelength_sample = fract(sampler.next(g_buffer_heap) + pcg_sampler.next() / 255.0f);
+    spectrum_arg.lambda = spectrum::sample_wavelengths(g_image_heap, wavelength_sample);
+    spectrum_arg.hero_index = pcg_sampler.nextui() % 3u;
+
+    if (args.probe_initial_medium) {
+        bool selected_wavelength = spectrum_arg.selected_wavelength;
+        mtl::probe_medium_stack(
+            volume_stack,
+            ray.origin(),
+            args,
+            pcg_sampler,
+            spectrum_arg,
+            args.resource_to_rec2020_mat);
+        if (!selected_wavelength && spectrum_arg.selected_wavelength) {
+            float3 ignored_last_beta = beta;
+            float3 ignored_di = 0.0f;
+            spectrum::modify_throughput(
+                g_image_heap,
+                spectrum_arg,
+                args.spectrum,
+                beta,
+                ignored_last_beta,
+                ignored_di);
+        }
     }
-    if (args.write_id_map)
-        id_map.write(coord, primary_hit);
+
+    ProceduralGeometry procedural_geometry;
+    CommittedHit hit = mtl::trace_volumetric(
+        volume_stack,
+        beta,
+        detail,
+        ray,
+        args,
+        sampler,
+        procedural_geometry);
+    dir = ray.dir();
+    bool primary_hit_written = false;
+    auto write_primary_hit = [&](CommittedHit const& primary) {
+        if (!args.write_id_map || primary_hit_written) return;
+        uint4 encoded_hit(max_uint32, max_uint32, 0, 0);
+        if (primary.hit_triangle()) {
+            encoded_hit.x = primary.inst;
+            encoded_hit.y = primary.prim;
+            encoded_hit.z = bit_cast<uint>(primary.bary.x);
+            encoded_hit.w = bit_cast<uint>(primary.bary.y);
+        } else if (primary.hit_procedural()) {
+            encoded_hit.x = primary.inst;
+            encoded_hit.y = primary.prim;
+        }
+        id_map.write(coord, encoded_hit);
+        primary_hit_written = true;
+    };
     float3 addition_color = float3(0);
     float3 emission_sum = float3(0);
     float3 gbuffer_albedo = float3(0);
@@ -128,7 +168,6 @@ using namespace luisa::shader;
     float4 hitpos;// xyz: pos, w: hit normal
     const int MAX_DEPTH = args.bounce + 1;
 
-    float3 beta(1.f);
     float3 write_beta(-1.f);
     float first_dist;
     float3 radiance(0.f);
@@ -311,23 +350,20 @@ using namespace luisa::shader;
         }
     };
 
-    std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;
-    SpectrumArg spectrum_arg;
-    spectrum_arg.lambda = spectrum::sample_wavelengths(g_image_heap, fract(sampler.next(g_buffer_heap) + pcg_sampler.next() / 255.f));
-    spectrum_arg.hero_index = pcg_sampler.nextui() % 3;
     if (hit.miss()) {
+        write_primary_hit(hit);
         normal_rough = float4(0, 0, 1, 0);
         if (args.sky_heap_idx != max_uint32) {
             addition_color = g_image_heap.uniform_idx_image_sample(args.sky_heap_idx, sampling::sphere_direction_to_uv(args.world_2_sky_mat, dir), Filter::LINEAR_POINT, Address::EDGE).xyz;
             addition_color = args.resource_to_rec2020_mat * addition_color;
             addition_color = spectrum::emission_to_spectrum(g_image_heap, g_volume_heap, spectrum_arg, addition_color);
+            addition_color *= beta;
         }
         emission_sum = addition_color;
         write_tex();
         return 0;
     }
 
-    beta = float3(1.0f);
     float3 input_pos = ray.origin();
     float pdf_bsdf = -1.0f;
     first_dist = 0.f;
@@ -337,11 +373,10 @@ using namespace luisa::shader;
     float3 new_dir = dir;
     bool continue_loop = true;
     int depth = 0;
-    float length_sum = 0.0f;
     int transparent_depth = 0;
     const int TRANS_MAX_DEPTH = 4;
+    uint medium_boundary_steps = 0u;
     bool write_gbuffer = false;
-    mtl::ShadingDetail detail = mtl::ShadingDetail::Default;
     vt::VTMeta vt_meta;
     vt_meta.frame_countdown = args.frame_countdown;
     float3 last_beta(0.f);
@@ -364,7 +399,6 @@ using namespace luisa::shader;
         IntegratorResult result = sample_material(
             pcg_sampler,
             volume_stack,
-            length_sum,
             hit,
             procedural_geometry,
             spectrum_arg,
@@ -374,6 +408,7 @@ using namespace luisa::shader;
             input_pos,
             beta,
             continue_loop,
+            true,
             !write_gbuffer,
             filter,
             ddx,
@@ -390,49 +425,56 @@ using namespace luisa::shader;
             mat_id);
         reject &= args.require_reject;
         continue_loop &= (!reject);
-        if (length_sum >= 0.0f) {
-            length_sum += hit.ray_t;
-        }
         if (!selected_wavelength && spectrum_arg.selected_wavelength) {
             spectrum_arg.selected_wavelength = true;
             spectrum::modify_throughput(g_image_heap, spectrum_arg, args.spectrum, beta, last_beta, di_result);
         }
-        if (is_transmissive(result.sample_flags) && is_non_diffuse(result.sample_flags)) {
-            if (transparent_depth < TRANS_MAX_DEPTH) {
-                depth -= 1;
-                ++transparent_depth;
+        bool no_medium_change = mtl::is_no_medium_change(result.sample_flags);
+        if (!no_medium_change) {
+            medium_boundary_steps = 0u;
+            write_primary_hit(hit);
+            if (is_transmissive(result.sample_flags) && is_non_diffuse(result.sample_flags)) {
+                if (transparent_depth < TRANS_MAX_DEPTH) {
+                    depth -= 1;
+                    ++transparent_depth;
+                }
             }
-        }
-        /////////// primary ray
-        addition_color += result.emission * last_beta;
-        current_weight = beta / max(float3(1e-4f), last_beta);
-        if (!write_gbuffer) {
-            ///////////// Record gbuffer in primary ray
-            gbuffer_albedo = result.albedo;
-            gbuffer_uv = result.uv;
+            /////////// primary ray
+            addition_color += result.emission * last_beta;
+            current_weight = beta / max(float3(1e-4f), last_beta);
+            // Keep refractive radiance compression out of the continuation probability.
+            current_weight *= sqr(result.eta);
+            if (!write_gbuffer) {
+                ///////////// Record gbuffer in primary ray
+                gbuffer_albedo = result.albedo;
+                gbuffer_uv = result.uv;
 #ifdef OFFLINE_DENOISER
-            albedo_sum = result.albedo + spectrum::spectrum_to_tristimulus(result.emission, args.spectrum);
+                albedo_sum = result.albedo + spectrum::spectrum_to_tristimulus(result.emission, args.spectrum);
 #endif
-            emission_sum = result.emission;
-            normal_rough = float4(result.normal, result.roughness);
-            to_cam_dist = hit.ray_t;
-            obj_id.x = result.user_id;
-            obj_id.y = hit.prim;
-            obj_bary = hit.bary;
-            mat_id_channel = mat_id;
+                emission_sum = result.emission;
+                normal_rough = float4(result.normal, result.roughness);
+                to_cam_dist = hit.ray_t;
+                obj_id.x = result.user_id;
+                obj_id.y = hit.prim;
+                obj_bary = hit.bary;
+                mat_id_channel = mat_id;
 
-        } else if (depth == args.bounce) {
-            auto encoded_normal = sampling::encode_unit_vector(result.plane_normal);
-            hitpos = float4(result.world_pos, bit_cast<float>((uint(encoded_normal.x * float(0xffff)) & 0xffff) + (uint(encoded_normal.y * float(0xffff)) << 16)));
-            write_beta = beta;
-            beta = float3(1);
-            addition_color += radiance;
-            radiance = float3(0.0f);
-        }
-        radiance += di_result * last_beta;
-        write_gbuffer = true;
-        if (reject) {
-            radiance = 0.0f;
+            } else if (depth == args.bounce) {
+                auto encoded_normal = sampling::encode_unit_vector(result.plane_normal);
+                hitpos = float4(result.world_pos, bit_cast<float>((uint(encoded_normal.x * float(0xffff)) & 0xffff) + (uint(encoded_normal.y * float(0xffff)) << 16)));
+                write_beta = beta;
+                beta = float3(1);
+                addition_color += radiance;
+                radiance = float3(0.0f);
+            }
+            radiance += di_result * last_beta;
+            write_gbuffer = true;
+            if (reject) {
+                radiance = 0.0f;
+            }
+        } else if (++medium_boundary_steps >= mtl::MAX_MEDIUM_BOUNDARY_STEPS) {
+            continue_loop = false;
+            beta = 0.0f;
         }
         if (!continue_loop) {
             beta = float3(0.f);
@@ -441,6 +483,7 @@ using namespace luisa::shader;
 
         ///////////// Prepare next ray
         ray = Ray(result.new_ray_offset + sampling::offset_ray_origin(result.world_pos, dot(result.plane_normal, new_dir) < 0 ? -result.plane_normal : result.plane_normal), new_dir, sampling::offset_ray_t_min);
+        auto trace_origin = ray.origin();
 
         auto accum_sky = [&]() {
             if (args.sky_heap_idx != max_uint32) {
@@ -471,10 +514,22 @@ using namespace luisa::shader;
             }
         };
 
-        if (depth < (MAX_DEPTH - 1)) {
-            hit = mtl::trace_volumetric(volume_stack, beta, detail, ray, args, sampler, procedural_geometry, depth < 0 ? 255u : ONLY_OPAQUE_MASK);
+        bool volume_scattered = false;
+        if (no_medium_change || depth < (MAX_DEPTH - 1)) {
+            hit = mtl::trace_volumetric(
+                volume_stack,
+                beta,
+                detail,
+                ray,
+                args,
+                sampler,
+                procedural_geometry,
+                depth < 0 ? 255u : ONLY_OPAQUE_MASK);
+            volume_scattered = any(ray.origin() != trace_origin);
+            if (volume_scattered) pdf_bsdf = -1.0f;
 
             if (hit.miss()) {
+                write_primary_hit(hit);
                 accum_sky();
                 beta = float3(0);
                 if (depth == 0) {
@@ -487,11 +542,16 @@ using namespace luisa::shader;
         } else {
             break;
         }
-        input_pos = ray.origin();
-        ++depth;
+        if (!no_medium_change || volume_scattered) {
+            input_pos = ray.origin();
+        }
+        if (!no_medium_change) ++depth;
         ///////////// Done prepare next ray
 
         ///////////// End Loop
+    }
+    if (!primary_hit_written && args.write_id_map) {
+        id_map.write(coord, uint4(max_uint32, max_uint32, 0, 0));
     }
     if (depth < 0 && transparent_depth < TRANS_MAX_DEPTH) {
         if (args.sky_heap_idx != max_uint32 && reduce_sum(beta) > 1e-5f) {
@@ -560,7 +620,11 @@ using namespace luisa::shader;
         pixel.input_dir[0] = ray._dir[0];
         pixel.input_dir[1] = ray._dir[1];
         pixel.input_dir[2] = ray._dir[2];
-        pixel.length_sum = length_sum;
+        pixel.spectrum_state = pack_spectrum_state(
+            wavelength_sample,
+            spectrum_arg.hero_index,
+            spectrum_arg.selected_wavelength,
+            volume_stack.size());
         auto index = multi_bounce_pixel_counter.atomic_fetch_add(0, 1);
         multi_bounce_pixel.write(index, pixel);
     }

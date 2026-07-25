@@ -2872,6 +2872,25 @@ void RenderSettings::set_offline_indirect_bounce(void *this_, uint32_t value) {
     clamp_value_warn(value, 0u, 8u, "offline_indirect_bounce");
     impl->map->read_mut<PathTracerSettings>().offline_indirect_bounce = value;
 }
+bool RenderSettings::get_probe_initial_medium(void *this_) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("RenderSettings::get_probe_initial_medium: this_ is null.");
+        return false;
+    }
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    auto settings = impl->map->read_if<PathTracerSettings>();
+    return settings ? settings->probe_initial_medium : true;
+}
+void RenderSettings::set_probe_initial_medium(void *this_, bool value) {
+    if (!this_) [[unlikely]] {
+        LUISA_ERROR("RenderSettings::set_probe_initial_medium: this_ is null.");
+        return;
+    }
+    auto impl = static_cast<RenderSettingsImpl *>(this_);
+    LUISA_DEBUG_ASSERT(impl->map, "Map is null");
+    impl->map->read_mut<PathTracerSettings>().probe_initial_medium = value;
+}
 SpectrumAccumulationSpace RenderSettings::get_spectrum_accumulation_space(void *this_) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("RenderSettings::get_spectrum_accumulation_space: this_ is null.");

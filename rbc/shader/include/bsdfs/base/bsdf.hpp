@@ -16,14 +16,21 @@ namespace mtl {
 
 using namespace luisa::shader;
 
-template<class ExtraParams>
+enum class TransportMode {
+	Radiance,
+	Importance,
+};
+
+template<class ExtraParams, TransportMode Mode = TransportMode::Radiance>
 struct BSDFContext {
+	static constexpr TransportMode transport_mode = Mode;
+
 	ShadingDetail detail = ShadingDetail::Default;
 	bool spectrumed = spectrum::use_spectrum;
 	bool geometry_thin_walled = false;
+	bool entering = true;
 	bool selected_wavelength = false;
 	float3 lambda;
-	float ray_t;
 	float inv_out_ior = 1.0f;
 	float original_ior;
 	uint hero_wavelength_index;
@@ -56,9 +63,14 @@ struct BSDFContext {
 		bool>
 		coat_local_onb;
 
-	BSDFContext(auto& p, auto& ep, float3 lambda, ShadingDetail detail) : geometry_thin_walled(p.geometry.thin_walled),
-																		  lambda(lambda),
-																		  detail(detail) {
+	BSDFContext(
+		auto& p,
+		auto& ep,
+		float3 lambda,
+		ShadingDetail detail)
+		: detail(detail),
+		  geometry_thin_walled(p.geometry.thin_walled),
+		  lambda(lambda) {
 		original_ior = p.specular.ior;
 		if (detail != ShadingDetail::Default) {
 			if (detail == ShadingDetail::IndirectDiffuse) {

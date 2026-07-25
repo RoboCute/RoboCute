@@ -64,26 +64,7 @@ public:
 			result.pdf *= pt;
 			result.throughput.val *= pt;
 			result.throughput.flags = BSDFFlags::DiffuseTransmission;
-			if (!data.geometry_thin_walled) {
-				if (wi.z >= 0.0f) {
-					if (volume_stack.try_emplace_back()) {
-						float temp_anisotropy = anisotropy;
-						float3 temp_radius = radius;
-						float3 temp_color = color.spectral();
-						//TODO: fix compiler
-						volume_stack.back([&](auto& back) {
-							back.fill_from_subsurface(temp_anisotropy, temp_radius, temp_color);
-							back.ior = data.original_ior;
-						});
-					}
-				} else {
-					if (volume_stack.empty()) {
-						result.throughput.val *= color.spectral();
-					} else {
-						volume_stack.pop_back();
-					}
-				}
-			} else {
+			if (data.geometry_thin_walled) {
 				result.throughput.val *= color.spectral();
 			}
 		} else {

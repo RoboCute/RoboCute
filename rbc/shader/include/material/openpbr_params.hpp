@@ -32,6 +32,7 @@ struct Parameter {
 	struct Geometry {
 		bool thin_walled = false;
 		float thickness = 0.0f;// m
+		int nested_priority = 0;
 		Onb onb;
 	} geometry;
 

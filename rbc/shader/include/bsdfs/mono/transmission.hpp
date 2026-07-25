@@ -18,6 +18,10 @@ class TransmissionBSDF {
 	spectrum::SpectrumColor tint;
 	Volume volume;
 
+	static float3 transform_material_frame(float3 w, auto const& data) {
+		return data.entering ? w : float3(-w.x, w.y, -w.z);
+	}
+
 	std::pair<float3, float3> unpolarized_rt(float cos_theta, auto const& fresnel) const {
 		auto F = fresnel.unpolarized_rt(cos_theta);
 		float cos_theta_i;
@@ -70,8 +74,8 @@ public:
 		volume.fill_from_transmission(p.transmission);
 		if (p.transmission.dispersion_scale > 0.0f) {
 			data.selected_wavelength = true;
-			data.specular_fresnel.vec_ior = dispersion_ior(
-				data.original_ior * data.inv_out_ior,
+			data.specular_fresnel.vec_ior = data.inv_out_ior * dispersion_ior(
+				data.original_ior,
 				p.transmission.dispersion_abbe_number,
 				p.transmission.dispersion_scale,
 				data.lambda[data.hero_wavelength_index]);
@@ -113,15 +117,25 @@ public:
 			}
 			return result;
 		} else {
-			Throughput result = RefractiveFresnelMicrofacet::eval(wi, wo, data, data.specular_microfacet, data.specular_fresnel);
+			auto material_wi = transform_material_frame(wi, data);
+			auto material_wo = transform_material_frame(wo, data);
+			Throughput result = RefractiveFresnelMicrofacet::eval(
+				material_wi,
+				material_wo,
+				data,
+				data.specular_microfacet,
+				data.specular_fresnel);
 			if (result) {
 				if (is_transmissive(result.flags)) {
-					result.val *= tint.spectral() * exp(-volume.extinction * data.ray_t);
+					result.val *= tint.spectral();
 				}
 				if (is_non_delta(result.flags)) {
 					// "Practical multiple scattering compensation for thin_wall_microfacet models"
 					// Emmanuel Turquin - 2019
-					result.val /= reduce_sum(data.specular_microfacet.dir_albedo(wi.z, data.specular_fresnel.ior()));
+					auto directional_albedo = data.specular_microfacet.dir_albedo(
+						material_wi.z,
+						data.specular_fresnel.ior());
+					result.val /= reduce_sum(directional_albedo);
 				}
 			}
 			return result;
@@ -161,43 +175,23 @@ public:
 			}
 			return result;
 		} else {
-			BSDFSample result = RefractiveFresnelMicrofacet::sample(wi, data, data.specular_microfacet, data.specular_fresnel);
+			auto material_wi = transform_material_frame(wi, data);
+			BSDFSample result = RefractiveFresnelMicrofacet::sample(
+				material_wi,
+				data,
+				data.specular_microfacet,
+				data.specular_fresnel);
 			if (result) {
+				result.wo = transform_material_frame(result.wo, data);
 				if (is_transmissive(result.throughput.flags)) {
 					result.throughput.val *= tint.spectral();
-					if (wi.z >= 0.0f) {
-						if (volume_stack.try_emplace_back()) {
-							auto tmp_volume = volume;
-							//TODO: fix compiler
-							volume_stack.back([&](auto& back) {
-								back = tmp_volume;
-								back.ior = data.original_ior;
-							});
-						}
-					} else {
-						if (volume_stack.empty()) {
-							result.throughput.val *= exp(-volume.extinction * data.ray_t);
-						} else {
-							data.ray_t = 0.0f;
-							volume_stack.pop_back();
-						}
-					}
-				} else if (wi.z <= 0.0f) {
-					if (volume_stack.empty()) {
-						result.throughput.val *= exp(-volume.extinction * data.ray_t);
-						if (volume_stack.try_emplace_back()) {
-							auto tmp_volume = volume;
-							//TODO: fix compiler
-							volume_stack.back([&](auto& back) {
-								back = tmp_volume;
-								back.ior = data.original_ior;
-							});
-						}
-					}
 				}
 				if (is_non_delta(result.throughput.flags)) {// "Practical multiple scattering compensation for thin_wall_microfacet models"
 					// Emmanuel Turquin - 2019
-					result.throughput.val /= reduce_sum(data.specular_microfacet.dir_albedo(wi.z, data.specular_fresnel.ior()));
+					auto directional_albedo = data.specular_microfacet.dir_albedo(
+						material_wi.z,
+						data.specular_fresnel.ior());
+					result.throughput.val /= reduce_sum(directional_albedo);
 				}
 			}
 			return result;
@@ -230,7 +224,12 @@ public:
 				return mpdf * pr / (pr + pt);
 			}
 		} else {
-			return RefractiveFresnelMicrofacet::pdf(wi, wo, data, data.specular_microfacet, data.specular_fresnel);
+			return RefractiveFresnelMicrofacet::pdf(
+				transform_material_frame(wi, data),
+				transform_material_frame(wo, data),
+				data,
+				data.specular_microfacet,
+				data.specular_fresnel);
 		}
 	}
 	float3 tint_out(float3 wo, auto& data) const {
@@ -238,6 +237,7 @@ public:
 	}
 	float3 trans(float3 wi, auto& data, float3 base_energy) const {
 		if (data.geometry_thin_walled) return 0.0f;
+		wi = transform_material_frame(wi, data);
 		float2 E = data.specular_microfacet.dir_albedo(wi.z, data.specular_fresnel.ior());
 		return E.y / reduce_sum(E);
 	}
@@ -249,7 +249,11 @@ public:
 			if (!is_delta(data.sampling_flags))
 				return 0.0f;
 		}
-		if (data.geometry_thin_walled) wi.z = abs(wi.z);
+		if (data.geometry_thin_walled) {
+			wi.z = abs(wi.z);
+		} else {
+			wi = transform_material_frame(wi, data);
+		}
 		float2 E = data.specular_microfacet.dir_albedo(wi.z, data.specular_fresnel.ior());
 		float Er = E.x / reduce_sum(E);
 		if (!is_reflective(data.sampling_flags)) {

@@ -95,7 +95,7 @@ CommittedHit trace_volumetric(auto const& volume_stack,
 		ray.set_dir(normalize(sample_phase_function(ray.dir(), volume.anisotropy, rng.next2f(g_buffer_heap))));
 	}
 	// path terminated in the medium
-	// throughput = float3(0.0);
+	throughput = float3(0.0f);
 	CommittedHit empty;
 	empty.inst = max_uint32;
 	empty.ray_t = 1e30f;

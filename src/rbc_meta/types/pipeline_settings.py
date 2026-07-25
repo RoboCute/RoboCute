@@ -266,6 +266,7 @@ class PathTracerSettings:
     offline_spp: uint
     offline_origin_bounce: uint
     offline_indirect_bounce: uint
+    probe_initial_medium: bool
     resource_color_space: ResourceColorSpace
     spectrum_accumulation_space: SpectrumAccumulationSpace
     denoise: bool
@@ -281,6 +282,7 @@ class PathTracerSettings:
         "offline_spp": "1",
         "offline_origin_bounce": "2",
         "offline_indirect_bounce": "4",
+        "probe_initial_medium": "true",
         "spectrum_accumulation_space": "SpectrumAccumulationSpace::AP0D65",
         "denoise": "true",
         "ao_max_radius": "1,1,1,1",
