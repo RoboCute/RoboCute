@@ -600,29 +600,29 @@ static IntegratorResult sample_material(
             }
         }
 
-        mtl::BSDFContext<MatExtraParameter, mtl::TransportMode::Radiance> closure_data{
+        mtl::BSDFContext<MatExtraParameter, mtl::TransportMode::Radiance> bsdf_context{
             basic_param,
             extra_param,
             spectrum_arg.lambda,
             detail};
-        closure_data.entering = entering;
+        bsdf_context.entering = entering;
 
         if (basic_param.geometry.thin_walled) {
             if (!volume_stack.empty()) {
-                closure_data.inv_out_ior = rcp(volume_stack.back().ior);
+                bsdf_context.inv_out_ior = rcp(volume_stack.back().ior);
             }
         } else {
-            closure_data.inv_out_ior = rcp(mtl::active_medium_ior_across_boundary(
+            bsdf_context.inv_out_ior = rcp(mtl::active_medium_ior_across_boundary(
                 volume_stack,
                 boundary_id,
                 entering));
         }
 
-        closure_data.selected_wavelength = spectrum_arg.selected_wavelength;
-        closure_data.hero_wavelength_index = spectrum_arg.hero_index;
+        bsdf_context.selected_wavelength = spectrum_arg.selected_wavelength;
+        bsdf_context.hero_wavelength_index = spectrum_arg.hero_index;
 
-        closure_data.rand = float3(sampler.next2f(g_buffer_heap), lobe_rand);
-        closure_data.init(basic_param, extra_param);
+        bsdf_context.rand = float3(sampler.next2f(g_buffer_heap), lobe_rand);
+        bsdf_context.init(basic_param, extra_param);
 
         MatBSDF bsdf;
 
@@ -631,23 +631,23 @@ static IntegratorResult sample_material(
         auto bsdf_eval_func = [&](float3 light_dir) {
             float3 wo = basic_param.geometry.onb.to_local(light_dir);
 
-            auto old_flags = closure_data.sampling_flags;
+            auto old_flags = bsdf_context.sampling_flags;
             if (dot(vertices_normal, light_dir) *
                     dot(vertices_normal, input_dir) <
                 0) {
                 if (!mtl::is_reflective(r.sample_flags)) return float4{0.0f};
-                closure_data.sampling_flags = mtl::BSDFFlags(old_flags & mtl::BSDFFlags::Reflection);
+                bsdf_context.sampling_flags = mtl::BSDFFlags(old_flags & mtl::BSDFFlags::Reflection);
             } else {
                 if (!mtl::is_transmissive(r.sample_flags)) return float4{0.0f};
-                closure_data.sampling_flags = mtl::BSDFFlags(old_flags & mtl::BSDFFlags::Transmission);
+                bsdf_context.sampling_flags = mtl::BSDFFlags(old_flags & mtl::BSDFFlags::Transmission);
             }
-            auto eval_result = bsdf.eval(wi, wo, closure_data);
-            auto pdf = bsdf.pdf(wi, wo, closure_data);
-            closure_data.sampling_flags = old_flags;
+            auto eval_result = bsdf.eval(wi, wo, bsdf_context);
+            auto pdf = bsdf.pdf(wi, wo, bsdf_context);
+            bsdf_context.sampling_flags = old_flags;
 
             if (!eval_result ||
                 any(eval_result.val < 0.f) ||
-                !any(is_finite(eval_result.val)) ||
+                !all(is_finite(eval_result.val)) ||
                 !is_finite(pdf) || pdf <= 0.0f) {
                 return float4{0.0f};
             }
@@ -667,19 +667,30 @@ static IntegratorResult sample_material(
                 continue_loop);
         }
         if (!evaluate_bsdf) return r;
-        bsdf.init(wi, basic_param, extra_param, closure_data);
+        if constexpr (requires {
+                          bsdf.prepare_interaction(
+                              world_pos,
+                              input_pos,
+                              hit_triangle && volume_stack.empty());
+                      }) {
+            bsdf.prepare_interaction(
+                world_pos,
+                input_pos,
+                hit_triangle && volume_stack.empty());
+        }
+        bsdf.init(wi, basic_param, extra_param, bsdf_context);
         if (need_albedo) {
-            bool oldFlag = closure_data.spectrumed;
-            closure_data.spectrumed = false;
-            r.albedo = bsdf.energy(wi, closure_data);
-            closure_data.spectrumed = oldFlag;
+            bool oldFlag = bsdf_context.spectrumed;
+            bsdf_context.spectrumed = false;
+            r.albedo = bsdf.energy(wi, bsdf_context);
+            bsdf_context.spectrumed = oldFlag;
         }
         if (!continue_loop) return r;
-        closure_data.rand = float3(sampler.next2f(g_buffer_heap), lobe_rand);
-        auto sample_result = bsdf.sample(wi, closure_data, volume_stack);
+        bsdf_context.rand = float3(sampler.next2f(g_buffer_heap), lobe_rand);
+        auto sample_result = bsdf.sample(wi, bsdf_context, volume_stack);
         bool selected_wavelength_now =
-            !spectrum_arg.selected_wavelength && closure_data.selected_wavelength;
-        spectrum_arg.selected_wavelength = closure_data.selected_wavelength;
+            !spectrum_arg.selected_wavelength && bsdf_context.selected_wavelength;
+        spectrum_arg.selected_wavelength = bsdf_context.selected_wavelength;
         if (selected_wavelength_now) {
             spectrum_arg.lambda = spectrum_arg.lambda[spectrum_arg.hero_index];
         }
@@ -687,37 +698,55 @@ static IntegratorResult sample_material(
         r.eta = sample_result.eta;
         if (!sample_result ||
             any(sample_result.throughput.val < 0.f) ||
-            !any(is_finite(sample_result.throughput.val)) ||
+            !all(is_finite(sample_result.throughput.val)) ||
             !is_finite(sample_result.pdf)) {
             continue_loop = false;
             beta = 0.0f;
             return r;
         }
         new_dir = basic_param.geometry.onb.to_world(sample_result.wo);
-        bool output_outside =
-            entering == mtl::is_reflective(sample_result.throughput.flags);
-        float3 output_hemisphere = output_outside ? vertices_normal : -vertices_normal;
-        new_dir = mtl::bend_to_hemisphere(new_dir, output_hemisphere);
+        float3 direct_shading_normal = r.normal;
+        bool relocated_interaction = false;
+        if constexpr (requires {
+                          bsdf.sampled_interaction();
+                      }) {
+            auto sampled_interaction = bsdf.sampled_interaction();
+            relocated_interaction = static_cast<bool>(sampled_interaction);
+            if (relocated_interaction) {
+                world_pos = sampled_interaction.position;
+                plane_normal = sampled_interaction.normal;
+                r.world_pos = world_pos;
+                r.plane_normal = plane_normal;
+                direct_shading_normal = plane_normal;
+                contained_normal = false;
+            }
+        }
+        if (!relocated_interaction) {
+            bool output_outside =
+                entering == mtl::is_reflective(sample_result.throughput.flags);
+            float3 output_hemisphere = output_outside ? vertices_normal : -vertices_normal;
+            new_dir = mtl::bend_to_hemisphere(new_dir, output_hemisphere);
 
-        if (!basic_param.geometry.thin_walled &&
-            mtl::is_transmissive(sample_result.throughput.flags)) {
-            if (entering) {
-                mtl::Volume medium;
-                bool has_medium = fill_medium(
-                    medium,
-                    mtl::is_diffuse(sample_result.throughput.flags));
-                if (has_medium) {
-                    medium.ior = closure_data.specular_fresnel.ior() / closure_data.inv_out_ior;
-                    medium.boundary_id = boundary_id;
-                    medium.nested_priority = basic_param.geometry.nested_priority;
-                    if (!mtl::active_medium_insert(volume_stack, medium)) {
-                        continue_loop = false;
-                        beta = 0.0f;
-                        return r;
+            if (!basic_param.geometry.thin_walled &&
+                mtl::is_transmissive(sample_result.throughput.flags)) {
+                if (entering) {
+                    mtl::Volume medium;
+                    bool has_medium = fill_medium(
+                        medium,
+                        mtl::is_diffuse(sample_result.throughput.flags));
+                    if (has_medium) {
+                        medium.ior = bsdf_context.specular_fresnel.ior() / bsdf_context.inv_out_ior;
+                        medium.boundary_id = boundary_id;
+                        medium.nested_priority = basic_param.geometry.nested_priority;
+                        if (!mtl::active_medium_insert(volume_stack, medium)) {
+                            continue_loop = false;
+                            beta = 0.0f;
+                            return r;
+                        }
                     }
+                } else {
+                    mtl::active_medium_remove(volume_stack, boundary_id);
                 }
-            } else {
-                mtl::active_medium_remove(volume_stack, boundary_id);
             }
         }
         if (selected_wavelength_now) {
@@ -729,14 +758,18 @@ static IntegratorResult sample_material(
 
         if (mtl::is_delta(sample_result.throughput.flags)) pdf_bsdf = -1.0f;
 
-        if (mtl::is_specular(sample_result.throughput.flags)) {
+        if (!relocated_interaction &&
+            mtl::is_specular(sample_result.throughput.flags)) {
             di_use_specular = true;
         }
-        if (mtl::is_transmissive(sample_result.throughput.flags)) {
+        if (!relocated_interaction &&
+            mtl::is_transmissive(sample_result.throughput.flags)) {
             if (basic_param.geometry.thin_walled)
                 r.new_ray_offset = -basic_param.geometry.onb.normal * basic_param.geometry.thickness;
         }
-        if (mtl::is_non_delta(sample_result.throughput.flags) && sample_result.throughput.flags != mtl::BSDFFlags::SpecularTransmission) {
+        if (relocated_interaction) {
+            detail = max(detail, mtl::ShadingDetail::IndirectSpecular);
+        } else if (mtl::is_non_delta(sample_result.throughput.flags) && sample_result.throughput.flags != mtl::BSDFFlags::SpecularTransmission) {
             detail = max(detail, mtl::is_specular(sample_result.throughput.flags) ? mtl::ShadingDetail::IndirectSpecular : mtl::ShadingDetail::IndirectDiffuse);
         }
         lighting::LightISResult is_result;
@@ -770,7 +803,7 @@ static IntegratorResult sample_material(
                 sampler,
                 world_pos,
                 plane_normal,
-                r.normal,
+                direct_shading_normal,
                 new_dir,
                 r.roughness,
                 di_use_specular,

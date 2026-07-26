@@ -300,6 +300,25 @@ def run_package_download():
         f.result()  # Raise exceptions if any
 
 
+def ensure_fsd_tables():
+    generator = rel("scripts/generate_fsd_tables.py")
+    table = download_path / "render_resources" / "fsd_tables.bytes"
+    if table.is_file() and table.stat().st_mtime_ns >= generator.stat().st_mtime_ns:
+        return
+    print_info(f"Generating FSD inverse-CDF table: {table}")
+    subprocess.run(
+        [
+            sys.executable,
+            str(generator),
+            "--output",
+            str(table),
+        ],
+        cwd=PROJECT_ROOT,
+        check=True,
+    )
+    print_success("Generated FSD inverse-CDF table.")
+
+
 def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
     # Check and print proxy settings
     proxies = get_http_proxies()
@@ -337,6 +356,7 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
 
     if download_package.lower() == "y":
         run_package_download()
+    ensure_fsd_tables()
 
     # ------------------------------ llvm/options ------------------------------
     # We skip the builddir variable as it's dead code in the Lua source provided.

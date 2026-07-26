@@ -20,6 +20,7 @@ struct OpenPBR {
         float fuzz{0.0f};
         float coat{0.0f};
         float diffraction{0.0f};
+        float free_space_diffraction{0.0f};
     } weight;
 
     struct Geometry {

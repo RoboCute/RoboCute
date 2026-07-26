@@ -27,6 +27,9 @@ struct Parameter {
 		float fuzz = 0.0f;
 		float thin_film = 0.0f;
 		float diffraction = 0.0f;
+#ifdef RBC_ENABLE_FREE_SPACE_DIFFRACTION
+		float free_space_diffraction = 0.0f;
+#endif
 	} weight;
 
 	struct Geometry {

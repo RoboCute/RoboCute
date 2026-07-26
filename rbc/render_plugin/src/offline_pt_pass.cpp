@@ -9,41 +9,147 @@
 #include <rbc_render/editing_pass.h>
 #include <rbc_graphics/texture/tex_stream_manager.h>
 #include <rbc_graphics/render_device.h>
+#include <rbc_graphics/shader_family.h>
+#include "fsd_geometry_accel.h"
+#include <luisa/vstl/meta_lib.h>
+#include <utility>
 
 namespace rbc {
 namespace offline_pt_shader {
-#include <path_tracer/offline_pt.inl>
+#include <variants/offline_pt/lite/path_tracer/offline_pt.inl>
 }// namespace offline_pt_shader
+namespace offline_pt_shader_fsd {
+#include <variants/offline_pt/fsd/path_tracer/offline_pt.inl>
+}// namespace offline_pt_shader_fsd
 namespace offline_pt_shader_denoise {
-#include <path_tracer/offline_pt_denoise.inl>
+#include <variants/offline_pt/lite/path_tracer/offline_pt_denoise.inl>
 }// namespace offline_pt_shader_denoise
+namespace offline_pt_shader_denoise_fsd {
+#include <variants/offline_pt/fsd/path_tracer/offline_pt_denoise.inl>
+}// namespace offline_pt_shader_denoise_fsd
 namespace offline_multibounce {
-#include <path_tracer/pt_multi_bounce_offline.inl>
+#include <variants/offline_pt/lite/path_tracer/pt_multi_bounce_offline.inl>
 }// namespace offline_multibounce
+namespace offline_multibounce_fsd {
+#include <variants/offline_pt/fsd/path_tracer/pt_multi_bounce_offline.inl>
+}// namespace offline_multibounce_fsd
 namespace ao_trace {
 #include <path_tracer/ao_trace.inl>
 }// namespace ao_trace
+
+namespace {
+
+template<auto LoadLite, auto LoadFsd>
+ShaderBase const *load_pt_variant(
+    luisa::filesystem::path const &artifact,
+    ShaderManager::VariantSelection const &selection) {
+    for (auto const &[dimension, value] : selection.values) {
+        if (dimension != "pbr_material") continue;
+        LUISA_ASSERT(
+            value == "lite" || value == "full" || value == "fsd",
+            "Offline PT selected an unknown PBR material variant {}.",
+            value);
+        return value == "fsd" ? LoadFsd(artifact) : LoadLite(artifact);
+    }
+    LUISA_ERROR("Offline PT selection has no PBR material variant.");
+}
+
+}// namespace
+
+struct OfflinePTPass::PTShaders {
+    ShaderBase const *primary{}, *denoise{}, *multibounce{};
+    ShaderFamily family;
+    vstd::unique_ptr<FsdResources> fsd;
+
+    void reset_fsd(CommandList &cmdlist) {
+        if (!fsd) return;
+        fsd->clear(cmdlist);
+        fsd.reset();
+    }
+
+    template<
+        typename Interface,
+        typename FsdInterface,
+        typename DispatchSize,
+        typename... NamedArgs>
+    [[nodiscard]] auto dispatch(
+        ShaderBase const *shader,
+        DispatchSize dispatch_size,
+        NamedArgs &&...args) const {
+        static_assert(
+            !Interface::template has_arg<"g_fsd_accel"> &&
+            FsdInterface::template has_arg<"g_fsd_accel">);
+        if (fsd) {
+            LUISA_ASSERT(fsd->active());
+            return FsdInterface::dispatch(
+                shader,
+                dispatch_size,
+                std::forward<NamedArgs>(args)...,
+                FsdInterface::template arg<"g_fsd_accel">(
+                    fsd->accel()),
+                FsdInterface::template arg<"g_fsd_buffer_indices">(
+                    fsd->buffer_indices()));
+        }
+        return Interface::dispatch(
+            shader,
+            dispatch_size,
+            std::forward<NamedArgs>(args)...);
+    }
+
+    template<
+        typename DispatchSize,
+        typename... NamedArgs>
+    [[nodiscard]] auto dispatch_primary(
+        bool denoise_enabled,
+        DispatchSize dispatch_size,
+        NamedArgs &&...args) const {
+        if (denoise_enabled) {
+            return dispatch<
+                offline_pt_shader_denoise::ShaderInterface,
+                offline_pt_shader_denoise_fsd::ShaderInterface>(
+                denoise,
+                dispatch_size,
+                std::forward<NamedArgs>(args)...);
+        }
+        return dispatch<
+            offline_pt_shader::ShaderInterface,
+            offline_pt_shader_fsd::ShaderInterface>(
+            primary,
+            dispatch_size,
+            std::forward<NamedArgs>(args)...);
+    }
+
+    PTShaders()
+        : family{
+              "offline_pt",
+              {
+                  {
+                      .logical_name = "path_tracer/offline_pt",
+                      .slot = &primary,
+                      .load_variant = load_pt_variant<
+                          offline_pt_shader::load_shader,
+                          offline_pt_shader_fsd::load_shader>},
+                  {
+                      .logical_name = "path_tracer/offline_pt_denoise",
+                      .slot = &denoise,
+                      .load_variant = load_pt_variant<
+                          offline_pt_shader_denoise::load_shader,
+                          offline_pt_shader_denoise_fsd::load_shader>},
+                  {
+                      .logical_name = "path_tracer/pt_multi_bounce_offline",
+                      .slot = &multibounce,
+                      .load_variant = load_pt_variant<
+                          offline_multibounce::load_shader,
+                          offline_multibounce_fsd::load_shader>},
+              }} {}
+};
+
 // #define RBC_USE_RAYQUERY
 PTPassContext::PTPassContext() = default;
 PTPassContext::~PTPassContext() = default;
 
 OfflinePTPass::OfflinePTPass()
-    : _pt_shader_family{
-          "offline_pt",
-          {
-              ShaderFamily::Program{
-                  .logical_name = "path_tracer/offline_pt",
-                  .slot = &_pt_shader,
-                  .load = offline_pt_shader::load_shader},
-              ShaderFamily::Program{
-                  .logical_name = "path_tracer/offline_pt_denoise",
-                  .slot = &_pt_shader_denoise,
-                  .load = offline_pt_shader_denoise::load_shader},
-              ShaderFamily::Program{
-                  .logical_name = "path_tracer/pt_multi_bounce_offline",
-                  .slot = &_multi_bounce,
-                  .load = offline_multibounce::load_shader},
-          }} {}
+    : _pt{vstd::make_unique<PTShaders>()} {}
 
 void OfflinePTPass::on_enable(
     Pipeline const &pipeline,
@@ -66,7 +172,7 @@ void OfflinePTPass::on_enable(
             _init_counter.done();
         });
     };
-    _pt_shader_family.prefetch(scene.shader_features());
+    _pt->family.prefetch(scene.shader_features());
     RBC_LOAD_SHADER(_ao_trace, ao_trace, "path_tracer/ao_trace.bin");
     load("path_tracer/draw_sky.bin", _draw_sky_shader);
     load("surfel/clear_hashgrid_offline.bin", _clear_hashgrid);
@@ -95,11 +201,33 @@ void OfflinePTPass::early_update(Pipeline const &pipeline, PipelineContext const
     if (!pass_ctx) {
         pass_ctx = vstd::make_unique<PTPassContext>();
     }
-    auto const shader_features = ctx.scene->shader_features();
-    auto selected = _pt_shader_family.acquire(shader_features);
+    if (pt_settings.enable_ao_mode) {
+        _pt->reset_fsd(*ctx.cmdlist);
+        return;
+    }
+
+    auto shader_features = ctx.scene->shader_features();
+    auto const fsd_feature = scene_shader_feature_mask(
+        SceneShaderFeature::FreeSpaceDiffraction);
+    auto const fsd_requested =
+        shader_features.contains(SceneShaderFeature::FreeSpaceDiffraction);
+    if (fsd_requested) {
+        if (!_pt->fsd) {
+            _pt->fsd = vstd::make_unique<FsdResources>(*ctx.scene);
+        }
+        _pt->fsd->sync(*ctx.cmdlist);
+        if (!_pt->fsd->active()) {
+            _pt->reset_fsd(*ctx.cmdlist);
+            shader_features.mask &= ~fsd_feature;
+        }
+    } else if (_pt->fsd) {
+        _pt->reset_fsd(*ctx.cmdlist);
+    }
+
+    auto selected = _pt->family.acquire(shader_features);
     if (!selected) {
-        _pt_shader_family.wait();
-        selected = _pt_shader_family.acquire(shader_features);
+        _pt->family.wait();
+        selected = _pt->family.acquire(shader_features);
     }
     if (selected.revision != pass_ctx->shader_revision) {
         auto accum_pass_ctx = ctx.mut.get_pass_context<AccumPassContext>();
@@ -244,58 +372,46 @@ void OfflinePTPass::_dispatch_path_tracing(
     if (alpha_cull != AlphaCull::NoCull) {
         alpha_map = rc.render_device.create_transient_image<float>("alpha_map", PixelStorage::BYTE1, rc.frame_settings.render_resolution);
     }
-    if (rc.frame_settings.albedo_buffer && rc.frame_settings.normal_buffer) {
-        LUISA_DEBUG_ASSERT(_pt_shader_denoise);
-        rc.cmdlist << offline_pt_shader_denoise::dispatch_shader(
-            _pt_shader_denoise,
-            ((rc.frame_settings.render_resolution + 1u) / 2u) * 2u,
-            rc.scene.tex_streamer().level_buffer(),
-            rc.scene.buffer_heap(),
-            rc.scene.image_heap(),
-            rc.scene.volume_heap(),
+    using Interface = offline_pt_shader::ShaderInterface;
+    auto const denoise_enabled =
+        rc.frame_settings.albedo_buffer &&
+        rc.frame_settings.normal_buffer;
+    rc.cmdlist << _pt->dispatch_primary(
+        denoise_enabled,
+        ((rc.frame_settings.render_resolution + 1u) / 2u) * 2u,
+        Interface::arg<"size">(rc.frame_settings.render_resolution),
+        Interface::arg<"args">(pt_args),
+        Interface::arg<"alpha_option">(
+            static_cast<int32_t>(alpha_cull)),
+        Interface::arg<"g_accel">(accel),
+        Interface::arg<"g_buffer_heap">(rc.scene.buffer_heap()),
+        Interface::arg<"g_image_heap">(rc.scene.image_heap()),
+        Interface::arg<"g_volume_heap">(rc.scene.volume_heap()),
+        Interface::arg<"g_vt_level_buffer">(
+            rc.scene.tex_streamer().level_buffer()),
 #ifdef RBC_USE_RAYQUERY
-            rc.scene.accel_manager().triangle_vis_buffer(),
+        Interface::arg<"g_triangle_vis_buffer">(
+            rc.scene.accel_manager().triangle_vis_buffer()),
 #endif
-            accel,
-            resources.emission,
-            rc.accum_pass_ctx->hdr,
-            *id_map,
-            alpha_map ? alpha_map : resources.emission,
-            resources.geo_buffer.view(),
-            *rc.frame_settings.albedo_buffer,
-            *rc.frame_settings.normal_buffer,
-            geometry_buffer,
-            resources.multibounce_buffer.view(),
-            resources.multibounce_buffer_counter,
-            pt_args,
-            static_cast<int32_t>(alpha_cull),
-            rc.frame_settings.render_resolution);
-    } else {
-        LUISA_DEBUG_ASSERT(_pt_shader);
-        rc.cmdlist << offline_pt_shader::dispatch_shader(
-            _pt_shader,
-            ((rc.frame_settings.render_resolution + 1u) / 2u) * 2u,
-            rc.scene.tex_streamer().level_buffer(),
-            rc.scene.buffer_heap(),
-            rc.scene.image_heap(),
-            rc.scene.volume_heap(),
-#ifdef RBC_USE_RAYQUERY
-            rc.scene.accel_manager().triangle_vis_buffer(),
-#endif
-            accel,
-            resources.emission,
-            rc.accum_pass_ctx->hdr,
-            *id_map,
-            alpha_map ? alpha_map : resources.emission,
-            resources.geo_buffer.view(),
-            geometry_buffer,
-            resources.multibounce_buffer.view(),
-            resources.multibounce_buffer_counter,
-            pt_args,
-            static_cast<int32_t>(alpha_cull),
-            rc.frame_settings.render_resolution);
-    }
-            LUISA_INFO("{} {}", (int32_t)alpha_cull, rc.frame_settings.render_resolution);
+        Interface::arg<"emission_img">(resources.emission),
+        Interface::arg<"last_img">(rc.accum_pass_ctx->hdr),
+        Interface::arg<"id_map">(*id_map),
+        Interface::arg<"mask_img">(
+            alpha_map ? alpha_map : resources.emission),
+        Interface::arg<"gbuffers">(resources.geo_buffer.view()),
+        Interface::arg<"albedo_buffer">(vstd::lazy_eval(
+            [&]() -> decltype(auto) {
+                return *rc.frame_settings.albedo_buffer;
+            })),
+        Interface::arg<"normal_buffer">(vstd::lazy_eval(
+            [&]() -> decltype(auto) {
+                return *rc.frame_settings.normal_buffer;
+            })),
+        Interface::arg<"geometry_buffer">(geometry_buffer),
+        Interface::arg<"multi_bounce_pixel">(
+            resources.multibounce_buffer.view()),
+        Interface::arg<"multi_bounce_pixel_counter">(
+            resources.multibounce_buffer_counter));
 }
 
 void OfflinePTPass::_process_multibounce_indirect(
@@ -304,25 +420,31 @@ void OfflinePTPass::_process_multibounce_indirect(
     const offline::PTArgs &pt_args,
     float accumulate_rate) const {
     auto &accel = rc.scene.accel();
-    LUISA_DEBUG_ASSERT(_multi_bounce);
     uint max_accum = (1 + pt_args.frame_index) * 1024;
 
-    rc.cmdlist << offline_multibounce::dispatch_shader(
-        _multi_bounce,
+    using Interface = offline_multibounce::ShaderInterface;
+    rc.cmdlist << _pt->dispatch<
+        offline_multibounce::ShaderInterface,
+        offline_multibounce_fsd::ShaderInterface>(
+        _pt->multibounce,
         resources.multibounce_buffer.view().size(),
-        rc.scene.buffer_heap(),
-        rc.scene.image_heap(),
-        rc.scene.volume_heap(),
-        rc.scene.tex_streamer().level_buffer(),
-        accel,
+        Interface::arg<"size">(rc.frame_settings.render_resolution),
+        Interface::arg<"args">(pt_args),
+        Interface::arg<"g_accel">(accel),
+        Interface::arg<"g_buffer_heap">(rc.scene.buffer_heap()),
+        Interface::arg<"g_image_heap">(rc.scene.image_heap()),
+        Interface::arg<"g_volume_heap">(rc.scene.volume_heap()),
+        Interface::arg<"g_vt_level_buffer">(
+            rc.scene.tex_streamer().level_buffer()),
 #ifdef RBC_USE_RAYQUERY
-        rc.scene.accel_manager().triangle_vis_buffer(),
+        Interface::arg<"g_triangle_vis_buffer">(
+            rc.scene.accel_manager().triangle_vis_buffer()),
 #endif
-        resources.multibounce_buffer.view(),
-        resources.multibounce_buffer_counter,
-        resources.geo_buffer.view(),
-        pt_args,
-        rc.frame_settings.render_resolution);
+        Interface::arg<"multi_bounce_pixel">(
+            resources.multibounce_buffer.view()),
+        Interface::arg<"multi_bounce_pixel_counter">(
+            resources.multibounce_buffer_counter),
+        Interface::arg<"gbuffers">(resources.geo_buffer.view()));
 
     rc.cmdlist << (*_accum_hashgrid)(
                       resources.geo_buffer,
@@ -375,12 +497,12 @@ void OfflinePTPass::update(Pipeline const &pipeline, PipelineContext const &ctx)
     }
     PTResourceContext rc{
         pipeline, ctx, scene, cmdlist, frame_settings,
-        render_device, accum_pass_ctx, pass_ctx};
+        render_device, accum_pass_ctx};
 
     auto resources = _prepare_resources(rc);
 
     auto const waiting_for_pt_shader =
-        !pt_settings.enable_ao_mode && !_pt_shader;
+        !pt_settings.enable_ao_mode && !_pt->primary;
     if (!accel || accel.size() == 0 || waiting_for_pt_shader) {
         if (waiting_for_pt_shader) {
             frame_settings.albedo_buffer = nullptr;
@@ -502,18 +624,23 @@ void OfflinePTPass::on_disable(
     Device &device,
     CommandList &cmdlist,
     SceneManager &scene) {
+    _pt->reset_fsd(cmdlist);
     key_buffer = {};
     value_buffer = {};
 }
 
 void OfflinePTPass::wait_enable() {
     _init_counter.wait();
-    _pt_shader_family.wait();
+    _pt->family.wait();
 }
 
 OfflinePTPass::~OfflinePTPass() {
     _init_counter.wait();
-    _pt_shader_family.wait();
+    _pt->family.wait();
+    if (_pt->fsd) {
+        _pt->reset_fsd(
+            RenderDevice::instance().lc_main_cmd_list());
+    }
 }
 
 }// namespace rbc

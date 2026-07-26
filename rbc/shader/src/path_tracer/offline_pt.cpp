@@ -1,6 +1,3 @@
-#define DEBUG
-#include <luisa/printer.hpp>
-
 #define OFFLINE_MODE
 #include <luisa/std.hpp>
 #include <luisa/resources.hpp>
@@ -30,7 +27,7 @@ using namespace luisa::shader;
     Image<uint> &id_map,
     Image<float> &mask_img,
     Buffer<GBuffer> gbuffers,
-#ifdef OFFLINE_DENOISER
+#ifdef RBC_OFFLINE_PT_DENOISE
     Buffer<float> albedo_buffer,
     Buffer<float> normal_buffer,
 #endif
@@ -42,14 +39,6 @@ using namespace luisa::shader;
     uint2 size) {
 
     auto coord = dispatch_id().xy;
-    // TODO add print, device_log, print the screen_uv == float2(0.5, 0.2) and screen_uv == float2(0.5, 0.8) (do not compare float, use pixel integer instead)
-    {
-        // uint2 target0 = uint2(float2(0.5f, 0.2f) * float2(size) - 0.5f);
-        // uint2 target1 = uint2(float2(0.5f, 0.8f) * float2(size) - 0.5f);
-        if (all(coord == (dispatch_size().xy / 2u))) {
-            device_log("size {} alpha_option {}", size, alpha_option);
-        }
-    }
     // auto screen_uv = (float2(coord) + args.jitter_offset + float2(0.5)) / float2(size);
     float3 dir;
     Ray ray;
@@ -156,7 +145,7 @@ using namespace luisa::shader;
     float3 emission_sum = float3(0);
     float3 gbuffer_albedo = float3(0);
     float2 gbuffer_uv = float2(0);
-#ifdef OFFLINE_DENOISER
+#ifdef RBC_OFFLINE_PT_DENOISE
     float3 albedo_sum = float3(0);
 #endif
     float4 normal_rough = float4(0);
@@ -208,7 +197,7 @@ using namespace luisa::shader;
         if (reject) return;
 
         alpha = args.frame_index == 0 ? 1.0f : (alpha / (last_img.read(coord).w + alpha));
-#ifdef OFFLINE_DENOISER
+#ifdef RBC_OFFLINE_PT_DENOISE
         {
             auto origin_buffer_id = buffer_id;
             buffer_id *= 3;
@@ -426,7 +415,6 @@ using namespace luisa::shader;
         reject &= args.require_reject;
         continue_loop &= (!reject);
         if (!selected_wavelength && spectrum_arg.selected_wavelength) {
-            spectrum_arg.selected_wavelength = true;
             spectrum::modify_throughput(g_image_heap, spectrum_arg, args.spectrum, beta, last_beta, di_result);
         }
         bool no_medium_change = mtl::is_no_medium_change(result.sample_flags);
@@ -448,7 +436,7 @@ using namespace luisa::shader;
                 ///////////// Record gbuffer in primary ray
                 gbuffer_albedo = result.albedo;
                 gbuffer_uv = result.uv;
-#ifdef OFFLINE_DENOISER
+#ifdef RBC_OFFLINE_PT_DENOISE
                 albedo_sum = result.albedo + spectrum::spectrum_to_tristimulus(result.emission, args.spectrum);
 #endif
                 emission_sum = result.emission;

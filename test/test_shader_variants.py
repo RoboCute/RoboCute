@@ -44,6 +44,8 @@ PROGRAMS = (
     "path_tracer/offline_pt_denoise",
     "path_tracer/pt_multi_bounce_offline",
 )
+DENOISE_PROGRAM = PROGRAMS[1]
+DENOISE_DEFINE = "RBC_OFFLINE_PT_DENOISE"
 
 
 def _increment_with_lock(
@@ -63,12 +65,16 @@ class FakeCompiler:
         abi_drift: bool = False,
         fail_single: bool = False,
         omit_required_host: bool = False,
+        record_host_defines: bool = False,
+        emit_utility_host: bool = False,
         binary_salt: str = "",
         delay_seconds: float = 0.0,
     ):
         self.abi_drift = abi_drift
         self.fail_single = fail_single
         self.omit_required_host = omit_required_host
+        self.record_host_defines = record_host_defines
+        self.emit_utility_host = emit_utility_host
         self.binary_salt = binary_salt
         self.delay_seconds = delay_seconds
         self.calls: list[tuple[list[str], Path]] = []
@@ -102,9 +108,43 @@ class FakeCompiler:
             )
         )
 
+        def write_host_interface(generated: Path, logical: str) -> None:
+            if self.omit_required_host and logical == PROGRAMS[0]:
+                return
+            interface = "args(buffer<float>);dispatch(uint2);"
+            if (
+                self.abi_drift
+                and "RBC_LITE_PBR_MATERIAL=1" not in defines
+                and logical == PROGRAMS[0]
+            ):
+                interface = "args(buffer<float>,buffer<uint>);dispatch(uint2);"
+            generated.parent.mkdir(parents=True, exist_ok=True)
+            defines_comment = (
+                f"// defines: {defines!r}\r\n"
+                if self.record_host_defines
+                else ""
+            )
+            generated.write_text(
+                f"// {logical}\r\n{defines_comment}{interface}\r\n",
+                encoding="utf-8",
+            )
+
         if input_path.is_file():
             if self.fail_single:
                 raise RuntimeError("synthetic variant compiler failure")
+            if hostgen_value is not None:
+                generated = Path(hostgen_value)
+                normalized = generated.as_posix()
+                logical = next(
+                    (
+                        program
+                        for program in PROGRAMS
+                        if normalized.endswith(f"/{program}.inl")
+                    ),
+                    input_path.stem,
+                )
+                write_host_interface(generated, logical)
+                return
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_bytes(
                 f"single:{self.binary_salt}:{input_path.name}:{defines}".encode(
@@ -118,22 +158,10 @@ class FakeCompiler:
             hostgen = Path(hostgen_value)
             for source in source_files:
                 logical = source.relative_to(input_path).with_suffix("").as_posix()
-                if logical == "utility":
+                if logical == "utility" and not self.emit_utility_host:
                     continue
-                if self.omit_required_host and logical == PROGRAMS[0]:
-                    continue
-                interface = "args(buffer<float>);dispatch(uint2);"
-                if (
-                    self.abi_drift
-                    and "RBC_LITE_PBR_MATERIAL=1" not in defines
-                    and logical == PROGRAMS[0]
-                ):
-                    interface = "args(buffer<float>,buffer<uint>);dispatch(uint2);"
                 generated = hostgen / f"{logical}.inl"
-                generated.parent.mkdir(parents=True, exist_ok=True)
-                generated.write_text(
-                    f"// {logical}\r\n{interface}\r\n", encoding="utf-8"
-                )
+                write_host_interface(generated, logical)
             return
 
         for source in source_files:
@@ -150,7 +178,7 @@ class FakeCompiler:
 
 def _source_manifest(*, second_dimension: bool = False) -> dict[str, Any]:
     manifest: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "backends": ["dx", "vk"],
         "compile": {
             "source_root": "src",
@@ -211,6 +239,34 @@ def _source_manifest(*, second_dimension: bool = False) -> dict[str, Any]:
                 "high": {"defines": {"RBC_QUALITY_HIGH": "1"}},
             },
         }
+    return manifest
+
+
+def _per_variant_source_manifest() -> dict[str, Any]:
+    manifest = _source_manifest()
+    manifest["scene_features"].append("free_space_diffraction")
+    material_values = manifest["dimensions"]["pbr_material"]["values"]
+    material_values["lite"]["scene_features"]["forbidden"].append(
+        "free_space_diffraction"
+    )
+    material_values["full"]["scene_features"]["forbidden"] = [
+        "free_space_diffraction"
+    ]
+    material_values["fsd"] = {
+        "defines": {"RBC_ENABLE_FREE_SPACE_DIFFRACTION": "1"},
+        "scene_features": {"required": ["free_space_diffraction"]},
+    }
+    manifest["variant_sets"]["offline_pbr"]["permutations"].append(
+        {
+            "id": "fsd",
+            "select": {"pbr_material": "fsd"},
+        }
+    )
+    for program in manifest["programs"]:
+        program["host_abi"] = "per_variant"
+        if program["id"] == DENOISE_PROGRAM:
+            program["source"] = f"src/{PROGRAMS[0]}.cpp"
+            program["defines"] = {DENOISE_DEFINE: None}
     return manifest
 
 
@@ -322,6 +378,61 @@ def test_build_emits_runtime_manifest_and_reuses_variant_cache(
     assert second_runtime["build_id"] == first_build_id
 
 
+def test_shared_source_program_defines_build_every_variant(
+    tmp_path: Path,
+) -> None:
+    manifest_path, compiler = _project(tmp_path)
+    manifest_path.write_text(
+        json.dumps(_per_variant_source_manifest()),
+        encoding="utf-8",
+    )
+    (manifest_path.parent / "src" / f"{DENOISE_PROGRAM}.cpp").unlink()
+    config = load_config(manifest_path)
+    fake = FakeCompiler()
+    build_root = tmp_path / "out"
+    cache_root = tmp_path / "cache"
+
+    shader_root = build_backend(
+        config,
+        backend="dx",
+        build_root=build_root,
+        cache_root=cache_root,
+        compiler_path=compiler,
+        runner=fake,
+    )
+    runtime = verify_shader_root(shader_root, "dx")
+
+    artifact_roots = {
+        "lite": shader_root,
+        "full": shader_root / "variants" / "pbr_material=full",
+        "fsd": shader_root / "variants" / "pbr_material=fsd",
+    }
+    for artifact_root in artifact_roots.values():
+        ordinary = (artifact_root / f"{PROGRAMS[0]}.bin").read_bytes()
+        denoise = (artifact_root / f"{DENOISE_PROGRAM}.bin").read_bytes()
+        assert DENOISE_DEFINE.encode("ascii") not in ordinary
+        assert DENOISE_DEFINE.encode("ascii") in denoise
+
+    assert b"RBC_LITE_PBR_MATERIAL=1" in (
+        artifact_roots["lite"] / f"{DENOISE_PROGRAM}.bin"
+    ).read_bytes()
+    assert b"RBC_ENABLE_FREE_SPACE_DIFFRACTION=1" in (
+        artifact_roots["fsd"] / f"{DENOISE_PROGRAM}.bin"
+    ).read_bytes()
+    assert len(runtime["programs"][DENOISE_PROGRAM]["variants"]) == 3
+
+    first_call_count = len(fake.calls)
+    build_backend(
+        config,
+        backend="dx",
+        build_root=build_root,
+        cache_root=cache_root,
+        compiler_path=compiler,
+        runner=fake,
+    )
+    assert len(fake.calls) == first_call_count
+
+
 def test_verify_detects_tampered_artifact(tmp_path: Path) -> None:
     manifest_path, compiler = _project(tmp_path)
     shader_root = build_backend(
@@ -379,6 +490,135 @@ def test_stable_host_abi_mismatch_fails_before_publish(tmp_path: Path) -> None:
             runner=FakeCompiler(abi_drift=True),
         )
     assert not (build_root / "shader_build_dx").exists()
+
+
+def test_stable_shared_source_hostgen_uses_program_defines(
+    tmp_path: Path,
+) -> None:
+    manifest_path, compiler = _project(tmp_path)
+    manifest = _source_manifest()
+    denoise = next(
+        program
+        for program in manifest["programs"]
+        if program["id"] == DENOISE_PROGRAM
+    )
+    denoise["source"] = f"src/{PROGRAMS[0]}.cpp"
+    denoise["defines"] = {DENOISE_DEFINE: None}
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    (manifest_path.parent / "src" / f"{DENOISE_PROGRAM}.cpp").unlink()
+    fake = FakeCompiler()
+    host_output = tmp_path / "host"
+
+    build_hostgen(
+        load_config(manifest_path),
+        host_output=host_output,
+        cache_root=tmp_path / "cache",
+        compiler_path=compiler,
+        runner=fake,
+    )
+
+    assert (host_output / f"{DENOISE_PROGRAM}.inl").is_file()
+    isolated_host_calls = [
+        command
+        for (command, _), input_is_file in zip(fake.calls, fake.input_is_file)
+        if input_is_file and FakeCompiler._argument(command, "hostgen") is not None
+    ]
+    assert isolated_host_calls
+    assert all(f"--D={DENOISE_DEFINE}" in command for command in isolated_host_calls)
+    assert all(
+        f"--D={DENOISE_DEFINE}" not in command
+        for (command, _), input_is_file in zip(fake.calls, fake.input_is_file)
+        if not input_is_file
+    )
+
+
+def test_per_variant_hostgen_isolated_cached_and_atomically_merged(
+    tmp_path: Path,
+) -> None:
+    manifest_path, compiler = _project(tmp_path)
+    manifest_path.write_text(
+        json.dumps(_per_variant_source_manifest()),
+        encoding="utf-8",
+    )
+    (manifest_path.parent / "src" / f"{DENOISE_PROGRAM}.cpp").unlink()
+    config = load_config(manifest_path)
+    host_output = tmp_path / "host"
+    host_output.mkdir()
+    preserved = host_output / "manual.inl"
+    preserved.write_text("manual host helper\n", encoding="utf-8")
+    unlisted_interface = host_output / "utility.inl"
+    unlisted_interface.write_text("stale utility interface\n", encoding="utf-8")
+    fake = FakeCompiler(
+        abi_drift=True,
+        record_host_defines=True,
+        emit_utility_host=True,
+    )
+
+    build_hostgen(
+        config,
+        host_output=host_output,
+        cache_root=tmp_path / "cache",
+        compiler_path=compiler,
+        runner=fake,
+    )
+
+    expected_defines = {
+        "lite": ("RBC_LITE_PBR_MATERIAL=1",),
+        "full": (),
+        "fsd": ("RBC_ENABLE_FREE_SPACE_DIFFRACTION=1",),
+    }
+    for permutation, defines in expected_defines.items():
+        for program in PROGRAMS:
+            generated = (
+                host_output
+                / "variants"
+                / "offline_pbr"
+                / permutation
+                / f"{program}.inl"
+            )
+            assert generated.is_file()
+            program_defines = defines
+            if program == DENOISE_PROGRAM:
+                program_defines = tuple(sorted((*defines, DENOISE_DEFINE)))
+            assert f"// defines: {program_defines!r}" in (
+                generated.read_text(encoding="utf-8")
+            )
+            assert not (host_output / f"{program}.inl").exists()
+
+    unlisted_content = unlisted_interface.read_text(encoding="utf-8")
+    assert "// utility" in unlisted_content
+    assert "// defines: ('RBC_LITE_PBR_MATERIAL=1',)" in unlisted_content
+
+    first_call_count = len(fake.calls)
+    # The default selection is lite, so its hostgen tree is reused for both
+    # ordinary root interfaces and the lite variant ABI.
+    assert first_call_count == 2 * len(expected_defines)
+    compiler_caches = {
+        FakeCompiler._argument(command, "cache_dir")
+        for command, _cwd in fake.calls
+    }
+    assert len(compiler_caches) == len(expected_defines)
+    stale_variant = (
+        host_output / "variants" / "offline_pbr" / "stale.inl"
+    )
+    stale_variant.write_text("stale\n", encoding="utf-8")
+    legacy_root = host_output / f"{PROGRAMS[0]}.inl"
+    legacy_root.parent.mkdir(parents=True, exist_ok=True)
+    legacy_root.write_text("legacy\n", encoding="utf-8")
+
+    build_hostgen(
+        config,
+        host_output=host_output,
+        cache_root=tmp_path / "cache",
+        compiler_path=compiler,
+        runner=fake,
+    )
+
+    assert len(fake.calls) == first_call_count
+    assert preserved.read_text(encoding="utf-8") == "manual host helper\n"
+    assert unlisted_interface.read_text(encoding="utf-8") == unlisted_content
+    assert not stale_variant.exists()
+    assert not legacy_root.exists()
 
 
 def test_hostgen_requires_declared_interfaces_and_preserves_existing_files(
@@ -940,6 +1180,52 @@ def test_validate_rejects_non_global_default_permutation(tmp_path: Path) -> None
     manifest["variant_sets"]["offline_pbr"]["default"] = "full"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(ShaderVariantError, match="global default"):
+        load_config(manifest_path)
+
+
+def test_program_defines_are_validated_and_change_input_id(
+    tmp_path: Path,
+) -> None:
+    manifest_path, compiler = _project(tmp_path)
+    manifest = _source_manifest()
+    denoise = next(
+        program
+        for program in manifest["programs"]
+        if program["id"] == DENOISE_PROGRAM
+    )
+    denoise["source"] = f"src/{PROGRAMS[0]}.cpp"
+    denoise["defines"] = {DENOISE_DEFINE: None}
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    (manifest_path.parent / "src" / f"{DENOISE_PROGRAM}.cpp").unlink()
+
+    first_config = load_config(manifest_path)
+    compiler_info = compiler_fingerprint(compiler)
+    first_input_id = _build_input_id(_tree_digest(first_config), compiler_info)
+    denoise["defines"] = {f"{DENOISE_DEFINE}_CHANGED": "1"}
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    second_config = load_config(manifest_path)
+    second_input_id = _build_input_id(_tree_digest(second_config), compiler_info)
+    assert second_input_id != first_input_id
+
+    denoise["defines"] = {"RBC_LITE_PBR_MATERIAL": "1"}
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ShaderVariantError, match="program.*defines"):
+        load_config(manifest_path)
+
+
+def test_program_alias_rejects_physical_logical_id_collision(
+    tmp_path: Path,
+) -> None:
+    manifest_path, _ = _project(tmp_path)
+    manifest = _source_manifest()
+    denoise = next(
+        program
+        for program in manifest["programs"]
+        if program["id"] == DENOISE_PROGRAM
+    )
+    denoise["source"] = f"src/{PROGRAMS[0]}.cpp"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ShaderVariantError, match="collides"):
         load_config(manifest_path)
 
 

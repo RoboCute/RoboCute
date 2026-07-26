@@ -74,7 +74,9 @@ struct ShaderFamily::Impl {
             auto const &program = program_bindings[i];
             LUISA_ASSERT(
                 !program.logical_name.empty() &&
-                    program.slot != nullptr && program.load != nullptr,
+                    program.slot != nullptr &&
+                    ((program.load != nullptr) !=
+                     (program.load_variant != nullptr)),
                 "Shader family {} program {} has an invalid name, slot, or ABI loader.",
                 name,
                 i);
@@ -147,6 +149,7 @@ struct ShaderFamily::Impl {
                 luisa::vector<ShaderBase const *> loaded_programs(
                     program_bindings.size(), nullptr);
                 auto loaded = resolved &&
+                              resolution.selection == entry_ptr->selection &&
                               resolution.programs.size() == program_bindings.size();
                 luisa::vector<ShaderManager::VariantResolution const *> resolved_programs(
                     program_bindings.size(), nullptr);
@@ -178,8 +181,17 @@ struct ShaderFamily::Impl {
                         program_bindings.size(),
                         [&](size_t i) noexcept {
                             try {
-                                auto shader = program_bindings[i].load(
-                                    resolved_programs[i]->artifact);
+                                auto const &binding = program_bindings[i];
+                                auto const &artifact =
+                                    resolved_programs[i]->artifact;
+                                ShaderBase const *shader{};
+                                if (binding.load_variant) {
+                                    shader = binding.load_variant(
+                                        artifact,
+                                        resolution.selection);
+                                } else {
+                                    shader = binding.load(artifact);
+                                }
                                 loaded_programs[i] = shader;
                                 if (!shader) {
                                     all_loaded.store(

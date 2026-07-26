@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "backends": [
     "dx",
     "vk"
@@ -13,7 +13,8 @@
     "defines": {}
   },
   "scene_features": [
-    "complex_pbr_material"
+    "complex_pbr_material",
+    "free_space_diffraction"
   ],
   "dimensions": {
     "pbr_material": {
@@ -25,7 +26,8 @@
           },
           "scene_features": {
             "forbidden": [
-              "complex_pbr_material"
+              "complex_pbr_material",
+              "free_space_diffraction"
             ]
           }
         },
@@ -34,6 +36,19 @@
           "scene_features": {
             "required": [
               "complex_pbr_material"
+            ],
+            "forbidden": [
+              "free_space_diffraction"
+            ]
+          }
+        },
+        "fsd": {
+          "defines": {
+            "RBC_ENABLE_FREE_SPACE_DIFFRACTION": "1"
+          },
+          "scene_features": {
+            "required": [
+              "free_space_diffraction"
             ]
           }
         }
@@ -55,6 +70,12 @@
           "select": {
             "pbr_material": "full"
           }
+        },
+        {
+          "id": "fsd",
+          "select": {
+            "pbr_material": "fsd"
+          }
         }
       ]
     }
@@ -64,19 +85,22 @@
       "id": "path_tracer/offline_pt",
       "source": "src/path_tracer/offline_pt.cpp",
       "variant_set": "offline_pt",
-      "host_abi": "stable"
+      "host_abi": "per_variant"
     },
     {
       "id": "path_tracer/offline_pt_denoise",
-      "source": "src/path_tracer/offline_pt_denoise.cpp",
+      "source": "src/path_tracer/offline_pt.cpp",
       "variant_set": "offline_pt",
-      "host_abi": "stable"
+      "host_abi": "per_variant",
+      "defines": {
+        "RBC_OFFLINE_PT_DENOISE": null
+      }
     },
     {
       "id": "path_tracer/pt_multi_bounce_offline",
       "source": "src/path_tracer/pt_multi_bounce_offline.cpp",
       "variant_set": "offline_pt",
-      "host_abi": "stable"
+      "host_abi": "per_variant"
     }
   ]
 }

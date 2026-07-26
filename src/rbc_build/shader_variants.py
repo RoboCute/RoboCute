@@ -24,12 +24,12 @@ else:
     import fcntl
 
 
-SOURCE_SCHEMA_VERSION = 1
+SOURCE_SCHEMA_VERSION = 2
 RUNTIME_SCHEMA_VERSION = 1
 RUNTIME_MANIFEST_NAME = "shader_manifest.json"
 HOST_INPUT_ID_MARKER = ".shader_input_id"
 RENDER_PLUGIN_INPUT_ID_MARKER = "rbc_render_plugin.input_id"
-CACHE_SCHEMA_VERSION = 1
+CACHE_SCHEMA_VERSION = 2
 MAX_SCENE_FEATURES_PER_FAMILY = 16
 
 _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -164,8 +164,14 @@ class VariantRule:
 class Program:
     identifier: str
     source: str
+    source_identifier: str
     variant_set: str
     host_abi: str
+    defines: tuple[tuple[str, str | None], ...]
+
+    @property
+    def uses_bulk_compilation(self) -> bool:
+        return self.identifier == self.source_identifier and not self.defines
 
 
 @dataclass(frozen=True)
@@ -265,6 +271,21 @@ class ShaderVariantConfig:
                     )
                 merged[macro] = macro_value
                 owners[macro] = f"dimension {dimension_name}"
+        return tuple(sorted(merged.items()))
+
+    def effective_program_defines(
+        self,
+        program: Program,
+        selection: Mapping[str, str],
+    ) -> tuple[tuple[str, str | None], ...]:
+        merged = dict(self.effective_defines(selection))
+        for macro, macro_value in program.defines:
+            if macro in merged:
+                raise ShaderVariantError(
+                    f"Macro {macro} is defined by compile/dimension defines "
+                    f"and program {program.identifier} defines"
+                )
+            merged[macro] = macro_value
         return tuple(sorted(merged.items()))
 
 
@@ -618,14 +639,13 @@ def load_config(manifest_path: Path) -> ShaderVariantConfig:
     shader_root = manifest_path.parent
     programs: list[Program] = []
     program_ids: set[str] = set()
-    program_sources: set[str] = set()
     for index, program_value in enumerate(
         _require_list(raw.get("programs"), "programs")
     ):
         program_raw = _require_object(program_value, f"program {index}")
         _check_keys(
             program_raw,
-            {"id", "source", "variant_set", "host_abi"},
+            {"id", "source", "variant_set", "host_abi", "defines"},
             f"program {index}",
         )
         identifier = _safe_relative(
@@ -642,9 +662,9 @@ def load_config(manifest_path: Path) -> ShaderVariantConfig:
         host_abi = _require_string(
             program_raw.get("host_abi"), f"program {identifier} host_abi"
         )
-        if host_abi != "stable":
+        if host_abi not in ("stable", "per_variant"):
             raise ShaderVariantError(
-                f"Program {identifier} host_abi must currently be 'stable'"
+                f"Program {identifier} host_abi must be 'stable' or 'per_variant'"
             )
         if variant_set_name not in variant_sets:
             raise ShaderVariantError(
@@ -652,10 +672,7 @@ def load_config(manifest_path: Path) -> ShaderVariantConfig:
             )
         if identifier in program_ids:
             raise ShaderVariantError(f"Duplicate program id: {identifier}")
-        if source in program_sources:
-            raise ShaderVariantError(f"Duplicate program source: {source}")
         program_ids.add(identifier)
-        program_sources.add(source)
 
         source_path = (shader_root / source).resolve()
         source_dir = (shader_root / source_root).resolve()
@@ -667,15 +684,22 @@ def load_config(manifest_path: Path) -> ShaderVariantConfig:
             ) from error
         if source_relative.suffix != ".cpp":
             raise ShaderVariantError(f"Program {identifier} source must be a .cpp file")
-        expected_identifier = source_relative.with_suffix("").as_posix()
-        if identifier != expected_identifier:
-            raise ShaderVariantError(
-                f"Program id {identifier} must match source path {expected_identifier}"
-            )
+        source_identifier = source_relative.with_suffix("").as_posix()
         if not source_path.is_file():
             raise ShaderVariantError(f"Program source does not exist: {source}")
+        defines = _parse_defines(
+            program_raw.get("defines", {}),
+            f"program {identifier} defines",
+        )
         programs.append(
-            Program(identifier, source, variant_set_name, host_abi)
+            Program(
+                identifier,
+                source,
+                source_identifier,
+                variant_set_name,
+                host_abi,
+                defines,
+            )
         )
 
     config = ShaderVariantConfig(
@@ -703,14 +727,26 @@ def load_config(manifest_path: Path) -> ShaderVariantConfig:
     if not source_programs:
         raise ShaderVariantError("No shader .cpp files were found")
     for program in config.programs:
-        if program.identifier not in source_programs:
+        if program.source_identifier not in source_programs:
             raise ShaderVariantError(
-                f"Declared program was not discovered below source_root: {program.identifier}"
+                f"Program source was not discovered below source_root: {program.source}"
+            )
+        if (
+            program.identifier in source_programs
+            and program.identifier != program.source_identifier
+        ):
+            raise ShaderVariantError(
+                f"Program id {program.identifier} collides with a different physical "
+                "shader source"
             )
     config.effective_defines({})
     for variant_set in config.variant_sets.values():
         for permutation in variant_set.permutations:
             config.effective_defines(permutation.selection)
+    for program in config.programs:
+        variant_set = config.variant_sets[program.variant_set]
+        for permutation in variant_set.permutations:
+            config.effective_program_defines(program, permutation.selection)
     used_scene_features: set[str] = set()
     for variant_set_name in config.variant_sets:
         if not config.family_programs(variant_set_name):
@@ -814,7 +850,7 @@ def _compiler_command(
     *,
     backend: str | None = None,
     cache_dir: Path | None = None,
-    hostgen_dir: Path | None = None,
+    hostgen_path: Path | None = None,
     rebuild: bool = False,
     lsp: bool = False,
 ) -> list[str]:
@@ -832,13 +868,42 @@ def _compiler_command(
         command.append(f"--opt={config.optimization}")
     if cache_dir is not None:
         command.append(f"--cache_dir={cache_dir}")
-    if hostgen_dir is not None:
-        command.append(f"--hostgen={hostgen_dir}")
+    if hostgen_path is not None:
+        command.append(f"--hostgen={hostgen_path}")
     if rebuild:
         command.append("--rebuild")
     if lsp:
         command.append("--lsp")
     return command
+
+
+def _compile_program_host_interface(
+    config: ShaderVariantConfig,
+    program: Program,
+    selection: Mapping[str, str],
+    *,
+    compiler_path: Path,
+    output_path: Path,
+    work_dir: Path,
+    cache_dir: Path,
+    rebuild: bool,
+    runner: CompilerRunner,
+) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.unlink(missing_ok=True)
+    binary_path = work_dir / "program-out" / f"{program.identifier}.bin"
+    binary_path.parent.mkdir(parents=True, exist_ok=True)
+    command = _compiler_command(
+        config,
+        compiler_path,
+        config.shader_root / program.source,
+        binary_path,
+        config.effective_program_defines(program, selection),
+        cache_dir=cache_dir,
+        hostgen_path=output_path,
+        rebuild=rebuild,
+    )
+    runner(command, work_dir)
 
 
 def _normalize_host_interface(content: str, shader_root: Path) -> bytes:
@@ -908,6 +973,15 @@ def validate_stable_host_abi(
         "dependency_digest": dependency_digest,
         "programs": [program.identifier for program in stable_programs],
         "define_sets": [list(defines) for _, _, defines in selections],
+        "program_define_sets": [
+            {
+                program.identifier: list(
+                    config.effective_program_defines(program, selection)
+                )
+                for program in stable_programs
+            }
+            for _, selection, _ in selections
+        ],
     }
     validation_key = hashlib.sha256(_canonical_json(validation_payload)).hexdigest()
     validation_path = cache_root / "host_abi" / f"{validation_key}.json"
@@ -942,7 +1016,7 @@ def validate_stable_host_abi(
         reference_label = ""
         interface_hashes: dict[str, str] = {}
         try:
-            for index, (label, _selection, defines) in enumerate(selections):
+            for index, (label, selection, defines) in enumerate(selections):
                 selection_root = work_dir / str(index)
                 host_dir = selection_root / "host"
                 host_dir.mkdir(parents=True)
@@ -958,10 +1032,24 @@ def validate_stable_host_abi(
                     selection_root / "out",
                     defines,
                     cache_dir=compiler_cache,
-                    hostgen_dir=host_dir,
+                    hostgen_path=host_dir,
                     rebuild=rebuild,
                 )
                 runner(command, selection_root)
+                for program in stable_programs:
+                    if program.uses_bulk_compilation:
+                        continue
+                    _compile_program_host_interface(
+                        config,
+                        program,
+                        selection,
+                        compiler_path=compiler_path,
+                        output_path=host_dir / f"{program.identifier}.inl",
+                        work_dir=selection_root,
+                        cache_dir=compiler_cache,
+                        rebuild=rebuild,
+                        runner=runner,
+                    )
                 current: dict[str, bytes] = {}
                 for program in stable_programs:
                     generated = host_dir / f"{program.identifier}.inl"
@@ -1217,19 +1305,26 @@ def _materialize_hostgen_tree(
     compiler_path: Path,
     hostgen_key: str,
     default_defines: Sequence[tuple[str, str | None]],
-    required_interfaces: Sequence[str],
+    selection: Mapping[str, str],
+    required_programs: Sequence[Program],
     cache_root: Path,
     destination: Path,
     rebuild: bool,
     runner: CompilerRunner,
 ) -> None:
+    required_interfaces = tuple(
+        f"{program.identifier}.inl" for program in required_programs
+    )
     object_dir = cache_root / "host_objects" / hostgen_key
     lock_path = cache_root / "locks" / f"host-object-{hostgen_key}.lock"
     with CrossProcessFileLock(lock_path):
         if rebuild or not _host_tree_cache_valid(
             object_dir, hostgen_key, required_interfaces
         ):
-            compiler_cache = destination.parent / "compiler-cache"
+            compiler_cache = (
+                destination.parent
+                / f"compiler-cache-{hostgen_key[:16]}"
+            )
             compiler_cache.mkdir(parents=True, exist_ok=True)
             command = _compiler_command(
                 config,
@@ -1238,14 +1333,28 @@ def _materialize_hostgen_tree(
                 destination.parent / "out",
                 default_defines,
                 cache_dir=compiler_cache,
-                hostgen_dir=destination,
+                hostgen_path=destination,
                 rebuild=rebuild,
             )
             runner(command, destination.parent)
+            for program in required_programs:
+                if program.uses_bulk_compilation:
+                    continue
+                _compile_program_host_interface(
+                    config,
+                    program,
+                    selection,
+                    compiler_path=compiler_path,
+                    output_path=destination / f"{program.identifier}.inl",
+                    work_dir=destination.parent,
+                    cache_dir=compiler_cache,
+                    rebuild=rebuild,
+                    runner=runner,
+                )
             for relative in required_interfaces:
                 if not (destination / relative).is_file():
                     raise ShaderVariantError(
-                        f"Hostgen did not produce required stable interface "
+                        f"Hostgen did not produce required interface "
                         f"{relative} in this invocation"
                     )
             generated_files = sorted(
@@ -1297,7 +1406,9 @@ def _compile_variant(
     rebuild: bool,
     runner: CompilerRunner,
 ) -> str:
-    defines = config.effective_defines(permutation.selection)
+    defines = config.effective_program_defines(
+        program, permutation.selection
+    )
     compile_payload = {
         "cache_schema": CACHE_SCHEMA_VERSION,
         "compiler": compiler_info["sha256"],
@@ -1840,9 +1951,14 @@ def _build_backend_locked(
         )
 
         declared_programs = config.program_map()
+        logical_sources = dict(source_programs)
+        for program in config.programs:
+            logical_sources[program.identifier] = (
+                config.shader_root / program.source
+            )
         runtime_programs: dict[str, Any] = {}
         build_inputs: list[Any] = []
-        for logical, source in sorted(source_programs.items()):
+        for logical, source in sorted(logical_sources.items()):
             default_artifact = f"{logical}.bin"
             declared = declared_programs.get(logical)
             if declared is None:
@@ -1861,12 +1977,28 @@ def _build_backend_locked(
                 default_selection = dict(
                     sorted(default_permutation.selection.items())
                 )
+                if declared.uses_bulk_compilation:
+                    default_compile_key_for_program = default_compile_key
+                else:
+                    default_compile_key_for_program = _compile_variant(
+                        config,
+                        declared,
+                        default_permutation,
+                        backend=backend,
+                        compiler_path=compiler_path,
+                        compiler_info=compiler_info,
+                        dependency_digest=dependency_digest,
+                        cache_root=cache_root,
+                        destination=staged / default_artifact,
+                        rebuild=rebuild,
+                        runner=runner,
+                    )
                 variants = [
                     _artifact_record(
                         staged,
                         default_selection,
                         default_artifact,
-                        default_compile_key,
+                        default_compile_key_for_program,
                     )
                 ]
                 non_default = sorted(
@@ -2067,11 +2199,59 @@ def build_hostgen(
                     runner=runner,
                 )
                 default_defines = snapshot_config.effective_defines({})
+                stable_programs = tuple(
+                    program
+                    for program in snapshot_config.programs
+                    if program.host_abi == "stable"
+                )
+                per_variant_families = {
+                    variant_set_name: tuple(
+                        program
+                        for program in snapshot_config.family_programs(
+                            variant_set_name
+                        )
+                        if program.host_abi == "per_variant"
+                    )
+                    for variant_set_name in sorted(snapshot_config.variant_sets)
+                }
+                per_variant_families = {
+                    family: programs
+                    for family, programs in per_variant_families.items()
+                    if programs
+                }
+                default_required_programs = list(stable_programs)
+                for family_name, programs in per_variant_families.items():
+                    variant_set = snapshot_config.variant_sets[family_name]
+                    for permutation in variant_set.permutations:
+                        defines = snapshot_config.effective_defines(
+                            permutation.selection
+                        )
+                        if defines == default_defines:
+                            default_required_programs.extend(programs)
+                default_required_programs = sorted(
+                    {
+                        program.identifier: program
+                        for program in default_required_programs
+                    }.values(),
+                    key=lambda program: program.identifier,
+                )
                 hostgen_payload = {
                     "cache_schema": CACHE_SCHEMA_VERSION,
                     "compiler": compiler_info["sha256"],
                     "dependency_digest": dependency_digest,
                     "defines": list(default_defines),
+                    "programs": [
+                        {
+                            "id": program.identifier,
+                            "source": program.source,
+                            "defines": list(
+                                snapshot_config.effective_program_defines(
+                                    program, {}
+                                )
+                            ),
+                        }
+                        for program in default_required_programs
+                    ],
                 }
                 hostgen_key = hashlib.sha256(
                     _canonical_json(hostgen_payload)
@@ -2084,22 +2264,92 @@ def build_hostgen(
                 generated_host = work_dir / "generated"
                 generated_host.mkdir()
                 try:
-                    required_interfaces = [
-                        f"{program.identifier}.inl"
-                        for program in snapshot_config.programs
-                        if program.host_abi == "stable"
-                    ]
                     _materialize_hostgen_tree(
                         snapshot_config,
                         compiler_path=compiler_path,
                         hostgen_key=hostgen_key,
                         default_defines=default_defines,
-                        required_interfaces=required_interfaces,
+                        selection={},
+                        required_programs=default_required_programs,
                         cache_root=cache_root,
                         destination=generated_host,
                         rebuild=rebuild,
                         runner=runner,
                     )
+                    for family_name, programs in per_variant_families.items():
+                        variant_set = snapshot_config.variant_sets[family_name]
+                        for permutation in variant_set.permutations:
+                            defines = snapshot_config.effective_defines(
+                                permutation.selection
+                            )
+                            variant_payload = {
+                                "cache_schema": CACHE_SCHEMA_VERSION,
+                                "compiler": compiler_info["sha256"],
+                                "dependency_digest": dependency_digest,
+                                "host_abi": "per_variant",
+                                "variant_set": family_name,
+                                "permutation": permutation.identifier,
+                                "selection": dict(permutation.selection),
+                                "programs": [
+                                    program.identifier for program in programs
+                                ],
+                                "defines": list(defines),
+                                "program_defines": {
+                                    program.identifier: list(
+                                        snapshot_config.effective_program_defines(
+                                            program, permutation.selection
+                                        )
+                                    )
+                                    for program in programs
+                                },
+                            }
+                            variant_hostgen_key = hashlib.sha256(
+                                _canonical_json(variant_payload)
+                            ).hexdigest()
+                            variant_interfaces = [
+                                f"{program.identifier}.inl"
+                                for program in programs
+                            ]
+                            if defines == default_defines:
+                                raw_host = generated_host
+                            else:
+                                raw_host = (
+                                    work_dir
+                                    / "per_variant"
+                                    / family_name
+                                    / permutation.identifier
+                                )
+                                raw_host.mkdir(parents=True)
+                                _materialize_hostgen_tree(
+                                    snapshot_config,
+                                    compiler_path=compiler_path,
+                                    hostgen_key=variant_hostgen_key,
+                                    default_defines=defines,
+                                    selection=permutation.selection,
+                                    required_programs=programs,
+                                    cache_root=cache_root,
+                                    destination=raw_host,
+                                    rebuild=rebuild,
+                                    runner=runner,
+                                )
+                            variant_destination = (
+                                generated_host
+                                / "variants"
+                                / family_name
+                                / permutation.identifier
+                            )
+                            for relative in variant_interfaces:
+                                source = raw_host / relative
+                                destination = variant_destination / relative
+                                destination.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copy2(source, destination)
+
+                    for programs in per_variant_families.values():
+                        for program in programs:
+                            _remove_path(
+                                generated_host / f"{program.identifier}.inl"
+                            )
+
                     merged_host = work_dir / "merged"
                     merged_host.mkdir()
                     if host_output.is_dir():
@@ -2109,6 +2359,14 @@ def build_hostgen(
                     shutil.rmtree(
                         merged_host / "families", ignore_errors=True
                     )
+                    shutil.rmtree(
+                        merged_host / "variants", ignore_errors=True
+                    )
+                    for programs in per_variant_families.values():
+                        for program in programs:
+                            _remove_path(
+                                merged_host / f"{program.identifier}.inl"
+                            )
                     shutil.copytree(
                         generated_host, merged_host, dirs_exist_ok=True
                     )

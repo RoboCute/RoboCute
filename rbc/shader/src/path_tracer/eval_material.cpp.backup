@@ -137,7 +137,7 @@ inline void evaluate_material_sample(
 
     // Setup closure data
     mtl::ShadingDetail detail = mtl::ShadingDetail::Default;
-    mtl::BSDFContext<mtl::openpbr::Parameter> closure_data{basic_param, extra_param, spectrum_arg.lambda, detail};
+    mtl::BSDFContext<mtl::openpbr::Parameter> bsdf_context{basic_param, extra_param, spectrum_arg.lambda, detail};
 
     if (wi.z > 0.0f) {
         // no volume above
@@ -145,20 +145,20 @@ inline void evaluate_material_sample(
         // no volume below
     }
 
-    closure_data.selected_wavelength = spectrum_arg.selected_wavelength;
-    closure_data.hero_wavelength_index = spectrum_arg.hero_index;
-    closure_data.ray_t = 0.0f;
-    closure_data.rand = rand;
-    closure_data.init(basic_param, extra_param);
+    bsdf_context.selected_wavelength = spectrum_arg.selected_wavelength;
+    bsdf_context.hero_wavelength_index = spectrum_arg.hero_index;
+    bsdf_context.ray_t = 0.0f;
+    bsdf_context.rand = rand;
+    bsdf_context.init(basic_param, extra_param);
 
     // Initialize BSDF
     mtl::OpenpbrBSDF bsdf;
-    bsdf.init(wi, basic_param, extra_param, closure_data);
+    bsdf.init(wi, basic_param, extra_param, bsdf_context);
 
     // Sample BSDF
     std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;
-    auto sample_result = bsdf.sample(wi, closure_data, volume_stack);
-    spectrum_arg.selected_wavelength = closure_data.selected_wavelength;
+    auto sample_result = bsdf.sample(wi, bsdf_context, volume_stack);
+    spectrum_arg.selected_wavelength = bsdf_context.selected_wavelength;
 
     sample_flags = sample_result.throughput.flags;
 

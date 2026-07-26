@@ -69,11 +69,17 @@ inline PolymorphicBSDFType detect_polymorphic_bsdf_type(
 		mtl::PolymorphicBSDFType::BasicMetallic;
 #endif
 	flatten();
-	if (weight.diffraction == 0.0f &&
+	bool simplified_material =
+		weight.diffraction == 0.0f &&
 		weight.thin_film == 0.0f &&
 		weight.coat == 0.0f &&
 		weight.fuzz == 0.0f &&
-		weight.diffuse_roughness == 0.0f) {
+		weight.diffuse_roughness == 0.0f;
+	if constexpr (!std::is_same_v<OpenpbrBSDF, SurfaceBSDF>) {
+		simplified_material = simplified_material &&
+			weight.free_space_diffraction == 0.0f;
+	}
+	if (simplified_material) {
 		flatten();
 		// if (weight.metalness == 1.0f) {
 		// 	bsdf_type = mtl::PolymorphicBSDFType::Metal;

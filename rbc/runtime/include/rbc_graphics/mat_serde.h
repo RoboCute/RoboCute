@@ -16,6 +16,9 @@ void serde_openpbr(
     serde_func(x.weight.fuzz, "weight_fuzz");
     serde_func(x.weight.coat, "weight_coat");
     serde_func(x.weight.diffraction, "weight_diffraction");
+    serde_func(
+        x.weight.free_space_diffraction,
+        "weight_free_space_diffraction");
     serde_func(x.geometry.cutout_threshold, "geometry_cutout_threshold");
     serde_func(x.geometry.opacity, "geometry_opacity");
     serde_func(x.geometry.opacity_tex, "geometry_opacity_tex");

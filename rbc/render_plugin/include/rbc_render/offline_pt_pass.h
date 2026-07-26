@@ -1,6 +1,5 @@
 #pragma once
 #include <rbc_render/pass.h>
-#include <rbc_graphics/shader_family.h>
 #include <luisa/runtime/shader.h>
 #include <luisa/core/fiber.h>
 #include <rbc_render/pipeline_context.h>
@@ -78,9 +77,8 @@ private:
         uint,         // frame_index
         bool          //write_id_map
         >;
-    ShaderBase const *_pt_shader{nullptr};
-    ShaderBase const *_pt_shader_denoise{nullptr};
-    ShaderBase const *_multi_bounce{nullptr};
+    struct PTShaders;
+    vstd::unique_ptr<PTShaders> _pt;
     DrawSkyShader const *_draw_sky_shader{nullptr};
     Shader1D<Buffer<uint>, uint> const *_clear_ptr_buffer{nullptr};
     ShaderBase const *_ao_trace{nullptr};
@@ -88,7 +86,6 @@ private:
     AccumHashGrid const *_accum_hashgrid{nullptr};
     IntegrateHashGrid const *_integrate_hashgrid{nullptr};
     PreparePass *_prepare_pass{nullptr};
-    ShaderFamily _pt_shader_family;
 
     struct PreparedResources {
         Image<float> emission;
@@ -108,7 +105,6 @@ private:
         FrameSettings &frame_settings;
         RenderDevice &render_device;
         AccumPassContext *accum_pass_ctx;
-        vstd::unique_ptr<PTPassContext> &pass_ctx;
     };
 
     PreparedResources _prepare_resources(const PTResourceContext &rc) const;

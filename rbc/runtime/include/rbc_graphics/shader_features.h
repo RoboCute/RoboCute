@@ -8,6 +8,7 @@ namespace rbc {
 
 enum class SceneShaderFeature : uint64_t {
     ComplexPbrMaterial = 1ull << 0u,
+    FreeSpaceDiffraction = 1ull << 1u,
 };
 
 [[nodiscard]] constexpr uint64_t scene_shader_feature_mask(SceneShaderFeature feature) noexcept {
@@ -18,6 +19,9 @@ enum class SceneShaderFeature : uint64_t {
     std::string_view feature_name) noexcept {
     if (feature_name == "complex_pbr_material") {
         return scene_shader_feature_mask(SceneShaderFeature::ComplexPbrMaterial);
+    }
+    if (feature_name == "free_space_diffraction") {
+        return scene_shader_feature_mask(SceneShaderFeature::FreeSpaceDiffraction);
     }
     return std::nullopt;
 }
@@ -58,6 +62,14 @@ template<typename Material>
         if constexpr (requires { weight.diffraction; }) {
             lite_compatible = lite_compatible && weight.diffraction == 0.0f;
         }
+        if constexpr (requires { weight.free_space_diffraction; }) {
+            if (weight.free_space_diffraction > 0.0f) {
+                return scene_shader_feature_mask(
+                           SceneShaderFeature::FreeSpaceDiffraction) |
+                       scene_shader_feature_mask(
+                           SceneShaderFeature::ComplexPbrMaterial);
+            }
+        }
         return lite_compatible
                    ? 0u
                    : scene_shader_feature_mask(
@@ -77,6 +89,7 @@ struct ShaderFeatureWeightProbe {
     float thin_film{};
     float fuzz{};
     float diffraction{};
+    float free_space_diffraction{};
 };
 struct ShaderFeatureMaterialProbe {
     ShaderFeatureWeightProbe weight;
@@ -92,6 +105,11 @@ struct ShaderFeatureParticleProbe {
 };
 
 constexpr auto complex_pbr_mask = scene_shader_feature_mask(SceneShaderFeature::ComplexPbrMaterial);
+constexpr auto free_space_diffraction_mask =
+    scene_shader_feature_mask(SceneShaderFeature::FreeSpaceDiffraction);
+static_assert(scene_shader_feature_mask(
+                  std::string_view{"free_space_diffraction"}) ==
+              std::optional<uint64_t>{free_space_diffraction_mask});
 static_assert(scene_shader_feature_mask(ShaderFeatureMaterialProbe{}) == 0u);
 static_assert(scene_shader_feature_mask(ShaderFeatureMaterialProbe{.weight = {.transmission = 1.0f}}) == 0u);
 static_assert(scene_shader_feature_mask(ShaderFeatureMaterialProbe{.weight = {.transmission = 0.5f}}) == complex_pbr_mask);
@@ -102,6 +120,8 @@ static_assert(scene_shader_feature_mask(ShaderFeatureMaterialProbe{.weight = {.s
 static_assert(scene_shader_feature_mask(ShaderFeatureMaterialProbe{.weight = {.thin_film = 1.0f}}) == complex_pbr_mask);
 static_assert(scene_shader_feature_mask(ShaderFeatureMaterialProbe{.weight = {.fuzz = 1.0f}}) == complex_pbr_mask);
 static_assert(scene_shader_feature_mask(ShaderFeatureMaterialProbe{.weight = {.diffraction = 1.0f}}) == complex_pbr_mask);
+static_assert(scene_shader_feature_mask(ShaderFeatureMaterialProbe{.weight = {.free_space_diffraction = 1.0f}}) ==
+              (free_space_diffraction_mask | complex_pbr_mask));
 static_assert(scene_shader_feature_mask(ShaderFeatureParticleProbe{}) == 0u);
 static_assert(scene_shader_feature_mask(ShaderFeatureParticleProbe{.weight = {.transmission = 0.5f}}) == complex_pbr_mask);
 static_assert(scene_shader_feature_mask(ShaderFeatureParticleProbe{.weight = {.coat = 1.0f}}) == complex_pbr_mask);

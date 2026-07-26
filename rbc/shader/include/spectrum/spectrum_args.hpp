@@ -8,6 +8,7 @@ namespace spectrum {
 using luisa::float3;
 using luisa::float3x3;
 using luisa::inv_pi;
+using luisa::uint;
 using luisa::uint3;
 }// namespace spectrum
 #endif

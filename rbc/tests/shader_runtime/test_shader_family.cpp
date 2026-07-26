@@ -13,6 +13,8 @@ constexpr uint64_t complex_feature = 1u;
 std::atomic_uint32_t selector_calls{};
 std::atomic_uint32_t resolver_calls{};
 std::atomic_uint32_t loader_calls{};
+std::atomic_uint32_t variant_loader_calls{};
+std::atomic_bool variant_loader_saw_complex{};
 std::atomic_bool block_last_program{};
 std::atomic_bool release_last_program{};
 constexpr char const *program_names[]{"program_0", "program_1", "program_2"};
@@ -96,10 +98,48 @@ luisa::compute::ShaderBase const *fake_load_2(
     return fake_load(2u, artifact);
 }
 
+luisa::compute::ShaderBase const *fake_variant_load(
+    size_t program_index,
+    luisa::filesystem::path const &artifact,
+    rbc::ShaderManager::VariantSelection const &selection) {
+    variant_loader_calls.fetch_add(1u, std::memory_order_relaxed);
+    auto const complex =
+        selection.values.size() == 1u &&
+        selection.values.front().first == "material" &&
+        selection.values.front().second == "complex";
+    if (!complex ||
+        artifact != luisa::filesystem::path{complex_artifacts[program_index]}) {
+        return nullptr;
+    }
+    variant_loader_saw_complex.store(true, std::memory_order_relaxed);
+    auto const address = uintptr_t{17u + program_index};
+    return reinterpret_cast<luisa::compute::ShaderBase const *>(address);
+}
+
+luisa::compute::ShaderBase const *fake_variant_load_0(
+    luisa::filesystem::path const &artifact,
+    rbc::ShaderManager::VariantSelection const &selection) {
+    return fake_variant_load(0u, artifact, selection);
+}
+
+luisa::compute::ShaderBase const *fake_variant_load_1(
+    luisa::filesystem::path const &artifact,
+    rbc::ShaderManager::VariantSelection const &selection) {
+    return fake_variant_load(1u, artifact, selection);
+}
+
+luisa::compute::ShaderBase const *fake_variant_load_2(
+    luisa::filesystem::path const &artifact,
+    rbc::ShaderManager::VariantSelection const &selection) {
+    return fake_variant_load(2u, artifact, selection);
+}
+
 void reset_fakes() {
     selector_calls.store(0u, std::memory_order_relaxed);
     resolver_calls.store(0u, std::memory_order_relaxed);
     loader_calls.store(0u, std::memory_order_relaxed);
+    variant_loader_calls.store(0u, std::memory_order_relaxed);
+    variant_loader_saw_complex.store(false, std::memory_order_relaxed);
     block_last_program.store(false, std::memory_order_relaxed);
     release_last_program.store(false, std::memory_order_relaxed);
 }
@@ -154,6 +194,40 @@ TEST_SUITE("shader family") {
         CHECK(simple_again.revision == 4u);
         CHECK(resolver_calls.load(std::memory_order_relaxed) == 2u);
         CHECK(loader_calls.load(std::memory_order_relaxed) == 6u);
+        CHECK(variant_loader_calls.load(std::memory_order_relaxed) == 0u);
+    }
+
+    TEST_CASE("variant loader receives the selected ABI") {
+        reset_fakes();
+        luisa::fiber::scheduler scheduler;
+        luisa::compute::ShaderBase const *programs[3]{};
+        rbc::ShaderFamily family{
+            "test_family",
+            {
+                {.logical_name = program_names[0],
+                 .slot = &programs[0],
+                 .load_variant = fake_variant_load_0},
+                {.logical_name = program_names[1],
+                 .slot = &programs[1],
+                 .load_variant = fake_variant_load_1},
+                {.logical_name = program_names[2],
+                 .slot = &programs[2],
+                 .load_variant = fake_variant_load_2},
+            },
+            fake_select,
+            fake_resolve};
+
+        auto loading = family.acquire({.mask = complex_feature});
+        CHECK_FALSE(loading);
+        family.wait();
+
+        auto ready = family.acquire({.mask = complex_feature});
+        REQUIRE(ready);
+        CHECK(variant_loader_calls.load(std::memory_order_relaxed) == 3u);
+        CHECK(variant_loader_saw_complex.load(std::memory_order_relaxed));
+        CHECK(loader_calls.load(std::memory_order_relaxed) == 0u);
+        CHECK(programs[0] ==
+              reinterpret_cast<luisa::compute::ShaderBase const *>(17u));
     }
 
     TEST_CASE("a partially loaded family is never visible") {

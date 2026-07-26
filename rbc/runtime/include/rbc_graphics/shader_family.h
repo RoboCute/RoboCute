@@ -22,10 +22,14 @@ class RBC_RUNTIME_API ShaderFamily {
 public:
     using ProgramLoader = ShaderBase const *(*)(
         luisa::filesystem::path const &artifact);
+    using VariantProgramLoader = ShaderBase const *(*)(
+        luisa::filesystem::path const &artifact,
+        ShaderManager::VariantSelection const &selection);
     struct Program {
         luisa::string logical_name;
         ShaderBase const **slot{};
         ProgramLoader load{};
+        VariantProgramLoader load_variant{};
     };
     using Selector = bool (*)(
         luisa::string_view family_name,

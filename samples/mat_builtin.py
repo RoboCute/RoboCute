@@ -269,6 +269,14 @@ class OpenPBRInterface:
         """Set the diffraction weight."""
         self._data['weight_diffraction'] = _clamp_01(value)
 
+    def get_weight_free_space_diffraction(self) -> float:
+        """Get the free-space diffraction mixture weight."""
+        return self._data.get('weight_free_space_diffraction', 0.0)
+
+    def set_weight_free_space_diffraction(self, value: float) -> None:
+        """Set the free-space diffraction mixture weight."""
+        self._data['weight_free_space_diffraction'] = _clamp_01(value)
+
     def get_geometry_cutout_threshold(self) -> float:
         """Get the geometry cutout threshold."""
         return self._data.get('geometry_cutout_threshold', 0.3)

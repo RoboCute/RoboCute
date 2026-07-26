@@ -129,6 +129,12 @@ inline bool OpenPBR::transform_to_params(
         params.weight.fuzz = weight.fuzz;
         params.weight.thin_film = weight.thin_film;
         params.weight.diffraction = weight.diffraction;
+        if constexpr (requires {
+                          params.weight.free_space_diffraction;
+                      }) {
+            params.weight.free_space_diffraction =
+                weight.free_space_diffraction;
+        }
     }
     if constexpr ((requires { params.weight; }) || (requires { params.specular; })) {
         if (weight.weight_tex.valid()) {

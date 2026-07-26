@@ -11,6 +11,10 @@
 #include <bsdfs/mono/subsurface.hpp>
 #include <bsdfs/mono/transmission.hpp>
 
+#ifdef RBC_ENABLE_FREE_SPACE_DIFFRACTION
+#include <bsdfs/mono/free_space_diffraction.hpp>
+#endif
+
 namespace mtl {
 
 using namespace luisa::shader;
@@ -120,6 +124,10 @@ using CoatedBaseBSDF = WeightedLayeringBSDF<DiffractionBaseBSDF, DielectricCoatB
 
 using SurfaceBSDF = WeightedLayeringBSDF<CoatedBaseBSDF, FuzzBRDF, FuzzWeight>;
 
+#ifdef RBC_ENABLE_FREE_SPACE_DIFFRACTION
+using OpenpbrBSDF = FreeSpaceDiffractionBSDF<SurfaceBSDF>;
+#else
 using OpenpbrBSDF = SurfaceBSDF;
+#endif
 
 }// namespace mtl

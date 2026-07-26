@@ -2,7 +2,7 @@
 
 本文档描述 RoboCute 当前 Shader 变体系统的完整设计：如何声明编译变体、如何从材质推导场景 feature、如何在运行时选择一组相互兼容的 Shader，以及如何构建、验证和发布这些产物。
 
-当前实现只使用 `schema_version: 1`。没有旧 schema 兼容、Lite/Full fallback 或缺失产物降级；描述、产物或代际不一致都应尽早报错。
+当前实现只使用 `schema_version: 2`。没有旧 schema 兼容、变体 fallback 或缺失产物降级；描述、产物或代际不一致都应尽早报错。
 
 ## 1. 目标与边界
 
@@ -15,9 +15,10 @@
 | 场景状态 | 选择结果 | 编译行为 |
 | --- | --- | --- |
 | 没有复杂 PBR 材质 | `pbr_material=lite` | 定义 `RBC_LITE_PBR_MATERIAL=1` |
-| 至少有一个复杂 PBR 材质 | `pbr_material=full` | 不定义 `RBC_LITE_PBR_MATERIAL` |
+| 有复杂 PBR 材质但没有 FSD | `pbr_material=full` | 不定义 Lite/FSD 宏 |
+| 至少有一个 FSD 材质 | `pbr_material=fsd` | 定义 `RBC_ENABLE_FREE_SPACE_DIFFRACTION=1` |
 
-`lite` 和 `full` 只是当前维度的两个 value，不是写死在 `OfflinePTPass` 中的通用枚举。以后可以增加其他 feature、dimension、value 和 family，运行时仍使用相同的选择机制。
+`lite`、`full` 和 `fsd` 只是当前维度的 value，不是写死在 `OfflinePTPass` 中的通用枚举。以后可以增加其他 feature、dimension、value 和 family，运行时仍使用相同的选择机制。
 
 设计边界如下：
 
@@ -39,7 +40,7 @@
 | source manifest | 手写的 `rbc/shader/shader_variants.json`，描述编译空间和场景选择规则 |
 | scene feature | 从场景数据推导出的能力位，例如 `complex_pbr_material` |
 | dimension | 一个编译维度，例如 `pbr_material` |
-| value | 维度的一个取值，例如 `lite`、`full` |
+| value | 维度的一个取值，例如 `lite`、`full`、`fsd` |
 | permutation | 一组明确的 dimension selection；只有显式声明的 permutation 才会构建 |
 | variant set | source manifest 中的一组 permutation 及其 program 成员；构建后投影为 runtime family |
 | program | 一个逻辑 Shader 程序，例如 `path_tracer/offline_pt` |
@@ -83,8 +84,9 @@ clangcxx compiler 及其模板/DLL
         |
         +--> 默认/variant .bin
         +--> 自动生成 shader_manifest.json
-        +--> 对所有 define 组合执行 hostgen 并验证 stable ABI
-        +--> rbc/shader/host/*.inl + .shader_input_id
+        +--> stable program 对所有 define 组合执行 hostgen 并验证 ABI
+        +--> per_variant program 为每个 permutation 生成独立 host ABI
+        +--> rbc/shader/host/*.inl、host/variants/**/*.inl + .shader_input_id
         |
         v
 验证 DX/VK/host/render plugin input_id 一致
@@ -132,7 +134,7 @@ revision 变化 -> 清零 PT 累积 -> 使用新变体 dispatch
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "backends": ["dx", "vk"],
   "compile": {
     "source_root": "src",
@@ -140,7 +142,10 @@ revision 变化 -> 清零 PT 累积 -> 使用新变体 dispatch
     "optimization": "on",
     "defines": {}
   },
-  "scene_features": ["complex_pbr_material"],
+  "scene_features": [
+    "complex_pbr_material",
+    "free_space_diffraction"
+  ],
   "dimensions": {
     "pbr_material": {
       "default": "lite",
@@ -148,13 +153,23 @@ revision 变化 -> 清零 PT 累积 -> 使用新变体 dispatch
         "lite": {
           "defines": {"RBC_LITE_PBR_MATERIAL": "1"},
           "scene_features": {
-            "forbidden": ["complex_pbr_material"]
+            "forbidden": [
+              "complex_pbr_material",
+              "free_space_diffraction"
+            ]
           }
         },
         "full": {
           "defines": {},
           "scene_features": {
-            "required": ["complex_pbr_material"]
+            "required": ["complex_pbr_material"],
+            "forbidden": ["free_space_diffraction"]
+          }
+        },
+        "fsd": {
+          "defines": {"RBC_ENABLE_FREE_SPACE_DIFFRACTION": "1"},
+          "scene_features": {
+            "required": ["free_space_diffraction"]
           }
         }
       }
@@ -165,7 +180,8 @@ revision 变化 -> 清零 PT 累积 -> 使用新变体 dispatch
       "default": "lite",
       "permutations": [
         {"id": "lite", "select": {"pbr_material": "lite"}},
-        {"id": "full", "select": {"pbr_material": "full"}}
+        {"id": "full", "select": {"pbr_material": "full"}},
+        {"id": "fsd", "select": {"pbr_material": "fsd"}}
       ]
     }
   },
@@ -174,19 +190,20 @@ revision 变化 -> 清零 PT 累积 -> 使用新变体 dispatch
       "id": "path_tracer/offline_pt",
       "source": "src/path_tracer/offline_pt.cpp",
       "variant_set": "offline_pt",
-      "host_abi": "stable"
+      "host_abi": "per_variant"
     },
     {
       "id": "path_tracer/offline_pt_denoise",
-      "source": "src/path_tracer/offline_pt_denoise.cpp",
+      "source": "src/path_tracer/offline_pt.cpp",
+      "defines": {"RBC_OFFLINE_PT_DENOISE": null},
       "variant_set": "offline_pt",
-      "host_abi": "stable"
+      "host_abi": "per_variant"
     },
     {
       "id": "path_tracer/pt_multi_bounce_offline",
       "source": "src/path_tracer/pt_multi_bounce_offline.cpp",
       "variant_set": "offline_pt",
-      "host_abi": "stable"
+      "host_abi": "per_variant"
     }
   ]
 }
@@ -196,7 +213,7 @@ revision 变化 -> 清零 PT 累积 -> 使用新变体 dispatch
 
 | 字段 | 规则 |
 | --- | --- |
-| `schema_version` | 当前必须严格等于 `1`，没有版本兼容分支 |
+| `schema_version` | 当前必须严格等于 `2`，没有版本兼容分支 |
 | `backends` | 非空、唯一的 backend 列表；当前为 `dx` 和 `vk` |
 | `compile.source_root` | 相对 `rbc/shader` 的 Shader `.cpp` 根目录 |
 | `compile.include_dirs` | 相对 `rbc/shader` 的 include 根目录列表，至少一个 |
@@ -262,14 +279,15 @@ quality=high+transport=spectral
 
 `programs[]` 只列出需要变体的 program：
 
-- `id` 必须等于 `source` 相对 `compile.source_root` 去掉 `.cpp` 后的路径。
+- `id` 是唯一逻辑名；多个 program 可以共享一个物理 `source`。
 - `source` 必须存在、位于 source root 内并以 `.cpp` 结尾。
+- `defines` 是该 logical program 独有的宏，不能覆盖公共或维度宏。
 - `variant_set` 必须存在。
 - 一个 program 只能属于一个 variant set。
 - 每个 variant set 至少要被一个 program 使用。
-- `host_abi` 当前只接受 `stable`。
+- `host_abi` 必须是 `stable` 或 `per_variant`。
 
-source root 下没有列入 `programs[]` 的 `.cpp` 仍会被发现和编译，但只生成默认产物，不属于任何 runtime family。
+source root 下没有列入 `programs[]` 的 `.cpp` 仍会被发现和编译，生成默认 backend 产物和默认 host interface，但不属于任何 runtime family。
 
 ### 4.5 `host_abi: stable`
 
@@ -281,7 +299,25 @@ source root 下没有列入 `programs[]` 的 `.cpp` 仍会被发现和编译，�
 Stable host ABI changed
 ```
 
-这样 `OfflinePTPass` 可以继续使用原有 namespace、`load_shader()` 和 `dispatch_shader()`，不需要为每个 selection 生成另一套 C++ 名字。
+这样使用 stable ABI 的 Pass 可以继续使用原有 namespace、`load_shader()` 和 `dispatch_shader()`，不需要为每个 selection 生成另一套 C++ 名字。
+
+### 4.6 `host_abi: per_variant`
+
+当宏有意改变 program 的参数列表时，使用 `per_variant`。这类 program 不参加 stable ABI 比较；hostgen 会使用 program 所属 variant set 的每个 permutation 对应的完整 define 集分别生成接口，并发布到：
+
+```text
+rbc/shader/host/variants/<variant-set>/<permutation-id>/<program-id>.inl
+```
+
+例如 `offline_pt/fsd` 的接口为：
+
+```text
+rbc/shader/host/variants/offline_pt/fsd/path_tracer/offline_pt.inl
+```
+
+每个 permutation 有独立缓存键，包含编译器指纹、Shader 输入摘要、selection、维度 define、program define 和 program 列表。`variants/` 是生成器管理的目录；重新生成时会整体替换，目录外的手写 host helper 保持不变。共享 source 的 logical program 由 program define 区分，不需要 wrapper entrypoint。
+
+hostgen 对每个 permutation 生成一次完整 source tree，以刷新普通 Shader 接口；同源且带 program define 的 logical program 再做一次隔离 hostgen，避免它的宏污染同一物理 source 的其他 program。最后从根目录移除 `per_variant` program 接口并发布到 `variants/<family>/<permutation>/`。因此普通 Shader 不会留下陈旧 `.inl`，同源变体也保持独立 ABI 和缓存键。
 
 ## 5. 材质如何变成 Scene Feature
 
@@ -290,6 +326,7 @@ Stable host ABI changed
 ```cpp
 enum class SceneShaderFeature : uint64_t {
     ComplexPbrMaterial = 1ull << 0u,
+    FreeSpaceDiffraction = 1ull << 1u,
 };
 ```
 
@@ -297,9 +334,18 @@ enum class SceneShaderFeature : uint64_t {
 
 ```text
 "complex_pbr_material" -> SceneShaderFeature::ComplexPbrMaterial
+"free_space_diffraction" -> SceneShaderFeature::FreeSpaceDiffraction
 ```
 
 这是 source JSON 和 C++ runtime 之间必须保持一致的契约。runtime manifest 中出现未注册 feature 会被拒绝。
+
+Feature identity bit 必须彼此独立，manifest 的 `required` 和 `forbidden` 始终针对这些 identity bit 做精确匹配。材质分类直接返回该材质需要的完整能力集合；FSD 材质返回：
+
+```text
+free_space_diffraction | complex_pbr_material
+```
+
+`SceneManager` 只聚合 source 已经发布的 bit，不包含 FSD 特判。`fsd` rule 只需 require FSD，而普通 `full` rule require Complex 并 forbid FSD。这样 complex-only 场景仍选 `full`，FSD 场景唯一选择 `fsd`。
 
 ### 5.1 当前 Lite 判定
 
@@ -411,11 +457,19 @@ runtime manifest 由 source manifest 和实际编译结果生成。它包含：
         {
           "selection": {"pbr_material": "lite"},
           "required_features": [],
-          "forbidden_features": ["complex_pbr_material"]
+          "forbidden_features": [
+            "complex_pbr_material",
+            "free_space_diffraction"
+          ]
         },
         {
           "selection": {"pbr_material": "full"},
           "required_features": ["complex_pbr_material"],
+          "forbidden_features": ["free_space_diffraction"]
+        },
+        {
+          "selection": {"pbr_material": "fsd"},
+          "required_features": ["free_space_diffraction"],
           "forbidden_features": []
         }
       ]
@@ -753,7 +807,7 @@ uv run python samples/diffraction_disc.py `
 | 现象 | 含义与处理 |
 | --- | --- |
 | `Shader compiler not found` | 先运行 `uv run prepare -y`；自定义位置用 `--compiler` |
-| source schema 不是 `1` 或出现未知字段 | 修正手写 manifest；当前没有版本兼容 |
+| source schema 不是 `2` 或出现未知字段 | 修正手写 manifest；当前没有版本兼容 |
 | feature 未声明或从未使用 | 同步顶层声明和 value 规则 |
 | rule gap/ambiguity | 补齐 required/forbidden 规则，使每种 feature 组合唯一命中 |
 | default permutation 不匹配全局 default | 修正 `variant_sets.<name>.default` 或其 selection |
@@ -801,7 +855,6 @@ xmake run test_shader_runtime
 
 当前仍应注意的测试空白：
 
-- 只有一个真实 scene feature：`ComplexPbrMaterial`。
 - feature 名到 C++ bit 仍是显式注册表，不是代码生成。
 - `SceneManager` bind/unbind 动态聚合目前缺少独立的 C++ 单元测试。
 - 材质分类主要由 compile-time assertions 和光碟集成示例覆盖。
