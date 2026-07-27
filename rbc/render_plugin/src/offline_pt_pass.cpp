@@ -18,18 +18,27 @@ namespace rbc {
 namespace offline_pt_shader {
 #include <variants/offline_pt/lite/path_tracer/offline_pt.inl>
 }// namespace offline_pt_shader
+namespace offline_pt_shader_full {
+#include <variants/offline_pt/full/path_tracer/offline_pt.inl>
+}// namespace offline_pt_shader_full
 namespace offline_pt_shader_fsd {
 #include <variants/offline_pt/fsd/path_tracer/offline_pt.inl>
 }// namespace offline_pt_shader_fsd
 namespace offline_pt_shader_denoise {
 #include <variants/offline_pt/lite/path_tracer/offline_pt_denoise.inl>
 }// namespace offline_pt_shader_denoise
+namespace offline_pt_shader_denoise_full {
+#include <variants/offline_pt/full/path_tracer/offline_pt_denoise.inl>
+}// namespace offline_pt_shader_denoise_full
 namespace offline_pt_shader_denoise_fsd {
 #include <variants/offline_pt/fsd/path_tracer/offline_pt_denoise.inl>
 }// namespace offline_pt_shader_denoise_fsd
 namespace offline_multibounce {
 #include <variants/offline_pt/lite/path_tracer/pt_multi_bounce_offline.inl>
 }// namespace offline_multibounce
+namespace offline_multibounce_full {
+#include <variants/offline_pt/full/path_tracer/pt_multi_bounce_offline.inl>
+}// namespace offline_multibounce_full
 namespace offline_multibounce_fsd {
 #include <variants/offline_pt/fsd/path_tracer/pt_multi_bounce_offline.inl>
 }// namespace offline_multibounce_fsd
@@ -39,7 +48,7 @@ namespace ao_trace {
 
 namespace {
 
-template<auto LoadLite, auto LoadFsd>
+template<auto LoadLite, auto LoadFull, auto LoadFsd>
 ShaderBase const *load_pt_variant(
     luisa::filesystem::path const &artifact,
     ShaderManager::VariantSelection const &selection) {
@@ -49,7 +58,9 @@ ShaderBase const *load_pt_variant(
             value == "lite" || value == "full" || value == "fsd",
             "Offline PT selected an unknown PBR material variant {}.",
             value);
-        return value == "fsd" ? LoadFsd(artifact) : LoadLite(artifact);
+        if (value == "fsd") return LoadFsd(artifact);
+        if (value == "full") return LoadFull(artifact);
+        return LoadLite(artifact);
     }
     LUISA_ERROR("Offline PT selection has no PBR material variant.");
 }
@@ -76,9 +87,6 @@ struct OfflinePTPass::PTShaders {
         ShaderBase const *shader,
         DispatchSize dispatch_size,
         NamedArgs &&...args) const {
-        static_assert(
-            !Interface::template has_arg<"g_fsd_accel"> &&
-            FsdInterface::template has_arg<"g_fsd_accel">);
         if (fsd) {
             LUISA_ASSERT(fsd->active());
             return FsdInterface::dispatch(
@@ -123,24 +131,24 @@ struct OfflinePTPass::PTShaders {
         : family{
               "offline_pt",
               {
-                  {
-                      .logical_name = "path_tracer/offline_pt",
-                      .slot = &primary,
-                      .load_variant = load_pt_variant<
-                          offline_pt_shader::load_shader,
-                          offline_pt_shader_fsd::load_shader>},
-                  {
-                      .logical_name = "path_tracer/offline_pt_denoise",
-                      .slot = &denoise,
-                      .load_variant = load_pt_variant<
-                          offline_pt_shader_denoise::load_shader,
-                          offline_pt_shader_denoise_fsd::load_shader>},
-                  {
-                      .logical_name = "path_tracer/pt_multi_bounce_offline",
-                      .slot = &multibounce,
-                      .load_variant = load_pt_variant<
-                          offline_multibounce::load_shader,
-                          offline_multibounce_fsd::load_shader>},
+                  {.logical_name = "path_tracer/offline_pt",
+                   .slot = &primary,
+                   .load_variant = load_pt_variant<
+                       offline_pt_shader::load_shader,
+                       offline_pt_shader_full::load_shader,
+                       offline_pt_shader_fsd::load_shader>},
+                  {.logical_name = "path_tracer/offline_pt_denoise",
+                   .slot = &denoise,
+                   .load_variant = load_pt_variant<
+                       offline_pt_shader_denoise::load_shader,
+                       offline_pt_shader_denoise_full::load_shader,
+                       offline_pt_shader_denoise_fsd::load_shader>},
+                  {.logical_name = "path_tracer/pt_multi_bounce_offline",
+                   .slot = &multibounce,
+                   .load_variant = load_pt_variant<
+                       offline_multibounce::load_shader,
+                       offline_multibounce_full::load_shader,
+                       offline_multibounce_fsd::load_shader>},
               }} {}
 };
 
@@ -287,7 +295,6 @@ offline::PTArgs OfflinePTPass::_setup_pt_args(
     pt_args.inv_vp = cam_data.inv_vp;
     pt_args.frame_countdown = rc.scene.tex_streamer().countdown();
     pt_args.light_count = static_cast<uint>(rc.scene.light_accel().light_count());
-    pt_args.tex_grad_scale = float2(1);
     pt_args.enable_physical_camera = cam.enable_physical_camera;
     pt_args.require_reject = rc.frame_settings.reject_sampling;
     pt_args.frame_index = frame_index;

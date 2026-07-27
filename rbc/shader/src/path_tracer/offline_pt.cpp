@@ -1,525 +1,175 @@
 #define OFFLINE_MODE
-#include <luisa/std.hpp>
 #include <luisa/resources.hpp>
-#include <path_tracer/read_pixel.hpp>
-#include <sampling/sample_funcs.hpp>
-#include <geometry/vertices.hpp>
-#include <material/mats.hpp>
-#include <utils/onb.hpp>
-#include <sampling/sample_funcs.hpp>
-#include <sampling/heitz_sobol.hpp>
-#include <lighting/importance_sampling.hpp>
+#include <path_tracer/gbuffer.hpp>
 #include <path_tracer/pt_args.hpp>
 
-#include <path_tracer/integrator.hpp>
-#include <path_tracer/gbuffer.hpp>
+namespace luisa::shader {
 
-#include <std/inplace_vector>
-#include <volumetric/volume.hpp>
-#include <volumetric/trace.hpp>
+extern PTArgs args;
+extern uint2 size;
+extern Buffer<MultiBouncePixel> &multi_bounce_pixel;
+extern Buffer<uint> &multi_bounce_pixel_counter;
+extern Buffer<GBuffer> &gbuffers;
+extern Image<float> &emission_img;
+extern Image<float> &last_img;
+extern Image<uint> &id_map;
+extern Image<float> &mask_img;
+#ifdef RBC_OFFLINE_PT_DENOISE
+extern Buffer<float> &albedo_buffer;
+extern Buffer<float> &normal_buffer;
+#endif
+extern Buffer<float> &geometry_buffer;
+extern int alpha_option;
+
+}// namespace luisa::shader
+
+#include <path_tracer/environment_light.hpp>
+#include <path_tracer/path.hpp>
+#include <path_tracer/path_vertex.hpp>
+#include <path_tracer/primary_output.hpp>
+#include <path_tracer/sample_streams.hpp>
+#include <sampling/sample_funcs.hpp>
 #include <volumetric/medium_probe.hpp>
+#include <volumetric/trace.hpp>
 
 using namespace luisa::shader;
 
-[[kernel_2d(16, 8)]] int kernel(
-    Image<float> &emission_img,
-    Image<float> &last_img,
-    Image<uint> &id_map,
-    Image<float> &mask_img,
-    Buffer<GBuffer> gbuffers,
-#ifdef RBC_OFFLINE_PT_DENOISE
-    Buffer<float> albedo_buffer,
-    Buffer<float> normal_buffer,
-#endif
-    Buffer<float> &geometry_buffer,
-    Buffer<MultiBouncePixel> &multi_bounce_pixel,
-    Buffer<uint> &multi_bounce_pixel_counter,
-    PTArgs args,
-    int alpha_option,
-    uint2 size) {
+namespace pt {
 
-    auto coord = dispatch_id().xy;
-    // auto screen_uv = (float2(coord) + args.jitter_offset + float2(0.5)) / float2(size);
-    float3 dir;
-    Ray ray;
-    /////////////// RR
-    SharedArray<float, 16 * 8> quad_beta;
-    SharedArray<uint, 8 * 4> quad_flags;
-    bool reject = false;
-    auto quad_id = thread_id().xy;
-    quad_id /= 2u;
-    auto quad_group_id = (quad_id.y * 8 + quad_id.x) * 4u;
-    auto quad_local_id = (thread_id().x & 1u) + (thread_id().y & 1u) * 2;
-    quad_beta[quad_group_id + quad_local_id] = 0;
-    if (quad_local_id == 0) {
-        quad_flags[quad_group_id / 4] = 0;
-    }
-    if (any(coord >= size)) {
-        return 0;
-    }
-    // Random Sampler
-    sampling::HeitzSobol sampler(coord, args.frame_index);
-    sampling::PCGSamplerOffsetted pcg_sampler(uint3(dispatch_id().xy, args.frame_index));
-    pcg_sampler.offset = sampler.next3f(g_buffer_heap) / 128.f;
-    auto screen_uv = (float2(coord) + sampling::sample_uniform_disk_concentric(pcg_sampler.next2f()) + 0.5f) / float2(size);
-    // Camera primary ray
-    {
-        auto proj = float4((screen_uv * 2.f - 1.0f), 0.f, 1);
-        auto world_pos = args.inv_vp * proj;
-        world_pos /= world_pos.w;
-        auto n_dir = world_pos.xyz - args.cam_pos;
-        auto dir_len = length(n_dir);
-        dir = n_dir / max(1e-4f, dir_len);
-        proj.z = 1.0f;
-        auto near_world_pos = args.inv_vp * proj;
-        near_world_pos /= near_world_pos.w;
-        if (args.enable_physical_camera) {
-            auto coord_lens = sampling::sample_uniform_disk_concentric(pcg_sampler.next2f()) * args.lens_radius;
-            auto p_lens = float3(coord_lens, 0.f);
-            float3 dst_pos = near_world_pos.xyz + dir * args.focus_distance;
-            float4 p_lens_r = args.inv_view * float4(p_lens, 1.0f);
-            p_lens_r /= p_lens_r.w;
-            near_world_pos = p_lens_r;
-            dir = normalize(dst_pos - near_world_pos.xyz);
+class PathIntegrator {
+public:
+    explicit PathIntegrator(uint2 coord) : _coord(coord) {}
+
+    int sample() {
+
+        auto coord = _coord;
+        SharedArray<float, 16 * 8> quad_beta;
+        SharedArray<uint, 8 * 4> quad_flags;
+        bool reject = false;
+        auto quad_id = thread_id().xy;
+        quad_id /= 2u;
+        auto quad_group_id = (quad_id.y * 8 + quad_id.x) * 4u;
+        auto quad_local_id = (thread_id().x & 1u) + (thread_id().y & 1u) * 2;
+        quad_beta[quad_group_id + quad_local_id] = 0;
+        if (quad_local_id == 0) {
+            quad_flags[quad_group_id / 4] = 0;
         }
-        ray = Ray(near_world_pos.xyz, dir, sampling::offset_ray_t_min, dir_len);
-    }
-
-    float3 beta(1.0f);
-    mtl::ShadingDetail detail = mtl::ShadingDetail::Default;
-    std::inplace_vector<mtl::Volume, mtl::Volume::MAX_VOLUME_STACK_SIZE> volume_stack;
-    SpectrumArg spectrum_arg;
-    float wavelength_sample = fract(sampler.next(g_buffer_heap) + pcg_sampler.next() / 255.0f);
-    spectrum_arg.lambda = spectrum::sample_wavelengths(g_image_heap, wavelength_sample);
-    spectrum_arg.hero_index = pcg_sampler.nextui() % 3u;
-
-    if (args.probe_initial_medium) {
-        bool selected_wavelength = spectrum_arg.selected_wavelength;
-        mtl::probe_medium_stack(
-            volume_stack,
-            ray.origin(),
-            args,
-            pcg_sampler,
-            spectrum_arg,
-            args.resource_to_rec2020_mat);
-        if (!selected_wavelength && spectrum_arg.selected_wavelength) {
-            float3 ignored_last_beta = beta;
-            float3 ignored_di = 0.0f;
-            spectrum::modify_throughput(
-                g_image_heap,
-                spectrum_arg,
-                args.spectrum,
-                beta,
-                ignored_last_beta,
-                ignored_di);
-        }
-    }
-
-    ProceduralGeometry procedural_geometry;
-    CommittedHit hit = mtl::trace_volumetric(
-        volume_stack,
-        beta,
-        detail,
-        ray,
-        args,
-        sampler,
-        procedural_geometry);
-    dir = ray.dir();
-    bool primary_hit_written = false;
-    auto write_primary_hit = [&](CommittedHit const& primary) {
-        if (!args.write_id_map || primary_hit_written) return;
-        uint4 encoded_hit(max_uint32, max_uint32, 0, 0);
-        if (primary.hit_triangle()) {
-            encoded_hit.x = primary.inst;
-            encoded_hit.y = primary.prim;
-            encoded_hit.z = bit_cast<uint>(primary.bary.x);
-            encoded_hit.w = bit_cast<uint>(primary.bary.y);
-        } else if (primary.hit_procedural()) {
-            encoded_hit.x = primary.inst;
-            encoded_hit.y = primary.prim;
-        }
-        id_map.write(coord, encoded_hit);
-        primary_hit_written = true;
-    };
-    float3 addition_color = float3(0);
-    float3 emission_sum = float3(0);
-    float3 gbuffer_albedo = float3(0);
-    float2 gbuffer_uv = float2(0);
-#ifdef RBC_OFFLINE_PT_DENOISE
-    float3 albedo_sum = float3(0);
-#endif
-    float4 normal_rough = float4(0);
-    float to_cam_dist = 1e28f;
-    uint2 obj_id(max_uint32, max_uint32);
-    uint mat_id_channel;
-    float2 obj_bary;
-
-    float4 hitpos;// xyz: pos, w: hit normal
-    const int MAX_DEPTH = args.bounce + 1;
-
-    float3 write_beta(-1.f);
-    float first_dist;
-    float3 radiance(0.f);
-    auto write_tex = [&]() {
         if (any(coord >= size)) {
-            return;
+            return 0;
         }
-        uint buffer_id = (coord.x + coord.y * size.x);
-        GBuffer gbuffer;
-        gbuffer.hitpos_normal = std::array<float, 4>(hitpos.x, hitpos.y, hitpos.z, hitpos.w);
-        gbuffer.beta = std::array<float, 3>(write_beta.x, write_beta.y, write_beta.z);
-        gbuffer.radiance = std::array<float, 3>(radiance.x, radiance.y, radiance.z);
-        gbuffers.write(buffer_id, gbuffer);
-        float alpha = reject ? 0.f : 1.f;
-        addition_color = reject ? float3(0.f) : addition_color;
-        if (!args.reset_emission) {
-            auto old_val = emission_img.read(coord);
-            addition_color += old_val.xyz;
-            alpha += old_val.w;
-        }
-        float emission_alpha = alpha;
-        float mask = 0;
-        switch (alpha_option) {
-            case 1:
-                mask = to_cam_dist > 1e10f ? 0.0f : 1.0f;
-                break;
-            case 2:
-                mask = to_cam_dist > 1e20f ? 1.0f : 0.0f;
-                break;
-            case 3:
-                mask = 0.f;
-                break;
-        }
-        if (alpha_option > 0) {
-            mask_img.write(coord, float4(mask));
-        }
-        emission_img.write(coord, float4(addition_color, emission_alpha));
-        if (reject) return;
+        pt::PrimarySampleStreams samplers(coord, args.frame_index);
+        samplers.surface.offset = samplers.trace.next3f(g_buffer_heap) / 128.f;
+        float3 dir;
+        Ray ray = sample_camera_ray(samplers, dir);
 
-        alpha = args.frame_index == 0 ? 1.0f : (alpha / (last_img.read(coord).w + alpha));
-#ifdef RBC_OFFLINE_PT_DENOISE
-        {
-            auto origin_buffer_id = buffer_id;
-            buffer_id *= 3;
-            if (alpha < 0.999f) {
-                float3 old_albedo;
-                old_albedo.x = albedo_buffer.read(buffer_id);
-                old_albedo.y = albedo_buffer.read(buffer_id + 1);
-                old_albedo.z = albedo_buffer.read(buffer_id + 2);
-                albedo_sum = lerp(old_albedo, albedo_sum, float3(alpha));
-                float3 old_normal;
-                old_normal.x = normal_buffer.read(buffer_id);
-                old_normal.y = normal_buffer.read(buffer_id + 1);
-                old_normal.z = normal_buffer.read(buffer_id + 2);
-                normal_rough.xyz = lerp(old_normal, normal_rough.xyz, float3(alpha));
-                auto norm_len = length(normal_rough.xyz);
-                if (norm_len < 1e-5f) {
-                    normal_rough.xyz = old_normal;
-                } else {
-                    normal_rough.xyz /= norm_len;
-                }
-            }
-            albedo_buffer.write(buffer_id, albedo_sum.x);
-            albedo_buffer.write(buffer_id + 1, albedo_sum.y);
-            albedo_buffer.write(buffer_id + 2, albedo_sum.z);
-            normal_buffer.write(buffer_id, normal_rough.x);
-            normal_buffer.write(buffer_id + 1, normal_rough.y);
-            normal_buffer.write(buffer_id + 2, normal_rough.z);
-            buffer_id = origin_buffer_id;
-        }
-#endif
+        pt::Path path;
+        float wavelength_sample = initialize_path(path, ray, samplers);
+        probe_initial_medium(path, samplers);
 
-        uint byte_offset = 0;
-        const uint pixel_count = size.x * size.y;
-        if ((args.geometry_mask & (1 << 0)) != 0)// Depth
-        {
-            const uint element_size = 1;// sizeof(float)
-            float value = to_cam_dist;
-            uint read_index = byte_offset + buffer_id * element_size;
-            // if (alpha < 0.999f) {
-            //     value = lerp(geometry_buffer.read(read_index), value, alpha);
-            // }
-            geometry_buffer.write(read_index, value);
-            byte_offset += element_size * pixel_count;
-        }
-        if ((args.geometry_mask & (1 << 1)) != 0)// Normal
-        {
-            const uint element_size = 3;//  3
-            float3 value = normal_rough.xyz * 0.5f + 0.5f;
-            uint read_index = byte_offset + buffer_id * element_size;
-            // if (alpha < 0.999f) {
-            //     float3 old_value;
-            //     old_value.x = geometry_buffer.read(read_index);
-            //     old_value.y = geometry_buffer.read(read_index + 1);
-            //     old_value.z = geometry_buffer.read(read_index + 2);
-            //     value = lerp(old_value, value, alpha);
-            // }
-            geometry_buffer.write(read_index, value.x);
-            geometry_buffer.write(read_index + 1, value.y);
-            geometry_buffer.write(read_index + 2, value.z);
-            byte_offset += element_size * pixel_count;
-        }
-        if ((args.geometry_mask & (1 << 2)) != 0)// ObjectID
-        {
-            const uint element_size = 1;
-            uint read_index = byte_offset + buffer_id * element_size;
-            geometry_buffer.write(read_index, bit_cast<float>(obj_id.x));
-            byte_offset += element_size * pixel_count;
-        }
-        if ((args.geometry_mask & (1 << 3)) != 0)// PrimID
-        {
-            const uint element_size = 1;//  1
-            uint read_index = byte_offset + buffer_id * element_size;
-            geometry_buffer.write(read_index, bit_cast<float>(obj_id.y));
-            byte_offset += element_size * pixel_count;
-        }
-        if ((args.geometry_mask & (1 << 4)) != 0)// Barycentric
-        {
-            const uint element_size = 2;
-            uint read_index = byte_offset + buffer_id * element_size;
-            geometry_buffer.write(read_index, obj_bary.x);
-            geometry_buffer.write(read_index + 1, obj_bary.y);
-            byte_offset += element_size * pixel_count;
-        }
-        if ((args.geometry_mask & (1 << 5)) != 0)// Emission
-        {
-            const uint element_size = 3;//  3
-            float3 value = spectrum::spectrum_to_tristimulus(emission_sum, args.spectrum);
-            uint read_index = byte_offset + buffer_id * element_size;
-            // if (alpha < 0.999f) {
-            //     float3 old_value;
-            //     old_value.x = geometry_buffer.read(read_index);
-            //     old_value.y = geometry_buffer.read(read_index + 1);
-            //     old_value.z = geometry_buffer.read(read_index + 2);
-            //     value = lerp(old_value, value, alpha);
-            // }
-            geometry_buffer.write(read_index, value.x);
-            geometry_buffer.write(read_index + 1, value.y);
-            geometry_buffer.write(read_index + 2, value.z);
-            byte_offset += element_size * pixel_count;
-        }
-        if ((args.geometry_mask & (1 << 6)) != 0)// Albedo
-        {
-            const uint element_size = 3;//  3
-            float3 value = gbuffer_albedo;
-            uint read_index = byte_offset + buffer_id * element_size;
-            // if (alpha < 0.999f) {
-            //     float3 old_value;
-            //     old_value.x = geometry_buffer.read(read_index);
-            //     old_value.y = geometry_buffer.read(read_index + 1);
-            //     old_value.z = geometry_buffer.read(read_index + 2);
-            //     value = lerp(old_value, value, alpha);
-            // }
-            geometry_buffer.write(read_index, value.x);
-            geometry_buffer.write(read_index + 1, value.y);
-            geometry_buffer.write(read_index + 2, value.z);
-            byte_offset += element_size * pixel_count;
-        }
-        if ((args.geometry_mask & (1 << 7)) != 0)// Albedo
-        {
-            const uint element_size = 1;//  1
-            uint read_index = byte_offset + buffer_id * element_size;
-            geometry_buffer.write(read_index, bit_cast<float>(mat_id_channel));
-            byte_offset += element_size * pixel_count;
-        }
-        if ((args.geometry_mask & (1 << 8)) != 0)// UV
-        {
-            const uint element_size = 2;//  1
-            float2 value = gbuffer_uv;
-            uint read_index = byte_offset + buffer_id * element_size;
-            // if (alpha < 0.999f) {
-            //     float2 old_value;
-            //     old_value.x = geometry_buffer.read(read_index);
-            //     old_value.y = geometry_buffer.read(read_index + 1);
-            //     value = lerp(old_value, value, alpha);
-            // }
-            geometry_buffer.write(read_index, value.x);
-            geometry_buffer.write(read_index + 1, value.y);
-            byte_offset += element_size * pixel_count;
-        }
-    };
+        ProceduralGeometry procedural_geometry;
+        CommittedHit hit = path.trace(
+            samplers.trace,
+            procedural_geometry);
+        dir = path.ray.dir();
+        pt::PrimaryOutput output;
+        const int MAX_DEPTH = args.bounce + 1;
 
-    if (hit.miss()) {
-        write_primary_hit(hit);
-        normal_rough = float4(0, 0, 1, 0);
-        if (args.sky_heap_idx != max_uint32) {
-            addition_color = g_image_heap.uniform_idx_image_sample(args.sky_heap_idx, sampling::sphere_direction_to_uv(args.world_2_sky_mat, dir), Filter::LINEAR_POINT, Address::EDGE).xyz;
-            addition_color = args.resource_to_rec2020_mat * addition_color;
-            addition_color = spectrum::emission_to_spectrum(g_image_heap, g_volume_heap, spectrum_arg, addition_color);
-            addition_color *= beta;
-        }
-        emission_sum = addition_color;
-        write_tex();
-        return 0;
-    }
+        float first_dist;
+        pt::EnvironmentLight environment;
 
-    float3 input_pos = ray.origin();
-    float pdf_bsdf = -1.0f;
-    first_dist = 0.f;
-    float2 ddx = float2(0);
-    float2 ddy = float2(0);
-    uint filter = Filter::ANISOTROPIC;
-    float3 new_dir = dir;
-    bool continue_loop = true;
-    int depth = 0;
-    int transparent_depth = 0;
-    const int TRANS_MAX_DEPTH = 4;
-    uint medium_boundary_steps = 0u;
-    bool write_gbuffer = false;
-    vt::VTMeta vt_meta;
-    vt_meta.frame_countdown = args.frame_countdown;
-    float3 last_beta(0.f);
-    float3 current_weight(0.f);
-    // (args.geometry_mask & 1)
-    // sampling::PCGSampler block_sampler(uint3(dispatch_id().xy / 8u, args.frame_index));
-    while (depth < MAX_DEPTH) {
-        float3 di_result;
-        float di_dist;
-        last_beta = beta;
-        float lobe_rand;
-        // if (write_gbuffer) {
-        // 	lobe_rand = block_sampler.next();
-        // } else
-        {
-            lobe_rand = sampler.next(g_buffer_heap);
-        }
-        bool selected_wavelength = spectrum_arg.selected_wavelength;
-        uint mat_id;
-        IntegratorResult result = sample_material(
-            pcg_sampler,
-            volume_stack,
-            hit,
-            procedural_geometry,
-            spectrum_arg,
-            args.world_2_sky_mat,
-            vt_meta,
-            lobe_rand,
-            input_pos,
-            beta,
-            continue_loop,
-            true,
-            !write_gbuffer,
-            filter,
-            ddx,
-            ddy,
-            detail,
-            args,
-            true,
-            args.resource_to_rec2020_mat,
-            di_result,
-            di_dist,
-            pdf_bsdf,
-            new_dir,
-            reject,
-            mat_id);
-        reject &= args.require_reject;
-        continue_loop &= (!reject);
-        if (!selected_wavelength && spectrum_arg.selected_wavelength) {
-            spectrum::modify_throughput(g_image_heap, spectrum_arg, args.spectrum, beta, last_beta, di_result);
-        }
-        bool no_medium_change = mtl::is_no_medium_change(result.sample_flags);
-        if (!no_medium_change) {
-            medium_boundary_steps = 0u;
-            write_primary_hit(hit);
-            if (is_transmissive(result.sample_flags) && is_non_diffuse(result.sample_flags)) {
-                if (transparent_depth < TRANS_MAX_DEPTH) {
-                    depth -= 1;
-                    ++transparent_depth;
-                }
-            }
-            /////////// primary ray
-            addition_color += result.emission * last_beta;
-            current_weight = beta / max(float3(1e-4f), last_beta);
-            // Keep refractive radiance compression out of the continuation probability.
-            current_weight *= sqr(result.eta);
-            if (!write_gbuffer) {
-                ///////////// Record gbuffer in primary ray
-                gbuffer_albedo = result.albedo;
-                gbuffer_uv = result.uv;
-#ifdef RBC_OFFLINE_PT_DENOISE
-                albedo_sum = result.albedo + spectrum::spectrum_to_tristimulus(result.emission, args.spectrum);
-#endif
-                emission_sum = result.emission;
-                normal_rough = float4(result.normal, result.roughness);
-                to_cam_dist = hit.ray_t;
-                obj_id.x = result.user_id;
-                obj_id.y = hit.prim;
-                obj_bary = hit.bary;
-                mat_id_channel = mat_id;
-
-            } else if (depth == args.bounce) {
-                auto encoded_normal = sampling::encode_unit_vector(result.plane_normal);
-                hitpos = float4(result.world_pos, bit_cast<float>((uint(encoded_normal.x * float(0xffff)) & 0xffff) + (uint(encoded_normal.y * float(0xffff)) << 16)));
-                write_beta = beta;
-                beta = float3(1);
-                addition_color += radiance;
-                radiance = float3(0.0f);
-            }
-            radiance += di_result * last_beta;
-            write_gbuffer = true;
-            if (reject) {
-                radiance = 0.0f;
-            }
-        } else if (++medium_boundary_steps >= mtl::MAX_MEDIUM_BOUNDARY_STEPS) {
-            continue_loop = false;
-            beta = 0.0f;
-        }
-        if (!continue_loop) {
-            beta = float3(0.f);
-            break;
-        }
-
-        ///////////// Prepare next ray
-        ray = Ray(result.new_ray_offset + sampling::offset_ray_origin(result.world_pos, dot(result.plane_normal, new_dir) < 0 ? -result.plane_normal : result.plane_normal), new_dir, sampling::offset_ray_t_min);
-        auto trace_origin = ray.origin();
-
-        auto accum_sky = [&]() {
+        if (hit.miss()) {
+            output.write_primary_hit(coord, hit);
+            output.normal_rough = float4(0, 0, 1, 0);
             if (args.sky_heap_idx != max_uint32) {
-                float2 uv = sampling::sphere_direction_to_uv(args.world_2_sky_mat, new_dir);
-                float theta;
-                float phi;
-                float3 wi;
-                sampling::sphere_uv_to_direction_theta(args.world_2_sky_mat, uv, theta, phi, wi);
-                float mis = 1.f;
-                if (pdf_bsdf > 0.f) {
-                    auto tex_size = g_image_heap.uniform_idx_image_size(args.sky_heap_idx);
-                    auto sky_coord = int2(uv * float2(tex_size));
-                    sky_coord = clamp(sky_coord, int2(0), int2(tex_size) - 1);
-                    auto sky_pdf = g_buffer_heap.uniform_idx_buffer_read<float>(args.pdf_table_idx, sky_coord.y * tex_size.x + sky_coord.x);
-                    sky_pdf = _directional_pdf(sky_pdf, theta);
-                    mis = sampling::balanced_heuristic(pdf_bsdf, sky_pdf);
-                }
-                float3 sky_col = g_image_heap.uniform_idx_image_sample(args.sky_heap_idx, uv, Filter::LINEAR_POINT, Address::EDGE).xyz;
-                sky_col = args.resource_to_rec2020_mat * sky_col;
-                sky_col = spectrum::emission_to_spectrum(g_image_heap, g_volume_heap, spectrum_arg, sky_col);
-                radiance += beta * mis * sky_col;
+                output.addition_color = environment.eval(
+                    path.spectrum,
+                    dir);
+                output.addition_color *= path.beta;
             }
-            if (depth < args.bounce) {
-                hitpos = float4(new_dir, 0.f);
-                addition_color += radiance;
-                radiance = float3(0.0f);
-                write_beta = float3(-1);
-            }
-        };
+            output.emission_sum = output.addition_color;
+            output.write(coord, reject);
+            return 0;
+        }
 
-        bool volume_scattered = false;
-        if (no_medium_change || depth < (MAX_DEPTH - 1)) {
-            hit = mtl::trace_volumetric(
-                volume_stack,
-                beta,
-                detail,
-                ray,
-                args,
-                sampler,
+        first_dist = 0.f;
+        float3 new_dir = dir;
+        int depth = 0;
+        int transparent_depth = 0;
+        const int TRANS_MAX_DEPTH = 4;
+        bool write_gbuffer = false;
+        float3 last_beta(0.f);
+        float3 current_weight(0.f);
+        while (depth < MAX_DEPTH) {
+            float lobe_rand = samplers.next_lobe();
+            integrator::PathVertex vertex;
+            vertex.sample<
+                mtl::TransportMode::Radiance,
+                true>(
+                path,
+                samplers.surface,
+                hit,
+                procedural_geometry,
+                lobe_rand,
+                true,
+                !write_gbuffer,
+                Filter::ANISOTROPIC,
+                reject);
+            vertex.apply_rejection(path);
+            vertex.apply_wavelength_transition(path);
+            bool no_medium_change = vertex.no_medium_change();
+            bool boundary_limit =
+                path.update_medium_boundary(no_medium_change);
+            if (boundary_limit) {
+                path.active = false;
+                path.beta = 0.0f;
+            }
+
+            last_beta = vertex.throughput();
+            new_dir = vertex.outgoing_direction();
+            reject = vertex.si.reject;
+            if (!no_medium_change) {
+                output.record_surface(
+                    path,
+                    coord,
+                    hit,
+                    vertex,
+                    write_gbuffer,
+                    depth,
+                    transparent_depth,
+                    TRANS_MAX_DEPTH,
+                    reject,
+                    current_weight);
+            }
+            if (boundary_limit) {
+                break;
+            }
+            if (!path.active) {
+                path.beta = float3(0.0f);
+                break;
+            }
+            if (!vertex.advance(
+                    path,
+                    sampling::offset_ray_t_min,
+                    depth < (MAX_DEPTH - 1))) break;
+            hit = path.trace(
+                samplers.trace,
                 procedural_geometry,
                 depth < 0 ? 255u : ONLY_OPAQUE_MASK);
-            volume_scattered = any(ray.origin() != trace_origin);
-            if (volume_scattered) pdf_bsdf = -1.0f;
-
             if (hit.miss()) {
-                write_primary_hit(hit);
-                accum_sky();
-                beta = float3(0);
+                output.write_primary_hit(coord, hit);
+                output.radiance +=
+                    environment.eval_escaped_ray(
+                        path.spectrum,
+                        path.prev_bsdf_pdf,
+                        path.beta,
+                        vertex.outgoing_direction());
+                path.beta = float3(0.0f);
+                if (depth < args.bounce) {
+                    output.hitpos = float4(new_dir, 0.f);
+                    output.addition_color += output.radiance;
+                    output.radiance = float3(0.0f);
+                    output.write_beta = float3(-1);
+                }
                 if (depth == 0) {
                     first_dist = 1e8f;
                 }
@@ -527,96 +177,165 @@ using namespace luisa::shader;
             } else if (depth == 0) {
                 first_dist = hit.ray_t;
             }
-        } else {
-            break;
+            if (!no_medium_change) ++depth;
         }
-        if (!no_medium_change || volume_scattered) {
-            input_pos = ray.origin();
+        if (!output.primary_hit_written && args.write_id_map) {
+            id_map.write(coord, uint4(max_uint32, max_uint32, 0, 0));
         }
-        if (!no_medium_change) ++depth;
-        ///////////// Done prepare next ray
-
-        ///////////// End Loop
-    }
-    if (!primary_hit_written && args.write_id_map) {
-        id_map.write(coord, uint4(max_uint32, max_uint32, 0, 0));
-    }
-    if (depth < 0 && transparent_depth < TRANS_MAX_DEPTH) {
-        if (args.sky_heap_idx != max_uint32 && reduce_sum(beta) > 1e-5f) {
-            float3 sky_col = g_image_heap.uniform_idx_image_sample(
-                                             args.sky_heap_idx,
-                                             sampling::sphere_direction_to_uv(args.world_2_sky_mat, new_dir), Filter::LINEAR_POINT, Address::EDGE)
-                                 .xyz;
-            sky_col = args.resource_to_rec2020_mat * sky_col;
-            sky_col = spectrum::emission_to_spectrum(g_image_heap, g_volume_heap, spectrum_arg, sky_col);
-
-            radiance += beta * sky_col;
+        if (depth < 0 && transparent_depth < TRANS_MAX_DEPTH) {
+            if (args.sky_heap_idx != max_uint32 &&
+                reduce_sum(path.beta) > 1e-5f) {
+                output.radiance +=
+                    path.beta * environment.eval(
+                                    path.spectrum,
+                                    new_dir);
+            }
+            output.write(coord, reject);
+            return 0;
         }
-        write_tex();
-        return 0;
-    }
-    radiance = clamp(radiance, float3(0.f), float3(16384.0f));
-    //////////////////// RR
-    sync_block();
-    // from Physically Based Shader Design in Arnold, Langlands, 2014
-    float rr_scale = reduce_max(last_beta * current_weight) / max(1e-4f, reduce_max(last_beta));
-    rr_scale = min(1.f, sqrt(rr_scale));
-    quad_beta[quad_group_id + quad_local_id] = rr_scale;
-    sync_block();
-    if (quad_flags.atomic_fetch_add(quad_group_id / 4, 1) == 0) {
-        float sum = 0.f;
-        for (int i = 0; i < 4; ++i) {
-            sum += quad_beta[quad_group_id + i];
-        }
-        if (sum > 1e-5f) {
-            float rand = pcg_sampler.next();
-            int i = 0;
-            while (i < 4) {
-                float num = quad_beta[quad_group_id + i] / sum;
-                if (rand <= num) {
-                    quad_beta[quad_group_id + i] = sum;
+        output.radiance = clamp(
+            output.radiance,
+            float3(0.f),
+            float3(16384.0f));
+        sync_block();
+        // from Physically Based Shader Design in Arnold, Langlands, 2014
+        float rr_scale = reduce_max(last_beta * current_weight) / max(1e-4f, reduce_max(last_beta));
+        rr_scale = min(1.f, sqrt(rr_scale));
+        quad_beta[quad_group_id + quad_local_id] = rr_scale;
+        sync_block();
+        if (quad_flags.atomic_fetch_add(quad_group_id / 4, 1) == 0) {
+            float sum = 0.f;
+            for (int i = 0; i < 4; ++i) {
+                sum += quad_beta[quad_group_id + i];
+            }
+            if (sum > 1e-5f) {
+                float rand = samplers.surface.next();
+                int i = 0;
+                while (i < 4) {
+                    float num = quad_beta[quad_group_id + i] / sum;
+                    if (rand <= num) {
+                        quad_beta[quad_group_id + i] = sum;
+                        ++i;
+                        break;
+                    } else {
+                        rand -= num;
+                        quad_beta[quad_group_id + i] = -1.0f;
+                    }
                     ++i;
-                    break;
-                } else {
-                    rand -= num;
+                }
+                while (i < 4) {
+                    quad_beta[quad_group_id + i] = -1.0f;
+                    ++i;
+                }
+            } else {
+                for (int i = 0; i < 4; ++i) {
                     quad_beta[quad_group_id + i] = -1.0f;
                 }
-                ++i;
-            }
-            while (i < 4) {
-                quad_beta[quad_group_id + i] = -1.0f;
-                ++i;
-            }
-        } else {
-            for (int i = 0; i < 4; ++i) {
-                quad_beta[quad_group_id + i] = -1.0f;
             }
         }
+        sync_block();
+        pt::ContinuationQueue continuation_queue(coord, wavelength_sample);
+        continuation_queue.enqueue(
+            path,
+            quad_beta[quad_group_id + quad_local_id],
+            rr_scale);
+        output.write(coord, reject);
+        return 0;
     }
-    sync_block();
-    if (rr_scale > 1e-5f && quad_beta[quad_group_id + quad_local_id] > 1e-8f) {
-        MultiBouncePixel pixel;
-        pixel.pixel_id = ((coord.x << 16u) | coord.y);
-        beta *= quad_beta[quad_group_id + quad_local_id] / max(0.1f, rr_scale);
-        pixel.beta[0] = beta.x;
-        pixel.beta[1] = beta.y;
-        pixel.beta[2] = beta.z;
-        pixel.input_pos[0] = ray._origin[0];
-        pixel.input_pos[1] = ray._origin[1];
-        pixel.input_pos[2] = ray._origin[2];
-        pixel.pdf_bsdf = pdf_bsdf;
-        pixel.input_dir[0] = ray._dir[0];
-        pixel.input_dir[1] = ray._dir[1];
-        pixel.input_dir[2] = ray._dir[2];
-        pixel.spectrum_state = pack_spectrum_state(
-            wavelength_sample,
-            spectrum_arg.hero_index,
-            spectrum_arg.selected_wavelength,
-            volume_stack.size());
-        auto index = multi_bounce_pixel_counter.atomic_fetch_add(0, 1);
-        multi_bounce_pixel.write(index, pixel);
+
+private:
+    Ray sample_camera_ray(
+        PrimarySampleStreams &samplers,
+        float3 &direction) const {
+        auto screen_uv =
+            (float2(_coord) +
+             sampling::sample_uniform_disk_concentric(
+                 samplers.surface.next2f()) +
+             0.5f) /
+            float2(size);
+        auto projection = float4((screen_uv * 2.0f - 1.0f), 0.0f, 1.0f);
+        auto world_position = args.inv_vp * projection;
+        world_position /= world_position.w;
+        auto unnormalized_direction = world_position.xyz - args.cam_pos;
+        auto direction_length = length(unnormalized_direction);
+        direction = unnormalized_direction / max(1e-4f, direction_length);
+
+        projection.z = 1.0f;
+        auto near_world_position = args.inv_vp * projection;
+        near_world_position /= near_world_position.w;
+        if (args.enable_physical_camera) {
+            auto lens_coord = sampling::sample_uniform_disk_concentric(
+                                  samplers.surface.next2f()) *
+                              args.lens_radius;
+            auto lens_position = float3(lens_coord, 0.0f);
+            float3 focus_position =
+                near_world_position.xyz + direction * args.focus_distance;
+            float4 world_lens_position =
+                args.inv_view * float4(lens_position, 1.0f);
+            world_lens_position /= world_lens_position.w;
+            near_world_position = world_lens_position;
+            direction = normalize(focus_position - near_world_position.xyz);
+        }
+        return Ray(
+            near_world_position.xyz,
+            direction,
+            sampling::offset_ray_t_min,
+            direction_length);
     }
-    //////////////////// RR
-    write_tex();
-    return 0;
+
+    float initialize_path(
+        Path &path,
+        Ray ray,
+        PrimarySampleStreams &samplers) const {
+        path.ray = ray;
+        path.segment_origin = ray.origin();
+        path.beta = float3(1.0f);
+        path.prev_bsdf_pdf = -1.0f;
+        path.detail = mtl::ShadingDetail::Default;
+        path.medium_boundary_steps = 0u;
+        path.active = true;
+        float wavelength_sample = fract(
+            samplers.trace.next(g_buffer_heap) +
+            samplers.surface.next() / 255.0f);
+        path.spectrum.lambda = spectrum::sample_wavelengths(
+            g_image_heap,
+            wavelength_sample);
+        path.spectrum.hero_index = samplers.surface.nextui() % 3u;
+        return wavelength_sample;
+    }
+
+    void probe_initial_medium(
+        Path &path,
+        PrimarySampleStreams &samplers) const {
+        if (!args.probe_initial_medium) return;
+
+        bool selected_wavelength = path.spectrum.selected_wavelength;
+        mtl::probe_medium_stack(
+            path.media,
+            path.ray.origin(),
+            args,
+            samplers.surface,
+            path.spectrum,
+            args.resource_to_rec2020_mat);
+        if (!selected_wavelength && path.spectrum.selected_wavelength) {
+            float3 ignored_last_beta = path.beta;
+            float3 ignored_direct_lighting = 0.0f;
+            spectrum::modify_throughput(
+                g_image_heap,
+                path.spectrum,
+                args.spectrum,
+                path.beta,
+                ignored_last_beta,
+                ignored_direct_lighting);
+        }
+    }
+
+    uint2 _coord;
+};
+
+}// namespace pt
+
+[[kernel_2d(16, 8)]] int kernel() {
+    pt::PathIntegrator integrator(dispatch_id().xy);
+    return integrator.sample();
 }

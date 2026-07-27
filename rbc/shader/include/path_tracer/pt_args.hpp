@@ -14,17 +14,16 @@ struct PTArgs {
     float4x4 inv_view;
     float4x4 view;
     float4x4 inv_vp;
-    
+
     float3x3 resource_to_rec2020_mat;
     SpectrumAccumulationArgs spectrum;
     float3x3 world_2_sky_mat;
-    
+
     float3 cam_pos;
-    
+
     // 8-byte aligned (float2)
     float2 jitter_offset;
-    float2 tex_grad_scale;// render_size / display_size
-    
+
     // 4-byte aligned (float/uint/bool)
     float focus_distance;
     float lens_radius;
@@ -60,9 +59,7 @@ constexpr uint pack_spectrum_state(
     bool selected_wavelength,
     uint volume_count) {
     uint quantized_sample = uint(wavelength_sample * float(1u << SPECTRUM_SAMPLE_BITS));
-    quantized_sample = quantized_sample < SPECTRUM_SAMPLE_MASK
-                           ? quantized_sample
-                           : SPECTRUM_SAMPLE_MASK;
+    quantized_sample = quantized_sample < SPECTRUM_SAMPLE_MASK ? quantized_sample : SPECTRUM_SAMPLE_MASK;
     return quantized_sample |
            ((hero_index & 3u) << 24u) |
            (uint(selected_wavelength) << 26u) |

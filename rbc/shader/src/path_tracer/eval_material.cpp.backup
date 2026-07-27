@@ -135,7 +135,6 @@ inline void evaluate_material_sample(
     init_spectrum_colors(basic_param, extra_param, spectrum_arg
     , resource_to_rec2020_mat);
 
-    // Setup closure data
     mtl::ShadingDetail detail = mtl::ShadingDetail::Default;
     mtl::BSDFContext<mtl::openpbr::Parameter> bsdf_context{basic_param, extra_param, spectrum_arg.lambda, detail};
 
