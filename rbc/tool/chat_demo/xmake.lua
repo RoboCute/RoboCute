@@ -1,0 +1,17 @@
+target("rbc_chat_demo")
+do
+    add_rules("lc_basic_settings", { project_kind = "binary" })
+    set_group("04.targets")
+    add_rules("qt.console")
+    add_rules("rbc_qt_rule")
+    add_frameworks("QtCore", "QtGui", "QtWidgets", "QtNetwork")
+    add_files("main.cpp")
+    add_files("../../editor/plugins/chat_demo_plugin/ChatClient.cpp")
+    add_files("../../editor/plugins/chat_demo_plugin/ChatDemoWidget.cpp")
+    add_files("../../editor/plugins/chat_demo_plugin/ChatClient.h")
+    add_files("../../editor/plugins/chat_demo_plugin/ChatDemoWidget.h")
+    add_includedirs("../../editor/plugins/chat_demo_plugin")
+    add_headerfiles("../../editor/plugins/chat_demo_plugin/ChatClient.h")
+    add_headerfiles("../../editor/plugins/chat_demo_plugin/ChatDemoWidget.h")
+end
+target_end()
