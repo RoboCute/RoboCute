@@ -213,12 +213,17 @@ void RhiWindow::render() {
     // Update renderer
     renderer->update();
 
-    cb->beginPass(_sc->currentFrameRenderTarget(), Qt::black, {1.0f, 0}, resourceUpdates);
-    cb->setGraphicsPipeline(_fullscreen_quad_pipeline.get());
-    cb->setViewport({0, 0, float(outputSizeInPixels.width()), float(outputSizeInPixels.height())});
-    cb->setShaderResources();
-    cb->draw(3);
-    cb->endPass();
+    // Only draw the fullscreen quad when the renderer supplied a valid texture.
+    // This keeps the viewport alive (showing the swap chain's default content)
+    // when a stub/demo renderer is used.
+    if (_texture) {
+        cb->beginPass(_sc->currentFrameRenderTarget(), Qt::black, {1.0f, 0}, resourceUpdates);
+        cb->setGraphicsPipeline(_fullscreen_quad_pipeline.get());
+        cb->setViewport({0, 0, float(outputSizeInPixels.width()), float(outputSizeInPixels.height())});
+        cb->setShaderResources();
+        cb->draw(3);
+        cb->endPass();
+    }
 
     _rhi->endFrame(_sc.get());
     requestUpdate();
@@ -228,13 +233,21 @@ void RhiWindow::ensureFullscreenTexture(const QSize &pixelSize, QRhiResourceUpda
     if (_texture && _texture->pixelSize() == pixelSize)
         return;
 
+    uint64_t handle = renderer->get_present_texture(
+        pixelSize.width(), pixelSize.height());
+    // A handle of 0 means the renderer has no LC-presentable texture to show
+    // (e.g. the demo stub renderer).  Skip creating the sampled texture so the
+    // fullscreen quad pass can be omitted without crashing.
+    if (handle == 0) {
+        _texture.reset();
+        return;
+    }
+
     if (!_texture)
         _texture.reset(_rhi->newTexture(QRhiTexture::RGBA8, pixelSize));
     else
         _texture->setPixelSize(pixelSize);
 
-    uint64_t handle = renderer->get_present_texture(
-        pixelSize.width(), pixelSize.height());
     // D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE = 128
     // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL = 5
     _texture->createFrom({handle, _graphics_api == QRhi::Vulkan ? 5 : 128});
