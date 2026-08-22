@@ -2421,8 +2421,8 @@ def generate_lsp(
 
 
 def _default_compiler(project_root: Path) -> Path:
-    name = "clangcxx_compiler.exe" if platform.system() == "Windows" else "clangcxx_compiler"
-    return project_root / "build" / "tool" / "clangcxx_compiler" / name
+    name = "rbcxx.exe" if platform.system() == "Windows" else "rbcxx"
+    return project_root / "build" / "tool" / "rbcxx" / name
 
 
 def _default_build_root(project_root: Path) -> Path:

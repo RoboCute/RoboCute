@@ -59,9 +59,12 @@ after_check(function(option)
     import('core.base.json')
     local luatable = json.decode(io.readfile(path.join(os.scriptdir(), 'options.json')))
     for k, v in pairs(luatable) do
-        option:dep(k):enable(v, {
-            force = true
-        })
+        local dep = option:dep(k)
+        if dep then
+            dep:enable(v, {
+                force = true
+            })
+        end
     end
     if has_config('toolchain') == 'msvc' and is_mode('release') then
         option:dep('lc_use_lto'):enable(true, {

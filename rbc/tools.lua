@@ -1,6 +1,12 @@
 target('compile_shaders')
 set_kind('phony')
+if not is_mode('debug') then
+    add_deps('rbcxx', {inherit = false}) -- rbc clangcxx compiler
+end
 before_build(function(target)
+    if is_mode('debug') then
+        return nil
+    end
     if not os.is_host('windows') then
         return nil
     end
@@ -19,7 +25,13 @@ set_kind('phony')
 add_deps('compile_shaders', {
     inherit = false
 })
+if not is_mode('debug') then
+    add_deps('rbcxx', {inherit = false}) -- rbc clangcxx compiler
+end
 before_build(function(target)
+    if is_mode('debug') then
+        return nil
+    end
     if not os.is_host('windows') then
         return nil
     end

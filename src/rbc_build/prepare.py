@@ -1,4 +1,19 @@
+import json
+import os
 import platform as _platform
+import shutil
+from pathlib import Path
+
+import requests
+
+from rbc_build.utils import (
+    compute_hash,
+    get_project_root,
+    print_debug,
+    print_info,
+    print_success,
+    unzip_dir,
+)
 
 GIT_TASKS = {
     "lc": {
@@ -208,17 +223,22 @@ GIT_TASKS = {
     # },
 }
 OIDN_NAME = "oidn-2.3.3"
-CLANGCXX_NAME = "clangcxx_compiler-v2.0.9"
-CLANGCXX_PATH = "build/tool/clangcxx_compiler/clangcxx_compiler.exe"
 SHADER_PATH = "rbc/shader"
 CLANGD_NAME = "clangd-v19.1.7"
 LC_SDK_ADDRESS = "https://github.com/LuisaGroup/SDKs/releases/download/sdk/"
 RBC_SDK_ADDRESS = (
     "https://github.com/RoboCute/RoboCute.Resouces/releases/download/Release/"
 )
+SKR_SDK_ADDRESS = (
+    "https://github.com/SakuraEngine/Sakura.Resources/releases/download/SDKs/"
+)
 LC_DX_SDK = "dx_sdk_20250816.zip"
 RENDER_RESOURCE_NAME = "render_resources-v1.0.1.7z"
 XMAKE_GLOBAL_TOOLCHAIN = "clang-cl"
+
+LLVM_VERSION = "21.1.1"
+LLVM_SDK_NAME = f"llvm-{LLVM_VERSION}-release"
+LLVM_INSTALL_DIR = f"build/download/llvm-{LLVM_VERSION}"
 
 # Detect system platform and architecture
 _system = _platform.system().lower()
@@ -257,6 +277,112 @@ elif PLATFORM != "windows":
     LC_DX_SDK = None
 
 OIDN_NAME = _to_platform_spec(OIDN_NAME)
-CLANGCXX_NAME = _to_platform_spec(CLANGCXX_NAME)
 CLANGD_NAME = _to_platform_spec(CLANGD_NAME)
 # PYD_TOOLCHAIN = "msvc"
+
+
+
+def get_http_proxies():
+    """Get HTTP/HTTPS proxy settings from environment variables."""
+    proxies = {}
+    http_proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+    https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+
+    if http_proxy:
+        proxies["http"] = http_proxy
+        print_info(f"Using HTTP_PROXY: {http_proxy}")
+    if https_proxy:
+        proxies["https"] = https_proxy
+        print_info(f"Using HTTPS_PROXY: {https_proxy}")
+
+    return proxies if proxies else None
+
+
+def get_requests_session():
+    """Create a requests session with proxy settings from environment."""
+    session = requests.Session()
+    proxies = get_http_proxies()
+    if proxies:
+        session.proxies.update(proxies)
+        print_info(f"Using proxy: {proxies}")
+    return session
+
+
+def fetch_sdk_manifest() -> dict[str, str]:
+    """Download and parse the SDK manifest from the resource repository."""
+    url = SKR_SDK_ADDRESS + "manifest.json"
+    session = get_requests_session()
+    response = session.get(url, timeout=30)
+    response.raise_for_status()
+    manifest = response.json()
+    if not isinstance(manifest, dict):
+        raise RuntimeError("SDK manifest.json is not an object")
+    return {k: v.lower() for k, v in manifest.items()}
+
+
+def install_sdk(
+    name: str,
+    mappings: dict[str, str],
+    *,
+    plat_postfix: bool = True,
+) -> Path:
+    """Download, verify, extract and install an SDK archive.
+
+    The archive name follows ``{name}-{PLATFORM}-{ARCH}.zip`` when
+    ``plat_postfix`` is true, otherwise ``{name}.zip``.  It is downloaded
+    from ``SKR_SDK_ADDRESS`` and verified against the SHA256 recorded in
+    ``manifest.json`` before being extracted to ``build/download/SDKs/<name>/``
+    and copied to the final locations described by ``mappings``.
+    """
+    manifest = fetch_sdk_manifest()
+    filename = f"{name}-{PLATFORM}-{ARCH}.zip" if plat_postfix else f"{name}.zip"
+    if filename.lower() not in manifest:
+        raise RuntimeError(f"SDK {filename} not found in manifest")
+
+    expected_sha = manifest[filename.lower()]
+    project_root = Path(get_project_root())
+    download_file = project_root / "build/download" / filename
+    sdk_extract_dir = project_root / "build/download/SDKs" / name
+
+    # Download and verify SHA256.
+    if not download_file.exists() or compute_hash(download_file) != expected_sha:
+        print_info(f"Downloading SDK {filename} ...")
+        session = get_requests_session()
+        response = session.get(SKR_SDK_ADDRESS + filename, stream=True)
+        response.raise_for_status()
+        download_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(download_file, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        actual_sha = compute_hash(download_file)
+        if actual_sha != expected_sha:
+            download_file.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"SHA256 mismatch for {filename}: expected {expected_sha}, got {actual_sha}"
+            )
+        print_success(f"Downloaded SDK {filename}")
+    else:
+        print_debug(f"SDK {filename} already exists and SHA256 matches, skip download.")
+
+    # Extract to the intermediate SDK directory.
+    if sdk_extract_dir.exists():
+        shutil.rmtree(sdk_extract_dir)
+    sdk_extract_dir.mkdir(parents=True)
+    unzip_dir(download_file, sdk_extract_dir)
+
+    # Copy mapped entries to their final locations.
+    for src_rel, dst_rel in mappings.items():
+        src = sdk_extract_dir / src_rel
+        dst = project_root / dst_rel
+        if not src.exists():
+            raise RuntimeError(f"SDK mapping source not found: {src}")
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if src.is_dir():
+            if dst.exists():
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst)
+        else:
+            shutil.copy2(src, dst)
+
+    return sdk_extract_dir

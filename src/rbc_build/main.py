@@ -12,7 +12,6 @@ import importlib
 # from scripts.thirdparty_config import make_alembic_config, make_imath_config
 from rbc_build.prepare import (
     GIT_TASKS,
-    CLANGCXX_NAME,
     SHADER_PATH,
     CLANGD_NAME,
     LC_SDK_ADDRESS,
@@ -23,6 +22,9 @@ from rbc_build.prepare import (
     ARCH,
     XMAKE_GLOBAL_TOOLCHAIN,
     OIDN_NAME,
+    install_sdk,
+    LLVM_SDK_NAME,
+    LLVM_INSTALL_DIR,
 )
 from rbc_build.utils import (
     is_empty_folder,
@@ -156,11 +158,6 @@ def download_packages():
     address = RBC_SDK_ADDRESS
     lc_address = LC_SDK_ADDRESS
     downloads = {
-        CLANGCXX_NAME: {
-            "address": address,
-            "path": download_path,
-            "unzip": [download_path / CLANGCXX_NAME, tool_path / "clangcxx_compiler"],
-        },
         CLANGD_NAME: {
             "address": address,
             "path": download_path,
@@ -356,9 +353,14 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
 
     if download_package.lower() == "y":
         run_package_download()
+        install_sdk(
+            LLVM_SDK_NAME,
+            {"./": LLVM_INSTALL_DIR},
+            plat_postfix=True,
+        )
     ensure_fsd_tables()
 
-    # ------------------------------ llvm/options ------------------------------
+    # ------------------------------ llvm/options -----------------------------
     # We skip the builddir variable as it's dead code in the Lua source provided.
 
     if auto_yes:
@@ -409,6 +411,9 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
             if files:
                 options["lc_py_libs"] = ";".join(files) + ";"
 
+        options["lc_enable_clangcxx"] = True
+        options["lc_llvm_path"] = to_slash(str(Path(PROJECT_ROOT) / LLVM_INSTALL_DIR))
+
         # Write to xmake/options.json
         opt_json_path = rel("xmake/options.json")
         print_success(f"Write Options to {opt_json_path}")
@@ -416,6 +421,8 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
             json.dump(options, f, indent=4)
         # Write to xmake/options.lua
         lua_sentence = f"""set_config('toolchain', '{XMAKE_GLOBAL_TOOLCHAIN}')
+set_config('lc_enable_clangcxx', true)
+set_config('lc_llvm_path', '{to_slash(str(Path(PROJECT_ROOT) / LLVM_INSTALL_DIR))}')
 """
         opt_lua_path = rel("xmake/options.lua")
         print_success(f"Write Options to {opt_lua_path}")

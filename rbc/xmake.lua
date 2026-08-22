@@ -1,5 +1,8 @@
 -- Modules
 includes('tools.lua')
+-- rbc shader compile tool
+includes('clangcxx')
+includes("rbcxx")
 -- Utils
 includes('core') -- 底层数据结构
 includes('runtime') -- （图像，动画，物理，插件等）运行时功能
