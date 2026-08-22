@@ -18,6 +18,7 @@ lc_options = {
     lc_enable_imgui = false,
     lc_enable_osl = false,
     lc_enable_ir = false,
+    lc_enable_xir = false,
     lc_rtti = true,
     lc_enable_tests = false,
     lc_sdk_dir = "",

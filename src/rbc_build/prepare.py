@@ -31,6 +31,24 @@ GIT_TASKS = {
         "branch": None,
         "deps": ["EASTL"],
     },
+    "HIPRT": {
+        "subdir": "thirdparty/LuisaCompute/src/ext/HIPRT",
+        "url": "https://github.com/LuisaGroup/HIPRT.git",
+        "branch": None,
+        "deps": ["lc"],
+    },
+    "SPIRV-Tools": {
+        "subdir": "thirdparty/LuisaCompute/src/ext/SPIRV-Tools",
+        "url": "https://github.com/LuisaGroup/SPIRV-Tools.git",
+        "branch": None,
+        "deps": ["lc"],
+    },
+    "spirv-headers": {
+        "subdir": "thirdparty/LuisaCompute/src/ext/spirv-headers",
+        "url": "https://github.com/KhronosGroup/SPIRV-Headers.git",
+        "branch": None,
+        "deps": ["lc"],
+    },
     "mimalloc": {
         "subdir": "thirdparty/LuisaCompute/src/ext/EASTL/packages/mimalloc",
         "url": "https://github.com/LuisaGroup/mimalloc.git",
@@ -40,6 +58,12 @@ GIT_TASKS = {
     "glfw": {
         "subdir": "thirdparty/LuisaCompute/src/ext/glfw",
         "url": "https://github.com/glfw/glfw.git",
+        "branch": None,
+        "deps": ["lc"],
+    },
+    "glslang": {
+        "subdir": "thirdparty/LuisaCompute/src/ext/glslang",
+        "url": "https://github.com/LuisaGroup/glslang",
         "branch": None,
         "deps": ["lc"],
     },
