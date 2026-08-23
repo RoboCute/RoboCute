@@ -14,9 +14,12 @@ before_build(function(target)
     local find_tool = import('lib.detect.find_tool')
     local uv = find_tool('uv')
     assert(uv, 'uv is required to build shaders. Run `uv sync --extra=all` first.')
+    local compiler = path.join(os.projectdir(), 'build/tool/rbcxx/rbcxx.exe')
+    assert(os.isfile(compiler), 'rbcxx.exe not found. Build the `rbcxx` target first.')
     os.execv(uv.program, {'run', 'shader-build', 'build',
                           '--project-root', os.projectdir(),
-                          '--build-root', builddir})
+                          '--build-root', builddir,
+                          '--compiler', compiler})
 end)
 target_end()
 
@@ -40,9 +43,11 @@ before_build(function(target)
     local find_tool = import('lib.detect.find_tool')
     local uv = find_tool('uv')
     assert(uv, 'uv is required to generate shader host headers. Run `uv sync --extra=all` first.')
+    local compiler = path.join(os.projectdir(), 'build/tool/rbcxx/rbcxx.exe')
     os.execv(uv.program, {'run', 'shader-build', 'build',
                           '--project-root', os.projectdir(),
                           '--build-root', builddir,
+                          '--compiler', compiler,
                           '--hostgen-only',
                           '--host-out', path.translate(path.join(shader_dir, 'host'))})
     os.execv(uv.program, {'run', 'shader-build', 'verify-coherence',

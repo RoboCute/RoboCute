@@ -91,7 +91,6 @@ template <typename U> requires(operatable<U>)
 [[noignore]] ThisType operator*=(const U& rhs) { return *this = *this * rhs; }
 template <typename U> requires(operatable<U>)
 [[noignore]] ThisType operator/=(const U& rhs) { return *this = *this / rhs; }
-
 template <typename U> requires(operatable<U>)
 [[noignore]] ThisType operator%=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this % rhs); }
 template <typename U> requires(operatable<U>)

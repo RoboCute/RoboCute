@@ -10,6 +10,8 @@ template<typename T>
 struct alignas(8) [[builtin("vec")]] vec<T, 2> {
 	using ThisType = vec<T, 2>;
 	static constexpr uint32 dim = 2;
+	[[bypass]] vec<T, 2> &get_v2() const { return const_cast<vec<T, 2> &>(reinterpret_cast<const vec<T, 2> &>(*this)); }
+	[[bypass]] void set_v2(const vec<T, 2> &) {}
 	vec() noexcept = default;
 
 	template<typename... Args>
@@ -39,19 +41,24 @@ struct alignas(8) [[builtin("vec")]] vec<T, 2> {
 		return x;
 	}
 
-#include "ops/vec_ops.inl"
+	#include "ops/vec_ops.inl"
 
 	// DONT EDIT THIS FIELD LAYOUT
 	union {
 		std::array<T, 2> _v;
 #include "ops/swizzle2.inl"
 	};
+#include "ops/swizzle2_vec.inl"
 };
 
 template<typename T>
 struct alignas(16) [[builtin("vec")]] vec<T, 3> {
 	using ThisType = vec<T, 3>;
 	static constexpr uint32 dim = 3;
+	[[bypass]] vec<T, 2> &get_v2() const { return const_cast<vec<T, 2> &>(reinterpret_cast<const vec<T, 2> &>(*this)); }
+	[[bypass]] vec<T, 3> &get_v3() const { return const_cast<vec<T, 3> &>(reinterpret_cast<const vec<T, 3> &>(*this)); }
+	[[bypass]] void set_v2(const vec<T, 2> &) {}
+	[[bypass]] void set_v3(const vec<T, 3> &) {}
 	vec() noexcept = default;
 
 	template<typename... Args>
@@ -83,19 +90,26 @@ struct alignas(16) [[builtin("vec")]] vec<T, 3> {
 		return x;
 	}
 
-#include "ops/vec_ops.inl"
+	#include "ops/vec_ops.inl"
 
 	// DONT EDIT THIS FIELD LAYOUT
 	union {
 		std::array<T, 3> _v;
 #include "ops/swizzle3.inl"
 	};
+#include "ops/swizzle3_vec.inl"
 };
 
 template<typename T>
 struct alignas(16) [[builtin("vec")]] vec<T, 4> {
 	using ThisType = vec<T, 4>;
 	static constexpr uint32 dim = 4;
+	[[bypass]] vec<T, 2> &get_v2() const { return const_cast<vec<T, 2> &>(reinterpret_cast<const vec<T, 2> &>(*this)); }
+	[[bypass]] vec<T, 3> &get_v3() const { return const_cast<vec<T, 3> &>(reinterpret_cast<const vec<T, 3> &>(*this)); }
+	[[bypass]] vec<T, 4> &get_v4() const { return const_cast<vec<T, 4> &>(reinterpret_cast<const vec<T, 4> &>(*this)); }
+	[[bypass]] void set_v2(const vec<T, 2> &) {}
+	[[bypass]] void set_v3(const vec<T, 3> &) {}
+	[[bypass]] void set_v4(const vec<T, 4> &) {}
 	vec() noexcept = default;
 
 	template<typename... Args>
@@ -129,13 +143,14 @@ struct alignas(16) [[builtin("vec")]] vec<T, 4> {
 		return x;
 	}
 
-#include "ops/vec_ops.inl"
+	#include "ops/vec_ops.inl"
 
 	// DONT EDIT THIS FIELD LAYOUT
 	union {
 		std::array<T, 4> _v;
 #include "ops/swizzle4.inl"
 	};
+#include "ops/swizzle4_vec.inl"
 };
 
 template<typename T, uint64 N>

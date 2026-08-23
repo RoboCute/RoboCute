@@ -738,8 +738,8 @@ Evaluation evaluate_direction(
 	Evaluation result;
 	if (!_construction.valid()) return result;
 
-	auto local_output = _construction.frame.to_local(
-		normalize(world_output));
+	float3 local_output = _construction.frame.to_local(
+			normalize(world_output));
 	if (local_output.z >= 0.0f) return result;
 
 	// xi is the gnomonic slope used by Eqs. (23)-(40).

@@ -164,7 +164,7 @@ inline bool OpenPBR::transform_to_params(
         params.geometry.thickness = mat.thickness * 1e-2f;
         params.geometry.nested_priority = mat.nested_priority;
         if (mat.normal_tex.valid()) {
-            auto tan_normal = read_tex(mat.normal_tex).xyz;
+            float3 tan_normal = read_tex(mat.normal_tex).xyz;
             if (dot(tan_normal, tan_normal) < 1e-5f) {
                 tan_normal = float3(0, 0, 1);
             }
@@ -187,7 +187,7 @@ inline bool OpenPBR::transform_to_params(
         }
         params.geometry.onb.rotate_tangent(mat.roughness_anisotropy_angle);
         if (mat.specular_anisotropy_angle_tex.valid()) {
-            auto tex_val = read_tex(mat.specular_anisotropy_angle_tex).xy;
+            float2 tex_val = read_tex(mat.specular_anisotropy_angle_tex).xy;
             auto ls = length_squared(tex_val);
             flatten();
             if (ls == 0.0f) {

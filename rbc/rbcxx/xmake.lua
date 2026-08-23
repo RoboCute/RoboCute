@@ -40,6 +40,11 @@ after_build(function(target)
             detach = true
         })
     end
+    os.cp(path.join(os.scriptdir(), "template.txt"), dst_dir, {
+        copy_if_different = true,
+        async = true,
+        detach = true
+    })
 end)
 target_end()
 end
