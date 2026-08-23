@@ -39,7 +39,6 @@ This performs:
 1. Git clone/pull of `thirdparty/LuisaCompute` and its recursive deps (optional).
 2. Download toolchain/runtime archives from `RBC_SDK_ADDRESS` into `build/download`.
 3. Extract archives:
-   - `clangcxx_compiler-v<ver>-windows-x64.7z` → `build/tool/clangcxx_compiler`
    - `clangd-v<ver>-windows-x64.7z` → `build/tool/clangd`
    - `oidn-*.7z` → `build/download/oidn`
    - `render_resources-*.7z` → `build/download/render_resources`
@@ -57,19 +56,14 @@ Key source files:
 
 ## Toolchain Archives: Packing & Unpacking
 
-The custom shader compiler (`clangcxx_compiler`) and the language server (`clangd`) are shipped as platform-specific `.7z` archives and extracted under `build/tool/`.
+The language server (`clangd`) are shipped as platform-specific `.7z` archives and extracted under `build/tool/`.
 
 ### Archive Layout
-
-Archive files are flat (no subdirectories) so they extract directly into the destination folder.
-
-**`clangcxx_compiler-v<ver>-windows-x64.7z`** → extract to `build/tool/clangcxx_compiler/`
 
 Expected contents:
 
 | File | Purpose |
 |------|---------|
-| `clangcxx_compiler.exe` | LuisaCompute HLSL/C++ shader compiler front-end |
 | `dxcompiler.dll` | DirectX Shader Compiler |
 | `dxil.dll` | DirectX IL validator/signing |
 | `luisa-backend-dx.dll` | LuisaCompute DirectX backend |
@@ -95,13 +89,11 @@ Platform-specific names are generated in `src/rbc_build/prepare.py`:
 def _to_platform_spec(name):
     return f"{name}-{PLATFORM}-{ARCH}.7z"
 
-CLANGCXX_NAME = _to_platform_spec("clangcxx_compiler-v<version>")
 CLANGD_NAME   = _to_platform_spec("clangd-v<version>")
 ```
 
 So on Windows x64 the resolved names are:
 
-- `clangcxx_compiler-v<version>-windows-x64.7z`
 - `clangd-v<version>-windows-x64.7z`
 
 ### Unpacking (manual)
@@ -109,9 +101,6 @@ So on Windows x64 the resolved names are:
 Use 7-Zip CLI:
 
 ```bash
-# clangcxx_compiler
-7z x clangcxx_compiler-v<version>-windows-x64.7z -oD:\RoboCute\build\tool\clangcxx_compiler -y
-
 # clangd
 7z x clangd-v<version>-windows-x64.7z -oD:\RoboCute\build\tool\clangd -y
 ```
@@ -124,20 +113,6 @@ The project also locates `7z.exe` automatically in this order:
 4. `C:\Program Files (x86)\7-Zip\7z.exe`
 
 ### Packing (manual)
-
-When publishing a new tool version, create a flat `.7z` from the built binaries.
-
-Example for `clangcxx_compiler`:
-
-```bash
-cd D:\RoboCute\build\tool\clangcxx_compiler
-7z a -t7z -m0=lzma2 -mx=9 ..
-..\download\clangcxx_compiler-v<version>-windows-x64.7z ^
-  clangcxx_compiler.exe dxcompiler.dll dxil.dll ^
-  luisa-backend-dx.dll luisa-backend-vk.dll ^
-  luisa-clangcxx.dll luisa-core.dll luisa-runtime.dll ^
-  template.txt
-```
 
 Example for `clangd`:
 
@@ -154,7 +129,6 @@ Then upload the archive to the release asset URL configured in `src/rbc_build/pr
 2. Place them in `build/tool/<tool>/`.
 3. Pack a new flat `.7z` as shown above.
 4. Update the version constant in `src/rbc_build/prepare.py`:
-   - `CLANGCXX_NAME = "clangcxx_compiler-v<new>"`
    - `CLANGD_NAME = "clangd-v<new>"`
 5. Delete `build/download/file_hash.json` (or just the tool entry) to force re-extraction.
 6. Run `uv run prepare -y` to verify.

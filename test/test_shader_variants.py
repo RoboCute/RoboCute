@@ -290,7 +290,7 @@ def _project(
         json.dumps(_source_manifest(second_dimension=second_dimension)),
         encoding="utf-8",
     )
-    compiler = tmp_path / "build" / "tool" / "clangcxx_compiler" / "compiler.exe"
+    compiler = tmp_path / "build" / "tool" / "rbcxx" / "rbcxx.exe"
     compiler.parent.mkdir(parents=True)
     compiler.write_bytes(b"fake compiler")
     return manifest, compiler

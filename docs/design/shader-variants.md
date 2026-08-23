@@ -615,12 +615,6 @@ Family 尚未 ready 时，三个 slot 都为空。非 AO 路径会暂时只绘�
 
 ### 9.1 Compiler 路径
 
-Windows 默认 clangcxx compiler 路径是：
-
-```text
-build/tool/clangcxx_compiler/clangcxx_compiler.exe
-```
-
 `uv run prepare -y` 会准备所需工具和资源，Shader 构建入口按约定路径使用它，所以通常不需要手工在 `PATH` 中查找 compiler。需要覆盖时可以显式传 `--compiler`。
 
 ### 9.2 常用命令
