@@ -193,7 +193,6 @@ static std::string create_hierarchy_urdf() {
  * 使用 doctest 框架进行单元测试
  * TEST_SUITE 定义测试套件，包含多个测试用例
  */
-TEST_SUITE("urdf") {
 
     /**
      * 【测试用例1】解析简单 URDF
@@ -205,7 +204,7 @@ TEST_SUITE("urdf") {
      * 4. 如何通过名称获取特定连杆和关节
      * 5. 如何获取材质信息
      */
-    TEST_CASE("parse_simple_urdf") {
+    "parse_simple_urdf"_test = [] {
         // 步骤1：创建 URDF XML 字符串
         auto xml_str = create_simple_urdf();
         
@@ -214,32 +213,32 @@ TEST_SUITE("urdf") {
         auto model = urdf::parseURDF(xml_str);
         
         // 验证：模型是否成功创建
-        CHECK(model != nullptr);
+        expect(static_cast<bool>(model != nullptr));
         
         if (model) {
             // 验证：机器人名称
-            CHECK(model->getName() == "test_robot");
+            expect(static_cast<bool>(model->getName() == "test_robot"));
             
             // 验证：连杆数量（base_link, arm_link）
-            CHECK(model->links_.size() == 2);
+            expect(static_cast<bool>(model->links_.size() == 2));
             
             // 验证：关节数量（base_to_arm）
-            CHECK(model->joints_.size() == 1);
+            expect(static_cast<bool>(model->joints_.size() == 1));
             
             // 【获取根连杆】
             // 根连杆是没有父关节的连杆，通常是机器人的固定底座
             auto root = model->getRoot();
-            CHECK(root != nullptr);
+            expect(static_cast<bool>(root != nullptr));
             if (root) {
-                CHECK(root->name == "base_link");
+                expect(static_cast<bool>(root->name == "base_link"));
             }
             
             // 【通过名称获取连杆】
             // getLink() 返回指向 urdf::Link 的智能指针
             auto arm_link = model->getLink("arm_link");
-            CHECK(arm_link != nullptr);
+            expect(static_cast<bool>(arm_link != nullptr));
             if (arm_link) {
-                CHECK(arm_link->name == "arm_link");
+                expect(static_cast<bool>(arm_link->name == "arm_link"));
             }
             
             // 【通过名称获取关节】
@@ -249,28 +248,28 @@ TEST_SUITE("urdf") {
             // - parent_link_name: 父连杆名称
             // - child_link_name: 子连杆名称
             auto joint = model->getJoint("base_to_arm");
-            CHECK(joint != nullptr);
+            expect(static_cast<bool>(joint != nullptr));
             if (joint) {
-                CHECK(joint->name == "base_to_arm");
-                CHECK(joint->type == urdf::Joint::REVOLUTE);  // 旋转关节
-                CHECK(joint->parent_link_name == "base_link");
-                CHECK(joint->child_link_name == "arm_link");
+                expect(static_cast<bool>(joint->name == "base_to_arm"));
+                expect(static_cast<bool>(joint->type == urdf::Joint::REVOLUTE));  // 旋转关节
+                expect(static_cast<bool>(joint->parent_link_name == "base_link"));
+                expect(static_cast<bool>(joint->child_link_name == "arm_link"));
             }
             
             // 【获取材质】
             // getMaterial() 返回指向 urdf::Material 的智能指针
             // 材质包含颜色 rgba（红、绿、蓝、透明度）
             auto material = model->getMaterial("blue");
-            CHECK(material != nullptr);
+            expect(static_cast<bool>(material != nullptr));
             if (material) {
                 // 验证蓝色材质 (0, 0, 0.8, 1)
-                CHECK(material->color.r == doctest::Approx(0.0f));   // R = 0
-                CHECK(material->color.g == doctest::Approx(0.0f));   // G = 0
-                CHECK(material->color.b == doctest::Approx(0.8f));   // B = 0.8
-                CHECK(material->color.a == doctest::Approx(1.0f));   // A = 1（不透明）
+                expect(static_cast<bool>(material->color.r == Approx(0.0f)));   // R = 0
+                expect(static_cast<bool>(material->color.g == Approx(0.0f)));   // G = 0
+                expect(static_cast<bool>(material->color.b == Approx(0.8f)));   // B = 0.8
+                expect(static_cast<bool>(material->color.a == Approx(1.0f)));   // A = 1（不透明）
             }
         }
-    }
+    };
 
     /**
      * 【测试用例2】解析具有层次结构的 URDF
@@ -280,45 +279,45 @@ TEST_SUITE("urdf") {
      * 2. 识别不同类型的关节
      * 3. 遍历连杆的子关节和子连杆
      */
-    TEST_CASE("parse_hierarchy_urdf") {
+    "parse_hierarchy_urdf"_test = [] {
         auto xml_str = create_hierarchy_urdf();
         auto model = urdf::parseURDF(xml_str);
         
-        CHECK(model != nullptr);
+        expect(static_cast<bool>(model != nullptr));
         
         if (model) {
-            CHECK(model->getName() == "hierarchy_robot");
+            expect(static_cast<bool>(model->getName() == "hierarchy_robot"));
             
             // 验证：4个连杆（base, link1, link2, link3）
-            CHECK(model->links_.size() == 4);
+            expect(static_cast<bool>(model->links_.size() == 4));
             
             // 验证：3个关节（joint1, joint2, joint3）
-            CHECK(model->joints_.size() == 3);
+            expect(static_cast<bool>(model->joints_.size() == 3));
             
             // 【验证不同关节类型】
             
             // joint1: 连续旋转关节（continuous）
             // 用于轮子等可以无限旋转的部件
             auto joint1 = model->getJoint("joint1");
-            CHECK(joint1 != nullptr);
+            expect(static_cast<bool>(joint1 != nullptr));
             if (joint1) {
-                CHECK(joint1->type == urdf::Joint::CONTINUOUS);
+                expect(static_cast<bool>(joint1->type == urdf::Joint::CONTINUOUS));
             }
             
             // joint2: 旋转关节（revolute）
             // 有角度限制，如肘关节
             auto joint2 = model->getJoint("joint2");
-            CHECK(joint2 != nullptr);
+            expect(static_cast<bool>(joint2 != nullptr));
             if (joint2) {
-                CHECK(joint2->type == urdf::Joint::REVOLUTE);
+                expect(static_cast<bool>(joint2->type == urdf::Joint::REVOLUTE));
             }
             
             // joint3: 移动关节（prismatic）
             // 直线运动，如伸缩臂
             auto joint3 = model->getJoint("joint3");
-            CHECK(joint3 != nullptr);
+            expect(static_cast<bool>(joint3 != nullptr));
             if (joint3) {
-                CHECK(joint3->type == urdf::Joint::PRISMATIC);
+                expect(static_cast<bool>(joint3->type == urdf::Joint::PRISMATIC));
             }
             
             // 【遍历树形结构】
@@ -326,16 +325,16 @@ TEST_SUITE("urdf") {
             // - child_joints: 从该连杆出发的关节
             // - child_links: 通过关节连接的子连杆
             auto root = model->getRoot();
-            CHECK(root != nullptr);
+            expect(static_cast<bool>(root != nullptr));
             if (root) {
-                CHECK(root->name == "base");
+                expect(static_cast<bool>(root->name == "base"));
                 // base 有一个子关节（joint1）
-                CHECK(root->child_joints.size() == 1);
+                expect(static_cast<bool>(root->child_joints.size() == 1));
                 // base 有一个子连杆（link1）
-                CHECK(root->child_links.size() == 1);
+                expect(static_cast<bool>(root->child_links.size() == 1));
             }
         }
-    }
+    };
 
     /**
      * 【测试用例3】连杆惯性数据
@@ -354,42 +353,42 @@ TEST_SUITE("urdf") {
      * 对角元素 ixx, iyy, izz 是绕 X/Y/Z 轴的转动惯量
      * 非对角元素是惯性积（通常对于对称物体为0）
      */
-    TEST_CASE("link_inertial_data") {
+    "link_inertial_data"_test = [] {
         auto xml_str = create_simple_urdf();
         auto model = urdf::parseURDF(xml_str);
         
         // REQUIRE 与 CHECK 的区别：
         // REQUIRE 失败会立即停止当前测试用例
         // CHECK 失败会继续执行
-        REQUIRE(model != nullptr);
+        expect(static_cast<bool>(model != nullptr)) << fatal;
         
         // 【获取 base_link 的惯性数据】
         auto base_link = model->getLink("base_link");
-        CHECK(base_link != nullptr);
+        expect(static_cast<bool>(base_link != nullptr));
         if (base_link && base_link->inertial) {
             // 验证质量
-            CHECK(base_link->inertial->mass == doctest::Approx(1.0));
+            expect(static_cast<bool>(base_link->inertial->mass == Approx(1.0)));
             
             // 验证惯性张量对角元素
-            CHECK(base_link->inertial->ixx == doctest::Approx(0.01));
-            CHECK(base_link->inertial->iyy == doctest::Approx(0.01));
-            CHECK(base_link->inertial->izz == doctest::Approx(0.01));
+            expect(static_cast<bool>(base_link->inertial->ixx == Approx(0.01)));
+            expect(static_cast<bool>(base_link->inertial->iyy == Approx(0.01)));
+            expect(static_cast<bool>(base_link->inertial->izz == Approx(0.01)));
         }
         
         // 【获取 arm_link 的惯性数据】
         auto arm_link = model->getLink("arm_link");
-        CHECK(arm_link != nullptr);
+        expect(static_cast<bool>(arm_link != nullptr));
         if (arm_link && arm_link->inertial) {
             // 验证质量
-            CHECK(arm_link->inertial->mass == doctest::Approx(0.5));
+            expect(static_cast<bool>(arm_link->inertial->mass == Approx(0.5)));
             
             // 验证惯性原点位置
             // origin 是一个变换，包含 position（位置）和 rotation（旋转）
-            CHECK(arm_link->inertial->origin.position.x == doctest::Approx(0.0));
-            CHECK(arm_link->inertial->origin.position.y == doctest::Approx(0.0));
-            CHECK(arm_link->inertial->origin.position.z == doctest::Approx(0.5));
+            expect(static_cast<bool>(arm_link->inertial->origin.position.x == Approx(0.0)));
+            expect(static_cast<bool>(arm_link->inertial->origin.position.y == Approx(0.0)));
+            expect(static_cast<bool>(arm_link->inertial->origin.position.z == Approx(0.5)));
         }
-    }
+    };
 
     /**
      * 【测试用例4】关节限位
@@ -404,26 +403,26 @@ TEST_SUITE("urdf") {
      * - effort: 最大力/力矩限制
      * - velocity: 最大速度限制
      */
-    TEST_CASE("joint_limits") {
+    "joint_limits"_test = [] {
         auto xml_str = create_simple_urdf();
         auto model = urdf::parseURDF(xml_str);
         
-        REQUIRE(model != nullptr);
+        expect(static_cast<bool>(model != nullptr)) << fatal;
         
         auto joint = model->getJoint("base_to_arm");
-        REQUIRE(joint != nullptr);
-        REQUIRE(joint->limits != nullptr);
+        expect(static_cast<bool>(joint != nullptr)) << fatal;
+        expect(static_cast<bool>(joint->limits != nullptr)) << fatal;
         
         // 验证位置限位：-π 到 +π 弧度（约 -180° 到 +180°）
-        CHECK(joint->limits->lower == doctest::Approx(-3.14));
-        CHECK(joint->limits->upper == doctest::Approx(3.14));
+        expect(static_cast<bool>(joint->limits->lower == Approx(-3.14)));
+        expect(static_cast<bool>(joint->limits->upper == Approx(3.14)));
         
         // 验证力矩限制：10 N·m
-        CHECK(joint->limits->effort == doctest::Approx(10.0));
+        expect(static_cast<bool>(joint->limits->effort == Approx(10.0)));
         
         // 验证速度限制：1 rad/s
-        CHECK(joint->limits->velocity == doctest::Approx(1.0));
-    }
+        expect(static_cast<bool>(joint->limits->velocity == Approx(1.0)));
+    };
 
     /**
      * 【测试用例5】错误处理
@@ -433,7 +432,7 @@ TEST_SUITE("urdf") {
      * 2. 如何抑制预期的错误日志输出
      * 3. 最小有效 URDF 的结构
      */
-    TEST_CASE("invalid_urdf_handling") {
+    "invalid_urdf_handling"_test = [] {
         // 【技巧：抑制错误日志】
         // console_bridge 用于输出解析错误信息
         // 在测试错误情况时，我们先保存当前日志级别，然后禁用日志
@@ -445,14 +444,14 @@ TEST_SUITE("urdf") {
         // 传入空字符串应该返回 nullptr
         {
             auto model = urdf::parseURDF("");
-            CHECK(model == nullptr);
+            expect(static_cast<bool>(model == nullptr));
         }
         
         // 【测试2：无效 XML（缺少 robot 根元素）】
         // URDF 必须以 <robot> 为根元素
         {
             auto model = urdf::parseURDF("<invalid>xml</invalid>");
-            CHECK(model == nullptr);
+            expect(static_cast<bool>(model == nullptr));
         }
         
         // 恢复原始日志级别
@@ -471,15 +470,14 @@ TEST_SUITE("urdf") {
 </robot>
 )";
             auto model = urdf::parseURDF(minimal);
-            CHECK(model != nullptr);
+            expect(static_cast<bool>(model != nullptr));
             if (model) {
-                CHECK(model->getName() == "minimal_robot");
-                CHECK(model->links_.size() == 1);
-                CHECK(model->joints_.size() == 0);
+                expect(static_cast<bool>(model->getName() == "minimal_robot"));
+                expect(static_cast<bool>(model->links_.size() == 1));
+                expect(static_cast<bool>(model->joints_.size() == 0));
             }
         }
-    }
+    };
 
-}  // TEST_SUITE("urdf")
 
 } // namespace rbc

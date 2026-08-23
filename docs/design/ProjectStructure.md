@@ -105,7 +105,7 @@ RoboCute/
 | 模块 | 目标名称 | 类型 | 说明 |
 |------|----------|------|------|
 | `tool/rbc_cmd` | `rbc` | binary | 命令行工具（CLI），支持创建用户项目、下载模板 |
-| `tests/` | `test_core`、`test_anim`、`test_graphics`、`test_model`、`test_project`、`test_skeleton`、`test_anim_sequence` 等 | binary | C++ 单元测试与图形测试 |
+| `tests/` | `test_core`、`test_anim`、`test_model`、`test_project`、`test_skeleton`、`test_anim_sequence` 等 | binary | C++ 单元测试与图形测试 |
 | `shader/` | — | — | 着色器编译系统（`hostgen`、DXIL/SPIR-V 编译、`.cache`） |
 
 ### 3.2 Python 源码目录 (`src/`)
@@ -345,7 +345,7 @@ uv run pytest
 
 # C++ 测试
 xmake run test_core
-xmake run test_graphics
+xmake run sample_graphics
 ```
 
 ---

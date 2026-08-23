@@ -23,7 +23,7 @@ class DummyMeta:
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,  # Base type can not initialize
 )
@@ -34,7 +34,7 @@ class BaseType:
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc"
 )
 class DerivedType(BaseType):

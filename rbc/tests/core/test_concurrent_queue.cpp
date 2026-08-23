@@ -5,69 +5,68 @@
 #include <atomic>
 #include <chrono>
 
-TEST_SUITE("core") {
-    TEST_CASE("concurrent_queue_basic_enqueue_dequeue") {
+    "concurrent_queue_basic_enqueue_dequeue"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         
         // Test basic enqueue
-        CHECK(queue.enqueue(42) == true);
-        CHECK(queue.enqueue(100) == true);
-        CHECK(queue.enqueue(200) == true);
+        expect(static_cast<bool>(queue.enqueue(42) == true));
+        expect(static_cast<bool>(queue.enqueue(100) == true));
+        expect(static_cast<bool>(queue.enqueue(200) == true));
         
         // Test basic dequeue
         int value;
-        CHECK(queue.try_dequeue(value) == true);
-        CHECK(value == 42);
+        expect(static_cast<bool>(queue.try_dequeue(value) == true));
+        expect(static_cast<bool>(value == 42));
         
-        CHECK(queue.try_dequeue(value) == true);
-        CHECK(value == 100);
+        expect(static_cast<bool>(queue.try_dequeue(value) == true));
+        expect(static_cast<bool>(value == 100));
         
-        CHECK(queue.try_dequeue(value) == true);
-        CHECK(value == 200);
+        expect(static_cast<bool>(queue.try_dequeue(value) == true));
+        expect(static_cast<bool>(value == 200));
         
         // Queue should be empty now
-        CHECK(queue.try_dequeue(value) == false);
-    }
+        expect(static_cast<bool>(queue.try_dequeue(value) == false));
+    };
 
-    TEST_CASE("concurrent_queue_move_semantics") {
+    "concurrent_queue_move_semantics"_test = [] {
         rbc::ConcurrentQueue<std::unique_ptr<int>> queue;
         
         auto ptr1 = std::make_unique<int>(42);
         auto ptr2 = std::make_unique<int>(100);
         
-        CHECK(queue.enqueue(std::move(ptr1)) == true);
-        CHECK(queue.enqueue(std::move(ptr2)) == true);
-        CHECK(ptr1 == nullptr); // Should be moved
-        CHECK(ptr2 == nullptr); // Should be moved
+        expect(static_cast<bool>(queue.enqueue(std::move(ptr1)) == true));
+        expect(static_cast<bool>(queue.enqueue(std::move(ptr2)) == true));
+        expect(static_cast<bool>(ptr1 == nullptr)); // Should be moved
+        expect(static_cast<bool>(ptr2 == nullptr)); // Should be moved
         
         std::unique_ptr<int> result;
-        CHECK(queue.try_dequeue(result) == true);
-        CHECK(result != nullptr);
-        CHECK(*result == 42);
+        expect(static_cast<bool>(queue.try_dequeue(result) == true));
+        expect(static_cast<bool>(result != nullptr));
+        expect(static_cast<bool>(*result == 42));
         
-        CHECK(queue.try_dequeue(result) == true);
-        CHECK(*result == 100);
-    }
+        expect(static_cast<bool>(queue.try_dequeue(result) == true));
+        expect(static_cast<bool>(*result == 100));
+    };
 
-    TEST_CASE("concurrent_queue_producer_token") {
+    "concurrent_queue_producer_token"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         rbc::ConcurrentQueue<int>::producer_token_t producer(queue);
         
-        CHECK(producer.valid() == true);
+        expect(static_cast<bool>(producer.valid() == true));
         
         // Enqueue using producer token
-        CHECK(queue.enqueue(producer, 42) == true);
-        CHECK(queue.enqueue(producer, 100) == true);
+        expect(static_cast<bool>(queue.enqueue(producer, 42) == true));
+        expect(static_cast<bool>(queue.enqueue(producer, 100) == true));
         
         int value;
-        CHECK(queue.try_dequeue(value) == true);
-        CHECK(value == 42);
+        expect(static_cast<bool>(queue.try_dequeue(value) == true));
+        expect(static_cast<bool>(value == 42));
         
-        CHECK(queue.try_dequeue(value) == true);
-        CHECK(value == 100);
-    }
+        expect(static_cast<bool>(queue.try_dequeue(value) == true));
+        expect(static_cast<bool>(value == 100));
+    };
 
-    TEST_CASE("concurrent_queue_consumer_token") {
+    "concurrent_queue_consumer_token"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         
         // Enqueue some items
@@ -80,53 +79,53 @@ TEST_SUITE("core") {
         // Dequeue using consumer token
         int value;
         for (int i = 0; i < 10; ++i) {
-            CHECK(queue.try_dequeue(consumer, value) == true);
-            CHECK(value == i);
+            expect(static_cast<bool>(queue.try_dequeue(consumer, value) == true));
+            expect(static_cast<bool>(value == i));
         }
         
-        CHECK(queue.try_dequeue(consumer, value) == false);
-    }
+        expect(static_cast<bool>(queue.try_dequeue(consumer, value) == false));
+    };
 
-    TEST_CASE("concurrent_queue_bulk_enqueue_dequeue") {
+    "concurrent_queue_bulk_enqueue_dequeue"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         
         // Bulk enqueue
         std::vector<int> items = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-        CHECK(queue.enqueue_bulk(items.begin(), items.size()) == true);
+        expect(static_cast<bool>(queue.enqueue_bulk(items.begin(), items.size()) == true));
         
         // Bulk dequeue
         std::vector<int> results(10);
         size_t dequeued = queue.try_dequeue_bulk(results.begin(), 10);
-        CHECK(dequeued == 10);
+        expect(static_cast<bool>(dequeued == 10));
         
         for (size_t i = 0; i < 10; ++i) {
-            CHECK(results[i] == static_cast<int>(i + 1));
+            expect(static_cast<bool>(results[i] == static_cast<int>(i + 1)));
         }
-    }
+    };
 
-    TEST_CASE("concurrent_queue_bulk_with_tokens") {
+    "concurrent_queue_bulk_with_tokens"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         rbc::ConcurrentQueue<int>::producer_token_t producer(queue);
         rbc::ConcurrentQueue<int>::consumer_token_t consumer(queue);
         
         // Bulk enqueue with producer token
         std::vector<int> items = {10, 20, 30, 40, 50};
-        CHECK(queue.enqueue_bulk(producer, items.begin(), items.size()) == true);
+        expect(static_cast<bool>(queue.enqueue_bulk(producer, items.begin(), items.size()) == true));
         
         // Bulk dequeue with consumer token
         std::vector<int> results(5);
         size_t dequeued = queue.try_dequeue_bulk(consumer, results.begin(), 5);
-        CHECK(dequeued == 5);
+        expect(static_cast<bool>(dequeued == 5));
         
         for (size_t i = 0; i < 5; ++i) {
-            CHECK(results[i] == static_cast<int>((i + 1) * 10));
+            expect(static_cast<bool>(results[i] == static_cast<int>((i + 1) * 10)));
         }
-    }
+    };
 
-    TEST_CASE("concurrent_queue_size_approx") {
+    "concurrent_queue_size_approx"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         
-        CHECK(queue.size_approx() == 0);
+        expect(static_cast<bool>(queue.size_approx() == 0));
         
         for (int i = 0; i < 100; ++i) {
             queue.enqueue(i);
@@ -134,8 +133,8 @@ TEST_SUITE("core") {
         
         // Size is approximate, so we check it's at least close
         size_t size = queue.size_approx();
-        CHECK(size >= 90); // Allow some variance
-        CHECK(size <= 110);
+        expect(static_cast<bool>(size >= 90)); // Allow some variance
+        expect(static_cast<bool>(size <= 110));
         
         // Dequeue some items
         int value;
@@ -144,11 +143,11 @@ TEST_SUITE("core") {
         }
         
         size = queue.size_approx();
-        CHECK(size >= 40);
-        CHECK(size <= 60);
-    }
+        expect(static_cast<bool>(size >= 40));
+        expect(static_cast<bool>(size <= 60));
+    };
 
-    TEST_CASE("concurrent_queue_multithreaded_producer") {
+    "concurrent_queue_multithreaded_producer"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         const int num_threads = 4;
         const int items_per_thread = 100;
@@ -173,7 +172,7 @@ TEST_SUITE("core") {
             thread.join();
         }
         
-        CHECK(enqueued_count.load() == num_threads * items_per_thread);
+        expect(static_cast<bool>(enqueued_count.load() == num_threads * items_per_thread));
         
         // Verify all items can be dequeued
         std::vector<bool> received(num_threads * items_per_thread, false);
@@ -181,21 +180,21 @@ TEST_SUITE("core") {
         int dequeued = 0;
         
         while (queue.try_dequeue(value)) {
-            CHECK(value >= 0);
-            CHECK(value < num_threads * items_per_thread);
+            expect(static_cast<bool>(value >= 0));
+            expect(static_cast<bool>(value < num_threads * items_per_thread));
             received[value] = true;
             ++dequeued;
         }
         
-        CHECK(dequeued == num_threads * items_per_thread);
+        expect(static_cast<bool>(dequeued == num_threads * items_per_thread));
         
         // Verify all items were received
         for (size_t i = 0; i < received.size(); ++i) {
-            CHECK(received[i] == true);
+            expect(static_cast<bool>(received[i] == true));
         }
-    }
+    };
 
-    TEST_CASE("concurrent_queue_multithreaded_consumer") {
+    "concurrent_queue_multithreaded_consumer"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         const int num_items = 1000;
         const int num_threads = 4;
@@ -224,10 +223,10 @@ TEST_SUITE("core") {
             thread.join();
         }
         
-        CHECK(dequeued_count.load() == num_items);
-    }
+        expect(static_cast<bool>(dequeued_count.load() == num_items));
+    };
 
-    TEST_CASE("concurrent_queue_producer_consumer") {
+    "concurrent_queue_producer_consumer"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         const int num_producers = 2;
         const int num_consumers = 2;
@@ -277,34 +276,34 @@ TEST_SUITE("core") {
             thread.join();
         }
         
-        CHECK(enqueued_count.load() == total_items);
-        CHECK(dequeued_count.load() == total_items);
-    }
+        expect(static_cast<bool>(enqueued_count.load() == total_items));
+        expect(static_cast<bool>(dequeued_count.load() == total_items));
+    };
 
-    TEST_CASE("concurrent_queue_try_enqueue") {
+    "concurrent_queue_try_enqueue"_test = [] {
         rbc::ConcurrentQueue<int> queue(10); // Small capacity
         
         // Try enqueue should succeed when there's space
-        CHECK(queue.try_enqueue(1) == true);
-        CHECK(queue.try_enqueue(2) == true);
+        expect(static_cast<bool>(queue.try_enqueue(1) == true));
+        expect(static_cast<bool>(queue.try_enqueue(2) == true));
         
         int value;
-        CHECK(queue.try_dequeue(value) == true);
-        CHECK(value == 1);
+        expect(static_cast<bool>(queue.try_dequeue(value) == true));
+        expect(static_cast<bool>(value == 1));
         
-        CHECK(queue.try_dequeue(value) == true);
-        CHECK(value == 2);
-    }
+        expect(static_cast<bool>(queue.try_dequeue(value) == true));
+        expect(static_cast<bool>(value == 2));
+    };
 
-    TEST_CASE("concurrent_queue_empty_queue") {
+    "concurrent_queue_empty_queue"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         
         int value;
-        CHECK(queue.try_dequeue(value) == false);
-        CHECK(queue.size_approx() == 0);
-    }
+        expect(static_cast<bool>(queue.try_dequeue(value) == false));
+        expect(static_cast<bool>(queue.size_approx() == 0));
+    };
 
-    TEST_CASE("concurrent_queue_custom_type") {
+    "concurrent_queue_custom_type"_test = [] {
         struct TestStruct {
             int a;
             float b;
@@ -319,22 +318,22 @@ TEST_SUITE("core") {
         TestStruct item1(42, 3.14f, "test1");
         TestStruct item2(100, 2.71f, "test2");
         
-        CHECK(queue.enqueue(item1) == true);
-        CHECK(queue.enqueue(std::move(item2)) == true);
+        expect(static_cast<bool>(queue.enqueue(item1) == true));
+        expect(static_cast<bool>(queue.enqueue(std::move(item2)) == true));
         
         TestStruct result;
-        CHECK(queue.try_dequeue(result) == true);
-        CHECK(result.a == 42);
-        CHECK(result.b == 3.14f);
-        CHECK(result.c == "test1");
+        expect(static_cast<bool>(queue.try_dequeue(result) == true));
+        expect(static_cast<bool>(result.a == 42));
+        expect(static_cast<bool>(result.b == 3.14f));
+        expect(static_cast<bool>(result.c == "test1"));
         
-        CHECK(queue.try_dequeue(result) == true);
-        CHECK(result.a == 100);
-        CHECK(result.b == 2.71f);
-        CHECK(result.c == "test2");
-    }
+        expect(static_cast<bool>(queue.try_dequeue(result) == true));
+        expect(static_cast<bool>(result.a == 100));
+        expect(static_cast<bool>(result.b == 2.71f));
+        expect(static_cast<bool>(result.c == "test2"));
+    };
 
-    TEST_CASE("concurrent_queue_is_lock_free") {
+    "concurrent_queue_is_lock_free"_test = [] {
         rbc::ConcurrentQueue<int> queue;
         
         // Check if the underlying atomic operations are lock-free
@@ -342,6 +341,4 @@ TEST_SUITE("core") {
         bool lock_free = rbc::ConcurrentQueue<int>::is_lock_free();
         // Just verify the method exists and can be called
         (void)lock_free;
-    }
-}
-
+    };

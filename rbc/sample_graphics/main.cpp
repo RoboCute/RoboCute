@@ -32,7 +32,7 @@ using namespace luisa::compute;
 #include <material/mats.inl>
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);
 #ifdef STANDALONE
-// test_graphics_bin #backend_name#  #binary_path#  #assets_path#
+// sample_graphics_bin #backend_name#  #binary_path#  #assets_path#
 int main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
     utils->init_render();
     auto pipe_ctx = utils->register_render_pipectx();
     auto &render_settings = utils->render_settings(pipe_ctx);
-    Window window{luisa::string{"test_graphics_"} + utils->backend_name(), uint2(1024), true};
+    Window window{luisa::string{"sample_graphics_"} + utils->backend_name(), uint2(1024), true};
     utils->init_display(window.size(), window.native_display(), window.native_handle());
     uint64_t frame_index = 0;
     // Present is ping-pong frame-buffer and compute is triple-buffer

@@ -5,9 +5,7 @@
 
 namespace rbc {
 
-TEST_SUITE("anim") {
-    TEST_CASE("asset") {
-
+    "asset"_test = [] {
         rbc::AnimFloat4x4 m;
         float f[4];
         float b = 1.0f;
@@ -35,11 +33,10 @@ TEST_SUITE("anim") {
         for (auto &col : dm.cols) {
             ozz::math::StorePtr(col, df);
             for (auto i = 0; i < 4; i++) {
-                CHECK(df[i] == (float)i + b);
+                expect(static_cast<bool>(df[i] == (float)i + b));
             }
             b += 4.0f;
         }
-    }
-}
+    };
 
 }// namespace rbc

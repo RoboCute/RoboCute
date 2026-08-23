@@ -36,61 +36,60 @@ struct TestStruct {
     }
 };
 
-TEST_SUITE("agents.lock_free_array_queue") {
 
     // ============================================
     // Constructor Tests
     // ============================================
 
-    TEST_CASE("constructor_default") {
+    "constructor_default"_test = [] {
         // Test default constructor (capacity = 64)
         vstd::LockFreeArrayQueue<int> queue;
-        CHECK(queue.length() == 0);
+        expect(static_cast<bool>(queue.length() == 0));
         
         // Should be able to enqueue without immediate reallocation
         for (int i = 0; i < 64; ++i) {
             queue.enqueue(i);
         }
-        CHECK(queue.length() == 64);
-    }
+        expect(static_cast<bool>(queue.length() == 64));
+    };
 
-    TEST_CASE("constructor_with_capacity") {
+    "constructor_with_capacity"_test = [] {
         // Test constructor with custom capacity
         vstd::LockFreeArrayQueue<int> queue(128);
-        CHECK(queue.length() == 0);
+        expect(static_cast<bool>(queue.length() == 0));
         
         // Fill to custom capacity
         for (int i = 0; i < 128; ++i) {
             queue.enqueue(i);
         }
-        CHECK(queue.length() == 128);
-    }
+        expect(static_cast<bool>(queue.length() == 128));
+    };
 
-    TEST_CASE("constructor_minimum_capacity") {
+    "constructor_minimum_capacity"_test = [] {
         // Test that capacity is at least 32 (minimum enforced)
         vstd::LockFreeArrayQueue<int> queue(10);
-        CHECK(queue.length() == 0);
+        expect(static_cast<bool>(queue.length() == 0));
         
         // Should be able to enqueue at least 32 elements
         for (int i = 0; i < 32; ++i) {
             queue.enqueue(i);
         }
-        CHECK(queue.length() == 32);
-    }
+        expect(static_cast<bool>(queue.length() == 32));
+    };
 
-    TEST_CASE("constructor_power_of_two_capacity") {
+    "constructor_power_of_two_capacity"_test = [] {
         // Test that capacity is rounded up to power of 2
         vstd::LockFreeArrayQueue<int> queue(100);
-        CHECK(queue.length() == 0);
+        expect(static_cast<bool>(queue.length() == 0));
         
         // 100 -> rounded to 128 (next power of 2)
         for (int i = 0; i < 128; ++i) {
             queue.enqueue(i);
         }
-        CHECK(queue.length() == 128);
-    }
+        expect(static_cast<bool>(queue.length() == 128));
+    };
 
-    TEST_CASE("move_constructor") {
+    "move_constructor"_test = [] {
         // Test move constructor
         vstd::LockFreeArrayQueue<int> queue1(32);
         queue1.enqueue(1);
@@ -100,18 +99,18 @@ TEST_SUITE("agents.lock_free_array_queue") {
         vstd::LockFreeArrayQueue<int> queue2(std::move(queue1));
         
         // queue2 should have the elements
-        CHECK(queue2.length() == 3);
+        expect(static_cast<bool>(queue2.length() == 3));
         
         auto val = queue2.dequeue();
-        CHECK(val.has_value());
-        CHECK(val.value() == 1);
-    }
+        expect(static_cast<bool>(val.has_value()));
+        expect(static_cast<bool>(val.value() == 1));
+    };
 
     // ============================================
     // Move Assignment Tests
     // ============================================
 
-    TEST_CASE("move_assignment") {
+    "move_assignment"_test = [] {
         // Test move assignment operator
         vstd::LockFreeArrayQueue<int> queue1(32);
         queue1.enqueue(10);
@@ -123,44 +122,44 @@ TEST_SUITE("agents.lock_free_array_queue") {
         queue2 = std::move(queue1);
         
         // queue2 should now have queue1's elements
-        CHECK(queue2.length() == 2);
+        expect(static_cast<bool>(queue2.length() == 2));
         
         auto val = queue2.dequeue();
-        CHECK(val.has_value());
-        CHECK(val.value() == 10);
-    }
+        expect(static_cast<bool>(val.has_value()));
+        expect(static_cast<bool>(val.value() == 10));
+    };
 
     // ============================================
     // Enqueue Tests
     // ============================================
 
-    TEST_CASE("enqueue_basic") {
+    "enqueue_basic"_test = [] {
         // Test basic enqueue operation
         vstd::LockFreeArrayQueue<int> queue(32);
         
         queue.enqueue(42);
-        CHECK(queue.length() == 1);
+        expect(static_cast<bool>(queue.length() == 1));
         
         queue.enqueue(100);
-        CHECK(queue.length() == 2);
-    }
+        expect(static_cast<bool>(queue.length() == 2));
+    };
 
-    TEST_CASE("enqueue_non_trivial_type") {
+    "enqueue_non_trivial_type"_test = [] {
         // Test enqueue with non-trivial types
         vstd::LockFreeArrayQueue<TestStruct> queue(32);
         
         queue.enqueue(1, "hello");
         queue.enqueue(2, "world");
         
-        CHECK(queue.length() == 2);
+        expect(static_cast<bool>(queue.length() == 2));
         
         auto val = queue.dequeue();
-        CHECK(val.has_value());
-        CHECK(val->x == 1);
-        CHECK(val->s == "hello");
-    }
+        expect(static_cast<bool>(val.has_value()));
+        expect(static_cast<bool>(val->x == 1));
+        expect(static_cast<bool>(val->s == "hello"));
+    };
 
-    TEST_CASE("enqueue_with_auto_resize") {
+    "enqueue_with_auto_resize"_test = [] {
         // Test that enqueue triggers automatic resize when full
         vstd::LockFreeArrayQueue<int> queue(4);  // Small initial capacity
         
@@ -169,30 +168,30 @@ TEST_SUITE("agents.lock_free_array_queue") {
             queue.enqueue(i);
         }
         
-        CHECK(queue.length() == 100);
+        expect(static_cast<bool>(queue.length() == 100));
         
         // Verify all values
         for (int i = 0; i < 100; ++i) {
             auto val = queue.dequeue();
-            CHECK(val.has_value());
-            CHECK(val.value() == i);
+            expect(static_cast<bool>(val.has_value()));
+            expect(static_cast<bool>(val.value() == i));
         }
-    }
+    };
 
-    TEST_CASE("try_push_success") {
+    "try_push_success"_test = [] {
         // Test successful try_push
         vstd::LockFreeArrayQueue<int> queue(32);
         
         bool result = queue.try_push(42);
-        CHECK(result == true);
-        CHECK(queue.length() == 1);
-    }
+        expect(static_cast<bool>(result == true));
+        expect(static_cast<bool>(queue.length() == 1));
+    };
 
     // ============================================
     // Dequeue Tests
     // ============================================
 
-    TEST_CASE("dequeue_basic") {
+    "dequeue_basic"_test = [] {
         // Test basic dequeue operation
         vstd::LockFreeArrayQueue<int> queue(32);
         queue.enqueue(1);
@@ -200,26 +199,26 @@ TEST_SUITE("agents.lock_free_array_queue") {
         queue.enqueue(3);
         
         auto val1 = queue.dequeue();
-        CHECK(val1.has_value());
-        CHECK(val1.value() == 1);
-        CHECK(queue.length() == 2);
+        expect(static_cast<bool>(val1.has_value()));
+        expect(static_cast<bool>(val1.value() == 1));
+        expect(static_cast<bool>(queue.length() == 2));
         
         auto val2 = queue.dequeue();
-        CHECK(val2.has_value());
-        CHECK(val2.value() == 2);
-        CHECK(queue.length() == 1);
-    }
+        expect(static_cast<bool>(val2.has_value()));
+        expect(static_cast<bool>(val2.value() == 2));
+        expect(static_cast<bool>(queue.length() == 1));
+    };
 
-    TEST_CASE("dequeue_empty_queue") {
+    "dequeue_empty_queue"_test = [] {
         // Test dequeue from empty queue returns empty optional
         vstd::LockFreeArrayQueue<int> queue(32);
         
         auto val = queue.dequeue();
-        CHECK(!val.has_value());
-        CHECK(queue.length() == 0);
-    }
+        expect(static_cast<bool>(!val.has_value()));
+        expect(static_cast<bool>(queue.length() == 0));
+    };
 
-    TEST_CASE("dequeue_fifo_order") {
+    "dequeue_fifo_order"_test = [] {
         // Test FIFO (First In First Out) order is maintained
         vstd::LockFreeArrayQueue<int> queue(32);
         
@@ -229,12 +228,12 @@ TEST_SUITE("agents.lock_free_array_queue") {
         
         for (int i = 0; i < 10; ++i) {
             auto val = queue.dequeue();
-            CHECK(val.has_value());
-            CHECK(val.value() == i);
+            expect(static_cast<bool>(val.has_value()));
+            expect(static_cast<bool>(val.value() == i));
         }
-    }
+    };
 
-    TEST_CASE("pop_with_pointer") {
+    "pop_with_pointer"_test = [] {
         // Test pop(T* ptr) overload
         vstd::LockFreeArrayQueue<int> queue(32);
         queue.enqueue(42);
@@ -243,65 +242,65 @@ TEST_SUITE("agents.lock_free_array_queue") {
         int value;
         bool result = queue.pop(&value);
         
-        CHECK(result == true);
-        CHECK(value == 42);
-        CHECK(queue.length() == 1);
-    }
+        expect(static_cast<bool>(result == true));
+        expect(static_cast<bool>(value == 42));
+        expect(static_cast<bool>(queue.length() == 1));
+    };
 
-    TEST_CASE("pop_empty_queue") {
+    "pop_empty_queue"_test = [] {
         // Test pop from empty queue returns false
         vstd::LockFreeArrayQueue<int> queue(32);
         
         int value = 999;  // Initialize with sentinel value
         bool result = queue.pop(&value);
         
-        CHECK(result == false);
+        expect(static_cast<bool>(result == false));
         // Note: value is destroyed by pop(), so we don't check it
-    }
+    };
 
-    TEST_CASE("try_pop_success") {
+    "try_pop_success"_test = [] {
         // Test successful try_pop
         vstd::LockFreeArrayQueue<int> queue(32);
         queue.enqueue(42);
         
         auto val = queue.try_pop();
-        CHECK(val.has_value());
-        CHECK(val.value() == 42);
-        CHECK(queue.length() == 0);
-    }
+        expect(static_cast<bool>(val.has_value()));
+        expect(static_cast<bool>(val.value() == 42));
+        expect(static_cast<bool>(queue.length() == 0));
+    };
 
-    TEST_CASE("try_pop_empty") {
+    "try_pop_empty"_test = [] {
         // Test try_pop on empty queue
         vstd::LockFreeArrayQueue<int> queue(32);
         
         auto val = queue.try_pop();
-        CHECK(!val.has_value());
-    }
+        expect(static_cast<bool>(!val.has_value()));
+    };
 
     // ============================================
     // Capacity and Length Tests
     // ============================================
 
-    TEST_CASE("length_tracking") {
+    "length_tracking"_test = [] {
         // Test that length is correctly tracked
         vstd::LockFreeArrayQueue<int> queue(64);
         
-        CHECK(queue.length() == 0);
+        expect(static_cast<bool>(queue.length() == 0));
         
         // Enqueue and check length
         for (int i = 1; i <= 50; ++i) {
             queue.enqueue(i);
-            CHECK(queue.length() == static_cast<size_t>(i));
+            expect(static_cast<bool>(queue.length() == static_cast<size_t>(i)));
         }
         
         // Dequeue and check length
         for (int i = 50; i >= 1; --i) {
             queue.dequeue();
-            CHECK(queue.length() == static_cast<size_t>(i - 1));
+            expect(static_cast<bool>(queue.length() == static_cast<size_t>(i - 1)));
         }
-    }
+    };
 
-    TEST_CASE("reserve_increase_capacity") {
+    "reserve_increase_capacity"_test = [] {
         // Test reserve to increase capacity
         vstd::LockFreeArrayQueue<int> queue(32);
         
@@ -314,24 +313,24 @@ TEST_SUITE("agents.lock_free_array_queue") {
         queue.reserve(128);
         
         // Elements should still be there
-        CHECK(queue.length() == 10);
+        expect(static_cast<bool>(queue.length() == 10));
         
         // Add more elements
         for (int i = 10; i < 50; ++i) {
             queue.enqueue(i);
         }
         
-        CHECK(queue.length() == 50);
+        expect(static_cast<bool>(queue.length() == 50));
         
         // Verify order
         for (int i = 0; i < 50; ++i) {
             auto val = queue.dequeue();
-            CHECK(val.has_value());
-            CHECK(val.value() == i);
+            expect(static_cast<bool>(val.has_value()));
+            expect(static_cast<bool>(val.value() == i));
         }
-    }
+    };
 
-    TEST_CASE("reserve_no_shrink") {
+    "reserve_no_shrink"_test = [] {
         // Test that reserve doesn't shrink capacity
         vstd::LockFreeArrayQueue<int> queue(128);
         
@@ -343,14 +342,14 @@ TEST_SUITE("agents.lock_free_array_queue") {
         queue.reserve(32);
         
         // All elements should still be there
-        CHECK(queue.length() == 50);
-    }
+        expect(static_cast<bool>(queue.length() == 50));
+    };
 
     // ============================================
     // Interleaved Operations Tests
     // ============================================
 
-    TEST_CASE("interleaved_enqueue_dequeue") {
+    "interleaved_enqueue_dequeue"_test = [] {
         // Test interleaved enqueue and dequeue
         vstd::LockFreeArrayQueue<int> queue(16);
         
@@ -362,15 +361,15 @@ TEST_SUITE("agents.lock_free_array_queue") {
             
             for (int i = 0; i < 10; ++i) {
                 auto val = queue.dequeue();
-                CHECK(val.has_value());
-                CHECK(val.value() == round * 10 + i);
+                expect(static_cast<bool>(val.has_value()));
+                expect(static_cast<bool>(val.value() == round * 10 + i));
             }
         }
         
-        CHECK(queue.length() == 0);
-    }
+        expect(static_cast<bool>(queue.length() == 0));
+    };
 
-    TEST_CASE("enqueue_dequeue_around_boundary") {
+    "enqueue_dequeue_around_boundary"_test = [] {
         // Test enqueue/dequeue that wraps around the circular buffer
         vstd::LockFreeArrayQueue<int> queue(8);  // Small capacity for wrap-around
         
@@ -382,7 +381,7 @@ TEST_SUITE("agents.lock_free_array_queue") {
         // Dequeue half
         for (int i = 0; i < 4; ++i) {
             auto val = queue.dequeue();
-            CHECK(val.value() == i);
+            expect(static_cast<bool>(val.value() == i));
         }
         
         // Enqueue more (should wrap around)
@@ -393,16 +392,16 @@ TEST_SUITE("agents.lock_free_array_queue") {
         // Dequeue remaining (should be in correct order)
         for (int i = 4; i < 12; ++i) {
             auto val = queue.dequeue();
-            CHECK(val.has_value());
-            CHECK(val.value() == i);
+            expect(static_cast<bool>(val.has_value()));
+            expect(static_cast<bool>(val.value() == i));
         }
-    }
+    };
 
     // ============================================
     // Multi-threaded Tests
     // ============================================
 
-    TEST_CASE("multi_threaded_producer_consumer") {
+    "multi_threaded_producer_consumer"_test = [] {
         // Test basic thread safety with single producer and single consumer
         vstd::LockFreeArrayQueue<int> queue(256);
         const int item_count = 10000;
@@ -438,10 +437,10 @@ TEST_SUITE("agents.lock_free_array_queue") {
         producer.join();
         consumer.join();
         
-        CHECK(sum_produced.load() == sum_consumed.load());
-    }
+        expect(static_cast<bool>(sum_produced.load() == sum_consumed.load()));
+    };
 
-    TEST_CASE("multi_threaded_multiple_producers") {
+    "multi_threaded_multiple_producers"_test = [] {
         // Test with multiple producer threads
         vstd::LockFreeArrayQueue<int> queue(1024);
         const int num_producers = 4;
@@ -463,15 +462,15 @@ TEST_SUITE("agents.lock_free_array_queue") {
             t.join();
         }
         
-        CHECK(queue.length() == static_cast<size_t>(num_producers * items_per_producer));
-        CHECK(total_enqueued.load() == num_producers * items_per_producer);
-    }
+        expect(static_cast<bool>(queue.length() == static_cast<size_t>(num_producers * items_per_producer)));
+        expect(static_cast<bool>(total_enqueued.load() == num_producers * items_per_producer));
+    };
 
     // ============================================
     // Edge Cases and Stress Tests
     // ============================================
 
-    TEST_CASE("large_number_of_elements") {
+    "large_number_of_elements"_test = [] {
         // Test with large number of elements
         vstd::LockFreeArrayQueue<int> queue(1024);
         const int count = 100000;
@@ -480,16 +479,16 @@ TEST_SUITE("agents.lock_free_array_queue") {
             queue.enqueue(i);
         }
         
-        CHECK(queue.length() == static_cast<size_t>(count));
+        expect(static_cast<bool>(queue.length() == static_cast<size_t>(count)));
         
         for (int i = 0; i < count; ++i) {
             auto val = queue.dequeue();
-            CHECK(val.has_value());
-            CHECK(val.value() == i);
+            expect(static_cast<bool>(val.has_value()));
+            expect(static_cast<bool>(val.value() == i));
         }
-    }
+    };
 
-    TEST_CASE("rapid_enqueue_dequeue") {
+    "rapid_enqueue_dequeue"_test = [] {
         // Rapid enqueue/dequeue cycles
         vstd::LockFreeArrayQueue<int> queue(64);
         
@@ -502,10 +501,10 @@ TEST_SUITE("agents.lock_free_array_queue") {
             }
         }
         
-        CHECK(queue.length() == 0);
-    }
+        expect(static_cast<bool>(queue.length() == 0));
+    };
 
-    TEST_CASE("destructor_cleanup") {
+    "destructor_cleanup"_test = [] {
         // Test that destructor properly cleans up elements
         std::atomic<int> destructor_count{0};
         
@@ -524,7 +523,5 @@ TEST_SUITE("agents.lock_free_array_queue") {
         }
         
         // All 10 elements should have been destroyed
-        CHECK(destructor_count.load() >= 10);
-    }
-
-}
+        expect(static_cast<bool>(destructor_count.load() >= 10));
+    };

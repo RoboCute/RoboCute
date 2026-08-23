@@ -3,17 +3,15 @@
 #include <fsd/constants.hpp>
 #include <spectrum/spectrum_args.hpp>
 
-TEST_SUITE("free-space diffraction features") {
-    TEST_CASE("sidecar radius uses the sampled wavelength upper bound") {
+    "sidecar radius uses the sampled wavelength upper bound"_test = [] {
         constexpr auto min_radius = fsd::query_radius_from_wavelength_nm(
             spectrum::wavelength_min);
         constexpr auto max_radius = fsd::query_radius_from_wavelength_nm(
             spectrum::wavelength_max);
         constexpr auto expected_max_radius_world_units = 6.225e-5f;
 
-        CHECK(max_radius > min_radius);
-        CHECK(max_radius == doctest::Approx(
-                                expected_max_radius_world_units));
-        CHECK(fsd::query_radius_wavelength_factor == 75.0f);
-    }
-}
+        expect(static_cast<bool>(max_radius > min_radius));
+        expect(static_cast<bool>(max_radius == Approx(
+                                expected_max_radius_world_units)));
+        expect(static_cast<bool>(fsd::query_radius_wavelength_factor == 75.0f));
+    };

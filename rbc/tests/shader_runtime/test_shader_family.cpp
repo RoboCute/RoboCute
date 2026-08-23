@@ -146,8 +146,7 @@ void reset_fakes() {
 
 }// namespace
 
-TEST_SUITE("shader family") {
-    TEST_CASE("exact variants publish atomically and cache by selection") {
+    "exact variants publish atomically and cache by selection"_test = [] {
         reset_fakes();
         luisa::fiber::scheduler scheduler;
         luisa::compute::ShaderBase const *programs[3]{};
@@ -162,42 +161,42 @@ TEST_SUITE("shader family") {
             fake_resolve};
 
         auto loading_simple = family.acquire({.mask = 0u});
-        CHECK_FALSE(loading_simple);
-        CHECK(loading_simple.revision == 0u);
+        expect(!static_cast<bool>(loading_simple));
+        expect(static_cast<bool>(loading_simple.revision == 0u));
         family.wait();
 
         auto simple = family.acquire({.mask = 0u});
-        REQUIRE(simple);
-        CHECK(simple.revision == 1u);
-        CHECK(programs[0] ==
-              reinterpret_cast<luisa::compute::ShaderBase const *>(1u));
+        expect(static_cast<bool>(simple)) << fatal;
+        expect(static_cast<bool>(simple.revision == 1u));
+        expect(static_cast<bool>(programs[0] ==
+              reinterpret_cast<luisa::compute::ShaderBase const *>(1u)));
 
         auto stable = family.acquire({.mask = 0u});
-        CHECK(stable.revision == simple.revision);
-        CHECK(selector_calls.load(std::memory_order_relaxed) == 1u);
+        expect(static_cast<bool>(stable.revision == simple.revision));
+        expect(static_cast<bool>(selector_calls.load(std::memory_order_relaxed) == 1u));
 
         auto loading_complex = family.acquire({.mask = complex_feature});
-        CHECK_FALSE(loading_complex);
-        CHECK(loading_complex.revision == 2u);
-        CHECK(programs[0] == nullptr);
+        expect(!static_cast<bool>(loading_complex));
+        expect(static_cast<bool>(loading_complex.revision == 2u));
+        expect(static_cast<bool>(programs[0] == nullptr));
         family.wait();
 
         auto complex = family.acquire({.mask = complex_feature});
-        REQUIRE(complex);
-        CHECK(complex.revision == 3u);
-        CHECK(programs[0] ==
-              reinterpret_cast<luisa::compute::ShaderBase const *>(17u));
+        expect(static_cast<bool>(complex)) << fatal;
+        expect(static_cast<bool>(complex.revision == 3u));
+        expect(static_cast<bool>(programs[0] ==
+              reinterpret_cast<luisa::compute::ShaderBase const *>(17u)));
 
         // An unrelated scene bit maps to the already-loaded simple selection.
         auto simple_again = family.acquire({.mask = 2u});
-        REQUIRE(simple_again);
-        CHECK(simple_again.revision == 4u);
-        CHECK(resolver_calls.load(std::memory_order_relaxed) == 2u);
-        CHECK(loader_calls.load(std::memory_order_relaxed) == 6u);
-        CHECK(variant_loader_calls.load(std::memory_order_relaxed) == 0u);
-    }
+        expect(static_cast<bool>(simple_again)) << fatal;
+        expect(static_cast<bool>(simple_again.revision == 4u));
+        expect(static_cast<bool>(resolver_calls.load(std::memory_order_relaxed) == 2u));
+        expect(static_cast<bool>(loader_calls.load(std::memory_order_relaxed) == 6u));
+        expect(static_cast<bool>(variant_loader_calls.load(std::memory_order_relaxed) == 0u));
+    };
 
-    TEST_CASE("variant loader receives the selected ABI") {
+    "variant loader receives the selected ABI"_test = [] {
         reset_fakes();
         luisa::fiber::scheduler scheduler;
         luisa::compute::ShaderBase const *programs[3]{};
@@ -218,19 +217,19 @@ TEST_SUITE("shader family") {
             fake_resolve};
 
         auto loading = family.acquire({.mask = complex_feature});
-        CHECK_FALSE(loading);
+        expect(!static_cast<bool>(loading));
         family.wait();
 
         auto ready = family.acquire({.mask = complex_feature});
-        REQUIRE(ready);
-        CHECK(variant_loader_calls.load(std::memory_order_relaxed) == 3u);
-        CHECK(variant_loader_saw_complex.load(std::memory_order_relaxed));
-        CHECK(loader_calls.load(std::memory_order_relaxed) == 0u);
-        CHECK(programs[0] ==
-              reinterpret_cast<luisa::compute::ShaderBase const *>(17u));
-    }
+        expect(static_cast<bool>(ready)) << fatal;
+        expect(static_cast<bool>(variant_loader_calls.load(std::memory_order_relaxed) == 3u));
+        expect(static_cast<bool>(variant_loader_saw_complex.load(std::memory_order_relaxed)));
+        expect(static_cast<bool>(loader_calls.load(std::memory_order_relaxed) == 0u));
+        expect(static_cast<bool>(programs[0] ==
+              reinterpret_cast<luisa::compute::ShaderBase const *>(17u)));
+    };
 
-    TEST_CASE("a partially loaded family is never visible") {
+    "a partially loaded family is never visible"_test = [] {
         reset_fakes();
         luisa::fiber::scheduler scheduler;
         block_last_program.store(true, std::memory_order_release);
@@ -246,20 +245,19 @@ TEST_SUITE("shader family") {
             fake_resolve};
 
         auto first = family.acquire({.mask = 0u});
-        CHECK_FALSE(first);
+        expect(!static_cast<bool>(first));
         auto still_loading = family.acquire({.mask = 0u});
-        CHECK_FALSE(still_loading);
-        CHECK(programs[0] == nullptr);
-        CHECK(programs[1] == nullptr);
-        CHECK(programs[2] == nullptr);
+        expect(!static_cast<bool>(still_loading));
+        expect(static_cast<bool>(programs[0] == nullptr));
+        expect(static_cast<bool>(programs[1] == nullptr));
+        expect(static_cast<bool>(programs[2] == nullptr));
 
         release_last_program.store(true, std::memory_order_release);
         family.wait();
         auto ready = family.acquire({.mask = 0u});
-        REQUIRE(ready);
-        CHECK(ready.revision == 1u);
-        CHECK(programs[0] != nullptr);
-        CHECK(programs[1] != nullptr);
-        CHECK(programs[2] != nullptr);
-    }
-}
+        expect(static_cast<bool>(ready)) << fatal;
+        expect(static_cast<bool>(ready.revision == 1u));
+        expect(static_cast<bool>(programs[0] != nullptr));
+        expect(static_cast<bool>(programs[1] != nullptr));
+        expect(static_cast<bool>(programs[2] != nullptr));
+    };

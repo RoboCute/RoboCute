@@ -5,7 +5,7 @@ do
         enable_exception = true
     })
 
-    add_deps('rbc_core', 'test_graphics')
+    add_deps('rbc_core', 'sample_graphics')
     add_deps('rbc_render_plugin', 'lc-backends-dummy', {
         inherit = false,
         links = false

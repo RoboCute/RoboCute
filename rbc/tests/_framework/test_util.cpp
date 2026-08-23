@@ -1,4 +1,3 @@
-#define DOCTEST_CONFIG_IMPLEMENT
 #include "test_util.h"
 
 #include <string_view>
@@ -31,7 +30,7 @@ bool float_span_equal(std::span<float> a, std::span<float> b) {
         return false;
     }
     for (int i = 0; i < N; ++i) {
-        if (a[i] != doctest::Approx(b[i])) {
+        if (a[i] != Approx(b[i])) {
             return false;
         }
     }
@@ -40,12 +39,6 @@ bool float_span_equal(std::span<float> a, std::span<float> b) {
 
 }// namespace sail::test
 
-int main(int argc, const char **argv) {
-    doctest::Context context(argc, argv);
-    sail::test::dt_remove(argv);
-    auto test_result = context.run();
-    if (context.shouldExit()) {
-        return test_result;
-    }
-    return test_result;
+int main(int argc, char *argv[]) {
+    boost::ut::detail::cfg::parse_arg_with_fallback(argc, const_cast<const char **>(argv));
 }

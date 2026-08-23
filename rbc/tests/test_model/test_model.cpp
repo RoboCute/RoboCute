@@ -64,133 +64,152 @@ struct WorldFixture {
     }
 };
 
-TEST_SUITE("model") {
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_obj") {
+    "mesh_importer_obj"_test = [] {
+        WorldFixture __ut_fixture;
+        auto &self = __ut_fixture;
         SKIP_IF(!should_test_model_type("obj"));
         auto &registry = ResourceImporterRegistry::instance();
         auto importer = registry.find_importer(luisa::string_view{".obj"}, TypeInfo::get<rbc::world::MeshResource>().md5());
-        CHECK(importer != nullptr);
-        CHECK(importer->extension() == ".obj");
-        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+        expect(static_cast<bool>(importer != nullptr));
+        expect(static_cast<bool>(importer->extension() == ".obj"));
+        expect(static_cast<bool>(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
         // Test importing non-existent file returns false
-        auto mesh = create<MeshResource>();
+        auto mesh = self.create<MeshResource>();
         auto result = importer->import(mesh, "test_model.obj");
-        CHECK(result);
-    }
+        expect(static_cast<bool>(result));
+    };
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_fbx") {
+    "mesh_importer_fbx"_test = [] {
+        WorldFixture __ut_fixture;
+        auto &self = __ut_fixture;
         SKIP_IF(!should_test_model_type("fbx"));
         auto &registry = ResourceImporterRegistry::instance();
         auto importer = registry.find_importer(luisa::string_view{".fbx"}, TypeInfo::get<rbc::world::MeshResource>().md5());
-        CHECK(importer != nullptr);
-        CHECK(importer->extension() == ".fbx");
-        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+        expect(static_cast<bool>(importer != nullptr));
+        expect(static_cast<bool>(importer->extension() == ".fbx"));
+        expect(static_cast<bool>(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
-        auto mesh = create<MeshResource>();
+        auto mesh = self.create<MeshResource>();
         auto result = importer->import(mesh, "test_model.fbx");
-        CHECK(result);
-    }
+        expect(static_cast<bool>(result));
+    };
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_gltf") {
+    "mesh_importer_gltf"_test = [] {
+        WorldFixture __ut_fixture;
+        auto &self = __ut_fixture;
         SKIP_IF(!should_test_model_type("gltf"));
         auto &registry = ResourceImporterRegistry::instance();
         auto importer = registry.find_importer(luisa::string_view{".gltf"}, TypeInfo::get<rbc::world::MeshResource>().md5());
-        CHECK(importer != nullptr);
-        CHECK(importer->extension() == ".gltf");
-        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+        expect(static_cast<bool>(importer != nullptr));
+        expect(static_cast<bool>(importer->extension() == ".gltf"));
+        expect(static_cast<bool>(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
-        auto mesh = create<MeshResource>();
+        auto mesh = self.create<MeshResource>();
         auto result = importer->import(mesh, "test_model.gltf");
-        CHECK(result);
-    }
+        expect(static_cast<bool>(result));
+    };
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_glb") {
+    "mesh_importer_glb"_test = [] {
+        WorldFixture __ut_fixture;
+        auto &self = __ut_fixture;
         SKIP_IF(!should_test_model_type("glb"));
         auto &registry = ResourceImporterRegistry::instance();
         auto importer = registry.find_importer(luisa::string_view{".glb"}, TypeInfo::get<rbc::world::MeshResource>().md5());
-        CHECK(importer != nullptr);
-        CHECK(importer->extension() == ".glb");
-        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+        expect(static_cast<bool>(importer != nullptr));
+        expect(static_cast<bool>(importer->extension() == ".glb"));
+        expect(static_cast<bool>(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
-        auto mesh = create<MeshResource>();
+        auto mesh = self.create<MeshResource>();
         auto result = importer->import(mesh, "test_model.glb");
-        CHECK(result);
-    }
+        expect(static_cast<bool>(result));
+    };
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_stl") {
+    "mesh_importer_stl"_test = [] {
+        WorldFixture __ut_fixture;
+        auto &self = __ut_fixture;
         SKIP_IF(!should_test_model_type("stl"));
         auto &registry = ResourceImporterRegistry::instance();
         auto importer = registry.find_importer(luisa::string_view{".stl"}, TypeInfo::get<rbc::world::MeshResource>().md5());
-        CHECK(importer != nullptr);
-        CHECK(importer->extension() == ".stl");
-        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+        expect(static_cast<bool>(importer != nullptr));
+        expect(static_cast<bool>(importer->extension() == ".stl"));
+        expect(static_cast<bool>(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
-        auto mesh = create<MeshResource>();
+        auto mesh = self.create<MeshResource>();
         auto result = importer->import(mesh, "test_model.stl");
-        CHECK(result);
-    }
+        expect(static_cast<bool>(result));
+    };
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_ply") {
+    "mesh_importer_ply"_test = [] {
+        WorldFixture __ut_fixture;
+        auto &self = __ut_fixture;
         SKIP_IF(!should_test_model_type("ply"));
         auto &registry = ResourceImporterRegistry::instance();
         auto importer = registry.find_importer(luisa::string_view{".ply"}, TypeInfo::get<rbc::world::MeshResource>().md5());
-        CHECK(importer != nullptr);
-        CHECK(importer->extension() == ".ply");
-        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+        expect(static_cast<bool>(importer != nullptr));
+        expect(static_cast<bool>(importer->extension() == ".ply"));
+        expect(static_cast<bool>(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
-        auto mesh = create<MeshResource>();
+        auto mesh = self.create<MeshResource>();
         auto result = importer->import(mesh, "test_model.ply");
-        CHECK(result);
-    }
+        expect(static_cast<bool>(result));
+    };
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_off") {
+    "mesh_importer_off"_test = [] {
+        WorldFixture __ut_fixture;
+        auto &self = __ut_fixture;
         SKIP_IF(!should_test_model_type("off"));
         auto &registry = ResourceImporterRegistry::instance();
         auto importer = registry.find_importer(luisa::string_view{".off"}, TypeInfo::get<rbc::world::MeshResource>().md5());
-        CHECK(importer != nullptr);
-        CHECK(importer->extension() == ".off");
-        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+        expect(static_cast<bool>(importer != nullptr));
+        expect(static_cast<bool>(importer->extension() == ".off"));
+        expect(static_cast<bool>(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
-        auto mesh = create<MeshResource>();
+        auto mesh = self.create<MeshResource>();
         auto result = importer->import(mesh, "test_model.off");
-        CHECK(result);
-    }
+        expect(static_cast<bool>(result));
+    };
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_3ds") {
+    "mesh_importer_3ds"_test = [] {
+        WorldFixture __ut_fixture;
+        auto &self = __ut_fixture;
         SKIP_IF(!should_test_model_type("3ds"));
         auto &registry = ResourceImporterRegistry::instance();
         auto importer = registry.find_importer(luisa::string_view{".3ds"}, TypeInfo::get<rbc::world::MeshResource>().md5());
-        CHECK(importer != nullptr);
-        CHECK(importer->extension() == ".3ds");
-        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+        expect(static_cast<bool>(importer != nullptr));
+        expect(static_cast<bool>(importer->extension() == ".3ds"));
+        expect(static_cast<bool>(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
-        auto mesh = create<MeshResource>();
+        auto mesh = self.create<MeshResource>();
         auto result = importer->import(mesh, "test_model.3ds");
-        CHECK(result);
-    }
+        expect(static_cast<bool>(result));
+    };
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_collada") {
+    "mesh_importer_collada"_test = [] {
+        WorldFixture __ut_fixture;
+        auto &self = __ut_fixture;
         SKIP_IF(!should_test_model_type("dae"));
         auto &registry = ResourceImporterRegistry::instance();
         auto importer = registry.find_importer(luisa::string_view{".dae"}, TypeInfo::get<rbc::world::MeshResource>().md5());
-        CHECK(importer != nullptr);
-        CHECK(importer->extension() == ".dae");
-        CHECK(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+        expect(static_cast<bool>(importer != nullptr));
+        expect(static_cast<bool>(importer->extension() == ".dae"));
+        expect(static_cast<bool>(importer->resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
-        auto mesh = create<MeshResource>();
+        auto mesh = self.create<MeshResource>();
         auto result = importer->import(mesh, "test_model.dae");
-        CHECK(result);
-    }
+        expect(static_cast<bool>(result));
+    };
 
-    // TEST_CASE_FIXTURE(WorldFixture, "mesh_importer_abc") {
+    // "mesh_importer_abc"_test = [] {
+    //     WorldFixture __ut_fixture;
+    //     auto &self = __ut_fixture;
     //     AbcMeshImporter importer;
-    //     CHECK(importer.extension() == ".abc");
-    //     CHECK(importer.resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5());
+    //     expect(static_cast<bool>(importer.extension() == ".abc"));
+    //     expect(static_cast<bool>(importer.resource_type() == TypeInfo::get<rbc::world::MeshResource>().md5()));
 
-    //     auto mesh = create<MeshResource>();
+    //     auto mesh = self.create<MeshResource>();
     //     auto result = importer.import(mesh, "test_model.abc");
-    //     CHECK_FALSE(result);
+    //     expect(!static_cast<bool>(result));
     // }
 
     TEST_CASE_FIXTURE(WorldFixture, "importer_registry") {
@@ -199,35 +218,34 @@ TEST_SUITE("model") {
         // Test finding importers by extension
         auto mesh_type = TypeInfo::get<rbc::world::MeshResource>().md5();
 
-        CHECK(registry.find_importer(luisa::string_view{".obj"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".fbx"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".gltf"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".glb"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".stl"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".ply"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".off"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".3ds"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".dae"}, mesh_type) != nullptr);
-        // CHECK(registry.find_importer(luisa::string_view{".abc"}, mesh_type) != nullptr);
-        // CHECK(registry.find_importer(luisa::string_view{".lwo"}, mesh_type) != nullptr);
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".obj"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".fbx"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".gltf"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".glb"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".stl"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".ply"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".off"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".3ds"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".dae"}, mesh_type) != nullptr));
+        // expect(static_cast<bool>(registry.find_importer(luisa::string_view{".abc"}, mesh_type) != nullptr));
+        // expect(static_cast<bool>(registry.find_importer(luisa::string_view{".lwo"}, mesh_type) != nullptr));
 
         // Test case insensitivity for extensions
-        CHECK(registry.find_importer(luisa::string_view{".OBJ"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".Fbx"}, mesh_type) != nullptr);
-        CHECK(registry.find_importer(luisa::string_view{".GLTF"}, mesh_type) != nullptr);
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".OBJ"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".Fbx"}, mesh_type) != nullptr));
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".GLTF"}, mesh_type) != nullptr));
 
         // Test non-existent extension returns nullptr
-        CHECK(registry.find_importer(luisa::string_view{".nonexistent"}, mesh_type) == nullptr);
+        expect(static_cast<bool>(registry.find_importer(luisa::string_view{".nonexistent"}, mesh_type) == nullptr));
     }
 
     TEST_CASE_FIXTURE(WorldFixture, "mesh_resource_creation") {
-        auto mesh = create<MeshResource>();
-        CHECK(mesh != nullptr);
-        CHECK(mesh->empty());
-        CHECK(mesh->vertex_count() == 0);
-        CHECK(mesh->triangle_count() == 0);
-        CHECK(mesh->uv_count() == 0);
-        CHECK_FALSE(mesh->contained_normal());
-        CHECK_FALSE(mesh->contained_tangent());
+        auto mesh = self.create<MeshResource>();
+        expect(static_cast<bool>(mesh != nullptr));
+        expect(static_cast<bool>(mesh->empty()));
+        expect(static_cast<bool>(mesh->vertex_count() == 0));
+        expect(static_cast<bool>(mesh->triangle_count() == 0));
+        expect(static_cast<bool>(mesh->uv_count() == 0));
+        expect(!static_cast<bool>(mesh->contained_normal()));
+        expect(!static_cast<bool>(mesh->contained_tangent()));
     }
-}

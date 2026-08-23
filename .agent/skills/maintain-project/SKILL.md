@@ -122,14 +122,16 @@ uv run main.py
 xmake run rbc-editor
 ```
 
-### Graphics Tests
+### Graphics Sample
+
+由于图形的特殊性，Graphics的测试用例不走unittest路线，而是有专门的sample
 
 ```bash
 # Run graphics test with backend (project_dir must contain rbc_project.json)
-xmake run test_graphics_bin <backend> <project_dir> <intermediate_dir>
+xmake run sample_graphics_bin <backend> <project_dir> <intermediate_dir>
 
 # Example:
-xmake run test_graphics_bin dx ./my_project ./.rbc
+xmake run sample_graphics_bin dx ./my_project ./.rbc
 ```
 
 ## Testing
@@ -155,8 +157,9 @@ xmake run <test_target>
 
 # Available test targets (examples)
 xmake run test_core
-xmake run test_graphics
 xmake run test_world
+# special test graphics
+xmake run sample_graphics
 ```
 
 ## Code Generation

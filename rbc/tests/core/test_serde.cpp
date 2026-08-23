@@ -113,8 +113,7 @@ struct Serialize<test_serde::TestArrayStruct> {
 
 }// namespace rbc
 
-TEST_SUITE("serde") {
-    TEST_CASE("json_basic_struct_serialization") {
+    "json_basic_struct_serialization"_test = [] {
         RuntimeStaticBase::init_all();
         auto dispose_runtime_static = vstd::scope_exit([] {
             RuntimeStaticBase::dispose_all();
@@ -131,14 +130,14 @@ TEST_SUITE("serde") {
 
         JsonDeSerializer reader{luisa::string_view{(char const *)json_blob.data(), json_blob.size()}};
         test_serde::TestPoint deserialized_point;
-        CHECK(reader._load(deserialized_point, "test_point"));
+        expect(static_cast<bool>(reader._load(deserialized_point, "test_point")));
 
-        CHECK(deserialized_point.x == point.x);
-        CHECK(deserialized_point.y == point.y);
-        CHECK(deserialized_point.z == point.z);
-    }
+        expect(static_cast<bool>(deserialized_point.x == point.x));
+        expect(static_cast<bool>(deserialized_point.y == point.y));
+        expect(static_cast<bool>(deserialized_point.z == point.z));
+    };
 
-    TEST_CASE("json_nested_struct_serialization") {
+    "json_nested_struct_serialization"_test = [] {
         RuntimeStaticBase::init_all();
         auto dispose_runtime_static = vstd::scope_exit([] {
             RuntimeStaticBase::dispose_all();
@@ -165,24 +164,24 @@ TEST_SUITE("serde") {
 
         JsonDeSerializer reader{luisa::string_view{(char const *)json_blob.data(), json_blob.size()}};
         test_serde::TestTransform deserialized_transform;
-        CHECK(reader._load(deserialized_transform, "transform"));
+        expect(static_cast<bool>(reader._load(deserialized_transform, "transform")));
 
-        CHECK(deserialized_transform.position.x == transform.position.x);
-        CHECK(deserialized_transform.position.y == transform.position.y);
-        CHECK(deserialized_transform.position.z == transform.position.z);
-        CHECK(deserialized_transform.rotation.x == transform.rotation.x);
-        CHECK(deserialized_transform.rotation.y == transform.rotation.y);
-        CHECK(deserialized_transform.rotation.z == transform.rotation.z);
-        CHECK(deserialized_transform.scale.x == transform.scale.x);
-        CHECK(deserialized_transform.scale.y == transform.scale.y);
-        CHECK(deserialized_transform.scale.z == transform.scale.z);
-        CHECK(deserialized_transform.color.r == transform.color.r);
-        CHECK(deserialized_transform.color.g == transform.color.g);
-        CHECK(deserialized_transform.color.b == transform.color.b);
-        CHECK(deserialized_transform.color.a == transform.color.a);
-    }
+        expect(static_cast<bool>(deserialized_transform.position.x == transform.position.x));
+        expect(static_cast<bool>(deserialized_transform.position.y == transform.position.y));
+        expect(static_cast<bool>(deserialized_transform.position.z == transform.position.z));
+        expect(static_cast<bool>(deserialized_transform.rotation.x == transform.rotation.x));
+        expect(static_cast<bool>(deserialized_transform.rotation.y == transform.rotation.y));
+        expect(static_cast<bool>(deserialized_transform.rotation.z == transform.rotation.z));
+        expect(static_cast<bool>(deserialized_transform.scale.x == transform.scale.x));
+        expect(static_cast<bool>(deserialized_transform.scale.y == transform.scale.y));
+        expect(static_cast<bool>(deserialized_transform.scale.z == transform.scale.z));
+        expect(static_cast<bool>(deserialized_transform.color.r == transform.color.r));
+        expect(static_cast<bool>(deserialized_transform.color.g == transform.color.g));
+        expect(static_cast<bool>(deserialized_transform.color.b == transform.color.b));
+        expect(static_cast<bool>(deserialized_transform.color.a == transform.color.a));
+    };
 
-    TEST_CASE("json_array_serialization") {
+    "json_array_serialization"_test = [] {
         RuntimeStaticBase::init_all();
         auto dispose_runtime_static = vstd::scope_exit([] {
             RuntimeStaticBase::dispose_all();
@@ -203,27 +202,27 @@ TEST_SUITE("serde") {
 
         JsonDeSerializer reader{luisa::string_view{(char const *)json_blob.data(), json_blob.size()}};
         test_serde::TestArrayStruct deserialized_array;
-        CHECK(reader._load(deserialized_array, "array_struct"));
+        expect(static_cast<bool>(reader._load(deserialized_array, "array_struct")));
 
-        CHECK(deserialized_array.int_array.size() == array_struct.int_array.size());
+        expect(static_cast<bool>(deserialized_array.int_array.size() == array_struct.int_array.size()));
         for (size_t i = 0; i < array_struct.int_array.size(); ++i) {
-            CHECK(deserialized_array.int_array[i] == array_struct.int_array[i]);
+            expect(static_cast<bool>(deserialized_array.int_array[i] == array_struct.int_array[i]));
         }
 
-        CHECK(deserialized_array.string_array.size() == array_struct.string_array.size());
+        expect(static_cast<bool>(deserialized_array.string_array.size() == array_struct.string_array.size()));
         for (size_t i = 0; i < array_struct.string_array.size(); ++i) {
-            CHECK(deserialized_array.string_array[i] == array_struct.string_array[i]);
+            expect(static_cast<bool>(deserialized_array.string_array[i] == array_struct.string_array[i]));
         }
 
-        CHECK(deserialized_array.point_array.size() == array_struct.point_array.size());
+        expect(static_cast<bool>(deserialized_array.point_array.size() == array_struct.point_array.size()));
         for (size_t i = 0; i < array_struct.point_array.size(); ++i) {
-            CHECK(deserialized_array.point_array[i].x == array_struct.point_array[i].x);
-            CHECK(deserialized_array.point_array[i].y == array_struct.point_array[i].y);
-            CHECK(deserialized_array.point_array[i].z == array_struct.point_array[i].z);
+            expect(static_cast<bool>(deserialized_array.point_array[i].x == array_struct.point_array[i].x));
+            expect(static_cast<bool>(deserialized_array.point_array[i].y == array_struct.point_array[i].y));
+            expect(static_cast<bool>(deserialized_array.point_array[i].z == array_struct.point_array[i].z));
         }
-    }
+    };
 
-    TEST_CASE("json_array_root_serialization") {
+    "json_array_root_serialization"_test = [] {
         RuntimeStaticBase::init_all();
         auto dispose_runtime_static = vstd::scope_exit([] {
             RuntimeStaticBase::dispose_all();
@@ -246,19 +245,19 @@ TEST_SUITE("serde") {
         deserialized_points.reserve(size);
         for (uint64_t i = 0; i < size; ++i) {
             test_serde::TestPoint point;
-            CHECK(reader._load(point));
+            expect(static_cast<bool>(reader._load(point)));
             deserialized_points.emplace_back(point);
         }
 
-        CHECK(deserialized_points.size() == points.size());
+        expect(static_cast<bool>(deserialized_points.size() == points.size()));
         for (size_t i = 0; i < points.size(); ++i) {
-            CHECK(deserialized_points[i].x == points[i].x);
-            CHECK(deserialized_points[i].y == points[i].y);
-            CHECK(deserialized_points[i].z == points[i].z);
+            expect(static_cast<bool>(deserialized_points[i].x == points[i].x));
+            expect(static_cast<bool>(deserialized_points[i].y == points[i].y));
+            expect(static_cast<bool>(deserialized_points[i].z == points[i].z));
         }
-    }
+    };
 
-    TEST_CASE("json_builtin_types_compatibility") {
+    "json_builtin_types_compatibility"_test = [] {
         RuntimeStaticBase::init_all();
         auto dispose_runtime_static = vstd::scope_exit([] {
             RuntimeStaticBase::dispose_all();
@@ -277,18 +276,18 @@ TEST_SUITE("serde") {
         luisa::string string_val;
         bool bool_val;
 
-        CHECK(reader._load(int_val, "int_value"));
-        CHECK(reader._load(double_val, "double_value"));
-        CHECK(reader._load(string_val, "string_value"));
-        CHECK(reader._load(bool_val, "bool_value"));
+        expect(static_cast<bool>(reader._load(int_val, "int_value")));
+        expect(static_cast<bool>(reader._load(double_val, "double_value")));
+        expect(static_cast<bool>(reader._load(string_val, "string_value")));
+        expect(static_cast<bool>(reader._load(bool_val, "bool_value")));
 
-        CHECK(int_val == 42);
-        CHECK(double_val == 3.14);
-        CHECK(string_val == "test_string");
-        CHECK(bool_val == true);
-    }
+        expect(static_cast<bool>(int_val == 42));
+        expect(static_cast<bool>(double_val == 3.14));
+        expect(static_cast<bool>(string_val == "test_string"));
+        expect(static_cast<bool>(bool_val == true));
+    };
 
-    TEST_CASE("bin_basic_struct_serialization") {
+    "bin_basic_struct_serialization"_test = [] {
         RuntimeStaticBase::init_all();
         auto dispose_runtime_static = vstd::scope_exit([] {
             RuntimeStaticBase::dispose_all();
@@ -305,14 +304,14 @@ TEST_SUITE("serde") {
 
         BinDeSerializer reader{bin_blob};
         test_serde::TestPoint deserialized_point;
-        CHECK(reader._load(deserialized_point, "test_point"));
+        expect(static_cast<bool>(reader._load(deserialized_point, "test_point")));
 
-        CHECK(deserialized_point.x == point.x);
-        CHECK(deserialized_point.y == point.y);
-        CHECK(deserialized_point.z == point.z);
-    }
+        expect(static_cast<bool>(deserialized_point.x == point.x));
+        expect(static_cast<bool>(deserialized_point.y == point.y));
+        expect(static_cast<bool>(deserialized_point.z == point.z));
+    };
 
-    TEST_CASE("bin_nested_struct_serialization") {
+    "bin_nested_struct_serialization"_test = [] {
         RuntimeStaticBase::init_all();
         auto dispose_runtime_static = vstd::scope_exit([] {
             RuntimeStaticBase::dispose_all();
@@ -339,24 +338,24 @@ TEST_SUITE("serde") {
 
         BinDeSerializer reader{bin_blob};
         test_serde::TestTransform deserialized_transform;
-        CHECK(reader._load(deserialized_transform, "transform"));
+        expect(static_cast<bool>(reader._load(deserialized_transform, "transform")));
 
-        CHECK(deserialized_transform.position.x == transform.position.x);
-        CHECK(deserialized_transform.position.y == transform.position.y);
-        CHECK(deserialized_transform.position.z == transform.position.z);
-        CHECK(deserialized_transform.rotation.x == transform.rotation.x);
-        CHECK(deserialized_transform.rotation.y == transform.rotation.y);
-        CHECK(deserialized_transform.rotation.z == transform.rotation.z);
-        CHECK(deserialized_transform.scale.x == transform.scale.x);
-        CHECK(deserialized_transform.scale.y == transform.scale.y);
-        CHECK(deserialized_transform.scale.z == transform.scale.z);
-        CHECK(deserialized_transform.color.r == transform.color.r);
-        CHECK(deserialized_transform.color.g == transform.color.g);
-        CHECK(deserialized_transform.color.b == transform.color.b);
-        CHECK(deserialized_transform.color.a == transform.color.a);
-    }
+        expect(static_cast<bool>(deserialized_transform.position.x == transform.position.x));
+        expect(static_cast<bool>(deserialized_transform.position.y == transform.position.y));
+        expect(static_cast<bool>(deserialized_transform.position.z == transform.position.z));
+        expect(static_cast<bool>(deserialized_transform.rotation.x == transform.rotation.x));
+        expect(static_cast<bool>(deserialized_transform.rotation.y == transform.rotation.y));
+        expect(static_cast<bool>(deserialized_transform.rotation.z == transform.rotation.z));
+        expect(static_cast<bool>(deserialized_transform.scale.x == transform.scale.x));
+        expect(static_cast<bool>(deserialized_transform.scale.y == transform.scale.y));
+        expect(static_cast<bool>(deserialized_transform.scale.z == transform.scale.z));
+        expect(static_cast<bool>(deserialized_transform.color.r == transform.color.r));
+        expect(static_cast<bool>(deserialized_transform.color.g == transform.color.g));
+        expect(static_cast<bool>(deserialized_transform.color.b == transform.color.b));
+        expect(static_cast<bool>(deserialized_transform.color.a == transform.color.a));
+    };
 
-    TEST_CASE("bin_bytes_interface") {
+    "bin_bytes_interface"_test = [] {
         RuntimeStaticBase::init_all();
         auto dispose_runtime_static = vstd::scope_exit([] {
             RuntimeStaticBase::dispose_all();
@@ -374,15 +373,15 @@ TEST_SUITE("serde") {
 
         BinDeSerializer reader{bin_blob};
         luisa::vector<std::byte> deserialized_bytes;
-        CHECK(reader.bytes(deserialized_bytes, "test_bytes"));
+        expect(static_cast<bool>(reader.bytes(deserialized_bytes, "test_bytes")));
 
-        CHECK(deserialized_bytes.size() == test_bytes.size());
+        expect(static_cast<bool>(deserialized_bytes.size() == test_bytes.size()));
         for (size_t i = 0; i < test_bytes.size(); ++i) {
-            CHECK(deserialized_bytes[i] == test_bytes[i]);
+            expect(static_cast<bool>(deserialized_bytes[i] == test_bytes[i]));
         }
-    }
+    };
 
-    TEST_CASE("bin_array_root_serialization") {
+    "bin_array_root_serialization"_test = [] {
         RuntimeStaticBase::init_all();
         auto dispose_runtime_static = vstd::scope_exit([] {
             RuntimeStaticBase::dispose_all();
@@ -405,15 +404,14 @@ TEST_SUITE("serde") {
         deserialized_points.reserve(size);
         for (uint64_t i = 0; i < size; ++i) {
             test_serde::TestPoint point;
-            CHECK(reader._load(point));
+            expect(static_cast<bool>(reader._load(point)));
             deserialized_points.emplace_back(point);
         }
 
-        CHECK(deserialized_points.size() == points.size());
+        expect(static_cast<bool>(deserialized_points.size() == points.size()));
         for (size_t i = 0; i < points.size(); ++i) {
-            CHECK(deserialized_points[i].x == points[i].x);
-            CHECK(deserialized_points[i].y == points[i].y);
-            CHECK(deserialized_points[i].z == points[i].z);
+            expect(static_cast<bool>(deserialized_points[i].x == points[i].x));
+            expect(static_cast<bool>(deserialized_points[i].y == points[i].y));
+            expect(static_cast<bool>(deserialized_points[i].z == points[i].z));
         }
-    }
-}
+    };

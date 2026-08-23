@@ -57,258 +57,257 @@ struct TestTypeB {
     bool operator==(const TestTypeB& other) const { return s == other.s; }
 };
 
-TEST_SUITE("vstd::variant") {
     
     // ============================================================
     // Section 1: Construction Tests
     // ============================================================
     
-    TEST_CASE("variant_default_construction") {
+    "variant_default_construction"_test = [] {
         // Default constructor creates invalid variant
         vstd::variant<int, double, std::string> v;
-        CHECK(!v.valid());
-        CHECK(v.index() == 3); // argSize = 3, so index is 3 (invalid)
-    }
+        expect(static_cast<bool>(!v.valid()));
+        expect(static_cast<bool>(v.index() == 3)); // argSize = 3, so index is 3 (invalid)
+    };
     
-    TEST_CASE("variant_typed_construction") {
+    "variant_typed_construction"_test = [] {
         // Construction with a specific type
         vstd::variant<int, double, std::string> v1(42);
-        CHECK(v1.valid());
-        CHECK(v1.index() == 0);
-        CHECK(v1.is_type_of<int>());
+        expect(static_cast<bool>(v1.valid()));
+        expect(static_cast<bool>(v1.index() == 0));
+        expect(static_cast<bool>(v1.is_type_of<int>()));
         
         vstd::variant<int, double, std::string> v2(3.14);
-        CHECK(v2.valid());
-        CHECK(v2.index() == 1);
-        CHECK(v2.is_type_of<double>());
+        expect(static_cast<bool>(v2.valid()));
+        expect(static_cast<bool>(v2.index() == 1));
+        expect(static_cast<bool>(v2.is_type_of<double>()));
         
         vstd::variant<int, double, std::string> v3(std::string("hello"));
-        CHECK(v3.valid());
-        CHECK(v3.index() == 2);
-        CHECK(v3.is_type_of<std::string>());
-    }
+        expect(static_cast<bool>(v3.valid()));
+        expect(static_cast<bool>(v3.index() == 2));
+        expect(static_cast<bool>(v3.is_type_of<std::string>()));
+    };
     
-    TEST_CASE("variant_copy_construction") {
+    "variant_copy_construction"_test = [] {
         // Copy construction
         vstd::variant<int, double, std::string> v1(42);
         auto v2 = v1;
-        CHECK(v2.valid());
-        CHECK(v2.index() == 0);
-        CHECK(v2.get<0>() == 42);
-    }
+        expect(static_cast<bool>(v2.valid()));
+        expect(static_cast<bool>(v2.index() == 0));
+        expect(static_cast<bool>(v2.get<0>() == 42));
+    };
     
-    TEST_CASE("variant_move_construction") {
+    "variant_move_construction"_test = [] {
         // Move construction
         vstd::variant<int, std::string> v1(std::string("test"));
         auto v2 = std::move(v1);
-        CHECK(v2.valid());
-        CHECK(v2.index() == 1);
-        CHECK(v2.get<1>() == "test");
-    }
+        expect(static_cast<bool>(v2.valid()));
+        expect(static_cast<bool>(v2.index() == 1));
+        expect(static_cast<bool>(v2.get<1>() == "test"));
+    };
     
-    TEST_CASE("variant_constructor_with_multiple_args") {
+    "variant_constructor_with_multiple_args"_test = [] {
         // Construction with multiple arguments for the type
         // vstd::variant does not support std::in_place_type, use reset_as instead
         vstd::variant<std::string, TestTypeA> v;
         v.reset_as<std::string>(5, 'x');
-        CHECK(v.valid());
-        CHECK(v.is_type_of<std::string>());
-        CHECK(v.force_get<std::string>() == "xxxxx");
-    }
+        expect(static_cast<bool>(v.valid()));
+        expect(static_cast<bool>(v.is_type_of<std::string>()));
+        expect(static_cast<bool>(v.force_get<std::string>() == "xxxxx"));
+    };
     
     // ============================================================
     // Section 2: Element Access Tests
     // ============================================================
     
-    TEST_CASE("variant_get_by_index") {
+    "variant_get_by_index"_test = [] {
         vstd::variant<int, double, std::string> v(3.14);
         
         // Get by index
-        CHECK(v.get<1>() == 3.14);
+        expect(static_cast<bool>(v.get<1>() == 3.14));
         
         // Const get
         const auto& cv = v;
-        CHECK(cv.get<1>() == 3.14);
+        expect(static_cast<bool>(cv.get<1>() == 3.14));
         
         // Rvalue get
         vstd::variant<int, std::string> v2(std::string("move"));
         auto moved = std::move(v2).get<1>();
-        CHECK(moved == "move");
-    }
+        expect(static_cast<bool>(moved == "move"));
+    };
     
-    TEST_CASE("variant_try_get") {
+    "variant_try_get"_test = [] {
         vstd::variant<int, double, std::string> v(std::string("hello"));
         
         // Successful try_get
         auto* ptr = v.try_get<std::string>();
-        CHECK(ptr != nullptr);
-        CHECK(*ptr == "hello");
+        expect(static_cast<bool>(ptr != nullptr));
+        expect(static_cast<bool>(*ptr == "hello"));
         
         // Failed try_get (wrong type)
         auto* int_ptr = v.try_get<int>();
-        CHECK(int_ptr == nullptr);
+        expect(static_cast<bool>(int_ptr == nullptr));
         
         // Const try_get
         const auto& cv = v;
         const auto* cptr = cv.try_get<std::string>();
-        CHECK(cptr != nullptr);
-        CHECK(*cptr == "hello");
-    }
+        expect(static_cast<bool>(cptr != nullptr));
+        expect(static_cast<bool>(*cptr == "hello"));
+    };
     
-    TEST_CASE("variant_force_get") {
+    "variant_force_get"_test = [] {
         vstd::variant<int, double, std::string> v(42);
         
         // Force get with correct type
-        CHECK(v.force_get<int>() == 42);
+        expect(static_cast<bool>(v.force_get<int>() == 42));
         
         // Modify through force_get
         v.force_get<int>() = 100;
-        CHECK(v.force_get<int>() == 100);
+        expect(static_cast<bool>(v.force_get<int>() == 100));
         
         // Const force_get
         const auto& cv = v;
-        CHECK(cv.force_get<int>() == 100);
-    }
+        expect(static_cast<bool>(cv.force_get<int>() == 100));
+    };
     
-    TEST_CASE("variant_get_or") {
+    "variant_get_or"_test = [] {
         vstd::variant<int, double, std::string> v(42);
         
         // get_or with correct type
-        CHECK(v.get_or<int>(0) == 42);
+        expect(static_cast<bool>(v.get_or<int>(0) == 42));
         
         // get_or with wrong type (returns default)
-        CHECK(v.get_or<double>(3.14) == 3.14);
+        expect(static_cast<bool>(v.get_or<double>(3.14) == 3.14));
         
         // get_or from rvalue
         vstd::variant<int, std::string> v2(std::string("test"));
         auto result = std::move(v2).get_or<std::string>(std::string("default"));
-        CHECK(result == "test");
-    }
+        expect(static_cast<bool>(result == "test"));
+    };
     
     // ============================================================
     // Section 3: Type Checking Tests
     // ============================================================
     
-    TEST_CASE("variant_index_and_valid") {
+    "variant_index_and_valid"_test = [] {
         vstd::variant<int, double, std::string> v;
-        CHECK(!v.valid());
-        CHECK(v.index() == 3); // Invalid state
+        expect(static_cast<bool>(!v.valid()));
+        expect(static_cast<bool>(v.index() == 3)); // Invalid state
         
         v = 42;
-        CHECK(v.valid());
-        CHECK(v.index() == 0);
+        expect(static_cast<bool>(v.valid()));
+        expect(static_cast<bool>(v.index() == 0));
         
         v = std::string("test");
-        CHECK(v.valid());
-        CHECK(v.index() == 2);
-    }
+        expect(static_cast<bool>(v.valid()));
+        expect(static_cast<bool>(v.index() == 2));
+    };
     
-    TEST_CASE("variant_is_type_of") {
+    "variant_is_type_of"_test = [] {
         vstd::variant<int, double, std::string> v(42);
         
-        CHECK(v.is_type_of<int>());
-        CHECK(!v.is_type_of<double>());
-        CHECK(!v.is_type_of<std::string>());
+        expect(static_cast<bool>(v.is_type_of<int>()));
+        expect(static_cast<bool>(!v.is_type_of<double>()));
+        expect(static_cast<bool>(!v.is_type_of<std::string>()));
         
         v = 3.14;
-        CHECK(!v.is_type_of<int>());
-        CHECK(v.is_type_of<double>());
-        CHECK(!v.is_type_of<std::string>());
-    }
+        expect(static_cast<bool>(!v.is_type_of<int>()));
+        expect(static_cast<bool>(v.is_type_of<double>()));
+        expect(static_cast<bool>(!v.is_type_of<std::string>()));
+    };
     
-    TEST_CASE("variant_IndexOf_static") {
+    "variant_IndexOf_static"_test = [] {
         // Test static IndexOf
         using Var = vstd::variant<int, double, std::string>;
-        CHECK(Var::IndexOf<int> == 0);
-        CHECK(Var::IndexOf<double> == 1);
-        CHECK(Var::IndexOf<std::string> == 2);
-    }
+        expect(static_cast<bool>(Var::IndexOf<int> == 0));
+        expect(static_cast<bool>(Var::IndexOf<double> == 1));
+        expect(static_cast<bool>(Var::IndexOf<std::string> == 2));
+    };
     
-    TEST_CASE("variant_TypeOf_static") {
+    "variant_TypeOf_static"_test = [] {
         // Test static TypeOf
         using Var = vstd::variant<int, double, std::string>;
-        CHECK(std::is_same_v<Var::TypeOf<0>, int>);
-        CHECK(std::is_same_v<Var::TypeOf<1>, double>);
-        CHECK(std::is_same_v<Var::TypeOf<2>, std::string>);
-    }
+        expect(static_cast<bool>(std::is_same_v<Var::TypeOf<0>, int>));
+        expect(static_cast<bool>(std::is_same_v<Var::TypeOf<1>, double>));
+        expect(static_cast<bool>(std::is_same_v<Var::TypeOf<2>, std::string>));
+    };
     
     // ============================================================
     // Section 4: Assignment Tests
     // ============================================================
     
-    TEST_CASE("variant_typed_assignment") {
+    "variant_typed_assignment"_test = [] {
         vstd::variant<int, double, std::string> v(42);
         
         // Assign same type
         v = 100;
-        CHECK(v.get<0>() == 100);
+        expect(static_cast<bool>(v.get<0>() == 100));
         
         // Assign different type
         v = std::string("hello");
-        CHECK(v.is_type_of<std::string>());
-        CHECK(v.force_get<std::string>() == "hello");
+        expect(static_cast<bool>(v.is_type_of<std::string>()));
+        expect(static_cast<bool>(v.force_get<std::string>() == "hello"));
         
         // Assign from convertible type (direct type only, no implicit conversion)
         v = 3.14; // double
-        CHECK(v.is_type_of<double>());
-    }
+        expect(static_cast<bool>(v.is_type_of<double>()));
+    };
     
-    TEST_CASE("variant_copy_assignment") {
+    "variant_copy_assignment"_test = [] {
         vstd::variant<int, std::string> v1(std::string("test"));
         vstd::variant<int, std::string> v2(42);
         
         v2 = v1;
-        CHECK(v2.is_type_of<std::string>());
-        CHECK(v2.force_get<std::string>() == "test");
+        expect(static_cast<bool>(v2.is_type_of<std::string>()));
+        expect(static_cast<bool>(v2.force_get<std::string>() == "test"));
         
         // Same type assignment
         vstd::variant<int, std::string> v3(std::string("other"));
         v3 = v1;
-        CHECK(v3.force_get<std::string>() == "test");
-    }
+        expect(static_cast<bool>(v3.force_get<std::string>() == "test"));
+    };
     
-    TEST_CASE("variant_move_assignment") {
+    "variant_move_assignment"_test = [] {
         vstd::variant<int, std::string> v1(std::string("move_me"));
         vstd::variant<int, std::string> v2(42);
         
         v2 = std::move(v1);
-        CHECK(v2.is_type_of<std::string>());
-        CHECK(v2.force_get<std::string>() == "move_me");
-    }
+        expect(static_cast<bool>(v2.is_type_of<std::string>()));
+        expect(static_cast<bool>(v2.force_get<std::string>() == "move_me"));
+    };
     
     // ============================================================
     // Section 5: Modification Tests
     // ============================================================
     
-    TEST_CASE("variant_reset") {
+    "variant_reset"_test = [] {
         vstd::variant<int, std::string> v(42);
-        CHECK(v.valid());
+        expect(static_cast<bool>(v.valid()));
         
         v.reset(std::string("hello"));
-        CHECK(v.valid());
-        CHECK(v.is_type_of<std::string>());
-        CHECK(v.force_get<std::string>() == "hello");
-    }
+        expect(static_cast<bool>(v.valid()));
+        expect(static_cast<bool>(v.is_type_of<std::string>()));
+        expect(static_cast<bool>(v.force_get<std::string>() == "hello"));
+    };
     
-    TEST_CASE("variant_reset_as_with_index") {
+    "variant_reset_as_with_index"_test = [] {
         vstd::variant<int, double, std::string> v(42);
         
         // Reset with type index
         v.reset_as(1, 3.14); // index 1 = double
-        CHECK(v.is_type_of<double>());
-        CHECK(v.get<1>() == 3.14);
-    }
+        expect(static_cast<bool>(v.is_type_of<double>()));
+        expect(static_cast<bool>(v.get<1>() == 3.14));
+    };
     
-    TEST_CASE("variant_reset_as_with_type") {
+    "variant_reset_as_with_type"_test = [] {
         vstd::variant<int, double, std::string> v(42);
         
         // Reset with type
         v.reset_as<std::string>("hello");
-        CHECK(v.is_type_of<std::string>());
-        CHECK(v.force_get<std::string>() == "hello");
-    }
+        expect(static_cast<bool>(v.is_type_of<std::string>()));
+        expect(static_cast<bool>(v.force_get<std::string>() == "hello"));
+    };
     
-    TEST_CASE("variant_dispose") {
+    "variant_dispose"_test = [] {
         NonTrivialType::construct_count = 0;
         NonTrivialType::destruct_count = 0;
         
@@ -316,21 +315,21 @@ TEST_SUITE("vstd::variant") {
             vstd::variant<int, NonTrivialType> v(NonTrivialType(42));
             // Note: NonTrivialType is constructed once in the temporary, then moved into variant
             // The temporary is then destructed
-            CHECK(NonTrivialType::construct_count >= 1);
-            CHECK(NonTrivialType::destruct_count >= 0);
+            expect(static_cast<bool>(NonTrivialType::construct_count >= 1));
+            expect(static_cast<bool>(NonTrivialType::destruct_count >= 0));
             
             v.dispose();
-            CHECK(!v.valid());
+            expect(static_cast<bool>(!v.valid()));
             // After dispose, the contained value is destructed
-            CHECK(NonTrivialType::destruct_count >= 1);
+            expect(static_cast<bool>(NonTrivialType::destruct_count >= 1));
         }
-    }
+    };
     
     // ============================================================
     // Section 6: Visitor Tests
     // ============================================================
     
-    TEST_CASE("variant_visit") {
+    "variant_visit"_test = [] {
         vstd::variant<int, double, std::string> v(42);
         
         int visited = 0;
@@ -338,11 +337,11 @@ TEST_SUITE("vstd::variant") {
             // If v is default constructed, this function will never be called
             visited = 1;
             if constexpr (std::is_same_v<decltype(value), int&>) {
-                CHECK(value == 42);
+                expect(static_cast<bool>(value == 42));
                 visited = 2;
             }
         });
-        CHECK(visited == 2);
+        expect(static_cast<bool>(visited == 2));
         
         // Visit on rvalue
         vstd::variant<int, std::string> v2(std::string("test"));
@@ -354,10 +353,10 @@ TEST_SUITE("vstd::variant") {
                 result = std::forward<T>(value);
             }
         });
-        CHECK(result == "test");
-    }
+        expect(static_cast<bool>(result == "test"));
+    };
     
-    TEST_CASE("variant_multi_visit") {
+    "variant_multi_visit"_test = [] {
         vstd::variant<int, double, std::string> v(3.14);
         
         std::string result;
@@ -367,10 +366,10 @@ TEST_SUITE("vstd::variant") {
             [&result](double& d) { result = "double: " + std::to_string(d); },
             [&result](std::string& s) { result = "string: " + s; }
         );
-        CHECK(result.find("double:") != std::string::npos);
-    }
+        expect(static_cast<bool>(result.find("double:") != std::string::npos));
+    };
     
-    TEST_CASE("variant_visit_or") {
+    "variant_visit_or"_test = [] {
         vstd::variant<int, double> v(42);
         
         // Visit with return value
@@ -380,17 +379,17 @@ TEST_SUITE("vstd::variant") {
             }
             return "other";
         });
-        CHECK(result == "int: 42");
+        expect(static_cast<bool>(result == "int: 42"));
         
         // Visit on invalid variant
         vstd::variant<int, double> v2;
         auto result2 = v2.visit_or(std::string("default"), [](auto&) -> std::string {
             return "visited";
         });
-        CHECK(result2 == "default");
-    }
+        expect(static_cast<bool>(result2 == "default"));
+    };
     
-    TEST_CASE("variant_multi_visit_or") {
+    "variant_multi_visit_or"_test = [] {
         vstd::variant<int, double, std::string> v(std::string("hello"));
         
         auto result = v.multi_visit_or(
@@ -399,14 +398,14 @@ TEST_SUITE("vstd::variant") {
             [](double) { return std::string("double"); },
             [](std::string& s) { return s; }
         );
-        CHECK(result == "hello");
-    }
+        expect(static_cast<bool>(result == "hello"));
+    };
     
     // ============================================================
     // Section 7: Non-Trivial Type Tests
     // ============================================================
     
-    TEST_CASE("variant_with_non_trivial_types") {
+    "variant_with_non_trivial_types"_test = [] {
         NonTrivialType::construct_count = 0;
         NonTrivialType::destruct_count = 0;
         
@@ -414,58 +413,58 @@ TEST_SUITE("vstd::variant") {
             vstd::variant<int, NonTrivialType> v;
             v = NonTrivialType(42);
             // Temporary constructed, moved into variant, then temporary destructed
-            CHECK(NonTrivialType::construct_count >= 1);
-            CHECK(v.is_type_of<NonTrivialType>());
-            CHECK(v.force_get<NonTrivialType>().value == 42);
+            expect(static_cast<bool>(NonTrivialType::construct_count >= 1));
+            expect(static_cast<bool>(v.is_type_of<NonTrivialType>()));
+            expect(static_cast<bool>(v.force_get<NonTrivialType>().value == 42));
             
             // Switch type (should destruct NonTrivialType)
             v = 100;
-            CHECK(NonTrivialType::destruct_count >= 1);
+            expect(static_cast<bool>(NonTrivialType::destruct_count >= 1));
         }
-    }
+    };
     
-    TEST_CASE("variant_destructor_cleanup") {
+    "variant_destructor_cleanup"_test = [] {
         NonTrivialType::construct_count = 0;
         NonTrivialType::destruct_count = 0;
         
         {
             vstd::variant<NonTrivialType, int> v(NonTrivialType(42));
             // Temporary + move construction into variant
-            CHECK(NonTrivialType::construct_count >= 1);
-            CHECK(NonTrivialType::destruct_count >= 0);
+            expect(static_cast<bool>(NonTrivialType::construct_count >= 1));
+            expect(static_cast<bool>(NonTrivialType::destruct_count >= 0));
         }
         
         // After scope exit, the contained value is destructed
-        CHECK(NonTrivialType::destruct_count >= 1);
-    }
+        expect(static_cast<bool>(NonTrivialType::destruct_count >= 1));
+    };
     
     // ============================================================
     // Section 8: Hash and Compare Tests
     // ============================================================
     
-    TEST_CASE("variant_hash") {
+    "variant_hash"_test = [] {
         vstd::variant<int, std::string> v1(42);
         vstd::variant<int, std::string> v2(42);
         vstd::variant<int, std::string> v3(100);
         
         vstd::hash<vstd::variant<int, std::string>> hasher;
-        CHECK(hasher(v1) == hasher(v2));
-        CHECK(hasher(v1) != hasher(v3));
-    }
+        expect(static_cast<bool>(hasher(v1) == hasher(v2)));
+        expect(static_cast<bool>(hasher(v1) != hasher(v3)));
+    };
     
     // Note: The vstd::compare for variant has a template deduction issue in its implementation
-    // TEST_CASE("variant_compare") {
+    // "variant_compare"_test = [] {
     //     vstd::variant<int, double> v1(42);
     //     vstd::variant<int, double> v2(42);
     //     vstd::variant<int, double> v3(100);
     //     vstd::variant<int, double> v4(3.14);
     //     
     //     vstd::compare<vstd::variant<int, double>> comparer;
-    //     CHECK(comparer(v1, v2) == 0);
-    //     CHECK(comparer(v1, v3) < 0);  // 42 < 100
-    //     CHECK(comparer(v3, v1) > 0);  // 100 > 42
+    //     expect(static_cast<bool>(comparer(v1, v2) == 0));
+    //     expect(static_cast<bool>(comparer(v1, v3) < 0));  // 42 < 100
+    //     expect(static_cast<bool>(comparer(v3, v1) > 0));  // 100 > 42
     //     // Note: compare uses index() when types differ, int(0) < double(1)
-    //     CHECK(comparer(v1, v4) < 0);  // int index(0) < double index(1)
+    //     expect(static_cast<bool>(comparer(v1, v4) < 0));  // int index(0) < double index(1)
     // }
     
     // ============================================================
@@ -475,23 +474,23 @@ TEST_SUITE("vstd::variant") {
     TEST_CASE("variant_single_type") {
         // Variant with single type
         vstd::variant<int> v(42);
-        CHECK(v.valid());
-        CHECK(v.index() == 0);
-        CHECK(v.get<0>() == 42);
+        expect(static_cast<bool>(v.valid()));
+        expect(static_cast<bool>(v.index() == 0));
+        expect(static_cast<bool>(v.get<0>() == 42));
         
         v.visit([](int& i) { i = 100; });
-        CHECK(v.get<0>() == 100);
+        expect(static_cast<bool>(v.get<0>() == 100));
     }
     
     TEST_CASE("variant_with_reference_wrapper") {
         // Note: variant stores values, references are tricky
         int x = 42;
         vstd::variant<int, TestTypeA> v(x);
-        CHECK(v.get<0>() == 42);
+        expect(static_cast<bool>(v.get<0>() == 42));
         
         x = 100;
         // v still holds the old value (copied)
-        CHECK(v.get<0>() == 42);
+        expect(static_cast<bool>(v.get<0>() == 42));
     }
     
     TEST_CASE("variant_place_holder_access") {
@@ -499,17 +498,17 @@ TEST_SUITE("vstd::variant") {
         
         // Access underlying storage
         void* ptr = v.place_holder();
-        CHECK(ptr != nullptr);
+        expect(static_cast<bool>(ptr != nullptr));
         
         const auto& cv = v;
         const void* cptr = cv.place_holder();
-        CHECK(cptr != nullptr);
+        expect(static_cast<bool>(cptr != nullptr));
     }
     
     TEST_CASE("variant_self_assignment") {
         vstd::variant<int, std::string> v(std::string("test"));
         v = v; // Self assignment
-        CHECK(v.force_get<std::string>() == "test");
+        expect(static_cast<bool>(v.force_get<std::string>() == "test"));
     }
     
     TEST_CASE("variant_multiple_resets") {
@@ -523,7 +522,6 @@ TEST_SUITE("vstd::variant") {
             }
         }
         
-        CHECK(v.is_type_of<int>());
-        CHECK(v.get<0>() == 9);
+        expect(static_cast<bool>(v.is_type_of<int>()));
+        expect(static_cast<bool>(v.get<0>() == 9));
     }
-}

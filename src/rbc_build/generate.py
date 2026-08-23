@@ -57,7 +57,7 @@ from rbc_meta.types.world_interface import OUT_CLASSES as OUT_WORLD_INTERFACE_CL
 @codegen
 class WorldInterfaceModule(CodeModule):
     name = "world_interface"
-    cpp_interface_header = "rbc/tests/test_graphics/include/generated/world.h"
+    cpp_interface_header = "rbc/sample_graphics/include/generated/world.h"
     header_files = [
         "res_creation_info.h",
         "rbc_plugin/generated/resource_meta.hpp",

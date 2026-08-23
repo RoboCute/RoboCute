@@ -2,8 +2,7 @@
 #include <rbc_core/coroutine.h>
 #include <memory>
 
-TEST_SUITE("core") {
-    TEST_CASE("coroutine capture keeps a move-only closure alive") {
+    "coroutine capture keeps a move-only closure alive"_test = [] {
         int result = 0;
         auto task = rbc::capture(
             [value = std::make_unique<int>(21), &result]() -> rbc::coroutine {
@@ -12,22 +11,22 @@ TEST_SUITE("core") {
                 result += *value;
             });
 
-        CHECK(result == 0);
-        CHECK_FALSE(task.done());
+        expect(static_cast<bool>(result == 0));
+        expect(!static_cast<bool>(task.done()));
 
         auto moved_task = std::move(task);
-        CHECK(task.done());
+        expect(static_cast<bool>(task.done()));
 
         moved_task.resume();
-        CHECK(result == 21);
-        CHECK_FALSE(moved_task.done());
+        expect(static_cast<bool>(result == 21));
+        expect(!static_cast<bool>(moved_task.done()));
 
         moved_task.resume();
-        CHECK(result == 42);
-        CHECK(moved_task.done());
-    }
+        expect(static_cast<bool>(result == 42));
+        expect(static_cast<bool>(moved_task.done()));
+    };
 
-    TEST_CASE("coroutine capture polls nested awaitables") {
+    "coroutine capture polls nested awaitables"_test = [] {
         bool ready = false;
         int result = 0;
         auto task = rbc::capture(
@@ -39,20 +38,20 @@ TEST_SUITE("core") {
             &result);
 
         task.resume();
-        CHECK(result == 0);
-        CHECK_FALSE(task.done());
+        expect(static_cast<bool>(result == 0));
+        expect(!static_cast<bool>(task.done()));
 
         task.resume();
-        CHECK(result == 0);
-        CHECK_FALSE(task.done());
+        expect(static_cast<bool>(result == 0));
+        expect(!static_cast<bool>(task.done()));
 
         ready = true;
         task.resume();
-        CHECK(result == 42);
-        CHECK(task.done());
-    }
+        expect(static_cast<bool>(result == 42));
+        expect(static_cast<bool>(task.done()));
+    };
 
-    TEST_CASE("coroutine capture completes without an extra resume") {
+    "coroutine capture completes without an extra resume"_test = [] {
         int result = 0;
         auto task = rbc::capture([&result]() -> rbc::coroutine {
             result = 42;
@@ -60,7 +59,6 @@ TEST_SUITE("core") {
         });
 
         task.resume();
-        CHECK(result == 42);
-        CHECK(task.done());
-    }
-}
+        expect(static_cast<bool>(result == 42));
+        expect(static_cast<bool>(task.done()));
+    };

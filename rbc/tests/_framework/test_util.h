@@ -7,7 +7,27 @@
 
 #pragma once
 
-#include <doctest.h>
+// Approx helper to replace doctest::Approx
+template <class T>
+struct Approx {
+    T value;
+    double epsilon = 1e-6;
+    constexpr explicit Approx(T v) : value(v) {}
+};
+
+template <class T, class U>
+constexpr bool operator==(const T &actual, const Approx<U> &expected) {
+    using std::abs;
+    return abs(static_cast<double>(actual) - static_cast<double>(expected.value)) <= expected.epsilon;
+}
+
+template <class T, class U>
+constexpr bool operator!=(const T &actual, const Approx<U> &expected) {
+    return !(actual == expected);
+}
+
+#include "ut/ut.hpp"
+using namespace boost::ut;
 #include <span>
 #include <concepts>
 

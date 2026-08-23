@@ -113,7 +113,7 @@ class BaseObjectType(Enum):
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -127,7 +127,7 @@ class Object:
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -142,7 +142,7 @@ class Entity(Object):
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -154,7 +154,7 @@ class Component(Object):
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -178,7 +178,7 @@ class TransformComponent(Component):
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -206,7 +206,7 @@ class LightComponent(Component):
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -219,7 +219,7 @@ class Resource(Object):
     def wait_loading() -> None: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class BasicData:
     def type() -> BasicDataType: ...
     def get_int() -> long: ...
@@ -234,7 +234,7 @@ class BasicData:
     def set_resource(res: Resource) -> None: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class TextureResource(Resource):
     def is_vt() -> bool: ...
     def pack_to_tile() -> bool: ...
@@ -256,7 +256,7 @@ class TextureResource(Resource):
     def device_texture() -> LCPYImage2D: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class MeshResource(Resource):
     def vertex_count() -> uint: ...
     def triangle_count() -> uint: ...
@@ -292,7 +292,7 @@ class MeshResource(Resource):
     def build_before_tick() -> None: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class BufferResource(Resource):
     def size_bytes() -> ulong: ...
     def buffer() -> LCPYBuffer: ...
@@ -300,7 +300,7 @@ class BufferResource(Resource):
     def create_empty(size_bytes: ulong, create_device_buffer: bool) -> None: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class MaterialResource(Resource):
     def mat_code() -> uint: ...
     def load_from_json(json: str) -> None: ...
@@ -309,7 +309,7 @@ class MaterialResource(Resource):
 
 # @reflect(
 #     pybind=True,
-#     cpp_prefix="TEST_GRAPHICS_API",
+#     cpp_prefix="SAMPLE_GRAPHICS_API",
 #     cpp_namespace="rbc"
 # )
 # class GaussianSplatResource(Resource):
@@ -323,7 +323,7 @@ class MaterialResource(Resource):
 #     def procedural_instance_id() -> uint: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class VoxelResource(Resource):
     """Resource class for AABB-based Voxel data.
 
@@ -338,7 +338,7 @@ class VoxelResource(Resource):
     def procedural_instance_id() -> uint: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class SDFVoxelResource(Resource):
     """Resource class for SDF (Signed Distance Field) Voxel data.
 
@@ -362,7 +362,7 @@ class SDFVoxelResource(Resource):
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -382,7 +382,7 @@ class RenderComponent(Component):
     def get_material(idx: ulong) -> MaterialResource: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class RenderSettings:
     # ========== SkySettings ==========
     def get_sky_angle() -> float: ...
@@ -532,7 +532,7 @@ class RenderSettings:
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -571,7 +571,7 @@ class CameraComponent(Component):
     def render_settings() -> RenderSettings: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class DataComponentEventType(Enum):
     OnAwake = 0
     OnDestroy = 1
@@ -584,7 +584,7 @@ class DataComponentEventType(Enum):
 # Import, load and manage project
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -603,7 +603,7 @@ class DataComponent(Component):
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -612,13 +612,13 @@ class AtmosphereComponent(Component):
     def update_texture(tex: TextureResource) -> None: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class EntitiesCollection:
     def count() -> ulong: ...
     def get_entity(index: ulong) -> Entity: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class Scene(Resource):
     def get_entity(guid: GUID) -> Entity: ...
     def get_or_add_entity(guid: GUID) -> Entity: ...
@@ -629,7 +629,7 @@ class Scene(Resource):
     def get_entities_by_name(name: str) -> EntitiesCollection: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class SkeletonResource(Resource):
     # Basic interface
     def log_brief() -> None: ...
@@ -646,7 +646,7 @@ class SkeletonResource(Resource):
     def ensure_parents_exist_and_sort(bone_indices: Vector[int]) -> Vector[int]: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class SkinResource(Resource):
     def ref_skel() -> SkeletonResource: ...
     def ref_mesh() -> MeshResource: ...
@@ -657,7 +657,7 @@ class SkinResource(Resource):
     def JointRemapsLUT() -> Vector[uint]: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class AnimSequenceResource(Resource):
     def ref_skel() -> SkeletonResource: ...
     def log_brief() -> None: ...
@@ -669,12 +669,12 @@ class AnimSequenceResource(Resource):
     def set_sampling_rate(rate: float) -> None: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class AnimGraphResource(Resource):
     def create_simple_anim_graph(anim_seq: AnimSequenceResource) -> bool: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class SkelMeshResource(Resource):
     def GetSkinResource() -> SkinResource: ...
     def ref_skin() -> SkinResource: ...
@@ -684,7 +684,7 @@ class SkelMeshResource(Resource):
 
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,
 )
@@ -717,13 +717,13 @@ class SkelMeshComponent(Component):
     def get_num_bones() -> int: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class FileMeta:
     def guid() -> GUID: ...
     def meta_json() -> str: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class Project:
     def init(project_root: str) -> None:
         """初始化项目。project_root 必须为含 rbc_project.json 的项目根目录；
@@ -764,7 +764,7 @@ class Project:
     def import_anim_sequence(path: str) -> AnimSequenceResource: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class TickStage(Enum):
     NONE = 0
     RasterPreview = 1
@@ -773,7 +773,7 @@ class TickStage(Enum):
     PresentOfflineResult = 4
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class BuiltinKernels:
     def buffer_to_image(
         input_buffer: LCPYBufferInfo,
@@ -792,7 +792,7 @@ class BuiltinKernels:
     ) -> None: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class SelectQuery:
     def valid() -> bool: ...
     def get_component() -> RenderComponent: ...
@@ -802,7 +802,7 @@ class SelectQuery:
     def prim_id() -> uint: ...
 
 
-@reflect(pybind=True, cpp_prefix="TEST_GRAPHICS_API", cpp_namespace="rbc")
+@reflect(pybind=True, cpp_prefix="SAMPLE_GRAPHICS_API", cpp_namespace="rbc")
 class RBCContext:
     def init_world(self, meta_path: str, binary_path: str) -> None: ...
 

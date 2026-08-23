@@ -71,14 +71,14 @@ xmake:
 - rbc-editor
   - 启动开发服务器`uv run main.py`
   - 启动editor `xmake run rbc-editor`
-- Graphics特性测试`xmake run test_graphics_bin <backend> <asset_dir> <intermediate_dir>`
+- Graphics特性测试`xmake run sample_graphics_bin <backend> <asset_dir> <intermediate_dir>`
 
 cmake:
 - 确认Qt6的`bin`文件夹存在于系统`PATH`变量中
 - rbc-editor
   - 启动开发服务器`uv run main.py`
   - 启动editor `cd ./build_cmake/bin/Release/ && ./rbc_editor`
-- Graphics特性测试`cd ./build_cmake/bin/Release/ && ./test_graphics_bin`
+- Graphics特性测试`cd ./build_cmake/bin/Release/ && ./sample_graphics_bin`
 
 
 ## IDE支持
@@ -115,5 +115,5 @@ cmake: configure的时候自动生成sln文件
 
 ### Test Graphics
 
-![test_graphics_bin](images/test_graphics_bin.png)
+![sample_graphics_bin](images/sample_graphics_bin.png)
 

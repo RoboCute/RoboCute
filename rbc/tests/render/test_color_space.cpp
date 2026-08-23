@@ -11,9 +11,9 @@ using namespace luisa;
 using namespace rbc;
 
 void check_vector(double3 actual, double3 expected, double tolerance = 1e-9) {
-    CHECK(std::abs(actual.x - expected.x) < tolerance);
-    CHECK(std::abs(actual.y - expected.y) < tolerance);
-    CHECK(std::abs(actual.z - expected.z) < tolerance);
+    expect(static_cast<bool>(std::abs(actual.x - expected.x) < tolerance));
+    expect(static_cast<bool>(std::abs(actual.y - expected.y) < tolerance));
+    expect(static_cast<bool>(std::abs(actual.z - expected.z) < tolerance));
 }
 
 void check_matrix_rows(
@@ -22,16 +22,15 @@ void check_matrix_rows(
     double tolerance = 1e-9) {
     for (auto row = 0u; row < 3u; row++) {
         for (auto column = 0u; column < 3u; column++) {
-            CHECK(std::abs(actual.cols[column][row] - expected[row * 3u + column]) < tolerance);
+            expect(static_cast<bool>(std::abs(actual.cols[column][row] - expected[row * 3u + column]) < tolerance));
         }
     }
 }
 
 }// namespace
 
-TEST_SUITE("render.color_space") {
 
-    TEST_CASE("standard RGB-to-XYZ matrices use column vectors") {
+    "standard RGB-to-XYZ matrices use column vectors"_test = [] {
         const ColorSpace rec2020{EColorSpace::Rec2020};
         check_matrix_rows(
             rec2020.to_xyz,
@@ -50,9 +49,9 @@ TEST_SUITE("render.color_space") {
                 0.0, 0.0, 1.0088251844,
             },
             1e-8);
-    }
+    };
 
-    TEST_CASE("AP0 primaries can use a D65 neutral white") {
+    "AP0 primaries can use a D65 neutral white"_test = [] {
         const Chromaticities ap0{EColorSpace::ACES_AP0};
         const auto d65 = Chromaticities::get_white_point(EWhitePoint::CIE1931_D65);
         const ColorSpace ap0_d65{ap0.red, ap0.green, ap0.blue, d65};
@@ -69,9 +68,9 @@ TEST_SUITE("render.color_space") {
                 0.0, 0.0, 0.918224951,
             },
             1e-8);
-    }
+    };
 
-    TEST_CASE("RGB and XYZ conversions round-trip") {
+    "RGB and XYZ conversions round-trip"_test = [] {
         const Chromaticities ap0{EColorSpace::ACES_AP0};
         const ColorSpace spaces[]{
             ColorSpace{EColorSpace::Rec2020},
@@ -87,9 +86,9 @@ TEST_SUITE("render.color_space") {
         for (auto &&space : spaces) {
             check_vector(space.color_from_XYZ(space.color_to_XYZ(color)), color, 1e-12);
         }
-    }
+    };
 
-    TEST_CASE("color-space conversion preserves the selected white") {
+    "color-space conversion preserves the selected white"_test = [] {
         const ColorSpace rec2020{EColorSpace::Rec2020};
         const ColorSpace ap0{EColorSpace::ACES_AP0};
         const Chromaticities ap0_chromaticities{EColorSpace::ACES_AP0};
@@ -110,5 +109,4 @@ TEST_SUITE("render.color_space") {
         const auto rec2020_to_ap0_d65 = ColorSpace::convert_matrix(rec2020, ap0_d65);
         const auto expected_ap0_d65 = ap0_d65.color_from_XYZ(rec2020.color_to_XYZ(color));
         check_vector(rec2020_to_ap0_d65 * color, expected_ap0_d65, 1e-12);
-    }
-}
+    };

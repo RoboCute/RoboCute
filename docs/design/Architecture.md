@@ -71,7 +71,7 @@ C++ 代码按模块组织，使用 **CMake** 与 **Xmake** 双构建系统。
 | 模块 | 目标名称 | 类型 | 说明 |
 |------|----------|------|------|
 | `tool/rbc_cmd` | `rbc` | binary | 命令行工具（CLI） |
-| `tests/` | `test_core`, `test_anim`, `test_graphics`, `test_model`, `test_project`, `test_skeleton`, `test_anim_sequence`, ... | binary | C++ 单元测试与图形测试 |
+| `tests/` | `test_core`, `test_anim`, `test_model`, `test_project`, `test_skeleton`, `test_anim_sequence`, ... | binary | C++ 单元测试 |
 | `shader/` | — | — | 着色器编译系统（`hostgen`、DXIL/SPIR-V 编译、`.cache`） |
 
 ---

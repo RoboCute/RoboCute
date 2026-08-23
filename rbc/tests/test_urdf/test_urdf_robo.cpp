@@ -424,7 +424,6 @@ static std::string create_mobile_robot_urdf() {
  * 2. 移动机器人（差分驱动）结构验证
  * 3. 机器人运动学链验证
  */
-TEST_SUITE("urdf_robo") {
 
     /**
      * 【测试用例1】myCobot 280 机械臂结构验证
@@ -434,54 +433,54 @@ TEST_SUITE("urdf_robo") {
      * 2. 每个关节的类型和参数正确
      * 3. 连杆数量正确（7个：base + 6个连杆）
      */
-    TEST_CASE("mycobot_280_structure") {
+    "mycobot_280_structure"_test = [] {
         auto xml_str = create_mycobot_280_urdf();
         auto model = urdf::parseURDF(xml_str);
         
-        REQUIRE(model != nullptr);
-        CHECK(model->getName() == "mycobot_280");
+        expect(static_cast<bool>(model != nullptr)) << fatal;
+        expect(static_cast<bool>(model->getName() == "mycobot_280"));
         
         // 验证连杆数量：base_link + link1~link6 = 7
-        CHECK(model->links_.size() == 7);
+        expect(static_cast<bool>(model->links_.size() == 7));
         
         // 验证关节数量：6个旋转关节
-        CHECK(model->joints_.size() == 6);
+        expect(static_cast<bool>(model->joints_.size() == 6));
         
         // 验证根连杆
         auto root = model->getRoot();
-        CHECK(root != nullptr);
+        expect(static_cast<bool>(root != nullptr));
         if (root) {
-            CHECK(root->name == "base_link");
+            expect(static_cast<bool>(root->name == "base_link"));
         }
         
         // 验证所有连杆都存在
-        CHECK(model->getLink("base_link") != nullptr);
-        CHECK(model->getLink("link1") != nullptr);
-        CHECK(model->getLink("link2") != nullptr);
-        CHECK(model->getLink("link3") != nullptr);
-        CHECK(model->getLink("link4") != nullptr);
-        CHECK(model->getLink("link5") != nullptr);
-        CHECK(model->getLink("link6") != nullptr);
+        expect(static_cast<bool>(model->getLink("base_link") != nullptr));
+        expect(static_cast<bool>(model->getLink("link1") != nullptr));
+        expect(static_cast<bool>(model->getLink("link2") != nullptr));
+        expect(static_cast<bool>(model->getLink("link3") != nullptr));
+        expect(static_cast<bool>(model->getLink("link4") != nullptr));
+        expect(static_cast<bool>(model->getLink("link5") != nullptr));
+        expect(static_cast<bool>(model->getLink("link6") != nullptr));
         
         // 验证所有关节都存在且类型正确
         for (int i = 1; i <= 6; ++i) {
             std::string joint_name = "joint" + std::to_string(i);
             auto joint = model->getJoint(joint_name);
-            CHECK(joint != nullptr);
+            expect(static_cast<bool>(joint != nullptr));
             if (joint) {
-                CHECK(joint->type == urdf::Joint::REVOLUTE);
+                expect(static_cast<bool>(joint->type == urdf::Joint::REVOLUTE));
             }
         }
         
         // 验证关节链的父子关系
         auto joint1 = model->getJoint("joint1");
-        CHECK(joint1->parent_link_name == "base_link");
-        CHECK(joint1->child_link_name == "link1");
+        expect(static_cast<bool>(joint1->parent_link_name == "base_link"));
+        expect(static_cast<bool>(joint1->child_link_name == "link1"));
         
         auto joint6 = model->getJoint("joint6");
-        CHECK(joint6->parent_link_name == "link5");
-        CHECK(joint6->child_link_name == "link6");
-    }
+        expect(static_cast<bool>(joint6->parent_link_name == "link5"));
+        expect(static_cast<bool>(joint6->child_link_name == "link6"));
+    };
 
     /**
      * 【测试用例2】myCobot 280 关节限位验证
@@ -491,35 +490,35 @@ TEST_SUITE("urdf_robo") {
      * 2. 关节2/3（肩/肘关节）限位：-150° ~ +150°
      * 3. 关节5（手腕俯仰）限位：-100° ~ +100°
      */
-    TEST_CASE("mycobot_280_joint_limits") {
+    "mycobot_280_joint_limits"_test = [] {
         auto xml_str = create_mycobot_280_urdf();
         auto model = urdf::parseURDF(xml_str);
         
-        REQUIRE(model != nullptr);
+        expect(static_cast<bool>(model != nullptr)) << fatal;
         
         // 关节1：-π ~ +π (180°)
         auto joint1 = model->getJoint("joint1");
-        REQUIRE(joint1 != nullptr);
-        REQUIRE(joint1->limits != nullptr);
-        CHECK(joint1->limits->lower == doctest::Approx(-3.14));
-        CHECK(joint1->limits->upper == doctest::Approx(3.14));
-        CHECK(joint1->limits->effort == doctest::Approx(5.0));
-        CHECK(joint1->limits->velocity == doctest::Approx(3.14));
+        expect(static_cast<bool>(joint1 != nullptr)) << fatal;
+        expect(static_cast<bool>(joint1->limits != nullptr)) << fatal;
+        expect(static_cast<bool>(joint1->limits->lower == Approx(-3.14)));
+        expect(static_cast<bool>(joint1->limits->upper == Approx(3.14)));
+        expect(static_cast<bool>(joint1->limits->effort == Approx(5.0)));
+        expect(static_cast<bool>(joint1->limits->velocity == Approx(3.14)));
         
         // 关节2：-2.62 ~ +2.62 rad (约150°)
         auto joint2 = model->getJoint("joint2");
-        REQUIRE(joint2 != nullptr);
-        REQUIRE(joint2->limits != nullptr);
-        CHECK(joint2->limits->lower == doctest::Approx(-2.62));
-        CHECK(joint2->limits->upper == doctest::Approx(2.62));
+        expect(static_cast<bool>(joint2 != nullptr)) << fatal;
+        expect(static_cast<bool>(joint2->limits != nullptr)) << fatal;
+        expect(static_cast<bool>(joint2->limits->lower == Approx(-2.62)));
+        expect(static_cast<bool>(joint2->limits->upper == Approx(2.62)));
         
         // 关节5：-1.75 ~ +1.75 rad (约100°)
         auto joint5 = model->getJoint("joint5");
-        REQUIRE(joint5 != nullptr);
-        REQUIRE(joint5->limits != nullptr);
-        CHECK(joint5->limits->lower == doctest::Approx(-1.75));
-        CHECK(joint5->limits->upper == doctest::Approx(1.75));
-    }
+        expect(static_cast<bool>(joint5 != nullptr)) << fatal;
+        expect(static_cast<bool>(joint5->limits != nullptr)) << fatal;
+        expect(static_cast<bool>(joint5->limits->lower == Approx(-1.75)));
+        expect(static_cast<bool>(joint5->limits->upper == Approx(1.75)));
+    };
 
     /**
      * 【测试用例3】myCobot 280 材质验证
@@ -528,40 +527,40 @@ TEST_SUITE("urdf_robo") {
      * 1. 三种材质定义正确
      * 2. 颜色值正确
      */
-    TEST_CASE("mycobot_280_materials") {
+    "mycobot_280_materials"_test = [] {
         auto xml_str = create_mycobot_280_urdf();
         auto model = urdf::parseURDF(xml_str);
         
-        REQUIRE(model != nullptr);
+        expect(static_cast<bool>(model != nullptr)) << fatal;
         
         // 验证白色材质
         auto white = model->getMaterial("white");
-        CHECK(white != nullptr);
+        expect(static_cast<bool>(white != nullptr));
         if (white) {
-            CHECK(white->color.r == doctest::Approx(1.0f));
-            CHECK(white->color.g == doctest::Approx(1.0f));
-            CHECK(white->color.b == doctest::Approx(1.0f));
-            CHECK(white->color.a == doctest::Approx(1.0f));
+            expect(static_cast<bool>(white->color.r == Approx(1.0f)));
+            expect(static_cast<bool>(white->color.g == Approx(1.0f)));
+            expect(static_cast<bool>(white->color.b == Approx(1.0f)));
+            expect(static_cast<bool>(white->color.a == Approx(1.0f)));
         }
         
         // 验证蓝色材质
         auto blue = model->getMaterial("blue");
-        CHECK(blue != nullptr);
+        expect(static_cast<bool>(blue != nullptr));
         if (blue) {
-            CHECK(blue->color.r == doctest::Approx(0.2f));
-            CHECK(blue->color.g == doctest::Approx(0.4f));
-            CHECK(blue->color.b == doctest::Approx(0.8f));
+            expect(static_cast<bool>(blue->color.r == Approx(0.2f)));
+            expect(static_cast<bool>(blue->color.g == Approx(0.4f)));
+            expect(static_cast<bool>(blue->color.b == Approx(0.8f)));
         }
         
         // 验证银色材质
         auto silver = model->getMaterial("silver");
-        CHECK(silver != nullptr);
+        expect(static_cast<bool>(silver != nullptr));
         if (silver) {
-            CHECK(silver->color.r == doctest::Approx(0.75f));
-            CHECK(silver->color.g == doctest::Approx(0.75f));
-            CHECK(silver->color.b == doctest::Approx(0.75f));
+            expect(static_cast<bool>(silver->color.r == Approx(0.75f)));
+            expect(static_cast<bool>(silver->color.g == Approx(0.75f)));
+            expect(static_cast<bool>(silver->color.b == Approx(0.75f)));
         }
-    }
+    };
 
     /**
      * 【测试用例4】移动机器人结构验证
@@ -571,50 +570,50 @@ TEST_SUITE("urdf_robo") {
      * 2. 传感器（激光雷达）为 fixed 关节
      * 3. 万向轮为 passive（fixed）关节
      */
-    TEST_CASE("mobile_robot_structure") {
+    "mobile_robot_structure"_test = [] {
         auto xml_str = create_mobile_robot_urdf();
         auto model = urdf::parseURDF(xml_str);
         
-        REQUIRE(model != nullptr);
-        CHECK(model->getName() == "mobile_robot");
+        expect(static_cast<bool>(model != nullptr)) << fatal;
+        expect(static_cast<bool>(model->getName() == "mobile_robot"));
         
         // 验证连杆数量
-        CHECK(model->links_.size() == 5);
+        expect(static_cast<bool>(model->links_.size() == 5));
         
         // 验证关节数量
-        CHECK(model->joints_.size() == 4);
+        expect(static_cast<bool>(model->joints_.size() == 4));
         
         // 验证驱动轮为 continuous 关节（差分驱动）
         auto left_wheel_joint = model->getJoint("left_wheel_joint");
-        CHECK(left_wheel_joint != nullptr);
+        expect(static_cast<bool>(left_wheel_joint != nullptr));
         if (left_wheel_joint) {
-            CHECK(left_wheel_joint->type == urdf::Joint::CONTINUOUS);
-            CHECK(left_wheel_joint->parent_link_name == "base_link");
-            CHECK(left_wheel_joint->child_link_name == "left_wheel");
+            expect(static_cast<bool>(left_wheel_joint->type == urdf::Joint::CONTINUOUS));
+            expect(static_cast<bool>(left_wheel_joint->parent_link_name == "base_link"));
+            expect(static_cast<bool>(left_wheel_joint->child_link_name == "left_wheel"));
         }
         
         auto right_wheel_joint = model->getJoint("right_wheel_joint");
-        CHECK(right_wheel_joint != nullptr);
+        expect(static_cast<bool>(right_wheel_joint != nullptr));
         if (right_wheel_joint) {
-            CHECK(right_wheel_joint->type == urdf::Joint::CONTINUOUS);
+            expect(static_cast<bool>(right_wheel_joint->type == urdf::Joint::CONTINUOUS));
         }
         
         // 验证传感器为 fixed 关节
         auto lidar_joint = model->getJoint("lidar_joint");
-        CHECK(lidar_joint != nullptr);
+        expect(static_cast<bool>(lidar_joint != nullptr));
         if (lidar_joint) {
-            CHECK(lidar_joint->type == urdf::Joint::FIXED);
-            CHECK(lidar_joint->parent_link_name == "base_link");
-            CHECK(lidar_joint->child_link_name == "lidar_link");
+            expect(static_cast<bool>(lidar_joint->type == urdf::Joint::FIXED));
+            expect(static_cast<bool>(lidar_joint->parent_link_name == "base_link"));
+            expect(static_cast<bool>(lidar_joint->child_link_name == "lidar_link"));
         }
         
         // 验证万向轮为 fixed 关节
         auto caster_joint = model->getJoint("caster_joint");
-        CHECK(caster_joint != nullptr);
+        expect(static_cast<bool>(caster_joint != nullptr));
         if (caster_joint) {
-            CHECK(caster_joint->type == urdf::Joint::FIXED);
+            expect(static_cast<bool>(caster_joint->type == urdf::Joint::FIXED));
         }
-    }
+    };
 
     /**
      * 【测试用例5】机械臂惯性数据验证
@@ -624,24 +623,24 @@ TEST_SUITE("urdf_robo") {
      * 2. 质量值正确
      * 3. 惯性张量合理
      */
-    TEST_CASE("mycobot_280_inertial_data") {
+    "mycobot_280_inertial_data"_test = [] {
         auto xml_str = create_mycobot_280_urdf();
         auto model = urdf::parseURDF(xml_str);
         
-        REQUIRE(model != nullptr);
+        expect(static_cast<bool>(model != nullptr)) << fatal;
         
         // 验证底座惯性
         auto base_link = model->getLink("base_link");
-        CHECK(base_link != nullptr);
+        expect(static_cast<bool>(base_link != nullptr));
         if (base_link && base_link->inertial) {
-            CHECK(base_link->inertial->mass == doctest::Approx(0.3));
+            expect(static_cast<bool>(base_link->inertial->mass == Approx(0.3)));
         }
         
         // 验证末端法兰惯性
         auto link6 = model->getLink("link6");
-        CHECK(link6 != nullptr);
+        expect(static_cast<bool>(link6 != nullptr));
         if (link6 && link6->inertial) {
-            CHECK(link6->inertial->mass == doctest::Approx(0.03));
+            expect(static_cast<bool>(link6->inertial->mass == Approx(0.03)));
         }
         
         // 验证总质量（简单累加）
@@ -652,8 +651,8 @@ TEST_SUITE("urdf_robo") {
             }
         }
         // 0.3 + 0.15 + 0.12 + 0.10 + 0.08 + 0.05 + 0.03 = 0.83
-        CHECK(total_mass == doctest::Approx(0.83));
-    }
+        expect(static_cast<bool>(total_mass == Approx(0.83)));
+    };
 
     /**
      * 【测试用例6】机器人运动学链遍历
@@ -662,40 +661,39 @@ TEST_SUITE("urdf_robo") {
      * 1. 从根连杆可以遍历到所有子连杆
      * 2. 父子关系正确
      */
-    TEST_CASE("robot_kinematics_chain") {
+    "robot_kinematics_chain"_test = [] {
         auto xml_str = create_mycobot_280_urdf();
         auto model = urdf::parseURDF(xml_str);
         
-        REQUIRE(model != nullptr);
+        expect(static_cast<bool>(model != nullptr)) << fatal;
         
         // 从根连杆开始遍历
         auto root = model->getRoot();
-        REQUIRE(root != nullptr);
+        expect(static_cast<bool>(root != nullptr)) << fatal;
         
         // base_link 应该有 1 个子关节（joint1）
-        CHECK(root->child_joints.size() == 1);
-        CHECK(root->child_links.size() == 1);
+        expect(static_cast<bool>(root->child_joints.size() == 1));
+        expect(static_cast<bool>(root->child_links.size() == 1));
         
         if (!root->child_joints.empty()) {
             auto first_joint = root->child_joints[0];
-            CHECK(first_joint->name == "joint1");
+            expect(static_cast<bool>(first_joint->name == "joint1"));
             
             // 通过 joint1 连接到 link1
             if (!root->child_links.empty()) {
                 auto first_link = root->child_links[0];
-                CHECK(first_link->name == "link1");
+                expect(static_cast<bool>(first_link->name == "link1"));
             }
         }
         
         // 验证 link6 是末端（没有子关节）
         auto link6 = model->getLink("link6");
-        CHECK(link6 != nullptr);
+        expect(static_cast<bool>(link6 != nullptr));
         if (link6) {
-            CHECK(link6->child_joints.empty());
-            CHECK(link6->child_links.empty());
+            expect(static_cast<bool>(link6->child_joints.empty()));
+            expect(static_cast<bool>(link6->child_links.empty()));
         }
-    }
+    };
 
-}  // TEST_SUITE("urdf_robo")
 
 } // namespace rbc

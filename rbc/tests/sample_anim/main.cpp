@@ -592,7 +592,7 @@ void AnimScene::update_render(GraphicsUtils *utils) {
 
 void AnimScene::_setup_default_lighting() {
     // Create a simple emissive mesh to provide basic illumination
-    // when no skybox is available (similar to test_graphics)
+    // when no skybox is available (similar to sample_graphics)
     auto light_entity = RC<world::Entity>{world::create_object<world::Entity>()};
 
     auto transform = light_entity->add_component<world::TransformComponent>();

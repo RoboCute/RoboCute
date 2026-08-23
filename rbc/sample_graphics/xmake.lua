@@ -1,16 +1,17 @@
 local targets = {
-    test_graphics = false,
-    test_graphics_bin = true
+    sample_graphics = false,
+    sample_graphics_bin = true
 }
+
 for target_name, is_standalone in pairs(targets) do
-    local function test_graphics_interface()
+    local function sample_graphics_interface()
         add_includedirs('include', {
             public = true
         })
         add_deps('rbc_runtime')
     end
 
-    local function test_graphics_impl()
+    local function sample_graphics_impl()
         add_rules('lc_basic_settings', {})
         on_load(function(target)
             if is_standalone then
@@ -40,12 +41,12 @@ for target_name, is_standalone in pairs(targets) do
             -- target:add('deps', 'Jolt')
             target:add('deps', 'stb-image')
             target:add('deps', 'rbc_render_plugin', 'lc-gui', 'compile_shaders', 'rbc_project_plugin')
-            target:add('defines', 'TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
+            target:add('defines', 'SAMPLE_GRAPHICS_API=LUISA_DECLSPEC_DLL_EXPORT')
         end)
     end
 
-    interface_target(target_name, test_graphics_interface, test_graphics_impl)
-    add_defines('TEST_GRAPHICS_API=LUISA_DECLSPEC_DLL_IMPORT', {
+    interface_target(target_name, sample_graphics_interface, sample_graphics_impl)
+    add_defines('SAMPLE_GRAPHICS_API=LUISA_DECLSPEC_DLL_IMPORT', {
         public = true
     })
 end

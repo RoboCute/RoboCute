@@ -293,7 +293,7 @@ Defines Python-to-C++ bindings and serde structs via the `@reflect` decorator fo
 | `pybind=True` | world_interface, resource enums | Generate pybind11 bindings |
 | `serde=True` | resource structs, pipeline_settings | Generate serialization |
 | `cpp_namespace="rbc"` | all | Target C++ namespace |
-| `cpp_prefix="TEST_GRAPHICS_API"` | world_interface | C++ export macro |
+| `cpp_prefix="SAMPLE_GRAPHICS_API"` | world_interface | C++ export macro |
 | `cpp_prefix="RBC_RUNTIME_API"` | resource structs | C++ export macro |
 | `create_instance=False` | world_interface base classes | Disallow Python instantiation |
 | `module_name="world_interface"` | enums | Python module name for enum bindings |
@@ -318,7 +318,7 @@ class LpmColorSpace(Enum):
 ```python
 @reflect(
     pybind=True,
-    cpp_prefix="TEST_GRAPHICS_API",
+    cpp_prefix="SAMPLE_GRAPHICS_API",
     cpp_namespace="rbc",
     create_instance=False,  # abstract base
 )

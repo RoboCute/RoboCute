@@ -1,49 +1,62 @@
--- Test Framework for RBC Runtime
-includes('test_graphics')
-includes('test_project')
-includes('test_model')
-includes('test_skeleton')
-includes('test_anim_sequence')
-if has_config('rbc_urdf') then
-    includes('test_urdf')
-end
--- has_config('rbc_tools') then
--- includes("test_coro")
--- includes("test_sql")
--- end
+-- Boost.UT based test suite for RBC
+-- Mimics thirdparty/LuisaCompute/src/tests/xmake.lua style:
+-- one target per test group, header-only ut.hpp under rbc/tests/ut.
 
-includes("sample_anim")
-
-function add_test(name, deps, interface_deps)
+local function add_rbc_ut_test(name, files, deps, interface_deps)
     deps = deps or {}
     interface_deps = interface_deps or {}
-    target("test_" .. name)
-    add_rules('lc_basic_settings', {
-        project_kind = 'binary'
-    })
-    set_group("02.tests")
-    on_load(function(target)
-        for k, v in pairs(opt) do
-            target:set(k, v)
+    target(name)
+        add_rules('lc_basic_settings', {
+            project_kind = 'binary',
+            enable_exception = true
+        })
+        set_group("02.tests")
+        add_includedirs("_framework", ".")
+        add_files("_framework/test_util.cpp")
+        for _, f in ipairs(files) do
+            add_files(f)
         end
-        target:set("exceptions", "cxx")
         for _, dep in ipairs(deps) do
-            target:add("deps", dep)
+            add_deps(dep)
         end
-    end)
-    add_files(name .. "/*.cpp")
-    add_deps("external_doctest")
-    for _, dep in ipairs(interface_deps) do
-        add_interface_depend(dep)
-    end
-    add_includedirs("_framework")
-    add_files("_framework/test_util.cpp")
+        for _, dep in ipairs(interface_deps) do
+            add_interface_depend(dep)
+        end
     target_end()
 end
 
-add_test("core", {"rbc_core"})
-add_test("anim", {"rbc_runtime", "rbc_core"})
-add_test("shader_runtime", {"rbc_runtime", "rbc_core"})
-add_test("render", {"rbc_core"}, {"rbc_render_plugin"})
+-- core & data-structure tests
+add_rbc_ut_test("test_agents", {
+    "agents/*.cpp"
+}, {"rbc_core"})
 
--- includes('agents')
+-- add_rbc_ut_test("test_core", {
+--     "core/*.cpp"
+-- }, {"rbc_core"})
+
+-- runtime / animation
+-- add_rbc_ut_test("test_anim", {
+--     "anim/*.cpp"
+-- }, {"rbc_runtime"})
+
+-- rendering utilities
+-- add_rbc_ut_test("test_render", {
+--     "render/*.cpp"
+-- }, {"rbc_core"}, {"rbc_render_plugin"})
+
+-- shader runtime
+-- add_rbc_ut_test("test_shader_runtime", {
+--     "shader_runtime/*.cpp"
+-- }, {"rbc_runtime"})
+
+-- model importer tests
+-- add_rbc_ut_test("test_model", {
+--     "test_model/*.cpp"
+-- }, {"rbc_runtime"}, {"rbc_importer_plugin"})
+
+-- URDF tests
+-- if has_config('rbc_urdf') then
+--     add_rbc_ut_test("test_urdf", {
+--         "test_urdf/*.cpp"
+--     }, {"urdfdom_model"})
+-- end

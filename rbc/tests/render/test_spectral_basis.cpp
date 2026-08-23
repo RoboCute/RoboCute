@@ -15,16 +15,15 @@ using namespace rbc;
 constexpr size_t wavelength_count = 471u;
 
 void check_vector(double3 actual, double3 expected, double tolerance) {
-    CHECK(std::abs(actual.x - expected.x) < tolerance);
-    CHECK(std::abs(actual.y - expected.y) < tolerance);
-    CHECK(std::abs(actual.z - expected.z) < tolerance);
+    expect(static_cast<bool>(std::abs(actual.x - expected.x) < tolerance));
+    expect(static_cast<bool>(std::abs(actual.y - expected.y) < tolerance));
+    expect(static_cast<bool>(std::abs(actual.z - expected.z) < tolerance));
 }
 
 }// namespace
 
-TEST_SUITE("render.spectral_basis") {
 
-    TEST_CASE("AP0D65 responses are nonnegative and consistently normalized") {
+    "AP0D65 responses are nonnegative and consistently normalized"_test = [] {
         std::array<double3, wavelength_count> cmf{};
         std::array<double, wavelength_count> wavelengths{};
         double3 cmf_integral{0.0};
@@ -62,9 +61,9 @@ TEST_SUITE("render.spectral_basis") {
         double3 response_integral{0.0};
         for (size_t i = 0; i < wavelength_count; ++i) {
             responses[i] = ap0_d65.color_from_XYZ(cmf[i]);
-            CHECK(responses[i].x >= -1e-9);
-            CHECK(responses[i].y >= -1e-9);
-            CHECK(responses[i].z >= -1e-9);
+            expect(static_cast<bool>(responses[i].x >= -1e-9));
+            expect(static_cast<bool>(responses[i].y >= -1e-9));
+            expect(static_cast<bool>(responses[i].z >= -1e-9));
         }
         for (size_t i = 1; i < wavelength_count; ++i) {
             const auto dx = wavelengths[i] - wavelengths[i - 1u];
@@ -89,7 +88,7 @@ TEST_SUITE("render.spectral_basis") {
                     (responses[i - 1u][channel] + responses[i][channel]) *
                     (0.5 * dx / response_integral[channel]);
             }
-            CHECK(std::abs(pdf_integral - 1.0) < 1e-12);
+            expect(static_cast<bool>(std::abs(pdf_integral - 1.0) < 1e-12));
         }
 
         const Chromaticities rec2020_chromaticities{EColorSpace::Rec2020};
@@ -104,8 +103,7 @@ TEST_SUITE("render.spectral_basis") {
         for (size_t column = 0; column < 3u; ++column) {
             for (size_t row = 0; row < 3u; ++row) {
                 const auto expected = column == row ? 1.0 : 0.0;
-                CHECK(std::abs(round_trip.cols[column][row] - expected) < 1e-10);
+                expect(static_cast<bool>(std::abs(round_trip.cols[column][row] - expected) < 1e-10));
             }
         }
-    }
-}
+    };
