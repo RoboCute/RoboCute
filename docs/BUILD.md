@@ -94,7 +94,7 @@ cmake: msvc暂时不支持生成，其他平台可以-D配置宏生成
 
 ### Visual Studio 支持
 
-xmake: `xmake project -k vsxmake2022` 在vsxmake文件夹生成Visual Studio 2022的sln文件
+xmake: `xmake project -k vsxmake2026` 在vsxmake文件夹生成Visual Studio 2022的sln文件
 cmake: configure的时候自动生成sln文件
 
 ### QtCreator支持

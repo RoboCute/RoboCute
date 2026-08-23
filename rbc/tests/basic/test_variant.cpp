@@ -14,10 +14,12 @@
  * - Utilities (hash, compare)
  */
 
-#include "../_framework/test_util.h"
 #include <luisa/vstl/common.h>
 #include <string>
 #include <utility>
+#include "rbc_test.hpp"
+
+namespace rbc::test {
 
 // Test helper types
 struct NonTrivialType {
@@ -58,10 +60,8 @@ struct TestTypeB {
 };
 
     
-    // ============================================================
-    // Section 1: Construction Tests
-    // ============================================================
-    
+suite<"Basic|Variant"> BasicVariantTestSuite = [] {
+
     "variant_default_construction"_test = [] {
         // Default constructor creates invalid variant
         vstd::variant<int, double, std::string> v;
@@ -471,7 +471,7 @@ struct TestTypeB {
     // Section 9: Edge Cases
     // ============================================================
     
-    TEST_CASE("variant_single_type") {
+    "variant_single_type"_test = [] {
         // Variant with single type
         vstd::variant<int> v(42);
         expect(static_cast<bool>(v.valid()));
@@ -480,9 +480,9 @@ struct TestTypeB {
         
         v.visit([](int& i) { i = 100; });
         expect(static_cast<bool>(v.get<0>() == 100));
-    }
+    };
     
-    TEST_CASE("variant_with_reference_wrapper") {
+    "variant_with_reference_wrapper"_test = [] {
         // Note: variant stores values, references are tricky
         int x = 42;
         vstd::variant<int, TestTypeA> v(x);
@@ -491,9 +491,9 @@ struct TestTypeB {
         x = 100;
         // v still holds the old value (copied)
         expect(static_cast<bool>(v.get<0>() == 42));
-    }
+    };
     
-    TEST_CASE("variant_place_holder_access") {
+    "variant_place_holder_access"_test = [] {
         vstd::variant<int, double> v(42);
         
         // Access underlying storage
@@ -503,15 +503,15 @@ struct TestTypeB {
         const auto& cv = v;
         const void* cptr = cv.place_holder();
         expect(static_cast<bool>(cptr != nullptr));
-    }
+    };
     
-    TEST_CASE("variant_self_assignment") {
+    "variant_self_assignment"_test = [] {
         vstd::variant<int, std::string> v(std::string("test"));
         v = v; // Self assignment
         expect(static_cast<bool>(v.force_get<std::string>() == "test"));
-    }
+    };
     
-    TEST_CASE("variant_multiple_resets") {
+    "variant_multiple_resets"_test = [] {
         vstd::variant<int, std::string> v(42);
         
         for (int i = 0; i < 10; ++i) {
@@ -524,4 +524,6 @@ struct TestTypeB {
         
         expect(static_cast<bool>(v.is_type_of<int>()));
         expect(static_cast<bool>(v.get<0>() == 9));
-    }
+    };
+}; // BasicVariantTestSuite
+} // namespace rbc::test

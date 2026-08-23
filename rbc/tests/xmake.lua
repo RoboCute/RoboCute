@@ -2,7 +2,7 @@
 -- Mimics thirdparty/LuisaCompute/src/tests/xmake.lua style:
 -- one target per test group, header-only ut.hpp under rbc/tests/ut.
 
-local function add_rbc_ut_test(name, files, deps, interface_deps)
+local function add_rbc_ut(name, files, deps, interface_deps)
     deps = deps or {}
     interface_deps = interface_deps or {}
     target(name)
@@ -11,8 +11,9 @@ local function add_rbc_ut_test(name, files, deps, interface_deps)
             enable_exception = true
         })
         set_group("02.tests")
-        add_includedirs("_framework", ".")
-        add_files("_framework/test_util.cpp")
+        add_includedirs("./_framework")
+        add_files("_framework/test_main.cpp")
+
         for _, f in ipairs(files) do
             add_files(f)
         end
@@ -25,10 +26,19 @@ local function add_rbc_ut_test(name, files, deps, interface_deps)
     target_end()
 end
 
--- core & data-structure tests
-add_rbc_ut_test("test_agents", {
-    "agents/*.cpp"
+-- show how to use test framework
+add_rbc_ut("ut_test", {
+    "_test/*.cpp"
 }, {"rbc_core"})
+
+-- basic dependencies
+add_rbc_ut("ut_basic", {
+    "basic/*.cpp"
+}, {"rbc_core"})
+
+
+-- core & data-structure tests
+
 
 -- add_rbc_ut_test("test_core", {
 --     "core/*.cpp"

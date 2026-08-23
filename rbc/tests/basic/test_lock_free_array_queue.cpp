@@ -11,13 +11,15 @@
  *          - Thread safety basics
  */
 
-#include "../_framework/test_util.h"
 #include <luisa/vstl/common.h>
 #include <luisa/vstl/lockfree_array_queue.h>
 #include <string>
 #include <thread>
 #include <vector>
 #include <atomic>
+#include "rbc_test.hpp"
+
+namespace rbc::test {
 
 // Helper struct to test with non-trivial types
 struct TestStruct {
@@ -36,10 +38,7 @@ struct TestStruct {
     }
 };
 
-
-    // ============================================
-    // Constructor Tests
-    // ============================================
+suite<"Basic|Lock Free Array Queue"> BasicLockFreeArrayQueueTestSuite = [] {
 
     "constructor_default"_test = [] {
         // Test default constructor (capacity = 64)
@@ -525,3 +524,6 @@ struct TestStruct {
         // All 10 elements should have been destroyed
         expect(static_cast<bool>(destructor_count.load() >= 10));
     };
+}; // suite LockFreeArrayQueue
+
+} // namespace rbc::test

@@ -13,6 +13,7 @@ end
 includes('project_plugin')
 includes('importer_plugin')
 
+includes("sample_graphics") -- sample world runtime core
 includes("extensions") -- python extension
 
 if has_config('rbc_tests') then
