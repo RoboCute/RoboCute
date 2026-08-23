@@ -22,8 +22,7 @@ from rbc_build.prepare import (
     ARCH,
     XMAKE_GLOBAL_TOOLCHAIN,
     OIDN_NAME,
-    install_sdk,
-    LLVM_SDK_NAME,
+    LLVM_SDK_ADDRESS,
     LLVM_INSTALL_DIR,
 )
 from rbc_build.utils import (
@@ -157,6 +156,7 @@ def download_packages():
     download_path.mkdir(parents=True, exist_ok=True)
     address = RBC_SDK_ADDRESS
     lc_address = LC_SDK_ADDRESS
+    llvm_file = Path(LLVM_SDK_ADDRESS).name
     downloads = {
         CLANGD_NAME: {
             "address": address,
@@ -175,6 +175,12 @@ def download_packages():
                 download_path / RENDER_RESOURCE_NAME,
                 download_path / "render_resources",
             ],
+        },
+        llvm_file: {
+            "url": LLVM_SDK_ADDRESS,
+            "address": "",
+            "path": download_path,
+            "unzip": [download_path / llvm_file, download_path / "llvm"],
         },
     }
     if LC_DX_SDK:
@@ -222,7 +228,8 @@ def download_packages():
         session = get_requests_session()
 
         # Download with progress bar
-        response = session.get(map["address"] + file, stream=True)
+        url = map.get("url", map.get("address") + file)
+        response = session.get(url, stream=True)
         response.raise_for_status()
 
         # Get total file size
@@ -353,11 +360,6 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
 
     if download_package.lower() == "y":
         run_package_download()
-        install_sdk(
-            LLVM_SDK_NAME,
-            {"./": LLVM_INSTALL_DIR},
-            plat_postfix=True,
-        )
     ensure_fsd_tables()
 
     # ------------------------------ llvm/options -----------------------------
