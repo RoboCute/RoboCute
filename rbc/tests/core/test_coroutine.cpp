@@ -1,6 +1,9 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 #include <rbc_core/coroutine.h>
 #include <memory>
+
+namespace rbc::test {
+suite<"Core|Coroutine"> CoreCoroutineTestSuite = [] {
 
     "coroutine capture keeps a move-only closure alive"_test = [] {
         int result = 0;
@@ -62,3 +65,6 @@
         expect(static_cast<bool>(result == 42));
         expect(static_cast<bool>(task.done()));
     };
+}; // suite
+
+} // namespace rbc::test

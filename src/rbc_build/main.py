@@ -411,7 +411,6 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
             if files:
                 options["lc_py_libs"] = ";".join(files) + ";"
 
-        options["lc_enable_clangcxx"] = True
         options["lc_llvm_path"] = to_slash(str(Path(PROJECT_ROOT) / LLVM_INSTALL_DIR))
 
         # Write to xmake/options.json
@@ -421,7 +420,6 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
             json.dump(options, f, indent=4)
         # Write to xmake/options.lua
         lua_sentence = f"""set_config('toolchain', '{XMAKE_GLOBAL_TOOLCHAIN}')
-set_config('lc_enable_clangcxx', true)
 set_config('lc_llvm_path', '{to_slash(str(Path(PROJECT_ROOT) / LLVM_INSTALL_DIR))}')
 """
         opt_lua_path = rel("xmake/options.lua")

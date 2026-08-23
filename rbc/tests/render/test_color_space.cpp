@@ -1,10 +1,11 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 
 #include <rbc_render/utils/color_space.h>
 
 #include <array>
 #include <cmath>
 
+namespace rbc::test {
 namespace {
 
 using namespace luisa;
@@ -29,6 +30,8 @@ void check_matrix_rows(
 
 }// namespace
 
+
+suite<"Render|ColorSpace"> RenderColorSpaceTestSuite = [] {
 
     "standard RGB-to-XYZ matrices use column vectors"_test = [] {
         const ColorSpace rec2020{EColorSpace::Rec2020};
@@ -110,3 +113,6 @@ void check_matrix_rows(
         const auto expected_ap0_d65 = ap0_d65.color_from_XYZ(rec2020.color_to_XYZ(color));
         check_vector(rec2020_to_ap0_d65 * color, expected_ap0_d65, 1e-12);
     };
+}; // suite
+
+} // namespace rbc::test

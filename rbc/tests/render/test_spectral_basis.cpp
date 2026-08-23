@@ -1,4 +1,4 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 
 #include <rbc_render/utils/color_space.h>
 
@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 
+namespace rbc::test {
 namespace {
 
 using namespace luisa;
@@ -22,6 +23,8 @@ void check_vector(double3 actual, double3 expected, double tolerance) {
 
 }// namespace
 
+
+suite<"Render|SpectralBasis"> RenderSpectralBasisTestSuite = [] {
 
     "AP0D65 responses are nonnegative and consistently normalized"_test = [] {
         std::array<double3, wavelength_count> cmf{};
@@ -107,3 +110,6 @@ void check_vector(double3 actual, double3 expected, double tolerance) {
             }
         }
     };
+}; // suite
+
+} // namespace rbc::test

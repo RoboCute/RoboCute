@@ -1,9 +1,11 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 #include "rbc_anim/types.h"
 #include "rbc_core/serde.h"
 #include <luisa/core/logging.h>
 
-namespace rbc {
+namespace rbc::test {
+
+suite<"Anim|Asset"> AnimAssetTestSuite = [] {
 
     "asset"_test = [] {
         rbc::AnimFloat4x4 m;
@@ -39,4 +41,7 @@ namespace rbc {
         }
     };
 
-}// namespace rbc
+}; // suite
+
+
+} // namespace rbc::test

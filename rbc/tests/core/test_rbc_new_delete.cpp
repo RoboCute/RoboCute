@@ -1,9 +1,10 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 #include <rbc_core/memory.h>
 #include <cstring>
 #include <cstdint>
 
 // Test structures and classes
+namespace rbc::test {
 struct TrivialStruct {
     int a;
     float b;
@@ -49,6 +50,8 @@ struct AlignedStruct {
         }
     }
 };
+
+suite<"Core|NewDelete"> CoreNewDeleteTestSuite = [] {
 
     "rbc_new_delete_basic_types"_test = [] {
         // Test with basic types
@@ -362,3 +365,7 @@ struct AlignedStruct {
         expect(static_cast<bool>(ptr->outer_value == 200));
         RBCDelete(ptr);
     };
+
+}; // suite
+
+} // namespace rbc::test

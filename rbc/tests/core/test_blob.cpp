@@ -1,7 +1,10 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 #include <rbc_core/blob.h>
 #include <rbc_core/memory.h>
 #include <cstring>
+
+namespace rbc::test {
+suite<"Core|Blob"> CoreBlobTestSuite = [] {
 
     "blob_create_basic"_test = [] {
         // Test basic blob creation with copy
@@ -146,3 +149,7 @@
         
         rbc_free(test_data);
     };
+
+}; // suite
+
+} // namespace rbc::test

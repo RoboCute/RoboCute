@@ -21,7 +21,7 @@
  * 6. 如何处理错误情况
  */
 
-#include "test_util.h"
+#include "rbc_test.hpp"
 
 #include <urdf_parser/urdf_parser.h>  // URDF 解析器头文件
 #include <urdf_model/model.h>          // 机器人模型类
@@ -32,7 +32,7 @@
 #include <sstream>
 #include <iostream>
 
-namespace rbc {
+namespace rbc::test {
 
 /**
  * @brief 创建一个简单的 URDF 机器人 XML 字符串（双连杆机械臂）
@@ -204,6 +204,8 @@ static std::string create_hierarchy_urdf() {
      * 4. 如何通过名称获取特定连杆和关节
      * 5. 如何获取材质信息
      */
+suite<"URDF|Basic"> URDFBasicTestSuite = [] {
+
     "parse_simple_urdf"_test = [] {
         // 步骤1：创建 URDF XML 字符串
         auto xml_str = create_simple_urdf();
@@ -263,10 +265,10 @@ static std::string create_hierarchy_urdf() {
             expect(static_cast<bool>(material != nullptr));
             if (material) {
                 // 验证蓝色材质 (0, 0, 0.8, 1)
-                expect(static_cast<bool>(material->color.r == Approx(0.0f)));   // R = 0
-                expect(static_cast<bool>(material->color.g == Approx(0.0f)));   // G = 0
-                expect(static_cast<bool>(material->color.b == Approx(0.8f)));   // B = 0.8
-                expect(static_cast<bool>(material->color.a == Approx(1.0f)));   // A = 1（不透明）
+                expect(static_cast<bool>(material->color.r == 0.0f));   // R = 0
+                expect(static_cast<bool>(material->color.g == 0.0f));   // G = 0
+                expect(static_cast<bool>(material->color.b == 0.8f));   // B = 0.8
+                expect(static_cast<bool>(material->color.a == 1.0f));   // A = 1（不透明）
             }
         }
     };
@@ -367,12 +369,12 @@ static std::string create_hierarchy_urdf() {
         expect(static_cast<bool>(base_link != nullptr));
         if (base_link && base_link->inertial) {
             // 验证质量
-            expect(static_cast<bool>(base_link->inertial->mass == Approx(1.0)));
+            expect(static_cast<bool>(base_link->inertial->mass == 1.0));
             
             // 验证惯性张量对角元素
-            expect(static_cast<bool>(base_link->inertial->ixx == Approx(0.01)));
-            expect(static_cast<bool>(base_link->inertial->iyy == Approx(0.01)));
-            expect(static_cast<bool>(base_link->inertial->izz == Approx(0.01)));
+            expect(static_cast<bool>(base_link->inertial->ixx == 0.01));
+            expect(static_cast<bool>(base_link->inertial->iyy == 0.01));
+            expect(static_cast<bool>(base_link->inertial->izz == 0.01));
         }
         
         // 【获取 arm_link 的惯性数据】
@@ -380,13 +382,13 @@ static std::string create_hierarchy_urdf() {
         expect(static_cast<bool>(arm_link != nullptr));
         if (arm_link && arm_link->inertial) {
             // 验证质量
-            expect(static_cast<bool>(arm_link->inertial->mass == Approx(0.5)));
+            expect(static_cast<bool>(arm_link->inertial->mass == 0.5));
             
             // 验证惯性原点位置
             // origin 是一个变换，包含 position（位置）和 rotation（旋转）
-            expect(static_cast<bool>(arm_link->inertial->origin.position.x == Approx(0.0)));
-            expect(static_cast<bool>(arm_link->inertial->origin.position.y == Approx(0.0)));
-            expect(static_cast<bool>(arm_link->inertial->origin.position.z == Approx(0.5)));
+            expect(static_cast<bool>(arm_link->inertial->origin.position.x == 0.0));
+            expect(static_cast<bool>(arm_link->inertial->origin.position.y == 0.0));
+            expect(static_cast<bool>(arm_link->inertial->origin.position.z == 0.5));
         }
     };
 
@@ -414,14 +416,14 @@ static std::string create_hierarchy_urdf() {
         expect(static_cast<bool>(joint->limits != nullptr)) << fatal;
         
         // 验证位置限位：-π 到 +π 弧度（约 -180° 到 +180°）
-        expect(static_cast<bool>(joint->limits->lower == Approx(-3.14)));
-        expect(static_cast<bool>(joint->limits->upper == Approx(3.14)));
+        expect(static_cast<bool>(joint->limits->lower == -3.14));
+        expect(static_cast<bool>(joint->limits->upper == 3.14));
         
         // 验证力矩限制：10 N·m
-        expect(static_cast<bool>(joint->limits->effort == Approx(10.0)));
+        expect(static_cast<bool>(joint->limits->effort == 10.0));
         
         // 验证速度限制：1 rad/s
-        expect(static_cast<bool>(joint->limits->velocity == Approx(1.0)));
+        expect(static_cast<bool>(joint->limits->velocity == 1.0));
     };
 
     /**
@@ -479,5 +481,8 @@ static std::string create_hierarchy_urdf() {
         }
     };
 
+}; // suite
 
-} // namespace rbc
+
+
+} // namespace rbc::test

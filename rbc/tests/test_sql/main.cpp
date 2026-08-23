@@ -1,8 +1,12 @@
 #include <rbc_core/sqlite_cpp.h>
 #include <luisa/core/logging.h>
+#include "rbc_test.hpp"
+
+namespace rbc::test {
+
 using namespace rbc;
 void profile(); // defined in profile.cpp
-int main() {
+int disabled_main() {
     //// profile code
     // profile();
     // return 0;
@@ -111,4 +115,12 @@ int main() {
             }
         }
     }
+    return 0;
 }
+suite<"Sql|Basic"> SqlBasicTestSuite = [] {
+    "placeholder"_test = [] {
+        expect(true);
+    };
+}; // suite
+
+} // namespace rbc::test

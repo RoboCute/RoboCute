@@ -1,6 +1,6 @@
 -- Boost.UT based test suite for RBC
 -- Mimics thirdparty/LuisaCompute/src/tests/xmake.lua style:
--- one target per test group, header-only ut.hpp under rbc/tests/ut.
+-- one target per test group, header-only ut.hpp under rbc/tests/_framework/ut.
 
 local function add_rbc_ut(name, files, deps, interface_deps)
     deps = deps or {}
@@ -26,7 +26,7 @@ local function add_rbc_ut(name, files, deps, interface_deps)
     target_end()
 end
 
--- show how to use test framework
+-- framework example
 add_rbc_ut("ut_test", {
     "_test/*.cpp"
 }, {"rbc_core"})
@@ -36,37 +36,64 @@ add_rbc_ut("ut_basic", {
     "basic/*.cpp"
 }, {"rbc_core"})
 
-
 -- core & data-structure tests
+add_rbc_ut("ut_core", {
+    "core/*.cpp"
+}, {"rbc_core"})
 
-
--- add_rbc_ut_test("test_core", {
---     "core/*.cpp"
--- }, {"rbc_core"})
-
--- runtime / animation
--- add_rbc_ut_test("test_anim", {
---     "anim/*.cpp"
--- }, {"rbc_runtime"})
+-- animation type tests
+add_rbc_ut("ut_anim", {
+    "anim/*.cpp"
+}, {"rbc_core", "rbc_runtime"})
 
 -- rendering utilities
--- add_rbc_ut_test("test_render", {
---     "render/*.cpp"
--- }, {"rbc_core"}, {"rbc_render_plugin"})
+add_rbc_ut("ut_render", {
+    "render/*.cpp"
+}, {"rbc_core"}, {"rbc_render_plugin"})
 
 -- shader runtime
--- add_rbc_ut_test("test_shader_runtime", {
---     "shader_runtime/*.cpp"
--- }, {"rbc_runtime"})
+add_rbc_ut("ut_shader_runtime", {
+    "shader_runtime/*.cpp"
+}, {"rbc_runtime"})
 
 -- model importer tests
--- add_rbc_ut_test("test_model", {
---     "test_model/*.cpp"
--- }, {"rbc_runtime"}, {"rbc_importer_plugin"})
+add_rbc_ut("ut_model", {
+    "test_model/*.cpp"
+}, {"rbc_runtime"}, {"rbc_importer_plugin"})
+
+-- animation sequence importer tests
+add_rbc_ut("ut_anim_sequence", {
+    "test_anim_sequence/*.cpp"
+}, {"rbc_runtime", "rbc_importer_plugin", "stb-image", "argparse"})
+
+-- coroutine examples
+add_rbc_ut("ut_coro", {
+    "test_coro/*.cpp"
+}, {"rbc_core"})
+
+-- project import tests
+add_rbc_ut("ut_project", {
+    "test_project/*.cpp"
+}, {"rbc_runtime", "lc-dsl", "rbc_project_plugin"})
+
+-- skeleton import tests
+add_rbc_ut("ut_skeleton", {
+    "test_skeleton/*.cpp"
+}, {"rbc_runtime", "rbc_importer_plugin", "stb-image", "argparse"})
+
+-- sqlite tests (SqliteCpp implementation currently unavailable, so excluded from build)
+-- add_rbc_ut("ut_sql", {
+--     "test_sql/*.cpp"
+-- }, {"rbc_core"})
 
 -- URDF tests
--- if has_config('rbc_urdf') then
---     add_rbc_ut_test("test_urdf", {
---         "test_urdf/*.cpp"
---     }, {"urdfdom_model"})
--- end
+if has_config('rbc_urdf') then
+    add_rbc_ut("ut_urdf", {
+        "test_urdf/*.cpp"
+    }, {"urdfdom_model"})
+end
+
+-- animation sample (converted to ut placeholder)
+add_rbc_ut("ut_sample_anim", {
+    "sample_anim/*.cpp"
+}, {"rbc_runtime", "rbc_importer_plugin", "lc-gui", "stb-image"})

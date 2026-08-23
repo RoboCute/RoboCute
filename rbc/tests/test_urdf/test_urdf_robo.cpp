@@ -17,7 +17,7 @@
  *           -> joint4 -> link4 -> joint5 -> link5 -> joint6 -> link6 (end_effector)
  */
 
-#include "test_util.h"
+#include "rbc_test.hpp"
 
 #include <urdf_parser/urdf_parser.h>
 #include <urdf_model/model.h>
@@ -28,7 +28,7 @@
 #include <sstream>
 #include <iostream>
 
-namespace rbc {
+namespace rbc::test {
 
 /**
  * @brief 创建 myCobot 280 风格的 6 自由度机械臂 URDF
@@ -433,6 +433,8 @@ static std::string create_mobile_robot_urdf() {
      * 2. 每个关节的类型和参数正确
      * 3. 连杆数量正确（7个：base + 6个连杆）
      */
+suite<"URDF|Robo"> URDFRoboTestSuite = [] {
+
     "mycobot_280_structure"_test = [] {
         auto xml_str = create_mycobot_280_urdf();
         auto model = urdf::parseURDF(xml_str);
@@ -500,24 +502,24 @@ static std::string create_mobile_robot_urdf() {
         auto joint1 = model->getJoint("joint1");
         expect(static_cast<bool>(joint1 != nullptr)) << fatal;
         expect(static_cast<bool>(joint1->limits != nullptr)) << fatal;
-        expect(static_cast<bool>(joint1->limits->lower == Approx(-3.14)));
-        expect(static_cast<bool>(joint1->limits->upper == Approx(3.14)));
-        expect(static_cast<bool>(joint1->limits->effort == Approx(5.0)));
-        expect(static_cast<bool>(joint1->limits->velocity == Approx(3.14)));
+        expect(static_cast<bool>(joint1->limits->lower == -3.14));
+        expect(static_cast<bool>(joint1->limits->upper == 3.14));
+        expect(static_cast<bool>(joint1->limits->effort == 5.0));
+        expect(static_cast<bool>(joint1->limits->velocity == 3.14));
         
         // 关节2：-2.62 ~ +2.62 rad (约150°)
         auto joint2 = model->getJoint("joint2");
         expect(static_cast<bool>(joint2 != nullptr)) << fatal;
         expect(static_cast<bool>(joint2->limits != nullptr)) << fatal;
-        expect(static_cast<bool>(joint2->limits->lower == Approx(-2.62)));
-        expect(static_cast<bool>(joint2->limits->upper == Approx(2.62)));
+        expect(static_cast<bool>(joint2->limits->lower == -2.62));
+        expect(static_cast<bool>(joint2->limits->upper == 2.62));
         
         // 关节5：-1.75 ~ +1.75 rad (约100°)
         auto joint5 = model->getJoint("joint5");
         expect(static_cast<bool>(joint5 != nullptr)) << fatal;
         expect(static_cast<bool>(joint5->limits != nullptr)) << fatal;
-        expect(static_cast<bool>(joint5->limits->lower == Approx(-1.75)));
-        expect(static_cast<bool>(joint5->limits->upper == Approx(1.75)));
+        expect(static_cast<bool>(joint5->limits->lower == -1.75));
+        expect(static_cast<bool>(joint5->limits->upper == 1.75));
     };
 
     /**
@@ -537,28 +539,28 @@ static std::string create_mobile_robot_urdf() {
         auto white = model->getMaterial("white");
         expect(static_cast<bool>(white != nullptr));
         if (white) {
-            expect(static_cast<bool>(white->color.r == Approx(1.0f)));
-            expect(static_cast<bool>(white->color.g == Approx(1.0f)));
-            expect(static_cast<bool>(white->color.b == Approx(1.0f)));
-            expect(static_cast<bool>(white->color.a == Approx(1.0f)));
+            expect(static_cast<bool>(white->color.r == 1.0f));
+            expect(static_cast<bool>(white->color.g == 1.0f));
+            expect(static_cast<bool>(white->color.b == 1.0f));
+            expect(static_cast<bool>(white->color.a == 1.0f));
         }
         
         // 验证蓝色材质
         auto blue = model->getMaterial("blue");
         expect(static_cast<bool>(blue != nullptr));
         if (blue) {
-            expect(static_cast<bool>(blue->color.r == Approx(0.2f)));
-            expect(static_cast<bool>(blue->color.g == Approx(0.4f)));
-            expect(static_cast<bool>(blue->color.b == Approx(0.8f)));
+            expect(static_cast<bool>(blue->color.r == 0.2f));
+            expect(static_cast<bool>(blue->color.g == 0.4f));
+            expect(static_cast<bool>(blue->color.b == 0.8f));
         }
         
         // 验证银色材质
         auto silver = model->getMaterial("silver");
         expect(static_cast<bool>(silver != nullptr));
         if (silver) {
-            expect(static_cast<bool>(silver->color.r == Approx(0.75f)));
-            expect(static_cast<bool>(silver->color.g == Approx(0.75f)));
-            expect(static_cast<bool>(silver->color.b == Approx(0.75f)));
+            expect(static_cast<bool>(silver->color.r == 0.75f));
+            expect(static_cast<bool>(silver->color.g == 0.75f));
+            expect(static_cast<bool>(silver->color.b == 0.75f));
         }
     };
 
@@ -633,14 +635,14 @@ static std::string create_mobile_robot_urdf() {
         auto base_link = model->getLink("base_link");
         expect(static_cast<bool>(base_link != nullptr));
         if (base_link && base_link->inertial) {
-            expect(static_cast<bool>(base_link->inertial->mass == Approx(0.3)));
+            expect(static_cast<bool>(base_link->inertial->mass == 0.3));
         }
         
         // 验证末端法兰惯性
         auto link6 = model->getLink("link6");
         expect(static_cast<bool>(link6 != nullptr));
         if (link6 && link6->inertial) {
-            expect(static_cast<bool>(link6->inertial->mass == Approx(0.03)));
+            expect(static_cast<bool>(link6->inertial->mass == 0.03));
         }
         
         // 验证总质量（简单累加）
@@ -651,7 +653,7 @@ static std::string create_mobile_robot_urdf() {
             }
         }
         // 0.3 + 0.15 + 0.12 + 0.10 + 0.08 + 0.05 + 0.03 = 0.83
-        expect(static_cast<bool>(total_mass == Approx(0.83)));
+        expect(static_cast<bool>(total_mass == 0.83));
     };
 
     /**
@@ -695,5 +697,8 @@ static std::string create_mobile_robot_urdf() {
         }
     };
 
+}; // suite
 
-} // namespace rbc
+
+
+} // namespace rbc::test

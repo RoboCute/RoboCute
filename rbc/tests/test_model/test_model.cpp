@@ -1,4 +1,4 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 
 // Define SKIP_IF for doctest versions that don't have it
 #ifndef SKIP_IF
@@ -31,14 +31,9 @@ using namespace rbc::world;
 // Usage: --test-model=obj (or --test-model=fbx, gltf, glb, stl, ply, off, 3ds, dae)
 // If not specified, all tests run
 static bool should_test_model_type(luisa::string_view type) {
-    for (int i = 0; i < sail::test::argc(); ++i) {
-        luisa::string_view arg(sail::test::argv()[i]);
-        if (arg.starts_with("--test-model=")) {
-            auto model_type = arg.substr(13);// length of "--test-model="
-            return model_type == type;
-        }
-    }
-    return true;// No filter specified, test all
+    // ut framework: no command-line filtering by default; run all importers.
+    (void)type;
+    return true;
 }
 
 struct WorldFixture {
@@ -63,6 +58,10 @@ struct WorldFixture {
         rbc::RuntimeStaticBase::dispose_all();
     }
 };
+
+namespace rbc::test {
+
+suite<"World|Model"> WorldModelTestSuite = [] {
 
     "mesh_importer_obj"_test = [] {
         WorldFixture __ut_fixture;
@@ -212,7 +211,8 @@ struct WorldFixture {
     //     expect(!static_cast<bool>(result));
     // }
 
-    TEST_CASE_FIXTURE(WorldFixture, "importer_registry") {
+    "importer_registry"_test = [] {
+        WorldFixture self;
         auto &registry = ResourceImporterRegistry::instance();
 
         // Test finding importers by extension
@@ -237,9 +237,10 @@ struct WorldFixture {
 
         // Test non-existent extension returns nullptr
         expect(static_cast<bool>(registry.find_importer(luisa::string_view{".nonexistent"}, mesh_type) == nullptr));
-    }
+    };
 
-    TEST_CASE_FIXTURE(WorldFixture, "mesh_resource_creation") {
+    "mesh_resource_creation"_test = [] {
+        WorldFixture self;
         auto mesh = self.create<MeshResource>();
         expect(static_cast<bool>(mesh != nullptr));
         expect(static_cast<bool>(mesh->empty()));
@@ -248,4 +249,7 @@ struct WorldFixture {
         expect(static_cast<bool>(mesh->uv_count() == 0));
         expect(!static_cast<bool>(mesh->contained_normal()));
         expect(!static_cast<bool>(mesh->contained_tangent()));
-    }
+    };
+}; // suite
+
+} // namespace rbc::test

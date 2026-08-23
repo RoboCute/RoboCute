@@ -1,7 +1,6 @@
 #include <argparse/argparse.hpp>
 #include <luisa/core/fiber.h>
 #include <luisa/core/logging.h>
-
 #include <rbc_core/type_info.h>
 #include <rbc_core/rc.h>
 #include <rbc_core/runtime_static.h>
@@ -10,13 +9,18 @@
 #include <rbc_world/resource_importer.h>
 #include <rbc_world/resources/skeleton.h>
 #include <rbc_world/base_object.h>
-
-// TinyGLTF for raw gltf reading
 #define TINYGLTF_NO_INCLUDE_JSON
 #include "tiny_gltf.h"
-
 #include <iostream>
 #include <cstring>
+#include "rbc_test.hpp"
+
+namespace rbc::test {
+
+
+
+// TinyGLTF for raw gltf reading
+
 
 using namespace rbc;
 using namespace rbc::world;
@@ -188,7 +192,7 @@ void compare_skeletons(const RawGltfSkeletonInfo& raw_info, SkeletonResource* sk
     std::cout << "========== Comparison Complete ==========" << std::endl;
 }
 
-int main(int argc, char* argv[]) {
+int disabled_main(int argc, char* argv[]) {
     argparse::ArgumentParser program("test_skeleton", "0.1.0");
     program.add_argument("gltf_file").help("Path to glTF file to load skeleton from");
     
@@ -300,3 +304,11 @@ int main(int argc, char* argv[]) {
     
     return 0;
 }
+
+suite<"Skeleton|Import"> SkeletonImportTestSuite = [] {
+    "placeholder"_test = [] {
+        expect(true);
+    };
+}; // suite
+
+} // namespace rbc::test

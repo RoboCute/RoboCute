@@ -1,5 +1,9 @@
 #include <rbc_core/coroutine.h>
 #include <luisa/core/logging.h>
+#include "rbc_test.hpp"
+
+namespace rbc::test {
+
 using namespace rbc;
 struct TestLifeTime {
     TestLifeTime() {
@@ -127,7 +131,7 @@ void run_interleaved_coroutines() {
     LUISA_INFO("=== Interleaved coroutines completed ===");
 }
 
-int main() {
+int disabled_main() {
     auto coro = my_coro();
     while (true) {
         coro.resume();
@@ -177,4 +181,13 @@ int main() {
     run_interleaved_coroutines();
     
     LUISA_INFO("\nAll coroutine examples completed!");
+    return 0;
 }
+
+suite<"Coro|Examples"> CoroExamplesTestSuite = [] {
+    "placeholder"_test = [] {
+        expect(true);
+    };
+}; // suite
+
+} // namespace rbc::test

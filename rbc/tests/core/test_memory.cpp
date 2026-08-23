@@ -1,7 +1,10 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 #include <rbc_core/memory.h>
 #include <cstring>
 #include <cstdint>
+
+namespace rbc::test {
+suite<"Core|Memory"> CoreMemoryTestSuite = [] {
 
     "memory_malloc_basic"_test = [] {
         // Test basic malloc
@@ -266,3 +269,7 @@
         
         containers_free_aligned(ptr, alignment);
     };
+
+}; // suite
+
+} // namespace rbc::test

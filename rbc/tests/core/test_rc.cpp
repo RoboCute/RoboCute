@@ -1,6 +1,7 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 #include <rbc_core/rc.h>
 
+namespace rbc::test {
 struct DummyRC : public rbc::RCBase {
     int a = 1;
 };
@@ -16,6 +17,8 @@ void observe(rbc::RCWeak<DummyRC> weak_dummy) {
         expect(static_cast<bool>(weak_dummy.ref_count_weak() == 0));
     }
 }
+
+suite<"Core|RC"> CoreRCTestSuite = [] {
 
     "rc"_test = [] {
         rbc::RC<DummyRC> ref_rc;
@@ -47,3 +50,6 @@ void observe(rbc::RCWeak<DummyRC> weak_dummy) {
         rbc::RCWeak weak_ref{ref_rc.get()};
         observe(weak_ref);// lock fail
     };
+}; // suite
+
+} // namespace rbc::test

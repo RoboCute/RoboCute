@@ -1,4 +1,4 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 #include <luisa/core/stl.h>
 #include <luisa/core/basic_traits.h>
 #include <luisa/core/basic_types.h>
@@ -112,6 +112,11 @@ struct Serialize<test_serde::TestArrayStruct> {
 };
 
 }// namespace rbc
+
+
+namespace rbc::test {
+
+suite<"Core|Serde"> CoreSerdeTestSuite = [] {
 
     "json_basic_struct_serialization"_test = [] {
         RuntimeStaticBase::init_all();
@@ -415,3 +420,6 @@ struct Serialize<test_serde::TestArrayStruct> {
             expect(static_cast<bool>(deserialized_points[i].z == points[i].z));
         }
     };
+}; // suite
+
+} // namespace rbc::test

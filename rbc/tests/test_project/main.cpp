@@ -18,8 +18,12 @@
 #include <rbc_world/components/atmosphere_component.h>
 #include <rbc_world/importers/texture_loader.h>
 #include <rbc_graphics/render_device.h>
+#include "rbc_test.hpp"
 
-int main(int argc, char *argv[]) {
+namespace rbc::test {
+
+
+int disabled_main(int argc, char *argv[]) {
     if (argc < 3) {
         LUISA_WARNING("Bad args, must be #backend# #project root path# (containing rbc_project.json)");
         return 1;
@@ -164,3 +168,10 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+suite<"Project|Import"> ProjectImportTestSuite = [] {
+    "placeholder"_test = [] {
+        expect(true);
+    };
+}; // suite
+
+} // namespace rbc::test

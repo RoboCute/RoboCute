@@ -4,7 +4,6 @@ if not is_mode("debug") then
         _config_project({
             project_kind = "shared"
         })
-        lc_set_pcxxheader("src/lc_clangcxx_pch.h")
         add_files("src/**.cpp")
         on_load(function(target, opt)
             target:add("headerfiles", path.normalize(path.join(os.scriptdir(), "../../thirdparty/LuisaCompute/common/default_binary_io.h")))

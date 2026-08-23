@@ -1,4 +1,4 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 
 #include <atomic>
 #include <cstdint>
@@ -7,6 +7,7 @@
 #include <luisa/core/fiber.h>
 #include <rbc_graphics/shader_family.h>
 
+namespace rbc::test {
 namespace {
 
 constexpr uint64_t complex_feature = 1u;
@@ -146,6 +147,8 @@ void reset_fakes() {
 
 }// namespace
 
+suite<"ShaderRuntime|ShaderFamily"> ShaderRuntimeShaderFamilyTestSuite = [] {
+
     "exact variants publish atomically and cache by selection"_test = [] {
         reset_fakes();
         luisa::fiber::scheduler scheduler;
@@ -261,3 +264,6 @@ void reset_fakes() {
         expect(static_cast<bool>(programs[1] != nullptr));
         expect(static_cast<bool>(programs[2] != nullptr));
     };
+}; // suite
+
+} // namespace rbc::test

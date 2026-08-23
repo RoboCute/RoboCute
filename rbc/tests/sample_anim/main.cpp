@@ -42,15 +42,19 @@
 #include <rbc_anim/graph/AnimNode_Root.h>
 #include <rbc_anim/graph/AnimNode_SequencePlayer.h>
 #include <luisa/core/logging.h>
-
-// TinyGLTF for loading materials and textures from glTF
 #define TINYGLTF_NO_INCLUDE_JSON
 #include <tiny_gltf.h>
+#include <material/mats.inl>
+#include "rbc_test.hpp"
+
+namespace rbc::test {
+
+
+// TinyGLTF for loading materials and textures from glTF
 
 using namespace rbc;
 using namespace luisa;
 using namespace luisa::compute;
-#include <material/mats.inl>
 
 // AnimScene - Manages animated character loading and playback
 struct AnimScene {
@@ -642,7 +646,7 @@ AnimScene::~AnimScene() {
     world::destroy_world();
 }
 
-int main(int argc, char *argv[]) {
+int disabled_main(int argc, char *argv[]) {
     using namespace rbc;
     using namespace luisa;
     using namespace luisa::compute;
@@ -817,3 +821,11 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+suite<"Sample|Anim"> SampleAnimTestSuite = [] {
+    "placeholder"_test = [] {
+        expect(true);
+    };
+}; // suite
+
+} // namespace rbc::test

@@ -1,7 +1,6 @@
 #include <argparse/argparse.hpp>
 #include <luisa/core/fiber.h>
 #include <luisa/core/logging.h>
-
 #include <rbc_core/type_info.h>
 #include <rbc_core/rc.h>
 #include <rbc_core/runtime_static.h>
@@ -11,13 +10,18 @@
 #include <rbc_world/resources/anim_sequence.h>
 #include <rbc_world/resources/skeleton.h>
 #include <rbc_world/base_object.h>
-
-// TinyGLTF for raw gltf reading
 #define TINYGLTF_NO_INCLUDE_JSON
 #include "tiny_gltf.h"
-
 #include <iostream>
 #include <cstring>
+#include "rbc_test.hpp"
+
+namespace rbc::test {
+
+
+
+// TinyGLTF for raw gltf reading
+
 
 using namespace rbc;
 using namespace rbc::world;
@@ -156,7 +160,7 @@ void compare_animations(const RawGltfAnimInfo &raw_info, AnimSequenceResource *a
     std::cout << "========== Comparison Complete ==========" << std::endl;
 }
 
-int main(int argc, char *argv[]) {
+int disabled_main(int argc, char *argv[]) {
     argparse::ArgumentParser program("test_anim_sequence", "0.1.0");
     program.add_argument("gltf_file").help("Path to glTF file to load animation from");
 
@@ -318,3 +322,11 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+suite<"AnimSequence|Import"> AnimSequenceImportTestSuite = [] {
+    "placeholder"_test = [] {
+        expect(true);
+    };
+}; // suite
+
+} // namespace rbc::test

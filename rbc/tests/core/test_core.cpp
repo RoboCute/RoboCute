@@ -1,6 +1,9 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 #include <luisa/vstl/vector.h>
 #include <luisa/core/stl/algorithm.h>
+
+namespace rbc::test {
+suite<"Core|Stl"> CoreStlTestSuite = [] {
 
     "basic"_test = [] {
         luisa::vector<int> a{3, 5, 6, 9, 1};
@@ -10,3 +13,6 @@
             expect(static_cast<bool>(a[i] == sorted_a[i]));
         }
     };
+}; // suite
+
+} // namespace rbc::test

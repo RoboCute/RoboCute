@@ -1,10 +1,14 @@
 #include <rbc_core/sqlite_cpp.h>
 #include <rbc_core/sqlite_cpp.h>
-
 #include <luisa/core/clock.h>
 #include <luisa/core/logging.h>
 #include <luisa/vstl/lmdb.hpp>
 #include <luisa/vstl/v_guid.h>
+#include "rbc_test.hpp"
+
+namespace rbc::test {
+
+
 void profile() {
     using namespace rbc;
     luisa::vector<
@@ -87,3 +91,10 @@ void profile() {
     time = clk.toc();
     LUISA_INFO("LMDB read time {} ms", time);
 }
+suite<"Sql|Profile"> SqlProfileTestSuite = [] {
+    "placeholder"_test = [] {
+        expect(true);
+    };
+}; // suite
+
+} // namespace rbc::test

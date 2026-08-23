@@ -1,9 +1,12 @@
-#include "test_util.h"
+#include "rbc_test.hpp"
 #include <rbc_core/containers/rbc_concurrent_queue.h>
 #include <thread>
 #include <vector>
 #include <atomic>
 #include <chrono>
+
+namespace rbc::test {
+suite<"Core|ConcurrentQueue"> CoreConcurrentQueueTestSuite = [] {
 
     "concurrent_queue_basic_enqueue_dequeue"_test = [] {
         rbc::ConcurrentQueue<int> queue;
@@ -342,3 +345,7 @@
         // Just verify the method exists and can be called
         (void)lock_free;
     };
+
+}; // suite
+
+} // namespace rbc::test
