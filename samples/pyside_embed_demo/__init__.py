@@ -30,7 +30,7 @@ def _add_dll_search_paths() -> None:
         repo_root / "build" / "windows" / "x64" / "release",
         repo_root / "build" / "windows" / "x64" / "releasedbg",
         Path(r"D:\tools\Qt\6.9.3\msvc2022_64\bin"),
-        Path(r"C:\Users\Color\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none"),
+        Path(r"C:\Users\Color\AppData\Roaming\uv\python\cpython-3.14.3-windows-x86_64-none"),
     ]
     for path in candidates:
         if path.exists():

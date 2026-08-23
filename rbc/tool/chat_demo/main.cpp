@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
             pythonServer.setArguments({
                 QStringLiteral("run"),
                 QStringLiteral("--python"),
-                QStringLiteral("3.14.2"),
+                QStringLiteral("3.14.3"),
                 QStringLiteral("--no-project"),
                 QStringLiteral("--with"),
                 QStringLiteral("fastapi"),

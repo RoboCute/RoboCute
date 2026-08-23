@@ -23,7 +23,7 @@
 
 ### 2.1 PySide6 与 Python 3.14 不兼容（关键阻塞）
 
-当前项目 `requires-python = ">=3.14.2"`，而 **PySide6 目前最高仅支持 Python 3.13**。
+当前项目 `requires-python = ">=3.14.3"`，而 **PySide6 目前最高仅支持 Python 3.13**。
 直接 `uv add --dev PySide6` 会失败，因为没有 Python 3.14 的 wheel。
 
 **影响**：
@@ -57,7 +57,7 @@
 
 **下一步**：将 `DemoRenderer` 替换为 `rbc::VisApp`/`rbc::RenderAppBase`，并正确初始化 `GraphicsUtils` / `RenderDevice`，以恢复 LC 真实渲染。
 
-### 2.4 `xmake/options.json` 中 Python 路径为 3.14.3，而 uv venv 使用 3.14.2
+### 2.4 `xmake/options.json` 中 Python 路径为 3.14.3，而 uv venv 使用 3.14.3
 
 `options.json` 记录的 Python lib 来自 `uv run prepare` 期间探测到的解释器。
 虽然验证通过，但建议统一 Python 版本，避免潜在的 ABI 微差异。
