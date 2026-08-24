@@ -14,10 +14,6 @@ on_config(function(target)
 end)
 add_files("*.cpp")
 add_deps("rbc-lc-clangcxx", "lc-runtime", "lc-vstl", "reproc", "lc-yyjson")
-add_deps("lc-backends-dummy", {
-    inherit = false,
-    links = false
-})
 after_build(function(target)
     -- TODO: macos and linux
     if not target:is_plat("windows") then

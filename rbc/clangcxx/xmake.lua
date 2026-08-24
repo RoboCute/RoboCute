@@ -5,6 +5,10 @@ if not is_mode("debug") then
             project_kind = "shared"
         })
         add_files("src/**.cpp")
+        add_deps("lc-backends-dummy", {
+            inherit = false,
+            links = false
+        })
         on_load(function(target, opt)
             target:add("headerfiles", path.normalize(path.join(os.scriptdir(), "../../thirdparty/LuisaCompute/common/default_binary_io.h")))
             local libs = {}
@@ -66,7 +70,6 @@ if not is_mode("debug") then
             else
                 target:add("defines", "LC_CLANGCXX_ENABLE_COMMENT=1")
             end
-
         end)
     target_end()
 end
