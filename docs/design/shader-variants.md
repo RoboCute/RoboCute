@@ -690,6 +690,8 @@ build/.shader_cache/variants-v1/
 
 缓存不是发布产物，可以删除后重建。构建基于输入快照工作，并使用进程锁和临时目录；如果构建期间输入发生变化，会重试一次。输入持续变化或编译失败时保留上一份完整 Shader root，不发布半套结果。
 
+缓存按“单元”组织：每个（source + 其传递 include + defines + backend）组合有独立 cache key，编译单元并行执行。因此编辑单个 shader 只失效依赖它的单元，无关单元直接复用缓存；`rbcxx` 的 `--variant=build` 在无变化时通过 `build_root/.shader_state.json` 快速退出，不重编译、不重写任何文件。
+
 ### 9.4 `artifact_publish.py` 的职责
 
 `src/rbc_build/artifact_publish.py` 只参与构建/安装，不参与运行时选择，也没有逐帧性能成本。

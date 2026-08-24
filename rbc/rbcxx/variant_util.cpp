@@ -476,7 +476,7 @@ void write_json_atomic(std::filesystem::path const &path, Json const &value, boo
     std::filesystem::create_directories(path.parent_path(), ec);
     auto temporary = path;
     temporary += ".tmp";
-    static std::mt19937_64 rng{std::random_device{}()};
+    thread_local std::mt19937_64 rng{std::random_device{}()};
     temporary += std::to_string(rng());
     {
         std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
@@ -812,7 +812,7 @@ void copy_tree_if_different(std::filesystem::path const &src, std::filesystem::p
 std::filesystem::path make_temp_dir(std::filesystem::path const &parent, std::string const &prefix) {
     std::error_code ec;
     std::filesystem::create_directories(parent, ec);
-    static std::mt19937_64 rng{std::random_device{}()};
+    thread_local std::mt19937_64 rng{std::random_device{}()};
     for (int attempt = 0; attempt < 100; ++attempt) {
         auto candidate = parent / (prefix + std::to_string(rng()));
         if (std::filesystem::create_directory(candidate, ec) && !ec) {
@@ -864,7 +864,16 @@ CompilerInfo compiler_fingerprint(std::filesystem::path const &compiler_path) {
     Sha256 digest;
     CompilerInfo info;
     for (auto const &path : unique) {
-        auto file_hash = sha256_file(path);
+        std::string file_hash;
+        try {
+            file_hash = sha256_file(path);
+        } catch (std::exception const &) {
+            // The toolchain directory may be updated asynchronously (xmake copies
+            // DLLs with async=true); skip files that are momentarily unreadable.
+            // The next invocation will include them and naturally invalidate the
+            // cached fingerprint once the copy completes.
+            continue;
+        }
         info.files[path.filename().string()] = file_hash;
         auto name = path.filename().string();
         digest.update(name);
@@ -898,13 +907,30 @@ std::filesystem::path default_compiler(std::filesystem::path const &project_root
 }
 
 std::filesystem::path default_build_root(std::filesystem::path const &project_root) {
-#ifdef _WIN32
-    return project_root / "build" / "windows" / "x64";
-#elif defined(__APPLE__)
-    return project_root / "build" / "macos" / "x86_x64";
-#else
-    return project_root / "build" / "linux" / "x86_x64";
+    // Mirror the original Python driver's platform/architecture detection so a
+    // fresh checkout on any host resolves a sensible default build directory.
+    std::string arch = "x86_x64";
+#if defined(_M_X64) || defined(__x86_64__)
+    arch = "x64";
+#elif defined(_M_ARM64) || defined(__aarch64__)
+    arch = "arm64";
+#elif defined(_M_IX86) || defined(__i386__) || defined(__i686__)
+    arch = "x86";
 #endif
+    std::string platform = "linux";
+#if defined(_WIN32)
+    platform = "windows";
+#elif defined(__APPLE__)
+    platform = "macos";
+#endif
+    auto directory = platform;
+    if (platform == "windows") {
+        directory += "/" + arch;
+    } else {
+        // macOS/Linux follow the Python convention (x86_x64, arm64, x86).
+        directory += "/" + (arch == "x64" ? "x86_x64" : arch);
+    }
+    return project_root / "build" / directory;
 }
 
 std::string path_to_posix(std::filesystem::path const &path) {

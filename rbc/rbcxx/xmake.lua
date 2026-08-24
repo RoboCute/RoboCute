@@ -35,15 +35,11 @@ after_build(function(target)
     end
     for i, v in ipairs(files) do
         os.cp(path.join(target:targetdir(), v), dst_dir, {
-            copy_if_different = true,
-            async = true,
-            detach = true
+            copy_if_different = true
         })
     end
     os.cp(path.join(os.scriptdir(), "template.txt"), dst_dir, {
-        copy_if_different = true,
-        async = true,
-        detach = true
+        copy_if_different = true
     })
 end)
 target_end()

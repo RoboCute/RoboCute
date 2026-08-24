@@ -374,7 +374,20 @@ def test_variant_build_edit_source_rebuilds_only_affected(tmp_path: Path) -> Non
     first = _run_rbcxx(*args)
     assert first.returncode == 0, first.stderr
     manifest_path = build_root / "shader_build_dx" / "shader_manifest.json"
-    input_id_before = json.loads(manifest_path.read_text(encoding="utf-8"))["input_id"]
+
+    def compile_keys(manifest: dict) -> dict[str, str]:
+        def selection_key(selection: dict) -> str:
+            return "+".join(f"{k}={selection[k]}" for k in sorted(selection)) or "default"
+
+        result: dict[str, str] = {}
+        for logical, program in manifest["programs"].items():
+            for variant in program["variants"]:
+                result[f"{logical}@{selection_key(variant['selection'])}"] = variant["compile_key"]
+        return result
+
+    first_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    input_id_before = first_manifest["input_id"]
+    keys_before = compile_keys(first_manifest)
     before = snapshot(build_root / "shader_build_dx")
 
     # Unchanged inputs: second run is a fast no-op.
@@ -427,6 +440,21 @@ def test_variant_build_edit_source_rebuilds_only_affected(tmp_path: Path) -> Non
     # The runtime manifest is regenerated with a new input_id.
     input_id_after = json.loads(manifest_path.read_text(encoding="utf-8"))["input_id"]
     assert input_id_after != input_id_before
+
+    # Per-unit cache keys: editing one source must NOT invalidate unrelated units.
+    # The affected program's compile keys change while an unrelated program's key
+    # stays identical (its cache entry was reused, not rebuilt).
+    keys_after = compile_keys(json.loads(manifest_path.read_text(encoding="utf-8")))
+    for key in keys_before:
+        if "offline_pt" in key:
+            assert keys_after[key] != keys_before[key], key
+        else:
+            assert keys_after[key] == keys_before[key], key
+    for key in keys_before:
+        if "offline_pt" in key:
+            assert keys_after[key] != keys_before[key], key
+        else:
+            assert keys_after[key] == keys_before[key], key
 
     # A following run is a fast no-op again.
     fourth = _run_rbcxx(*args)

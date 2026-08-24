@@ -104,4 +104,12 @@ struct ShaderVariantConfig {
 // Dependency digest over source_root, include dirs and the manifest.
 [[nodiscard]] std::string tree_digest(ShaderVariantConfig const &config);
 
+// Per-unit dependency digest over one source file plus its transitive project
+// includes (headers under the shader root). Compiler built-ins such as
+// <luisa/...> resolve outside the shader root and are covered by the compiler
+// fingerprint instead, so editing one shader only invalidates units that
+// actually depend on it.
+[[nodiscard]] std::string unit_digest(ShaderVariantConfig const &config,
+                                      std::filesystem::path const &source_path);
+
 } // namespace rbc_shader

@@ -909,6 +909,103 @@ std::string tree_digest(ShaderVariantConfig const &config) {
     return digest.hex();
 }
 
+namespace {
+
+std::vector<std::string> parse_includes(std::string const &content) {
+    std::vector<std::string> result;
+    std::size_t pos = 0;
+    while ((pos = content.find("#include", pos)) != std::string::npos) {
+        std::size_t p = pos + 8;
+        while (p < content.size() && (content[p] == ' ' || content[p] == '\t')) {
+            ++p;
+        }
+        if (p < content.size() && content[p] == '"') {
+            auto end = content.find('"', p + 1);
+            if (end != std::string::npos) {
+                result.push_back(content.substr(p + 1, end - p - 1));
+            }
+        } else if (p < content.size() && content[p] == '<') {
+            auto end = content.find('>', p + 1);
+            if (end != std::string::npos) {
+                result.push_back(content.substr(p + 1, end - p - 1));
+            }
+        }
+        pos = p;
+    }
+    return result;
+}
+
+bool inside_shader_root(std::filesystem::path const &path,
+                        std::filesystem::path const &shader_root) {
+    auto relative = path.lexically_relative(shader_root);
+    return !relative.empty() && relative.string().find("..") == std::string::npos;
+}
+
+} // namespace
+
+std::string unit_digest(ShaderVariantConfig const &config,
+                        std::filesystem::path const &source_path) {
+    std::error_code ec;
+    auto source = std::filesystem::weakly_canonical(source_path, ec);
+    if (ec || !std::filesystem::is_regular_file(source, ec)) {
+        throw ShaderVariantError("Unit digest source is not a file: " + source_path.string());
+    }
+    std::vector<std::filesystem::path> include_dirs;
+    for (auto const &include_dir : config.include_dirs) {
+        include_dirs.push_back(std::filesystem::weakly_canonical(config.shader_root / include_dir, ec));
+    }
+    std::map<std::string, std::filesystem::path> files;
+    std::vector<std::filesystem::path> queue;
+    queue.push_back(source);
+    while (!queue.empty()) {
+        auto current = queue.back();
+        queue.pop_back();
+        auto relative = current.lexically_relative(config.shader_root);
+        auto key = path_to_posix(relative);
+        if (files.find(key) != files.end()) {
+            continue;
+        }
+        files[key] = current;
+        auto content = read_file_text(current);
+        for (auto const &include : parse_includes(content)) {
+            bool angle = !include.empty() && include.front() == '<';
+            (void)angle;
+            // parse_includes already strips the delimiters; try quoted-style first
+            // (relative to the including file), then the configured include dirs.
+            std::filesystem::path resolved;
+            bool found = false;
+            auto try_base = [&](std::filesystem::path const &base) {
+                auto candidate = base / include;
+                if (std::filesystem::is_regular_file(candidate, ec)) {
+                    resolved = std::filesystem::weakly_canonical(candidate, ec);
+                    found = true;
+                }
+            };
+            try_base(current.parent_path());
+            if (!found) {
+                for (auto const &dir : include_dirs) {
+                    try_base(dir);
+                    if (found) {
+                        break;
+                    }
+                }
+            }
+            if (found && inside_shader_root(resolved, config.shader_root)) {
+                queue.push_back(resolved);
+            }
+        }
+    }
+    Sha256 digest;
+    for (auto const &entry : files) {
+        digest.update(entry.first);
+        digest.update("\0");
+        auto bytes = read_file_bytes(entry.second);
+        digest.update(reinterpret_cast<std::uint8_t const *>(bytes.data()), bytes.size());
+        digest.update("\0");
+    }
+    return digest.hex();
+}
+
 ShaderVariantConfig snapshot_config(ShaderVariantConfig const &config,
                                     std::filesystem::path const &snapshot_root) {
     std::error_code ec;

@@ -4,18 +4,64 @@
 #include <reproc++/reproc.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <exception>
+#include <functional>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <random>
 #include <set>
 #include <sstream>
+#include <thread>
 
 using namespace std::chrono_literals;
 
 namespace rbc_shader {
 
 namespace {
+
+// Run fn(0..count-1) on a small thread pool. Exceptions from workers are
+// captured and rethrown on the calling thread after all workers join.
+void parallel_for(std::size_t count, std::function<void(std::size_t)> const &fn) {
+    if (count == 0) {
+        return;
+    }
+    auto hw = std::thread::hardware_concurrency();
+    std::size_t workers = hw == 0 ? 4 : hw;
+    workers = std::min(workers, count);
+    std::atomic<std::size_t> next{0};
+    std::mutex error_mutex;
+    std::exception_ptr first_error;
+    std::vector<std::thread> threads;
+    threads.reserve(workers);
+    for (std::size_t w = 0; w < workers; ++w) {
+        threads.emplace_back([&]() {
+            while (first_error == nullptr) {
+                auto i = next.fetch_add(1);
+                if (i >= count) {
+                    break;
+                }
+                try {
+                    fn(i);
+                } catch (...) {
+                    std::lock_guard<std::mutex> lock(error_mutex);
+                    if (first_error == nullptr) {
+                        first_error = std::current_exception();
+                    }
+                    return;
+                }
+            }
+        });
+    }
+    for (auto &thread : threads) {
+        thread.join();
+    }
+    if (first_error != nullptr) {
+        std::rethrow_exception(first_error);
+    }
+}
 
 constexpr int CACHE_SCHEMA_VERSION = 2;
 
@@ -127,63 +173,6 @@ bool cache_record_valid(std::filesystem::path const &object_dir, std::string con
     return true;
 }
 
-bool default_tree_cache_valid(std::filesystem::path const &object_dir,
-                              std::string const &compile_key,
-                              std::vector<std::string> const &expected_artifacts) {
-    auto tree = object_dir / "tree";
-    auto metadata_path = object_dir / "metadata.json";
-    std::error_code ec;
-    if (!std::filesystem::is_directory(tree, ec) ||
-        !std::filesystem::is_regular_file(metadata_path, ec)) {
-        return false;
-    }
-    Json metadata;
-    try {
-        metadata = read_json_file(metadata_path, "cache metadata");
-    } catch (std::exception const &) {
-        return false;
-    }
-    if (!metadata.is_object()) {
-        return false;
-    }
-    auto compile_key_value = metadata.get("compile_key");
-    auto artifacts_value = metadata.get("artifacts");
-    if (!compile_key_value || !compile_key_value->is_string() || compile_key_value->str != compile_key ||
-        !artifacts_value || !artifacts_value->is_object()) {
-        return false;
-    }
-    std::set<std::string> recorded;
-    for (auto const &entry : artifacts_value->obj) {
-        recorded.insert(entry.first);
-    }
-    std::set<std::string> expected(expected_artifacts.begin(), expected_artifacts.end());
-    if (recorded != expected) {
-        return false;
-    }
-    for (auto const &relative : expected_artifacts) {
-        auto artifact = tree / relative;
-        auto record = artifacts_value->get(relative);
-        if (!std::filesystem::is_regular_file(artifact, ec) || record == nullptr || !record->is_object()) {
-            return false;
-        }
-        auto size_value = record->get("size");
-        auto sha_value = record->get("sha256");
-        try {
-            auto actual_size = std::filesystem::file_size(artifact, ec);
-            if (ec || !size_value || !size_value->is_int() ||
-                actual_size != static_cast<std::uintmax_t>(size_value->integer)) {
-                return false;
-            }
-            if (!sha_value || !sha_value->is_string() || sha256_file(artifact) != sha_value->str) {
-                return false;
-            }
-        } catch (std::exception const &) {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool host_tree_cache_valid(std::filesystem::path const &object_dir,
                            std::string const &hostgen_key,
                            std::vector<std::string> const &required_interfaces) {
@@ -245,93 +234,29 @@ bool host_tree_cache_valid(std::filesystem::path const &object_dir,
 // Materialization helpers (ports of _materialize_default_tree / _compile_variant
 // / _materialize_hostgen_tree).
 // ---------------------------------------------------------------------------
-void materialize_default_tree(ShaderVariantConfig const &config,
-                              std::string const &backend,
-                              std::filesystem::path const &compiler_path,
-                              CompilerInfo const &compiler_info,
-                              std::string const &default_compile_key,
-                              std::vector<Define> const &default_defines,
-                              std::vector<std::string> const &expected_artifacts,
-                              std::filesystem::path const &cache_root,
-                              std::filesystem::path const &destination,
-                              bool rebuild) {
-    auto object_dir = cache_root / "default_objects" / default_compile_key;
-    auto lock_path = cache_root / "locks" / ("default-" + default_compile_key + ".lock");
-    FileLock lock(lock_path);
-    lock.lock();
-    if (rebuild || !default_tree_cache_valid(object_dir, default_compile_key, expected_artifacts)) {
-        auto work_parent = cache_root / "default_work";
-        auto work_dir = make_temp_dir(work_parent, default_compile_key.substr(0, 12) + ".");
-        auto compiled_tree = work_dir / "tree";
-        auto compiler_cache = cache_root / "compiler" / compiler_info.id / backend / "default" / default_compile_key;
-        std::error_code ec;
-        std::filesystem::create_directories(compiler_cache, ec);
-        try {
-            auto command = compiler_command(config, compiler_path, config.source_dir(), compiled_tree,
-                                            default_defines, backend, compiler_cache, std::nullopt, rebuild);
-            run_compiler(command, work_dir);
-            std::vector<std::pair<std::string, Json>> artifact_records;
-            for (auto const &relative : expected_artifacts) {
-                auto artifact = compiled_tree / relative;
-                if (!std::filesystem::is_regular_file(artifact)) {
-                    throw ShaderVariantError("Compiler did not produce default shader " + relative);
-                }
-                artifact_records.emplace_back(
-                    relative, Json::make_object({
-                                  {"sha256", Json::make_string(sha256_file(artifact))},
-                                  {"size", Json::make_int(static_cast<int64_t>(std::filesystem::file_size(artifact)))},
-                              }));
-            }
-            auto publish_parent = cache_root / "default_publish";
-            auto publish_dir = make_temp_dir(publish_parent, default_compile_key.substr(0, 12) + ".");
-            try {
-                copy_tree(compiled_tree, publish_dir / "tree");
-                write_json_atomic(publish_dir / "metadata.json",
-                                  Json::make_object({
-                                      {"compile_key", Json::make_string(default_compile_key)},
-                                      {"artifacts", Json::make_object(std::move(artifact_records))},
-                                  }));
-                std::error_code mkdir_ec;
-                std::filesystem::create_directories(object_dir.parent_path(), mkdir_ec);
-                atomic_replace_directory(publish_dir, object_dir);
-            } catch (...) {
-                if (std::filesystem::exists(publish_dir)) {
-                    remove_path(publish_dir);
-                }
-                throw;
-            }
-        } catch (...) {
-            if (std::filesystem::exists(work_dir)) {
-                remove_path(work_dir);
-            }
-            throw;
-        }
-    }
-    std::error_code ec;
-    std::filesystem::create_directories(destination, ec);
-    copy_tree_if_different(object_dir / "tree", destination);
-}
-
-std::string compile_variant(ShaderVariantConfig const &config,
-                            Program const &program,
-                            Permutation const &permutation,
-                            std::string const &backend,
-                            std::filesystem::path const &compiler_path,
-                            CompilerInfo const &compiler_info,
-                            std::string const &dependency_digest,
-                            std::filesystem::path const &cache_root,
-                            std::filesystem::path const &destination,
-                            bool rebuild) {
-    auto defines = config.effective_program_defines(program, permutation.selection);
+// Compile one source+defines unit and publish its binary into `destination`.
+// The cache key depends only on this unit's own inputs (source, its transitive
+// project includes, defines, backend, compiler) so editing an unrelated shader
+// never invalidates this unit.
+std::string compile_unit(ShaderVariantConfig const &config,
+                         std::filesystem::path const &source_path,
+                         std::vector<Define> const &defines,
+                         std::string const &backend,
+                         std::filesystem::path const &compiler_path,
+                         CompilerInfo const &compiler_info,
+                         std::filesystem::path const &cache_root,
+                         std::filesystem::path const &destination,
+                         bool rebuild) {
+    auto source_relative = path_to_posix(source_path.lexically_relative(config.shader_root));
     Json compile_payload = Json::make_object({
         {"cache_schema", Json::make_int(CACHE_SCHEMA_VERSION)},
         {"compiler", Json::make_string(compiler_info.sha256)},
         {"backend", Json::make_string(backend)},
         {"optimization", Json::make_string(config.optimization)},
-        {"source", Json::make_string(program.source)},
+        {"source", Json::make_string(source_relative)},
         {"include_dirs", strings_to_json(config.include_dirs)},
         {"defines", defines_to_json(defines)},
-        {"dependency_digest", Json::make_string(dependency_digest)},
+        {"unit_digest", Json::make_string(unit_digest(config, source_path))},
     });
     auto compile_key = sha256_hex(canonical_json(compile_payload));
     auto object_dir = cache_root / "objects" / compile_key;
@@ -343,13 +268,12 @@ std::string compile_variant(ShaderVariantConfig const &config,
         auto work_dir = make_temp_dir(work_parent, compile_key.substr(0, 12) + ".");
         try {
             auto compiled = work_dir / "shader.bin";
-            auto command = compiler_command(config, compiler_path, config.shader_root / program.source,
+            auto command = compiler_command(config, compiler_path, source_path,
                                             compiled, defines, backend, std::nullopt, std::nullopt, false);
             run_compiler(command, work_dir);
             if (!std::filesystem::is_regular_file(compiled)) {
                 throw ShaderVariantError(
-                    "Compiler did not produce variant " + program.identifier + " (" +
-                    canonical_selection(permutation.selection) + ")");
+                    "Compiler did not produce shader " + source_relative);
             }
             auto publish_parent = cache_root / "publish";
             auto publish_dir = make_temp_dir(publish_parent, compile_key.substr(0, 12) + ".");
@@ -382,6 +306,38 @@ std::string compile_variant(ShaderVariantConfig const &config,
     std::filesystem::create_directories(destination.parent_path(), ec);
     copy_if_different(object_dir / "shader.bin", destination);
     return compile_key;
+}
+
+// Compile every default (no variant selection) unit in parallel and assemble the
+// top-level default tree. Returns logical -> compile_key for each unit so the
+// manifest can reference the per-unit cache keys.
+std::map<std::string, std::string> materialize_default_tree(
+    ShaderVariantConfig const &config,
+    std::string const &backend,
+    std::filesystem::path const &compiler_path,
+    CompilerInfo const &compiler_info,
+    std::vector<Define> const &default_defines,
+    std::map<std::string, std::filesystem::path> const &source_programs,
+    std::filesystem::path const &cache_root,
+    std::filesystem::path const &destination,
+    bool rebuild) {
+    std::vector<std::string> logicals;
+    logicals.reserve(source_programs.size());
+    for (auto const &entry : source_programs) {
+        logicals.push_back(entry.first);
+    }
+    std::vector<std::string> keys(logicals.size());
+    parallel_for(logicals.size(), [&](std::size_t index) {
+        auto const &logical = logicals[index];
+        auto const &source = source_programs.at(logical);
+        keys[index] = compile_unit(config, source, default_defines, backend, compiler_path,
+                                   compiler_info, cache_root, destination / (logical + ".bin"), rebuild);
+    });
+    std::map<std::string, std::string> result;
+    for (std::size_t i = 0; i < logicals.size(); ++i) {
+        result[logicals[i]] = keys[i];
+    }
+    return result;
 }
 
 void compile_program_host_interface(ShaderVariantConfig const &config,
@@ -765,30 +721,80 @@ std::filesystem::path build_backend_locked(ShaderVariantConfig const &config,
     bool published = false;
     try {
         auto default_defines = config.effective_defines({});
-        Json default_compile_payload = Json::make_object({
-            {"cache_schema", Json::make_int(CACHE_SCHEMA_VERSION)},
-            {"compiler", Json::make_string(compiler_info.sha256)},
-            {"backend", Json::make_string(backend)},
-            {"optimization", Json::make_string(config.optimization)},
-            {"source_root", Json::make_string(config.source_root)},
-            {"include_dirs", strings_to_json(config.include_dirs)},
-            {"defines", defines_to_json(default_defines)},
-            {"dependency_digest", Json::make_string(dependency_digest)},
-        });
-        auto default_compile_key = sha256_hex(canonical_json(default_compile_payload));
         auto source_programs = config.source_files();
-        std::vector<std::string> expected_default_artifacts;
-        for (auto const &entry : source_programs) {
-            expected_default_artifacts.push_back(entry.first + ".bin");
-        }
-        materialize_default_tree(config, backend, compiler_path, compiler_info, default_compile_key,
-                                 default_defines, expected_default_artifacts, cache_root, staged, rebuild);
+        std::map<std::string, std::string> default_unit_keys;
+        default_unit_keys = materialize_default_tree(
+            config, backend, compiler_path, compiler_info, default_defines, source_programs,
+            cache_root, staged, rebuild);
 
         auto declared_programs = config.program_map();
         std::map<std::string, std::filesystem::path> logical_sources = source_programs;
         for (auto const &program : config.programs) {
             logical_sources[program.identifier] = config.shader_root / program.source;
         }
+
+        // Collect every variant compile task. Tasks are independent (distinct
+        // destination paths and per-key cache locks) so they run in parallel.
+        struct VariantTask {
+            std::string logical;
+            Program const *program;
+            Permutation const *permutation;
+            std::string artifact;
+            std::string selection_key;
+        };
+        std::vector<VariantTask> tasks;
+        std::map<std::string, std::map<std::string, std::size_t>> task_index;
+        for (auto const &logical_entry : logical_sources) {
+            auto const &logical = logical_entry.first;
+            auto declared_iter = declared_programs.find(logical);
+            if (declared_iter == declared_programs.end()) {
+                continue;
+            }
+            auto const &declared = declared_iter->second;
+            auto const &variant_set = config.variant_sets.at(declared.variant_set);
+            Permutation const *default_permutation = nullptr;
+            for (auto const &permutation : variant_set.permutations) {
+                if (permutation.identifier == variant_set.default_permutation) {
+                    default_permutation = &permutation;
+                    break;
+                }
+            }
+            if (default_permutation == nullptr) {
+                throw ShaderVariantError("Default permutation " + variant_set.default_permutation +
+                                         " is missing from variant set " + declared.variant_set);
+            }
+            if (!declared.uses_bulk_compilation()) {
+                auto canonical = canonical_selection(default_permutation->selection);
+                task_index[logical][canonical] = tasks.size();
+                tasks.push_back({logical, &declared, default_permutation, logical + ".bin", canonical});
+            }
+            std::vector<Permutation const *> non_default;
+            for (auto const &permutation : variant_set.permutations) {
+                if (permutation.identifier != variant_set.default_permutation) {
+                    non_default.push_back(&permutation);
+                }
+            }
+            std::sort(non_default.begin(), non_default.end(),
+                      [](Permutation const *a, Permutation const *b) {
+                          return canonical_selection(a->selection) < canonical_selection(b->selection);
+                      });
+            for (auto const *permutation : non_default) {
+                auto canonical = canonical_selection(permutation->selection);
+                auto artifact = "variants/" + canonical + "/" + logical + ".bin";
+                task_index[logical][canonical] = tasks.size();
+                tasks.push_back({logical, &declared, permutation, artifact, canonical});
+            }
+        }
+        std::vector<std::string> task_keys(tasks.size());
+        parallel_for(tasks.size(), [&](std::size_t index) {
+            auto const &task = tasks[index];
+            auto defines = config.effective_program_defines(*task.program, task.permutation->selection);
+            task_keys[index] = compile_unit(
+                config, config.shader_root / task.program->source, defines, backend, compiler_path,
+                compiler_info, cache_root, staged / task.artifact, rebuild);
+        });
+
+        // Assemble runtime manifest data from the finished tasks.
         std::vector<std::pair<std::string, Json>> runtime_program_entries;
         std::vector<Json> build_inputs;
         for (auto const &logical_entry : logical_sources) {
@@ -798,11 +804,10 @@ std::filesystem::path build_backend_locked(ShaderVariantConfig const &config,
             auto declared_iter = declared_programs.find(logical);
             std::map<std::string, std::string> default_selection;
             std::vector<Json> variants;
-            std::optional<std::string> default_compile_key_for_program;
             if (declared_iter == declared_programs.end()) {
                 default_selection = {};
                 variants.push_back(artifact_record(staged, default_selection, default_artifact,
-                                                   default_compile_key));
+                                                   default_unit_keys.at(logical)));
             } else {
                 auto const &declared = declared_iter->second;
                 auto const &variant_set = config.variant_sets.at(declared.variant_set);
@@ -818,15 +823,14 @@ std::filesystem::path build_backend_locked(ShaderVariantConfig const &config,
                                              " is missing from variant set " + declared.variant_set);
                 }
                 default_selection = default_permutation->selection;
+                std::string default_key;
                 if (declared.uses_bulk_compilation()) {
-                    default_compile_key_for_program = default_compile_key;
+                    default_key = default_unit_keys.at(logical);
                 } else {
-                    default_compile_key_for_program = compile_variant(
-                        config, declared, *default_permutation, backend, compiler_path, compiler_info,
-                        dependency_digest, cache_root, staged / default_artifact, rebuild);
+                    auto canonical = canonical_selection(default_permutation->selection);
+                    default_key = task_keys[task_index.at(logical).at(canonical)];
                 }
-                variants.push_back(artifact_record(staged, default_selection, default_artifact,
-                                                   default_compile_key_for_program));
+                variants.push_back(artifact_record(staged, default_selection, default_artifact, default_key));
                 std::vector<Permutation const *> non_default;
                 for (auto const &permutation : variant_set.permutations) {
                     if (permutation.identifier != variant_set.default_permutation) {
@@ -838,13 +842,10 @@ std::filesystem::path build_backend_locked(ShaderVariantConfig const &config,
                               return canonical_selection(a->selection) < canonical_selection(b->selection);
                           });
                 for (auto const *permutation : non_default) {
-                    auto canonical_key = canonical_selection(permutation->selection);
-                    auto artifact = "variants/" + canonical_key + "/" + logical + ".bin";
-                    auto runtime_selection = permutation->selection;
-                    auto compile_key = compile_variant(
-                        config, declared, *permutation, backend, compiler_path, compiler_info,
-                        dependency_digest, cache_root, staged / artifact, rebuild);
-                    variants.push_back(artifact_record(staged, runtime_selection, artifact, compile_key));
+                    auto canonical = canonical_selection(permutation->selection);
+                    auto artifact = "variants/" + canonical + "/" + logical + ".bin";
+                    auto key = task_keys[task_index.at(logical).at(canonical)];
+                    variants.push_back(artifact_record(staged, permutation->selection, artifact, key));
                 }
             }
             runtime_program_entries.emplace_back(logical, Json::make_object({
@@ -1127,58 +1128,97 @@ std::filesystem::path build_hostgen(ShaderVariantConfig const &config,
             materialize_hostgen_tree(snapshot_cfg, compiler_path_resolved, hostgen_key, default_defines,
                                          {}, default_required_programs, cache_root_resolved, generated_host,
                                          rebuild);
-                for (auto const &family_entry : per_variant_families) {
-                    auto const &family_name = family_entry.first;
-                    auto const &programs = family_entry.second;
-                    auto const &variant_set = snapshot_cfg.variant_sets.at(family_name);
-                    for (auto const &permutation : variant_set.permutations) {
-                        auto defines = snapshot_cfg.effective_defines(permutation.selection);
-                        std::vector<Json> program_ids;
-                        for (auto const &program : programs) {
-                            program_ids.push_back(Json::make_string(program.identifier));
-                        }
-                        std::vector<std::pair<std::string, Json>> program_define_entries;
-                        for (auto const &program : programs) {
-                            program_define_entries.emplace_back(
-                                program.identifier,
-                                defines_to_json(snapshot_cfg.effective_program_defines(program, permutation.selection)));
-                        }
-                        Json variant_payload = Json::make_object({
-                            {"cache_schema", Json::make_int(CACHE_SCHEMA_VERSION)},
-                            {"compiler", Json::make_string(compiler_info.sha256)},
-                            {"dependency_digest", Json::make_string(dependency_digest)},
-                            {"host_abi", Json::make_string("per_variant")},
-                            {"variant_set", Json::make_string(family_name)},
-                            {"permutation", Json::make_string(permutation.identifier)},
-                            {"selection", selection_to_json(permutation.selection)},
-                            {"programs", Json::make_array(std::move(program_ids))},
-                            {"defines", defines_to_json(defines)},
-                            {"program_defines", Json::make_object(std::move(program_define_entries))},
-                        });
-                        auto variant_hostgen_key = sha256_hex(canonical_json(variant_payload));
-                        std::vector<std::string> variant_interfaces;
-                        for (auto const &program : programs) {
-                            variant_interfaces.push_back(program.identifier + ".inl");
-                        }
-                        std::filesystem::path raw_host;
-                        if (defines == default_defines) {
-                            raw_host = generated_host;
-                        } else {
-                            raw_host = work_dir / "per_variant" / family_name / permutation.identifier;
-                            std::filesystem::create_directories(raw_host, ec);
-                            materialize_hostgen_tree(snapshot_cfg, compiler_path_resolved, variant_hostgen_key,
-                                                     defines, permutation.selection, programs,
-                                                     cache_root_resolved, raw_host, rebuild);
-                        }
-                        auto variant_destination = generated_host / "variants" / family_name / permutation.identifier;
-                        for (auto const &relative : variant_interfaces) {
-                            auto source = raw_host / relative;
-                            auto target = variant_destination / relative;
-                            std::filesystem::create_directories(target.parent_path(), ec);
-                            copy_if_different(source, target);
-                        }
+            // Collect per-variant hostgen tasks; the expensive materialize calls
+            // (heavy path-tracer host ABI compiles) run in parallel.
+            struct HostVariantTask {
+                std::string family_name;
+                std::string permutation_id;
+                std::string variant_hostgen_key;
+                std::vector<Define> defines;
+                std::map<std::string, std::string> selection;
+                std::vector<Program const *> programs;
+                std::vector<std::string> variant_interfaces;
+                std::filesystem::path raw_host;
+                bool materialize;
+            };
+            std::vector<HostVariantTask> host_tasks;
+            for (auto const &family_entry : per_variant_families) {
+                auto const &family_name = family_entry.first;
+                auto const &programs = family_entry.second;
+                auto const &variant_set = snapshot_cfg.variant_sets.at(family_name);
+                for (auto const &permutation : variant_set.permutations) {
+                    auto defines = snapshot_cfg.effective_defines(permutation.selection);
+                    std::vector<Json> program_ids;
+                    for (auto const &program : programs) {
+                        program_ids.push_back(Json::make_string(program.identifier));
                     }
+                    std::vector<std::pair<std::string, Json>> program_define_entries;
+                    for (auto const &program : programs) {
+                        program_define_entries.emplace_back(
+                            program.identifier,
+                            defines_to_json(snapshot_cfg.effective_program_defines(program, permutation.selection)));
+                    }
+                    Json variant_payload = Json::make_object({
+                        {"cache_schema", Json::make_int(CACHE_SCHEMA_VERSION)},
+                        {"compiler", Json::make_string(compiler_info.sha256)},
+                        {"dependency_digest", Json::make_string(dependency_digest)},
+                        {"host_abi", Json::make_string("per_variant")},
+                        {"variant_set", Json::make_string(family_name)},
+                        {"permutation", Json::make_string(permutation.identifier)},
+                        {"selection", selection_to_json(permutation.selection)},
+                        {"programs", Json::make_array(std::move(program_ids))},
+                        {"defines", defines_to_json(defines)},
+                        {"program_defines", Json::make_object(std::move(program_define_entries))},
+                    });
+                    auto variant_hostgen_key = sha256_hex(canonical_json(variant_payload));
+                    std::vector<std::string> variant_interfaces;
+                    std::vector<Program const *> program_ptrs;
+                    for (auto const &program : programs) {
+                        variant_interfaces.push_back(program.identifier + ".inl");
+                        program_ptrs.push_back(&program);
+                    }
+                    HostVariantTask task;
+                    task.family_name = family_name;
+                    task.permutation_id = permutation.identifier;
+                    task.variant_hostgen_key = variant_hostgen_key;
+                    task.defines = defines;
+                    task.selection = permutation.selection;
+                    task.programs = std::move(program_ptrs);
+                    task.variant_interfaces = std::move(variant_interfaces);
+                    if (defines == default_defines) {
+                        task.raw_host = generated_host;
+                        task.materialize = false;
+                    } else {
+                        task.raw_host = work_dir / "per_variant" / family_name / permutation.identifier;
+                        std::filesystem::create_directories(task.raw_host, ec);
+                        task.materialize = true;
+                    }
+                    host_tasks.push_back(std::move(task));
                 }
+            }
+            parallel_for(host_tasks.size(), [&](std::size_t index) {
+                auto const &task = host_tasks[index];
+                if (!task.materialize) {
+                    return;
+                }
+                std::vector<Program> required;
+                required.reserve(task.programs.size());
+                for (auto const *program : task.programs) {
+                    required.push_back(*program);
+                }
+                materialize_hostgen_tree(snapshot_cfg, compiler_path_resolved, task.variant_hostgen_key,
+                                         task.defines, task.selection, required,
+                                         cache_root_resolved, task.raw_host, rebuild);
+            });
+            for (auto const &task : host_tasks) {
+                auto variant_destination = generated_host / "variants" / task.family_name / task.permutation_id;
+                for (auto const &relative : task.variant_interfaces) {
+                    auto source = task.raw_host / relative;
+                    auto target = variant_destination / relative;
+                    std::filesystem::create_directories(target.parent_path(), ec);
+                    copy_if_different(source, target);
+                }
+            }
                 for (auto const &family_entry : per_variant_families) {
                     for (auto const &program : family_entry.second) {
                         auto path = generated_host / (program.identifier + ".inl");
@@ -1317,11 +1357,15 @@ int run_variant_command(VariantArgs const &args) {
             return 0;
         }
         if (args.command == "build") {
-            auto build_root = args.build_root.empty() ? default_build_root(args.project_root) : args.build_root;
+            auto build_root = args.build_root.empty()
+                                  ? default_build_root(args.project_root)
+                                  : resolve_path(args.build_root);
             auto cache_root = args.cache_root.empty()
                                   ? args.project_root / "build" / ".shader_cache" / "variants-v1"
-                                  : args.cache_root;
-            auto host_output = args.host_out.empty() ? config.shader_root / "host" : args.host_out;
+                                  : resolve_path(args.cache_root);
+            auto host_output = args.host_out.empty()
+                                   ? config.shader_root / "host"
+                                   : resolve_path(args.host_out);
             auto backends = args.backends.empty() ? config.backends : args.backends;
             bool hostgen_requested = args.hostgen || args.hostgen_only;
 
@@ -1389,6 +1433,13 @@ int run_variant_command(VariantArgs const &args) {
             state.backends = backends;
             if (hostgen_requested) {
                 state.host_out = path_casefold(resolve_path(host_output));
+            } else {
+                // A backend-only build must not invalidate a later hostgen-only
+                // no-op: keep the previously published host output marker.
+                auto previous = load_build_state(build_root);
+                if (previous.has_value()) {
+                    state.host_out = previous->host_out;
+                }
             }
             save_build_state(build_root, state);
             return 0;
