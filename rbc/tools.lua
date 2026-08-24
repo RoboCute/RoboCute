@@ -11,15 +11,11 @@ before_build(function(target)
         return nil
     end
     local builddir = path.directory(target:targetdir())
-    local find_tool = import('lib.detect.find_tool')
-    local uv = find_tool('uv')
-    assert(uv, 'uv is required to build shaders. Run `uv sync --extra=all` first.')
     local compiler = path.join(os.projectdir(), 'build/tool/rbcxx/rbcxx.exe')
     assert(os.isfile(compiler), 'rbcxx.exe not found. Build the `rbcxx` target first.')
-    os.execv(uv.program, {'run', 'shader-build', 'build',
-                          '--project-root', os.projectdir(),
-                          '--build-root', builddir,
-                          '--compiler', compiler})
+    os.execv(compiler, {'--variant=build',
+                        '--project-root=' .. os.projectdir(),
+                        '--build-root=' .. builddir})
 end)
 target_end()
 
@@ -40,20 +36,16 @@ before_build(function(target)
     end
     local builddir = path.directory(target:targetdir())
     local shader_dir = path.translate(path.join(os.projectdir(), 'rbc/shader/'))
-    local find_tool = import('lib.detect.find_tool')
-    local uv = find_tool('uv')
-    assert(uv, 'uv is required to generate shader host headers. Run `uv sync --extra=all` first.')
     local compiler = path.join(os.projectdir(), 'build/tool/rbcxx/rbcxx.exe')
-    os.execv(uv.program, {'run', 'shader-build', 'build',
-                          '--project-root', os.projectdir(),
-                          '--build-root', builddir,
-                          '--compiler', compiler,
-                          '--hostgen-only',
-                          '--host-out', path.translate(path.join(shader_dir, 'host'))})
-    os.execv(uv.program, {'run', 'shader-build', 'verify-coherence',
-                          '--project-root', os.projectdir(),
-                          '--build-root', builddir,
-                          '--host-out', path.translate(path.join(shader_dir, 'host'))})
+    assert(os.isfile(compiler), 'rbcxx.exe not found. Build the `rbcxx` target first.')
+    os.execv(compiler, {'--variant=build',
+                        '--hostgen-only',
+                        '--host-out=' .. path.translate(path.join(shader_dir, 'host')),
+                        '--project-root=' .. os.projectdir(),
+                        '--build-root=' .. builddir})
+    os.execv(compiler, {'--variant=verify-coherence',
+                        '--build-root=' .. builddir,
+                        '--host-out=' .. path.translate(path.join(shader_dir, 'host'))})
 end)
 set_policy('build.fence', true)
 target_end()

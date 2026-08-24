@@ -234,22 +234,22 @@ interface_target('my_lib', my_interface, my_impl)
 
 ### Shader Compilation
 
-The `compile_shaders` and `compile_shaders_hostgen` phony targets invoke the manifest-driven shader build driver:
+The `compile_shaders` and `compile_shaders_hostgen` phony targets invoke the manifest-driven shader build driver directly (no Python driver):
 
 ```lua
-os.execv(uv.program, {'run', 'shader-build', 'build',
-                      '--project-root', os.projectdir(),
-                      '--build-root', builddir})
+os.execv(compiler, {'--variant=build',
+                    '--project-root=' .. os.projectdir(),
+                    '--build-root=' .. builddir})
 ```
 
-Without `--backend`, the driver builds every backend declared in `rbc/shader/shader_variants.json`. The hostgen target depends on that build and verifies coherence against the same manifest-defined backend set.
+The driver is `build/tool/rbcxx/rbcxx.exe`; without `--backend` it builds every backend declared in `rbc/shader/shader_variants.json`. The hostgen target depends on that build, generates host interfaces via `--variant=build --hostgen-only`, and verifies coherence against the manifest-defined backend set with `--variant=verify-coherence`. Repeated builds are fast no-ops: unchanged inputs skip recompilation and rewrite no files.
 
 Generated command scripts:
 
 ```bash
 rbc/shader/<backend>_compile.cmd
 rbc/shader/<backend>_clean_compile.cmd
-rbc/shader/gen_json.cmd   # -lsp mode for compile_commands.json
+rbc/shader/gen_json.cmd   # --variant=lsp for compile_commands.json
 ```
 
 ## Python-to-C++ Codegen (`@reflect`)

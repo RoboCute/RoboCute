@@ -40,6 +40,9 @@ local function rbc_render_impl()
     })
     add_files('src/render_settings.json')
     before_build(function(target)
+        if is_mode('debug') then
+            return nil
+        end
         if not os.is_host('windows') then
             return nil
         end
@@ -60,6 +63,9 @@ local function rbc_render_impl()
         target:data_set('rbc.shader_input_id', input_id)
     end)
     after_link(function(target)
+        if is_mode('debug') then
+            return nil
+        end
         if os.is_host('windows') then
             local host_marker = path.join(os.projectdir(), 'rbc/shader/host/.shader_input_id')
             local captured_input_id = assert(target:data('rbc.shader_input_id'),

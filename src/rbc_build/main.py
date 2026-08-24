@@ -73,36 +73,32 @@ PROJECT_ROOT = get_project_root()
 
 
 def write_shader_compile_cmd():
-    from rbc_build.shader_variants import load_config
-
     shader_dir = rel(SHADER_PATH)
     host_dir = shader_dir / "host"
     project_root = Path(PROJECT_ROOT)
     build_root = project_root / f"build/{PLATFORM}/{ARCH}"
+    compiler = project_root / "build/tool/rbcxx/rbcxx.exe"
 
     def base_cmd(*args: str):
         quoted_args = " ".join(f'"{arg}"' for arg in args)
-        return (
-            f'uv run shader-build {quoted_args} '
-            f'--project-root "{project_root}"'
-        )
+        return f'"{compiler}" {quoted_args}'
 
-    backends = load_config(shader_dir / "shader_variants.json").backends
+    with (shader_dir / "shader_variants.json").open(encoding="utf-8") as stream:
+        backends = list(json.load(stream).get("backends", []))
     # write files
     for backend in backends:
         f = open(shader_dir / f"{backend}_compile.cmd", "w")
         f.write(
             "@echo off\n"
             + base_cmd(
-                "build",
-                "--backend",
-                backend,
-                "--build-root",
-                str(build_root),
+                "--variant=build",
+                f"--backend={backend}",
+                f"--build-root={build_root}",
                 "--hostgen",
-                "--host-out",
-                str(host_dir),
+                f"--host-out={host_dir}",
+                f"--project-root={project_root}",
             )
+            + "\n"
         )
         f.close()
 
@@ -110,16 +106,15 @@ def write_shader_compile_cmd():
         f.write(
             "@echo off\n"
             + base_cmd(
-                "build",
-                "--backend",
-                backend,
-                "--build-root",
-                str(build_root),
+                "--variant=build",
+                f"--backend={backend}",
+                f"--build-root={build_root}",
                 "--hostgen",
-                "--host-out",
-                str(host_dir),
+                f"--host-out={host_dir}",
                 "--rebuild",
+                f"--project-root={project_root}",
             )
+            + "\n"
         )
         f.close()
 
@@ -127,7 +122,12 @@ def write_shader_compile_cmd():
     f = open(shader_dir / "gen_json.cmd", "w")
     f.write(
         "@echo off\n"
-        + base_cmd("lsp", "--out", str(out_dir))
+        + base_cmd(
+            "--variant=lsp",
+            f"--out={out_dir}",
+            f"--project-root={project_root}",
+        )
+        + "\n"
     )
     f.close()
 
@@ -596,7 +596,7 @@ def pre_pack():
     """
     import argparse
     from rbc_build.artifact_publish import install_build_artifacts
-    from rbc_build.shader_variants import ShaderVariantError, load_config
+    from rbc_build.shader_common import ShaderVariantError
 
     parser = argparse.ArgumentParser(description="Pre-packaging script for RoboCute")
     parser.add_argument(
@@ -638,9 +638,8 @@ def pre_pack():
         sys.exit(1)
 
     host_output = rel("rbc/shader/host")
-    backends = list(
-        load_config(rel("rbc/shader/shader_variants.json")).backends
-    )
+    with rel("rbc/shader/shader_variants.json").open(encoding="utf-8") as stream:
+        backends = list(json.load(stream).get("backends", []))
 
     def prepare_staged(staged: Path) -> None:
         if not build_stubgen:

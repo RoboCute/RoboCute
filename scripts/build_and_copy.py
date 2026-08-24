@@ -8,6 +8,7 @@ This script handles:
 """
 
 import argparse
+import json
 import os
 import sys
 import shutil
@@ -24,13 +25,19 @@ from rbc_build.utils import print_success, print_error, print_warning, print_inf
 from rbc_build.prepare import PLATFORM, ARCH
 from rbc_build.artifact_publish import (
     install_build_artifacts as publish_build_artifacts,
+    install_verified_shader_root,
 )
-from rbc_build.shader_variants import (
+from rbc_build.shader_common import (
     ShaderVariantError,
     _atomic_replace_directory,
-    install_verified_shader_root,
-    load_config,
 )
+
+
+def manifest_backends(manifest_path: Path) -> list[str]:
+    """Read the declared backend list directly from the source manifest."""
+    with manifest_path.open(encoding="utf-8") as stream:
+        manifest = json.load(stream)
+    return list(manifest.get("backends", []))
 
 
 def get_project_dir() -> Path:
@@ -321,9 +328,9 @@ def main(mode: Optional[str] = None, build_stubgen: Optional[str] = None, rebuil
     # Step 2: Publish binaries and shaders as one verified generation.
     print_debug("Step 2: Publishing build artifacts...")
     shader_types = list(
-        load_config(
+        manifest_backends(
             project_dir / "rbc" / "shader" / "shader_variants.json"
-        ).backends
+        )
     )
     try:
         copied_files = install_build_artifacts(

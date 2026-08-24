@@ -77,10 +77,10 @@ Shader 源码和 include
 clangcxx compiler 及其模板/DLL
         |
         v
-严格校验 schema、路径、规则覆盖、宏冲突和 program 归属
+rbcxx --variant=build（C++ 驱动，严格校验 schema、路径、规则覆盖、宏冲突和 program 归属）
         |
         v
-展开显式 permutations，并为每个 backend 编译
+展开显式 permutations，并为每个 backend 编译（自调用单文件/目录编译模式）
         |
         +--> 默认/variant .bin
         +--> 自动生成 shader_manifest.json
@@ -89,7 +89,7 @@ clangcxx compiler 及其模板/DLL
         +--> rbc/shader/host/*.inl、host/variants/**/*.inl + .shader_input_id
         |
         v
-验证 DX/VK/host/render plugin input_id 一致
+rbcxx --variant=verify-coherence（DX/VK/host/render plugin input_id 一致）
         |
         v
 artifact_publish 原子发布完整一代产物
@@ -629,8 +629,9 @@ uv run prepare -y
 只校验 source manifest 和输入：
 
 ```powershell
-uv run shader-build validate `
-  --manifest rbc/shader/shader_variants.json
+build/tool/rbcxx/rbcxx.exe --variant=validate `
+  --project-root=. `
+  --manifest=rbc/shader/shader_variants.json
 ```
 
 通过 Xmake 构建 manifest 中声明的全部 backend，并生成 host ABI：
@@ -642,22 +643,25 @@ xmake build compile_shaders_hostgen
 分别验证 backend Shader root：
 
 ```powershell
-uv run shader-build verify `
-  --build-root build/windows/x64 `
-  --backend dx
+build/tool/rbcxx/rbcxx.exe --variant=verify `
+  --project-root=. `
+  --build-root=build/windows/x64 `
+  --backend=dx
 
-uv run shader-build verify `
-  --build-root build/windows/x64 `
-  --backend vk
+build/tool/rbcxx/rbcxx.exe --variant=verify `
+  --project-root=. `
+  --build-root=build/windows/x64 `
+  --backend=vk
 ```
 
 检查 backend、host 和 render plugin 是否来自同一代输入：
 
 ```powershell
-uv run shader-build verify-coherence `
-  --build-root build/windows/x64 `
-  --host-out rbc/shader/host `
-  --plugin-marker build/windows/x64/releasedbg/rbc_render_plugin.input_id
+build/tool/rbcxx/rbcxx.exe --variant=verify-coherence `
+  --project-root=. `
+  --build-root=build/windows/x64 `
+  --host-out=rbc/shader/host `
+  --plugin-marker=build/windows/x64/releasedbg/rbc_render_plugin.input_id
 ```
 
 完整构建并安装 Python extension 产物：
@@ -669,11 +673,12 @@ uv run scripts/build_and_copy.py releasedbg uv
 生成供 Shader IDE/LSP 使用的编译数据库：
 
 ```powershell
-uv run shader-build lsp `
-  --out rbc/shader/compile_commands.json
+build/tool/rbcxx/rbcxx.exe --variant=lsp `
+  --project-root=. `
+  --out=rbc/shader/compile_commands.json
 ```
 
-`build` 子命令还支持 repeatable `--backend`、`--build-root`、`--cache-root`、`--hostgen`、`--hostgen-only`、`--host-out` 和 `--rebuild`。
+`--variant=build` 还支持 repeatable `--backend`、`--build-root`、`--cache-root`、`--hostgen`、`--hostgen-only`、`--host-out`、`--rebuild` 和 `--quiet`；`--variant=backends` 打印声明的 backend 列表（每行一个）。
 
 ### 9.3 缓存与原子构建
 
@@ -824,10 +829,12 @@ Source schema、构建、verify、coherence 和原子发布测试：
 
 ```powershell
 uv run pytest `
-  test/test_shader_variants.py `
-  test/test_cmake_shader_compile.py `
+  test/test_rbcxx_variant_build.py `
   -q
 ```
+
+> 集成测试需要先构建 `rbcxx` 目标（`build/tool/rbcxx/rbcxx.exe`）；未构建时跳过。
+> 真实 Shader 构建测试设置 `RBCXX_RUN_BUILD_TESTS=1` 后运行。
 
 Runtime family 测试：
 
@@ -859,8 +866,12 @@ xmake run test_shader_runtime
 | 文件 | 职责 |
 | --- | --- |
 | `rbc/shader/shader_variants.json` | 唯一手写的变体构建描述 |
-| `src/rbc_build/shader_variants.py` | schema、构建、hostgen、runtime manifest 和 verify |
-| `src/rbc_build/artifact_publish.py` | 一致性验证和原子发布 |
+| `rbc/rbcxx/variant_config.cpp` | source schema 校验与规则覆盖 |
+| `rbc/rbcxx/variant_build.cpp` | 构建、hostgen、缓存与增量 no-op |
+| `rbc/rbcxx/variant_verify.cpp` | runtime manifest、verify、coherence |
+| `rbc/rbcxx/variant_util.cpp` | 锁、原子目录、SHA-256、canonical JSON |
+| `src/rbc_build/shader_common.py` | 安装路径共享的通用 FS/锁/hash 原语 |
+| `src/rbc_build/artifact_publish.py` | 一致性验证（经 rbcxx）和原子发布 |
 | `rbc/runtime/include/rbc_graphics/shader_features.h` | feature bit 注册与材质分类 |
 | `rbc/runtime/include/rbc_graphics/scene_manager.h` | scene source 和聚合状态声明 |
 | `rbc/runtime/src/graphics/scene_manager.cpp` | feature 引用计数与 atomic snapshot |
@@ -872,5 +883,5 @@ xmake run test_shader_runtime
 | `rbc/runtime/src/world/components/render_component.cpp` | 场景材质 source 绑定 |
 | `rbc/render_plugin/src/offline_pt_pass.cpp` | `offline_pt` family 消费方 |
 | `samples/diffraction_disc.py` | 材质驱动自动切换的交互示例 |
-| `test/test_shader_variants.py` | Python 构建系统测试 |
+| `test/test_rbcxx_variant_build.py` | rbcxx 集成与 shader_common 单元测试 |
 | `rbc/tests/shader_runtime/test_shader_family.cpp` | C++ family runtime 测试 |

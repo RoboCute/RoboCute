@@ -20,6 +20,10 @@
 #include "preprocessor.h"
 #include <reproc++/reproc.hpp>
 #include "host_codegen.h"
+#include "variant_build.h"
+#include "variant_config.h"
+#include "variant_util.h"
+#include "variant_verify.h"
 using namespace luisa;
 using namespace luisa::compute;
 
@@ -135,6 +139,22 @@ int main(int argc, char *argv[]) {
         bool rebuild = false;
         bool pack_lmdb = false;
         std::filesystem::path pack_path;
+        // Variant-driver arguments.
+        std::string variant_command;
+        bool variant_mode = false;
+        std::filesystem::path manifest_arg;
+        std::filesystem::path project_root = std::filesystem::current_path();
+        std::filesystem::path build_root_arg;
+        std::filesystem::path cache_root_arg;
+        std::filesystem::path host_out_arg;
+        std::filesystem::path shader_root_arg;
+        std::filesystem::path plugin_marker_arg;
+        std::filesystem::path lsp_out_arg;
+        std::filesystem::path compiler_arg;
+        bool enable_hostgen = false;
+        bool enable_hostgen_only = false;
+        bool enable_quiet = false;
+        luisa::vector<luisa::string> variant_backends;
         vstd::HashMap<vstd::string, vstd::function<void(vstd::string_view)>> cmds(16);
         auto invalid_arg = []() {
             LUISA_ERROR("Invalid argument, use --help please.");
@@ -164,6 +184,7 @@ int main(int argc, char *argv[]) {
                 }
                 auto lower_name = to_lower(name);
                 backend = lower_name;
+                variant_backends.emplace_back(std::move(lower_name));
             });
         cmds.emplace(
             "in"sv,
@@ -186,6 +207,7 @@ int main(int argc, char *argv[]) {
                     LUISA_ERROR("Dest path set multiple times.");
                 }
                 dst_path = name;
+                lsp_out_arg = name;
             });
         cmds.emplace(
             "include"sv,
@@ -199,7 +221,9 @@ int main(int argc, char *argv[]) {
             "hostgen"sv,
             [&](string_view name) {
                 if (name.empty()) {
-                    invalid_arg();
+                    // Flag form used by the variant driver (--hostgen).
+                    enable_hostgen = true;
+                    return;
                 }
                 if (!hostgen_path.empty()) {
                     LUISA_ERROR("Hostgen path set multiple times.");
@@ -235,6 +259,84 @@ int main(int argc, char *argv[]) {
             "debug"sv,
             [&](string_view) {
                 enable_debug_info = true;
+            });
+
+        cmds.emplace(
+            "variant"sv,
+            [&](string_view name) {
+                variant_command = std::string{name};
+                variant_mode = true;
+            });
+        cmds.emplace(
+            "manifest"sv,
+            [&](string_view name) {
+                manifest_arg = std::string{name};
+            });
+        cmds.emplace(
+            "project-root"sv,
+            [&](string_view name) {
+                project_root = std::string{name};
+            });
+        cmds.emplace(
+            "build-root"sv,
+            [&](string_view name) {
+                build_root_arg = std::string{name};
+            });
+        cmds.emplace(
+            "cache-root"sv,
+            [&](string_view name) {
+                cache_root_arg = std::string{name};
+            });
+        cmds.emplace(
+            "host-out"sv,
+            [&](string_view name) {
+                host_out_arg = std::string{name};
+            });
+        cmds.emplace(
+            "shader-root"sv,
+            [&](string_view name) {
+                shader_root_arg = std::string{name};
+            });
+        cmds.emplace(
+            "plugin-marker"sv,
+            [&](string_view name) {
+                plugin_marker_arg = std::string{name};
+            });
+        cmds.emplace(
+            "hostgen-only"sv,
+            [&](string_view) {
+                enable_hostgen_only = true;
+            });
+        cmds.emplace(
+            "quiet"sv,
+            [&](string_view) {
+                enable_quiet = true;
+            });
+        cmds.emplace(
+            "compiler"sv,
+            [&](string_view name) {
+                compiler_arg = std::string{name};
+            });
+        cmds.emplace(
+            "backends"sv,
+            [&](string_view name) {
+                std::string text{name};
+                std::size_t start = 0;
+                while (start <= text.size()) {
+                    auto comma = text.find(',', start);
+                    if (comma == std::string::npos) {
+                        auto item = text.substr(start);
+                        if (!item.empty()) {
+                            variant_backends.emplace_back(item);
+                        }
+                        break;
+                    }
+                    auto item = text.substr(start, comma - start);
+                    if (!item.empty()) {
+                        variant_backends.emplace_back(std::move(item));
+                    }
+                    start = comma + 1;
+                }
             });
         auto cache_path = luisa::filesystem::current_path() / ".cache";
         cmds.emplace(
@@ -287,9 +389,49 @@ Argument list:
     --include: include file directory, E.g --include=./shader_dir/
     --D: shader predefines, this can be set multiple times, E.g --D=MY_MACRO
     --lsp: enable compile_commands.json generation, E.g --lsp
+
+Shader variant driver (--variant=<command>):
+    validate | build | verify | verify-coherence | lsp | backends
+    --manifest, --project-root, --build-root, --cache-root, --host-out,
+    --shader-root, --plugin-marker, --compiler, repeatable --backend,
+    --backends=a,b,c, --hostgen, --hostgen-only, --out, --rebuild, --quiet
 )"sv;
             std::cout << helplist << '\n';
             return 0;
+        }
+        // Variant driver dispatch (--variant=validate|build|verify|verify-coherence|lsp|backends).
+        if (variant_mode) {
+            rbc_shader::VariantArgs args;
+            args.command = variant_command;
+            args.project_root = std::filesystem::absolute(project_root);
+            args.manifest = manifest_arg.empty()
+                                ? args.project_root / "rbc/shader/shader_variants.json"
+                                : manifest_arg;
+            if (!args.manifest.is_absolute()) {
+                args.manifest = args.project_root / args.manifest;
+            }
+            args.compiler = compiler_arg.empty()
+                                ? std::filesystem::absolute(argv[0])
+                                : compiler_arg;
+            if (!args.compiler.is_absolute()) {
+                args.compiler = args.project_root / args.compiler;
+            }
+            args.build_root = build_root_arg;
+            args.cache_root = cache_root_arg;
+            args.host_out = host_out_arg;
+            args.shader_root = shader_root_arg;
+            if (!plugin_marker_arg.empty()) {
+                args.plugin_marker = plugin_marker_arg;
+            }
+            for (auto const &backend_name : variant_backends) {
+                args.backends.emplace_back(std::string{backend_name});
+            }
+            args.out = lsp_out_arg;
+            args.hostgen = enable_hostgen;
+            args.hostgen_only = enable_hostgen_only;
+            args.rebuild = rebuild;
+            args.quiet = enable_quiet;
+            return rbc_shader::run_variant_command(args);
         }
         luisa::string backend_defines = "__SHADER_BACKEND_";
         for (auto &i : backend) {
