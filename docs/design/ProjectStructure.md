@@ -57,7 +57,7 @@ RoboCute/
 
 ### 3.1 C++ 源码目录 (`rbc/`)
 
-按模块组织，使用 CMake 与 Xmake 双构建系统。
+按模块组织，使用 xmake 构建系统。
 
 #### 核心库
 
@@ -67,8 +67,6 @@ RoboCute/
 | `runtime` | `rbc_runtime` | shared | 运行时核心，包含 World 系统、ECS、资源管理、动画、图形渲染抽象、I/O、物理接口等 |
 | `node_graph` | `rbc_node` | shared | 节点图系统，支持可视化节点图的定义与执行 |
 | `ipc` | `rbc_ipc` | shared | 跨进程通信模块（基于 `cpp-ipc`） |
-
-> **注意**：旧文档中提到的 `rbc_world.dll` **已不存在**。World 系统已合并到 `rbc_runtime.dll` 中，对应头文件位于 `rbc/runtime/include/rbc_world/`。
 
 #### 插件
 
@@ -106,7 +104,9 @@ RoboCute/
 |------|----------|------|------|
 | `tool/rbc_cmd` | `rbc` | binary | 命令行工具（CLI），支持创建用户项目、下载模板 |
 | `tests/` | `test_core`、`test_anim`、`test_model`、`test_project`、`test_skeleton`、`test_anim_sequence` 等 | binary | C++ 单元测试与图形测试 |
-| `shader/` | — | — | 着色器编译系统（`hostgen`、DXIL/SPIR-V 编译、`.cache`） |
+| `clangcxx/` | — | — | 基于LuisaCompute和libtooling完成的着色器编译器运行时，支持将类似cpp的代码编译为shader |
+| `rbcxx/` | — | — | 基于clangcxx的项目内工具，用于着色器编译 |
+| `shader/` | — | — | 项目内置shader（`hostgen`、DXIL/SPIR-V 编译、`.cache`） |
 
 ### 3.2 Python 源码目录 (`src/`)
 

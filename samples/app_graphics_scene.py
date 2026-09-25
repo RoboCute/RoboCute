@@ -443,8 +443,6 @@ def main():
         print("Scene not Valid!")
         return
 
-
-
     # DO THIS: change texture in shader
     # move_shader = lc.Shader('geometry/move_mesh.bin')
     # move_tex = lc.Shader('geometry/move_color.bin')
