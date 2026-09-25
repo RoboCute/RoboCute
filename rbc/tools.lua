@@ -10,7 +10,10 @@ before_build(function(target)
     if not os.is_host('windows') then
         return nil
     end
-    local builddir = path.directory(target:targetdir())
+    -- Keep the build root absolute: the compiler resolves a relative
+    -- --build-root against its own working directory, which is only the
+    -- project root by accident of how xmake was invoked.
+    local builddir = path.absolute(path.directory(target:targetdir()), os.projectdir())
     local compiler = path.join(os.projectdir(), 'build/tool/rbcxx/rbcxx.exe')
     assert(os.isfile(compiler), 'rbcxx.exe not found. Build the `rbcxx` target first.')
     os.execv(compiler, {'--variant=build',
@@ -34,7 +37,7 @@ before_build(function(target)
     if not os.is_host('windows') then
         return nil
     end
-    local builddir = path.directory(target:targetdir())
+    local builddir = path.absolute(path.directory(target:targetdir()), os.projectdir())
     local shader_dir = path.translate(path.join(os.projectdir(), 'rbc/shader/'))
     local compiler = path.join(os.projectdir(), 'build/tool/rbcxx/rbcxx.exe')
     assert(os.isfile(compiler), 'rbcxx.exe not found. Build the `rbcxx` target first.')

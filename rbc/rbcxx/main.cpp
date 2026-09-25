@@ -1,4 +1,16 @@
 #include <luisa/backends/ext/dx_config_ext.h>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <psapi.h>
+#include <algorithm>
+#include <atomic>
+#include <csignal>
+#include <exception>
 #include <iostream>
 #include <luisa/core/clock.h>
 #include <luisa/core/logging.h>
@@ -28,6 +40,86 @@ using namespace luisa;
 using namespace luisa::compute;
 
 static bool kTestRuntime = false;
+
+// Crash diagnostics: rbcxx recursively spawns itself as the per-shader
+// compiler; when a child dies via std::terminate / abort the parent only sees
+// a bare NTSTATUS. Print the child's own command line, current stage and a
+// raw module+offset stack so such failures stay diagnosable. Set
+// RBCXX_CHILD_DEBUG=1 for per-stage progress logs from every child.
+static char const *g_rbcxx_cmdline = nullptr;
+static std::atomic<int> g_rbcxx_stage{0};
+
+static bool rbcxx_debug_enabled() {
+    static bool enabled = [] {
+        char buffer[8]{};
+        auto size = GetEnvironmentVariableA("RBCXX_CHILD_DEBUG", buffer, sizeof(buffer));
+        return size > 0 && buffer[0] != '0';
+    }();
+    return enabled;
+}
+
+static void rbcxx_debug_stage(int stage, char const *label) {
+    g_rbcxx_stage.store(stage);
+    if (rbcxx_debug_enabled()) {
+        fprintf(stderr, "[rbcxx-dbg pid=%lu] stage=%d %s\n", GetCurrentProcessId(), stage, label);
+        fflush(stderr);
+    }
+}
+
+static void rbcxx_crash_diagnostics(const char *reason) {
+    std::string msg = "\n=== rbcxx crash diagnostics: ";
+    msg += reason;
+    msg += " stage=";
+    msg += std::to_string(g_rbcxx_stage.load());
+    msg += "\n  cmdline: ";
+    msg += g_rbcxx_cmdline ? g_rbcxx_cmdline : "<unknown>";
+    msg += "\n";
+    // Manual stack capture: luisa::backtrace() initializes dbghelp with
+    // invade-process=true which can fail/hang in a crashing process; use raw
+    // RtlCaptureStackBackTrace + module enumeration instead.
+    void *frames[64]{};
+    auto count = CaptureStackBackTrace(0, 64, frames, nullptr);
+    HMODULE modules[256]{};
+    DWORD needed = 0;
+    msg += "  modules:\n";
+    if (EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &needed)) {
+        auto module_count = std::min<DWORD>(needed / sizeof(HMODULE), 256);
+        for (DWORD i = 0; i < module_count; ++i) {
+            char name[MAX_PATH]{};
+            GetModuleFileNameA(modules[i], name, sizeof(name));
+            MODULEINFO info{};
+            GetModuleInformation(GetCurrentProcess(), modules[i], &info, sizeof(info));
+            char line[1024];
+            snprintf(line, sizeof(line), "    base=%p size=0x%lx %s\n",
+                     info.lpBaseOfDll, info.SizeOfImage, name);
+            msg += line;
+        }
+    }
+    msg += "  stack:\n";
+    for (USHORT i = 0; i < count; ++i) {
+        HMODULE hit = nullptr;
+        if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                   GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                               static_cast<char const *>(frames[i]), &hit)) {
+            char name[MAX_PATH]{};
+            GetModuleFileNameA(hit, name, sizeof(name));
+            auto offset = static_cast<char const *>(frames[i]) -
+                          reinterpret_cast<char const *>(hit);
+            char line[1024];
+            snprintf(line, sizeof(line), "    %p (+0x%llx) %s\n",
+                     frames[i], static_cast<unsigned long long>(offset), name);
+            msg += line;
+        } else {
+            char line[256];
+            snprintf(line, sizeof(line), "    %p (unknown module)\n", frames[i]);
+            msg += line;
+        }
+    }
+    fwrite(msg.data(), 1, msg.size(), stderr);
+    fflush(stderr);
+    std::_Exit(1);
+}
+
 string to_lower(string_view value) {
     string value_str{value};
     for (auto &i : value_str) {
@@ -118,7 +210,7 @@ int compile(
         HostCodegen::write_to(refl.kernel_args, refl.dimension, hostgen_path);
     return 0;
 }
-int main(int argc, char *argv[]) {
+static int main_impl(int argc, char *argv[]) {
     log_level_warning();
     //////// Properties
     if (argc <= 1) {
@@ -130,7 +222,17 @@ int main(int argc, char *argv[]) {
     luisa::vector<std::filesystem::path> inc_paths;
     luisa::unordered_set<luisa::string> defines;
     luisa::string backend;
-    Context context{argv[0]};
+    // Use the current working directory as the Luisa data directory instead of
+    // the compiler exe directory. Variant-build children run with a unique
+    // per-unit work directory as their CWD, so each child gets a PRIVATE
+    // <data>/.cache directory. This matters because the DX backend's
+    // adapter-mismatch path iterates and clears <data>/.cache inside a
+    // noexcept function (DefaultBinaryIO::clear_shader_cache); when dozens of
+    // children shared the exe directory they concurrently created/removed
+    // entries (dx_adapterid) in that cache dir, and any throwing filesystem
+    // operation there escapes noexcept -> std::terminate -> silent
+    // 0xC0000409 crash of the child compiler process.
+    Context context{argv[0], std::filesystem::current_path().string()};
     bool use_optimize = true;
     bool enable_debug_info = false;
     {
@@ -786,12 +888,22 @@ Shader variant driver (--variant=<command>):
     }
     // luisa::set_custom_logger(clangcxx_log);
     //////// Compile
+    // LuisaCompute's headless device skips creating its cache/data
+    // directories, but the DX backend's adapter-mismatch path
+    // (DefaultBinaryIO::clear_shader_cache) unconditionally constructs a
+    // std::filesystem::directory_iterator over the cache dir, which throws
+    // filesystem_error when the dir is missing and fast-fails (0xC0000409)
+    // across the DLL boundary. Pre-create the dirs so the iterator is valid.
+    context.create_data_subdir(".cache");
+    context.create_data_subdir(".data");
     DeviceConfig config{
         .headless = true};
     Device device;
+    rbcxx_debug_stage(10, "before create_device");
     if (!backend.empty())
         device = context.create_device(backend, &config);
-    return compile(
+    rbcxx_debug_stage(11, "after create_device");
+    auto compile_result = compile(
         src_path,
         dst_path,
         hostgen_path,
@@ -801,4 +913,32 @@ Shader variant driver (--variant=<command>):
         inc_paths,
         use_optimize,
         enable_debug_info);
+    rbcxx_debug_stage(12, "after compile");
+    return compile_result;
+}
+
+
+int main(int argc, char *argv[]) {
+    {
+        static char cmdline[4096]{};
+        size_t used = 0;
+        for (int i = 0; i < argc && used + 2 < sizeof(cmdline); ++i) {
+            auto written = snprintf(cmdline + used, sizeof(cmdline) - used, "%s%s",
+                                    i == 0 ? "" : " ", argv[i]);
+            if (written < 0) { break; }
+            used += static_cast<size_t>(written);
+        }
+        g_rbcxx_cmdline = cmdline;
+    }
+    std::set_terminate([]() { rbcxx_crash_diagnostics("std::terminate"); });
+    std::signal(SIGABRT, +[](int) { rbcxx_crash_diagnostics("SIGABRT"); });
+    try {
+        return main_impl(argc, argv);
+    } catch (std::exception const &e) {
+        fprintf(stderr, "rbcxx: unhandled exception: %s\n", e.what());
+        return 1;
+    } catch (...) {
+        fprintf(stderr, "rbcxx: unknown unhandled exception\n");
+        return 1;
+    }
 }

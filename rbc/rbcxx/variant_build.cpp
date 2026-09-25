@@ -934,6 +934,16 @@ void run_compiler(std::vector<std::string> const &command, std::filesystem::path
     }
     auto result = process.wait(1024h);
     if (result.second) {
+        // reproc++ forwards the child exit code as the wait status; a crashed
+        // child reports an NTSTATUS such as 0xC0000409 (fail-fast), which is
+        // negative as an int and surfaces here as an error whose system
+        // message is the useless "unknown error". Decode it explicitly.
+        if (result.first < 0) {
+            std::ostringstream nt_status;
+            nt_status << "0x" << std::hex
+                      << static_cast<unsigned long>(static_cast<unsigned int>(result.first));
+            throw ShaderVariantError("Compiler process crashed, NTSTATUS=" + nt_status.str());
+        }
         throw ShaderVariantError("Compiler process failed: " + result.second.message());
     }
     if (result.first != 0) {
