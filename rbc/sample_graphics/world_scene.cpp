@@ -9,6 +9,8 @@
 #include <rbc_core/serde.h>
 #include <rbc_render/click_manager.h>
 #include <rbc_graphics/device_assets/device_image.h>
+#include <rbc_graphics/device_assets/assets_manager.h>
+#include <rbc_core/utils/thread_waiter.h>
 #include <tracy_wrapper.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_project/project.h>
@@ -194,27 +196,66 @@ WorldScene::WorldScene(GraphicsUtils *utils, luisa::filesystem::path const &targ
         scene_root_dir = runtime_dir / meta_dir;
     }
     entities_path = scene_root_dir / "scene.rbc";
-    world::init_world(scene_root_dir);
 
-    // write a demo scene
-    if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
-        _init_scene(utils);
-    } else if (!target_binary_dir.empty() && !project_dir.empty()) {
+    // ===== 项目路径（数据权威）：project_dir 为项目根目录（含 rbc_project.json）=====
+    // 优先于本地 test_scene 缓存路径；create_project 对无效项目 fail-first。
+    if (!project_dir.empty()) {
         auto project_plugin_module = PluginManager::instance().load_module("rbc_project_plugin");
         auto project_plugin = project_plugin_module->invoke<ProjectPlugin *()>(
             "get_project_plugin");
-        // project_dir 为项目根目录（含 rbc_project.json）；
-        // 若文件不存在或加载失败则 create_project 直接报错（fail-first）。
         auto proj = luisa::unique_ptr<IProject>(project_plugin->create_project(
             luisa::to_string(project_dir)));
+        // world 资源库目录（.rbcb 缓存 + .meta_db）：scene 引用的资源按 GUID 在此解析，
+        // 必须先 init_world 再 scan_project（后者把资源 meta 注册进 meta_db）。
+        auto library_dir = proj->library_dir();
+        world::init_world(library_dir, library_dir);
         proj->scan_project();
         scene = proj->import_assets("test_scene.scene", TypeInfo::get<world::SceneResource>().md5());
+        if (!scene) {
+            LUISA_ERROR(
+                "Failed to import 'test_scene.scene' from project '{}'. "
+                "Make sure the project assets contain the default scene.",
+                luisa::to_string(project_dir));
+        }
         scene->load();
         scene->install();
         test_procedural.init(proj.get());
-        gltf_mesh = proj->import_assets("metal_office_desk_4k.gltf", TypeInfo::get<world::MeshResource>().md5());
-        gltf_mesh->load();
-        gltf_mesh->install();
+        // 附加网格测试资产：以项目实际 assets 为准，缺失时跳过（fail-soft），
+        // 不再硬编码不存在于项目中的模型文件。
+        if (auto extra_mesh = proj->import_assets(
+                "bunny.obj", TypeInfo::get<world::MeshResource>().md5())) {
+            gltf_mesh = extra_mesh.cast_static<world::MeshResource>();
+            gltf_mesh->load();
+            // 网格可能处于 GPU 帧跟踪的异步加载中（从 meta_db 缓存重建），其加载
+            // 依赖加载线程帧预算（wake_load_thread 逐帧发放）。渲染循环启动前预算
+            // 耗尽时同步 install 会死锁，故先主动发放预算等待其完成（与 world_impl
+            // 的 import_* 行为一致）；超时兜底则跳过安装，由渲染循环完成加载。
+            if (gltf_mesh->loading_status() == world::EResourceLoadingStatus::Loading) {
+                auto am = AssetsManager::instance();
+                luisa::Clock clk;
+                rbc::ThreadWaiter waiter;
+                while (gltf_mesh->loading_status() == world::EResourceLoadingStatus::Loading) {
+                    am->wake_load_thread();
+                    waiter.wait(std::chrono::milliseconds(1), "project import load");
+                    if (clk.toc() > 10000.0) {
+                        LUISA_WARNING("bunny.obj load timed out, skip install.");
+                        break;
+                    }
+                }
+            }
+            if (gltf_mesh->loading_status() != world::EResourceLoadingStatus::Loading) {
+                gltf_mesh->install();
+            }
+        }
+        // 项目路径下不走 scene.rbc 缓存写盘（场景由 project 管理，析构时 save_to_path 回写）。
+        entities_path.clear();
+        return;
+    }
+
+    world::init_world(scene_root_dir);
+    // write a demo scene
+    if (!luisa::filesystem::exists(scene_root_dir) || luisa::filesystem::is_empty(scene_root_dir)) {
+        _init_scene(utils);
     } else {
         // load skybox
         {

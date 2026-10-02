@@ -635,9 +635,17 @@ def main():
             app.call_exit()  # End the loop
     app.set_user_callback(tick_logic)
     # app.set_ground_plane_mode('yes')
-    # Enable AO mode
-    input()
+    # NOTE: do NOT block the main thread here (e.g. input()) before
+    # app.run(): the window's message pump (window->poll_events) only runs
+    # inside ctx.tick(). Blocking leaves the just-created window unpainted
+    # (white) and Windows marks it "Not Responding" on click (see
+    # samples/debug_repro_hang.py for an automated repro).
     render_settings = app.display_cam.render_settings()
+    # Workaround: engine-side auto exposure currently over-brightens the
+    # output to near-white on this scene (bisected with
+    # samples/debug_uber_bisect.py; the C++ sample_graphics is affected
+    # too). Disable it here until the engine-side fix lands.
+    render_settings.set_use_auto_exposure(False)
     # render_settings.set_alpha_cull(1)
 
     # render_settings.set_offline_spp(4)

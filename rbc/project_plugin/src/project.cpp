@@ -51,6 +51,24 @@ private:
                 "Please create a valid RoboCute project configuration file.",
                 luisa::to_string(root));
         }
+        // 统一规范化为绝对路径：scan_project 遍历 assets 得到的路径、以及
+        // import_assets / write_file_meta 中「相对路径则拼 assets 前缀」的分支，
+        // 都依赖项目根为绝对路径这一前提。若此处保留相对路径（如 "../proj"），
+        // 遍历产物已含 assets 前缀，再次拼接会产生 assets/../proj/assets 双重路径，
+        // 导致 meta 写盘失败（LUISA_ERROR）与 md5 计算错误。
+        {
+            std::error_code ec;
+            auto canonical = luisa::filesystem::weakly_canonical(root, ec);
+            if (!ec && !canonical.empty()) {
+                root = std::move(canonical);
+            } else {
+                auto abs_path = luisa::filesystem::absolute(root, ec);
+                if (!ec && !abs_path.empty()) {
+                    root = abs_path.lexically_normal();
+                }
+            }
+            project_file = root / "rbc_project.json";
+        }
         if (!load_project_config(project_file, r.config)) [[unlikely]] {
             LUISA_ERROR(
                 "Failed to load rbc_project.json under '{}'. "

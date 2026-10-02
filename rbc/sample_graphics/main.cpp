@@ -74,6 +74,9 @@ int main(int argc, char *argv[]) {
     if (argc > 3) {
         project_dir = argv[3];
     }
+    // argv[4]：可选 "offline"，启用离线渲染模式
+    // （固定 spp 后 denoise 并保存 screenshots/frame_N.jpg，便于自动化验证）
+    bool offline_mode = argc > 4 && luisa::string_view{argv[4]} == "offline";
     world_scene.create(utils.get(), target_binary_dir, project_dir);
     // simple_scene.create(*Lights::instance());
     // Test FOV
@@ -277,7 +280,6 @@ int main(int argc, char *argv[]) {
                         dragged_object_ids = std::move(dragging_result);
                 }
             }
-            static constexpr bool offline_mode = false;
             {
                 static uint64_t saved_frame_index = 0;
                 RBCZoneScopedN("Render Tick");
@@ -301,13 +303,14 @@ int main(int argc, char *argv[]) {
                 utils->tick(
                     tick_stage,
                     offline_mode);
-                if constexpr (offline_mode) {
+                if (offline_mode) {
+                    // OIDN 依赖 cuda 后端做 dx/vk 互操作；无 cuda 的运行时环境
+                    // 直接保存固定 spp 的原始累积图，保证离线验证路径可用。
                     if (frame_index == sample) {
-                        LUISA_INFO("Denoising..");
-                        utils->denoise();
-                    }
-                    // after denoise, save image
-                    else if (frame_index == sample + 1) {
+                        LUISA_INFO(
+                            "Offline sample reached ({} spp), saving image "
+                            "(denoise requires the cuda backend).",
+                            sample);
                         if (!luisa::filesystem::exists("screenshots")) {
                             luisa::filesystem::create_directories("screenshots");
                         }

@@ -30,6 +30,8 @@
 #include <rbc_core/runtime_static.h>
 #include <rbc_graphics/device_assets/device_image.h>
 #include <rbc_graphics/device_assets/device_mesh.h>
+#include <rbc_graphics/device_assets/assets_manager.h>
+#include <rbc_core/utils/thread_waiter.h>
 #include <rbc_graphics/device_assets/device_transforming_mesh.h>
 #include <rbc_plugin/plugin_manager.h>
 #include <rbc_project/project_plugin.h>
@@ -1369,16 +1371,44 @@ void *SkelMeshResource::ref_anim_graph(void *this_) {
 }
 
 struct ProjectImpl : RCBase {
-    luisa::shared_ptr<luisa::DynamicModule> module;
-    luisa::unique_ptr<rbc::IProject> proj;
-    luisa::fiber::counter counter;
-    void sync() {
-        counter.wait();
-        auto utils = GraphicsUtils::instance();
-        if (utils && utils->tex_loader()) utils->tex_loader()->finish_task();
-    }
-};
-void *Project::import_material(void *this_, luisa::string_view path) {
+      luisa::shared_ptr<luisa::DynamicModule> module;
+      luisa::unique_ptr<rbc::IProject> proj;
+      luisa::fiber::counter counter;
+      void sync() {
+          counter.wait();
+          auto utils = GraphicsUtils::instance();
+          if (utils && utils->tex_loader()) utils->tex_loader()->finish_task();
+      }
+  };
+  // import_* 接口末尾原先无条件同步 install()。当资源处于 GPU 帧跟踪的异步加载中
+  // （从 world 缓存 meta_db 重建的纹理/网格走此路径）时，install() 会等待资源加载
+  // 完成，而加载线程的帧预算由 wake_load_thread 逐帧发放：渲染循环启动前预算耗尽
+  // 时，调用线程将无限等待（死锁，日志表现为周期性的 "Still waiting for resource"）。
+  // 此处主动发放加载预算并短暂等待资源就绪，既保持「import 后即完成安装」的原有
+  // 语义（材质烘录纹理 heap index 时数据已就绪），又不会在初始化阶段死锁；
+  // 超时仍不完成则交由渲染循环完成加载，材质绑定随渲染逐帧刷新。
+  static void project_import_install(rbc::world::Resource *res) {
+      if (!res) [[unlikely]] {
+          return;
+      }
+      if (res->loading_status() == rbc::world::EResourceLoadingStatus::Loading) {
+          auto am = rbc::AssetsManager::instance();
+          luisa::Clock clk;
+          rbc::ThreadWaiter waiter;
+          while (res->loading_status() == rbc::world::EResourceLoadingStatus::Loading) {
+              am->wake_load_thread();
+              waiter.wait(std::chrono::milliseconds(1), "project import load");
+              if (clk.toc() > 10000.0) {
+                  LUISA_WARNING(
+                      "Resource {} load timed out, defer install to render loop.",
+                      res->guid().to_string());
+                  return;
+              }
+          }
+      }
+      res->install();
+  }
+  void *Project::import_material(void *this_, luisa::string_view path) {
     if (!this_) [[unlikely]] {
         LUISA_ERROR("Project::import_material: this_ is null.");
         return nullptr;
@@ -1394,7 +1424,7 @@ void *Project::import_material(void *this_, luisa::string_view path) {
     if (!p) {
         return nullptr;
     }
-    ptr->install();
+    project_import_install(ptr.get());
     unsafe_forget(std::move(ptr));
     return p;
 }
@@ -1415,7 +1445,7 @@ void *Project::import_mesh(void *this_, luisa::string_view path) {
     if (!p) {
         return nullptr;
     }
-    ptr->install();
+    project_import_install(ptr.get());
     unsafe_forget(std::move(ptr));
     return p;
 }
@@ -1436,7 +1466,7 @@ void *Project::import_texture(
     if (!p) {
         return nullptr;
     }
-    ptr->install();
+    project_import_install(ptr.get());
     unsafe_forget(std::move(ptr));
     return p;
 }
@@ -1457,7 +1487,7 @@ void *Project::import_skeleton(void *this_, luisa::string_view path) {
     if (!p) {
         return nullptr;
     }
-    ptr->install();
+    project_import_install(ptr.get());
     unsafe_forget(std::move(ptr));
     return p;
 }
@@ -1478,7 +1508,7 @@ void *Project::import_skin(void *this_, luisa::string_view path) {
     if (!p) {
         return nullptr;
     }
-    ptr->install();
+    project_import_install(ptr.get());
     unsafe_forget(std::move(ptr));
     return p;
 }
@@ -1499,7 +1529,7 @@ void *Project::import_anim_sequence(void *this_, luisa::string_view path) {
     if (!p) {
         return nullptr;
     }
-    ptr->install();
+    project_import_install(ptr.get());
     unsafe_forget(std::move(ptr));
     return p;
 }
