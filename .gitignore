@@ -155,3 +155,29 @@ src/uipc
 !AGENTS.md
 .kimix_cache
 cmake-build-debug
+
+
+# JS
+node_modules
+# --- Electron demo (samples/electron) ---
+# native addon build output (xmake targetdir)
+/samples/electron/native/build/
+# downloaded Node.js headers (see native/fetch-deps.ps1); node.lib IS tracked
+/samples/electron/native/deps/node-headers.tar.gz
+/samples/electron/native/deps/node-v*/
+# demo artifacts: screenshots, captures, run logs
+/samples/electron/screenshots/
+/samples/electron/*.png
+/samples/electron/*.jpg
+/samples/electron/*_run.txt
+/samples/electron/warm*.txt
+/samples/electron/acc_*.txt
+
+# pre-pack temp install dir
+src/robocute/rbc_ext/._C.install.*/
+
+# Electron demo: keep the acceptance/debug PowerShell tools and the deps
+# fetcher (a global *.ps1 rule and the `debug` dirname rule would hide them).
+!samples/electron/scripts/debug/
+!samples/electron/scripts/*.ps1
+!samples/electron/native/*.ps1

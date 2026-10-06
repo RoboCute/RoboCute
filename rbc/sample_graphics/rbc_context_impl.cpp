@@ -36,8 +36,24 @@
 #include <luisa/runtime/buffer.h>
 #include <rbc_world/callback_serializer.h>
 #include "builtin_shader.h"
+#include "external_display.h"
 using namespace luisa;
 using namespace luisa::compute;
+
+namespace rbc {
+// Process-wide external display handles (see external_display.h). Consumed by
+// RBCContext::init_display when create_window == false.
+static uint64_t g_external_display_handle = invalid_resource_handle;
+static uint64_t g_external_window_handle = invalid_resource_handle;
+void set_external_display_handles(uint64_t display, uint64_t window) {
+    g_external_display_handle = display;
+    g_external_window_handle = window;
+}
+void get_external_display_handles(uint64_t &display, uint64_t &window) {
+    display = g_external_display_handle;
+    window = g_external_window_handle;
+}
+}// namespace rbc
 void save_image(luisa::filesystem::path const &path, Image<float> const &img);// implemented save_image.cpp
 
 namespace rbc {
@@ -49,11 +65,15 @@ struct ContextImpl : RCBase {
     luisa::fiber::scheduler scheduler;
     CameraController::Input camera_input{};
     vstd::unique_ptr<GraphicsUtils> utils;
-    vstd::unique_ptr<Window> window;
-    vstd::unique_ptr<CameraController> cam_controller;
-    RC<world::Entity> display_cam_entity;
-    uint2 window_size;
-    bool transparent{false};
+      vstd::unique_ptr<Window> window;
+      vstd::unique_ptr<CameraController> cam_controller;
+      RC<world::Entity> display_cam_entity;
+      uint2 window_size;
+      bool transparent{false};
+      // Borrowed OS window (embedding, e.g. Electron). Kept here so that
+      // reset_view can recreate the swapchain on the same native handle.
+      uint64_t external_display{invalid_resource_handle};
+      uint64_t external_window{invalid_resource_handle};
     void clear_window_event() {
         if (!window) return;
         window->set_mouse_callback({});
@@ -72,12 +92,14 @@ struct ContextImpl : RCBase {
             _ctx_inst = nullptr;
         utils.reset();
     }
-    void reset_view(uint2 resolution, bool transparent) {
-        if (window)
-            utils->resize_swapchain(resolution, window->native_display(), window->native_handle(), transparent);
-        else
-            utils->resize_swapchain(resolution, invalid_resource_handle, invalid_resource_handle, transparent);
-    }
+      void reset_view(uint2 resolution, bool transparent) {
+          if (window)
+              utils->resize_swapchain(resolution, window->native_display(), window->native_handle(), transparent);
+          else if (external_window != invalid_resource_handle)
+              utils->resize_swapchain(resolution, external_display, external_window, transparent);
+          else
+              utils->resize_swapchain(resolution, invalid_resource_handle, invalid_resource_handle, transparent);
+      }
 };
 void RBCContext::init_world(void *this_, luisa::string_view meta_path, luisa::string_view binary_path) {
     if (!this_) [[unlikely]] {
@@ -138,8 +160,11 @@ void RBCContext::init_display(void *this_, luisa::string_view name, uint2 size, 
         native_display = c.window->native_display();
         native_handle = c.window->native_handle();
     } else {
-        native_display = invalid_resource_handle;
-        native_handle = invalid_resource_handle;
+        // Embedding: reuse a host-provided native window (Electron etc.) if
+        // one was registered via rbc::set_external_display_handles.
+        rbc::get_external_display_handles(c.external_display, c.external_window);
+        native_display = c.external_display;
+        native_handle = c.external_window;
     }
     c.utils->init_display(size, native_display, native_handle, transparent);
 }
@@ -234,19 +259,28 @@ bool RBCContext::tick(void *this_, float delta_time, rbc::TickStage tick_stage, 
     bool any_changed{false};
     RBCZoneScopedN("ContextImpl::tick");
 
-    if (c.window) {
-        RBCZoneScopedN("Poll Events");
-        c.window->poll_events();
-        if (c.utils->dst_image() && any(c.window_size != c.utils->dst_image().size())) {
-            c.reset_view(c.window_size, c.transparent);
-            any_changed = true;
-        }
-        if (c.cam_controller) {
-            c.camera_input.viewport_size = make_float2(c.window_size);
-            c.cam_controller->grab_input_from_viewport(c.camera_input, delta_time);
-            any_changed = c.cam_controller->any_changed();
-        }
-    }
+      if (c.window) {
+          RBCZoneScopedN("Poll Events");
+          c.window->poll_events();
+          if (c.utils->dst_image() && any(c.window_size != c.utils->dst_image().size())) {
+              c.reset_view(c.window_size, c.transparent);
+              any_changed = true;
+          }
+      }
+      if (c.cam_controller) {
+          // Drive the camera controller every frame so externally-fed deltas
+          // (control_camera_add_pos/rotate, embeddings without an LC window)
+          // are applied and reported through any_changed().
+          if (c.window) {
+              c.camera_input.viewport_size = make_float2(c.window_size);
+              c.cam_controller->grab_input_from_viewport(c.camera_input, delta_time);
+          } else {
+              CameraController::Input neutral_input{};
+              neutral_input.viewport_size = make_float2(c.window_size);
+              c.cam_controller->grab_input_from_viewport(neutral_input, delta_time);
+          }
+          any_changed = c.cam_controller->any_changed();
+      }
     {
         RBCZoneScopedN("Update Camera");
         {
@@ -296,11 +330,13 @@ void RBCContext::enable_camera_control(void *this_) {
         LUISA_ERROR("Context is null.");
     }
     auto &c = *static_cast<ContextImpl *>(this_);
-    std::lock_guard lck{c._ctx_mtx};
-    if (c.cam_controller) return;
-    if (!c.window) [[unlikely]] {
-        LUISA_ERROR("Window instance required for camera control.");
-    }
+      if (c.cam_controller) return;
+      // Embedding (no LC window): camera control still works — external hosts
+      // drive it via control_camera_add_pos/rotate; only the native mouse/key
+      // callbacks below require a window.
+      if (!c.window) {
+          // fall through: skip native input wiring
+      }
     world::CameraComponent *cam_comp{};
     if (!c.display_cam_entity || ![&] {cam_comp = c.display_cam_entity->get_component<world::CameraComponent>(); return cam_comp; }()) [[unlikely]] {
         LUISA_ERROR("Display camera instance required for camera control.");
@@ -308,9 +344,10 @@ void RBCContext::enable_camera_control(void *this_) {
     c.cam_controller = vstd::make_unique<CameraController>();
     auto &render_settings = c.utils->render_settings(static_cast<RenderPlugin::PipeCtxStub *>(cam_comp->render_pipe_ctx()));
     auto &cam = render_settings.read_mut<Camera>();
-    c.cam_controller->camera = &cam;
-    c.cam_controller->transform = c.display_cam_entity->get_component<world::TransformComponent>();
-    c.window->set_mouse_callback([this_](MouseButton button, Action action, float2 xy) {
+      c.cam_controller->camera = &cam;
+      c.cam_controller->transform = c.display_cam_entity->get_component<world::TransformComponent>();
+      if (!c.window) return;  // embedding: no native input to wire
+      c.window->set_mouse_callback([this_](MouseButton button, Action action, float2 xy) {
         auto &c = *static_cast<ContextImpl *>(this_);
         if (button == MOUSE_BUTTON_2) {
             if (action == Action::ACTION_PRESSED) {
@@ -393,13 +430,14 @@ void RBCContext::control_camera_add_pos(void *this_, luisa::float3 pos) {
     if (!c.cam_controller->camera) [[unlikely]] {
         LUISA_ERROR("Camera not initialized.");
     }
-    if (c.cam_controller->transform)
-        c.cam_controller->transform->set_pos(
-            c.cam_controller->transform->position() + make_double3(pos.x, pos.y, pos.z),
-            false);
-    else
-        c.cam_controller->camera->position += make_double3(pos.x, pos.y, pos.z);
-}
+      if (c.cam_controller->transform)
+          c.cam_controller->transform->set_pos(
+              c.cam_controller->transform->position() + make_double3(pos.x, pos.y, pos.z),
+              false);
+      else
+          c.cam_controller->camera->position += make_double3(pos.x, pos.y, pos.z);
+      c.cam_controller->notify_external_change();
+  }
 
 void RBCContext::control_camera_add_rotate(void *this_, float yaw, float pitch, float roll) {
     if (!this_) [[unlikely]] {
@@ -415,8 +453,9 @@ void RBCContext::control_camera_add_rotate(void *this_, float yaw, float pitch, 
     c.cam_controller->rotation_pitch += pitch;
     c.cam_controller->rotation_pitch = clamp(c.cam_controller->rotation_pitch, -pi * 0.48, pi * 0.48);
 
-    c.cam_controller->rotation_roll += roll;
-}
+      c.cam_controller->rotation_roll += roll;
+      c.cam_controller->notify_external_change();
+  }
 
 void RBCContext::upload_texture_data(void *this_, void *tex) {
     if (!this_) [[unlikely]] {

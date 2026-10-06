@@ -83,9 +83,13 @@ bool CameraController::is_moving() const {
 bool CameraController::is_rotating() const {
     return _is_rotating && any(_mouse_delta != float2{0, 0});
 }
-bool CameraController::any_changed() const {
-    return is_moving() || is_rotating();
-}
+bool CameraController::any_changed() {
+      if (_external_changed) {
+          _external_changed = false;
+          return true;
+      }
+      return is_moving() || is_rotating();
+  }
 
 // update
 void CameraController::_update(float delta_time) {

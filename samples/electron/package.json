@@ -1,0 +1,21 @@
+{
+  "name": "robocute-electron-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal Electron demo driving the RoboCute renderer through a hand-written N-API addon. Node.js equivalent of samples/app_graphics_scene.py.",
+  "main": "main.js",
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "build:native": "xmake build rbc_ext_node",
+    "configure:native": "xmake f -c -m releasedbg && xmake build rbc_ext_node",
+    "start": "electron .",
+    "smoke": "node scripts/smoke.js",
+    "smoke:host": "node scripts/smoke_host.js",
+    "smoke:electron": "electron . --smoke",
+    "smoke:camera": "node scripts/camera_stress.js"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "node-api-headers": "^1.5.0"
+  }
+}

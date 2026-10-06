@@ -33,7 +33,11 @@ struct RBC_RUNTIME_API CameraController {
     // move state
     [[nodiscard]] bool is_moving() const;
     [[nodiscard]] bool is_rotating() const;
-    [[nodiscard]] bool any_changed() const;
+    // Consumes and clears the external-change flag (set by
+    // RBCContext::control_camera_add_pos/rotate for embedded hosts that feed
+    // camera deltas without a native LC window).
+    [[nodiscard]] bool any_changed();
+    void notify_external_change() { _external_changed = true; }
 
 private:
     // update
@@ -80,5 +84,6 @@ private:
     bool _move_up : 1 = false;
     bool _move_down : 1 = false;
     bool _controlling : 1 = true;
+    bool _external_changed : 1 = false;
 };
 }// namespace rbc
