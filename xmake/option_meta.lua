@@ -45,6 +45,14 @@ option('rbc_urdf', {
     showmenu = false
 })
 
+-- N-API addon for the Electron demo (samples/electron). Disabled by default;
+-- `uv run prepare --electron-ext` enables it when a valid node/pnpm
+-- environment is detected (written into xmake/options.json).
+option('rbc_ext_node', {
+    default = false,
+    showmenu = false
+})
+
 option('lc_warnings', {
     default = 'none',
     showmenu = true
@@ -54,7 +62,8 @@ option('rbc_option')
 set_showmenu(false)
 set_default(false)
 add_deps('lc_toolchain', 'lc_py_include', 'lc_py_linkdir', 'lc_py_libs', 'rbc_py_bin', 'lc_use_lto', 'lc_warnings',
-    'rbc_editor', 'rbc_unity_build', 'rbc_pch', 'rbc_tools', 'rbc_plugins', 'rbc_tests', 'rbc_oidn', 'rbc_urdf')
+    'rbc_editor', 'rbc_unity_build', 'rbc_pch', 'rbc_tools', 'rbc_plugins', 'rbc_tests', 'rbc_oidn', 'rbc_urdf',
+    'rbc_ext_node')
 after_check(function(option)
     import('core.base.json')
     local luatable = json.decode(io.readfile(path.join(os.scriptdir(), 'options.json')))

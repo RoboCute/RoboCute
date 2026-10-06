@@ -1,8 +1,11 @@
 -- rbc_ext_node: N-API addon (Node.js/Electron) — spike counterpart of rbc_ext_c.
--- Requires `pnpm install` in samples/electron first (provides node-api-headers).
+-- This file is only included when the `rbc_ext_node` option is enabled
+-- (see rbc/extensions/xmake.lua), which `uv run prepare --electron-ext` does
+-- after checking a valid node/pnpm environment and pulling the deps
+-- (node-api-headers via `pnpm install`, headers tarball, tracked node.lib).
 local node_headers = path.join(os.projectdir(), 'samples/electron/node_modules/node-api-headers/include')
 if not os.isdir(node_headers) then
-    print("[rbc_ext_node] node-api-headers not found, skipping target. Run `pnpm install` in samples/electron.")
+    print("[rbc_ext_node] node-api-headers not found, skipping target. Run `uv run prepare --electron-ext`.")
     return
 end
 

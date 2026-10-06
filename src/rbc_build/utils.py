@@ -279,9 +279,27 @@ def unzip_dir(zip_path: Path, extract_to: Path):
             print(f"  Command: {seven_zip} x {zip_path} -o{extract_to} -y")
             sys.exit(1)
 
+    elif suffix == ".tar" or zip_path.name.lower().endswith((".tar.gz", ".tgz")):
+        # Use standard library tarfile for tar archives (e.g. Node.js headers)
+        import tarfile
+
+        print_info(f"Extracting {zip_path.name} to {extract_to}...")
+        try:
+            with tarfile.open(zip_path, "r:*") as tf:
+                try:
+                    # Python >= 3.12: refuse dangerous members (absolute paths,
+                    # symlinks pointing outside, device nodes, ...).
+                    tf.extractall(extract_to, filter="data")
+                except TypeError:
+                    tf.extractall(extract_to)
+            print_success(f"✓ Successfully extracted {zip_path.name}")
+        except (tarfile.TarError, OSError) as e:
+            print_error(f"ERROR: Failed to extract {zip_path.name}: {e}")
+            sys.exit(1)
+
     else:
         print_error(f"ERROR: Unsupported archive format: {suffix}")
-        print("  Supported formats: .zip, .7z, .rar")
+        print("  Supported formats: .zip, .7z, .rar, .tar, .tar.gz, .tgz")
         sys.exit(1)
 
 

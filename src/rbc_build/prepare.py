@@ -226,11 +226,26 @@ RBC_SDK_ADDRESS = (
 )
 LLVM_SDK_ADDRESS = "https://github.com/SakuraEngine/llvm-build/releases/download/llvm-windows-22.1.8/llvm-22.1.8-release-windows-x64.zip"
 
-LC_DX_SDK = "dx_sdk_20250816.zip"
+LC_DX_SDK = "dx_sdk_20260815.zip"
 RENDER_RESOURCE_NAME = "render_resources-v1.0.1.7z"
 XMAKE_GLOBAL_TOOLCHAIN = "clang-cl"
 
 LLVM_INSTALL_DIR = "build/download/llvm"
+
+# --- Electron extension (samples/electron + rbc/extensions/ext_node) ---
+# Pulled only when `uv run prepare --electron-ext` is given and a valid
+# JavaScript build environment (node + pnpm) is detected. See main.py.
+ELECTRON_SAMPLE_DIR = "samples/electron"
+ELECTRON_NATIVE_DEPS_DIR = "samples/electron/native/deps"
+NODE_VERSION = "22.18.0"
+NODE_HEADERS_TARBALL = f"node-v{NODE_VERSION}-headers.tar.gz"
+# Node.js headers tarball. Official source is
+# https://nodejs.org/dist/v<ver>/node-v<ver>-headers.tar.gz; we use the
+# npmmirror binary mirror, the same mirror samples/electron/.npmrc already
+# standardizes on (electron_mirror/registry).
+NODE_HEADERS_URL = (
+    f"https://registry.npmmirror.com/-/binary/node/v{NODE_VERSION}/{NODE_HEADERS_TARBALL}"
+)
 
 # Detect system platform and architecture
 _system = _platform.system().lower()

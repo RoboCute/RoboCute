@@ -48,6 +48,23 @@ This performs:
 6. Generate shader compile command scripts (`rbc/shader/*_compile.cmd`).
 7. Optionally clean previous `rbc/**/generated` code.
 
+Optional electron extension (N-API addon `rbc_ext_node` + `samples/electron` demo):
+
+- `uv run prepare -y --electron-ext` additionally:
+  1. Pre-checks the JavaScript build environment (node + pnpm on PATH). If the
+     environment is invalid, the electron extension is left completely
+     untouched (no downloads, no config change) and the main flow continues.
+  2. Downloads the pinned Node.js headers tarball (`src/rbc_build/prepare.py`::
+     `NODE_HEADERS_URL`) into `build/download` and extracts it to
+     `samples/electron/native/deps/node-v<ver>/` (same layout as
+     `samples/electron/native/fetch-deps.ps1`).
+  3. Runs `pnpm install` in `samples/electron` (provides electron +
+     node-api-headers; `node.lib` stays tracked in git).
+  4. Writes `rbc_ext_node=true` into `xmake/options.json`, which enables the
+     `rbc_ext_node` xmake target (option declared in `xmake/option_meta.lua`,
+     gated in `rbc/extensions/xmake.lua`; default disabled).
+- Without `--electron-ext`, prepare never touches anything electron-related.
+
 Key source files:
 
 - `src/rbc_build/prepare.py` — archive names, SDK addresses, platform detection

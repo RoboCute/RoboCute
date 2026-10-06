@@ -24,6 +24,11 @@ from rbc_build.prepare import (
     OIDN_NAME,
     LLVM_SDK_ADDRESS,
     LLVM_INSTALL_DIR,
+    NODE_VERSION,
+    NODE_HEADERS_TARBALL,
+    NODE_HEADERS_URL,
+    ELECTRON_SAMPLE_DIR,
+    ELECTRON_NATIVE_DEPS_DIR,
 )
 from rbc_build.utils import (
     is_empty_folder,
@@ -151,7 +156,7 @@ def write_download_hash():
         print_success("file_hash.json dumped.")
 
 
-def download_packages():
+def download_packages(electron_ext: bool = False):
     global new_file_hash, download_file_hashes
     download_path.mkdir(parents=True, exist_ok=True)
     address = RBC_SDK_ADDRESS
@@ -189,12 +194,36 @@ def download_packages():
             "path": download_path,
             "unzip": [download_path / LC_DX_SDK, download_path / "dx_sdk"],
         }
+    if electron_ext:
+        # Node.js headers for rbc_ext_node (samples/electron native addon).
+        # The tarball unpacks to node-v<ver>/include under the native deps dir,
+        # the same layout produced by samples/electron/native/fetch-deps.ps1.
+        # "optional": a failure here must not break the main prepare flow, it
+        # only leaves the electron extension disabled.
+        downloads[NODE_HEADERS_TARBALL] = {
+            "url": NODE_HEADERS_URL,
+            "address": "",
+            "path": download_path,
+            "unzip": [download_path / NODE_HEADERS_TARBALL, rel(ELECTRON_NATIVE_DEPS_DIR)],
+            "optional": True,
+        }
 
     if hash_json_path.exists():
         with open(hash_json_path, "r") as f:
             download_file_hashes = json.load(f)
 
     def download_file(file: str, map: dict):
+        # Optional downloads (electron ext) never break the main prepare flow:
+        # on failure they report and leave the extension disabled.
+        if map.get("optional"):
+            try:
+                _download_file(file, map)
+            except Exception as e:
+                print_error(f"[electron-ext] Failed to pull '{file}': {e}")
+            return
+        _download_file(file, map)
+
+    def _download_file(file: str, map: dict):
         global new_file_hash, download_file_hashes
         dst_path = map["path"] / file
         _curr_hash = None
@@ -296,12 +325,99 @@ def run_git_tasks(use_ssh=False):
             f.result()
 
 
-def run_package_download():
-    download_executor, download_future = download_packages()
+def run_package_download(electron_ext: bool = False):
+    download_executor, download_future = download_packages(electron_ext=electron_ext)
     wait(download_future)
     write_download_hash()
     for f in download_future:
         f.result()  # Raise exceptions if any
+
+
+def check_javascript_build_env() -> bool:
+    """Check that the JavaScript build environment (node, pnpm) is usable.
+
+    This is a pure pre-check: it never downloads or writes anything. When it
+    returns False the electron extension must be left completely untouched.
+    """
+    print_info("[electron-ext] Checking JavaScript build environment (node, pnpm)...")
+    tools = {}
+    for name in ("node", "pnpm"):
+        path = shutil.which(name)
+        if not path:
+            print_warning(f"[electron-ext] '{name}' not found on PATH.")
+            tools[name] = None
+        else:
+            tools[name] = path
+
+    if not all(tools.values()):
+        print_warning(
+            "[electron-ext] Invalid JavaScript environment, "
+            "the electron extension will NOT be prepared or enabled."
+        )
+        return False
+
+    for name, path in tools.items():
+        try:
+            result = subprocess.run(
+                [path, "--version"], capture_output=True, text=True, check=True
+            )
+            print_debug(f"[electron-ext] {name}: {result.stdout.strip()}")
+        except (subprocess.CalledProcessError, OSError) as e:
+            print_warning(f"[electron-ext] Failed to run '{name} --version': {e}")
+            print_warning(
+                "[electron-ext] Invalid JavaScript environment, "
+                "the electron extension will NOT be prepared or enabled."
+            )
+            return False
+
+    node_major = (
+        subprocess.run([tools["node"], "--version"], capture_output=True, text=True, check=True)
+        .stdout.strip()
+        .lstrip("v")
+        .split(".")[0]
+    )
+    if node_major != NODE_VERSION.split(".")[0]:
+        print_warning(
+            f"[electron-ext] node major version '{node_major}' differs from the pinned "
+            f"headers v{NODE_VERSION} (N-API is ABI-stable, continuing anyway)."
+        )
+    return True
+
+
+def electron_deps_ready() -> bool:
+    """True when the on-disk deps of the electron extension are all present."""
+    sample_dir = rel(ELECTRON_SAMPLE_DIR)
+    return (
+        (sample_dir / "node_modules" / "node-api-headers" / "include").is_dir()
+        and (sample_dir / "native" / "deps" / "node.lib").is_file()
+    )
+
+
+def install_electron_node_modules() -> bool:
+    """Run `pnpm install` for samples/electron and verify the addon headers.
+
+    Best-effort: failures are reported and leave the extension disabled, the
+    main prepare flow is never interrupted.
+    """
+    sample_dir = rel(ELECTRON_SAMPLE_DIR)
+    pnpm = shutil.which("pnpm")
+    if not pnpm:
+        print_warning("[electron-ext] pnpm not found on PATH, skip 'pnpm install'.")
+        return False
+    print_info(f"[electron-ext] Running 'pnpm install' in {sample_dir} ...")
+    try:
+        subprocess.run([pnpm, "install"], cwd=sample_dir, check=True)
+    except (subprocess.CalledProcessError, OSError) as e:
+        print_error(f"[electron-ext] 'pnpm install' failed: {e}")
+        return False
+    if not (sample_dir / "node_modules" / "node-api-headers" / "include").is_dir():
+        print_error(
+            "[electron-ext] node-api-headers not found under "
+            f"{sample_dir / 'node_modules'} after 'pnpm install'."
+        )
+        return False
+    print_success("[electron-ext] Electron demo JS dependencies installed.")
+    return True
 
 
 def ensure_fsd_tables():
@@ -323,11 +439,19 @@ def ensure_fsd_tables():
     print_success("Generated FSD inverse-CDF table.")
 
 
-def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
+def _run_prepare(auto_yes: bool = False, use_ssh: bool = False, electron_ext: bool = False):
     # Check and print proxy settings
     proxies = get_http_proxies()
     if proxies:
         print_info(f"Detected proxy settings: {proxies}")
+
+    # ------------------------------ electron ext ------------------------------
+    # Pre-check the JavaScript build environment BEFORE anything is pulled:
+    # without a valid node + pnpm toolchain the electron extension
+    # (samples/electron + rbc_ext_node) is left completely untouched.
+    electron_env_ok = False
+    if electron_ext:
+        electron_env_ok = check_javascript_build_env()
 
     # ------------------------------ git ------------------------------
     if auto_yes:
@@ -359,7 +483,9 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
             download_package = "n"
 
     if download_package.lower() == "y":
-        run_package_download()
+        run_package_download(electron_ext=electron_env_ok)
+        if electron_env_ok:
+            install_electron_node_modules()
     ensure_fsd_tables()
 
     # ------------------------------ llvm/options -----------------------------
@@ -415,6 +541,14 @@ def _run_prepare(auto_yes: bool = False, use_ssh: bool = False):
 
         options["lc_llvm_path"] = to_slash(str(Path(PROJECT_ROOT) / LLVM_INSTALL_DIR))
 
+        # Enable the electron extension (rbc_ext_node) only when requested via
+        # --electron-ext, the JS environment is valid and its deps are in place.
+        # Without --electron-ext this stays at the xmake default (disabled) and
+        # nothing electron-related is touched.
+        options["rbc_ext_node"] = bool(
+            electron_ext and electron_env_ok and electron_deps_ready()
+        )
+
         # Write to xmake/options.json
         opt_json_path = rel("xmake/options.json")
         print_success(f"Write Options to {opt_json_path}")
@@ -463,11 +597,18 @@ def prepare():
         action="store_true",
         help="Use SSH (git@github.com:) instead of HTTPS for git clone/pull",
     )
+    parser.add_argument(
+        "--electron-ext",
+        action="store_true",
+        help="Also prepare the Electron/Node.js extension (samples/electron + "
+        "rbc_ext_node): requires node and pnpm on PATH. Without this flag the "
+        "electron extension is left untouched.",
+    )
 
     args = parser.parse_args()
 
     try:
-        _run_prepare(auto_yes=args.yes, use_ssh=args.ssh)
+        _run_prepare(auto_yes=args.yes, use_ssh=args.ssh, electron_ext=args.electron_ext)
     except KeyboardInterrupt as e:
         print_warning("quit.")
     except EOFError as e:

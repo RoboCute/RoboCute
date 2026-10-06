@@ -52,9 +52,11 @@ engine 线程 TextureDownloadCommand → RGBA8 → TSFN → IPC Buffer → WebGL
 ## 运行
 
 ```bash
+uv run prepare --electron-ext # 仓库根目录;首次:检查 node/pnpm 环境并拉取
+                              # electron 依赖(node headers + pnpm install),
+                              # 然后在 xmake/options.json 里启用 rbc_ext_node
 cd samples/electron
-pnpm install                 # 首次:electron + node-api-headers
-xmake build rbc_ext_node     # 仓库根目录;产物在 native/build/
+xmake build rbc_ext_node # 仓库根目录;产物在 native/build/
 uv run pre-pack              # 同步新 DLL 到 src/robocute/rbc_ext/_C(改了 rbc 后必须!)
 pnpm start                   # shared 模式:可见窗口 + GPU 直显视口,原生鼠标交互
 pnpm smoke                   # addon 直跑冒烟(回读)
@@ -138,10 +140,12 @@ powershell -ExecutionPolicy Bypass -File scripts/resize_parent.ps1 -W 1600 -H 10
 | `preload.js` / `renderer/` | contextBridge + 工具栏/侧栏 UI + readback WebGL 画布 + 截图编码 |
 | `scripts/` | 冒烟(smoke/smoke_host/camera_stress/stats_test)+ 验收工具(capture_app/capture_rect/drag/wheel/send_key/resize_parent/cpu_sample/dump_frame) |
 | `scripts/debug/` | 调试期探针(tree/inspect_child/probe_hwnd/list_windows/capture_window/capture_screen) |
-| `native/deps/` | node.lib(N-API import lib,已追踪);headers 用 `fetch-deps.ps1` 下载 |
+| `native/deps/` | `node.lib`(N-API import lib,已追踪);node headers 由 `uv run prepare --electron-ext` 拉取(等价于 `native/fetch-deps.ps1`) |
 
-Git 忽略策略见根 `.gitignore`:addon 构建产物、node_modules、headers 压缩包、
-截图/日志产物全部忽略;`node.lib` 因难以重新生成而被追踪。
+Git 忽略策略见根 `.gitignore`:addon 构建产物、`node_modules`、headers 压缩包、
+截图/日志产物全部忽略;`node.lib` 因难以重新生成而被追踪。规范化的拉取入口是
+`uv run prepare --electron-ext`(无该参数时 prepare 完全不碰 electron 扩展);
+`native/fetch-deps.ps1` 仅作手动兜底。
 
 ## 应用价值
 
