@@ -1,156 +1,107 @@
-# RoboCute Electron Demo
+# RoboCute Electron shared texture 视口
 
-在 Electron 窗口里跑 LuisaCompute 渲染,Node.js 等价物 of `samples/app_graphics_scene.py`。
-
-## 两种显示模式
-
-### `shared`(默认,交互式)— GPU 直显,零 CPU 回读
-
-```
-renderer (Chromium, 工具栏+侧栏 UI; 中央区留给原生视口)
-main (Electron browser process)                    ← main.js
-   ^ 控制 IPC(start/stop/截图/转盘/统计);不传帧
-engine-host (ELECTRON_RUN_AS_NODE 纯 Node 运行时)   ← engine-host.js
-   ^ rbc_ext_node.node → rbc_core / LuisaCompute (DX12)
-        │  tick(): render → blit → DXGI swapchain present
-        ▼
-原生子窗口 (WS_CHILD, 覆盖客户区减去 UI 内边距, HWND 跨进程借用)
-```
-
-**应用布局**(布局契约:`main.js UI_LAYOUT = { top: 56, right: 320 }`,同一组
-数字传给 addon(视口定位)和 renderer(CSS 变量)):
-
-- 顶部工具栏(56px):品牌 / 模式徽章 / 旋转动画开关 [T] / 保存截图 [S]
-- 右侧侧栏(320px):实时状态卡(fps 大字、分辨率、呈现模式、引擎状态)、
-  操作卡、交互提示卡
-- 中央:原生 3D 视口(拖拽环绕相机 / 滚轮推拉,原生 WndProc 直接处理)
-
-**截图管线**(shared 模式):UI → main 发 `{cmd:'screenshot'}` → 引擎下一帧做
-一次性 CPU 回读 → TSFN 以 `kind='screenshot'` 回调 → engine-host 转发
-`{type:'screenshot'}` → renderer 用 2D canvas 编码 PNG → main 落盘到
-`screenshots/screenshot-<时间戳>.png`。readback 模式则直接抓 WebGL canvas。
-
-**统计管线**:engine-host 每 1s 轮询 `native.getStats()`
-(`{fps,width,height,shared,turntable}`)转发给侧栏;另有 5s 心跳看门狗。
-
-- 渲染目标 `_dst_image` 经 GPU blit 到 swapchain backbuffer,flip-model 直显,
-  **每帧 0 字节过 CPU**(对比 readback 模式 110fps 时 ~235 MiB/s 的下载+上传)。
-- 相机输入由子窗口原生 WndProc 处理(拖拽旋转/滚轮缩放),不经过 IPC。
-- 窗口 resize:引擎线程轮询父客户区 → `RBCContext::reset_view` 重建 swapchain。
-- 模式选择:`start(options)` 传 `present:'shared'` + `parentHwnd`(十进制字符串,
-  见 main.js `nativeWindowHandle`)。
-
-### `readback`(`--smoke` / 无 HWND 时)— CPU 回读 + IPC 帧流
-
-```
-engine 线程 TextureDownloadCommand → RGBA8 → TSFN → IPC Buffer → WebGL canvas
-```
-
-用于无头冒烟/截图(`electron . --smoke` 输出 `smoke_screenshot.png`),以及
-旧的鼠标手势路径(renderer.js → preload → ipcMain → 引擎)。
+唯一画面路径:引擎 GPU 纹理 → Electron `sharedTexture.subtle` → `VideoFrame` → WebGPU `importExternalTexture` → DOM canvas。
+无 HWND 子窗口直显，无 CPU readback 画面流，无降级回退。能力缺失时显示 `unsupported` 和原因；运行中 GPU 丢失或租约超时显示 `error` 并停止连接。
 
 ## 运行
 
-```bash
-uv run prepare --electron-ext # 仓库根目录;首次:检查 node/pnpm 环境并拉取
-                              # electron 依赖(node headers + pnpm install),
-                              # 然后在 xmake/options.json 里启用 rbc_ext_node
-cd samples/electron
-xmake build rbc_ext_node # 仓库根目录;产物在 native/build/
-uv run pre-pack              # 同步新 DLL 到 src/robocute/rbc_ext/_C(改了 rbc 后必须!)
-pnpm start                   # shared 模式:可见窗口 + GPU 直显视口,原生鼠标交互
-pnpm smoke                   # addon 直跑冒烟(回读)
-pnpm smoke:host              # engine-host IPC 链冒烟
-pnpm smoke:electron          # 完整 Electron 离屏冒烟(截图 + 自退)
-node scripts/camera_stress.js # 相机 API 压力测试(曾用于复现 fail-fast)
+仓库根目录执行:
+
+```cmd
+uv run prepare --electron-ext -y
+xmake f -m releasedbg -c
+xmake build rbc_ext_node
+uv run pre-pack releasedbg
+pnpm --dir samples/electron start
+pnpm --dir samples/electron smoke
+pnpm --dir samples/electron probe
 ```
 
-环境变量:`RBC_PROGRAM_DIR`、`RBC_PROJECT`、`RBC_BACKEND`、`RBC_AUTOCLOSE=<ms>`
-(自动关窗,验证退出路径)、`RBC_DISABLE_HW_ACCEL=1`。
+若终端继承 `ELECTRON_RUN_AS_NODE=1`，启动 UI 前执行 `set "ELECTRON_RUN_AS_NODE="`。
+`RBC_PROGRAM_DIR` 指引擎 DLL/着色器目录，`RBC_PROJECT` 指项目，`RBC_BACKEND` 指后端。
+Windows 当前只支持 `dx`；macOS IOSurface、Linux dmabuf 导出尚未实现，明确报告不支持。
+`RBC_AUTOCLOSE=<ms>` 用于退出测试，`RBC_SMOKE_TIMEOUT=<ms>` 调整冒烟超时，`RBC_DEVTOOLS=1` 打开开发工具。
 
-## 验收方法(shared 模式)
+左键拖拽相机，滚轮推拉，`T` 切换旋转，`S` 截图，`H` 切换 HTML HUD。
+截图从已呈现 canvas 编码 PNG，不是引擎 readback 回退。冒烟测试显示 121 帧，检查非黑画面并保存 `smoke_screenshot.png`，失败返回非零状态。
 
-```bash
-cd samples/electron
-RBC_AUTOCLOSE=120000 node node_modules/electron/cli.js . > acc_run.txt 2>&1 &
-sleep 15   # 干净系统上 ~1-3s 出首帧;若刚 kill 过上实例,GPU 清理可能耗时 30s+
-# 1. 整体 UI 截屏(自动从日志读 viewport hwnd、置顶父窗、按父窗矩形截屏)
-powershell -ExecutionPolicy Bypass -File scripts/capture_app.ps1 -Log acc_run.txt -Out cap.png
-# 2. 仅视口截屏
-powershell -ExecutionPolicy Bypass -File scripts/capture_rect.ps1 -Log acc_run.txt -Out vp.png
-# 3. UI 快捷键:先点一下侧栏聚焦 Chromium(原生视口会吃键盘),再发按键
-powershell -ExecutionPolicy Bypass -File scripts/drag.ps1 -X1 2200 -Y1 400 -X2 2200 -Y2 400
-powershell -ExecutionPolicy Bypass -File scripts/send_key.ps1 -Key S -Log acc_run.txt   # 截图落盘
-powershell -ExecutionPolicy Bypass -File scripts/send_key.ps1 -Key T -Log acc_run.txt   # 转盘开关
-# 4. 相机:合成鼠标拖拽 / 滚轮,前后截屏对比视角
-powershell -ExecutionPolicy Bypass -File scripts/drag.ps1 -X1 1400 -Y1 700 -X2 1750 -Y2 560
-# 5. resize:父窗缩放到 1600x1000,stats 里 viewport 尺寸应跟随(1264x905)
-powershell -ExecutionPolicy Bypass -File scripts/resize_parent.ps1 -W 1600 -H 1000 -Log acc_run.txt
-# 6. 性能: 日志 "stats #N: fps=.. WxH"; CPU 采样 scripts/cpu_sample.ps1
-# 7. 退出:等 autoclose,tasklist 无 electron 残留
+## 进程与协议
+
+```
+renderer/UI + WebGPU
+    ↕ contextBridge / Electron IPC
+main/session authority + sharedTexture broker
+    ↕ child_process IPC
+engine-host/ELECTRON_RUN_AS_NODE + N-API
+    ↕ command queue / TSFN
+engine thread/RBC + LuisaCompute
 ```
 
-验收基线(2026-10-06,RTX 5070 Ti):~55 fps(60fps 目标 pacing,PT preview 负载)、
-引擎子进程 ~1 核、WS ~1.8GB(readback 模式 ~3.2GB,另加 235 MiB/s 帧流量)。
+完整通道、消息形状与状态定义在 `protocol.js` (RVP v1)。
 
-## 已知坑(全部实测踩过)
+| 平面 | 消息 | 同步语义 |
+| --- | --- | --- |
+| 控制 | HELLO | renderer 先初始化 WebGPU 与帧接收器，主进程验证 GPU 能力后再启动引擎 |
+| 控制 | CALL / RESULT | 请求 ID 配对，5 秒超时；旋转开关与引擎统计 RPC |
+| 控制 | INPUT | rAF 合并相机增量，递增 `seq`，帧返回已应用 `inputSeq` |
+| 控制 | VIEWPORT / RESIZE | 设备像素尺寸，120ms 去抖；重建纹理环时递增 `epoch` |
+| 画面 | FRAME | `{epoch,slot,frameId,width,height,inputSeq,gpuMs}` 与 shared texture transfer |
+| 画面 | FRAME_DONE / RELEASE | renderer GPU 完成读取后归还对应租约；重复/过期 ticket 不复用新帧 |
+| 事件 | SESSION / SURFACE / STATS | 会话状态、纹理尺寸/代际、引擎与传输统计 |
 
-1. **shutdown 重入死锁**:shutdown 时 Chromium 销毁窗口 → `window-all-closed`
-   再触发 → handler 里又 `app.quit()` → browser 进程死锁且 `taskkill /F` 都杀不掉。
-   解法:单一 `shuttingDown` 保护的 stopAll,只走 deferred `process.exit`;
-   Electron 37 里 `process.exit()` 会**立即返回**(延迟生效),其后不要放清理代码。
-2. **Chromium "Intermediate D3D Window" 遮挡**:客户区实际由 Chromium 的
-   合成器子窗口(与我们的 WS_CHILD 同级)覆盖,z-order 垫底时看不到直显画面。
-   解法:创建时 + 每次 resize + 每 60 帧 `SetWindowPos(HWND_TOP)` 重断言。
-3. **headless 下 `control_camera_add_*` 必然崩**:`cam_controller` 仅在
-   `enable_camera_control` 且有 LC 窗口时创建;未启用时 `LUISA_ERROR` 抛异常
-   穿过 N-API 边界 → `std::terminate` → fail-fast(0xC0000409),fail-fast 不
-   过 VEH,且线程死亡会连带销毁其创建的 viewport 窗口。解法:rbc 侧允许无窗口
-   启用相机控制(tick 用中性输入驱动 `_update`),`CameraController` 增加
-   external-change 标记驱动 path-tracing 累积重置。
-4. **VEH 要过滤 `DBG_PRINTEXCEPTION_C(0x406d1388)`**:否则 OutputDebugString
-   也会触发崩溃转储(全内存 dump 3.5GB)。
-5. **contextIsolation 丢 TypedArray**:IPC 传帧必须 ArrayBuffer。
-6. **IPC 必须 `serialization:'advanced'`**:JSON 模式把 Buffer 炸成数字数组。
-7. **MSYS bash 里 taskkill 用单斜杠**(`/F /IM`);`//F` 被原样传递并报错。
-8. **刚 kill 掉引擎实例后立即重启,init 可能耗时 30s+**(GPU/驱动清理);
-   干净系统上 init→首帧 ~1-3s。测量时注意 stdout 重定向缓冲会扭曲读数。
-9. addon 用 `/delayload:node.exe` + hook,一份二进制同时适配 Node/Electron;
-   N-API 是 stable ABI。
-10. **PowerShell 变量不区分大小写**:`$H` 和 `$h` 是同一个变量,写工具脚本时
-    命名注意(曾因此把 hwnd 传给 MoveWindow 的高度参数,Chromium 尝试创建
-    千万像素表面导致 GPU 进程崩溃循环,并连锁 DXGI device-removed 崩掉
-    引擎)。
-11. **原生视口会抢键盘焦点**:UI 快捷键要先确保点击的是 HTML 区域(工具栏/
-    侧栏),否则按键进了原生 wndproc。
-12. **布局契约是三个副本**:addon C++(`computeViewportRect`)、main.js
-    (`UI_LAYOUT`)、renderer(CSS 变量)必须用同一组 inset 数字;改窗口
-    结构时三处同步。
+会话: `booting → waiting-renderer → probing → initializing → running → stopped`，失败进入 `unsupported` 或 `error`。
 
-## 文件
+## 帧所有权
 
-| 路径 | 说明 |
-| --- | --- |
-| `../../rbc/extensions/ext_node/` | N-API addon(两种 present 模式;平台无关) |
-| `../../rbc/extensions/ext_node/src/platform/` | 视口平台层:`viewport.h` 接口 + win32 实现 + mac/linux 空桩(见 FUTURE.md) |
-| `../../rbc/sample_graphics/` | embedding 补丁:`external_display.h`、无窗口相机控制(tick/enable_camera_control) |
-| `../../rbc/runtime/` | `CameraController::notify_external_change/any_changed` |
-| `engine-host.js` | 引擎宿主子进程(init 计时探针 + 1Hz stats 轮询) |
-| `main.js` | Electron main:fork 引擎、传 HWND/UI_LAYOUT、截图落盘、shutdown 加固 |
-| `preload.js` / `renderer/` | contextBridge + 工具栏/侧栏 UI + readback WebGL 画布 + 截图编码 |
-| `scripts/` | 冒烟(smoke/smoke_host/camera_stress/stats_test)+ 验收工具(capture_app/capture_rect/drag/wheel/send_key/resize_parent/cpu_sample/dump_frame) |
-| `scripts/debug/` | 调试期探针(tree/inspect_child/probe_hwnd/list_windows/capture_window/capture_screen) |
-| `native/deps/` | `node.lib`(N-API import lib,已追踪);node headers 由 `uv run prepare --electron-ext` 拉取(等价于 `native/fetch-deps.ps1`) |
+1. 引擎从 4 槽纹理环选择 FREE 槽，blit 显示图像，提交 timeline fence。
+2. fence 完成后，GPU → LEASED，发送句柄和帧元数据。
+3. 主进程 `subtle.importSharedTexture`、`startTransferSharedTexture`，保留引用直到 renderer 确认。
+4. preload `finishTransferSharedTexture`，页面调用 `getVideoFrame`、WebGPU 采样并提交，随后 `VideoFrame.close()`。
+5. preload `imported.release(callback)`；callback 在 renderer GPU 完成后发送 FRAME_DONE。
+6. 主进程释放引用并发送 RELEASE，引擎验证 `{epoch,slot,frameId}` 后 LEASED → FREE。
 
-Git 忽略策略见根 `.gitignore`:addon 构建产物、`node_modules`、headers 压缩包、
-截图/日志产物全部忽略;`node.lib` 因难以重新生成而被追踪。规范化的拉取入口是
-`uv run prepare --electron-ext`(无该参数时 prepare 完全不碰 electron 扩展);
-`native/fetch-deps.ps1` 仅作手动兜底。
+主进程最多 2 帧在途 + 1 排队；更新帧替换未导入的排队帧。引擎无空槽时跳过发布，不阻塞 UI。
+**已发送租约超时不能强制复用。** 主进程 2 秒确认超时、引擎 3 秒租约超时均停止连接。
+resize 保留仍有租约的旧环，最后一个租约归还后销毁。renderer 按 FRAME 尺寸绘制，避免布局尺寸与旧帧尺寸混用。
 
-## 应用价值
+输入延迟统计是发包到 renderer 提交绘制的耗时，不是显示器真实 photon 时间。
+`gpuMs` 是引擎提交到 fence 被轮询观察的耗时，含 pacing/轮询延迟，不等于纯 GPU blit 时长。
 
-这个结构(原生 GPU 视口 + 周围 Web UI 控件)就是游戏引擎/工具软件嵌入
-Electron 的通用骨架:所有业务 UI(菜单/属性面板/状态栏/脚本控制台)
-都是普通 Web 技术,而重渲染由原生 swapchain 直显承担,二者通过一条
-细控制信道(N-API + IPC)通信。新增一个业务控件 = 加一个 HTML 按钮 +
-一条 IPC 消息 + (可选)一个引擎侧命令,无需碰渲染路径。
+## Windows 资源互操作
+
+每个槽位两张纹理:
+- **staging**:LC 创建的 RGBA8 图像,引擎 `TextureUploader::blit` 写入(LC 管理其屏障)。
+- **exported**:在引擎同一适配器(LUID)上用 **D3D11** 创建
+  (`BIND_SHADER_RESOURCE|RENDER_TARGET`,`MISC_SHARED|SHARED_NTHANDLE`,无 keyed mutex)
+  ——即 Chromium `D3DImageBacking` 自身使用的布局;`IDXGIResource1::CreateSharedHandle`
+  得到 NT HANDLE,D3D12 `OpenSharedHandle` 仅供写入,`DuplicateHandle` 进 Electron 主进程。
+
+每帧:LC 主流 blit → signal LC fence → **私有 D3D12 COPY 队列** `Wait(LC fence)` →
+`CopyResource(staging → exported)` → signal 拷贝 fence;拷贝 fence 完成后才发布租约。
+exported 纹理**从不注册给 LC**,隐式提升/衰减到 COMMON,不录制任何屏障。
+
+> 排障结论(实测):D3D12 直接分配的共享纹理(无论是否 `SIMULTANEOUS_ACCESS`)交给 LC
+> 写入/或被 Chromium 采样时,出现黑帧或 NVIDIA Xid 13 GPU 异常 → Chromium GPU 进程
+> `exit_code=34`(context lost)。改为 D3D11 分配 + 私有拷贝队列后,可见窗口连续
+> 1500+ 帧 0 驱动异常、0 租约超时。
+
+销毁时关闭引擎本地句柄及主进程副本(`DUPLICATE_CLOSE_SOURCE`)。
+
+实测 Canvas2D/WebGL 的 VideoFrame 路径会丢失 GPU context;当前仅 WebGPU
+`importExternalTexture`(Electron 官方测试覆盖的路径)。`sharedTexture` 仍为 experimental。
+
+## 验证
+
+`pnpm smoke` 要求:非黑画面、`inputSeq ≥ 1`(输入已反映到帧)、`epoch ≥ 2`(尺寸重建)、
+0 次租约超时、0 次 GPU 进程退出,否则非零退出。交互脚本在 `scripts/`(按窗口标题定位):
+`capture_app.ps1`、`drag.ps1`、`wheel.ps1`、`send_key.ps1`、`resize_parent.ps1`、`cpu_sample.ps1`;
+`probe_engine.js` 打印 addon 导出能力,`gpu_probe.js`(`electron scripts/gpu_probe.js`)打印 Chromium GPU 状态。
+
+平台扩展见 `FUTURE.md`；旧 HWND 实验记录见 `REPORT.md` (历史文档)。
+
+## API 来源
+
+- https://www.electronjs.org/docs/latest/api/shared-texture
+- https://www.electronjs.org/docs/latest/api/structures/shared-texture-imported-subtle
+- https://www.electronjs.org/docs/latest/api/structures/shared-texture-handle
+- https://github.com/electron/electron/blob/main/spec/fixtures/api/shared-texture/common.js

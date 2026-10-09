@@ -1,151 +1,139 @@
-// Engine host: runs in a dedicated Node.js child process (Electron
-// utilityProcess). Hosts the rbc_ext_node addon so the render engine lives in
-// a clean Node runtime — no Chromium GPU / D3D12 / dxil interference, and a
-// native crash cannot take down the UI process.
+// Engine host: child process (ELECTRON_RUN_AS_NODE, plain Node runtime) that
+// owns the rbc_ext_node addon. Keeps the engine's D3D12 stack out of every
+// Chromium process, and a native crash cannot take the UI down.
 //
-// Protocol (IPC messages over the utility process pipe):
-//   parent -> host: { cmd: 'start', options: {...} }
-//   parent -> host: { cmd: 'cameraRotate' | 'cameraZoom', ... }
-//   parent -> host: { cmd: 'turntable', enabled: bool }
-//   parent -> host: { cmd: 'screenshot' }          (shared mode one-shot capture)
-//   parent -> host: { cmd: 'stop' }
-//   host -> parent: { type: 'frame', width, height, index, buffer: Buffer }
-//   host -> parent: { type: 'screenshot', width, height, buffer: Buffer }
-//   host -> parent: { type: 'stats', fps, width, height, shared, turntable }
-//   host -> parent: { type: 'error', message }
+// Bridge only — protocol semantics live in protocol.js (RVP v1):
+//   main -> host : E.START / E.INPUT / E.RESIZE / E.RELEASE / E.CALL / E.STOP
+//   host -> main : E.HELLO / E.STATE / E.SURFACE / E.FRAME / E.STATS / E.RESULT / E.LOG
+
+'use strict';
 
 const path = require('path');
 const fs = require('fs');
-
-const t0 = Date.now();
-const stamp = (what) => process.send?.({ type: 'log', message: `timing: ${what} @${Date.now() - t0}ms` });
+const P = require('./protocol');
+const { E, METHOD } = P;
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const PROGRAM_DIR = process.env.RBC_PROGRAM_DIR ||
   path.join(REPO_ROOT, 'src', 'robocute', 'rbc_ext', '_C');
+const BACKEND = process.env.RBC_BACKEND || 'dx';
+const NATIVE_PATH = path.join(__dirname, 'native', 'build', 'rbc_ext_node.node');
 
 // DLL search path for the engine runtime (rbc/luisa dlls live here).
 process.env.PATH = PROGRAM_DIR + path.delimiter + process.env.PATH;
 
-const NATIVE_PATH = path.join(__dirname, 'native', 'build', 'rbc_ext_node.node');
-process.send?.({ type: 'log', message: 'engine-host: boot, native=' + NATIVE_PATH });
-if (!fs.existsSync(NATIVE_PATH)) {
-  process.send?.({ type: 'error', message: 'native addon not built: ' + NATIVE_PATH });
-  process.exit(1);
-}
-// In this child process there is no Chromium, so no dxil.dll name conflict;
-// skip the preload (it is only needed when the addon shares a process with
-// Chromium, e.g. when loaded directly in the Electron main process).
-let native;
-try {
-  stamp('require() begin');
-  native = require(NATIVE_PATH);
-  stamp('require() done');
-  process.send?.({ type: 'log', message: 'engine-host: addon loaded' });
-} catch (e) {
-  process.send?.({ type: 'error', message: 'addon load failed: ' + (e && e.stack || e) });
-  process.exit(1);
-}
-
-let running = false;
-let streamWidth = 0, streamHeight = 0, streamIndex = 0;
-let statsTimer = null;
-
-function sendFrame(frame, error, w, h, kind) {
-  if (error) {
-    safeSend({ type: 'error', message: error });
-    return;
-  }
+const t0 = Date.now();
+function send(msg) {
   try {
-    if (kind === 'screenshot') {
-      // one-shot capture (shared mode): payload for the screenshot pipeline
-      safeSend({ type: 'screenshot', width: w, height: h, buffer: Buffer.from(frame) });
-      return;
-    }
-    // Transfer as Buffer; child_process IPC supports Buffer payloads.
-    safeSend({
-      type: 'frame',
-      width: w || streamWidth,
-      height: h || streamHeight,
-      index: streamIndex++,
-      buffer: Buffer.from(frame),
-    });
+    process.send?.(msg);
+    return true;
   } catch (e) {
-    safeSend({ type: 'error', message: 'send failed: ' + (e && e.stack || e) });
+    console.error('[engine-host] send failed:', e && e.message);
+    return false;
   }
 }
+const log = (message) => send({ t: E.LOG, message });
 
-function safeSend(obj) {
-  try {
-    const ok = process.send?.(obj);
-    if (obj.type === 'frame' && ok === false) {
-      droppedFrames++;
-      if (droppedFrames % 100 === 1) {
-        console.error(`[engine-host] IPC backpressure, dropped=${droppedFrames} (parent too slow)`);
-      }
-    }
-  } catch (e) {
-    console.error('[engine-host] process.send failed:', e);
-  }
-}
-let droppedFrames = 0;
 process.on('disconnect', () => {
-  console.error('[engine-host] IPC channel disconnected, exiting');
+  // main is gone: nobody can return leases or display frames
+  try { native?.stop(); } catch (_) {}
   process.exit(0);
 });
 
-process.send?.({ type: 'log', message: 'engine-host: registering message handler' });
+let native = null;
+let loadError = null;
+if (!fs.existsSync(NATIVE_PATH)) {
+  loadError = 'native addon not built: ' + NATIVE_PATH;
+} else {
+  try {
+    native = require(NATIVE_PATH);
+    log(`addon loaded @${Date.now() - t0}ms`);
+  } catch (e) {
+    loadError = 'addon load failed: ' + (e && e.message || e);
+  }
+}
+
+function capabilities() {
+  if (!native) {
+    return { supported: false, reason: loadError, platform: process.platform, handleType: '', pixelFormat: '', protocol: P.PROTOCOL_VERSION };
+  }
+  return native.capabilities(BACKEND);
+}
+
+let started = false;
+let statsTimer = null;
+
+function onEngineEvent(evt) {
+  switch (evt.type) {
+    case 'frame': {
+      const lease = { t: E.FRAME, ...evt };
+      delete lease.type;
+      // a lease that cannot reach main must be returned right here
+      if (!send(lease)) native.releaseFrame(evt.epoch, evt.slot, evt.frameId);
+      break;
+    }
+    case 'surface':
+      send({ t: E.SURFACE, epoch: evt.epoch, width: evt.width, height: evt.height, slots: evt.slots });
+      break;
+    case 'state':
+      send({ t: E.STATE, state: evt.state, message: evt.message });
+      break;
+  }
+}
+
+const methods = {
+  [METHOD.SET_TURNTABLE]: ({ enabled }) => {
+    native.setTurntable(!!enabled);
+    return { enabled: !!enabled };
+  },
+  [METHOD.GET_STATS]: () => native.getStats(),
+};
+
 process.on('message', (msg) => {
-  if (!msg || typeof msg.cmd !== 'string') return;
-  switch (msg.cmd) {
-    case 'start': {
-      if (running) return;
-      running = true;
-      stamp('start cmd received');
-      const o = msg.options;
-      streamWidth = o.width; streamHeight = o.height; streamIndex = 0;
-      native.start(
-        {
-          projectPath: o.projectPath,
-          backend: o.backend,
-          programPath: o.programPath,
-          width: o.width,
-          height: o.height,
-          present: o.present,
-          parentHwnd: o.parentHwnd,
-          viewportTop: o.viewportTop,
-          viewportRight: o.viewportRight,
-        },
-        sendFrame
-      );
-      stamp('native.start returned');
-      // stats feed for the UI sidebar (1 Hz)
+  if (!msg || typeof msg.t !== 'string') return;
+  switch (msg.t) {
+    case E.START: {
+      if (started || !native) return;
+      started = true;
+      try {
+        native.start(msg.options, onEngineEvent);
+      } catch (e) {
+        send({ t: E.STATE, state: 'error', message: String(e && e.message || e) });
+        return;
+      }
       statsTimer = setInterval(() => {
-        try {
-          safeSend({ type: 'stats', ...native.getStats() });
-        } catch (e) { /* engine may be stopping */ }
+        try { send({ t: E.STATS, ...native.getStats() }); } catch (_) {}
       }, 1000);
       break;
     }
-    case 'cameraRotate':
-      native.cameraRotate(msg.yaw, msg.pitch);
+    case E.INPUT:
+      native?.input(msg.seq, msg.yaw || 0, msg.pitch || 0, msg.dolly || 0);
       break;
-    case 'cameraZoom':
-      native.cameraZoom(msg.dz);
+    case E.RESIZE:
+      native?.resize(msg.width, msg.height);
       break;
-    case 'turntable':
-      native.cameraTurntable(!!msg.enabled);
+    case E.RELEASE:
+      native?.releaseFrame(msg.epoch, msg.slot, msg.frameId);
       break;
-    case 'screenshot':
-      native.requestScreenshot();
+    case E.CALL: {
+      const fn = methods[msg.method];
+      if (!fn || !native) {
+        send({ t: E.RESULT, id: msg.id, ok: false, error: `unknown method '${msg.method}'` });
+        return;
+      }
+      try {
+        send({ t: E.RESULT, id: msg.id, ok: true, value: fn(msg.params || {}) });
+      } catch (e) {
+        send({ t: E.RESULT, id: msg.id, ok: false, error: String(e && e.message || e) });
+      }
       break;
-    case 'stop':
-      try { native.stop(); } catch (_) {}
+    }
+    case E.STOP:
       if (statsTimer) { clearInterval(statsTimer); statsTimer = null; }
-      running = false;
+      try { native?.stop(); } catch (_) {}
+      started = false;
       break;
   }
 });
 
-process.send?.({ type: 'log', message: 'engine-host: ready' });
-process.send?.({ type: 'ready' });
+send({ t: E.HELLO, protocol: P.PROTOCOL_VERSION, caps: capabilities() });

@@ -1,27 +1,24 @@
-param([string]$Out = "app_capture.png", [string]$Log = "app_run.txt")
-# Capture the WHOLE app window: find the native viewport hwnd in the engine
-# log, take its parent (the browser window), raise it, capture its rect.
-$logContent = Get-Content $Log -ErrorAction SilentlyContinue
-$line = $logContent | Select-String -Pattern 'shared viewport hwnd=([0-9A-Fa-f]+)' | Select-Object -First 1
-if (-not $line) { Write-Error "viewport hwnd not found in $Log"; exit 1 }
-$hex = $line.Matches[0].Groups[1].Value
-$h = [IntPtr]::new([Convert]::ToInt64($hex, 16))
+param([string]$Out = "app_capture.png")
+# Capture the WHOLE app window (found by title): raise it topmost, then grab its
+# screen rect. The 3D viewport is part of the Chromium composition, so this
+# also captures the shared-texture output.
+$Out = [IO.Path]::GetFullPath((Join-Path (Get-Location) $Out))
+$win = (Get-Process electron -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like 'RoboCute*' } | Select-Object -First 1).MainWindowHandle
+if (-not $win) { Write-Error 'RoboCute window not found'; exit 1 }
 Add-Type -AssemblyName System.Drawing
 Add-Type -TypeDefinition @'
 using System; using System.Runtime.InteropServices;
 namespace CA { public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
   public class U {
-    [DllImport("user32.dll")] public static extern IntPtr GetParent(IntPtr h);
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   }
 }
 '@
-$parent = [CA.U]::GetParent($h)
-[CA.U]::SetWindowPos($parent, [IntPtr]::new(-1), 0, 0, 0, 0, 0x0003 -bor 0x0040) | Out-Null
+[CA.U]::SetWindowPos($win, [IntPtr]::new(-1), 0, 0, 0, 0, 0x0003 -bor 0x0040) | Out-Null
 Start-Sleep -Milliseconds 500
 $r = New-Object CA.RECT
-[CA.U]::GetWindowRect($parent, [ref]$r) | Out-Null
+[CA.U]::GetWindowRect($win, [ref]$r) | Out-Null
 $w = $r.Right - $r.Left; $ht = $r.Bottom - $r.Top
 Write-Output "app window rect $($r.Left),$($r.Top) ${w}x${ht}"
 $bmp = New-Object System.Drawing.Bitmap $w, $ht

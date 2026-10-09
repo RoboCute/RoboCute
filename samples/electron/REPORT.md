@@ -1,5 +1,8 @@
 # RoboCute Electron Demo 整理与 UI 应用化改造报告
 
+> **历史文档(2026-10-06)。** 文中的 HWND 子窗口直显、readback 模式与布局契约已于
+> 2026-10-09 被 sharedTexture 视口 + RVP 协议取代,现行设计见 `README.md` 与 `protocol.js`。
+
 日期:2026-10-06 · 状态:✅ 完成并全量验证
 
 ---

@@ -1,27 +1,45 @@
 // rbc/extensions/ext_node/src/addon.cpp
 //
-// Hand-written N-API frontend for the RoboCute engine: the Node.js/Electron
-// counterpart of the pybind11 frontend in rbc/extensions/ext_c.
+// N-API frontend for the RoboCute engine, feeding an Electron viewport through
+// the sharedTexture API. Protocol: samples/electron/protocol.js (RVP v1).
 //
-// SPIKE SCOPE: bind only what samples/app_graphics_scene.py needs —
-//   context/project/scene setup, material + mesh + entity creation, headless
-//   display rendering, per-frame CPU readback streamed to JS via TSFN.
+// Threading
+//   * One dedicated engine thread owns every engine / GPU call.
+//   * JS-thread entry points only post atomics (input, resize, turntable) or
+//     push release tickets into a mutex-guarded queue.
+//   * Engine -> JS goes through one threadsafe function with an UNBOUNDED queue:
+//     a frame lease must never be dropped silently, or its slot would leak.
 //
-// Design notes:
-//   * All engine API calls happen on ONE dedicated "engine thread" (created in
-//     Start). JS threads only enqueue atomic commands (camera deltas / stop).
-//   * Frames are transferred to JS as external ArrayBuffers (malloc'd, moved
-//     to the V8 GC via finalizer). TSFN queue is capped; overflow drops frames.
-//   * Object handles are intentionally never released (same convention as the
-//     Python frontend); everything dies with the process.
+// Frame transport (per ring slot: FREE -> GPU -> LEASED -> FREE)
+//   1. after tick() the display image is blitted into the slot's LC-owned
+//      staging texture and an LC timeline fence is signalled; a private copy
+//      queue waits that fence and CopyResource's staging -> exported texture
+//      (the exported texture is never registered with LC: its barrier tracker
+//      would transition a SIMULTANEOUS_ACCESS resource out of COMMON, which
+//      faults the GPU)                                          (FREE -> GPU)
+//   2. once the copy fence passed the slot is leased to the host:
+//      event {type:'frame', epoch, slot, frameId, handle, ...}   (GPU -> LEASED)
+//   3. the host imports + displays it and calls releaseFrame() exactly once
+//      after the renderer's GPU work on it completed             (LEASED -> FREE)
+//   No free slot -> the frame is not published (counted as `skipped`); the
+//   engine never blocks on the UI. A resize retires the ring (new epoch);
+//   retired slots are destroyed when their last lease comes back. A lease that
+//   is never returned stops the engine (a slot is never reused while a reader
+//   may still sample it).
+//
+// There is no CPU readback path: capabilities() reports unsupported
+// platforms/backends and start() refuses to run on them.
 
 #include <node_api.h>
 
+#ifdef _WIN32
 #include <windows.h>
 #include <dbghelp.h>
+#endif
 
-#include "platform/viewport.h"
+#include "platform/shared_surface.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -30,22 +48,29 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include <generated/world.h>
-#include <external_display.h>
-#include <luisa/runtime/rhi/command.h>
+#include <luisa/runtime/event.h>
+#include <luisa/runtime/image.h>
 #include <luisa/runtime/rhi/pixel.h>
 #include <luisa/vstl/v_guid.h>
 #include <rbc_graphics/render_device.h>
+#include <rbc_graphics/scene_manager.h>
+#include <rbc_graphics/texture_uploader.h>
 
 namespace {
 
+using Clock = std::chrono::steady_clock;
 using luisa::compute::PixelStorage;
-using luisa::compute::TextureDownloadCommand;
+
+constexpr uint32_t kProtocolVersion = 1;
+constexpr uint32_t kMinSize = 16;
+constexpr uint32_t kMaxSize = 8192;
 
 struct Options {
     std::string project_path;
@@ -53,216 +78,172 @@ struct Options {
     std::string program_path;
     uint32_t width = 1280;
     uint32_t height = 720;
-    // shared-present mode: render straight into a DXGI swapchain on a native
-    // child window (borrowed from the Electron browser window) — no CPU
-    // readback, no frame IPC. parent_hwnd is the Electron window's HWND.
-    bool shared_present = false;
-    uint64_t parent_hwnd = 0;
-    // UI chrome insets: the viewport covers the parent client area minus a
-    // top toolbar band and a right sidebar (HTML UI lives there).
-    uint32_t viewport_top = 0;
-    uint32_t viewport_right = 0;
+    uint32_t host_pid = 0;          // Electron main process (handle import side)
+    uint32_t slot_count = 3;        // ring depth: render / in transit / on screen
+    uint32_t max_fps = 60;          // engine pacing
+    uint32_t lease_timeout_ms = 3000;
 };
 
-// Camera input sink, registered with the platform viewport layer (defined
-// after g_engine; declared here because EngineDemo::start references them).
-void viewportCameraRotate(float yaw, float pitch);
-void viewportCameraZoom(float dz);
+// ---------------------------------------------------------------------------
+// Engine -> JS events
+// ---------------------------------------------------------------------------
+enum class EventKind : uint8_t { State, Surface, Frame };
 
-struct FrameMsg {
-    uint8_t *rgba = nullptr;  // malloc'd w*h*4 RGBA8, ownership moves to JS
-    uint32_t w = 0;
-    uint32_t h = 0;
-    uint32_t index = 0;
-    bool screenshot = false;  // one-shot readback (shared mode), not a stream frame
-    char error[512] = {0};
+struct EngineEvent {
+    EventKind kind = EventKind::State;
+    std::string state;    // State: initializing | running | stopped | error
+    std::string message;  // State: detail
+    uint32_t epoch = 0;
+    uint32_t slot = 0;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t slot_count = 0;
+    uint64_t frame_id = 0;
+    uint64_t input_seq = 0;
+    uint64_t host_handle = 0;
+    double timestamp_us = 0.0;  // engine clock at submit
+    double gpu_ms = 0.0;        // submit -> fence observed
 };
 
-float halfToFloat(uint16_t h) {
-    uint32_t sign = (h & 0x8000u) << 16;
-    uint32_t exp = (h & 0x7C00u) >> 10;
-    uint32_t mant = h & 0x03FFu;
-    uint32_t f;
-    if (exp == 0) {
-        if (mant == 0) {
-            f = sign;
-        } else {
-            // subnormal
-            exp = 1;
-            while ((mant & 0x0400u) == 0) { mant <<= 1; --exp; }
-            mant &= 0x03FFu;
-            uint32_t e = 127u - 15u - exp + 1u;
-            f = sign | (e << 23) | (mant << 13);
-        }
-    } else if (exp == 0x1Fu) {
-        f = sign | 0x7F800000u | (mant << 13);  // inf / nan
-    } else {
-        uint32_t e = exp - 15u + 127u;
-        f = sign | (e << 23) | (mant << 13);
+// ---------------------------------------------------------------------------
+// Ring of exportable textures
+// ---------------------------------------------------------------------------
+enum class SlotState : uint8_t { Free, Gpu, Leased };
+
+struct Slot {
+    rbcnode::ExportedTexture tex;          // cross-process texture, never seen by LC
+    luisa::compute::Image<float> staging;  // LC-owned blit target, copied into `tex`
+    SlotState state = SlotState::Free;
+    uint64_t copy_ticket = 0;              // copier fence value: staging -> tex done
+    uint64_t frame_id = 0;
+    uint64_t input_seq = 0;
+    Clock::time_point t_submit{};
+    Clock::time_point t_leased{};
+};
+
+struct Ring {
+    uint32_t epoch = 0;
+    luisa::uint2 size{0u, 0u};
+    std::vector<Slot> slots;
+    bool anyLeased() const {
+        return std::any_of(slots.begin(), slots.end(),
+                           [](const Slot &s) { return s.state == SlotState::Leased; });
     }
-    float out;
-    std::memcpy(&out, &f, sizeof(float));
-    return out;
-}
+};
 
-uint8_t toU8(float v) {
-    if (!(v > 0.0f)) return 0;      // also catches NaN
-    if (v > 1.0f) v = 1.0f;
-    return static_cast<uint8_t>(v * 255.0f + 0.5f);
-}
-
-void convertFrame(const uint8_t *raw, PixelStorage storage, size_t pixel_count, uint8_t *out) {
-    switch (storage) {
-        case PixelStorage::BYTE4:
-            std::memcpy(out, raw, pixel_count * 4);
-            break;
-        case PixelStorage::FLOAT4: {
-            const float *f = reinterpret_cast<const float *>(raw);
-            for (size_t i = 0; i < pixel_count * 4; ++i) out[i] = toU8(f[i]);
-            break;
-        }
-        case PixelStorage::HALF4: {
-            const uint16_t *hf = reinterpret_cast<const uint16_t *>(raw);
-            for (size_t i = 0; i < pixel_count * 4; ++i) out[i] = toU8(halfToFloat(hf[i]));
-            break;
-        }
-        default:
-            throw std::runtime_error("unsupported display pixel storage for RGBA8 conversion");
-    }
-}
-
-// The shared-present viewport itself lives in src/platform/(see
-// platform/viewport.h): a native child window of the Electron browser window
-// whose handle is lent to RBC via set_external_display_handles; RBC creates
-// a GPU swapchain on it and tick() presents directly. This file only owns
-// the singleton instance and the camera sink that feeds EngineDemo.
-extern rbcnode::Viewport g_viewport;
+struct ReleaseTicket {
+    uint32_t epoch;
+    uint32_t slot;
+    uint64_t frame_id;
+};
 
 // ---------------------------------------------------------------------------
-// EngineDemo: mirrors samples/app_graphics_scene.py on a dedicated thread.
+// Engine
 // ---------------------------------------------------------------------------
-class EngineDemo {
+class Engine {
 public:
     void start(Options opt, napi_threadsafe_function tsfn) {
         opt_ = std::move(opt);
+        opt_.slot_count = std::clamp(opt_.slot_count, 2u, 8u);
+        opt_.max_fps = std::clamp(opt_.max_fps, 1u, 1000u);
         tsfn_ = tsfn;
-        auto t0 = std::chrono::steady_clock::now();
-        auto stamp = [t0](const char *what) {
-            fprintf(stderr, "[rbc_ext_node] timing: %s @%.0fms\n", what,
-                    std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
-        };
-        if (opt_.shared_present) {
-            if (!opt_.parent_hwnd) throw std::runtime_error("shared present requires a parent HWND");
-            g_viewport.parent_handle = opt_.parent_hwnd;
-            g_viewport.inset_top = opt_.viewport_top;
-            g_viewport.inset_right = opt_.viewport_right;
-            rbcnode::setCameraSink({viewportCameraRotate, viewportCameraZoom});
-            // initEngine needs the handle; wait for the platform thread to create it
-            stamp("viewport thread spawned");
-            rbcnode::viewportStart(g_viewport);
-            for (int i = 0; i < 500 && !g_viewport.viewport_handle; ++i)
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            stamp("viewport hwnd ready");
-            if (!g_viewport.viewport_handle)
-                throw std::runtime_error("shared viewport window failed to create (or platform unsupported)");
-        }
+        auto caps = rbcnode::surfaceCaps(opt_.backend);
+        if (!caps.supported) throw std::runtime_error("unsupported: " + caps.reason);
+        std::string err;
+        if (!rbcnode::surfaceAttachHost(opt_.host_pid, err))
+            throw std::runtime_error("cannot attach host process: " + err);
+        t0_ = Clock::now();
+        // a resize posted before start() (viewport known early) wins
+        if (!pending_size_.load()) requestResize(opt_.width, opt_.height);
         running_ = true;
-        stamp("engine thread spawning");
         thread_ = std::thread([this] { run(); });
     }
 
     void stop() {
         running_ = false;
         if (thread_.joinable()) thread_.join();
-        rbcnode::viewportStop(g_viewport);
+        rbcnode::surfaceDetachHost();
     }
 
-    void cameraRotate(float yaw, float pitch) {
-        yaw_accum_ += yaw;
-        pitch_accum_ += pitch;
+    // JS thread ---------------------------------------------------------------
+    void requestResize(uint32_t w, uint32_t h) {
+        w = std::clamp(w, kMinSize, kMaxSize);
+        h = std::clamp(h, kMinSize, kMaxSize);
+        pending_size_.store((uint64_t(w) << 32) | h, std::memory_order_release);
     }
 
-    void cameraZoom(float dz) { dolly_accum_ += dz; }
+    // Deltas first, then the sequence number (release): the engine reads the
+    // seq (acquire) before draining deltas, so a frame stamped inputSeq=N
+    // contains at least every delta of packets <= N.
+    void input(uint64_t seq, float yaw, float pitch, float dolly) {
+        if (yaw != 0.0f) addAtomic(yaw_accum_, yaw);
+        if (pitch != 0.0f) addAtomic(pitch_accum_, pitch);
+        if (dolly != 0.0f) addAtomic(dolly_accum_, dolly);
+        uint64_t prev = input_seq_.load(std::memory_order_relaxed);
+        while (seq > prev && !input_seq_.compare_exchange_weak(prev, seq, std::memory_order_release)) {}
+    }
+
+    void release(const ReleaseTicket &t) {
+        std::lock_guard<std::mutex> lk(release_mtx_);
+        releases_.push_back(t);
+    }
 
     void setTurntable(bool on) { turntable_.store(on); }
-    bool turntable() const { return turntable_.load(); }
 
-    // One-shot CPU readback of the current display image (shared mode):
-    // picked up by the render loop, delivered through the TSFN with the
-    // screenshot flag set. No-op in readback mode (JS captures the canvas).
-    void requestScreenshot() { screenshot_pending_ = true; }
-
-    std::string lastError() {
-        std::lock_guard<std::mutex> lk(mtx_);
-        return last_error_;
-    }
-
-    // Stats for the UI (called from the JS thread; all sources are atomics).
     struct Stats {
-        double fps;
-        uint32_t width, height;
-        bool shared, turntable;
+        double fps, publish_fps;
+        uint32_t width, height, epoch, slot_count, slots_free;
+        uint64_t frames, published, skipped, lease_expired, input_seq;
+        bool turntable, running;
     };
     Stats stats() const {
         Stats s{};
         s.fps = fps_.load();
-        if (opt_.shared_present) {
-            s.width = viewport_size_.x;
-            s.height = viewport_size_.y;
-        } else {
-            s.width = last_frame_w_.load();
-            s.height = last_frame_h_.load();
-        }
-        s.shared = opt_.shared_present;
-        s.turntable = turntable();
+        s.publish_fps = publish_fps_.load();
+        s.width = cur_w_.load();
+        s.height = cur_h_.load();
+        s.epoch = cur_epoch_.load();
+        s.slot_count = opt_.slot_count;
+        s.slots_free = slots_free_.load();
+        s.frames = frames_.load();
+        s.published = published_.load();
+        s.skipped = skipped_.load();
+        s.lease_expired = lease_expired_.load();
+        s.input_seq = applied_seq_.load();
+        s.turntable = turntable_.load();
+        s.running = running_.load();
         return s;
     }
 
 private:
-    void setError(const std::string &msg) {
-        std::lock_guard<std::mutex> lk(mtx_);
-        last_error_ = msg;
+    static void addAtomic(std::atomic<float> &a, float v) {
+        float cur = a.load(std::memory_order_relaxed);
+        while (!a.compare_exchange_weak(cur, cur + v, std::memory_order_relaxed)) {}
     }
 
-    void sendError(const char *what) {
-        setError(what);
-        auto *msg = new FrameMsg{};
-        std::strncpy(msg->error, what, sizeof(msg->error) - 1);
-        napi_call_threadsafe_function(tsfn_, msg, napi_tsfn_nonblocking);
+    double sinceStartUs(Clock::time_point t) const {
+        return std::chrono::duration<double, std::micro>(t - t0_).count();
     }
 
-    void sendFrame(uint8_t *rgba, uint32_t w, uint32_t h, uint32_t index, bool screenshot = false) {
-        auto *msg = new FrameMsg{};
-        msg->rgba = rgba;
-        msg->w = w;
-        msg->h = h;
-        msg->index = index;
-        msg->screenshot = screenshot;
-        last_frame_w_.store(w);
-        last_frame_h_.store(h);
-        tallyFrame();
-        napi_status st = napi_call_threadsafe_function(tsfn_, msg, napi_tsfn_nonblocking);
-        if (st == napi_queue_full) {
-            free(rgba);
-            delete msg;
-        } else if (st != napi_ok) {
-            setError("napi_call_threadsafe_function failed");
-            free(rgba);
-            delete msg;
+    // -- events ---------------------------------------------------------------
+    bool emit(EngineEvent *ev) {
+        if (napi_call_threadsafe_function(tsfn_, ev, napi_tsfn_nonblocking) != napi_ok) {
+            delete ev;
+            return false;
         }
+        return true;
+    }
+    void emitState(const char *state, const std::string &message) {
+        fprintf(stderr, "[rbc_ext_node] state=%s %s\n", state, message.c_str());
+        fflush(stderr);
+        auto *ev = new EngineEvent{};
+        ev->kind = EventKind::State;
+        ev->state = state;
+        ev->message = message;
+        emit(ev);
     }
 
-    // Shared fps tally for getStats(); the stderr telemetry logs stay separate.
-    void tallyFrame() {
-        fps_frames_++;
-        auto now = std::chrono::steady_clock::now();
-        if (now - fps_last_ >= std::chrono::seconds(2)) {
-            fps_.store(fps_frames_ / std::chrono::duration<double>(now - fps_last_).count());
-            fps_frames_ = 0;
-            fps_last_ = now;
-        }
-    }
-
+    // -- scene setup (mirrors samples/app_graphics_scene.py) ---------------------
     static std::string guidString(void *object_handle) {
         vstd::Guid g = rbc::Object::guid(object_handle);
         auto s = g.to_base64();
@@ -271,15 +252,12 @@ private:
 
     void makeMaterial(void *mat, const char *albedo_json, const std::string &tex_guid) {
         std::string json = std::string("{\"type\":\"pbr\",\"base_albedo\":") + albedo_json +
-            ",\"specular_roughness\":0.6,\"weight_metallic\":0.3,\"base_albedo_tex\":[\"" +
-            tex_guid + "\",0]}";
+                           ",\"specular_roughness\":0.6,\"weight_metallic\":0.3,\"base_albedo_tex\":[\"" +
+                           tex_guid + "\",0]}";
         rbc::MaterialResource::load_from_json(mat, json.c_str());
     }
 
-    void addCubeToMesh(float *P,          // pos: float4 x vertex_count
-                       float *UV,         // uv0: float2 x vertex_count
-                       uint32_t *I,       // indices: uint3 x triangle_count
-                       float ox, float oy, float oz, float s,
+    void addCubeToMesh(float *P, float *UV, uint32_t *I, float ox, float oy, float oz, float s,
                        uint32_t vertex_start, uint32_t triangle_start) {
         static const float pos[8][3] = {
             {-0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, 0.5f}, {0.5f, -0.5f, -0.5f}, {0.5f, -0.5f, 0.5f},
@@ -294,8 +272,8 @@ private:
             UV[(vertex_start + i) * 2 + 1] = (i & 1) ? 1.0f : 0.0f;
         }
         static const uint32_t tri[12][3] = {
-            {0, 1, 2}, {1, 3, 2}, {4, 5, 6}, {5, 7, 6}, {0, 1, 4},
-            {1, 5, 4}, {2, 3, 6}, {3, 7, 6}, {0, 2, 4}, {2, 6, 4}, {1, 3, 5}, {3, 7, 5},
+            {0, 1, 2}, {1, 3, 2}, {4, 5, 6}, {5, 7, 6}, {0, 1, 4}, {1, 5, 4},
+            {2, 3, 6}, {3, 7, 6}, {0, 2, 4}, {2, 6, 4}, {1, 3, 5}, {3, 7, 5},
         };
         for (uint32_t i = 0; i < 12; ++i) {
             I[(triangle_start + i) * 3 + 0] = vertex_start + tri[i][0];
@@ -306,7 +284,6 @@ private:
 
     void makeCubeEntity() {
         std::string tex_guid = guidString(tex_);
-
         mat0_ = rbc::MaterialResource::_create_();
         makeMaterial(mat0_, "[0.8,0.8,0.8]", tex_guid);
         mat1_ = rbc::MaterialResource::_create_();
@@ -318,21 +295,17 @@ private:
         rbc::MeshResource::create_empty(
             mesh_, luisa::span<std::byte>(reinterpret_cast<std::byte *>(submesh_offsets), sizeof(submesh_offsets)),
             16, 24, 1, false, false);
-
         auto pos_span = rbc::MeshResource::pos_buffer(mesh_);
         auto uv_span = rbc::MeshResource::uv_buffer(mesh_, 0);
         auto idx_span = rbc::MeshResource::triangle_indices_buffer(mesh_);
         std::memset(pos_span.data(), 0, pos_span.size());
         std::memset(uv_span.data(), 0, uv_span.size());
         std::memset(idx_span.data(), 0, idx_span.size());
-        addCubeToMesh(reinterpret_cast<float *>(pos_span.data()),
-                      reinterpret_cast<float *>(uv_span.data()),
-                      reinterpret_cast<uint32_t *>(idx_span.data()),
-                      0.0f, 0.0f, 0.0f, 1.0f, 0, 0);
-        addCubeToMesh(reinterpret_cast<float *>(pos_span.data()),
-                      reinterpret_cast<float *>(uv_span.data()),
-                      reinterpret_cast<uint32_t *>(idx_span.data()),
-                      0.0f, 1.0f, 0.0f, 0.4f, 8, 12);
+        auto *P = reinterpret_cast<float *>(pos_span.data());
+        auto *UV = reinterpret_cast<float *>(uv_span.data());
+        auto *I = reinterpret_cast<uint32_t *>(idx_span.data());
+        addCubeToMesh(P, UV, I, 0.0f, 0.0f, 0.0f, 1.0f, 0, 0);
+        addCubeToMesh(P, UV, I, 0.0f, 1.0f, 0.0f, 0.4f, 8, 12);
         rbc::Resource::install(mesh_);
 
         entity_ = rbc::Scene::add_entity(scene_);
@@ -340,24 +313,20 @@ private:
         cube_trans_ = rbc::Entity::add_component(entity_, "TransformComponent");
         void *render = rbc::Entity::add_component(entity_, "RenderComponent");
         rbc::TransformComponent::set_pos(cube_trans_, luisa::double3{0.0, 0.0, 1.0}, false);
-
         luisa::vector<rbc::RC<rbc::RCBase>> mats;
         mats.emplace_back(reinterpret_cast<rbc::RCBase *>(mat0_));
         mats.emplace_back(reinterpret_cast<rbc::RCBase *>(mat1_));
         rbc::RenderComponent::update_object(render, mats, mesh_);
     }
 
-    void initEngine() {
-        auto t0 = std::chrono::steady_clock::now();
+    void initEngine(luisa::uint2 size) {
+        auto t0 = Clock::now();
         auto stamp = [t0](const char *what) {
             fprintf(stderr, "[rbc_ext_node] timing: %s @%.0fms\n", what,
-                    std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+                    std::chrono::duration<double, std::milli>(Clock::now() - t0).count());
         };
-        stamp("initEngine begin");
         ctx_ = rbc::RBCContext::_create_();
         if (!ctx_) throw std::runtime_error("RBCContext creation failed");
-        stamp("RBCContext created");
-
         std::string shader_path = opt_.program_path + "/shader_build_" + opt_.backend;
         rbc::RBCContext::init_device(ctx_, opt_.backend.c_str(), opt_.program_path.c_str(),
                                      shader_path.c_str(), false);
@@ -367,208 +336,329 @@ private:
 
         std::string world_path = opt_.project_path + "/library";
         rbc::RBCContext::init_world(ctx_, world_path.c_str(), world_path.c_str());
-
         project_ = rbc::Project::_create_();
         rbc::Project::init(project_, opt_.project_path.c_str());
         rbc::Project::scan_project(project_);
-
         scene_ = rbc::Project::import_scene(project_, "test_scene.scene", "");
         if (!scene_) throw std::runtime_error("failed to import default scene 'test_scene.scene'");
         rbc::Resource::install(scene_);
 
-        if (opt_.shared_present) {
-            // Hand the native viewport handle to RBC: init_display creates a
-            // real swapchain on it, and every tick() presents GPU-direct.
-            rbcnode::ViewportRect vr = rbcnode::viewportRect(g_viewport);
-            viewport_size_ = luisa::uint2{(uint32_t)vr.w, (uint32_t)vr.h};
-            rbcnode::viewportMove(g_viewport, vr);
-            rbc::set_external_display_handles(0, g_viewport.viewport_handle);
-            rbc::RBCContext::init_display(ctx_, "electron_shared",
-                                          viewport_size_, false, false, false, false);
-        } else {
-            rbc::RBCContext::init_display(ctx_, "electron_headless",
-                                          luisa::uint2{opt_.width, opt_.height},
-                                          false, false, false, false);
-        }
+        // Headless display: no window, no swapchain — the render target is
+        // blitted into exported textures instead (see submitFrame).
+        rbc::RBCContext::init_display(ctx_, "electron_texture", size, false, false, false, false);
         cam_ = rbc::RBCContext::create_display_cam(ctx_);
         if (!cam_) throw std::runtime_error("create_display_cam failed");
         rbc::CameraComponent::enable_camera(cam_);
-        // Allows control_camera_add_pos/rotate (native viewport + JS path).
-        // Works without an LC window since the embedding patch.
         rbc::RBCContext::enable_camera_control(ctx_);
         void *settings = rbc::CameraComponent::render_settings(cam_);
         if (settings) rbc::RenderSettings::set_use_auto_exposure(settings, false);
-
         void *cam_entity = rbc::Component::entity(cam_);
         void *cam_trans = rbc::Entity::get_component(cam_entity, "TransformComponent");
         if (cam_trans) rbc::TransformComponent::set_pos(cam_trans, luisa::double3{0.0, 0.0, -1.0}, false);
 
         tex_ = rbc::Project::import_texture(project_, "test_grid.png", 1, false);
         if (!tex_) throw std::runtime_error("failed to import test_grid.png");
-
         makeCubeEntity();
+
+        auto &device = rbc::RenderDevice::instance().lc_device();
+        native_device_ = device.native_handle();
+        fence_event_ = device.create_timeline_event();
+        std::string err;
+        if (!rbcnode::surfaceCopierCreate(native_device_, copier_, err))
+            throw std::runtime_error("texture copier: " + err);
+        stamp("engine ready");
     }
 
-    void run() {
-        try {
-            initEngine();
-        } catch (const std::exception &e) {
-            std::string msg = std::string("init failed: ") + e.what();
-            fprintf(stderr, "[rbc_ext_node] %s\n", msg.c_str());
-            sendError(msg.c_str());
-            return;
+    // -- ring management (engine thread) ------------------------------------------
+    void createRing() {
+        display_ = rbc::RBCContext::display_image(ctx_);
+        if (display_.handle == ~0ull || !display_.width || !display_.height)
+            throw std::runtime_error("display image unavailable");
+        display_storage_ = luisa::compute::pixel_format_to_storage(display_.format);
+
+        auto &device = rbc::RenderDevice::instance().lc_device();
+        auto ring = std::make_unique<Ring>();
+        ring->epoch = ++epoch_;
+        ring->size = luisa::uint2{display_.width, display_.height};
+        ring->slots.resize(opt_.slot_count);
+        for (auto &slot : ring->slots) {
+            std::string err;
+            if (!rbcnode::surfaceCreate(native_device_, ring->size.x, ring->size.y, slot.tex, err))
+                throw std::runtime_error("texture export failed: " + err);
+            // same format/size as the exported texture (CopyResource requirement)
+            slot.staging = device.create_image<float>(PixelStorage::BYTE4, ring->size, 1u);
         }
-        fprintf(stderr, "[rbc_ext_node] engine initialized, entering render loop\n");
+        cur_w_ = ring->size.x;
+        cur_h_ = ring->size.y;
+        cur_epoch_ = ring->epoch;
 
-        if (!rbc::RenderDevice::instance_ptr()) {
-            sendError("RenderDevice singleton not available after init");
-            return;
+        auto *ev = new EngineEvent{};
+        ev->kind = EventKind::Surface;
+        ev->epoch = ring->epoch;
+        ev->width = ring->size.x;
+        ev->height = ring->size.y;
+        ev->slot_count = opt_.slot_count;
+        emit(ev);
+        fprintf(stderr, "[rbc_ext_node] surface epoch=%u %ux%u slots=%u\n",
+                ring->epoch, ring->size.x, ring->size.y, opt_.slot_count);
+        rings_.push_back(std::move(ring));
+    }
+
+    void destroyRing(Ring &ring) {
+        for (auto &slot : ring.slots) {
+            slot.staging = {};
+            rbcnode::surfaceDestroy(slot.tex);
         }
+        ring.slots.clear();
+    }
 
-        auto last = std::chrono::steady_clock::now();
-        float angle = 0.0f;
-        uint64_t frame_index = 0;
-
-        while (running_) {
-            try {
-                auto now = std::chrono::steady_clock::now();
-                float dt = std::chrono::duration<float>(now - last).count();
-                last = now;
-
-                // external camera control (from JS mouse gestures)
-                float yaw = yaw_accum_.exchange(0.0f);
-                float pitch = pitch_accum_.exchange(0.0f);
-                if (yaw != 0.0f || pitch != 0.0f)
-                    rbc::RBCContext::control_camera_add_rotate(ctx_, yaw, pitch, 0.0f);
-                float dz = dolly_accum_.exchange(0.0f);
-                if (dz != 0.0f) rbc::RBCContext::control_camera_add_pos(ctx_, luisa::float3{0.0f, 0.0f, dz});
-
-                // turntable animation (UI-toggleable) to prove per-frame engine interaction
-                if (turntable_) {
-                    angle += dt * 0.4f;
-                    float ha = angle * 0.5f;
-                    rbc::TransformComponent::set_rotation(cube_trans_, luisa::float4{0.0f, std::sin(ha), 0.0f, std::cos(ha)}, false);
-                }
-
-                rbc::CameraComponent::set_frame_index(cam_, frame_index);
-                auto frame_begin = std::chrono::steady_clock::now();
-                bool reset = rbc::RBCContext::tick(ctx_, dt, rbc::TickStage::PathTracingPreview, false);
-                frame_index = reset ? 0 : frame_index + 1;
-
-                if (opt_.shared_present) {
-                    // tick() already blitted dst->present image and presented
-                    // to the swapchain on our viewport window (GPU-direct,
-                    // zero CPU copies). Only housekeeping left: follow parent
-                    // resizes, pace the loop, and serve one-shot screenshots.
-                    if (!rbcnode::viewportParentAlive(g_viewport)) {
-                        fprintf(stderr, "[rbc_ext_node] parent window gone, stopping\n");
-                        return;
-                    }
-                    rbcnode::ViewportRect vr = rbcnode::viewportRect(g_viewport);
-                    luisa::uint2 new_size{(uint32_t)vr.w, (uint32_t)vr.h};
-                    if (any(new_size != viewport_size_)) {
-                        viewport_size_ = new_size;
-                        rbcnode::viewportMove(g_viewport, vr);
-                        rbc::RBCContext::reset_view(ctx_, new_size);
-                        frame_index = 0;
-                    }
-                    // cheap z-order insurance: Chromium occasionally re-positions
-                    // its compositor child; stay on top of the sibling stack
-                    if ((frame_index % 60) == 0)
-                        rbcnode::viewportRaise(g_viewport);
-                    constexpr auto kTargetFrame = std::chrono::duration<float, std::milli>(1000.0f / 60.0f);
-                    auto elapsed = std::chrono::steady_clock::now() - frame_begin;
-                    if (elapsed < kTargetFrame)
-                        std::this_thread::sleep_for(kTargetFrame - elapsed);
-                    tallyFrame();
-                    auto fps_now = std::chrono::steady_clock::now();
-                    if (fps_now - fps_last_ >= std::chrono::seconds(2)) {
-                        fprintf(stderr, "[rbc_ext_node] shared present: %.1f fps (%ux%u)\n",
-                                fps_.load(), viewport_size_.x, viewport_size_.y);
-                        fflush(stderr);
-                    }
-                    if (screenshot_pending_.exchange(false)) {
-                        // one-shot CPU readback of the freshly presented frame
-                        captureScreenshotOnce(frame_index);
-                    }
-                    continue;
-                }
-
-                uint32_t fw = 0, fh = 0;
-                uint8_t *rgba = readbackRGBA(fw, fh);
-                sendFrame(rgba, fw, fh, static_cast<uint32_t>(frame_index));
-            } catch (const std::exception &e) {
-                std::string msg = std::string("render loop error: ") + e.what();
-                fprintf(stderr, "[rbc_ext_node] %s\n", msg.c_str());
-                sendError(msg.c_str());
-                return;
+    // Current ring stays; retired rings go once no lease is outstanding.
+    void collectRings() {
+        for (size_t i = 0; i + 1 < rings_.size();) {
+            if (!rings_[i]->anyLeased()) {
+                destroyRing(*rings_[i]);
+                rings_.erase(rings_.begin() + i);
+            } else {
+                ++i;
             }
         }
     }
 
-private:
-    // GPU->CPU readback of the current display image, converted to RGBA8.
-    // Caller owns the returned buffer (malloc'd). Must run on the engine
-    // thread. Uses the texture's REAL size — the engine's display image may
-    // differ from the requested display resolution (e.g. headless defaults),
-    // and downloading with the wrong size yields a garbled frame.
-    uint8_t *readbackRGBA(uint32_t &fw, uint32_t &fh) {
-        auto *rd = rbc::RenderDevice::instance_ptr();
-        if (!rd) throw std::runtime_error("RenderDevice not available");
-        auto info = rbc::RBCContext::display_image(ctx_);
-        if (info.handle == ~0ull) throw std::runtime_error("display_image returned invalid handle");
-        fw = info.width ? info.width : opt_.width;
-        fh = info.height ? info.height : opt_.height;
-        auto storage = luisa::compute::pixel_format_to_storage(info.format);
-        size_t raw_size = luisa::compute::pixel_storage_size(
-            storage, luisa::uint3{fw, fh, 1});
-        if (raw_.size() < raw_size) raw_.resize(raw_size);
-
-        rd->lc_main_cmd_list() << luisa::make_unique<TextureDownloadCommand>(
-            info.handle, storage, 0, luisa::uint3{fw, fh, 1}, raw_.data());
-        if (!rd->lc_main_cmd_list().empty()) {
-            rd->execute_before_cmdlist_commit_task();
-            rd->lc_main_stream() << rd->lc_main_cmd_list().commit();
+    bool applyResize() {
+        uint64_t packed = pending_size_.exchange(0, std::memory_order_acquire);
+        if (!packed) return false;
+        luisa::uint2 size{uint32_t(packed >> 32), uint32_t(packed & 0xffffffffu)};
+        if (!rings_.empty() && all(rings_.back()->size == size)) return false;
+        if (!rings_.empty()) {
+            rbc::RBCContext::reset_view(ctx_, size);
+            // in-flight copies of the old ring are simply not published
+            fence_event_.synchronize(fence_value_);
+            rbcnode::surfaceCopierWaitIdle(copier_);
+            for (auto &slot : rings_.back()->slots)
+                if (slot.state == SlotState::Gpu) slot.state = SlotState::Free;
         }
-        rd->execute_after_cmdlist_commit_task();
-        rd->lc_main_stream().synchronize();
-
-        size_t pixels = size_t(fw) * fh;
-        auto *rgba = static_cast<uint8_t *>(malloc(pixels * 4));
-        if (!rgba) throw std::runtime_error("out of memory for frame buffer");
-        convertFrame(raw_.data(), storage, pixels, rgba);
-        return rgba;
+        createRing();
+        collectRings();
+        return true;
     }
 
-    void captureScreenshotOnce(uint64_t frame_index) {
+    void drainReleases() {
+        std::vector<ReleaseTicket> tickets;
+        {
+            std::lock_guard<std::mutex> lk(release_mtx_);
+            tickets.swap(releases_);
+        }
+        for (const auto &t : tickets) {
+            for (auto &ring : rings_) {
+                if (ring->epoch != t.epoch || t.slot >= ring->slots.size()) continue;
+                Slot &s = ring->slots[t.slot];
+                // idempotent: stale or duplicate tickets are ignored
+                if (s.state == SlotState::Leased && s.frame_id == t.frame_id) s.state = SlotState::Free;
+            }
+        }
+        if (!tickets.empty()) collectRings();
+    }
+
+    void reclaimExpiredLeases(Clock::time_point now) {
+        auto timeout = std::chrono::milliseconds(opt_.lease_timeout_ms);
+        for (auto &ring : rings_) {
+            for (auto &s : ring->slots) {
+                if (s.state == SlotState::Leased && now - s.t_leased > timeout) {
+                    lease_expired_++;
+                    throw std::runtime_error("frame lease timed out; shared texture connection stopped");
+                }
+            }
+        }
+    }
+
+    void submitFrame(uint64_t input_seq) {
+        Ring &ring = *rings_.back();
+        Slot *slot = nullptr;
+        for (auto &s : ring.slots)
+            if (s.state == SlotState::Free) { slot = &s; break; }
+        if (!slot) {
+            skipped_++;
+            return;
+        }
+        auto &rd = rbc::RenderDevice::instance();
+        auto &cmdlist = rd.lc_main_cmd_list();
+        luisa::compute::ImageView<float> src{display_.native_handle, display_.handle, display_storage_, 0u, ring.size};
+        rbc::SceneManager::instance().tex_uploader().blit(
+            cmdlist, src, slot->staging.view(0), luisa::float2(1.0f), luisa::float2(0.0f),
+            luisa::uint2(0u), ring.size);
+        rd.execute_before_cmdlist_commit_task();
+        rd.lc_main_stream() << cmdlist.commit();
+        rd.execute_after_cmdlist_commit_task();
+        rd.lc_main_stream() << fence_event_.signal(++fence_value_);
+
+        // staging -> exported on the private copy queue, after the LC fence
+        std::string err;
+        uint64_t ticket = rbcnode::surfaceCopySubmit(copier_, fence_event_.native_handle(), fence_value_,
+                                                     slot->staging.native_handle(), slot->tex, err);
+        if (!ticket) throw std::runtime_error("texture copy failed: " + err);
+
+        slot->state = SlotState::Gpu;
+        slot->copy_ticket = ticket;
+        slot->frame_id = frames_.load();
+        slot->input_seq = input_seq;
+        slot->t_submit = Clock::now();
+    }
+
+    // Lease every slot whose copy into the exported texture finished, oldest first.
+    void publishCompleted() {
+        Ring &ring = *rings_.back();
+        std::vector<uint32_t> ready;
+        for (uint32_t i = 0; i < ring.slots.size(); ++i) {
+            const Slot &s = ring.slots[i];
+            if (s.state == SlotState::Gpu && rbcnode::surfaceCopyCompleted(copier_, s.copy_ticket)) ready.push_back(i);
+        }
+        std::sort(ready.begin(), ready.end(),
+                  [&](uint32_t a, uint32_t b) { return ring.slots[a].copy_ticket < ring.slots[b].copy_ticket; });
+        auto now = Clock::now();
+        for (uint32_t i : ready) {
+            Slot &s = ring.slots[i];
+            auto *ev = new EngineEvent{};
+            ev->kind = EventKind::Frame;
+            ev->epoch = ring.epoch;
+            ev->slot = i;
+            ev->width = ring.size.x;
+            ev->height = ring.size.y;
+            ev->frame_id = s.frame_id;
+            ev->input_seq = s.input_seq;
+            ev->host_handle = s.tex.host_handle;
+            ev->timestamp_us = sinceStartUs(s.t_submit);
+            ev->gpu_ms = std::chrono::duration<double, std::milli>(now - s.t_submit).count();
+            s.t_leased = now;
+            if (emit(ev)) {
+                s.state = SlotState::Leased;
+                published_++;
+                publish_tally_++;
+            } else {
+                s.state = SlotState::Free;
+            }
+        }
+        uint32_t free_count = 0;
+        for (const auto &s : ring.slots) free_count += s.state == SlotState::Free;
+        slots_free_ = free_count;
+    }
+
+    void tallyFps() {
+        fps_tally_++;
+        auto now = Clock::now();
+        double secs = std::chrono::duration<double>(now - fps_last_).count();
+        if (secs >= 1.0) {
+            fps_.store(fps_tally_ / secs);
+            publish_fps_.store(publish_tally_ / secs);
+            fps_tally_ = 0;
+            publish_tally_ = 0;
+            fps_last_ = now;
+        }
+    }
+
+    void run() {
         try {
-            uint32_t fw = 0, fh = 0;
-            uint8_t *rgba = readbackRGBA(fw, fh);
-            sendFrame(rgba, fw, fh, static_cast<uint32_t>(frame_index), /*screenshot=*/true);
+            emitState("initializing", "");
+            uint64_t packed = pending_size_.exchange(0);
+            initEngine(luisa::uint2{uint32_t(packed >> 32), uint32_t(packed & 0xffffffffu)});
+            createRing();
         } catch (const std::exception &e) {
-            sendError((std::string("screenshot failed: ") + e.what()).c_str());
+            emitState("error", std::string("init failed: ") + e.what());
+            running_ = false;
+            return;
         }
-    }
+        emitState("running", "");
 
-public:
+        const auto budget = std::chrono::duration<double>(1.0 / opt_.max_fps);
+        auto last = Clock::now();
+        float angle = 0.0f;
+        uint64_t pt_frame_index = 0;
+        fps_last_ = Clock::now();
+        std::string fatal;
+        while (running_) {
+            try {
+                auto frame_begin = Clock::now();
+                float dt = std::chrono::duration<float>(frame_begin - last).count();
+                last = frame_begin;
+
+                if (applyResize()) pt_frame_index = 0;
+                drainReleases();
+                reclaimExpiredLeases(frame_begin);
+
+                uint64_t seq = input_seq_.load(std::memory_order_acquire);
+                float yaw = yaw_accum_.exchange(0.0f);
+                float pitch = pitch_accum_.exchange(0.0f);
+                float dz = dolly_accum_.exchange(0.0f);
+                if (yaw != 0.0f || pitch != 0.0f)
+                    rbc::RBCContext::control_camera_add_rotate(ctx_, yaw, pitch, 0.0f);
+                if (dz != 0.0f) rbc::RBCContext::control_camera_add_pos(ctx_, luisa::float3{0.0f, 0.0f, dz});
+                applied_seq_ = seq;
+
+                if (turntable_) {
+                    angle += dt * 0.4f;
+                    float ha = angle * 0.5f;
+                    rbc::TransformComponent::set_rotation(
+                        cube_trans_, luisa::float4{0.0f, std::sin(ha), 0.0f, std::cos(ha)}, false);
+                }
+
+                rbc::CameraComponent::set_frame_index(cam_, pt_frame_index);
+                bool reset = rbc::RBCContext::tick(ctx_, dt, rbc::TickStage::PathTracingPreview, false);
+                pt_frame_index = reset ? 0 : pt_frame_index + 1;
+                frames_++;
+
+                submitFrame(seq);
+                publishCompleted();
+                auto elapsed = Clock::now() - frame_begin;
+                if (elapsed < budget)
+                    std::this_thread::sleep_for(budget - elapsed);
+                publishCompleted();
+                tallyFps();
+            } catch (const std::exception &e) {
+                fatal = std::string("render loop error: ") + e.what();
+                break;
+            }
+        }
+        try {
+            if (fence_value_) fence_event_.synchronize(fence_value_);
+            rbcnode::surfaceCopierWaitIdle(copier_);
+            for (auto &ring : rings_) destroyRing(*ring);
+            rings_.clear();
+            rbcnode::surfaceCopierDestroy(copier_);
+        } catch (...) {}
+        running_ = false;
+        if (!fatal.empty()) emitState("error", fatal);
+        else emitState("stopped", "");
+    }
 
     Options opt_;
-    luisa::uint2 viewport_size_{0u, 0u};
-    std::vector<uint8_t> raw_;
-    uint32_t fps_frames_ = 0;
-    std::atomic<double> fps_{0.0};
-    std::atomic<uint32_t> last_frame_w_{0}, last_frame_h_{0};
-    std::atomic<bool> turntable_{true};
-    std::atomic<bool> screenshot_pending_{false};
-    std::chrono::steady_clock::time_point fps_last_{std::chrono::steady_clock::now()};
     napi_threadsafe_function tsfn_ = nullptr;
     std::thread thread_;
     std::atomic<bool> running_{false};
-    std::atomic<float> yaw_accum_{0.0f};
-    std::atomic<float> pitch_accum_{0.0f};
-    std::atomic<float> dolly_accum_{0.0f};
-    std::mutex mtx_;
-    std::string last_error_;
+    Clock::time_point t0_{Clock::now()};
+
+    // JS -> engine
+    std::atomic<uint64_t> pending_size_{0};
+    std::atomic<uint64_t> input_seq_{0};
+    std::atomic<float> yaw_accum_{0.0f}, pitch_accum_{0.0f}, dolly_accum_{0.0f};
+    std::atomic<bool> turntable_{true};
+    std::mutex release_mtx_;
+    std::vector<ReleaseTicket> releases_;
+
+    // stats
+    std::atomic<double> fps_{0.0}, publish_fps_{0.0};
+    std::atomic<uint32_t> cur_w_{0}, cur_h_{0}, cur_epoch_{0}, slots_free_{0};
+    std::atomic<uint64_t> frames_{0}, published_{0}, skipped_{0}, lease_expired_{0}, applied_seq_{0};
+    uint32_t fps_tally_ = 0, publish_tally_ = 0;
+    Clock::time_point fps_last_{Clock::now()};
+
+    // engine thread only
+    std::vector<std::unique_ptr<Ring>> rings_;  // back() = current, others retired
+    uint32_t epoch_ = 0;
+    luisa::compute::TextureCreationInfo display_{};
+    PixelStorage display_storage_ = PixelStorage::FLOAT4;
+    rbcnode::SurfaceCopier *copier_ = nullptr;
+    void *native_device_ = nullptr;
+    luisa::compute::TimelineEvent fence_event_;
+    uint64_t fence_value_ = 0;
 
     void *ctx_ = nullptr;
     void *project_ = nullptr;
@@ -582,155 +672,197 @@ public:
     void *mat1_ = nullptr;
 };
 
-EngineDemo g_engine;
+Engine g_engine;
 napi_threadsafe_function g_tsfn = nullptr;
-rbcnode::Viewport g_viewport;
+bool g_started = false;
 
-// Camera sink registered with the platform viewport (platform/viewport.h);
-// the platform layer translates native input into these deltas.
-void viewportCameraRotate(float yaw, float pitch) { g_engine.cameraRotate(yaw, pitch); }
-void viewportCameraZoom(float dz) { g_engine.cameraZoom(dz); }
-
-// ---------------------------------------------------------------------------
-// Crash diagnostics: Electron's crashpad swallows native crashes silently, so
-// install a VEH that writes a minidump before the process dies.
-// ---------------------------------------------------------------------------
+#ifdef _WIN32
+// Electron's crashpad swallows native crashes silently: write a minidump.
 LONG WINAPI crashVehHandler(EXCEPTION_POINTERS *ep) {
     DWORD code = ep->ExceptionRecord->ExceptionCode;
     if (code == EXCEPTION_BREAKPOINT || code == EXCEPTION_SINGLE_STEP ||
-        code == DBG_PRINTEXCEPTION_C || code == DBG_PRINTEXCEPTION_WIDE_C) {
+        code == DBG_PRINTEXCEPTION_C || code == DBG_PRINTEXCEPTION_WIDE_C ||
+        code == 0xE06D7363u /* MSVC C++ throw: caught normally, not a crash */) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
     wchar_t path[MAX_PATH];
     GetTempPathW(MAX_PATH, path);
     wcscat_s(path, L"rbc_ext_node_crash.dmp");
-    HANDLE f = CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
-                           FILE_ATTRIBUTE_NORMAL, nullptr);
+    HANDLE f = CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (f != INVALID_HANDLE_VALUE) {
         MINIDUMP_EXCEPTION_INFORMATION mei{};
         mei.ThreadId = GetCurrentThreadId();
         mei.ExceptionPointers = ep;
         mei.ClientPointers = FALSE;
-        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), f,
-                          MiniDumpWithFullMemory, &mei, nullptr, nullptr);
+        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), f, MiniDumpWithFullMemory, &mei, nullptr, nullptr);
         CloseHandle(f);
-        fprintf(stderr, "[rbc_ext_node] crash dump written: (see %%TEMP%%\\rbc_ext_node_crash.dmp) code=%08lx addr=%p\n",
+        fprintf(stderr, "[rbc_ext_node] crash dump written to %%TEMP%%\\rbc_ext_node_crash.dmp code=%08lx addr=%p\n",
                 code, ep->ExceptionRecord->ExceptionAddress);
         fflush(stderr);
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
+#endif
 
 // ---------------------------------------------------------------------------
 // N-API glue
 // ---------------------------------------------------------------------------
-void frameFinalize(napi_env /*env*/, void *data, void * /*hint*/) { free(data); }
+void setStr(napi_env env, napi_value obj, const char *k, const std::string &v) {
+    napi_value x;
+    napi_create_string_utf8(env, v.c_str(), v.size(), &x);
+    napi_set_named_property(env, obj, k, x);
+}
+void setNum(napi_env env, napi_value obj, const char *k, double v) {
+    napi_value x;
+    napi_create_double(env, v, &x);
+    napi_set_named_property(env, obj, k, x);
+}
+void setBool(napi_env env, napi_value obj, const char *k, bool v) {
+    napi_value x;
+    napi_get_boolean(env, v, &x);
+    napi_set_named_property(env, obj, k, x);
+}
 
-// JS callback signature: (frame, error, width, height, kind)
-//   frame: ArrayBuffer RGBA8 (null on error)
-//   error: string (null on success)
-//   width/height: frame size
-//   kind: 'frame' (readback stream) | 'screenshot' (one-shot shared capture)
-void tsfnCallback(napi_env env, napi_value js_cb, void * /*ctx*/, void *data) {
-    FrameMsg *msg = static_cast<FrameMsg *>(data);
-    napi_value args[5];
-    napi_get_undefined(env, &args[4]);
-    napi_create_string_utf8(env, msg->screenshot ? "screenshot" : "frame",
-                            NAPI_AUTO_LENGTH, &args[4]);
-    napi_create_uint32(env, msg->w, &args[2]);
-    napi_create_uint32(env, msg->h, &args[3]);
-    if (msg->rgba) {
-        size_t nbytes = size_t(msg->w) * msg->h * 4;
-        napi_value ab;
-        napi_status st = napi_create_external_arraybuffer(env, msg->rgba, nbytes,
-                                                          frameFinalize, nullptr, &ab);
-        if (st == napi_ok) {
-            msg->rgba = nullptr;  // ownership moved to the ArrayBuffer finalizer
-        } else {
-            // Fallback: some hosts (e.g. Electron in RUN_AS_NODE) refuse
-            // external array buffers; copy into a V8-owned buffer instead.
-            void *copy = nullptr;
-            if (napi_create_arraybuffer(env, nbytes, &copy, &ab) == napi_ok) {
-                memcpy(copy, msg->rgba, nbytes);
-            } else {
-                napi_get_undefined(env, &ab);
-            }
-            free(msg->rgba);
-            msg->rgba = nullptr;
-        }
-        args[0] = ab;
-        napi_get_undefined(env, &args[1]);
-    } else {
-        napi_get_null(env, &args[0]);
-        napi_create_string_utf8(env, msg->error, NAPI_AUTO_LENGTH, &args[1]);
+// onEvent(evt): evt.type = 'state' | 'surface' | 'frame' (see protocol.js)
+void tsfnCallback(napi_env env, napi_value js_cb, void *, void *data) {
+    std::unique_ptr<EngineEvent> ev(static_cast<EngineEvent *>(data));
+    if (!env || !js_cb) return;
+    napi_value obj;
+    napi_create_object(env, &obj);
+    switch (ev->kind) {
+        case EventKind::State:
+            setStr(env, obj, "type", "state");
+            setStr(env, obj, "state", ev->state);
+            setStr(env, obj, "message", ev->message);
+            break;
+        case EventKind::Surface:
+            setStr(env, obj, "type", "surface");
+            setNum(env, obj, "epoch", ev->epoch);
+            setNum(env, obj, "width", ev->width);
+            setNum(env, obj, "height", ev->height);
+            setNum(env, obj, "slots", ev->slot_count);
+            break;
+        case EventKind::Frame:
+            setStr(env, obj, "type", "frame");
+            setNum(env, obj, "epoch", ev->epoch);
+            setNum(env, obj, "slot", ev->slot);
+            setNum(env, obj, "frameId", double(ev->frame_id));
+            setNum(env, obj, "width", ev->width);
+            setNum(env, obj, "height", ev->height);
+            setNum(env, obj, "inputSeq", double(ev->input_seq));
+            // pointer-sized handle: decimal string (exceeds Number safe range)
+            setStr(env, obj, "handle", std::to_string(ev->host_handle));
+            setNum(env, obj, "timestampUs", ev->timestamp_us);
+            setNum(env, obj, "gpuMs", ev->gpu_ms);
+            break;
     }
     napi_value undefined;
     napi_get_undefined(env, &undefined);
-    napi_call_function(env, undefined, js_cb, 5, args, nullptr);
-    delete msg;
+    napi_call_function(env, undefined, js_cb, 1, &obj, nullptr);
 }
 
-bool getObjString(napi_env env, napi_value obj, const char *name, std::string &out) {
+bool getStr(napi_env env, napi_value obj, const char *name, std::string &out) {
     napi_value v;
+    napi_valuetype t;
     if (napi_get_named_property(env, obj, name, &v) != napi_ok) return false;
+    if (napi_typeof(env, v, &t) != napi_ok || t != napi_string) return false;
     size_t len = 0;
-    if (napi_get_value_string_utf8(env, v, nullptr, 0, &len) != napi_ok) return false;
+    napi_get_value_string_utf8(env, v, nullptr, 0, &len);
     out.resize(len);
     napi_get_value_string_utf8(env, v, out.data(), len + 1, &len);
     return true;
 }
 
-bool getObjUint32(napi_env env, napi_value obj, const char *name, uint32_t &out) {
+bool getU32(napi_env env, napi_value obj, const char *name, uint32_t &out) {
     napi_value v;
+    napi_valuetype t;
     if (napi_get_named_property(env, obj, name, &v) != napi_ok) return false;
+    if (napi_typeof(env, v, &t) != napi_ok || t != napi_number) return false;
     return napi_get_value_uint32(env, v, &out) == napi_ok;
 }
 
-napi_value Start(napi_env env, napi_callback_info info) {
-    size_t argc = 2;
-    napi_value args[2];
+double argNum(napi_env env, napi_value v) {
+    double d = 0.0;
+    napi_get_value_double(env, v, &d);
+    return d;
+}
+
+template<size_t N>
+size_t getArgs(napi_env env, napi_callback_info info, napi_value (&args)[N]) {
+    size_t argc = N;
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    if (argc < 2) {
-        napi_throw_error(env, nullptr, "start(options, callback) expects 2 arguments");
+    return argc;
+}
+
+// capabilities(backend) -> {supported, reason, platform, handleType, pixelFormat, protocol}
+napi_value Capabilities(napi_env env, napi_callback_info info) {
+    napi_value args[1];
+    std::string backend = "dx";
+    if (getArgs(env, info, args) >= 1) {
+        size_t len = 0;
+        if (napi_get_value_string_utf8(env, args[0], nullptr, 0, &len) == napi_ok) {
+            backend.resize(len);
+            napi_get_value_string_utf8(env, args[0], backend.data(), len + 1, &len);
+        }
+    }
+    auto caps = rbcnode::surfaceCaps(backend);
+    napi_value obj;
+    napi_create_object(env, &obj);
+    setBool(env, obj, "supported", caps.supported);
+    setStr(env, obj, "reason", caps.reason);
+    setStr(env, obj, "platform", caps.platform);
+    setStr(env, obj, "handleType", caps.handle_type);
+    setStr(env, obj, "pixelFormat", caps.pixel_format);
+    setNum(env, obj, "protocol", kProtocolVersion);
+    return obj;
+}
+
+// start(options, onEvent)
+napi_value Start(napi_env env, napi_callback_info info) {
+    napi_value args[2];
+    if (getArgs(env, info, args) < 2) {
+        napi_throw_error(env, nullptr, "start(options, onEvent) expects 2 arguments");
         return nullptr;
     }
-
+    if (g_started) {
+        napi_throw_error(env, nullptr, "engine already started (one engine per process)");
+        return nullptr;
+    }
     Options opt;
-    getObjString(env, args[0], "projectPath", opt.project_path);
-    getObjString(env, args[0], "backend", opt.backend);
-    getObjString(env, args[0], "programPath", opt.program_path);
-    getObjUint32(env, args[0], "width", opt.width);
-    getObjUint32(env, args[0], "height", opt.height);
-    std::string present, parent_hwnd;
-    if (getObjString(env, args[0], "present", present))
-        opt.shared_present = present == "shared";
-    if (getObjString(env, args[0], "parentHwnd", parent_hwnd) && !parent_hwnd.empty())
-        opt.parent_hwnd = std::strtoull(parent_hwnd.c_str(), nullptr, 10);
-    getObjUint32(env, args[0], "viewportTop", opt.viewport_top);
-    getObjUint32(env, args[0], "viewportRight", opt.viewport_right);
-    if (opt.project_path.empty() || opt.program_path.empty() || opt.width == 0 || opt.height == 0 ||
-        (opt.shared_present && opt.parent_hwnd == 0)) {
-        napi_throw_error(env, nullptr, "start(options, callback): invalid options");
+    getStr(env, args[0], "projectPath", opt.project_path);
+    getStr(env, args[0], "backend", opt.backend);
+    getStr(env, args[0], "programPath", opt.program_path);
+    getU32(env, args[0], "width", opt.width);
+    getU32(env, args[0], "height", opt.height);
+    getU32(env, args[0], "hostPid", opt.host_pid);
+    getU32(env, args[0], "slots", opt.slot_count);
+    getU32(env, args[0], "maxFps", opt.max_fps);
+    getU32(env, args[0], "leaseTimeoutMs", opt.lease_timeout_ms);
+    if (opt.project_path.empty() || opt.program_path.empty() || opt.host_pid == 0) {
+        napi_throw_error(env, nullptr, "start(): projectPath, programPath and hostPid are required");
         return nullptr;
     }
 
     napi_value resource_name;
-    napi_create_string_utf8(env, "rbc-frame", NAPI_AUTO_LENGTH, &resource_name);
-    if (napi_create_threadsafe_function(env, args[1], nullptr, resource_name, 2, 1,
-                                        nullptr, nullptr, nullptr, tsfnCallback,
-                                        &g_tsfn) != napi_ok) {
+    napi_create_string_utf8(env, "rbc-engine-events", NAPI_AUTO_LENGTH, &resource_name);
+    // max_queue_size = 0 (unbounded): frame leases must never be dropped
+    if (napi_create_threadsafe_function(env, args[1], nullptr, resource_name, 0, 1, nullptr, nullptr,
+                                        nullptr, tsfnCallback, &g_tsfn) != napi_ok) {
         napi_throw_error(env, nullptr, "failed to create threadsafe function");
         return nullptr;
     }
     try {
         g_engine.start(std::move(opt), g_tsfn);
+        g_started = true;
     } catch (const std::exception &e) {
+        napi_release_threadsafe_function(g_tsfn, napi_tsfn_abort);
+        g_tsfn = nullptr;
         napi_throw_error(env, nullptr, e.what());
     }
     return nullptr;
 }
 
-napi_value Stop(napi_env /*env*/, napi_callback_info /*info*/) {
+napi_value Stop(napi_env, napi_callback_info) {
     g_engine.stop();
     if (g_tsfn) {
         napi_release_threadsafe_function(g_tsfn, napi_tsfn_release);
@@ -739,110 +871,82 @@ napi_value Stop(napi_env /*env*/, napi_callback_info /*info*/) {
     return nullptr;
 }
 
-napi_value CameraRotate(napi_env env, napi_callback_info info) {
-    size_t argc = 2;
+// resize(width, height) — device pixels of the viewport element
+napi_value Resize(napi_env env, napi_callback_info info) {
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    double yaw = 0.0, pitch = 0.0;
-    napi_get_value_double(env, args[0], &yaw);
-    napi_get_value_double(env, args[1], &pitch);
-    g_engine.cameraRotate(static_cast<float>(yaw), static_cast<float>(pitch));
+    if (getArgs(env, info, args) < 2) return nullptr;
+    g_engine.requestResize(uint32_t(argNum(env, args[0])), uint32_t(argNum(env, args[1])));
     return nullptr;
 }
 
-napi_value CameraZoom(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value arg;
-    napi_get_cb_info(env, info, &argc, &arg, nullptr, nullptr);
-    double dz = 0.0;
-    napi_get_value_double(env, arg, &dz);
-    g_engine.cameraZoom(static_cast<float>(dz));
+// input(seq, yaw, pitch, dolly) — one coalesced input packet
+napi_value Input(napi_env env, napi_callback_info info) {
+    napi_value args[4];
+    if (getArgs(env, info, args) < 4) return nullptr;
+    g_engine.input(uint64_t(argNum(env, args[0])), float(argNum(env, args[1])),
+                   float(argNum(env, args[2])), float(argNum(env, args[3])));
     return nullptr;
 }
 
-napi_value GetLastError(napi_env env, napi_callback_info /*info*/) {
-    std::string err = g_engine.lastError();
-    napi_value v;
-    napi_create_string_utf8(env, err.c_str(), err.size(), &v);
-    return v;
+// releaseFrame(epoch, slot, frameId) — returns a frame lease
+napi_value ReleaseFrame(napi_env env, napi_callback_info info) {
+    napi_value args[3];
+    if (getArgs(env, info, args) < 3) return nullptr;
+    g_engine.release({uint32_t(argNum(env, args[0])), uint32_t(argNum(env, args[1])),
+                      uint64_t(argNum(env, args[2]))});
+    return nullptr;
 }
 
-napi_value CameraTurntable(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value arg;
-    napi_get_cb_info(env, info, &argc, &arg, nullptr, nullptr);
+napi_value SetTurntable(napi_env env, napi_callback_info info) {
+    napi_value args[1];
+    if (getArgs(env, info, args) < 1) return nullptr;
     bool on = false;
-    napi_get_value_bool(env, arg, &on);
+    napi_get_value_bool(env, args[0], &on);
     g_engine.setTurntable(on);
     return nullptr;
 }
 
-napi_value RequestScreenshot(napi_env env, napi_callback_info /*info*/) {
-    g_engine.requestScreenshot();
-    return nullptr;
-}
-
-napi_value GetStats(napi_env env, napi_callback_info /*info*/) {
+napi_value GetStats(napi_env env, napi_callback_info) {
     auto s = g_engine.stats();
-    napi_value obj, v;
+    napi_value obj;
     napi_create_object(env, &obj);
-    napi_create_double(env, s.fps, &v);
-    napi_set_named_property(env, obj, "fps", v);
-    napi_create_uint32(env, s.width, &v);
-    napi_set_named_property(env, obj, "width", v);
-    napi_create_uint32(env, s.height, &v);
-    napi_set_named_property(env, obj, "height", v);
-    napi_get_boolean(env, s.shared, &v);
-    napi_set_named_property(env, obj, "shared", v);
-    napi_get_boolean(env, s.turntable, &v);
-    napi_set_named_property(env, obj, "turntable", v);
+    setNum(env, obj, "fps", s.fps);
+    setNum(env, obj, "publishFps", s.publish_fps);
+    setNum(env, obj, "width", s.width);
+    setNum(env, obj, "height", s.height);
+    setNum(env, obj, "epoch", s.epoch);
+    setNum(env, obj, "slots", s.slot_count);
+    setNum(env, obj, "slotsFree", s.slots_free);
+    setNum(env, obj, "frames", double(s.frames));
+    setNum(env, obj, "published", double(s.published));
+    setNum(env, obj, "skipped", double(s.skipped));
+    setNum(env, obj, "leaseExpired", double(s.lease_expired));
+    setNum(env, obj, "inputSeq", double(s.input_seq));
+    setBool(env, obj, "turntable", s.turntable);
+    setBool(env, obj, "running", s.running);
     return obj;
-}
-
-napi_value PreloadRuntimeDlls(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value arg;
-    napi_get_cb_info(env, info, &argc, &arg, nullptr, nullptr);
-    char buf[MAX_PATH] = {0};
-    size_t len = 0;
-    napi_get_value_string_utf8(env, arg, buf, MAX_PATH - 16, &len);
-    if (len == 0) {
-        napi_throw_error(env, nullptr, "preloadRuntimeDlls(programDir) expects a string");
-        return nullptr;
-    }
-    // Load dxil.dll/dxcompiler.dll (D3D12 Agility SDK) from the engine runtime
-    // directory BEFORE Chromium gets a chance to load its own copies from the
-    // Electron distribution directory. Windows dedups LoadLibrary by module
-    // name, so whoever loads first wins; the engine cannot work with
-    // Chromium's dxil build (null vtable deref inside the host process).
-    for (const char *name : {"dxil.dll", "dxcompiler.dll"}) {
-        char full[MAX_PATH];
-        snprintf(full, sizeof(full), "%s\\%s", buf, name);
-        HMODULE m = LoadLibraryA(full);
-        fprintf(stderr, "[rbc_ext_node] preload %s -> %s\n", full, m ? "ok" : "FAILED");
-    }
-    return nullptr;
 }
 
 napi_value Init(napi_env env, napi_value exports) {
     napi_property_descriptor descs[] = {
+        {"capabilities", nullptr, Capabilities, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"start", nullptr, Start, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"stop", nullptr, Stop, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"cameraRotate", nullptr, CameraRotate, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"cameraZoom", nullptr, CameraZoom, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"getLastError", nullptr, GetLastError, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"cameraTurntable", nullptr, CameraTurntable, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"requestScreenshot", nullptr, RequestScreenshot, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"resize", nullptr, Resize, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"input", nullptr, Input, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"releaseFrame", nullptr, ReleaseFrame, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setTurntable", nullptr, SetTurntable, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getStats", nullptr, GetStats, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"preloadRuntimeDlls", nullptr, PreloadRuntimeDlls, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(descs) / sizeof(descs[0]), descs);
     return exports;
 }
 
-}  // namespace
+}// namespace
 
 NAPI_MODULE_INIT(/* env, exports */) {
+#ifdef _WIN32
     AddVectoredExceptionHandler(0, crashVehHandler);
+#endif
     return Init(env, exports);
 }
